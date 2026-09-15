@@ -407,7 +407,7 @@ export function ensureApiKeyTables(env: Pick<Env, 'CORPUS'>): Promise<void> {
       `create table if not exists api_keys(id text primary key, user_id text not null, mode text not null, name text not null, key_hash text not null unique, scopes text not null, projects text not null, created_at integer not null, expires_at integer, last_used_at integer, revoked_at integer)`,
     );
     await env.CORPUS.exec(`create index if not exists idx_api_keys_user on api_keys(user_id)`);
-  });
+  }, env.CORPUS);
 }
 
 interface KeyRow {

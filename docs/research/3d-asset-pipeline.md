@@ -208,6 +208,46 @@ Self-hosting Roblox's Cube weights and calling Roblox's hosted API are governed 
   **Action: read the Roblox Terms of Use creator sections before marketing this as a
   feature.** <https://en.help.roblox.com/hc/articles/115004647846>
 
+### Re-verified 2026-09-15, plus `Roblox/cubepart` — still closed, and now for a second reason
+
+The question was asked again: is there a hosted Cube endpoint this product can call? Checked
+directly against the Hugging Face API rather than the model pages.
+
+| Check | Command | Result |
+|---|---|---|
+| Hosted HF inference | `GET /api/models/Roblox/cubepart?expand[]=inferenceProviderMapping` | `{"inferenceProviderMapping":{}}` — **no provider serves it.** Same for `cube3d-v0.5`. |
+| `Roblox/cubepart-demo` Space | `GET /api/spaces/Roblox/cubepart-demo` | `stage: PAUSED`, `hardware.current: null` — **not callable.** |
+| `Roblox/cube3d-interactive` Space | `GET /api/spaces/Roblox/cube3d-interactive` | `stage: RUNNING`, `zero-a10g`. |
+| That Space's API, called for real | `POST /gradio_api/call/handle_text_prompt` | **HTTP 200, returns `output.glb`.** It genuinely works, unauthenticated. |
+| Open Cloud text-to-3D | `create.roblox.com/docs/cloud/reference/domains/apis` | **None.** The Generative AI domain is `:generateSpeechAsset` and `:translateText` only. |
+
+**A working endpoint exists and is still refused.** `cube3d-interactive` is a free community
+demo on shared ZeroGPU, owned by Roblox but carrying no SLA, no quota grant and no commercial
+terms. Wiring a paid product to it is the dead branch this repo refuses: it is one pause away
+from the state `cubepart-demo` is in *today*.
+
+**And the licence closes it independently.** Calling that Space is still `Use` of the Model as
+the licence defines it (*"Use ... includes ... running"*), and the Permitted Purpose is
+*"academic or research purposes only"* — see the subsection above.
+
+**`Roblox/cubepart` (2026-05-28) does not reopen it.** It is the newest and most relevant model —
+open-vocabulary, **part-controllable**, which maps onto `SchemaDefinition.Groups` better than
+anything before it. But its licensing is *ambiguous*, which on a commercial path is a refusal and
+not a green light: the HF card tags bare `license: openrail` and ships **no LICENSE file**
+(`/raw/main/LICENSE` → 404, and `cube/cubepart/LICENSE` → 404), while the repo's only LICENSE
+names its Licensed Artifacts as *"Cube3d-v0.1 and related inference code"*. Nothing grants
+commercial use to cubepart, and an unstated grant is not a grant.
+
+**Hardware is NOT the blocker, and saying otherwise would be an excuse.** Measured from the file
+tree: cubepart is 8.582 GB (`multi_part_dit.safetensors`) + 1.321 GB (`vae.safetensors`) ≈ **9.9 GB**;
+cube3d-v0.5 is 7.174 + 1.095 ≈ **8.3 GB**. Both fit a 32 GB M2 Pro's unified memory with room to
+spare. The reference implementation is PyTorch + `warp-lang` with no MLX port, so it would need
+porting — but the honest statement is that the **licence** stops this, not the machine.
+
+**Net: unchanged.** The only Cube this product may use is the one Roblox runs itself, under the
+Roblox Terms of Use, via `GenerationService:GenerateModelAsync` in the customer's own Studio
+session — which is already wired in `apps/plugin/src/Generation.luau`.
+
 ## A1. `InsertService:LoadAsset` — limits and permissions in a plugin
 
 The documented security check on `InsertService:LoadAsset(assetId)`:

@@ -516,7 +516,7 @@ type Corpus = Pick<Env, 'CORPUS'>;
  * there is nothing for a second key to distinguish.
  */
 export function ensureMemoryTables(env: Corpus): Promise<void> {
-  return oncePerIsolate('memory', () => createMemoryTables(env));
+  return oncePerIsolate('memory', () => createMemoryTables(env), env.CORPUS);
 }
 
 async function createMemoryTables(env: Corpus): Promise<void> {

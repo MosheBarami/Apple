@@ -1,0 +1,636 @@
+{
+ "cursors": {
+  "next": "2",
+  "previous": null
+ },
+ "next": "https://api.sketchfab.com/v3/search?count=2&cursor=2&downloadable=true&license=cc0&q=rock&type=models",
+ "results": [
+  {
+   "uri": "https://api.sketchfab.com/v3/models/8063692b097e48329a7f78069557f92c",
+   "uid": "8063692b097e48329a7f78069557f92c",
+   "name": "Inkwell from Bell Rock Lighthouse",
+   "staffpickedAt": null,
+   "viewCount": 2721,
+   "likeCount": 138,
+   "animationCount": 0,
+   "viewerUrl": "https://sketchfab.com/3d-models/none-8063692b097e48329a7f78069557f92c",
+   "embedUrl": "https://sketchfab.com/models/8063692b097e48329a7f78069557f92c/embed",
+   "commentCount": 0,
+   "isDownloadable": true,
+   "publishedAt": "2019-06-04T15:09:31.908678",
+   "tags": [
+    {
+     "name": "industrial-heritage",
+     "slug": "industrial-heritage",
+     "uri": "https://api.sketchfab.com/v3/tags/industrial-heritage"
+    },
+    {
+     "name": "realitycapture",
+     "slug": "realitycapture",
+     "uri": "https://api.sketchfab.com/v3/tags/realitycapture"
+    },
+    {
+     "name": "photogrammetry",
+     "slug": "photogrammetry",
+     "uri": "https://api.sketchfab.com/v3/tags/photogrammetry"
+    },
+    {
+     "name": "scanningthehorizon",
+     "slug": "scanningthehorizon",
+     "uri": "https://api.sketchfab.com/v3/tags/scanningthehorizon"
+    },
+    {
+     "name": "scottishmaritimemuseum",
+     "slug": "scottishmaritimemuseum",
+     "uri": "https://api.sketchfab.com/v3/tags/scottishmaritimemuseum"
+    }
+   ],
+   "categories": [
+    {
+     "name": "cultural-heritage-history"
+    }
+   ],
+   "thumbnails": {
+    "images": [
+     {
+      "uid": "5d4e42251c4845d0afa0565fb7e86bfe",
+      "size": 6070,
+      "width": 256,
+      "url": "https://media.sketchfab.com/models/8063692b097e48329a7f78069557f92c/thumbnails/2ba8b144e6d549e3a1116b6f55a98904/a762bcc2b2664eb9812a57dcc67e381f.jpeg",
+      "height": 144
+     }
+    ]
+   },
+   "user": {
+    "uid": "f4f7efd721424475bea219e5bc380c56",
+    "username": "ScottishMaritimeMuseum",
+    "displayName": "Scottish Maritime Museum",
+    "profileUrl": "https://sketchfab.com/ScottishMaritimeMuseum",
+    "account": "prem",
+    "avatar": {
+     "uri": "https://api.sketchfab.com/v3/avatars/87eaa7e6b2044221a1ef8d608737c5e1"
+    },
+    "uri": "https://api.sketchfab.com/v3/users/f4f7efd721424475bea219e5bc380c56"
+   },
+   "description": "This object from the collection of the [Museum of Scottish Lighthouses](http://http://lighthousemuseum.org.uk/) is a decorative brass inkwell and pen rest featuring a bust of Neptune, Roman God of the sea. \n\nWhile the age of the object is unestablished, it was certainly used at the Bell Rock Lighthouse – some 12 miles off Arbroath – from at least 1910 until the station was modernised in 1963. It was kept in the station’s library which was located immediately below the lightroom. \n\n\nThe 3D model was created by the [Scottish Maritime Museum ](http://www.scottishmaritimemuseum.org) as a part of the Scanning The Horizon project, working with collections from Industrial Museums Scotland ([Go Industrial](http://www.goindustrial.co.uk)).",
+   "faceCount": 37992,
+   "createdAt": "2019-06-04T12:42:11.353393",
+   "vertexCount": 18998,
+   "isAgeRestricted": false,
+   "archives": {
+    "glb": {
+     "textureCount": 2,
+     "size": 20940592,
+     "type": "glb",
+     "textureMaxResolution": 4096,
+     "faceCount": 37992,
+     "vertexCount": 21017
+    },
+    "gltf": {
+     "textureCount": 2,
+     "size": 20456766,
+     "type": "gltf",
+     "textureMaxResolution": 4096,
+     "faceCount": 37992,
+     "vertexCount": 21017
+    },
+    "source": {
+     "textureCount": null,
+     "size": 44108225,
+     "type": "source",
+     "textureMaxResolution": null,
+     "faceCount": null,
+     "vertexCount": null
+    },
+    "usdz": {
+     "textureCount": null,
+     "size": 5141633,
+     "type": "usdz",
+     "textureMaxResolution": null,
+     "faceCount": null,
+     "vertexCount": null
+    }
+   },
+   "license": {
+    "uid": "7c23a1ba438d4306920229c12afcb5f9",
+    "label": "CC0 Public Domain"
+   }
+  },
+  {
+   "uri": "https://api.sketchfab.com/v3/models/cbbe1e1ae71b4e44acc6bf1b5245f1bb",
+   "uid": "cbbe1e1ae71b4e44acc6bf1b5245f1bb",
+   "name": "Igneous rock: Basalt (A'a Lava Rock)",
+   "staffpickedAt": null,
+   "viewCount": 3514,
+   "likeCount": 12,
+   "animationCount": 0,
+   "viewerUrl": "https://sketchfab.com/3d-models/none-cbbe1e1ae71b4e44acc6bf1b5245f1bb",
+   "embedUrl": "https://sketchfab.com/models/cbbe1e1ae71b4e44acc6bf1b5245f1bb/embed",
+   "commentCount": 0,
+   "isDownloadable": true,
+   "publishedAt": "2020-08-11T20:41:18.376678",
+   "tags": [
+    {
+     "name": "aa",
+     "slug": "aa",
+     "uri": "https://api.sketchfab.com/v3/tags/aa"
+    },
+    {
+     "name": "lava",
+     "slug": "lava",
+     "uri": "https://api.sketchfab.com/v3/tags/lava"
+    },
+    {
+     "name": "hawaii",
+     "slug": "hawaii",
+     "uri": "https://api.sketchfab.com/v3/tags/hawaii"
+    },
+    {
+     "name": "volcano",
+     "slug": "volcano",
+     "uri": "https://api.sketchfab.com/v3/tags/volcano"
+    },
+    {
+     "name": "volcanic",
+     "slug": "volcanic",
+     "uri": "https://api.sketchfab.com/v3/tags/volcanic"
+    },
+    {
+     "name": "igneous",
+     "slug": "igneous",
+     "uri": "https://api.sketchfab.com/v3/tags/igneous"
+    },
+    {
+     "name": "igneous-rock",
+     "slug": "igneous-rock",
+     "uri": "https://api.sketchfab.com/v3/tags/igneous-rock"
+    },
+    {
+     "name": "rock",
+     "slug": "rock",
+     "uri": "https://api.sketchfab.com/v3/tags/rock"
+    },
+    {
+     "name": "igenous-rocks",
+     "slug": "igenous-rocks",
+     "uri": "https://api.sketchfab.com/v3/tags/igenous-rocks"
+    }
+   ],
+   "categories": [
+    {
+     "name": "nature-plants"
+    },
+    {
+     "name": "science-technology"
+    }
+   ],
+   "thumbnails": {
+    "images": [
+     {
+      "uid": "4c252d55204e4a7a9c5e65d11acd4bda",
+      "size": 3373,
+      "width": 256,
+      "url": "https://media.sketchfab.com/models/cbbe1e1ae71b4e44acc6bf1b5245f1bb/thumbnails/8d88b958c641495bac7de7c8b8654fb6/592d63ef4a104a3f849abd8d1d52960a.jpeg",
+      "height": 144
+     }
+    ]
+   },
+   "user": {
+    "uid": "2a49764b69804dbaa254feff6fe88261",
+    "username": "DigitalAtlasOfAncientLife",
+    "displayName": "Digital Atlas of Ancient Life",
+    "profileUrl": "https://sketchfab.com/DigitalAtlasOfAncientLife",
+    "account": "basic",
+    "avatar": {
+     "uri": "https://api.sketchfab.com/v3/avatars/ef96f5c05b1e41e2a6ee03fbc84e4abb"
+    },
+    "uri": "https://api.sketchfab.com/v3/users/2a49764b69804dbaa254feff6fe88261"
+   },
+   "description": "Sample of basalt (A'a lava rock) from Hawaii. Longest dimension of specimen is approximately 15 cm. Model by Emily Hauf.",
+   "faceCount": 363958,
+   "createdAt": "2020-08-11T20:37:58.108666",
+   "vertexCount": 182003,
+   "isAgeRestricted": false,
+   "archives": {
+    "glb": {
+     "textureCount": 1,
+     "size": 17339084,
+     "type": "glb",
+     "textureMaxResolution": 4096,
+     "faceCount": 363958,
+     "vertexCount": 229767
+    },
+    "gltf": {
+     "textureCount": 1,
+     "size": 13136981,
+     "type": "gltf",
+     "textureMaxResolution": 4096,
+     "faceCount": 363958,
+     "vertexCount": 229767
+    },
+    "source": {
+     "textureCount": null,
+     "size": 31335414,
+     "type": "source",
+     "textureMaxResolution": null,
+     "faceCount": null,
+     "vertexCount": null
+    },
+    "usdz": {
+     "textureCount": null,
+     "size": 14119121,
+     "type": "usdz",
+     "textureMaxResolution": null,
+     "faceCount": null,
+     "vertexCount": null
+    }
+   },
+   "license": {
+    "uid": "7c23a1ba438d4306920229c12afcb5f9",
+    "label": "CC0 Public Domain"
+   }
+  },
+  {
+   "uri": "https://api.sketchfab.com/v3/models/4b27adcf92f644bdabf8ecc6c5bef399",
+   "uid": "4b27adcf92f644bdabf8ecc6c5bef399",
+   "name": "Maple tree",
+   "staffpickedAt": "2015-07-22T15:34:11",
+   "viewCount": 224243,
+   "likeCount": 914,
+   "animationCount": 0,
+   "viewerUrl": "https://sketchfab.com/3d-models/none-4b27adcf92f644bdabf8ecc6c5bef399",
+   "embedUrl": "https://sketchfab.com/models/4b27adcf92f644bdabf8ecc6c5bef399/embed",
+   "commentCount": 29,
+   "isDownloadable": true,
+   "publishedAt": "2015-07-22T11:05:15",
+   "tags": [
+    {
+     "name": "trees",
+     "slug": "trees",
+     "uri": "https://api.sketchfab.com/v3/tags/trees"
+    },
+    {
+     "name": "tree",
+     "slug": "tree",
+     "uri": "https://api.sketchfab.com/v3/tags/tree"
+    },
+    {
+     "name": "landscape",
+     "slug": "landscape",
+     "uri": "https://api.sketchfab.com/v3/tags/landscape"
+    },
+    {
+     "name": "plants",
+     "slug": "plants",
+     "uri": "https://api.sketchfab.com/v3/tags/plants"
+    },
+    {
+     "name": "maple",
+     "slug": "maple",
+     "uri": "https://api.sketchfab.com/v3/tags/maple"
+    },
+    {
+     "name": "sugar",
+     "slug": "sugar",
+     "uri": "https://api.sketchfab.com/v3/tags/sugar"
+    },
+    {
+     "name": "vegetation",
+     "slug": "vegetation",
+     "uri": "https://api.sketchfab.com/v3/tags/vegetation"
+    },
+    {
+     "name": "acer",
+     "slug": "acer",
+     "uri": "https://api.sketchfab.com/v3/tags/acer"
+    },
+    {
+     "name": "saccharum",
+     "slug": "saccharum",
+     "uri": "https://api.sketchfab.com/v3/tags/saccharum"
+    },
+    {
+     "name": "sketchup",
+     "slug": "sketchup",
+     "uri": "https://api.sketchfab.com/v3/tags/sketchup"
+    },
+    {
+     "name": "3d",
+     "slug": "3d",
+     "uri": "https://api.sketchfab.com/v3/tags/3d"
+    }
+   ],
+   "categories": [
+    {
+     "name": "architecture"
+    },
+    {
+     "name": "nature-plants"
+    }
+   ],
+   "thumbnails": {
+    "images": [
+     {
+      "uid": "622b20ee8d9e479caad5df9fd642e1ed",
+      "size": 2117,
+      "width": 100,
+      "url": "https://media.sketchfab.com/models/4b27adcf92f644bdabf8ecc6c5bef399/thumbnails/b59ce0c2050142c286b5d80804ef39ce/100x100.jpeg",
+      "height": 100
+     }
+    ]
+   },
+   "user": {
+    "uid": "d7f99fe13973461984fe3e08c148520b",
+    "username": "atrodler",
+    "displayName": "atrodler",
+    "profileUrl": "https://sketchfab.com/atrodler",
+    "account": "basic",
+    "avatar": {
+     "uri": "https://api.sketchfab.com/v3/avatars/3ef1bd11d3eb4b57a0b353e8f2e5fc3e"
+    },
+    "uri": "https://api.sketchfab.com/v3/users/d7f99fe13973461984fe3e08c148520b"
+   },
+   "description": "Sugar Maple 25 ft tall\nAcer saccharum \n3D tree\nlow poly",
+   "faceCount": 12533,
+   "createdAt": "2015-07-22T11:04:56",
+   "vertexCount": 3892,
+   "isAgeRestricted": false,
+   "archives": {
+    "glb": {
+     "textureCount": 8,
+     "size": 4851616,
+     "type": "glb",
+     "textureMaxResolution": 512,
+     "faceCount": 12533,
+     "vertexCount": 26493
+    },
+    "gltf": {
+     "textureCount": 8,
+     "size": 2060877,
+     "type": "gltf",
+     "textureMaxResolution": 512,
+     "faceCount": 12533,
+     "vertexCount": 26493
+    },
+    "source": {
+     "textureCount": null,
+     "size": 2690815,
+     "type": "source",
+     "textureMaxResolution": null,
+     "faceCount": null,
+     "vertexCount": null
+    },
+    "usdz": {
+     "textureCount": null,
+     "size": 2027041,
+     "type": "usdz",
+     "textureMaxResolution": null,
+     "faceCount": null,
+     "vertexCount": null
+    }
+   },
+   "license": {
+    "uid": "322a749bcfa841b29dff1e8a1bb74b0b",
+    "label": "CC Attribution"
+   }
+  },
+  {
+   "uri": "https://api.sketchfab.com/v3/models/854775bd53254b51b5ce4cf27b34a858",
+   "uid": "854775bd53254b51b5ce4cf27b34a858",
+   "name": "Tree House",
+   "staffpickedAt": null,
+   "viewCount": 1167,
+   "likeCount": 40,
+   "animationCount": 0,
+   "viewerUrl": "https://sketchfab.com/3d-models/none-854775bd53254b51b5ce4cf27b34a858",
+   "embedUrl": "https://sketchfab.com/models/854775bd53254b51b5ce4cf27b34a858/embed",
+   "commentCount": 1,
+   "isDownloadable": true,
+   "publishedAt": "2019-03-13T21:06:13.335602",
+   "tags": [
+    {
+     "name": "tree",
+     "slug": "tree",
+     "uri": "https://api.sketchfab.com/v3/tags/tree"
+    },
+    {
+     "name": "face",
+     "slug": "face",
+     "uri": "https://api.sketchfab.com/v3/tags/face"
+    },
+    {
+     "name": "forest",
+     "slug": "forest",
+     "uri": "https://api.sketchfab.com/v3/tags/forest"
+    },
+    {
+     "name": "mushroom",
+     "slug": "mushroom",
+     "uri": "https://api.sketchfab.com/v3/tags/mushroom"
+    },
+    {
+     "name": "trunk",
+     "slug": "trunk",
+     "uri": "https://api.sketchfab.com/v3/tags/trunk"
+    },
+    {
+     "name": "nature",
+     "slug": "nature",
+     "uri": "https://api.sketchfab.com/v3/tags/nature"
+    },
+    {
+     "name": "game-asset",
+     "slug": "game-asset",
+     "uri": "https://api.sketchfab.com/v3/tags/game-asset"
+    },
+    {
+     "name": "tree-trunk",
+     "slug": "tree-trunk",
+     "uri": "https://api.sketchfab.com/v3/tags/tree-trunk"
+    },
+    {
+     "name": "gameart",
+     "slug": "gameart",
+     "uri": "https://api.sketchfab.com/v3/tags/gameart"
+    },
+    {
+     "name": "house",
+     "slug": "house",
+     "uri": "https://api.sketchfab.com/v3/tags/house"
+    },
+    {
+     "name": "wood",
+     "slug": "wood",
+     "uri": "https://api.sketchfab.com/v3/tags/wood"
+    }
+   ],
+   "categories": [
+    {
+     "name": "architecture"
+    },
+    {
+     "name": "nature-plants"
+    }
+   ],
+   "thumbnails": {
+    "images": [
+     {
+      "uid": "15bb3cd12ceb48c8b2d8766485575556",
+      "size": 5702,
+      "width": 256,
+      "url": "https://media.sketchfab.com/models/854775bd53254b51b5ce4cf27b34a858/thumbnails/4148fcb383c84a0b9abf05600b130691/fbfb91f23cb64cb886efb8ebff79eec2.jpeg",
+      "height": 144
+     }
+    ]
+   },
+   "user": {
+    "uid": "f1734b4e899e45f595197a372797ae2b",
+    "username": "creative1359",
+    "displayName": "Stefanie Arndorfer",
+    "profileUrl": "https://sketchfab.com/creative1359",
+    "account": "basic",
+    "avatar": {
+     "uri": "https://api.sketchfab.com/v3/avatars/d390d90a6b75460ab0fdea076ff2d0de"
+    },
+    "uri": "https://api.sketchfab.com/v3/users/f1734b4e899e45f595197a372797ae2b"
+   },
+   "description": "A tree house in another form...\n\nPlease also view on: \nhttps://www.artstation.com/artwork/xzZ0yE",
+   "faceCount": 1942,
+   "createdAt": "2019-03-13T17:40:30.652746",
+   "vertexCount": 1059,
+   "isAgeRestricted": false,
+   "archives": {
+    "glb": {
+     "textureCount": 2,
+     "size": 1238440,
+     "type": "glb",
+     "textureMaxResolution": 1024,
+     "faceCount": 1942,
+     "vertexCount": 2076
+    },
+    "gltf": {
+     "textureCount": 2,
+     "size": 1188171,
+     "type": "gltf",
+     "textureMaxResolution": 1024,
+     "faceCount": 1942,
+     "vertexCount": 2076
+    },
+    "source": {
+     "textureCount": null,
+     "size": 1478751,
+     "type": "source",
+     "textureMaxResolution": null,
+     "faceCount": null,
+     "vertexCount": null
+    },
+    "usdz": {
+     "textureCount": null,
+     "size": 305827,
+     "type": "usdz",
+     "textureMaxResolution": null,
+     "faceCount": null,
+     "vertexCount": null
+    }
+   },
+   "license": {
+    "uid": "72360ff1740d419791934298b8b6d270",
+    "label": "CC Attribution-NoDerivs"
+   }
+  },
+  {
+   "uri": "https://api.sketchfab.com/v3/models/c59a91e62e2148c7bb491f4eeb5cf105",
+   "uid": "c59a91e62e2148c7bb491f4eeb5cf105",
+   "name": "Heavy Metal 01",
+   "staffpickedAt": "2015-11-12T09:37:47.624708",
+   "viewCount": 8559,
+   "likeCount": 323,
+   "animationCount": 0,
+   "viewerUrl": "https://sketchfab.com/3d-models/none-c59a91e62e2148c7bb491f4eeb5cf105",
+   "embedUrl": "https://sketchfab.com/models/c59a91e62e2148c7bb491f4eeb5cf105/embed",
+   "commentCount": 4,
+   "isDownloadable": true,
+   "publishedAt": "2015-11-11T22:29:16.995183",
+   "tags": [
+    {
+     "name": "scan",
+     "slug": "scan",
+     "uri": "https://api.sketchfab.com/v3/tags/scan"
+    }
+   ],
+   "categories": [
+    {
+     "name": "electronics-gadgets"
+    },
+    {
+     "name": "science-technology"
+    }
+   ],
+   "thumbnails": {
+    "images": [
+     {
+      "uid": "7d4989fa066045318a80711ddf7a6e58",
+      "size": 1110,
+      "width": 64,
+      "url": "https://media.sketchfab.com/models/c59a91e62e2148c7bb491f4eeb5cf105/thumbnails/51b6150609c9435cb8ead3f88b77f438/64x36.jpeg",
+      "height": 36
+     }
+    ]
+   },
+   "user": {
+    "uid": "6160a3f1257d48e98b454a701981727a",
+    "username": "johngreenstone",
+    "displayName": "Epic_Tree_Store",
+    "profileUrl": "https://sketchfab.com/johngreenstone",
+    "account": "basic",
+    "avatar": {
+     "uri": "https://api.sketchfab.com/v3/avatars/96547df4256f4120956fde05de6541f8"
+    },
+    "uri": "https://api.sketchfab.com/v3/users/6160a3f1257d48e98b454a701981727a"
+   },
+   "description": "**★LIKE -> then download, please! :)**\n\nPhotoscan, 40 photos, Sony a58, RAW, max decontrast to jpeg, 5M points.\nQuite difficult shooting, cause of steel wall in front of this machine(weekend), I made photos in the line of wall, with different focal 18-35.\nNext time I'll chose something simpler:)",
+   "faceCount": 54500,
+   "createdAt": "2015-11-11T20:42:12.019411",
+   "vertexCount": 27672,
+   "isAgeRestricted": false,
+   "archives": {
+    "glb": {
+     "textureCount": 2,
+     "size": 46337244,
+     "type": "glb",
+     "textureMaxResolution": 4096,
+     "faceCount": 54500,
+     "vertexCount": 36741
+    },
+    "gltf": {
+     "textureCount": 2,
+     "size": 45617851,
+     "type": "gltf",
+     "textureMaxResolution": 4096,
+     "faceCount": 54500,
+     "vertexCount": 36741
+    },
+    "source": {
+     "textureCount": null,
+     "size": 21299713,
+     "type": "source",
+     "textureMaxResolution": null,
+     "faceCount": null,
+     "vertexCount": null
+    },
+    "usdz": {
+     "textureCount": null,
+     "size": 24438424,
+     "type": "usdz",
+     "textureMaxResolution": null,
+     "faceCount": null,
+     "vertexCount": null
+    }
+   },
+   "license": {
+    "uid": "bbfe3f7dbcdd4122b966b85b9786a989",
+    "label": "CC Attribution-NonCommercial"
+   }
+  }
+ ]
+}

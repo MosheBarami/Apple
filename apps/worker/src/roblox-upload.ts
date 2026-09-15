@@ -3,9 +3,13 @@
 // THE PROBLEM THIS SOLVES, STATED PLAINLY. The library holds 7,000+ rows of provenance and not one
 // of them has a `robloxAssetId`. A row without one is a CATALOGUE ENTRY: Apple knows the asset
 // exists, who made it and under what licence, and cannot put it in anybody's game. That is why
-// every ingested row is `pending_ingest` and why `ftsSearch` filters on `status = 'active'` —
-// offering a row that cannot be inserted would be the library telling the truth in a way that
-// produces a lie downstream.
+// every ingested row is `pending_ingest`.
+//
+// Search used to answer that by hiding those rows — `ftsSearch` filtered on `status = 'active'` —
+// and hiding them was worse than the problem. The rows that DID have ids were the Creator Store
+// scrape, so the library's whole curated half was invisible and the junk was all anyone could see.
+// Search now returns both and labels each hit `insertable` or `needs_import` (asset-library.ts),
+// so "we have this, it needs importing" can be said out loud instead of being silently swallowed.
 //
 // WHY IMAGES AND MESHES AND NOT MODELS. Roblox creates Images, Decals and Meshes as **Open Use** by
 // default, so one upload under Apple's account is referenceable by asset id from every customer's

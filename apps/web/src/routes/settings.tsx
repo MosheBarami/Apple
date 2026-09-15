@@ -51,8 +51,10 @@ import {
   authErrorMessage,
   type SensitiveAction,
 } from '../lib/auth-flows';
-import { fullStamp, formatNumber } from '../lib/format.ts';
+import { fullStamp, formatNumber, relativeTime } from '../lib/format.ts';
 import { matchSettings } from '../lib/settings-search.ts';
+import { fetchNotifications, markNotificationsRead, reportPasswordChanged } from '../lib/api';
+import { historyState, occurrenceNote, unreadSecurityIds } from '../lib/security-history';
 
 async function fetchProfile(userId: string): Promise<ProfileRow | null> {
   if (MOCK_MODE) return mockProfile;
@@ -139,6 +141,118 @@ const HOUR_NAMES: Record<HourCycle, string> = {
   h12: '12-hour',
   h23: '24-hour',
 };
+
+/**
+ * WHAT HAS HAPPENED TO THIS ACCOUNT — the consumer that did not exist.
+ *
+ * The worker has written a `security_event` on every key mint, rotation, revocation and membership
+ * change since securityNotice was added, and its own comment says why: "a log that is never read
+ * while nothing is wrong is a log nobody thinks to read on the day something is". Nothing in this
+ * app had ever fetched one. The record was faithful and unreachable, which is the same defect one
+ * layer up.
+ *
+ * ITS OWN COMPONENT, not a block in the page. The settings page re-renders on every keystroke in
+ * the search box; a query declared in its body is fine with react-query's cache and a nightmare to
+ * reason about the day someone adds a dependency to it. It also means this panel's failure stays
+ * this panel's failure.
+ *
+ * THE EMPTY STATE AND THE BROKEN STATE ARE DIFFERENT SENTENCES, and `historyState` is what keeps
+ * them apart — see lib/security-history.ts. "Nothing has happened on your account" printed because
+ * a fetch failed is the one sentence on this page that could actually cost somebody something.
+ */
+function SecurityHistory() {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  // Wrapped rather than passed bare: react-query hands its queryFn a context object, which
+  // fetchNotifications would read as its unreadOnly flag.
+  const history = useQuery({ queryKey: ['notifications'], queryFn: () => fetchNotifications() });
+  const state = historyState({ loading: history.isPending, error: history.error, data: history.data });
+
+  const markRead = useMutation({
+    // ids only, never `all`: this panel shows security events, and clearing everything from
+    // here would mark run failures read that the person has not seen.
+    mutationFn: (ids: string[]) => markNotificationsRead({ ids }),
+    onSuccess: (r) => {
+      void qc.invalidateQueries({ queryKey: ['notifications'] });
+      // REPORTED FROM THE WRITE. "Marked as read" over a write that matched no rows is the same
+      // lie as a clean guard that saw nothing — the count comes back from the server and is what
+      // is printed.
+      toast(r.marked === 0 ? 'Nothing was left to mark.' : `Marked ${r.marked} as read.`, 'success');
+    },
+    onError: (e: Error) => toast(`Could not mark those read: ${e.message}`, 'error'),
+  });
+
+  const unread = state.state === 'items' ? unreadSecurityIds(history.data?.items) : [];
+
+  return (
+    <>
+      <h3 className="settings-sub">Account history</h3>
+      <p className="muted">
+        Things that happened to the account itself rather than to your projects — keys created or revoked, people added
+        or removed, your password changed. Worth a look on a day nothing seems wrong, so that the day something does you
+        already know what this normally says.
+      </p>
+
+      {state.state === 'loading' && (
+        <p className="muted" role="status">
+          Reading your account history…
+        </p>
+      )}
+
+      {/* The wrapper carries NO role: <Failure> already announces itself, and an alert inside an
+          alert is read twice by some screen readers and swallowed entirely by others. */}
+      {state.state === 'unavailable' && (
+        <div>
+          <Failure error={new Error(state.message)} onRetry={() => void history.refetch()} compact />
+          {/* Said out loud, because the empty state sitting one branch away says the opposite and a
+              reader who has seen that one before will otherwise fill in the gap themselves. */}
+          <p className="muted">This is not the same as a quiet account. We could not read the history at all.</p>
+        </div>
+      )}
+
+      {state.state === 'empty' && (
+        <p className="muted" role="status">
+          Nothing has been recorded on this account yet.
+        </p>
+      )}
+
+      {state.state === 'items' && (
+        <>
+          <ul className="sec-log">
+            {state.items.map((item) => {
+              const repeated = occurrenceNote(item);
+              return (
+                <li key={item.id} className={`sec-event${item.readAt === null ? ' sec-event-new' : ''}`}>
+                  <p className="sec-event-title">
+                    {item.title}
+                    {item.readAt === null && <span className="pill pill-warn">New</span>}
+                  </p>
+                  {item.body && <p className="muted">{item.body}</p>}
+                  <p className="sec-when">
+                    <time dateTime={new Date(item.deliverAt).toISOString()} title={fullStamp(item.deliverAt)}>
+                      {relativeTime(item.deliverAt)}
+                    </time>
+                    {repeated && <span> · {repeated}</span>}
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
+          {unread.length > 0 && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => markRead.mutate(unread)}
+              disabled={markRead.isPending}
+            >
+              {markRead.isPending ? 'Marking…' : `Mark ${unread.length} as read`}
+            </button>
+          )}
+        </>
+      )}
+    </>
+  );
+}
 
 /* ------------------------------------------------------------------ page --- */
 
@@ -240,11 +354,35 @@ export function SettingsPage() {
     mutationFn: async () => {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw new Error(error.message);
+      /*
+       * THE ACCOUNT IS TOLD, and it has to be told from HERE.
+       *
+       * Supabase performs the change; the worker never sees it, so there is no server-side moment
+       * where a notice could be raised. Asking for it from the browser is the only hook that
+       * exists in this deployment — which does mean an attacker who changes the password can
+       * simply not make this call. Worth doing anyway, and worth writing down rather than
+       * pretending otherwise: the common case this covers is a password changed on a machine the
+       * owner walked away from, where the record is read later from another device.
+       *
+       * Awaited inside the mutation rather than fired and forgotten, because the toast below makes
+       * a claim about it and a claim about an unobserved write is the defect this repo is built
+       * around. A failure here is caught, NOT rethrown: the password really did change, and
+       * reporting the change as failed because the diary entry failed is the worse of the two
+       * lies.
+       */
+      const noted = await reportPasswordChanged().catch(() => ({ recorded: false }));
+      return noted.recorded === true;
     },
-    onSuccess: () => {
+    onSuccess: (recorded) => {
       setNewPassword('');
       setConfirmPassword('');
-      toast('Password changed. Other devices will have to sign in again.', 'success');
+      void qc.invalidateQueries({ queryKey: ['notifications'] });
+      toast(
+        recorded
+          ? 'Password changed, and noted in your account history. Other devices will have to sign in again.'
+          : 'Password changed. Other devices will have to sign in again.',
+        'success',
+      );
     },
     onError: (e: Error) => toast(authErrorMessage(e), 'error'),
   });
@@ -387,7 +525,7 @@ export function SettingsPage() {
         </Row>
       </Section>
 
-      <Section title="Security" visible={sectionShows('email-address', 'password', 'sign-out-everywhere')}>
+      <Section title="Security" visible={sectionShows('email-address', 'password', 'sign-out-everywhere', 'security-history')}>
         <Row id="email-address" visible={shows('email-address')}>
           <h3 className="settings-sub">Email address</h3>
           <p className="settings-current">
@@ -500,6 +638,10 @@ export function SettingsPage() {
           <button type="button" className="btn" onClick={() => guard('sign-out-everywhere')}>
             Sign out on all devices
           </button>
+        </Row>
+
+        <Row id="security-history" visible={shows('security-history')}>
+          <SecurityHistory />
         </Row>
       </Section>
 

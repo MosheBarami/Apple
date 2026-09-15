@@ -282,6 +282,7 @@ export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
   git_history: 'Outbound GitHub reads spending the product\'s token and rate limit; an MCP client already has repository access of its own.',
 
   // ---- read-only, and still not here -----------------------------------------------------
+  propose_plan: 'Announces the plan for an agent run, and an MCP call is not an agent run. It writes nothing to the place and costs nothing, and is still excluded: the build_plan panel it posts into the project is emitted with every step pending, and only the run loop settles those steps against what actually ran. Called from here there is no run to settle them, so the owner would be shown a checklist of work that is not happening.',
   focus_camera: 'Moves the camera of whoever is sitting in Studio. It writes nothing to the place and still takes the screen away from a person who did not ask.',
   select_instances: 'Changes what that person has selected, which is the state their next click acts on.',
   inspect_model: 'Asset QC for a model this surface can neither generate nor insert. It belongs to the build pipeline, and the build pipeline is reached through an agent run.',

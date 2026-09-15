@@ -17,8 +17,23 @@ export interface ConfirmDialogProps {
   ceremony: Extract<Confirmation, 'dialog' | 'typed'>;
   /** What will happen, in full. The user is being asked to read this, so it is not a one-liner. */
   children: ReactNode;
+  /**
+   * Anything that has to sit OUTSIDE the paragraph — an itemised list, a table of figures.
+   *
+   * `children` is rendered inside a <p>, which may not contain a <ul>. A dialog that has to show
+   * the working behind a number (the credit and the charge that make up a prorated total) needs
+   * somewhere to put it that is still valid markup.
+   */
+  details?: ReactNode;
   /** The name the user must type. Required by 'typed' — and an unnameable subject is unconfirmable. */
   subject?: string;
+  /**
+   * `danger` is the default because the two callers this was built for both destroy something.
+   *
+   * A dialog can also exist to make someone READ a figure before they commit to it, and dressing
+   * that in the delete colour teaches the user that red means nothing in particular.
+   */
+  tone?: 'danger' | 'primary';
   confirmLabel: string;
   /** Shown while the mutation is in flight, in place of `confirmLabel`. */
   busyLabel?: string;
@@ -31,7 +46,9 @@ export function ConfirmDialog({
   title,
   ceremony,
   children,
+  details,
   subject,
+  tone = 'danger',
   confirmLabel,
   busyLabel,
   busy = false,
@@ -46,6 +63,7 @@ export function ConfirmDialog({
     // with no idea whether it happened.
     <Modal title={title} onClose={onClose} locked={busy}>
       <p className="danger-copy">{children}</p>
+      {details}
 
       {ceremony === 'typed' && (
         <label className="field">
@@ -68,7 +86,12 @@ export function ConfirmDialog({
         <button type="button" className="btn" onClick={onClose} disabled={busy}>
           Cancel
         </button>
-        <button type="button" className="btn btn-danger" disabled={!ready || busy} onClick={onConfirm}>
+        <button
+          type="button"
+          className={tone === 'primary' ? 'btn btn-primary' : 'btn btn-danger'}
+          disabled={!ready || busy}
+          onClick={onConfirm}
+        >
           {busy ? (busyLabel ?? confirmLabel) : confirmLabel}
         </button>
       </div>

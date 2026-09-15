@@ -149,7 +149,7 @@ export async function openSecret(env: CredentialEnv, sealed: string): Promise<st
  * there is nothing for a second key to distinguish.
  */
 export function ensureCredentialTable(env: Pick<CredentialEnv, 'CORPUS'>): Promise<void> {
-  return oncePerIsolate('credentials', () => createCredentialTable(env));
+  return oncePerIsolate('credentials', () => createCredentialTable(env), env.CORPUS);
 }
 
 async function createCredentialTable(env: Pick<CredentialEnv, 'CORPUS'>): Promise<void> {
