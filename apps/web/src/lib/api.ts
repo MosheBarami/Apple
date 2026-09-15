@@ -861,3 +861,51 @@ export const putRobloxKey = (body: {
 
 export const deleteRobloxKey = (): Promise<{ removed: boolean }> =>
   request('/api/me/roblox-key', { method: 'DELETE' });
+
+// ---------------------------------------------------------------- the inbox / security history
+//
+// The worker has written a `security_event` row on every key mint, rotation, revocation and
+// membership change for a while, and until now nothing in this app fetched it — a security log the
+// account holder could not open. See lib/security-history.ts for what the settings page does with
+// the rows.
+//
+// BOUND TO THE CALLER BY THE TOKEN. There is no user id in either path and no variant that takes
+// one; the worker reads `c.get('user').userId` off the verified JWT and binds it into every clause.
+
+export interface NotificationsResponse {
+  items: unknown[];
+  unread: number;
+  kinds?: readonly string[];
+}
+
+export const fetchNotifications = (): Promise<NotificationsResponse> =>
+  MOCK_MODE ? Promise.resolve({ items: [], unread: 0 }) : request<NotificationsResponse>('/api/notifications');
+
+/**
+ * Mark specific rows read.
+ *
+ * IDS, NEVER `all`. The route accepts both, and a panel that shows only security events must not
+ * clear the run failures sitting unread beside them. The count comes back from the write, so a
+ * caller can tell "marked 3" from "marked 0 because none of those were yours".
+ */
+export const markNotificationsRead = (ids: readonly string[]): Promise<{ marked: number; unread: number }> =>
+  MOCK_MODE
+    ? Promise.resolve({ marked: 0, unread: 0 })
+    : request<{ marked: number; unread: number }>('/api/notifications/read', {
+        method: 'POST',
+        body: JSON.stringify({ ids }),
+      });
+
+/**
+ * Record that this account's password was changed.
+ *
+ * Supabase performs the change and this worker never sees it, which is why the record has to be
+ * ASKED FOR rather than observed. `recorded` comes back from the write and is false when the notice
+ * did not land — the page says different things for the two, because "we have noted it in your
+ * security history" printed over a notice that was dropped is the observation-failure this
+ * codebase keeps finding.
+ */
+export const reportPasswordChanged = (): Promise<{ recorded: boolean; reason?: string }> =>
+  MOCK_MODE
+    ? Promise.resolve({ recorded: true })
+    : request<{ recorded: boolean; reason?: string }>('/api/security/password-changed', { method: 'POST' });
