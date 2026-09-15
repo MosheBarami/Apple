@@ -81,9 +81,17 @@ if (cards.length === 0) blind('the library section contains no ap-wall__card tha
 
 /* ------------------------------------------------------------------- read the cards --- */
 
+/* The separator between pack and licence is a middot, and whether it reaches dist as the character
+   or as an entity is the build tool's business rather than the page's. Both are decoded, so a
+   change in Astro's escaping cannot make twenty-four honest cards report as missing a licence. */
 const text = (frag, cls) => {
   const m = new RegExp(`<span[^>]*class="[^"]*${cls}[^"]*"[^>]*>([\\s\\S]*?)</span>`).exec(frag);
-  return m ? m[1].replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').trim() : '';
+  return m
+    ? m[1].replace(/<[^>]*>/g, '')
+        .replace(/&(?:middot|#183|#xB7|#xb7);/g, '·')
+        .replace(/&amp;/g, '&')
+        .trim()
+    : '';
 };
 
 /**
