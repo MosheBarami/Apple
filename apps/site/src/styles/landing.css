@@ -1504,3 +1504,95 @@ code {
   text-align: center;
   max-width: 22ch;
 }
+
+/* ------------------------------------------------------------ the library wall --- */
+/*
+   Real assets from real packs, each card naming its author and its licence. The provenance is the
+   point: no rival shows it, because their hero art is generated pictures of games that do not
+   exist.
+
+   NO MARQUEE. Three scrolling rows is the most common template tell on the web, and a person
+   cannot read a credit line that is moving. The wall is still, and the motion budget for this page
+   is already spent on the ground.
+*/
+.ap-wall {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), 1fr));
+  gap: 0.7rem;
+  margin-top: 2rem;
+}
+
+.ap-wall__card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: 0.7rem;
+  overflow: hidden;
+  background: var(--surface);
+  text-decoration: none;
+  color: inherit;
+  transition: transform 160ms var(--ease-soft), border-color 160ms var(--ease-soft);
+}
+
+.ap-wall__card:hover,
+.ap-wall__card:focus-visible {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+}
+
+.ap-wall__shot {
+  display: block;
+  aspect-ratio: 1;
+  background: var(--surface-2);
+  /* The icons are white-on-transparent PNGs from game-icons.net, so a pale well would render them
+     invisible. A neutral mid tone reads every pack's preview: photographic props, flat surfaces,
+     and white glyphs alike. */
+  background-image: linear-gradient(160deg, var(--sky-mid), var(--surface-2));
+}
+
+.ap-wall__shot img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.ap-wall__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.5rem 0.6rem 0.6rem;
+  min-width: 0;
+}
+
+.ap-wall__name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ap-wall__by {
+  font-size: 0.72rem;
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The licence, in the mono face the rest of the page uses for facts somebody can check. */
+.ap-wall__tag {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ap-wall__card { transition: none; }
+  .ap-wall__card:hover, .ap-wall__card:focus-visible { transform: none; }
+}
