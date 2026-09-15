@@ -44,7 +44,9 @@ const { src, width = 1152, height = 864 } = Astro.props;
     /* The box exists before the image does. `aspect-ratio` with a width cap holds the exact space
        the file will occupy, so nothing under it moves when it arrives. */
     aspect-ratio: 4 / 3;
-    width: min(100%, 22rem);
+    /* The track decides the width (see .ap-head); this fills it. `min(100%, …)` here was the other
+       half of the collapse — a percentage against a track that was itself sizing to this element. */
+    width: 100%;
     justify-self: end;
     align-self: start;
     /* No border, no card, no shadow. The illustrations already sit on the page's own paper colour,

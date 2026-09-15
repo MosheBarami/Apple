@@ -779,7 +779,12 @@ svg {
    browser from fetching it at all for the readers least able to afford it. */
 .ap-head {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+  /* THE FIGURE TRACK IS SIZED, NOT `auto`. With `minmax(0, auto)` the second track grows to the
+     figure's max-content width — and a box that is `aspect-ratio: 4/3` with a percentage width has
+     no intrinsic width to offer, so the track took nearly the whole row and left the heading
+     wrapping one word per line. Caught on the deployed page, which is where a layout regression
+     with no failing test gets caught. A fixed clamp cannot be argued with by its contents. */
+  grid-template-columns: minmax(0, 1fr) clamp(11rem, 22vw, 20rem);
   gap: clamp(1rem, 4vw, 3rem);
   align-items: start;
 }
