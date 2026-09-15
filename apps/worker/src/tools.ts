@@ -2,6 +2,7 @@
 // op queue) or run worker-side (docs search, memory, checkpoints).
 import type { Env } from './env';
 import { rgbBase64ToDataUrl } from './png';
+import { retryHint } from './op-failure';
 import type { GatewayToolDef, StudioOp, OpResult, CheckpointMeta, RenderViewResult, StudioFrame, AssetSourcePolicy } from '@golem/shared';
 import { RENDER_VIEWS } from '@golem/shared';
 import { searchDocsDetailed } from './rag';
@@ -389,9 +390,26 @@ async function dumpScripts(
   return { files, truncated: (raw as { truncated?: unknown }).truncated === true };
 }
 
+/**
+ * THE FAILURE'S CLASSIFICATION TRAVELS WITH IT, or the classifier protects nobody.
+ *
+ * This reduced every failed op to `{ error }` and threw `res.failure` away — at the last step
+ * before the model, which is the only reader whose behaviour the classification was written to
+ * change. src/op-failure.ts states the load-bearing rule (delivery is at-most-once, so a timed-out
+ * MUTATION may already have been applied and must not be repeated) and had no caller outside its
+ * own test. The model saw "the operation timed out" and re-issued the create, which is how a door
+ * gets built twice.
+ *
+ * `retry` is a separate field rather than more prose glued onto `error`, because the two are
+ * different kinds of thing: one is what happened, the other is what may be done about it, and a
+ * model that skims the first still gets the second.
+ */
 async function op(ctx: AgentCtx, studioOp: StudioOp, timeoutMs = 30_000): Promise<unknown> {
   const res = await ctx.execStudioOp(studioOp, timeoutMs);
-  if (!res.ok) return { error: res.error ?? 'operation failed' };
+  if (!res.ok) {
+    const hint = retryHint(studioOp, res);
+    return { error: res.error ?? 'operation failed', ...(hint ? { retry: hint } : {}) };
+  }
   return res.data ?? { ok: true };
 }
 
