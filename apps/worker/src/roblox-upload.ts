@@ -43,6 +43,60 @@ export const OPEN_USE_UPLOAD_TYPES = ['Decal', 'Image', 'Mesh'] as const;
 export type OpenUseUploadType = (typeof OPEN_USE_UPLOAD_TYPES)[number];
 
 /**
+ * Every content type Open Cloud's Create Asset accepts, and which asset type each one names.
+ *
+ * Read off Roblox's own table on 2026-09-15 (creator-docs, cloud/guides/usage-assets.md), which is
+ * the only place the accepted formats are written down — `assetType` in assets/v1.json is declared
+ * as a bare string with `"format": "enum"` and no members, so the spec alone cannot tell you this.
+ *
+ * WHY THIS IS A WIDER SET THAN `OPEN_USE_UPLOAD_TYPES`, AND WHY THAT IS NOT A LOOSENING. Open Use
+ * is a constraint on APPLE'S SHARED ACCOUNT: an asset uploaded there has to be referenceable from
+ * every customer's experience, and a Model is not, so a Model in the library would 404 for every
+ * paying customer. Uploading into a CUSTOMER'S OWN account has no such problem — they own it, so
+ * they can use it. `uploadTypeFor` below is unchanged and still returns Open Use types only, so the
+ * library path cannot reach the wider set by accident; only a caller holding that customer's own
+ * key can, which is `creator-dashboard.ts` and nothing else.
+ *
+ * `model/x-rbxm` IS AMBIGUOUS IN ROBLOX'S OWN TABLE — it is listed under both Animation and Model —
+ * and a content type cannot tell the two apart. It resolves to Model, the common case, and a caller
+ * who means Animation has to say so with an explicit `type`. Guessing would upload somebody's
+ * animation as a model, in their account, permanently.
+ */
+export const UPLOAD_CONTENT_TYPES: Readonly<Record<string, RobloxUploadType>> = {
+  'audio/mpeg': 'Audio',
+  'audio/ogg': 'Audio',
+  'audio/wav': 'Audio',
+  'audio/flac': 'Audio',
+  'image/png': 'Image',
+  'image/jpeg': 'Image',
+  'image/bmp': 'Image',
+  'image/tga': 'Image',
+  'model/x-file-mesh-data': 'Mesh',
+  'model/fbx': 'Model',
+  'model/gltf+json': 'Model',
+  'model/gltf-binary': 'Model',
+  'model/x-rbxm': 'Model',
+  'model/x-rbxmx': 'Model',
+  'video/mp4': 'Video',
+  'video/mov': 'Video',
+};
+
+export const ROBLOX_UPLOAD_TYPES = ['Animation', 'Audio', 'Decal', 'Image', 'Mesh', 'Model', 'Video'] as const;
+export type RobloxUploadType = (typeof ROBLOX_UPLOAD_TYPES)[number];
+
+/**
+ * The asset type for a content type, or null with nothing guessed.
+ *
+ * The parameters after a semicolon are dropped first: a browser sends `image/png` and a file picker
+ * sends `image/png; charset=binary`, and a lookup that missed the second would refuse a perfectly
+ * good PNG with a message about an unsupported format.
+ */
+export function assetTypeForContentType(contentType: string): RobloxUploadType | null {
+  const bare = (String(contentType ?? '').split(';')[0] ?? '').trim().toLowerCase();
+  return UPLOAD_CONTENT_TYPES[bare] ?? null;
+}
+
+/**
  * What a library `kind` becomes on Roblox. null means "this kind has no Open Use upload path".
  *
  * GEOMETRY HAS NO PATH HERE, AND THAT IS A ROBLOX CONSTRAINT, NOT AN OMISSION. Checked against the
@@ -90,13 +144,17 @@ export interface UploadEnv {
   ROBLOX_UPLOAD_AUTHORISED_FOR?: string;
 }
 
+// `status` is on the success arms too, and it is the status Roblox actually answered with. The
+// audit in creator-dashboard.ts records it, and the alternative was writing a plausible 200 into
+// the log for a response nobody looked at — a failure to observe, rendered as an observation, in
+// the one table that exists to say what really happened to somebody's account.
 export type UploadResult =
-  | { ok: true; done: true; assetId: number; operationId: string }
-  | { ok: true; done: false; operationId: string }
+  | { ok: true; done: true; assetId: number; operationId: string; status: number }
+  | { ok: true; done: false; operationId: string; status: number }
   | { ok: false; status: number; error: string; operationId: string | null };
 
 /** Every reason an upload can be refused before a byte is sent, as a sentence rather than a code. */
-export function preflight(env: UploadEnv, bytes: number, type: OpenUseUploadType | null): string | null {
+export function preflight(env: UploadEnv, bytes: number, type: RobloxUploadType | null): string | null {
   if (!env.ROBLOX_API_KEY) return 'ROBLOX_API_KEY is not set — uploading needs an Open Cloud key with the asset:write scope';
   const hasUser = !!env.ROBLOX_CREATOR_USER_ID;
   const hasGroup = !!env.ROBLOX_CREATOR_GROUP_ID;
@@ -125,7 +183,20 @@ export interface UploadInput {
   /** Roblox trims and moderates this. Kept short so a long source name cannot fail the upload. */
   displayName: string;
   description: string;
-  type: OpenUseUploadType;
+  type: RobloxUploadType;
+  /**
+   * The most Robux this upload may cost, or undefined to say nothing about the price.
+   *
+   * assets/v1.json: "Expected asset upload fee in Robux. When the actual price is more than
+   * expected, the operation fails with a 400 error." Sending 0 turns a priced upload into a refusal
+   * instead of a charge, which is what the customer path wants — a fee taken out of somebody's
+   * balance because nobody named a ceiling is configuration-is-not-consent with money in it.
+   *
+   * OMITTED rather than defaulted, because the library path has been uploading without it for
+   * months against Apple's own account and a silent behaviour change there would be a different
+   * decision smuggled into this one. `creator-dashboard.ts` passes 0 explicitly.
+   */
+  expectedPrice?: number;
 }
 
 /**
@@ -172,7 +243,9 @@ export async function uploadAsset(
     assetType: input.type,
     displayName: input.displayName.slice(0, 50),
     description: input.description.slice(0, 1000),
-    creationContext: { creator },
+    creationContext: input.expectedPrice === undefined
+      ? { creator }
+      : { creator, expectedPrice: input.expectedPrice },
   }));
   form.append('fileContent', new Blob([input.file], { type: input.contentType }), 'asset');
 
@@ -202,7 +275,9 @@ export async function uploadAsset(
   const operationId = operationIdFrom(body);
   if (!operationId) return { ok: false, status: res.status, error: `no operation in response: ${text.slice(0, 200)}`, operationId: null };
   const assetId = assetIdFrom(body);
-  return assetId !== null ? { ok: true, done: true, assetId, operationId } : { ok: true, done: false, operationId };
+  return assetId !== null
+    ? { ok: true, done: true, assetId, operationId, status: res.status }
+    : { ok: true, done: false, operationId, status: res.status };
 }
 
 /** Poll one operation. Same three-state result, for the same reason. */
@@ -224,8 +299,8 @@ export async function pollOperation(
   const err = body?.error as { message?: string; code?: string } | undefined;
   if (err) return { ok: false, status: res.status, error: typeof err.message === 'string' ? err.message : typeof err.code === 'string' ? err.code : 'operation failed', operationId };
   const assetId = assetIdFrom(body);
-  if (assetId !== null) return { ok: true, done: true, assetId, operationId };
-  return { ok: true, done: false, operationId };
+  if (assetId !== null) return { ok: true, done: true, assetId, operationId, status: res.status };
+  return { ok: true, done: false, operationId, status: res.status };
 }
 
 /** `operations/abc-123` or `{ operationId: 'abc-123' }`, both of which Roblox has returned. */

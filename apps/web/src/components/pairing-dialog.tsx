@@ -28,7 +28,7 @@ import {
   STUDIO_PLUGIN_STORE_LIVE,
   type PairingCodeDto,
 } from '@golem/shared';
-import { createPairingCode, disconnectStudio, fetchStudioDiagnostics, rebindPlace } from '../lib/api';
+import { createPairingCode, discardStudioQueue, disconnectStudio, fetchStudioDiagnostics, rebindPlace } from '../lib/api';
 import { countdownTo, fullStamp, shortRelative } from '../lib/format';
 import { Modal } from './modal';
 import { Forge } from './loading';
@@ -69,6 +69,14 @@ function ConnectionRecord({ projectId }: { projectId: string }) {
     },
   });
   const rebind = useMutation({ mutationFn: () => rebindPlace(projectId), onSuccess: refresh });
+  //[[ THE FOURTH ROUTE, AND THE ONE THAT DID NOT EXIST UNTIL NOW.
+  //
+  //   Automatic cancellation was already built — a run that ends takes its own queued ops with it —
+  //   and there was no way to say so deliberately. A user whose Studio closed mid-build watched the
+  //   depth climb with no control over it: Stop reaches only the ops belonging to a live run, and
+  //   everything else sat waiting to be applied whenever Studio came back, possibly to a place the
+  //   person had since put right by hand. ]]
+  const discard = useMutation({ mutationFn: () => discardStudioQueue(projectId), onSuccess: refresh });
 
   // A FAILURE TO OBSERVE IS NOT AN OBSERVATION. This route is owner-only, so a collaborator is
   // answered 404 — and 404, a timeout and a 500 must all read as "we could not tell", never as
@@ -84,7 +92,7 @@ function ConnectionRecord({ projectId }: { projectId: string }) {
   const place = link.place;
   const expires = record.data.pairingExpiresAt;
   const lapsed = expires !== null && expires <= Date.now();
-  const busy = cut.isPending || rebind.isPending;
+  const busy = cut.isPending || rebind.isPending || discard.isPending;
 
   return (
     <section className="pairing-record" aria-label="This project's Studio connection">
@@ -143,6 +151,21 @@ function ConnectionRecord({ projectId }: { projectId: string }) {
         </ul>
       )}
 
+      {/* WHAT IS WAITING, AND THE WAY TO BE RID OF IT. The depth is the worker's own count, and it
+          is only mentioned when it is not zero — an empty queue is not news, and a control that can
+          only report "nothing happened" teaches people that the controls here do nothing. */}
+      {link.queuedOps > 0 && (
+        <p className="pairing-record__queue">
+          <span>
+            {link.queuedOps} change{link.queuedOps === 1 ? '' : 's'} waiting for Studio to collect
+            {link.connected ? '.' : ', and it will be applied when Studio comes back.'}
+          </span>
+          <button type="button" className="btn btn-sm btn-quiet" onClick={() => discard.mutate()} disabled={busy}>
+            {discard.isPending ? 'Discarding…' : `Discard ${link.queuedOps} waiting change${link.queuedOps === 1 ? '' : 's'}`}
+          </button>
+        </p>
+      )}
+
       <div className="pairing-record__acts">
         <button type="button" className="btn btn-sm" onClick={() => rebind.mutate()} disabled={busy}>
           {rebind.isPending ? 'Rebinding…' : 'Use the place Studio has open now'}
@@ -166,7 +189,9 @@ function ConnectionRecord({ projectId }: { projectId: string }) {
         )}
       </div>
 
-      {(cut.error || rebind.error) && <Failure error={cut.error ?? rebind.error} compact />}
+      {(cut.error || rebind.error || discard.error) && (
+        <Failure error={cut.error ?? rebind.error ?? discard.error} compact />
+      )}
     </section>
   );
 }

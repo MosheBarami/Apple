@@ -62,8 +62,11 @@ const LIMIT = Number(argOf('--limit', '0')) || Infinity;
 // 1. Admissible sources
 // ---------------------------------------------------------------------------
 
-function admissibleSources() {
-  const manifest = JSON.parse(readFileSync(MANIFEST, 'utf8'));
+// EXPORTED, and taking its paths as arguments, so the verdict ORDER above is reachable from a
+// test. Ordering bugs in a chain of ternaries are invisible in the output — every admitted source
+// is still admitted — and show up only as a wrong sentence in a provenance record nobody rereads.
+export function admissibleSources({ manifestPath = MANIFEST, rawDir = RAW } = {}) {
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
   const entries = Array.isArray(manifest.sources)
     ? manifest.sources.map((s, i) => [String(i), s])
     : Object.entries(manifest.sources);
@@ -73,13 +76,25 @@ function admissibleSources() {
   for (const [key, s] of entries) {
     const url = s.url ?? '';
     const spdx = s.licence?.spdx ?? s.licence?.classifiedSpdx ?? null;
-    const dir = dirForSource(key, s);
+    const dir = dirForSource(key, s, rawDir);
+    // LICENCE VERDICTS COME BEFORE THE "no checkout" VERDICT, DELIBERATELY.
+    //
+    // The order used to be the other way round, and it made the RECORDED REASON depend on what
+    // happened to be on a particular disk. Roblox/creator-docs is `training: forbidden` whether or
+    // not anyone has cloned it — the registry says so, and no amount of fetching changes that —
+    // yet on a machine without the checkout the card read `no checkout on disk`, which describes
+    // the operator's laptop rather than the licence, and reads as a transient problem rather than
+    // a permanent refusal. The set of admitted sources is identical either way; what changes is
+    // whether the dataset card tells the truth about WHY.
+    //
+    // `no checkout on disk` therefore now means only what it says: a source with nothing against
+    // it that simply is not here yet.
     const reason =
-      !dir ? 'no checkout on disk'
-      : TRAINING_FORBIDDEN_URLS.some((re) => re.test(url)) ? `registry marks training: forbidden (${spdx})`
+      TRAINING_FORBIDDEN_URLS.some((re) => re.test(url)) ? `registry marks training: forbidden (${spdx})`
       : !spdx ? 'no SPDX id recorded'
       : !TRAINING_OK_SPDX.has(spdx) ? `SPDX ${spdx} not permissive for training`
       : s.licence?.ok === false ? 'licence verification failed at fetch time'
+      : !dir ? 'no checkout on disk'
       : null;
     if (reason) rejected.push({ url, spdx, reason });
     else admitted.push({ key, url, spdx, dir, sha: s.sha ?? null });
@@ -88,13 +103,13 @@ function admissibleSources() {
 }
 
 /** Map a manifest entry to its directory under raw/ (dirs are `owner__repo`). */
-function dirForSource(key, s) {
+function dirForSource(key, s, rawDir = RAW) {
   const candidates = [];
   if (typeof key === 'string' && key.includes('__')) candidates.push(key);
   const m = /github\.com\/([^/]+)\/([^/.]+)/i.exec(s.url ?? '');
   if (m) candidates.push(`${m[1]}__${m[2]}`);
   for (const c of candidates) {
-    const p = join(RAW, c);
+    const p = join(rawDir, c);
     if (existsSync(p) && statSync(p).isDirectory()) return p;
   }
   return null;

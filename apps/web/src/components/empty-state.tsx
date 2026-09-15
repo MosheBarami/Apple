@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { EMPTY_STATES, type EmptyStateName, type EmptyTone } from './empty-state-model';
+import { EMPTY_STATES, type EmptyStateName, type EmptyStateSpec, type EmptyTone } from './empty-state-model';
 
 /**
  * The renderer for the canonical empty, waiting and failed states.
@@ -30,7 +30,10 @@ export interface EmptyStateProps {
 }
 
 export function EmptyState({ state, detail, action, illustration }: EmptyStateProps) {
-  const spec = EMPTY_STATES[state];
+  // Widened to the interface rather than left as the const literal: `help` is present on some
+  // states and not others, and reading an optional field off a union of literal object types is
+  // an error TypeScript is right to raise.
+  const spec: EmptyStateSpec = EMPTY_STATES[state];
   const isFailure = spec.tone === 'failure';
   return (
     <div
@@ -44,6 +47,16 @@ export function EmptyState({ state, detail, action, illustration }: EmptyStatePr
       <h2 className="es__title">{spec.title}</h2>
       {detail ?? (spec.body ? <p className="es__body">{spec.body}</p> : null)}
       {action ? <div className="es__action">{action}</div> : null}
+      {/* A real anchor in a new tab, for the reason failure.tsx gives: /docs belongs to the Astro
+          site, and a router Link to it lands on not-found. */}
+      {spec.help ? (
+        <p className="es__help">
+          <a href={spec.help.href} target="_blank" rel="noopener noreferrer">
+            {spec.help.label}
+          </a>
+          <span className="gx-sr"> (opens in a new tab)</span>
+        </p>
+      ) : null}
     </div>
   );
 }

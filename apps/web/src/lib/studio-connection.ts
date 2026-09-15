@@ -71,7 +71,7 @@ export function studioConnection(
 // wearing the clothes of an observation, and 0 ms is also the single most reassuring value it
 // could possibly show.
 
-import type { StudioPlace } from '@golem/shared';
+import type { ServerMsg, StudioPlace } from '@golem/shared';
 
 export interface StudioLinkFacts {
   /** When the plugin last polled, in server time. Null means it never has. */
@@ -95,38 +95,80 @@ export const NO_LINK_FACTS: StudioLinkFacts = {
 };
 
 /**
- * Fold a `studio_status` into what is already known.
+ * WHAT THE WIRE JUST TOLD US ABOUT THE LINK, folded into what we already knew.
  *
- * A MERGE, NOT A REPLACEMENT, and that is the whole decision. Every one of these fields is
- * optional on the wire, so a status that mentions only `connected` must leave the rest as it was:
- * spreading an absent `queuedOps` over a known 4 turns "the server did not say this time" into
- * "nothing is waiting", which is the reassuring reading and the wrong one. The same trick in the
- * other direction is worse — an omitted `placeMismatch` would silently resolve the one state where
- * the pill is green and nothing will ever build.
+ * The facts above were formatted by nothing and produced by nothing: `handleServerMsg` read
+ * `studioConnected` and `state` and dropped every other field of `hello` and `studio_status` on the
+ * floor. This is the missing half, pulled out of the hook so it can be driven with real message
+ * shapes rather than asserted about by reading source.
  *
- * The timestamp deliberately survives a disconnection. It is the entire reason it is carried: "last
- * connected 4 minutes ago" and "Studio was never here" are the same boolean and different problems.
+ * TWO RULES, AND THEY ARE THE WHOLE POINT.
+ *
+ *   AN ABSENT FIELD IS NOT A VALUE. A worker build that does not send `queuedOps` is saying
+ *   nothing, and turning that into 0 would print "no changes waiting" — the reassuring answer —
+ *   about a queue nobody measured. Absent therefore keeps what was already known.
+ *
+ *   AN EXPLICIT NULL IS A VALUE, and clears. `/studio/place/rebind` and `/studio/revoke` both
+ *   broadcast `place: null`, and the worker sends `placeMismatch: null` the instant the user
+ *   switches back to the right place. Remembering those would leave "nothing will build" printed
+ *   over a link that is building. JSON.stringify drops undefined and keeps null, so the two
+ *   genuinely arrive distinguishable.
+ *
+ * Anything that is not a number, not a place-shaped object, not a mismatch-shaped object, is
+ * refused and leaves the field null. The formatters below then say nothing at all, which is the
+ * correct thing to say about a measurement that did not arrive.
+ *
+ * `hello` IS HANDLED HERE TOO, under the names it uses, because it is the only message a tab
+ * opened onto a long-disconnected project ever receives: with no `studio_status` to follow, a
+ * reducer that read only status messages would leave that tab unable to say when Studio was last
+ * here.
  */
-export function factsFromStatus(
-  prev: StudioLinkFacts,
-  msg: {
-    lastSeenAt?: number | null;
-    queuedOps?: number;
-    place?: StudioPlace | null;
-    placeMismatch?: { expectedPlaceName: string; openPlaceName: string; openPlaceId: number } | null;
-  },
-): StudioLinkFacts {
+const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+
+function asPlace(v: unknown): StudioPlace | null {
+  if (typeof v !== 'object' || v === null) return null;
+  const p = v as Partial<StudioPlace>;
+  return typeof p.placeId === 'number' && typeof p.placeName === 'string' ? (v as StudioPlace) : null;
+}
+
+function asMismatch(v: unknown): StudioLinkFacts['placeMismatch'] {
+  if (typeof v !== 'object' || v === null) return null;
+  const m = v as Record<string, unknown>;
+  if (typeof m.expectedPlaceName !== 'string' || typeof m.openPlaceName !== 'string') return null;
   return {
-    ...prev,
-    lastSeenAt: msg.lastSeenAt === undefined ? prev.lastSeenAt : msg.lastSeenAt,
-    queuedOps: msg.queuedOps === undefined ? prev.queuedOps : msg.queuedOps,
-    place: msg.place === undefined ? prev.place : msg.place,
-    placeMismatch: msg.placeMismatch === undefined ? prev.placeMismatch : msg.placeMismatch,
+    expectedPlaceName: m.expectedPlaceName,
+    openPlaceName: m.openPlaceName,
+    openPlaceId: typeof m.openPlaceId === 'number' ? m.openPlaceId : 0,
   };
+}
+
+export function linkFactsFrom(prev: StudioLinkFacts, msg: ServerMsg): StudioLinkFacts {
+  if (msg.type === 'hello') {
+    return {
+      ...prev,
+      lastSeenAt: 'studioLastSeenAt' in msg ? num(msg.studioLastSeenAt) : prev.lastSeenAt,
+      queuedOps: num(msg.queuedOps) ?? prev.queuedOps,
+      place: 'studioPlace' in msg ? asPlace(msg.studioPlace) : prev.place,
+    };
+  }
+  if (msg.type === 'studio_status') {
+    return {
+      ...prev,
+      lastSeenAt: 'lastSeenAt' in msg ? num(msg.lastSeenAt) : prev.lastSeenAt,
+      queuedOps: num(msg.queuedOps) ?? prev.queuedOps,
+      place: 'place' in msg ? asPlace(msg.place) : prev.place,
+      placeMismatch: 'placeMismatch' in msg ? asMismatch(msg.placeMismatch) : prev.placeMismatch,
+    };
+  }
+  return prev;
 }
 
 /**
  * Time a round trip from the pong's echoed `t`, or change nothing.
+ *
+ * SEPARATE FROM `linkFactsFrom` BECAUSE IT NEEDS A CLOCK. Every other fact arrives finished on the
+ * wire; this one is a subtraction, and `now` is an argument so the arithmetic can be tested rather
+ * than raced against Date.now().
  *
  * NOTHING IS THE ANSWER MORE OFTEN THAN IT LOOKS. A pong with no echo cannot be timed, and a pong
  * whose `t` is in the future means the two clocks disagree, not that the network is faster than

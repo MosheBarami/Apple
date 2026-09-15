@@ -30,19 +30,76 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ROBLOX_SCOPES, type RobloxScope } from '@golem/shared';
-import { checkRobloxKey, deleteRobloxKey, fetchRobloxKey, putRobloxKey, type RobloxKeyHealth } from '../lib/api';
+import {
+  checkRobloxKey,
+  deleteRobloxKey,
+  fetchRobloxKey,
+  fetchRobloxWrites,
+  putRobloxKey,
+  type RobloxKeyHealth,
+} from '../lib/api';
 import {
   SCOPE_EXPLANATIONS,
   describeHealth,
   describeStored,
+  describeWrite,
   expiryNote,
   explainKeyFailure,
   irreversibleScopes,
+  isPermanentWrite,
   problemsWith,
   stateOf,
 } from '../lib/roblox-key';
 import { Failure } from './failure';
 import { useToast } from './toast';
+
+/**
+ * WHAT APPLE HAS DONE TO YOUR ROBLOX ACCOUNT.
+ *
+ * The worker has recorded every write since the first one. Nothing showed it to anybody, and a log
+ * nobody can read is the same as no log — which is most of why the 299 assets in the owner's
+ * account were a surprise rather than a notification.
+ *
+ * FOUR STATES, LIKE THE PANEL ABOVE, and for the same reason. A failed fetch must not render as
+ * "nothing has been done to your account": that is a claim about somebody's Roblox account made
+ * from a network error, and it is the most reassuring possible way to be wrong.
+ */
+function RobloxWriteTrail() {
+  const writes = useQuery({ queryKey: ['roblox-writes'], queryFn: () => fetchRobloxWrites(25) });
+
+  if (writes.isPending) return <p className="rk__note">Checking what has been done…</p>;
+  if (writes.isError) {
+    return (
+      <p className="rk__note">
+        Apple could not load the record of what it has done to your account. This is a connection
+        problem, not an answer — it does not mean nothing has happened.{' '}
+        <button type="button" className="btn" onClick={() => void writes.refetch()}>Try again</button>
+      </p>
+    );
+  }
+
+  const rows = writes.data?.writes ?? [];
+  if (!rows.length) {
+    return <p className="rk__note">Apple has not written anything to your Roblox account yet.</p>;
+  }
+
+  return (
+    <div className="rk__trail">
+      <h4 className="settings-sub">What Apple has done to your account</h4>
+      <ul className="rk__writes">
+        {rows.map((w, i) => (
+          <li key={`${w.at}-${i}`} className={w.ok ? 'rk__write' : 'rk__write is-failed'}>
+            <span className="rk__write-when muted">{w.at.slice(0, 10)}</span>{' '}
+            <span className="rk__write-what">{describeWrite(w)}</span>
+            {isPermanentWrite(w) && (
+              <span className="rk__write-permanent muted"> Roblox does not allow this to be undone.</span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 export function RobloxKeyPanel() {
   const qc = useQueryClient();
@@ -219,6 +276,7 @@ export function RobloxKeyPanel() {
             Disconnecting stops Apple using the key. It does not remove anything already created in
             your account — revoke the key on Roblox as well if that is what you want.
           </p>
+          <RobloxWriteTrail />
         </div>
       )}
 

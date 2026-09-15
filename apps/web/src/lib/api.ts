@@ -1,7 +1,7 @@
 // Typed fetch helpers for the Apple worker API. All authed calls carry the
 // user's Supabase access token as a Bearer header.
 import { PRICE_CURRENCY, type RobloxScope, type AssetSourcePolicy } from '@golem/shared';
-import type { CheckpointMeta, MessageDto, PairingCodeDto, QuotaState, PlanId, StudioLinkSummary } from '@golem/shared';
+import type { CheckpointMeta, MessageDto, MessageRevisionDto, PairingCodeDto, QuotaState, PlanId, StudioLinkSummary } from '@golem/shared';
 import type { ApiKeyMode, ApiScope } from '@golem/shared';
 import type { ApiKeyView } from './api-keys.ts';
 import type { MilestoneBrief, NextResponse, RoadmapResponse } from '../components/roadmap/model';
@@ -208,6 +208,20 @@ export const fetchBillingHistory = (): Promise<{ events: BillingChange[] }> =>
  */
 export const fetchMessages = (projectId: string, limit = 100) =>
   request<{ messages: MessageDto[] }>(`/api/shared/${encodeURIComponent(projectId)}/messages?limit=${limit}`);
+
+/**
+ * The earlier versions of one message the user edited.
+ *
+ * Fetched on demand rather than with the transcript: a long conversation of rewritten prompts would
+ * otherwise carry every draft of every message on every load, to draw a panel almost nobody opens.
+ * The COUNT comes with the transcript, which is all the conversation needs to know whether to offer
+ * the panel at all. Same shared path as the transcript itself, gated on `read`, so a collaborator
+ * who can see a message can see how it got there.
+ */
+export const fetchMessageRevisions = (projectId: string, messageId: string) =>
+  request<{ revisions: MessageRevisionDto[] }>(
+    `/api/shared/${encodeURIComponent(projectId)}/messages/${encodeURIComponent(messageId)}/revisions`,
+  );
 
 export interface SearchHit {
   id: string;
@@ -585,6 +599,19 @@ export const disconnectStudio = (projectId: string): Promise<{ ok: boolean; revo
 /** Forget the bound place, so the next state event from Studio binds whatever is open now. */
 export const rebindPlace = (projectId: string): Promise<{ ok: boolean }> =>
   request(`/api/projects/${encodeURIComponent(projectId)}/studio/place/rebind`, { method: 'POST' });
+
+/**
+ * Throw away the changes waiting for Studio to collect them.
+ *
+ * The fourth route, and the one that did not exist until now: automatic cancellation was built (a
+ * run that ends takes its queued ops with it) and explicit cancellation was not, so a user whose
+ * Studio closed mid-build watched the depth climb with no control over it.
+ *
+ * `discarded` is the count the SERVER removed, not the count the browser last saw — those differ
+ * every time an op is collected between the render and the click.
+ */
+export const discardStudioQueue = (projectId: string): Promise<{ ok: boolean; discarded: number }> =>
+  request(`/api/projects/${encodeURIComponent(projectId)}/studio/queue`, { method: 'DELETE' });
 
 /**
  * CONNECTING DISCORD, FROM THE SIDE THAT CAN PROVE WHO YOU ARE.
@@ -1201,6 +1228,98 @@ export const fetchMilestoneBrief = (projectId: string, milestoneId: string): Pro
         body: JSON.stringify({ milestoneId }),
       });
 
+// ---------------------------------------------------------------- automations
+//
+// The saved instructions a project keeps. Every one of these routes is driven end-to-end by
+// apps/worker/tests/automation-routes-live.test.mjs, which instantiates the real app — so the
+// spellings below are held against the server rather than against a reading of its source.
+
+/** One automation as the worker renders it: the row, plus the two sentences a person checks it by. */
+export interface AutomationView {
+  id: string;
+  ownerId: string;
+  projectId: string;
+  name: string;
+  description: string | null;
+  prompt: string;
+  mode: string;
+  trigger: string;
+  timezone: string;
+  event: string | null;
+  enabled: boolean;
+  overlap: string;
+  missedRuns: string;
+  maxRetries: number;
+  budget: { maxCreditsPerRun: number; maxRunsPerDay: number };
+  createdAt: number;
+  updatedAt: number;
+  nextFireAt: number | null;
+  lastFireAt: number | null;
+  /** `describeSchedule` — a schedule a person cannot read back is one they cannot check. */
+  describes: string;
+  /** The daylight-saving disclosure, or null when the schedule has no wall hour to be moved. */
+  dstNote: string | null;
+}
+
+export interface AutomationRunRow {
+  id: string;
+  automationId: string;
+  projectId: string;
+  trigger: string;
+  dueAt: number | null;
+  startedAt: number;
+  finishedAt: number | null;
+  outcome: string | null;
+  attempt: number;
+  runId: string | null;
+  credits: number | null;
+  error: string | null;
+  fold: string | null;
+}
+
+export interface AutomationSpend {
+  runs: number;
+  credits: number;
+  /** Fires whose cost was never recorded. NOT zero — see automationSpend in the worker. */
+  unreadable: number;
+  failures: number;
+}
+
+export const fetchAutomations = (projectId: string): Promise<{ automations: AutomationView[] }> =>
+  request(`/api/projects/${encodeURIComponent(projectId)}/automations`);
+
+export const createAutomation = (projectId: string, body: unknown): Promise<{ automation: AutomationView }> =>
+  request(`/api/projects/${encodeURIComponent(projectId)}/automations`, { method: 'POST', body: JSON.stringify(body) });
+
+export const updateAutomation = (id: string, body: unknown): Promise<{ automation: AutomationView }> =>
+  request(`/api/automations/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(body) });
+
+export const deleteAutomation = (id: string): Promise<{ ok: true }> =>
+  request(`/api/automations/${encodeURIComponent(id)}`, { method: 'DELETE' });
+
+/**
+ * Pause or resume.
+ *
+ * The worker answers with the state its own WRITE produced rather than echoing the request, so a
+ * toggle that changed nothing cannot render as a toggle that worked. Callers must use the returned
+ * value, not the one they sent.
+ */
+export const setAutomationEnabled = (id: string, enabled: boolean): Promise<{ ok: true; enabled: boolean }> =>
+  request(`/api/automations/${encodeURIComponent(id)}/enabled`, { method: 'POST', body: JSON.stringify({ enabled }) });
+
+/**
+ * Fire it now. Answers 202 with the execution id, because the build takes minutes and the request
+ * must not hold the connection open for it — the history is where the outcome arrives.
+ */
+export const runAutomation = (id: string): Promise<{ ok: true; executionId: string }> =>
+  request(`/api/automations/${encodeURIComponent(id)}/run`, { method: 'POST' });
+
+export const fetchAutomationRuns = (id: string, limit = 25): Promise<{ runs: AutomationRunRow[] }> =>
+  request(`/api/automations/${encodeURIComponent(id)}/runs?limit=${limit}`);
+
+export const fetchAutomationSpend = (id: string, days = 30): Promise<AutomationSpend> =>
+  request(`/api/automations/${encodeURIComponent(id)}/spend?days=${days}`);
+
 // ---------------------------------------------------------------- admin (X-Admin-Key)
 
 export interface AdminCounterRow {
@@ -1557,6 +1676,28 @@ export const rotateApiKey = (
 
 export const revokeApiKey = (id: string): Promise<{ ok: boolean }> =>
   request(`/api/keys/${encodeURIComponent(id)}`, { method: 'DELETE' });
+
+export interface RobloxWrite {
+  at: string;
+  action: string;
+  robloxCreatorId: string;
+  creatorType: string;
+  target: string | null;
+  ok: boolean;
+  httpStatus: number | null;
+  request: unknown;
+}
+
+/**
+ * Everything Apple has done to this person's Roblox account.
+ *
+ * Their own trail and nobody else's — the worker keys the query on the id off the verified token,
+ * and there is deliberately no route that reads another customer's. This exists because the 299
+ * assets that went into the owner's account were not unrecorded, they were unseen: nothing in the
+ * product ever showed a person what had been done in their name.
+ */
+export const fetchRobloxWrites = (limit = 25): Promise<{ writes: RobloxWrite[] }> =>
+  request(`/api/me/roblox/writes?limit=${encodeURIComponent(String(limit))}`);
 
 // ---------------------------------------------------------------- the inbox / security history
 //

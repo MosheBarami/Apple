@@ -17,6 +17,7 @@ import { CreditsPanel } from '../components/ws/credits-panel';
 import { supabase, type ProjectRow } from '../lib/supabase';
 import { useProjectSocket } from '../lib/use-project-socket';
 import { studioConnection } from '../lib/studio-connection';
+import { StudioLinkNote } from '../components/ws/studio-link-note';
 import { useToast } from '../components/toast';
 import { EditableProjectTitle } from '../components/editable-title';
 import { PresenceBar } from '../components/presence-bar';
@@ -26,7 +27,9 @@ import { SHORTCUTS, shortcutLabel } from '../lib/shortcuts';
 import { useGlobalShortcut } from '../components/shortcuts-dialog';
 import { SearchPanel } from '../components/ws/search-panel';
 import { EditMessageDialog } from '../components/ws/edit-message-dialog';
+import { RevisionsDialog } from '../components/ws/revisions-dialog';
 import { MemoryPanel } from '../components/ws/memory-panel';
+import { AutomationsPanel } from '../components/ws/automations-panel';
 import { MembersPanel } from '../components/ws/members-panel';
 import { InstructionsPanel } from '../components/ws/instructions-panel';
 import {
@@ -35,6 +38,10 @@ import {
   fetchMembers,
   fetchPersonalisation,
   fetchProjectAccess,
+  // Renamed at the import rather than in the module: `rebindPlace` is already the name of the
+  // handler below, and shadowing the client with the callback that calls it is how a later edit
+  // ends up calling itself.
+  rebindPlace as rebindPlaceRequest,
   savePreferences,
   type SearchHit,
 } from '../lib/api';
@@ -55,7 +62,7 @@ import { Turn } from '../components/ws/turn';
 import { StudioView } from '../components/ws/studio-view';
 import { StudioActivity } from '../components/ws/studio-activity';
 import { PlaytestCard } from '../components/ws/playtest-card';
-import { ConnectStudio, StudioLink } from '../components/ws/connect-studio';
+import { ConnectStudio } from '../components/ws/connect-studio';
 import { EmptyState } from '../components/empty-state';
 import { Spinner } from '../components/loading';
 
@@ -83,13 +90,13 @@ const SUGGESTIONS = [
  * this build no longer recognises" the same state — which is precisely the distinction the
  * validation exists to keep.
  */
-// Three agents added a drawer each, from three checklist sections, and all three belong. The union
+// Four agents added a drawer each, from four checklist sections, and all four belong. The union
 // and the literal list are kept in step deliberately: search-panel.test.mjs asserts every name the
 // union can hold is a name DRAWERS accepts, because a drawer missing from the list restores as
 // closed for ever and looks like a user who simply never opened it.
-type Drawer = null | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members' | 'files' | 'history';
-type DrawerName = 'none' | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members' | 'files' | 'history';
-const DRAWERS = ['none', 'checkpoints', 'memory', 'credits', 'search', 'members', 'files', 'history'] as const;
+type Drawer = null | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members' | 'files' | 'history' | 'automations';
+type DrawerName = 'none' | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members' | 'files' | 'history' | 'automations';
+const DRAWERS = ['none', 'checkpoints', 'memory', 'credits', 'search', 'members', 'files', 'history', 'automations'] as const;
 
 export function WorkspacePage() {
   const params = useParams<{ id: string }>();
@@ -243,6 +250,23 @@ export function WorkspacePage() {
    */
   const studioStatus = studioConnection(conn, studio.connected, studio.everConnected);
 
+  /**
+   * Bind this project to whatever place Studio has open now.
+   *
+   * Offered ONLY from the mismatch sentence, which is the one state where it is the right answer:
+   * the link is healthy, the pill is green, and every op is being withheld because Studio is
+   * holding a different place. The worker clears the binding and re-binds on the next identifiable
+   * state event — the same path a first pairing takes — so the poll parked in the long hold is
+   * released and the queued work goes through within a round trip. No local state is updated here:
+   * the confirmation is the `studio_status` broadcast that follows, which is the only source this
+   * screen trusts about the link.
+   */
+  const rebindPlace = useCallback(() => {
+    rebindPlaceRequest(projectId)
+      .then(() => toast('Bound to the place Studio has open. Your queued changes will go through now.', 'success'))
+      .catch((e) => toast(e instanceof Error ? e.message : 'Could not rebind this project.', 'error'));
+  }, [projectId, toast]);
+
   // Your own id, so the presence row shows the OTHER people. Null until the session loads, and
   // presenceView is explicit about showing everyone rather than guessing which face is yours.
   const { session } = useAuth();
@@ -325,6 +349,12 @@ export function WorkspacePage() {
 
   // Which of my own messages is being edited, if any.
   const [editing, setEditing] = useState<{ id: string; content: string } | null>(null);
+
+  // Which message's earlier versions are open, if any. Held as an id rather than as the row: the
+  // dialog reads the text from the live list, so a message that changes underneath it shows what it
+  // says now rather than what it said when the control was clicked.
+  const [showingRevisions, setShowingRevisions] = useState<string | null>(null);
+  const revisionsFor = showingRevisions ? messages.find((m) => m.id === showingRevisions) : undefined;
 
   // How much the edit throws away, counted from what is actually on screen rather than described.
   // "Later messages" reads as two or three; forty-seven does not.
@@ -474,6 +504,13 @@ export function WorkspacePage() {
       section: 'Project',
       keywords: ['licence', 'license', 'attribution', 'assets'],
       run: () => setDrawer('credits'),
+    },
+    {
+      id: 'ws-automations',
+      title: 'Saved instructions',
+      section: 'Project',
+      keywords: ['automation', 'automations', 'repeat', 'run again', 'scheduled', 'recurring'],
+      run: () => setDrawer('automations'),
     },
     {
       id: 'ws-connect',
@@ -720,7 +757,7 @@ export function WorkspacePage() {
               components/presence-model.ts. */}
           <PresenceBar present={presence} selfUserId={selfUserId} />
           {studioStatus === 'connected' ? (
-            <span className="gx-pill is-live" title={studio.state?.placeName ?? 'Connected to Studio'}>
+            <span className="gx-pill is-live" title={studio.state?.placeName ?? studio.link.place?.placeName ?? 'Connected to Studio'}>
               <span className="gx-dot" aria-hidden="true" />
               {/* The PLACE name, which is worth showing: it says which place is paired,
                   and that is not always the project you are looking at. Below 860px it
@@ -728,7 +765,12 @@ export function WorkspacePage() {
                   a project title of the same name and BOTH truncated, so the topbar
                   showed the same name twice and neither legibly. The full name stays in
                   the title attribute at every width. */}
-              <span className="gx-pill__place">{studio.state?.placeName ?? 'Studio'}</span>
+              {/* `studio.state` only arrives on the studio_status the worker sends when a plugin
+                  goes from absent to present. A tab opened or refreshed while Studio was ALREADY
+                  attached never gets one — and fell back to the literal word "Studio" while the
+                  bound place sat unread on `hello`. Reported place first (it is what Studio has
+                  open this second), then the binding, then the generic word. */}
+              <span className="gx-pill__place">{studio.state?.placeName ?? studio.link.place?.placeName ?? 'Studio'}</span>
               <span className="gx-pill__short">Studio</span>
             </span>
           ) : studioStatus === 'connecting' ? (
@@ -786,6 +828,19 @@ export function WorkspacePage() {
             <Icon d={PATH.brain} />
           </button>
 
+          {/* Saved instructions. An icon button beside memory rather than a named control: it is
+              the same kind of thing — a standing fact about this project rather than a step in
+              the work — and the command palette carries the word for anyone searching for it. */}
+          <button
+            type="button"
+            className="gx-icon-btn"
+            onClick={() => setDrawer('automations')}
+            aria-label="Saved instructions you can run again"
+            title="Saved instructions"
+          >
+            <Icon d={PATH.automation} />
+          </button>
+
           {/* What the project owes before it can be published. An icon button
               rather than a fourth named control: it is read once, near the end,
               and giving it the weight of Roadmap would put a rare pre-publish
@@ -839,6 +894,17 @@ export function WorkspacePage() {
           </button>
         </div>
       </header>
+
+      {/* The one sentence under the Studio pill — when it last polled, how much work is waiting,
+          how slow the round trip is, or the fact that Studio is holding the wrong place open. Draws
+          nothing when there is nothing worth saying, so a healthy link adds no chrome. The rebind
+          button is passed only while a mismatch is actually on the wire; see components/ws/
+          studio-link-note.tsx. */}
+      <StudioLinkNote
+        status={studioStatus}
+        facts={studio.link}
+        onRebind={studio.link.placeMismatch ? rebindPlace : undefined}
+      />
 
       {/* --------------------------------------------------- conversation */}
       <div className="gx-scroll" ref={scrollRef} onScroll={onScroll}>
@@ -903,6 +969,9 @@ export function WorkspacePage() {
               // Only the last turn, and only while idle. An offer that is present but inert is a
               // worse answer than no offer.
               onRetry={item.id === lastAssistantId && !running ? retryLast : undefined}
+              // Drawn only when the transcript says this message HAS earlier versions — Turn makes
+              // that call, because it is the thing holding the count.
+              onShowRevisions={setShowingRevisions}
             />
             </div>
           ))}
@@ -912,13 +981,6 @@ export function WorkspacePage() {
               Studio attaches. It is a pure function of studioStatus, so there
               is no dismissal state to get stuck. */}
           <ConnectStudio status={studioStatus} onPair={() => setShowPairing(true)} />
-
-          {/* The measured detail under the connection: when the plugin last polled, how much work
-              is queued, the round trip, and — loudest — a place mismatch, which is the only state
-              where the pill is green and nothing will ever build. Rendered for EVERY state,
-              including connected, which is why it is not inside the card above. It draws nothing
-              when there is nothing measured to say. */}
-          <StudioLink status={studioStatus} facts={studio.link} />
 
           {/* The playtest viewport. Renders only while the worker says a
               playtest exists — it is a pure function of `playtest`, so it
@@ -1100,6 +1162,15 @@ export function WorkspacePage() {
         ))}
       </Drawer>
 
+      {revisionsFor && (
+        <RevisionsDialog
+          projectId={projectId}
+          messageId={revisionsFor.id}
+          current={revisionsFor.content}
+          onClose={() => setShowingRevisions(null)}
+        />
+      )}
+
       {editing && (
         <EditMessageDialog
           current={editing.content}
@@ -1148,6 +1219,12 @@ export function WorkspacePage() {
         {/* Mounted only while open so the request is made when a user asks the
             question, not on every workspace load for everyone who never will. */}
         {drawer === 'credits' && <CreditsPanel projectId={projectId} />}
+      </Drawer>
+
+      <Drawer open={drawer === 'automations'} onClose={() => setDrawer(null)} title="Saved instructions">
+        {/* Mounted only while open, for the reason the memory drawer gives: the panel holds an
+            unsaved draft, and closing the drawer is the gesture people use to abandon one. */}
+        {drawer === 'automations' && <AutomationsPanel projectId={projectId} />}
       </Drawer>
 
       <Drawer open={drawer === 'memory'} onClose={() => setDrawer(null)} title="What Apple remembers">

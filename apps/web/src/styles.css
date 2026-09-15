@@ -536,6 +536,76 @@ kbd {
   color: var(--muted);
 }
 
+/* A tag on a card. Quieter than the place pill beside it: the place is a fact about the project,
+   the tag is a label the user put on it, and the card should not read as two competing badges. */
+.pill-tag {
+  background: transparent;
+  border-style: dashed;
+  padding-inline: 0.55rem;
+}
+
+/* ------------------------------------------------------------------- tags --- */
+
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0 0 0.9rem;
+}
+
+/* The filter row sits between the scope tabs and the grid, so it needs to read as a control strip
+   rather than as the first row of content. */
+.tag-row--filter {
+  margin: 0.2rem 0 1.1rem;
+}
+
+.tag-chip {
+  font: inherit;
+  font-size: 0.78rem;
+  border-radius: var(--r-pill);
+  padding: 0.26rem 0.68rem;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    color 0.14s ease,
+    border-color 0.14s ease,
+    background-color 0.14s ease;
+}
+
+.tag-chip:hover {
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+.tag-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Pressed state carries colour AND weight, not colour alone: which chip is filtering the page is
+   the one thing this row has to answer at a glance. */
+.tag-chip.is-on {
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  font-weight: 600;
+}
+
+.tag-chip[disabled] {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* A tag the project already has: clicking it removes it, so it is drawn as something already on
+   rather than as something to add. */
+.tag-chip--own {
+  color: var(--ink);
+  border-style: dashed;
+}
+
 /* Both of these were being asked for by the settings page with nothing behind them, so a confirmed
    address and an unconfirmed one rendered identically — a status badge that carries no status. */
 .pill-good {
@@ -1375,6 +1445,20 @@ textarea {
   font-size: 1.02rem;
   margin: 0;
   overflow-wrap: anywhere;
+  /* Takes the slack so the menu stays hard right once a pin marker joins the row. `space-between`
+     alone would centre the name between the two of them. */
+  flex: 1;
+  min-width: 0;
+}
+
+/* The pin marker leads the name rather than sitting in a corner of the card: it is a fact about
+   this project's place in the list, and the eye reads it on the way into the title. */
+.project-card-pin {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.2rem;
+  color: var(--accent);
 }
 
 .project-card-desc {
@@ -4480,6 +4564,19 @@ textarea {
   font-variant-numeric: tabular-nums;
 }
 
+/* The waiting-work line sits ABOVE the action row's rule, not inside it: the two buttons
+   below the rule change the connection, and this one changes what the connection will do
+   next. Keeping them apart is what stops "Discard" reading as a third way to disconnect. */
+.pairing-record__queue {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
 .pairing-record__acts {
   display: flex;
   flex-wrap: wrap;
@@ -4882,6 +4979,29 @@ textarea {
   opacity: 0.55;
 }
 
+/* Support is a STATEMENT, not another feature bullet, so it is set apart from the list rather than
+   added to it: a buyer scanning bullets skims them, and "will anyone answer me" is the one line on
+   this card they should not skim past. */
+.plan__support {
+  margin: 0.9rem 0 0;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.plan__support-label {
+  font-family: var(--font-mono);
+  font-size: 0.63rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
 /* Pushed to the bottom so every tier's control sits on one line however long its list is. */
 .plan__action {
   margin-top: auto;
@@ -5087,6 +5207,14 @@ textarea {
   font-size: 0.78rem;
 }
 
+/* The words on the tickbox, which are the half a person reads; `ak__scope-id` beside it is the
+   Open Cloud identifier, kept quiet. `min-width: 0` so a long label wraps inside the row rather
+   than shouldering the identifier off the end of it. */
+.ak__scope-title {
+  min-width: 0;
+  color: var(--ink);
+}
+
 .ak__key-what,
 .ak__key-detail {
   color: var(--muted);
@@ -5211,6 +5339,23 @@ textarea {
   flex-wrap: wrap;
 }
 
+/* The page written for this failure. Below `next`, and quieter than it: `next` is the one action,
+   this is where the long answer lives for someone whose retry did not work. */
+.failure__help {
+  margin: 0.15rem 0 0;
+  font-size: 0.82rem;
+}
+
+.failure__help a {
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.failure__help a:hover {
+  color: var(--ink, inherit);
+}
+
 .failure__detail {
   margin-top: 0.15rem;
   font-size: 0.78rem;
@@ -5332,6 +5477,56 @@ samp {
   margin: 0;
   font-size: 0.85rem;
   color: var(--muted);
+}
+
+/* The order a buyer confirms before being sent to a card form. A definition list, because that is
+   what it is: four labelled facts about one purchase. Tabular numerals so the amounts line up with
+   every other figure on this page, and the terms and tax lines are quiet rather than fine print —
+   they are the two sentences the buyer is actually agreeing to. */
+.order-summary {
+  margin: 0 0 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.order-summary__row {
+  display: grid;
+  grid-template-columns: minmax(4.5rem, auto) minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: baseline;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.order-summary__row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.order-summary__label {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.order-summary__value {
+  margin: 0;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.order-summary__terms {
+  margin: 0 0 0.4rem;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.order-summary__tax {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.45;
 }
 
 /* Purchased credits, beside the allowance ring and never inside it. */
@@ -6231,3 +6426,441 @@ html.has-cursor .cursor {
     display: none !important;
   }
 }
+
+/* The asset-source choices on the settings page. They borrow the dialog's own `asrc__` classes so
+   the two surfaces cannot drift into two looks for one setting; only the frame differs, because a
+   modal centres itself and a settings row does not. */
+.settings-pair--stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  align-items: stretch;
+}
+
+.asrc__choice--settings {
+  /* No max-width: inside the dialog the choices sit in a 30rem column, and here they have the
+     settings card's width to use. */
+  max-width: none;
+}
+
+/* ---------------------------------------------- the panels nothing ever drew --- */
+/*
+   TWO WHOLE PANELS SHIPPED WITH NO STYLES AT ALL. `grep -c 'rk__' styles.css` returned 0, and
+   `asrc__` returned one rule added later for a modifier on a class that did not exist. Both
+   components are built from <span>s, so with no rules every span stayed inline and the text ran
+   together into one paragraph:
+
+       "Read your assetsApple can look up things you already own"
+       "The Apple libraryApple picks from assets it has already gathered"
+
+   That is the same failure `mb__` had — a panel written, reviewed, and never mounted, so nothing
+   ever drew it and no selector was ever exercised. It reached the owner's screen this time.
+
+   The two share a shape because they are the same thing twice: a checkbox, a name, what it does,
+   and what it costs. They keep separate prefixes because one is a modal and one is a settings row,
+   but the inner block below is deliberately identical.
+*/
+
+.rk__scope,
+.asrc__choice {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.6rem;
+  align-items: start;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm, 8px);
+  background: var(--surface-2, transparent);
+  cursor: pointer;
+}
+
+.rk__scope:hover,
+.asrc__choice:hover {
+  border-color: var(--accent);
+}
+
+.rk__scope input,
+.asrc__choice input {
+  /* Aligned to the title's cap height rather than the row's top, which on a three-line row leaves
+     the box floating level with nothing. */
+  margin-block-start: 0.15rem;
+}
+
+.rk__scope-main,
+.asrc__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.rk__scope-title,
+.asrc__name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--ink);
+}
+
+.rk__scope-does,
+.asrc__does {
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--ink-2, var(--muted));
+}
+
+.asrc__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.8rem;
+  margin-block-start: 0.2rem;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+/* What it costs is the sentence people actually decide on, so it is not dimmer than the rest. */
+.asrc__cost { color: var(--ink-2, var(--muted)); }
+.asrc__reach { color: var(--muted); }
+
+/* A permanent scope is not an error, so it is not red — but it must not read like the others
+   either. Roblox will not delete an uploaded image for anyone, including the person who owns it. */
+.rk__scope.is-permanent {
+  border-inline-start: 3px solid var(--warn, #b8860b);
+}
+
+.rk__scope-caution {
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--warn, #b8860b);
+}
+
+.rk__label,
+.asrc__title {
+  display: block;
+  font-weight: 600;
+  margin-block-end: 0.5rem;
+}
+
+.rk__scopes,
+.asrc__choices {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border: 0;
+  padding: 0;
+  margin: 0 0 0.8rem;
+}
+
+.asrc__lede,
+.rk__lede {
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.5;
+  margin: 0 0 0.9rem;
+}
+
+.asrc__remember {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.86rem;
+  color: var(--ink-2, var(--muted));
+}
+
+.asrc__warn,
+.rk__problem {
+  color: var(--danger, #c0392b);
+  font-size: 0.84rem;
+  margin: 0.6rem 0 0;
+}
+
+.asrc__actions {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: flex-end;
+  margin-block-start: 1rem;
+}
+
+/* The modal's own frame. Only the dialog has these; the settings copy is an ordinary card. */
+.asrc__scrim {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgba(8, 10, 15, 0.62);
+  z-index: 60;
+}
+
+.asrc {
+  width: min(100%, 34rem);
+  max-height: 86vh;
+  overflow-y: auto;
+  padding: 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface, #14161d);
+}
+
+.asrc__title { font-size: 1.15rem; margin: 0 0 0.4rem; }
+
+/* The rest of the key panel's write trail, and the handful of one-off orphans the new guard
+   found. Each is a class a component draws with that no rule matched — invisible to tsc, to the
+   tests and to the build, and visible only on the page. */
+
+.rk__note {
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--muted);
+  margin: 0.5rem 0 0;
+}
+
+/* The audit of every write Apple made to this Roblox account. It was recorded from day one and
+   nothing ever showed it to the person whose account it was about. */
+.rk__trail {
+  margin-block-start: 1rem;
+  border-block-start: 1px solid var(--line);
+  padding-block-start: 0.8rem;
+}
+
+.rk__writes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0.6rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rk__writes li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.6rem;
+  align-items: baseline;
+  font-size: 0.82rem;
+}
+
+.rk__write-when {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.rk__write-what {
+  color: var(--ink-2, var(--muted));
+  overflow-wrap: anywhere;
+}
+
+/* Permanent means Roblox will not delete it for anyone, including the account's owner. It is said
+   on the row rather than once at the top, because the row is what somebody is reading. */
+.rk__write-permanent {
+  font-size: 0.72rem;
+  color: var(--warn, #b8860b);
+  white-space: nowrap;
+}
+
+.btn--primary { background: var(--accent); color: var(--accent-on, #fff); border-color: var(--accent); }
+.btn--danger { color: var(--danger, #c0392b); border-color: var(--danger, #c0392b); }
+
+.gx-usage__builds { font-size: 0.74rem; color: var(--muted); }
+.gx-usage__reset { font-size: 0.74rem; color: var(--muted); margin-inline-start: auto; }
+
+.cmdk__group { font-size: 0.7rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); padding: 0.5rem 0.75rem 0.25rem; }
+.cs__history { display: flex; flex-direction: column; gap: 0.25rem; }
+.shortcuts__group { display: flex; flex-direction: column; gap: 0.35rem; margin-block-end: 0.9rem; }
+.net-banner__body { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
+.au-item__head { display: flex; align-items: baseline; gap: 0.5rem; justify-content: space-between; }
+.gx-act__step-label { font-size: 0.8rem; color: var(--ink-2, var(--muted)); overflow-wrap: anywhere; }
+.gx-stage__meta { font-size: 0.74rem; color: var(--muted); }
+.gx-btn--ghost { background: transparent; border-color: transparent; }
+.gx-chip--selection { border-color: var(--accent); }
+.rm-suggest__pending { color: var(--muted); font-size: 0.8rem; }
+
+/* The alt text a generated image falls back to. It is shown, not hidden: an image that failed to
+   load and says nothing is indistinguishable from one that was never there. */
+.gu-img-loading__alt {
+  font-size: 0.78rem;
+  color: var(--muted);
+  padding: 0.5rem;
+  text-align: center;
+}
+
+/* The key panel's own frame. `is-connected` / `is-none` / `is-error` come off the same element as
+   `rk__state`, so the state reads without the person parsing the sentence. */
+.rk__state {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.86rem;
+  margin: 0 0 0.8rem;
+  color: var(--ink-2, var(--muted));
+}
+
+.rk__state.is-connected { color: var(--good, #1c5e41); }
+.rk__state.is-error { color: var(--danger, #c0392b); }
+
+.rk__connected {
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm, 8px);
+  padding: 0.7rem 0.8rem;
+  margin-block-end: 0.9rem;
+}
+
+/* What the key is actually allowed to do, listed. A connected key whose scopes are not shown is a
+   permission the person granted once and can never see again. */
+.rk__granted {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.6rem;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.rk__form { display: flex; flex-direction: column; gap: 0.7rem; }
+
+.rk__input {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+}
+
+.rk__type {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+/* Two modifiers written with a trailing `--` and no suffix — `gx-playtest__chip--${x}` and
+   `au-run__mark--${x}`. The guard reads the literal half of a template, so it sees the stem. The
+   stems are given the shared shape here and the variants carry only the colour. */
+.au-run__mark, [class*='au-run__mark--'] {
+  display: inline-block;
+  inline-size: 0.5rem;
+  block-size: 0.5rem;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.gx-playtest__chip, [class*='gx-playtest__chip--'] {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.74rem;
+}
+
+.rk__radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.84rem;
+  cursor: pointer;
+}
+
+/* The last thing between a person and a permanent write to their Roblox account. Bordered rather
+   than coloured: it is a question, not a failure. */
+.rk__confirm {
+  border: 1px solid var(--warn, #b8860b);
+  border-radius: var(--r-sm, 8px);
+  padding: 0.8rem;
+  margin-block-start: 0.8rem;
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+/* ------------------------------------------------- evidence cards --- */
+/*
+   A FOURTH PANEL WITH NO STYLESHEET. `grep -c 'gx-ev' styles.css` returned 0 across twenty-two
+   class names. These are the cards that show what Apple actually did — a screenshot of the scene,
+   the Luau it wrote, the playtest verdict — and they are the product's whole claim to being
+   checkable rather than trusted. They were rendering as an unstyled stack of text.
+
+   The variants (`gx-ev--shot`, `--code`, `--playtest`, …) carry only what differs; everything
+   below is the shape they share.
+*/
+.gx-ev {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm, 8px);
+  background: var(--surface-2, transparent);
+  padding: 0.7rem 0.8rem;
+  margin-block: 0.5rem;
+  min-width: 0;
+}
+
+/* `is-waiting` is not a failure and must not look like one: the evidence is coming. */
+.gx-ev.is-failed { border-color: var(--danger, #c0392b); }
+.gx-ev.is-passed { border-color: var(--good, #1c5e41); }
+.gx-ev.is-waiting { opacity: 0.75; }
+
+.gx-ev__title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.gx-ev__bar { display: flex; align-items: center; gap: 0.5rem; justify-content: space-between; }
+.gx-ev__note, .gx-ev__msg, .gx-ev__wait { font-size: 0.8rem; line-height: 1.45; color: var(--muted); }
+.gx-ev__verdict { font-size: 0.82rem; font-weight: 600; }
+.gx-ev__counts { display: flex; gap: 0.8rem; font-size: 0.76rem; color: var(--muted); }
+.gx-ev__lang { font-family: var(--font-mono); font-size: 0.7rem; color: var(--muted); }
+
+.gx-ev__code {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  line-height: 1.5;
+  /* Code is the one thing here allowed to scroll sideways — wrapping Luau changes what it says. */
+  overflow-x: auto;
+  margin: 0;
+  padding: 0.5rem 0.6rem;
+  border-radius: 6px;
+  background: var(--sunken, rgba(0, 0, 0, 0.2));
+}
+
+.gx-ev__line { display: block; white-space: pre; }
+.gx-ev__add { color: var(--good, #1c5e41); }
+.gx-ev__del { color: var(--danger, #c0392b); }
+
+.gx-ev__shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); gap: 0.5rem; }
+.gx-ev__shot { display: block; inline-size: 100%; border-radius: 6px; border: 1px solid var(--line); }
+
+/* A SHOT THAT NEVER ARRIVED IS NOT A SHOT OF AN EMPTY SCENE. It says which, in words. */
+.gx-ev__nothumb {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 10;
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+  font-size: 0.74rem;
+  color: var(--muted);
+  text-align: center;
+  padding: 0.5rem;
+}
+
+.gx-ev__assets { display: flex; flex-direction: column; gap: 0.25rem; margin: 0; padding: 0; list-style: none; }
+.gx-ev__asset-name { font-size: 0.8rem; overflow-wrap: anywhere; }
+.gx-ev__cases { display: flex; flex-direction: column; gap: 0.2rem; margin: 0; padding: 0; list-style: none; font-size: 0.8rem; }
+
+.gx-ev__meter { block-size: 4px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.gx-ev__meter-fill { display: block; block-size: 100%; background: var(--good, #1c5e41); }
+
+/* The four kinds. They carry only what differs — a colour on the left edge saying which of the
+   four questions this card answers: what it looks like, what changed, whether it ran, what it
+   brought in. Everything else is `.gx-ev` above. */
+.gx-ev--render { border-inline-start: 3px solid var(--accent); }
+.gx-ev--diff { border-inline-start: 3px solid var(--link, #1e40af); }
+.gx-ev--test { border-inline-start: 3px solid var(--good, #1c5e41); }
+.gx-ev--assets { border-inline-start: 3px solid var(--warn, #b8860b); }

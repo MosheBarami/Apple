@@ -1,96 +1,122 @@
 /**
- * THE STUDIO LINK DETAIL IS REACHABLE — it was four finished answers with no caller.
+ * THE FACTS ARRIVE, AND THEY REACH THE SCREEN.
  *
- * `lib/studio-connection.ts` implements lastSeenLabel, latencyLabel, queueLabel and linkDetail,
- * and studio-link.test.mjs covers all fourteen branches of them. The worker already sends every
- * fact they need: `studio_status` carries lastSeenAt, queuedOps, place and placeMismatch, and the
- * socket pongs with the ping's own timestamp. And the browser threw all of it away — the message
- * handler copied `connected` and `state` off the status and nothing else, `case 'pong': break;`
- * discarded the round trip, and the ping did not even carry a `t` for the worker to echo. So the
- * one sentence that separates "Studio closed ten seconds ago" from "Studio was never here", and
- * the one that explains a green pill above a build that will never start, were unreachable.
+ * studio-link.test.mjs proves the SENTENCES are right. It could not prove that anything produces
+ * the facts they format, and nothing did: `handleServerMsg` read `studioConnected` and `state` off
+ * `hello` and `studio_status` and dropped `studioLastSeenAt`, `queuedOps`, `studioPlace`,
+ * `placeMismatch` and the `pong` echo on the floor. Every formatter in studio-connection.ts —
+ * `lastSeenLabel`, `latencyLabel`, `queueLabel`, `linkDetail` — had exactly one caller in the
+ * repository, that test file. The worker measured all of it, put it on the wire, and no user ever
+ * saw a heartbeat, a round trip, a queue depth or the reason their green pill built nothing.
  *
- * TWO KINDS OF ASSERTION HERE, and the split is deliberate:
+ * TWO KINDS OF TEST HERE, and the split is deliberate.
  *
- *   THE REDUCERS ARE REAL FUNCTIONS, tested by calling them. They are where the honesty lives: an
- *   unmeasurable round trip must leave the previous measurement alone rather than inventing one,
- *   and a status message that omits a field must not erase what was already known.
+ *   The reduction is BEHAVIOURAL: `linkFactsFrom` and `factsFromPong` are pure functions and are
+ *   driven with real message shapes, including the hostile ones an older worker sends.
  *
- *   THE WIRING IS READ FROM THE SOURCE, in the style of files-drawer-wiring.test.mjs, because this
- *   app has no DOM renderer and the defect being guarded is precisely "nothing calls it". A test
- *   that only exercised the reducers would have passed for the whole time the feature was dead.
+ *   The rendering is STRUCTURAL: apps/web has no DOM renderer, so these read workspace.tsx's
+ *   source and pin the wiring, in the same style and for the same reason as
+ *   usage-page-wiring.test.mjs. Each one failed before the change.
  *
  * Run with:  node --test tests/studio-link-wiring.test.mjs      (from apps/web)
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { NO_LINK_FACTS, factsFromStatus, factsFromPong } from '../src/lib/studio-connection.ts';
+
+import { linkFactsFrom, factsFromPong, NO_LINK_FACTS, linkDetail } from '../src/lib/studio-connection.ts';
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
-const read = (...p) => readFileSync(join(WEB, 'src', ...p), 'utf8');
-/** Source with comments stripped, so a name discussed in prose is not mistaken for one in use. */
+/** Source with comments stripped, so a field discussed in prose is not mistaken for one in use. */
 const code = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const socket = code(readFileSync(join(WEB, 'src', 'lib', 'use-project-socket.ts'), 'utf8'));
+const workspace = code(readFileSync(join(WEB, 'src', 'routes', 'workspace.tsx'), 'utf8'));
+const note = code(readFileSync(join(WEB, 'src', 'components', 'ws', 'studio-link-note.tsx'), 'utf8'));
 
-const socket = code(read('lib', 'use-project-socket.ts'));
-const workspace = code(read('routes', 'workspace.tsx'));
-const connect = code(read('components', 'ws', 'connect-studio.tsx'));
+const PLACE = { placeId: 111, gameId: 900, placeName: 'Tower Defence', boundAt: 1_699_000_000_000 };
 
-const PLACE = { placeId: 7, placeName: 'Tower', universeId: 3 };
+// ------------------------------------------------------------------ hello carries the whole picture
 
-// ------------------------------------------------------------------------------ the reducers
-
-test('a status message keeps every fact the worker sent', () => {
-  const facts = factsFromStatus(NO_LINK_FACTS, {
-    type: 'studio_status',
-    connected: true,
-    lastSeenAt: 1_700_000_000_000,
-    queuedOps: 3,
-    place: PLACE,
-    placeMismatch: null,
+test('A TAB OPENED WHILE STUDIO IS ALREADY ATTACHED LEARNS EVERYTHING FROM `hello`', () => {
+  // This is the case that was most wrong. `studio_status` is only sent when a plugin transitions
+  // from absent to present, so a refresh mid-session got `hello` and nothing else — and `hello`
+  // has carried the heartbeat, the depth and the place all along.
+  const f = linkFactsFrom(NO_LINK_FACTS, {
+    type: 'hello', sessionId: 'p', studioConnected: true, quota: {},
+    studioLastSeenAt: 1_700_000_000_000, queuedOps: 3, studioPlace: PLACE,
   });
-  assert.equal(facts.lastSeenAt, 1_700_000_000_000);
-  assert.equal(facts.queuedOps, 3);
-  assert.deepEqual(facts.place, PLACE);
-  assert.equal(facts.placeMismatch, null);
+  assert.equal(f.lastSeenAt, 1_700_000_000_000);
+  assert.equal(f.queuedOps, 3);
+  assert.equal(f.place.placeName, 'Tower Defence');
 });
 
-test('A FIELD THE MESSAGE OMITS IS NOT A FIELD SET TO NOTHING', () => {
-  // Every one of these is optional on the wire. Spreading an absent key over a known value would
-  // turn "the server did not mention the queue this time" into "the queue is empty", which is the
-  // reassuring answer and the wrong one.
-  const known = factsFromStatus(NO_LINK_FACTS, {
-    type: 'studio_status', connected: true, lastSeenAt: 111, queuedOps: 4, place: PLACE,
+test('`studio_status` carries the same facts plus the one only it knows', () => {
+  const f = linkFactsFrom(NO_LINK_FACTS, {
+    type: 'studio_status', connected: true, lastSeenAt: 1_700_000_000_000, queuedOps: 2, place: PLACE,
+    placeMismatch: { expectedPlaceName: 'Tower Defence', openPlaceName: 'Scratch Pad', openPlaceId: 222 },
   });
-  const after = factsFromStatus(known, { type: 'studio_status', connected: true });
-  assert.equal(after.lastSeenAt, 111, 'a silent status must not erase when Studio was last seen');
-  assert.equal(after.queuedOps, 4);
-  assert.deepEqual(after.place, PLACE);
+  assert.equal(f.lastSeenAt, 1_700_000_000_000);
+  assert.equal(f.queuedOps, 2);
+  assert.equal(f.placeMismatch.openPlaceName, 'Scratch Pad');
 });
 
-test('A PLACE MISMATCH SURVIVES UNTIL IT IS EXPLICITLY CLEARED', () => {
-  // The state where the pill is green and nothing will ever build. Losing it on the next heartbeat
-  // would leave the user staring at a healthy connection with no explanation at all.
-  const mismatch = { expectedPlaceName: 'Tower', openPlaceName: 'Baseplate', openPlaceId: 9 };
-  const a = factsFromStatus(NO_LINK_FACTS, { type: 'studio_status', connected: true, placeMismatch: mismatch });
-  assert.deepEqual(a.placeMismatch, mismatch);
-  const b = factsFromStatus(a, { type: 'studio_status', connected: true });
-  assert.deepEqual(b.placeMismatch, mismatch, 'an omitted mismatch is silence, not a resolution');
-  const c = factsFromStatus(b, { type: 'studio_status', connected: true, placeMismatch: null });
-  assert.equal(c.placeMismatch, null, 'and an explicit null is the resolution');
+test('A MISMATCH THAT IS RESOLVED IS CLEARED, not remembered', () => {
+  // The worker sends `placeMismatch: null` the moment the user switches back. Keeping the previous
+  // value would leave "nothing will build" printed over a link that is building.
+  const seen = linkFactsFrom(NO_LINK_FACTS, {
+    type: 'studio_status', connected: true,
+    placeMismatch: { expectedPlaceName: 'A', openPlaceName: 'B', openPlaceId: 2 },
+  });
+  assert.ok(seen.placeMismatch);
+  const cleared = linkFactsFrom(seen, { type: 'studio_status', connected: true, placeMismatch: null });
+  assert.equal(cleared.placeMismatch, null);
 });
 
-test('a disconnection keeps the timestamp — it is the whole point of the timestamp', () => {
-  const seen = factsFromStatus(NO_LINK_FACTS, { type: 'studio_status', connected: true, lastSeenAt: 999, queuedOps: 2 });
-  const gone = factsFromStatus(seen, { type: 'studio_status', connected: false });
-  assert.equal(gone.lastSeenAt, 999, '"last connected 4 minutes ago" is only sayable if this survives');
+test('a place binding the worker has cleared is cleared here too', () => {
+  // `/studio/place/rebind` and `/studio/revoke` both broadcast `place: null`. A remembered place
+  // would name a binding that no longer exists.
+  const bound = linkFactsFrom(NO_LINK_FACTS, { type: 'studio_status', connected: true, place: PLACE });
+  assert.equal(bound.place.placeId, 111);
+  assert.equal(linkFactsFrom(bound, { type: 'studio_status', connected: false, place: null }).place, null);
 });
+
+// ------------------------------------------------------------------ an absent field is not a value
+
+test('A FIELD AN OLDER WORKER NEVER SENDS MUST NOT OVERWRITE WHAT IS KNOWN', () => {
+  // `queuedOps` absent is "this build does not say", and rendering that as 0 is a failure to
+  // observe wearing the clothes of an observation — "nothing is waiting" is the reassuring one.
+  const known = linkFactsFrom(NO_LINK_FACTS, { type: 'studio_status', connected: true, queuedOps: 4, place: PLACE });
+  const quiet = linkFactsFrom(known, { type: 'studio_status', connected: true });
+  assert.equal(quiet.queuedOps, 4, 'an absent depth reset a known one to zero');
+  assert.equal(quiet.place.placeId, 111, 'and an absent place forgot the binding');
+});
+
+test('junk on the wire is refused rather than rendered', () => {
+  const f = linkFactsFrom(NO_LINK_FACTS, {
+    type: 'hello', sessionId: 'p', studioConnected: true, quota: {},
+    studioLastSeenAt: 'yesterday', queuedOps: '3', studioPlace: 'Tower Defence',
+  });
+  assert.equal(f.lastSeenAt, null);
+  assert.equal(f.queuedOps, 0);
+  assert.equal(f.place, null);
+  // and the formatter it feeds still says nothing rather than something broken
+  assert.equal(linkDetail('connected', f, 1_700_000_000_000), null);
+});
+
+test('a message that is not about the link leaves the link alone', () => {
+  const known = linkFactsFrom(NO_LINK_FACTS, { type: 'studio_status', connected: true, queuedOps: 4 });
+  assert.equal(linkFactsFrom(known, { type: 'delta', msgId: 'm', text: 'hi' }), known);
+});
+
+// ------------------------------------------------------------------ the round trip is measured
 
 test('A PONG THAT CANNOT BE TIMED LEAVES THE LAST MEASUREMENT ALONE', () => {
-  // The hazard named in studio-connection.ts: a round trip nobody timed rendered as a number, and
-  // the number available here is 0 — the most reassuring value the field can hold.
+  // The one fact here that is a subtraction rather than a delivery, which is why it has its own
+  // reducer and its own clock argument. Every branch of it is a refusal to measure, and each
+  // refusal must be silent rather than zero: `latencyLabel(null)` renders nothing, while a 0 ms is
+  // both a lie and the most reassuring value this field can hold.
   const measured = factsFromPong(NO_LINK_FACTS, { type: 'pong', t: 1000 }, 1120);
   assert.equal(measured.rttMs, 120);
   assert.equal(factsFromPong(measured, { type: 'pong' }, 2000).rttMs, 120, 'a pong with no echo measures nothing');
@@ -99,57 +125,64 @@ test('A PONG THAT CANNOT BE TIMED LEAVES THE LAST MEASUREMENT ALONE', () => {
   assert.equal(
     factsFromPong(measured, { type: 'pong', t: 3000 }, 2000).rttMs,
     120,
-    'a pong from the future is a broken clock, not a negative round trip',
+    'a pong from the future is two clocks disagreeing, not a network faster than causality',
   );
 });
 
-// -------------------------------------------------------------------------------- the wiring
-
-test('THE SOCKET KEEPS THE FACTS INSTEAD OF DROPPING THEM', () => {
-  assert.match(socket, /factsFromStatus/, 'studio_status must go through the reducer');
-  assert.match(socket, /factsFromPong/, 'and so must the pong');
+test('THE PING CARRIES THE BROWSER’S OWN CLOCK, and the pong is no longer discarded', () => {
+  // The worker echoes `t` back untouched precisely so the whole measurement happens in one clock
+  // domain. The browser sent no `t` and answered `case "pong": break;`, so nothing was ever timed.
+  assert.match(socket, /type: 'ping', t: Date\.now\(\)/, 'the ping must carry a timestamp to echo');
   assert.doesNotMatch(socket, /case 'pong':\s*\n\s*break;/, 'the pong may no longer be discarded');
+  assert.match(socket, /case 'pong':[\s\S]{0,600}?factsFromPong\(/, 'the pong must go through the reducer');
 });
 
-test('and the ping carries a timestamp, or there is nothing for the worker to echo', () => {
-  // The worker only puts `t` on the pong when the ping had one. Without this the round trip is
-  // unmeasurable no matter how carefully the pong is handled.
-  assert.match(socket, /type: 'ping', t: Date\.now\(\)/, 'the ping must carry the moment it was sent');
+test('the hook actually reduces the link facts instead of reading two fields off hello', () => {
+  assert.match(socket, /linkFactsFrom/, 'use-project-socket must call the reducer');
+  assert.match(socket, /link: StudioLinkFacts/, 'and expose the facts on the studio state');
 });
 
-test('the facts are exposed on the socket so a component can read them', () => {
-  assert.match(socket, /link: StudioLinkFacts/, 'the hook must publish them under a named type');
+// ------------------------------------------------------------------ and it is on the screen
+
+test('THE SENTENCE IS RENDERED UNDER THE PILL — every formatter had zero callers in src/', () => {
+  // The whole chain, because any broken link in it puts the sentence back in the test file only:
+  // the route mounts the note, hands it the facts the socket now keeps, and the note calls the
+  // formatter. `linkDetail` had one caller in the repository before this and it was studio-link.test.
+  assert.match(workspace, /import \{ StudioLinkNote \} from '\.\.\/components\/ws\/studio-link-note'/);
+  assert.match(workspace, /<StudioLinkNote\b/, 'the route must render it');
+  assert.match(workspace, /facts=\{studio\.link\}/, 'fed from the facts the socket now keeps');
+  assert.match(note, /linkDetail\(/, 'and the note must actually call the formatter');
 });
 
-test('AND SOMETHING RENDERS THE SENTENCE — the defect was never in the formatting', () => {
-  assert.match(connect, /linkDetail/, 'the connection copy must call the function that produces it');
-  assert.match(connect, /export function StudioLink/, 'as a component the workspace can place');
-  assert.match(workspace, /<StudioLink/, 'and the workspace must place it');
-  assert.match(workspace, /studio\.link/, 'fed from the live socket facts, not from a placeholder');
+test('the pill names the place even when `state` never arrived', () => {
+  // `studio.state` only lands on the transition message. A tab that refreshed while Studio was
+  // already attached fell back to the literal word "Studio" with the place sitting unread on hello.
+  assert.match(workspace, /studio\.state\?\.placeName \?\? studio\.link\.place\?\.placeName/,
+    'prefer the reported place, then the bound one, then the generic word');
 });
 
-test('it is rendered for a CONNECTED Studio too, which is where the worst case lives', () => {
-  // `ConnectStudio` returns null while connected, by design and with a test on it. A place
-  // mismatch happens only while connected, so a link sentence that lived inside it would be
-  // invisible in exactly the state it was written for.
-  assert.match(connect, /export function ConnectStudio/, 'the setup card still exists');
-  // Just the component's own body: both live in this file, and slicing to the end of the file
-  // would read the setup card's deliberate `return null` as this one's.
-  const from = connect.indexOf('export function StudioLink');
-  const to = connect.indexOf('export function ConnectStudio');
-  const link = from < to ? connect.slice(from, to) : connect.slice(from);
-  assert.ok(from >= 0 && link.length > 100, 'the slice found nothing — this assertion would be vacuous');
-  assert.match(link, /linkDetail\(status, facts/, 'the state is handed to the decider, which covers all four');
-  assert.doesNotMatch(
-    link,
-    /=== 'connected'/,
-    'and the line must not opt out of the connected state the way the setup card deliberately does',
-  );
-  // The card returns null while connected — checked here so the two are not accidentally merged
-  // later by somebody who reads the line above as "ConnectStudio handles it".
-  assert.match(
-    connect.slice(connect.indexOf('export function ConnectStudio')),
-    /status === 'connected'\) return null/,
-    'the setup card still disappears on connection',
-  );
+test('A MISMATCH OFFERS THE ONE BUTTON THAT ENDS IT', () => {
+  // The sentence names the problem; without this the user reads "nothing will build" and has
+  // nowhere to click. The route has existed since the place guard shipped.
+  assert.match(workspace, /rebindPlaceRequest\(projectId\)/, 'the rebind call must be wired');
+  assert.ok(/studio\.link\.placeMismatch/.test(workspace), 'and shown only while there IS a mismatch');
+});
+
+// ------------------------------------------------------------------ discarding the waiting work
+
+const api = code(readFileSync(join(WEB, 'src', 'lib', 'api.ts'), 'utf8'));
+const dialog = code(readFileSync(join(WEB, 'src', 'components', 'pairing-dialog.tsx'), 'utf8'));
+
+test('THE WAITING WORK CAN BE DISCARDED, and only while there is any', () => {
+  // Automatic cancellation existed — a run that ends takes its queued ops with it — and explicit
+  // cancellation did not: no route and no DO path cleared the queue on request, so a user whose
+  // Studio closed mid-build watched the depth climb with no control over it.
+  //
+  // The control lives on the connection record beside Disconnect and Rebind, which is where the
+  // other three Studio routes are already called from; a second Studio surface would be two ways
+  // into one subject, which is the duplication this repository keeps finding.
+  assert.match(api, /studio\/queue/, 'api.ts must have the call');
+  assert.match(api, /discardStudioQueue[\s\S]{0,240}?method: 'DELETE'/, 'and it is a DELETE, which is what the session listens for');
+  assert.match(dialog, /discardStudioQueue\(projectId\)/, 'the record must make it');
+  assert.match(dialog, /link\.queuedOps > 0 &&/, 'offered only when there is something to discard');
 });

@@ -1,0 +1,959 @@
+{
+ "probedAt": "2026-09-15T15:21:07.132Z",
+ "endpoint": "https://apis.roblox.com/toolbox-service/v1/items/details",
+ "source": "apps/worker/src/genre-kits.ts",
+ "pinCount": 50,
+ "unresolved": [],
+ "pins": [
+  {
+   "assetId": 104131914354223,
+   "role": "stinger",
+   "name": "horror-stinger",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 3
+   },
+   "creatorName": "zwezyx",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 138850305566950,
+   "role": "jumpscare",
+   "name": "eeriei-jumpscare-sound",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 7
+   },
+   "creatorName": "biosrot",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 108361277552912,
+   "role": "ambience",
+   "name": "Creepy Night Ambience",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 4
+   },
+   "creatorName": "USA_COP1",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 140668969202393,
+   "role": "door",
+   "name": "door_creaking",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 1
+   },
+   "creatorName": "coolandrichcatlover",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 135925258529833,
+   "role": "heartbeat",
+   "name": "snd_Heartbeat_v2",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 1
+   },
+   "creatorName": "a_player200",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 76062278836688,
+   "role": "jump",
+   "name": "player_jump",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 0
+   },
+   "creatorName": "0311_3",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 128062463831151,
+   "role": "checkpoint",
+   "name": "896_CheckPoint",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 2
+   },
+   "creatorName": "StonePac1",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 140687955694469,
+   "role": "death",
+   "name": "Two_time_respawnnew",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 3
+   },
+   "creatorName": "prhooor_test",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 1836860398,
+   "role": "win",
+   "name": "Winning Spirit",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 6
+   },
+   "creatorName": "APMOfficial",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 139719503904449,
+   "role": "click",
+   "name": "UI_3_Clicks_02_Hover",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 0
+   },
+   "creatorName": "CoreCraft Studio",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 120891770644830,
+   "role": "cash",
+   "name": "cash-register-sound-fx",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 1
+   },
+   "creatorName": "hotmoldybanana",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 72015712234523,
+   "role": "dropper",
+   "name": "DropperDropped.mp3",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 1
+   },
+   "creatorName": "Teriyaki's Games",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 128897142753716,
+   "role": "machine",
+   "name": "Machine_Hum",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 7
+   },
+   "creatorName": "Mariolighyer",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 85188753846582,
+   "role": "upgrade",
+   "name": "sfx_menu_upgrade",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 1
+   },
+   "creatorName": "fajnygosciu1234",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 88442833509532,
+   "role": "click",
+   "name": "ui-simple-button-click",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 0
+   },
+   "creatorName": "AmbientSorcery",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 17779566040,
+   "role": "pop",
+   "name": "minimal-pop-click-ui",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 1
+   },
+   "creatorName": "Mister_Myrder",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 4612375051,
+   "role": "collect",
+   "name": "coin_pickup_3",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 1
+   },
+   "creatorName": "thienbao2109",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 86070307558627,
+   "role": "sparkle",
+   "name": "Prel_logo_sparkle_po0",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 1
+   },
+   "creatorName": "NumbreFlux",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 116975598122611,
+   "role": "rebirth",
+   "name": "rebirth",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 1
+   },
+   "creatorName": "+1 Bao Speed Escape",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 112485797063762,
+   "role": "levelup",
+   "name": "UI - Level Up",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 2
+   },
+   "creatorName": "SodaBreadle",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 111337899640001,
+   "role": "engine",
+   "name": "T-62 engine reving",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 9
+   },
+   "creatorName": "AmericanCitizen_1",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 92064318020143,
+   "role": "screech",
+   "name": "tire_screech",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 5
+   },
+   "creatorName": "Mavin_K",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 82580692847509,
+   "role": "crash",
+   "name": "car-crash_OwBDipR",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 3
+   },
+   "creatorName": "haidertembex444",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 83819844605546,
+   "role": "boost",
+   "name": "sfx_boost_confirm_nitro",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 3
+   },
+   "creatorName": "fajnygosciu1234",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 7743999789,
+   "role": "countdown",
+   "name": "countdown-beep",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 0
+   },
+   "creatorName": "complexlint",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 129103908045263,
+   "role": "door",
+   "name": "door_open",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 2
+   },
+   "creatorName": "coolandrichcatlover",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 9083826864,
+   "role": "footstep",
+   "name": "Footsteps - Wood",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 6
+   },
+   "creatorName": "nebulimity",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 70837357673530,
+   "role": "phone",
+   "name": "Ringing_Phone_2",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 2
+   },
+   "creatorName": "Carladvantures",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 116218561571787,
+   "role": "birds",
+   "name": "birds ambient",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 7
+   },
+   "creatorName": "skibidisigma5419",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 111174530730534,
+   "role": "click",
+   "name": "UI - Menu Select",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 1
+   },
+   "creatorName": "SodaBreadle",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 140155471173433,
+   "role": "shoot",
+   "name": "turret_shoot4",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 2
+   },
+   "creatorName": "Type's Community",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 17208380755,
+   "role": "place",
+   "name": "Roblox GUI - Purchase",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 1
+   },
+   "creatorName": "Roblox",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 121707436171206,
+   "role": "wave",
+   "name": "wave-start",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 9
+   },
+   "creatorName": "RRRRRRccccc001",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 123539442840355,
+   "role": "death",
+   "name": "sfx-enemy_death",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 2
+   },
+   "creatorName": "TheTrueBaconHair572",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 136379732287161,
+   "role": "explosion",
+   "name": "watermine_explosion",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 2
+   },
+   "creatorName": "poptart608",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 799958673,
+   "role": "gunshot",
+   "name": "SCAR-H Gunshot",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 2
+   },
+   "creatorName": "TheVogus",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 134817048219417,
+   "role": "reload",
+   "name": "ar15_m4_reload",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 3
+   },
+   "creatorName": "poptart608",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 131554175554758,
+   "role": "impact",
+   "name": "concrete_impact_bullet3",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 1
+   },
+   "creatorName": "daon2000",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 133026394404744,
+   "role": "grenade",
+   "name": "grenade-explosion",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 2
+   },
+   "creatorName": "ben_sound",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 138750331387064,
+   "role": "headshot",
+   "name": "rust_headshot",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 0
+   },
+   "creatorName": "quarxxii",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 73678054568493,
+   "role": "charge",
+   "name": "Energy_Charge",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 2
+   },
+   "creatorName": "Thanksforvsin",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 137628815514180,
+   "role": "slash",
+   "name": "sword-slash-and-swing",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 2
+   },
+   "creatorName": "timutye",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 124506570653129,
+   "role": "aura",
+   "name": "SFX_Powerup",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 2
+   },
+   "creatorName": "qoride",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 1837829640,
+   "role": "impact",
+   "name": "HIT-Tonal Impact 02",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 7
+   },
+   "creatorName": "APMOfficial",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 81421335614255,
+   "role": "teleport",
+   "name": "BA_Teleport_01b",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 2
+   },
+   "creatorName": "uboirael",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 134868242817030,
+   "role": "campfire",
+   "name": "Fire_CampfireLoop2",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 4
+   },
+   "creatorName": "Osmel8311",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 7091906373,
+   "role": "chop",
+   "name": "Axe Chopping Wood",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 7
+   },
+   "creatorName": "goodwood3",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 102230222976522,
+   "role": "craft",
+   "name": "crafting item",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 6
+   },
+   "creatorName": "Rypyd",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 9114225125,
+   "role": "eat",
+   "name": "Eating Food 1 (SFX)",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 2
+   },
+   "creatorName": "ProSoundEffects",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 87663220945458,
+   "role": "howl",
+   "name": "wolf-howl",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 5
+   },
+   "creatorName": "XxFabio2004xX",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  }
+ ]
+}

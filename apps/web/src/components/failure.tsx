@@ -52,6 +52,21 @@ export function Failure({
         </p>
       )}
 
+      {/* The page written for this failure, when one exists.
+          A REAL ANCHOR, never a router Link: /docs is served by the Astro site, so react-router
+          would resolve it against the app's own route table and land the reader on not-found —
+          which is a worse outcome than the failure they came here with. New tab for the same
+          reason the account menu's Docs item uses one: reading the answer must not throw away the
+          screen the failure happened on. */}
+      {e.help && (
+        <p className="failure__help">
+          <a href={e.help.href} target="_blank" rel="noopener noreferrer">
+            {e.help.label}
+          </a>
+          <span className="gx-sr"> (opens in a new tab)</span>
+        </p>
+      )}
+
       {/* The server's own words, available and not shouted. A screenshot of this is worth having. */}
       {e.detail && (
         <details className="failure__detail">

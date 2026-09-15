@@ -82,6 +82,8 @@ import {
   type DigestMode,
   type NotificationEventPrefs,
 } from '../lib/notification-prefs.ts';
+import { SOURCE_EXPLANATIONS, cleanSelection, summarise } from '../lib/asset-sources';
+import type { AssetSourceChoice, AssetSourcePolicy } from '@golem/shared';
 import {
   codeProblem,
   enrollment,
@@ -356,6 +358,120 @@ const HOUR_NAMES: Record<HourCycle, string> = {
  *     browser resolves it at render time. This one is read on the server, where there is no device
  *     to ask.
  */
+
+/**
+ * Where Apple may take assets from — the same answer the build dialog asks for, changeable here.
+ *
+ * THE OWNER'S REQUEST WAS TWO HALVES and only one was built: "a pop-up before building asking
+ * whether it may use the Apple library, the Creator Store, or build from scratch — AND
+ * configurable". The dialog exists and gates the first build; until now the only way to change the
+ * answer was to clear it and be asked again.
+ *
+ * IT READS AND WRITES THE SAME KEY THE DIALOG DOES, `asset_sources` on the user scope. Two surfaces
+ * for one stored preference is fine; two representations of it is how they come to disagree, so
+ * `summarise`, `cleanSelection` and SOURCE_EXPLANATIONS are the workspace's own — not a second copy
+ * of the same words with different punctuation.
+ */
+function AssetSourceSettings({
+  userId,
+  shows,
+  sectionShows,
+}: {
+  userId: string;
+  shows: (id: string) => boolean;
+  sectionShows: (...ids: string[]) => boolean;
+}) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+
+  const stored = useQuery({
+    queryKey: ['scope-memory', 'user', userId],
+    queryFn: () => fetchScopeMemory('user', userId),
+    enabled: userId.length > 0,
+  });
+
+  const policy = (stored.data?.preferences.prefs.asset_sources ?? null) as AssetSourcePolicy | null;
+  const [dirty, setDirty] = useState(false);
+  const [chosen, setChosen] = useState<AssetSourceChoice[]>([]);
+  const [ask, setAsk] = useState(false);
+
+  useEffect(() => {
+    if (dirty || !stored.data) return;
+    setChosen(policy?.allow ? [...policy.allow] : []);
+    setAsk(policy?.mode === 'ask');
+  }, [stored.data, dirty]);
+
+  const save = useMutation({
+    mutationFn: async () => {
+      // Everything already stored plus the one key this section owns: what is not sent is deleted.
+      const base = stored.data?.preferences.prefs ?? {};
+      return savePreferences('user', userId, {
+        ...base,
+        asset_sources: { mode: ask ? 'ask' : 'remember', allow: cleanSelection(chosen) },
+      });
+    },
+    onSuccess: (out) => {
+      setDirty(false);
+      // What came back, not what was sent — a value the server refused has already been replaced,
+      // and showing the submission would be this page lying about what is stored.
+      const back = (out.preferences.asset_sources ?? null) as AssetSourcePolicy | null;
+      setChosen(back?.allow ? [...back.allow] : []);
+      setAsk(back?.mode === 'ask');
+      toast('Asset sources saved', 'success');
+      void qc.invalidateQueries({ queryKey: ['scope-memory', 'user', userId] });
+    },
+    onError: (e: unknown) => toast(e instanceof Error ? e.message : 'Could not save', 'error'),
+  });
+
+  const toggle = (c: AssetSourceChoice) => {
+    setDirty(true);
+    setChosen((cur) => (cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c]));
+  };
+
+  if (!sectionShows('asset-sources')) return null;
+
+  return (
+    <Section title="Where Apple gets assets" visible>
+      <p className="muted">{summarise(policy).line}</p>
+
+      <Row id="asset-sources" visible={shows('asset-sources')}>
+        <div className="settings-pair settings-pair--stack">
+          {SOURCE_EXPLANATIONS.map((e) => (
+            <label key={e.choice} className="asrc__choice asrc__choice--settings">
+              <input type="checkbox" checked={chosen.includes(e.choice)} onChange={() => toggle(e.choice)} />
+              <span className="asrc__body">
+                <span className="asrc__name">{e.title}</span>
+                <span className="asrc__does">{e.does}</span>
+                <span className="asrc__meta">
+                  <span className="asrc__cost">{e.costs}</span>
+                  <span className="asrc__reach">{e.reach}</span>
+                </span>
+              </span>
+            </label>
+          ))}
+
+          <label className="asrc__remember">
+            <input type="checkbox" checked={ask} onChange={() => { setDirty(true); setAsk((v) => !v); }} />
+            Ask me again before each build
+          </label>
+
+          {chosen.length === 0 && (
+            <p className="form-error" role="alert">
+              {/* The same sentence the dialog uses. An empty allow list is not a setting, it is a
+                  build that can only place plain parts — and the person should hear it here too. */}
+              With none of these, Apple can only place plain parts.
+            </p>
+          )}
+
+          <button type="button" className="btn" disabled={save.isPending || !dirty} onClick={() => save.mutate()}>
+            {save.isPending ? 'Saving…' : 'Save asset sources'}
+          </button>
+        </div>
+      </Row>
+    </Section>
+  );
+}
+
 function NotificationSettings({
   userId,
   shows,
@@ -1351,13 +1467,14 @@ export function SettingsPage() {
         </Row>
       </Section>
 
+      <AssetSourceSettings userId={userId} shows={shows} sectionShows={sectionShows} />
       <NotificationSettings userId={userId} shows={shows} sectionShows={sectionShows} />
 
       <Section title="Appearance" visible={sectionShows('appearance', 'motion')}>
         <Row id="appearance" visible={shows('appearance')}>
           <h3 className="settings-sub">Appearance</h3>
           <Choice
-            label="Appearance"
+            label="Theme"
             value={prefs.appearance}
             options={APPEARANCES}
             names={APPEARANCE_NAMES}

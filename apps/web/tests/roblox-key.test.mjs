@@ -25,7 +25,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -40,8 +40,22 @@ import {
 import { ROBLOX_SCOPES } from '@golem/shared';
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
+const WORKER_SRC = join(WEB, '..', 'worker', 'src');
 const PANEL = readFileSync(join(WEB, 'src', 'components', 'roblox-key-panel.tsx'), 'utf8');
 const API = readFileSync(join(WEB, 'src', 'lib', 'api.ts'), 'utf8');
+
+/** Every worker .ts, with comments blanked so prose about a scope is not read as a use of one. */
+function workerSources(dir = WORKER_SRC, out = []) {
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    if (e.name === 'node_modules') continue;
+    const p = join(dir, e.name);
+    if (e.isDirectory()) workerSources(p, out);
+    else if (e.name.endsWith('.ts')) {
+      out.push([p, readFileSync(p, 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/.*$/gm, '$1')]);
+    }
+  }
+  return out;
+}
 
 /** Nothing this module produces may ever contain one of these. */
 const POISON = ['undefined', 'NaN', 'null', 'Invalid Date', '[object'];
@@ -72,10 +86,26 @@ test('EVERY DESCRIBED SCOPE SAYS WHETHER THE PRODUCT ACTUALLY USES IT', () => {
 });
 
 test('and the implemented ones are exactly the ones with a consumer in the worker', () => {
-  // asset:write is used by asset-import.ts; user.social:read by roblox-check.ts. The other four
-  // have no call site anywhere in the tree. When one of them grows a consumer this list changes in
-  // the same commit, which is the point of the field existing at all.
-  assert.deepEqual([...implementedScopes()].sort(), ['asset:write', 'user.social:read']);
+  // READ OUT OF THE WORKER, NOT RESTATED HERE. The first version of this froze the answer as a
+  // two-item list, and it went stale the moment creator-dashboard.ts landed and grew call sites
+  // for six more: the flag said "not used yet" beside permissions the product had started using,
+  // which is the same lie as the one it was written to stop, pointing the other way.
+  //
+  // A scope is implemented when some file that asks `useRobloxCredential` for a key names it.
+  // Comments are stripped first — creator-dashboard.ts documents the whole Open Cloud surface in
+  // prose at the top of the file, and a scan that counted that would mark every scope live.
+  const asks = workerSources().filter(([, src]) => src.includes('useRobloxCredential'));
+  assert.ok(asks.length >= 2, 'found no worker file that asks for a credential — this scan is blind');
+  const src = asks.map(([, s]) => s).join('\n');
+  const consumed = ROBLOX_SCOPES.filter((scope) => src.includes(`'${scope}'`)).sort();
+  assert.ok(consumed.length > 0, 'no scope literal found in any of them — the scan broke, it did not pass');
+
+  assert.deepEqual([...implementedScopes()].sort(), consumed);
+  // And the point of the field: something is still unclaimed, or the honest label has no subject.
+  assert.ok(
+    consumed.length < ROBLOX_SCOPES.length,
+    'every scope now has a consumer — delete the flag and its label rather than leaving a tickbox that always says "used"',
+  );
 });
 
 test('an unimplemented permission is LABELLED as such where it is ticked', () => {
