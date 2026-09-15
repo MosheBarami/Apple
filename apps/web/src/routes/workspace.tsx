@@ -29,7 +29,8 @@ import { MemoryPanel } from '../components/ws/memory-panel';
 import { InstructionsPanel } from '../components/ws/instructions-panel';
 import { ApiError, downloadExport, fetchPersonalisation, fetchProjectAccess, savePreferences, type SearchHit } from '../lib/api';
 import { MembersPanel } from '../components/ws/members-panel';
-import { ACCESS_LOADING, normaliseAccess, type AccessState } from '../lib/capabilities';
+import { FilesPanel } from '../components/ws/files-panel';
+import { ACCESS_LOADING, allows, normaliseAccess, type AccessState } from '../lib/capabilities';
 import type { AssetSourcePolicy } from '@golem/shared';
 import { owesAnswer } from '../lib/asset-sources';
 import { AssetSourceDialog } from '../components/asset-source-dialog';
@@ -70,9 +71,13 @@ const SUGGESTIONS = [
  * this build no longer recognises" the same state — which is precisely the distinction the
  * validation exists to keep.
  */
-type Drawer = null | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members';
-type DrawerName = 'none' | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members';
-const DRAWERS = ['none', 'checkpoints', 'memory', 'credits', 'search', 'members'] as const;
+// Two agents added a drawer each, from two checklist sections, and both belong. The union and the
+// literal list are kept in step deliberately: search-panel.test.mjs asserts every name the union
+// can hold is a name DRAWERS accepts, because a drawer missing from the list restores as closed
+// for ever and looks like a user who simply never opened it.
+type Drawer = null | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members' | 'files';
+type DrawerName = 'none' | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members' | 'files';
+const DRAWERS = ['none', 'checkpoints', 'memory', 'credits', 'search', 'members', 'files'] as const;
 
 export function WorkspacePage() {
   const params = useParams<{ id: string }>();
@@ -119,6 +124,44 @@ export function WorkspacePage() {
     queryFn: () => fetchProject(projectId),
     enabled: projectId.length > 0,
   });
+
+  //[[ WHAT THIS PERSON MAY DO, ASKED RATHER THAN ASSUMED.
+  //
+  //   The files drawer offers Rename, Duplicate and Delete. Showing those to an editor is right and
+  //   showing them to a viewer is three refusals waiting to happen, so `canEdit` below comes from
+  //   the server's own answer — `lib/capabilities` turns it into a state where "we have not checked
+  //   yet" and "you may not" are different values, and only the second is a permission.
+  //
+  //   Asked only while the drawer is open. A permission check fired on every workspace load, for
+  //   every user who never opens Files, would be a request bought for nobody. ]]
+  //[[ ONE ACCESS QUERY, NOT ONE PER DRAWER.
+  //
+  //   Two drawers arrived needing the same answer — Files to decide whether Rename/Delete are
+  //   offered, Members to decide whether the roster's controls are live — and each brought its own
+  //   copy of this query. Two `useQuery` calls on the same key is not twice the cost, but it is two
+  //   places for `enabled` and the error mapping to drift apart, and they already had: one retried
+  //   and one did not, one carried the HTTP status into `detail` and one wrote 'unreachable' over
+  //   everything.
+  //
+  //   Declared once, here, and gated on either drawer being open — the check is still not bought
+  //   for a user who opens neither.
+  const accessQuery = useQuery({
+    queryKey: ['project-access', projectId],
+    queryFn: () => fetchProjectAccess(projectId),
+    enabled: projectId.length > 0 && (drawer === 'files' || drawer === 'members'),
+    retry: false,
+    staleTime: 5 * 60_000,
+  });
+  //[[ THE THREE STATES ARE KEPT APART on purpose. `unavailable` is not `viewer`: a check that did
+  //   not come back is not a verdict about the person, and rendering it as one would be this
+  //   repository's failure-to-observe pattern in its most expensive place — an authority claim the
+  //   interface has not established. `normaliseAccess` owns the mapping; nothing here reads the
+  //   payload field by field. ]]
+  const access: AccessState = accessQuery.isSuccess
+    ? normaliseAccess(accessQuery.data)
+    : accessQuery.isError
+      ? { status: 'unavailable', detail: accessQuery.error instanceof ApiError ? String(accessQuery.error.status) : 'unreachable' }
+      : ACCESS_LOADING;
 
   const onServerError = useCallback(
     (code: string, message: string) => toast(message || `Something went wrong (${code})`, 'error'),
@@ -181,16 +224,6 @@ export function WorkspacePage() {
   //   repository's failure-to-observe pattern in its most expensive place — an authority claim the
   //   interface has not established. `normaliseAccess` owns the mapping; nothing here reads the
   //   payload field by field. ]]
-  const accessQuery = useQuery({
-    queryKey: ['project-access', projectId],
-    queryFn: () => fetchProjectAccess(projectId),
-    enabled: projectId.length > 0,
-  });
-  const access: AccessState = accessQuery.isSuccess
-    ? normaliseAccess(accessQuery.data)
-    : accessQuery.isError
-      ? { status: 'unavailable', detail: accessQuery.error instanceof ApiError ? String(accessQuery.error.status) : 'unreachable' }
-      : ACCESS_LOADING;
 
   const saveSources = async (policy: AssetSourcePolicy) => {
     if (!userId) throw new Error('not signed in');
@@ -356,6 +389,13 @@ export function WorkspacePage() {
       section: 'Project',
       keywords: ['members', 'share', 'collaborators', 'invite', 'permissions', 'role'],
       run: () => setDrawer('members'),
+    },
+    {
+      id: 'ws-files',
+      title: 'Project files',
+      section: 'Project',
+      keywords: ['files', 'workspace', 'notes', 'download', 'trash'],
+      run: () => setDrawer('files'),
     },
     {
       id: 'ws-credits',
@@ -645,6 +685,19 @@ export function WorkspacePage() {
             title="Who can build here"
           >
             <Icon d={PATH.people} />
+          </button>
+          {/* The way into the files Apple keeps for this project — notes, plans and generated
+              data, which are Golem's own storage and not the Roblox place. Beside memory because
+              it is the same kind of thing: something that persists between turns and is read
+              occasionally rather than worked in. */}
+          <button
+            type="button"
+            className="gx-icon-btn"
+            onClick={() => setDrawer('files')}
+            aria-label="Files Apple keeps for this project"
+            title="Project files"
+          >
+            <Icon d={PATH.docs} />
           </button>
 
           <button
@@ -936,6 +989,14 @@ export function WorkspacePage() {
         {/* Mounted only while open, like the others: the roster is a live read and a search box
             whose text belongs to the moment it was typed in. */}
         {drawer === 'members' && <MembersPanel projectId={projectId} access={access} />}
+      </Drawer>
+
+      <Drawer open={drawer === 'files'} onClose={() => setDrawer(null)} title="Files">
+        {/* Mounted only while open, for the same reason: the listing, the file body and the
+            version history are three requests, and none of them is worth making for a user who
+            never opens this. `canEdit` is the server's answer about this person, not a guess —
+            see the access query above. */}
+        {drawer === 'files' && <FilesPanel projectId={projectId} canEdit={allows(access, 'build')} />}
       </Drawer>
 
       <Drawer open={drawer === 'credits'} onClose={() => setDrawer(null)} title="Credits and clearance">

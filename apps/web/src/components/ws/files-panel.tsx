@@ -72,9 +72,20 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
     await history.refetch();
   }, [listing, file, history]);
 
-  /** Every action goes through here, so a refusal is reported the same way whichever button sent it. */
+  /**
+   * Every action goes through here, so a refusal is reported the same way whichever button sent it.
+   *
+   * `said` may be a FUNCTION of the result rather than a fixed sentence, because some of these
+   * operations decide something the caller did not ask for and the user has to be told what it was:
+   * a copy with no destination gets a free name chosen by the server. Returns the result on success
+   * and null on refusal, so a caller that needs to follow the file — reopening it at its new path —
+   * can.
+   */
   const act = useCallback(
-    async (body: Parameters<typeof fileOp>[1], said: string) => {
+    async (
+      body: Parameters<typeof fileOp>[1],
+      said: string | ((result: Record<string, unknown>) => string),
+    ): Promise<Record<string, unknown> | null> => {
       setBusy(true);
       setNotice(null);
       const res = await fileOp(projectId, body);
@@ -84,11 +95,11 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
         // The list is refreshed on failure too: the commonest refusal is "that file is not there
         // any more", and leaving the stale row on screen invites the same click again.
         void listing.refetch();
-        return false;
+        return null;
       }
-      setNotice(said);
+      setNotice(typeof said === 'function' ? said(res.result) : said);
       await refresh();
-      return true;
+      return res.result;
     },
     [projectId, listing, refresh],
   );
@@ -218,10 +229,14 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
                   className="gx-btn gx-btn--outline"
                   disabled={busy}
                   onClick={() => {
-                    const to = window.prompt('New name for this file', open);
+                    // The prompt takes a PATH, and says so. Rename and move are one operation on
+                    // the worker — a rename is a move that happens to share a folder — so typing
+                    // "notes/plan.md" here moves the file. There is no drag target and no folder
+                    // picker, which makes this sentence the only place that capability exists.
+                    const to = window.prompt('New path for this file — include a folder to move it', open);
                     if (!to || to === open) return;
-                    void act({ op: 'rename', path: open, to }, `Renamed to ${to}`).then((ok) => {
-                      if (ok) setOpen(to);
+                    void act({ op: 'rename', path: open, to }, `Renamed to ${to}`).then((result) => {
+                      if (result) setOpen(to);
                     });
                   }}
                 >
@@ -231,7 +246,15 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
                   type="button"
                   className="gx-btn gx-btn--outline"
                   disabled={busy}
-                  onClick={() => void act({ op: 'copy', path: open }, 'Duplicated')}
+                  // No destination is sent, which is the branch where the server picks a free name
+                  // by probing the store. So the server knows the answer and the user does not:
+                  // the notice reads it back rather than saying "Duplicated" and leaving them to
+                  // work out whether they now have plan-copy.md or plan-copy-2.md.
+                  onClick={() =>
+                    void act({ op: 'copy', path: open }, (result) =>
+                      typeof result.to === 'string' ? `Duplicated as ${result.to}` : 'Duplicated',
+                    )
+                  }
                 >
                   Duplicate
                 </button>
@@ -241,8 +264,8 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
                   disabled={busy}
                   onClick={() => {
                     if (!window.confirm(deleteConfirm(open, data.trashRetentionDays))) return;
-                    void act({ op: 'delete', path: open }, 'Moved to the trash').then((ok) => {
-                      if (ok) setOpen(null);
+                    void act({ op: 'delete', path: open }, 'Moved to the trash').then((result) => {
+                      if (result) setOpen(null);
                     });
                   }}
                 >
