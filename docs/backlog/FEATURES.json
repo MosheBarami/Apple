@@ -3095,14 +3095,14 @@
         {
           "id": "f-c1a2cba7",
           "name": "Safety tests",
-          "status": "not-started",
-          "evidence": null
+          "status": "done",
+          "evidence": "packages/evals/src/asset-safety.test.mjs — 117 tests, the safety suite for inserted third-party geometry."
         },
         {
           "id": "f-3d5c566d",
           "name": "Security tests",
-          "status": "not-started",
-          "evidence": null
+          "status": "done",
+          "evidence": "packages/evals/src/security.test.mjs — 54 tests. No credential value, JWT or pairing token can reach an API response or tool_end.detail; raw provider error text reaches no one; and STATIC CHECKS assert the pairing token exists in exactly one place with only its hash stored."
         },
         {
           "id": "f-b18de153",
@@ -3179,8 +3179,8 @@
         {
           "id": "f-0b9418f8",
           "name": "Rate-limit tests",
-          "status": "not-started",
-          "evidence": null
+          "status": "done",
+          "evidence": "apps/worker/tests/rate-limit-overflow.test.mjs — 4 tests, 5 falsifications, and it found a real defect: one Map held every counter, so an UNAUTHENTICATED flood at /api/studio/claim erased the admin-fail lockout. Measured 121 wrong keys -> 429, then a 5,200-address flood -> 403 with the counter gone."
         },
         {
           "id": "f-e1c01ff8",
@@ -3275,8 +3275,8 @@
         {
           "id": "f-0c733823",
           "name": "Test coverage",
-          "status": "not-started",
-          "evidence": null
+          "status": "partial",
+          "evidence": "tests/workspace-coverage.test.mjs proves every package is REACHABLE from pnpm -r test and enforces a floor so a package running zero tests fails. That is a precondition for coverage, not coverage: nothing measures what fraction of code the tests exercise. Partial rather than done, deliberately — this row sits among measured metrics (tool-call accuracy, build validity, P95 latency) and a reachability check is not the metric its neighbours are."
         },
         {
           "id": "f-e0cd91fc",
@@ -5004,14 +5004,14 @@
         {
           "id": "f-7605f1bb",
           "name": "Keyboard shortcuts",
-          "status": "not-started",
-          "evidence": null
+          "status": "done",
+          "evidence": "apps/web/tests/shortcuts.test.mjs — 18 tests. Cmd-K matches on Apple and Ctrl-K elsewhere, the WRONG platform modifier does not match, holding both modifiers is not the shortcut, an unwanted modifier disqualifies the match, and a shift chord matches the uppercase key the browser actually reports."
         },
         {
           "id": "f-8dc5f3c6",
           "name": "Command palette",
-          "status": "not-started",
-          "evidence": null
+          "status": "done",
+          "evidence": "apps/web/tests/command-palette.test.mjs — 15 tests. The registry provider wraps the app, the palette is rendered by the shell which is mounted on EVERY signed-in route, command ids are unique across every contributor, and the first case asserts there are commands at all so nothing below can pass on an empty set."
         },
         {
           "id": "f-c1bed525",
@@ -5136,8 +5136,8 @@
         {
           "id": "f-9876cd4b",
           "name": "Empty states",
-          "status": "not-started",
-          "evidence": null
+          "status": "done",
+          "evidence": "apps/web/tests/empty-state.test.mjs — 9 tests. Every state carries a canonical id from the reference board, no two claim the same id, the vocabulary is covered except one id reserved WITH a reason rather than silently dropped, and tone never contradicts the meaning of its state."
         },
         {
           "id": "f-09e40c14",

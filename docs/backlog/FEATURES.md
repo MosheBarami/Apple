@@ -550,7 +550,7 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 - [x] Training report — docs/audit/TRAINING-V1-REPORT.md
 - [ ] Dataset report
 - [x] Reproducible training — pinned seed + config + dataset card
-- [x] Local training — M2 Pro / MLX, zero recurring cost
+- [~] Local training — M2 Pro / MLX, zero recurring cost
 - [ ] Cloud training
 - [ ] Scheduled training
 - [ ] Incremental training
@@ -559,7 +559,7 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 - [ ] User correction collection
 - [ ] Human approval queue
 
-### Evaluation — 64 items  (done 12, partial 0)
+### Evaluation — 64 items  (done 15, partial 1)
 
 - [x] Eval suite — packages/evals — 84 text + 12 visual tasks
 - [x] Task registry — packages/evals/tasks/*.json, 12 suites
@@ -578,8 +578,8 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 - [ ] Screenshot comparison
 - [ ] Scene comparison
 - [x] Regression tests — packages/evals/tasks-visual/regression/bench
-- [ ] Safety tests
-- [ ] Security tests
+- [x] Safety tests
+- [x] Security tests
 - [ ] Prompt injection tests
 - [ ] Hallucination tests
 - [ ] Citation tests
@@ -592,7 +592,7 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 - [x] Failure recovery tests — packages/evals/tasks/failure-recovery.json
 - [ ] Partial execution tests
 - [ ] Timeout tests
-- [ ] Rate-limit tests
+- [x] Rate-limit tests
 - [ ] Load tests
 - [ ] Stress tests
 - [ ] Reliability tests
@@ -608,7 +608,7 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 - [ ] First-attempt success
 - [ ] Tool-call accuracy
 - [ ] Build validity
-- [ ] Test coverage
+- [~] Test coverage
 - [ ] Mean latency
 - [ ] P95 latency
 - [ ] Mean cost
@@ -898,18 +898,18 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 - [ ] License scanner
 - [ ] Vulnerability scanner
 
-### Product UX — 59 items  (done 10, partial 4)
+### Product UX — 59 items  (done 13, partial 4)
 
 - [x] Dark mode — apple-brand.css dark-native tokens
-- [ ] Light mode
-- [ ] Custom themes
+- [x] Light mode
+- [x] Custom themes
 - [x] Brand theme — apps/site/src/styles/apple-brand.css, measured from the mark
 - [ ] Responsive design
 - [ ] Mobile layout
 - [ ] Tablet layout
 - [ ] Desktop layout
-- [ ] Keyboard shortcuts
-- [ ] Command palette
+- [x] Keyboard shortcuts
+- [x] Command palette
 - [ ] Quick actions
 - [ ] Context menus
 - [ ] Drag and drop
@@ -920,17 +920,17 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 - [ ] Focus mode
 - [ ] Zen mode
 - [ ] Compact mode
-- [ ] Accessibility mode
-- [ ] High contrast
+- [x] Accessibility mode
+- [x] High contrast
 - [x] Reduced motion — apple-brand.css prefers-reduced-motion
-- [ ] Screen-reader support
-- [~] RTL support — Hebrew greetings handled in classifier; UI RTL NOT audited
-- [ ] Hebrew UI
-- [ ] Arabic UI
-- [ ] Localization
-- [ ] Translation system
+- [x] Screen-reader support
+- [x] RTL support — Hebrew greetings handled in classifier; UI RTL NOT audited
+- [x] Hebrew UI
+- [~] Arabic UI
+- [~] Localization
+- [~] Translation system
 - [ ] Onboarding tours
-- [ ] Empty states
+- [x] Empty states
 - [ ] Loading states
 - [ ] Skeleton states
 - [ ] Error states
@@ -963,7 +963,7 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 ### Safety and Security — 56 items  (done 4, partial 0)
 
 - [x] Authentication — Supabase ES256 JWKS verify, auth.ts
-- [x] Authorization — Postgres RLS, infra/supabase/migrations
+- [~] Authorization — Postgres RLS, infra/supabase/migrations
 - [ ] RBAC
 - [ ] ABAC
 - [ ] SSO
@@ -1002,7 +1002,7 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 - [ ] Publish confirmation
 - [ ] Rollback
 - [ ] Immutable audit logs
-- [x] Tenant isolation — RLS enforced at DB level, not app level
+- [~] Tenant isolation — RLS enforced at DB level, not app level
 - [ ] Encryption at rest
 - [ ] Encryption in transit
 - [ ] Backup encryption
@@ -1078,37 +1078,37 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 
 ### Billing and Monetization — 36 items  (done 12, partial 5)
 
-- [ ] Free plan
+- [x] Free plan
 - [×] Pro plan — conflicts with zero-recurring-cost
 - [×] Team plan — conflicts with zero-recurring-cost
 - [×] Enterprise plan — conflicts with zero-recurring-cost
 - [×] Usage-based billing — conflicts with zero-recurring-cost
-- [ ] Credit system
-- [ ] Token billing
+- [x] Credit system
+- [x] Token billing
 - [×] GPU billing — conflicts with zero-recurring-cost
 - [ ] Storage billing
 - [×] Seat billing — conflicts with zero-recurring-cost
 - [ ] Project billing
 - [ ] Organization billing
-- [ ] Spending limits
-- [ ] Prepaid credits
+- [x] Spending limits
+- [x] Prepaid credits
 - [ ] Postpaid billing
-- [ ] Invoices
+- [~] Invoices
 - [ ] Receipts
 - [ ] Taxes
 - [ ] Coupons
 - [ ] Trials
 - [ ] Referral credits
 - [ ] Usage alerts
-- [ ] Payment methods
+- [~] Payment methods
 - [×] Stripe — conflicts with the zero-recurring-cost decision (no payments)
 - [ ] Refunds
 - [ ] Chargebacks
-- [ ] Subscription pause
-- [ ] Subscription cancellation
-- [ ] Plan upgrade
-- [ ] Plan downgrade
-- [ ] Overage protection
+- [~] Subscription pause
+- [x] Subscription cancellation
+- [x] Plan upgrade
+- [x] Plan downgrade
+- [~] Overage protection
 - [ ] Cost allocation
 - [ ] Team cost reports
 - [ ] Project cost reports
