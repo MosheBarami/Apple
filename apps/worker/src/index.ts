@@ -2844,6 +2844,48 @@ function securityNotice(c: Context, recipientId: string, subject: string, title:
   }
 }
 
+/**
+ * "The password on your account was changed."
+ *
+ * THE ONE SECURITY EVENT THIS WORKER CANNOT SEE FOR ITSELF. Every other `securityNotice` call site
+ * sits inside the action it reports: this worker mints the key, so it knows a key was minted.
+ * Supabase performs a password change and this worker only ever verifies the JWT that comes back
+ * afterwards, so there is no moment in this process where the change is observable. The browser
+ * reports it instead — apps/web/src/routes/settings.tsx, straight after `updateUser` succeeds.
+ *
+ * WHAT THAT DOES AND DOES NOT COVER, said plainly rather than left for someone to discover: an
+ * attacker who has taken the account over can change the password without making this call, and
+ * nothing here would know. It is not a tripwire. What it is, is the ordinary case — a machine left
+ * signed in, a password changed on it, and the owner reading their own history later from
+ * somewhere else and finding the line. The day a Supabase auth hook exists in this deployment, the
+ * event should be raised from there and this route can go.
+ *
+ * NOT `securityNotice`, WHICH IS FIRE-AND-FORGET. That is right for the key routes, where the
+ * notice must never take down the action it reports on; here the notice IS the action, and the
+ * page prints "noted in your account history" on the strength of the answer. So this awaits the
+ * write and returns what actually happened. A failure is a 200 with `recorded: false`, never a
+ * 500: the password genuinely did change, and reporting that as failed because the diary entry
+ * failed is the worse of the two wrong answers.
+ *
+ * The recipient is the token's subject. There is no id in the path and none is read from the body
+ * — a route that took one would be a way to post "your password was changed" into anybody's inbox.
+ */
+app.post('/api/security/password-changed', async (c) => {
+  const user = c.get('user');
+  const outcome = await notify(c.env, {
+    kind: 'security_event',
+    recipientId: user.userId,
+    actorId: user.userId,
+    // Constant, so the store coalesces a retry loop into an occurrence count instead of burying
+    // the rows above it.
+    subject: 'password',
+    title: 'The password on your account was changed',
+    body: 'If this was not you, reset your password from the sign-in page and sign out everywhere.',
+    at: Date.now(),
+  });
+  return c.json(outcome.delivered ? { recorded: true } : { recorded: false, reason: outcome.reason });
+});
+
 // ---------------------------------------------------------------- API keys (JWT-authenticated)
 /**
  * Mint an API key.
