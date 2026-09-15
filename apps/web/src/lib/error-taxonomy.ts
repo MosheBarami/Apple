@@ -106,6 +106,16 @@ function messageOf(err: unknown): string | null {
  * cannot classify a failure, that is a gap here and not the user's problem to interpret, and the
  * honest thing is to take responsibility and offer the one action that helps.
  */
+/**
+ * WHERE A LINK POINTS, GIVEN WHO RENDERS IT.
+ *
+ * These hrefs go to a react-router <Link> in components/failure.tsx, inside
+ * <BrowserRouter basename="/app">. The router prepends the basename, so writing it here produced
+ * /app/app/usage and /app/app — links that resolved to nothing. '/app/sign-in' was worse: there
+ * has never been a sign-in route, it is /login. Every href below is therefore a ROUTER path, and
+ * error-taxonomy.test.mjs holds them against app.tsx's own path list so a renamed route breaks
+ * the test rather than the link.
+ */
 export function explainFailure(err: unknown): Explained {
   const status = statusOf(err);
   const detail = messageOf(err);
@@ -129,7 +139,7 @@ export function explainFailure(err: unknown): Explained {
       title: 'Your session has expired',
       safety: 'Your work is saved. Signing in again brings you back to it.',
       next: 'Sign in again.',
-      href: '/app/sign-in',
+      href: '/login',
       // Retrying with the same dead token cannot work, and a Retry button here is a loop.
       retryable: false,
       detail,
@@ -153,7 +163,7 @@ export function explainFailure(err: unknown): Explained {
       title: 'Not here any more',
       safety: 'It may have been deleted or archived. Nothing else was touched.',
       next: 'Go back to your projects.',
-      href: '/app',
+      href: '/',
       retryable: false,
       detail,
     };
@@ -170,7 +180,7 @@ export function explainFailure(err: unknown): Explained {
         title: 'You are out of Credits',
         safety: REFUSED + ' Nothing was charged for it.',
         next: 'See what is left and when it renews.',
-        href: '/app/usage',
+        href: '/usage',
         help: DOC_CREDITS,
         retryable: false,
         detail,

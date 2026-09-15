@@ -130,6 +130,47 @@
   min-height: 0;
   background: var(--gx-rail);
   border-inline-end: 1px solid var(--gx-line);
+  /* The drag handle is positioned against this edge. */
+  position: relative;
+}
+
+/* The width handle. Invisible until it is wanted — a permanent line down the middle of the
+   interface is a seam the eye keeps returning to — but seven pixels wide rather than one, because
+   a one-pixel target is a target you miss. */
+.gx-rail__resize {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: -3px;
+  width: 7px;
+  z-index: 3;
+  cursor: col-resize;
+  /* Without this a touch drag scrolls the page instead of moving the handle. */
+  touch-action: none;
+}
+
+.gx-rail__resize::after {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 3px;
+  width: 1px;
+  background: var(--gx-accent);
+  opacity: 0;
+  transition: opacity var(--gx-t-enter) var(--gx-ease);
+}
+
+.gx-rail__resize:hover::after,
+.gx-rail__resize:focus-visible::after {
+  opacity: 1;
+}
+
+.gx-rail__resize:focus-visible {
+  outline: none;
+}
+
+/* Nothing to size when the rail is an icon strip: its width is the collapsed token, not this one. */
+.gx-rail.is-collapsed .gx-rail__resize {
+  display: none;
 }
 
 .gx-rail__head {
@@ -2940,9 +2981,43 @@
     display: grid;
   }
 
-  /* Specificity has to beat .gx-icon-btn, which is declared later. */
+  /* The rail is a fixed overlay here, so its width is not part of the layout: a handle that
+     resized it would be a control wired to nothing anyone can see the effect of. */
+  .gx-rail__resize {
+    display: none;
+  }
+
+  /* Specificity has to beat .gx-icon-btn, which is declared later.
+
+     FIXED, NOT A ROW OF ITS OWN. The button is a child of the shell's <main>, which is a grid
+     with a single 1fr track: left in flow it would either add a second bar above the workspace
+     topbar or displace whatever the route draws first. Taken out of flow it lands in the
+     workspace topbar's reserved leading space — so that bar looks exactly as it always did —
+     while the routes that scroll themselves clear it with padding below. */
   .gx-icon-btn.gx-rail-toggle {
     display: grid;
+    position: fixed;
+    top: 0.62rem;
+    inset-inline-start: 0.72rem;
+    /* Under the rail (52) and its scrim: once the rail is open this button is behind it, which
+       is right — the rail has its own close button and the scrim is the other way out. */
+    z-index: 40;
+    background: var(--gx-raise);
+  }
+
+  /* The space the fixed button occupies, given back to the layout. Without this the project
+     title starts underneath it. 60px min-height on .gx-top already clears it vertically. */
+  .gx-ws .gx-top {
+    /* 0.72rem offset + the 44px button + a gap. Measured at 375px rather than guessed: the
+       editable title carries a negative inline margin so its hover background sits flush, which
+       put its first letter under the button when this was only 3.15rem. */
+    padding-inline-start: 4rem;
+  }
+
+  /* The plain routes scroll their own content, so a heading at the top of the scroller would
+     pass under the fixed button on the way up. */
+  .gx-main > .page {
+    padding-block-start: 4.25rem;
   }
 
   .gx-thread,
