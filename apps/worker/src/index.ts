@@ -55,10 +55,12 @@ import { kvWorkspace } from './webtools';
 import {
   copyWorkspaceFile,
   deleteWorkspaceFile,
+  deleteWorkspaceFolder,
   freeCopyPath,
   historyOf,
   listWorkspace,
   moveWorkspaceFile,
+  moveWorkspaceFolder,
   readVersionOf,
   restoreWorkspaceFile,
   revertWorkspaceFile,
@@ -1365,6 +1367,19 @@ app.post('/api/projects/:id/files/op', async (c) => {
     }
     case 'revert': {
       const res = await revertWorkspaceFile(store, path, Number(body?.version));
+      return res.ok ? c.json(res) : workspaceRefusal(res);
+    }
+    // FOLDERS ARE PREFIXES, so these are batches rather than new kinds of operation: a folder move
+    // is every file's move, a folder delete is every file's recoverable delete. They are named
+    // separately from 'move' and 'delete' because the thing they take is not a file — one op that
+    // guessed from the shape of the string would delete a folder for anyone who typed a path
+    // without an extension.
+    case 'move_folder': {
+      const res = await moveWorkspaceFolder(store, path, to);
+      return res.ok ? c.json(res) : workspaceRefusal(res);
+    }
+    case 'delete_folder': {
+      const res = await deleteWorkspaceFolder(store, path);
       return res.ok ? c.json(res) : workspaceRefusal(res);
     }
     default:

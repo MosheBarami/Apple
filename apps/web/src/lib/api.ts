@@ -917,7 +917,10 @@ export const fetchFileHistory = (projectId: string, path: string) =>
   );
 
 export interface FileOpRequest {
-  op: 'rename' | 'move' | 'copy' | 'delete' | 'undelete' | 'revert';
+  // The folder operations take a PREFIX in `path` rather than a file, and are named separately for
+  // that reason: one op that guessed from the shape of the string would delete a whole folder for
+  // anyone who typed a path without an extension.
+  op: 'rename' | 'move' | 'copy' | 'delete' | 'undelete' | 'revert' | 'move_folder' | 'delete_folder';
   path: string;
   to?: string;
   version?: number;
