@@ -4306,6 +4306,65 @@
   color: var(--gx-ink-2, var(--gx-ink));
 }
 
+/* --- the tool block list -------------------------------------------------
+   The conventions fieldset above wraps into a row of short chips. This one cannot: each row
+   carries a reason, and the reason is the part that makes the control usable. So the group is a
+   COLUMN, and the checkbox aligns to the top of its two-line label rather than centring against
+   a block of text. */
+
+.prefs__note {
+  margin: 0 0 0.35rem;
+  flex-basis: 100%;
+  color: var(--gx-ink-3);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.prefs__group {
+  display: flex;
+  flex-direction: column;
+  /* Wider than the one-line conventions list below it: each row here is two lines, and at 0.4rem
+     the reason of one row sat as close to the label of the next as to its own. */
+  gap: 0.62rem;
+  flex-basis: 100%;
+  margin-bottom: 0.75rem;
+}
+
+.prefs__group-label {
+  margin-top: 0.15rem;
+  color: var(--gx-ink-3);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.prefs__check-why {
+  margin-top: 0.1rem;
+}
+
+.prefs__check--reasoned {
+  align-items: flex-start;
+  gap: 0.5rem;
+  line-height: 1.45;
+}
+
+.prefs__check--reasoned input {
+  /* Nudged down to sit on the first line of the label rather than between the two lines. */
+  margin-top: 0.18rem;
+  flex: none;
+}
+
+.prefs__check-label {
+  display: block;
+  color: var(--gx-ink-2);
+}
+
+.prefs__check-why {
+  display: block;
+  color: var(--gx-ink-3);
+  font-size: 0.75rem;
+}
+
 .prefs__profile {
   display: flex;
   flex-direction: column;

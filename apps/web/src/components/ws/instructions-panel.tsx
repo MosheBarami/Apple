@@ -30,6 +30,7 @@ import {
   type PromptProfile,
 } from '../../lib/api';
 import { useToast } from '../toast';
+import { GOVERNABLE_TOOLS, blockedTools, withToolBlocked } from './tool-permissions';
 
 const CODING_STYLES = ['idiomatic', 'minimal', 'commented', 'strict-typed', 'oop', 'functional'] as const;
 const RESPONSE_LENGTHS = ['brief', 'normal', 'detailed'] as const;
@@ -293,6 +294,52 @@ export function InstructionsPanel({ projectId }: { projectId: string }) {
           ))}
         </select>
       </label>
+
+      {/* --------------------------------------------------------- what Apple may touch -- */}
+      {/*
+        The worker has enforced `tool_permissions` on every step of every run for a long time —
+        applyToolPermissions narrows the mode's toolset, and preferences.test.mjs pins that it can
+        only ever narrow. Nothing in the product could set it: the only mention anywhere in
+        apps/web was the TYPE. This is the decision that enforcement was waiting for.
+
+        Two states, not three. `allow` is the absence of a restriction rather than a grant, so
+        storing one would read like permission and confer nothing; `ask` is collapsed to a refusal
+        by the worker because nothing here can interrupt a run to ask, so offering it would promise
+        a confirmation that never comes. See tool-permissions.ts.
+      */}
+      <fieldset className="prefs__set" disabled={!canWrite}>
+        <legend className="field-label">What Apple may do here</legend>
+        <p className="prefs__note">
+          Everything is allowed unless you block it. Blocks add up across your organisation, your
+          account and this project — the strictest one wins, so a block set elsewhere cannot be
+          undone here.
+        </p>
+        {(['changes', 'spends'] as const).map((group) => (
+          <div key={group} className="prefs__group">
+            <span className="prefs__group-label">
+              {group === 'changes' ? 'Changes your project' : 'Costs Credits beyond the run'}
+            </span>
+            {GOVERNABLE_TOOLS.filter((t) => t.group === group).map((t) => {
+              const blocked = blockedTools(prefs.tool_permissions).has(t.tool);
+              return (
+                <label key={t.tool} className="prefs__check prefs__check--reasoned">
+                  <input
+                    type="checkbox"
+                    checked={blocked}
+                    onChange={() => setPref('tool_permissions', withToolBlocked(prefs.tool_permissions, t.tool, !blocked))}
+                  />
+                  <span>
+                    <span className="prefs__check-label">Block: {t.label}</span>
+                    {/* The reason is shown, not hidden behind a tooltip. A permission control
+                        whose consequences are invisible is one people either ignore or misuse. */}
+                    <span className="prefs__check-why">{t.why}</span>
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        ))}
+      </fieldset>
 
       <fieldset className="prefs__set" disabled={!canWrite}>
         <legend className="field-label">Roblox conventions</legend>
