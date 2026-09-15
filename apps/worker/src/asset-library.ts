@@ -94,6 +94,27 @@ export function originalityOf(source: AssetSourceSite): AssetOriginality {
 }
 
 /**
+ * Sources whose Roblox asset ids WE DID NOT MINT.
+ *
+ * `robloxAssetId` has meant one thing since this file was written — "we uploaded this, here is the
+ * id we got back" — and a whole invariant rests on it: anything live in Roblox must be hashed, so
+ * we can always say what bytes we put there.
+ *
+ * The Creator Store breaks that assumption in the good direction. Those rows are ALREADY Roblox
+ * asset ids, published by their own creators, and referencing one costs no upload to anybody's
+ * account. We never held the bytes, so there is no hash we could honestly record — and demanding
+ * one would refuse the only part of the library that needs no upload at all.
+ *
+ * So the invariant is scoped rather than dropped: for an id we minted, a missing hash is still an
+ * error. For an id somebody else minted, it is not a gap, it is the truth.
+ */
+export const PRE_EXISTING_ID_SOURCES: readonly AssetSourceSite[] = ['creator_store', 'roblox_official', 'generated_roblox'];
+
+export function mintedByUs(source: AssetSourceSite): boolean {
+  return !PRE_EXISTING_ID_SOURCES.includes(source);
+}
+
+/**
  * The authoritative record for one library asset. Every field is required — a nullable field is
  * explicitly `| null` and its null meaning is documented, so "we do not know" is never confused
  * with "we did not fill it in".
@@ -357,8 +378,13 @@ export function validateProvenance(rec: unknown, opts: ValidateOptions = {}): Va
           errors.push(`attributionRequired is ${String(r.attributionRequired)} but ${licenceId} says ${String(rule.attributionRequired)}`);
         }
         if (rule.commercialUse !== true) errors.push(`licence ${licenceId} does not permit commercial use`);
-        if (opts.cc0Only && licenceId !== 'CC0-1.0' && licenceId !== 'NONE-PROCEDURAL' && licenceId !== 'ROBLOX-GENERATED') {
-          errors.push(`v1 policy is CC0 only; ${licenceId} requires attribution plumbing that does not exist yet`);
+        // The policy is NOT "the string must say CC0". It is "this licence must not oblige us to
+        // emit a credit line, because nothing emits one yet". Those are different rules, and the
+        // literal list was the first one wearing the second one's name: ROBLOX-TOU has
+        // attributionRequired false — using a free Creator Store asset owes nobody a credit — and
+        // it was refused anyway, which would have excluded the 100,000 assets that need no upload.
+        if (opts.cc0Only && rule.attributionRequired) {
+          errors.push(`v1 policy admits only licences with no attribution obligation; ${licenceId} requires one and nothing emits credit lines yet`);
         }
         if (rule.attributionRequired) {
           warnings.push(`${licenceId} requires attribution — a credit line must be emitted into every place that uses this asset`);
@@ -411,8 +437,16 @@ export function validateProvenance(rec: unknown, opts: ValidateOptions = {}): Va
 
   // The invariant that keeps the library honest: anything live in Roblox must be hashed, measured
   // and dimensioned. Nulls are only acceptable while the asset has not been imported yet.
+  const weMintedTheId =
+    typeof r.source === 'string' && (ASSET_SOURCE_SITES as readonly string[]).includes(r.source)
+      ? mintedByUs(r.source as AssetSourceSite)
+      : true;
   if (hasRobloxId && !opts.seed) {
-    if (r.sha256 === null || r.sha256 === undefined) errors.push('sha256 is required once robloxAssetId is set — we must know what we uploaded');
+    // Scoped to ids WE minted — see PRE_EXISTING_ID_SOURCES. A Creator Store row's id belongs to
+    // its own creator and we never held the bytes, so there is no hash we could honestly record.
+    if (weMintedTheId && (r.sha256 === null || r.sha256 === undefined)) {
+      errors.push('sha256 is required once robloxAssetId is set — we must know what we uploaded');
+    }
     if (r.triangles === null || r.triangles === undefined) warnings.push('triangles is unmeasured, so this asset cannot be budgeted against a scene');
     if (r.boundsStuds === null || r.boundsStuds === undefined) warnings.push('boundsStuds is unmeasured, so this asset cannot be scale-checked');
     // §16: an imported third-party asset without an import date cannot answer "when did we take

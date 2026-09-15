@@ -558,14 +558,51 @@ test('an unrecognised licence string is rejected rather than guessed at', () => 
   assert.match(r.errors.join(' '), /not a recognised licence/);
 });
 
-test('CC-BY is allowed but warns, and is rejected under the CC0-only v1 policy', () => {
+test('CC-BY is allowed but warns, and is rejected under the no-attribution v1 policy', () => {
   const ccby = goodRecord({ licence: 'CC BY 4.0', attributionRequired: true });
   const permissive = validateProvenance(ccby);
   assert.equal(permissive.ok, true, permissive.errors.join('; '));
   assert.match(permissive.warnings.join(' '), /credit line/);
   const strict = validateProvenance(ccby, { cc0Only: true });
   assert.equal(strict.ok, false);
-  assert.match(strict.errors.join(' '), /CC0 only/);
+  assert.match(strict.errors.join(' '), /attribution/, 'and the reason must name the obligation, not a licence id');
+});
+
+test('THE POLICY IS "NO ATTRIBUTION OWED", NOT "THE STRING SAYS CC0"', () => {
+  // These are different rules and the gate used to be the first one wearing the second one's name:
+  // an explicit list of three licence ids, which refused ROBLOX-TOU — a licence with
+  // attributionRequired FALSE, because using a free Creator Store asset owes nobody a credit. That
+  // would have excluded the ~100,000 library rows that are already Roblox asset ids and need no
+  // upload at all: the one part of the library with nothing standing between it and a game.
+  const tou = goodRecord({
+    source: 'creator_store',
+    licence: 'Roblox Terms of Use',
+    attributionRequired: false,
+    robloxAssetId: 4969855485,
+  });
+  const strict = validateProvenance(tou, { cc0Only: true });
+  assert.equal(strict.ok, true, strict.errors.join('; '));
+
+  // And the gate still bites wherever an obligation really exists — the control, so this is not
+  // simply a loosening that lets everything through.
+  for (const l of ['CC BY 4.0', 'CC BY 3.0', 'MIT', 'Apache 2.0']) {
+    const rec = goodRecord({ licence: l, attributionRequired: true });
+    assert.equal(validateProvenance(rec, { cc0Only: true }).ok, false, `${l} owes a credit line and must be refused`);
+  }
+});
+
+test('A ROBLOX ASSET ID WE DID NOT MINT NEEDS NO HASH — and one we did still does', () => {
+  // `robloxAssetId` meant one thing when it was written: "we uploaded this, here is the id we got
+  // back", and the hash invariant rests on it — we must always be able to say what bytes we put in
+  // somebody's account. A Creator Store row's id belongs to its own creator and we never held the
+  // bytes, so there is no hash we could honestly record. The invariant is scoped, not dropped.
+  const store = goodRecord({ source: 'creator_store', licence: 'Roblox Terms of Use', attributionRequired: false, robloxAssetId: 123456789, sha256: null });
+  assert.equal(validateProvenance(store).ok, true, validateProvenance(store).errors.join('; '));
+
+  const ours = goodRecord({ source: 'poly_haven', robloxAssetId: 123456789, sha256: null });
+  const r = validateProvenance(ours);
+  assert.equal(r.ok, false);
+  assert.match(r.errors.join(' '), /sha256 is required/, 'an id WE minted must still be accompanied by the bytes we uploaded');
 });
 
 test('provenance fields that cannot be verified later are rejected', () => {

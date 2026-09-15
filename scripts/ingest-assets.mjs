@@ -7,7 +7,7 @@
 // server refused a third of them is the failure this repository names most often: a success
 // message covering a partial result. The exit code is non-zero if anything was refused, so a
 // silent partial ingest cannot pass for a clean one.
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -25,26 +25,78 @@ if (!KEY && !DRY) {
   process.exit(2);
 }
 
-const doc = JSON.parse(readFileSync(join(ROOT, 'packages', 'corpus', 'data', 'asset-seeds.json'), 'utf8'));
+// The harvest is now several files, one per source, plus the original two-source seed file. They
+// are read together so the ingest has one notion of "the library" rather than one per artefact.
+const FILES = process.argv.includes('--seeds-only')
+  ? [join(ROOT, 'packages', 'corpus', 'data', 'asset-seeds.json')]
+  : [
+      join(ROOT, 'packages', 'corpus', 'data', 'asset-seeds.json'),
+      ...readdirSync(join(ROOT, 'packages', 'corpus', 'data', 'library'))
+        .filter((f) => f.endsWith('.json') && f !== 'index.json')
+        .map((f) => join(ROOT, 'packages', 'corpus', 'data', 'library', f)),
+    ];
+const doc = { assets: [] };
+const seenIds = new Set();
+let duplicates = 0;
+for (const f of FILES) {
+  if (!existsSync(f)) continue;
+  const part = JSON.parse(readFileSync(f, 'utf8'));
+  if (part.failed === true) { console.error(`skipping ${f}: the harvest recorded a failure`); continue; }
+  for (const a of part.assets ?? []) {
+    // An id collision would silently overwrite one source's provenance with another's, and the
+    // whole point of these rows is that each one says where it came from.
+    if (seenIds.has(a.id)) { duplicates++; continue; }
+    seenIds.add(a.id);
+    doc.assets.push(a);
+  }
+}
+if (duplicates) console.error(`${duplicates} duplicate ids skipped across sources`);
 // The harvest carries two underscore-prefixed fields for the later binary fetch. They are not part
 // of AssetProvenance and the server would not store them, so they are dropped at the boundary
 // rather than being sent and silently ignored.
-const assets = doc.assets.slice(0, LIMIT).map(({ _download, _publishedAt, ...rec }) => rec);
-console.error(`${assets.length} assets, ${Math.ceil(assets.length / BATCH)} batches -> ${BASE}`);
+// The underscore-prefixed fields are harvest bookkeeping, not provenance: the server would not
+// store them, so they are dropped at the boundary rather than sent and silently ignored.
+const assets = doc.assets.slice(0, LIMIT).map(({ _download, _publishedAt, _licenceId, assetCount, ...rec }) => rec);
+console.error(`${assets.length} assets -> ${BASE}`);
+
+//[[ TWO KINDS OF ROW, AND THE DIFFERENCE DECIDES WHETHER ANYONE EVER SEES THEM.
+//
+//   A row with a robloxAssetId is USABLE RIGHT NOW: the Creator Store rows are already Roblox
+//   asset ids, so a game references them with no upload to anybody's account. A row without one is
+//   a catalogue entry waiting for its bytes to be imported.
+//
+//   `ftsSearch` filters on `status = 'active'`, and `seed: true` stores `pending_ingest`. Sending
+//   all 460,000 rows the same way would therefore have hidden every one of the 102,777 immediately
+//   usable assets behind a flag that means "not imported yet" — a library that is full and answers
+//   every search with nothing.
+//
+//   So the two are sent separately, and `seed` follows the row rather than the run: a row carrying
+//   a Roblox id is not a seed, and the stricter validation applies to it. ]]
+const ready = assets.filter((a) => a.robloxAssetId);
+const pending = assets.filter((a) => !a.robloxAssetId);
+console.error(`${ready.length} already usable (active) · ${pending.length} catalogue-only (pending_ingest)`);
 if (DRY) { console.error('--dry: nothing sent'); process.exit(0); }
 
 let written = 0;
 const rejected = [];
 const failedBatches = [];
-for (let i = 0; i < assets.length; i += BATCH) {
-  const slice = assets.slice(i, i + BATCH);
+const queue = [
+  ...ready.map((a, i) => ({ a, seed: false, status: 'active', k: i })),
+  ...pending.map((a, i) => ({ a, seed: true, status: 'pending_ingest', k: i })),
+];
+for (let i = 0; i < queue.length; i += BATCH) {
+  const group = queue.slice(i, i + BATCH);
+  // A batch never mixes the two: they are validated differently and stored differently.
+  const seed = group[0].seed;
+  const status = group[0].status;
+  const slice = group.filter((g) => g.seed === seed).map((g) => g.a);
   let res, body;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       res = await fetch(`${BASE}/api/admin/assets/ingest`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'X-Admin-Key': KEY },
-        body: JSON.stringify({ assets: slice, seed: true }),
+        body: JSON.stringify({ assets: slice, seed, status }),
       });
       body = await res.json().catch(() => null);
       if (res.ok) break;
@@ -59,7 +111,7 @@ for (let i = 0; i < assets.length; i += BATCH) {
   written += body.written ?? 0;
   for (const r of body.rejected ?? []) rejected.push(r);
   if (body.truncated) console.error(`batch ${i}: SERVER TRUNCATED — batch size exceeds INGEST_MAX_BATCH`);
-  if ((i / BATCH) % 20 === 0) console.error(`${written}/${assets.length}`);
+  if ((i / BATCH) % 20 === 0) console.error(`${written}/${queue.length}`);
 }
 
 console.error(`\nwritten ${written} · rejected ${rejected.length} · failed batches ${failedBatches.length}`);
