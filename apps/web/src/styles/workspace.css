@@ -4371,3 +4371,67 @@
 .tour-skip:hover {
   color: var(--gx-ink);
 }
+
+/* --------------------------------------------------------------------------
+   23. The files drawer — components/ws/files-panel.tsx
+
+   The panel was written before these rules existed and mounted after, which is
+   why it lands here rather than beside the rows it reuses: everything it draws
+   except the preview is a `.gx-row`, a breadcrumb button and a meta line, all
+   of which already had a look. Only the preview needed one.
+
+   THE PREVIEW WRAPS. It is a `<pre>` of somebody's file inside a drawer that
+   is a third of the screen at most, and a `<pre>` that does not wrap turns one
+   long line — a minified JSON blob, a CSV row — into a horizontal scrollbar on
+   the whole drawer. `pre-wrap` keeps the newlines that make a file readable and
+   drops the overflow that makes the drawer unusable.
+
+   The table scrolls sideways instead, because a CSV column that wraps stops
+   being a column. Its container in the panel already sets `overflow-x: auto`,
+   so the scroll is the table's own and not the drawer's.
+   -------------------------------------------------------------------------- */
+
+.gx-files {
+  font-size: 0.85rem;
+}
+
+.gx-files__text {
+  margin: 0;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--gx-line);
+  border-radius: var(--gx-r-sm);
+  background: var(--gx-raise-2);
+  font-family: var(--gx-mono);
+  font-size: 0.78rem;
+  line-height: 1.55;
+  /* Wraps rather than widening the drawer. Long tokens with no spaces — a base64
+     line, a URL — break instead of forcing a scrollbar. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 26rem;
+  overflow-y: auto;
+}
+
+.gx-files__table {
+  border-collapse: collapse;
+  font-family: var(--gx-mono);
+  font-size: 0.75rem;
+  /* Not 100%: a wide CSV should scroll inside its container, not squeeze every
+     column to illegibility to fit a width it does not have. */
+  min-width: 100%;
+}
+
+.gx-files__table td {
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--gx-line);
+  white-space: nowrap;
+  color: var(--gx-ink-2);
+}
+
+/* The first row of a CSV is nearly always its header. Nearly, so it is weighted
+   rather than restyled — a data file whose first row is data still reads as
+   data, just slightly bolder. */
+.gx-files__table tr:first-child td {
+  color: var(--gx-ink);
+  font-weight: 600;
+}

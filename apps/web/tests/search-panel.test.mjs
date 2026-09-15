@@ -287,5 +287,18 @@ test('the drawer you left open is the drawer you come back to', () => {
 test('“closed” and “a name this build does not know” are different stored states', () => {
   // Storing the empty string for closed would collapse them, and the validation that makes
   // restoring safe would have nothing left to distinguish.
-  assert.match(WSCODE, /const DRAWERS = \['none', 'checkpoints', 'memory', 'credits', 'search'\] as const/);
+  //
+  // Asserted as a PROPERTY rather than as the literal list. This used to pin the exact five names,
+  // which meant adding a sixth drawer failed a test about a rule the sixth drawer did not break —
+  // and the cheapest way past that failure is to paste the new list in, which teaches nobody
+  // anything. What has to hold is that 'none' is a member and the empty string is not.
+  const names = /const DRAWERS = \[([^\]]+)\] as const/.exec(WSCODE)?.[1] ?? '';
+  assert.ok(names.length > 0, 'DRAWERS must still be a literal list the validator can be given');
+  assert.match(names, /'none'/, "'none' is how closed is stored");
+  assert.doesNotMatch(names, /''/, 'the empty string would collapse closed into unrecognised');
+  // Every drawer the union can hold must be in it, or the drawer restores as closed for ever.
+  const union = /type DrawerName = ([^\n;]+)/.exec(WSCODE)?.[1] ?? '';
+  for (const name of union.match(/'[a-z]+'/g) ?? []) {
+    assert.ok(names.includes(name), `${name} is a storable drawer name that DRAWERS does not accept`);
+  }
 });

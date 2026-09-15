@@ -27,7 +27,9 @@ import { SearchPanel } from '../components/ws/search-panel';
 import { EditMessageDialog } from '../components/ws/edit-message-dialog';
 import { MemoryPanel } from '../components/ws/memory-panel';
 import { InstructionsPanel } from '../components/ws/instructions-panel';
-import { ApiError, downloadExport, fetchPersonalisation, savePreferences, type SearchHit } from '../lib/api';
+import { FilesPanel } from '../components/ws/files-panel';
+import { ApiError, downloadExport, fetchPersonalisation, fetchProjectAccess, savePreferences, type SearchHit } from '../lib/api';
+import { ACCESS_LOADING, allows, normaliseAccess } from '../lib/capabilities';
 import type { AssetSourcePolicy } from '@golem/shared';
 import { owesAnswer } from '../lib/asset-sources';
 import { AssetSourceDialog } from '../components/asset-source-dialog';
@@ -68,9 +70,9 @@ const SUGGESTIONS = [
  * this build no longer recognises" the same state — which is precisely the distinction the
  * validation exists to keep.
  */
-type Drawer = null | 'checkpoints' | 'memory' | 'credits' | 'search';
-type DrawerName = 'none' | 'checkpoints' | 'memory' | 'credits' | 'search';
-const DRAWERS = ['none', 'checkpoints', 'memory', 'credits', 'search'] as const;
+type Drawer = null | 'checkpoints' | 'memory' | 'credits' | 'search' | 'files';
+type DrawerName = 'none' | 'checkpoints' | 'memory' | 'credits' | 'search' | 'files';
+const DRAWERS = ['none', 'checkpoints', 'memory', 'credits', 'search', 'files'] as const;
 
 export function WorkspacePage() {
   const params = useParams<{ id: string }>();
@@ -117,6 +119,28 @@ export function WorkspacePage() {
     queryFn: () => fetchProject(projectId),
     enabled: projectId.length > 0,
   });
+
+  //[[ WHAT THIS PERSON MAY DO, ASKED RATHER THAN ASSUMED.
+  //
+  //   The files drawer offers Rename, Duplicate and Delete. Showing those to an editor is right and
+  //   showing them to a viewer is three refusals waiting to happen, so `canEdit` below comes from
+  //   the server's own answer — `lib/capabilities` turns it into a state where "we have not checked
+  //   yet" and "you may not" are different values, and only the second is a permission.
+  //
+  //   Asked only while the drawer is open. A permission check fired on every workspace load, for
+  //   every user who never opens Files, would be a request bought for nobody. ]]
+  const accessQuery = useQuery({
+    queryKey: ['project-access', projectId],
+    queryFn: () => fetchProjectAccess(projectId),
+    enabled: projectId.length > 0 && drawer === 'files',
+    retry: false,
+    staleTime: 5 * 60_000,
+  });
+  const access = accessQuery.isError
+    ? ({ status: 'unavailable', detail: 'unreachable' } as const)
+    : accessQuery.data
+      ? normaliseAccess(accessQuery.data)
+      : ACCESS_LOADING;
 
   const onServerError = useCallback(
     (code: string, message: string) => toast(message || `Something went wrong (${code})`, 'error'),
@@ -320,6 +344,13 @@ export function WorkspacePage() {
       section: 'Project',
       keywords: ['memory', 'context', 'knows'],
       run: () => setDrawer('memory'),
+    },
+    {
+      id: 'ws-files',
+      title: 'Project files',
+      section: 'Project',
+      keywords: ['files', 'workspace', 'notes', 'download', 'trash'],
+      run: () => setDrawer('files'),
     },
     {
       id: 'ws-credits',
@@ -596,6 +627,20 @@ export function WorkspacePage() {
               {studioStatus === 'disconnected' ? 'Studio disconnected' : 'Connect Studio'}
             </button>
           )}
+
+          {/* The way into the files Apple keeps for this project — notes, plans and generated
+              data, which are Golem's own storage and not the Roblox place. An icon button beside
+              memory because it is the same kind of thing: something that persists between turns
+              and is read occasionally rather than worked in. */}
+          <button
+            type="button"
+            className="gx-icon-btn"
+            onClick={() => setDrawer('files')}
+            aria-label="Files Apple keeps for this project"
+            title="Project files"
+          >
+            <Icon d={PATH.docs} />
+          </button>
 
           <button
             type="button"
@@ -880,6 +925,14 @@ export function WorkspacePage() {
 
       <Drawer open={drawer === 'search'} onClose={() => setDrawer(null)} title="Search this conversation">
         <SearchPanel projectId={projectId} onOpen={openHit} />
+      </Drawer>
+
+      <Drawer open={drawer === 'files'} onClose={() => setDrawer(null)} title="Files">
+        {/* Mounted only while open, like the panels below: the listing, the file body and the
+            version history are three requests, and none of them is worth making for a user who
+            never opens this. `canEdit` is the server's answer about this person, not a guess —
+            see the access query above. */}
+        {drawer === 'files' && <FilesPanel projectId={projectId} canEdit={allows(access, 'build')} />}
       </Drawer>
 
       <Drawer open={drawer === 'credits'} onClose={() => setDrawer(null)} title="Credits and clearance">
