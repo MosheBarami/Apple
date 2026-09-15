@@ -59,6 +59,8 @@ let doCalls = [];
 let stripeCalls = [];
 /** Every prepared D1 statement, so a notification can be observed rather than assumed. */
 let d1Calls = [];
+/** Per-test Stripe response, or null to use the default checkout-session reply. */
+let stripeReply = null;
 /** Set to make Stripe refuse, so a route's behaviour when it cannot see can be asserted. */
 let stripeDown = false;
 
@@ -67,8 +69,16 @@ globalThis.fetch = async (input, init) => {
   const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'content-type': 'application/json' } });
   if (url.includes('/.well-known/jwks.json')) return json({ keys: [jwk] });
   if (url.startsWith('https://api.stripe.com/')) {
-    stripeCalls.push({ url, body: String(init?.body ?? '') });
+    stripeCalls.push({ url, body: String(init?.body ?? ''), auth: init?.headers?.authorization ?? null });
+    // Stripe refusing outright is the coarser switch and comes first: a test that says Stripe
+    // cannot be seen means every call, including one a per-test reply would otherwise answer.
     if (stripeDown) return json({ error: { message: 'no' } }, 500);
+    // A per-test override, so the invoice routes can be given a real Stripe-shaped body — and a
+    // 404 or a 502 — without every other test having to know about invoices.
+    if (stripeReply) {
+      const r = stripeReply(url);
+      if (r) return json(r.body, r.status ?? 200);
+    }
     // The preview is an INVOICE, not a session with a url. Amounts in minor units, as Stripe sends
     // them: 1234 is twelve dollars thirty-four.
     if (url.includes('/v1/invoices/create_preview')) {
@@ -165,6 +175,7 @@ const reset = (billing) => {
   doCalls = [];
   stripeCalls = [];
   d1Calls = [];
+  stripeReply = null;
   stripeDown = false;
 };
 
@@ -273,6 +284,100 @@ test('the history route is scoped to the caller, with no id to point elsewhere',
   reset({ events: [{ at: 1, kind: 'plan', fromPlan: 'free', toPlan: 'studio', status: 'active', eventId: 'e' }] });
   const anon = await call('/api/billing/history', { jwt: null });
   assert.notEqual(anon.status, 200, 'an unauthenticated caller must not read a billing history');
+});
+
+// ------------------------------------------------------------------------------- the invoices
+//
+// The pure tests in billing-invoices.test.mjs prove the mapper drops the customer record and that
+// `invoiceBelongsTo` says no. They cannot prove the ROUTE asks either one — and an ownership check
+// nothing calls reads exactly like protection in every review it survives.
+
+/** A Stripe invoice belonging to `cus_1`, with the fields that must not leave still on it. */
+const stripeInvoice = (over = {}) => ({
+  id: 'in_1ABC', object: 'invoice', number: 'AP-0001', created: 1_760_000_000, status: 'paid',
+  amount_paid: 2900, amount_due: 2900, currency: 'usd', customer: 'cus_1',
+  customer_email: 'buyer@golem.test',
+  customer_address: { line1: '1 Somewhere St', country: 'NZ' },
+  payment_intent: 'pi_do_not_ship',
+  hosted_invoice_url: 'https://invoice.stripe.com/i/acct_1/live_abc',
+  invoice_pdf: 'https://pay.stripe.com/invoice/acct_1/live_abc/pdf',
+  subtotal: 2900, tax: null, total: 2900,
+  lines: { object: 'list', data: [{ description: 'Builder — 1 month', quantity: 1, amount: 2900,
+    period: { start: 1_760_000_000, end: 1_762_592_000 }, price: { id: 'price_builder_1', unit_amount: 2900 } }] },
+  ...over,
+});
+
+test('AN ACCOUNT CAN LIST ITS OWN INVOICES, filtered by its own customer id', async () => {
+  reset({ plan: 'builder', customerId: 'cus_1', subscription: sub() });
+  stripeReply = (url) => (url.includes('/v1/invoices?') ? { body: { object: 'list', data: [stripeInvoice()] } } : null);
+
+  const r = await call('/api/billing/invoices');
+  assert.equal(r.status, 200, r.text);
+  assert.equal(r.json.invoices.length, 1);
+  assert.equal(r.json.invoices[0].number, 'AP-0001');
+  assert.equal(r.json.invoices[0].status, 'paid', 'the per-invoice payment status the page shows');
+  assert.equal(r.json.invoices[0].pdfUrl, 'https://pay.stripe.com/invoice/acct_1/live_abc/pdf');
+
+  const asked = new URL(stripeCalls[0].url);
+  assert.equal(asked.pathname, '/v1/invoices');
+  assert.equal(asked.searchParams.get('customer'), 'cus_1',
+    'THE QUERY IS SCOPED BY OUR OWN STORED CUSTOMER, never by anything the caller sent');
+});
+
+test('THE RAW STRIPE INVOICE DOES NOT REACH THE BROWSER', async () => {
+  reset({ plan: 'builder', customerId: 'cus_1', subscription: sub() });
+  stripeReply = (url) => (url.includes('/v1/invoices?') ? { body: { object: 'list', data: [stripeInvoice()] } } : null);
+  const r = await call('/api/billing/invoices');
+  for (const leak of ['Somewhere St', 'pi_do_not_ship', 'cus_1', 'buyer@golem.test']) {
+    assert.doesNotMatch(r.text, new RegExp(leak), `${leak} must not be in the response body`);
+  }
+});
+
+test('a user who never bought anything gets an empty list, not an error', async () => {
+  reset();
+  const r = await call('/api/billing/invoices');
+  assert.equal(r.status, 200, r.text);
+  assert.deepEqual(r.json.invoices, []);
+  assert.equal(stripeCalls.length, 0, 'and Stripe is not asked about a customer that does not exist');
+});
+
+test('the invoice list is unreachable without a token', async () => {
+  reset({ customerId: 'cus_1' });
+  const anon = await call('/api/billing/invoices', { jwt: null });
+  assert.notEqual(anon.status, 200);
+});
+
+test('ONE INVOICE COMES BACK WITH ITS LINE ITEMS AND TOTALS', async () => {
+  reset({ plan: 'builder', customerId: 'cus_1', subscription: sub() });
+  stripeReply = (url) => (url.endsWith('/v1/invoices/in_1ABC') ? { body: stripeInvoice() } : null);
+  const r = await call('/api/billing/invoices/in_1ABC');
+  assert.equal(r.status, 200, r.text);
+  assert.equal(r.json.invoice.lines.length, 1);
+  assert.equal(r.json.invoice.lines[0].description, 'Builder — 1 month');
+  assert.equal(r.json.invoice.total, 2900);
+  assert.doesNotMatch(r.text, /price_builder_1|pi_do_not_ship/, 'the price id and payment intent stay ours');
+});
+
+test('SOMEBODY ELSE’S INVOICE IS REFUSED EVEN THOUGH STRIPE RETURNED IT', async () => {
+  // The route asked Stripe with OUR secret key, so Stripe answered. The id in the path is not the
+  // authorisation; without the ownership check this is a way to read every invoice in the account.
+  reset({ plan: 'builder', customerId: 'cus_1', subscription: sub() });
+  stripeReply = (url) => (url.includes('/v1/invoices/') ? { body: stripeInvoice({ customer: 'cus_someone_else' }) } : null);
+  const r = await call('/api/billing/invoices/in_1ABC');
+  assert.equal(r.status, 404, '404 — that it exists but is not yours is itself an answer about another account');
+  assert.doesNotMatch(r.text, /cus_someone_else|Somewhere St/, 'and nothing about it comes back');
+});
+
+test('A PATH THAT IS NOT AN INVOICE ID NEVER REACHES api.stripe.com', async () => {
+  // `../charges/ch_1` interpolated into the Stripe URL addresses a different endpoint with our
+  // secret key attached. The shape check runs before the fetch, so nothing leaves at all.
+  reset({ plan: 'builder', customerId: 'cus_1', subscription: sub() });
+  for (const bad of ['ch_1', 'in_1%20x', 'IN_1']) {
+    stripeCalls = [];
+    const r = await call(`/api/billing/invoices/${bad}`);
+    assert.equal(r.status, 400, `${bad} must be refused: ${r.text}`);
+    assert.equal(stripeCalls.length, 0, `${bad} must not reach Stripe`);
+  }
 });
 
 // ------------------------------------------------------------- the webhook carries what it read

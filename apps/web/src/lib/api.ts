@@ -10,7 +10,7 @@ import { mockBrief, mockNext, mockRoadmap } from '../components/roadmap/mock';
 import { MOCK_MODE, mockAttribution, mockCounters, mockDiagnostics, mockMe, mockMemory, mockNotifications, mockSpend, mockUsageDays } from './mock';
 import type { InboxResponse, MarkReadResult } from './notification-inbox.ts';
 import type { DeliveryPreference, NotificationEventPrefs } from './notification-prefs.ts';
-import type { BillingChange, SubscriptionView } from './billing-copy';
+import type { BillingChange, Invoice, InvoiceDetail, SubscriptionView } from './billing-copy';
 import { getAccessToken } from './supabase';
 import { noteReachability } from './connectivity';
 import type { SearchType } from './search-filters';
@@ -121,13 +121,37 @@ export interface UsageDay {
   day: string; // YYYY-MM-DD
   credits: number;
   events: number;
+  /**
+   * WHAT that day's Credits went on.
+   *
+   * QuotaDO has recorded a `kind` on every spend since the ledger existed and the history query
+   * used to discard it, so the page could say when Credits went and never what they went on.
+   * Optional because an older worker does not send it — and absent must render as nothing, not as
+   * an "Other" bucket holding the whole day.
+   */
+  kinds?: { kind: string; credits: number }[];
 }
 
 export const fetchMe = (): Promise<MeResponse> =>
   MOCK_MODE ? Promise.resolve(mockMe) : request<MeResponse>('/api/me');
 
-export const fetchUsage = (): Promise<{ days: UsageDay[] }> =>
-  MOCK_MODE ? Promise.resolve({ days: mockUsageDays() }) : request<{ days: UsageDay[] }>('/api/me/usage');
+export interface UsageHistory {
+  days: UsageDay[];
+  /** This month's running total from the DO's own rollup. Absent on an older worker. */
+  thisMonth?: number;
+  /**
+   * The month before this one — and NULL whenever it cannot be stated honestly.
+   *
+   * The ledger is pruned at 35 days, so a "last month" figure summed from its rows would be
+   * truncated for most of the month. The server sends this only for a month its rollup was already
+   * counting when the month began; null means "not known", never "zero", and the page must render
+   * nothing rather than a comparison against a month nobody measured.
+   */
+  previousMonth?: { month: string; credits: number } | null;
+}
+
+export const fetchUsage = (): Promise<UsageHistory> =>
+  MOCK_MODE ? Promise.resolve({ days: mockUsageDays() }) : request<UsageHistory>('/api/me/usage');
 
 // ---------------------------------------------------------------- billing (w14)
 //
@@ -184,6 +208,29 @@ export const fetchBillingPreview = (plan: PlanId): Promise<BillingPreview> =>
  */
 export const fetchBillingHistory = (): Promise<{ events: BillingChange[] }> =>
   MOCK_MODE ? Promise.resolve({ events: [] }) : request<{ events: BillingChange[] }>('/api/billing/history');
+
+/**
+ * THE INVOICES THIS ACCOUNT WAS CHARGED ON, newest first.
+ *
+ * Read from Stripe by the worker and mapped to an allowlist there, so this never sees a raw Stripe
+ * object — no customer address, no tax id, no payment intent. Scoped to the caller's own Stripe
+ * customer by the worker; there is no id in this path that could name anyone else.
+ *
+ * An account that never bought anything gets an empty list rather than an error, because having no
+ * invoices is a perfectly ordinary thing to have.
+ */
+export const fetchInvoices = (): Promise<{ invoices: Invoice[] }> =>
+  MOCK_MODE ? Promise.resolve({ invoices: [] }) : request<{ invoices: Invoice[] }>('/api/billing/invoices');
+
+/**
+ * One invoice with its line items, subtotal and tax.
+ *
+ * Asked of the server rather than assembled from the row: line items are not on the list response,
+ * and a row that "expanded" into the summary again would look like a detail view containing no
+ * detail. The worker refuses any invoice that is not this caller's, whatever id is passed here.
+ */
+export const fetchInvoice = (id: string): Promise<{ invoice: InvoiceDetail | null }> =>
+  request<{ invoice: InvoiceDetail | null }>(`/api/billing/invoices/${encodeURIComponent(id)}`);
 
 // ---------------------------------------------------------------- project session
 

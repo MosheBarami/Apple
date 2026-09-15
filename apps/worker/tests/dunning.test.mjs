@@ -230,6 +230,9 @@ test('every dunning kind has a title and a body, and neither is empty', () => {
     assert.ok(copy.title.length > 10, `${kind} has no title`);
     assert.ok(copy.body.length > 20, `${kind} has no body`);
     assert.ok(!/undefined|null|NaN/.test(copy.title + copy.body), `${kind} leaked a placeholder into the copy`);
+    // Every kind is about a specific charge, so every kind names it. A body that dropped the
+    // amount would be an alarm the reader cannot match against their statement.
+    assert.ok(copy.body.includes('12.00 USD'), `${kind} does not name the amount it is about`);
   }
 });
 
@@ -254,6 +257,11 @@ test('the failure copy says what happens next, which is the only part that chang
   // between an alarm with an action behind it and one without.
   const copy = D.dunningCopy({ kind: 'payment_failed', amountDue: null, currency: null });
   assert.match(copy.body, /keeps working|retried/i, 'the grace period is the whole point of telling them');
+  // And it must not claim the opposite. ENTITLING_STATUSES in billing.ts keeps past_due entitling
+  // on purpose; copy saying the plan was suspended would be a false alarm about our own behaviour,
+  // and it is the sentence a frightened customer acts on first.
+  assert.doesNotMatch(copy.body, /suspend|cancelled|canceled|cut off|lost access/i,
+    'the copy must not announce a cutoff that billing.ts deliberately does not perform');
 });
 
 test('a bank confirmation request is its own sentence, not a decline', () => {

@@ -280,3 +280,163 @@ export function billingChangeLine(change: BillingChange, opts: ChangeLineOptions
   if (change.fromPlan === null) return `Moved to ${to}${on}.`;
   return `Moved from ${opts.planName(change.fromPlan)} to ${to}${on}.`;
 }
+
+// ---------------------------------------------------------------------------
+// TAKING THE RECORD AWAY WITH YOU
+// ---------------------------------------------------------------------------
+
+/** The columns, named once. The header and every row are built from this list. */
+const CSV_COLUMNS = ['date', 'kind', 'from_plan', 'to_plan', 'status', 'cancel_at_period_end', 'stripe_event'] as const;
+
+/**
+ * One CSV cell: quoted when it has to be, and never executable.
+ *
+ * TWO DIFFERENT HAZARDS, and only one of them is about the file format.
+ *   - A comma, a quote or a newline inside a value corrupts every column after it. RFC 4180 says
+ *     wrap in quotes and double the quotes, so that is what this does.
+ *   - A value beginning `=`, `+`, `-`, `@`, tab or CR is run as a FORMULA the moment the file is
+ *     opened in a spreadsheet. The Stripe event id is the one field here we did not write
+ *     ourselves. A leading apostrophe defuses it while leaving the value legible — stripping the
+ *     character would quietly change a record somebody is about to rely on.
+ */
+function csvCell(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  let s = String(value);
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+/**
+ * This account's billing history as a file it can keep.
+ *
+ * A ledger readable only inside a disclosure triangle on one page is not a record somebody can put
+ * in front of an accountant, attach to a dispute, or keep after they cancel — and a cancelled
+ * account is exactly when it is most wanted. Built from the rows the page already holds, so this
+ * needs no route of its own and cannot disagree with what is on screen.
+ *
+ * ISO dates, not the viewer's locale: this file is read by a spreadsheet and by a person in another
+ * timezone, and "3/10/2026" means two different days depending on who opens it.
+ */
+export function billingHistoryCsv(events: readonly BillingChange[]): string {
+  const rows = events.map((e) => {
+    // An unreadable instant is BLANK. "Invalid Date" in a date column is a value that looks like
+    // data and is not.
+    const at = Number.isFinite(e.at) ? new Date(e.at) : null;
+    const date = at && !Number.isNaN(at.getTime()) ? at.toISOString() : '';
+    return [
+      date,
+      e.kind,
+      e.fromPlan,
+      e.toPlan,
+      e.status,
+      e.cancelAtPeriodEnd === null || e.cancelAtPeriodEnd === undefined ? '' : String(e.cancelAtPeriodEnd),
+      e.eventId,
+    ].map(csvCell).join(',');
+  });
+  return [CSV_COLUMNS.join(','), ...rows].join('\n') + '\n';
+}
+
+// ---------------------------------------------------------------------------
+// INVOICES
+// ---------------------------------------------------------------------------
+//
+// The worker's mapper decides WHICH fields of a Stripe invoice reach a browser. This decides what
+// they are allowed to say. Both halves are pure and tested, for the same reason the subscription
+// copy above is: a page that reads the raw fields makes the call again in every place it prints
+// them, and the two readings drift.
+
+/** One invoice, exactly as apps/worker/src/billing.ts maps it. */
+export interface Invoice {
+  id: string;
+  number: string | null;
+  created: number | null;
+  status: string | null;
+  amountPaid: number | null;
+  amountDue: number | null;
+  currency: string | null;
+  hostedUrl: string | null;
+  pdfUrl: string | null;
+}
+
+export interface InvoiceLine {
+  description: string | null;
+  quantity: number | null;
+  unitAmount: number | null;
+  amount: number | null;
+  period: { start: number | null; end: number | null } | null;
+}
+
+export interface InvoiceDetail extends Invoice {
+  lines: InvoiceLine[];
+  subtotal: number | null;
+  tax: number | null;
+  total: number | null;
+}
+
+export type InvoiceTone = 'paid' | 'due' | 'failed' | 'neutral';
+export interface InvoicePill {
+  label: string;
+  tone: InvoiceTone;
+}
+
+/**
+ * Stripe's word for an invoice's state, in the words a customer uses.
+ *
+ * THE DEFAULT IS THE POINT. A status this product has not seen before must read as unrecognised,
+ * never be collapsed into the reassuring end of the range: "Paid" printed over an unpaid invoice is
+ * the most expensive sentence this page can produce, and it is exactly what a `?? 'paid'` would do
+ * the first time Stripe adds a status.
+ */
+export function invoiceStatusPill(status: unknown): InvoicePill {
+  switch (status) {
+    case 'paid':
+      return { label: 'Paid', tone: 'paid' };
+    case 'open':
+      return { label: 'Due', tone: 'due' };
+    case 'draft':
+      return { label: 'Draft', tone: 'neutral' };
+    case 'uncollectible':
+      // Stripe's word for "we have given up collecting this". "Unpaid" is what it means to a person.
+      return { label: 'Unpaid', tone: 'failed' };
+    case 'void':
+      return { label: 'Voided', tone: 'neutral' };
+    default:
+      return { label: 'Status unknown', tone: 'neutral' };
+  }
+}
+
+/**
+ * Minor units into a currency amount, or NOTHING when either half is unreadable.
+ *
+ * `Number(null)` is 0, and a 0 here renders as a real charge of nothing on the one page whose
+ * purpose is letting somebody check a figure against their bank statement.
+ */
+export function formatMoney(minor: unknown, currency: unknown, locale?: string): string | null {
+  if (typeof minor !== 'number' || !Number.isFinite(minor)) return null;
+  if (typeof currency !== 'string' || !/^[A-Za-z]{3}$/.test(currency)) return null;
+  const code = currency.toUpperCase();
+  try {
+    return new Intl.NumberFormat(locale, { style: 'currency', currency: code }).format(minor / 100);
+  } catch {
+    // An Intl that does not know the code still has to print the number rather than throwing on a
+    // billing page. Minor units are not universally 100, but Stripe reports in them and this is the
+    // fallback path, not the one a real currency takes.
+    return `${(minor / 100).toFixed(2)} ${code}`;
+  }
+}
+
+/**
+ * Which of the two amounts this invoice's row is about.
+ *
+ * A paid invoice shows what was taken; an open one shows what is owed. `amount_paid` on an open
+ * invoice is 0, and "0.00 — Due" reads as a bill for nothing.
+ */
+export function invoiceAmountMinor(
+  invoice: Pick<Invoice, 'status' | 'amountPaid' | 'amountDue'> | null | undefined,
+): number | null {
+  if (!invoice) return null;
+  const paid = typeof invoice.amountPaid === 'number' ? invoice.amountPaid : null;
+  const due = typeof invoice.amountDue === 'number' ? invoice.amountDue : null;
+  if (invoice.status === 'paid') return paid ?? due;
+  return due ?? paid;
+}
