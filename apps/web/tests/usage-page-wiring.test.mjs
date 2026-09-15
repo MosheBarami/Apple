@@ -135,9 +135,67 @@ test('the checkout flag is taken back out of the URL', () => {
 test('A CHECKOUT ONLY EVER STARTS A FIRST SUBSCRIPTION', () => {
   // Stripe checkout ADDS a subscription; it does not replace one. A paid user sent to checkout for
   // a different tier is billed for both, so every move from a paid plan goes to the portal.
-  assert.match(usageCode, /currentPlan === 'free' && canBuy\) checkout\.mutate/,
-    'checkout is gated on having no subscription yet');
+  //
+  // The gate is unchanged; what the gate OPENS is. It used to call the checkout mutation directly
+  // and now it opens the order summary, which is the only thing that can start one — so the
+  // property still reads "nobody with a subscription can reach a checkout", asserted one step
+  // earlier in the same handler.
+  assert.match(usageCode, /currentPlan === 'free' && canBuy\) setPendingPlan/,
+    'only an account with no subscription yet may reach an order at all');
   assert.match(usageCode, /else portal\.mutate\(\)/, 'everything else is a portal visit');
+});
+
+/**
+ * THE CLICK THAT USED TO GO STRAIGHT TO A CARD FORM.
+ *
+ * `onChoose` called the checkout mutation and the browser left for Stripe. The only pre-purchase
+ * statement anywhere in the product was the plan card behind it, which describes a TIER and not an
+ * order: it never said what the account was moving from, that the charge repeats, or that tax is
+ * added to the figure being read. The words themselves are tested in order-summary.test.mjs; what
+ * is tested here is that a payment cannot be started without passing through them.
+ */
+test('A CHECKOUT IS CONFIRMED BEFORE IT IS STARTED', () => {
+  assert.match(usageCode, /<OrderSummaryDialog/, 'the confirm step must actually be rendered');
+  const starts = [...usageCode.matchAll(/checkout\.mutate\(/g)];
+  assert.equal(starts.length, 1, `a checkout must start in exactly one place, saw ${starts.length}`);
+  const confirm = usageCode.indexOf('onConfirm=');
+  assert.ok(confirm >= 0, 'the dialog must have a confirm handler');
+  assert.ok(starts[0].index > confirm, 'and the one place a checkout starts is that handler');
+});
+
+test('CHOOSING A PLAN OPENS THE SUMMARY — it does not open a payment page', () => {
+  const chooseBlock = usageCode.slice(usageCode.indexOf('onChoose='), usageCode.indexOf('onConfirm='));
+  assert.ok(chooseBlock.length > 0, 'the ladder must still have a choose handler');
+  assert.doesNotMatch(chooseBlock, /checkout\.mutate/,
+    'the first click must not take the user to a card form');
+  assert.match(chooseBlock, /setPendingPlan\(/, 'it opens the order summary instead');
+  assert.match(chooseBlock, /portal\.mutate\(\)/, 'and a paid account still goes to the portal, unchanged');
+});
+
+test('cancelling the summary starts nothing', () => {
+  // A dialog whose cancel path still fires the mutation is worse than no dialog: it teaches the user
+  // that the confirm step is decorative.
+  assert.match(usageCode, /onCancel=\{\(\) => setPendingPlan\(null\)\}/);
+});
+
+test('every class the order summary uses is styled, so it cannot render as a raw block', () => {
+  // The same failure the plan ladder had: written, rendered, and never styled, which puts an
+  // unstyled stack of text in front of somebody at the moment they are deciding to pay.
+  const dialogSrc = readFileSync(join(WEB, 'src', 'components', 'order-summary.tsx'), 'utf8');
+  const used = [...dialogSrc.matchAll(/className="([^"]+)"/g)]
+    .flatMap((m) => m[1].split(/\s+/))
+    .filter((c) => /^order-summary/.test(c));
+  const missing = [...new Set(used)].filter((c) => !css.includes(`.${c}`));
+  assert.deepEqual(missing, [], `order-summary classes with no style: ${missing.join(', ')}`);
+  assert.ok(used.length >= 4, `expected the summary to use several of its own classes, saw ${used.length}`);
+});
+
+test('the summary is fed the SERVER currency and the enforced allowances', () => {
+  // The figures a person agrees to must be the ones the service charges and enforces, read from the
+  // same places the ladder reads them rather than restated beside it.
+  const dialog = usageCode.slice(usageCode.indexOf('<OrderSummaryDialog'));
+  assert.match(dialog, /currency=\{billing\.data\?\.currency/, 'the currency the server reported');
+  assert.match(dialog, /currentPlan=\{currentPlan\}/, 'and what the account is on today');
 });
 
 test('a deployment with no Stripe key offers no button at all', () => {

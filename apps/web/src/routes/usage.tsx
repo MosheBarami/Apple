@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { PlanLadder } from '../components/plans';
+import { OrderSummaryDialog } from '../components/order-summary';
 import { meterView } from '../components/usage-meter-model';
 import { formatNumber } from '../lib/format';
 import { Failure } from '../components/failure';
@@ -225,6 +226,16 @@ export function UsagePage() {
   const billing = useQuery({ queryKey: ['billing-config'], queryFn: fetchBillingConfig, retry: false });
   const { toast } = useToast();
   const [busyPlan, setBusyPlan] = useState<PlanId | null>(null);
+  /**
+   * THE ORDER WAITING TO BE CONFIRMED.
+   *
+   * The first click used to call the checkout mutation and the browser left for Stripe's card form.
+   * The only pre-purchase statement in the product was the plan card behind it, which describes a
+   * TIER — price, allowance, highlights — and not an order: it never said what the account was
+   * moving from, that the charge repeats, or that tax is added to the figure being read. Choosing a
+   * plan now opens the summary; nothing is bought until it is confirmed.
+   */
+  const [pendingPlan, setPendingPlan] = useState<PlanId | null>(null);
 
   /**
    * COMING BACK FROM STRIPE IS NOT AN ENTITLEMENT.
@@ -397,11 +408,25 @@ export function UsagePage() {
                     // for both. Swapping, proration and when a downgrade takes effect are Stripe's
                     // to decide, and the portal is where it does that.
                     const canBuy = billing.data.purchasable.includes(plan);
-                    if (currentPlan === 'free' && canBuy) checkout.mutate(plan);
+                    if (currentPlan === 'free' && canBuy) setPendingPlan(plan);
                     else portal.mutate();
                   }
                 : undefined
             }
+          />
+
+          {/*
+            THE ORDER, BEFORE THE PAYMENT PAGE. It states the plan, the charge, how often it repeats,
+            the allowance it moves to and that tax is added — and only then hands over to Stripe.
+            Every sentence in it comes from lib/order-summary.ts, which is tested on its own.
+          */}
+          <OrderSummaryDialog
+            plan={pendingPlan}
+            currentPlan={currentPlan}
+            currency={billing.data?.currency}
+            busy={busyPlan != null}
+            onConfirm={(plan) => checkout.mutate(plan)}
+            onCancel={() => setPendingPlan(null)}
           />
 
           {/*
