@@ -14,6 +14,8 @@ import {
   PLAN_COPY,
   PLAN_IDS,
   PLAN_LIMITS,
+  PLAN_SUPPORT,
+  SUPPORT_EMAIL,
   buildsPerDay,
   buildsPerMonth,
   SPARKS_PER_BUILD,
@@ -117,11 +119,23 @@ export function PlanLadder({
               ))}
             </ul>
 
+            {/* Three of the four tiers said nothing at all about support, which a reader cannot
+                distinguish from "there is none". Stated for every plan, including the free one:
+                what the channel is, and what is actually promised about a reply. No response time
+                — nobody has committed to one, and a missed published SLA is worse than an honest
+                "best effort". */}
+            <p className="plan__support">
+              <span className="plan__support-label">Support</span>
+              <span>
+                {PLAN_SUPPORT[id].channel}. {PLAN_SUPPORT[id].promise}
+              </span>
+            </p>
+
             <div className="plan__action">
               {isCurrent ? (
                 <span className="plan__on">You are on this plan</span>
               ) : !priced ? (
-                <a className="btn" href="mailto:hello@apple.build?subject=Enterprise%20plan">
+                <a className="btn" href={`mailto:${SUPPORT_EMAIL}?subject=Enterprise%20plan`}>
                   Get in touch
                 </a>
               ) : availability === 'checking' ? (

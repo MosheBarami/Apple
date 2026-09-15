@@ -1057,6 +1057,53 @@ export const PLAN_COPY: Record<PlanId, PlanCopy> = {
   },
 };
 
+/**
+ * The one address support reaches a human at.
+ *
+ * IT WAS TWO. The marketing site, the docs footer, the status page and the FAQ all used
+ * apple.labs.app@gmail.com; the plan ladder in the signed-in app — the only support-ish link
+ * anywhere behind the login — used hello@apple.build. A customer cannot tell which of those is
+ * read, and writing to the wrong one looks, from their side, exactly like being ignored.
+ *
+ * Declared here so the two halves of the product cannot drift again, and asserted across both
+ * trees by tests/support-expectations.test.mjs.
+ */
+export const SUPPORT_EMAIL = 'apple.labs.app@gmail.com';
+
+/** What a plan can expect when it writes in. */
+export interface PlanSupport {
+  /** How you reach us on this plan. */
+  channel: string;
+  /**
+   * What is promised about a reply.
+   *
+   * NO RESPONSE TIME IS STATED, and that is the honest answer rather than an omission: nobody has
+   * committed to one, and a published SLA that is missed is worse than a published "best effort"
+   * that is met. What is NOT acceptable is the previous state, where three of four plans said
+   * nothing at all and a buyer could not tell whether anyone would answer.
+   */
+  promise: string;
+}
+
+export const PLAN_SUPPORT: Record<PlanId, PlanSupport> = {
+  free: {
+    channel: `Email ${SUPPORT_EMAIL}`,
+    promise: 'A human reads it. While Apple is in beta no reply time is promised, and busy weeks are slower.',
+  },
+  builder: {
+    channel: `Email ${SUPPORT_EMAIL}`,
+    promise: 'A human reads it, and paid accounts are answered first. No reply time is promised while Apple is in beta.',
+  },
+  studio: {
+    channel: `Email ${SUPPORT_EMAIL}`,
+    promise: 'A human reads it, and paid accounts are answered first. No reply time is promised while Apple is in beta.',
+  },
+  enterprise: {
+    channel: `Email ${SUPPORT_EMAIL} to start`,
+    promise: 'A named contact and whatever response terms are agreed in your contract — these are negotiated, not published.',
+  },
+};
+
 /** Sparks in one quality-gated build, from the measured neuron cost. */
 export const SPARKS_PER_BUILD = 77;
 
