@@ -4748,6 +4748,204 @@ samp {
   color: var(--muted);
 }
 
+/* ---- INVOICES ------------------------------------------------------------
+   What the account was actually charged, on our own page rather than only inside
+   Stripe's portal. A quiet ledger, not a feature: it is read on the one day somebody
+   disagrees with a charge, so it is built for scanning a column of amounts and dates
+   rather than for being noticed. Tabular numerals so the amounts line up; the status
+   is a word with a soft ground rather than a saturated badge, because "Paid" on a
+   settled invoice is reassurance, not an alert. */
+.invoice-list {
+  margin: 1.25rem 0 0;
+}
+
+.invoice-list h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+.invoice-list__rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  background: var(--surface-2);
+}
+
+.invoice-row + .invoice-row {
+  border-top: 1px solid var(--hairline);
+}
+
+.invoice-row__head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.85rem;
+}
+
+/* The whole left half is the disclosure control, so the target is a row rather than a
+   triangle. Unstyled as a button: a border here would make an ordinary ledger row read
+   as an action. */
+.invoice-row__toggle {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.invoice-row__number {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.invoice-row__date {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.invoice-row__amount {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.invoice-row__pdf {
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  text-decoration: none;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm, 6px);
+  padding: 0.12rem 0.45rem;
+}
+
+.invoice-row__pdf:hover {
+  color: var(--ink);
+  border-color: var(--line-strong, var(--line));
+}
+
+/* A draft invoice has no PDF. The slot is held open so the amounts above and below it
+   stay in one column, rather than the row reflowing around an absent link. */
+.invoice-row__pdf--none {
+  border-color: transparent;
+  visibility: hidden;
+}
+
+.invoice-pill {
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  white-space: nowrap;
+  background: var(--surface-3);
+  color: var(--muted);
+}
+
+.invoice-pill--paid {
+  background: var(--good-soft);
+  color: var(--good);
+}
+
+.invoice-pill--due {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.invoice-pill--failed {
+  background: var(--bad-soft);
+  color: var(--bad);
+}
+
+.invoice-pill--neutral {
+  background: var(--surface-3);
+  color: var(--muted);
+}
+
+.invoice-detail {
+  padding: 0 0.85rem 0.75rem;
+  font-size: 0.82rem;
+}
+
+.invoice-detail__lines {
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem 0 0;
+  border-top: 1px solid var(--hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.invoice-detail__line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0.5rem;
+  align-items: baseline;
+  color: var(--muted);
+}
+
+.invoice-detail__amount {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.invoice-detail__totals {
+  margin: 0.55rem 0 0;
+  padding: 0.45rem 0 0;
+  border-top: 1px solid var(--hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.invoice-detail__totals > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.invoice-detail__totals dt {
+  color: var(--muted);
+}
+
+.invoice-detail__totals dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.invoice-detail__total {
+  font-weight: 600;
+}
+
+@media (max-width: 560px) {
+  /* The date drops under the number and the amount keeps its own row, rather than four
+     columns fighting over 320px and the amount wrapping mid-number. */
+  .invoice-row__head {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    row-gap: 0.35rem;
+  }
+
+  .invoice-row__amount {
+    grid-column: 1 / -1;
+    text-align: end;
+  }
+}
+
 /* The charge currency, stated in the product rather than only on Stripe's page. */
 .plans-currency {
   grid-column: 1 / -1;

@@ -8,7 +8,7 @@ import type { FilesResponse, FileVersion } from '../components/ws/files-model';
 import { mockBrief, mockNext, mockRoadmap } from '../components/roadmap/mock';
 import { MOCK_MODE, mockAttribution, mockCounters, mockMe, mockMemory, mockNotifications, mockSpend, mockUsageDays } from './mock';
 import type { InboxResponse, MarkReadResult } from './notification-inbox.ts';
-import type { BillingChange, SubscriptionView } from './billing-copy';
+import type { BillingChange, Invoice, InvoiceDetail, SubscriptionView } from './billing-copy';
 import { getAccessToken } from './supabase';
 import { noteReachability } from './connectivity';
 import type { SearchType } from './search-filters';
@@ -149,6 +149,29 @@ export const openBillingPortal = (): Promise<{ url: string }> =>
  */
 export const fetchBillingHistory = (): Promise<{ events: BillingChange[] }> =>
   MOCK_MODE ? Promise.resolve({ events: [] }) : request<{ events: BillingChange[] }>('/api/billing/history');
+
+/**
+ * THE INVOICES THIS ACCOUNT WAS CHARGED ON, newest first.
+ *
+ * Read from Stripe by the worker and mapped to an allowlist there, so this never sees a raw Stripe
+ * object — no customer address, no tax id, no payment intent. Scoped to the caller's own Stripe
+ * customer by the worker; there is no id in this path that could name anyone else.
+ *
+ * An account that never bought anything gets an empty list rather than an error, because having no
+ * invoices is a perfectly ordinary thing to have.
+ */
+export const fetchInvoices = (): Promise<{ invoices: Invoice[] }> =>
+  MOCK_MODE ? Promise.resolve({ invoices: [] }) : request<{ invoices: Invoice[] }>('/api/billing/invoices');
+
+/**
+ * One invoice with its line items, subtotal and tax.
+ *
+ * Asked of the server rather than assembled from the row: line items are not on the list response,
+ * and a row that "expanded" into the summary again would look like a detail view containing no
+ * detail. The worker refuses any invoice that is not this caller's, whatever id is passed here.
+ */
+export const fetchInvoice = (id: string): Promise<{ invoice: InvoiceDetail | null }> =>
+  request<{ invoice: InvoiceDetail | null }>(`/api/billing/invoices/${encodeURIComponent(id)}`);
 
 // ---------------------------------------------------------------- project session
 

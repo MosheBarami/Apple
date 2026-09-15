@@ -518,6 +518,181 @@ export function buildCheckoutRequest(
   return { ok: true, body: p.toString() };
 }
 
+// ---------------------------------------------------------------------------
+// INVOICES — what the customer was actually charged, on our own page
+// ---------------------------------------------------------------------------
+//
+// WHY THIS EXISTS WHEN THE PORTAL ALREADY LISTS INVOICES. The portal is a good place for an
+// invoice to live and a bad place for it to be the ONLY place. A customer who wants to check a
+// charge has to be sent to another company's domain, sign in again, and come back; a customer
+// disputing one has no shared reference with support; and a failed payment appears in OUR inbox
+// while the invoice it is about appears nowhere in this product at all. Reading the list is cheap
+// and safe — it moves no money and grants nothing.
+//
+// EVERYTHING BELOW IS A PURE MAPPER, deliberately. The route that calls Stripe cannot be tested
+// without a network; the decisions that matter — which fields leave, which links are rendered,
+// whose invoice this is — can be, and are, in billing-invoices.test.mjs.
+//
+// THE PDF IS A LINK, NOT A PROXY. Stripe's `invoice_pdf` is already scoped and expiring. Fetching
+// those bytes through the worker would turn it into a general-purpose document fetcher wearing our
+// authentication, for no gain to the person downloading it.
+
+/** One invoice, reduced to what a person reads. The key set IS the allowlist. */
+export interface InvoiceSummary {
+  id: string;
+  /** Stripe's human number, e.g. "C0FFEE-0001". A draft has none yet. */
+  number: string | null;
+  /** Unix seconds. */
+  created: number | null;
+  /** Stripe's own word: paid, open, draft, uncollectible, void. Rendered, never interpreted here. */
+  status: string | null;
+  /** Minor units, as Stripe reports them. Null when unreadable — never a plausible zero. */
+  amountPaid: number | null;
+  amountDue: number | null;
+  currency: string | null;
+  hostedUrl: string | null;
+  pdfUrl: string | null;
+}
+
+export interface InvoiceLine {
+  description: string | null;
+  quantity: number | null;
+  unitAmount: number | null;
+  amount: number | null;
+  period: { start: number | null; end: number | null } | null;
+}
+
+export interface InvoiceDetail extends InvoiceSummary {
+  lines: InvoiceLine[];
+  subtotal: number | null;
+  tax: number | null;
+  total: number | null;
+}
+
+/** Minor units, or null. The same rule dunning.ts uses: an unreadable field says so. */
+function money(v: unknown): number | null {
+  return typeof v === 'number' && Number.isFinite(v) ? v : null;
+}
+
+function str(v: unknown): string | null {
+  return typeof v === 'string' && v.length > 0 ? v : null;
+}
+
+/**
+ * A link only if it is an https URL on a Stripe host.
+ *
+ * Both invoice links are put straight into an `<a href>` on a page the customer is signed in to.
+ * They come from Stripe over TLS today; a guard costing one comparison is cheaper than ever having
+ * to re-derive whether that is still true, and it makes `javascript:` unrenderable by construction.
+ */
+function stripeLink(v: unknown): string | null {
+  const s = str(v);
+  if (!s) return null;
+  let u: URL;
+  try {
+    u = new URL(s);
+  } catch {
+    return null;
+  }
+  if (u.protocol !== 'https:') return null;
+  return u.hostname === 'stripe.com' || u.hostname.endsWith('.stripe.com') ? s : null;
+}
+
+function asObject(raw: unknown): Record<string, unknown> | null {
+  return typeof raw === 'object' && raw !== null && !Array.isArray(raw) ? (raw as Record<string, unknown>) : null;
+}
+
+/**
+ * One Stripe invoice as this product is willing to describe it, or null when it cannot be read.
+ *
+ * AN ALLOWLIST, NEVER A SPREAD. A Stripe invoice carries the customer's postal address, their tax
+ * ids, the payment intent and our own metadata. Copying the object and deleting fields leaks every
+ * field Stripe adds next year; naming the nine that leave cannot.
+ */
+export function mapInvoice(raw: unknown): InvoiceSummary | null {
+  const o = asObject(raw);
+  if (!o) return null;
+  const id = str(o['id']);
+  if (!id) return null;
+  return {
+    id,
+    number: str(o['number']),
+    created: money(o['created']),
+    status: str(o['status']),
+    amountPaid: money(o['amount_paid']),
+    amountDue: money(o['amount_due']),
+    currency: str(o['currency']),
+    hostedUrl: stripeLink(o['hosted_invoice_url']),
+    pdfUrl: stripeLink(o['invoice_pdf']),
+  };
+}
+
+/** Stripe's list envelope into rows, in Stripe's order. An unreadable row is skipped, not blanked. */
+export function mapInvoiceList(raw: unknown): InvoiceSummary[] {
+  const o = asObject(raw);
+  const data = o?.['data'];
+  if (!Array.isArray(data)) return [];
+  return data.map(mapInvoice).filter((i): i is InvoiceSummary => i !== null);
+}
+
+function mapLine(raw: unknown): InvoiceLine | null {
+  const o = asObject(raw);
+  if (!o) return null;
+  const price = asObject(o['price']);
+  const period = asObject(o['period']);
+  return {
+    description: str(o['description']),
+    quantity: money(o['quantity']),
+    // Null rather than amount/quantity: a computed unit price is a figure we invented, and the one
+    // place it would be read is beside a real one.
+    unitAmount: price ? money(price['unit_amount']) : null,
+    amount: money(o['amount']),
+    period: period ? { start: money(period['start']), end: money(period['end']) } : null,
+  };
+}
+
+/** The same invoice with its line items and totals. Still no customer record. */
+export function mapInvoiceDetail(raw: unknown): InvoiceDetail | null {
+  const summary = mapInvoice(raw);
+  if (!summary) return null;
+  const o = asObject(raw)!;
+  const lines = asObject(o['lines'])?.['data'];
+  return {
+    ...summary,
+    lines: Array.isArray(lines) ? lines.map(mapLine).filter((l): l is InvoiceLine => l !== null) : [],
+    subtotal: money(o['subtotal']),
+    tax: money(o['tax']),
+    total: money(o['total']),
+  };
+}
+
+/**
+ * Does this id even look like an invoice id?
+ *
+ * Checked BEFORE it is interpolated into `https://api.stripe.com/v1/invoices/<id>`, because a
+ * caller-supplied `../charges/ch_1` addresses a different Stripe endpoint with our secret key
+ * attached. The shape is Stripe's own: `in_` and then url-safe characters.
+ */
+export function isInvoiceId(id: unknown): boolean {
+  return typeof id === 'string' && /^in_[A-Za-z0-9]+$/.test(id);
+}
+
+/**
+ * Is this invoice the caller's?
+ *
+ * THE ID IN THE PATH IS NOT THE AUTHORISATION. It names an invoice; it says nothing about who may
+ * read it. Without this, any signed-in user could page through every invoice this Stripe account
+ * has ever issued, to anyone. Compared as strings only: Stripe returns `customer` expanded when
+ * asked to, and two objects stringify to the same `[object Object]`.
+ */
+export function invoiceBelongsTo(raw: unknown, customerId: string | null | undefined): boolean {
+  const o = asObject(raw);
+  if (!o) return false;
+  const mine = str(customerId);
+  const theirs = str(o['customer']);
+  return mine !== null && theirs !== null && mine === theirs;
+}
+
 /** Build the Billing Portal request — where a downgrade or a cancellation actually happens. */
 export function buildPortalRequest(
   env: Env,

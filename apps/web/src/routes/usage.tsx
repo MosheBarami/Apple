@@ -10,10 +10,20 @@ import { meterView } from '../components/usage-meter-model';
 import { formatNumber } from '../lib/format';
 import { Failure } from '../components/failure';
 import { PLAN_COPY, PRODUCT_MODE_INFO, isPlanId, type PlanId, type ProductMode } from '@golem/shared';
-import { billingChangeLine, billingNotice, type SubscriptionView } from '../lib/billing-copy';
+import {
+  billingChangeLine,
+  billingNotice,
+  formatMoney,
+  invoiceAmountMinor,
+  invoiceStatusPill,
+  type Invoice,
+  type SubscriptionView,
+} from '../lib/billing-copy';
 import {
   fetchBillingConfig,
   fetchBillingHistory,
+  fetchInvoice,
+  fetchInvoices,
   fetchMe,
   fetchUsage,
   openBillingPortal,
@@ -134,6 +144,141 @@ function BillingHistory() {
         ))}
       </ul>
     </details>
+  );
+}
+
+/**
+ * WHAT THIS ACCOUNT WAS ACTUALLY CHARGED, on our own page.
+ *
+ * Before this, an invoice existed for this product's customers in exactly one place: Stripe's
+ * hosted portal, behind a button that leaves the app. That is a defensible home for an invoice and
+ * a bad place for it to be the only one — a customer told IN OUR OWN INBOX that a payment failed
+ * could not see the invoice it was about anywhere in the thing they were paying for.
+ *
+ * THE PDF IS AN ORDINARY LINK. Stripe's `invoice_pdf` is already scoped and expiring; proxying
+ * those bytes through the worker would turn it into a general-purpose document fetcher wearing our
+ * authentication, and would give the person downloading it nothing.
+ *
+ * Every sentence here — the status word, the money, which of the two amounts a row is about —
+ * comes from billing-copy, where it is tested. Nothing in this component decides what a field
+ * means.
+ */
+function InvoiceRow({ invoice }: { invoice: Invoice }) {
+  const [open, setOpen] = useState(false);
+  // Fetched only once the row is opened: the list is what most visits need, and 24 detail requests
+  // on page load would be 24 Stripe calls nobody asked for.
+  const detail = useQuery({
+    queryKey: ['invoice', invoice.id],
+    queryFn: () => fetchInvoice(invoice.id),
+    enabled: open,
+    retry: false,
+  });
+  const pill = invoiceStatusPill(invoice.status);
+  const amount = formatMoney(invoiceAmountMinor(invoice), invoice.currency);
+  const when =
+    invoice.created === null
+      ? null
+      : new Date(invoice.created * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+  const lines = detail.data?.invoice?.lines ?? [];
+
+  return (
+    <li className="invoice-row">
+      <div className="invoice-row__head">
+        <button
+          type="button"
+          className="invoice-row__toggle"
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+        >
+          {/* A draft invoice genuinely has no number yet, and "Invoice null" is the sentence that
+              teaches a customer this page is guessing. */}
+          <span className="invoice-row__number">{invoice.number ?? 'Invoice'}</span>
+          <span className="invoice-row__date">{when ?? 'Date unavailable'}</span>
+        </button>
+        <span className={`invoice-pill invoice-pill--${pill.tone}`}>{pill.label}</span>
+        <span className="invoice-row__amount">{amount ?? '—'}</span>
+        {invoice.pdfUrl ? (
+          <a className="invoice-row__pdf" href={invoice.pdfUrl} target="_blank" rel="noreferrer noopener">
+            PDF
+          </a>
+        ) : (
+          // No link rather than a dead one: a draft invoice has no PDF, and an anchor that goes
+          // nowhere is worse than an absent one.
+          <span className="invoice-row__pdf invoice-row__pdf--none" aria-hidden="true" />
+        )}
+      </div>
+
+      {open && (
+        <div className="invoice-detail">
+          {detail.isPending && (
+            <p className="muted" aria-busy="true">
+              Loading this invoice…
+            </p>
+          )}
+          {detail.isError && <Failure error={detail.error} onRetry={() => void detail.refetch()} compact />}
+          {detail.isSuccess && detail.data.invoice === null && (
+            <p className="muted">This invoice is no longer available.</p>
+          )}
+          {detail.isSuccess && detail.data.invoice && (
+            <>
+              <ul className="invoice-detail__lines">
+                {lines.map((line, i) => (
+                  <li key={`${invoice.id}:${i}`} className="invoice-detail__line">
+                    <span className="invoice-detail__desc">{line.description ?? 'Line item'}</span>
+                    {line.quantity !== null && line.quantity !== 1 && (
+                      <span className="invoice-detail__qty">×{line.quantity}</span>
+                    )}
+                    <span className="invoice-detail__amount">
+                      {formatMoney(line.amount, invoice.currency) ?? '—'}
+                    </span>
+                  </li>
+                ))}
+                {lines.length === 0 && <li className="muted">No line items on this invoice.</li>}
+              </ul>
+              <dl className="invoice-detail__totals">
+                {/* Each total is rendered only when it is really there. A tax row reading "—" on an
+                    invoice with no tax implies tax was charged and could not be read. */}
+                {formatMoney(detail.data.invoice.subtotal, invoice.currency) && (
+                  <div>
+                    <dt>Subtotal</dt>
+                    <dd>{formatMoney(detail.data.invoice.subtotal, invoice.currency)}</dd>
+                  </div>
+                )}
+                {formatMoney(detail.data.invoice.tax, invoice.currency) && (
+                  <div>
+                    <dt>Tax</dt>
+                    <dd>{formatMoney(detail.data.invoice.tax, invoice.currency)}</dd>
+                  </div>
+                )}
+                {formatMoney(detail.data.invoice.total, invoice.currency) && (
+                  <div className="invoice-detail__total">
+                    <dt>Total</dt>
+                    <dd>{formatMoney(detail.data.invoice.total, invoice.currency)}</dd>
+                  </div>
+                )}
+              </dl>
+            </>
+          )}
+        </div>
+      )}
+    </li>
+  );
+}
+
+function InvoiceList() {
+  const invoices = useQuery({ queryKey: ['invoices'], queryFn: fetchInvoices, retry: false });
+  // Nothing to show is not the same as a list that failed to load, and neither earns a heading on a
+  // page that is mostly about Credits. A customer with no invoices yet has nothing to check.
+  if (invoices.isPending || invoices.isError || invoices.data.invoices.length === 0) return null;
+  return (
+    <section className="invoice-list" aria-labelledby="invoices-heading">
+      <h3 id="invoices-heading">Invoices</h3>
+      <ul className="invoice-list__rows">
+        {invoices.data.invoices.map((inv) => (
+          <InvoiceRow key={inv.id} invoice={inv} />
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -412,6 +557,13 @@ export function UsagePage() {
             already keeps the Stripe customer id across a plan change for this reason; the page was
             the half that did not honour it.
           */}
+          {/*
+            GATED ON THE SAME THING THE PORTAL BUTTON IS. A Stripe customer exists, so there is
+            something to list — including for somebody whose subscription lapsed and who is back on
+            Free with invoices they still need to reach.
+          */}
+          {billingView?.hasBillingAccount && <InvoiceList />}
+
           {billingView?.hasBillingAccount && <BillingHistory />}
 
           {billingView?.hasBillingAccount && (

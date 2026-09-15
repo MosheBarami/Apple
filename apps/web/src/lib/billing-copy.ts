@@ -217,3 +217,108 @@ export function billingChangeLine(change: BillingChange, opts: ChangeLineOptions
   if (change.fromPlan === null) return `Moved to ${to}${on}.`;
   return `Moved from ${opts.planName(change.fromPlan)} to ${to}${on}.`;
 }
+
+// ---------------------------------------------------------------------------
+// INVOICES
+// ---------------------------------------------------------------------------
+//
+// The worker's mapper decides WHICH fields of a Stripe invoice reach a browser. This decides what
+// they are allowed to say. Both halves are pure and tested, for the same reason the subscription
+// copy above is: a page that reads the raw fields makes the call again in every place it prints
+// them, and the two readings drift.
+
+/** One invoice, exactly as apps/worker/src/billing.ts maps it. */
+export interface Invoice {
+  id: string;
+  number: string | null;
+  created: number | null;
+  status: string | null;
+  amountPaid: number | null;
+  amountDue: number | null;
+  currency: string | null;
+  hostedUrl: string | null;
+  pdfUrl: string | null;
+}
+
+export interface InvoiceLine {
+  description: string | null;
+  quantity: number | null;
+  unitAmount: number | null;
+  amount: number | null;
+  period: { start: number | null; end: number | null } | null;
+}
+
+export interface InvoiceDetail extends Invoice {
+  lines: InvoiceLine[];
+  subtotal: number | null;
+  tax: number | null;
+  total: number | null;
+}
+
+export type InvoiceTone = 'paid' | 'due' | 'failed' | 'neutral';
+export interface InvoicePill {
+  label: string;
+  tone: InvoiceTone;
+}
+
+/**
+ * Stripe's word for an invoice's state, in the words a customer uses.
+ *
+ * THE DEFAULT IS THE POINT. A status this product has not seen before must read as unrecognised,
+ * never be collapsed into the reassuring end of the range: "Paid" printed over an unpaid invoice is
+ * the most expensive sentence this page can produce, and it is exactly what a `?? 'paid'` would do
+ * the first time Stripe adds a status.
+ */
+export function invoiceStatusPill(status: unknown): InvoicePill {
+  switch (status) {
+    case 'paid':
+      return { label: 'Paid', tone: 'paid' };
+    case 'open':
+      return { label: 'Due', tone: 'due' };
+    case 'draft':
+      return { label: 'Draft', tone: 'neutral' };
+    case 'uncollectible':
+      // Stripe's word for "we have given up collecting this". "Unpaid" is what it means to a person.
+      return { label: 'Unpaid', tone: 'failed' };
+    case 'void':
+      return { label: 'Voided', tone: 'neutral' };
+    default:
+      return { label: 'Status unknown', tone: 'neutral' };
+  }
+}
+
+/**
+ * Minor units into a currency amount, or NOTHING when either half is unreadable.
+ *
+ * `Number(null)` is 0, and a 0 here renders as a real charge of nothing on the one page whose
+ * purpose is letting somebody check a figure against their bank statement.
+ */
+export function formatMoney(minor: unknown, currency: unknown, locale?: string): string | null {
+  if (typeof minor !== 'number' || !Number.isFinite(minor)) return null;
+  if (typeof currency !== 'string' || !/^[A-Za-z]{3}$/.test(currency)) return null;
+  const code = currency.toUpperCase();
+  try {
+    return new Intl.NumberFormat(locale, { style: 'currency', currency: code }).format(minor / 100);
+  } catch {
+    // An Intl that does not know the code still has to print the number rather than throwing on a
+    // billing page. Minor units are not universally 100, but Stripe reports in them and this is the
+    // fallback path, not the one a real currency takes.
+    return `${(minor / 100).toFixed(2)} ${code}`;
+  }
+}
+
+/**
+ * Which of the two amounts this invoice's row is about.
+ *
+ * A paid invoice shows what was taken; an open one shows what is owed. `amount_paid` on an open
+ * invoice is 0, and "0.00 — Due" reads as a bill for nothing.
+ */
+export function invoiceAmountMinor(
+  invoice: Pick<Invoice, 'status' | 'amountPaid' | 'amountDue'> | null | undefined,
+): number | null {
+  if (!invoice) return null;
+  const paid = typeof invoice.amountPaid === 'number' ? invoice.amountPaid : null;
+  const due = typeof invoice.amountDue === 'number' ? invoice.amountDue : null;
+  if (invoice.status === 'paid') return paid ?? due;
+  return due ?? paid;
+}
