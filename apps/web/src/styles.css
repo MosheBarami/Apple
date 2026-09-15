@@ -2,10 +2,10 @@
    APPLE — the workshop, as a tool.
 
    The marketing site is a showroom: big type, theatre, air. This is the bench
-   you stand at for six hours. Same materials — quarried stone, warm neutrals,
-   an accent that is the only thing in the palette that emits light — but
-   denser, quieter, and organised around a single question: what is the apple
-   doing right now, and what did it just do to my place?
+   you stand at for six hours. Same materials — literally the site's own cool
+   stone neutrals, an accent that is the only thing in the palette that emits
+   light — but denser, quieter, and organised around a single question: what is
+   the apple doing right now, and what did it just do to my place?
 
    Structure
      1  Tokens                     10  Chat + tool timeline
@@ -58,27 +58,59 @@
   --accent-ink: var(--acc-ember-ink);
 }
 
-/* ---- LIGHT: quarry daylight -------------------------------------------- */
+/* ---- LIGHT: daylight, and it is the SITE's daylight ----------------------
+   Every neutral below — --paper, --paper-2, --surface, --ink, --muted, --faint,
+   --line — is a name apps/site/src/styles/global.css also declares, and until
+   this change the two files gave the same names different colours: the site a
+   cool blue-grey taken from the mark, this file a warm cream left over from the
+   Golem identity. No test caught it and nothing looked broken, because each
+   file was internally consistent. What it cost was the join. A visitor read the
+   site, signed in, and the product changed hue under them — which reads as
+   arriving in a different application, not on another page of the same one.
+   That is what "why is this still the previous design" kept pointing at: not a
+   screen somebody forgot to restyle, a screen wearing the other palette.
+
+   The site is the source of truth for hue. ONLY the neutrals move; the accent
+   ramp below is this app's own and is untouched.
+
+   THE APP HAS ONE RAISE LEVEL MORE THAN THE SITE HAS. --surface-2 and
+   --surface-3 have no site counterpart to copy, so they are placed inside the
+   site's declared range at the same fractional lightness positions they held in
+   the warm ramp — measured on relative luminance, not eyeballed: --surface-2
+   sits 21% of the way from --paper to --surface, --surface-3 27% of the way
+   from --paper-2 to --paper. Nothing is extrapolated past the ends of the
+   site's range; see the dark block for what happened when it was.
+
+   Contrast, computed. --ink / --muted / --faint on --paper: 18.13 / 7.97 /
+   5.48. On --paper-2, the darkest ground in this theme and so the worst case:
+   17.17 / 7.55 / 5.19. The warm ramp this replaces put --faint at 3.54:1 on
+   --paper and 3.21:1 on --paper-2 — under the 4.5 floor that the normal-size
+   text it styles needs, for the whole time it shipped. The port fixes that
+   incidentally; it was not looked for. */
 :root,
 :root[data-theme='light'] {
   color-scheme: light;
 
-  --paper: #f2efe8;
-  --paper-2: #e9e4da;
-  --surface: #fbf9f5;
-  --surface-2: #f5f1e9;
-  --surface-3: #ece7dc;
-  --ink: #171512;
-  --muted: #625b4f;
-  --faint: #857d70;
-  --line: rgba(23, 21, 18, 0.14);
-  --line-strong: rgba(23, 21, 18, 0.26);
-  --hairline: rgba(23, 21, 18, 0.075);
+  --paper: #f6f7fb;
+  --paper-2: #eef1f8;
+  --surface: #ffffff;
+  --surface-2: #f8f9fc;
+  --surface-3: #f0f3f9;
+  --ink: #0b0d14;
+  --muted: #444c63;
+  --faint: #5b6480;
+  --line: rgba(11, 13, 20, 0.12);
+  --line-strong: rgba(11, 13, 20, 0.24);
+  --hairline: rgba(11, 13, 20, 0.07);
 
-  --lift-1: 0 1px 2px rgba(60, 46, 28, 0.06), 0 2px 6px rgba(60, 46, 28, 0.045);
-  --lift-2: 0 2px 4px rgba(60, 46, 28, 0.07), 0 8px 22px rgba(60, 46, 28, 0.08);
-  --lift-3: 0 4px 10px rgba(60, 46, 28, 0.09), 0 22px 52px rgba(60, 46, 28, 0.12);
-  --inset: inset 0 1px 0 rgba(255, 255, 255, 0.8), inset 0 -1px 0 rgba(23, 21, 18, 0.05);
+  /* The shadows keep this app's own geometry and alphas — it is a denser tool
+     than the site and lifts things less far — but they were tinted with a warm
+     brown that no longer has anything to be warm against. Retinted to the
+     site's ink, not replaced with the site's softer, larger shadows. */
+  --lift-1: 0 1px 2px rgba(11, 13, 20, 0.06), 0 2px 6px rgba(11, 13, 20, 0.045);
+  --lift-2: 0 2px 4px rgba(11, 13, 20, 0.07), 0 8px 22px rgba(11, 13, 20, 0.08);
+  --lift-3: 0 4px 10px rgba(11, 13, 20, 0.09), 0 22px 52px rgba(11, 13, 20, 0.12);
+  --inset: inset 0 1px 0 rgba(255, 255, 255, 0.8), inset 0 -1px 0 rgba(11, 13, 20, 0.05);
 
   --acc-ember: #a8460f;
   --acc-ember-soft: rgba(168, 70, 15, 0.1);
@@ -104,24 +136,43 @@
 
   --grain-opacity: 0.038;
   --grain-blend: multiply;
-  --scrim: rgba(38, 30, 20, 0.42);
+  --scrim: rgba(11, 13, 20, 0.42);
 }
 
-/* ---- DARK: night quarry ------------------------------------------------- */
+/* ---- DARK: the mark's native ground -------------------------------------
+   The site's dark theme token for token, with the same one exception as light:
+   the extra raise level. --surface-3 takes the top of the site's range —
+   #151826, which is the site's own --surface-2 — and --surface-2 is placed
+   between that and --surface at the app's own relative position, 43% of the way
+   up. So the app's ceiling is the site's ceiling rather than a step past it.
+
+   IT WAS A STEP PAST IT FIRST, and the measurement is what killed that. Adding
+   one more of the site's own increments above #151826 gives #1c2034, which
+   looks right and puts --faint on it at 4.20:1 — under the floor. The site's
+   dark range has no room above its top surface for text this dim, so the app's
+   five levels are fitted inside the range instead of stretched beyond it. A
+   ratio nobody computes is a ratio nobody knows.
+
+   --ink / --muted / --faint on --paper: 17.52 / 7.90 / 5.22. On --surface-3,
+   the lightest ground here and so the worst case: 15.46 / 6.97 / 4.61. The warm
+   ramp measured 3.59:1 for --faint on its own top surface.
+
+   The shadows below are pure black and the inset highlight pure white — they
+   carry no hue and had nothing to port. */
 :root[data-theme='dark'] {
   color-scheme: dark;
 
-  --paper: #100e0c;
-  --paper-2: #16130f;
-  --surface: #1b1815;
-  --surface-2: #221f19;
-  --surface-3: #2a2620;
-  --ink: #f3efe6;
-  --muted: #a89f90;
-  --faint: #837b6c;
-  --line: rgba(243, 239, 230, 0.13);
-  --line-strong: rgba(243, 239, 230, 0.27);
-  --hairline: rgba(243, 239, 230, 0.07);
+  --paper: #07080f;
+  --paper-2: #0b0d16;
+  --surface: #0e1018;
+  --surface-2: #11141e;
+  --surface-3: #151826;
+  --ink: #eaf0ff;
+  --muted: #94a3c4;
+  --faint: #7582a4;
+  --line: rgba(148, 163, 196, 0.16);
+  --line-strong: rgba(148, 163, 196, 0.32);
+  --hairline: rgba(148, 163, 196, 0.09);
 
   --lift-1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.3);
   --lift-2: 0 2px 6px rgba(0, 0, 0, 0.5), 0 12px 28px rgba(0, 0, 0, 0.4);
@@ -155,20 +206,25 @@
   --scrim: rgba(0, 0, 0, 0.62);
 }
 
+/* THE SYSTEM-DARK MIRROR. Every value here has to match the [data-theme='dark']
+   block above, because most people never pick a theme and land in this one
+   instead. A neutral changed in one block and not the other is the exact bug
+   this whole file is a fix for, one scope down: the same product, two palettes,
+   depending on a setting nobody touched. Edit one, edit both. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     color-scheme: dark;
-    --paper: #100e0c;
-    --paper-2: #16130f;
-    --surface: #1b1815;
-    --surface-2: #221f19;
-    --surface-3: #2a2620;
-    --ink: #f3efe6;
-    --muted: #a89f90;
-    --faint: #837b6c;
-    --line: rgba(243, 239, 230, 0.13);
-    --line-strong: rgba(243, 239, 230, 0.27);
-    --hairline: rgba(243, 239, 230, 0.07);
+    --paper: #07080f;
+    --paper-2: #0b0d16;
+    --surface: #0e1018;
+    --surface-2: #11141e;
+    --surface-3: #151826;
+    --ink: #eaf0ff;
+    --muted: #94a3c4;
+    --faint: #7582a4;
+    --line: rgba(148, 163, 196, 0.16);
+    --line-strong: rgba(148, 163, 196, 0.32);
+    --hairline: rgba(148, 163, 196, 0.09);
     --lift-1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.3);
     --lift-2: 0 2px 6px rgba(0, 0, 0, 0.5), 0 12px 28px rgba(0, 0, 0, 0.4);
     --lift-3: 0 6px 14px rgba(0, 0, 0, 0.5), 0 28px 64px rgba(0, 0, 0, 0.52);
