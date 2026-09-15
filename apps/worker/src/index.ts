@@ -157,7 +157,25 @@ import {
   PROFILE_FIELDS,
 } from './preferences';
 import { allModels } from './providers/registry';
-import { toolNames } from './tools';
+import { toolNames, toolDefs } from './tools';
+import {
+  MCP_METHOD_HEADER,
+  MCP_NAME_HEADER,
+  MCP_PROTOCOL_HEADER,
+  MCP_TOOL_NAMES,
+  RPC,
+  discoverResult,
+  headerDisagreement,
+  initializeResult,
+  mcpTool,
+  mcpToolList,
+  metaVersion,
+  negotiateVersion,
+  parseRpc,
+  rpcError,
+  rpcResult,
+  toolResult,
+} from './mcp';
 import { creditsForNeurons } from './pricing';
 import {
   API_SCOPES,
@@ -270,6 +288,24 @@ function grantedStub(c: PublicCtx): { id: string; stub: DurableObjectStub } | nu
   const key = c.get('apiKey');
   const id = c.req.param('id') ?? '';
   if (!key.projects.some((p) => p.id === id)) return null;
+  return grantedProjectStub(c, id);
+}
+
+/**
+ * The same question for a project id that did NOT come out of the path.
+ *
+ * `/v1/mcp` is one path carrying many operations, so the project a call acts on arrives in the
+ * JSON-RPC arguments. That is a more dangerous shape than a path parameter — the middleware's own
+ * grant check keys off `match.params.id` and therefore cannot see it — so the id gets the identical
+ * set-membership test against the grant that was proven under RLS at mint time, and a session is
+ * materialised only after it passes.
+ *
+ * Both callers go through here, so there is one place where an id becomes a SessionDO on this
+ * surface, and `sessionStub` is not reachable from a `/v1` handler at all.
+ */
+function grantedProjectStub(c: PublicCtx, id: string): { id: string; stub: DurableObjectStub } | null {
+  const key = c.get('apiKey');
+  if (!id || !key.projects.some((p) => p.id === id)) return null;
   return { id, stub: sessionStub(c.env, id) };
 }
 
@@ -3670,6 +3706,169 @@ app.get('/v1/projects/:id/events', (c) => {
     },
   });
 });
+
+// ---------------------------------------------------------------- /v1 MCP
+/**
+ * The Model Context Protocol endpoint, over Streamable HTTP.
+ *
+ * WHAT AN MCP CLIENT IS, HERE. Claude, Cursor or any other MCP host points at this URL with an API
+ * key and gets a read-only view of a place the key was granted. It is the same credential, the same
+ * grant and the same rate limit as the rest of `/v1` — an MCP server with a login of its own would
+ * be a second front door to the same house, and the second one is always the weaker one.
+ *
+ * THE TRANSPORT IS THE CURRENT REVISION. 2026-07-28 removed protocol-level sessions and the
+ * standalone GET stream, so there is no `Mcp-Session-Id` to issue and nothing to resume: one POST,
+ * one JSON response. GET and DELETE answer 405 rather than 404 so a client on an older revision
+ * learns "no stream here" instead of "no endpoint here". The `initialize` handshake is still served
+ * because that is what shipping clients send today.
+ *
+ * WHERE THE AUTHORISATION IS. The `/v1/*` middleware has already proven the key is real, unrevoked,
+ * unexpired and inside its rate limit — but it could not check scope or project, because the route
+ * table's scope is per PATH and this path carries every MCP method. So `tools/call` asks
+ * `authorizeKey` itself, with the called tool's own scope and the project id out of the arguments,
+ * and only then resolves a session through `grantedProjectStub`. Removing either half would leave a
+ * key able to read a project it was never granted.
+ */
+app.post('/v1/mcp', async (c) => {
+  const key = c.get('apiKey');
+
+  const raw = await c.req.text();
+  let body: unknown;
+  try {
+    body = JSON.parse(raw || 'null');
+  } catch {
+    return c.json(rpcError(null, RPC.parseError, 'The request body is not valid JSON.'), 400);
+  }
+
+  const parsed = parseRpc(body);
+  if (!parsed.ok) return c.json(rpcError(null, parsed.code, parsed.message), 400);
+  const { id, method, params, isNotification } = parsed.request;
+
+  // ---- the headers must agree with the body ----
+  // Checked BEFORE the version is resolved and long before anything is served, because the whole
+  // point is that nothing acts on the body while something upstream acted on a header saying
+  // otherwise. See `headerDisagreement` in mcp.ts for why a server is required to compare these.
+  const disagreement = headerDisagreement(
+    { method: c.req.header(MCP_METHOD_HEADER) ?? null, name: c.req.header(MCP_NAME_HEADER) ?? null },
+    { method, params },
+  );
+  if (disagreement) return c.json(rpcError(id, RPC.headerMismatch, disagreement), 400);
+
+  // The protocol version is the same rule applied to the third standard header. A server that
+  // quietly preferred one of them would answer in a shape the client did not ask for, and the
+  // mismatch is exactly the signal that a client is half-migrated between revisions.
+  const header = c.req.header(MCP_PROTOCOL_HEADER) ?? null;
+  const inBody = metaVersion(params);
+  if (header && inBody && header !== inBody) {
+    return c.json(
+      rpcError(
+        id,
+        RPC.headerMismatch,
+        `Header mismatch: ${MCP_PROTOCOL_HEADER} header value '${header}' does not match body protocol version '${inBody}'.`,
+      ),
+      400,
+    );
+  }
+  const declared = header ?? inBody ?? (method === 'initialize' ? (params.protocolVersion as unknown) : null);
+  const negotiated = negotiateVersion(declared);
+  if (!negotiated.ok) {
+    return c.json(
+      rpcError(id, negotiated.code, 'Unsupported protocol version', { supported: negotiated.supported, requested: negotiated.requested }),
+      400,
+    );
+  }
+  const version = negotiated.version;
+
+  // A notification has no id and therefore no answer. 202 with an empty body, per the transport.
+  if (isNotification) {
+    if (method.startsWith('notifications/')) return c.body(null, 202);
+    return c.json(rpcError(null, RPC.invalidRequest, `'${method}' is a request, not a notification — it needs an id.`), 400);
+  }
+
+  const ok = (result: Record<string, unknown>) => c.json(rpcResult(id, result, version));
+  const fail = (code: number, message: string, data?: unknown) => c.json(rpcError(id, code, message, data));
+
+  switch (method) {
+    case 'server/discover':
+      void count(c.env, 'mcp_discover');
+      return ok(discoverResult());
+
+    case 'initialize':
+      void count(c.env, 'mcp_initialize');
+      return ok(initializeResult(version));
+
+    case 'ping':
+      return ok({});
+
+    case 'tools/list':
+      // `true` for studioConnected on purpose: the published list is a property of this SERVER, not
+      // of whether one project's Studio happens to be open right now. A client lists tools once, at
+      // connect, across every project the key holds. A call made while Studio is shut comes back as
+      // an honest tool error instead of a tool that vanished.
+      return ok({ tools: mcpToolList(toolDefs(true, new Set(MCP_TOOL_NAMES))) });
+
+    case 'tools/call': {
+      const entry = mcpTool(params.name);
+      if (!entry) {
+        // Deliberately the same answer for "no such tool" and "that tool is not on this surface":
+        // a distinct message would tell a stranger's program which of the agent's tools exist.
+        return fail(RPC.invalidParams, `Unknown tool '${String(params.name ?? '')}'. Call tools/list for what this server exposes.`);
+      }
+      const args = params.arguments && typeof params.arguments === 'object' && !Array.isArray(params.arguments)
+        ? { ...(params.arguments as Record<string, unknown>) }
+        : {};
+      const projectId = typeof args.project_id === 'string' ? args.project_id : '';
+      if (!projectId) return fail(RPC.invalidParams, "'project_id' is required. GET /v1/projects lists the projects this key was granted.");
+      delete args.project_id; // the registry tool takes no such argument; it is addressed by session
+
+      const verdict = authorizeKey(key, { scope: entry.scope, projectId, now: Date.now() });
+      if (!verdict.ok) return fail(RPC.forbidden, verdict.message, { code: verdict.code });
+
+      const g = grantedProjectStub(c, projectId);
+      if (!g) return fail(RPC.forbidden, 'This API key was not granted access to that project.', { code: 'project_not_granted' });
+
+      const res = await g.stub.fetch('https://do/mcp-tool', traced(c, {
+        method: 'POST',
+        body: JSON.stringify({ tool: entry.tool, args }),
+      }));
+      const out = (await res.json()) as { ok?: boolean; resultForLlm?: string; error?: string };
+      // 403 is the session's own allowlist refusing — a boundary, so it goes back as a JSON-RPC
+      // error that a model is not invited to retry around. Any OTHER failure (a project with no
+      // session yet, a session that could not serve the call) is a condition the caller can act on
+      // and is reported as a tool error, because dressing it as a permission refusal would send
+      // somebody looking at their API key for a problem that is about their Studio.
+      if (res.status === 403) {
+        return fail(RPC.forbidden, out.error ?? 'That tool is not on the MCP surface.', { code: 'tool_not_on_surface' });
+      }
+      if (!res.ok) return ok(toolResult(JSON.stringify({ error: out.error ?? 'The session could not serve that call.' }), true));
+      void count(c.env, 'mcp_tool_call');
+      return ok(toolResult(out.resultForLlm ?? '{}', out.ok === false));
+    }
+
+    default:
+      return fail(RPC.methodNotFound, `This server does not implement '${method}'. It offers tools only.`);
+  }
+});
+
+/**
+ * No stream, and no session to end.
+ *
+ * Both answer 405 rather than 404 because 404 means "no endpoint", which would send a client on an
+ * older revision looking for another URL. `Allow: POST` says what this endpoint does take.
+ */
+const mcpMethodNotAllowed = (c: PublicCtx) =>
+  c.json(
+    errorBody(
+      405,
+      'method_not_allowed',
+      'The MCP endpoint takes POST only. This server implements Streamable HTTP without the deprecated server-initiated SSE stream, and issues no session to delete.',
+      c.get('requestId'),
+    ),
+    405,
+    { Allow: 'POST' },
+  );
+app.get('/v1/mcp', mcpMethodNotAllowed);
+app.delete('/v1/mcp', mcpMethodNotAllowed);
 
 // ---------------------------------------------------------------- shared projects (collaboration)
 /**

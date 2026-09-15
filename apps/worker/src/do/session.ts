@@ -40,6 +40,7 @@ import { chat as llmChat, BudgetError, RateLimitedError } from '../gateway';
 import { systemPrompt, collapseArtDirection, MEMORY_UPDATE_PROMPT } from '../prompts';
 import { designBrief } from '../design-brief';
 import { toolDefs, toolNames, runTool, type AgentCtx, type PlaytestBus } from '../tools';
+import { MCP_TOOL_NAMES } from '../mcp';
 import { planFromDetail, planDetail, settlePlan, type RunPlan } from '../run-plan';
 import { critiqueToText } from '../vision';
 import { toolsForMode } from '../router';
@@ -1270,6 +1271,27 @@ export class SessionDO extends DurableObject<Env> {
     // restore end to end; unreachable without the admin key.
     if (path === '/run-tool' && req.method === 'POST') {
       const { tool, args } = (await req.json()) as { tool: string; args?: unknown };
+      const out = await runTool(this.agentCtx(), tool, JSON.stringify(args ?? {}));
+      return json(out);
+    }
+
+    /**
+     * One agent tool, driven by an MCP client rather than by a model.
+     *
+     * SEPARATE FROM `/run-tool` ON PURPOSE, and for the reason `/companion-op` is separate from
+     * `/studio-op` below: `/run-tool` forwards whatever tool name it is handed and is reachable
+     * only with the admin key, while this route is reachable by any customer's API key. The
+     * allowlist is therefore checked HERE as well as in index.ts — a check in the caller is a
+     * convention the next caller forgets, a check in the receiver is a property of the route.
+     *
+     * `MCP_TOOL_NAMES` is the same constant the HTTP handler filters on, so the two boundaries
+     * cannot disagree about what the surface is.
+     */
+    if (path === '/mcp-tool' && req.method === 'POST') {
+      const { tool, args } = (await req.json().catch(() => ({}))) as { tool?: unknown; args?: unknown };
+      if (typeof tool !== 'string' || !MCP_TOOL_NAMES.includes(tool)) {
+        return json({ error: `${typeof tool === 'string' ? tool : 'that tool'} is not on the MCP surface.` }, 403);
+      }
       const out = await runTool(this.agentCtx(), tool, JSON.stringify(args ?? {}));
       return json(out);
     }
