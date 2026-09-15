@@ -75,9 +75,9 @@
   --grain-src: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
 
   --ground: #f2f2f4; /* page base below the hero */
-  --ground-2: #e4ebf6; /* alternating band */
+  --ground-2: #eeeef0; /* alternating band */
   --surface: #ffffff; /* card and panel faces */
-  --surface-2: #f4f7fc; /* inset wells */
+  --surface-2: #f5f5f7; /* inset wells */
 
   /* --- the hero sky ----------------------------------------------------- */
   --sky-high: #ffffff;
@@ -100,16 +100,18 @@
   --catch: rgba(255, 255, 255, 0.5); /* the moving light */
 
   /* --- ink -------------------------------------------------------------- */
-  --ink: #101823; /* headlines, card titles */
-  --ink-2: #2e3a4e; /* body copy */
-  --muted: #454f66; /* metadata, ledes */
+  --ink: #0a0a0b; /* headlines, card titles */
+  --ink-2: #2b2b31; /* body copy */
+  --muted: #4a4a52; /* metadata, ledes */
 
-  /* --- accent ----------------------------------------------------------- */
-  --accent: #b0470c; /* fills */
-  --accent-ink: #8a3709; /* the accent AS TEXT — darker, because it is read */
-  --accent-on: #fff6ee; /* a label on an accent fill: 5.24:1 */
-  --accent-soft: rgba(176, 71, 12, 0.1);
-  --link: #1e40af; /* links only */
+  /* --- accent -----------------------------------------------------------
+     Near-black on near-white, the inverse of the dark theme's white pill. The
+     accent is no longer a hue in either theme; see global.css for why. */
+  --accent: #14141a; /* fills */
+  --accent-ink: #14141a; /* the accent AS TEXT */
+  --accent-on: #fafafa; /* a label on an accent fill: 17.58:1 */
+  --accent-soft: rgba(20, 20, 26, 0.08);
+  --link: #2b2b31; /* links only */
   --good: #1c5e41; /* pilot lamp, step ticks */
   --good-halo: rgba(28, 94, 65, 0.34);
   --good-0: rgba(28, 94, 65, 0);
@@ -123,7 +125,7 @@
   --line-3: rgba(16, 24, 35, 0.22); /* interactive borders */
   --shadow-ink: rgba(16, 24, 35, 0.07);
   --shadow-ink-2: rgba(16, 24, 35, 0.06);
-  --header-bg: rgba(237, 241, 247, 0.84);
+  --header-bg: rgba(250, 250, 250, 0.84);
 
   /* --- type -------------------------------------------------------------
      TWO FAMILIES, AND NO WIDTH AXIS. Rubik's rounded terminals rhyme with a
@@ -170,9 +172,9 @@
   :root:not([data-theme='light']) {
     --grain: 0.055;
     --ground: #0c0c0f;
-    --ground-2: #121d31;
-    --surface: #1b2334;
-    --surface-2: #1d2536;
+    --ground-2: #0f0f13;
+    --surface: #131317;
+    --surface-2: #1b1b21;
     --sky-high: #050506;
     --sky-mid: #08080a;
     --sky-low: #131317;
@@ -185,17 +187,18 @@
     --muted: #a3a3ad;
     --accent: #ededf2;
     --accent-ink: #08080a;
-    --accent-soft: rgba(255, 164, 87, 0.14);
-    --link: #93c2f7;
+    --accent-on: #08080a;
+    --accent-soft: rgba(237, 237, 242, 0.10);
+    --link: #d4d4d9;
     --good: #4ade9b;
     --good-halo: rgba(74, 222, 155, 0.3);
     --good-0: rgba(74, 222, 155, 0);
-    --line: rgba(198, 212, 240, 0.1);
-    --line-2: rgba(198, 212, 240, 0.15);
-    --line-3: rgba(198, 212, 240, 0.24);
+    --line: rgba(255, 255, 255, 0.08);
+    --line-2: rgba(255, 255, 255, 0.14);
+    --line-3: rgba(255, 255, 255, 0.22);
     --shadow-ink: rgba(0, 0, 0, 0.35);
     --shadow-ink-2: rgba(0, 0, 0, 0.4);
-    --header-bg: rgba(14, 23, 39, 0.84);
+    --header-bg: rgba(8, 8, 10, 0.84);
   }
 }
 
@@ -204,9 +207,9 @@
 :root[data-theme='dark'] {
   --grain: 0.055;
   --ground: #0c0c0f;
-  --ground-2: #121d31;
-  --surface: #1b2334;
-  --surface-2: #1d2536;
+  --ground-2: #0f0f13;
+  --surface: #131317;
+  --surface-2: #1b1b21;
   --sky-high: #050506;
   --sky-mid: #08080a;
   --sky-low: #131317;
@@ -219,17 +222,23 @@
   --muted: #a3a3ad;
   --accent: #ededf2;
   --accent-ink: #08080a;
-  --accent-soft: rgba(255, 164, 87, 0.14);
-  --link: #93c2f7;
+  /* THE LABEL ON A FILLED CONTROL. This token went out with the ember block when the accent stopped
+     being a hue, and `color: var(--accent-on)` then resolved to nothing on every primary button —
+     the hero's CTA shipped with an invisible label for the length of one deploy. It is the same
+     failure this repository already measured at contrast ratio 1 inside the app, in a second place,
+     found the same way: by looking at the page. */
+  --accent-on: #08080a;
+  --accent-soft: rgba(237, 237, 242, 0.10);
+  --link: #d4d4d9;
   --good: #4ade9b;
   --good-halo: rgba(74, 222, 155, 0.3);
   --good-0: rgba(74, 222, 155, 0);
-  --line: rgba(198, 212, 240, 0.1);
-  --line-2: rgba(198, 212, 240, 0.15);
-  --line-3: rgba(198, 212, 240, 0.24);
+  --line: rgba(255, 255, 255, 0.08);
+  --line-2: rgba(255, 255, 255, 0.14);
+  --line-3: rgba(255, 255, 255, 0.22);
   --shadow-ink: rgba(0, 0, 0, 0.35);
   --shadow-ink-2: rgba(0, 0, 0, 0.4);
-  --header-bg: rgba(14, 23, 39, 0.84);
+  --header-bg: rgba(8, 8, 10, 0.84);
 }
 
 /* The stamps themselves, so form controls and scrollbars follow the page. */
