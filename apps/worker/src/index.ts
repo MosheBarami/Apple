@@ -2,6 +2,10 @@
 import { ingestAssets, type IngestRequest } from './asset-ingest';
 import { importPending, unimportAssets } from './asset-import';
 import { putRobloxCredential, describeRobloxCredential, deleteRobloxCredential } from './user-credentials';
+import {
+  getExperience, listOwnedAssets, listGamePasses, createGamePass, grantAssetPermission, listWrites,
+  uploadAsset, getAsset, getUploadStatus, reachedRoblox, UNBUILDABLE,
+} from './creator-dashboard';
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import {
@@ -1686,6 +1690,24 @@ app.post('/api/projects/:id/studio/place/rebind', async (c) => {
 });
 
 /**
+ * Throw away the changes waiting for Studio to collect them.
+ *
+ * Automatic cancellation already existed — a run that ends takes its own queued ops with it — but
+ * there was no way to say so deliberately. A user whose Studio closed mid-build could watch the
+ * depth climb and had no control over it: Stop reaches only the ops belonging to a live run, and
+ * everything else sat waiting to be applied whenever Studio came back, possibly to a place the
+ * person had since put right by hand.
+ *
+ * DELETE, not POST, because it destroys and is idempotent: a second call on an empty queue is a
+ * 200 saying nothing was discarded, not an error and not a repeat.
+ */
+app.delete('/api/projects/:id/studio/queue', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'));
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+  return ctx.stub.fetch('https://do/studio/queue', { method: 'DELETE' });
+});
+
+/**
  * THE STUDIO COMPANION'S CHANNEL: one direct-manipulation op, driven by a person.
  *
  * This is what the companion panel's own controls talk to — the transform handles, the Explorer
@@ -2005,8 +2027,9 @@ app.post('/api/billing/webhook', async (c) => {
   //   the invoice events `interpretStripeEvent` returns `ignored` for, and it returns no plan:
   //   entitlement stays the single opinion of `entitlementFor`, computed from status and period.
   //
-  //   The INVOICE is the dedupe subject, so Stripe's three retries of one invoice are one line in
-  //   the inbox with a count, rather than three alarms about one card. ]]
+  //   The SUBJECT is what the notice is about - the invoice for a payment problem, the session for
+  //   an abandoned checkout - so Stripe's three retries of one invoice are one line in the inbox
+  //   with a count, rather than three alarms about one card. ]]
   const dunning = interpretDunningEvent(event);
   if (dunning) {
     const copy = dunningCopy(dunning);
@@ -2014,7 +2037,7 @@ app.post('/api/billing/webhook', async (c) => {
       notify(c.env, {
         kind: 'billing_issue',
         recipientId: dunning.userId,
-        subject: dunning.invoiceId ?? dunning.eventId,
+        subject: dunning.subjectId ?? dunning.eventId,
         title: copy.title,
         body: copy.body,
         at: Date.now(),
@@ -2056,7 +2079,15 @@ app.post('/api/billing/webhook', async (c) => {
       body: JSON.stringify({ credits: outcome.creditsDelta, eventId: outcome.eventId }),
     });
   }
-  return c.json({ ok: true, applied: { plan: !!outcome.subscription, credits: outcome.creditsDelta ?? 0 } });
+  // `dunning` is reported on BOTH exits, not only the one where nothing could be attributed. An
+  // event that raised a notice and applied no entitlement — an expired checkout is exactly that —
+  // otherwise came back indistinguishable from one the product ignored entirely, in the response
+  // that is the only thing Stripe's dashboard and our own tests can see.
+  return c.json({
+    ok: true,
+    applied: { plan: !!outcome.subscription, credits: outcome.creditsDelta ?? 0 },
+    dunning: dunning?.kind ?? null,
+  });
 });
 
 /**
@@ -2099,7 +2130,15 @@ app.post('/api/billing/checkout', async (c) => {
   // an open redirect signed by Stripe's domain.
   const returnTo = new URL('/app/usage', new URL(c.req.url).origin).toString();
 
-  const built = buildCheckoutRequest(c.env, { userId: user.userId, email: user.email, plan, returnTo });
+  const built = buildCheckoutRequest(c.env, {
+    userId: user.userId,
+    email: user.email,
+    plan,
+    returnTo,
+    // The clock the session's expiry is measured from. Passed in rather than read inside, so the
+    // window is assertable at a chosen instant.
+    nowSeconds: Math.floor(Date.now() / 1000),
+  });
   if (!built.ok) return c.json({ error: built.error }, built.status);
 
   const res = await fetch('https://api.stripe.com/v1/checkout/sessions', {
@@ -2833,6 +2872,174 @@ app.post('/api/me/roblox-import', async (c) => {
   const body = await c.req.json<{ limit?: number; idPrefix?: string; after?: string }>().catch(() => null);
   const limit = Number.isFinite(body?.limit) ? Number(body?.limit) : 3;
   return c.json(await importPending(c.env as never, limit, undefined, body?.idPrefix, body?.after, user.userId));
+});
+
+/**
+ * THE CREATOR DASHBOARD: the customer's own Roblox account, read and written with their own key.
+ *
+ * All under `/api/me/` for the reason the key itself is: these act on the caller's account, so the
+ * caller is the only person who may ask. Every handler takes the user id off the verified JWT and
+ * never off the body — an id in a body is a request to act on somebody else.
+ *
+ * `creator-dashboard.ts` has no platform credential in scope at all, so none of these can quietly
+ * become a write to Apple's account when a customer has not connected a key.
+ */
+/**
+ * The audit fields, but ONLY when there is something they could be describing.
+ *
+ * `audited: false` is the heaviest sentence in this API — it says a thing was done to somebody's
+ * Roblox account and the record of it did not land, about an act Roblox will not reverse. A
+ * refusal that never sent a request has nothing to log, so stamping `audited: false` on it would
+ * raise that alarm for an event that did not occur. The field is therefore absent rather than
+ * false, and `reachedRoblox` is the one place that decides which case this is.
+ */
+const auditTrail = (out: { ok: boolean; status: number; audited: boolean; auditError?: string }) =>
+  (reachedRoblox(out as never) ? { audited: out.audited, auditError: out.auditError } : {});
+
+app.get('/api/me/roblox/experiences/:universeId', async (c) => {
+  const user = c.get('user');
+  if (!user) return c.json({ error: 'not signed in' }, 401);
+  const out = await getExperience(c.env as never, user.userId, c.req.param('universeId'));
+  // `status || 400` because a refusal that never reached Roblox carries status 0, and a 0 is not
+  // an HTTP status — Hono would throw on it and the real reason would be lost.
+  return out.ok ? c.json({ experience: out.data }) : c.json({ error: out.error }, (out.status || 400) as 400);
+});
+
+/**
+ * There is deliberately no `GET /api/me/roblox/experiences` that lists them.
+ *
+ * Open Cloud cannot: the only list-my-universes endpoint is authenticated by the .ROBLOSECURITY
+ * browser cookie, which is the account itself. This route exists so that the answer to "why is
+ * there no list?" is a sentence from Roblox's own specification rather than a missing button.
+ */
+app.get('/api/me/roblox/experiences', (c) =>
+  c.json({ error: UNBUILDABLE.listExperiences, unsupportedByRoblox: true }, 501));
+
+app.get('/api/me/roblox/promo-codes', (c) =>
+  c.json({ error: UNBUILDABLE.promoCodes, unsupportedByRoblox: true }, 501));
+
+app.get('/api/me/roblox/assets', async (c) => {
+  const user = c.get('user');
+  if (!user) return c.json({ error: 'not signed in' }, 401);
+  const out = await listOwnedAssets(c.env as never, user.userId, {
+    maxPageSize: Number(c.req.query('maxPageSize')) || undefined,
+    pageToken: c.req.query('pageToken'),
+    filter: c.req.query('filter'),
+  });
+  return out.ok ? c.json(out.data) : c.json({ error: out.error }, (out.status || 400) as 400);
+});
+
+/**
+ * PUT A FILE IN THE CUSTOMER'S OWN ROBLOX ACCOUNT.
+ *
+ * multipart/form-data rather than JSON, because the thing being sent is a file and base64 in a JSON
+ * body would cost a third more bytes of a Worker's request budget for no gain.
+ *
+ * There is no creator field to accept and none is read. The account is whichever one the caller's
+ * own stored key belongs to — see `uploadAsset` in creator-dashboard.ts for why that is the shape
+ * rather than a parameter.
+ */
+app.post('/api/me/roblox/assets', async (c) => {
+  const user = c.get('user');
+  if (!user) return c.json({ error: 'not signed in' }, 401);
+  const form = await c.req.formData().catch(() => null);
+  const file = form?.get('file');
+  if (!(file instanceof File)) return c.json({ error: 'attach the file as `file` in a multipart form' }, 400);
+  const out = await uploadAsset(c.env as never, user.userId, {
+    file: await file.arrayBuffer(),
+    contentType: file.type || 'application/octet-stream',
+    displayName: String(form?.get('displayName') ?? file.name ?? ''),
+    description: String(form?.get('description') ?? ''),
+    // `expectedPrice` is deliberately NOT read off the form. Raising the Robux ceiling is a
+    // decision about somebody's money, and the day it needs a control it needs one that says so —
+    // not a field a client can set because the server happened to look for it.
+  });
+  return out.ok
+    ? c.json({ upload: out.data, ...auditTrail(out) })
+    : c.json({ error: out.error, ...auditTrail(out) }, (out.status || 400) as 400);
+});
+
+app.get('/api/me/roblox/assets/:assetId', async (c) => {
+  const user = c.get('user');
+  if (!user) return c.json({ error: 'not signed in' }, 401);
+  const out = await getAsset(c.env as never, user.userId, c.req.param('assetId'));
+  return out.ok ? c.json({ asset: out.data }) : c.json({ error: out.error }, (out.status || 400) as 400);
+});
+
+/** An upload comes back as an operation. This is how it stops being one. */
+app.get('/api/me/roblox/uploads/:operationId', async (c) => {
+  const user = c.get('user');
+  if (!user) return c.json({ error: 'not signed in' }, 401);
+  const out = await getUploadStatus(c.env as never, user.userId, c.req.param('operationId'));
+  return out.ok ? c.json({ upload: out.data }) : c.json({ error: out.error }, (out.status || 400) as 400);
+});
+
+/**
+ * There is deliberately no route that downloads an asset's FILE.
+ *
+ * Open Cloud does not serve asset content — 749 paths in Roblox's published Cloud spec and not one
+ * binary response body among them. This route exists so the answer is a measured sentence rather
+ * than a 404 somebody has to interpret.
+ */
+app.get('/api/me/roblox/assets/:assetId/file', (c) =>
+  c.json({ error: UNBUILDABLE.downloadAssetFile, unsupportedByRoblox: true }, 501));
+
+app.get('/api/me/roblox/experiences/:universeId/gamepasses', async (c) => {
+  const user = c.get('user');
+  if (!user) return c.json({ error: 'not signed in' }, 401);
+  const out = await listGamePasses(c.env as never, user.userId, c.req.param('universeId'), {
+    pageSize: Number(c.req.query('pageSize')) || undefined,
+    pageToken: c.req.query('pageToken'),
+  });
+  return out.ok ? c.json(out.data) : c.json({ error: out.error }, (out.status || 400) as 400);
+});
+
+/**
+ * Create a game pass. A WRITE to a real account, so the response carries the audit result.
+ *
+ * `audited: false` travels all the way to the client on purpose. The game pass exists on Roblox at
+ * that point and cannot be un-created, so the only honest thing left is to say that the record of
+ * it did not land — a failure to observe must not be rendered as an observation.
+ */
+app.post('/api/me/roblox/experiences/:universeId/gamepasses', async (c) => {
+  const user = c.get('user');
+  if (!user) return c.json({ error: 'not signed in' }, 401);
+  const body = await c.req.json<{ name?: string; description?: string; price?: number; isForSale?: boolean }>().catch(() => null);
+  if (!body) return c.json({ error: 'a JSON body is required' }, 400);
+  const out = await createGamePass(c.env as never, user.userId, {
+    universeId: c.req.param('universeId'),
+    name: String(body.name ?? ''),
+    description: body.description,
+    price: body.price,
+    isForSale: body.isForSale,
+  });
+  return out.ok
+    ? c.json({ gamePass: out.data, ...auditTrail(out) })
+    : c.json({ error: out.error, ...auditTrail(out) }, (out.status || 400) as 400);
+});
+
+app.post('/api/me/roblox/asset-permissions', async (c) => {
+  const user = c.get('user');
+  if (!user) return c.json({ error: 'not signed in' }, 401);
+  const body = await c.req.json<{ subjectType?: string; subjectId?: string; action?: string; assetIds?: number[]; grantToDependencies?: boolean }>().catch(() => null);
+  if (!body) return c.json({ error: 'a JSON body is required' }, 400);
+  const out = await grantAssetPermission(c.env as never, user.userId, {
+    subjectType: body.subjectType as never,
+    subjectId: body.subjectId,
+    action: body.action as never,
+    assetIds: Array.isArray(body.assetIds) ? body.assetIds.map(Number) : [],
+    grantToDependencies: body.grantToDependencies,
+  });
+  return out.ok
+    ? c.json({ granted: out.data.granted, ...auditTrail(out) })
+    : c.json({ error: out.error, ...auditTrail(out) }, (out.status || 400) as 400);
+});
+
+/** What Apple has done to this person's Roblox account, for this person. Their own trail only. */
+app.get('/api/me/roblox/writes', async (c) => {
+  const user = c.get('user');
+  if (!user) return c.json({ error: 'not signed in' }, 401);
+  return c.json({ writes: await listWrites(c.env as never, user.userId, Number(c.req.query('limit')) || 50) });
 });
 
 app.post('/api/admin/kill-switch', async (c) => {
@@ -4360,6 +4567,21 @@ app.get('/api/shared/:id/messages', async (c) => {
   if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
   const url = new URL(c.req.url);
   return gate.ctx.stub.fetch(`https://do/messages?${url.searchParams}`);
+});
+
+/**
+ * What the user wrote before they edited a message.
+ *
+ * Beside /messages and gated the same way, not on a separate owner-only path, for the reason
+ * stated where the client reads the transcript: there is exactly one way the app reads a
+ * conversation, and the earlier versions of a message are part of that conversation. `read` is
+ * what the owner passes too, so a second route would only be a second thing to keep in step.
+ */
+app.get('/api/shared/:id/messages/:messageId/revisions', async (c) => {
+  const gate = await sharedAccess(c, c.req.param('id') ?? '', 'read');
+  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  const params = new URLSearchParams({ id: c.req.param('messageId') ?? '' });
+  return gate.ctx.stub.fetch(`https://do/message-revisions?${params}`);
 });
 
 app.get('/api/shared/:id/checkpoints', async (c) => {

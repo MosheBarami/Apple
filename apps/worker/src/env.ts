@@ -46,6 +46,20 @@ export interface Env {
   STRIPE_PRICE_BUILDER?: string;
   STRIPE_PRICE_STUDIO?: string;
   /**
+   * Which Billing Portal configuration (`bpc_…`) the portal opens with.
+   *
+   * Unset, Stripe uses the dashboard's default configuration — so whether a customer can update
+   * their card at all is a toggle in a web UI this repo cannot read, cannot assert and cannot
+   * notice being turned off, while the product's own copy promises the control by name. Set it to
+   * a configuration with payment_method_update, invoice_history and subscription_cancel enabled:
+   * those three are what 'Update your payment method' and 'Manage billing, invoices and
+   * cancellation' claim exists.
+   *
+   * Optional, and an ABSENT value is sent as no parameter rather than as an empty one — Stripe
+   * refuses a blank configuration id, and the portal is a customer's only route to their own card.
+   */
+  STRIPE_PORTAL_CONFIGURATION?: string;
+  /**
    * The Discord application's PUBLIC KEY, from the developer portal's General Information page.
    * It is what proves an interaction really came from Discord. Absent everywhere until the owner
    * creates the application, and `/api/discord/interactions` REFUSES with 503 rather than
