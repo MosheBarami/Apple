@@ -45,6 +45,8 @@ export const ICON_PATH = {
    *  merge into a solid block below about 20px. */
   docs: 'M7 3h7l5 5v13H7zM14 3v5h5',
   shield: 'M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z',
+  /** The inbox. Drawn open-bottomed so the unread badge can sit in the notch without covering it. */
+  bell: 'M18 9a6 6 0 1 0-12 0c0 5-2 6.5-2 6.5h16S18 14 18 9M13.7 19a2 2 0 0 1-3.4 0',
   /** Credits and clearance to publish — a document with a seal. Deliberately NOT
    *  `shield`, which already means Admin, and not `docs`, which means the manual. */
   licence: 'M6 3h9l4 4v8H6zM15 3v4h4M9.5 18.5a2.6 2.6 0 1 0 0-5.2 2.6 2.6 0 0 0 0 5.2zM7.9 18.2 7 22l2.5-1.4L12 22l-.9-3.8',
@@ -56,9 +58,9 @@ export const ICON_PATH = {
   usage: 'M5 20V10m7 10V4m7 16v-7',
   admin: 'M12 3l7 4v5c0 4.4-3 8-7 9-4-1-7-4.6-7-9V7z',
   lab: 'M9 3h6M10 3v6l-5 8.5A2 2 0 0 0 6.7 21h10.6a2 2 0 0 0 1.7-3.5L14 9V3',
-  /** Who else is in this project. Two figures, not one: one figure is an account, and the
-   *  account glyph is already the initial in the top-right. */
-  people: 'M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19M10 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM20 19v-1.5a3.5 3.5 0 0 0-2.6-3.4M15 4.1a3.5 3.5 0 0 1 0 6.8',
+  /** Members and sharing. Two figures, the second half-drawn behind the first — one head
+   *  and shoulders reads as "account", which already means the profile menu. */
+  people: 'M9.5 11.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM3 20a6.5 6.5 0 0 1 13 0M16.5 5.2a3.5 3.5 0 0 1 0 6.6M18 14.2a6.5 6.5 0 0 1 3 5.8',
   rail: 'M3 4h18v16H3zM15 4v16',
   surface: 'M3 4h18v16H3zM3 10h18',
 } as const;

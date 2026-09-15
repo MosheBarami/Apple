@@ -11,6 +11,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PRODUCT_MODES, PRODUCT_MODE_TO_SPECIALIST, type ProductMode } from '@golem/shared';
 import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { shortRelative } from '../lib/format';
+import { exportDoneLine, exportProgressLine, exportStartLine, exportToastKey } from '../lib/export-progress';
 import { useShell, useProvideCheckpoints } from '../lib/shell';
 import { CreditsPanel } from '../components/ws/credits-panel';
 import { supabase, type ProjectRow } from '../lib/supabase';
@@ -36,7 +37,8 @@ import {
   savePreferences,
   type SearchHit,
 } from '../lib/api';
-import { ACCESS_LOADING, normaliseAccess, type AccessState } from '../lib/capabilities';
+import { FilesPanel } from '../components/ws/files-panel';
+import { ACCESS_LOADING, allows, normaliseAccess, type AccessState } from '../lib/capabilities';
 import type { AssetSourcePolicy } from '@golem/shared';
 import { owesAnswer } from '../lib/asset-sources';
 import { AssetSourceDialog } from '../components/asset-source-dialog';
@@ -77,9 +79,13 @@ const SUGGESTIONS = [
  * this build no longer recognises" the same state — which is precisely the distinction the
  * validation exists to keep.
  */
-type Drawer = null | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members';
-type DrawerName = 'none' | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members';
-const DRAWERS = ['none', 'checkpoints', 'memory', 'credits', 'search', 'members'] as const;
+// Two agents added a drawer each, from two checklist sections, and both belong. The union and the
+// literal list are kept in step deliberately: search-panel.test.mjs asserts every name the union
+// can hold is a name DRAWERS accepts, because a drawer missing from the list restores as closed
+// for ever and looks like a user who simply never opened it.
+type Drawer = null | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members' | 'files';
+type DrawerName = 'none' | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members' | 'files';
+const DRAWERS = ['none', 'checkpoints', 'memory', 'credits', 'search', 'members', 'files'] as const;
 
 export function WorkspacePage() {
   const params = useParams<{ id: string }>();
@@ -133,31 +139,38 @@ export function WorkspacePage() {
   //   answers with the capability set. The owner is a member of their own project through that
   //   column, so there is no separate owner path: one query serves both.
   //
-  //   THE THIRD STATE IS THE POINT. `useQuery` is pending before the first answer and errors on a
-  //   refusal, and NEITHER of those is a role. Rendering either as one would hand a stranger a live
-  //   Remove button on an authority nothing established — the failure-to-observe pattern exactly.
-  //   So the two non-answers are carried through as themselves and `lib/capabilities` decides what
-  //   a control may do with them.
+  //   ONE ACCESS QUERY, NOT ONE PER DRAWER. Two drawers need this same answer — Files, to decide
+  //   whether Rename/Delete are offered, and Members, to decide whether the roster's controls are
+  //   live — and each arrived with its own copy. Two `useQuery` calls on one key is not twice the
+  //   cost, but it is two places for `enabled` and the error mapping to drift, and they already
+  //   had. Declared once, here, and gated on either drawer being open, so the check is still not
+  //   bought for a user who opens neither.
   //
   //   `retry: false`: a 403 here is the correct answer to a question we asked, not a flake, and
   //   three silent retries would only delay the panel telling the user what it found out. ]]
   const accessQuery = useQuery({
     queryKey: ['access', projectId],
     queryFn: () => fetchProjectAccess(projectId),
-    enabled: projectId.length > 0,
+    enabled: projectId.length > 0 && (drawer === 'files' || drawer === 'members'),
     retry: false,
+    staleTime: 5 * 60_000,
   });
 
+  //[[ THE THIRD STATE IS THE POINT. `useQuery` is pending before the first answer and errors on a
+  //   refusal, and NEITHER of those is a role. Rendering either as one would hand a stranger a live
+  //   Remove button on an authority nothing established — the failure-to-observe pattern exactly.
+  //   `unavailable` is not `viewer`: a check that did not come back is not a verdict about the
+  //   person. `normaliseAccess` owns the mapping, so a role this build does not know lands as
+  //   `unavailable` rather than as an empty permission set; nothing here reads the payload field by
+  //   field. ]]
   const access: AccessState = useMemo(() => {
-    if (accessQuery.isPending) return ACCESS_LOADING;
     if (accessQuery.isError) {
       const e = accessQuery.error;
       return { status: 'unavailable', detail: e instanceof ApiError ? e.message : 'the access check failed' };
     }
-    // normaliseAccess, not a hand-built object: a role this build does not know has to land as
-    // `unavailable` rather than as an empty permission set, and that decision lives in one place.
+    if (!accessQuery.isSuccess) return ACCESS_LOADING;
     return normaliseAccess(accessQuery.data);
-  }, [accessQuery.isPending, accessQuery.isError, accessQuery.error, accessQuery.data]);
+  }, [accessQuery.isSuccess, accessQuery.isError, accessQuery.error, accessQuery.data]);
 
   const onServerError = useCallback(
     (code: string, message: string) => toast(message || `Something went wrong (${code})`, 'error'),
@@ -209,6 +222,18 @@ export function WorkspacePage() {
   });
   const sourcePolicy = personal.data?.preferences.asset_sources ?? null;
 
+  //[[ WHAT THIS PERSON MAY DO HERE, ASKED OUT LOUD.
+  //
+  //   `fetchProjectAccess` and `lib/capabilities` were both written and then called by nothing, so
+  //   the signed-in app never asked the server what role the viewer holds — it simply rendered the
+  //   owner's interface to everyone and let the refusals arrive as failures.
+  //
+  //   THE THREE STATES ARE KEPT APART on purpose. `unavailable` is not `viewer`: a check that did
+  //   not come back is not a verdict about the person, and rendering it as one would be this
+  //   repository's failure-to-observe pattern in its most expensive place — an authority claim the
+  //   interface has not established. `normaliseAccess` owns the mapping; nothing here reads the
+  //   payload field by field. ]]
+
   const saveSources = async (policy: AssetSourcePolicy) => {
     if (!userId) throw new Error('not signed in');
     await savePreferences('user', userId, { asset_sources: policy });
@@ -222,11 +247,17 @@ export function WorkspacePage() {
   // Shared by both export commands so the toast copy and the failure handling cannot diverge.
   const exportConversation = useCallback(
     async (format: 'md' | 'json') => {
-      toast(`Preparing ${projectNameRef.current} as ${format === 'md' ? 'Markdown' : 'JSON'}…`, 'info');
+      // ONE ROW FOR THE WHOLE EXPORT. The key makes the progress line replace itself and the
+      // outcome replace the progress line — before this, the only signal was "Preparing…", which
+      // never changed and never ended, so a finished export and a dead one looked identical.
+      const name = projectNameRef.current;
+      const key = exportToastKey(projectId, format);
+      toast(exportStartLine(name, format), 'info', { key });
       try {
-        await downloadExport(projectId, format);
+        const saved = await downloadExport(projectId, format, (p) => toast(exportProgressLine(name, format, p), 'info', { key }));
+        toast(exportDoneLine(saved.filename), 'success', { key });
       } catch (e) {
-        toast(e instanceof ApiError ? e.message : 'Export failed', 'error');
+        toast(e instanceof ApiError ? e.message : 'Export failed', 'error', { key });
       }
     },
     [projectId, toast],
@@ -291,9 +322,14 @@ export function WorkspacePage() {
   //   toasted "further back than the loaded history" about a checkpoint — a wrong explanation,
   //   which is worse than none, because the user goes looking for the history that is not missing.
   //
-  //   Activity is the one kind with nowhere to go: the oplog row carries no anchor to a message,
-  //   and the result line already shows the whole record. It says that rather than scrolling
-  //   nowhere and leaving the user to wonder what they missed. ]]
+  //   Activity USED to be the kind with nowhere to go — the oplog row carried no anchor to a
+  //   message. It carries one now (session.ts writes the op's `run_id`), so an activity hit from a
+  //   run opens that run through the `messageId` branch above like any other record.
+  //
+  //   The branch below survives for the ops that genuinely belong to NO run: a manual checkpoint,
+  //   a snapshot taken between builds. Those must keep saying so rather than scrolling nowhere —
+  //   and the wording no longer claims that ALL activity is anchorless, which would be a wrong
+  //   explanation for the common case now that most of it is not. ]]
   const openHit = useCallback(
     (hit: SearchHit) => {
       if (hit.messageId) {
@@ -308,7 +344,7 @@ export function WorkspacePage() {
         setDrawer('memory');
         return;
       }
-      toast('That is an activity record — the result line is the whole of it.', 'info');
+      toast('That happened outside a run, so there is no conversation to open — the result line is the whole of it.', 'info');
     },
     [jumpToMessage, setDrawer, toast],
   );
@@ -363,21 +399,28 @@ export function WorkspacePage() {
       run: () => setDrawer('memory'),
     },
     {
+      // Listed for everybody, including a viewer who cannot manage anyone. The panel shows the
+      // roster to any member and says in a sentence why the controls are off; hiding the command
+      // would teach a viewer the product has no sharing at all.
+      id: 'ws-members',
+      title: 'Who can build here',
+      section: 'Project',
+      keywords: ['members', 'share', 'collaborators', 'invite', 'permissions', 'role', 'roles'],
+      run: () => setDrawer('members'),
+    },
+    {
+      id: 'ws-files',
+      title: 'Project files',
+      section: 'Project',
+      keywords: ['files', 'workspace', 'notes', 'download', 'trash'],
+      run: () => setDrawer('files'),
+    },
+    {
       id: 'ws-credits',
       title: 'Credits and clearance',
       section: 'Project',
       keywords: ['licence', 'license', 'attribution', 'assets'],
       run: () => setDrawer('credits'),
-    },
-    {
-      // Listed for everybody, including a viewer who cannot manage anyone. The panel shows the
-      // roster to any member and says in a sentence why the controls are off; hiding the command
-      // would teach a viewer the product has no sharing at all.
-      id: 'ws-members',
-      title: 'Who has access',
-      section: 'Project',
-      keywords: ['members', 'share', 'invite', 'collaborators', 'permissions', 'roles'],
-      run: () => setDrawer('members'),
     },
     {
       id: 'ws-connect',
@@ -648,6 +691,38 @@ export function WorkspacePage() {
             </button>
           )}
 
+          {/* Who else is in this project. An icon button beside memory rather than a named
+              control: it is opened when someone wants to add or remove a collaborator, which is
+              rarer than the thing this screen is for. The label says what the drawer answers,
+              because "Members" alone does not tell a viewer they will find their own role there.
+
+              It is NOT hidden from a viewer. The panel answers "who can see this" for anybody who
+              can see the project at all, and turns its own controls off with the reason attached —
+              a control that disappears teaches people the feature does not exist, which is how the
+              roster stayed invisible for as long as it did. */}
+          <button
+            type="button"
+            className="gx-icon-btn"
+            onClick={() => setDrawer('members')}
+            aria-label="Who can build here"
+            title="Who can build here"
+          >
+            <Icon d={PATH.people} />
+          </button>
+          {/* The way into the files Apple keeps for this project — notes, plans and generated
+              data, which are Golem's own storage and not the Roblox place. Beside memory because
+              it is the same kind of thing: something that persists between turns and is read
+              occasionally rather than worked in. */}
+          <button
+            type="button"
+            className="gx-icon-btn"
+            onClick={() => setDrawer('files')}
+            aria-label="Files Apple keeps for this project"
+            title="Project files"
+          >
+            <Icon d={PATH.docs} />
+          </button>
+
           <button
             type="button"
             className="gx-icon-btn"
@@ -670,25 +745,6 @@ export function WorkspacePage() {
             title="What this project owes"
           >
             <Icon d={PATH.licence} />
-          </button>
-
-          {/* Who else is in this project. An icon button beside memory and
-              credits rather than a named control: it is opened rarely, and the
-              named slots in this row belong to Checkpoints and Roadmap.
-
-              It is NOT hidden from a viewer. The panel answers "who can see
-              this" for anybody who can see the project at all, and turns its
-              own controls off with the reason attached — a control that
-              disappears teaches people the feature does not exist, which is
-              how the roster stayed invisible for as long as it did. */}
-          <button
-            type="button"
-            className="gx-icon-btn"
-            onClick={() => setDrawer('members')}
-            aria-label="Who has access to this project"
-            title="Who has access"
-          >
-            <Icon d={PATH.people} />
           </button>
 
           {/* The way into the plan. The conversation says what is happening
@@ -952,11 +1008,19 @@ export function WorkspacePage() {
         <SearchPanel projectId={projectId} onOpen={openHit} />
       </Drawer>
 
-      {/* Mounted only while open, for the same reason the memory drawer is: the panel holds a
-          half-typed invitation in local state and runs a roster query, and neither should outlive
-          the drawer the user closed. */}
-      <Drawer open={drawer === 'members'} onClose={() => setDrawer(null)} title="Who has access">
+      <Drawer open={drawer === 'members'} onClose={() => setDrawer(null)} title="Who can build here">
+        {/* Mounted only while open, like the others: the panel holds a half-typed invitation in
+            local state and runs a live roster query, and neither should outlive the drawer the
+            user closed. */}
         {drawer === 'members' && <MembersPanel projectId={projectId} access={access} />}
+      </Drawer>
+
+      <Drawer open={drawer === 'files'} onClose={() => setDrawer(null)} title="Files">
+        {/* Mounted only while open, for the same reason: the listing, the file body and the
+            version history are three requests, and none of them is worth making for a user who
+            never opens this. `canEdit` is the server's answer about this person, not a guess —
+            see the access query above. */}
+        {drawer === 'files' && <FilesPanel projectId={projectId} canEdit={allows(access, 'build')} />}
       </Drawer>
 
       <Drawer open={drawer === 'credits'} onClose={() => setDrawer(null)} title="Credits and clearance">

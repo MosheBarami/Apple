@@ -17,6 +17,15 @@
  * through the client's own `isAction` allowlist, so an action the worker grants and this build has
  * never heard of is dropped on arrival. Dropping it is the right behaviour; doing it without
  * anyone noticing is the drift. This test notices.
+ *
+ * MERGE NOTE. Two agents wrote this file at the same path, against the same missing guard. The
+ * other copy also asserted the WIRING — that the workspace asks, that MembersPanel is mounted,
+ * that the drawer is restorable and has a control that opens it. Those four are not lost: they
+ * are what `members-panel-wiring.test.mjs` asserts, in more detail, and it is in this tree. What
+ * only lives here is the vocabulary round trip below, so that is what this file keeps. The other
+ * copy also bundled both modules through `apps/worker/node_modules/.bin/esbuild` into a temp dir;
+ * the direct `.ts` imports below are what the rest of apps/web/tests already do and need no
+ * node_modules layout to be true.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';

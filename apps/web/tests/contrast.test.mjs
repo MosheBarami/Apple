@@ -145,8 +145,27 @@ test('the landing ink ramp clears 4.5:1 on every surface it can sit on', () => {
   // on the design's own accent ramp at 2.26:1 — is invisible from here because
   // the ramp is not a token either page puts text on. Two checks, two different
   // things.
-  const INK = ['ink', 'ink-bright', 'ink-2', 'muted'];
-  const SURFACES = ['ground', 'ground-deep', 'surface'];
+  //[[ THE TOKEN NAMES ARE DISCOVERED, BECAUSE A HARDCODED LIST DIES AT THE NEXT REDESIGN.
+  //
+  //   This listed --ink-bright and --ground-deep by name. The identity rebuild renamed the palette
+  //   — --ground-deep became --ground-2, --ink-bright folded into --ink — and the test failed with
+  //   "the landing declares no --ground-deep", which is a true sentence about a token that should
+  //   not exist rather than a finding about contrast. A list of names measures the last palette.
+  //
+  //   So the ramp is read out of the stylesheet: anything named like ink and anything named like a
+  //   surface. A renamed palette is then still measured, and a palette that renames everything at
+  //   once cannot empty the test quietly — the floor below turns that into a loud failure instead
+  //   of a clean run over zero pairs.
+  const declared = [...LANDING.matchAll(/^\s*--([a-z0-9-]+):\s*(#[0-9a-fA-F]{3,8})\s*;/gm)]
+    .map((m) => m[1]);
+  const INK = [...new Set(declared.filter((n) => /^(ink|muted|text)(-|$)/.test(n)))];
+  const SURFACES = [...new Set(declared.filter((n) => /^(ground|surface|field-bound|paper|card)(-|$)/.test(n)))];
+
+  // A FAILURE TO OBSERVE MUST NOT RENDER AS AN OBSERVATION. Zero ink tokens and zero surfaces is a
+  // test that passed without measuring anything, and it looks identical to a page with perfect
+  // contrast from the exit code alone.
+  assert.ok(INK.length >= 2, `found ${INK.length} ink token(s) in the landing stylesheet — this check has gone blind`);
+  assert.ok(SURFACES.length >= 2, `found ${SURFACES.length} surface token(s) in the landing stylesheet — this check has gone blind`);
 
   for (const name of INK) {
     const [fg] = occurrences(LANDING, name);

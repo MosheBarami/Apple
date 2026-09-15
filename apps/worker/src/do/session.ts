@@ -40,6 +40,7 @@ import { chat as llmChat, BudgetError, RateLimitedError } from '../gateway';
 import { systemPrompt, collapseArtDirection, MEMORY_UPDATE_PROMPT } from '../prompts';
 import { designBrief } from '../design-brief';
 import { toolDefs, toolNames, runTool, type AgentCtx, type PlaytestBus } from '../tools';
+import { planFromDetail, planDetail, settlePlan, type RunPlan } from '../run-plan';
 import { critiqueToText } from '../vision';
 import { toolsForMode } from '../router';
 import { assetLibraryAvailable } from '../asset-library';
@@ -52,7 +53,8 @@ import { trimTranscriptReport } from '../transcript';
 import { persistWithShedding } from '../persist';
 import { clearStop, requestStop, stopRequested } from '../stop-signal';
 import { singleFlight } from '../single-flight';
-import { sceneSignature, shouldRebuild, semanticCheck, intentCheck, type PassRecord } from '../semantic';
+import { sceneSignature, shouldRebuild, semanticCheck, type PassRecord } from '../semantic';
+import { runIntentFor } from '../run-intent';
 import { readPluginHeaders, clientNotice, sanitizeVersion, parseProtocol, type PluginClientInfo, type PluginCompatibility } from '../plugin-version';
 import { CollabStore, collabContext } from './collab-store.ts';
 import { asCollabRole, can, type CollabRole } from '../collab.ts';
@@ -197,6 +199,14 @@ interface AgentState {
    * message sent while nobody is listening, and `run_intent` is emitted exactly once per run.
    */
   intent?: RunIntent;
+  /**
+   * The plan `propose_plan` announced, and the tool row it was announced on.
+   *
+   * Kept so `settlePlan` can re-state it at the end of the run against what actually ran. Bounded
+   * by the tool's own 12-step cap and its 200/800-character clips, so it cannot be the thing that
+   * pushes the persisted AgentState past the Durable Object's value limit.
+   */
+  plan?: RunPlan;
 }
 
 // step limits are a direct cost multiplier: every step is a full priced inference call
@@ -402,85 +412,6 @@ const PLUGIN_TOKEN_TTL_MS = 30 * 24 * 3600 * 1000; // 30 days, then re-pair
 const MAX_SNAPSHOT_BYTES = 12 * 1024 * 1024; // refuse absurd checkpoints
 const MAX_PROMPT_CHARS = 24_000; // ~7k tokens; the transcript is re-sent every step
 
-// ---------------------------------------------------------------------------------------------
-// THE INTENT AND PLAN ROWS OF THE THINKING CARD.
-//
-// The card has four stages. Actions and Validation were already backed by real events — a tool
-// start/end pair, and the composition/semantic gate's actual verdict. Intent and Plan were not
-// backed by anything, so the frontend rendered nothing rather than inventing them.
-//
-// This closes that gap AT ZERO MODEL COST. `intentCheck` in semantic.ts is regex and lexicons:
-// the file has no imports at all and no reference to fetch, the gateway or env, so there is no
-// path from here to a paid provider. It runs in well under a millisecond on an 8,000-character
-// request, which is why it can be on the critical path of every single run.
-//
-// The honesty rules, which are the whole point:
-//
-//   summary   The user's OWN OPENING SENTENCE, whitespace-normalised and truncated. Not a
-//             paraphrase — paraphrasing needs a model, and this must stay free. Not a synthesised
-//             sentence either: without a model, any synthesis is a fill-in-the-blanks template
-//             ("Build a <noun> with <n> features"), which reads like understanding while proving
-//             none. Echoing the request verbatim is the only restatement that cannot be wrong,
-//             and it is exactly what the reference card shows.
-//   checklist EXACTLY what the extractor found the user asked for by name, and nothing else. An
-//             empty checklist is the correct answer for "what does this script do?" — there is
-//             no list of things to build, so no list is shown.
-//   questions ONLY the places the extractor could see the request genuinely did not settle
-//             (a hedged clause, a building noun that reads as either a room or a facade). Never
-//             padded to look thorough.
-//
-// Both lists are capped. A cap TRUNCATES a real list to bound the socket payload; nothing here
-// ever pads a short one.
-// ---------------------------------------------------------------------------------------------
-const MAX_INTENT_CHECKLIST = 16;
-const MAX_INTENT_QUESTIONS = 6;
-const MAX_INTENT_SUMMARY = 160;
-
-/** Split on sentence punctuation without lookbehind, keeping the terminator. */
-function sentences(flat: string): string[] {
-  const out: string[] = [];
-  const re = /[.!?]+(?:\s|$)/g;
-  let start = 0;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(flat))) {
-    out.push(flat.slice(start, m.index + m[0].trimEnd().length).trim());
-    start = re.lastIndex;
-  }
-  if (start < flat.length) out.push(flat.slice(start).trim());
-  return out.filter(Boolean);
-}
-
-/**
- * The one-line restatement: the user's own words, normalised and cut at a word boundary.
- *
- * Prefers the first sentence that carries at least three words, so an opening "Hey!" or "Ok."
- * does not become the whole Intent row. Returns '' when the request has no words at all, and the
- * caller then emits nothing rather than an empty row.
- */
-function restate(request: string): string {
-  const flat = request.replace(/\s+/g, ' ').trim();
-  if (!flat) return '';
-  const parts = sentences(flat);
-  const pick = parts.find((s) => s.split(' ').length >= 3) ?? parts[0] ?? flat;
-  if (pick.length <= MAX_INTENT_SUMMARY) return pick;
-  const cut = pick.slice(0, MAX_INTENT_SUMMARY);
-  const space = cut.lastIndexOf(' ');
-  return `${(space > 40 ? cut.slice(0, space) : cut).replace(/[,;:.\s]+$/, '')}…`;
-}
-
-/**
- * What the agent understood, derived from the request alone. Null only when there is genuinely
- * nothing to say — an empty request produces no Intent row rather than a blank one.
- */
-function runIntentFor(request: string): RunIntent | null {
-  const report = intentCheck(request);
-  const summary = restate(request);
-  const checklist = report.checklist.slice(0, MAX_INTENT_CHECKLIST);
-  const questions = report.questions.slice(0, MAX_INTENT_QUESTIONS);
-  if (!summary && !checklist.length && !questions.length) return null;
-  return { summary, checklist, questions };
-}
-
 export class SessionDO extends DurableObject<Env> {
   private sql = this.ctx.storage.sql;
   private opQueue: PendingOp[] = [];
@@ -518,6 +449,22 @@ export class SessionDO extends DurableObject<Env> {
       //   fault, and letting it escape would take the whole object down on its second start. ]]
       try {
         this.sql.exec(`alter table oplog add column failure text`);
+      } catch {
+        /* already added on an earlier boot */
+      }
+      //[[ WHICH RUN DID THIS. The record's anchor back into the conversation.
+      //
+      //   `PendingOp.runId` already tags every queued op — op-attribution.ts depends on it to stop
+      //   a cancelled run's mutations reaching the place. The oplog threw it away, so no history
+      //   row could name the run that made the change, and the workspace's own search handler had
+      //   to say so: "the oplog row carries no anchor to a message". A user who finds the change
+      //   could not get to the conversation that caused it.
+      //
+      //   Nullable on purpose. An op taken between runs — a manual checkpoint, a snapshot —
+      //   belongs to NO run, and inheriting the previous one would send that user into a
+      //   conversation that did not cause what they are looking at. ]]
+      try {
+        this.sql.exec(`alter table oplog add column run_id text`);
       } catch {
         /* already added on an earlier boot */
       }
@@ -1242,9 +1189,24 @@ export class SessionDO extends DurableObject<Env> {
       const issuedAt = (await this.ctx.storage.get<number>('pluginTokenIssuedAt')) ?? null;
       // The same window /info reports, and the same ordering, so an operator and a user are
       // looking at one record rather than two that can disagree.
-      const recentOps = this.sql
-        .exec(`select op_id, kind, ok, summary, created_at, failure from oplog order by id desc limit 25`)
-        .toArray();
+      //
+      // `runId` is renamed out of the column name here rather than left as `run_id`, because this
+      // payload is read by the browser and every other field on it is already camelCase. A caller
+      // that has to know the storage spelling of one field is a caller that will get it wrong.
+      const recentOps = (
+        this.sql
+          .exec(`select op_id, kind, ok, summary, created_at, failure, run_id from oplog order by id desc limit 25`)
+          .toArray() as { op_id: string; kind: string; ok: number; summary: string; created_at: number; failure: string | null; run_id: string | null }[]
+      ).map((r) => ({
+        op_id: r.op_id,
+        kind: r.kind,
+        ok: r.ok,
+        summary: r.summary,
+        created_at: r.created_at,
+        failure: r.failure,
+        /** The run that asked for this op, or null for one taken outside a run. */
+        runId: r.run_id,
+      }));
       return json({
         link: await this.linkSummary(),
         agentStatus: agent?.status ?? 'idle',
@@ -2163,6 +2125,11 @@ export class SessionDO extends DurableObject<Env> {
       // means the next step should think harder rather than repeat the same cheap attempt.
       if (!out.ok) agent.priorStepFailed = true;
       if (out.ok && MUTATING_TOOLS.has(call.name)) agent.mutated = true;
+      // The plan is read back out of the panel the tool emitted rather than handed over through a
+      // second channel: one mechanism, and the thing settled at the end is by construction the
+      // thing the user was shown. A second propose_plan is ignored — the prompt says call it once,
+      // and letting a later plan replace the one the user already read would rewrite history.
+      if (call.name === 'propose_plan' && out.ok && !agent.plan) agent.plan = planFromDetail(toolId, out.detail);
       if (ctx.lastCritique && !ctx.lastCritique.passed) agent.visualDefectsFound = true;
       this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: out.ok, summary: out.summary, detail: out.detail });
       // Keep the live trace the reconnect snapshot replays from.
@@ -2333,6 +2300,7 @@ export class SessionDO extends DurableObject<Env> {
     error?: string,
   ) {
     agent.status = 'idle';
+
     // Read before anything else awaits: the notification below wants the project's name, and a
     // storage read placed next to its use would be one more await between the run ending and the
     // isolate going away.
@@ -2361,6 +2329,36 @@ export class SessionDO extends DurableObject<Env> {
     this.currentMsgId = undefined;
     if (abandoned > 0) {
       console.warn(`[session] discarded ${abandoned} queued op(s) from a run that ended`);
+    }
+
+    // THE PLAN STOPS BEING A FORECAST HERE.
+    //
+    // propose_plan emitted every step as `pending`, which was true when the user read it and is
+    // false now. gates.ts lifts pending steps into the Thinking card as work still to come, so a
+    // plan nobody re-states leaves a finished run claiming it is about to do things it already did
+    // — and, worse, hides the steps it promised and never reached. Both halves matter, which is
+    // why the settled plan keeps the unticked ones rather than dropping them.
+    //
+    // It goes out on the SAME toolId, so the browser replaces that row's panel instead of drawing a
+    // second, contradictory card; `uiTools` is updated in step so a reconnecting browser replays
+    // the settled plan and not the proposal. See run-plan.ts for what `done` is allowed to mean.
+    //
+    // Placed AFTER the currentMsgId clear above on purpose: op-attribution.test.mjs reads the head
+    // of this method for that line, and burying it under a block this long made the guard go red.
+    if (agent.plan) {
+      const settled = settlePlan(agent.plan, agent.trace);
+      agent.plan = settled;
+      const detail = planDetail(settled);
+      const row = (agent.uiTools ?? []).find((t) => t.toolId === settled.toolId);
+      if (row) row.detail = detail;
+      this.broadcast({
+        type: 'tool_end',
+        msgId: agent.msgId,
+        toolId: settled.toolId,
+        ok: true,
+        summary: `plan: ${settled.steps.filter((s) => s.status === 'done').length}/${settled.steps.length} done`,
+        detail,
+      });
     }
 
     // A playtest cannot outlive the run that started it.
@@ -2692,12 +2690,13 @@ export class SessionDO extends DurableObject<Env> {
     const verdict = admitFrame(raw, { recompress: opts.recompress });
     if (!verdict.ok) {
       this.sql.exec(
-        `insert into oplog(op_id, kind, ok, summary, created_at) values(?,?,?,?,?)`,
+        `insert into oplog(op_id, kind, ok, summary, created_at, run_id) values(?,?,?,?,?,?)`,
         'frame',
         'frame_rejected',
         0,
         `${verdict.reason}: ${verdict.detail}`.slice(0, 200),
         Date.now(),
+        this.currentMsgId ?? null,
       );
       return false;
     }
@@ -2880,13 +2879,16 @@ export class SessionDO extends DurableObject<Env> {
       });
     });
     this.sql.exec(
-      `insert into oplog(op_id, kind, ok, summary, created_at, failure) values(?,?,?,?,?,?)`,
+      `insert into oplog(op_id, kind, ok, summary, created_at, failure, run_id) values(?,?,?,?,?,?,?)`,
       op.id,
       studioOp.op,
       result.ok ? 1 : 0,
       result.error?.slice(0, 200) ?? '',
       Date.now(),
       result.ok ? null : (asFailureKind(result.failure) ?? null),
+      // The op's OWN attribution, not `this.currentMsgId` read a second time: the run can have
+      // ended while this op sat in the queue, and the row must name the run that asked for it.
+      op.runId ?? null,
     );
     return result;
   }
@@ -3255,11 +3257,11 @@ export class SessionDO extends DurableObject<Env> {
       const n = narrowing(filter, { columns: ['summary', 'kind'] });
       const rows = this.sql
         .exec(
-          `select id, kind, ok, summary, created_at from oplog ${n.where} order by created_at desc limit ?`,
+          `select id, kind, ok, summary, created_at, run_id from oplog ${n.where} order by created_at desc limit ?`,
           ...n.args,
           SCAN_ROWS + 1,
         )
-        .toArray() as { id: number; kind: string | null; ok: number | null; summary: string | null; created_at: number }[];
+        .toArray() as { id: number; kind: string | null; ok: number | null; summary: string | null; created_at: number; run_id: string | null }[];
       if (rows.length > SCAN_ROWS) truncated = true;
       for (const r of rows.slice(0, SCAN_ROWS)) {
         scanned += 1;
@@ -3270,6 +3272,10 @@ export class SessionDO extends DurableObject<Env> {
           title: r.kind ?? null,
           body: r.summary ?? '',
           createdAt: r.created_at,
+          // The anchor back into the conversation. OMITTED, not nulled, for an op taken outside a
+          // run: `messageId` present is what tells the workspace it has somewhere to go, and a
+          // record that claims an anchor it does not have scrolls the user to nothing.
+          ...(r.run_id ? { messageId: r.run_id } : {}),
         });
       }
     }
