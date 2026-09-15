@@ -1055,3 +1055,45 @@ code {
     margin-top: 1.6rem;
   }
 }
+
+/* ------------------------------------------------------------------ hero stage + proof --- */
+
+/* The 3D stage sits between the prompt chips and the proof figures: the claim, the thing doing
+   it, and the numbers behind it, in that order. */
+.ap-hero__stage {
+  margin: clamp(1.8rem, 4vw, 2.8rem) auto 0;
+  max-width: 880px;
+  width: 100%;
+}
+
+/* PROOF, NOT ADJECTIVES. Three figures a reader could go and check. Laid out as one row that
+   wraps rather than a three-column grid, so a narrow screen stacks them instead of squeezing
+   six-digit numbers into 90px columns. */
+.ap-proof {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: clamp(1.4rem, 5vw, 3.2rem);
+  margin: clamp(1.6rem, 3.5vw, 2.4rem) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.ap-proof__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.ap-proof__n {
+  font-size: clamp(1.25rem, 2.6vw, 1.7rem);
+  line-height: 1;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.ap-proof__what {
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-align: center;
+  max-width: 22ch;
+}

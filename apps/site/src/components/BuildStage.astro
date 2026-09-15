@@ -1,0 +1,327 @@
+---
+/**
+ * A ROBLOX PLACE ASSEMBLING ITSELF, IN THE HERO.
+ *
+ * Measured, not assumed: the leading competitor's landing page has
+ * `document.querySelectorAll('canvas, video').length === 0` on every page — no WebGL, no video,
+ * no 3D of any kind, and no web font. Every other site in this category tells you what it does.
+ * This one shows it, with the thing it actually makes.
+ *
+ * It is a real scene rather than a video of one for a reason that survives scrutiny: a video
+ * loops identically, buffers, and is obviously a recording. A scene that is genuinely rendering
+ * can be resized, respects reduced motion by showing the FINISHED build, and costs 140 KB of
+ * pinned library instead of a multi-megabyte file.
+ *
+ * WHAT IT REFUSES TO DO. It does not float, pulse or breathe. Nothing on it is decorative — every
+ * block that moves is a part being placed, and the step list beside it ticks off its own last
+ * block rather than running on a timer. A caption that agrees with an animation by coincidence is
+ * exactly what reads as fake.
+ */
+interface Props {
+  /** Height of the stage. The hero wants it shorter than a standalone card. */
+  height?: string;
+}
+const { height = 'clamp(260px, 38vw, 420px)' } = Astro.props;
+---
+
+<div class="bs" style={`--bs-h:${height}`} data-build-stage>
+  <canvas class="bs__c" aria-hidden="true"></canvas>
+
+  <!-- The steps are real DOM, present before any script runs, so a browser with WebGL disabled
+       still reads what the product does instead of finding an empty rectangle. -->
+  <ol class="bs__steps" aria-label="What Apple is doing">
+    <li class="bs__step"><span class="bs__tick" aria-hidden="true"></span>Laying the plot</li>
+    <li class="bs__step"><span class="bs__tick" aria-hidden="true"></span>Raising the walls</li>
+    <li class="bs__step"><span class="bs__tick" aria-hidden="true"></span>Leaving a doorway</li>
+    <li class="bs__step"><span class="bs__tick" aria-hidden="true"></span>Adding the roof</li>
+    <li class="bs__step"><span class="bs__tick" aria-hidden="true"></span>Wiring the shop</li>
+  </ol>
+
+  <p class="bs__count">
+    <span class="bs__n" data-bs-count>0</span>
+    <span class="bs__label">parts placed</span>
+  </p>
+</div>
+
+<style>
+  .bs {
+    position: relative;
+    height: var(--bs-h);
+    border: 1px solid var(--line-2);
+    border-radius: var(--r-lg);
+    background:
+      radial-gradient(120% 90% at 50% 0%, #121726 0%, var(--ground-deep) 64%);
+    overflow: hidden;
+  }
+  .bs__c { display: block; width: 100%; height: 100%; }
+
+  .bs__steps {
+    position: absolute;
+    left: 16px;
+    bottom: 14px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    pointer-events: none;
+  }
+  .bs__step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--muted);
+    opacity: 0;
+    transform: translateY(5px);
+    transition: opacity .34s var(--ease), transform .34s var(--ease), color .34s var(--ease);
+  }
+  .bs__step.is-on { opacity: 1; transform: none; }
+  .bs__step.is-now { color: var(--ink); }
+  .bs__tick {
+    width: 14px; height: 14px; flex: 0 0 14px;
+    border-radius: 4px;
+    border: 1px solid var(--line-3);
+    transition: background .28s var(--ease), border-color .28s var(--ease);
+  }
+  .bs__step.is-now .bs__tick { border-color: var(--blue); background: rgba(47,125,255,.2); }
+  .bs__step.is-done .bs__tick {
+    border-color: rgba(52,211,153,.55);
+    background: rgba(52,211,153,.24);
+  }
+
+  .bs__count {
+    position: absolute;
+    right: 16px;
+    bottom: 14px;
+    margin: 0;
+    text-align: right;
+    pointer-events: none;
+  }
+  .bs__n {
+    display: block;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 22px;
+    line-height: 1;
+    color: var(--ink);
+  }
+  .bs__label {
+    display: block;
+    margin-top: 3px;
+    font-size: 10px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* No WebGL: the steps stay, all marked done, and the canvas goes. An empty box would say less
+     than the list already says. */
+  .bs.is-flat .bs__c { display: none; }
+  .bs.is-flat { display: grid; place-items: center; }
+
+  @media (max-width: 560px) {
+    .bs__steps { font-size: 11px; left: 12px; bottom: 11px; }
+    .bs__n { font-size: 18px; }
+  }
+</style>
+
+<!-- Pinned to an exact version. An unpinned CDN build is a different renderer on a different day,
+     and a scene that silently changes is worse than one that fails. -->
+<script is:inline src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js" crossorigin="anonymous"></script>
+
+<script is:inline>
+(function () {
+  const root = document.querySelector('[data-build-stage]');
+  if (!root || typeof THREE === 'undefined') { root && root.classList.add('is-flat'); return; }
+
+  const canvas = root.querySelector('.bs__c');
+  const countEl = root.querySelector('[data-bs-count]');
+  const rows = Array.from(root.querySelectorAll('.bs__step'));
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ------------------------------------------------------------------ the build --- */
+
+  // A shop: floor, a walled ring with a doorway left in the front course, an inset roof, and a
+  // counter inside. Inset, because a roof flush with the footprint renders as a lid on a box and
+  // the building disappears.
+  const RING = [];
+  for (let x = -3; x <= 3; x += 2) { RING.push([x, -2]); RING.push([x, 2]); }
+  RING.push([-3, 0]); RING.push([3, 0]);
+
+  const FLOOR = [];
+  for (let x = -3; x <= 3; x += 2) for (let z = -2; z <= 2; z += 2) FLOOR.push([x, 0, z]);
+
+  const COURSE1 = RING.map(([x, z]) => [x, 1, z]);
+  const COURSE2 = RING.filter(([x, z]) => !(z === 2 && x === -1)).map(([x, z]) => [x, 2, z]);
+
+  const ROOF = [];
+  for (let x = -3; x <= 3; x += 2) for (let z = -2; z <= 2; z += 2) {
+    if (Math.abs(x) === 3 && Math.abs(z) === 2) continue;
+    ROOF.push([x, 3, z]);
+  }
+
+  const PLAN = [
+    { tone: 'ground', parts: FLOOR },
+    { tone: 'wall', parts: COURSE1 },
+    { tone: 'wall', parts: COURSE2 },
+    { tone: 'roof', parts: ROOF },
+    { tone: 'accent', parts: [[1, 1, -2], [-1, 1, -2], [3, 1, 0]] },
+  ];
+
+  // Values far enough apart to read. A first pass used near-ground tones and the build was a
+  // silhouette against a surface of almost its own value — a scene that renders perfectly and
+  // shows nothing.
+  const TONE = { ground: 0x6b778f, wall: 0x9aa6bd, roof: 0x6f5f97, accent: 0x2f7dff };
+
+  let renderer;
+  try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true }); }
+  catch (e) { root.classList.add('is-flat'); rows.forEach((r) => r.classList.add('is-on', 'is-done')); return; }
+
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(30, 16 / 9, 0.1, 200);
+
+  function size() {
+    const r = root.getBoundingClientRect();
+    const w = Math.max(1, Math.round(r.width));
+    const h = Math.max(1, Math.round(r.height));
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+  size();
+  new ResizeObserver(size).observe(root);
+
+  // Three lights with jobs: a key that casts the shadows the shapes are read by, a cool fill so
+  // shadowed faces stay legible rather than black, and a rim to separate the silhouette.
+  const key = new THREE.DirectionalLight(0xffffff, 2.9);
+  key.position.set(6, 11, 5);
+  key.castShadow = true;
+  key.shadow.mapSize.set(1024, 1024);
+  key.shadow.camera.near = 1; key.shadow.camera.far = 40;
+  key.shadow.camera.left = -12; key.shadow.camera.right = 12;
+  key.shadow.camera.top = 12; key.shadow.camera.bottom = -12;
+  key.shadow.bias = -0.0015;
+  scene.add(key);
+  const fill = new THREE.DirectionalLight(0x6fa8ff, 0.55); fill.position.set(-7, 4, -6); scene.add(fill);
+  const rim = new THREE.DirectionalLight(0x8b5cf6, 0.7); rim.position.set(-3, 2, 9); scene.add(rim);
+  scene.add(new THREE.HemisphereLight(0x354055, 0x0a0e18, 1.15));
+
+  const floor = new THREE.Mesh(
+    new THREE.CircleGeometry(15, 64).rotateX(-Math.PI / 2),
+    new THREE.MeshStandardMaterial({ color: 0x11151f, roughness: 1, metalness: 0 }),
+  );
+  floor.position.y = -0.501; floor.receiveShadow = true; scene.add(floor);
+
+  const grid = new THREE.GridHelper(30, 30, 0x2f7dff, 0x1a2030);
+  grid.position.y = -0.5;
+  grid.material.transparent = true; grid.material.opacity = 0.42;
+  scene.add(grid);
+
+  const BOX = new THREE.BoxGeometry(1.9, 0.92, 1.9);
+  const EDGE = new THREE.EdgesGeometry(BOX);
+
+  const blocks = [];
+  let i = 0;
+  PLAN.forEach((group, gi) => {
+    group.parts.forEach((p) => {
+      const accent = group.tone === 'accent';
+      const mesh = new THREE.Mesh(BOX, new THREE.MeshStandardMaterial({
+        color: TONE[group.tone],
+        roughness: accent ? 0.25 : 0.72,
+        metalness: accent ? 0.35 : 0.05,
+        emissive: accent ? TONE.accent : 0x000000,
+        emissiveIntensity: accent ? 0.45 : 0,
+      }));
+      mesh.castShadow = true; mesh.receiveShadow = true;
+      mesh.position.set(p[0], p[1] - 0.04, p[2]);
+      mesh.visible = false;
+      mesh.add(new THREE.LineSegments(EDGE, new THREE.LineBasicMaterial({
+        color: 0xffffff, transparent: true, opacity: 0.16,
+      })));
+      scene.add(mesh);
+      blocks.push({ mesh, group: gi, at: i * (reduced ? 0 : 0.042) + gi * 0.18, home: p[1] - 0.04 });
+      i += 1;
+    });
+  });
+
+  const total = blocks.length;
+  const LAST = blocks[blocks.length - 1].at + 0.9;
+
+  // Overshoot and settle. A block that eases to a stop looks like a UI animation; one that drops
+  // past its mark and springs back looks like something with weight landing on something solid.
+  const settle = (k) => 1 - Math.pow(2, -11 * k) * Math.cos((k * 11 - 0.75) * (Math.PI * 2) / 3);
+
+  //[[ WALL CLOCK, NOT ACCUMULATED DELTAS. A background tab throttles requestAnimationFrame, and a
+  //   timeline built by adding frame deltas then runs at a fraction of real speed — the build
+  //   appears frozen on its second block while the counter reads zero. Reading the timestamp means
+  //   a throttled tab renders fewer frames of the SAME animation instead of a slower one. ]]
+  let start = null;
+  let t = 0;
+  let placed = 0;
+  let doneAt = null;
+
+  function frame(now) {
+    if (start === null) start = now;
+    t = (now - start) / 1000;
+
+    let n = 0;
+    for (const b of blocks) {
+      const k = (t - b.at) / 0.5;
+      if (k <= 0) { b.mesh.visible = false; continue; }
+      b.mesh.visible = true;
+      if (k >= 1) {
+        b.mesh.position.y = b.home; b.mesh.rotation.y = 0; b.mesh.scale.setScalar(1);
+        n += 1; continue;
+      }
+      const e = settle(k);
+      b.mesh.position.y = b.home + (1 - e) * 6.5;
+      b.mesh.rotation.y = (1 - e) * Math.PI * 0.35;
+      b.mesh.scale.setScalar(0.82 + e * 0.18);
+    }
+    if (n !== placed) { placed = n; countEl.textContent = String(placed); }
+
+    // A step is DONE when its own last block has landed, so the list cannot drift out of step with
+    // the scene — it is reading the scene.
+    for (let gi = 0; gi < PLAN.length; gi += 1) {
+      const g = blocks.filter((b) => b.group === gi);
+      const started = g.some((b) => t > b.at);
+      const finished = g.every((b) => t > b.at + 0.5);
+      rows[gi].classList.toggle('is-on', started);
+      rows[gi].classList.toggle('is-done', finished);
+      rows[gi].classList.toggle('is-now', started && !finished);
+    }
+
+    if (t > LAST && doneAt === null) doneAt = t;
+
+    // The orbit eases to rest once the build finishes, so the finished place can be looked at
+    // instead of endlessly turning.
+    const orbit = doneAt === null ? t * 0.16 : doneAt * 0.16 + (1 - Math.exp(-(t - doneAt) * 0.9)) * 0.42;
+    const r = 16.5;
+    camera.position.set(Math.sin(orbit + 0.8) * r, 12.6, Math.cos(orbit + 0.8) * r);
+    camera.lookAt(0, 1.0, 0);
+    renderer.render(scene, camera);
+
+    if (t > LAST + 3.4) { start = now; t = 0; placed = 0; doneAt = null; countEl.textContent = '0'; }
+    requestAnimationFrame(frame);
+  }
+
+  if (reduced) {
+    // Reduced motion gets the FINISHED build. The information is the place; the animation was only
+    // ever how it arrived.
+    blocks.forEach((b) => { b.mesh.visible = true; b.mesh.position.y = b.home; });
+    rows.forEach((r) => r.classList.add('is-on', 'is-done'));
+    countEl.textContent = String(total);
+    camera.position.set(Math.sin(0.8) * 16.5, 12.6, Math.cos(0.8) * 16.5);
+    camera.lookAt(0, 1.0, 0);
+    renderer.render(scene, camera);
+  } else {
+    requestAnimationFrame(frame);
+  }
+})();
+</script>

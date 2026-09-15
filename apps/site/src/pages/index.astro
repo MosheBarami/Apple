@@ -1,4 +1,20 @@
 ---
+import BuildStage from '../components/BuildStage.astro';
+
+/**
+ * The library, as figures somebody could check rather than adjectives.
+ *
+ * These are counts from packages/corpus/data/library — the harvest's own totals — and they are
+ * written here as literals on purpose: a landing page that queried a live database to render a
+ * number would be a landing page that can fail to render. They move when the harvest moves, and
+ * tests/check-proof-figures asserts they still match it.
+ */
+const proof = [
+  { n: '510,979', what: 'assets, every licence recorded' },
+  { n: '81,311', what: 'usable with no upload at all' },
+  { n: '3,017', what: 'game templates, checked against current Roblox APIs' },
+];
+
 /**
  * The landing page. Five sections, ZERO JavaScript on the route.
  *
@@ -172,7 +188,7 @@ const plans = (['free', 'builder', 'studio'] as const).map((id) => ({
 
 <Landing
   title="Apple — Build Roblox games by talking"
-  description="Apple is the AI builder for Roblox. Describe what you want in plain language and Apple makes the change in your project — real scripts, real instances, native undo, verified by running your game."
+  description="Apple is an AI that works inside Roblox Studio: it writes Luau, places instances, and runs your game to check the change. Every edit lands on Studio's own undo stack, and every asset it uses carries a recorded licence."
 >
   <a href="#main" class="skip-link">Skip to content</a>
 
@@ -240,6 +256,24 @@ const plans = (['free', 'builder', 'studio'] as const).map((id) => ({
         <div class="ap-chips ap-in" role="group" aria-label="Example prompts">
           {prompts.map((p) => <span class="ap-chip">{p}</span>)}
         </div>
+
+        {/* The product, running, rather than a sentence about it. Measured on the leading
+            competitor: zero canvas and zero video elements on every page of their site. */}
+        <div class="ap-hero__stage ap-in">
+          <BuildStage />
+        </div>
+
+        {/* PROOF, NOT ADJECTIVES. Every figure here is one a reader could go and check, which is
+            the one thing the competitor does better than anyone in this category — real logos,
+            real counts, and a subscriber number they chose to show at an unflattering 289. */}
+        <ul class="ap-proof ap-in" aria-label="What is in the library">
+          {proof.map((p) => (
+            <li class="ap-proof__item">
+              <span class="ap-proof__n ap-mono">{p.n}</span>
+              <span class="ap-proof__what">{p.what}</span>
+            </li>
+          ))}
+        </ul>
       </div>
     </section>
 
