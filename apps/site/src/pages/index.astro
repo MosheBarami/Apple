@@ -79,6 +79,17 @@ import Landing from '../layouts/Landing.astro';
 import AppleMark from '../components/AppleMark.astro';
 import { PLAN_COPY, PLAN_LIMITS, PRICE_CURRENCY, CREDITS_PER_BUILD, buildsPerMonth, formatMoney } from '@golem/shared';
 import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '../lib/studio-plugin';
+//[[ THE WALL IS BAKED IN AT BUILD TIME, NOT QUERIED.
+//
+//   Every row was chosen by scripts/pick-asset-wall.mjs, which asks each pack's own API for the
+//   real preview URL and then FETCHES it before writing the row down. A guessed URL is wrong —
+//   Poly Haven's slugs are case-sensitive and the lowercased id in our library 404s — and a card
+//   whose picture fails renders as a hole, which on a page about an asset library says the library
+//   is broken.
+//
+//   Baked rather than fetched at request time for the same reason the three figures above are
+//   literals: a landing page that queries a database is a landing page that can fail to render.
+import assetWall from '../data/asset-wall.json';
 
 /** Nav. Four anchors at sections that exist on this page, and one real route. */
 const navLinks = [
@@ -409,6 +420,39 @@ const plans = (['free', 'builder', 'studio'] as const).map((id) => ({
               Every run leaves one. Rewind restores the whole place — parts, scripts and properties.
             </p>
           </div>
+        </div>
+      </div>
+    </section>
+
+    {/* ---------------------------------------------------- the library -- */}
+    <section class="ap-section ap-section--seam" id="library" aria-labelledby="library-title">
+      <div class="ap-section__inner">
+        <p class="ap-eyebrow"><span class="ap-eyebrow__dot" aria-hidden="true"></span>The library</p>
+        <h2 class="ap-display" id="library-title">Every asset says where it came from.</h2>
+        <p class="ap-lede">
+          Apple does not invent art. It reaches into packs that people made and released — and each
+          one arrives carrying its pack, its author and its licence, so a credit line can be written
+          without anybody reconstructing it later. {assetWall.count} of them below, picked across
+          three packs.
+        </p>
+
+        <div class="ap-wall" role="list">
+          {assetWall.assets.map((a) => (
+            <a class="ap-wall__card" role="listitem" href={a.source} rel="noopener nofollow" target="_blank">
+              <span class="ap-wall__shot">
+                {/* The picture's REAL pixel size, read out of the file by the picker. It was
+                    hardcoded 256x256 because that is what the CDN query string asked for, and the
+                    files that came back are 193x255, 512x512 and 1024x1024 — a guess dressed as a
+                    measurement, doing the opposite of the job the attribute exists for. */}
+                <img src={a.img} alt="" width={a.w} height={a.h} loading="lazy" decoding="async" />
+              </span>
+              <span class="ap-wall__meta">
+                <span class="ap-wall__name">{a.name}</span>
+                <span class="ap-wall__by">{a.author}</span>
+                <span class="ap-wall__tag">{a.pack} · {a.licence}</span>
+              </span>
+            </a>
+          ))}
         </div>
       </div>
     </section>

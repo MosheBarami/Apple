@@ -14,6 +14,7 @@ import type {
   StudioEventState,
   StudioEventSelection,
   CheckpointMeta,
+  RestoreFidelity,
   GolemMode,
   GatewayRequest,
   ToolTraceEntry,
@@ -40,6 +41,7 @@ import { chat as llmChat, BudgetError, RateLimitedError } from '../gateway';
 import { systemPrompt, collapseArtDirection, MEMORY_UPDATE_PROMPT } from '../prompts';
 import { designBrief } from '../design-brief';
 import { toolDefs, toolNames, targetOf, runTool, type AgentCtx, type PlaytestBus } from '../tools';
+import { MCP_TOOL_NAMES } from '../mcp';
 import { planFromDetail, planDetail, settlePlan, type RunPlan } from '../run-plan';
 import { critiqueToText } from '../vision';
 import { toolsForMode } from '../router';
@@ -66,6 +68,7 @@ import { latestSelection, sameSelection, companionOpAccess, sanitizeCompanionOp,
 import {
   MIN_QUERY,
   authorForRole,
+  checkpointAuthor,
   isSearchable,
   narrowing,
   parseSearchFilter,
@@ -92,7 +95,7 @@ import { allModels } from '../providers/registry';
 import { recordEvent } from '../analytics';
 import { flushEvents } from '../analytics-sink';
 import { fenceToolOutput, describeThreats } from '../injection.ts';
-import { scoreSubmission, type Submission } from '../abuse.ts';
+import { advisory, scoreSubmission, type Submission } from '../abuse.ts';
 
 /**
  * The poll response, plus the one field the shared contract does not carry yet.
@@ -419,6 +422,15 @@ const POLL_WAIT_IDLE_MS = 5_000;
 const POLL_STALE_GRACE_MS = 8_000;
 const PLUGIN_TOKEN_TTL_MS = 30 * 24 * 3600 * 1000; // 30 days, then re-pair
 const MAX_SNAPSHOT_BYTES = 12 * 1024 * 1024; // refuse absurd checkpoints
+/**
+ * How much of a checkpoint's description is kept.
+ *
+ * Long enough for a paragraph about what is in the snapshot and why it was taken, which is the
+ * whole point of having a field beyond the 60-character label. CAPPED rather than rejected: losing
+ * somebody's sentence because they wrote one more than the limit is a worse outcome than a
+ * truncated one, and every checkpoint on this object shares one SQLite.
+ */
+const MAX_CHECKPOINT_DESCRIPTION = 500;
 const MAX_PROMPT_CHARS = 24_000; // ~7k tokens; the transcript is re-sent every step
 
 export class SessionDO extends DurableObject<Env> {
@@ -474,6 +486,33 @@ export class SessionDO extends DurableObject<Env> {
       //   conversation that did not cause what they are looking at. ]]
       try {
         this.sql.exec(`alter table oplog add column run_id text`);
+      } catch {
+        /* already added on an earlier boot */
+      }
+      //[[ WHO TOOK THIS CHECKPOINT. Not guessed from its kind.
+      //
+      //   There was no author column, so the product inferred one: `kind === 'manual' ? 'you'`.
+      //   On a shared project that is a false statement about a real person's work — every
+      //   teammate's checkpoint was labelled as yours — and the checkpoint before a restore that
+      //   discards someone's afternoon is exactly the row where "who did this" is the question.
+      //
+      //   Nullable, and null is meaningful twice: a row from before this column has no recorded
+      //   author, and an `auto`/`pre_agent` checkpoint has no HUMAN author at all. Filling either
+      //   in with whoever happens to be connected would put a name on work they did not do. ]]
+      try {
+        this.sql.exec(`alter table checkpoints add column author_id text`);
+      } catch {
+        /* already added on an earlier boot */
+      }
+      //[[ WHAT THIS SNAPSHOT CONTAINS, AND WHY IT WAS TAKEN.
+      //
+      //   A 60-character label was the only authored text on a checkpoint; everything else the
+      //   drawer showed — the timestamp, the object count, the script count — is derived metadata
+      //   that says nothing about what is IN the snapshot. And every automatic one carries the
+      //   same label, so a list of them is a column of identical rows and the person restoring
+      //   picks by timestamp. ]]
+      try {
+        this.sql.exec(`alter table checkpoints add column description text`);
       } catch {
         /* already added on an earlier boot */
       }
@@ -600,6 +639,123 @@ export class SessionDO extends DurableObject<Env> {
       /* a closing socket cannot be updated, and does not need to be */
     }
     this.broadcastPresence();
+  }
+
+  /**
+   * A MEMBERSHIP CHANGE, APPLIED TO THE SOCKETS THAT ARE ALREADY OPEN.
+   *
+   * Every HTTP route re-resolves membership on every request, so somebody who was removed is a
+   * stranger on their next call. A WebSocket makes no further calls: the role was decided once at
+   * the handshake (`socketRole`) and frozen into the attachment, and every later frame is gated
+   * against that frozen value. So a member who was removed, suspended or demoted kept every
+   * capability they had until they happened to reload — which, for a workspace tab left open, is
+   * never.
+   *
+   * `role === null` is a removal and the socket is CLOSED, because there is no lesser role to
+   * demote to and a socket that stays open on a project you are no longer on is the bug itself.
+   * A demotion re-serializes the attachment, which is the same value `beatOf` reads before every
+   * gated frame — so the next `chat` from a demoted tab is refused by the code that was always
+   * there, rather than by a second copy of the rule living here.
+   *
+   * Returns what it actually did. `matched: 0` is a real and common answer — the person was not
+   * connected — and the route reports it rather than an unconditional `ok: true`.
+   */
+  private applyAccessChange(userId: string, role: CollabRole | null): { matched: number; closed: number; demoted: number } {
+    let matched = 0;
+    let closed = 0;
+    let demoted = 0;
+    for (const ws of this.ctx.getWebSockets('client')) {
+      const beat = this.beatOf(ws);
+      if (beat === null || beat.userId !== userId) continue;
+      matched += 1;
+      if (role === null) {
+        try {
+          // 1008 is "policy violation", which is what this is: the connection is no longer
+          // permitted. The client reconnects and is refused at the door like anyone else.
+          ws.close(1008, 'access changed');
+          closed += 1;
+        } catch {
+          /* already closing */
+        }
+        continue;
+      }
+      if (beat.role === role) continue;
+      const next = makeBeat({ userId: beat.userId, role, connectionId: beat.connectionId, nowMs: Date.now(), activity: beat.activity });
+      if (next === null) continue;
+      try {
+        ws.serializeAttachment(next);
+        demoted += 1;
+        // The tab is TOLD. Without this the controls keep offering what the server will now
+        // refuse, and the person finds out by pressing one and reading a permission error they
+        // have no explanation for.
+        ws.send(JSON.stringify({ type: 'error', code: 'role_changed', message: `Your role on this project is now ${role}.` } satisfies ServerMsg));
+      } catch {
+        /* a closing socket cannot be updated, and does not need to be */
+      }
+    }
+    if (matched > 0) this.broadcastPresence();
+    return { matched, closed, demoted };
+  }
+
+  /**
+   * A REFUSAL GOES TO THE PERSON WHO CAUSED IT.
+   *
+   * `broadcast` reaches every socket on the project, and these are refusals of ONE person's
+   * request. "Apple is already working — stop the current run first." arriving on a colleague's
+   * screen reads as something THEY did, and there is nothing on screen to tell them otherwise.
+   * The role refusals two lines from the call sites have always been targeted; this brings the
+   * busy ones into line with them.
+   *
+   * A run with no originating socket — the automation path — still broadcasts, because there is
+   * no one person to answer and silence would be worse.
+   */
+  private refuseOne(origin: WebSocket | undefined, msg: ServerMsg) {
+    if (origin === undefined) {
+      this.broadcast(msg);
+      return;
+    }
+    try {
+      origin.send(JSON.stringify(msg));
+    } catch {
+      /* closed */
+    }
+  }
+
+  /**
+   * NOBODY IS BUILDING ONCE THE RUN HAS ENDED.
+   *
+   * `touch(ws, 'building')` is set when a chat starts, and nothing ever cleared it. The only other
+   * calls to `touch` are the ping — which re-uses whatever activity is already there — and the
+   * `presence` frame the browser never sent. So after a member's first message their face read
+   * "is building" for the entire life of the socket, including hours after the run finished: an
+   * indicator stating a fact that had stopped being true, which is worse than no indicator because
+   * everyone else plans around it.
+   *
+   * Applied to EVERY socket rather than to the one that started the run, because the claim being
+   * withdrawn is about the project. This object admits one run at a time (see `startGate`), so
+   * when that run ends there is nobody left for whom `building` is true.
+   */
+  private clearBuildingBeats() {
+    let changed = false;
+    for (const ws of this.ctx.getWebSockets('client')) {
+      const beat = this.beatOf(ws);
+      if (beat === null || beat.activity !== 'building') continue;
+      const next = makeBeat({
+        userId: beat.userId,
+        role: beat.role,
+        connectionId: beat.connectionId,
+        nowMs: Date.now(),
+        activity: 'viewing',
+      });
+      if (next === null) continue;
+      try {
+        ws.serializeAttachment(next);
+        changed = true;
+      } catch {
+        /* a closing socket cannot be updated, and does not need to be */
+      }
+    }
+    if (changed) this.broadcastPresence();
   }
 
   /** Tell everyone who is here. Called on connect, on heartbeat and on close. */
@@ -899,6 +1055,21 @@ export class SessionDO extends DurableObject<Env> {
       return json(out.body, out.status);
     }
 
+    if (path === '/collab/access-changed' && req.method === 'POST') {
+      // Called by the membership routes after their writes land. See `applyAccessChange`.
+      const payload = (await req.json().catch(() => null)) as { userId?: unknown; role?: unknown } | null;
+      const userId = typeof payload?.userId === 'string' && payload.userId.length > 0 ? payload.userId : null;
+      if (userId === null) return json({ error: 'bad_request' }, 400);
+      // THE OWNER'S ROLE IS THE `projects.owner_id` COLUMN and no membership write can move it, so
+      // a request to change it is a programming error rather than a demotion to apply.
+      if (userId === bind.ownerId) return json({ error: 'owner_is_not_a_member' }, 400);
+      // A ROLE THIS BUILD CANNOT READ IS A REMOVAL, not a role left as it was. `asCollabRole`
+      // returns null for anything outside the allowlist, and leaving the socket at the
+      // capabilities it already had would be the one direction that must never be the default.
+      const role = payload?.role === null || payload?.role === undefined ? null : asCollabRole(payload.role);
+      return json(this.applyAccessChange(userId, role));
+    }
+
     if (path === '/collab/presence' && req.method === 'GET') {
       // Derived from the sockets that are actually attached, never from a stored list: a list
       // would outlive the connections it describes, and presence that outlives the connection is
@@ -1030,7 +1201,7 @@ export class SessionDO extends DurableObject<Env> {
         // unfiltered project here would be a full page of results for a question nobody asked.
         return json({ ...echo, impossible: true, results: [], counts: zeroCounts(), total: 0, more: false, scanned: 0, scanTruncated: false });
       }
-      const gathered = await this.searchRecords(filter);
+      const gathered = await this.searchRecords(filter, url.searchParams.get('viewer') || null);
       const out = runSearch(gathered.records, filter);
       return json({ ...echo, ...out, scanned: gathered.scanned, scanTruncated: gathered.truncated });
     }
@@ -1079,8 +1250,8 @@ export class SessionDO extends DurableObject<Env> {
 
     if (path === '/checkpoints' && req.method === 'GET') {
       const rows = this.sql
-        .exec(`select id, label, kind, script_count, instance_count, size_bytes, created_at from checkpoints order by created_at desc limit 50`)
-        .toArray() as { id: string; label: string; kind: string; script_count: number; instance_count: number; size_bytes: number; created_at: number }[];
+        .exec(`select id, label, kind, script_count, instance_count, size_bytes, created_at, author_id, description from checkpoints order by created_at desc limit 50`)
+        .toArray() as { id: string; label: string; kind: string; script_count: number; instance_count: number; size_bytes: number; created_at: number; author_id: string | null; description: string | null }[];
       return json({
         checkpoints: rows.map((r) => ({
           id: r.id,
@@ -1090,13 +1261,23 @@ export class SessionDO extends DurableObject<Env> {
           scriptCount: r.script_count,
           instanceCount: r.instance_count,
           sizeBytes: r.size_bytes,
+          /** Who took it, or null for one Apple took and for a row that predates the column. */
+          authorId: r.author_id,
+          /** What it contains or why it was taken. Null when nobody wrote one. */
+          description: r.description,
         })),
       });
     }
 
     if (path === '/checkpoint' && req.method === 'POST') {
-      const { label } = (await req.json()) as { label: string };
-      const res = await this.createCheckpoint((label || 'manual checkpoint').slice(0, 60), 'manual');
+      // `authorId` is set by index.ts from the AUTHENTICATED user, never by a browser: this object
+      // is reachable only through its stub, and every route that forwards here has already
+      // resolved who is asking. See socketRole's comment for the same reasoning on the ws path.
+      const { label, authorId, description } = (await req.json()) as { label: string; authorId?: string; description?: string };
+      const res = await this.createCheckpoint((label || 'manual checkpoint').slice(0, 60), 'manual', {
+        authorId: typeof authorId === 'string' && authorId ? authorId : null,
+        description: typeof description === 'string' ? description : null,
+      });
       return json(res, 'error' in res ? 409 : 200);
     }
 
@@ -1151,10 +1332,42 @@ export class SessionDO extends DurableObject<Env> {
       return json(out);
     }
 
+    /**
+     * One agent tool, driven by an MCP client rather than by a model.
+     *
+     * SEPARATE FROM `/run-tool` ON PURPOSE, and for the reason `/companion-op` is separate from
+     * `/studio-op` below: `/run-tool` forwards whatever tool name it is handed and is reachable
+     * only with the admin key, while this route is reachable by any customer's API key. The
+     * allowlist is therefore checked HERE as well as in index.ts — a check in the caller is a
+     * convention the next caller forgets, a check in the receiver is a property of the route.
+     *
+     * `MCP_TOOL_NAMES` is the same constant the HTTP handler filters on, so the two boundaries
+     * cannot disagree about what the surface is.
+     */
+    if (path === '/mcp-tool' && req.method === 'POST') {
+      const { tool, args } = (await req.json().catch(() => ({}))) as { tool?: unknown; args?: unknown };
+      if (typeof tool !== 'string' || !MCP_TOOL_NAMES.includes(tool)) {
+        return json({ error: `${typeof tool === 'string' ? tool : 'that tool'} is not on the MCP surface.` }, 403);
+      }
+      const out = await runTool(this.agentCtx(), tool, JSON.stringify(args ?? {}));
+      return json(out);
+    }
+
     if (path === '/studio-op' && req.method === 'POST') {
       const { op, timeoutMs } = (await req.json()) as { op: StudioOp; timeoutMs?: number };
       if (!(await this.pluginConnected())) return json({ ok: false, error: 'Studio is not connected' }, 409);
       return json(await this.execStudioOp(op, Math.min(timeoutMs ?? 45_000, 120_000)));
+    }
+
+    /**
+     * The same picture a reconnecting browser gets, over HTTP.
+     *
+     * Read by DiscordDO's progress pusher: a Discord reply has no socket to broadcast onto, so the
+     * only way to say "step 4 of 12, critiquing" is to ask. Deliberately the SAME snapshot the web
+     * client sees, so the two surfaces can never disagree about what the run is doing.
+     */
+    if (path === '/run-state') {
+      return json({ run: await this.runSnapshot() });
     }
 
     /**
@@ -1202,11 +1415,36 @@ export class SessionDO extends DurableObject<Env> {
       // `runId` is renamed out of the column name here rather than left as `run_id`, because this
       // payload is read by the browser and every other field on it is already camelCase. A caller
       // that has to know the storage spelling of one field is a caller that will get it wrong.
-      const recentOps = (
+      //[[ A HISTORY HAS TO BE READABLE PAST ITS FIRST SCREEN.
+      //
+      //   This served the last 25 rows and nothing else. Twenty-five ops is a few minutes of one
+      //   build, and the payload gave no sign it had been cut — so a list that showed everything
+      //   and a list that showed the newest fraction of everything looked identical to a caller,
+      //   which is the worse of the two failures.
+      //
+      //   `before` is the oplog's own autoincrement id, descending, so a page can never repeat or
+      //   skip a row the way an offset does when rows arrive while the user is reading. A cursor
+      //   that does not parse is REFUSED rather than answered with the newest page: silently
+      //   restarting is how an infinite scroll loops forever over the same twenty-five rows. ]]
+      const OPS_MAX = 200;
+      const beforeRaw = url.searchParams.get('before');
+      const before = beforeRaw === null ? null : Number(beforeRaw);
+      if (before !== null && !Number.isSafeInteger(before)) return json({ error: 'bad cursor' }, 400);
+      const limit = Math.min(Math.max(Number(url.searchParams.get('limit')) || 25, 1), OPS_MAX);
+      // One extra row, purely to learn whether there IS a next page. Asking the database is the
+      // only way to tell "that was all of them" from "that was as many as fitted".
+      const opRows = (
         this.sql
-          .exec(`select op_id, kind, ok, summary, created_at, failure, run_id from oplog order by id desc limit 25`)
-          .toArray() as { op_id: string; kind: string; ok: number; summary: string; created_at: number; failure: string | null; run_id: string | null }[]
-      ).map((r) => ({
+          .exec(
+            before === null
+              ? `select id, op_id, kind, ok, summary, created_at, failure, run_id from oplog order by id desc limit ?`
+              : `select id, op_id, kind, ok, summary, created_at, failure, run_id from oplog where id < ? order by id desc limit ?`,
+            ...(before === null ? [limit + 1] : [before, limit + 1]),
+          )
+          .toArray() as { id: number; op_id: string; kind: string; ok: number; summary: string; created_at: number; failure: string | null; run_id: string | null }[]
+      );
+      const opPage = opRows.slice(0, limit);
+      const recentOps = opPage.map((r) => ({
         op_id: r.op_id,
         kind: r.kind,
         ok: r.ok,
@@ -1218,6 +1456,10 @@ export class SessionDO extends DurableObject<Env> {
       }));
       return json({
         link: await this.linkSummary(),
+        /** The page size actually applied, which is not necessarily the one asked for. */
+        limit,
+        /** The cursor for the next page, or null when this page reached the end of the log. */
+        nextBefore: opRows.length > limit ? (opPage[opPage.length - 1]?.id ?? null) : null,
         agentStatus: agent?.status ?? 'idle',
         /** When the pairing token was issued and when it lapses — the 30-day clock, made visible. */
         pairedAt: issuedAt,
@@ -1413,7 +1655,7 @@ export class SessionDO extends DurableObject<Env> {
           //   The history is this project's own user messages, read here rather than kept in
           //   memory so a reconnect, a new isolate or a second tab does not reset the count. ]]
           if (this.refuseAbusive(text)) return;
-          await this.startRun(bind, text, mode);
+          await this.startRun(bind, text, mode, undefined, ws);
         }
         return;
       case 'edit_resend': {
@@ -1443,7 +1685,7 @@ export class SessionDO extends DurableObject<Env> {
         }
         const agent = await this.ctx.storage.get<AgentState>('agent');
         if (agent && agent.status !== 'idle') {
-          this.broadcast({ type: 'error', code: 'busy', message: 'Stop the current run before editing a message.' });
+          this.refuseOne(ws, { type: 'error', code: 'busy', message: 'Stop the current run before editing a message.' });
           return;
         }
 
@@ -1483,7 +1725,7 @@ export class SessionDO extends DurableObject<Env> {
             this.broadcast({ type: 'error', code: 'bad_mode', message: 'Unknown mode for this request.' });
             return;
           }
-          await this.startRun(bind, text, mode);
+          await this.startRun(bind, text, mode, undefined, ws);
         }
         return;
       }
@@ -1506,7 +1748,13 @@ export class SessionDO extends DurableObject<Env> {
           refuse('Your role on this project cannot create checkpoints.');
           return;
         }
-        const res = await this.createCheckpoint(msg.label.slice(0, 60) || 'checkpoint', 'manual');
+        // `me.userId` — the socket's own identity, resolved at the handshake from a header the
+        // worker sets. NOT anything on the frame: the frame is written by the browser, and an
+        // authorId taken from it would let any member sign a checkpoint with another's name.
+        const res = await this.createCheckpoint(msg.label.slice(0, 60) || 'checkpoint', 'manual', {
+          authorId: me?.userId ?? null,
+          description: msg.description ?? null,
+        });
         if ('error' in res) this.broadcast({ type: 'error', code: 'checkpoint', message: res.error });
         return;
       }
@@ -1554,10 +1802,12 @@ export class SessionDO extends DurableObject<Env> {
     text: string,
     mode: GolemMode,
     forcedEffort?: Effort,
+    /** The socket that asked, so the refusal reaches that person and not the room. */
+    origin?: WebSocket,
   ) {
-    const attempt = await this.startGate(() => this.startRunInner(bind, text, mode, forcedEffort));
+    const attempt = await this.startGate(() => this.startRunInner(bind, text, mode, forcedEffort, origin));
     if (!attempt.ran) {
-      this.broadcast({ type: 'error', code: 'busy', message: 'Apple is already working — stop the current run first.' });
+      this.refuseOne(origin, { type: 'error', code: 'busy', message: 'Apple is already working — stop the current run first.' });
     }
   }
 
@@ -1566,10 +1816,11 @@ export class SessionDO extends DurableObject<Env> {
     text: string,
     mode: GolemMode,
     forcedEffort?: Effort,
+    origin?: WebSocket,
   ) {
     const existing = await this.ctx.storage.get<AgentState>('agent');
     if (existing && existing.status !== 'idle' && Date.now() - existing.lastStepAt < STEP_STALE_MS) {
-      this.broadcast({ type: 'error', code: 'busy', message: 'Apple is already working — stop the current run first.' });
+      this.refuseOne(origin, { type: 'error', code: 'busy', message: 'Apple is already working — stop the current run first.' });
       return;
     }
     // Clear any stop left behind by a previous run. Belt and braces with finishRun's clear:
@@ -1716,7 +1967,18 @@ export class SessionDO extends DurableObject<Env> {
     // and silently pressing on is the thing this codebase keeps getting wrong.
     if (studioConnected && mode !== 'clay') {
       try {
-        const checkpoint = await this.createCheckpoint('before Apple changes', 'pre_agent'); // broadcasts internally
+        //[[ SAY WHAT THE RUN WAS ABOUT TO DO.
+        //
+        //   Every pre-run checkpoint carries this same label, so a project's list of them was a
+        //   column of identical rows and the person restoring one was choosing by timestamp. The
+        //   request that caused it is right here in scope and was being thrown away.
+        //
+        //   `intent.summary` when the local classifier produced one — it restates the request in
+        //   the agent's own terms — and otherwise the user's own words, which are never worse. No
+        //   model call: this runs before the first one. ]]
+        const checkpoint = await this.createCheckpoint('before Apple changes', 'pre_agent', {
+          description: `Apple was asked to: ${intent?.summary ?? text}`,
+        }); // broadcasts internally
         if ('error' in checkpoint) {
           this.broadcast({
             type: 'error',
@@ -2272,13 +2534,28 @@ export class SessionDO extends DurableObject<Env> {
       // output, and a prompt cannot contain an id that was minted for this scan alone.
       fenceId: crypto.randomUUID().slice(0, 8),
     });
+    // RECORDED BEFORE ANYTHING IS DECIDED, and that ordering is the fix rather than a tidy-up.
+    // `recordEvent` used to sit below the `action === 'allow'` return, so the only findings that
+    // were ever written down were the ones already being throttled or refused for something else.
+    // The two zero-weight signals — a pasted credential, an injection pattern — exist precisely to
+    // be noted on submissions that are otherwise fine, and those were the submissions whose
+    // findings were discarded. Nothing fires on a clean verdict: `signals` is empty and there is
+    // nothing to say.
+    if (verdict.signals.length > 0) {
+      recordEvent({
+        kind: 'error',
+        scope: 'chat:ingress',
+        errorKind:
+          verdict.action === 'refuse' ? 'abuse_refused' : verdict.action === 'throttle' ? 'abuse_throttled' : 'abuse_noted',
+        message: verdict.signals.map((s) => `${s.code}: ${s.detail}`).join(' | '),
+      });
+    }
+    // And told to the person it is about. A credential in a transcript is theirs to rotate whether
+    // or not this particular run starts, so this is sent on both paths — see `advisory` for why it
+    // covers the pasted key and not the injection pattern.
+    const notice = advisory(verdict);
+    if (notice) this.broadcast({ type: 'error', code: notice.code, message: notice.message });
     if (verdict.action === 'allow') return false;
-    recordEvent({
-      kind: 'error',
-      scope: 'chat:ingress',
-      errorKind: verdict.action === 'refuse' ? 'abuse_refused' : 'abuse_throttled',
-      message: verdict.signals.map((s) => `${s.code}: ${s.detail}`).join(' | '),
-    });
     if (verdict.action !== 'refuse') return false;
     this.broadcast({
       type: 'error',
@@ -2340,6 +2617,11 @@ export class SessionDO extends DurableObject<Env> {
     error?: string,
   ) {
     agent.status = 'idle';
+
+    // The run is over, so the "is building" beside somebody's name is no longer true. Done first,
+    // synchronously, because everything below this awaits and an isolate that goes away mid-tidy
+    // would leave the claim standing on every other screen in the project.
+    this.clearBuildingBeats();
 
     // Read before anything else awaits: the notification below wants the project's name, and a
     // storage read placed next to its use would be one more await between the run ending and the
@@ -3196,7 +3478,12 @@ export class SessionDO extends DurableObject<Env> {
    * The cap that remains is REPORTED rather than quiet: `truncated` is the difference between
    * "nothing else matches" and "nothing else was looked at".
    */
-  private async searchRecords(filter: SearchFilter): Promise<{ records: SearchRecord[]; scanned: number; truncated: boolean }> {
+  /**
+   * @param viewer who is READING, so a record can be called theirs — or, absent, cannot be called
+   * anyone's. index.ts sets it from the authenticated caller and overwrites whatever arrived on
+   * the query string.
+   */
+  private async searchRecords(filter: SearchFilter, viewer: string | null): Promise<{ records: SearchRecord[]; scanned: number; truncated: boolean }> {
     const SCAN_MESSAGES = 2000;
     const SCAN_ROWS = 1000;
     const records: SearchRecord[] = [];
@@ -3273,17 +3560,24 @@ export class SessionDO extends DurableObject<Env> {
       const n = narrowing(filter, { columns: ['label', 'kind'] });
       const rows = this.sql
         .exec(
-          `select id, label, kind, created_at from checkpoints ${n.where} order by created_at desc limit ?`,
+          `select id, label, kind, created_at, author_id from checkpoints ${n.where} order by created_at desc limit ?`,
           ...n.args,
           SCAN_ROWS,
         )
-        .toArray() as { id: string; label: string; kind: string; created_at: number }[];
+        .toArray() as { id: string; label: string; kind: string; created_at: number; author_id: string | null }[];
       for (const r of rows) {
         scanned += 1;
         records.push({
           id: r.id,
           type: 'checkpoint',
-          author: r.kind === 'manual' ? 'you' : 'apple',
+          //[[ WHO, READ FROM THE ROW. This was `r.kind === 'manual' ? 'you' : 'apple'` — a guess
+          //   from the kind, which on a shared project told every member that a teammate's
+          //   checkpoint was theirs. The row now records its author, so the only remaining
+          //   judgement is whether that author is the person reading.
+          //
+          //   An unrecorded author (a row from before the column) is NOT 'you'. Defaulting an
+          //   unknown to the reader is the original defect wearing a different hat. ]]
+          author: checkpointAuthor(r.kind, r.author_id, viewer),
           title: r.label,
           body: r.kind,
           createdAt: r.created_at,
@@ -3346,7 +3640,21 @@ export class SessionDO extends DurableObject<Env> {
   }
 
   // ------------------------------------------------------------------ checkpoints
-  async createCheckpoint(label: string, kind: CheckpointMeta['kind']): Promise<CheckpointMeta | { error: string }> {
+  /**
+   * @param meta.authorId the person who asked for it, or undefined when Apple took it itself. The
+   * CALLER resolves this — the socket's own attachment or the worker's authenticated user — never
+   * a value off the wire, or any member could sign a checkpoint with someone else's name.
+   * @param meta.description what the snapshot contains or why it was taken, in the user's words
+   * for a manual one and from the request for an automatic one. Blank becomes null: "" and "nobody
+   * wrote one" would render identically and mean different things.
+   */
+  async createCheckpoint(
+    label: string,
+    kind: CheckpointMeta['kind'],
+    meta2: { authorId?: string | null; description?: string | null } = {},
+  ): Promise<CheckpointMeta | { error: string }> {
+    const authorId = meta2.authorId ?? null;
+    const description = (meta2.description ?? '').trim().slice(0, MAX_CHECKPOINT_DESCRIPTION) || null;
     if (!(await this.pluginConnected())) return { error: 'Studio is not connected — connect Studio to create checkpoints.' };
     const snap = await this.execStudioOp({ op: 'snapshot', root: 'game', includeScripts: true }, 60_000);
     if (!snap.ok) return { error: snap.error ?? 'snapshot failed' };
@@ -3367,7 +3675,7 @@ export class SessionDO extends DurableObject<Env> {
       );
     }
     this.sql.exec(
-      `insert into checkpoints(id, label, kind, script_count, instance_count, size_bytes, created_at) values(?,?,?,?,?,?,?)`,
+      `insert into checkpoints(id, label, kind, script_count, instance_count, size_bytes, created_at, author_id, description) values(?,?,?,?,?,?,?,?,?)`,
       id,
       label,
       kind,
@@ -3375,6 +3683,8 @@ export class SessionDO extends DurableObject<Env> {
       meta.instanceCount ?? 0,
       gz.byteLength,
       Date.now(),
+      authorId,
+      description,
     );
     // retention: keep last 25
     this.sql.exec(
@@ -3389,6 +3699,8 @@ export class SessionDO extends DurableObject<Env> {
       scriptCount: meta.scriptCount ?? 0,
       instanceCount: meta.instanceCount ?? 0,
       sizeBytes: gz.byteLength,
+      authorId,
+      description,
     };
     this.broadcast({ type: 'checkpoint', checkpoint: cp });
     return cp;
@@ -3398,20 +3710,36 @@ export class SessionDO extends DurableObject<Env> {
     ok: boolean;
     error?: string;
     /** What the plugin reports it actually put back. Absent when the op never reached Studio. */
-    fidelity?: {
-      instancesCreated: number;
-      scriptsRestored: number;
-      scriptsExpected: number;
-      failedInstances: number;
-      failedScripts: number;
-      failedProperties: number;
-    };
+    fidelity?: RestoreFidelity;
     /** A caveat worth showing the user even though the restore succeeded. */
     note?: string;
   }> {
-    if (!(await this.pluginConnected())) return { ok: false, error: 'Studio is not connected' };
+    //[[ THE PERSON WHO PRESSED RESTORE IS WATCHING A BLANK DRAWER.
+    //
+    //   Everything below used to happen in silence: one op with a 120s ceiling, nothing broadcast
+    //   while it ran, and — on the ws path — a broadcast only when it FAILED. So the interface had
+    //   nothing to say for up to two minutes about the operation that was at that moment clearing
+    //   and rebuilding the user's place, and on success it had nothing to say at all.
+    //
+    //   Every exit from this method now reports itself, including the two refusals above the work,
+    //   because a restore that never starts is exactly the case where a silent UI leaves someone
+    //   waiting on something that is not coming.
+    //
+    //   `broadcast` and not a return value: the HTTP caller and the SDK already get the result,
+    //   and a second tab watching the same project has to see this too. ]]
+    const say = (phase: 'reading' | 'applying' | 'verifying' | 'done' | 'failed', rest: { fidelity?: RestoreFidelity; note?: string; error?: string } = {}) =>
+      this.broadcast({ type: 'restore_status', checkpointId: id, phase, ...rest });
+
+    if (!(await this.pluginConnected())) {
+      say('failed', { error: 'Studio is not connected' });
+      return { ok: false, error: 'Studio is not connected' };
+    }
     const chunks = this.sql.exec(`select data from checkpoint_chunks where checkpoint_id = ? order by idx`, id).toArray() as { data: ArrayBuffer }[];
-    if (!chunks.length) return { ok: false, error: 'checkpoint not found' };
+    if (!chunks.length) {
+      say('failed', { error: 'checkpoint not found' });
+      return { ok: false, error: 'checkpoint not found' };
+    }
+    say('reading');
     const total = chunks.reduce((n, c) => n + c.data.byteLength, 0);
     const buf = new Uint8Array(total);
     let off = 0;
@@ -3420,8 +3748,13 @@ export class SessionDO extends DurableObject<Env> {
       off += c.data.byteLength;
     }
     const jsonStr = await gunzip(buf);
+    say('applying');
     const applied = await this.execStudioOp({ op: 'restore', root: 'game', snapshot: JSON.parse(jsonStr) }, 120_000);
-    if (!applied.ok) return { ok: false, error: applied.error };
+    if (!applied.ok) {
+      say('failed', { error: applied.error });
+      return { ok: false, error: applied.error };
+    }
+    say('verifying');
 
     // SURFACE THE FIDELITY REPORT. The plugin returns exactly how faithful the restore was —
     // instancesCreated, scriptsRestored against scriptsExpected, and counts of instances, scripts
@@ -3454,23 +3787,26 @@ export class SessionDO extends DurableObject<Env> {
     // A pre-0.2.0 plugin returns no report at all. Absent evidence is reported as absent rather
     // than as success: `restored === undefined` must not read as "restored fine".
     if (d.restored === undefined) {
-      return { ok: true, fidelity, note: 'This Studio plugin is too old to report what it restored, so the result could not be verified.' };
+      const note = 'This Studio plugin is too old to report what it restored, so the result could not be verified.';
+      say('done', { fidelity, note });
+      return { ok: true, fidelity, note };
     }
 
     if (!d.restored) {
-      return { ok: false, error: d.error ?? 'restore incomplete', fidelity };
+      const error = d.error ?? 'restore incomplete';
+      say('failed', { fidelity, error });
+      return { ok: false, error, fidelity };
     }
 
     // Every instance and script came back, but properties can still have failed — and a part with
     // the wrong Size and CFrame is not the part the user checkpointed. Successful, with a caveat
     // the UI is expected to show.
     if (fidelity.failedProperties > 0) {
-      return {
-        ok: true,
-        fidelity,
-        note: `Restored, but ${fidelity.failedProperties} propert${fidelity.failedProperties === 1 ? 'y' : 'ies'} could not be set — some objects may differ from the checkpoint.`,
-      };
+      const note = `Restored, but ${fidelity.failedProperties} propert${fidelity.failedProperties === 1 ? 'y' : 'ies'} could not be set — some objects may differ from the checkpoint.`;
+      say('done', { fidelity, note });
+      return { ok: true, fidelity, note };
     }
+    say('done', { fidelity });
     return { ok: true, fidelity };
   }
 

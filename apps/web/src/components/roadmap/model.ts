@@ -23,8 +23,13 @@
 //             normal product UI, and the surest way to keep them out is for the
 //             client type not to have the field at all. The product mode a
 //             brief runs in is derived at the edge, from the brief.
-//   `shape` — the scan's full feature map. This view has no use for it and
-//             copying it here would invite someone to render it.
+//   `shape` — the scan's FULL feature map, which is not what is mirrored below.
+//             `RoadmapShape` takes three of its fields and no more: the counts,
+//             the named systems, and the scan's own limits. `features`,
+//             `genre` and `genreEvidence` are deliberately left out — the first
+//             is what the milestones already say, and the other two are already
+//             top-level on this response. A mirror that copied everything would
+//             give the page two sources for the same sentence.
 
 /** As reported. `blocked` is the worker's word for "a prerequisite is missing". */
 export type MilestoneStatus = 'done' | 'current' | 'future' | 'blocked';
@@ -77,6 +82,39 @@ export interface RoadmapResponse {
   /** True only when the optional ranking pass actually ran. */
   polished: boolean;
   generatedAt: string;
+  /**
+   * WHAT IS ACTUALLY IN THE PLACE, as `publicShape` sends it.
+   *
+   * Optional because the honest reading of an absent shape is "we were not told", and the page has
+   * to be able to say that — see `placeInventory`, which answers null rather than zeroes.
+   */
+  shape?: RoadmapShape | null;
+}
+
+/** One container the scan named, at its real path. */
+export interface NamedThing {
+  path: string;
+  className: string;
+  name: string;
+}
+
+/** The subset of the worker's ProjectShape this view reads. Mirrors apps/worker/src/roadmap.ts. */
+export interface RoadmapShape {
+  systems: {
+    /** Currency value names the scripts actually create, e.g. ["Coins"]. */
+    currencies: string[];
+    zones: NamedThing[];
+    serverScripts: string[];
+    clientScripts: string[];
+    moduleScripts: string[];
+    guis: string[];
+    topLevel: string[];
+    spawns: number;
+    parts: number;
+  };
+  scale: { instances: number; parts: number; scripts: number; scriptsRead: number };
+  /** What the scan could not see, in the worker's own words. */
+  limits: string[];
 }
 
 /** §32 on its own: the next steps without the whole timeline. */
@@ -192,6 +230,96 @@ function list<T>(value: T[] | null | undefined): T[] {
 
 function refOf(m: Milestone): MilestoneRef {
   return { id: m.id, title: m.title, status: m.status };
+}
+
+/* ----------------------------------------------- what is in the place -- */
+
+/**
+ * The project's contents, as the scan established them.
+ *
+ * Numbers only where the scan produced numbers, names only where it produced
+ * names, and `capped` where it admitted it stopped. Nothing here is derived
+ * from anything else — this is a reading of the answer, not an estimate.
+ */
+export interface PlaceInventory {
+  instances: number;
+  parts: number;
+  scripts: number;
+  /** How many of those scripts were actually opened and read. */
+  scriptsRead: number;
+  /** True when fewer were read than exist: absence of a feature is then not evidence. */
+  scriptsPartial: boolean;
+  serverScripts: number;
+  clientScripts: number;
+  moduleScripts: number;
+  guis: string[];
+  /** Zone containers, by the name the scan found them under. */
+  zones: string[];
+  currencies: string[];
+  topLevel: string[];
+  spawns: number;
+  /**
+   * The scan reported a limit, so every count above is a FLOOR and must be read
+   * as "at least". apps/worker/src/roadmap.ts states the rule this carries: a
+   * capped scan reads as unknown, never as zero.
+   */
+  capped: boolean;
+  /** The scan ran and found nothing. A real state, and not the same as not having run. */
+  empty: boolean;
+}
+
+function count(value: number | null | undefined): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
+/**
+ * Read the inventory out of the shape, or answer null.
+ *
+ * NULL IS THE POINT. An absent shape means the answer never arrived, and a
+ * section of zeroes would report an empty project on no evidence — the
+ * failure-to-observe pattern, written as a default value.
+ */
+export function placeInventory(shape: RoadmapShape | null | undefined): PlaceInventory | null {
+  if (!shape || typeof shape !== 'object') return null;
+  const systems = (shape.systems ?? {}) as Partial<RoadmapShape['systems']>;
+  const scale = (shape.scale ?? {}) as Partial<RoadmapShape['scale']>;
+  const scripts = count(scale.scripts);
+  const scriptsRead = count(scale.scriptsRead);
+  const zones = list(systems.zones).map((z) => z?.name ?? z?.path ?? '').filter((n) => n !== '');
+  const guis = list(systems.guis);
+  const currencies = list(systems.currencies);
+  const topLevel = list(systems.topLevel);
+  const serverScripts = list(systems.serverScripts).length;
+  const clientScripts = list(systems.clientScripts).length;
+  const moduleScripts = list(systems.moduleScripts).length;
+  const spawns = count(systems.spawns);
+  const instances = count(scale.instances);
+  const parts = count(scale.parts);
+  return {
+    instances,
+    parts,
+    scripts,
+    scriptsRead,
+    scriptsPartial: scriptsRead < scripts,
+    serverScripts,
+    clientScripts,
+    moduleScripts,
+    guis,
+    zones,
+    currencies,
+    topLevel,
+    spawns,
+    capped: list(shape.limits).length > 0,
+    empty:
+      instances === 0 &&
+      parts === 0 &&
+      scripts === 0 &&
+      spawns === 0 &&
+      zones.length === 0 &&
+      guis.length === 0 &&
+      currencies.length === 0 &&
+      topLevel.length === 0,
+  };
 }
 
 /**
