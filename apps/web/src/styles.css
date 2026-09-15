@@ -900,6 +900,81 @@ kbd {
   font-weight: 440;
 }
 
+/* Starting-point picker — five cards, one of which is "empty".
+   The radio itself is kept in the page rather than replaced: it is what carries
+   the group semantics and the arrow-key behaviour, so it is made invisible and
+   the card takes its focus ring through :focus-within. */
+.tpl {
+  border: 0;
+  padding: 0;
+  margin-bottom: 0.95rem;
+  min-inline-size: 0;
+}
+
+.tpl__note {
+  margin: 0 0 0.5rem;
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.tpl__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+  gap: 0.45rem;
+}
+
+.tpl__card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  cursor: pointer;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+
+.tpl__card:hover {
+  border-color: var(--line-strong);
+}
+
+.tpl__card input {
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block-start: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  margin: 0;
+  pointer-events: none;
+}
+
+.tpl__card:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.tpl__card.is-on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.tpl__label {
+  font-size: 0.82rem;
+  font-weight: 560;
+  color: var(--ink);
+}
+
+.tpl__blurb {
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
 input[type='text'],
 input[type='email'],
 input[type='password'],

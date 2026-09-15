@@ -10,6 +10,7 @@ import { useAuth } from '../lib/auth';
 import { downloadExport, purgeProject, ApiError } from '../lib/api';
 import { PROJECT_DESCRIPTION_MAX, PROJECT_NAME_MAX, projectEditPatch, useEditProject } from '../lib/rename-project';
 import { PROJECT_COLUMNS, PROJECT_LIST_KEYS, PROJECT_SCOPES, scopeToShow, type ProjectScope } from '../lib/archive';
+import { BLANK_TEMPLATE_ID, PROJECT_TEMPLATES, templateSeed } from '../lib/project-templates';
 import { readViewChoice, writeViewChoice } from '../lib/view-state';
 import { relativeTime, truncate } from '../lib/format';
 import { Modal } from '../components/modal';
@@ -162,6 +163,7 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
   const { toast } = useToast();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [template, setTemplate] = useState(BLANK_TEMPLATE_ID);
 
   const create = useMutation({
     mutationFn: async () => {
@@ -179,7 +181,17 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
       void qc.invalidateQueries({ queryKey: ['projects'] });
       void qc.invalidateQueries({ queryKey: ['projects-nav'] });
       toast('Project summoned', 'success');
-      navigate(`/projects/${row.id}`);
+      //[[ THE TEMPLATE IS A SEEDED REQUEST, NOT SEEDED CONTENT.
+      //
+      //   It rides the handoff the workspace already consumes — the same one the suggestion chips
+      //   and the roadmap's briefs use — so the message lands in the composer and the person reads
+      //   it and presses send. Nothing is built, and no Credit is spent, until they do.
+      //
+      //   A blank start navigates with no state at all rather than `{ seed: null }`: the workspace
+      //   consumes-and-clears any state it is handed, and handing it nothing to clear keeps the
+      //   history entry as it was. ]]
+      const seed = templateSeed(template);
+      navigate(`/projects/${row.id}`, seed ? { state: { seed } } : undefined);
     },
     onError: (e: Error) => toast(`Could not create project: ${e.message}`, 'error'),
   });
@@ -220,6 +232,29 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
             placeholder="A lava-parkour obby with checkpoints, coins and a shop."
           />
         </label>
+        <fieldset className="field tpl">
+          <legend className="field-label">Starting point</legend>
+          {/* Said plainly, because the last template claim this product made was false: these fill
+              in the first message, they do not fill in the place. */}
+          <p className="field-hint tpl__note">
+            Each of these writes your first request for you. You can edit it before you send it.
+          </p>
+          <div className="tpl__grid">
+            {PROJECT_TEMPLATES.map((t) => (
+              <label key={t.id} className={`tpl__card${template === t.id ? ' is-on' : ''}`}>
+                <input
+                  type="radio"
+                  name="projectTemplate"
+                  value={t.id}
+                  checked={template === t.id}
+                  onChange={() => setTemplate(t.id)}
+                />
+                <span className="tpl__label">{t.label}</span>
+                <span className="tpl__blurb">{t.blurb}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
         <div className="modal-actions">
           <button type="button" className="btn" onClick={onClose} disabled={create.isPending}>
             Cancel
