@@ -862,7 +862,19 @@ export type ServerMsg =
    * repeat of the selection it last reported, so this is an event rather than a heartbeat.
    */
   | { type: 'studio_selection'; selection: StudioEventSelection }
-  | { type: 'msg_start'; msgId: string; role: 'assistant'; mode: GolemMode }
+  //[[ `userMsgId` NAMES THE ROW THE USER'S OWN MESSAGE WAS STORED UNDER.
+  //
+  //   The client appends its own message optimistically under a locally minted id — the send is
+  //   fire-and-forget over this socket and the message has to appear at once — while the server
+  //   inserts its row under a uuid it never reported. So Edit, Try again and Regenerate, all of
+  //   which resolve that id server-side, failed on every message sent in the current session and
+  //   worked after a reload, because history comes back from /messages with real ids.
+  //
+  //   Carried here rather than on a new variant because msg_start is broadcast exactly once per
+  //   run, after the user row is inserted, and already carries the run's other id. OPTIONAL
+  //   because the worker and the web app deploy separately: a client that required it would be
+  //   describing a worker that may not be live yet. See web/src/lib/message-identity.ts. ]]
+  | { type: 'msg_start'; msgId: string; role: 'assistant'; mode: GolemMode; userMsgId?: string }
   | { type: 'delta'; msgId: string; text: string }
   | { type: 'tool_start'; msgId: string; toolId: string; tool: string; summary: string }
   // `detail` carries the tool's STRUCTURED result, which the web app offers to
@@ -1090,6 +1102,23 @@ export interface MessageDto {
   mode: GolemMode | null;
   content: string;
   toolTrace: ToolTraceEntry[] | null;
+  createdAt: string;
+  /**
+   * How many earlier versions of this message the user wrote before editing it.
+   *
+   * Counted by the DO and sent with the list so the conversation can decide whether to draw an
+   * "edited" mark without one request per turn. The TEXT is fetched only when someone asks to read
+   * it. Optional: a worker that predates message_revisions sends no field, and the absence means
+   * "none known", never "none".
+   */
+  revisions?: number;
+}
+
+/** One earlier version of a user's message, as served by .../messages/:messageId/revisions. */
+export interface MessageRevisionDto {
+  /** Position in the chain, oldest first. */
+  seq: number;
+  content: string;
   createdAt: string;
 }
 
@@ -1712,3 +1741,29 @@ export interface AssetSourcePolicy {
 }
 
 export const ASSET_SOURCE_DEFAULT: AssetSourcePolicy = { mode: 'ask', allow: [] };
+
+/* --------------------------------------------------------------- message revisions --- */
+
+/**
+ * Does replacing `previous` with `next` produce an earlier version worth keeping?
+ *
+ * Shared because BOTH sides answer it and they must answer it the same way: the DO decides whether
+ * to write a `message_revisions` row, and the web app decides whether to increment the count it is
+ * showing optimistically before the server has said anything. If they disagreed, the conversation
+ * would offer to show earlier versions that do not exist, or hide ones that do.
+ *
+ * NO for an unchanged resend, which is not a hypothetical: "Try again" and "Regenerate" both go
+ * through `edit_resend` with the text untouched, on purpose, so that running again has exactly one
+ * definition. Recording those would tell a user who regenerated four times that their message has
+ * four earlier versions, every one of them identical to the one on screen.
+ *
+ * Compared trimmed, because the client trims before sending and the DO trims on arrival — a rule
+ * that counted whitespace would record a revision nobody can see a difference in.
+ *
+ * NO for an empty previous message: there is no version of nothing.
+ */
+export function recordsRevision(previous: string, next: string): boolean {
+  const before = previous.trim();
+  if (!before) return false;
+  return before !== next.trim();
+}

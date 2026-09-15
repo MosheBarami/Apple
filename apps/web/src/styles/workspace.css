@@ -266,6 +266,19 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Why a pinned conversation sits above newer ones. Quiet — it marks the row, it does not compete
+   with the name for it. */
+.gx-conv__pin {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  color: var(--gx-ink-3);
+}
+
+.gx-conv.is-active .gx-conv__pin {
+  color: inherit;
+}
+
 .gx-conv:hover {
   background: rgba(245, 242, 236, 0.04);
   color: var(--gx-ink);
@@ -4133,6 +4146,73 @@
 
 .gx-outcome__text {
   margin: 0;
+}
+
+/* "Edited" sits beside Edit on a user turn. Unlike Edit it is ALWAYS drawn rather than revealed on
+   hover: it is a fact about the message, not a tool, and a fact that only appears when the pointer
+   is over it is a fact nobody knows. */
+.gx-user__edited {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--gx-ink-3);
+  font: inherit;
+  font-size: 0.74rem;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.gx-user__edited:hover {
+  color: var(--gx-ink);
+}
+
+.gx-user__edited:focus-visible {
+  outline: 2px solid var(--gx-accent, #6aa7ff);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* The earlier-versions list. Each version is a block of the user's own words, so it is set as
+   text and not as a diff: a character-level diff of two freely rewritten prompts is noise. */
+.gx-revs {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Logical, not physical: a Hebrew prompt's history has its rule on the right. */
+.gx-revs__item {
+  border-inline-start: 2px solid var(--gx-line);
+  padding-inline-start: 0.75rem;
+}
+
+/* The version in force reads as current, not as one more draft. */
+.gx-revs__item.is-current {
+  border-inline-start-color: var(--gx-accent, #6aa7ff);
+}
+
+.gx-revs__when {
+  margin: 0 0 0.2rem;
+  color: var(--gx-ink-3);
+  font-size: 0.74rem;
+}
+
+.gx-revs__text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* A clean run has no sentence to sit beside — only the Regenerate control. It tucks closer to the
+   reply than an outcome line does, so it reads as an affordance on the turn rather than as a
+   verdict on it. */
+.gx-outcome--bare {
+  margin-top: 0.35rem;
 }
 
 .gx-outcome__retry {

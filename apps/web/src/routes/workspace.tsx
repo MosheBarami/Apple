@@ -26,6 +26,7 @@ import { SHORTCUTS, shortcutLabel } from '../lib/shortcuts';
 import { useGlobalShortcut } from '../components/shortcuts-dialog';
 import { SearchPanel } from '../components/ws/search-panel';
 import { EditMessageDialog } from '../components/ws/edit-message-dialog';
+import { RevisionsDialog } from '../components/ws/revisions-dialog';
 import { MemoryPanel } from '../components/ws/memory-panel';
 import { AutomationsPanel } from '../components/ws/automations-panel';
 import { MembersPanel } from '../components/ws/members-panel';
@@ -305,6 +306,12 @@ export function WorkspacePage() {
 
   // Which of my own messages is being edited, if any.
   const [editing, setEditing] = useState<{ id: string; content: string } | null>(null);
+
+  // Which message's earlier versions are open, if any. Held as an id rather than as the row: the
+  // dialog reads the text from the live list, so a message that changes underneath it shows what it
+  // says now rather than what it said when the control was clicked.
+  const [showingRevisions, setShowingRevisions] = useState<string | null>(null);
+  const revisionsFor = showingRevisions ? messages.find((m) => m.id === showingRevisions) : undefined;
 
   // How much the edit throws away, counted from what is actually on screen rather than described.
   // "Later messages" reads as two or three; forty-seven does not.
@@ -903,6 +910,9 @@ export function WorkspacePage() {
               // Only the last turn, and only while idle. An offer that is present but inert is a
               // worse answer than no offer.
               onRetry={item.id === lastAssistantId && !running ? retryLast : undefined}
+              // Drawn only when the transcript says this message HAS earlier versions — Turn makes
+              // that call, because it is the thing holding the count.
+              onShowRevisions={setShowingRevisions}
             />
             </div>
           ))}
@@ -1092,6 +1102,15 @@ export function WorkspacePage() {
           </div>
         ))}
       </Drawer>
+
+      {revisionsFor && (
+        <RevisionsDialog
+          projectId={projectId}
+          messageId={revisionsFor.id}
+          current={revisionsFor.content}
+          onClose={() => setShowingRevisions(null)}
+        />
+      )}
 
       {editing && (
         <EditMessageDialog

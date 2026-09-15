@@ -16,9 +16,15 @@ import type {
   StudioEventSelection,
   StudioEventState,
 } from '@golem/shared';
+// The rule for what counts as a new version of a message, shared with the DO so the count this
+// client shows before the round trip and the rows the server writes cannot disagree.
+import { recordsRevision } from '@golem/shared';
 import type { PhaseMark } from '../components/ws/activity-model';
 import type { RestoreStatus } from './restore-status';
 import { fetchCheckpoints, fetchMessages } from './api';
+// One definition of what a client-minted id looks like, and one place that reconciles it with the
+// server's. Two would drift, and the drift is invisible until an Edit truncates from nowhere.
+import { adoptUserMessageId, localId } from './message-identity';
 import {
   MOCK_MODE,
   mockCheckpoints,
@@ -69,6 +75,16 @@ export interface ChatItem {
   stopReason?: 'done' | 'stopped' | 'error' | 'quota' | 'incomplete';
   error?: string;
   createdAt: number;
+  /**
+   * How many earlier versions of this message the user wrote before editing it.
+   *
+   * Comes with the transcript so the "edited" mark can be drawn without one request per turn, and
+   * is incremented optimistically when an edit is sent — the server applies the same rule (see
+   * `recordsRevision` in @golem/shared), so the two agree, and a reload corrects them if they ever
+   * do not. Undefined means "nothing known", never "none": a worker that predates the feature
+   * sends no field, and drawing "no earlier versions" from that would be an answer nobody checked.
+   */
+  revisions?: number;
   /**
    * What the worker announced it understood the request to be, from the
    * `run_intent` message (and replayed on `run_state`). UNDEFINED UNTIL THE
@@ -227,8 +243,6 @@ const MAX_LOGS = 300;
 const MAX_PHASE_MARKS = 120;
 /** Each frame is ~207KB of base64 at the default 288x180. Keep very few. */
 const MAX_FRAMES = 8;
-let localIdCounter = 0;
-const localId = () => `local-${Date.now()}-${localIdCounter++}`;
 
 /** Fixture conversation for mock mode — never reachable in a production build. */
 function mockHistory(): ChatItem[] {
@@ -359,6 +373,7 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
           })),
           streaming: false,
           createdAt: new Date(m.createdAt).getTime(),
+          revisions: m.revisions,
         }));
         setMessages((live) => {
           // keep any items that arrived over the socket while history loaded
@@ -443,7 +458,14 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
         // would attribute its timings to this one, and `agent_status` has no
         // msgId with which to catch the mistake later.
         setPhaseMarks([]);
-        setMessages((list) => {
+        setMessages((raw) => {
+          // THE USER'S OWN MESSAGE GETS ITS REAL NAME HERE.
+          //
+          // It was appended optimistically under an id this client minted, which no server had
+          // ever heard of — so Edit, Try again and Regenerate, all of which resolve that id
+          // against the messages table, failed on anything sent in this session and worked after a
+          // reload. `adoptUserMessageId` returns the same array when there is nothing to adopt.
+          const list = adoptUserMessageId(raw, msg.userMsgId);
           const existing = list.findIndex((m) => m.id === msg.msgId);
           if (existing !== -1) {
             // `run_intent` may have created the shell first; fill in the mode
@@ -891,9 +913,17 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
         setMessages((list) => {
           const idx = list.findIndex((m) => m.id === messageId);
           const kept = idx === -1 ? list : list.slice(0, idx);
+          // The message that replaces an edited one is the SAME message, one version later, so its
+          // history comes with it. `recordsRevision` is the server's own rule, imported rather than
+          // restated: a retry resends the text unchanged on purpose, and counting that would tell
+          // someone who regenerated four times that they had rewritten their prompt four times.
+          const edited = idx === -1 ? undefined : list[idx];
+          const carried = edited?.revisions;
+          const revisions =
+            edited && recordsRevision(edited.content, text) ? (carried ?? 0) + 1 : carried;
           return [
             ...kept,
-            { id: localId(), role: 'user', mode, content: text, tools: [], streaming: false, createdAt: Date.now() },
+            { id: localId(), role: 'user', mode, content: text, tools: [], streaming: false, createdAt: Date.now(), revisions },
           ];
         });
       }

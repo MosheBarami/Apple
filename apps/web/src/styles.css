@@ -536,6 +536,76 @@ kbd {
   color: var(--muted);
 }
 
+/* A tag on a card. Quieter than the place pill beside it: the place is a fact about the project,
+   the tag is a label the user put on it, and the card should not read as two competing badges. */
+.pill-tag {
+  background: transparent;
+  border-style: dashed;
+  padding-inline: 0.55rem;
+}
+
+/* ------------------------------------------------------------------- tags --- */
+
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0 0 0.9rem;
+}
+
+/* The filter row sits between the scope tabs and the grid, so it needs to read as a control strip
+   rather than as the first row of content. */
+.tag-row--filter {
+  margin: 0.2rem 0 1.1rem;
+}
+
+.tag-chip {
+  font: inherit;
+  font-size: 0.78rem;
+  border-radius: var(--r-pill);
+  padding: 0.26rem 0.68rem;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    color 0.14s ease,
+    border-color 0.14s ease,
+    background-color 0.14s ease;
+}
+
+.tag-chip:hover {
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+.tag-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Pressed state carries colour AND weight, not colour alone: which chip is filtering the page is
+   the one thing this row has to answer at a glance. */
+.tag-chip.is-on {
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  font-weight: 600;
+}
+
+.tag-chip[disabled] {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* A tag the project already has: clicking it removes it, so it is drawn as something already on
+   rather than as something to add. */
+.tag-chip--own {
+  color: var(--ink);
+  border-style: dashed;
+}
+
 /* Both of these were being asked for by the settings page with nothing behind them, so a confirmed
    address and an unconfirmed one rendered identically — a status badge that carries no status. */
 .pill-good {
@@ -1375,6 +1445,20 @@ textarea {
   font-size: 1.02rem;
   margin: 0;
   overflow-wrap: anywhere;
+  /* Takes the slack so the menu stays hard right once a pin marker joins the row. `space-between`
+     alone would centre the name between the two of them. */
+  flex: 1;
+  min-width: 0;
+}
+
+/* The pin marker leads the name rather than sitting in a corner of the card: it is a fact about
+   this project's place in the list, and the eye reads it on the way into the title. */
+.project-card-pin {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.2rem;
+  color: var(--accent);
 }
 
 .project-card-desc {
