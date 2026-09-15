@@ -568,9 +568,14 @@ export function SettingsPage() {
       // type covers every auth flow and a cast would be the place this breaks silently if it ever
       // could.
       if (outcome.kind !== 'check-email') return;
-      // Supabase mails BOTH addresses when "secure email change" is on: the old one to authorise
-      // it and the new one to prove it is reachable. Said out loud, because a user who only checks
-      // the new inbox will otherwise conclude the change is stuck.
+      // WHAT THIS PAGE MAY SAY ABOUT IT. Supabase mails BOTH addresses when the project's "secure
+      // email change" setting is on — the old one to authorise the move, the new one to prove it is
+      // reachable — and that is the defence that stops someone at a borrowed screen moving an
+      // account to their own inbox. Nothing in this repository sets that toggle or can read it:
+      // there is no config.toml in the tree, and infra/supabase can see SQL, not auth settings. So
+      // the page states only what is true either way — the address does not move until the new one
+      // is confirmed — and tests/secure-email-change.test.mjs holds it to that until something here
+      // can actually observe the setting.
       setEmailSentTo(outcome.address);
       setNewEmail('');
     },
@@ -804,9 +809,9 @@ export function SettingsPage() {
           )}
           {emailSentTo ? (
             <p className="muted" role="status">
-              A confirmation link is on its way to <strong>{emailSentTo}</strong>. Your current address gets one too —
-              the change only takes effect once both are confirmed, which is what stops someone who borrows your screen
-              from quietly moving your account to their own inbox.
+              A confirmation link is on its way to <strong>{emailSentTo}</strong>. The address on your account does not
+              change until that link is opened, so if this was not you, doing nothing is enough — and it is worth
+              changing your password, because someone who could reach this page could reach the rest of the account.
             </p>
           ) : (
             <form
