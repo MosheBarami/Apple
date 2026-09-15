@@ -6,7 +6,7 @@
 // these tests cover the half that decides WHEN to mirror.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isRtlLanguage, detectDirection } from '../src/lib/direction.ts';
+import { isRtlLanguage, detectDirection, detectLanguage, UI_LANGUAGES } from '../src/lib/direction.ts';
 
 test('Hebrew is recognised, with and without a region', () => {
   for (const tag of ['he', 'he-IL', 'HE', 'he_IL', 'iw', 'iw-IL']) {
@@ -26,12 +26,41 @@ test('LTR languages are not mirrored', () => {
   }
 });
 
-test('a Hebrew speaker anywhere in the language list gets RTL', () => {
-  // Browsers send an ordered list. Someone whose first preference is English but who also reads
-  // Hebrew still gets an interface that reads correctly.
-  assert.equal(detectDirection(['he-IL', 'en-US']), 'rtl');
-  assert.equal(detectDirection(['en-US', 'he']), 'rtl');
+test('an English-only interface is NOT mirrored for a Hebrew speaker', () => {
+  // THIS TEST USED TO ASSERT THE OPPOSITE, and the sentence it carried was "still gets an
+  // interface that reads correctly." It does not. Every string in this app is English, so what a
+  // Hebrew speaker actually got was English prose right-aligned with its full stops moved to the
+  // far end, under `lang="he"` — a screen reader told to read English words in a Hebrew voice.
+  //
+  // The browser's language list says what the READER wants. It cannot say what this interface has
+  // to give them, and mirroring is a decision about the second.
+  assert.equal(detectDirection(['he-IL', 'en-US']), 'ltr');
+  assert.equal(detectDirection(['he']), 'ltr');
+  assert.equal(detectDirection(['ar-EG', 'en-US']), 'ltr');
   assert.equal(detectDirection(['en-US', 'fr']), 'ltr');
+});
+
+test('the mirroring turns on the day the interface is translated', () => {
+  // The whole RTL apparatus — the logical properties, the bidi isolation on code, the mirrored
+  // workspace — must stay live and provable while it is switched off, or it rots. Passing the
+  // translated list is what proves it still works, without shipping a half-translated app.
+  assert.equal(detectDirection(['he-IL', 'en-US'], ['en', 'he']), 'rtl');
+  assert.equal(detectDirection(['en-US', 'he'], ['en', 'he']), 'rtl');
+  // Still not mirrored for a language the interface does not have, even a translated one.
+  assert.equal(detectDirection(['ar-EG', 'en-US'], ['en', 'he']), 'ltr');
+});
+
+test('UI_LANGUAGES says what the interface actually speaks, and today that is English', () => {
+  // A list that quietly grew a language nobody translated would turn the mirroring back on for
+  // readers of a language the app cannot say a word of.
+  assert.deepEqual([...UI_LANGUAGES], ['en']);
+});
+
+test('lang declares the words on the page, not the reader’s preference', () => {
+  assert.equal(detectLanguage(['he-IL', 'en-US']), 'en');
+  assert.equal(detectLanguage(['he']), 'en', 'a language we do not speak must not be claimed');
+  assert.equal(detectLanguage(['he-IL', 'en'], ['en', 'he']), 'he', 'once translated, their preference is honoured in order');
+  assert.equal(detectLanguage([]), 'en');
 });
 
 test('an empty language list does not throw', () => {
