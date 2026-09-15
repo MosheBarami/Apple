@@ -94,6 +94,17 @@ export async function revokeShareLink(env: Env, token: string, nowIso: string): 
 export interface KvGrant {
   user_id: string;
   role: CollabRole;
+  /**
+   * THE SCOPE THE LINK WAS MINTED WITH, CARRIED ONTO THE GRANT IT MINTS.
+   *
+   * `redeemShareLink` refuses a chat link presented at a build — and then the grant it produced
+   * had no scope on it at all, so the refusal lasted exactly one request: from the moment the
+   * link was accepted the holder was an ordinary project member with the roster, every version
+   * and every artifact. `classifyGrant` reads these two fields off any row shape, so the
+   * confinement is applied by the same function that applies revocation and expiry.
+   */
+  scope?: ShareScope;
+  resource_id?: string | null;
   expires_at: string | null;
   revoked_at: string | null;
   display_name: string | null;

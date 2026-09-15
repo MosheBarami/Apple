@@ -606,3 +606,88 @@ test('THE BROWSER ASKS THE SHARED ROUTE — the owner-only one showed a collabor
   assert.match(fetchCheckpoints, /\/api\/shared\//, 'fetchCheckpoints must ask the shared route');
   assert.doesNotMatch(fetchCheckpoints, /\/api\/projects\//, 'the owner-only route answers a member 404');
 });
+
+test('a CHAT link opens the chat and nothing else, once it has been redeemed', async () => {
+  //[[ THE REFUSAL USED TO LAST EXACTLY ONE REQUEST.
+  //
+  //   `redeemShareLink` refuses a chat link presented at a build, and every one of those refusals
+  //   is driven in collab-membership.test.mjs. Then the redemption wrote a grant with no scope on
+  //   it, so the person who redeemed a link to ONE CONVERSATION became an ordinary project member:
+  //   the roster, the version list, every artifact. Nothing tested it because nothing did it.
+  //
+  //   Asked over HTTP, as the person the link was sent to. ]]
+  reset();
+  const minted = await call(`/api/shared/${PROJECT_ID}/links`, {
+    method: 'POST',
+    jwt: OWNER_JWT,
+    body: { scope: 'chat', resourceId: 'c-1', role: 'commenter' },
+  });
+  assert.equal(minted.status, 201);
+  const redeemed = await call('/api/shared/links/redeem', { method: 'POST', jwt: STRANGER_JWT, body: { token: minted.json.token } });
+  assert.equal(redeemed.status, 201, 'the link is still redeemable');
+  assert.equal(redeemed.json.scope, 'chat');
+
+  // THE CHAT OPENS. This is what the link is for, and a guard that closed it too would be a
+  // different bug wearing the same green.
+  const transcript = await call(`/api/shared/${PROJECT_ID}/messages`, { jwt: STRANGER_JWT });
+  assert.equal(transcript.status, 200, 'the conversation the link names must still be readable');
+  assert.deepEqual(
+    transcript.json.messages.map((m) => m.id),
+    ['m-1', 'm-2'],
+    'and it is the real transcript, not a stub',
+  );
+
+  // THE PROJECT AROUND IT DOES NOT. Each of these is a project-wide surface, and 403 rather than
+  // 404 because this person can already prove the project exists.
+  for (const path of [
+    `/api/shared/${PROJECT_ID}/members`,
+    `/api/shared/${PROJECT_ID}/versions`,
+    `/api/shared/${PROJECT_ID}/checkpoints`,
+    `/api/shared/${PROJECT_ID}/reviews`,
+    `/api/shared/${PROJECT_ID}/permissions`,
+  ]) {
+    const res = await call(path, { jwt: STRANGER_JWT });
+    assert.equal(res.status, 403, `${path} must refuse a chat-scoped guest`);
+    assert.equal(res.json.detail, 'scoped_grant', `${path} must say WHY it refused`);
+  }
+
+  // The "what am I here" route answers, and WITHHOLDS the directory rather than returning an
+  // empty one that would read as "nobody else is on this project".
+  const who = await call(`/api/shared/${PROJECT_ID}`, { jwt: STRANGER_JWT });
+  assert.equal(who.status, 200);
+  assert.equal(who.json.role, 'commenter');
+  assert.equal(who.json.scope, 'chat');
+  assert.equal(who.json.resourceId, 'c-1');
+  assert.equal(who.json.directoryWithheld, true);
+  assert.deepEqual(who.json.members, []);
+  // The project's OWNER id stays — a chat link was sent by someone on this project and "whose
+  // project is this" is not the roster. What must not appear is anybody's handle, which is the
+  // thing @-mentions are made of and the thing the directory exists to supply.
+  assert.equal(who.text.includes('maya'), false, 'the member directory is not handed to a scoped guest');
+
+  // A comment on a MESSAGE is on the chat surface and is allowed; the same route reaching the
+  // PROJECT is not. One route, two surfaces, and the scope decides.
+  doCollabReply = { status: 201, body: { id: 'cmt-1' } };
+  const onMessage = await call(`/api/shared/${PROJECT_ID}/comments`, {
+    method: 'POST',
+    jwt: STRANGER_JWT,
+    body: { targetKind: 'message', targetId: 'm-2', body: 'nice' },
+  });
+  assert.equal(onMessage.status, 201, 'a chat guest may comment on the conversation they were given');
+  const onProject = await call(`/api/shared/${PROJECT_ID}/comments`, {
+    method: 'POST',
+    jwt: STRANGER_JWT,
+    body: { targetKind: 'project', targetId: PROJECT_ID, body: 'nice' },
+  });
+  assert.equal(onProject.status, 403, 'and not on the project around it');
+
+  // THE CONTROL: a PROJECT link redeemed by the same stranger reaches all of it. Without this the
+  // assertions above would pass on a build that refused every link-derived grant there is.
+  reset();
+  const wide = await call(`/api/shared/${PROJECT_ID}/links`, { method: 'POST', jwt: OWNER_JWT, body: { scope: 'project', role: 'commenter' } });
+  await call('/api/shared/links/redeem', { method: 'POST', jwt: STRANGER_JWT, body: { token: wide.json.token } });
+  assert.equal((await call(`/api/shared/${PROJECT_ID}/members`, { jwt: STRANGER_JWT })).status, 200);
+  const wideWho = await call(`/api/shared/${PROJECT_ID}`, { jwt: STRANGER_JWT });
+  assert.equal(wideWho.json.directoryWithheld, false);
+  assert.ok(wideWho.json.members.some((m) => m.userId === OWNER_ID), 'a project guest sees the directory');
+});

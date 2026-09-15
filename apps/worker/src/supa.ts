@@ -1,6 +1,6 @@
 // Minimal PostgREST client. Always called with the USER's verified JWT so RLS applies.
 import type { Env, AuthedUser } from './env';
-import { classifyGrant, decideAccess, resolveMembership, type AccessDecision, type CollabAction, type Membership } from './collab';
+import { classifyGrant, decideAccess, resolveMembership, type AccessDecision, type CollabAction, type Membership, type ShareResource } from './collab';
 import { kvGrantsFor } from './collab-links';
 // One answer to "who is @maya", shared with the roster. See membership.ts.
 import { handleFor } from './membership';
@@ -102,6 +102,8 @@ export async function getProjectAccess(
   projectId: string,
   action: CollabAction,
   nowMs: number = Date.now(),
+  /** What the caller is reaching for. Omitted means project-wide — see ShareResource in collab.ts. */
+  resource?: ShareResource,
 ): Promise<{ project: ProjectRow; membership: Membership } | { project: null; decision: AccessDecision }> {
   const id = encodeURIComponent(projectId);
   const { ok, data } = await supaRest<ProjectRow[]>(env, user.jwt, `/projects?id=eq.${id}&select=${PROJECT_SELECT}&limit=1`);
@@ -119,9 +121,9 @@ export async function getProjectAccess(
   // Postgres. `resolveMembership` takes rows and does not care which store they came from, so
   // neither does anything downstream of it.
   const grants = [...(await listMyGrants(env, user, projectId)), ...(await kvGrantsFor(env, projectId, user.userId))];
-  const decision = decideAccess({ userId: user.userId, ownerId: project.owner_id, grants, nowMs, action });
+  const decision = decideAccess({ userId: user.userId, ownerId: project.owner_id, grants, nowMs, action, resource });
   if (!decision.allowed) return { project: null, decision };
-  const membership = resolveMembership({ userId: user.userId, ownerId: project.owner_id, grants, nowMs });
+  const membership = resolveMembership({ userId: user.userId, ownerId: project.owner_id, grants, nowMs, resource });
   if (membership === null) return { project: null, decision: { ...decision, allowed: false, status: 404, reason: 'not_a_member' } };
   return { project, membership };
 }
