@@ -4399,3 +4399,17 @@
   color: var(--gx-ink-3);
   font-variant-numeric: tabular-nums;
 }
+
+/* The op-log row. `is-bad` tints only the meta line, not the sentence: the
+   thing that failed is still the thing that happened, and colouring the whole
+   row red turns a readable history into a wall of alarm. */
+
+.gx-op__detail {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--gx-ink-3);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.gx-op.is-bad .gx-row__meta { color: var(--gx-bad); }

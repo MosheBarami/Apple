@@ -1263,11 +1263,36 @@ export class SessionDO extends DurableObject<Env> {
       // `runId` is renamed out of the column name here rather than left as `run_id`, because this
       // payload is read by the browser and every other field on it is already camelCase. A caller
       // that has to know the storage spelling of one field is a caller that will get it wrong.
-      const recentOps = (
+      //[[ A HISTORY HAS TO BE READABLE PAST ITS FIRST SCREEN.
+      //
+      //   This served the last 25 rows and nothing else. Twenty-five ops is a few minutes of one
+      //   build, and the payload gave no sign it had been cut — so a list that showed everything
+      //   and a list that showed the newest fraction of everything looked identical to a caller,
+      //   which is the worse of the two failures.
+      //
+      //   `before` is the oplog's own autoincrement id, descending, so a page can never repeat or
+      //   skip a row the way an offset does when rows arrive while the user is reading. A cursor
+      //   that does not parse is REFUSED rather than answered with the newest page: silently
+      //   restarting is how an infinite scroll loops forever over the same twenty-five rows. ]]
+      const OPS_MAX = 200;
+      const beforeRaw = url.searchParams.get('before');
+      const before = beforeRaw === null ? null : Number(beforeRaw);
+      if (before !== null && !Number.isSafeInteger(before)) return json({ error: 'bad cursor' }, 400);
+      const limit = Math.min(Math.max(Number(url.searchParams.get('limit')) || 25, 1), OPS_MAX);
+      // One extra row, purely to learn whether there IS a next page. Asking the database is the
+      // only way to tell "that was all of them" from "that was as many as fitted".
+      const opRows = (
         this.sql
-          .exec(`select op_id, kind, ok, summary, created_at, failure, run_id from oplog order by id desc limit 25`)
-          .toArray() as { op_id: string; kind: string; ok: number; summary: string; created_at: number; failure: string | null; run_id: string | null }[]
-      ).map((r) => ({
+          .exec(
+            before === null
+              ? `select id, op_id, kind, ok, summary, created_at, failure, run_id from oplog order by id desc limit ?`
+              : `select id, op_id, kind, ok, summary, created_at, failure, run_id from oplog where id < ? order by id desc limit ?`,
+            ...(before === null ? [limit + 1] : [before, limit + 1]),
+          )
+          .toArray() as { id: number; op_id: string; kind: string; ok: number; summary: string; created_at: number; failure: string | null; run_id: string | null }[]
+      );
+      const opPage = opRows.slice(0, limit);
+      const recentOps = opPage.map((r) => ({
         op_id: r.op_id,
         kind: r.kind,
         ok: r.ok,
@@ -1279,6 +1304,10 @@ export class SessionDO extends DurableObject<Env> {
       }));
       return json({
         link: await this.linkSummary(),
+        /** The page size actually applied, which is not necessarily the one asked for. */
+        limit,
+        /** The cursor for the next page, or null when this page reached the end of the log. */
+        nextBefore: opRows.length > limit ? (opPage[opPage.length - 1]?.id ?? null) : null,
         agentStatus: agent?.status ?? 'idle',
         /** When the pairing token was issued and when it lapses — the 30-day clock, made visible. */
         pairedAt: issuedAt,

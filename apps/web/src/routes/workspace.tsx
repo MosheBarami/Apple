@@ -40,6 +40,7 @@ import { Composer } from '../components/ws/composer';
 import { Drawer, Icon, PATH } from '../components/ws/primitives';
 import { Turn } from '../components/ws/turn';
 import { StudioView } from '../components/ws/studio-view';
+import { StudioActivity } from '../components/ws/studio-activity';
 import { PlaytestCard } from '../components/ws/playtest-card';
 import { ConnectStudio } from '../components/ws/connect-studio';
 import { EmptyState } from '../components/empty-state';
@@ -69,9 +70,9 @@ const SUGGESTIONS = [
  * this build no longer recognises" the same state — which is precisely the distinction the
  * validation exists to keep.
  */
-type Drawer = null | 'checkpoints' | 'memory' | 'credits' | 'search';
-type DrawerName = 'none' | 'checkpoints' | 'memory' | 'credits' | 'search';
-const DRAWERS = ['none', 'checkpoints', 'memory', 'credits', 'search'] as const;
+type Drawer = null | 'checkpoints' | 'memory' | 'credits' | 'search' | 'history';
+type DrawerName = 'none' | 'checkpoints' | 'memory' | 'credits' | 'search' | 'history';
+const DRAWERS = ['none', 'checkpoints', 'memory', 'credits', 'search', 'history'] as const;
 
 export function WorkspacePage() {
   const params = useParams<{ id: string }>();
@@ -317,6 +318,13 @@ export function WorkspacePage() {
       keywords: ['history', 'restore', 'undo'],
       hint: shortcutLabel(SHORTCUTS.checkpoints),
       run: () => setDrawer('checkpoints'),
+    },
+    {
+      id: 'ws-history',
+      title: 'What Apple did in Studio',
+      section: 'Run',
+      keywords: ['history', 'activity', 'log', 'ops', 'timeline', 'changes'],
+      run: () => setDrawer('history'),
     },
     {
       id: 'ws-search',
@@ -911,6 +919,16 @@ export function WorkspacePage() {
 
       <Drawer open={drawer === 'search'} onClose={() => setDrawer(null)} title="Search this conversation">
         <SearchPanel projectId={projectId} onOpen={openHit} />
+      </Drawer>
+
+      {/* THE OP LOG, WHICH HAD NO ENTRY POINT.
+
+          Every Studio op has been recorded and served at /studio/diagnostics since the oplog
+          existed, and no part of this app had ever called that route. Mounted only while open, like
+          the panels above: a project's whole history is not worth a request on every workspace load
+          for everyone who never opens it. */}
+      <Drawer open={drawer === 'history'} onClose={() => setDrawer(null)} title="What Apple did in Studio">
+        {drawer === 'history' && <StudioActivity projectId={projectId} onOpenRun={jumpToMessage} />}
       </Drawer>
 
       <Drawer open={drawer === 'credits'} onClose={() => setDrawer(null)} title="Credits and clearance">

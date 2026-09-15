@@ -5,6 +5,7 @@ import type { CheckpointMeta, MessageDto, PairingCodeDto, QuotaState, PlanId } f
 import type { MilestoneBrief, NextResponse, RoadmapResponse } from '../components/roadmap/model';
 import type { AttributionResponse } from '../components/ws/credits-model';
 import type { FilesResponse, FileVersion } from '../components/ws/files-model';
+import type { OpLogRow } from '../components/ws/op-vocabulary';
 import { mockBrief, mockNext, mockRoadmap } from '../components/roadmap/mock';
 import { MOCK_MODE, mockAttribution, mockCounters, mockMe, mockMemory, mockSpend, mockUsageDays } from './mock';
 import type { BillingChange, SubscriptionView } from './billing-copy';
@@ -406,6 +407,30 @@ export async function downloadMemoryExport(scope: MemoryScope, scopeId: string):
 
 export const fetchCheckpoints = (projectId: string) =>
   request<{ checkpoints: CheckpointMeta[] }>(`/api/projects/${encodeURIComponent(projectId)}/checkpoints`);
+
+/**
+ * WHAT APPLE ACTUALLY DID INSIDE STUDIO.
+ *
+ * The worker has recorded every op since the oplog existed and served it here, and nothing in this
+ * app had ever called it — a grep for 'studio/diagnostics' across apps/web returned nothing at all.
+ * `limit` and `before` page it; the worker owns their bounds and answers a cursor it cannot parse
+ * with a refusal rather than the newest page.
+ */
+export interface StudioDiagnostics {
+  recentOps: OpLogRow[];
+  limit: number;
+  nextBefore: number | null;
+}
+
+export const fetchStudioDiagnostics = (projectId: string, opts: { limit?: number; before?: number | null } = {}) => {
+  const q = new URLSearchParams();
+  if (opts.limit) q.set('limit', String(opts.limit));
+  if (opts.before) q.set('before', String(opts.before));
+  const query = q.toString();
+  return request<StudioDiagnostics>(
+    `/api/projects/${encodeURIComponent(projectId)}/studio/diagnostics${query ? `?${query}` : ''}`,
+  );
+};
 
 export const createPairingCode = (projectId: string): Promise<PairingCodeDto> =>
   MOCK_MODE

@@ -1451,7 +1451,11 @@ app.post('/api/projects/:id/pairing/cancel', async (c) => {
 app.get('/api/projects/:id/studio/diagnostics', async (c) => {
   const ctx = await withOwnedProject(c, c.req.param('id'));
   if (!ctx) return c.json({ error: 'not found' }, 404);
-  return ctx.stub.fetch('https://do/studio/diagnostics');
+  // `limit` and `before` page the op log, and the object owns their bounds. Forwarded rather than
+  // re-parsed here: two places deciding what a cursor means is how the two come to disagree, and
+  // this route is the one that has no rows to check it against.
+  const q = new URL(c.req.url).search;
+  return ctx.stub.fetch(`https://do/studio/diagnostics${q}`);
 });
 
 /**
