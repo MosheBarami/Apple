@@ -8,7 +8,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { safeInternalPath } from '../lib/safe-redirect';
-import { PRODUCT_MODE_INFO, type ProductMode } from '@golem/shared';
+import { PRODUCT_MODES_OFFERED, PRODUCT_MODE_INFO } from '@golem/shared';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { codeProblem, normaliseCode, secondStep, verifiedTotpFactors } from '../lib/mfa';
@@ -37,7 +37,9 @@ import {
  * nothing in apps/worker changed. A visitor is not being told there are two
  * modes; they are being shown the two that answer what they arrived asking.
  */
-const MODES: ProductMode[] = ['plan', 'agent'];
+// The modes a person may CHOOSE. PRODUCT_MODES is every mode the system can produce —
+// pricing one nobody can start is how "Super Agent" survived being removed from the composer.
+const MODES = PRODUCT_MODES_OFFERED;
 
 function ThemeCorner() {
   const { theme, setTheme } = useTheme();

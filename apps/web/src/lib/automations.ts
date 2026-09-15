@@ -28,7 +28,7 @@
 // The daily cap IS offered, because `startVerdict` refuses `daily_cap` against `firesSince` and
 // the live route test drives it. That is the difference between a setting and a control.
 import {
-  PRODUCT_MODES,
+  PRODUCT_MODES_OFFERED,
   PRODUCT_MODE_TO_SPECIALIST,
   SPECIALIST_TO_PRODUCT_MODE,
   PRODUCT_MODE_INFO,
@@ -73,7 +73,7 @@ export function blankDraft(): AutomationDraft {
 }
 
 /** The product-mode choices, with the copy the composer uses, so two pickers cannot disagree. */
-export const MODE_CHOICES: readonly { id: ProductMode; name: string; blurb: string }[] = PRODUCT_MODES.map((id) => ({
+export const MODE_CHOICES: readonly { id: ProductMode; name: string; blurb: string }[] = PRODUCT_MODES_OFFERED.map((id) => ({
   id,
   name: PRODUCT_MODE_INFO[id].name,
   blurb: PRODUCT_MODE_INFO[id].blurb,

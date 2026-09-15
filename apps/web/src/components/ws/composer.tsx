@@ -21,7 +21,7 @@ import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 
 import {
   MESSAGE_MAX_CHARS,
   MESSAGE_WARN_CHARS,
-  PRODUCT_MODES,
+  PRODUCT_MODES_OFFERED,
   PRODUCT_MODE_INFO,
   type ProductMode,
   type StudioEventSelection,
@@ -286,7 +286,7 @@ export function Composer({
               </span>
             </button>
             <Popover open={modeOpen} onClose={() => setModeOpen(false)} label="Mode">
-              {PRODUCT_MODES.map((id) => {
+              {PRODUCT_MODES_OFFERED.map((id) => {
                 const info = PRODUCT_MODE_INFO[id];
                 return (
                   <button

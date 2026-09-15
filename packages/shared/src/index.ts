@@ -1343,8 +1343,22 @@ export function creditRangeForRuns(mode: GolemMode, runs: number): { low: number
 /** What the user picks. This is the only mode concept the product surfaces. */
 export type ProductMode = 'plan' | 'agent' | 'super';
 
-/** The three product modes in the order they are offered. */
+//[[ WHAT EXISTS AND WHAT IS OFFERED ARE TWO DIFFERENT LISTS, AND CONFLATING THEM IS WHY
+//   "Super Agent" SURVIVED BEING REMOVED.
+//
+//   The owner said he does not want Super Agent. The composer dropped it and the sign-in page
+//   dropped it — and the usage page and the pricing calculator went on advertising it and pricing
+//   it, because both read PRODUCT_MODES, which is the list of modes that EXIST. A person could
+//   read what a Super Agent run costs on a page and find no way to start one anywhere.
+//
+//   `super` stays in the type and in the engine: `rune` is a real specialist the worker runs, and
+//   an automation or an API caller can still name it. What changed is that nothing OFFERS it.
+//   Every surface a person chooses from reads PRODUCT_MODES_OFFERED; anything that must handle
+//   every mode the system can produce — a stored run, a bill, a migration — reads PRODUCT_MODES.
 export const PRODUCT_MODES: readonly ProductMode[] = ['plan', 'agent', 'super'];
+
+/** The modes a person may choose, in the order they are shown. */
+export const PRODUCT_MODES_OFFERED: readonly ProductMode[] = ['plan', 'agent'];
 
 /**
  * Product mode -> internal specialist. Plan is inspection and design, and is

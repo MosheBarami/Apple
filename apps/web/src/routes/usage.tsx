@@ -10,7 +10,7 @@ import { OrderSummaryDialog } from '../components/order-summary';
 import { meterView } from '../components/usage-meter-model';
 import { formatNumber } from '../lib/format';
 import { Failure } from '../components/failure';
-import { PLAN_COPY, PRODUCT_MODE_INFO, formatMoney, isPlanId, type PlanId, type ProductMode } from '@golem/shared';
+import { PRODUCT_MODES_OFFERED, PLAN_COPY, PRODUCT_MODE_INFO, formatMoney, isPlanId, type PlanId } from '@golem/shared';
 import {
   billingChangeLine,
   billingNotice,
@@ -30,7 +30,9 @@ import {
 import { ConfirmDialog } from '../components/confirm-dialog';
 import { useToast } from '../components/toast';
 
-const MODES: ProductMode[] = ['plan', 'agent', 'super'];
+// The modes a person may CHOOSE. PRODUCT_MODES is every mode the system can produce —
+// pricing one nobody can start is how "Super Agent" survived being removed from the composer.
+const MODES = PRODUCT_MODES_OFFERED;
 
 /**
  * The ring shows the ALLOWANCE, and credits are reported beside it — never added into the arc.
