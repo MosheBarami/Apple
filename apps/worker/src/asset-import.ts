@@ -343,7 +343,9 @@ export async function importAsset(env: ImportEnv, rec: AssetProvenance, userId?:
 const POLL_DELAYS_MS = [1200, 1800, 2500, 3500, 6000];
 
 async function settle(env: UploadEnv, operationId: string): Promise<UploadResult> {
-  let last: UploadResult = { ok: true, done: false, operationId };
+  // Status 0 until a poll actually answers. It is not a fabricated 200: nothing has been asked yet,
+  // and the loop below replaces this the first time Roblox says anything at all.
+  let last: UploadResult = { ok: true, done: false, operationId, status: 0 };
   for (const wait of POLL_DELAYS_MS) {
     await new Promise((r) => setTimeout(r, wait));
     last = await pollOperation(env, operationId);

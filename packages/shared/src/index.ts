@@ -1548,6 +1548,15 @@ export const ROBLOX_SCOPES = [
   'universe.place:write',
   'user.social:read',
   'creator-store-product:read',
+  // The Creator Dashboard set. Spelled exactly as Roblox's own published Cloud spec spells them
+  // (github.com/Roblox/creator-docs, content/en-us/reference/cloud/openapi.json, read 2026-09-15),
+  // because these strings are what a person has to recognise on Roblox's API-key page — a scope we
+  // named ourselves would be a tick-box nobody could match to a permission.
+  'universe:read',
+  'user.inventory-item:read',
+  'game-pass:read',
+  'game-pass:write',
+  'asset-permissions:write',
 ] as const;
 export type RobloxScope = (typeof ROBLOX_SCOPES)[number];
 

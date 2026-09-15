@@ -861,3 +861,25 @@ export const putRobloxKey = (body: {
 
 export const deleteRobloxKey = (): Promise<{ removed: boolean }> =>
   request('/api/me/roblox-key', { method: 'DELETE' });
+
+export interface RobloxWrite {
+  at: string;
+  action: string;
+  robloxCreatorId: string;
+  creatorType: string;
+  target: string | null;
+  ok: boolean;
+  httpStatus: number | null;
+  request: unknown;
+}
+
+/**
+ * Everything Apple has done to this person's Roblox account.
+ *
+ * Their own trail and nobody else's — the worker keys the query on the id off the verified token,
+ * and there is deliberately no route that reads another customer's. This exists because the 299
+ * assets that went into the owner's account were not unrecorded, they were unseen: nothing in the
+ * product ever showed a person what had been done in their name.
+ */
+export const fetchRobloxWrites = (limit = 25): Promise<{ writes: RobloxWrite[] }> =>
+  request(`/api/me/roblox/writes?limit=${encodeURIComponent(String(limit))}`);
