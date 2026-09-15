@@ -230,7 +230,7 @@ test('a 404 with an empty body is a failure and not an empty document', async ()
 });
 
 test('a body of the wrong type is refused rather than parsed hopefully', async () => {
-  const { impl } = stubFetch({ status: 200, headers: { 'content-type': 'application/zip' }, body: 'PK' });
+  const { impl } = stubFetch({ status: 200, headers: { 'content-type': 'application/zip' }, body: 'PK\u0003\u0004' });
   const r = await N.guardedFetch('https://create.roblox.com/x.zip', { policy: POLICY, fetchImpl: impl, accept: ['text/html'] });
   assert.equal(r.ok, false);
   assert.equal(r.failure.kind, 'unsupported_type');

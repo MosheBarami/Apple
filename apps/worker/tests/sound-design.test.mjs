@@ -230,7 +230,7 @@ test('a prototype key is not an environment', () => {
 });
 
 test('a malformed instance path is refused rather than concatenated into code', () => {
-  for (const path of ['Workspace.Thing', 'game', '', 'game.Work"space.Thing', 'game.Thing ']) {
+  for (const path of ['Workspace.Thing', 'game', '', 'game.Work"space.Thing', 'game.Thing\u0000']) {
     const r = D.assignSoundsLuau([{ path, bus: 'SFX' }]);
     assert.ok(D.isRefusal(r), `"${path}" was accepted as a path`);
     assert.equal(r.reason, 'bad_path');

@@ -174,7 +174,7 @@ test('a present-but-invalid argument does NOT silently fall back to its default'
 /* ------------------------------------------------------------------ strings --- */
 
 test('a control character in a single-line argument is refused', () => {
-  for (const url of ['https://example.com\nHost: evil', 'https://example.com\r\nX: 1', 'https://ex ample.com']) {
+  for (const url of ['https://example.com\nHost: evil', 'https://example.com\r\nX: 1', 'https://ex\u0000ample.com']) {
     assert.match(bad({ url }), /control character/, `${JSON.stringify(url)} was accepted`);
   }
 });
@@ -183,7 +183,7 @@ test('but file CONTENT may contain newlines and tabs, because that is what conte
   const args = ok({ url: 'https://example.com', body: 'line one\n\tline two\n' });
   assert.equal(args.body, 'line one\n\tline two\n');
   // And a genuinely dangerous control character is still refused there.
-  assert.match(bad({ url: 'https://example.com', body: 'a b' }), /control character/);
+  assert.match(bad({ url: 'https://example.com', body: 'a\u0000b' }), /control character/);
 });
 
 test('length limits are enforced on strings and on arrays', () => {
