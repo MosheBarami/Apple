@@ -58,7 +58,10 @@ export async function resolveDownload(rec: Pick<AssetProvenance, 'id' | 'source'
     const diffuse = (files.Diffuse ?? files.diffuse) as Record<string, Record<string, { url?: string }>> | undefined;
     const jpg = diffuse?.['1k']?.jpg?.url ?? diffuse?.['1k']?.png?.url;
     if (jpg) return { url: jpg, contentType: jpg.endsWith('.png') ? 'image/png' : 'image/jpeg' };
-    return { error: `no 1k diffuse map published for ${key} — models and HDRIs have no Open Use image path yet` };
+    // A model's GEOMETRY has no Open Use upload path at all (see uploadTypeFor), and importing
+    // only its diffuse map would stamp a `prop` row with an Image asset id — a row that says it is
+    // a wrench and resolves to a picture of one. Refused with the reason rather than half-done.
+    return { error: `no Open Use path for ${key}: geometry must go through the Studio importer, and an HDRI is not an image asset` };
   }
   if (rec.source === 'ambientcg') {
     return { error: 'ambientCG publishes ZIP archives; Roblox does not accept a zip and no unpacking step exists yet' };

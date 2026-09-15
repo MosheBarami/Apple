@@ -37,11 +37,29 @@ export const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 export const OPEN_USE_UPLOAD_TYPES = ['Decal', 'Image', 'Mesh'] as const;
 export type OpenUseUploadType = (typeof OPEN_USE_UPLOAD_TYPES)[number];
 
-/** What a library `kind` becomes on Roblox. null means "this kind has no Open Use upload path". */
+/**
+ * What a library `kind` becomes on Roblox. null means "this kind has no Open Use upload path".
+ *
+ * GEOMETRY HAS NO PATH HERE, AND THAT IS A ROBLOX CONSTRAINT, NOT AN OMISSION. Checked against the
+ * Open Cloud asset-format table on 2026-09-15: `Mesh` accepts **"Roblox only"** format
+ * (`model/x-file-mesh-data`) and the documentation says in as many words that it exists for
+ * re-uploading meshes downloaded from the Asset Delivery API. A `.glb` or `.fbx` can only be
+ * uploaded as `Model` — and Models are not Open Use, so one uploaded under Apple's account would
+ * load for Apple and 404 for every customer who pays.
+ *
+ * My first version of this function mapped `model/gltf-binary` to `Mesh`. It would have sent real
+ * geometry to an endpoint that cannot take it, once per asset, against the owner's live account.
+ *
+ * The path for third-party geometry is therefore NOT this API. It is the Studio plugin's own 3D
+ * import, which creates the mesh inside the customer's session under the customer's account —
+ * `user_generated` in asset-library.ts's vocabulary, which is exactly why that category exists.
+ */
 export function uploadTypeFor(kind: AssetKind, contentType: string): OpenUseUploadType | null {
-  if (contentType.startsWith('image/')) return kind === 'ui_icon' || kind === 'particle' ? 'Decal' : 'Image';
-  // .glb/.fbx geometry uploads as a Mesh, which is Open Use. Anything else has no path.
-  if (/model\/gltf|application\/octet-stream|model\/obj/.test(contentType)) return 'Mesh';
+  if (/^image\/(png|jpeg|jpg|bmp|tga)/.test(contentType)) {
+    return kind === 'ui_icon' || kind === 'particle' ? 'Decal' : 'Image';
+  }
+  // The one legitimate Mesh upload: bytes that came out of Roblox's own asset delivery.
+  if (contentType === 'model/x-file-mesh-data') return 'Mesh';
   return null;
 }
 

@@ -107,7 +107,15 @@ test('an image becomes an Image, and an icon or particle becomes a Decal', () =>
   assert.equal(U.uploadTypeFor('texture', 'image/jpeg'), 'Image');
   assert.equal(U.uploadTypeFor('ui_icon', 'image/png'), 'Decal');
   assert.equal(U.uploadTypeFor('particle', 'image/png'), 'Decal');
-  assert.equal(U.uploadTypeFor('prop', 'model/gltf-binary'), 'Mesh');
+  // GEOMETRY IS NOT UPLOADABLE HERE, and this assertion is the one that caught it. Open Cloud's
+  // `Mesh` type takes Roblox's own mesh format only — the docs say it is for re-uploading what the
+  // Asset Delivery API handed you. A .glb can only go up as a `Model`, and Models are not Open
+  // Use, so it would load for Apple and 404 for every paying customer.
+  assert.equal(U.uploadTypeFor('prop', 'model/gltf-binary'), null, 'a .glb has no Open Use path');
+  assert.equal(U.uploadTypeFor('prop', 'model/fbx'), null, 'nor does an .fbx');
+  assert.equal(U.uploadTypeFor('prop', 'model/x-file-mesh-data'), 'Mesh', 'only Roblox-format mesh data');
+  assert.equal(U.uploadTypeFor('texture', 'image/bmp'), 'Image');
+  assert.equal(U.uploadTypeFor('texture', 'image/webp'), null, 'Roblox does not list webp');
 });
 
 test('preflight refuses before a byte is sent, and says which thing is wrong', () => {
