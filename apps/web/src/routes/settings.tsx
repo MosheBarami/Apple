@@ -163,11 +163,15 @@ const HOUR_NAMES: Record<HourCycle, string> = {
 function SecurityHistory() {
   const { toast } = useToast();
   const qc = useQueryClient();
-  const history = useQuery({ queryKey: ['notifications'], queryFn: fetchNotifications });
+  // Wrapped rather than passed bare: react-query hands its queryFn a context object, which
+  // fetchNotifications would read as its unreadOnly flag.
+  const history = useQuery({ queryKey: ['notifications'], queryFn: () => fetchNotifications() });
   const state = historyState({ loading: history.isPending, error: history.error, data: history.data });
 
   const markRead = useMutation({
-    mutationFn: (ids: string[]) => markNotificationsRead(ids),
+    // ids only, never `all`: this panel shows security events, and clearing everything from
+    // here would mark run failures read that the person has not seen.
+    mutationFn: (ids: string[]) => markNotificationsRead({ ids }),
     onSuccess: (r) => {
       void qc.invalidateQueries({ queryKey: ['notifications'] });
       // REPORTED FROM THE WRITE. "Marked as read" over a write that matched no rows is the same
