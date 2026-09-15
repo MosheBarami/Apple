@@ -83,7 +83,6 @@ const proof = [
  */
 import Landing from '../layouts/Landing.astro';
 import AppleMark from '../components/AppleMark.astro';
-import SectionFigure from '../components/SectionFigure.astro';
 import { PLAN_COPY, PLAN_LIMITS, PRICE_CURRENCY, CREDITS_PER_BUILD, buildsPerMonth, formatMoney } from '@golem/shared';
 import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '../lib/studio-plugin';
 //[[ THE WALL IS BAKED IN AT BUILD TIME, NOT QUERIED.
@@ -288,7 +287,7 @@ const plans = (['free', 'builder', 'studio'] as const).map((id) => ({
       <div class="ap-field" aria-hidden="true">
         <span class="ap-field__sky"></span>
         <span class="ap-field__bloom"></span>
-        <span class="ap-field__plate"><i class="ap-field__studs"></i></span>
+        <span class="ap-field__grain"></span>
         <span class="ap-field__catch"></span>
       </div>
 
@@ -375,7 +374,6 @@ const plans = (['free', 'builder', 'studio'] as const).map((id) => ({
             shown exactly as the transcript leaves it.
           </p>
           </div>
-          <SectionFigure src="build-in-progress" width={1152} height={864} />
         </div>
 
         <div class="ap-demo">
@@ -464,7 +462,6 @@ const plans = (['free', 'builder', 'studio'] as const).map((id) => ({
             three packs.
           </p>
           </div>
-          <SectionFigure src="labelled-assets" width={1152} height={864} />
         </div>
 
         <div class="ap-wall" role="list">
@@ -500,7 +497,6 @@ const plans = (['free', 'builder', 'studio'] as const).map((id) => ({
             checkpoints either way.
           </p>
           </div>
-          <SectionFigure src="two-modes" width={1152} height={864} />
         </div>
 
         <div class="ap-grid">
@@ -544,7 +540,6 @@ const plans = (['free', 'builder', 'studio'] as const).map((id) => ({
             open, through the same undo stack you already use.
           </p>
           </div>
-          <SectionFigure src="plug-in" width={1152} height={864} />
         </div>
 
         {/* An ordered list, because the numerals encode a real sequence: you

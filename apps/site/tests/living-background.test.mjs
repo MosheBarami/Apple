@@ -29,13 +29,24 @@ const SHEET = join(SITE, 'src', 'styles', 'landing.css');
  * exists, is a dead declaration: present in the file, painting nothing.
  */
 const LAYERS = [
-  { cls: 'ap-field__bloom', what: 'the warm haze that drifts across the low-right of the hero' },
-  { cls: 'ap-field__studs', what: 'the bevelled stud surface, drifting one tile per period' },
-  { cls: 'ap-field__catch', what: 'the light that crosses the plate so the studs brighten under it' },
+  { cls: 'ap-field__bloom', what: 'the light source, breathing behind the headline' },
+  { cls: 'ap-field__catch', what: 'the one light that crosses the frame' },
 ];
 
-/** The static layer. It carries the composition, so it must exist even though it never moves. */
-const STILL = 'ap-field__sky';
+/**
+ * The layers that never move, and must exist anyway.
+ *
+ * `sky` carries the composition. `grain` is dither: a few percent of static noise that breaks the
+ * bloom's very long ramp over very few near-black values, which an 8-bit display would otherwise
+ * quantise into visible rings. Both are deliberately still, and a test that demanded an animation
+ * from every layer would have forced motion onto the one layer that must not have it — grain that
+ * moves reads as compression artefacting, not as film.
+ *
+ * They are asserted as PRESENT AND STYLED rather than exempted: a still layer that vanished from
+ * the markup would otherwise be invisible to this file, which is how the stud plate could have
+ * been deleted with every test still green.
+ */
+const STILL = ['ap-field__sky', 'ap-field__grain'];
 
 function read(file) {
   try {
@@ -170,12 +181,18 @@ test('the hero carries the living layers by class', () => {
     /class="ap-field"/,
     'the hero has no .ap-field container, so there is no living background at all.',
   );
-  assert.match(
-    html,
-    new RegExp(`class="${STILL}"`),
-    `the hero has no .${STILL} — the still layer that carries the composition. Without it the `
-    + 'moving layers drift over nothing.',
-  );
+  for (const cls of STILL) {
+    assert.match(
+      html,
+      new RegExp(`class="${cls}"`),
+      `the hero has no .${cls} — a still layer the composition needs. Without the sky the moving `
+      + 'layers drift over nothing; without the grain the bloom bands into rings on an 8-bit screen.',
+    );
+    assert.ok(
+      ALL.some((r) => r.at.length === 0 && r.selector.split(',').some((x) => x.trim().endsWith(`.${cls}`))),
+      `.${cls} is in the markup and has no top-level rule in landing.css — it paints nothing.`,
+    );
+  }
   for (const { cls, what } of LAYERS) {
     assert.match(
       html,
