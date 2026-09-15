@@ -599,6 +599,19 @@ export const rebindPlace = (projectId: string): Promise<{ ok: boolean }> =>
   request(`/api/projects/${encodeURIComponent(projectId)}/studio/place/rebind`, { method: 'POST' });
 
 /**
+ * Throw away the changes waiting for Studio to collect them.
+ *
+ * The fourth route, and the one that did not exist until now: automatic cancellation was built (a
+ * run that ends takes its queued ops with it) and explicit cancellation was not, so a user whose
+ * Studio closed mid-build watched the depth climb with no control over it.
+ *
+ * `discarded` is the count the SERVER removed, not the count the browser last saw — those differ
+ * every time an op is collected between the render and the click.
+ */
+export const discardStudioQueue = (projectId: string): Promise<{ ok: boolean; discarded: number }> =>
+  request(`/api/projects/${encodeURIComponent(projectId)}/studio/queue`, { method: 'DELETE' });
+
+/**
  * CONNECTING DISCORD, FROM THE SIDE THAT CAN PROVE WHO YOU ARE.
  *
  * The code is minted here — signed in, on a project this account owns — and typed into Discord.

@@ -5195,6 +5195,44 @@
   overflow-wrap: anywhere;
 }
 
+/* THE STUDIO LINK NOTE — the sentence under the pill (components/ws/studio-link-note.tsx).
+   A strip directly beneath the topbar rather than text inside it: the topbar is a fixed
+   60px row that already truncates a project title at 860px, and a sentence in there would
+   push the pill off the end. It draws only when there is something true to say, so a
+   healthy link costs zero height. */
+.gx-link-note {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  padding: 0.45rem 1.1rem;
+  border-bottom: 1px solid var(--gx-line);
+  color: var(--gx-ink-3);
+  font-size: 0.78rem;
+}
+
+.gx-link-note__text { min-width: 0; }
+
+/* A place mismatch is the one state where the pill is green and nothing will ever build,
+   so it is the one that gets a colour. Everything else here is a timestamp or a queue
+   depth — information, not a problem — and tinting those would spend the warning colour
+   on the ordinary case and leave nothing louder for the state that actually needs it.
+   The tint is on the LEFT EDGE and the text, never a filled background: the sentence has
+   to stay at 4.5:1 and --gx-warn on a wash does not. */
+.gx-link-note--warn {
+  border-inline-start: 2px solid var(--gx-warn);
+  background: color-mix(in srgb, var(--gx-warn) 7%, transparent);
+  color: var(--gx-ink);
+}
+
+/* Small, because it sits inside a one-line strip and must not set that strip's height. */
+.gx-link-note__act {
+  flex: none;
+  min-height: 28px;
+  padding: 0 0.6rem;
+  font-size: 0.75rem;
+}
+
 /* The checkpoint's own words — the field it takes, and the field it shows.
    Distinct from `gx-row__meta` above it: the metadata is derived and the
    description is authored, and a reader has to be able to tell which is which. */

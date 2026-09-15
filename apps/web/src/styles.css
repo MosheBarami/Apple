@@ -4564,6 +4564,19 @@ textarea {
   font-variant-numeric: tabular-nums;
 }
 
+/* The waiting-work line sits ABOVE the action row's rule, not inside it: the two buttons
+   below the rule change the connection, and this one changes what the connection will do
+   next. Keeping them apart is what stops "Discard" reading as a third way to disconnect. */
+.pairing-record__queue {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
 .pairing-record__acts {
   display: flex;
   flex-wrap: wrap;

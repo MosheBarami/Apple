@@ -24,6 +24,7 @@ import type {
   PlaytestRun,
   RenderViewResult,
   StudioPlace,
+  StudioDiagnostics,
   StudioLinkSummary,
 } from '@golem/shared';
 import { MESSAGE_MAX_CHARS, recordsRevision, type AssetSourcePolicy } from '@golem/shared';
@@ -1029,6 +1030,22 @@ export class SessionDO extends DurableObject<Env> {
         }
         return json({ error: 'invalid token' }, 401);
       }
+      //[[ AN ACTIVELY USED PAIRING MUST NOT LAPSE.
+      //
+      //   `pluginTokenIssuedAt` was written once, at pairing, and never again — so the 30-day clock
+      //   ran from the pairing rather than from use, and a Studio that polled every four seconds
+      //   for a month was cut off on the same day as one that was never opened again. There is no
+      //   renewal path anywhere: the only remedy was minting a new pairing code, for a link that
+      //   was working.
+      //
+      //   Slid only past the HALFWAY mark, and only after the token has already been accepted.
+      //   Past halfway because this runs on every poll of every connected Studio and an
+      //   unconditional write would be a storage put every four seconds for nothing. After the
+      //   check because doing it before would resurrect a pairing that had already lapsed —
+      //   the expiry would become unreachable, which is the same defect as no expiry at all. ]]
+      if (Date.now() - issuedAt > PLUGIN_TOKEN_TTL_MS / 2) {
+        await this.ctx.storage.put('pluginTokenIssuedAt', Date.now());
+      }
       const reported = readPluginHeaders(req.headers);
       const body = (await req.json()) as PluginPollRequest;
       return this.handlePluginPoll(body, reported);
@@ -1521,7 +1538,11 @@ export class SessionDO extends DurableObject<Env> {
             }
           : null,
         recentOps,
-      });
+        // Typed against the shared shape the browser panel reads, so a renamed field here fails the
+        // build rather than emptying a row on somebody's screen. This route was tested and had no
+        // caller in apps/web for a long time, which is precisely the arrangement in which that
+        // happens quietly.
+      } satisfies StudioDiagnostics);
     }
 
     //[[ DISCONNECT THIS STUDIO. The route the documentation has been promising.
@@ -1557,6 +1578,48 @@ export class SessionDO extends DurableObject<Env> {
     //   new id — would otherwise have to re-pair to get out of a permanent refusal. Clearing the
     //   binding is enough: the next identifiable state event binds, which is the same path a
     //   first-time pairing takes. ]]
+    //[[ THROW AWAY THE WORK THAT IS WAITING.
+    //
+    //   Automatic cancellation was already built and proven: finishRun drops every op the ending
+    //   run queued and resolves each dropped waiter with a `transport` failure rather than deleting
+    //   it quietly. There was no EXPLICIT cancellation anywhere — the only queue mutations in this
+    //   object were push, splice-on-poll, and that run-ended purge. So a user watching twelve
+    //   changes stack up behind a Studio that had closed could not say "forget them": Stop reached
+    //   only the ops belonging to a live run, and everything else sat waiting to be applied at
+    //   whatever moment Studio came back, possibly to a place the user had since edited by hand.
+    //
+    //   THE WAITERS ARE RESOLVED, NOT DROPPED, and with `transport` rather than `timeout`. A
+    //   dropped waiter becomes a 30-second timeout, and `timeout` is the one failure kind that is
+    //   not safe to retry, because it means "this may already have been applied". A discarded op
+    //   provably never reached Studio, so saying so is both true and the more useful answer. ]]
+    if (path === '/studio/queue' && req.method === 'DELETE') {
+      const discarded = this.opQueue;
+      this.opQueue = [];
+      await this.ctx.storage.put('opQueue', this.opQueue);
+      for (const op of discarded) {
+        const waiter = this.opWaiters.get(op.id);
+        if (waiter) {
+          this.opWaiters.delete(op.id);
+          waiter({
+            id: op.id,
+            ok: false,
+            error: 'This change was discarded before Studio collected it',
+            failure: WORKER_FAILURES.runEnded,
+          });
+        }
+      }
+      // Every open tab is told the new depth, or the panel keeps offering to discard work that is
+      // already gone.
+      this.broadcast({
+        type: 'studio_status',
+        connected: await this.pluginConnected(),
+        lastSeenAt: await this.pluginLastSeenAt(),
+        queuedOps: 0,
+        place: this.boundPlace,
+      });
+      return json({ ok: true, discarded: discarded.length });
+    }
+
     if (path === '/studio/place/rebind' && req.method === 'POST') {
       await this.ctx.storage.delete('pluginPlace');
       this.boundPlace = null;
