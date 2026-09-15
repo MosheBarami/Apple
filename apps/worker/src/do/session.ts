@@ -219,6 +219,91 @@ function asGolemMode(x: unknown): GolemMode | null {
 }
 const STEP_STALE_MS = 180_000;
 
+/**
+ * HOW LONG A RUN MAY LAST — CHECKLIST-V2 §50.14.
+ *
+ * STEP_LIMITS bounds how many TIMES work is attempted. Nothing bounded how LONG those attempts
+ * take, and `startedAt` was read exactly once, at the end, to report a `durationMs` nobody acted
+ * on. A rune run of 24 steps each waiting on a slow provider runs for over an hour and spends the
+ * whole time. The runaway that matters is not usually a fast loop; it is a slow one.
+ *
+ * Ordered by how long the mode is meant to work: Plan is a question, Agent is a build, Super Agent
+ * is long-horizon. None of them is an hour.
+ */
+export const RUN_WALL_MS: Record<GolemMode, number> = {
+  clay: 5 * 60_000,
+  stone: 20 * 60_000,
+  rune: 45 * 60_000,
+};
+
+/** The strictest ceiling, which is what an unrecognised mode gets. */
+const STRICTEST_RUN_WALL_MS = Math.min(...Object.values(RUN_WALL_MS));
+
+export interface RunDurationVerdict {
+  over: boolean;
+  elapsedMs: number;
+  capMs: number;
+  /** What to tell the agent. Never blames the step ceiling for a time limit. */
+  reason: string;
+}
+
+/**
+ * Has this run been going too long?
+ *
+ * AN UNREADABLE CLOCK STOPS THE RUN. `Date.now() - NaN` is NaN and `NaN > cap` is FALSE, so the
+ * naive form of this check removes the limit exactly when the state is corrupt. A deadline that
+ * cannot be computed is a deadline that has passed — the same rule resolveMembership applies to an
+ * expiry it cannot read.
+ *
+ * A start time in the FUTURE is corrupt too, not a run with extra credit.
+ *
+ * An unrecognised mode gets the STRICTEST ceiling rather than none. session.ts validates mode at
+ * every ingress, so this is defence in depth — and the safe direction for a value nobody
+ * recognised is the tightest bound.
+ */
+export function runDurationVerdict(input: {
+  startedAt: unknown;
+  mode: unknown;
+  now: unknown;
+}): RunDurationVerdict {
+  const capMs =
+    typeof input.mode === 'string' && Object.prototype.hasOwnProperty.call(RUN_WALL_MS, input.mode)
+      ? RUN_WALL_MS[input.mode as GolemMode]
+      : STRICTEST_RUN_WALL_MS;
+
+  const started = input.startedAt;
+  const now = input.now;
+  if (typeof started !== 'number' || !Number.isFinite(started) || typeof now !== 'number' || !Number.isFinite(now)) {
+    return {
+      over: true,
+      elapsedMs: 0,
+      capMs,
+      reason: 'this run was stopped because its start time could not be read — an unreadable clock is not an unlimited one',
+    };
+  }
+  const elapsedMs = now - started;
+  if (elapsedMs < 0) {
+    return {
+      over: true,
+      elapsedMs: 0,
+      capMs,
+      reason: 'this run was stopped because its start time is in the future — the clock could not be trusted',
+    };
+  }
+  if (elapsedMs >= capMs) {
+    return {
+      over: true,
+      elapsedMs,
+      capMs,
+      reason:
+        `this run reached its time limit of ${Math.round(capMs / 60_000)} minutes (it had been going ` +
+        `${Math.round(elapsedMs / 60_000)}). Everything done so far is saved — send another message to carry on.`,
+    };
+  }
+  return { over: false, elapsedMs, capMs, reason: '' };
+}
+
+
 // ---------------------------------------------------------------------------------------------
 // PLUGIN POLL PACING — this is the largest recurring cost in the system, not inference.
 //
@@ -1460,6 +1545,15 @@ export class SessionDO extends DurableObject<Env> {
     agent.step += 1;
     agent.lastStepAt = Date.now();
     this.lastActivity = agent.lastStepAt;
+
+    // TIME before STEPS: a run that has been going too long should be told so, not told it ran out
+    // of steps. What stopped it has to be what it is told, or the next attempt repeats it.
+    const duration = runDurationVerdict({ startedAt: agent.startedAt, mode: agent.mode, now: Date.now() });
+    if (duration.over) {
+      agent.finalText = agent.finalText || duration.reason;
+      await this.finishRun(agent, 'done');
+      return;
+    }
 
     if (agent.step > agent.maxSteps) {
       agent.finalText = agent.finalText || 'I reached the step limit for this run. Progress so far is saved — send another message to continue.';
