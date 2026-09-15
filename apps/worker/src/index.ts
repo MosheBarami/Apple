@@ -517,6 +517,27 @@ function secretEquals(a: string, b: string): boolean {
   return diff === 0;
 }
 
+/**
+ * The signed-in operator behind an admin call, or null — never an exception, and never a verdict.
+ *
+ * The admin console attaches the Supabase bearer to every request it makes (lib/api.ts), so a call
+ * from a person usually carries one and a call from a deploy script does not. Null is the honest
+ * answer for the second: a shared static key has nobody to name, and putting a fabricated actor in
+ * a security record is worse than an absent one.
+ *
+ * Everything that can fail is contained here so the gate stays a decision about the key alone.
+ */
+async function adminActorOf(c: Context<{ Bindings: Env; Variables: Vars }>): Promise<string | null> {
+  const token = bearerToken(c.req.raw);
+  // No identity provider configured means no name available. Asking anyway throws on `new URL`.
+  if (!token || !c.env.SUPABASE_URL) return null;
+  try {
+    return (await verifyJwt(c.env, token))?.userId ?? null;
+  } catch {
+    return null;
+  }
+}
+
 app.use('/api/admin/*', async (c, next) => {
   // The admin key was the one credential in the system with no rate limit: the
   // auth middleware above returns early for /api/admin/*, so an attacker could
@@ -553,8 +574,15 @@ app.use('/api/admin/*', async (c, next) => {
   //
   // Verified, not decoded. An unverified `sub` is a string the caller chose, and an audit log that
   // accepts one can be written to by anyone who can reach the route.
-  const token = bearerToken(c.req.raw);
-  const actorId = token ? ((await verifyJwt(c.env, token))?.userId ?? null) : null;
+  //
+  // BEST EFFORT, ALWAYS, AND THAT IS THE WHOLE POINT. This surface is what the owner reaches for
+  // when spend is running away — /api/admin/kill-switch is the fire alarm — and identification runs
+  // through Supabase's JWKS endpoint. `verifyJwt` swallows a failed verification, but it builds a
+  // `new URL` from SUPABASE_URL BEFORE its own try/catch, so an unset or malformed value throws and
+  // would have turned "we could not name you" into a 500 on the emergency stop. A failure to
+  // identify costs a NAME in the log; it may never cost the call, and it may never decide access —
+  // the key is the authority, here and nowhere else.
+  const actorId = await adminActorOf(c).catch(() => null);
   if (!c.env.ADMIN_KEY || !key || !secretEquals(key, c.env.ADMIN_KEY)) {
     // AUDIT LOG. A refused admin call is the event worth keeping: it is the only externally visible
     // signature of someone working through the key space. `allowed` is written from the branch that
