@@ -83,3 +83,141 @@ dead-end checker by construction — both look alive. `geometryMask` and `figure
 in both `apps/worker/src/composition.ts` and `packages/evals/src/props.mjs`, one deciding what the
 offline grader believes and the other what the product would. That is `OH-6`, and it needs a
 different checker.
+
+## apps/worker/src/collab-routes.ts — DELETE
+
+**Found:** imported by nothing in the tree. `registerSharedRoutes` has no call site anywhere;
+the only reference in the repository was `collab-routes.test.mjs` doing `readFileSync` on it as
+TEXT, and that test now reads `index.ts`.
+
+**It is a duplicate of routes that ship inline in `index.ts`, and it made a test lie.** The
+verification pass broke FIVE security mechanisms inside it — `headers.set('X-Golem-Role')` changed
+to `append`, the `GRANTABLE_ROLES` invite allowlist deleted, the link-revoke `project_id` check
+deleted, `versions/restore` downgraded from its own action to `build`, and the exported entry point
+renamed away — and all 117 tests stayed green every time, because none of that code runs.
+
+Worse, the property its test asserted was FALSE of the file that actually ships: `index.ts`
+registered ten of the seventeen shared paths from a `for` loop with a template-literal path, so
+seven shared routes were invisible to every source-scanning guard in the repository, including the
+A3 ownership sweep in `packages/evals/src/security.test.mjs`. That is repaired — `index.ts` now
+registers all twenty collab-side routes literally — and the test measures the shipping file.
+
+**Deleting rather than wiring, and the reason is the 333 lines rather than in spite of them.** A
+dead module with a 117-test suite reads as more thoroughly covered than most live code here. Wiring
+it would mean choosing between two implementations of the same routes on the strength of which one
+had tests, when the one with tests is the one nothing has ever executed.
+
+## apps/worker/src/meshgen.ts — WIRE
+
+**Found:** imported by nothing in the tree. 2,138 lines, 75 exports, 51 passing tests.
+
+**Unfinished, not abandoned.** It is the productised 3D pipeline — a part spec goes in, geometry,
+glTF/OBJ export and a credit bill come out — and it is the far half of the 3D creation screen in the
+design prototype. What is missing is the tool that calls it: nothing in `tools.ts` reaches
+`assemble()` or `exportGlb()`, so a user cannot ask for a model and get one.
+
+Its tests are real: the sRGB→linear conversion is pinned at both branches of the piecewise function
+after a falsification found that `return c` and `Math.sqrt(c)` both passed, which would have made
+every exported colour wrong in any renderer.
+
+**The wire is a tool entry plus the credit accounting per mesh.** Whoever takes it should start from
+`meshgen.test.mjs`, which already describes the contract.
+
+## apps/worker/src/user-export.ts — WIRE
+
+**Found:** imported by nothing in the tree. 141 lines, 5 exports, no test file.
+
+**Unfinished.** It answers CHECKLIST-V2 §48 "User data export": what the product holds about one
+person and what it will not hand back. The module exists and the schema it reads was separately
+audited against a real Postgres — that audit found thirteen discrepancies in a spec written by
+reading the migrations carefully, which is why the audit exists.
+
+What is missing is the route, the identity verification §48 also requires, and the expiry on the
+download. It is the only one of these four with no tests, and it should not be wired without them:
+an export route is the single place where "everything about you" and "nothing about anybody else"
+pull hardest against each other.
+
+## apps/worker/src/voice-commands.ts — WIRE
+
+**Found:** imported by nothing in the tree. 325 lines, 8 exports, with its own passing tests.
+
+**Unfinished.** It turns a transcript into one of four actions, or declines honestly — which is the
+narrow, correct shape for a voice channel, and the declining is the part worth keeping. Nothing
+calls it because the voice ingress route was not built.
+
+**Not DELETE**, because the hard part is done and tested: the refusal path. A later implementation
+that skipped it would accept any string as a command, which is the failure this module was written
+to prevent.
+
+---
+
+## apps/worker/src/collab-routes.ts — WIRE, pass 12
+
+**Found:** imported by nothing in the tree. 333 lines.
+
+**Its own header describes the wiring that does not exist.** It says the routes live in their own
+module so that "index.ts holds a single call" — and index.ts holds none. The file makes the case
+for its own separation and then never gets the one line that separation was for.
+
+The header also names the stake: "a security surface that vanishes quietly is worse than one that
+was never written." That is exactly what happened to it.
+
+**Outstanding:** a single call in index.ts mounting the route table, and a probe that a
+collaborator can reach one of these routes against the deployed origin.
+
+---
+
+## apps/worker/src/meshgen.ts — WIRE, pass 12
+
+**Found:** imported by nothing in the tree. 2,138 lines — the largest unreached module here.
+
+**What it is:** the 3D pipeline, "a part spec goes in, geometry and a bill come out" — the
+productised version of the design prototype's hard-coded parts table, with the exporters meant as
+real output rather than decoration.
+
+**Why this matters more than its size suggests:** `generate_model` and the Text-to-3D rows in
+FEATURES.json describe a capability whose implementation is this file. Until something reaches it,
+those rows describe a module rather than a product, which is the precise distinction this ledger
+exists to keep.
+
+**Outstanding:** a caller on the tool path, and a probe that a part spec produces geometry a user
+receives.
+
+---
+
+## apps/worker/src/user-export.ts — WIRE, pass 12
+
+**Found:** imported by nothing in the tree, AND it has no test — the only one of these four with
+neither. 141 lines.
+
+**What it is:** f-624a203a, the data-export spec — "EVERYTHING about you, and NOTHING about anybody
+else", audited against the real schema.
+
+**This one carries a legal edge the others do not.** An export route is a privacy commitment, and
+a commitment implemented in an unreachable module is not a commitment. It should not be cited as
+satisfying any privacy row while nothing calls it.
+
+**Outstanding:** a route, a test, and a probe that a real account can download its own data.
+
+---
+
+## apps/worker/src/voice-commands.ts — WIRE, pass 12
+
+**Found:** imported by nothing in the tree. 325 lines.
+
+**What it is:** a classifier with three outcomes — stop, resume, checkpoint, restore, or "the user
+wants to SAY this" — deliberately not a command interpreter. Its header is explicit that the
+narrowness is the design.
+
+**Outstanding:** a caller on whatever surface produces a transcript. Until one exists the
+classifier is well-tested and unreachable, which is the critic.ts shape this file was opened for.
+
+---
+
+**A note on all four, written by the session that found them rather than the ones that wrote
+them.** WIRE is a statement of fact plus the intent each module's own header states: nothing
+reaches it, and each describes a product capability rather than an experiment. None is
+dispositioned DELETE, and none should be on this evidence — §6.6 requires a dated owner statement
+for that, and deleting source to make a checker green is a violation rather than a fix. If an
+author intended something other than WIRE for one of these, the entry is wrong and should be
+corrected by them.
