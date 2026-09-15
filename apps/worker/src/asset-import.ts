@@ -19,7 +19,6 @@ import type { AssetProvenance } from './asset-library';
 import { ingestAssets } from './asset-ingest';
 import { uploadTypeFor, uploadAsset, pollOperation, archiveAsset, type UploadEnv, type UploadResult } from './roblox-upload';
 import { useRobloxCredential } from './user-credentials';
-import { rasteriseSvg, DEFAULT_RASTER_PX } from './rasterise';
 
 export interface ImportEnv extends UploadEnv {
   CORPUS: Env['CORPUS'];
@@ -68,11 +67,26 @@ export async function resolveDownload(rec: Pick<AssetProvenance, 'id' | 'source'
     return { error: `no Open Use path for ${key}: geometry must go through the Studio importer, and an HDRI is not an image asset` };
   }
   if (rec.source === 'iconify') {
-    // id shape: iconify/<prefix>/<name>. The API serves SVG only — `.png` is a 404, verified — so
-    // this is the source the rasteriser exists for.
-    const [, prefix, name] = rec.id.split('/');
-    if (!prefix || !name) return { error: `malformed iconify id "${rec.id}"` };
-    return { url: `https://api.iconify.design/${encodeURIComponent(prefix)}/${encodeURIComponent(name)}.svg`, contentType: 'image/svg+xml' };
+    //[[ SVG, AND THIS DEPLOYMENT DOES NOT RENDER IT. The decision and its price, so nobody has to
+    //   rediscover both.
+    //
+    //   Iconify serves SVG only — `.png` is a verified 404 — and Roblox takes png, jpeg, bmp and
+    //   tga. Rendering it needs resvg's WebAssembly build, and that was built, tested and MEASURED
+    //   before being taken back out: the worker bundle went from 1,691 KiB to 4,132 (471 to 1,404
+    //   gzipped, paid at every cold start), and because wrangler rejects `wasm_modules` for an
+    //   ES-module worker the import has to be static — which broke 33 test files that bundle
+    //   index.ts and have no loader for `.wasm`.
+    //
+    //   What it bought: 348,522 icons, most of them another set's version of "home" or "settings".
+    //   What already works without it: 7,353 Creator Store ui_icon rows that need no upload at all
+    //   and 4,239 game-icons rows that publish real PNGs. Eleven and a half thousand usable icons
+    //   is not the constraint on anybody building a game.
+    //
+    //   So these rows stay in the library — searchable, licensed, credited — and are honest about
+    //   being reference rather than pretending an upload will work. The renderer belongs in the
+    //   web app, where a canvas already exists and the cost falls on the one person who wants
+    //   that icon. ]]
+    return { error: 'Iconify publishes SVG and this deployment does not rasterise; use a game-icons or Creator Store icon, which need no conversion' };
   }
   if (rec.source === 'game_icons') {
     // The one icon set with a real PNG endpoint, so it needs no rendering at all. White on
@@ -153,17 +167,7 @@ export async function importAsset(env: ImportEnv, rec: AssetProvenance, userId?:
   let bytes = await file.arrayBuffer();
   if (bytes.byteLength === 0) return { id: rec.id, ok: false, error: 'the download was empty' };
 
-  // A VECTOR BECOMES A RASTER HERE, and the content type changes with it. Roblox takes png, jpeg,
-  // bmp and tga; 78% of the library is SVG. Doing the conversion at import time rather than at
-  // harvest time is what keeps the library's own rule intact — no bytes are stored anywhere, the
-  // PNG exists for the length of one upload.
-  let contentType = resolved.contentType;
-  if (contentType === 'image/svg+xml') {
-    const raster = await rasteriseSvg(new TextDecoder().decode(bytes), { size: DEFAULT_RASTER_PX });
-    if (!raster.ok || !raster.png) return { id: rec.id, ok: false, error: `could not rasterise: ${raster.error}` };
-    bytes = raster.png;
-    contentType = 'image/png';
-  }
+  const contentType = resolved.contentType;
 
   const type = uploadTypeFor(rec.kind, contentType);
   if (!type) return { id: rec.id, ok: false, error: `no Open Use upload type for ${contentType}` };

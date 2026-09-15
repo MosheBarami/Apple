@@ -384,7 +384,7 @@ export function validateProvenance(rec: unknown, opts: ValidateOptions = {}): Va
         // attributionRequired false — using a free Creator Store asset owes nobody a credit — and
         // it was refused anyway, which would have excluded the 100,000 assets that need no upload.
         if (opts.cc0Only && rule.attributionRequired) {
-          errors.push(`v1 policy admits only licences with no attribution obligation; ${licenceId} requires one and nothing emits credit lines yet`);
+          errors.push(`this ingest was asked for licences owing no credit line; ${licenceId} requires one`);
         }
         if (rule.attributionRequired) {
           warnings.push(`${licenceId} requires attribution — a credit line must be emitted into every place that uses this asset`);

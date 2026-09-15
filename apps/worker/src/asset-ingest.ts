@@ -65,9 +65,33 @@ export async function ingestAssets(env: Pick<Env, 'CORPUS'>, req: IngestRequest)
   await ensureAssetTables(env);
   const { written, rejected } = await upsertAssets(env, batch, {
     seed: req.seed ?? true,
-    // v1 library policy is CC0 only. Stated here rather than defaulted, so a future decision to
-    // admit CC-BY is a visible edit in the ingest rather than an omission somewhere.
-    cc0Only: true,
+    //[[ THE CC0-ONLY POLICY IS RETIRED, AND THIS IS THE EVIDENCE IT RESTED ON.
+    //
+    //   It refused any licence owing a credit line, for one stated reason: "nothing emits credit
+    //   lines yet". That sentence stopped being true. The chain exists and every link was read
+    //   before this line changed:
+    //
+    //     `insert_asset` records the use against the project (provenance-wiring.test.mjs proves
+    //     the refusal guard precedes the record, so only a proven-clean asset is recorded);
+    //     `attributionReport` puts anything whose licence or record demands a credit into
+    //     `report.required`, separately from the courtesy list;
+    //     `renderAttribution` prints each one as name, AUTHOR, licence and source url, and prints
+    //     a loud INCOMPLETE block for anything it could not account for;
+    //     `GET /api/projects/:id/attribution` serves it, owner-scoped through withOwnedProject.
+    //
+    //   So the obligation is dischargeable, which is the only question the policy was ever
+    //   asking. What is refused has not changed and is not a matter of convenience: share-alike
+    //   and non-commercial stay out, because those obligations cannot be discharged inside a
+    //   customer's Roblox place at all — `allowedInLibrary` in LICENCES still decides that.
+    //
+    //   What this admits: 336,364 icons under MIT, Apache-2.0, ISC and BSD-3-Clause, plus the
+    //   CC-BY families. Three quarters of the library, held out by a sentence about a feature
+    //   that had since been built.
+    //
+    //   asset-qc.test.mjs asserts the link directly: an attribution-required asset may enter the
+    //   library only while renderAttribution still credits it by author. If that ever stops being
+    //   true, this decision goes red rather than quietly becoming wrong. ]]
+    cc0Only: false,
     requireImportDate: false,
     status: req.status,
   });
