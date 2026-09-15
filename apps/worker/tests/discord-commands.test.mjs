@@ -18,8 +18,15 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { handleInteraction, CALLBACK, EPHEMERAL, MAX_CONTENT, COMMANDS, COMMAND_NAMES, progressLine } from '../src/discord.ts';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+/** The screen the bot sends unlinked people to, read as text so the bot cannot name a button that is not there. */
+const SETTINGS_TSX = readFileSync(join(HERE, '..', '..', 'web', 'src', 'routes', 'settings.tsx'), 'utf8');
 
 // ------------------------------------------------------------------ fixtures
 
@@ -210,7 +217,49 @@ test('a refused start is reported in the loading message, not left spinning fore
   );
 });
 
+test('/build refuses a project Apple could not look at, instead of building into the dark', async () => {
+  // A null health is a FAILURE TO LOOK, never a clean bill of health. Both guards above the start
+  // are written `health && ...`, so an unreachable project skips BOTH of them and the run begins:
+  // the "Studio is not connected" refusal that exists to protect the allowance, and the "already
+  // building" refusal that stops a second run landing on a live one. /status already separates
+  // "could not reach" from "idle" for exactly this reason; the spending path must separate them
+  // too, because here being wrong costs Credits rather than a confusing sentence.
+  const p = ports({ projectHealth: async () => null });
+  const out = await handleInteraction(cmd('build', [{ name: 'prompt', value: 'a lava obby' }]), p);
+  const edits = [];
+  await out.deferred(async (content) => void edits.push(content));
+  assert.equal(
+    p.calls.some((c) => c[0] === 'startBuild'),
+    false,
+    'a project we could not read may not be charged for a build we cannot see land',
+  );
+  assert.equal(
+    p.calls.some((c) => c[0] === 'watchRun'),
+    false,
+    'there is no run to watch',
+  );
+  assert.match(edits[0], /could not reach/i);
+  assert.doesNotMatch(edits[0], /starting/i, 'nothing started, so nothing may say it did');
+});
+
 // ------------------------------------------------------------------ the link
+
+test('the unlinked message sends people to a control that actually exists', async () => {
+  // The bot is the only instruction an unlinked user gets, and it is written in a different file
+  // from the screen it describes. Bolded words in that message are things the reader will hunt for
+  // by name, so every one of them is checked against the settings screen's real source. A message
+  // naming a button nobody can find is indistinguishable, from the user's side, from a broken bot.
+  const out = await handleInteraction(cmd('status'), ports({ findLink: async () => null }));
+  const content = out.body.data.content;
+  const labels = [...content.matchAll(/\*\*([^*]+)\*\*/g)].map((m) => m[1]);
+  assert.ok(labels.length > 0, 'the message must name the control, not gesture at it');
+  for (const label of labels) {
+    assert.ok(
+      SETTINGS_TSX.includes(label),
+      `the bot tells people to look for "${label}", which appears nowhere in the settings screen`,
+    );
+  }
+});
 
 test('an unlinked Discord user cannot read or spend anything', async () => {
   for (const name of ['build', 'status', 'credits']) {
