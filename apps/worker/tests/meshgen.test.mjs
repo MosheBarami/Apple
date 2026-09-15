@@ -779,6 +779,24 @@ test('colour and transparency survive the trip into glTF material space', () => 
   assert.deepEqual(white.baseColorFactor.slice(0, 3).map((v) => Math.round(v * 1000) / 1000), [1, 1, 1]);
   assert.deepEqual(black.baseColorFactor.slice(0, 3), [0, 0, 0]);
   assert.ok(mid.baseColorFactor[0] > black.baseColorFactor[0] && mid.baseColorFactor[0] < white.baseColorFactor[0], 'colour must be monotone');
+
+  // MONOTONE IS NOT THE CLAIM. white->1, black->0 and "mid is somewhere between" are satisfied by
+  // ANY increasing map through (0,0) and (1,1) — including the identity. Measured: replacing
+  // srgbToLinear with `return c` was zero red, and so was Math.sqrt(c). The source calls the
+  // conversion "not optional" and nothing held it to that: every exported model's colours would be
+  // far too bright in any renderer, and the suite would have said the export was fine.
+  //
+  // srgbToLinear is PIECEWISE — a linear segment below 0.04045 and a 2.4 power curve above it —
+  // and neither branch was pinned. Both are now, at the real values.
+  const near = (got, want, what) =>
+    assert.ok(Math.abs(got - want) < 1e-4, `${what}: expected ~${want}, got ${got}`);
+
+  // 128/255 = 0.50196 is on the POWER branch. The identity would give 0.50196; the real answer is
+  // less than half that, which is the whole visual difference.
+  near(mid.baseColorFactor[0], 0.215861, 'mid grey on the power branch');
+  // 8/255 = 0.03137 is on the LINEAR branch, below the 10.31/255 knee. Nothing else tested it.
+  near(make([8, 8, 8], 0).baseColorFactor[0], 0.002428, 'dark grey on the linear branch');
+  near(make([200, 200, 200], 0).baseColorFactor[0], 0.577580, 'light grey on the power branch');
   assert.equal(white.alphaMode, 'OPAQUE');
   assert.equal(white.baseColorFactor[3], 1);
   const ghost = make([255, 255, 255], 0.5);
