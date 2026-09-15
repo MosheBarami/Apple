@@ -483,6 +483,35 @@ export function buildCheckoutRequest(
   // from status and period, so a cancelled subscription naming 'studio' here still grants nothing.
   p.set('subscription_data[metadata][plan]', opts.plan);
   if (opts.email) p.set('customer_email', opts.email);
+  /*
+   * WHAT HAS TO BE ON THE INVOICE, COLLECTED AT THE ONE MOMENT THE BUYER IS WILLING TO TYPE IT.
+   *
+   * `billing_address_collection` defaults to 'auto', which collects only what the payment method
+   * itself demands — for a card that is often a postal code and nothing else. The invoice Stripe
+   * then prints carries no address, and an invoice with no address is not a document a finance
+   * department can accept or a tax authority can read. Required, so it is there from the first
+   * charge rather than chased afterwards.
+   *
+   * `tax_id_collection` is the field a VAT/GST/ABN number goes in. Without it this product has
+   * nowhere to put one, so an EU business buyer can pay and then cannot reclaim — which comes back
+   * as a refund request. Stripe prints whatever is entered on every invoice for that customer.
+   *
+   * TWO THINGS DELIBERATELY NOT SET HERE:
+   *   - `automatic_tax[enabled]`. Stripe rejects it outright until Stripe Tax is activated on the
+   *     account and an origin address is registered. Setting it from code would not make this
+   *     product tax-compliant; it would 400 every checkout until someone finished a task in a
+   *     dashboard this repo cannot see. It is a configuration decision, not a line of code.
+   *   - `customer_update`. Stripe accepts it only when the session names an existing `customer`,
+   *     and this session identifies the buyer by `customer_email` so that Stripe creates the
+   *     customer. Sending it would 400 on every first purchase. The buyer's name arrives with the
+   *     address above and is written to the new customer by Checkout itself.
+   *
+   * EDITING ANY OF THIS AFTERWARDS BELONGS TO THE PORTAL. Do not build a second address form in
+   * this product: it would be a copy that drifts from the one Stripe actually prints on invoices,
+   * and the two would disagree in front of a customer disputing a charge.
+   */
+  p.set('billing_address_collection', 'required');
+  p.set('tax_id_collection[enabled]', 'true');
   // One subscription per account: without this a second checkout adds a second subscription and the
   // user is charged twice for tiers that were meant to replace one another.
   p.set('allow_promotion_codes', 'true');

@@ -133,6 +133,41 @@ test('THE METADATA THE WEBHOOK READS IS THE METADATA THE CHECKOUT SETS', () => {
   assert.equal(outcome.subscription.customerId, 'cus_1', 'including the customer the portal needs');
 });
 
+test('THE CHECKOUT COLLECTS A BILLING ADDRESS, because an invoice without one is not a document', () => {
+  // Stripe's default collects only what the payment method itself demands, which for a card is
+  // often nothing but a postal code — and an invoice with no address on it is not something a
+  // company's finance department can accept or a tax authority can read.
+  const p = params(build(LIVE));
+  assert.equal(p.get('billing_address_collection'), 'required');
+});
+
+test('A VAT-REGISTERED BUYER CAN PUT THEIR TAX ID ON THE INVOICE', () => {
+  // Without tax_id_collection there is no field for a VAT/GST/ABN number anywhere in this product,
+  // so an EU business buyer cannot get a compliant invoice out of it at all — they can pay and
+  // then cannot reclaim, which is a refund request wearing a different hat.
+  const p = params(build(LIVE));
+  assert.equal(p.get('tax_id_collection[enabled]'), 'true');
+});
+
+test('AUTOMATIC TAX IS NOT SWITCHED ON HERE, and the refusal is deliberate', () => {
+  // Stripe rejects `automatic_tax[enabled]=true` outright on an account that has not activated
+  // Stripe Tax and registered an origin address. Setting it from code would not make this product
+  // tax-compliant; it would make every checkout 400 until someone finished a task in a dashboard
+  // this repo cannot see. It is a configuration decision, not a line of code.
+  const body = build(LIVE).body;
+  assert.doesNotMatch(body, /automatic_tax/);
+});
+
+test('CUSTOMER_UPDATE IS NOT SENT — this session has no customer to update', () => {
+  // The audit proposed `customer_update[name]=auto` to get a business name onto the invoice.
+  // Stripe only accepts customer_update when the session names an existing `customer`, and this
+  // one identifies the buyer by `customer_email` so Stripe creates the customer itself. Sending it
+  // would be a 400 from Stripe on every first purchase. The name arrives with the address instead.
+  const p = params(build(LIVE));
+  assert.equal(p.get('customer'), null, 'no existing customer is named');
+  assert.doesNotMatch(build(LIVE).body, /customer_update/);
+});
+
 test('the checkout never carries a plan the webhook would trust', () => {
   // Entitlement is recomputed from subscription status and period. Nothing in this request is an
   // instruction about what the user should end up with.
