@@ -1461,6 +1461,15 @@ code {
     gap: 1.05rem;
     /* The scrollbar itself would be a 15px band of chrome under a 20px row. */
     scrollbar-width: none;
+    /* AND WITHOUT THIS, THE SCROLL IS INVISIBLE. Hiding the scrollbar on a row that overflows
+       leaves the last item — Docs, at 390px — cut off flush against the edge with nothing to say
+       it continues, which reads as a broken nav rather than a scrollable one. Measured: its right
+       edge lands at 413px in a 390px viewport. The fade puts the cut where a reader can see it.
+
+       A mask rather than a gradient overlay, because the nav scrolls under it and an overlay would
+       need the header's background colour repeated here — one more place for the theme to drift. */
+    -webkit-mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 2.2rem), transparent 100%);
+    mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 2.2rem), transparent 100%);
   }
 
   .ap-nav::-webkit-scrollbar {

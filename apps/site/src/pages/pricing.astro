@@ -9,6 +9,10 @@ import {
   buildsPerMonth,
   formatMoney,
   CREDITS_PER_BUILD,
+  PRODUCT_MODES_OFFERED,
+  PRODUCT_MODE_INFO,
+  MODE_INFO,
+  PRODUCT_MODE_TO_SPECIALIST,
 } from '@golem/shared';
 
 // THE NUMBERS ON THIS PAGE ARE READ, NOT WRITTEN. They used to be typed in prose and in the plan
@@ -28,12 +32,13 @@ import FAQ from '../components/FAQ.astro';
 //
 //   Plan         37-43 neurons -> ceil(43/30)  =  2 credits
 //   Agent        111 neurons   -> ceil(111/30) =  4 credits  (targeted edit + read-back verify)
-//   Super Agent  297 neurons   -> ceil(297/30) = 10 credits  (+1 per extra step)
+//   Super Agent  297 neurons   -> ceil(297/30) = 10 credits  (withdrawn; kept for the arithmetic)
 //
 // COST-MODEL.md names these by their INTERNAL specialist identities — Clay, Stone, Rune
 // — which is correct there and wrong here: packages/shared says those "are internal
 // specialist identities, not user-facing brands: nothing in normal product UI should
-// name them", and §15.3 gives the public modes as Plan / Agent / Super Agent.
+// name them", and §15.3 gave the public modes as Plan / Agent / Super Agent. Super Agent has
+// since been withdrawn from PRODUCT_MODES_OFFERED, which is what this page now reads.
 //
 // Plan was published as 1 credit and a request count computed from it. It is 2. Agent and
 // Super Agent were both right, which is what makes the Plan figure an arithmetic slip
@@ -54,32 +59,38 @@ const perFreeDay = (cost: string, prefix = ''): string => {
   return `${prefix}${Math.floor(free.creditsPerDay / n)}`;
 };
 
-const modeRows = [
-  {
-    mode: 'Plan',
-    cls: 'is-clay',
-    cost: '2 credits',
-    extra: '',
-    does: 'Fast answers and small edits',
-    perDayPrefix: '',
-  },
-  {
-    mode: 'Agent',
-    cls: 'is-stone',
-    cost: '4 credits',
-    extra: '',
-    does: 'Builds features across your project',
-    perDayPrefix: '',
-  },
-  {
-    mode: 'Super Agent',
-    cls: 'is-rune',
-    cost: '10 credits',
-    extra: '+1 per extra step',
-    does: 'Plans, builds, tests and fixes autonomously',
-    perDayPrefix: 'up to ',
-  },
-].map((r) => ({ ...r, perDay: perFreeDay(r.cost, r.perDayPrefix) }));
+/*
+ * THE TABLE READS THE PRODUCT, NOT A LIST TYPED BESIDE IT.
+ *
+ * These three rows were hardcoded — Plan, Agent, Super Agent — and Super Agent was withdrawn from
+ * what the product offers. The pricing page went on quoting it a price. A page that prices a mode
+ * nobody can select is a promise the product cannot keep, and it is the first thing a buyer finds
+ * when they sign up and cannot find the third option.
+ *
+ * PRODUCT_MODES_OFFERED is the list every surface a person chooses from already reads;
+ * PRODUCT_MODES still carries 'super' because rows written while it existed must stay readable.
+ * Reading the first is what makes this page incapable of advertising a fourth mode, or a withdrawn
+ * one, without somebody deciding to.
+ */
+const CLS = { plan: 'is-clay', agent: 'is-stone', super: 'is-rune' } as const;
+const EXTRA = { plan: '', agent: '', super: '+1 per extra step' } as const;
+const PREFIX = { plan: '', agent: '', super: 'up to ' } as const;
+
+const modeRows = PRODUCT_MODES_OFFERED.map((m) => {
+  const info = PRODUCT_MODE_INFO[m];
+  const credits = MODE_INFO[PRODUCT_MODE_TO_SPECIALIST[m]].typicalCredits;
+  // "2" and "4-18" both arrive here; the table quotes the entry price, which is what the row is
+  // comparing. A range's own upper bound is explained by the footnote under the table.
+  const cost = `${String(credits).split('-')[0]} credits`;
+  return {
+    mode: info.name,
+    cls: CLS[m],
+    cost,
+    extra: EXTRA[m],
+    does: MODE_INFO[PRODUCT_MODE_TO_SPECIALIST[m]].blurb,
+    perDayPrefix: PREFIX[m],
+  };
+}).map((r) => ({ ...r, perDay: perFreeDay(r.cost, r.perDayPrefix) }));
 
 const limitFaq = [
   {
@@ -95,8 +106,8 @@ const limitFaq = [
     a: `<p>No. Credits reset to your full daily amount every day. Rollover sounds nice but pushes people to hoard; a fresh daily allowance keeps the math simple and the queue fair.</p>`,
   },
   {
-    q: 'Can one Super Agent request cost more than 10 Credits?',
-    a: `<p>Yes, and it is metered transparently. Super Agent requests start at 10 Credits and add 1 Credit per extra step beyond the ones included. You see the running total live in the workspace, and a request never silently drains your day — Apple warns before starting work it estimates will be expensive.</p>`,
+    q: 'Can one request cost more than the price in the table?',
+    a: `<p>Yes, and it is metered transparently. The table quotes what a request starts at; an Agent build settles against the compute it actually used, so a long one costs more. You see the running total live in the workspace, and a request never silently drains your day — Apple warns before starting work it estimates will be expensive.</p>`,
   },
   {
     q: 'What is a Credit, underneath?',
@@ -134,7 +145,7 @@ const limitFaq = [
           <ul class="plan__list">
             <li><strong>{free.creditsPerDay.toLocaleString()} Credits</strong> per day · {free.creditsPerMonth.toLocaleString()} a month</li>
             <li>About {buildsPerMonth('free')} quality-gated builds a month</li>
-            <li>All three modes — Plan, Agent, Super Agent</li>
+            <li>Every mode — {PRODUCT_MODES_OFFERED.map((m) => PRODUCT_MODE_INFO[m].name).join(' and ')}</li>
             <li>Unlimited projects</li>
             <li>Checkpoints &amp; rollback</li>
             <li>Studio plugin included</li>
@@ -341,9 +352,9 @@ const limitFaq = [
       </div>
 
       <p class="tfoot" data-reveal>
-        A Super Agent request includes its base steps; each additional step beyond
-        them costs 1 extra Credit, metered live so you always see where you
-        stand. Apple's own housekeeping does not count against your quota.
+        An Agent request settles against the work it actually did, so a long build costs more than
+        the entry price above — metered live, so you always see where you stand. Apple&rsquo;s own
+        housekeeping does not count against your quota.
       </p>
     </div>
   </section>

@@ -7,7 +7,7 @@
 // The ALLOWANCES are read from PLAN_LIMITS, never typed here — this component exists to answer
 // "does a real day fit inside the free allowance", and a copy of that number which can drift is
 // the one thing that would make the answer worthless.
-//   Plan 2 · Agent 4 · Super Agent 10 (+1 per extra step)
+//   Plan 2 · Agent 4   (Super Agent, at 10 +1/step, was withdrawn — see update() below)
 //   1 Credit = 30 neurons; Cloudflare bills $0.011 per 1,000 neurons
 // "Whichever limit binds first applies."
 // ---------------------------------------------------------------------------
@@ -70,46 +70,6 @@ const { showCost = true } = Astro.props;
         </div>
       </div>
 
-      <div class="ctl is-rune">
-        <label for="sm-rune">
-          <span class="ctl__name">Verified autonomous runs</span>
-          <span class="ctl__mode mono">Super Agent · 10 credits +1/step</span>
-        </label>
-        <div class="ctl__row">
-          <input
-            id="sm-rune"
-            type="range"
-            min="0"
-            max="20"
-            step="1"
-            value="1"
-            data-cost="10"
-            data-cursor="drag"
-            data-cursor-label="drag"
-          />
-          <output for="sm-rune" id="sm-rune-out" class="ctl__out mono">1</output>
-        </div>
-      </div>
-
-      <div class="ctl ctl--sub">
-        <label for="sm-steps">
-          <span class="ctl__name">Extra steps per Super Agent run</span>
-          <span class="ctl__mode mono">+1 credit each</span>
-        </label>
-        <div class="ctl__row">
-          <input
-            id="sm-steps"
-            type="range"
-            min="0"
-            max="4"
-            step="1"
-            value="2"
-            data-cursor="drag"
-            data-cursor-label="drag"
-          />
-          <output for="sm-steps" id="sm-steps-out" class="ctl__out mono">2</output>
-        </div>
-      </div>
     </div>
 
     <div class="meter__result">
@@ -181,8 +141,12 @@ const { showCost = true } = Astro.props;
               — measured <strong>511 neurons</strong>, about{' '}
               <strong>$0.0056</strong>.
             </li>
+            {/* The mode this was measured under has since been withdrawn. The measurement has
+                not: 297 neurons is what a run that read its own work back and playtested it
+                actually cost, and deleting a real figure because the label on it changed would
+                remove evidence rather than a claim. It is described by what it did. */}
             <li>
-              A Super Agent build with read-back and a playtest measured{' '}
+              A build that read its own work back and ran a playtest measured{' '}
               <strong>297 neurons</strong>, about <strong>$0.0033</strong>.
             </li>
             <li>
@@ -552,14 +516,10 @@ const { showCost = true } = Astro.props;
   if (root) {
     const clay = document.getElementById('sm-clay') as HTMLInputElement;
     const stone = document.getElementById('sm-stone') as HTMLInputElement;
-    const rune = document.getElementById('sm-rune') as HTMLInputElement;
-    const steps = document.getElementById('sm-steps') as HTMLInputElement;
 
     const outs = {
       clay: document.getElementById('sm-clay-out')!,
       stone: document.getElementById('sm-stone-out')!,
-      rune: document.getElementById('sm-rune-out')!,
-      steps: document.getElementById('sm-steps-out')!,
     };
 
     const totalEl = document.getElementById('sm-total')!;
@@ -584,23 +544,24 @@ const { showCost = true } = Astro.props;
     function update() {
       const c = Number(clay.value);
       const s = Number(stone.value);
-      const r = Number(rune.value);
-      const extra = Number(steps.value);
 
       outs.clay.textContent = String(c);
       outs.stone.textContent = String(s);
-      outs.rune.textContent = String(r);
-      outs.steps.textContent = String(extra);
 
       // COSTS COME FROM THE INPUTS, not from literals here. `data-cost` was already on
       // every slider and this line ignored it, so the label a reader sees, the attribute
       // in the markup and the arithmetic were three copies of one number — and when Plan
       // was corrected from 1 credit to 2 (37-43 neurons, ceil(43/30) = 2, the same
       // `creditsForNeurons` the worker charges with), the first two changed and this did
-      // not. The Super Agent slider adds its extra steps on top, which is the one cost that is
-      // genuinely per-run rather than per-request.
+      // not.
+      //
+      // THE THIRD SLIDER IS GONE. It priced Super Agent, with a second slider under it for the
+      // extra steps a Super Agent run adds — and Super Agent was withdrawn from what the product
+      // offers. A calculator with a control for a mode nobody can select does not merely quote a
+      // wrong total; it is the strongest possible claim that the mode exists, because the visitor
+      // moved it themselves.
       const cost = (el: HTMLInputElement) => Number(el.dataset.cost ?? 0);
-      const perDay = c * cost(clay) + s * cost(stone) + r * (cost(rune) + extra);
+      const perDay = c * cost(clay) + s * cost(stone);
       const perMonth = perDay * 30;
 
       totalEl.textContent = fmt(perDay);

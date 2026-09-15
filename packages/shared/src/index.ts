@@ -1831,9 +1831,17 @@ export const PLAN_FEATURES: readonly PlanFeature[] = [
     values: everyPlan((p) => `About ${buildsPerMonth(p)}`),
   },
   {
+    /*
+     * COUNTED AND NAMED FROM PRODUCT_MODES_OFFERED, not typed here.
+     *
+     * It read "All three build modes — Plan, Agent and Super Agent" after Super Agent was withdrawn
+     * from what the product offers, so the comparison table on the pricing page promised a mode
+     * nobody can pick, in the row whose whole point is that nothing is held back. A sentence naming
+     * a list is a claim about that list; deriving it is the only way the two cannot disagree.
+     */
     id: 'modes',
-    label: 'All three build modes',
-    note: 'Plan, Agent and Super Agent. Not one of them is held back for a paid tier.',
+    label: `All ${PRODUCT_MODES_OFFERED.length === 2 ? 'two' : String(PRODUCT_MODES_OFFERED.length)} build modes`,
+    note: `${PRODUCT_MODES_OFFERED.map((m) => PRODUCT_MODE_INFO[m].name).join(' and ')}. Neither is held back for a paid tier.`,
     values: everyPlan(() => true),
   },
   { id: 'projects', label: 'Unlimited projects', values: everyPlan(() => true) },
