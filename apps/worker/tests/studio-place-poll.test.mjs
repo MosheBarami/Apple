@@ -298,3 +298,61 @@ test('the oplog gains its failure column, and a second boot survives the duplica
   const r = await second.call('/studio/link', { method: 'GET' });
   assert.equal(r.status, 200, 'the object still works on its second boot');
 });
+
+// ------------------------------------------------------------- the 30-day clock, both directions
+//
+// THE EXPIRY BRANCH HAD NO TEST AT ALL. `PLUGIN_TOKEN_TTL_MS` and the 401 it produces have been in
+// the poll handler since pairing shipped, and its two siblings — superseded and revoked — are both
+// covered above. Nothing drove this one, so "the pairing lapses after 30 days" was a claim about
+// code rather than an observed behaviour, and the plugin's whole handling of it (clear the saved
+// session, warn in Output) hung off a branch nobody had ever seen fire.
+//
+// AND THE CLOCK RAN FROM THE PAIRING, NOT FROM USE. `pluginTokenIssuedAt` was written once and
+// never advanced, so a Studio that polled every four seconds for a month was cut off on the same
+// day as one that was never opened again — a working link severed for no reason the user could see
+// or prevent. Sliding it on use is what separates "idle for 30 days" from "used yesterday".
+
+const DAY = 24 * 3600 * 1000;
+
+test('A PAIRING IDLE PAST 30 DAYS IS REFUSED, in the words the plugin already acts on', async () => {
+  // apps/plugin/src/init.server.luau reads this exact `error` to decide to clear `golem_session`,
+  // so both fields are load-bearing and both are asserted.
+  const s = await paired({ pluginTokenIssuedAt: Date.now() - 31 * DAY });
+  const r = await s.call('/plugin/poll', { token: TOKEN, body: { state: state() } });
+  assert.equal(r.status, 401);
+  assert.equal(r.json.error, 'token expired');
+  assert.ok(typeof r.json.message === 'string' && r.json.message.length > 0, 'a bare code leaves the user nothing to do');
+  assert.match(r.json.message, /pair again/i, 'it must name the remedy');
+});
+
+test('A PAIRING IN USE NEVER LAPSES — the clock runs from the last poll, not from the pairing', async () => {
+  // Day 20: still inside the window, so the poll is served AND the expiry slides.
+  const s = await paired({ pluginTokenIssuedAt: Date.now() - 20 * DAY });
+  assert.equal((await s.call('/plugin/poll', { token: TOKEN, body: { state: state() } })).status, 200);
+  const slid = s.map.get('pluginTokenIssuedAt');
+  assert.ok(slid > Date.now() - DAY, `the expiry did not slide: still ${Math.round((Date.now() - slid) / DAY)} days old`);
+
+  // Day 40 of the same pairing, which is day 20 of the slid clock. Same token, still good.
+  const later = await paired({ pluginTokenIssuedAt: slid - 20 * DAY });
+  assert.equal((await later.call('/plugin/poll', { token: TOKEN, body: { state: state() } })).status, 200,
+    'a pairing polled at day 20 must still work at day 40');
+});
+
+test('but an UNUSED pairing still lapses on schedule — the slide is not an amnesty', async () => {
+  // The control for the test above: if sliding were unconditional, or if it happened before the
+  // expiry check, a 40-day-dead pairing would come back to life on its next poll.
+  const issuedAt = Date.now() - 40 * DAY;
+  const s = await paired({ pluginTokenIssuedAt: issuedAt });
+  assert.equal((await s.call('/plugin/poll', { token: TOKEN, body: {} })).status, 401);
+  assert.equal(s.map.get('pluginTokenIssuedAt'), issuedAt, 'a refused poll must not write a fresh issue time');
+  assert.equal((await s.call('/plugin/poll', { token: TOKEN, body: {} })).status, 401, 'and it stays refused');
+});
+
+test('a young pairing is not rewritten on every poll', async () => {
+  // The slide is a storage write on a path that runs every four seconds per connected Studio.
+  // Half the TTL is the threshold; below it the stored value must be left exactly as it was.
+  const issuedAt = Date.now() - 2 * DAY;
+  const s = await paired({ pluginTokenIssuedAt: issuedAt });
+  await s.call('/plugin/poll', { token: TOKEN, body: { state: state() } });
+  assert.equal(s.map.get('pluginTokenIssuedAt'), issuedAt, 'a 2-day-old pairing needs no extension');
+});

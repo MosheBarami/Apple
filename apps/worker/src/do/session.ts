@@ -854,6 +854,22 @@ export class SessionDO extends DurableObject<Env> {
         }
         return json({ error: 'invalid token' }, 401);
       }
+      //[[ AN ACTIVELY USED PAIRING MUST NOT LAPSE.
+      //
+      //   `pluginTokenIssuedAt` was written once, at pairing, and never again — so the 30-day clock
+      //   ran from the pairing rather than from use, and a Studio that polled every four seconds
+      //   for a month was cut off on the same day as one that was never opened again. There is no
+      //   renewal path anywhere: the only remedy was minting a new pairing code, for a link that
+      //   was working.
+      //
+      //   Slid only past the HALFWAY mark, and only after the token has already been accepted.
+      //   Past halfway because this runs on every poll of every connected Studio and an
+      //   unconditional write would be a storage put every four seconds for nothing. After the
+      //   check because doing it before would resurrect a pairing that had already lapsed —
+      //   the expiry would become unreachable, which is the same defect as no expiry at all. ]]
+      if (Date.now() - issuedAt > PLUGIN_TOKEN_TTL_MS / 2) {
+        await this.ctx.storage.put('pluginTokenIssuedAt', Date.now());
+      }
       const reported = readPluginHeaders(req.headers);
       const body = (await req.json()) as PluginPollRequest;
       return this.handlePluginPoll(body, reported);
