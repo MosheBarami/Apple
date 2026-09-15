@@ -45,11 +45,14 @@ import { AssetSourceDialog } from '../components/asset-source-dialog';
 import { isNearBottom, jumpLabel, unseenCount } from '../lib/follow-latest';
 import { replyAnnouncement } from '../lib/announce';
 import { readViewChoice, writeViewChoice } from '../lib/view-state';
+import { fidelityLine, restoreInFlight, restoreSentence, restoreTone } from '../lib/restore-status';
+import { checkpointAuthorView, rosterNames } from '../lib/checkpoint-author';
 import { PairingDialog } from '../components/pairing-dialog';
 import { Composer } from '../components/ws/composer';
 import { Drawer, Icon, PATH } from '../components/ws/primitives';
 import { Turn } from '../components/ws/turn';
 import { StudioView } from '../components/ws/studio-view';
+import { StudioActivity } from '../components/ws/studio-activity';
 import { PlaytestCard } from '../components/ws/playtest-card';
 import { ConnectStudio } from '../components/ws/connect-studio';
 import { EmptyState } from '../components/empty-state';
@@ -79,13 +82,13 @@ const SUGGESTIONS = [
  * this build no longer recognises" the same state — which is precisely the distinction the
  * validation exists to keep.
  */
-// Two agents added a drawer each, from two checklist sections, and both belong. The union and the
-// literal list are kept in step deliberately: search-panel.test.mjs asserts every name the union
-// can hold is a name DRAWERS accepts, because a drawer missing from the list restores as closed
-// for ever and looks like a user who simply never opened it.
-type Drawer = null | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members' | 'files';
-type DrawerName = 'none' | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members' | 'files';
-const DRAWERS = ['none', 'checkpoints', 'memory', 'credits', 'search', 'members', 'files'] as const;
+// Three agents added a drawer each, from three checklist sections, and all three belong. The union
+// and the literal list are kept in step deliberately: search-panel.test.mjs asserts every name the
+// union can hold is a name DRAWERS accepts, because a drawer missing from the list restores as
+// closed for ever and looks like a user who simply never opened it.
+type Drawer = null | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members' | 'files' | 'history';
+type DrawerName = 'none' | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members' | 'files' | 'history';
+const DRAWERS = ['none', 'checkpoints', 'memory', 'credits', 'search', 'members', 'files', 'history'] as const;
 
 export function WorkspacePage() {
   const params = useParams<{ id: string }>();
@@ -119,6 +122,10 @@ export function WorkspacePage() {
   const [mode, setMode] = useState<ProductMode>('agent');
   const [seed, setSeed] = useState<string | undefined>(undefined);
   const [label, setLabel] = useState('');
+  // Kept beside the label rather than inside the form element so clearing both after a save is one
+  // statement — a description left behind after a save reappears on the NEXT checkpoint and
+  // describes the wrong snapshot.
+  const [note, setNote] = useState('');
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
@@ -196,8 +203,14 @@ export function WorkspacePage() {
     stop,
     createCheckpoint,
     restoreCheckpoint,
+    restoreStatus,
     reloadHistory,
   } = useProjectSocket(projectId, onServerError);
+
+  // A second Restore while the first is still clearing the place would race the plugin against
+  // itself. The worker's own phases decide this, not a flag set by the click: a click that never
+  // reached the worker must not leave every button dead.
+  const restoreBusy = restoreInFlight(restoreStatus);
 
   /**
    * The one place Studio's state is named. Four values, each backed by a real
@@ -223,17 +236,23 @@ export function WorkspacePage() {
   });
   const sourcePolicy = personal.data?.preferences.asset_sources ?? null;
 
-  //[[ WHAT THIS PERSON MAY DO HERE, ASKED OUT LOUD.
+  //[[ NAMES FOR THE PEOPLE WHO TOOK THE CHECKPOINTS.
   //
-  //   `fetchProjectAccess` and `lib/capabilities` were both written and then called by nothing, so
-  //   the signed-in app never asked the server what role the viewer holds — it simply rendered the
-  //   owner's interface to everyone and let the refusals arrive as failures.
+  //   Asked only while the checkpoints drawer is open. The roster rather than presence: a
+  //   checkpoint taken last week by someone who is not connected right now is exactly the row
+  //   whose author a user wants, and presence only knows who is here at this moment.
   //
-  //   THE THREE STATES ARE KEPT APART on purpose. `unavailable` is not `viewer`: a check that did
-  //   not come back is not a verdict about the person, and rendering it as one would be this
-  //   repository's failure-to-observe pattern in its most expensive place — an authority claim the
-  //   interface has not established. `normaliseAccess` owns the mapping; nothing here reads the
-  //   payload field by field. ]]
+  //   When it has not loaded, or a member has since left, the row says "Another member" — an
+  //   honest gap. It must never fall back to the reader.
+  //
+  //   The ACCESS check this route also needs is declared once, above, and gated on the drawers
+  //   that need it — see its comment for why two copies of it drifted apart the first time. ]]
+  const roster = useQuery({
+    queryKey: ['members', projectId, 'active', ''],
+    queryFn: () => fetchMembers(projectId, new URLSearchParams({ status: 'active' })),
+    enabled: projectId.length > 0 && drawer === 'checkpoints',
+  });
+  const memberNames = roster.data ? rosterNames(roster.data.members) : {};
 
   const saveSources = async (policy: AssetSourcePolicy) => {
     if (!userId) throw new Error('not signed in');
@@ -385,6 +404,13 @@ export function WorkspacePage() {
       run: () => setDrawer('checkpoints'),
     },
     {
+      id: 'ws-history',
+      title: 'What Apple did in Studio',
+      section: 'Run',
+      keywords: ['history', 'activity', 'log', 'ops', 'timeline', 'changes'],
+      run: () => setDrawer('history'),
+    },
+    {
       id: 'ws-search',
       title: 'Search this conversation',
       section: 'Project',
@@ -410,10 +436,14 @@ export function WorkspacePage() {
       run: () => setDrawer('members'),
     },
     {
+      // ONE ENTRY, NOT TWO. Both sides gave Files a command and the ids collided, which
+      // command-palette.test.mjs fails on by name. The keywords are the union of both: the panel
+      // really does own the download and the trash AND the per-version "Put back", so a user who
+      // searches for either word has to land here.
       id: 'ws-files',
       title: 'Project files',
       section: 'Project',
-      keywords: ['files', 'workspace', 'notes', 'download', 'trash'],
+      keywords: ['files', 'workspace', 'notes', 'download', 'trash', 'versions', 'revert', 'put back', 'history'],
       run: () => setDrawer('files'),
     },
     {
@@ -932,27 +962,46 @@ export function WorkspacePage() {
 
       {/* ------------------------------------------------------- drawers -- */}
       <Drawer open={drawer === 'checkpoints'} onClose={() => setDrawer(null)} title="Checkpoints">
+        {/* A NAME IS NOT A DESCRIPTION.
+
+            The label is capped at 60 characters and everything else the row showed — the time, the
+            object count, the script count — is derived metadata. Nothing said what was IN the
+            snapshot or why it was taken, which is the only thing that makes a list of twenty of
+            them choosable. Optional on purpose: a required field on a save people take
+            mid-thought would be a tax on the habit the whole feature depends on. */}
         <form
-          style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.9rem' }}
+          style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '0.9rem' }}
           onSubmit={(e) => {
             e.preventDefault();
             if (!studio.connected) return;
-            createCheckpoint(label.trim() || 'manual checkpoint');
+            createCheckpoint(label.trim() || 'manual checkpoint', note.trim() || undefined);
             setLabel('');
+            setNote('');
           }}
         >
-          <input
-            className="gx-row"
-            style={{ flex: 1, margin: 0, background: 'transparent', color: 'inherit' }}
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            placeholder="Name this checkpoint"
-            aria-label="Checkpoint name"
+          <div style={{ display: 'flex', gap: '0.4rem' }}>
+            <input
+              className="gx-row"
+              style={{ flex: 1, margin: 0, background: 'transparent', color: 'inherit' }}
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="Name this checkpoint"
+              aria-label="Checkpoint name"
+              disabled={!studio.connected}
+            />
+            <button type="submit" className="gx-btn gx-btn--outline" disabled={!studio.connected}>
+              Save
+            </button>
+          </div>
+          <textarea
+            className="gx-row gx-cp__note"
+            value={note}
+            onChange={(e) => setNote(e.target.value.slice(0, 500))}
+            placeholder="What is in it, or why you are taking it (optional)"
+            aria-label="What this checkpoint contains"
+            rows={2}
             disabled={!studio.connected}
           />
-          <button type="submit" className="gx-btn gx-btn--outline" disabled={!studio.connected}>
-            Save
-          </button>
         </form>
 
         {!studio.connected && (
@@ -974,20 +1023,49 @@ export function WorkspacePage() {
             <span className="gx-row__main">
               {c.label}
               <span className="gx-row__meta">
-                {new Date(c.createdAt).toLocaleString()} · {c.instanceCount} objects · {c.scriptCount} scripts
+                {/* WHO, first. The row carried a timestamp and two counts and never said whose
+                    work it was — and the one surface that claimed an author guessed it from the
+                    kind, so on a shared project a teammate's checkpoint read as yours. This says
+                    "Another member" or "Author not recorded" rather than picking the reader, which
+                    is the wrong guess in exactly the argument the field exists for. */}
+                {checkpointAuthorView(c, userId || null, memberNames).label} · {new Date(c.createdAt).toLocaleString()} ·{' '}
+                {c.instanceCount} objects · {c.scriptCount} scripts
               </span>
+              {/* The authored sentence, under the derived numbers. Shown verbatim and never
+                  truncated in the markup: the worker already caps it at 500 characters, and a
+                  second cap here would hide the end of somebody's own words for no reason. */}
+              {c.description && <span className="gx-cp__desc">{c.description}</span>}
+              {/* THE RESTORE, WHILE IT IS HAPPENING AND WHEN IT IS OVER.
+
+                  This drawer used to close on the click, and the worker used to broadcast nothing
+                  until something went wrong — so the user watched the panel shut and then had no
+                  signal at all, for up to two minutes, about the operation that was at that moment
+                  clearing and rebuilding their place. On success they were told nothing ever.
+
+                  Anchored under the checkpoint it belongs to rather than floating at the top of the
+                  drawer: a list of twenty rows and one status line elsewhere makes the reader
+                  work out which one it is about. */}
+              {restoreStatus?.checkpointId === c.id && (
+                <span className={`gx-restore is-${restoreTone(restoreStatus)}`} role="status">
+                  {restoreSentence(restoreStatus)}
+                  {fidelityLine(restoreStatus.fidelity) && (
+                    <span className="gx-restore__counts">{fidelityLine(restoreStatus.fidelity)}</span>
+                  )}
+                </span>
+              )}
             </span>
             <button
               type="button"
               className="gx-btn gx-btn--outline"
-              disabled={!studio.connected}
+              disabled={!studio.connected || restoreBusy}
               onClick={() => {
                 if (!window.confirm(`Restore "${c.label}"? This replaces what is in your place now.`)) return;
                 restoreCheckpoint(c.id);
-                setDrawer(null);
+                // The drawer STAYS OPEN. It is the only surface that shows what the restore is
+                // doing and what came back, and closing it is what made both invisible.
               }}
             >
-              Restore
+              {restoreBusy && restoreStatus?.checkpointId === c.id ? 'Restoring…' : 'Restore'}
             </button>
           </div>
         ))}
@@ -1010,6 +1088,16 @@ export function WorkspacePage() {
 
       <Drawer open={drawer === 'search'} onClose={() => setDrawer(null)} title="Search this conversation">
         <SearchPanel projectId={projectId} onOpen={openHit} />
+      </Drawer>
+
+      {/* THE OP LOG, WHICH HAD NO ENTRY POINT.
+
+          Every Studio op has been recorded and served at /studio/diagnostics since the oplog
+          existed, and no part of this app had ever called that route. Mounted only while open, like
+          the panels above: a project's whole history is not worth a request on every workspace load
+          for everyone who never opens it. */}
+      <Drawer open={drawer === 'history'} onClose={() => setDrawer(null)} title="What Apple did in Studio">
+        {drawer === 'history' && <StudioActivity projectId={projectId} onOpenRun={jumpToMessage} />}
       </Drawer>
 
       <Drawer open={drawer === 'members'} onClose={() => setDrawer(null)} title="Who can build here">

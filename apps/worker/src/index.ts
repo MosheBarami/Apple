@@ -869,7 +869,12 @@ app.get('/api/projects/:id/search', async (c) => {
   const ctx = await withOwnedProject(c, c.req.param('id'));
   if (!ctx) return c.json({ error: 'not found' }, 404);
   const url = new URL(c.req.url);
-  return ctx.stub.fetch(`https://do/search?${url.searchParams}`);
+  // WHO IS READING, so a record can be called theirs. SET here, overwriting anything the browser
+  // sent: a viewer taken off the query string would let a caller ask "which of these are mine?"
+  // while naming someone else, and the answer would look authoritative.
+  const params = new URLSearchParams(url.searchParams);
+  params.set('viewer', ctx.user.userId);
+  return ctx.stub.fetch(`https://do/search?${params}`);
 });
 
 
@@ -1488,8 +1493,21 @@ app.get('/api/projects/:id/attribution', async (c) => {
 app.post('/api/projects/:id/checkpoints', async (c) => {
   const ctx = await withOwnedProject(c, c.req.param('id'));
   if (!ctx) return c.json({ error: 'not found' }, 404);
-  const body = await c.req.json<{ label?: string }>().catch(() => ({ label: '' }));
-  return ctx.stub.fetch('https://do/checkpoint', { method: 'POST', body: JSON.stringify({ label: body.label ?? 'checkpoint' }) });
+  const body = await c.req
+    .json<{ label?: string; description?: string }>()
+    .catch(() => ({ label: '' }) as { label?: string; description?: string });
+  // The author comes from the AUTHENTICATED caller and nothing else. Reading it out of the request
+  // body would let anyone sign a checkpoint with another member's name, and a checkpoint's author
+  // is the field a restore argument turns on. The description, by contrast, IS the caller's own
+  // text — it is a claim about the snapshot, not about a person.
+  return ctx.stub.fetch('https://do/checkpoint', {
+    method: 'POST',
+    body: JSON.stringify({
+      label: body.label ?? 'checkpoint',
+      authorId: ctx.user.userId,
+      description: body.description ?? null,
+    }),
+  });
 });
 
 app.post('/api/projects/:id/restore', async (c) => {
@@ -1573,7 +1591,11 @@ app.post('/api/projects/:id/pairing/cancel', async (c) => {
 app.get('/api/projects/:id/studio/diagnostics', async (c) => {
   const ctx = await withOwnedProject(c, c.req.param('id'));
   if (!ctx) return c.json({ error: 'not found' }, 404);
-  return ctx.stub.fetch('https://do/studio/diagnostics');
+  // `limit` and `before` page the op log, and the object owns their bounds. Forwarded rather than
+  // re-parsed here: two places deciding what a cursor means is how the two come to disagree, and
+  // this route is the one that has no rows to check it against.
+  const q = new URL(c.req.url).search;
+  return ctx.stub.fetch(`https://do/studio/diagnostics${q}`);
 });
 
 /**

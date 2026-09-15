@@ -14,6 +14,7 @@ import type {
   StudioEventState,
   StudioEventSelection,
   CheckpointMeta,
+  RestoreFidelity,
   GolemMode,
   GatewayRequest,
   ToolTraceEntry,
@@ -67,6 +68,7 @@ import { latestSelection, sameSelection, companionOpAccess, sanitizeCompanionOp,
 import {
   MIN_QUERY,
   authorForRole,
+  checkpointAuthor,
   isSearchable,
   narrowing,
   parseSearchFilter,
@@ -411,6 +413,15 @@ const POLL_WAIT_IDLE_MS = 5_000;
 const POLL_STALE_GRACE_MS = 8_000;
 const PLUGIN_TOKEN_TTL_MS = 30 * 24 * 3600 * 1000; // 30 days, then re-pair
 const MAX_SNAPSHOT_BYTES = 12 * 1024 * 1024; // refuse absurd checkpoints
+/**
+ * How much of a checkpoint's description is kept.
+ *
+ * Long enough for a paragraph about what is in the snapshot and why it was taken, which is the
+ * whole point of having a field beyond the 60-character label. CAPPED rather than rejected: losing
+ * somebody's sentence because they wrote one more than the limit is a worse outcome than a
+ * truncated one, and every checkpoint on this object shares one SQLite.
+ */
+const MAX_CHECKPOINT_DESCRIPTION = 500;
 const MAX_PROMPT_CHARS = 24_000; // ~7k tokens; the transcript is re-sent every step
 
 export class SessionDO extends DurableObject<Env> {
@@ -466,6 +477,33 @@ export class SessionDO extends DurableObject<Env> {
       //   conversation that did not cause what they are looking at. ]]
       try {
         this.sql.exec(`alter table oplog add column run_id text`);
+      } catch {
+        /* already added on an earlier boot */
+      }
+      //[[ WHO TOOK THIS CHECKPOINT. Not guessed from its kind.
+      //
+      //   There was no author column, so the product inferred one: `kind === 'manual' ? 'you'`.
+      //   On a shared project that is a false statement about a real person's work — every
+      //   teammate's checkpoint was labelled as yours — and the checkpoint before a restore that
+      //   discards someone's afternoon is exactly the row where "who did this" is the question.
+      //
+      //   Nullable, and null is meaningful twice: a row from before this column has no recorded
+      //   author, and an `auto`/`pre_agent` checkpoint has no HUMAN author at all. Filling either
+      //   in with whoever happens to be connected would put a name on work they did not do. ]]
+      try {
+        this.sql.exec(`alter table checkpoints add column author_id text`);
+      } catch {
+        /* already added on an earlier boot */
+      }
+      //[[ WHAT THIS SNAPSHOT CONTAINS, AND WHY IT WAS TAKEN.
+      //
+      //   A 60-character label was the only authored text on a checkpoint; everything else the
+      //   drawer showed — the timestamp, the object count, the script count — is derived metadata
+      //   that says nothing about what is IN the snapshot. And every automatic one carries the
+      //   same label, so a list of them is a column of identical rows and the person restoring
+      //   picks by timestamp. ]]
+      try {
+        this.sql.exec(`alter table checkpoints add column description text`);
       } catch {
         /* already added on an earlier boot */
       }
@@ -1154,7 +1192,7 @@ export class SessionDO extends DurableObject<Env> {
         // unfiltered project here would be a full page of results for a question nobody asked.
         return json({ ...echo, impossible: true, results: [], counts: zeroCounts(), total: 0, more: false, scanned: 0, scanTruncated: false });
       }
-      const gathered = await this.searchRecords(filter);
+      const gathered = await this.searchRecords(filter, url.searchParams.get('viewer') || null);
       const out = runSearch(gathered.records, filter);
       return json({ ...echo, ...out, scanned: gathered.scanned, scanTruncated: gathered.truncated });
     }
@@ -1203,8 +1241,8 @@ export class SessionDO extends DurableObject<Env> {
 
     if (path === '/checkpoints' && req.method === 'GET') {
       const rows = this.sql
-        .exec(`select id, label, kind, script_count, instance_count, size_bytes, created_at from checkpoints order by created_at desc limit 50`)
-        .toArray() as { id: string; label: string; kind: string; script_count: number; instance_count: number; size_bytes: number; created_at: number }[];
+        .exec(`select id, label, kind, script_count, instance_count, size_bytes, created_at, author_id, description from checkpoints order by created_at desc limit 50`)
+        .toArray() as { id: string; label: string; kind: string; script_count: number; instance_count: number; size_bytes: number; created_at: number; author_id: string | null; description: string | null }[];
       return json({
         checkpoints: rows.map((r) => ({
           id: r.id,
@@ -1214,13 +1252,23 @@ export class SessionDO extends DurableObject<Env> {
           scriptCount: r.script_count,
           instanceCount: r.instance_count,
           sizeBytes: r.size_bytes,
+          /** Who took it, or null for one Apple took and for a row that predates the column. */
+          authorId: r.author_id,
+          /** What it contains or why it was taken. Null when nobody wrote one. */
+          description: r.description,
         })),
       });
     }
 
     if (path === '/checkpoint' && req.method === 'POST') {
-      const { label } = (await req.json()) as { label: string };
-      const res = await this.createCheckpoint((label || 'manual checkpoint').slice(0, 60), 'manual');
+      // `authorId` is set by index.ts from the AUTHENTICATED user, never by a browser: this object
+      // is reachable only through its stub, and every route that forwards here has already
+      // resolved who is asking. See socketRole's comment for the same reasoning on the ws path.
+      const { label, authorId, description } = (await req.json()) as { label: string; authorId?: string; description?: string };
+      const res = await this.createCheckpoint((label || 'manual checkpoint').slice(0, 60), 'manual', {
+        authorId: typeof authorId === 'string' && authorId ? authorId : null,
+        description: typeof description === 'string' ? description : null,
+      });
       return json(res, 'error' in res ? 409 : 200);
     }
 
@@ -1358,11 +1406,36 @@ export class SessionDO extends DurableObject<Env> {
       // `runId` is renamed out of the column name here rather than left as `run_id`, because this
       // payload is read by the browser and every other field on it is already camelCase. A caller
       // that has to know the storage spelling of one field is a caller that will get it wrong.
-      const recentOps = (
+      //[[ A HISTORY HAS TO BE READABLE PAST ITS FIRST SCREEN.
+      //
+      //   This served the last 25 rows and nothing else. Twenty-five ops is a few minutes of one
+      //   build, and the payload gave no sign it had been cut — so a list that showed everything
+      //   and a list that showed the newest fraction of everything looked identical to a caller,
+      //   which is the worse of the two failures.
+      //
+      //   `before` is the oplog's own autoincrement id, descending, so a page can never repeat or
+      //   skip a row the way an offset does when rows arrive while the user is reading. A cursor
+      //   that does not parse is REFUSED rather than answered with the newest page: silently
+      //   restarting is how an infinite scroll loops forever over the same twenty-five rows. ]]
+      const OPS_MAX = 200;
+      const beforeRaw = url.searchParams.get('before');
+      const before = beforeRaw === null ? null : Number(beforeRaw);
+      if (before !== null && !Number.isSafeInteger(before)) return json({ error: 'bad cursor' }, 400);
+      const limit = Math.min(Math.max(Number(url.searchParams.get('limit')) || 25, 1), OPS_MAX);
+      // One extra row, purely to learn whether there IS a next page. Asking the database is the
+      // only way to tell "that was all of them" from "that was as many as fitted".
+      const opRows = (
         this.sql
-          .exec(`select op_id, kind, ok, summary, created_at, failure, run_id from oplog order by id desc limit 25`)
-          .toArray() as { op_id: string; kind: string; ok: number; summary: string; created_at: number; failure: string | null; run_id: string | null }[]
-      ).map((r) => ({
+          .exec(
+            before === null
+              ? `select id, op_id, kind, ok, summary, created_at, failure, run_id from oplog order by id desc limit ?`
+              : `select id, op_id, kind, ok, summary, created_at, failure, run_id from oplog where id < ? order by id desc limit ?`,
+            ...(before === null ? [limit + 1] : [before, limit + 1]),
+          )
+          .toArray() as { id: number; op_id: string; kind: string; ok: number; summary: string; created_at: number; failure: string | null; run_id: string | null }[]
+      );
+      const opPage = opRows.slice(0, limit);
+      const recentOps = opPage.map((r) => ({
         op_id: r.op_id,
         kind: r.kind,
         ok: r.ok,
@@ -1374,6 +1447,10 @@ export class SessionDO extends DurableObject<Env> {
       }));
       return json({
         link: await this.linkSummary(),
+        /** The page size actually applied, which is not necessarily the one asked for. */
+        limit,
+        /** The cursor for the next page, or null when this page reached the end of the log. */
+        nextBefore: opRows.length > limit ? (opPage[opPage.length - 1]?.id ?? null) : null,
         agentStatus: agent?.status ?? 'idle',
         /** When the pairing token was issued and when it lapses — the 30-day clock, made visible. */
         pairedAt: issuedAt,
@@ -1658,7 +1735,13 @@ export class SessionDO extends DurableObject<Env> {
           refuse('Your role on this project cannot create checkpoints.');
           return;
         }
-        const res = await this.createCheckpoint(msg.label.slice(0, 60) || 'checkpoint', 'manual');
+        // `me.userId` — the socket's own identity, resolved at the handshake from a header the
+        // worker sets. NOT anything on the frame: the frame is written by the browser, and an
+        // authorId taken from it would let any member sign a checkpoint with another's name.
+        const res = await this.createCheckpoint(msg.label.slice(0, 60) || 'checkpoint', 'manual', {
+          authorId: me?.userId ?? null,
+          description: msg.description ?? null,
+        });
         if ('error' in res) this.broadcast({ type: 'error', code: 'checkpoint', message: res.error });
         return;
       }
@@ -1871,7 +1954,18 @@ export class SessionDO extends DurableObject<Env> {
     // and silently pressing on is the thing this codebase keeps getting wrong.
     if (studioConnected && mode !== 'clay') {
       try {
-        const checkpoint = await this.createCheckpoint('before Apple changes', 'pre_agent'); // broadcasts internally
+        //[[ SAY WHAT THE RUN WAS ABOUT TO DO.
+        //
+        //   Every pre-run checkpoint carries this same label, so a project's list of them was a
+        //   column of identical rows and the person restoring one was choosing by timestamp. The
+        //   request that caused it is right here in scope and was being thrown away.
+        //
+        //   `intent.summary` when the local classifier produced one — it restates the request in
+        //   the agent's own terms — and otherwise the user's own words, which are never worse. No
+        //   model call: this runs before the first one. ]]
+        const checkpoint = await this.createCheckpoint('before Apple changes', 'pre_agent', {
+          description: `Apple was asked to: ${intent?.summary ?? text}`,
+        }); // broadcasts internally
         if ('error' in checkpoint) {
           this.broadcast({
             type: 'error',
@@ -3329,7 +3423,12 @@ export class SessionDO extends DurableObject<Env> {
    * The cap that remains is REPORTED rather than quiet: `truncated` is the difference between
    * "nothing else matches" and "nothing else was looked at".
    */
-  private async searchRecords(filter: SearchFilter): Promise<{ records: SearchRecord[]; scanned: number; truncated: boolean }> {
+  /**
+   * @param viewer who is READING, so a record can be called theirs — or, absent, cannot be called
+   * anyone's. index.ts sets it from the authenticated caller and overwrites whatever arrived on
+   * the query string.
+   */
+  private async searchRecords(filter: SearchFilter, viewer: string | null): Promise<{ records: SearchRecord[]; scanned: number; truncated: boolean }> {
     const SCAN_MESSAGES = 2000;
     const SCAN_ROWS = 1000;
     const records: SearchRecord[] = [];
@@ -3406,17 +3505,24 @@ export class SessionDO extends DurableObject<Env> {
       const n = narrowing(filter, { columns: ['label', 'kind'] });
       const rows = this.sql
         .exec(
-          `select id, label, kind, created_at from checkpoints ${n.where} order by created_at desc limit ?`,
+          `select id, label, kind, created_at, author_id from checkpoints ${n.where} order by created_at desc limit ?`,
           ...n.args,
           SCAN_ROWS,
         )
-        .toArray() as { id: string; label: string; kind: string; created_at: number }[];
+        .toArray() as { id: string; label: string; kind: string; created_at: number; author_id: string | null }[];
       for (const r of rows) {
         scanned += 1;
         records.push({
           id: r.id,
           type: 'checkpoint',
-          author: r.kind === 'manual' ? 'you' : 'apple',
+          //[[ WHO, READ FROM THE ROW. This was `r.kind === 'manual' ? 'you' : 'apple'` — a guess
+          //   from the kind, which on a shared project told every member that a teammate's
+          //   checkpoint was theirs. The row now records its author, so the only remaining
+          //   judgement is whether that author is the person reading.
+          //
+          //   An unrecorded author (a row from before the column) is NOT 'you'. Defaulting an
+          //   unknown to the reader is the original defect wearing a different hat. ]]
+          author: checkpointAuthor(r.kind, r.author_id, viewer),
           title: r.label,
           body: r.kind,
           createdAt: r.created_at,
@@ -3479,7 +3585,21 @@ export class SessionDO extends DurableObject<Env> {
   }
 
   // ------------------------------------------------------------------ checkpoints
-  async createCheckpoint(label: string, kind: CheckpointMeta['kind']): Promise<CheckpointMeta | { error: string }> {
+  /**
+   * @param meta.authorId the person who asked for it, or undefined when Apple took it itself. The
+   * CALLER resolves this — the socket's own attachment or the worker's authenticated user — never
+   * a value off the wire, or any member could sign a checkpoint with someone else's name.
+   * @param meta.description what the snapshot contains or why it was taken, in the user's words
+   * for a manual one and from the request for an automatic one. Blank becomes null: "" and "nobody
+   * wrote one" would render identically and mean different things.
+   */
+  async createCheckpoint(
+    label: string,
+    kind: CheckpointMeta['kind'],
+    meta2: { authorId?: string | null; description?: string | null } = {},
+  ): Promise<CheckpointMeta | { error: string }> {
+    const authorId = meta2.authorId ?? null;
+    const description = (meta2.description ?? '').trim().slice(0, MAX_CHECKPOINT_DESCRIPTION) || null;
     if (!(await this.pluginConnected())) return { error: 'Studio is not connected — connect Studio to create checkpoints.' };
     const snap = await this.execStudioOp({ op: 'snapshot', root: 'game', includeScripts: true }, 60_000);
     if (!snap.ok) return { error: snap.error ?? 'snapshot failed' };
@@ -3500,7 +3620,7 @@ export class SessionDO extends DurableObject<Env> {
       );
     }
     this.sql.exec(
-      `insert into checkpoints(id, label, kind, script_count, instance_count, size_bytes, created_at) values(?,?,?,?,?,?,?)`,
+      `insert into checkpoints(id, label, kind, script_count, instance_count, size_bytes, created_at, author_id, description) values(?,?,?,?,?,?,?,?,?)`,
       id,
       label,
       kind,
@@ -3508,6 +3628,8 @@ export class SessionDO extends DurableObject<Env> {
       meta.instanceCount ?? 0,
       gz.byteLength,
       Date.now(),
+      authorId,
+      description,
     );
     // retention: keep last 25
     this.sql.exec(
@@ -3522,6 +3644,8 @@ export class SessionDO extends DurableObject<Env> {
       scriptCount: meta.scriptCount ?? 0,
       instanceCount: meta.instanceCount ?? 0,
       sizeBytes: gz.byteLength,
+      authorId,
+      description,
     };
     this.broadcast({ type: 'checkpoint', checkpoint: cp });
     return cp;
@@ -3531,20 +3655,36 @@ export class SessionDO extends DurableObject<Env> {
     ok: boolean;
     error?: string;
     /** What the plugin reports it actually put back. Absent when the op never reached Studio. */
-    fidelity?: {
-      instancesCreated: number;
-      scriptsRestored: number;
-      scriptsExpected: number;
-      failedInstances: number;
-      failedScripts: number;
-      failedProperties: number;
-    };
+    fidelity?: RestoreFidelity;
     /** A caveat worth showing the user even though the restore succeeded. */
     note?: string;
   }> {
-    if (!(await this.pluginConnected())) return { ok: false, error: 'Studio is not connected' };
+    //[[ THE PERSON WHO PRESSED RESTORE IS WATCHING A BLANK DRAWER.
+    //
+    //   Everything below used to happen in silence: one op with a 120s ceiling, nothing broadcast
+    //   while it ran, and — on the ws path — a broadcast only when it FAILED. So the interface had
+    //   nothing to say for up to two minutes about the operation that was at that moment clearing
+    //   and rebuilding the user's place, and on success it had nothing to say at all.
+    //
+    //   Every exit from this method now reports itself, including the two refusals above the work,
+    //   because a restore that never starts is exactly the case where a silent UI leaves someone
+    //   waiting on something that is not coming.
+    //
+    //   `broadcast` and not a return value: the HTTP caller and the SDK already get the result,
+    //   and a second tab watching the same project has to see this too. ]]
+    const say = (phase: 'reading' | 'applying' | 'verifying' | 'done' | 'failed', rest: { fidelity?: RestoreFidelity; note?: string; error?: string } = {}) =>
+      this.broadcast({ type: 'restore_status', checkpointId: id, phase, ...rest });
+
+    if (!(await this.pluginConnected())) {
+      say('failed', { error: 'Studio is not connected' });
+      return { ok: false, error: 'Studio is not connected' };
+    }
     const chunks = this.sql.exec(`select data from checkpoint_chunks where checkpoint_id = ? order by idx`, id).toArray() as { data: ArrayBuffer }[];
-    if (!chunks.length) return { ok: false, error: 'checkpoint not found' };
+    if (!chunks.length) {
+      say('failed', { error: 'checkpoint not found' });
+      return { ok: false, error: 'checkpoint not found' };
+    }
+    say('reading');
     const total = chunks.reduce((n, c) => n + c.data.byteLength, 0);
     const buf = new Uint8Array(total);
     let off = 0;
@@ -3553,8 +3693,13 @@ export class SessionDO extends DurableObject<Env> {
       off += c.data.byteLength;
     }
     const jsonStr = await gunzip(buf);
+    say('applying');
     const applied = await this.execStudioOp({ op: 'restore', root: 'game', snapshot: JSON.parse(jsonStr) }, 120_000);
-    if (!applied.ok) return { ok: false, error: applied.error };
+    if (!applied.ok) {
+      say('failed', { error: applied.error });
+      return { ok: false, error: applied.error };
+    }
+    say('verifying');
 
     // SURFACE THE FIDELITY REPORT. The plugin returns exactly how faithful the restore was —
     // instancesCreated, scriptsRestored against scriptsExpected, and counts of instances, scripts
@@ -3587,23 +3732,26 @@ export class SessionDO extends DurableObject<Env> {
     // A pre-0.2.0 plugin returns no report at all. Absent evidence is reported as absent rather
     // than as success: `restored === undefined` must not read as "restored fine".
     if (d.restored === undefined) {
-      return { ok: true, fidelity, note: 'This Studio plugin is too old to report what it restored, so the result could not be verified.' };
+      const note = 'This Studio plugin is too old to report what it restored, so the result could not be verified.';
+      say('done', { fidelity, note });
+      return { ok: true, fidelity, note };
     }
 
     if (!d.restored) {
-      return { ok: false, error: d.error ?? 'restore incomplete', fidelity };
+      const error = d.error ?? 'restore incomplete';
+      say('failed', { fidelity, error });
+      return { ok: false, error, fidelity };
     }
 
     // Every instance and script came back, but properties can still have failed — and a part with
     // the wrong Size and CFrame is not the part the user checkpointed. Successful, with a caveat
     // the UI is expected to show.
     if (fidelity.failedProperties > 0) {
-      return {
-        ok: true,
-        fidelity,
-        note: `Restored, but ${fidelity.failedProperties} propert${fidelity.failedProperties === 1 ? 'y' : 'ies'} could not be set — some objects may differ from the checkpoint.`,
-      };
+      const note = `Restored, but ${fidelity.failedProperties} propert${fidelity.failedProperties === 1 ? 'y' : 'ies'} could not be set — some objects may differ from the checkpoint.`;
+      say('done', { fidelity, note });
+      return { ok: true, fidelity, note };
     }
+    say('done', { fidelity });
     return { ok: true, fidelity };
   }
 
