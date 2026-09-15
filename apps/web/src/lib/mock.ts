@@ -22,7 +22,7 @@ import type {
   StudioEventState,
   StudioFrame,
 } from '@golem/shared';
-import type { MeResponse, UsageDay } from './api';
+import type { MeResponse, StudioDiagnosticsResponse, UsageDay } from './api';
 import type { AttributionResponse } from '../components/ws/credits-model';
 import type { ProfileRow, ProjectRow } from './supabase';
 
@@ -300,6 +300,37 @@ export const mockStudioState: StudioEventState = {
   selectionCount: 2,
   pluginVersion: '0.4.1',
 };
+
+/**
+ * The connection record, in mock mode: paired, connected, with a real clock on it.
+ *
+ * Coherent with mockStudioState above on purpose — the same place name and ids — because a fixture
+ * where the bound place and the open place disagree would render the mismatch warning on every
+ * design review and teach whoever is looking that the warning is decoration.
+ */
+export function mockDiagnostics(): StudioDiagnosticsResponse {
+  const paired = now - 6 * 864e5;
+  return {
+    link: {
+      paired: true,
+      connected: true,
+      lastSeenAt: now - 4_000,
+      queuedOps: 0,
+      pluginVersion: '0.4.1',
+      pluginProtocol: 1,
+      place: { placeId: 1849204711, gameId: 5512240193, placeName: 'Ember Halls', boundAt: paired },
+    },
+    agentStatus: 'idle',
+    pairedAt: paired,
+    pairingExpiresAt: paired + 30 * 864e5,
+    openPlace: { placeName: 'Ember Halls', placeId: 1849204711, gameId: 5512240193, isRunMode: false },
+    placeMismatch: null,
+    recentOps: [
+      { op_id: 'op-91', kind: 'run_code', ok: 1, summary: 'Added 6 checkpoint pads to Stage 1', created_at: now - 26 * 60_000 },
+      { op_id: 'op-90', kind: 'set_property', ok: 1, summary: 'Lobby.Door.Anchored = true', created_at: now - 31 * 60_000 },
+    ],
+  };
+}
 
 /**
  * The Studio selection, in mock mode. Two items against a `selectionCount: 2` on mockStudioState —

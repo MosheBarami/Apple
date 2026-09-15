@@ -4188,6 +4188,162 @@ textarea {
   font-size: 1.35rem;
 }
 
+/* THE CONNECTION RECORD — what this project is bound to, above the way to change it.
+   Quieter than the code box on purpose: the code is the instruction and this is the
+   context, so it reads as a plate riveted to the machine rather than as a second call
+   to action. */
+.pairing-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.pairing-record {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 0.85rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+/* The three non-answers — still asking, could not tell — get the same plate so the
+   dialog does not change height under the user as the record arrives. */
+.pairing-record__unknown {
+  margin: 0;
+  padding: 0.7rem 0.9rem;
+  border: 1px dashed var(--line);
+  border-radius: var(--r-md);
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.pairing-record__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+
+.pairing-record__ident {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.pairing-record__place {
+  margin: 0;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.pairing-record__sub {
+  margin: 0.1rem 0 0;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--faint);
+}
+
+.pairing-record__state {
+  flex: 0 0 auto;
+  font-size: 0.72rem;
+  color: var(--faint);
+  padding-top: 0.1rem;
+}
+
+.pairing-record__facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.5rem 1rem;
+  margin: 0;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--hairline);
+}
+
+.pairing-record__facts dt {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.pairing-record__facts dd {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.pairing-record__facts dd.is-lapsed {
+  color: var(--warn);
+}
+
+.pairing-record__mismatch {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0.55rem 0.65rem;
+  border-radius: var(--r-sm);
+  background: var(--warn-soft);
+  color: var(--ink);
+  font-size: 0.79rem;
+  line-height: 1.5;
+}
+
+.pairing-record__ops {
+  list-style: none;
+  margin: 0;
+  padding: 0.6rem 0 0;
+  border-top: 1px solid var(--hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.pairing-record__ops li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.pairing-record__op {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pairing-record__when {
+  flex: 0 0 auto;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.pairing-record__acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--hairline);
+}
+
+.pairing-record__confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
 /* --------------------------------------------------------------------------
    16. Auth, usage, settings, admin, lab
    -------------------------------------------------------------------------- */
