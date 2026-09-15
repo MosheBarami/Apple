@@ -224,14 +224,41 @@ test('an amount that IS readable is minor units turned into money', () => {
 
 /* ----------------------------------------------------------------------- the words --- */
 
+/**
+ * THE KINDS THAT ARE NOT ABOUT A CHARGE, LISTED RATHER THAN SKIPPED.
+ *
+ * "every kind names the amount" was true of the three payment kinds and became false the moment a
+ * fourth arrived: `checkout_expired` is a purchase somebody abandoned, nothing was charged, and a
+ * figure in that sentence would invent a transaction. The rule below is therefore scoped — but by
+ * an EXPLICIT list, not by dropping the assertion, so a new kind still has to be classified on
+ * purpose and cannot escape the rule by existing. What this one says instead is pinned by
+ * 'an expired checkout is told...' at the foot of this file.
+ */
+const KINDS_WITHOUT_A_CHARGE = ['checkout_expired'];
+
 test('every dunning kind has a title and a body, and neither is empty', () => {
   for (const kind of D.DUNNING_KINDS) {
     const copy = D.dunningCopy({ kind, userId: 'u', eventId: 'evt', subjectId: 'in', amountDue: 1200, currency: 'usd', attempt: 2 });
     assert.ok(copy.title.length > 10, `${kind} has no title`);
     assert.ok(copy.body.length > 20, `${kind} has no body`);
     assert.ok(!/undefined|null|NaN/.test(copy.title + copy.body), `${kind} leaked a placeholder into the copy`);
-    // Every kind is about a specific charge, so every kind names it. A body that dropped the
-    // amount would be an alarm the reader cannot match against their statement.
+  }
+});
+
+test('a kind that IS about a charge names the charge, so the reader can match it to a statement', () => {
+  // Non-vacuity first: the exemption list has to name real kinds, and something has to be left to
+  // check. An exemption that quietly covered the whole set would make this test pass by testing
+  // nothing at all.
+  for (const kind of KINDS_WITHOUT_A_CHARGE) {
+    assert.ok(D.DUNNING_KINDS.includes(kind), `${kind} is exempted from a rule it is not subject to`);
+  }
+  const charged = D.DUNNING_KINDS.filter((k) => !KINDS_WITHOUT_A_CHARGE.includes(k));
+  assert.ok(charged.length > 0, 'every kind is exempt, so this asserts nothing');
+
+  for (const kind of charged) {
+    const copy = D.dunningCopy({ kind, userId: 'u', eventId: 'evt', subjectId: 'in', amountDue: 1200, currency: 'usd', attempt: 2 });
+    // A body that dropped the amount would be an alarm the reader cannot match against their
+    // statement.
     assert.ok(copy.body.includes('12.00 USD'), `${kind} does not name the amount it is about`);
   }
 });

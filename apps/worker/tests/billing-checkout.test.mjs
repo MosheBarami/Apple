@@ -165,6 +165,7 @@ test('and it does NOT send customer_update, which Stripe would refuse here', () 
   // the whole session — the tax feature would read as "enabled" and no checkout would open at all.
   const p = params(build(LIVE));
   assert.equal(p.get('customer_update[address]'), null);
+  assert.doesNotMatch(build(LIVE).body, /customer_update/, 'in any form, not merely the address key');
   assert.equal(p.get('customer'), null, 'and there is no customer id here to attach it to');
   assert.equal(p.get('customer_email'), 'a@b.c');
 });

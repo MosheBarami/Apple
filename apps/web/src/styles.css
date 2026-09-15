@@ -5669,6 +5669,21 @@ samp {
   color: var(--muted);
 }
 
+/* The one flexible column of the row. `min-width: 0` is what lets it actually give way: a grid
+   item's default minimum is its content, so a long Stripe line description would otherwise widen
+   the row and push the amount past the right edge of the card instead of wrapping inside it. */
+.invoice-detail__desc {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The multiplier, and only when the quantity is neither 1 nor unknown. Quiet and tabular because it
+   sits directly beside the amount and must not be read as a second figure of money. */
+.invoice-detail__qty {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
 .invoice-detail__amount {
   font-variant-numeric: tabular-nums;
   color: var(--ink);
