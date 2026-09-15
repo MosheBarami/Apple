@@ -4645,8 +4645,11 @@
   border-bottom: 0;
 }
 
-/* A dead row is dimmed, never hidden: "was an editor" is the sentence an admin needs. */
-.mb__row.is-inactive .mb__handle {
+/* A dead row is dimmed, never hidden: "was an editor" is the sentence an admin needs.
+   The sub-line goes with it — dimming the handle alone leaves "editor · joined by link"
+   at full strength under a faded name, which reads as the row being half-alive. */
+.mb__row.is-inactive .mb__handle,
+.mb__row.is-inactive .mb__sub {
   color: var(--gx-ink-3);
 }
 
@@ -4655,18 +4658,28 @@
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+  /* Takes the slack so the actions sit at the row's end, and yields before the
+     role select and the date input reach the width their own text needs. */
+  flex: 1 1 12rem;
 }
 
+/* `anywhere`: a handle is user-supplied and has no spaces to break at, and the drawer
+   is narrow. Without it one long id widens the row and scrolls the whole drawer. */
 .mb__handle {
   color: var(--gx-ink);
   font-size: 0.9rem;
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 .mb__sub,
 .mb__status {
   color: var(--gx-ink-3);
   font-size: 0.78rem;
+}
+
+.mb__sub {
+  overflow-wrap: anywhere;
 }
 
 .mb__status {
@@ -4704,6 +4717,19 @@
   border-top: 1px solid var(--gx-line, rgb(255 255 255 / 12%));
 }
 
+/* `.field` carries its own bottom margin for the page forms it was written for. Inside a
+   flex column that already has `gap`, that margin is added to the gap and the invite form
+   drifts apart. The gap is the one spacing authority here. */
+.mb__invite .field {
+  margin-block-end: 0;
+}
+
+.mb__invite .cs__input,
+.mb__invite .cs__select,
+.mb__invite .cs__date {
+  width: 100%;
+}
+
 .mb__invite-head {
   margin: 0;
   color: var(--gx-ink-3);
@@ -4721,6 +4747,11 @@
 
 .mb__invite-row .field {
   flex: 1 1 140px;
+  /* `min-width: 0`, because a flex item's default `auto` floors it at its content width: the
+     date input would refuse to shrink and push the row wider than the drawer. */
+  min-width: 0;
+}
+
 /* --------------------------------------------------------------------------
    23. The files drawer — components/ws/files-panel.tsx
 

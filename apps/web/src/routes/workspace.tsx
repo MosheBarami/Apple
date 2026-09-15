@@ -27,9 +27,16 @@ import { useGlobalShortcut } from '../components/shortcuts-dialog';
 import { SearchPanel } from '../components/ws/search-panel';
 import { EditMessageDialog } from '../components/ws/edit-message-dialog';
 import { MemoryPanel } from '../components/ws/memory-panel';
-import { InstructionsPanel } from '../components/ws/instructions-panel';
-import { ApiError, downloadExport, fetchPersonalisation, fetchProjectAccess, savePreferences, type SearchHit } from '../lib/api';
 import { MembersPanel } from '../components/ws/members-panel';
+import { InstructionsPanel } from '../components/ws/instructions-panel';
+import {
+  ApiError,
+  downloadExport,
+  fetchPersonalisation,
+  fetchProjectAccess,
+  savePreferences,
+  type SearchHit,
+} from '../lib/api';
 import { FilesPanel } from '../components/ws/files-panel';
 import { ACCESS_LOADING, allows, normaliseAccess, type AccessState } from '../lib/capabilities';
 import type { AssetSourcePolicy } from '@golem/shared';
@@ -126,43 +133,44 @@ export function WorkspacePage() {
     enabled: projectId.length > 0,
   });
 
-  //[[ WHAT THIS PERSON MAY DO, ASKED RATHER THAN ASSUMED.
+  //[[ WHAT THIS PERSON MAY DO HERE — asked, rather than assumed.
   //
-  //   The files drawer offers Rename, Duplicate and Delete. Showing those to an editor is right and
-  //   showing them to a viewer is three refusals waiting to happen, so `canEdit` below comes from
-  //   the server's own answer — `lib/capabilities` turns it into a state where "we have not checked
-  //   yet" and "you may not" are different values, and only the second is a permission.
+  //   `GET /api/shared/:id` resolves the role from `projects.owner_id` and the membership rows and
+  //   answers with the capability set. The owner is a member of their own project through that
+  //   column, so there is no separate owner path: one query serves both.
   //
-  //   Asked only while the drawer is open. A permission check fired on every workspace load, for
-  //   every user who never opens Files, would be a request bought for nobody. ]]
-  //[[ ONE ACCESS QUERY, NOT ONE PER DRAWER.
+  //   ONE ACCESS QUERY, NOT ONE PER DRAWER. Two drawers need this same answer — Files, to decide
+  //   whether Rename/Delete are offered, and Members, to decide whether the roster's controls are
+  //   live — and each arrived with its own copy. Two `useQuery` calls on one key is not twice the
+  //   cost, but it is two places for `enabled` and the error mapping to drift, and they already
+  //   had. Declared once, here, and gated on either drawer being open, so the check is still not
+  //   bought for a user who opens neither.
   //
-  //   Two drawers arrived needing the same answer — Files to decide whether Rename/Delete are
-  //   offered, Members to decide whether the roster's controls are live — and each brought its own
-  //   copy of this query. Two `useQuery` calls on the same key is not twice the cost, but it is two
-  //   places for `enabled` and the error mapping to drift apart, and they already had: one retried
-  //   and one did not, one carried the HTTP status into `detail` and one wrote 'unreachable' over
-  //   everything.
-  //
-  //   Declared once, here, and gated on either drawer being open — the check is still not bought
-  //   for a user who opens neither.
+  //   `retry: false`: a 403 here is the correct answer to a question we asked, not a flake, and
+  //   three silent retries would only delay the panel telling the user what it found out. ]]
   const accessQuery = useQuery({
-    queryKey: ['project-access', projectId],
+    queryKey: ['access', projectId],
     queryFn: () => fetchProjectAccess(projectId),
     enabled: projectId.length > 0 && (drawer === 'files' || drawer === 'members'),
     retry: false,
     staleTime: 5 * 60_000,
   });
-  //[[ THE THREE STATES ARE KEPT APART on purpose. `unavailable` is not `viewer`: a check that did
-  //   not come back is not a verdict about the person, and rendering it as one would be this
-  //   repository's failure-to-observe pattern in its most expensive place — an authority claim the
-  //   interface has not established. `normaliseAccess` owns the mapping; nothing here reads the
-  //   payload field by field. ]]
-  const access: AccessState = accessQuery.isSuccess
-    ? normaliseAccess(accessQuery.data)
-    : accessQuery.isError
-      ? { status: 'unavailable', detail: accessQuery.error instanceof ApiError ? String(accessQuery.error.status) : 'unreachable' }
-      : ACCESS_LOADING;
+
+  //[[ THE THIRD STATE IS THE POINT. `useQuery` is pending before the first answer and errors on a
+  //   refusal, and NEITHER of those is a role. Rendering either as one would hand a stranger a live
+  //   Remove button on an authority nothing established — the failure-to-observe pattern exactly.
+  //   `unavailable` is not `viewer`: a check that did not come back is not a verdict about the
+  //   person. `normaliseAccess` owns the mapping, so a role this build does not know lands as
+  //   `unavailable` rather than as an empty permission set; nothing here reads the payload field by
+  //   field. ]]
+  const access: AccessState = useMemo(() => {
+    if (accessQuery.isError) {
+      const e = accessQuery.error;
+      return { status: 'unavailable', detail: e instanceof ApiError ? e.message : 'the access check failed' };
+    }
+    if (!accessQuery.isSuccess) return ACCESS_LOADING;
+    return normaliseAccess(accessQuery.data);
+  }, [accessQuery.isSuccess, accessQuery.isError, accessQuery.error, accessQuery.data]);
 
   const onServerError = useCallback(
     (code: string, message: string) => toast(message || `Something went wrong (${code})`, 'error'),
@@ -392,10 +400,13 @@ export function WorkspacePage() {
       run: () => setDrawer('memory'),
     },
     {
+      // Listed for everybody, including a viewer who cannot manage anyone. The panel shows the
+      // roster to any member and says in a sentence why the controls are off; hiding the command
+      // would teach a viewer the product has no sharing at all.
       id: 'ws-members',
       title: 'Who can build here',
       section: 'Project',
-      keywords: ['members', 'share', 'collaborators', 'invite', 'permissions', 'role'],
+      keywords: ['members', 'share', 'collaborators', 'invite', 'permissions', 'role', 'roles'],
       run: () => setDrawer('members'),
     },
     {
@@ -684,7 +695,12 @@ export function WorkspacePage() {
           {/* Who else is in this project. An icon button beside memory rather than a named
               control: it is opened when someone wants to add or remove a collaborator, which is
               rarer than the thing this screen is for. The label says what the drawer answers,
-              because "Members" alone does not tell a viewer they will find their own role there. */}
+              because "Members" alone does not tell a viewer they will find their own role there.
+
+              It is NOT hidden from a viewer. The panel answers "who can see this" for anybody who
+              can see the project at all, and turns its own controls off with the reason attached —
+              a control that disappears teaches people the feature does not exist, which is how the
+              roster stayed invisible for as long as it did. */}
           <button
             type="button"
             className="gx-icon-btn"
@@ -997,8 +1013,9 @@ export function WorkspacePage() {
       </Drawer>
 
       <Drawer open={drawer === 'members'} onClose={() => setDrawer(null)} title="Who can build here">
-        {/* Mounted only while open, like the others: the roster is a live read and a search box
-            whose text belongs to the moment it was typed in. */}
+        {/* Mounted only while open, like the others: the panel holds a half-typed invitation in
+            local state and runs a live roster query, and neither should outlive the drawer the
+            user closed. */}
         {drawer === 'members' && <MembersPanel projectId={projectId} access={access} />}
       </Drawer>
 

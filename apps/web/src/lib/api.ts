@@ -1,12 +1,12 @@
 // Typed fetch helpers for the Apple worker API. All authed calls carry the
 // user's Supabase access token as a Bearer header.
 import { PRICE_CURRENCY, type RobloxScope, type AssetSourcePolicy } from '@golem/shared';
-import type { CheckpointMeta, MessageDto, PairingCodeDto, QuotaState, PlanId } from '@golem/shared';
+import type { CheckpointMeta, MessageDto, PairingCodeDto, QuotaState, PlanId, StudioLinkSummary } from '@golem/shared';
 import type { MilestoneBrief, NextResponse, RoadmapResponse } from '../components/roadmap/model';
 import type { AttributionResponse } from '../components/ws/credits-model';
 import type { FilesResponse, FileVersion } from '../components/ws/files-model';
 import { mockBrief, mockNext, mockRoadmap } from '../components/roadmap/mock';
-import { MOCK_MODE, mockAttribution, mockCounters, mockMe, mockMemory, mockNotifications, mockSpend, mockUsageDays } from './mock';
+import { MOCK_MODE, mockAttribution, mockCounters, mockDiagnostics, mockMe, mockMemory, mockNotifications, mockSpend, mockUsageDays } from './mock';
 import type { InboxResponse, MarkReadResult } from './notification-inbox.ts';
 import type { BillingChange, SubscriptionView } from './billing-copy';
 import { getAccessToken } from './supabase';
@@ -485,6 +485,57 @@ export const createPairingCode = (projectId: string): Promise<PairingCodeDto> =>
   MOCK_MODE
     ? Promise.resolve({ code: 'GLM-7F3K2Q', expiresAtIso: new Date(Date.now() + 9 * 60_000).toISOString() })
     : request<PairingCodeDto>(`/api/projects/${encodeURIComponent(projectId)}/pairing`, { method: 'POST' });
+
+// ---------------------------------------------------------------- the Studio link, for its owner
+//
+// THREE ROUTES THE WORKER HAS SERVED WITH NOTHING CALLING THEM. `/studio/diagnostics` carries the
+// bound place, when the pairing was made and when its 30-day clock runs out, any place mismatch,
+// and the last operations; `/studio/disconnect` revokes the plugin's token; `/studio/place/rebind`
+// is the way out of a place mismatch that is not re-pairing. docs/troubleshooting and docs/plugin
+// have both been telling users to "disconnect from the web workspace" — a promise with no control
+// behind it until these were called from somewhere.
+//
+// All three are under /api/projects, so all three are OWNER ONLY: a collaborator is answered 404,
+// and the dialog has to render that as "we could not check" rather than as "nothing is paired".
+
+/**
+ * The whole state of this project's Studio link.
+ *
+ * Mirrors what apps/worker/src/do/session.ts assembles at `/studio/diagnostics`, the way MemberRow
+ * below mirrors RosterEntry. Every field that can be unknown is `null` rather than a zero or an
+ * empty string, because "Studio has never reported a place" and "Studio has a place open" are two
+ * different sentences and the record exists to keep them apart.
+ */
+export interface StudioDiagnosticsResponse {
+  link: StudioLinkSummary;
+  agentStatus: string;
+  /** When the pairing token was issued, and when it lapses. Null when nothing is paired. */
+  pairedAt: number | null;
+  pairingExpiresAt: number | null;
+  /** What Studio last said about itself. Null when it has never reported. */
+  openPlace: { placeName: string; placeId: number; gameId: number; isRunMode: boolean } | null;
+  /** Set when the open place is not the bound one. `message` is the worker's own wording. */
+  placeMismatch: {
+    expectedPlaceName: string;
+    openPlaceName: string;
+    openPlaceId: number;
+    message: string;
+  } | null;
+  recentOps: { op_id: string; kind: string | null; ok: number | null; summary: string | null; created_at: number }[];
+}
+
+export const fetchStudioDiagnostics = (projectId: string): Promise<StudioDiagnosticsResponse> =>
+  MOCK_MODE
+    ? Promise.resolve(mockDiagnostics())
+    : request<StudioDiagnosticsResponse>(`/api/projects/${encodeURIComponent(projectId)}/studio/diagnostics`);
+
+/** Revoke the plugin's token. The next poll is answered 401 and Studio clears its own session. */
+export const disconnectStudio = (projectId: string): Promise<{ ok: boolean; revoked: boolean }> =>
+  request(`/api/projects/${encodeURIComponent(projectId)}/studio/disconnect`, { method: 'POST' });
+
+/** Forget the bound place, so the next state event from Studio binds whatever is open now. */
+export const rebindPlace = (projectId: string): Promise<{ ok: boolean }> =>
+  request(`/api/projects/${encodeURIComponent(projectId)}/studio/place/rebind`, { method: 'POST' });
 
 /**
  * Download the whole conversation as a file.
