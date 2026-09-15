@@ -162,6 +162,17 @@ const runSteps = [
  *      untouched: packages/shared still defines the mode and router.ts still
  *      routes it.
  */
+/*
+ * THE HEADING COUNTS THIS ARRAY RATHER THAN REMEMBERING IT.
+ *
+ * It read "Three modes, one price list." over a list of two. Super Agent was removed from what
+ * the product offers and the sentence above the cards was not, so the landing page advertised a
+ * mode nobody could pick — and the discrepancy was visible to any reader who counted the cards,
+ * which is the first thing a sceptical visitor does. A number typed into a heading is a claim
+ * about a list somewhere else in the file; deriving it makes the two impossible to disagree.
+ */
+const MODE_WORDS = ['no', 'One', 'Two', 'Three', 'Four', 'Five'] as const;
+
 const modes = [
   {
     name: 'Plan',
@@ -181,6 +192,8 @@ const modes = [
     featured: true,
   },
 ];
+
+const MODE_COUNT_WORD = MODE_WORDS[modes.length] ?? String(modes.length);
 
 /**
  * How it works.
@@ -468,7 +481,7 @@ const plans = (['free', 'builder', 'studio'] as const).map((id) => ({
     <section class="ap-section ap-section--seam" id="modes" aria-labelledby="modes-title">
       <div class="ap-section__inner">
         <p class="ap-eyebrow"><span class="ap-eyebrow__dot" aria-hidden="true"></span>Modes</p>
-        <h2 class="ap-display" id="modes-title">Three modes, one price list.</h2>
+        <h2 class="ap-display" id="modes-title">{MODE_COUNT_WORD} modes, one price list.</h2>
         <p class="ap-lede">
           Same builder, different settings. Switch mid-conversation; the run keeps its
           checkpoints either way.
