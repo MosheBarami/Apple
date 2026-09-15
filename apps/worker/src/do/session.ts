@@ -25,7 +25,7 @@ import type {
   StudioPlace,
   StudioLinkSummary,
 } from '@golem/shared';
-import { MESSAGE_MAX_CHARS } from '@golem/shared';
+import { MESSAGE_MAX_CHARS, type AssetSourcePolicy } from '@golem/shared';
 import {
   admitFrame,
   FrameRate,
@@ -2528,8 +2528,18 @@ export class SessionDO extends DurableObject<Env> {
     return agent.memoryMode ?? memoryModeOf(this.pinnedPrefs);
   }
 
-  /** The last personalisation this DO resolved, kept only to answer the line above. */
-  private pinnedPrefs: { memory_mode?: MemoryMode } | null = null;
+  /**
+   * The last personalisation this DO resolved, kept only to answer the line above — and, via
+   * `asset_sources`, to hand the agent's tools the policy they must consult.
+   *
+   * The policy rides on this rather than being read separately because `personalisationForProject`
+   * already resolves it: `mergePreferences` narrows `asset_sources` across org, user and project
+   * layers along with every other preference, and that result is what gets assigned here. A second
+   * reader would be a second implementation of the same precedence, and the two would disagree the
+   * first time somebody set the policy at the org layer. This field was simply typed too narrowly
+   * to see it.
+   */
+  private pinnedPrefs: { memory_mode?: MemoryMode; asset_sources?: AssetSourcePolicy } | null = null;
 
   private async updateMemory(agent?: AgentState) {
     const mode = agent ? this.memoryModeOn(agent) : memoryModeOf(this.pinnedPrefs);
@@ -2602,6 +2612,7 @@ export class SessionDO extends DurableObject<Env> {
       libraryAssetIds: new Set(agent?.libraryAssetIds ?? []),
       env: this.env,
       projectId: this.boundProjectId ?? undefined,
+      assetSources: this.pinnedPrefs?.asset_sources ?? undefined,
       studioConnected: () => this.opQueue.length < 100 && this.pluginSeenRecently,
       execStudioOp: (op, timeoutMs) => this.execStudioOp(op, timeoutMs),
       createCheckpoint: (label, kind) => this.createCheckpoint(label, kind),
