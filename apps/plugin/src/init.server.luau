@@ -322,7 +322,16 @@ local function pollLoop(generation: number)
 		if ok and pendingSelection == sendingSelection then pendingSelection = nil end
 		pollCount += 1
 		if status == 401 then
-			disconnectSession("Session ended — reconnect with a new code")
+			--[[ THE SERVER NOW SAYS WHY, AND THERE ARE THREE DIFFERENT WHYS.
+			
+				 A superseded pairing (this project was paired again from another Studio window), an
+				 expired 30-day token, and a revoked one — the web app's own "disconnect Studio"
+				 button — all used to arrive here as one sentence about reconnecting. `message` is
+				 optional, so a server that does not send one still produces exactly the old text
+				 and nothing has to be deployed in lockstep. ]]
+			local why = if type(data) == "table" and type(data.message) == "string" then data.message else nil
+			disconnectSession(why or "Session ended — reconnect with a new code")
+			if why then warn("[Apple] " .. why) end
 			break
 		end
 		if ok and type(data) == "table" then
@@ -390,9 +399,19 @@ local function startPolling()
 	end)
 end
 
+--[[ WHICH PLACE THIS PAIRING IS FOR.
+
+	 The saved session is a PLUGIN-WIDE setting (`plugin:GetSetting("golem_session")`), not a
+	 per-place one, so opening a different place in this same Studio carries the session across and
+	 the project's ops land in whatever happens to be open. Sending the place at claim time gives
+	 the server something to compare against; `game.PlaceId` is 0 for a place never saved to
+	 Roblox, and the server reads that as "cannot tell" and binds nothing, rather than refusing. ]]
 local function claimCode(code: string)
 	setStatus("Connecting…", COLORS.amber)
-	local ok, data, status = post(DEFAULT_API .. "/api/studio/claim", { code = code })
+	local ok, data, status = post(DEFAULT_API .. "/api/studio/claim", {
+		code = code,
+		place = { placeId = game.PlaceId, gameId = game.GameId, placeName = game.Name },
+	})
 	if not ok or not data or not data.token then
 		setStatus(status == 404 and "Invalid or expired code" or "Could not reach Apple — check your internet", COLORS.red)
 		return
@@ -406,6 +425,13 @@ local function claimCode(code: string)
 	plugin:SetSetting("golem_session", HttpService:JSONEncode(session))
 	codeBox.Text = ""
 	startPolling()
+	-- Say WHICH place the project was just bound to, rather than leaving the user to discover it
+	-- when an op lands somewhere they did not expect. A server that could not identify the place
+	-- sends null, and there is then nothing honest to print.
+	local bound = if type(data.place) == "table" then data.place else nil
+	if bound and type(bound.placeName) == "string" and bound.placeName ~= "" then
+		projectLabel.Text = "Project: " .. session.projectName .. "  ·  Place: " .. bound.placeName
+	end
 end
 
 connectBtn.MouseButton1Click:Connect(function()

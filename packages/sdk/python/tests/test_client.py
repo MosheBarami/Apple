@@ -180,13 +180,13 @@ class TestClient(ServerCase):
 
     def test_an_error_carries_the_servers_own_sentence(self):
         base, _ = self.serve({
-            "GET /api/docs/search": lambda req, n: {"status": 429, "body": {"error": "Daily Sparks used up"}},
+            "GET /api/docs/search": lambda req, n: {"status": 429, "body": {"error": "Daily Credits used up"}},
         })
         client = AppleClient(base_url=base, token="x", sleep=lambda s: None, max_attempts=2)
         with self.assertRaises(ApiError) as caught:
             client.search_docs("humanoid")
         self.assertEqual(caught.exception.status, 429)
-        self.assertEqual(caught.exception.message, "Daily Sparks used up")
+        self.assertEqual(caught.exception.message, "Daily Credits used up")
         self.assertEqual(caught.exception.attempts, 2)
 
     def test_a_post_is_not_repeated_by_a_503(self):

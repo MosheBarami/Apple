@@ -8,19 +8,61 @@ import {
   buildCheckoutRequest,
   buildPortalRequest,
   checkoutConfigured,
+  checkoutGuard,
   priceIdFor,
+  subscriptionView,
+  type Subscription,
 } from './billing';
 import { exportFilename, renderTranscriptMarkdown, type TranscriptExport } from './export';
 import type { Env, AuthedUser } from './env';
 import { verifyJwt, bearerToken } from './auth';
-import { getOwnedProject, getProfile, getProjectAccess, listProjectMembers, memberDirectory, supaRest, type ProjectRow } from './supa';
+import { getOwnedProject, getProfile, getProjectAccess, listProjectMembers, memberDirectory, supaRest, type MemberRow, type ProjectRow } from './supa';
 import { can, capabilitiesFor, asCollabRole, asShareScope, effectivePermissions, redeemShareLink, GRANTABLE_ROLES, type CollabAction, type Membership } from './collab';
-import { isShareToken, newShareToken, putKvGrant, putShareLink, readShareLink, revokeShareLink } from './collab-links';
+import {
+  isShareToken,
+  kvGrantBarred,
+  listKvGrants,
+  newShareToken,
+  patchKvGrant,
+  putKvGrant,
+  putShareLink,
+  readKvGrant,
+  readShareLink,
+  restoreKvGrant,
+  revokeKvGrant,
+  revokeShareLink,
+} from './collab-links';
+import {
+  BULK_INVITE_MAX,
+  EVENT_REASON_MAX,
+  buildMembershipEvent,
+  buildRoster,
+  filterRoster,
+  inviteEventKind,
+  parseRosterQuery,
+  planBulkInvite,
+  type MembershipEventInput,
+} from './membership';
 import { companionOpAccess, companionRefusal, sanitizeCompanionOp } from './companion';
 import { chat as llmChat, embed, getModels, budgetReport, budgetState, setKillSwitch, rawProbe, BudgetError } from './gateway';
 import { capabilityTable, providerHealth, selectProvider } from './providers';
 import { imageKvKey, type ImageMeta } from './imagegen';
 import { audioKvKey, servableAudioType, type AudioMeta } from './audio-store';
+import { kvWorkspace } from './webtools';
+import {
+  copyWorkspaceFile,
+  deleteWorkspaceFile,
+  freeCopyPath,
+  historyOf,
+  listWorkspace,
+  moveWorkspaceFile,
+  readVersionOf,
+  restoreWorkspaceFile,
+  revertWorkspaceFile,
+  trashOf,
+  WORKSPACE_OP_STATUS,
+  type WorkspaceOpCode,
+} from './workspace-files';
 import { auditCitations, corpusCensus, renderCitedContext, searchDocsDetailed } from './rag';
 import type { Citation, RetrievalOutcome } from './retrieval';
 import { serveStatic, ensureStaticTables } from './static';
@@ -34,6 +76,16 @@ import {
   summarize,
 } from './analytics';
 import { fetchStoredEvents, flushEvents, maybeFlush } from './analytics-sink';
+import {
+  INBOX_KINDS,
+  ensureNotificationTables,
+  groupNotifications,
+  listNotifications,
+  markRead,
+  unreadCount,
+} from './notification-store';
+import { notify, notifyMany } from './notify';
+import { dunningCopy, interpretDunningEvent } from './dunning';
 import { critiqueViews } from './vision';
 import { roadmapForProject, executionBrief, polishRoadmap, publicShape, type StudioProbe, type RoadmapChat } from './roadmap';
 import { refuseLuauIngress } from './tools';
@@ -41,16 +93,25 @@ import { ensureProvenanceTables, exportProjectAttribution } from './provenance';
 import {
   ENTRIES_PER_SCOPE_MAX,
   buildExport,
+  canAdministerOrg,
   canWriteScope,
+  createOrg,
   deleteMemoryEntry,
   ensureMemoryTables,
   isMemoryScope,
   listMemoryEntries,
+  listOrgsFor,
+  moveMemoryEntry,
+  orgMembersOf,
   orgMembership,
   parseImport,
+  personalDisclosures,
   putMemoryEntry,
   readMemoryAudit,
+  removeOrgMember,
+  updateOrgMember,
   type MemoryAccess,
+  type MemoryEntry,
   type MemoryScope,
 } from './memory-store';
 import {
@@ -65,7 +126,7 @@ import {
 } from './preferences';
 import { allModels } from './providers/registry';
 import { toolNames } from './tools';
-import { sparksForNeurons } from './pricing';
+import { creditsForNeurons } from './pricing';
 import {
   API_SCOPES,
   planRotation,
@@ -127,8 +188,8 @@ import {
   type RateBucket,
   type RateLimitVerdict,
 } from './public-api';
-import type { RenderViewResult, OpResult, StudioOp } from '@golem/shared';
-import { isPlanId, PLAN_IDS, type PlanId } from '@golem/shared';
+import type { RenderViewResult, OpResult, StudioOp, PairingCodeDto, StudioLinkSummary } from '@golem/shared';
+import { isPlanId, PLAN_IDS, PRICE_CURRENCY, type PlanId } from '@golem/shared';
 
 export { SessionDO } from './do/session';
 export { QuotaDO } from './do/quota';
@@ -530,7 +591,15 @@ function remainingLife(meta: { expiresAt?: number } | null): number {
  * 403 would confirm to a stranger that a given id exists.
  */
 app.get('/api/projects/:id/images/:imageId', async (c) => {
-  const ctx = await withOwnedProject(c, c.req.param('id'));
+  // `'read'` RATHER THAN OWNER-ONLY, and it is the whole point of sharing a project.
+  //
+  // A collaborator could open the conversation, read the message that says "here is the icon I
+  // generated", see the card — and get a 404 for the pixels, because this route asked whether they
+  // OWNED the project rather than whether they could read it. The artifact a run produced is part of
+  // what the run produced; a share that hands over the prose and withholds the output is a share of
+  // the transcript, not of the work. A stranger still gets the same 404 as a project that does not
+  // exist, because `withOwnedProject` answers null for both.
+  const ctx = await withOwnedProject(c, c.req.param('id'), 'read');
   if (!ctx) return c.json({ error: 'not found' }, 404);
 
   const imageId = c.req.param('imageId');
@@ -584,7 +653,8 @@ app.get('/api/projects/:id/images/:imageId', async (c) => {
  * rather than served as itself.
  */
 app.get('/api/projects/:id/audio/:audioId', async (c) => {
-  const ctx = await withOwnedProject(c, c.req.param('id'));
+  // Readable by any member who can read the project, for the reason written out on the image route.
+  const ctx = await withOwnedProject(c, c.req.param('id'), 'read');
   if (!ctx) return c.json({ error: 'not found' }, 404);
 
   const audioId = c.req.param('audioId');
@@ -601,9 +671,22 @@ app.get('/api/projects/:id/audio/:audioId', async (c) => {
   if (!contentType) return c.json({ error: 'not found' }, 404);
 
   const bytes = Uint8Array.from(atob(base64), (ch) => ch.charCodeAt(0));
+  //[[ A SOUND THE TOOL SAID WAS DOWNLOADABLE, AND WAS NOT.
+  //
+  //   `generate_sound` tells the model the user can download the result. Nothing served a
+  //   Content-Disposition, so the browser played it inline and a right-click was the only way to
+  //   keep it — a promise made in a tool description and broken by a missing header.
+  //
+  //   The filename is BUILT here from the id and the served type, never taken from anything stored:
+  //   a name out of KV would be a writer-chosen string in a response header, and that is how a
+  //   download acquires an extension nobody intended. `inline` remains the default so the existing
+  //   player is unaffected. ]]
+  const download = c.req.query('download') === '1';
+  const extension = contentType.includes('wav') ? 'wav' : contentType.includes('ogg') ? 'ogg' : 'mp3';
   return new Response(bytes, {
     headers: {
       'Content-Type': contentType,
+      'Content-Disposition': `${download ? 'attachment' : 'inline'}; filename="golem-${audioId}.${extension}"`,
       // PRIVATE, and bounded by the object's REMAINING life rather than the full TTL — the same
       // reasoning, and the same helper, as the image route.
       'Cache-Control': `private, max-age=${remainingLife(metadata)}`,
@@ -655,6 +738,40 @@ app.put('/api/projects/:id/memory', async (c) => {
     body: JSON.stringify({ memory_summary: out.memory.summary, memory_facts: out.memory.facts }),
   }).catch(() => {});
 
+  return c.json(out);
+});
+
+/**
+ * Accept or discard what Apple has asked to remember.
+ *
+ * Only reachable when the project's memory setting is `review`, which is what puts anything in the
+ * queue in the first place. The DO owns the decision — it holds the queue, and a second
+ * implementation of "does this proposal still exist" would be a second answer to it — so this
+ * route proves ownership, forwards, and mirrors the ACTIVE memory afterwards for the dashboard.
+ *
+ * A 404 from the DO means the proposal is no longer pending, and it is passed through rather than
+ * flattened into a 200: a panel that had been open while another tab accepted the same suggestion
+ * would otherwise report a decision the user never made.
+ */
+app.post('/api/projects/:id/memory/suggestions', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'));
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+  const res = await ctx.stub.fetch('https://do/memory/suggestions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: await c.req.text(),
+  });
+  if (!res.ok) return res;
+  const out = (await res.json()) as { memory: { summary: string | null; facts: string[] }; editedAt: string };
+  await fetch(`${c.env.SUPABASE_URL}/rest/v1/projects?id=eq.${encodeURIComponent(ctx.project.id)}`, {
+    method: 'PATCH',
+    headers: {
+      apikey: c.env.SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${ctx.user.jwt}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ memory_summary: out.memory.summary, memory_facts: out.memory.facts }),
+  }).catch(() => {});
   return c.json(out);
 });
 
@@ -725,11 +842,78 @@ const MEMORY_VOCAB = () => ({ knownModelIds: allModels().map((m) => m.id), known
 app.get('/api/memory/scopes', async (c) => {
   const user = c.get('user');
   await ensureMemoryTables(c.env);
-  const orgs = await orgMembership(c.env, user.userId);
+  // The NAME comes back with the id. A switcher that offered "org-9f2c…" would be a control nobody
+  // can use correctly — and the name is null for a membership whose organisation row is missing,
+  // which the panel renders as the id rather than as a blank.
+  const orgs = await listOrgsFor(c.env, user.userId);
   return c.json({
     user: { scopeId: user.userId, canWrite: true },
-    orgs: orgs.map((o) => ({ scopeId: o.orgId, role: o.role, canWrite: o.role === 'owner' || o.role === 'admin' })),
+    orgs: orgs.map((o) => ({ scopeId: o.id, name: o.name, role: o.role, canWrite: o.role === 'owner' || o.role === 'admin' })),
   });
+});
+
+// ---------------------------------------------------------------- organisations
+//[[ SOMETHING HAS TO CREATE A MEMBERSHIP.
+//
+//   The org layer was complete except for this: `memory_org_members` authorises every org-scoped
+//   read and write, and no code path anywhere wrote a row to it. Team instructions, the org
+//   preference floor and the org tool policy were therefore all unreachable — implemented, tested,
+//   and impossible to be subject to.
+//
+//   Every route below proves membership from the table before it acts, exactly like the scoped
+//   memory routes: `canAdministerOrg` reads the MemoryAccess built from the members table, never
+//   the body or the URL. ]]
+
+/** The organisations this caller is in. The same rows the scope switcher is built from. */
+app.get('/api/orgs', async (c) => {
+  await ensureMemoryTables(c.env);
+  return c.json({ orgs: await listOrgsFor(c.env, c.get('user').userId) });
+});
+
+/** Make one. The creator is its owner — see `createOrg` for why that is not optional. */
+app.post('/api/orgs', async (c) => {
+  await ensureMemoryTables(c.env);
+  const body = (await c.req.json().catch(() => null)) as { name?: unknown } | null;
+  const out = await createOrg(c.env, c.get('user').userId, (body as { name?: unknown })?.name);
+  if (!out.ok) return c.json({ error: out.reason }, 400);
+  return c.json({ org: out.org }, 201);
+});
+
+/** Who is in it. Members only — a non-member is told nothing, including who is in it. */
+app.get('/api/orgs/:id/members', async (c) => {
+  const orgId = c.req.param('id');
+  const proven = await memoryScopeAccess(c, 'org', orgId);
+  if (!proven) return c.json({ error: 'not found' }, 404);
+  return c.json({ members: await orgMembersOf(c.env, proven.access, orgId), canAdminister: canAdministerOrg(proven.access, orgId) });
+});
+
+/**
+ * Add someone, or change their role.
+ *
+ * The user id is in the path and the role in the body, so a body cannot address a different person
+ * than the URL — the same rule as the memory entry routes. `last_owner` comes back as 409 rather
+ * than 403: the caller is allowed to do this in general, and it is the state of the organisation
+ * that refuses, which is a different sentence and a different fix.
+ */
+app.put('/api/orgs/:id/members/:userId', async (c) => {
+  const orgId = c.req.param('id');
+  const proven = await memoryScopeAccess(c, 'org', orgId);
+  if (!proven) return c.json({ error: 'not found' }, 404);
+  const body = (await c.req.json().catch(() => null)) as { role?: unknown } | null;
+  const out = await updateOrgMember(c.env, proven.access, orgId, c.req.param('userId'), (body as { role?: unknown })?.role);
+  if (!out.ok) return c.json({ error: out.reason }, out.reason === 'forbidden' ? 403 : out.reason === 'last_owner' ? 409 : 400);
+  return c.json({ member: out.member });
+});
+
+app.delete('/api/orgs/:id/members/:userId', async (c) => {
+  const orgId = c.req.param('id');
+  const proven = await memoryScopeAccess(c, 'org', orgId);
+  if (!proven) return c.json({ error: 'not found' }, 404);
+  const out = await removeOrgMember(c.env, proven.access, orgId, c.req.param('userId'));
+  if (!out.ok) {
+    return c.json({ error: out.reason }, out.reason === 'forbidden' ? 403 : out.reason === 'last_owner' ? 409 : out.reason === 'not_a_member' ? 404 : 400);
+  }
+  return c.json({ removed: true });
 });
 
 /** Everything stored at one scope, plus the preferences and profile decoded out of it. */
@@ -737,16 +921,42 @@ app.get('/api/memory/:scope/:scopeId', async (c) => {
   const proven = await memoryScopeAccess(c, c.req.param('scope'), c.req.param('scopeId'));
   if (!proven) return c.json({ error: 'not found' }, 404);
   const scopeId = c.req.param('scopeId');
-  const entries = await listMemoryEntries(c.env, proven.access, proven.scope, scopeId);
+  //[[ SEARCH, AND WHY IT IS NOT A FILTER IN THE BROWSER.
+  //
+  //   The panel renders every row today, so a client-side filter would work — right up until the
+  //   list is paged, at which point it answers "no matches" for text that IS stored and nothing
+  //   distinguishes that from the true answer. The query goes to the store, which runs it in SQL
+  //   bound to this one scope.
+  //
+  //   `preferences` and `profile` are decoded from the UNFILTERED rows on purpose: they are the
+  //   settings in force, and a search box that silently emptied someone's preferences form while
+  //   they typed in it would be a search that edits. ]]
+  const query = c.req.query('q');
+  const entries = await listMemoryEntries(c.env, proven.access, proven.scope, scopeId, { query });
+  const all = query ? await listMemoryEntries(c.env, proven.access, proven.scope, scopeId) : entries;
   return c.json({
     scope: proven.scope,
     scopeId,
     canWrite: canWriteScope(proven.access, proven.scope, scopeId),
-    entries,
-    preferences: preferencesFromEntries(entries, MEMORY_VOCAB()),
-    profile: profileFromEntries(entries),
+    query: query ?? null,
+    entries: entries.map(withSensitivity),
+    preferences: preferencesFromEntries(all, MEMORY_VOCAB()),
+    profile: profileFromEntries(all),
   });
 });
+
+/**
+ * Tag a row with the personal data it contains, so the viewer can mask it.
+ *
+ * Computed on the way out rather than stored in a column, and that is the point: a stored flag is a
+ * second opinion that goes stale the moment the row is edited or the scanner learns a new shape,
+ * and a stale "this is safe to show" is the one direction that matters. Credentials never reach
+ * this function — `normaliseEntry` refuses them at the door — so what is left is the legitimate
+ * personal data a person may well have asked Apple to remember.
+ */
+function withSensitivity(e: MemoryEntry): MemoryEntry & { sensitive: string[] } {
+  return { ...e, sensitive: [...new Set(personalDisclosures(e.value).map((d) => d.kind))] };
+}
 
 /** Write one entry. The key is in the path, so a body cannot address a different row than the URL. */
 app.put('/api/memory/:scope/:scopeId/entries/:key', async (c) => {
@@ -765,8 +975,42 @@ app.put('/api/memory/:scope/:scopeId/entries/:key', async (c) => {
   });
   // 403 for a refused scope, 400 for a malformed entry. They are different failures and telling a
   // user "your text was too long" when they lack permission — or the reverse — teaches them nothing.
-  if (!out.ok) return c.json({ error: out.reason }, out.reason === 'forbidden' ? 403 : 400);
-  return c.json({ entry: out.entry });
+  // The DETAIL is carried through: "that looks like an API key (sk-…)" is a sentence a person can
+  // act on, and `sensitive_value` on its own is not.
+  if (!out.ok) return c.json({ error: out.reason, detail: out.detail ?? null }, out.reason === 'forbidden' ? 403 : 400);
+  return c.json({ entry: withSensitivity(out.entry) });
+});
+
+/**
+ * Move one row to another scope — "actually, this should apply to everything I build".
+ *
+ * There was no way to do this: export refuses to cross scopes by design, so the only route was to
+ * retype the rule in the other scope and delete the original, and between those two steps the rule
+ * either applies twice or not at all. The store checks write access to BOTH ends and refuses to
+ * overwrite anything already at the destination; this route only carries the answer.
+ */
+app.post('/api/memory/:scope/:scopeId/entries/:key/move', async (c) => {
+  const proven = await memoryScopeAccess(c, c.req.param('scope'), c.req.param('scopeId'));
+  if (!proven) return c.json({ error: 'not found' }, 404);
+  const body = (await c.req.json().catch(() => null)) as { toScope?: unknown; toScopeId?: unknown } | null;
+  if (!body || typeof body !== 'object') return c.json({ error: 'expected a destination' }, 400);
+  // The DESTINATION is proven separately, through the same function: a project id in a body is a
+  // claim, and `memoryScopeAccess` is the only thing in this file that turns one into a fact.
+  const toScope = body.toScope;
+  const toScopeId = typeof body.toScopeId === 'string' ? body.toScopeId : '';
+  const target = typeof toScope === 'string' ? await memoryScopeAccess(c, toScope, toScopeId) : null;
+  if (!target) return c.json({ error: 'forbidden' }, 403);
+  const out = await moveMemoryEntry(
+    c.env,
+    { ...proven.access, projectIds: [...new Set([...proven.access.projectIds, ...target.access.projectIds])] },
+    { scope: proven.scope, scopeId: c.req.param('scopeId') },
+    { scope: target.scope, scopeId: toScopeId },
+    c.req.param('key'),
+  );
+  if (!out.ok) {
+    return c.json({ error: out.reason }, out.reason === 'forbidden' ? 403 : out.reason === 'not_found' ? 404 : out.reason === 'target_exists' ? 409 : 400);
+  }
+  return c.json({ entry: withSensitivity(out.entry) });
 });
 
 app.delete('/api/memory/:scope/:scopeId/entries/:key', async (c) => {
@@ -938,6 +1182,149 @@ app.get('/api/projects/:id/export', async (c) => {
   });
 });
 
+/**
+ * THE PROJECT'S FILES, FOR THE PERSON WHOSE PROJECT IT IS.
+ *
+ * The workspace has existed since the web tools shipped and NOBODY COULD SEE IT. The agent wrote
+ * notes, plans, generated CSVs and design briefs into `ws:<project>:<path>` through
+ * `workspace_write`, the activity feed said "Listed the project files", and there was no route that
+ * returned one — so the only way to read a file Apple had written was to ask Apple to read it back
+ * to you. Files a user cannot open are not the user's files.
+ *
+ * FIVE DECISIONS, and each of them is the same decision the rest of this file already makes:
+ *
+ *   1. AUTHORISATION IS THE PROJECT, NOT THE PATH. `kvWorkspace(env.KV, project.id)` puts the
+ *      project id in every key it builds, so a caller cannot address another project's workspace
+ *      even with a valid path — exactly the reasoning `imageKvKey` records above.
+ *   2. READS ARE FOR MEMBERS, WRITES ARE FOR BUILDERS. A shared collaborator who can read the
+ *      conversation can read the files that conversation produced; renaming and deleting take
+ *      `build`, because they change the project rather than describe it.
+ *   3. THE RULES LIVE IN workspace-files.ts, NOT HERE. Both paths of a move are validated there,
+ *      collisions are refused there, and this route only maps a named code onto a status. A route
+ *      that re-implemented "is this path safe" would be a second answer free to disagree with the
+ *      one the tools use.
+ *   4. A DOWNLOAD IS ALWAYS AN ATTACHMENT, AND ALWAYS text/plain. The stored bytes are authored by
+ *      a model and a user; echoing an extension into a Content-Type would let `notes/x.js` be
+ *      served as script from our own origin, and `Content-Disposition: inline` would let it be a
+ *      page. The export route already serves files this way.
+ *   5. NOTHING IS DELETED OUTRIGHT. `delete` moves the file to a trash with a real expiry, and the
+ *      response says when it stops being recoverable.
+ */
+function workspaceRefusal(res: { code: WorkspaceOpCode; error: string }): Response {
+  return new Response(JSON.stringify({ error: res.error, code: res.code }), {
+    status: WORKSPACE_OP_STATUS[res.code],
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+app.get('/api/projects/:id/files', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'), 'read');
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+  if (!c.env.KV) return c.json({ error: 'this deployment has no file storage' }, 503);
+  const store = kvWorkspace(c.env.KV, ctx.project.id);
+  const listing = await listWorkspace(store, c.req.query('prefix') ?? '');
+  const bin = await trashOf(store);
+  // The trash travels with the listing rather than behind its own route: a file browser that shows
+  // 0 files and says nothing about the 12 recoverable ones is telling the user their work is gone.
+  return c.json({ ...listing, trash: bin.entries, trashRetentionDays: bin.retentionDays });
+});
+
+app.get('/api/projects/:id/files/content', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'), 'read');
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+  if (!c.env.KV) return c.json({ error: 'this deployment has no file storage' }, 503);
+  const store = kvWorkspace(c.env.KV, ctx.project.id);
+  const path = c.req.query('path') ?? '';
+  const versionRaw = c.req.query('version');
+
+  // A version was ASKED FOR, so a version that is not kept is a 404 rather than a silent fall back
+  // to the current text. Serving today's file under yesterday's version number is a lie the caller
+  // cannot detect.
+  const version = versionRaw === undefined || versionRaw === '' ? null : Number(versionRaw);
+  const got =
+    version === null
+      ? await (async () => {
+          const history = await historyOf(store, path);
+          if (!history.ok) return history;
+          const current = history.versions.find((v) => v.current);
+          if (!current) return { ok: false as const, code: 'not_found' as WorkspaceOpCode, error: `${history.path} is in the trash, not in the workspace` };
+          return readVersionOf(store, path, current.version);
+        })()
+      : await readVersionOf(store, path, version);
+  if (!got.ok) return workspaceRefusal(got);
+
+  if (c.req.query('download') === '1') {
+    const name = got.path.split('/').pop() ?? 'file.txt';
+    return new Response(got.content, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Content-Disposition': `attachment; filename="${name.replace(/[^A-Za-z0-9._-]/g, '_')}"`,
+        'X-Content-Type-Options': 'nosniff',
+        'Cache-Control': 'private, no-store',
+      },
+    });
+  }
+  return c.json({ path: got.path, version: got.version, bytes: got.bytes, savedAt: got.savedAt, content: got.content });
+});
+
+app.get('/api/projects/:id/files/history', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'), 'read');
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+  if (!c.env.KV) return c.json({ error: 'this deployment has no file storage' }, 503);
+  const res = await historyOf(kvWorkspace(c.env.KV, ctx.project.id), c.req.query('path') ?? '');
+  if (!res.ok) return workspaceRefusal(res);
+  return c.json(res);
+});
+
+app.post('/api/projects/:id/files/op', async (c) => {
+  // `sharedAccess` rather than `withOwnedProject` alone, so a member who CAN read the project but
+  // may not change it is told 403 — they already know the project exists, and a 404 would send them
+  // looking for a missing file instead of at their own role.
+  const access = await sharedAccess(c, c.req.param('id'), 'build');
+  if (!access.ctx) return collabRefusal(c, access.status);
+  const ctx = access.ctx;
+  if (!c.env.KV) return c.json({ error: 'this deployment has no file storage' }, 503);
+  const store = kvWorkspace(c.env.KV, ctx.project.id);
+  const body = (await c.req.json().catch(() => null)) as { op?: string; path?: string; to?: string; version?: number } | null;
+  const path = typeof body?.path === 'string' ? body.path : '';
+  const to = typeof body?.to === 'string' ? body.to : '';
+
+  switch (body?.op) {
+    // Rename and move are ONE operation named twice, because they are one operation: a rename is a
+    // move whose destination happens to share a folder. Two routes would be two chances to validate
+    // differently.
+    case 'rename':
+    case 'move': {
+      const res = await moveWorkspaceFile(store, path, to);
+      return res.ok ? c.json(res) : workspaceRefusal(res);
+    }
+    case 'copy': {
+      // An explicit destination is honoured; an absent one is answered with a free name rather than
+      // with a refusal the user has to solve by guessing.
+      const destination = to || (await freeCopyPath(store, path));
+      if (!destination) return c.json({ error: 'no free name is available near that path', code: 'occupied' }, 409);
+      const res = await copyWorkspaceFile(store, path, destination);
+      return res.ok ? c.json(res) : workspaceRefusal(res);
+    }
+    case 'delete': {
+      const res = await deleteWorkspaceFile(store, path);
+      return res.ok ? c.json(res) : workspaceRefusal(res);
+    }
+    case 'undelete': {
+      const res = await restoreWorkspaceFile(store, path);
+      return res.ok ? c.json(res) : workspaceRefusal(res);
+    }
+    case 'revert': {
+      const res = await revertWorkspaceFile(store, path, Number(body?.version));
+      return res.ok ? c.json(res) : workspaceRefusal(res);
+    }
+    default:
+      // Named rather than defaulted. An unknown op silently treated as one of the others is how a
+      // typo becomes a deletion.
+      return c.json({ error: `unknown file operation: ${String(body?.op ?? '')}`, code: 'bad_path' }, 400);
+  }
+});
+
 app.get('/api/projects/:id/checkpoints', async (c) => {
   const ctx = await withOwnedProject(c, c.req.param('id'));
   if (!ctx) return c.json({ error: 'not found' }, 404);
@@ -997,17 +1384,104 @@ app.post('/api/projects/:id/pairing', async (c) => {
   const ctx = await withOwnedProject(c, c.req.param('id'));
   if (!ctx) return c.json({ error: 'not found' }, 404);
   void count(c.env, 'pairing_create');
-  return pairingStub(c.env).fetch('https://do/create', {
+  const res = await pairingStub(c.env).fetch('https://do/create', {
     method: 'POST',
     body: JSON.stringify({ projectId: ctx.project.id, userId: ctx.user.userId, projectName: ctx.project.name }),
   });
+  if (!res.ok) return res; // the 429 for too many live codes, passed through unchanged
+  //[[ A SECOND PAIRING SUPERSEDES THE FIRST, AND THE USER IS TOLD BEFORE IT HAPPENS.
+  //
+  //   The session holds exactly one plugin token, so pairing again disconnects whatever was paired
+  //   — and the Studio that loses it finds out on its next poll, in a different window, as a
+  //   status label going grey. Nothing anywhere detected or reported that a project already had a
+  //   live pairing.
+  //
+  //   The link is read AFTER the code is minted, not before: a failure to read it must not cost
+  //   the user their code. `existingLink` is therefore null both for "nothing is paired" and for
+  //   "we could not tell", and the dialog treats an absent warning as no warning rather than as an
+  //   assurance — the two are not the same and it does not claim otherwise. ]]
+  const dto = (await res.json()) as PairingCodeDto;
+  let existingLink: StudioLinkSummary | null = null;
+  try {
+    const link = await ctx.stub.fetch('https://do/studio/link');
+    if (link.ok) {
+      const summary = (await link.json()) as StudioLinkSummary;
+      if (summary.paired) existingLink = summary;
+    }
+  } catch {
+    /* the code is already minted and is what the user came for */
+  }
+  return c.json({ ...dto, existingLink } satisfies PairingCodeDto);
+});
+
+/**
+ * Abandon a code that was minted and not used.
+ *
+ * Closing the pairing dialog did nothing to the code it had just shown: it stayed claimable for
+ * its full ten minutes against an UNAUTHENTICATED claim endpoint. The dialog now calls this when
+ * it closes and before it mints a replacement.
+ *
+ * Owner-scoped here, and checked AGAIN inside PairingDO against the user who minted the code —
+ * two different questions. This route answers "may you act on this project"; the object answers
+ * "is this your code", which is what stops a cancel on project A from revoking a code for project
+ * B. Neither check subsumes the other.
+ */
+app.post('/api/projects/:id/pairing/cancel', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'));
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+  const body = await c.req.json<{ code?: string }>().catch(() => null);
+  const code = typeof body?.code === 'string' ? body.code.slice(0, 32) : '';
+  if (!code) return c.json({ error: 'code required' }, 400);
+  return pairingStub(c.env).fetch('https://do/cancel', {
+    method: 'POST',
+    body: JSON.stringify({ code, userId: ctx.user.userId }),
+  });
+});
+
+//[[ THE STUDIO LINK, FOR THE PERSON WHO OWNS THE PROJECT.
+//
+//   All three of these read or write state the SessionDO already held and that no signed-in user
+//   could reach: `/info` carries most of it and is behind the admin key. docs/troubleshooting and
+//   docs/plugin have both been telling users to "disconnect from the web workspace" — a thing that
+//   did not exist until /disconnect below. ]]
+app.get('/api/projects/:id/studio/diagnostics', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'));
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+  return ctx.stub.fetch('https://do/studio/diagnostics');
+});
+
+/**
+ * Revoke this project's pairing.
+ *
+ * The plugin's next poll is answered 401 and it clears its own saved session, which is the path it
+ * has always taken for an expired token — so nothing new has to be installed in Studio for this to
+ * work on the builds already out there.
+ */
+app.post('/api/projects/:id/studio/disconnect', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'));
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+  void count(c.env, 'studio_revoked');
+  return ctx.stub.fetch('https://do/studio/revoke', { method: 'POST' });
+});
+
+/**
+ * Bind this project to whichever place Studio has open now.
+ *
+ * The escape hatch for the place guard, and the reason that guard is safe to ship: a user who
+ * genuinely moved their work into a new place ("Save As", a republish under a new id) would
+ * otherwise face a permanent refusal with re-pairing as the only way out.
+ */
+app.post('/api/projects/:id/studio/place/rebind', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'));
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+  return ctx.stub.fetch('https://do/studio/place/rebind', { method: 'POST' });
 });
 
 /**
  * THE STUDIO COMPANION'S CHANNEL: one direct-manipulation op, driven by a person.
  *
  * This is what the companion panel's own controls talk to — the transform handles, the Explorer
- * edits, the test controls, selection and camera. No model is involved and no Spark is spent,
+ * edits, the test controls, selection and camera. No model is involved and no Credit is spent,
  * because none of it is inference: it is the user's own click, forwarded to their own Studio.
  *
  * TWO CHECKS, IN THIS ORDER, AND THE ORDER MATTERS.
@@ -1076,14 +1550,14 @@ app.get('/api/projects/:id/roadmap', async (c) => {
   if (!out.ok) return c.json({ error: out.error }, 409);
   void count(c.env, 'roadmap_read');
 
-  // The deterministic roadmap is the product (§39). The model pass is opt-in, costs a Spark, and
+  // The deterministic roadmap is the product (§39). The model pass is opt-in, costs a Credit, and
   // can only reorder and rephrase what the scan already decided — so every failure below leaves a
   // complete roadmap on the wire, with `polished: false` saying plainly that it did not run.
   if (c.req.query('polish') !== '1') return c.json({ projectId: ctx.project.id, ...out.roadmap, shape: publicShape(out.shape) });
   const user = c.get('user');
   const spend = await c.env.QUOTA_DO.get(c.env.QUOTA_DO.idFromName(user.userId)).fetch('https://do/spend', {
     method: 'POST',
-    body: JSON.stringify({ sparks: 1, kind: 'roadmap_rank' }),
+    body: JSON.stringify({ credits: 1, kind: 'roadmap_rank' }),
   });
   const { ok } = (await spend.json()) as { ok: boolean };
   if (!ok) {
@@ -1091,7 +1565,7 @@ app.get('/api/projects/:id/roadmap', async (c) => {
       projectId: ctx.project.id,
       ...out.roadmap,
       shape: publicShape(out.shape),
-      notes: [...out.roadmap.notes, 'Daily Sparks are used up, so this is the unranked roadmap.'],
+      notes: [...out.roadmap.notes, 'Daily Credits are used up, so this is the unranked roadmap.'],
     });
   }
   const chat: RoadmapChat = async ({ system, user: prompt }) => {
@@ -1152,7 +1626,7 @@ app.post('/api/projects/:id/roadmap/brief', async (c) => {
 app.post('/api/studio/claim', async (c) => {
   const ip = c.req.header('CF-Connecting-IP') ?? 'unknown';
   if (ipLimited(`claim:${ip}`, 10)) return c.json({ error: 'slow down' }, 429);
-  const body = await c.req.json<{ code?: string }>().catch(() => null);
+  const body = await c.req.json<{ code?: string; place?: unknown }>().catch(() => null);
   if (!body?.code) return c.json({ error: 'code required' }, 400);
   const res = await pairingStub(c.env).fetch('https://do/claim', { method: 'POST', body: JSON.stringify({ code: body.code }) });
   if (!res.ok) return c.json({ error: 'invalid or expired code' }, 404);
@@ -1168,16 +1642,28 @@ app.post('/api/studio/claim', async (c) => {
   // headers rather than in the claim body so that a plugin predating version
   // reporting sends an ordinary request with two fewer headers, and needs no
   // special case anywhere.
-  await stub.fetch('https://do/plugin/register', {
+  const registered = await stub.fetch('https://do/plugin/register', {
     method: 'POST',
     body: JSON.stringify({
       tokenHash: await sha256hex(token),
       pluginVersion: c.req.header('X-Golem-Plugin-Version') ?? null,
       pluginProtocol: c.req.header('X-Golem-Plugin-Protocol') ?? null,
+      //[[ WHICH PLACE THIS PAIRING IS FOR, recorded at the moment it is made.
+      //
+      //   The plugin's session is a plugin-wide Studio setting, so without this the project is
+      //   bound to no place at all and its ops execute in whatever the user later opens. It rides
+      //   in the body rather than on a header because it is three values, and because a plugin too
+      //   old to send it simply omits the field — which studio-place.ts reads as "cannot tell",
+      //   binds nothing, and refuses nothing. ]]
+      place: body.place ?? null,
     }),
   });
+  const bound = registered.ok ? (((await registered.json()) as { place?: unknown }).place ?? null) : null;
   void count(c.env, 'studio_paired');
-  return c.json({ token, projectId: pairing.projectId, projectName: pairing.projectName });
+  // `place` goes back so the plugin can CONFIRM the binding to the user in the dock — "paired to
+  // <project> in <place>" — instead of leaving them to discover it when an op lands somewhere
+  // unexpected. Null means the open place could not be identified, which is not an error.
+  return c.json({ token, projectId: pairing.projectId, projectName: pairing.projectName, place: bound });
 });
 
 app.post('/api/studio/poll', async (c) => {
@@ -1238,6 +1724,27 @@ app.post('/api/studio/poll', async (c) => {
  * serve. Everything else you may have been rendering is now admin-only.
  */
 /**
+ * The billing record for one account, read from the DO that owns it.
+ *
+ * One reader rather than three call sites parsing the same payload: the checkout guard, /api/me and
+ * the history route all need the same record, and three independent readings of one JSON body is
+ * how two of them come to disagree about what "no subscription" looks like.
+ */
+async function readBillingRecord(
+  env: Env,
+  userId: string,
+): Promise<{ plan: string; customerId: string | null; subscription: Subscription | null; events: unknown[] }> {
+  const res = await env.QUOTA_DO.get(env.QUOTA_DO.idFromName(userId)).fetch('https://do/billing');
+  const body = (await res.json()) as { plan?: string; customerId?: string | null; subscription?: Subscription | null; events?: unknown[] };
+  return {
+    plan: body.plan ?? 'free',
+    customerId: body.customerId ?? null,
+    subscription: body.subscription ?? null,
+    events: body.events ?? [],
+  };
+}
+
+/**
  * Stripe webhook. The SOURCE OF TRUTH for entitlement, not the checkout redirect.
  *
  * A user who pays and closes the tab before the redirect still bought the thing; a user who reaches
@@ -1277,8 +1784,38 @@ app.post('/api/billing/webhook', async (c) => {
     return c.json({ error: 'invalid json' }, 400);
   }
 
+  //[[ THE PAYMENT PROBLEM NOBODY WAS EVER TOLD ABOUT.
+  //
+  //   `billing.ts` keeps `past_due` ENTITLING on purpose - a failed renewal is usually an expired
+  //   card, and cutting a paying customer off at the first retry is worse service than carrying
+  //   them through it. The consequence was that a card could fail, Stripe could retry it over a
+  //   fortnight, the subscription could lapse to free at the end, and the product never said a
+  //   word: the generous grace period was invisible, so it read as the service breaking for no
+  //   reason.
+  //
+  //   Read BEFORE the entitlement path and independently of it. `interpretDunningEvent` handles
+  //   the invoice events `interpretStripeEvent` returns `ignored` for, and it returns no plan:
+  //   entitlement stays the single opinion of `entitlementFor`, computed from status and period.
+  //
+  //   The INVOICE is the dedupe subject, so Stripe's three retries of one invoice are one line in
+  //   the inbox with a count, rather than three alarms about one card. ]]
+  const dunning = interpretDunningEvent(event);
+  if (dunning) {
+    const copy = dunningCopy(dunning);
+    c.executionCtx.waitUntil(
+      notify(c.env, {
+        kind: 'billing_issue',
+        recipientId: dunning.userId,
+        subject: dunning.invoiceId ?? dunning.eventId,
+        title: copy.title,
+        body: copy.body,
+        at: Date.now(),
+      }).then(() => undefined),
+    );
+  }
+
   const outcome = interpretStripeEvent(event);
-  if (!outcome.userId) return c.json({ ok: true, ignored: outcome.ignored ?? 'no user' });
+  if (!outcome.userId) return c.json({ ok: true, ignored: outcome.ignored ?? 'no user', dunning: dunning?.kind ?? null });
 
   const quota = c.env.QUOTA_DO.get(c.env.QUOTA_DO.idFromName(outcome.userId));
   if (outcome.subscription) {
@@ -1289,11 +1826,24 @@ app.post('/api/billing/webhook', async (c) => {
       method: 'POST',
       // The customer id rides along so the billing portal has an account to open later. It is the
       // only way back to a subscription the user started, and it arrives on these events alone.
-      body: JSON.stringify({ plan, customerId: outcome.subscription.customerId }),
+      //
+      // THE WHOLE SUBSCRIPTION GOES TOO. status, currentPeriodEnd and cancelAtPeriodEnd were read
+      // from the event and then dropped here, which is why the product could not tell a renewal
+      // from a cancellation after the webhook returned. The event id goes with it so a redelivery
+      // is applied once — the signature window bounds a replay, it does not make one a no-op.
+      body: JSON.stringify({
+        plan,
+        customerId: outcome.subscription.customerId,
+        subscription: outcome.subscription,
+        eventId: outcome.eventId,
+      }),
     });
   }
   if (outcome.creditsDelta) {
-    await quota.fetch('https://do/grant-credits', { method: 'POST', body: JSON.stringify({ credits: outcome.creditsDelta }) });
+    await quota.fetch('https://do/grant-credits', {
+      method: 'POST',
+      body: JSON.stringify({ credits: outcome.creditsDelta, eventId: outcome.eventId }),
+    });
   }
   return c.json({ ok: true, applied: { plan: !!outcome.subscription, credits: outcome.creditsDelta ?? 0 } });
 });
@@ -1317,6 +1867,22 @@ app.post('/api/billing/checkout', async (c) => {
   const body = (await c.req.json().catch(() => ({}))) as { plan?: unknown; returnTo?: unknown };
   const plan: string = String(body.plan ?? '');
   if (!isPlanId(plan)) return c.json({ error: `unknown plan "${plan}"` }, 400);
+
+  /*
+   * ONE SUBSCRIPTION PER ACCOUNT, ENFORCED HERE RATHER THAN IN THE BROWSER.
+   *
+   * A Stripe Checkout ADDS a subscription; it never replaces one. The plan ladder already sends a
+   * paying user to the portal instead, but this route did not look at the caller's state at all —
+   * so a direct POST created a second subscription beside the running one and the customer was
+   * charged for both. The comment above `allow_promotion_codes` in billing.ts claimed this guard
+   * existed; it did not.
+   *
+   * A LAPSED CUSTOMER IS NOT REFUSED: coming back after a cancellation is a first subscription
+   * again, and that is the reactivation path.
+   */
+  const record = await readBillingRecord(c.env, user.userId);
+  const guard = checkoutGuard(subscriptionView(record.subscription, Math.floor(Date.now() / 1000)));
+  if (!guard.ok) return c.json({ error: guard.error }, guard.status);
 
   // The return URL is OURS, never the caller's. An attacker-supplied returnTo would turn this into
   // an open redirect signed by Stripe's domain.
@@ -1371,11 +1937,32 @@ app.post('/api/billing/portal', async (c) => {
   return c.json({ url: session.url });
 });
 
+/**
+ * THIS ACCOUNT'S BILLING HISTORY.
+ *
+ * `plan` used to be overwritten in place by the webhook, so "when did this account go from Studio
+ * to Free, and on which Stripe event" had no answer on our side at all — not for the user, and not
+ * for whoever had to answer their email about it. QuotaDO now records each change; this is where
+ * the person it is about can read it.
+ *
+ * Scoped to the caller's own DO by construction: the id is derived from the verified JWT subject,
+ * so there is no parameter here that could address somebody else's record.
+ */
+app.get('/api/billing/history', async (c) => {
+  const user = c.get('user');
+  const record = await readBillingRecord(c.env, user.userId);
+  return c.json({ events: record.events });
+});
+
 /** What the plan controls should offer, so the UI never shows a button that cannot work. */
 app.get('/api/billing/config', async (c) => {
   return c.json({
     checkout: checkoutConfigured(c.env),
     purchasable: PLAN_IDS.filter((p: PlanId) => priceIdFor(c.env, p) !== null),
+    // THE SERVER SAYS WHAT IT CHARGES IN. A '$' on a page is not a currency — the same glyph is the
+    // US, Canadian and Australian dollar — and before this the only place the real charge currency
+    // appeared was Stripe's own page, after the user had already committed to paying.
+    currency: PRICE_CURRENCY,
   });
 });
 
@@ -1389,9 +1976,10 @@ app.get('/api/providers', async (c) => {
 
 app.get('/api/me', async (c) => {
   const user = c.get('user');
-  const [profile, quotaRes] = await Promise.all([
+  const [profile, quotaRes, record] = await Promise.all([
     getProfile(c.env, user.jwt, user.userId),
     c.env.QUOTA_DO.get(c.env.QUOTA_DO.idFromName(user.userId)).fetch('https://do/state'),
+    readBillingRecord(c.env, user.userId),
   ]);
   const budget = (await budgetState(c.env)) as { dayRemainingFraction: number; killed: boolean };
   return c.json({
@@ -1399,6 +1987,16 @@ app.get('/api/me', async (c) => {
     email: user.email,
     profile,
     quota: await quotaRes.json(),
+    /*
+     * THE SUBSCRIPTION, NOT JUST THE TIER.
+     *
+     * `quota.plan` says what may be spent. It cannot say when the plan renews, that it cancels at
+     * the end of the period, that a renewal failed and is being retried, or that a payment is
+     * waiting on a card authentication — all of which arrived on the same Stripe event and were
+     * discarded. `subscriptionView` is the single reading of that record; every surface derives
+     * from it rather than interpreting the raw fields again.
+     */
+    billing: subscriptionView(record.subscription, Math.floor(Date.now() / 1000)),
     // service-wide headroom, so the app can explain a shared-capacity stop honestly
     service: { capacityRemaining: budget.dayRemainingFraction, paused: budget.killed },
   });
@@ -1410,6 +2008,53 @@ app.get('/api/me/usage', async (c) => {
   return c.json(await res.json());
 });
 
+/**
+ * THE INBOX.
+ *
+ * ADDRESSED BY THE TOKEN, NEVER BY A PARAMETER. There is no `?user=` on this route and there is no
+ * variant of the store that takes one: `c.get('user').userId` comes from the verified JWT, and the
+ * store binds it into every clause. An inbox is the densest concentration of "who did what with
+ * whom" the product has - a mention says who is on a project, a security event says when a key
+ * moved - so a listing that could be addressed by user id would be a directory of everyone's
+ * activity behind one bad `if`.
+ *
+ * `groups` rides along with the rows rather than sitting behind a second route, because a client
+ * that renders a collapsed view and a count needs both to agree about the same instant. Two routes
+ * would be two reads at two times, and the number under the heading would disagree with the list
+ * under it often enough for somebody to file it.
+ */
+app.get('/api/notifications', async (c) => {
+  const user = c.get('user');
+  await ensureNotificationTables(c.env);
+  const now = Date.now();
+  const unreadOnly = c.req.query('unread') === 'true';
+  const limit = Number(c.req.query('limit'));
+  const [items, unread, groups] = await Promise.all([
+    listNotifications(c.env, user.userId, { now, unreadOnly, limit: Number.isFinite(limit) ? limit : undefined }),
+    unreadCount(c.env, user.userId, { now }),
+    groupNotifications(c.env, user.userId, { now }),
+  ]);
+  return c.json({ items, unread, groups, kinds: INBOX_KINDS });
+});
+
+/**
+ * Mark rows read.
+ *
+ * The count comes back from the WRITE. "Marked 4 read" when the ids belonged to someone else's
+ * inbox is exactly what the recipient binding exists to prevent, and echoing the request back as
+ * if it were the result is how that would go unnoticed.
+ */
+app.post('/api/notifications/read', async (c) => {
+  const user = c.get('user');
+  const body = (await c.req.json().catch(() => null)) as { ids?: unknown; all?: unknown } | null;
+  await ensureNotificationTables(c.env);
+  const all = body?.all === true;
+  const ids = Array.isArray(body?.ids) ? body.ids : [];
+  if (!all && ids.length === 0) return c.json({ error: 'name some ids, or pass all' }, 400);
+  const marked = await markRead(c.env, user.userId, { ids, all, now: Date.now() });
+  return c.json({ marked, unread: await unreadCount(c.env, user.userId, { now: Date.now() }) });
+});
+
 app.get('/api/docs/search', async (c) => {
   const q = (c.req.query('q') ?? '').slice(0, 300);
   if (!q.trim()) return c.json({ hits: [] });
@@ -1417,10 +2062,10 @@ app.get('/api/docs/search', async (c) => {
   const user = c.get('user');
   const spend = await c.env.QUOTA_DO.get(c.env.QUOTA_DO.idFromName(user.userId)).fetch('https://do/spend', {
     method: 'POST',
-    body: JSON.stringify({ sparks: 1, kind: 'docs_search' }),
+    body: JSON.stringify({ credits: 1, kind: 'docs_search' }),
   });
   const { ok } = (await spend.json()) as { ok: boolean };
-  if (!ok) return c.json({ error: 'Daily Sparks used up', hits: [] }, 429);
+  if (!ok) return c.json({ error: 'Daily Credits used up', hits: [] }, 429);
   try {
     const { hits, outcome, citations } = await searchDocsDetailed(c.env, q, 6);
     // `outcome` travels with the results, always — a caller that renders an empty list has to be
@@ -1612,7 +2257,7 @@ app.get('/api/admin/model-routing', async (c) => {
  * against the global neuron ledger before the model runs and settles the real cost afterwards —
  * so the kill switch and the daily/monthly caps refuse this probe exactly as they refuse a chat
  * turn. This route used to call `c.env.AI.run` directly and was the one way in the product to
- * spend model tokens without a reservation. It charges no user Sparks: QuotaDO is untouched.
+ * spend model tokens without a reservation. It charges no user Credits: QuotaDO is untouched.
  */
 app.post('/api/admin/raw-probe', async (c) => {
   const { model, prompt, system, tools, maxTokens, reasoning, sessionId } = await c.req.json<{
@@ -1828,7 +2473,7 @@ app.post('/api/admin/rag-test', async (c) => {
   });
 });
 
-/** Clear a user's Spark usage for a day, so the visual benchmark can be run more than once daily. */
+/** Clear a user's Credit usage for a day, so the visual benchmark can be run more than once daily. */
 app.post('/api/admin/quota-reset', async (c) => {
   const { userId, day } = await c.req.json<{ userId: string; day?: string }>();
   const res = await c.env.QUOTA_DO.get(c.env.QUOTA_DO.idFromName(userId)).fetch('https://do/reset', {
@@ -2062,6 +2707,43 @@ app.get('/api/admin/static-list', async (c) => {
   return c.json(rows.results);
 });
 
+/**
+ * Tell the account holder that something security-relevant happened on their account.
+ *
+ * SENT EVEN WHEN THEY DID IT THEMSELVES, which is the whole point and the one place this product
+ * deliberately notifies somebody about their own action. "A new API key was created" is unremarkable
+ * on the day you create one and is the only warning you get on the day you did not. A log that is
+ * never read while nothing is wrong is a log nobody thinks to read on the day something is - and
+ * `analytics.ts`'s AuditEvent was exactly that: written on every one of these paths, visible to an
+ * operator, and never to the person whose account it was about.
+ *
+ * `security_event` is a kind nobody may mute (notifications.ts), so this needs no preference check.
+ */
+function securityNotice(c: Context, recipientId: string, subject: string, title: string, body: string): void {
+  const sending = notify(c.env, {
+    kind: 'security_event',
+    recipientId,
+    actorId: c.get('user')?.userId,
+    subject,
+    title,
+    body,
+    at: Date.now(),
+  })
+    .then(() => undefined)
+    // A notification that cannot be DELIVERED must not surface as a failure of the thing it is
+    // about. The key was minted; the member was removed; those are done and the answer is true.
+    .catch(() => undefined);
+  //[[ `c.executionCtx` THROWS — it does not return undefined — when the worker was invoked without
+  //   one. Every test harness in this repository calls `app.fetch(request, env)` with two
+  //   arguments, so reaching for it unguarded turned an API-key mint and a member removal into
+  //   500s: a security NOTICE taking down the security ACTION it was reporting on. ]]
+  try {
+    c.executionCtx.waitUntil(sending);
+  } catch {
+    void sending;
+  }
+}
+
 // ---------------------------------------------------------------- API keys (JWT-authenticated)
 /**
  * Mint an API key.
@@ -2134,6 +2816,13 @@ app.post('/api/keys', async (c) => {
   };
   await insertApiKey(c.env, { ...rec, hash: minted.hash });
   void count(c.env, `api_key_created_${minted.mode}`);
+  securityNotice(
+    c,
+    user.userId,
+    `key:${minted.id}`,
+    'A new API key was created on your account',
+    `"${name}" (${minted.mode}) can reach ${projects.length} project(s) with ${scopes.length} scope(s). If this was not you, revoke it.`,
+  );
   return c.json({ ...publicKeyShape(rec), key: minted.key }, 201);
 });
 
@@ -2194,6 +2883,13 @@ app.post('/api/keys/:id/rotate', async (c) => {
   // rotation.
   const retired = await retireApiKey(c.env, user.userId, existing.id, plan.retireAt);
   void count(c.env, 'api_key_rotated');
+  securityNotice(
+    c,
+    user.userId,
+    `key:${minted.id}`,
+    'An API key on your account was rotated',
+    `"${existing.name}" was replaced. The old key stops working at ${new Date(plan.retireAt).toISOString()}.`,
+  );
   return c.json(
     {
       ...publicKeyShape(rec),
@@ -2213,6 +2909,7 @@ app.delete('/api/keys/:id', async (c) => {
   const ok = await revokeApiKey(c.env, user.userId, c.req.param('id'), Date.now());
   if (!ok) return c.json({ error: 'not found' }, 404);
   void count(c.env, 'api_key_revoked');
+  securityNotice(c, user.userId, `key:${c.req.param('id')}`, 'An API key on your account was revoked', 'It stops working immediately.');
   return c.json({ ok: true });
 });
 
@@ -2308,13 +3005,13 @@ app.get('/v1/openapi.json', (c) => c.json(openApiDocument(new URL(c.req.url).ori
 app.get('/v1/models', (c) => c.json(publicModelList(Date.now())));
 
 // ---------------------------------------------------------------- /v1 completions
-async function quotaSpend(env: Env, userId: string, sparks: number, kind: string, requestId: string) {
+async function quotaSpend(env: Env, userId: string, credits: number, kind: string, requestId: string) {
   const res = await env.QUOTA_DO.get(env.QUOTA_DO.idFromName(userId)).fetch('https://do/spend', {
     method: 'POST',
     headers: { [REQUEST_ID_HEADER]: requestId },
-    body: JSON.stringify({ sparks, kind }),
+    body: JSON.stringify({ credits, kind }),
   });
-  return (await res.json()) as { ok: boolean; state?: { sparksRemaining?: number } };
+  return (await res.json()) as { ok: boolean; state?: { creditsRemaining?: number } };
 }
 
 function idemStorageKey(keyId: string, idemKey: string): string {
@@ -2397,19 +3094,19 @@ async function handleCompletion(c: PublicCtx, legacy: boolean): Promise<Response
   // ---- run it (or don't, in the sandbox) ----
   const sandbox = key.mode === 'test';
   let resp;
-  let sparksSpent = 0;
-  let sparksRemaining: number | null = null;
+  let creditsSpent = 0;
+  let creditsRemaining: number | null = null;
   if (sandbox) {
     resp = sandboxCompletion(req);
   } else {
-    // Admission first: one Spark before anything runs, settled against the real cost afterwards.
+    // Admission first: one Credit before anything runs, settled against the real cost afterwards.
     // Same order the agent loop uses — a call that is refused must not have cost anything.
     const admission = await quotaSpend(c.env, key.userId, 1, legacy ? 'api_completion' : 'api_chat', requestId);
     if (!admission.ok) {
-      return refuse(429, 'insufficient_quota', 'This account has no Sparks left today.');
+      return refuse(429, 'insufficient_quota', 'This account has no Credits left today.');
     }
-    sparksSpent = 1;
-    sparksRemaining = admission.state?.sparksRemaining ?? null;
+    creditsSpent = 1;
+    creditsRemaining = admission.state?.creditsRemaining ?? null;
     try {
       resp = await llmChat(
         c.env,
@@ -2427,11 +3124,11 @@ async function handleCompletion(c: PublicCtx, legacy: boolean): Promise<Response
       }
       return refuse(502, 'upstream_error', 'The model could not be reached.');
     }
-    const owed = sparksForNeurons(resp.neurons) - sparksSpent;
+    const owed = creditsForNeurons(resp.neurons) - creditsSpent;
     if (owed > 0) {
       const settle = await quotaSpend(c.env, key.userId, owed, legacy ? 'api_completion' : 'api_chat', requestId);
-      sparksSpent += owed;
-      sparksRemaining = settle.state?.sparksRemaining ?? sparksRemaining;
+      creditsSpent += owed;
+      creditsRemaining = settle.state?.creditsRemaining ?? creditsRemaining;
     }
   }
 
@@ -2457,8 +3154,8 @@ async function handleCompletion(c: PublicCtx, legacy: boolean): Promise<Response
     ...usageHeaders({
       inputTokens: resp.usage.inputTokens,
       outputTokens: resp.usage.outputTokens,
-      sparksSpent,
-      sparksRemaining,
+      creditsSpent,
+      creditsRemaining,
     }),
     ...(sandbox ? { 'X-Golem-Sandbox': 'true' } : {}),
   };
@@ -2737,6 +3434,80 @@ async function collabDirectory(c: Context, ctx: { user: AuthedUser; project: Pro
   return memberDirectory(ctx.project, rows, profile?.display_name ?? null);
 }
 
+/**
+ * THE ROSTER: the same rows the directory is built from, INCLUDING the ones it hides.
+ *
+ * `collabDirectory` above is the live list — who can be @mentioned right now — and administration
+ * needs the opposite: the expired invitation, the suspended member, the guest who walked in
+ * through a link are exactly the rows somebody is about to act on. Both views classify through
+ * `classifyGrant`, so neither can say a grant is live when the door says it is not.
+ *
+ * `complete` is not decoration. The link-derived grants live in KV, a store that can be
+ * unreachable, and an empty list from a failed read is indistinguishable from "this project has no
+ * guests" — a failure to observe rendering as an observation. The route says `partial: true`
+ * rather than quietly showing a shorter list.
+ */
+async function collabRoster(c: Context, ctx: { user: AuthedUser; project: ProjectRow }, nowMs: number = Date.now()) {
+  const rows = await listProjectMembers(c.env, ctx.user, ctx.project);
+  const profile = await getProfile(c.env, ctx.user.jwt, ctx.project.owner_id);
+  const links = await listKvGrants(c.env, ctx.project.id);
+  return {
+    roster: buildRoster({
+      project: ctx.project,
+      rows,
+      kvGrants: links.grants,
+      ownerHandle: profile?.display_name ?? null,
+      nowMs,
+    }),
+    complete: links.complete,
+  };
+}
+
+/**
+ * One membership row as it stands right now — the BEFORE an audit event needs.
+ *
+ * `POST /members` merges on the primary key, so the row it lands on is gone the instant it
+ * succeeds. An audit log written from the REQUEST would record "invited" for a demotion.
+ */
+async function membershipRow(
+  c: Context,
+  ctx: { user: AuthedUser; project: ProjectRow },
+  userId: string,
+): Promise<MemberRow | null> {
+  const { ok, data } = await supaRest<MemberRow[]>(
+    c.env,
+    ctx.user.jwt,
+    `/project_members?project_id=eq.${encodeURIComponent(ctx.project.id)}&user_id=eq.${encodeURIComponent(userId)}&limit=1`,
+  );
+  return ok && Array.isArray(data) && data[0] ? data[0] : null;
+}
+
+/**
+ * Append to the membership history, and SAY WHETHER IT WAS WRITTEN.
+ *
+ * The membership change has already happened by the time this runs; a failed append must not undo
+ * it and must not be swallowed either. Every route that calls this returns `audited`, so a caller
+ * who needs the record knows whether there is one. An unconditional `ok: true` over a failed
+ * insert is the exact shape this repository keeps finding: the claim survives, the fact does not.
+ */
+async function recordMembershipEvents(
+  c: Context,
+  ctx: { user: AuthedUser; project: ProjectRow },
+  inputs: readonly Omit<MembershipEventInput, 'projectId' | 'actorId' | 'at'>[],
+): Promise<{ ok: boolean; written: number; requested: number }> {
+  const at = new Date().toISOString();
+  const built = inputs.map((i) => buildMembershipEvent({ ...i, projectId: ctx.project.id, actorId: ctx.user.userId, at }));
+  const rows = built.filter((r): r is NonNullable<typeof r> => r !== null);
+  if (rows.length === 0) return { ok: false, written: 0, requested: inputs.length };
+  const { ok } = await supaRest(c.env, ctx.user.jwt, '/membership_events', {
+    method: 'POST',
+    prefer: 'return=minimal',
+    body: JSON.stringify(rows),
+  });
+  // Complete only when every event asked for was built AND the insert took them.
+  return { ok: ok && rows.length === inputs.length, written: ok ? rows.length : 0, requested: inputs.length };
+}
+
 /** One door to the Durable Object's collaboration store, so identity crosses exactly once. */
 async function collabCall(
   stub: DurableObjectStub,
@@ -2809,7 +3580,176 @@ app.get('/api/shared/:id/checkpoints', async (c) => {
 app.get('/api/shared/:id/members', async (c) => {
   const gate = await sharedAccess(c, c.req.param('id') ?? '', 'read');
   if (gate.ctx === null) return collabRefusal(c, gate.status);
-  return c.json({ members: await collabDirectory(c, gate.ctx) });
+  const ctx = gate.ctx;
+
+  // A FILTER THIS ROUTE CANNOT READ IS A 400, NEVER AN IGNORED FILTER. `?status=revokd` answered
+  // with the live list reads as "nobody is revoked" — see membership.ts.
+  const query = parseRosterQuery(Object.fromEntries(new URL(c.req.url).searchParams.entries()));
+  if (query.ok !== true) return c.json({ error: query.error }, 400);
+
+  // The dead rows are administrative. A commenter asking for the revoked list is asking to audit
+  // their colleagues, and narrowing their request silently would answer a question they did not
+  // ask with a list that looks like the answer.
+  if (query.status !== 'active' && !can(ctx.role, 'manage_members')) {
+    return c.json({ error: 'forbidden', detail: 'status_filter_needs_manage_members' }, 403);
+  }
+
+  const { roster, complete } = await collabRoster(c, ctx);
+  const page = filterRoster(roster, query);
+  return c.json({
+    members: page.entries,
+    total: page.total,
+    matched: page.matched,
+    more: page.more,
+    limit: page.limit,
+    offset: page.offset,
+    filters: { q: query.q, role: query.role, status: query.status, origin: query.origin },
+    // The link-derived grants could not all be read. Said out loud so a short list is never
+    // mistaken for a complete one.
+    partial: !complete,
+    ...(complete ? {} : { incomplete: ['link_grants'] }),
+  });
+});
+
+/**
+ * THE MEMBERSHIP HISTORY — what was done to whom, by whom, and when.
+ *
+ * `POST /members` merges onto the primary key, so a role change overwrites the row and the
+ * previous role is gone. This is the only place that remembers it.
+ *
+ * TWO STORES, ONE LIST. Postgres holds what admins did; the acceptance of a share link is on the
+ * grant in KV, because a stranger redeeming a link is not yet a member of anything and an insert
+ * policy that let them write their own acceptance would let anybody write any line into any
+ * project's history. Both are merged here, each entry saying which store it came from — and when
+ * KV cannot be read the answer says `partial`, rather than showing a history with a hole in it.
+ */
+app.get('/api/shared/:id/members/events', async (c) => {
+  const gate = await sharedAccess(c, c.req.param('id') ?? '', 'read');
+  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  const ctx = gate.ctx;
+  const url = new URL(c.req.url);
+  const subject = url.searchParams.get('userId');
+  if (subject !== null && !UUID_RE.test(subject)) return c.json({ error: 'bad_user' }, 400);
+
+  // The same division the RLS policies make: administrators read the project's history, and
+  // everybody may read their own. A member asking about somebody else is refused here rather than
+  // handed an empty list, which would read as "nothing ever happened to them".
+  const mayAudit = can(ctx.role, 'manage_members');
+  if (!mayAudit && subject !== ctx.user.userId) {
+    return c.json({ error: 'forbidden', detail: 'history_of_another_member_needs_manage_members' }, 403);
+  }
+  const limitParam = url.searchParams.get('limit');
+  if (limitParam !== null && !/^[1-9][0-9]{0,2}$/.test(limitParam)) return c.json({ error: 'bad_limit' }, 400);
+  const limit = Math.min(200, Number(limitParam ?? 100));
+
+  const filter = subject === null ? '' : `&subject_id=eq.${encodeURIComponent(subject)}`;
+  const { ok, data } = await supaRest<Record<string, unknown>[]>(
+    c.env,
+    ctx.user.jwt,
+    `/membership_events?project_id=eq.${encodeURIComponent(ctx.project.id)}${filter}&order=created_at.desc&limit=${limit}`,
+  );
+  if (!ok) return c.json({ error: 'history_unavailable' }, 502);
+
+  const events = (Array.isArray(data) ? data : []).map((r) => ({
+    kind: String(r.kind ?? ''),
+    subjectId: r.subject_id === null || r.subject_id === undefined ? null : String(r.subject_id),
+    actorId: r.actor_id === null || r.actor_id === undefined ? null : String(r.actor_id),
+    fromRole: r.from_role === null || r.from_role === undefined ? null : String(r.from_role),
+    toRole: r.to_role === null || r.to_role === undefined ? null : String(r.to_role),
+    reason: r.reason === null || r.reason === undefined ? null : String(r.reason),
+    viaToken: null as string | null,
+    at: r.created_at === null || r.created_at === undefined ? null : String(r.created_at),
+    source: 'history' as 'history' | 'grant',
+  }));
+
+  // The acceptances. A token is never echoed back — knowing that someone came in through a link is
+  // the audit fact; the secret itself is not, and a history view is a place people paste from.
+  let complete = true;
+  const accepted: typeof events = [];
+  if (subject === null) {
+    const links = await listKvGrants(c.env, ctx.project.id);
+    complete = links.complete;
+    for (const g of links.grants) {
+      if (typeof g.accepted_at !== 'string') continue;
+      accepted.push({
+        kind: 'link_accepted',
+        subjectId: g.user_id,
+        actorId: g.user_id,
+        fromRole: null,
+        toRole: g.role,
+        reason: null,
+        viaToken: null,
+        at: g.accepted_at,
+        source: 'grant',
+      });
+    }
+  } else {
+    const g = await readKvGrant(c.env, ctx.project.id, subject);
+    if (g && typeof g.accepted_at === 'string') {
+      accepted.push({
+        kind: 'link_accepted',
+        subjectId: subject,
+        actorId: subject,
+        fromRole: null,
+        toRole: g.role,
+        reason: null,
+        viaToken: null,
+        at: g.accepted_at,
+        source: 'grant',
+      });
+    }
+  }
+
+  const merged = [...events, ...accepted].sort((a, b) => Date.parse(b.at ?? '') - Date.parse(a.at ?? ''));
+  return c.json({
+    events: merged.slice(0, limit),
+    scope: subject === null ? 'project' : 'member',
+    partial: !complete,
+    ...(complete ? {} : { incomplete: ['link_grants'] }),
+  });
+});
+
+/**
+ * WHAT REMOVING THIS PERSON WOULD DO — before it is done.
+ *
+ * The removal route answers `{ok, userId, revoked}`, which is a fine answer to "did it work" and
+ * no answer at all to "what am I about to do". The typed-name ceremony the dashboard uses for a
+ * project deletion (apps/web/src/lib/confirm-model.ts) exists because an irreversible act deserves
+ * an enumeration of what it costs; a member removal had none.
+ *
+ * NOTHING HERE WRITES. The counts come from the collaboration store, the standing from the roster,
+ * and both are reads.
+ */
+app.get('/api/shared/:id/members/:userId/impact', async (c) => {
+  const gate = await sharedAccess(c, c.req.param('id') ?? '', 'manage_members');
+  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  const ctx = gate.ctx;
+  const userId = c.req.param('userId') ?? '';
+  if (!UUID_RE.test(userId)) return c.json({ error: 'bad_user' }, 400);
+
+  const { roster, complete } = await collabRoster(c, ctx);
+  const member = roster.find((m) => m.userId === userId) ?? null;
+  const res = await collabCall(ctx.stub, 'GET', '/collab/members/footprint', { userId }, ctx);
+  const footprint = (await res.json().catch(() => null)) as Record<string, unknown> | null;
+
+  return c.json({
+    userId,
+    // Null means "no membership row and no link grant" — the honest answer for someone who was
+    // never here, and different from a member with nothing to their name.
+    member,
+    footprint: res.ok ? footprint : null,
+    footprintAvailable: res.ok,
+    // What the removal itself does, stated rather than implied by the numbers above.
+    effects: {
+      accessEndsImmediately: member !== null,
+      linkGrantRevoked: member?.origin === 'link',
+      reRedemptionBarred: member?.origin === 'link',
+      ownershipUnchanged: true,
+      historyRetained: true,
+    },
+    partial: !complete,
+    ...(complete ? {} : { incomplete: ['link_grants'] }),
+  });
 });
 
 app.post('/api/shared/:id/members', async (c) => {
@@ -2826,6 +3766,11 @@ app.post('/api/shared/:id/members', async (c) => {
   if (!UUID_RE.test(userId)) return c.json({ error: 'bad_user' }, 400);
   if (userId === ctx.project.owner_id) return c.json({ error: 'owner_is_not_a_member' }, 400);
 
+  // READ BEFORE WRITE. The insert merges onto (project_id, user_id), so the row this lands on is
+  // gone the moment it succeeds — and with it the only evidence of what this request actually did.
+  // `invited`, `role_changed`, `renewed` and `reactivated` are all this one route.
+  const before = await membershipRow(c, ctx, userId);
+
   const { ok, status } = await supaRest(c.env, ctx.user.jwt, '/project_members', {
     method: 'POST',
     prefer: 'resolution=merge-duplicates,return=representation',
@@ -2836,10 +3781,108 @@ app.post('/api/shared/:id/members', async (c) => {
       invited_by: ctx.user.userId,
       expires_at: typeof body?.expiresAt === 'string' ? body.expiresAt : null,
       revoked_at: null,
+      // An explicit invitation says "this person is a member, at this role, from now". Leaving a
+      // suspension in place under it would produce a member the roster calls suspended and the
+      // history calls reactivated — two answers to one question.
+      suspended_at: null,
+      suspended_reason: null,
+      suspended_by: null,
     }),
   });
   if (!ok) return c.json({ error: 'invite_failed', status }, 502);
-  return c.json({ ok: true, userId, role }, 201);
+
+  const kind = inviteEventKind(before, { role });
+  const audit = await recordMembershipEvents(c, ctx, [
+    { kind, subjectId: userId, fromRole: before?.role ?? null, toRole: role },
+  ]);
+  // The project's OWNER is told, not the invitee. Who can reach a place is the owner's business,
+  // and the audit row that already recorded it has never been visible to them. The invitee finds
+  // out by the project appearing in their list, which is the arrival they actually care about.
+  securityNotice(
+    c,
+    ctx.project.owner_id,
+    `member:${ctx.project.id}:${userId}`,
+    `Someone was given access to ${ctx.project.name}`,
+    `A member was ${before ? 'changed to' : 'added as'} ${role}.`,
+  );
+  return c.json({ ok: true, userId, role, event: kind, audited: audit.ok }, 201);
+});
+
+/**
+ * MANY INVITATIONS, ONE REQUEST — and a per-row answer for every one of them.
+ *
+ * The single-invite route takes one `userId` and answers 201 or a status. A class of twenty
+ * playtesters through that route is twenty requests, and the first bad row stops the person
+ * halfway with no way to tell which ones already landed.
+ *
+ * REFUSED WHOLE, NEVER TRUNCATED, AND VALIDATED BEFORE ANYTHING IS WRITTEN. `planBulkInvite` is
+ * pure and tested directly; this route writes what it accepted and reports what it refused, by
+ * index, with the reason. The insert is ONE PostgREST call, so it is one transaction: either every
+ * accepted row is there or none is, and `applied` says which.
+ */
+app.post('/api/shared/:id/members/bulk', async (c) => {
+  const gate = await sharedAccess(c, c.req.param('id') ?? '', 'manage_members');
+  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  const ctx = gate.ctx;
+  const body = await c.req.json().catch(() => null);
+  const plan = planBulkInvite(body, { ownerId: ctx.project.owner_id, actorId: ctx.user.userId });
+  if (plan.ok !== true) return c.json({ error: plan.error, max: BULK_INVITE_MAX }, 400);
+  if (plan.accepted.length === 0) {
+    return c.json({ applied: false, invited: [], rejected: plan.rejected, audited: false, counts: { invited: 0, rejected: plan.rejected.length } }, 400);
+  }
+
+  const before = new Map<string, MemberRow | null>();
+  for (const row of plan.accepted) before.set(row.userId, await membershipRow(c, ctx, row.userId));
+
+  const { ok, status } = await supaRest(c.env, ctx.user.jwt, '/project_members', {
+    method: 'POST',
+    prefer: 'resolution=merge-duplicates,return=minimal',
+    body: JSON.stringify(
+      plan.accepted.map((row) => ({
+        project_id: ctx.project.id,
+        user_id: row.userId,
+        role: row.role,
+        invited_by: ctx.user.userId,
+        expires_at: row.expiresAt,
+        revoked_at: null,
+        suspended_at: null,
+        suspended_reason: null,
+        suspended_by: null,
+      })),
+    ),
+  });
+
+  const invited = plan.accepted.map((row) => ({
+    userId: row.userId,
+    role: row.role,
+    expiresAt: row.expiresAt,
+    ok,
+    event: inviteEventKind(before.get(row.userId) ?? null, { role: row.role }),
+  }));
+  const audit = ok
+    ? await recordMembershipEvents(
+        c,
+        ctx,
+        invited.map((row) => ({
+          kind: row.event,
+          subjectId: row.userId,
+          fromRole: before.get(row.userId)?.role ?? null,
+          toRole: row.role,
+        })),
+      )
+    : { ok: false, written: 0, requested: 0 };
+
+  return c.json(
+    {
+      applied: ok,
+      ...(ok ? {} : { error: 'invite_failed', status }),
+      invited,
+      rejected: plan.rejected,
+      audited: audit.ok,
+      counts: { invited: ok ? invited.length : 0, rejected: plan.rejected.length },
+    },
+    ok ? 201 : 502,
+  );
 });
 
 app.delete('/api/shared/:id/members/:userId', async (c) => {
@@ -2848,16 +3891,157 @@ app.delete('/api/shared/:id/members/:userId', async (c) => {
   const ctx = gate.ctx;
   const userId = c.req.param('userId') ?? '';
   if (!UUID_RE.test(userId)) return c.json({ error: 'bad_user' }, 400);
+  // Ownership is the `projects.owner_id` column; no membership write has ever been able to move
+  // it, and a PATCH that matches no row would have answered `revoked: true` to a request that
+  // revoked nothing.
+  if (userId === ctx.project.owner_id) return c.json({ error: 'owner_is_not_a_member' }, 400);
+
+  const at = new Date().toISOString();
+  const before = await membershipRow(c, ctx, userId);
   // Revoked, not deleted: "this access ended" is a fact worth keeping, and a deleted row cannot
   // tell an audit reader that someone ever had access at all.
   const { ok } = await supaRest(
     c.env,
     ctx.user.jwt,
     `/project_members?project_id=eq.${encodeURIComponent(ctx.project.id)}&user_id=eq.${encodeURIComponent(userId)}`,
-    { method: 'PATCH', body: JSON.stringify({ revoked_at: new Date().toISOString() }) },
+    { method: 'PATCH', body: JSON.stringify({ revoked_at: at }) },
   );
   if (!ok) return c.json({ error: 'revoke_failed' }, 502);
-  return c.json({ ok: true, userId, revoked: true });
+
+  //[[ BOTH STORES, OR THE REMOVAL IS A SUGGESTION.
+  //
+  //   Access is resolved from TWO sources — `getProjectAccess` merges the Postgres rows with the
+  //   grants a redeemed share link minted in KV — and this route used to PATCH one of them. A
+  //   member who came in through a link was "revoked" by a route that never touched their grant,
+  //   and kept every capability they had. The test beside it asserted the intended division of
+  //   labour in a comment — "that is a membership revocation, and the route above does it" — about
+  //   a route that did not do it.
+  //
+  //   `removed: true` is the second half: the same link, presented again, must not undo an
+  //   administrator's decision. Re-admission is an explicit act — an invitation, or the reactivate
+  //   route below — not a second click on a URL the person still has in their inbox. ]]
+  const linkGrantRevoked = await revokeKvGrant(c.env, ctx.project.id, userId, { at, by: ctx.user.userId, removed: true });
+
+  const audit = await recordMembershipEvents(c, ctx, [
+    { kind: 'removed', subjectId: userId, fromRole: before?.role ?? null, reason: c.req.query('reason') ?? null },
+  ]);
+  securityNotice(
+    c,
+    ctx.project.owner_id,
+    `member:${ctx.project.id}:${userId}`,
+    `Someone lost access to ${ctx.project.name}`,
+    `A ${before?.role ?? 'member'} was removed from the project.`,
+  );
+  return c.json({ ok: true, userId, revoked: true, linkGrantRevoked, audited: audit.ok });
+});
+
+/**
+ * SUSPENSION — a membership paused rather than ended.
+ *
+ * Revocation was the only lever this product had, and it is the wrong one for "stop, while we talk
+ * about it": the row keeps `revoked_at`, the person is indistinguishable from someone who was
+ * thrown out, and putting them back is the same act as inviting a stranger. A suspended grant is
+ * DEAD WHILE IT LASTS — `classifyGrant` returns no grant for it, so the door, the directory and
+ * the roster all close at once — and it carries the reason, the actor and the instant.
+ *
+ * It suspends in BOTH STORES for the reason the removal route does: a guest's grant lives in KV,
+ * and `classifyGrant` reads `suspended_at` off that record by exactly the same rule.
+ */
+app.post('/api/shared/:id/members/:userId/suspend', async (c) => {
+  const gate = await sharedAccess(c, c.req.param('id') ?? '', 'manage_members');
+  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  const ctx = gate.ctx;
+  const userId = c.req.param('userId') ?? '';
+  if (!UUID_RE.test(userId)) return c.json({ error: 'bad_user' }, 400);
+  // The owner's access is the projects row; there is no grant to pause, and a route that answered
+  // `suspended: true` would be describing something that did not happen.
+  if (userId === ctx.project.owner_id) return c.json({ error: 'owner_cannot_be_suspended' }, 400);
+
+  const body = (await c.req.json().catch(() => null)) as { reason?: unknown } | null;
+  const reason = typeof body?.reason === 'string' ? body.reason.trim().slice(0, EVENT_REASON_MAX) : '';
+  const at = new Date().toISOString();
+
+  const before = await membershipRow(c, ctx, userId);
+  const grant = await readKvGrant(c.env, ctx.project.id, userId);
+  // NOTHING TO SUSPEND IS A 404, NOT AN `ok: true`. A PATCH that matches no row succeeds, and the
+  // cheerful answer over it would tell an admin they had paused somebody who was never here.
+  if (before === null && grant === null) return c.json({ error: 'not_a_member' }, 404);
+
+  let ok = true;
+  if (before !== null) {
+    const patched = await supaRest(
+      c.env,
+      ctx.user.jwt,
+      `/project_members?project_id=eq.${encodeURIComponent(ctx.project.id)}&user_id=eq.${encodeURIComponent(userId)}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ suspended_at: at, suspended_reason: reason.length === 0 ? null : reason, suspended_by: ctx.user.userId }),
+      },
+    );
+    ok = patched.ok;
+  }
+  if (!ok) return c.json({ error: 'suspend_failed' }, 502);
+  const linkGrantSuspended =
+    grant === null
+      ? false
+      : await patchKvGrant(c.env, ctx.project.id, userId, {
+          suspended_at: at,
+          suspended_reason: reason.length === 0 ? null : reason,
+          suspended_by: ctx.user.userId,
+        });
+
+  const audit = await recordMembershipEvents(c, ctx, [
+    { kind: 'suspended', subjectId: userId, fromRole: before?.role ?? null, reason: reason.length === 0 ? null : reason },
+  ]);
+  return c.json({ ok: true, userId, suspended: true, at, reason: reason.length === 0 ? null : reason, linkGrantSuspended, audited: audit.ok });
+});
+
+/**
+ * REACTIVATION — the way back, for a suspension and for a removal alike.
+ *
+ * Until now the only way back was to re-invite, which works (the invite body sets `revoked_at:
+ * null`) and records nothing: an audit reader sees an invitation, not a reinstatement, and a guest
+ * whose grant lives in KV was not reachable by that route at all.
+ *
+ * The grant comes back AT THE ROLE IT CARRIED. A reactivation that had to be told a role would be
+ * an invitation with a friendlier name, and would quietly let an admin promote somebody while
+ * appearing to restore them.
+ */
+app.post('/api/shared/:id/members/:userId/reactivate', async (c) => {
+  const gate = await sharedAccess(c, c.req.param('id') ?? '', 'manage_members');
+  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  const ctx = gate.ctx;
+  const userId = c.req.param('userId') ?? '';
+  if (!UUID_RE.test(userId)) return c.json({ error: 'bad_user' }, 400);
+  if (userId === ctx.project.owner_id) return c.json({ error: 'owner_is_not_a_member' }, 400);
+
+  const before = await membershipRow(c, ctx, userId);
+  const grant = await readKvGrant(c.env, ctx.project.id, userId);
+  if (before === null && grant === null) return c.json({ error: 'not_a_member' }, 404);
+
+  let ok = true;
+  if (before !== null) {
+    const patched = await supaRest(
+      c.env,
+      ctx.user.jwt,
+      `/project_members?project_id=eq.${encodeURIComponent(ctx.project.id)}&user_id=eq.${encodeURIComponent(userId)}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ revoked_at: null, suspended_at: null, suspended_reason: null, suspended_by: null }),
+      },
+    );
+    ok = patched.ok;
+  }
+  if (!ok) return c.json({ error: 'reactivate_failed' }, 502);
+  // …and the bar a removal put on the link grant is lifted here, by the same administrator
+  // capability that set it.
+  const linkGrantRestored = grant === null ? false : await restoreKvGrant(c.env, ctx.project.id, userId);
+
+  const role = before?.role ?? grant?.role ?? null;
+  const audit = await recordMembershipEvents(c, ctx, [
+    { kind: 'reactivated', subjectId: userId, toRole: role, reason: typeof c.req.query('reason') === 'string' ? c.req.query('reason') : null },
+  ]);
+  return c.json({ ok: true, userId, reactivated: true, role, linkGrantRestored, audited: audit.ok });
 });
 
 app.post('/api/shared/:id/links', async (c) => {
@@ -2906,6 +4090,14 @@ app.post('/api/shared/links/redeem', async (c) => {
   if (user.userId === link.created_by) {
     return c.json({ ok: true, projectId: link.project_id, role: out.grant.role, scope: out.grant.scope });
   }
+  // A REMOVAL IS NOT UNDONE BY PRESSING THE LINK AGAIN. Someone an administrator removed still has
+  // the URL in their inbox; without this the removal lasted exactly as long as it took them to
+  // re-click it, and nothing anywhere would have said so. Re-admission is an explicit act — an
+  // invitation, or POST /members/:userId/reactivate.
+  if (await kvGrantBarred(c.env, link.project_id, user.userId)) {
+    return c.json({ error: 'removed_from_project' }, 403);
+  }
+  const acceptedAt = new Date().toISOString();
   await putKvGrant(c.env, link.project_id, {
     user_id: user.userId,
     role: out.grant.role,
@@ -2914,6 +4106,10 @@ app.post('/api/shared/links/redeem', async (c) => {
     display_name: null,
     invited_by: link.created_by,
     via_token: link.token,
+    // THE ACCEPTANCE. An invitation in this product has no acceptance step — POST /members writes
+    // a live grant — so this is the only moment anybody actually says yes, and it is recorded
+    // where the person saying yes cannot reach it. The membership history merges it in.
+    accepted_at: acceptedAt,
   });
   return c.json({ ok: true, projectId: link.project_id, role: out.grant.role, scope: out.grant.scope, resourceId: out.grant.resourceId }, 201);
 });
@@ -2969,7 +4165,50 @@ const collabHandler = (route: (typeof COLLAB_ROUTES)[number]) => async (c: Conte
       ? (Object.fromEntries(new URL(c.req.url).searchParams.entries()) as Record<string, unknown>)
       : ((await c.req.json().catch(() => ({}))) as Record<string, unknown>);
   const directory = route.needsDirectory ? await collabDirectory(c, ctx) : undefined;
-  return collabCall(ctx.stub, route.method, route.path, body, ctx, directory);
+  const res = await collabCall(ctx.stub, route.method, route.path, body, ctx, directory);
+  //[[ THE MENTION AND THE REVIEW REQUEST WERE ALREADY RECORDS. NOW SOMEBODY IS TOLD.
+  //
+  //   collab-threads.ts calls mentions "notification targets" and refuses one that names a
+  //   non-member; do/collab-store.ts writes the rows into `collab_mentions`. Both halves were
+  //   right and nothing joined them: the target was recorded and then the named person had to
+  //   happen to open that project and look. A review request had the same shape - a first-class
+  //   record with a reviewer on it who was never told.
+  //
+  //   Read from the DO'S RESPONSE rather than re-derived from the request body. The store applied
+  //   the policy - a mention of a stranger resolves to nobody, a reviewer who cannot approve is
+  //   refused - and notifying from the body would be notifying from the claim rather than from
+  //   what was actually written. The response is cloned so the client still gets it whole.
+  //
+  //   The project id passed here is `ctx.project.id`, which `sharedAccess` has already proven the
+  //   recipients belong to: the directory the mentions were resolved against IS that project's
+  //   membership. That is the proof obligation `notificationPrefsFor` documents. ]]
+  if (res.status === 201 && (route.path === '/collab/comments' || route.path === '/collab/reviews')) {
+    const written = (await res
+      .clone()
+      .json()
+      .catch(() => null)) as { id?: unknown; mentions?: { userId?: unknown }[]; reviewers?: unknown[] } | null;
+    const targets =
+      route.path === '/collab/comments'
+        ? (written?.mentions ?? []).map((m) => m?.userId)
+        : (written?.reviewers ?? []);
+    const kind = route.path === '/collab/comments' ? 'mention' : 'approval_requested';
+    const subject = typeof written?.id === 'string' ? written.id : null;
+    const inputs = targets
+      .filter((id): id is string => typeof id === 'string' && id.length > 0)
+      .map((recipientId) => ({
+        kind,
+        recipientId,
+        actorId: ctx.user.userId,
+        projectId: ctx.project.id,
+        projectName: ctx.project.name,
+        subject,
+        title: kind === 'mention' ? `You were mentioned in ${ctx.project.name}` : `A review was requested in ${ctx.project.name}`,
+        body: kind === 'mention' ? 'Someone named you in a comment.' : 'Someone asked you to review a change.',
+        at: Date.now(),
+      }));
+    if (inputs.length > 0) c.executionCtx.waitUntil(notifyMany(c.env, inputs).then(() => undefined));
+  }
+  return res;
 };
 
 const collabRoute = (path: string, method: 'GET' | 'POST') => {

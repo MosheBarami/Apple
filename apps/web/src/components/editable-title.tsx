@@ -59,6 +59,9 @@ export function EditableProjectTitle({
       <button
         type="button"
         className={`gx-title-edit ${className ?? ''}`}
+        // dir="auto" — the name is the user's string. Under an RTL interface an English name (or a
+        // Hebrew one under LTR) otherwise inherits the page and reorders its own punctuation.
+        dir="auto"
         onClick={() => {
           cancelled.current = false;
           setEditing(true);
@@ -75,6 +78,8 @@ export function EditableProjectTitle({
     <input
       ref={input}
       className={`gx-title-input ${className ?? ''}`}
+      // The same rule while it is being typed: the caret and alignment follow what is in the field.
+      dir="auto"
       value={draft}
       maxLength={PROJECT_NAME_MAX}
       aria-label="Project name"

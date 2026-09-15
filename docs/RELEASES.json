@@ -41,7 +41,7 @@
         },
         {
           "kind": "changed",
-          "text": "Sparks recalibrated: 1 Spark = 30 neurons, so a Spark stays a meaningful unit now that the same work costs less."
+          "text": "Credits recalibrated: 1 Credit = 30 neurons, so a Credit stays a meaningful unit now that the same work costs less."
         },
         {
           "kind": "added",
@@ -70,7 +70,7 @@
         },
         {
           "kind": "added",
-          "text": "Three modes: Plan (2 Sparks), Agent (4 Sparks) and Super Agent (10 Sparks), which plans, builds, tests and fixes autonomously."
+          "text": "Three modes: Plan (2 Credits), Agent (4 Credits) and Super Agent (10 Credits), which plans, builds, tests and fixes autonomously."
         },
         {
           "kind": "added",
@@ -94,7 +94,7 @@
         },
         {
           "kind": "added",
-          "text": "The free tier: 60 Sparks per day as a hard quota that resets daily, with Pro on a waitlist."
+          "text": "The free tier: 60 Credits per day as a hard quota that resets daily, with Pro on a waitlist."
         }
       ]
     }

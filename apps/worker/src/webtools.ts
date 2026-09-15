@@ -190,74 +190,418 @@ export function checkWorkspacePath(raw: string): PathVerdict {
   return { ok: true, path: value };
 }
 
+/**
+ * How long a deleted file stays recoverable. Thirty days, and it is a real deadline rather than a
+ * promise: the trash entry is written with `expirationTtl`, so KV drops it whether or not anything
+ * ever runs a sweep. A trash that depends on a cron to empty is a trash that grows forever on the
+ * day the cron breaks, and one that depends on nothing to empty is a retention claim nobody keeps.
+ */
+export const WORKSPACE_TRASH_TTL_SECONDS = 30 * 24 * 3600;
+
+/**
+ * How many superseded versions of one file are kept.
+ *
+ * Bounded because the archive is written on EVERY write and the agent writes files in a loop. The
+ * cap is on the archive, not on the file: the current version is always present, so a file with 200
+ * writes has its newest 20 predecessors and itself.
+ */
+export const WORKSPACE_MAX_VERSIONS = 20;
+
 export interface WorkspaceFile {
   path: string;
   bytes: number;
   updatedAt: number;
 }
 
-/** The store behind the file tools. Small on purpose: three verbs, nothing clever. */
+/** One past state of a file. `current` marks the one that `read` returns. */
+export interface WorkspaceVersion {
+  version: number;
+  bytes: number;
+  savedAt: number;
+  current: boolean;
+}
+
+/** A deleted file, and the date after which it is gone for good. */
+export interface WorkspaceTrashEntry {
+  path: string;
+  bytes: number;
+  deletedAt: number;
+  expiresAt: number;
+}
+
+export interface WorkspaceRead {
+  content: string;
+  bytes: number;
+  updatedAt: number;
+  version: number;
+}
+
+/** Why a store operation could not be done. The caller renders these; it never invents one. */
+export type WorkspaceFailure =
+  | 'not_found'
+  | 'occupied'
+  | 'not_in_trash'
+  | 'no_such_version';
+
+export type WorkspaceResult<T> = ({ ok: true } & T) | { ok: false; reason: WorkspaceFailure };
+
+/**
+ * The store behind the file tools and the file routes.
+ *
+ * IT USED TO BE THREE VERBS — list, read, write — and the comment here said "nothing clever". That
+ * was the right size for a scratch pad the agent wrote notes into, and the wrong size the moment a
+ * PERSON could see the files: every one of rename, move, duplicate, delete and undelete was
+ * impossible to express, and `write` destroyed the previous contents with no record that there had
+ * been any.
+ *
+ * What the extra verbs buy, and why each is on the store rather than composed over it:
+ *
+ *   `remove`/`restore`   a deletion that cannot be undone is the one irreversible thing in this
+ *                        product a user can do by mistyping a path. Soft by construction.
+ *   `versions`/`readVersion`
+ *                        `write` replaces. Without an archive there is no answer to "what did this
+ *                        file say before the agent rewrote it", and the agent rewrites constantly.
+ *   `move`               a rename that loses the file's history is a rename that quietly discards
+ *                        evidence, so the archive is re-keyed with the file. Composing read+write+
+ *                        remove over the interface could not do that.
+ *
+ * Copying is NOT here: it is read + write with a collision rule, it needs no store-specific work,
+ * and it lives in workspace-files.ts with the rest of the rules.
+ */
 export interface WorkspaceStore {
   list(prefix: string): Promise<WorkspaceFile[]>;
-  read(path: string): Promise<{ content: string; bytes: number; updatedAt: number } | null>;
-  write(path: string, content: string): Promise<{ bytes: number; created: boolean }>;
+  read(path: string): Promise<WorkspaceRead | null>;
+  write(path: string, content: string): Promise<{ bytes: number; created: boolean; version: number }>;
+  /** Move the file to the trash, with its archive. Null when there was no such file. */
+  remove(path: string): Promise<{ bytes: number; deletedAt: number; expiresAt: number } | null>;
+  /** Every kept state of this file, newest first. Empty for a path that never existed. */
+  versions(path: string): Promise<WorkspaceVersion[]>;
+  readVersion(path: string, version: number): Promise<{ content: string; bytes: number; savedAt: number; version: number } | null>;
+  /** What is in the trash and still recoverable, newest deletion first. */
+  trash(): Promise<WorkspaceTrashEntry[]>;
+  /** Put a deleted file back. Refused rather than merged when something else now holds the path. */
+  restore(path: string): Promise<WorkspaceResult<{ bytes: number; version: number }>>;
+  /** Rename or relocate, carrying the version archive. Refused when the destination is taken. */
+  move(from: string, to: string): Promise<WorkspaceResult<{ bytes: number; version: number }>>;
 }
+
+/** Zero-padded so KV's lexicographic key order IS version order. Six digits: a million writes. */
+const versionKey = (v: number): string => String(v).padStart(6, '0');
+
+const byteLength = (s: string): number => new TextEncoder().encode(s).length;
+
+/** Metadata this store writes. Every field is optional on READ: older rows carry fewer of them. */
+interface FileMeta {
+  bytes?: number;
+  updatedAt?: number;
+  version?: number;
+}
+
+const finite = (n: unknown, fallback: number): number => (typeof n === 'number' && Number.isFinite(n) ? n : fallback);
 
 /**
  * The production store: this worker's KV, keyed by project.
  *
  * The project is IN THE KEY, which is the authorisation — the same decision `imageKvKey` documents
  * for generated images. A tool call cannot construct a key into another project's workspace,
- * because it never supplies the project half.
+ * because it never supplies the project half. The archive and the trash are keyed the same way, for
+ * the same reason: `wsv:<project>:` and `wst:<project>:` are as unreachable from another project as
+ * `ws:<project>:` is.
+ *
+ * `#` separates a path from its version number and cannot appear in a path — `checkWorkspacePath`
+ * refuses it — so `wsv:<project>:<path>#` is an exact prefix for one file's archive and nothing
+ * else's.
  */
 export function kvWorkspace(kv: KVNamespace, projectId: string): WorkspaceStore {
   const prefix = `ws:${projectId}:`;
+  const archive = `wsv:${projectId}:`;
+  const trashed = `wst:${projectId}:`;
+
+  /**
+   * Every key under a prefix, not the first page of them.
+   *
+   * KV's list returns at most 1000 keys and a cursor. Reading one page and stopping is how a file
+   * browser shows 1000 of 1400 files and says nothing — a truncation that renders as a complete
+   * listing, which is the failure this repository is organised around.
+   */
+  const listAll = async (p: string): Promise<{ name: string; metadata: FileMeta | null }[]> => {
+    const out: { name: string; metadata: FileMeta | null }[] = [];
+    let cursor: string | undefined;
+    for (let page = 0; page < 50; page += 1) {
+      const res = (await kv.list({ prefix: p, ...(cursor ? { cursor } : {}) })) as {
+        keys: { name: string; metadata?: unknown }[];
+        list_complete?: boolean;
+        cursor?: string;
+      };
+      for (const k of res.keys) out.push({ name: k.name, metadata: (k.metadata ?? null) as FileMeta | null });
+      if (res.list_complete !== false || !res.cursor) break;
+      cursor = res.cursor;
+    }
+    return out;
+  };
+
+  const readMeta = async (key: string): Promise<{ value: string; metadata: FileMeta | null } | null> => {
+    const res = await kv.getWithMetadata<FileMeta>(key);
+    if (res.value === null || res.value === undefined) return null;
+    return { value: res.value, metadata: res.metadata ?? null };
+  };
+
+  /** Drop the oldest archived versions past the cap. Called after every write. */
+  const prune = async (path: string): Promise<void> => {
+    const keys = (await listAll(archive + path + '#')).map((k) => k.name).sort();
+    const over = keys.length - WORKSPACE_MAX_VERSIONS;
+    for (let i = 0; i < over; i += 1) await kv.delete(keys[i] as string);
+  };
+
+  const archiveOf = async (path: string): Promise<WorkspaceVersion[]> => {
+    const keys = await listAll(archive + path + '#');
+    return keys.map((k) => {
+      const meta = k.metadata ?? {};
+      return {
+        version: finite(meta.version, Number(k.name.slice(k.name.lastIndexOf('#') + 1)) || 0),
+        bytes: finite(meta.bytes, -1),
+        savedAt: finite(meta.updatedAt, -1),
+        current: false,
+      };
+    });
+  };
+
   return {
     async list(sub) {
-      const listed = await kv.list({ prefix: prefix + sub });
-      return listed.keys.map((k) => {
-        const meta = (k.metadata ?? {}) as { bytes?: number; updatedAt?: number };
+      const keys = await listAll(prefix + sub);
+      return keys.map((k) => {
+        const meta = k.metadata ?? {};
         return {
           path: k.name.slice(prefix.length),
           // Metadata written by an older version, or by nothing at all, must not become a
           // confident `0`. -1 says "not recorded", which is a different claim than "empty".
-          bytes: Number.isFinite(meta.bytes) ? (meta.bytes as number) : -1,
-          updatedAt: Number.isFinite(meta.updatedAt) ? (meta.updatedAt as number) : -1,
+          bytes: finite(meta.bytes, -1),
+          updatedAt: finite(meta.updatedAt, -1),
         };
       });
     },
+
     async read(path) {
-      const value = await kv.get(prefix + path);
-      if (value === null || value === undefined) return null;
-      return { content: value, bytes: new TextEncoder().encode(value).length, updatedAt: Date.now() };
+      const got = await readMeta(prefix + path);
+      if (!got) return null;
+      return {
+        content: got.value,
+        bytes: byteLength(got.value),
+        // The RECORDED time, not `Date.now()`. Reading a file does not modify it, and a read that
+        // reports the moment of the read as the moment of the write is a timestamp that is always
+        // wrong and always plausible.
+        updatedAt: finite(got.metadata?.updatedAt, -1),
+        version: finite(got.metadata?.version, 1),
+      };
     },
+
     async write(path, content) {
-      const existing = await kv.get(prefix + path);
-      const bytes = new TextEncoder().encode(content).length;
-      await kv.put(prefix + path, content, { metadata: { bytes, updatedAt: Date.now() } });
-      return { bytes, created: existing === null || existing === undefined };
+      const existing = await readMeta(prefix + path);
+      const bytes = byteLength(content);
+      const now = Date.now();
+      // A file written before this store kept versions has no `version` in its metadata. It is
+      // version 1 — the one that is live — rather than version 0, which would make the first
+      // archived copy collide with the next one written.
+      const previous = existing ? finite(existing.metadata?.version, 1) : 0;
+      if (existing) {
+        await kv.put(archive + path + '#' + versionKey(previous), existing.value, {
+          metadata: {
+            bytes: finite(existing.metadata?.bytes, byteLength(existing.value)),
+            updatedAt: finite(existing.metadata?.updatedAt, now),
+            version: previous,
+          } satisfies FileMeta,
+        });
+      }
+      const version = previous + 1;
+      await kv.put(prefix + path, content, { metadata: { bytes, updatedAt: now, version } satisfies FileMeta });
+      await prune(path);
+      return { bytes, created: existing === null, version };
+    },
+
+    async remove(path) {
+      const existing = await readMeta(prefix + path);
+      if (!existing) return null;
+      const deletedAt = Date.now();
+      const expiresAt = deletedAt + WORKSPACE_TRASH_TTL_SECONDS * 1000;
+      const bytes = finite(existing.metadata?.bytes, byteLength(existing.value));
+      // The trash entry is written BEFORE the file is deleted. The other order loses the file
+      // outright if the second put never happens, which is the one outcome a soft delete exists to
+      // prevent.
+      await kv.put(trashed + path, existing.value, {
+        expirationTtl: WORKSPACE_TRASH_TTL_SECONDS,
+        metadata: {
+          bytes,
+          updatedAt: deletedAt,
+          version: finite(existing.metadata?.version, 1),
+        } satisfies FileMeta,
+      });
+      await kv.delete(prefix + path);
+      return { bytes, deletedAt, expiresAt };
+    },
+
+    async versions(path) {
+      const past = await archiveOf(path);
+      const live = await kv.getWithMetadata<FileMeta>(prefix + path);
+      if (live.value !== null && live.value !== undefined) {
+        past.push({
+          version: finite(live.metadata?.version, 1),
+          bytes: finite(live.metadata?.bytes, byteLength(live.value)),
+          savedAt: finite(live.metadata?.updatedAt, -1),
+          current: true,
+        });
+      }
+      return past.sort((a, b) => b.version - a.version);
+    },
+
+    async readVersion(path, version) {
+      const live = await readMeta(prefix + path);
+      if (live && finite(live.metadata?.version, 1) === version) {
+        return { content: live.value, bytes: byteLength(live.value), savedAt: finite(live.metadata?.updatedAt, -1), version };
+      }
+      const got = await readMeta(archive + path + '#' + versionKey(version));
+      if (!got) return null;
+      return { content: got.value, bytes: byteLength(got.value), savedAt: finite(got.metadata?.updatedAt, -1), version };
+    },
+
+    async trash() {
+      const keys = await listAll(trashed);
+      return keys
+        .map((k) => {
+          const meta = k.metadata ?? {};
+          const deletedAt = finite(meta.updatedAt, -1);
+          return {
+            path: k.name.slice(trashed.length),
+            bytes: finite(meta.bytes, -1),
+            deletedAt,
+            expiresAt: deletedAt < 0 ? -1 : deletedAt + WORKSPACE_TRASH_TTL_SECONDS * 1000,
+          };
+        })
+        .sort((a, b) => b.deletedAt - a.deletedAt);
+    },
+
+    async restore(path) {
+      const entry = await readMeta(trashed + path);
+      if (!entry) return { ok: false, reason: 'not_in_trash' };
+      const live = await kv.get(prefix + path);
+      // Something new lives here now. Writing over it would make undelete a delete, which is the
+      // same destruction this whole path exists to undo.
+      if (live !== null && live !== undefined) return { ok: false, reason: 'occupied' };
+      const bytes = byteLength(entry.value);
+      const version = finite(entry.metadata?.version, 1);
+      await kv.put(prefix + path, entry.value, { metadata: { bytes, updatedAt: Date.now(), version } satisfies FileMeta });
+      await kv.delete(trashed + path);
+      return { ok: true, bytes, version };
+    },
+
+    async move(from, to) {
+      const src = await readMeta(prefix + from);
+      if (!src) return { ok: false, reason: 'not_found' };
+      const dst = await kv.get(prefix + to);
+      if (dst !== null && dst !== undefined) return { ok: false, reason: 'occupied' };
+      const bytes = byteLength(src.value);
+      const version = finite(src.metadata?.version, 1);
+      // Destination first, source last. A move interrupted in the middle leaves a copy, never a
+      // hole: the file is reachable at one path or at both, and at neither only if nothing ran.
+      await kv.put(prefix + to, src.value, {
+        metadata: { bytes, updatedAt: finite(src.metadata?.updatedAt, Date.now()), version } satisfies FileMeta,
+      });
+      for (const k of await listAll(archive + from + '#')) {
+        const old = await readMeta(k.name);
+        if (!old) continue;
+        await kv.put(archive + to + '#' + k.name.slice(k.name.lastIndexOf('#') + 1), old.value, {
+          metadata: (old.metadata ?? {}) as FileMeta,
+        });
+        await kv.delete(k.name);
+      }
+      await kv.delete(prefix + from);
+      return { ok: true, bytes, version };
     },
   };
 }
 
 /** An in-process store with the same contract, for tests and for the eval harness. */
 export function memoryWorkspace(seed: Record<string, string> = {}): WorkspaceStore {
-  const files = new Map<string, { content: string; updatedAt: number }>();
-  for (const [k, v] of Object.entries(seed)) files.set(k, { content: v, updatedAt: Date.now() });
+  const files = new Map<string, { content: string; updatedAt: number; version: number }>();
+  const archive = new Map<string, { version: number; content: string; savedAt: number }[]>();
+  const bin = new Map<string, { content: string; bytes: number; deletedAt: number; version: number }>();
+  for (const [k, v] of Object.entries(seed)) files.set(k, { content: v, updatedAt: Date.now(), version: 1 });
   return {
     async list(prefix) {
       return [...files.entries()]
         .filter(([p]) => p.startsWith(prefix))
-        .map(([path, f]) => ({ path, bytes: new TextEncoder().encode(f.content).length, updatedAt: f.updatedAt }));
+        .map(([path, f]) => ({ path, bytes: byteLength(f.content), updatedAt: f.updatedAt }));
     },
     async read(path) {
       const f = files.get(path);
-      return f ? { content: f.content, bytes: new TextEncoder().encode(f.content).length, updatedAt: f.updatedAt } : null;
+      return f ? { content: f.content, bytes: byteLength(f.content), updatedAt: f.updatedAt, version: f.version } : null;
     },
     async write(path, content) {
-      const created = !files.has(path);
-      files.set(path, { content, updatedAt: Date.now() });
-      return { bytes: new TextEncoder().encode(content).length, created };
+      const existing = files.get(path);
+      if (existing) {
+        const past = archive.get(path) ?? [];
+        past.push({ version: existing.version, content: existing.content, savedAt: existing.updatedAt });
+        // Same cap as the KV store, applied the same way: oldest first.
+        archive.set(path, past.slice(-WORKSPACE_MAX_VERSIONS));
+      }
+      const version = (existing?.version ?? 0) + 1;
+      files.set(path, { content, updatedAt: Date.now(), version });
+      return { bytes: byteLength(content), created: !existing, version };
+    },
+    async remove(path) {
+      const f = files.get(path);
+      if (!f) return null;
+      const deletedAt = Date.now();
+      bin.set(path, { content: f.content, bytes: byteLength(f.content), deletedAt, version: f.version });
+      files.delete(path);
+      return { bytes: byteLength(f.content), deletedAt, expiresAt: deletedAt + WORKSPACE_TRASH_TTL_SECONDS * 1000 };
+    },
+    async versions(path) {
+      const out: WorkspaceVersion[] = (archive.get(path) ?? []).map((v) => ({
+        version: v.version,
+        bytes: byteLength(v.content),
+        savedAt: v.savedAt,
+        current: false,
+      }));
+      const live = files.get(path);
+      if (live) out.push({ version: live.version, bytes: byteLength(live.content), savedAt: live.updatedAt, current: true });
+      return out.sort((a, b) => b.version - a.version);
+    },
+    async readVersion(path, version) {
+      const live = files.get(path);
+      if (live && live.version === version) {
+        return { content: live.content, bytes: byteLength(live.content), savedAt: live.updatedAt, version };
+      }
+      const past = (archive.get(path) ?? []).find((v) => v.version === version);
+      return past ? { content: past.content, bytes: byteLength(past.content), savedAt: past.savedAt, version } : null;
+    },
+    async trash() {
+      return [...bin.entries()]
+        .map(([path, e]) => ({
+          path,
+          bytes: e.bytes,
+          deletedAt: e.deletedAt,
+          expiresAt: e.deletedAt + WORKSPACE_TRASH_TTL_SECONDS * 1000,
+        }))
+        .sort((a, b) => b.deletedAt - a.deletedAt);
+    },
+    async restore(path) {
+      const entry = bin.get(path);
+      if (!entry) return { ok: false, reason: 'not_in_trash' };
+      if (files.has(path)) return { ok: false, reason: 'occupied' };
+      files.set(path, { content: entry.content, updatedAt: Date.now(), version: entry.version });
+      bin.delete(path);
+      return { ok: true, bytes: entry.bytes, version: entry.version };
+    },
+    async move(from, to) {
+      const src = files.get(from);
+      if (!src) return { ok: false, reason: 'not_found' };
+      if (files.has(to)) return { ok: false, reason: 'occupied' };
+      files.set(to, { ...src });
+      const past = archive.get(from);
+      if (past) archive.set(to, past);
+      archive.delete(from);
+      files.delete(from);
+      return { ok: true, bytes: byteLength(src.content), version: src.version };
     },
   };
 }

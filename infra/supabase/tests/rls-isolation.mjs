@@ -88,7 +88,7 @@ insert into public.messages(project_id,owner_id,role,content)
   select id, owner_id, 'user', 'secret-of-'||owner_id from public.projects;
 insert into public.checkpoints(project_id,owner_id,label,kind,r2_key)
   select id, owner_id, 'cp', 'manual', 'r2/'||id from public.projects;
-insert into public.usage_events(owner_id,kind,sparks) values ('${A}','chat',5),('${B}','chat',7);
+insert into public.usage_events(owner_id,kind,credits) values ('${A}','chat',5),('${B}','chat',7);
 `;
 
 const OWNER_SCOPED = [

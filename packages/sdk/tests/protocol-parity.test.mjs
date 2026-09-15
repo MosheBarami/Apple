@@ -63,7 +63,7 @@ test('STOP_REASONS is exactly the msg_end stopReason union', () => {
 
 test('PLAN_IDS is exactly the keys of PLAN_LIMITS', () => {
   const body = declaration('export const PLAN_LIMITS = {');
-  const declared = [...body.matchAll(/^\s{2}([a-z]+):\s*\{\s*sparksPerDay/gm)].map((m) => m[1]);
+  const declared = [...body.matchAll(/^\s{2}([a-z]+):\s*\{\s*creditsPerDay/gm)].map((m) => m[1]);
   assert.ok(declared.length >= 2, `parsed only ${declared.length} plans — the shape changed`);
   assert.deepEqual([...PLAN_IDS].sort(), [...declared].sort());
 });

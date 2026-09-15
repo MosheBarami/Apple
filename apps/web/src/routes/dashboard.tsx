@@ -9,7 +9,8 @@ import { supabase, type ProjectRow } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { downloadExport, purgeProject, ApiError } from '../lib/api';
 import { PROJECT_NAME_MAX, isRenameWorthwhile, useRenameProject } from '../lib/rename-project';
-import { PROJECT_COLUMNS, PROJECT_LIST_KEYS, type ProjectScope } from '../lib/archive';
+import { PROJECT_COLUMNS, PROJECT_LIST_KEYS, PROJECT_SCOPES, scopeToShow, type ProjectScope } from '../lib/archive';
+import { readViewChoice, writeViewChoice } from '../lib/view-state';
 import { relativeTime, truncate } from '../lib/format';
 import { Modal } from '../components/modal';
 import { SummonIllustration } from '../components/glyphs';
@@ -344,7 +345,17 @@ export function DashboardPage() {
   const [deleting, setDeleting] = useState<ProjectRow | null>(null);
   const [renaming, setRenaming] = useState<ProjectRow | null>(null);
   const [exporting, setExporting] = useState<string | null>(null);
-  const [scope, setScope] = useState<ProjectScope>('active');
+  //[[ THE TAB YOU WERE READING.
+  //
+  //   Archived was a round trip: open it, follow a project, come back, and you were on Active
+  //   again with no sign that the thing you had just been looking at still existed. Restored the
+  //   same way the rail's collapse is, and validated on the way in so a scope this build no longer
+  //   has cannot select a tab that is not rendered. ]]
+  const [scope, setScopeState] = useState<ProjectScope>(() => readViewChoice<ProjectScope>('dashboard.scope', PROJECT_SCOPES, 'active'));
+  const setScope = useCallback((next: ProjectScope) => {
+    setScopeState(next);
+    writeViewChoice('dashboard.scope', next);
+  }, []);
   const qc = useQueryClient();
   const { toast } = useToast();
 
@@ -356,6 +367,13 @@ export function DashboardPage() {
   // Counted separately and always, so the Archived tab can show how many are in there without
   // switching to it — a tab that might be empty is a tab nobody clicks.
   const archived = useQuery({ queryKey: ['projects-archived'], queryFn: () => fetchProjects('archived') });
+
+  // A remembered scope must yield to what the page can actually show — see `scopeToShow`.
+  const archivedCount = archived.isSuccess ? archived.data.length : null;
+  useEffect(() => {
+    const shown = scopeToShow(scope, archivedCount);
+    if (shown !== scope) setScope(shown);
+  }, [scope, archivedCount, setScope]);
 
   const setArchived = useMutation({
     mutationFn: async ({ project, archive }: { project: ProjectRow; archive: boolean }) => {
@@ -523,7 +541,8 @@ export function DashboardPage() {
           {projects.data.map((p) => (
             <Link key={p.id} to={`/projects/${p.id}`} className="project-card">
               <div className="project-card-top">
-                <h2 className="project-card-name">{p.name}</h2>
+                {/* A project name is the user's string, not ours. */}
+                <h2 className="project-card-name" dir="auto">{p.name}</h2>
                 <ProjectMenu
                   onDelete={() => setDeleting(p)}
                   onExport={(f) => void runExport(p, f)}

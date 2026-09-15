@@ -213,7 +213,7 @@ function doNamespace(name, handler) {
   };
 }
 
-const QUOTA_STATE = { sparksRemaining: 100, sparksLimit: 120, plan: 'free', day: '2026-08-31' };
+const QUOTA_STATE = { creditsRemaining: 100, creditsLimit: 120, plan: 'free', day: '2026-08-31' };
 
 /** What the fake model says when asked for a visual critique. Shaped to vision.ts's schema. */
 const CRITIQUE_JSON = JSON.stringify({
@@ -920,19 +920,19 @@ test('A2 agent_status carries a policy classification, never prompt or transcrip
   //   step/totalSteps   integers
   //   effort            an enum of three values
   //   effortReason      assembled from fixed policy strings, asserted below
-  //   sparksSpent       an integer the worker settled. Numeric by construction, so it cannot carry
+  //   creditsSpent       an integer the worker settled. Numeric by construction, so it cannot carry
   //                     text; it is the per-run cost, distinct from the account-wide `quota`
   //                     message, and it is what a user watching a build can actually act on.
-  const allowed = new Set(['type', 'phase', 'step', 'totalSteps', 'tool', 'effort', 'effortReason', 'sparksSpent']);
+  const allowed = new Set(['type', 'phase', 'step', 'totalSteps', 'tool', 'effort', 'effortReason', 'creditsSpent']);
   for (const b of broadcasts) {
     for (const [, field] of b.matchAll(/(?:^|[{,]\s*|\n\s{4,})(\w+):/g)) {
       assert.equal(allowed.has(field), true, `agent_status grew an un-reviewed field: ${field}`);
     }
     // And the numeric fields must stay numeric: a field that is allowed BECAUSE it is a number
     // stops being safe the moment something interpolates a string into it.
-    const numeric = /sparksSpent:\s*([^,\n}]+)/.exec(b);
+    const numeric = /creditsSpent:\s*([^,\n}]+)/.exec(b);
     if (numeric) {
-      assert.match(numeric[1].trim(), /^agent\.sparksSpent$/, 'sparksSpent must be the settled integer, nothing else');
+      assert.match(numeric[1].trim(), /^agent\.creditsSpent$/, 'creditsSpent must be the settled integer, nothing else');
     }
     for (const forbidden of ['agent.llm', 'agent.request', 'agent.finalText', 'res.text', 'out.resultForLlm', 'userId']) {
       assert.equal(b.includes(forbidden), false, `agent_status must not carry ${forbidden}`);
@@ -1344,9 +1344,9 @@ test('A4 FIXED — raw-probe is refused by the kill switch and by an exhausted c
     'a failed probe must release its reservation, not hold the budget hostage');
 });
 
-test('A4 FIXED — raw-probe charges the global ledger only: no user Sparks, no QuotaDO', async () => {
-  // Sparks are the PER-USER quota, tracked in QuotaDO. raw-probe is an operator tool reached with a
-  // service-wide admin key and no user identity at all, so there is nobody to bill: charging Sparks
+test('A4 FIXED — raw-probe charges the global ledger only: no user Credits, no QuotaDO', async () => {
+  // Credits are the PER-USER quota, tracked in QuotaDO. raw-probe is an operator tool reached with a
+  // service-wide admin key and no user identity at all, so there is nobody to bill: charging Credits
   // would either invent a victim or silently spend a real user's allowance on an operator's
   // diagnostic. Only the global neuron ledger applies.
   reset();
@@ -1360,14 +1360,14 @@ test('A4 FIXED — raw-probe charges the global ledger only: no user Sparks, no 
     'raw-probe must not even address a per-user quota DO — there is no user on this path');
   assert.deepEqual([...new Set(trace.doCalls.map((d) => d.ns))].sort(), ['AI', 'BUDGET_DO'],
     'the only things a probe touches are the model and the global neuron ledger');
-  assert.equal(/spark/i.test(res.text), false, 'the probe response must not report a Spark charge');
+  assert.equal(/credit/i.test(res.text), false, 'the probe response must not report a Credit charge');
 
   // STATIC GUARD, because the behavioural check would also pass for a QuotaDO call that merely
   // failed to fire on this input: the gateway has no per-user quota concept at all, by design.
   assert.equal(/QUOTA_DO/.test(readCode('gateway.ts')), false,
-    'gateway.ts must never touch QuotaDO — the gateway meters the GLOBAL ledger, Sparks are charged by the session DO');
+    'gateway.ts must never touch QuotaDO — the gateway meters the GLOBAL ledger, Credits are charged by the session DO');
   const rawProbeRoute = routeBodies(readCode('index.ts')).find((r) => r.path === '/api/admin/raw-probe');
-  assert.equal(/QUOTA_DO|spark/i.test(rawProbeRoute.body), false, 'the raw-probe route must not charge Sparks');
+  assert.equal(/QUOTA_DO|credit/i.test(rawProbeRoute.body), false, 'the raw-probe route must not charge Credits');
 });
 
 test('A4 PRE-EXISTING FINDING — admin routes carry no user identity and bypass RLS', async () => {

@@ -126,6 +126,30 @@ local function escapeLuaPattern(str: string): string
 	return (str:gsub("[%(%)%.%%%+%-%*%?%[%]%^%$]", "%%%0"))
 end
 
+--[[
+	FNV-1a/32 over the bytes of a script, as lowercase hex.
+
+	This has ONE job: agree, byte for byte, with `sourceHash` in apps/worker/src/luau-review.ts, so
+	the worker can say "I computed this edit against exactly the text you still hold" and the write
+	transaction can check it. The worker encodes to UTF-8 before hashing precisely because a Luau
+	string already is its UTF-8 bytes and `string.byte` cannot see anything else.
+
+	The multiply is split into 16-bit halves because `h * 16777619` reaches 2^56, past the point a
+	double represents integers exactly — computing it directly gives a number that is close to the
+	right answer and never equal to it, which is the worst possible failure for a comparison.
+]]
+local function sourceHash(s: string): string
+	local h = 0x811c9dc5
+	for i = 1, #s do
+		h = bit32.bxor(h, string.byte(s, i))
+		local lo = bit32.band(h, 0xffff)
+		local hi = bit32.rshift(h, 16)
+		h = ((hi * 16777619) % 65536) * 65536 + (lo * 16777619) % 4294967296
+		h = h % 4294967296
+	end
+	return string.format("%08x", h)
+end
+
 local handlers: { [string]: (op: any) -> any } = {}
 
 handlers.ping = function(_)
@@ -178,7 +202,45 @@ end
 handlers.read_script = function(op)
 	local inst = Paths.resolve(op.path)
 	if not inst:IsA("LuaSourceContainer") then error(op.path .. " is not a script") end
-	return { path = op.path, source = ScriptEditorService:GetEditorSource(inst :: any) }
+	local src = ScriptEditorService:GetEditorSource(inst :: any)
+	-- The hash travels with the source so an edit computed from THIS read can be pinned to it.
+	return { path = op.path, source = src, baseHash = sourceHash(src), class = inst.ClassName }
+end
+
+--[[
+	Every script's path, class and source in one reply, under a total character budget.
+
+	`truncated` is the honest half: when the budget or the file cap stops the walk, the caller is
+	told, because a place-wide analysis over an unknowingly partial place reports "no require
+	cycles" about scripts it never saw.
+]]
+handlers.dump_scripts = function(op)
+	local root = if op.root then Paths.resolve(op.root) else nil
+	local maxScripts = math.clamp(op.maxScripts or 80, 1, 400)
+	local maxChars = math.clamp(op.maxChars or 400000, 1000, 2000000)
+	local out = {}
+	local used = 0
+	local truncated = false
+	eachScript(root, function(s)
+		local src = ScriptEditorService:GetEditorSource(s :: any)
+		if used + #src > maxChars then
+			truncated = true
+			return true
+		end
+		used += #src
+		table.insert(out, {
+			path = Paths.fullPath(s),
+			class = s.ClassName,
+			source = src,
+			baseHash = sourceHash(src),
+		})
+		if #out >= maxScripts then
+			truncated = true
+			return true
+		end
+		return false
+	end)
+	return { scripts = out, truncated = truncated, chars = used }
 end
 
 handlers.edit_script = function(op)
@@ -201,6 +263,17 @@ handlers.edit_script = function(op)
 	if not script2:IsA("LuaSourceContainer") then error(op.path .. " is not a script") end
 	local applied: any = { path = Paths.fullPath(script2) }
 	ScriptEditorService:UpdateSourceAsync(script2 :: any, function(old: string): string
+		-- CONCURRENT EDIT CHECK, INSIDE THE TRANSACTION.
+		--
+		-- `source` mode replaces the file wholesale, so a Studio-side edit made between the read
+		-- the worker computed against and this write is destroyed with no trace. Checking here
+		-- rather than before the call is the whole point: `UpdateSourceAsync` hands us the text it
+		-- is about to overwrite, which is the only moment the answer cannot go stale.
+		if op.baseHash ~= nil and sourceHash(old) ~= op.baseHash then
+			error(
+				("%s changed in Studio since it was read — nothing was written. Read it again and re-apply the change on top of the current text."):format(op.path)
+			)
+		end
 		if op.source ~= nil then
 			applied.mode = "replace"
 			return op.source
@@ -225,6 +298,8 @@ handlers.edit_script = function(op)
 	end)
 	local finalSrc = ScriptEditorService:GetEditorSource(script2 :: any)
 	applied.lines = select(2, string.gsub(finalSrc, "\n", "\n")) + 1
+	-- The hash of what is now on disk, so the next edit can be pinned without re-reading.
+	applied.baseHash = sourceHash(finalSrc)
 	return applied
 end
 
@@ -1089,11 +1164,58 @@ handlers.undo_waypoint = function(op)
 	return { waypoint = true }
 end
 
+--[[ WHAT KIND OF FAILURE WAS THAT?
+
+	 `OpResult.error` is a sentence written for a human. Until this existed it was the ONLY thing
+	 separating "that path does not exist" from "Studio never answered", so the agent decided
+	 whether to retry by pattern-matching English — and a reworded error silently changed the
+	 decision. `OpFailureKind` in packages/shared is the typed answer; the worker's op-failure.ts
+	 turns a kind plus "does this op mutate" into a retry verdict.
+
+	 NOTHING HERE READS AN ERROR MESSAGE. That is the whole discipline of this function. It
+	 classifies from three things it genuinely owns:
+
+	   * whether the op exists at all                     -> refused
+	   * whether an undo recording could be opened        -> conflict
+	   * whether the path the op ADDRESSED still resolves -> not_found
+
+	 The third is an observation of the place as it stands now, not a guess about the wording: if
+	 the instance the op was aimed at is not there, the failure is a missing target whatever the
+	 handler happened to say on its way out.
+
+	 EVERYTHING ELSE IS `internal`, WHICH IS NOT RETRYABLE. That is the deliberately conservative
+	 default: an unclassified failure must never invite a repeat of a mutation. Narrowing it
+	 further means giving the remaining `error(...)` sites structured kinds — a per-site change
+	 across this file and Paths.luau — and until that is done, the honest report is "not known",
+	 not a plausible guess. ]]
+local function primaryPath(opBody: any): string?
+	if type(opBody.path) == "string" then return opBody.path end
+	if type(opBody.paths) == "table" and type(opBody.paths[1]) == "string" then return opBody.paths[1] end
+	if type(opBody.root) == "string" then return opBody.root end
+	if type(opBody.parent) == "string" then return opBody.parent end
+	return nil
+end
+
+local function classifyFailure(opBody: any): string
+	-- An op that CREATES the thing it names cannot be judged by whether that thing exists: the
+	-- whole point of the call was that it did not.
+	if opBody.create ~= nil then return "internal" end
+	local path = primaryPath(opBody)
+	if path then
+		local ok = pcall(Paths.resolve, path)
+		if not ok then return "not_found" end
+	end
+	return "internal"
+end
+
 function Ops.execute(id: string, opBody: any): any
 	local kind = opBody.op
 	local handler = handlers[kind]
 	if not handler then
-		return { id = id, ok = false, error = "unknown op: " .. tostring(kind) }
+		-- `refused`, not `internal`: the plugin understood the request perfectly and declined it.
+		-- An op this build does not implement is the one failure a retry can never fix, and an
+		-- older installed build lacking a newer op is the steady state (see plugin-version.ts).
+		return { id = id, ok = false, error = "unknown op: " .. tostring(kind), failure = "refused" }
 	end
 	local t0 = os.clock()
 	--[[ A MUTATING OP WITHOUT A RECORDING IS REFUSED, NOT PERFORMED.
@@ -1123,6 +1245,10 @@ function Ops.execute(id: string, opBody: any): any
 				ok = false,
 				error = "could not open an undo recording (another one is already open), so this "
 					.. "mutation was refused rather than performed without one",
+				-- `conflict`: Studio is not in a state that allows this, and it may well allow it
+				-- later. It is NOT retryable automatically all the same — the open recording is
+				-- usually a leaked one, and hammering it changes nothing.
+				failure = "conflict",
 			}
 		end
 	end
@@ -1136,10 +1262,20 @@ function Ops.execute(id: string, opBody: any): any
 	end
 	local durationMs = math.floor((os.clock() - t0) * 1000)
 	if not ok then
-		return { id = id, ok = false, error = tostring(result), durationMs = durationMs }
+		return { id = id, ok = false, error = tostring(result), durationMs = durationMs, failure = classifyFailure(opBody) }
 	end
 	if type(result) == "table" and result.error then
-		return { id = id, ok = false, error = tostring(result.error), data = result, durationMs = durationMs }
+		-- A handler that knows what kind of failure it produced says so; one that does not leaves
+		-- the field off and the worker reads that as unclassified, never as retryable.
+		local declared = if type(result.failure) == "string" then result.failure else nil
+		return {
+			id = id,
+			ok = false,
+			error = tostring(result.error),
+			data = result,
+			durationMs = durationMs,
+			failure = declared or classifyFailure(opBody),
+		}
 	end
 	return { id = id, ok = true, data = result, durationMs = durationMs }
 end

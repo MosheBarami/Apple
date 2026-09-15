@@ -436,6 +436,86 @@ export class CollabStore {
     return { status: 201, body: { version: written, restored: plan.restoring } };
   }
 
+  // ------------------------------------------------------------------ what one member holds
+
+  /**
+   * WHAT REMOVING THIS PERSON WOULD LEAVE BEHIND.
+   *
+   * `DELETE /members/:userId` revokes immediately and answers `{ok, userId, revoked}`. That is a
+   * fine answer to "did it work" and no answer at all to "what am I about to do", which is the
+   * question somebody actually has in front of them: the departing editor may be the author of the
+   * version this project is currently sitting on, and the only reviewer on two open review
+   * requests that will never reach `approved` once they are gone.
+   *
+   * COUNTED, NOT GUESSED, AND COUNTED IN SQL. A JS filter over `select *` is the shape where a
+   * missing WHERE clause reads as an empty result rather than as an error — the same note
+   * `reactionsFor` carries.
+   *
+   * NOTHING IS DELETED BY THIS. It is a preview: the caller decides, and the removal route is
+   * still the only thing that ends access.
+   */
+  memberFootprint(ctx: CollabContext, subjectId: unknown): StoreResult {
+    if (ctx.actor === null) return NOT_MEMBER;
+    // The same capability the removal itself requires: this is a list of what one member has done,
+    // and a viewer asking for it is asking to audit their colleagues.
+    if (!can(ctx.actor.role, 'manage_members')) return { status: 403, body: { error: 'insufficient_role' } };
+    if (typeof subjectId !== 'string' || subjectId.trim().length === 0) return { status: 400, body: { error: 'bad_user' } };
+
+    const count = (query: string, ...bind: unknown[]): number => {
+      const row = this.sql.exec(query, ...bind).one();
+      const n = Number(row?.n ?? 0);
+      return Number.isFinite(n) ? n : 0;
+    };
+
+    const comments = count(`select count(*) as n from collab_comments where author_id = ?`, subjectId);
+    const openComments = count(`select count(*) as n from collab_comments where author_id = ? and resolved_at is null`, subjectId);
+    const reviewsRequested = count(`select count(*) as n from collab_reviews where requested_by = ? and closed_at is null`, subjectId);
+    // Open requests this person is the reviewer on. An open request whose ONLY reviewer leaves can
+    // never be approved by anyone — it sits pending forever, and nobody can tell why.
+    const reviewsAwaiting = count(
+      `select count(*) as n from collab_reviews r
+       join collab_review_reviewers rr on rr.review_id = r.id
+       where rr.user_id = ? and r.closed_at is null`,
+      subjectId,
+    );
+    const reviewsSoleReviewer = count(
+      `select count(*) as n from collab_reviews r
+       join collab_review_reviewers rr on rr.review_id = r.id
+       where rr.user_id = ? and r.closed_at is null
+         and (select count(*) from collab_review_reviewers x where x.review_id = r.id) = 1`,
+      subjectId,
+    );
+    const approvals = count(`select count(*) as n from collab_approvals where user_id = ?`, subjectId);
+    const versions = count(`select count(*) as n from collab_versions where author_id = ?`, subjectId);
+
+    const headRow = this.sql.exec(`select author_id as author_id from collab_versions order by seq desc limit 1`).toArray()[0] ?? null;
+    const authorsCurrentHead = headRow !== null && String(headRow.author_id) === subjectId;
+
+    return {
+      status: 200,
+      body: {
+        userId: subjectId,
+        comments,
+        openComments,
+        reviewsRequested,
+        reviewsAwaiting,
+        reviewsSoleReviewer,
+        approvals,
+        versions,
+        authorsCurrentHead,
+        // Work SURVIVES a removal — comments and versions are history and history is not deleted.
+        // Said explicitly because a preview that only listed numbers invites the reader to assume
+        // the numbers are about to be destroyed.
+        retained: ['comments', 'versions', 'approvals'],
+        // …and these are the things that stop working, which is the part worth reading.
+        blocked: [
+          ...(reviewsSoleReviewer > 0 ? ['reviews_awaiting_only_them'] : []),
+          ...(reviewsRequested > 0 ? ['reviews_they_asked_for'] : []),
+        ],
+      },
+    };
+  }
+
   // ------------------------------------------------------------------ routing
 
   /**
@@ -465,6 +545,8 @@ export class CollabStore {
         return this.addVersion(ctx, body);
       case 'POST /collab/versions/restore':
         return this.restoreVersion(ctx, body);
+      case 'GET /collab/members/footprint':
+        return this.memberFootprint(ctx, body.userId);
       default:
         return { status: 404, body: { error: 'not_found' } };
     }

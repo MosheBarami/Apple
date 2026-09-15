@@ -835,7 +835,7 @@ test('a mesh charge never falls as the work rises, and is never free', () => {
   for (const triangles of [1, 12, 200, 900, 6000, 20000]) {
     const n = M.meshCreditCost({ triangles, parts: 1 });
     assert.ok(n > previous, `charge should rise with triangles: ${triangles} gave ${n} after ${previous}`);
-    assert.ok(M.sparksForMesh({ triangles, parts: 1 }) >= 1, 'no mesh is free');
+    assert.ok(M.creditsForMesh({ triangles, parts: 1 }) >= 1, 'no mesh is free');
     previous = n;
   }
   let prevParts = -1;
@@ -848,9 +848,9 @@ test('a mesh charge never falls as the work rises, and is never free', () => {
 });
 
 test('the most expensive mesh the pipeline can make still costs less than a whole build', () => {
-  const worst = M.sparksForMesh({ triangles: M.MESH_LIMITS.hardTriangleCeiling, parts: M.MESH_LIMITS.maxParts, textured: true });
+  const worst = M.creditsForMesh({ triangles: M.MESH_LIMITS.hardTriangleCeiling, parts: M.MESH_LIMITS.maxParts, textured: true });
   assert.ok(worst >= 1);
-  assert.ok(worst < M.SPARKS_PER_BUILD, `one mesh at ${worst} Sparks would cost more than a build at ${M.SPARKS_PER_BUILD}`);
+  assert.ok(worst < M.CREDITS_PER_BUILD, `one mesh at ${worst} Credits would cost more than a build at ${M.CREDITS_PER_BUILD}`);
 });
 
 test('the ledger charges once per mesh and its total is the sum of its rows', () => {
@@ -858,7 +858,7 @@ test('the ledger charges once per mesh and its total is the sum of its rows', ()
   const ledger = M.meshLedger(a);
   assert.equal(ledger.charges.length, a.parts.length, 'one row per mesh');
   assert.equal(ledger.totalNeurons, ledger.charges.reduce((n, c) => n + c.neurons, 0));
-  assert.equal(ledger.totalSparks, M.sparksForNeurons(ledger.totalNeurons));
+  assert.equal(ledger.totalCredits, M.creditsForNeurons(ledger.totalNeurons));
   for (const c of ledger.charges) {
     assert.ok(c.triangles > 0 && Number.isInteger(c.triangles));
     assert.ok(c.neurons > 0 && Number.isFinite(c.neurons));
@@ -866,8 +866,8 @@ test('the ledger charges once per mesh and its total is the sum of its rows', ()
   }
   assert.equal(new Set(ledger.charges.map((c) => c.meshId)).size, ledger.charges.length, 'mesh ids must be unique or the ledger cannot be audited');
   // billing the meshes one at a time can only ever cost the user more, never less
-  assert.ok(ledger.chargedSeparatelySparks >= ledger.totalSparks,
-    `per-mesh rounding must not undercharge: ${ledger.chargedSeparatelySparks} vs ${ledger.totalSparks}`);
+  assert.ok(ledger.chargedSeparatelyCredits >= ledger.totalCredits,
+    `per-mesh rounding must not undercharge: ${ledger.chargedSeparatelyCredits} vs ${ledger.totalCredits}`);
   // a heavier model costs more than a lighter one — the ledger tracks the work, not the call
   const heavy = M.meshLedger(ok(M.assemble(CRATE, { quality: 'high' })).assembly);
   assert.ok(heavy.totalNeurons > ledger.totalNeurons, 'a high-tier build must cost more than a standard one');

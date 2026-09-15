@@ -37,7 +37,7 @@
  *      model entitlement has no code path in gateway.ts, so publishing it
  *      would advertise a restriction nothing enforces and a capability
  *      nothing withholds.
- *   3. The design counts in "credits". This product counts in Sparks, and
+ *   3. The design counts in "credits". This product counts in Credits, and
  *      "credits" already means something else here — the purchased,
  *      non-expiring balance. Two meanings for one word on the page that
  *      introduces the unit is how a reader ends up budgeting wrong.
@@ -47,7 +47,7 @@
  */
 import Landing from '../layouts/Landing.astro';
 import AppleMark from '../components/AppleMark.astro';
-import { PLAN_COPY, PLAN_LIMITS, SPARKS_PER_BUILD, buildsPerMonth } from '@golem/shared';
+import { PLAN_COPY, PLAN_LIMITS, PRICE_CURRENCY, CREDITS_PER_BUILD, buildsPerMonth, formatMoney } from '@golem/shared';
 import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '../lib/studio-plugin';
 
 /** Nav. Four anchors at sections that exist on this page, and one real route. */
@@ -87,15 +87,15 @@ const runSteps = [
  * specialist identities, not user-facing brands", and check-site-semantics
  * fails the build if one reaches visible copy. The public names are these.
  *
- * The Spark costs are the same ones apps/site/src/pages/pricing.astro derives
+ * The Credit costs are the same ones apps/site/src/pages/pricing.astro derives
  * from docs/COST-MODEL.md through the worker's own arithmetic, and
- * scripts/check-spark-figures.mjs now reads this file too, so they cannot
+ * scripts/check-credit-figures.mjs now reads this file too, so they cannot
  * drift from it quietly.
  */
 const modes = [
   {
     name: 'Plan',
-    tag: '2 sparks',
+    tag: '2 credits',
     body:
       'The default. Answers in a couple of seconds and handles the great majority of asking — ' +
       'what is in the place, how something works, what a change would touch.',
@@ -103,7 +103,7 @@ const modes = [
   },
   {
     name: 'Agent',
-    tag: '4 sparks',
+    tag: '4 credits',
     body:
       'Building and editing. Parts, props, single scripts, and changes to what is already ' +
       'there — each step named while it happens, and stoppable mid-run.',
@@ -112,7 +112,7 @@ const modes = [
   },
   {
     name: 'Super Agent',
-    tag: '10 sparks',
+    tag: '10 credits',
     body:
       'For the things that touch everything. It reads more of your place first, weighs ' +
       'alternatives, and shows you the ones it rejected before it commits.',
@@ -162,7 +162,7 @@ const plans = (['free', 'builder', 'studio'] as const).map((id) => ({
   id,
   name: PLAN_COPY[id].name,
   price: PLAN_COPY[id].priceUsdMonthly,
-  sparks: PLAN_LIMITS[id].sparksPerMonth,
+  credits: PLAN_LIMITS[id].creditsPerMonth,
   builds: buildsPerMonth(id),
   blurb: PLAN_COPY[id].blurb,
   cta: id === 'free' ? 'Start free' : `Get ${PLAN_COPY[id].name}`,
@@ -171,7 +171,7 @@ const plans = (['free', 'builder', 'studio'] as const).map((id) => ({
 ---
 
 <Landing
-  title="Apple — Describe a Roblox game. Apple builds it."
+  title="Apple — Build Roblox games by talking"
   description="Apple is the AI builder for Roblox. Describe what you want in plain language and Apple makes the change in your project — real scripts, real instances, native undo, verified by running your game."
 >
   <a href="#main" class="skip-link">Skip to content</a>
@@ -188,8 +188,8 @@ const plans = (['free', 'builder', 'studio'] as const).map((id) => ({
     </nav>
 
     <div class="ap-header__end">
-      <a href="/app" class="ap-btn ap-btn--sm ap-sign-in">Sign in</a>
-      <a href="/app" class="ap-btn ap-btn--primary ap-btn--sm">Start building</a>
+      <a href="/app/login" class="ap-btn ap-btn--sm ap-sign-in">Sign in</a>
+      <a href="/app/signup" class="ap-btn ap-btn--primary ap-btn--sm">Start building</a>
     </div>
   </header>
 
@@ -203,17 +203,17 @@ const plans = (['free', 'builder', 'studio'] as const).map((id) => ({
         </p>
 
         <h1 class="ap-display ap-in" id="hero-title">
-          <span class="ap-hero__l1">Describe a Roblox game.</span>
-          <span class="ap-hero__l2">Apple builds it.</span>
+          <span class="ap-hero__l1">Build Roblox games</span>
+          <span class="ap-hero__l2">by talking.</span>
         </h1>
 
         <p class="ap-hero__sub ap-in">
-          The parts, the scripts, the systems — straight into the place you have open in Studio.
-          You stay in the conversation; Apple stays in your project.
+          Apple writes the scripts, builds the parts and wires the systems directly into the place
+          you have open in Studio. Ask for a shop, get a working shop.
         </p>
 
         <div class="ap-hero__cta ap-in">
-          <a href="/app" class="ap-btn ap-btn--primary ap-btn--lg">Start building — free</a>
+          <a href="/app/signup" class="ap-btn ap-btn--primary ap-btn--lg">Start building — free</a>
           {/* Destination comes from packages/shared, never retyped, and it is
               deliberately NOT the bare store URL: the asset is uploaded but not
               distributable, so sending a reader straight to the store hands
@@ -403,9 +403,9 @@ const plans = (['free', 'builder', 'studio'] as const).map((id) => ({
     <section class="ap-section ap-section--seam" id="pricing" aria-labelledby="pricing-title">
       <div class="ap-section__inner">
         <p class="ap-eyebrow"><span class="ap-eyebrow__dot" aria-hidden="true"></span>Pricing</p>
-        <h2 class="ap-display" id="pricing-title">Sparks, not seats.</h2>
+        <h2 class="ap-display" id="pricing-title">Credits, not seats.</h2>
         <p class="ap-lede">
-          One Spark is one unit of work, and a build spends about {SPARKS_PER_BUILD} of them. Everybody gets
+          One Credit is one unit of work, and a build spends about {CREDITS_PER_BUILD} of them. Everybody gets
           every mode; what a plan buys you is how much you can run.
         </p>
 
@@ -419,18 +419,20 @@ const plans = (['free', 'builder', 'studio'] as const).map((id) => ({
                 </div>
 
                 <p class="ap-price">
-                  <span class="ap-price__n">${p.price}</span>
+                  {/* Formatted rather than concatenated: the symbol's position is the locale's
+                      to choose, and '$' on its own does not name a currency. */}
+                  <span class="ap-price__n">{formatMoney(p.price ?? 0, { currency: PRICE_CURRENCY })}</span>
                   {p.price !== 0 && <span class="ap-price__per">/mo</span>}
                 </p>
 
                 <p class="ap-card__body">
-                  {p.sparks.toLocaleString('en-US')} Sparks a month — about {p.builds} builds.
+                  {p.credits.toLocaleString('en-US')} Credits a month — about {p.builds} builds.
                 </p>
                 <p class="ap-card__meta">{p.blurb}</p>
 
                 <div class="ap-card__action">
                   <a
-                    href={p.id === 'free' ? '/app' : '/pricing'}
+                    href={p.id === 'free' ? '/app/signup' : '/pricing'}
                     class={`ap-btn${p.featured ? ' ap-btn--primary' : ''}`}
                   >
                     {p.cta}

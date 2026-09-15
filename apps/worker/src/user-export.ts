@@ -69,9 +69,9 @@ export const USER_EXPORT: readonly ExportTable[] = [
     store: 'postgres',
     table: 'usage_events',
     ownerColumn: 'owner_id',
-    // The token counts and model are INCLUDED: they are what a Spark figure was computed from, and
+    // The token counts and model are INCLUDED: they are what a Credit figure was computed from, and
     // an export that gives the charge without the basis is a number the person cannot check.
-    fields: ['id', 'owner_id', 'project_id', 'kind', 'sparks', 'input_tokens', 'output_tokens', 'model', 'created_at'],
+    fields: ['id', 'owner_id', 'project_id', 'kind', 'credits', 'input_tokens', 'output_tokens', 'model', 'created_at'],
     excluded: {},
   },
   {

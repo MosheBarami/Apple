@@ -31,6 +31,9 @@ const {
   canReadScope, canWriteScope, normaliseEntry, expiresAtFor, isExpired, resolveMemoryLayers,
   precedenceOf, buildExport, parseImport, isMemoryScope, isMemoryKind, isOrgRole,
   MEMORY_SCOPES, MEMORY_EXPORT_FORMAT, VALUE_MAX, MAX_TTL_DAYS, MEMORY_KEY_RE,
+  refusedDisclosure, personalDisclosures, escapeLike, searchTerm, moveMemoryEntry,
+  createOrg, listOrgsFor, orgMembersOf, updateOrgMember, removeOrgMember, canAdministerOrg,
+  normaliseOrgName, ORG_NAME_MAX,
 } = M;
 
 const USER = 'user-aaaa';
@@ -472,5 +475,392 @@ test('an overwrite keeps created_at, because "since when" and "last touched" are
   assert.equal(second.entry.createdAt, first.entry.createdAt);
   assert.ok(Date.parse(second.entry.updatedAt) > Date.parse(first.entry.updatedAt));
   assert.equal(rowsIn(db, 'project', A), 1, 'an overwrite is one fact changing, not a second row');
+  db.close();
+});
+
+// ==========================================================================================
+// A CREDENTIAL IS NOT A MEMORY
+//
+// Every row here is loaded into the system prompt of every later run, in the highest-trust
+// position, and then never read by a person again. A credential that lands in one is a credential
+// re-sent to a model provider forever — by a product whose egress guard would have refused to send
+// it anywhere else. Each fixture carries EXACTLY ONE credential inside an otherwise ordinary
+// instruction, and each assertion pairs the refusal with a count of the rows actually in the table:
+// "the read came back empty" is not evidence that a write was refused.
+// ==========================================================================================
+
+const A_JWT = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dBjftJeZ4CVPmB92K27uhbUJU1p1r_wW1gFWFOEjXk';
+const A_KEY = 'sk-ant-api03-ZZZZZZZZZZZZZZZZZZZZ';
+
+test('a value carrying a credential is refused, and nothing is written', async () => {
+  const db = await fresh();
+  for (const [label, value] of [
+    ['a JWT', `always call the API with ${A_JWT}`],
+    ['a provider key', `use ${A_KEY} for the art calls`],
+    ['an authorization header', 'send authorization: Bearer abcdefghijklmnop on every request'],
+    ['a payment card', 'bill the studio account 4111 1111 1111 1111 each month'],
+    ['an SSN', 'the owner is 123-45-6789'],
+  ]) {
+    const r = await putMemoryEntry(db, accessFor(), { scope: 'project', scopeId: A, key: 'instruction.x', value }, { now: NOW });
+    assert.equal(r.ok, false, label);
+    assert.equal(r.reason, 'sensitive_value', label);
+    assert.ok(typeof r.detail === 'string' && r.detail.length > 0, `${label}: the refusal says what it saw`);
+    assert.equal(r.detail.includes(A_JWT) || r.detail.includes(A_KEY), false, `${label}: and never repeats the value`);
+  }
+  assert.equal(rowsIn(db, 'project', A), 0, 'a refused write leaves no row');
+  db.close();
+});
+
+test('the refusal is narrow: ordinary Roblox prose with a hash in it still stores', async () => {
+  // `long_hex` is a heuristic that matches a git SHA and a content hash. A store that refused those
+  // would be one that rejects real memories to guard against a hypothetical one, and users would
+  // learn that the instruction box randomly fails.
+  const db = await fresh();
+  const ok = await putMemoryEntry(
+    db,
+    accessFor(),
+    { scope: 'project', scopeId: A, key: 'instruction.hash', kind: 'instruction', value: 'the baseplate mesh is 3f2a9c1b4d5e6f708192a3b4c5d6e7f8 — do not re-upload it' },
+    { now: NOW },
+  );
+  assert.equal(ok.ok, true, ok.reason);
+  assert.equal(rowsIn(db, 'project', A), 1);
+  db.close();
+});
+
+test('an email is stored but marked as personal, so the viewer can mask it', async () => {
+  const db = await fresh();
+  const r = await putMemoryEntry(db, accessFor(), { scope: 'user', scopeId: USER, key: 'instruction.mail', kind: 'instruction', value: 'send builds to maya@example.com' }, { now: NOW });
+  assert.equal(r.ok, true, 'a contact address is a legitimate thing to remember');
+  const findings = personalDisclosures(r.entry.value);
+  assert.deepEqual(findings.map((f) => f.kind), ['email']);
+  // And the two lists do not overlap: a kind that is refused outright must not also be offered as
+  // something to merely mask.
+  assert.equal(personalDisclosures('4111 1111 1111 1111').length, 0);
+  assert.ok(refusedDisclosure('4111 1111 1111 1111'));
+  assert.equal(refusedDisclosure('maya@example.com'), null);
+  db.close();
+});
+
+test('an import cannot carry in what the editor refuses', async () => {
+  // The bundle is a request body with extra steps. A check on the entry route only would be a
+  // check anyone could walk around by exporting, editing the file and importing it back.
+  const db = await fresh();
+  const bundle = {
+    format: MEMORY_EXPORT_FORMAT,
+    scope: 'project',
+    scopeId: A,
+    exportedAt: new Date(NOW).toISOString(),
+    entries: [
+      { scope: 'project', scopeId: A, key: 'instruction.ok', kind: 'instruction', value: 'use Rojo', source: 'user', createdAt: new Date(NOW).toISOString(), updatedAt: new Date(NOW).toISOString(), expiresAt: null, updatedBy: USER },
+      { scope: 'project', scopeId: A, key: 'instruction.bad', kind: 'instruction', value: `token ${A_JWT}`, source: 'user', createdAt: new Date(NOW).toISOString(), updatedAt: new Date(NOW).toISOString(), expiresAt: null, updatedBy: USER },
+    ],
+  };
+  const parsed = parseImport(bundle, { scope: 'project', scopeId: A }, { now: NOW, actorId: USER });
+  assert.deepEqual(parsed.entries.map((e) => e.key), ['instruction.ok'], 'the clean row still imports');
+  assert.deepEqual(parsed.rejected, [{ key: 'instruction.bad', reason: 'sensitive_value', detail: parsed.rejected[0]?.detail }]);
+  assert.match(parsed.rejected[0].detail, /JWS|JWT/i, 'and the user is told which row and why');
+  db.close();
+});
+
+// ==========================================================================================
+// SEARCH
+// ==========================================================================================
+
+async function seeded() {
+  const db = await fresh();
+  const access = accessFor();
+  await putMemoryEntry(db, access, { scope: 'project', scopeId: A, key: 'instruction.doors', kind: 'instruction', value: 'Doors use TweenService' }, { now: NOW });
+  await putMemoryEntry(db, access, { scope: 'project', scopeId: A, key: 'instruction.lava', kind: 'instruction', value: 'lava kills instantly' }, { now: NOW });
+  await putMemoryEntry(db, access, { scope: 'project', scopeId: A, key: 'instruction.percent', kind: 'instruction', value: 'keep the cost under 100% of budget' }, { now: NOW });
+  return db;
+}
+
+test('a search returns the matching rows and leaves the others in the table', async () => {
+  // The second half is the assertion that matters: an empty result from an empty scope is a
+  // failure to observe wearing the costume of an observation.
+  const db = await seeded();
+  const hits = await listMemoryEntries(db, accessFor(), 'project', A, { now: NOW, query: 'tween' });
+  assert.deepEqual(hits.map((e) => e.key), ['instruction.doors'], 'case-insensitive, matches the value');
+  assert.equal(rowsIn(db, 'project', A), 3, 'the rows it did not return are still there');
+  db.close();
+});
+
+test('a search matches the key as well as the value', async () => {
+  const db = await seeded();
+  const hits = await listMemoryEntries(db, accessFor(), 'project', A, { now: NOW, query: 'instruction.lava' });
+  assert.deepEqual(hits.map((e) => e.key), ['instruction.lava']);
+  db.close();
+});
+
+test('a wildcard in the query is a literal, not a query for everything', async () => {
+  // Unescaped, `%` matches every row — a result that looks like a successful search and is the
+  // absence of one.
+  const db = await seeded();
+  assert.equal(rowsIn(db, 'project', A), 3, 'three rows are there to be over-matched');
+  const all = await listMemoryEntries(db, accessFor(), 'project', A, { now: NOW, query: '%' });
+  assert.deepEqual(all.map((e) => e.key), ['instruction.percent'], 'a per-cent sign matches the row that HAS one, not all three');
+  const real = await listMemoryEntries(db, accessFor(), 'project', A, { now: NOW, query: '100%' });
+  assert.deepEqual(real.map((e) => e.key), ['instruction.percent']);
+  const underscore = await listMemoryEntries(db, accessFor(), 'project', A, { now: NOW, query: 'lav_' });
+  assert.deepEqual(underscore.map((e) => e.key), [], 'and `_` is not a single-character wildcard either');
+  assert.equal(escapeLike('100%_\\'), '100\\%\\_\\\\');
+  db.close();
+});
+
+test('an empty or whitespace query is not a filter, and is not a match-nothing either', async () => {
+  const db = await seeded();
+  for (const q of ['', '   ', null, undefined, 42, {}]) {
+    const hits = await listMemoryEntries(db, accessFor(), 'project', A, { now: NOW, query: q });
+    assert.equal(hits.length, 3, `query ${JSON.stringify(String(q))} returns the whole scope`);
+  }
+  assert.equal(searchTerm('  doors '), 'doors');
+  assert.equal(searchTerm(''), null);
+  db.close();
+});
+
+test('a search still cannot cross a scope, and an expired row still does not come back', async () => {
+  const db = await seeded();
+  // Project B holds a row that MATCHES the query, and the caller has not proven B.
+  db.raw.prepare(
+    `insert into memory_entries(scope, scope_id, key, kind, value, source, created_at, updated_at, expires_at, updated_by) values(?,?,?,?,?,?,?,?,?,?)`,
+  ).run('project', B, 'instruction.doors', 'instruction', 'Doors use TweenService', 'user', new Date(NOW).toISOString(), new Date(NOW).toISOString(), null, OTHER);
+  db.raw.prepare(
+    `insert into memory_entries(scope, scope_id, key, kind, value, source, created_at, updated_at, expires_at, updated_by) values(?,?,?,?,?,?,?,?,?,?)`,
+  ).run('project', A, 'instruction.old', 'instruction', 'Doors used to be manual', 'user', new Date(NOW).toISOString(), new Date(NOW).toISOString(), new Date(NOW - 1000).toISOString(), USER);
+  assert.equal(rowsIn(db, 'project', B), 1, 'the other project does hold a matching row');
+  const hits = await listMemoryEntries(db, accessFor(), 'project', A, { now: NOW, query: 'doors' });
+  assert.deepEqual(hits.map((e) => e.key), ['instruction.doors'], 'one scope, and only what is still live');
+  db.close();
+});
+
+// ==========================================================================================
+// MOVING A ROW BETWEEN SCOPES
+// ==========================================================================================
+
+test('a move takes the row with it — gone from one scope, present in the other, once', async () => {
+  const db = await fresh();
+  const access = { userId: USER, projectIds: [A], orgs: [] };
+  await putMemoryEntry(db, access, { scope: 'user', scopeId: USER, key: 'instruction.rojo', kind: 'instruction', value: 'use Rojo' }, { now: NOW });
+  const moved = await moveMemoryEntry(db, access, { scope: 'user', scopeId: USER }, { scope: 'project', scopeId: A }, 'instruction.rojo', { now: NOW + 5000 });
+  assert.equal(moved.ok, true, moved.reason);
+  assert.equal(rowsIn(db, 'user', USER), 0, 'it left');
+  assert.equal(rowsIn(db, 'project', A), 1, 'and arrived');
+  assert.equal(moved.entry.scope, 'project');
+  assert.equal(moved.entry.value, 'use Rojo');
+  db.close();
+});
+
+test('a move keeps created_at and the original source — it is the same fact, relocated', async () => {
+  const db = await fresh();
+  const access = { userId: USER, projectIds: [A], orgs: [] };
+  const before = await putMemoryEntry(db, access, { scope: 'user', scopeId: USER, key: 'instruction.a', kind: 'instruction', value: 'v', source: 'model' }, { now: NOW });
+  const moved = await moveMemoryEntry(db, access, { scope: 'user', scopeId: USER }, { scope: 'project', scopeId: A }, 'instruction.a', { now: NOW + 60_000 });
+  assert.equal(moved.entry.createdAt, before.entry.createdAt);
+  assert.equal(moved.entry.source, 'model', 'who first said it does not change by moving it');
+  assert.ok(Date.parse(moved.entry.updatedAt) > Date.parse(before.entry.updatedAt));
+  db.close();
+});
+
+test('a move needs write access to BOTH ends', async () => {
+  const db = await fresh();
+  // The caller owns project A and is a mere MEMBER of the org: they may read the org's rows and
+  // must not be able to push their own instruction into the team's prompt.
+  const access = { userId: USER, projectIds: [A], orgs: [{ orgId: ORG, role: 'member' }] };
+  await putMemoryEntry(db, access, { scope: 'project', scopeId: A, key: 'instruction.a', kind: 'instruction', value: 'mine' }, { now: NOW });
+  const out = await moveMemoryEntry(db, access, { scope: 'project', scopeId: A }, { scope: 'org', scopeId: ORG }, 'instruction.a', { now: NOW });
+  assert.equal(out.ok, false);
+  assert.equal(out.reason, 'forbidden');
+  assert.equal(rowsIn(db, 'project', A), 1, 'and the source row is untouched');
+  assert.equal(rowsIn(db, 'org', ORG), 0);
+  db.close();
+});
+
+test('a move never overwrites what is already at the destination', async () => {
+  const db = await fresh();
+  const access = { userId: USER, projectIds: [A], orgs: [] };
+  await putMemoryEntry(db, access, { scope: 'user', scopeId: USER, key: 'instruction.k', kind: 'instruction', value: 'the personal one' }, { now: NOW });
+  await putMemoryEntry(db, access, { scope: 'project', scopeId: A, key: 'instruction.k', kind: 'instruction', value: 'the project one' }, { now: NOW });
+  const out = await moveMemoryEntry(db, access, { scope: 'user', scopeId: USER }, { scope: 'project', scopeId: A }, 'instruction.k', { now: NOW });
+  assert.equal(out.ok, false);
+  assert.equal(out.reason, 'target_exists');
+  const target = await listMemoryEntries(db, access, 'project', A, { now: NOW });
+  assert.equal(target[0].value, 'the project one', 'the destination still says what it said');
+  assert.equal(rowsIn(db, 'user', USER), 1, 'and the source was not consumed');
+  db.close();
+});
+
+test('the personal profile cannot be moved out of the personal scope', async () => {
+  // profileFromEntries reads the user layer only, so a profile row in a project scope is a row
+  // that exists, renders, and is read by nothing.
+  const db = await fresh();
+  const access = { userId: USER, projectIds: [A], orgs: [] };
+  await putMemoryEntry(db, access, { scope: 'user', scopeId: USER, key: 'profile.about', kind: 'profile', value: 'builds obbies' }, { now: NOW });
+  const out = await moveMemoryEntry(db, access, { scope: 'user', scopeId: USER }, { scope: 'project', scopeId: A }, 'profile.about', { now: NOW });
+  assert.equal(out.ok, false);
+  assert.equal(out.reason, 'wrong_scope');
+  assert.equal(rowsIn(db, 'user', USER), 1);
+  db.close();
+});
+
+test('a move of something that is not there is not_found, and moving to the same place is refused', async () => {
+  const db = await fresh();
+  const access = { userId: USER, projectIds: [A], orgs: [] };
+  const missing = await moveMemoryEntry(db, access, { scope: 'user', scopeId: USER }, { scope: 'project', scopeId: A }, 'instruction.nope', { now: NOW });
+  assert.equal(missing.ok, false);
+  assert.equal(missing.reason, 'not_found');
+  await putMemoryEntry(db, access, { scope: 'user', scopeId: USER, key: 'instruction.k', kind: 'instruction', value: 'v' }, { now: NOW });
+  const same = await moveMemoryEntry(db, access, { scope: 'user', scopeId: USER }, { scope: 'user', scopeId: USER }, 'instruction.k', { now: NOW });
+  assert.equal(same.ok, false);
+  assert.equal(same.reason, 'same_scope');
+  assert.equal(rowsIn(db, 'user', USER), 1, 'and the row survived being asked to move to itself');
+  db.close();
+});
+
+test('both histories explain a move: where it went, and where it came from', async () => {
+  const db = await fresh();
+  const access = { userId: USER, projectIds: [A], orgs: [] };
+  await putMemoryEntry(db, access, { scope: 'user', scopeId: USER, key: 'instruction.k', kind: 'instruction', value: 'use Rojo' }, { now: NOW });
+  await moveMemoryEntry(db, access, { scope: 'user', scopeId: USER }, { scope: 'project', scopeId: A }, 'instruction.k', { now: NOW + 1000 });
+  const source = await readMemoryAudit(db, access, 'user', USER, 10);
+  const dest = await readMemoryAudit(db, access, 'project', A, 10);
+  assert.equal(source[0].action, 'move', 'the scope it left says so');
+  assert.equal(source[0].before, 'use Rojo', 'and still says what left');
+  assert.equal(dest[0].action, 'move');
+  assert.equal(dest[0].after, 'use Rojo');
+  db.close();
+});
+
+// ==========================================================================================
+// ORGANISATIONS: SOMETHING HAS TO CREATE A MEMBERSHIP
+// ==========================================================================================
+
+test('creating an organisation makes the creator an owner who can actually write team rules', async () => {
+  // Before this existed there was no way to be in an org at all: `setOrgMember` had no caller, so
+  // the whole org layer — team instructions, the org preference floor — was unreachable code.
+  const db = await fresh();
+  const created = await createOrg(db, USER, '  Lava   Studios ', { now: NOW });
+  assert.equal(created.ok, true);
+  assert.equal(created.org.name, 'Lava Studios', 'the name is collapsed, not stored as typed');
+  const access = await memoryAccessFor(db, USER);
+  assert.deepEqual(access.orgs, [{ orgId: created.org.id, role: 'owner' }]);
+  assert.equal(canWriteScope(access, 'org', created.org.id), true);
+  const wrote = await putMemoryEntry(db, access, { scope: 'org', scopeId: created.org.id, key: 'instruction.t', kind: 'instruction', value: 'ship on Fridays' }, { now: NOW });
+  assert.equal(wrote.ok, true, wrote.reason);
+  db.close();
+});
+
+test('an organisation with no name is refused rather than created nameless', async () => {
+  const db = await fresh();
+  for (const bad of ['', '   ', null, 42, {}]) {
+    const r = await createOrg(db, USER, bad, { now: NOW });
+    assert.equal(r.ok, false, JSON.stringify(String(bad)));
+    assert.equal(r.reason, 'bad_name');
+  }
+  assert.equal(countRows(db.raw, 'select count(*) from memory_orgs'), 0);
+  assert.equal(normaliseOrgName('x'.repeat(ORG_NAME_MAX + 20)).length, ORG_NAME_MAX);
+  db.close();
+});
+
+test('an added member can read the team rules and cannot change them', async () => {
+  const db = await fresh();
+  const { org } = await createOrg(db, USER, 'Lava Studios', { now: NOW });
+  const ownerAccess = await memoryAccessFor(db, USER);
+  await putMemoryEntry(db, ownerAccess, { scope: 'org', scopeId: org.id, key: 'instruction.t', kind: 'instruction', value: 'ship on Fridays' }, { now: NOW });
+
+  const added = await updateOrgMember(db, ownerAccess, org.id, OTHER, 'member', { now: NOW });
+  assert.equal(added.ok, true, added.reason);
+  const theirs = await memoryAccessFor(db, OTHER);
+  assert.deepEqual(theirs.orgs, [{ orgId: org.id, role: 'member' }]);
+  const read = await listMemoryEntries(db, theirs, 'org', org.id, { now: NOW });
+  assert.deepEqual(read.map((e) => e.value), ['ship on Fridays'], 'rules you are held to are rules you can see');
+  const write = await putMemoryEntry(db, theirs, { scope: 'org', scopeId: org.id, key: 'instruction.t', kind: 'instruction', value: 'never ship' }, { now: NOW });
+  assert.equal(write.ok, false);
+  assert.equal(write.reason, 'forbidden');
+  const after = await listMemoryEntries(db, ownerAccess, 'org', org.id, { now: NOW });
+  assert.equal(after[0].value, 'ship on Fridays', 'and the rule is unchanged');
+  db.close();
+});
+
+test('a member cannot add members, and an admin cannot mint an owner', async () => {
+  const db = await fresh();
+  const { org } = await createOrg(db, USER, 'Lava Studios', { now: NOW });
+  const owner = await memoryAccessFor(db, USER);
+  await updateOrgMember(db, owner, org.id, OTHER, 'member', { now: NOW });
+  const member = await memoryAccessFor(db, OTHER);
+  assert.equal(canAdministerOrg(member, org.id), false);
+  const byMember = await updateOrgMember(db, member, org.id, 'user-cccc', 'admin', { now: NOW });
+  assert.equal(byMember.ok, false);
+  assert.equal(byMember.reason, 'forbidden');
+
+  await updateOrgMember(db, owner, org.id, OTHER, 'admin', { now: NOW });
+  const admin = await memoryAccessFor(db, OTHER);
+  assert.equal(canAdministerOrg(admin, org.id), true, 'an admin does administer');
+  const promotion = await updateOrgMember(db, admin, org.id, 'user-cccc', 'owner', { now: NOW });
+  assert.equal(promotion.ok, false, 'but cannot promote anyone to owner — including, next call, themselves');
+  assert.equal(promotion.reason, 'forbidden');
+  assert.equal(countRows(db.raw, `select count(*) from memory_org_members where org_id = ? and role = 'owner'`, org.id), 1);
+  db.close();
+});
+
+test('the last owner cannot be demoted or removed, because the org would become unadministrable', async () => {
+  const db = await fresh();
+  const { org } = await createOrg(db, USER, 'Lava Studios', { now: NOW });
+  const owner = await memoryAccessFor(db, USER);
+  const demote = await updateOrgMember(db, owner, org.id, USER, 'member', { now: NOW });
+  assert.equal(demote.ok, false);
+  assert.equal(demote.reason, 'last_owner');
+  const removed = await removeOrgMember(db, owner, org.id, USER);
+  assert.equal(removed.ok, false);
+  assert.equal(removed.reason, 'last_owner');
+  assert.deepEqual((await memoryAccessFor(db, USER)).orgs, [{ orgId: org.id, role: 'owner' }], 'still the owner');
+
+  // With a SECOND owner the same two operations are allowed — which is what shows the refusal
+  // above was about the last owner and not about owners in general.
+  await updateOrgMember(db, owner, org.id, OTHER, 'owner', { now: NOW });
+  const now2 = await memoryAccessFor(db, USER);
+  assert.equal((await updateOrgMember(db, now2, org.id, USER, 'member', { now: NOW })).ok, true);
+  db.close();
+});
+
+test('removing a member takes their access with it', async () => {
+  const db = await fresh();
+  const { org } = await createOrg(db, USER, 'Lava Studios', { now: NOW });
+  const owner = await memoryAccessFor(db, USER);
+  await putMemoryEntry(db, owner, { scope: 'org', scopeId: org.id, key: 'instruction.t', kind: 'instruction', value: 'ship on Fridays' }, { now: NOW });
+  await updateOrgMember(db, owner, org.id, OTHER, 'member', { now: NOW });
+  assert.equal((await listMemoryEntries(db, await memoryAccessFor(db, OTHER), 'org', org.id, { now: NOW })).length, 1);
+
+  const gone = await removeOrgMember(db, owner, org.id, OTHER);
+  assert.equal(gone.ok, true, gone.reason);
+  const after = await memoryAccessFor(db, OTHER);
+  assert.deepEqual(after.orgs, []);
+  assert.equal((await listMemoryEntries(db, after, 'org', org.id, { now: NOW })).length, 0, 'and the rules go with it');
+  assert.equal(rowsIn(db, 'org', org.id), 1, 'though the rows themselves are still there for the team');
+  db.close();
+});
+
+test('the roster lists who is in an organisation, to members only', async () => {
+  const db = await fresh();
+  const { org } = await createOrg(db, USER, 'Lava Studios', { now: NOW });
+  const owner = await memoryAccessFor(db, USER);
+  await updateOrgMember(db, owner, org.id, OTHER, 'admin', { now: NOW + 1000 });
+  const roster = await orgMembersOf(db, owner, org.id);
+  assert.deepEqual(roster.map((m) => [m.userId, m.role]), [[USER, 'owner'], [OTHER, 'admin']]);
+  const stranger = await orgMembersOf(db, { userId: 'user-cccc', projectIds: [], orgs: [] }, org.id);
+  assert.deepEqual(stranger, [], 'a non-member is told nothing, including who is in it');
+  db.close();
+});
+
+test('the scope list carries the name, and a membership whose org row is missing still appears', async () => {
+  // Membership rows and organisation rows are written by different statements. An inner join would
+  // make a person's own org vanish from their switcher while its rules kept applying to them.
+  const db = await fresh();
+  const { org } = await createOrg(db, USER, 'Lava Studios', { now: NOW });
+  await setOrgMember(db, 'org-orphaned', USER, 'member', NOW);
+  const mine = await listOrgsFor(db, USER);
+  assert.deepEqual(
+    mine.map((o) => [o.id, o.name, o.role]).sort(),
+    [[org.id, 'Lava Studios', 'owner'], ['org-orphaned', null, 'member']].sort(),
+  );
   db.close();
 });

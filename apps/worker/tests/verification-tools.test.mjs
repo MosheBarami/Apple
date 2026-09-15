@@ -43,10 +43,10 @@ test('all five verifiers exist and are offered, so nothing below is vacuous', ()
 });
 
 test('THE PAID ONES SAY THEY COST, and name the free one to try first', () => {
-  // The whole point. A model that does not know inspect_visually costs Sparks will reach for it
+  // The whole point. A model that does not know inspect_visually costs Credits will reach for it
   // when audit_build would have found the defect for nothing.
   const visual = describe('inspect_visually');
-  assert.match(visual, /costs Sparks|cost/i, 'it must say it costs');
+  assert.match(visual, /costs Credits|cost/i, 'it must say it costs');
   assert.match(visual, /audit_build/, 'and name the free alternative');
   assert.match(visual, /free/i, 'and say that it is free');
 });

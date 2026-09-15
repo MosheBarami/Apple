@@ -21,7 +21,7 @@
 //     module imports them; it does not keep a second copy that can drift.
 //   * composition.ts owns AABB clustering. Collision decimation and print-support analysis are
 //     both "which parts read as one mass", which is the question clusterMasses already answers.
-//   * pricing.ts owns the Spark. A mesh charge is expressed in neurons and converted by the one
+//   * pricing.ts owns the Credit. A mesh charge is expressed in neurons and converted by the one
 //     function that already converts everything else.
 //   * packages/evals/src/glb-inspect.mjs is the reader for what exportGlb writes. It was written
 //     for downloaded assets and knows nothing about this writer, which is exactly what makes it an
@@ -40,9 +40,9 @@ import {
   type ScaleCheck,
 } from './assets';
 import { clusterMasses, type ScenePart } from './composition';
-import { sparksForNeurons, SPARKS_PER_BUILD } from './pricing';
+import { creditsForNeurons, CREDITS_PER_BUILD } from './pricing';
 
-export { sparksForNeurons, SPARKS_PER_BUILD };
+export { creditsForNeurons, CREDITS_PER_BUILD };
 
 // ---------------------------------------------------------------------------------------------
 // Vocabulary
@@ -2043,11 +2043,11 @@ export function exportGlb(assembly: Assembly): Uint8Array {
 // ---------------------------------------------------------------------------------------------
 
 /**
- * What a generated mesh costs, in neurons, before conversion to Sparks.
+ * What a generated mesh costs, in neurons, before conversion to Credits.
  *
  * WHY A PROCEDURAL MESH COSTS ANYTHING AT ALL. The triangles are free; the SPEC is not. A model
  * wrote it, a critic looked at it, and a variant sweep multiplies both. Charging per generation
- * rather than per mesh is what lets one loop turn a single Spark into four hundred assets, so the
+ * rather than per mesh is what lets one loop turn a single Credit into four hundred assets, so the
  * unit of account is the mesh — the thing the user receives — and the rates below scale with the
  * two numbers that really drive the work: how many parts the model had to place, and how much
  * geometry the pipeline then had to carry through QC, export and storage.
@@ -2092,9 +2092,9 @@ export function meshCreditCost(work: MeshWork): number {
   );
 }
 
-/** The same charge in the unit the user reads. Never zero: `sparksForNeurons` floors at one. */
-export function sparksForMesh(work: MeshWork): number {
-  return sparksForNeurons(meshCreditCost(work));
+/** The same charge in the unit the user reads. Never zero: `creditsForNeurons` floors at one. */
+export function creditsForMesh(work: MeshWork): number {
+  return creditsForNeurons(meshCreditCost(work));
 }
 
 export interface MeshCharge {
@@ -2108,15 +2108,15 @@ export interface MeshLedger {
   assemblyId: string;
   charges: MeshCharge[];
   totalNeurons: number;
-  totalSparks: number;
+  totalCredits: number;
   /**
    * What the same work would cost billed one mesh at a time.
    *
-   * Recorded rather than charged. `sparksForNeurons` rounds up and floors at one, so five small
-   * meshes billed separately cost five Sparks and billed together cost two. The ledger charges the
+   * Recorded rather than charged. `creditsForNeurons` rounds up and floors at one, so five small
+   * meshes billed separately cost five Credits and billed together cost two. The ledger charges the
    * total and keeps this figure so the difference is visible instead of being an accident.
    */
-  chargedSeparatelySparks: number;
+  chargedSeparatelyCredits: number;
 }
 
 /** One row per mesh, because a bill nobody can audit is a bill nobody trusts. */
@@ -2132,7 +2132,7 @@ export function meshLedger(assembly: Assembly, opts: { textured?: boolean } = {}
     assemblyId: assembly.id,
     charges,
     totalNeurons,
-    totalSparks: sparksForNeurons(totalNeurons),
-    chargedSeparatelySparks: charges.reduce((n, c) => n + sparksForNeurons(c.neurons), 0),
+    totalCredits: creditsForNeurons(totalNeurons),
+    chargedSeparatelyCredits: charges.reduce((n, c) => n + creditsForNeurons(c.neurons), 0),
   };
 }

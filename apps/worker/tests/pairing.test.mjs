@@ -154,3 +154,75 @@ test('CONTROL: the generator still produces the intended shape and no confusable
     assert.equal([...seen].some((c) => c.includes(confusable)), false, `"${confusable}" is confusable and must not appear`);
   }
 });
+
+// ---------------------------------------------------------------- cancellation
+
+/**
+ * CLOSING THE DIALOG USED TO DO NOTHING TO THE CODE IT HAD JUST SHOWN.
+ *
+ * It stayed claimable for its full ten minutes. `/api/studio/claim` is unauthenticated and answers
+ * with a projectId and a userId, so an abandoned code — still on a screen, in a screen share, in a
+ * screenshot pasted into a support thread — was a live credential to somebody's project.
+ */
+test('CONTROL: an uncancelled code still claims, so the refusals below mean something', async () => {
+  const q = pairing();
+  const { code } = await q.create('owner-1', 'proj-1');
+  assert.equal((await q.claim(code)).projectId, 'proj-1');
+});
+
+test('A CANCELLED CODE CANNOT BE CLAIMED', async () => {
+  const q = pairing();
+  const { code } = await q.create('owner-1', 'proj-1');
+  assert.deepEqual(await q.call('/cancel', { code, userId: 'owner-1' }), { ok: true, cancelled: true });
+  assert.equal((await q.claim(code)).error, 'invalid or expired code');
+});
+
+test('cancel is not a weapon: another user cannot revoke a code they did not mint', async () => {
+  // Without the ownership check this route is a denial-of-service primitive — guess a code, kill
+  // somebody else's pairing — on an object whose codes are only 29.7 bits.
+  const q = pairing();
+  const { code } = await q.create('owner-1', 'proj-1');
+  const r = await q.call('/cancel', { code, userId: 'someone-else' });
+  assert.equal(r.cancelled, false, 'a stranger must not be able to cancel it');
+  assert.equal((await q.claim(code)).projectId, 'proj-1', 'AND THE CODE STILL WORKS — nothing was destroyed');
+});
+
+test('cancel does not leak whether a code exists', async () => {
+  // A distinguishable answer turns this into an oracle: 10 guesses a minute against a live code
+  // is nothing, but an oracle that confirms a hit is worth more than a claim that consumes it.
+  const q = pairing();
+  const { code } = await q.create('owner-1', 'proj-1');
+  const real = await q.call('/cancel', { code, userId: 'attacker' }); // exists, wrong owner
+  const absent = await q.call('/cancel', { code: 'ZZZZZZ', userId: 'attacker' }); // does not exist
+  assert.deepEqual(real, absent, 'the two answers must be indistinguishable');
+  assert.equal(await q.status('/cancel', { code, userId: 'attacker' }), 200, 'including the status code');
+});
+
+test('cancelling a code frees the slot it was holding against the five-code cap', async () => {
+  // Otherwise a user who opens and closes the dialog six times is locked out of pairing for ten
+  // minutes by their own tidiness.
+  const q = pairing();
+  const codes = [];
+  for (let i = 0; i < 5; i++) codes.push((await q.create('same-user', `p${i}`)).code);
+  assert.equal((await q.create('same-user', 'p5')).error, 'too many active codes', 'the cap still bites');
+  await q.call('/cancel', { code: codes[0], userId: 'same-user' });
+  assert.ok((await q.create('same-user', 'p5')).code, 'a cancelled code must give its slot back');
+});
+
+test('a malformed cancel is refused cleanly rather than crashing the object', async () => {
+  const q = pairing();
+  for (const body of [{}, { code: 42, userId: 'u' }, { code: 'ABC123' }, { code: 'ABC123', userId: '' }, null]) {
+    const r = await q.call('/cancel', body);
+    assert.equal(r.cancelled, false, `${JSON.stringify(body)} must be refused, not thrown`);
+  }
+});
+
+test('cancellation normalises the code the same way claiming does', async () => {
+  // The dialog shows "K7M3QP"; anything that round-trips through a UI may arrive lowercased or
+  // hyphenated. A cancel that silently missed would leave a live code behind AND report success.
+  const q = pairing();
+  const { code } = await q.create('owner-1', 'proj-1');
+  const messy = code.toLowerCase().split('').join('-');
+  assert.equal((await q.call('/cancel', { code: messy, userId: 'owner-1' })).cancelled, true);
+  assert.equal((await q.claim(code)).error, 'invalid or expired code');
+});

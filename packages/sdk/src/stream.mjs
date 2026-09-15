@@ -47,7 +47,7 @@ export function emptyRun() {
     stopReason: null,
     /** False when the server sent a stopReason this build does not know. */
     stopReasonRecognised: true,
-    sparksSpent: null,
+    creditsSpent: null,
     error: null,
     done: false,
     /**
@@ -94,9 +94,9 @@ export function applyServerMsg(run, msg) {
       return {
         ...run,
         phase: typeof msg.phase === 'string' ? msg.phase : run.phase,
-        // `?? run.sparksSpent` would have kept a NaN that arrived here forever, and every
+        // `?? run.creditsSpent` would have kept a NaN that arrived here forever, and every
         // later `>` against it reads false — a spend display that silently stops moving.
-        sparksSpent: finiteNumber(msg.sparksSpent, run.sparksSpent),
+        creditsSpent: finiteNumber(msg.creditsSpent, run.creditsSpent),
       };
     case 'msg_end':
       return {
@@ -105,7 +105,7 @@ export function applyServerMsg(run, msg) {
         stopReason: typeof msg.stopReason === 'string' ? msg.stopReason : 'error',
         stopReasonRecognised: STOP_REASONS.includes(msg.stopReason),
         error: typeof msg.error === 'string' ? msg.error : null,
-        sparksSpent: finiteNumber(msg.sparksSpent, run.sparksSpent),
+        creditsSpent: finiteNumber(msg.creditsSpent, run.creditsSpent),
       };
     case 'error':
       return { ...run, error: typeof msg.message === 'string' ? msg.message : 'error', done: true, stopReason: 'error' };

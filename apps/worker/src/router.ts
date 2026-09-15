@@ -58,6 +58,12 @@ const PLAN_TOOLS = [
   'list_scripts',
   'read_script',
   'search_scripts',
+  // The two read-only code-intelligence tools. `review_scripts` parses and analyses; `find_symbol`
+  // resolves a name through scopes. Neither can send a mutating op — they read scripts and return
+  // findings — and "what would you do here" is exactly the question they answer. `format_script`
+  // is deliberately NOT here: it writes.
+  'review_scripts',
+  'find_symbol',
   'search_docs',
   'remember',
   // The READ-ONLY web tools. Each one reads something outside the user's project — a page, a

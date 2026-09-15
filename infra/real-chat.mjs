@@ -33,7 +33,7 @@ const timer = setTimeout(() => { console.log('TIMEOUT'); process.exit(2); }, 240
 ws.onmessage = (ev) => {
   const msg = JSON.parse(ev.data);
   if (msg.type === 'hello') {
-    console.log(stamp(), `hello (studioConnected=${msg.studioConnected}, sparks=${msg.quota.sparksRemaining})`);
+    console.log(stamp(), `hello (studioConnected=${msg.studioConnected}, credits=${msg.quota.creditsRemaining})`);
     ws.send(JSON.stringify({ type: 'chat', text, mode }));
   } else if (msg.type === 'delta') { finalText += msg.text; }
   else if (msg.type === 'tool_start') console.log(stamp(), `→ ${msg.tool}`);

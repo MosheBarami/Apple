@@ -4,7 +4,7 @@
 //   1. Assert the arithmetic on small worked examples, computed by hand here so
 //      a silent change to a formula fails loudly.
 //   2. Pin the simulator to the PUBLISHED plan. The Free allowance constants
-//      must equal the documented 60 Sparks/day / 900 Sparks/month and 1 Spark
+//      must equal the documented 60 Credits/day / 900 Credits/month and 1 Credit
 //      must equal 30 neurons, so this internal model can never drift away from
 //      what the pricing page promises without a test going red.
 //
@@ -15,7 +15,7 @@ import assert from 'node:assert/strict';
 
 import {
   USD_PER_NEURON,
-  NEURONS_PER_SPARK,
+  NEURONS_PER_CREDIT,
   FREE_NEURONS_PER_DAY_ACCOUNT_WIDE,
   BILLABLE_NEURONS_PER_DAY,
   BILLABLE_NEURONS_PER_MONTH,
@@ -53,7 +53,7 @@ import {
   neuronsPerRequest,
   largestSingleRequestNeurons,
   unservableKinds,
-  sparksFor,
+  creditsFor,
   usd,
   breakEvenPrice,
   grossMargin,
@@ -78,14 +78,14 @@ const near = (actual, expected, tol, msg) =>
 // ---------------------------------------------------------------------------
 
 test('Free allowance matches the documented published plan exactly', () => {
-  assert.equal(PLANS.free.sparksPerDay, 60, 'Free is documented as 60 Sparks/day');
-  assert.equal(PLANS.free.sparksPerMonth, 900, 'Free is documented as 900 Sparks/month');
+  assert.equal(PLANS.free.creditsPerDay, 60, 'Free is documented as 60 Credits/day');
+  assert.equal(PLANS.free.creditsPerMonth, 900, 'Free is documented as 900 Credits/month');
   assert.equal(PLANS.free.published, true, 'Free must be flagged as the real, published plan');
 });
 
-test('1 Spark is 30 neurons, so Free is 1,800 neurons/day', () => {
-  assert.equal(NEURONS_PER_SPARK, 30);
-  assert.equal(PLANS.free.sparksPerDay * NEURONS_PER_SPARK, 1_800);
+test('1 Credit is 30 neurons, so Free is 1,800 neurons/day', () => {
+  assert.equal(NEURONS_PER_CREDIT, 30);
+  assert.equal(PLANS.free.creditsPerDay * NEURONS_PER_CREDIT, 1_800);
 });
 
 test('Pro and Max are flagged hypothetical, never published', () => {
@@ -94,11 +94,11 @@ test('Pro and Max are flagged hypothetical, never published', () => {
 });
 
 test('a quality-gated build does not fit in a Free day', () => {
-  // The documented fact: 60 Sparks/day = 1,800 neurons/day, and one gated build
-  // is ~2,300-2,400 neurons. It must not fit, in Sparks or in neurons.
+  // The documented fact: 60 Credits/day = 1,800 neurons/day, and one gated build
+  // is ~2,300-2,400 neurons. It must not fit, in Credits or in neurons.
   const build = taskNeurons('visual_build');
-  assert.ok(build > PLANS.free.sparksPerDay * NEURONS_PER_SPARK, 'gated build exceeds a Free day in neurons');
-  assert.ok(sparksFor(build) > PLANS.free.sparksPerDay, 'gated build exceeds a Free day in Sparks');
+  assert.ok(build > PLANS.free.creditsPerDay * NEURONS_PER_CREDIT, 'gated build exceeds a Free day in neurons');
+  assert.ok(creditsFor(build) > PLANS.free.creditsPerDay, 'gated build exceeds a Free day in Credits');
   assert.deepEqual(unservableKinds('free'), ['visual_build']);
   assert.deepEqual(unservableKinds('pro'), []);
 });
@@ -118,12 +118,12 @@ test('usd() worked example: 2,442 neurons = $0.026862', () => {
   near(usd(2442), 0.026862, 1e-9, 'usd(2442)');
 });
 
-test('sparksFor() rounds up and has a floor of 1', () => {
-  assert.equal(sparksFor(0), 1, 'a served request always costs at least 1 Spark');
-  assert.equal(sparksFor(1), 1);
-  assert.equal(sparksFor(30), 1); // exactly 30 -> 1
-  assert.equal(sparksFor(31), 2); // ceil(31/30) = 2
-  assert.equal(sparksFor(2442), 82); // ceil(2442/30) = ceil(81.4) = 82
+test('creditsFor() rounds up and has a floor of 1', () => {
+  assert.equal(creditsFor(0), 1, 'a served request always costs at least 1 Credit');
+  assert.equal(creditsFor(1), 1);
+  assert.equal(creditsFor(30), 1); // exactly 30 -> 1
+  assert.equal(creditsFor(31), 2); // ceil(31/30) = 2
+  assert.equal(creditsFor(2442), 82); // ceil(2442/30) = ceil(81.4) = 82
 });
 
 test('the hard monthly ceiling is $10.06 and is not moved by this file', () => {
@@ -219,29 +219,29 @@ test('no single inference call can breach the per-request gate', () => {
 // ---------------------------------------------------------------------------
 
 test('worked example: two questions and one small edit in a Free day', () => {
-  // 2 questions at 41 neurons -> sparksFor(41) = ceil(41/30) = 2 Sparks each
-  // 1 small edit at 133 neurons -> ceil(133/30) = ceil(4.43) = 5 Sparks
-  // total 2*2 + 5 = 9 Sparks, 2*41 + 133 = 215 neurons, $0.002365
+  // 2 questions at 41 neurons -> creditsFor(41) = ceil(41/30) = 2 Credits each
+  // 1 small edit at 133 neurons -> ceil(133/30) = ceil(4.43) = 5 Credits
+  // total 2*2 + 5 = 9 Credits, 2*41 + 133 = 215 neurons, $0.002365
   const q = taskNeurons('question');
   const e = taskNeurons('small_edit');
-  assert.equal(sparksFor(q), 2);
-  assert.equal(sparksFor(e), 5);
-  const sparks = 2 * sparksFor(q) + sparksFor(e);
+  assert.equal(creditsFor(q), 2);
+  assert.equal(creditsFor(e), 5);
+  const credits = 2 * creditsFor(q) + creditsFor(e);
   const neurons = 2 * q + e;
-  assert.equal(sparks, 9);
+  assert.equal(credits, 9);
   assert.equal(neurons, 215);
   near(usd(neurons), 0.002365, 1e-9, 'cost of the day');
-  assert.ok(sparks <= PLANS.free.sparksPerDay, 'this day fits inside Free');
+  assert.ok(credits <= PLANS.free.creditsPerDay, 'this day fits inside Free');
   // ...and 30 such days would breach the 900/month cap: 9 * 30 = 270. It does not.
-  assert.ok(sparks * SIM_DAYS_PER_MONTH <= PLANS.free.sparksPerMonth, '270 Sparks fits in 900/month');
+  assert.ok(credits * SIM_DAYS_PER_MONTH <= PLANS.free.creditsPerMonth, '270 Credits fits in 900/month');
 });
 
 test('worked example: one gated build alone busts a Free day', () => {
   const build = taskNeurons('visual_build');
-  assert.equal(sparksFor(build), 82);
-  assert.ok(82 > PLANS.free.sparksPerDay);
+  assert.equal(creditsFor(build), 82);
+  assert.ok(82 > PLANS.free.creditsPerDay);
   // On Pro it fits with room: 82 of 400.
-  assert.ok(82 <= PLANS.pro.sparksPerDay);
+  assert.ok(82 <= PLANS.pro.creditsPerDay);
 });
 
 // ---------------------------------------------------------------------------
@@ -265,11 +265,11 @@ test('breakEvenPrice() rejects impossible margins', () => {
 });
 
 test('allowance ceilings, worked by hand', () => {
-  // Free: min(60*30, 900) = 900 Sparks = 27,000 neurons = $0.297
+  // Free: min(60*30, 900) = 900 Credits = 27,000 neurons = $0.297
   near(allowanceCeilingUsdPerUserPerMonth('free'), 0.297, 1e-9, 'free ceiling');
-  // Pro: min(400*30, 6000) = 6,000 Sparks = 180,000 neurons = $1.98
+  // Pro: min(400*30, 6000) = 6,000 Credits = 180,000 neurons = $1.98
   near(allowanceCeilingUsdPerUserPerMonth('pro'), 1.98, 1e-9, 'pro ceiling');
-  // Max: min(2000*30, 40000) = 40,000 Sparks = 1,200,000 neurons = $13.20
+  // Max: min(2000*30, 40000) = 40,000 Credits = 1,200,000 neurons = $13.20
   near(allowanceCeilingUsdPerUserPerMonth('max'), 13.2, 1e-9, 'max ceiling');
   // and their break-even prices at the 80% target
   near(breakEvenPrice(1.98), 9.9, 1e-9, 'pro worst-case break-even');
@@ -340,8 +340,8 @@ test('simulateUserMonth() never lets a user exceed their allowance', () => {
       const rnd = makeRng(7);
       const u = simulateUserMonth({ plan, tasksPerDay: ACTIVITY_LEVELS[activity].tasksPerDay, rnd });
       assert.ok(
-        u.sparksThisMonth <= PLANS[plan].sparksPerMonth,
-        `${plan}/${activity}: ${u.sparksThisMonth} Sparks exceeds the ${PLANS[plan].sparksPerMonth} monthly allowance`,
+        u.creditsThisMonth <= PLANS[plan].creditsPerMonth,
+        `${plan}/${activity}: ${u.creditsThisMonth} Credits exceeds the ${PLANS[plan].creditsPerMonth} monthly allowance`,
       );
       assert.ok(u.servedNeurons <= u.demandNeurons, 'served can never exceed demand');
       assert.ok(u.servedTasks <= u.demandTasks, 'served tasks can never exceed demanded tasks');

@@ -32,7 +32,7 @@ export interface Consequence {
   reversible: unknown;
   /** Does it remove something the user made? */
   destroysUserContent: unknown;
-  /** Does it spend money or Sparks? */
+  /** Does it spend money or Credits? */
   costsMoney?: unknown;
 }
 

@@ -78,7 +78,7 @@ test('the capability ladder is a ladder: every role can do strictly more than th
   for (const a of COLLAB_ACTIONS) assert.ok(reachable.has(a), `${a} is declared but no role can perform it`);
 });
 
-test('spending the owner Sparks stops at editor, and restoring stops at admin', () => {
+test('spending the owner Credits stops at editor, and restoring stops at admin', () => {
   assert.equal(can('commenter', 'chat'), false, 'an invitation to comment is not an invitation to spend');
   assert.equal(can('commenter', 'build'), false);
   assert.equal(can('editor', 'chat'), true);

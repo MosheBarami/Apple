@@ -202,7 +202,7 @@ function doNamespace(name, handler, trace) {
   };
 }
 
-const QUOTA_STATE = { sparksRemaining: 90, sparksLimit: 120, plan: 'free', day: '2026-09-15' };
+const QUOTA_STATE = { creditsRemaining: 90, creditsLimit: 120, plan: 'free', day: '2026-09-15' };
 
 function makeEnv(opts = {}) {
   const store = opts.store ?? newStore();
@@ -743,14 +743,14 @@ test('the deprecation policy is stated on the response, with a sunset in the fut
 });
 
 test('usage headers omit headroom rather than inventing it', () => {
-  const full = P.usageHeaders({ inputTokens: 10, outputTokens: 4, sparksSpent: 2, sparksRemaining: 88 });
+  const full = P.usageHeaders({ inputTokens: 10, outputTokens: 4, creditsSpent: 2, creditsRemaining: 88 });
   assert.equal(full['X-Golem-Usage-Input-Tokens'], '10');
   assert.equal(full['X-Golem-Usage-Output-Tokens'], '4');
-  assert.equal(full['X-Golem-Usage-Sparks'], '2');
-  assert.equal(full['X-Golem-Sparks-Remaining'], '88');
+  assert.equal(full['X-Golem-Usage-Credits'], '2');
+  assert.equal(full['X-Golem-Credits-Remaining'], '88');
   for (const unknown of [null, NaN, Infinity]) {
-    const h = P.usageHeaders({ inputTokens: 1, outputTokens: 1, sparksSpent: 1, sparksRemaining: unknown });
-    assert.equal('X-Golem-Sparks-Remaining' in h, false, `a headroom of ${unknown} was published as a number`);
+    const h = P.usageHeaders({ inputTokens: 1, outputTokens: 1, creditsSpent: 1, creditsRemaining: unknown });
+    assert.equal('X-Golem-Credits-Remaining' in h, false, `a headroom of ${unknown} was published as a number`);
   }
 });
 
@@ -821,7 +821,7 @@ test('a key without chat:write cannot create a completion, and the model is neve
   assert.equal(r.json.error.code, 'insufficient_scope');
   assert.match(r.json.error.message, /chat:write/);
   assert.equal(bundle.trace.ai.length, 0, 'a refused request still ran the model');
-  assert.equal(bundle.trace.calls.filter((c) => c.ns === 'QUOTA_DO').length, 0, 'a refused request still spent Sparks');
+  assert.equal(bundle.trace.calls.filter((c) => c.ns === 'QUOTA_DO').length, 0, 'a refused request still spent Credits');
 });
 
 test('a live key returns an OpenAI-shaped completion with usage and rate-limit headers', async () => {
@@ -845,7 +845,7 @@ test('a live key returns an OpenAI-shaped completion with usage and rate-limit h
 
   assert.ok(r.res.headers.get('X-Golem-Usage-Input-Tokens'));
   assert.ok(r.res.headers.get('X-Golem-Usage-Output-Tokens'));
-  assert.ok(r.res.headers.get('X-Golem-Usage-Sparks'));
+  assert.ok(r.res.headers.get('X-Golem-Usage-Credits'));
   // Rate-limit headers belong on the 200, not only on the 429.
   assert.equal(r.res.headers.get('X-RateLimit-Limit'), String(K.rateLimitFor('live')));
   assert.ok(Number(r.res.headers.get('X-RateLimit-Remaining')) < Number(r.res.headers.get('X-RateLimit-Limit')));
@@ -854,7 +854,7 @@ test('a live key returns an OpenAI-shaped completion with usage and rate-limit h
   assert.equal(r.res.headers.get('Deprecation'), null, 'the current route announced a deprecation');
 
   assert.equal(bundle.trace.ai.length, 1, 'the model should have run exactly once');
-  assert.ok(bundle.trace.calls.some((c) => c.ns === 'QUOTA_DO' && c.path === '/spend'), 'a live call did not spend Sparks');
+  assert.ok(bundle.trace.calls.some((c) => c.ns === 'QUOTA_DO' && c.path === '/spend'), 'a live call did not spend Credits');
 });
 
 test('a run that ends in a tool call is an error, not an empty completion', async () => {
@@ -879,7 +879,7 @@ test('a run that ends in a tool call is an error, not an empty completion', asyn
   assert.equal(r.json.choices, undefined, 'a failure was rendered with choices');
 });
 
-test('a test key is served by the sandbox: no model, no Sparks, and it says so', async () => {
+test('a test key is served by the sandbox: no model, no Credits, and it says so', async () => {
   const bundle = makeEnv();
   const key = await seedKey(bundle, { mode: 'test', scopes: ['chat:write'] });
   const r = await call('/v1/chat/completions', {
@@ -892,9 +892,9 @@ test('a test key is served by the sandbox: no model, no Sparks, and it says so',
   assert.equal(r.json.system_fingerprint, P.SANDBOX_FINGERPRINT);
   assert.equal(r.res.headers.get('X-Golem-Sandbox'), 'true');
   assert.match(r.json.choices[0].message.content, /sandbox/i);
-  assert.equal(r.res.headers.get('X-Golem-Usage-Sparks'), '0');
+  assert.equal(r.res.headers.get('X-Golem-Usage-Credits'), '0');
   assert.equal(bundle.trace.ai.length, 0, 'a TEST key ran the model');
-  assert.equal(bundle.trace.calls.filter((c) => c.ns === 'QUOTA_DO').length, 0, 'a TEST key spent Sparks');
+  assert.equal(bundle.trace.calls.filter((c) => c.ns === 'QUOTA_DO').length, 0, 'a TEST key spent Credits');
   // Same request, same answer — that is what makes a test key assertable in somebody else's CI.
   const again = await call('/v1/chat/completions', {
     method: 'POST',
@@ -1148,7 +1148,7 @@ test('a caller\'s request id is echoed when it is safe, replaced when it is not,
   assert.ok(inward.length > 0, 'the session was never called — this assertion would prove nothing');
   for (const cc of inward) assert.equal(cc.requestId, 'trace-inward-9', `${cc.path} was not tagged with the caller's request id`);
 
-  // A run start and a Spark spend carry it too.
+  // A run start and a Credit spend carry it too.
   const runBundle = makeEnv({ session: async () => ({ ok: true }) });
   const runKey = await seedKey(runBundle, { scopes: [...K.API_SCOPES], projects: GRANTED });
   await call(`/v1/projects/${PROJECT_ID}/runs`, {
@@ -1163,7 +1163,7 @@ test('a caller\'s request id is echoed when it is safe, replaced when it is not,
     body: { model: 'golem-chat', messages: [{ role: 'user', content: 'hi' }] },
   });
   const spend = chatBundle.trace.calls.find((cc) => cc.ns === 'QUOTA_DO' && cc.path === '/spend');
-  assert.ok(spend, 'no Spark spend was recorded');
+  assert.ok(spend, 'no Credit spend was recorded');
   assert.equal(spend.requestId, 'chat-trace-3');
 });
 
@@ -1188,8 +1188,8 @@ test('the per-key rate limit bites, and says when to come back', async () => {
   assert.equal((await call('/v1/models', { key: other.key, env: bundle.env })).status, 200);
 });
 
-test('an account out of Sparks gets 429 and the model does not run', async () => {
-  const bundle = makeEnv({ quota: async ({ path }) => (path === '/spend' ? { ok: false, state: { ...QUOTA_STATE, sparksRemaining: 0 } } : QUOTA_STATE) });
+test('an account out of Credits gets 429 and the model does not run', async () => {
+  const bundle = makeEnv({ quota: async ({ path }) => (path === '/spend' ? { ok: false, state: { ...QUOTA_STATE, creditsRemaining: 0 } } : QUOTA_STATE) });
   const key = await seedKey(bundle, { scopes: ['chat:write'] });
   const r = await call('/v1/chat/completions', {
     method: 'POST', key: key.key, env: bundle.env, body: { model: 'golem-chat', messages: [{ role: 'user', content: 'hi' }] },

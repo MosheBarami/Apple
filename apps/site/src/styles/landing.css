@@ -363,7 +363,7 @@ svg {
 
 .ap-hero h1 {
   margin: 1.5rem 0 0;
-  font-size: clamp(2.5rem, 7vw, 4.7rem);
+  font-size: clamp(2.2rem, 5.2vw, 3.4rem);
   line-height: 0.92;
 }
 
@@ -452,7 +452,7 @@ svg {
 
 .ap-section h2 {
   margin: 0 0 0.7rem;
-  font-size: clamp(1.8rem, 3.6vw, 2.7rem);
+  font-size: clamp(1.6rem, 2.8vw, 2.2rem);
   line-height: 0.98;
   max-width: 24ch;
 }
@@ -1048,7 +1048,7 @@ code {
     /* 7vw bottoms out at the 2.5rem floor on a phone, which set the headline
        over five lines and cost 184px. A steeper vw with a lower floor keeps it
        to four and keeps the buttons on the first screen. */
-    font-size: clamp(2rem, 8.6vw, 4.7rem);
+    font-size: clamp(1.9rem, 6vw, 3.2rem);
   }
 
   .ap-chips {

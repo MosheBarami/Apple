@@ -18,6 +18,7 @@ import type {
   QuotaState,
   RunIntent,
   StudioEventLog,
+  StudioEventSelection,
   StudioEventState,
   StudioFrame,
 } from '@golem/shared';
@@ -72,7 +73,7 @@ export function mockSpend() {
     days,
     // The `model` field carries a placeholder, not a real model id. §1 of the
     // access manifest keeps provider and model identity out of normal product
-    // UX; /usage renders modes and sparks and never reads this field. Seeding a
+    // UX; /usage renders modes and credits and never reads this field. Seeding a
     // real id here would mean the day someone does render the breakdown, the
     // product starts naming its engine by accident. Admin diagnostics is where
     // real model ids belong.
@@ -202,14 +203,14 @@ export function mockRender(view: string, variant: 'before' | 'after' = 'after', 
 // ---------------------------------------------------------------------------
 
 export const mockQuota: QuotaState = {
-  sparksRemaining: 41,
-  sparksDaily: 60,
-  sparksMonthly: 900,
-  sparksUsedToday: 19,
-  sparksUsedThisMonth: 214,
+  creditsRemaining: 41,
+  creditsDaily: 60,
+  creditsMonthly: 900,
+  creditsUsedToday: 19,
+  creditsUsedThisMonth: 214,
   resetsAtIso: new Date(Date.now() + 5.5 * 3600_000).toISOString(),
   plan: 'free',
-  // A free account with no purchased balance: the allowance IS the whole of sparksRemaining.
+  // A free account with no purchased balance: the allowance IS the whole of creditsRemaining.
   // Kept consistent on purpose — a fixture whose parts do not add up teaches the UI to render a
   // state the server can never produce.
   allowanceRemaining: 41,
@@ -229,14 +230,21 @@ export const mockMe: MeResponse = {
   email: 'builder@example.com',
   profile: { id: 'mock-user', plan: 'free', is_admin: true, display_name: 'Quarry' },
   quota: mockQuota,
+  // No subscription: the mock user is on the free tier and has never bought anything, so the
+  // billing notice renders nothing at all. Inventing a renewal date here would put a sentence on
+  // the demo page that the demo cannot back up.
+  billing: {
+    plan: 'free', state: 'none', status: null, renewsAt: null, endsAt: null,
+    hasBillingAccount: false, needsAttention: false,
+  },
 };
 
 export function mockUsageDays(): UsageDay[] {
   const days: UsageDay[] = [];
   for (let i = 0; i < 30; i++) {
     const day = new Date(Date.now() - i * 864e5).toISOString().slice(0, 10);
-    const sparks = i % 7 === 0 ? 0 : Math.round(4 + 22 * Math.abs(Math.sin(i * 1.7)));
-    days.push({ day, sparks, events: Math.ceil(sparks / 3) });
+    const credits = i % 7 === 0 ? 0 : Math.round(4 + 22 * Math.abs(Math.sin(i * 1.7)));
+    days.push({ day, credits, events: Math.ceil(credits / 3) });
   }
   return days;
 }
@@ -291,6 +299,22 @@ export const mockStudioState: StudioEventState = {
   isRunMode: false,
   selectionCount: 2,
   pluginVersion: '0.4.1',
+};
+
+/**
+ * The Studio selection, in mock mode. Two items against a `selectionCount: 2` on mockStudioState —
+ * the fixture would be incoherent otherwise, and a fixture that cannot happen teaches the UI to
+ * render a state the product never produces.
+ */
+export const mockSelection: StudioEventSelection = {
+  kind: 'selection',
+  items: [
+    { path: 'game.Workspace.Lobby.Door', class: 'Part' },
+    { path: 'game.Workspace.Lobby.DoorFrame', class: 'Model' },
+  ],
+  count: 2,
+  truncated: false,
+  clock: now - 4_000,
 };
 
 export const mockCheckpoints: CheckpointMeta[] = [

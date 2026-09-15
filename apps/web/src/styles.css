@@ -1528,7 +1528,7 @@ textarea {
   flex: none;
 }
 
-.ws-sparks {
+.ws-credits {
   display: inline-flex;
   align-items: baseline;
   gap: 0.3rem;
@@ -1540,13 +1540,13 @@ textarea {
   border: 1px solid var(--hairline);
 }
 
-.ws-sparks strong {
+.ws-credits strong {
   font-family: var(--font-body);
   font-variant-numeric: tabular-nums;
   color: var(--ink);
 }
 
-.ws-sparks.is-low strong {
+.ws-credits.is-low strong {
   color: var(--warn);
 }
 
@@ -2185,7 +2185,7 @@ textarea {
   background: var(--acc-rune);
 }
 
-.sparks-hint {
+.credits-hint {
   font-size: 0.76rem;
   color: var(--faint);
   display: inline-flex;
@@ -2194,7 +2194,7 @@ textarea {
   white-space: nowrap;
 }
 
-.sparks-remaining {
+.credits-remaining {
   color: var(--muted);
 }
 
@@ -3880,7 +3880,7 @@ textarea {
   min-width: 9rem;
 }
 
-.gu-spark-row {
+.gu-credit-row {
   display: flex;
   align-items: flex-end;
   gap: 2px;
@@ -3890,14 +3890,14 @@ textarea {
   border-top: 1px solid var(--hairline);
 }
 
-.gu-spark-bar {
+.gu-credit-bar {
   flex: 1;
   min-width: 2px;
   border-radius: 1px;
   background: var(--surface-3);
 }
 
-.gu-spark-bar.is-active {
+.gu-credit-bar.is-active {
   background: var(--accent);
   opacity: 0.75;
 }
@@ -4352,7 +4352,7 @@ textarea {
   align-items: start;
 }
 
-.sparks-card {
+.credits-card {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -4360,8 +4360,8 @@ textarea {
   gap: 0.5rem;
 }
 
-.sparks-card h2,
-.sparks-card h3 {
+.credits-card h2,
+.credits-card h3 {
   margin: 0;
 }
 
@@ -4524,7 +4524,7 @@ textarea {
   color: var(--muted);
 }
 
-/* Builds first, Sparks underneath: "6,000 Sparks a month" means nothing on first read. */
+/* Builds first, Credits underneath: "6,000 Credits a month" means nothing on first read. */
 .plan__allowance {
   margin: 0;
   display: flex;
@@ -4687,8 +4687,98 @@ textarea {
   text-align: center;
 }
 
+/*
+ * CODE IS LEFT-TO-RIGHT IN EVERY LANGUAGE.
+ *
+ * This app renders RTL when the browser asks for it, and `dir` on <html> is right for the
+ * interface and wrong for these. Luau, a diff hunk, a stack trace and a shortcut legend are not
+ * prose in the reader's language: under an RTL run the bidi algorithm reorders their brackets,
+ * operators and leading +/- sigils, so `(a + b)` is drawn as `(b + a)` and a diff's '+' lands at
+ * the far end of the line — with nothing on screen to say that what is shown is not what is in the
+ * file.
+ *
+ * `unicode-bidi: isolate` is the second half and not decoration: `direction` alone fixes the
+ * inside of the box while leaving it a participant in the surrounding paragraph's bidi run, so an
+ * inline <code> in a Hebrew sentence still drags the words either side of it.
+ *
+ * Declared on the ELEMENTS rather than on a set of class names, because the next code block
+ * somebody adds will be a <pre> and will not be given a class anyone remembered to list here.
+ */
+pre,
+code,
+kbd,
+samp {
+  direction: ltr;
+  unicode-bidi: isolate;
+  text-align: start;
+}
+
+/* Collapsed by default: a billing history is for the moment somebody disagrees with a charge. */
+.billing-history {
+  margin: 1rem 0 0;
+  font-size: 0.85rem;
+}
+
+.billing-history summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.billing-history__list {
+  list-style: none;
+  margin: 0.6rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  color: var(--muted);
+}
+
+/* The charge currency, stated in the product rather than only on Stripe's page. */
+.plans-currency {
+  grid-column: 1 / -1;
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* The subscription's own state: renewal, pending cancellation, failed payment, card awaiting
+   authentication. A note rather than a banner — it reports what the server knows, and only the
+   `warn` tone earns any colour, because a renewal date is not an alarm.
+   Logical inset so the accent rail follows the writing direction in RTL, the same rule .plan
+   .is-current already follows. */
+.billing-notice {
+  margin: 0 0 1rem;
+  padding: 0.75rem 0.95rem;
+  border: 1px solid var(--line);
+  border-inline-start: 3px solid var(--line-strong, var(--line));
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+
+.billing-notice--warn {
+  border-inline-start-color: var(--warn, var(--accent));
+}
+
+.billing-notice__head {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.billing-notice__detail {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
 /* Purchased credits, beside the allowance ring and never inside it. */
-.sparks-credits {
+.credits-credits {
   margin: 0;
   font-size: 0.85rem;
   font-variant-numeric: tabular-nums;
@@ -5364,7 +5454,7 @@ html.has-cursor .cursor {
     font-size: 0.76rem;
   }
 
-  .sparks-hint {
+  .credits-hint {
     font-size: 0.72rem;
   }
 
@@ -5433,6 +5523,59 @@ html.has-cursor .cursor {
   .grain {
     display: none;
   }
+}
+
+/* --------------------------------------------------------------------------
+   Reduced motion — chosen, rather than detected
+
+   The block above honours the operating system, which is the right default and
+   was the only thing this product ever read. It is not the whole answer: an OS
+   setting is one switch for every application on the machine, and someone who
+   wants a calm interface HERE — or who is on a locked-down corporate image that
+   reports `reduce` for reasons of its own — had no way to say so.
+
+   `.motion-reduced` is set on <html> by lib/theme.tsx from the preference and
+   the OS together (lib/prefs.ts `resolveReducedMotion`), so this fires whenever
+   either says to. It is a duplicate of the rules above rather than a
+   replacement for them, deliberately: those exact blocks are matched by
+   tests/activity-motion.test.mjs, tests/status-icon.test.mjs and
+   tests/search-panel.test.mjs, which check that specific named animations stop.
+   Rewriting them to be class-driven would have turned three real guards red for
+   a refactor, which is precisely the trade this repo says not to make.
+
+   The asymmetry is worth stating, because the settings screen says it too:
+   "always reduce" is a COMPLETE override, and "keep motion on" can only reach
+   the motion this product drives from JavaScript — the custom cursor, the
+   loading cadence, the activity rows. What the block above switches off at the
+   operating system's request stays off, because a CSS rule cannot un-say
+   `animation: none`.
+   -------------------------------------------------------------------------- */
+
+:root.motion-reduced *,
+:root.motion-reduced *::before,
+:root.motion-reduced *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+:root.motion-reduced .chat-scroll {
+  scroll-behavior: auto;
+}
+
+:root.motion-reduced .cursor,
+:root.motion-reduced .grain {
+  display: none !important;
+}
+
+:root.motion-reduced.has-cursor,
+:root.motion-reduced.has-cursor a,
+:root.motion-reduced.has-cursor button,
+:root.motion-reduced.has-cursor summary,
+:root.motion-reduced.has-cursor [role='button'],
+:root.motion-reduced.has-cursor label {
+  cursor: auto;
 }
 
 @media (pointer: coarse), (hover: none) {

@@ -175,7 +175,7 @@ enforces and validated against **real inputs** — not invented ones:
 |---|---|---|
 | cluster overlap | the measured 97×73px HUD collision, and the geometry that replaced it | fires / passes |
 | wait contracts | `Hud` bounded + `Panels` unbounded on `Icons` | fires |
-| price agreement | the real `1/4/10` vs `1/2/3` spark disagreement | fires on 2 of 3 keys |
+| price agreement | the real `1/4/10` vs `1/2/3` credit disagreement | fires on 2 of 3 keys |
 | motion gate | a module tweening outside `Theme.motion` | fires |
 | **safe area** | the two ScreenGuis in the shipping client, parsed from source | **fires — see below** |
 | **gamepad reachability** | a rail with an entry point and no links; a link into a non-`Selectable` element | fires |

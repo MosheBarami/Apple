@@ -5,7 +5,7 @@
 // Which foundation model answers is an implementation detail of the routing
 // layer — it changes with availability, cost and task, and a user who pinned a
 // named backend would be choosing a thing we reserve the right to move. The
-// user sees "Apple". So the only choice offered here is how much autonomy and
+// user sees "Golem". So the only choice offered here is how much autonomy and
 // budget a request gets:
 //
 //   Plan        inspects, reasons and proposes — no project edits by default
@@ -19,7 +19,6 @@
 // vocabulary. Nothing in this file may name a provider or a model id.
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { PRODUCT_MODES, PRODUCT_MODE_INFO, type ProductMode } from '@golem/shared';
-import { clearDraft, readDraft, writeDraft } from '../../lib/draft';
 import { Icon, PATH, Popover } from './primitives';
 
 /**
@@ -48,7 +47,7 @@ const TONE: Record<ProductMode, string> = {
 const PLACEHOLDER = 'Ask anything about your project...';
 
 interface Props {
-  onSend: (text: string) => void;
+  onSend: (text: string) => void | boolean;
   onStop: () => void;
   running: boolean;
   disabled?: boolean;
@@ -56,13 +55,8 @@ interface Props {
   onModeChange: (m: ProductMode) => void;
   seed?: string;
   placeholder?: string;
-  /**
-   * Which project this composer belongs to.
-   *
-   * Drafts are kept per project: one shared key would show project A's unsent message in project
-   * B, which is worse than losing it — the user sends the wrong thing to the wrong place.
-   */
   draftKey?: string;
+  selection?: unknown;
 }
 
 export function Composer({
@@ -75,10 +69,9 @@ export function Composer({
   seed,
   placeholder,
   draftKey,
+  selection,
 }: Props) {
-  // Read synchronously on the first render rather than in an effect: restoring in an effect paints
-  // an empty box first, and the user starts retyping into it before the draft lands on top.
-  const [text, setText] = useState(() => (draftKey ? readDraft(draftKey) : ''));
+  const [text, setText] = useState('');
   const [modeOpen, setModeOpen] = useState(false);
   const box = useRef<HTMLTextAreaElement>(null);
 
@@ -88,24 +81,6 @@ export function Composer({
       box.current?.focus();
     }
   }, [seed]);
-
-  // Switching projects swaps the draft. Without this the composer keeps the previous project's
-  // text, which is the exact failure the per-project key exists to prevent.
-  const lastKey = useRef(draftKey);
-  useEffect(() => {
-    if (draftKey === lastKey.current) return;
-    lastKey.current = draftKey;
-    setText(draftKey ? readDraft(draftKey) : '');
-  }, [draftKey]);
-
-  // Persisted on a delay, not on every keystroke: localStorage writes are synchronous, and one per
-  // character is measurable on a long message. 400ms is under the time it takes to reach for the
-  // reload the draft is meant to survive.
-  useEffect(() => {
-    if (!draftKey) return;
-    const timer = setTimeout(() => writeDraft(draftKey, text), 400);
-    return () => clearTimeout(timer);
-  }, [text, draftKey]);
 
   // Grow with the content, up to the CSS max-height.
   useEffect(() => {
@@ -121,9 +96,6 @@ export function Composer({
     if (!value || running || disabled) return;
     onSend(value);
     setText('');
-    // Cleared here, at the point the message actually left, rather than optimistically: a send
-    // refused because the socket had closed must leave the draft where it was.
-    if (draftKey) clearDraft(draftKey);
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -137,10 +109,10 @@ export function Composer({
   const activeMode = PRODUCT_MODE_INFO[mode];
 
   return (
-    <div className="gx-composer" data-tour="composer">
+    <div className="gx-composer">
       <form className="gx-composer__inner" onSubmit={submit}>
         <label className="gx-sr" htmlFor="gx-composer-input">
-          Describe what you want Apple to build
+          Describe what you want Golem to build
         </label>
         <textarea
           id="gx-composer-input"
@@ -189,7 +161,7 @@ export function Composer({
                     <span className="gx-pop__main">
                       {info.name}
                       <span className="gx-pop__sub">
-                        {info.blurb} Typically {info.typicalSparks} Sparks.
+                        {info.blurb} Typically {info.typicalCredits} Credits.
                       </span>
                     </span>
                   </button>
@@ -235,7 +207,7 @@ export function Composer({
         </div>
       </form>
 
-      <p className="gx-composer__note">Apple can make mistakes. Always review important information.</p>
+      <p className="gx-composer__note">Golem can make mistakes. Always review important information.</p>
     </div>
   );
 }

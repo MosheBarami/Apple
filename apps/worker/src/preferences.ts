@@ -15,12 +15,41 @@
 import type { Env } from './env';
 import type { MemoryAccess, MemoryEntry, MemoryScope, ResolvedMemory } from './memory-store';
 import { MEMORY_KEY_RE, ensureMemoryTables, isMemoryScope, listMemoryEntries, precedenceOf, resolveMemoryLayers } from './memory-store';
+import { MEMORY_MODE_DEFAULT, isMemoryMode, type MemoryMode } from './memory';
+import {
+  mergeEventPrefs,
+  normaliseDelivery,
+  normaliseEventPrefs,
+  type DeliveryPreference,
+  type NotificationEventPrefs,
+  type NotificationPrefReject,
+} from './notifications';
 
 // ---------------------------------------------------------------------------------------------
 // the vocabulary
 // ---------------------------------------------------------------------------------------------
 
-export const PREFERENCE_KEYS = ['coding_style', 'roblox_conventions', 'language', 'model', 'response_length', 'tool_permissions'] as const;
+export const PREFERENCE_KEYS = [
+  'coding_style',
+  'roblox_conventions',
+  'language',
+  'model',
+  'response_length',
+  'tool_permissions',
+  // Notification settings are preferences like any other, and they are stored here rather than in
+  // a table of their own for one reason: this is the machinery that already scopes a setting to an
+  // org, a person or a single project, layers the three, shows which layer won, expires rows,
+  // audits writes and exports them. A second store would have had to grow all of that, or ship
+  // without it, and "per-project notification preferences" is exactly the thing the layering
+  // already does. The values themselves are validated by notifications.ts.
+  'notify_delivery',
+  'notify_events',
+  // Whether Apple may keep what it works out about a project at all, and whether it has to ask
+  // first. It is a preference rather than a switch of its own because it is the same question as
+  // every other one here — set it for yourself, or for one project, or for a whole organisation —
+  // and because a compliance rule that could not be set at the org layer would not be a rule.
+  'memory_mode',
+] as const;
 export type PreferenceKey = (typeof PREFERENCE_KEYS)[number];
 
 export const CODING_STYLES = ['idiomatic', 'minimal', 'commented', 'strict-typed', 'oop', 'functional'] as const;
@@ -91,6 +120,12 @@ export interface Preferences {
   model?: string;
   response_length?: ResponseLength;
   tool_permissions?: Record<string, ToolPermission>;
+  /** Quiet hours, digest and the zone they are read in. See notifications.ts. */
+  notify_delivery?: DeliveryPreference;
+  /** Which kinds of notification this layer wants. Merged per entry, not per object. */
+  notify_events?: NotificationEventPrefs;
+  /** `auto`, `review` or `off`. See memory.ts — and `mergePreferences`, where it NARROWS. */
+  memory_mode?: MemoryMode;
 }
 
 export type PreferenceReject =
@@ -100,7 +135,12 @@ export type PreferenceReject =
   | 'unknown_model'
   | 'no_tool_allowlist'
   | 'unknown_tool'
-  | 'too_many';
+  | 'too_many'
+  // The notification vocabulary's own refusals, carried through rather than collapsed into
+  // `bad_value`: "you cannot mute a security notification" and "this deployment has no mail
+  // transport" are different sentences, and a settings page that could only say "bad value" would
+  // leave a person toggling a switch that silently refuses.
+  | NotificationPrefReject;
 
 export interface NormalisedPreferences {
   prefs: Preferences;
@@ -150,6 +190,10 @@ export function normalisePreferences(input: unknown, vocab: PreferenceVocabulary
         if (isResponseLength(value)) prefs.response_length = value;
         else rejected.push({ key, reason: 'bad_value' });
         break;
+      case 'memory_mode':
+        if (isMemoryMode(value)) prefs.memory_mode = value;
+        else rejected.push({ key, reason: 'bad_value' });
+        break;
       case 'roblox_conventions': {
         if (!Array.isArray(value)) {
           rejected.push({ key, reason: 'bad_value' });
@@ -180,6 +224,20 @@ export function normalisePreferences(input: unknown, vocab: PreferenceVocabulary
           break;
         }
         prefs.model = value;
+        break;
+      }
+      case 'notify_delivery': {
+        // The whole object or the defaults - see `normaliseDelivery`. A window with no zone to
+        // read it in would be applied in UTC, which silences the wrong part of somebody's day.
+        const r = normaliseDelivery(value);
+        for (const rej of r.rejected) rejected.push({ key: `notify_delivery:${rej.key}`, reason: rej.reason });
+        prefs.notify_delivery = r.delivery;
+        break;
+      }
+      case 'notify_events': {
+        const r = normaliseEventPrefs(value);
+        for (const rej of r.rejected) rejected.push({ key: `notify_events:${rej.key}`, reason: rej.reason });
+        if (Object.keys(r.events).length > 0) prefs.notify_events = r.events;
         break;
       }
       case 'tool_permissions': {
@@ -247,7 +305,11 @@ export function mergePreferences(layers: Partial<Record<MemoryScope, Preferences
   for (const scope of order) {
     const layer = layers[scope]!;
     for (const key of PREFERENCE_KEYS) {
-      if (key === 'tool_permissions') continue;
+      // `notify_events` is excluded here and merged per entry below. The exclusion is REDUNDANT
+      // as the code stands - the per-entry merge runs afterwards and overwrites whatever this loop
+      // wrote - and it is kept because it states the intent at the place a reader looks for it,
+      // and because the redundancy disappears the moment the two are reordered.
+      if (key === 'tool_permissions' || key === 'notify_events' || key === 'memory_mode') continue;
       const v = layer[key];
       if (v === undefined) continue;
       (prefs as Record<string, unknown>)[key] = v;
@@ -267,7 +329,61 @@ export function mergePreferences(layers: Partial<Record<MemoryScope, Preferences
     sources.tool_permissions = scope;
   }
   if (sawPerms) prefs.tool_permissions = merged;
+
+  //[[ `memory_mode` NARROWS, like tool permissions and unlike everything else here.
+  //
+  //   The other preferences are taste, and the person closest to the work should win. This one is
+  //   not: an organisation that turns memory off has made a decision about what may be retained
+  //   and re-sent to a model provider, and a rule a lower layer can switch back on is not a rule.
+  //   So the strictest layer wins wherever it was set — the same asymmetry, for the same reason,
+  //   and expressed through the same kind of rank function.
+  //
+  //   `sources` names the layer that actually decided, not the last one to hold an opinion, so the
+  //   panel can say "your organisation turned this off" instead of showing a control that silently
+  //   does nothing. ]]
+  let mode: MemoryMode | undefined;
+  for (const scope of order) {
+    const v = layers[scope]?.memory_mode;
+    if (v === undefined) continue;
+    const next = mostRestrictiveMemoryMode(mode, v);
+    if (next !== mode) sources.memory_mode = scope;
+    mode = next;
+  }
+  if (mode !== undefined) prefs.memory_mode = mode;
+
+  // `notify_events` merges PER ENTRY, in precedence order, for a reason unrelated to the one that
+  // makes tool permissions narrow: nothing about it is a safety rule, and a project that overrode
+  // the object wholesale would silently un-mute every kind the person had muted account-wide.
+  // A switch that flips itself when you change a different switch is worse than a switch that does
+  // not exist.
+  const events = mergeEventPrefs(order.map((s) => layers[s]?.notify_events ?? {}));
+  if (Object.keys(events).length > 0) {
+    prefs.notify_events = events;
+    sources.notify_events = order.filter((s) => layers[s]?.notify_events !== undefined).pop();
+  }
   return { prefs, sources };
+}
+
+/** How much a mode allows. Higher is stricter, so the comparison reads the same way as the tools'. */
+const MEMORY_MODE_RANK: Readonly<Record<MemoryMode, number>> = { auto: 0, review: 1, off: 2 };
+
+export function mostRestrictiveMemoryMode(a: MemoryMode | undefined, b: MemoryMode | undefined): MemoryMode {
+  if (!isMemoryMode(a)) return isMemoryMode(b) ? b : MEMORY_MODE_DEFAULT;
+  if (!isMemoryMode(b)) return a;
+  return MEMORY_MODE_RANK[a] >= MEMORY_MODE_RANK[b] ? a : b;
+}
+
+/**
+ * The mode a run actually uses.
+ *
+ * ONE function, called by the prompt builder, the distiller, the `remember` tool and the panel, so
+ * the four cannot disagree about whether memory is on. The default is stated here rather than at
+ * each call site: `prefs.memory_mode ?? 'auto'` written in four places is four opportunities for
+ * one of them to become `?? 'off'` or to be forgotten entirely.
+ */
+export function memoryModeOf(prefs: Preferences | undefined | null): MemoryMode {
+  const mode = prefs?.memory_mode;
+  return isMemoryMode(mode) ? mode : MEMORY_MODE_DEFAULT;
 }
 
 const PERMISSION_RANK: Readonly<Record<ToolPermission, number>> = { allow: 0, ask: 1, deny: 2 };
@@ -546,6 +662,8 @@ export function routePreferredModel(preferred: string | undefined, modelKey: unk
  */
 export interface Personalisation {
   prefs: Preferences;
+  /** Already resolved through `memoryModeOf`, so a run never has to default it again. */
+  memoryMode: MemoryMode;
   sources: Partial<Record<PreferenceKey, MemoryScope>>;
   profile: PromptProfile;
   projectInstructions: string[];
@@ -558,6 +676,9 @@ export interface Personalisation {
 
 export const EMPTY_PERSONALISATION: Personalisation = {
   prefs: {},
+  // A store that cannot be read is not a store that turned memory off. The degraded state is the
+  // product's default behaviour, not the strictest setting somebody might have had.
+  memoryMode: MEMORY_MODE_DEFAULT,
   sources: {},
   profile: {},
   projectInstructions: [],
@@ -605,6 +726,7 @@ export async function personalisationForProject(
   const promptBlock = preferencesPrompt({ prefs: merged.prefs, profile, projectInstructions, teamInstructions }, fenceId);
   return {
     prefs: merged.prefs,
+    memoryMode: memoryModeOf(merged.prefs),
     sources: merged.sources,
     profile,
     projectInstructions,

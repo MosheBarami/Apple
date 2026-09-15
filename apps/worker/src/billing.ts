@@ -1,12 +1,12 @@
 /**
  * Billing — subscription state, purchased credits, and the Stripe webhook that drives both.
  *
- * WHAT THIS IS FOR. `PLAN_LIMITS` grants 60 Sparks/day to every signup, with no cap on signups and
+ * WHAT THIS IS FOR. `PLAN_LIMITS` grants 60 Credits/day to every signup, with no cap on signups and
  * no way to charge anyone. At a measured ~$0.025 per quality-gated build, that makes each new user
  * a pure cost. This is the piece that turns a plan into something a user can actually buy.
  *
  * TWO BALANCES, DELIBERATELY SEPARATE.
- *   - A PLAN grants a renewable Spark allowance. It is a rate: it resets, it does not accumulate.
+ *   - A PLAN grants a renewable Credit allowance. It is a rate: it resets, it does not accumulate.
  *   - CREDITS are a purchased balance. They do not expire and are spent ONLY after the renewable
  *     allowance for the period is gone.
  * Collapsing the two would make "your plan includes X, top up if you need more" inexpressible, and
@@ -65,6 +65,127 @@ export function entitlementFor(sub: Subscription, now = 0): PlanId {
   // from the clock so this stays a pure function and can be tested at a chosen instant.
   if (sub.currentPeriodEnd !== null && now > 0 && now > sub.currentPeriodEnd) return 'free';
   return sub.plan;
+}
+
+// ---------------------------------------------------------------------------
+// What the product may SAY about a subscription
+// ---------------------------------------------------------------------------
+
+/**
+ * The states a subscription can be in, as the product must describe them.
+ *
+ * `entitlementFor` answers one question — may this user spend at a paid rate — and collapses
+ * everything else into 'free'. That is correct for enforcement and useless for a page: a renewing
+ * subscription, one that cancels at the end of the period, a failed renewal still being retried,
+ * and a payment waiting on a 3-D Secure challenge all had to be told apart before any of them could
+ * be shown, and every one of them arrived on the same event and was thrown away.
+ */
+export type BillingState =
+  /** Never subscribed. */
+  | 'none'
+  /** Renewing normally. */
+  | 'active'
+  /** Inside a trial. */
+  | 'trialing'
+  /** Still served, but it ends at the period end rather than renewing. */
+  | 'cancelling'
+  /** A renewal failed. Still served while Stripe retries, deliberately. */
+  | 'past_due'
+  /** The payment needs the cardholder to authenticate. Entitles nothing. */
+  | 'needs_action'
+  /** Over: cancelled, unpaid, or a period that simply ran out. */
+  | 'lapsed';
+
+export interface SubscriptionView {
+  /** What the user is entitled to RIGHT NOW. Recomputed, never read from metadata. */
+  plan: PlanId;
+  state: BillingState;
+  /** Stripe's own word for it, kept for support questions. */
+  status: string | null;
+  /** Unix seconds this renews. Null whenever it will not renew. */
+  renewsAt: number | null;
+  /** Unix seconds access ends. Non-null ONLY when something is actually ending. */
+  endsAt: number | null;
+  /** A Stripe customer exists, so the portal has something to open — even on the free tier. */
+  hasBillingAccount: boolean;
+  /** There is something the user must do. Drives the one notice this product can afford to show. */
+  needsAttention: boolean;
+}
+
+export const NO_SUBSCRIPTION_VIEW: SubscriptionView = {
+  plan: 'free',
+  state: 'none',
+  status: null,
+  renewsAt: null,
+  endsAt: null,
+  hasBillingAccount: false,
+  needsAttention: false,
+};
+
+/**
+ * One reading of a stored subscription, which every surface derives from.
+ *
+ * RENEWS AND ENDS ARE NEVER BOTH SET, and never the same field under two names. `currentPeriodEnd`
+ * means opposite things depending on `cancelAtPeriodEnd` — the day you are charged again, or the
+ * day you lose access — and a UI handed the raw number has to make that call itself, in each place
+ * it prints it. It is made here, once.
+ */
+export function subscriptionView(sub: Subscription | null | undefined, nowSeconds: number): SubscriptionView {
+  if (!sub || !sub.status) {
+    return { ...NO_SUBSCRIPTION_VIEW, hasBillingAccount: !!sub?.customerId };
+  }
+  const hasBillingAccount = !!sub.customerId;
+  const plan = entitlementFor(sub, nowSeconds);
+  const base = { status: sub.status, hasBillingAccount, renewsAt: null, endsAt: null, needsAttention: false };
+
+  // A payment awaiting authentication is its own thing: the user believes they have paid, and
+  // nothing has been granted. Checked before the lapse test, which would otherwise swallow it.
+  if (sub.status === 'incomplete') {
+    return { ...base, plan: 'free', state: 'needs_action', needsAttention: true };
+  }
+  // Over, whatever the reason — a terminal status, or a period that ran out under a live one.
+  if (plan === 'free') {
+    return { ...base, plan: 'free', state: 'lapsed', endsAt: sub.currentPeriodEnd, needsAttention: hasBillingAccount };
+  }
+  if (sub.status === 'past_due') {
+    return { ...base, plan, state: 'past_due', endsAt: sub.currentPeriodEnd, needsAttention: true };
+  }
+  if (sub.cancelAtPeriodEnd) {
+    // Still served until the period ends, and it does NOT renew. Saying "renews on" here is the
+    // single most expensive sentence this page could get wrong.
+    return { ...base, plan, state: 'cancelling', endsAt: sub.currentPeriodEnd };
+  }
+  return {
+    ...base,
+    plan,
+    state: sub.status === 'trialing' ? 'trialing' : 'active',
+    renewsAt: sub.currentPeriodEnd,
+  };
+}
+
+/** States in which Stripe still has a subscription it could charge for. */
+const LIVE_STATES = new Set<BillingState>(['active', 'trialing', 'cancelling', 'past_due']);
+
+export type CheckoutGuardVerdict = { ok: true } | { ok: false; status: 409; error: string };
+
+/**
+ * May this account start a checkout at all?
+ *
+ * A Stripe Checkout ADDS a subscription; it never replaces one. The page already sent paid users to
+ * the portal, but the ROUTE did not look — so a direct POST to /api/billing/checkout minted a
+ * second subscription beside the running one and the customer was charged for both. The page's
+ * rule and this one are the same rule; only this one is enforced.
+ *
+ * A LAPSED CUSTOMER IS NOT REFUSED. Coming back after a cancellation is a first subscription again,
+ * and refusing it would strand a returning customer on a portal with nothing to resume.
+ */
+export function checkoutGuard(view: SubscriptionView): CheckoutGuardVerdict {
+  if (!LIVE_STATES.has(view.state)) return { ok: true };
+  return {
+    ok: false,
+    status: 409,
+    error: 'you already have a subscription — change or cancel it in the billing portal',
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -133,6 +254,15 @@ export async function verifyStripeSignature(
 export interface BillingOutcome {
   /** Which user this event is about, from subscription metadata. */
   userId: string | null;
+  /**
+   * Stripe's own id for this event, or null when it carried none.
+   *
+   * STRIPE RETRIES. A delivery that times out on our side is sent again, and `/grant-credits` is
+   * additive — so without an id to deduplicate on, one purchase inside the signature window credits
+   * the account twice. Carried here rather than read at the call site so the reader and the
+   * deduplicator cannot disagree about which field it is.
+   */
+  eventId: string | null;
   subscription?: Subscription;
   /** Credits to add, for one-off purchases. */
   creditsDelta?: number;
@@ -151,18 +281,22 @@ export interface BillingOutcome {
  * attaching it to none.
  */
 export function interpretStripeEvent(event: unknown): BillingOutcome {
-  if (typeof event !== 'object' || event === null) return { userId: null, ignored: 'not an object' };
-  const e = event as { type?: string; data?: { object?: Record<string, unknown> } };
+  if (typeof event !== 'object' || event === null) return { userId: null, eventId: null, ignored: 'not an object' };
+  const e = event as { id?: unknown; type?: string; data?: { object?: Record<string, unknown> } };
   const obj = e.data?.object ?? {};
   const type = e.type ?? '';
   const metadata = (obj['metadata'] as Record<string, string> | undefined) ?? {};
   const userId = metadata['userId'] ?? null;
+  // Null rather than undefined: this value is serialised to the DO, and `undefined` disappears
+  // through JSON.stringify, which would turn "no id" into "field absent" and then into a fresh
+  // event every time (F-65).
+  const eventId = typeof e.id === 'string' && e.id.length > 0 ? e.id : null;
 
   switch (type) {
     case 'customer.subscription.created':
     case 'customer.subscription.updated':
     case 'customer.subscription.deleted': {
-      if (!userId) return { userId: null, ignored: 'subscription carries no metadata.userId' };
+      if (!userId) return { userId: null, eventId, ignored: 'subscription carries no metadata.userId' };
       const planRaw = metadata['plan'];
       const status = typeof obj['status'] === 'string' ? obj['status'] : null;
       // A deletion is a lapse to free regardless of what the plan metadata still says.
@@ -170,6 +304,7 @@ export function interpretStripeEvent(event: unknown): BillingOutcome {
       const plan: PlanId = deleted ? 'free' : isPlanId(planRaw) ? planRaw : 'free';
       return {
         userId,
+        eventId,
         subscription: {
           plan,
           customerId: typeof obj['customer'] === 'string' ? obj['customer'] : null,
@@ -182,17 +317,17 @@ export function interpretStripeEvent(event: unknown): BillingOutcome {
     }
 
     case 'checkout.session.completed': {
-      if (!userId) return { userId: null, ignored: 'checkout session carries no metadata.userId' };
+      if (!userId) return { userId: null, eventId, ignored: 'checkout session carries no metadata.userId' };
       // One-off credit purchase. Subscription checkouts are handled by the subscription events
       // above, so this only applies when credits were actually bought.
       const credits = Number(metadata['credits'] ?? 0);
-      if (obj['payment_status'] !== 'paid') return { userId, ignored: `payment_status ${String(obj['payment_status'])}` };
-      if (!Number.isFinite(credits) || credits <= 0) return { userId, ignored: 'no credits in metadata' };
-      return { userId, creditsDelta: Math.floor(credits) };
+      if (obj['payment_status'] !== 'paid') return { userId, eventId, ignored: `payment_status ${String(obj['payment_status'])}` };
+      if (!Number.isFinite(credits) || credits <= 0) return { userId, eventId, ignored: 'no credits in metadata' };
+      return { userId, eventId, creditsDelta: Math.floor(credits) };
     }
 
     default:
-      return { userId, ignored: `unhandled event type ${type}` };
+      return { userId, eventId, ignored: `unhandled event type ${type}` };
   }
 }
 
@@ -287,6 +422,13 @@ export function buildCheckoutRequest(
   // move a plan are subscription events, and a session's metadata does not reach them on its own.
   p.set('metadata[userId]', opts.userId);
   p.set('subscription_data[metadata][userId]', opts.userId);
+  // AND THE PLAN. This line was missing, and its absence was the whole upgrade path failing
+  // silently: interpretStripeEvent reads metadata.plan and falls back to 'free', so every real
+  // paid subscription was interpreted as free and the customer stayed on the tier they had left.
+  // Nothing caught it because the webhook tests hand-built their events with a plan field that no
+  // checkout ever set. It is NOT an instruction about entitlement — entitlementFor still recomputes
+  // from status and period, so a cancelled subscription naming 'studio' here still grants nothing.
+  p.set('subscription_data[metadata][plan]', opts.plan);
   if (opts.email) p.set('customer_email', opts.email);
   // One subscription per account: without this a second checkout adds a second subscription and the
   // user is charged twice for tiers that were meant to replace one another.

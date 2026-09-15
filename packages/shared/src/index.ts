@@ -40,6 +40,16 @@ export type StudioOp =
   | { op: 'get_instance'; path: string } // full props + attributes
   | { op: 'list_scripts'; root?: string }
   | { op: 'read_script'; path: string }
+  /**
+   * Every script's path, class AND source in one round trip.
+   *
+   * `list_scripts` + N × `read_script` returns the same bytes, but a place-wide analysis — the
+   * require graph, a scope-correct symbol index, which LocalScript sits in a server container —
+   * needs every source at once, and doing that one op at a time is N Studio round trips for one
+   * answer. `maxChars` is a BUDGET over the whole dump, not a per-file cap: the plugin stops
+   * adding files when it is spent and says so, rather than silently returning half a place.
+   */
+  | { op: 'dump_scripts'; root?: string; maxScripts?: number; maxChars?: number }
   | {
       op: 'edit_script';
       path: string;
@@ -47,6 +57,13 @@ export type StudioOp =
       source?: string; // full replace
       edits?: { find: string; replace: string; all?: boolean }[];
       create?: { className: 'Script' | 'LocalScript' | 'ModuleScript'; parent: string };
+      /**
+       * FNV-1a/32 hex of the source this edit was computed against, checked INSIDE the write
+       * transaction. A Studio-side edit between the read and the write changes the hash, and the
+       * write is refused instead of destroying it. Absent means "no base was observed", which is
+       * only true when creating.
+       */
+      baseHash?: string;
     }
   | { op: 'search_scripts'; query: string; root?: string; maxResults?: number }
   | { op: 'create_instances'; items: InstanceSpec[] }
@@ -227,6 +244,28 @@ export interface PendingOp {
   runId?: string;
 }
 
+/**
+ * WHY A FAILED OP CARRIES A KIND AND NOT ONLY A SENTENCE.
+ *
+ * `error` is English written for a human. It has been the ONLY thing distinguishing a path that
+ * no longer exists from a plugin that never had the op from a request that timed out in flight —
+ * so anything deciding whether to try again had to pattern-match prose, which changes whenever
+ * somebody improves the wording. That is the same defect as asserting on a variable name.
+ *
+ * The kinds are chosen so that retry eligibility follows from the kind ALONE (see the worker's
+ * op-failure.ts), and so that a kind this build has never heard of is treated as not-retryable
+ * rather than guessed at.
+ *
+ *   not_found  the thing addressed is not there (a path, an instance, an asset)
+ *   conflict   the place is not in the state the op required
+ *   refused    the plugin declined on purpose (unknown op, a guard, a policy)
+ *   invalid    the arguments could not be accepted
+ *   timeout    nobody answered in time; whether it ran is UNKNOWN
+ *   transport  it never reached Studio (not connected, run ended, queue dropped)
+ *   internal   it broke in a way nothing above describes
+ */
+export type OpFailureKind = 'not_found' | 'conflict' | 'refused' | 'invalid' | 'timeout' | 'transport' | 'internal';
+
 export interface OpResult {
   id: string;
   ok: boolean;
@@ -234,6 +273,50 @@ export interface OpResult {
   data?: unknown;
   error?: string;
   durationMs?: number;
+  /**
+   * What KIND of failure this was, when the side that produced it knows. Absent on success, and
+   * absent on a failure from a plugin build that predates the field — which reads as "unknown",
+   * never as "retryable".
+   */
+  failure?: OpFailureKind;
+}
+
+/**
+ * THE PLACE A PROJECT IS BOUND TO.
+ *
+ * A Studio session is a plugin-wide setting, not a per-place one: opening a different place in the
+ * same Studio keeps the session. Without a recorded place, this project's ops execute in whatever
+ * the user happens to have open. So the place identity is captured at pairing and compared on every
+ * poll — see the worker's studio-place.ts for the admission rules and for why an UNIDENTIFIABLE
+ * place is never a mismatch.
+ *
+ * `placeId` is 0 for a place that has never been saved to Roblox, and `gameId` is 0 with it. Both
+ * zero means "we cannot tell", which is a different answer from "a different place".
+ */
+export interface StudioPlace {
+  placeId: number;
+  gameId: number;
+  placeName: string;
+  /** When this binding was recorded. */
+  boundAt: number;
+}
+
+/**
+ * The state of a project's link to Studio, as the owner may see it.
+ *
+ * `paired` and `connected` are two facts and not one: a project keeps its pairing across a Studio
+ * restart, a laptop lid, and a flight. Collapsing them would report "not paired" for a plugin that
+ * is simply not polling this second, and send the user to mint a code they do not need.
+ */
+export interface StudioLinkSummary {
+  paired: boolean;
+  connected: boolean;
+  /** When the plugin last polled, or null if it never has. */
+  lastSeenAt: number | null;
+  queuedOps: number;
+  pluginVersion: string | null;
+  pluginProtocol: number | null;
+  place: StudioPlace | null;
 }
 
 export interface StudioEventLog {
@@ -287,6 +370,12 @@ export interface PluginPollResponse {
   ops: PendingOp[];
   waitMs: number; // suggested next poll delay
   detach?: boolean; // session ended
+  /**
+   * Set only when the poll was refused because the open place is not the one this project is
+   * bound to. The plugin shows `message` and keeps polling — the user may simply switch back —
+   * and NO ops are served while this is present.
+   */
+  placeMismatch?: { expected: StudioPlace; openPlaceId: number; openPlaceName: string; message: string };
 }
 
 // ---------------------------------------------------------------------------
@@ -294,6 +383,30 @@ export interface PluginPollResponse {
 // ---------------------------------------------------------------------------
 
 export type GolemMode = 'clay' | 'stone' | 'rune';
+
+/**
+ * THE LONGEST MESSAGE A USER CAN SEND, AND THE ONE PLACE IT IS WRITTEN DOWN.
+ *
+ * The server has always enforced this — `text.slice(0, 8000)` at every chat ingress in
+ * do/session.ts — and the browser has always stored drafts against the same number in
+ * lib/draft.ts. Neither told the user. Silently truncating the end of a long prompt is the
+ * worst of the three possible behaviours: the request is accepted, the answer is to a
+ * question that was cut in half, and nothing anywhere says which half ran.
+ *
+ * So the number lives here, imported by the composer that displays the remaining characters,
+ * by the draft store that caps what it persists, and by the session that enforces it. A
+ * counter reading from a second copy of the figure would eventually disagree with the server,
+ * and a limit the UI states wrongly is worse than one it does not state at all.
+ */
+export const MESSAGE_MAX_CHARS = 8000;
+
+/**
+ * When the composer starts showing the counter: the last tenth of the budget.
+ *
+ * Drawn earlier it is noise on every message; drawn only at the limit it arrives after the
+ * sentence that will not fit has already been typed.
+ */
+export const MESSAGE_WARN_CHARS = MESSAGE_MAX_CHARS - 800;
 
 export interface ChatAttachment {
   kind: 'image' | 'file';
@@ -329,7 +442,15 @@ export type ClientMsg =
    * sending this — identity comes from the socket — only for what they are up to.
    */
   | { type: 'presence'; activity: 'viewing' | 'typing' | 'building' }
-  | { type: 'ping' };
+  /**
+   * The keepalive, and the only round trip the browser can time.
+   *
+   * `t` is the CLIENT's own clock at send, echoed back untouched by `pong`. It is never compared
+   * with a server timestamp — the two clocks are unrelated and the difference between them is not
+   * latency — so the whole measurement happens in one clock domain, which is the only way it means
+   * anything. Optional, because a tab from an older build sends none and must still be ponged.
+   */
+  | { type: 'ping'; t?: number };
 
 /**
  * The build lifecycle, as the UI shows it.
@@ -373,6 +494,11 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'list_scripts':
     case 'read_script':
     case 'search_scripts':
+    // Static review and symbol lookup: both parse the project's own scripts and write nothing.
+    // `inspecting` rather than `writing_luau` — the agent is reading code, and announcing that it
+    // is writing Luau while it reviews would be the same wrong claim the default makes.
+    case 'review_scripts':
+    case 'find_symbol':
     case 'search_docs':
     case 'choose_asset_source':
     case 'search_asset_library':
@@ -406,6 +532,9 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'workspace_write':
       return 'remembering';
     case 'edit_script':
+    // Re-indenting a script is still a write into a Luau file, and the user sees the same
+    // ChangeHistory entry for it as for any other edit.
+    case 'format_script':
       return 'writing_luau';
     case 'create_instances':
     case 'set_properties':
@@ -651,7 +780,23 @@ export interface RunSnapshotTool {
 }
 
 export type ServerMsg =
-  | { type: 'hello'; sessionId: string; studioConnected: boolean; quota: QuotaState }
+  | {
+      type: 'hello';
+      sessionId: string;
+      studioConnected: boolean;
+      quota: QuotaState;
+      /**
+       * When the plugin last polled, in server time, or null if it never has.
+       *
+       * A boolean alone cannot answer "is it coming back?" — "not connected" reads identically
+       * for a Studio that closed ten seconds ago and one that closed in March.
+       */
+      studioLastSeenAt?: number | null;
+      /** How many ops are waiting for the plugin to collect them. */
+      queuedOps?: number;
+      /** The place this project is bound to, or null while nothing has been observed. */
+      studioPlace?: StudioPlace | null;
+    }
   /**
    * The conversation was rewound to just before `fromMessageId`.
    *
@@ -660,7 +805,21 @@ export type ServerMsg =
    * apart from a live one.
    */
   | { type: 'history_truncated'; fromMessageId: string; removed: number }
-  | { type: 'studio_status'; connected: boolean; state?: StudioEventState }
+  | {
+      type: 'studio_status';
+      connected: boolean;
+      state?: StudioEventState;
+      /** As on `hello`: when the plugin last polled, so a disconnection can be dated. */
+      lastSeenAt?: number | null;
+      queuedOps?: number;
+      place?: StudioPlace | null;
+      /**
+       * Present while the paired Studio has a DIFFERENT place open. The link is alive and the
+       * plugin is polling; it is simply being served nothing, and the user is the only one who
+       * can resolve it — by reopening the bound place or by rebinding the project to this one.
+       */
+      placeMismatch?: { expectedPlaceName: string; openPlaceName: string; openPlaceId: number } | null;
+    }
   /**
    * The Studio selection changed. Broadcast only when it ACTUALLY changed — the plugin drops a
    * repeat of the selection it last reported, so this is an event rather than a heartbeat.
@@ -685,9 +844,9 @@ export type ServerMsg =
       /**
        * WHAT THE RUN ACTUALLY COST, AND THE ONLY MESSAGE THAT CAN CARRY IT.
        *
-       * `agent_status.sparksSpent` is a running total broadcast at the TOP of each step, and each
+       * `agent_status.creditsSpent` is a running total broadcast at the TOP of each step, and each
        * step settles its real neuron cost AFTER that broadcast
-       * (`sparksForNeurons(agent.neuronsUsed) - agent.sparksSpent`). So the last figure the user
+       * (`creditsForNeurons(agent.neuronsUsed) - agent.creditsSpent`). So the last figure the user
        * ever saw was always one settlement behind, and the final step's settlement — frequently
        * the largest, since it is the one that finishes the build — was never broadcast at all.
        *
@@ -699,7 +858,7 @@ export type ServerMsg =
        * This is the settled figure, read after the last settlement. It rides on `msg_end` because
        * that is the one message guaranteed to be sent once the charging is finished.
        */
-      sparksSpent?: number;
+      creditsSpent?: number;
     }
   // `effortReason` is the reasoning POLICY's own summary (e.g. "stone baseline;
   // visual design task"). It is a classification of the request, not the
@@ -718,10 +877,34 @@ export type ServerMsg =
        * Distinct from the `quota` message, which carries whole-account state: a user watching a
        * build wants to know what the build is costing, not what their day looks like. Both were
        * tracked on the server and only the account-wide figure was ever sent, so the number the
-       * user could actually act on — "this run has spent 6 Sparks and is on step 9 of 16" — was
+       * user could actually act on — "this run has spent 6 Credits and is on step 9 of 16" — was
        * the one they could not see.
        */
-      sparksSpent?: number;
+      creditsSpent?: number;
+    }
+  /**
+   * WHAT THIS STEP'S PROMPT COSTS, AND WHAT WAS DROPPED TO MAKE IT FIT.
+   *
+   * `MAX_PROMPT_CHARS` was a private constant in do/session.ts and `transcriptChars` was never
+   * reported over the wire, so the one number that explains why a long conversation starts
+   * behaving differently was invisible to the person having it. Worse, `trimTranscript` drops
+   * whole turn groups from the oldest end SILENTLY: the user asks a follow-up about something
+   * still visible on their screen, the agent has no record of it, and the only symptom is an
+   * answer that reads as forgetfulness. Nothing distinguishes that from a bad model.
+   *
+   * Emitted once per step, after the trim, so `usedChars` is the size of the prompt that is
+   * actually about to be sent — not an estimate and not the pre-trim figure.
+   *
+   * `dropped` is present ONLY on a step that actually removed turns. An absent field means
+   * nothing was dropped; a `{ groups: 0 }` would make "nothing was trimmed" and "we did not
+   * check" the same message, which is the distinction the whole record exists to keep.
+   */
+  | {
+      type: 'context_budget';
+      msgId: string;
+      usedChars: number;
+      maxChars: number;
+      dropped?: { groups: number; chars: number };
     }
   | { type: 'quota'; quota: QuotaState }
   | { type: 'checkpoint'; checkpoint: CheckpointMeta }
@@ -758,18 +941,19 @@ export type ServerMsg =
         lastSeenMs: number;
       }[];
     }
-  | { type: 'pong' };
+  /** Echoes the client's own `t` from `ping`, so the browser can compute a round trip. */
+  | { type: 'pong'; t?: number };
 
 export interface QuotaState {
-  sparksRemaining: number;
-  sparksDaily: number;
-  sparksMonthly: number;
-  sparksUsedToday: number;
-  sparksUsedThisMonth: number;
+  creditsRemaining: number;
+  creditsDaily: number;
+  creditsMonthly: number;
+  creditsUsedToday: number;
+  creditsUsedThisMonth: number;
   resetsAtIso: string;
   plan: 'free' | 'builder' | 'studio' | 'enterprise';
   /**
-   * The renewable part of `sparksRemaining`, reported separately because "you have 0 left today"
+   * The renewable part of `creditsRemaining`, reported separately because "you have 0 left today"
    * and "you have 0 left at all" are different sentences and the UI must be able to tell them apart.
    */
   allowanceRemaining: number;
@@ -822,6 +1006,15 @@ export interface ToolTraceEntry {
 export interface PairingCodeDto {
   code: string; // e.g. "GLM-7F3K2Q"
   expiresAtIso: string;
+  /**
+   * What this project is ALREADY linked to, at the moment the code was minted, or null.
+   *
+   * A second pairing supersedes the first: the session holds one plugin token, and the Studio that
+   * loses it finds out on its next poll. That is a fine mechanism and a terrible surprise, so the
+   * dialog says it up front rather than letting the user discover it by watching another window
+   * go grey. Null means nothing is paired and there is nothing to warn about.
+   */
+  existingLink?: StudioLinkSummary | null;
 }
 
 // Model gateway internals (worker-side only, exported for evals)
@@ -885,32 +1078,32 @@ export interface GatewayResponse {
 }
 
 /**
- * Sparks are billed from the neurons a run actually consumes (1 Spark = 90 neurons), so these
+ * Credits are billed from the neurons a run actually consumes (1 Credit = 90 neurons), so these
  * are *typical measured* costs shown in the UI, not fixed prices. Measured 2026-08-30:
  * Clay ~29 neurons, Stone answer-only ~139, Stone full build+verify in Studio ~1,266.
  */
 /**
- * `sparksPerRequest` is GONE, deliberately.
+ * `creditsPerRequest` is GONE, deliberately.
  *
- * It used to be the upfront charge — `quotaSpend(owner, MODE_INFO[mode].sparksPerRequest)`
+ * It used to be the upfront charge — `quotaSpend(owner, MODE_INFO[mode].creditsPerRequest)`
  * — and the site's published "Clay 1 · Stone 4 · Rune 10" came from exactly those
- * numbers. The charging model then changed: session.ts now takes ONE spark upfront
+ * numbers. The charging model then changed: session.ts now takes ONE credit upfront
  * whatever the mode, and settles the difference from measured neurons
- * (`sparksForNeurons(agent.neuronsUsed) - agent.sparksSpent`). Nothing has read
- * `sparksPerRequest` since, while the comment below PRODUCT_MODE_INFO still called it
+ * (`creditsForNeurons(agent.neuronsUsed) - agent.creditsSpent`). Nothing has read
+ * `creditsPerRequest` since, while the comment below PRODUCT_MODE_INFO still called it
  * "the balance a client must hold before it may send" and told the reader to "change a
  * price in MODE_INFO or nowhere". Someone following that instruction would have changed
  * a number that charges nobody.
  *
- * `typicalSparks` is different: the composer renders it, as "Typically N Sparks". It is
+ * `typicalCredits` is different: the composer renders it, as "Typically N Credits". It is
  * derived from docs/COST-MODEL.md through `ceil(neurons / 30)`, the same arithmetic the
- * worker bills with, and `scripts/check-spark-figures.mjs` checks it against those
+ * worker bills with, and `scripts/check-credit-figures.mjs` checks it against those
  * measurements.
  */
-export const MODE_INFO: Record<GolemMode, { name: string; blurb: string; typicalSparks: string }> = {
-  clay: { name: 'Clay', blurb: 'Fast answers and small edits', typicalSparks: '2' },
-  stone: { name: 'Stone', blurb: 'Builds features across your project', typicalSparks: '4-18' },
-  rune: { name: 'Rune', blurb: 'Plans, builds, tests and fixes autonomously', typicalSparks: '10-30' },
+export const MODE_INFO: Record<GolemMode, { name: string; blurb: string; typicalCredits: string }> = {
+  clay: { name: 'Clay', blurb: 'Fast answers and small edits', typicalCredits: '2' },
+  stone: { name: 'Stone', blurb: 'Builds features across your project', typicalCredits: '4-18' },
+  rune: { name: 'Rune', blurb: 'Plans, builds, tests and fixes autonomously', typicalCredits: '10-30' },
 };
 
 // ---------------------------------------------------------------------------
@@ -924,7 +1117,7 @@ export const MODE_INFO: Record<GolemMode, { name: string; blurb: string; typical
 // The internal specialist axis (GolemMode: clay/stone/rune) is deliberately
 // preserved exactly as it is, on the wire and in storage. `ClientMsg.chat`
 // still carries `mode: AppleMode`, the session DO still persists it, and the
-// Sparks ledger still accounts against it — so sessions written before this
+// Credits ledger still accounts against it — so sessions written before this
 // mapping existed keep replaying correctly and no budget record changes meaning.
 // Clay, Stone and Rune are internal specialist identities, not user-facing
 // brands: nothing in normal product UI should name them.
@@ -963,31 +1156,31 @@ export const SPECIALIST_TO_PRODUCT_MODE: Record<GolemMode, ProductMode> = {
 /**
  * User-facing copy and cost for each product mode.
  *
- * The Spark figure is NOT restated here — it is read out of MODE_INFO through the
+ * The Credit figure is NOT restated here — it is read out of MODE_INFO through the
  * mapping above, so a product-mode number cannot drift from its specialist's. What it
- * is has changed: it is `typicalSparks`, a range measured in docs/COST-MODEL.md, and
- * not a price the client enforces. The worker takes one spark upfront whatever the mode
+ * is has changed: it is `typicalCredits`, a range measured in docs/COST-MODEL.md, and
+ * not a price the client enforces. The worker takes one credit upfront whatever the mode
  * and settles the rest from the neurons actually used.
  */
 export const PRODUCT_MODE_INFO: Record<
   ProductMode,
-  { name: string; blurb: string; typicalSparks: string }
+  { name: string; blurb: string; typicalCredits: string }
 > = {
   plan: {
     name: 'Plan',
     blurb: 'Inspects your project and designs the work. Proposes; does not change anything.',
-    typicalSparks: MODE_INFO[PRODUCT_MODE_TO_SPECIALIST.plan].typicalSparks,
+    typicalCredits: MODE_INFO[PRODUCT_MODE_TO_SPECIALIST.plan].typicalCredits,
   },
   agent: {
     name: 'Agent',
     blurb: 'Builds, tests and repairs. The normal way to work.',
-    typicalSparks: MODE_INFO[PRODUCT_MODE_TO_SPECIALIST.agent].typicalSparks,
+    typicalCredits: MODE_INFO[PRODUCT_MODE_TO_SPECIALIST.agent].typicalCredits,
   },
   super: {
     name: 'Super Agent',
     blurb:
       'Long-horizon autonomous creation. Decomposes, builds, playtests, critiques and iterates through many stages without asking routine questions.',
-    typicalSparks: MODE_INFO[PRODUCT_MODE_TO_SPECIALIST.super].typicalSparks,
+    typicalCredits: MODE_INFO[PRODUCT_MODE_TO_SPECIALIST.super].typicalCredits,
   },
 };
 
@@ -1084,7 +1277,7 @@ export const STUDIO_PLUGIN_INSTALL_HREF: string = STUDIO_PLUGIN_STORE_LIVE
 // the two were about to be written down twice. A plan page that disagrees with the ledger enforcing
 // it is a page that lies to the user, and nothing would have caught the drift.
 //
-// Sparks are the RENEWABLE allowance: they reset and do not accumulate, so a plan is a rate, not a
+// Credits are the RENEWABLE allowance: they reset and do not accumulate, so a plan is a rate, not a
 // balance. Purchased credits are the separate non-expiring balance, spent only once the renewable
 // allowance for the period is gone. Keeping them apart is what makes "your plan includes this, buy
 // more if you need it" expressible without either one quietly subsidising the other.
@@ -1092,22 +1285,22 @@ export const STUDIO_PLUGIN_INSTALL_HREF: string = STUDIO_PLUGIN_STORE_LIVE
 export const PLAN_LIMITS = {
   // SET AGAINST WHAT THE SERVICE CAN ACTUALLY SERVE, not against what the prices could afford.
   //
-  // The binding number is DAILY_NEURON_CEILING: 25,000 neurons a day is 833 Sparks a day, which is
+  // The binding number is DAILY_NEURON_CEILING: 25,000 neurons a day is 833 Credits a day, which is
   // about 11 quality-gated builds a day for EVERY user combined. Three of the four old rows were
   // promises against that: team granted 1,500/day and enterprise 6,000/day, so a single customer
-  // on either could exhaust the day for everyone, and free granted 60/day against a 77-Spark
+  // on either could exhaust the day for everyone, and free granted 60/day against a 77-Credit
   // build, so the trial could not finish one job. Those are not pricing mistakes, they are
   // arithmetic that was never done.
   //
   // Every row below is now under the ceiling, and free clears one build with room. The monthly
   // figure never exceeds what the daily figure can reach in a month, or it is an allowance nobody
   // can spend. What these numbers are NOT is what the $12 and $40 price points could support —
-  // $12 at a 1.4x margin would buy 25,974 Sparks a month, and the whole service only makes 25,323.
+  // $12 at a 1.4x margin would buy 25,974 Credits a month, and the whole service only makes 25,323.
   // Closing that gap is a spending decision, not a code change: see docs/DECISIONS.md.
-  free: { sparksPerDay: 231, sparksPerMonth: 2_310 },
-  builder: { sparksPerDay: 416, sparksPerMonth: 12_600 },
-  studio: { sparksPerDay: 700, sparksPerMonth: 21_000 },
-  enterprise: { sparksPerDay: 833, sparksPerMonth: 25_000 },
+  free: { creditsPerDay: 231, creditsPerMonth: 2_310 },
+  builder: { creditsPerDay: 416, creditsPerMonth: 12_600 },
+  studio: { creditsPerDay: 700, creditsPerMonth: 21_000 },
+  enterprise: { creditsPerDay: 833, creditsPerMonth: 25_000 },
 } as const;
 
 export type PlanId = keyof typeof PLAN_LIMITS;
@@ -1128,12 +1321,51 @@ export interface PlanCopy {
    *
    * THESE ARE THE OWNER'S NUMBERS TO SET. They are seeded from the measured unit economics rather
    * than invented: a quality-gated build is ~2,300 neurons (docs/COST-MODEL.md) at $0.011/1,000
-   * neurons, so Pro's 6,000 Sparks/month is ~$1.98 of inference and Team's 30,000 is ~$9.90.
+   * neurons, so Pro's 6,000 Credits/month is ~$1.98 of inference and Team's 30,000 is ~$9.90.
    * Enterprise is deliberately null — a plan whose limits are negotiated cannot carry a price tag.
    */
   priceUsdMonthly: number | null;
   /** What this tier adds over the one below it. The bullets a person actually compares. */
   highlights: string[];
+}
+
+/**
+ * The currency every price in `PLAN_COPY` is quoted in, as an ISO 4217 code.
+ *
+ * It is a code and not a symbol on purpose. '$' is not a currency — it reads as the local dollar in
+ * en-CA and en-AU — and the figure a customer is actually charged is decided by the Stripe price
+ * object, so the two have to be able to name the same thing. `/api/billing/config` reports this so
+ * a page never has to guess what it is quoting.
+ */
+export const PRICE_CURRENCY = 'USD';
+
+/**
+ * A price, formatted for a reader rather than concatenated.
+ *
+ * Every price in this product used to be a literal '$' glued to a raw number, in three files. The
+ * symbol's POSITION is a property of the locale — German puts it after the amount — and this app
+ * renders right-to-left, where a bare symbol beside a number is a direction-neutral run the bidi
+ * algorithm may reorder. Intl emits what the locale specifies, including the number of minor units
+ * the currency actually has.
+ *
+ * Whole amounts drop the minor units: '$12.00/month' on a pricing page is precision that means
+ * nothing. An amount that is not a finite number returns the EMPTY STRING rather than '$NaN' —
+ * printing NaN beside a buy button is worse than printing nothing — and a currency code Intl
+ * rejects falls back to the declared one rather than throwing a price cell off the page.
+ */
+export function formatMoney(
+  amount: number,
+  opts: { currency?: string; locale?: string } = {},
+): string {
+  if (typeof amount !== 'number' || !Number.isFinite(amount)) return '';
+  const currency = opts.currency ?? PRICE_CURRENCY;
+  const fractionless = Number.isInteger(amount) ? { minimumFractionDigits: 0, maximumFractionDigits: 0 } : {};
+  try {
+    return new Intl.NumberFormat(opts.locale, { style: 'currency', currency, ...fractionless }).format(amount);
+  } catch {
+    // A malformed or unknown code. The amount still has to reach the page.
+    return new Intl.NumberFormat(opts.locale, { style: 'currency', currency: PRICE_CURRENCY, ...fractionless }).format(amount);
+  }
 }
 
 export const PLAN_COPY: Record<PlanId, PlanCopy> = {
@@ -1167,19 +1399,132 @@ export const PLAN_COPY: Record<PlanId, PlanCopy> = {
   },
 };
 
-/** Sparks in one quality-gated build, from the measured neuron cost. */
-export const SPARKS_PER_BUILD = 77;
+/** Credits in one quality-gated build, from the measured neuron cost. */
+export const CREDITS_PER_BUILD = 77;
 
 /**
  * A plan's allowance in the unit people actually think in.
  *
- * "6,000 Sparks" means nothing on first read; "about 78 builds a month" does. Floored, because a
+ * "6,000 Credits" means nothing on first read; "about 78 builds a month" does. Floored, because a
  * rounded-up figure is a promise the allowance cannot keep.
  */
 export function buildsPerMonth(plan: PlanId): number {
-  return Math.floor(PLAN_LIMITS[plan].sparksPerMonth / SPARKS_PER_BUILD);
+  return Math.floor(PLAN_LIMITS[plan].creditsPerMonth / CREDITS_PER_BUILD);
 }
 
 export function buildsPerDay(plan: PlanId): number {
-  return Math.floor(PLAN_LIMITS[plan].sparksPerDay / SPARKS_PER_BUILD);
+  return Math.floor(PLAN_LIMITS[plan].creditsPerDay / CREDITS_PER_BUILD);
 }
+
+// PLACED AFTER `CREDITS_PER_BUILD` AND `buildsPerMonth` ON PURPOSE. The table below is built at
+// module-evaluation time and calls `buildsPerMonth`, which reads the `const CREDITS_PER_BUILD`.
+// Declared above them, that read happens inside the temporal dead zone and the whole module
+// throws `Cannot access 'CREDITS_PER_BUILD' before initialization` on import — every page in
+// three apps, blank. `tsc --noEmit` does NOT catch it; importing the module does.
+/**
+ * The plan comparison, as a matrix rather than as four lists of bullets.
+ *
+ * WHY THIS EXISTS. `highlights` above is what each tier ADDS over the one below it, which is the
+ * right shape for a card and the wrong shape for a decision. Four cards of three bullets cannot
+ * answer "does Free include checkpoints?", because a capability that is absent from a list is
+ * indistinguishable from one nobody bothered to mention — and a reader who assumes the worst is
+ * reading a pricing page that is, for them, wrong. A matrix answers it for every pair: every plan
+ * has a cell for every capability, and a `false` is printed as plainly as a `true`.
+ *
+ * WHAT MAY GO IN IT. Only what the product actually does. Every boolean here was checked against
+ * the code that would enforce it, and the result is worth stating plainly because it is not what a
+ * pricing page usually says: apart from the allowance and the commercial terms, NOTHING is gated by
+ * plan. `apps/worker/src` conditions on the plan in exactly two places — `quota-math.ts`, which
+ * reads the allowance, and `billing.ts`, which refuses a self-serve checkout for a plan that has no
+ * price. There is no gate on modes, on projects, on checkpoints, on the plugin, or on sharing. So
+ * those rows are `true` everywhere, and saying so out loud is more useful to a reader than
+ * implying a restriction that does not exist.
+ *
+ * The consequence is the point: if someone later gates a capability, they must change this table,
+ * and the pricing page follows. A feature matrix maintained beside the enforcement is a matrix that
+ * can be wrong in only one place.
+ */
+export interface PlanFeature {
+  /** Stable id, so a test can name a row without matching its prose. */
+  id: string;
+  label: string;
+  /** One line of "what this means", shown under the label. Optional. */
+  note?: string;
+  /**
+   * The value per plan. `true` / `false` are printed as included / not included; a string is
+   * printed as it stands (an allowance, a price, "Negotiated").
+   *
+   * Required for EVERY plan, by the type. That is the whole mechanism behind "visibly absent": a
+   * missing entry could render as an empty cell, which reads as "no" to a pessimist and as "not
+   * applicable" to an optimist, and the two of them are looking at the same page.
+   */
+  values: Record<PlanId, boolean | string>;
+}
+
+/** Built from PLAN_LIMITS and PLAN_COPY so a number can never be typed twice. */
+function everyPlan<T>(f: (plan: PlanId) => T): Record<PlanId, T> {
+  return Object.fromEntries(PLAN_IDS.map((id) => [id, f(id)])) as Record<PlanId, T>;
+}
+
+export const PLAN_FEATURES: readonly PlanFeature[] = [
+  {
+    id: 'price',
+    label: 'Price',
+    values: everyPlan((p) =>
+      PLAN_COPY[p].priceUsdMonthly === null
+        ? 'Negotiated'
+        : PLAN_COPY[p].priceUsdMonthly === 0
+          ? 'Free forever'
+          : `${formatMoney(PLAN_COPY[p].priceUsdMonthly ?? 0)} a month`,
+    ),
+  },
+  {
+    id: 'credits-per-day',
+    label: 'Credits a day',
+    note: 'The hard daily ceiling. It resets at midnight UTC for everyone.',
+    values: everyPlan((p) => PLAN_LIMITS[p].creditsPerDay.toLocaleString('en-US')),
+  },
+  {
+    id: 'credits-per-month',
+    label: 'Credits a month',
+    values: everyPlan((p) => PLAN_LIMITS[p].creditsPerMonth.toLocaleString('en-US')),
+  },
+  {
+    id: 'builds-per-month',
+    label: 'Quality-gated builds a month',
+    note: 'The same allowance in the unit people think in.',
+    values: everyPlan((p) => `About ${buildsPerMonth(p)}`),
+  },
+  {
+    id: 'modes',
+    label: 'All three build modes',
+    note: 'Plan, Agent and Super Agent. Not one of them is held back for a paid tier.',
+    values: everyPlan(() => true),
+  },
+  { id: 'projects', label: 'Unlimited projects', values: everyPlan(() => true) },
+  { id: 'checkpoints', label: 'Checkpoints and rollback', values: everyPlan(() => true) },
+  { id: 'plugin', label: 'Roblox Studio plugin', values: everyPlan(() => true) },
+  {
+    id: 'sharing',
+    label: 'Shared projects and collaborators',
+    values: everyPlan(() => true),
+  },
+  {
+    id: 'credits',
+    label: 'Buy extra credits',
+    note: 'Purchased credits never expire and are spent only after the daily allowance.',
+    values: everyPlan(() => true),
+  },
+  {
+    id: 'self-serve',
+    label: 'Sign up without talking to anyone',
+    // The one genuine capability difference, and it is enforced: `buildCheckoutRequest` refuses a
+    // plan with no price id.
+    values: everyPlan((p) => PLAN_COPY[p].priceUsdMonthly !== null),
+  },
+  {
+    id: 'invoicing',
+    label: 'Invoicing and negotiated terms',
+    values: everyPlan((p) => PLAN_COPY[p].priceUsdMonthly === null),
+  },
+];

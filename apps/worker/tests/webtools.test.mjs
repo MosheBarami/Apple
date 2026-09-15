@@ -578,8 +578,12 @@ test('without a project there is no workspace, and the tool says so instead of i
 
 test('the KV-backed store keys every file by project, which is the authorisation', async () => {
   const puts = [];
+  // The store reads metadata before it writes — it archives the previous version — so the double
+  // has to answer `getWithMetadata` and `delete` as well. An empty store still answers both.
   const kv = {
     get: async () => null,
+    getWithMetadata: async () => ({ value: null, metadata: null }),
+    delete: async () => {},
     put: async (k, v, opts) => puts.push({ k, v, opts }),
     list: async ({ prefix }) => ({ keys: [{ name: prefix + 'notes/plan.md', metadata: { bytes: 4, updatedAt: 7 } }] }),
   };
@@ -591,7 +595,13 @@ test('the KV-backed store keys every file by project, which is the authorisation
 });
 
 test('a KV row with no size metadata reports "not recorded" rather than a confident zero', async () => {
-  const kv = { get: async () => null, put: async () => {}, list: async ({ prefix }) => ({ keys: [{ name: prefix + 'old.md' }] }) };
+  const kv = {
+    get: async () => null,
+    getWithMetadata: async () => ({ value: null, metadata: null }),
+    delete: async () => {},
+    put: async () => {},
+    list: async ({ prefix }) => ({ keys: [{ name: prefix + 'old.md' }] }),
+  };
   const listed = await W.kvWorkspace(kv, 'p').list('');
   assert.equal(listed[0].bytes, -1, 'an unrecorded size rendered as an observation of zero bytes');
 });

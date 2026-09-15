@@ -822,8 +822,8 @@ function sessionHarness(store = new Map()) {
   };
   store.set('bind', { projectId: 'p1', projectName: 'Preserved Place', ownerId: 'u1' });
   const quota = {
-    sparksRemaining: 99, sparksDaily: 100, sparksMonthly: 1000,
-    sparksUsedToday: 1, sparksUsedThisMonth: 1, resetsAtIso: '', plan: 'free',
+    creditsRemaining: 99, creditsDaily: 100, creditsMonthly: 1000,
+    creditsUsedToday: 1, creditsUsedThisMonth: 1, resetsAtIso: '', plan: 'free',
   };
   const ctx = {
     storage: {
@@ -1089,7 +1089,7 @@ const errorsIn = (sent, code) => sent.filter((m) => m.type === 'error' && m.code
 
 test('A3 two runs started together produce ONE run, not two', async () => {
   // Both frames used to read an idle agent from storage — because reading storage is one of
-  // the things startRun awaits — so both spent a Spark, both inserted a user row, and one of
+  // the things startRun awaits — so both spent a Credit, both inserted a user row, and one of
   // the two msg_start broadcasts never got its msg_end.
   const h = sessionHarness();
 

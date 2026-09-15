@@ -256,7 +256,7 @@ test('REFACTOR PROOF: the GLM path is byte-identical to the pre-refactor gateway
     assert.equal(a.seen.reserved.length, b.seen.reserved.length, `${name}: same number of reservations`);
     assert.equal(a.seen.settled.length, b.seen.settled.length, `${name}: same number of settlements`);
 
-    const ignoreModelDependent = (r) => ({ ...stable(r), model: undefined, neurons: undefined, sparks: undefined });
+    const ignoreModelDependent = (r) => ({ ...stable(r), model: undefined, neurons: undefined, credits: undefined });
     assert.deepEqual(ignoreModelDependent(after), ignoreModelDependent(before), `${name}: same GatewayResponse shape`);
   }
 });
@@ -568,11 +568,11 @@ test('token-billed providers convert into neurons so the BudgetDO ceiling still 
   assert.equal(P.neuronsForModelTokens(luna, 1_000_000, 0, 1_000_000), P.neuronsForModelTokens(luna, 1_000_000, 0, 0));
 });
 
-test('a converted cost is expressible in Sparks on the same NEURONS_PER_SPARK scale', () => {
+test('a converted cost is expressible in Credits on the same NEURONS_PER_CREDIT scale', () => {
   const luna = P.allModels().find((m) => m.id === 'gpt-5.6-luna');
   const c = P.costOf(luna, 10_000, 1_000);
   assert.ok(c.neurons > 0 && c.usd > 0);
-  assert.equal(c.sparks, Math.max(1, Math.ceil(c.neurons / P.NEURONS_PER_SPARK)));
+  assert.equal(c.credits, Math.max(1, Math.ceil(c.neurons / P.NEURONS_PER_CREDIT)));
   assert.ok(Math.abs(c.usd - c.neurons * P.USD_PER_NEURON) < 1e-9);
 });
 

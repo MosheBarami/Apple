@@ -2898,7 +2898,7 @@ const NEED_WORDS: readonly (readonly [RegExp, AssetNeed])[] = [
   [/\b(icon|button|badge|ui)\b/i, 'ui_icon'],
   [/\b(texture|material|surface)\b/i, 'texture'],
   [/\b(ground|terrain|floor|path)\b/i, 'ground'],
-  [/\b(particle|smoke|fire|spark)\b/i, 'particle'],
+  [/\b(particle|smoke|fire|credit)\b/i, 'particle'],
 ];
 
 export interface AssetDescription {

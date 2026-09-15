@@ -6,10 +6,10 @@
 // you are typing in. Both switch off entirely for coarse pointers and for
 // `prefers-reduced-motion`.
 import { useEffect, useRef } from 'react';
-
-function prefersReducedMotion(): boolean {
-  return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
+// The OS query is still honoured — it is one of the two inputs to this hook — but someone who has
+// turned motion off in settings has to be able to turn off the cursor too, and a local copy of the
+// media query could only ever disagree with the one the rest of the app uses.
+import { useReducedMotion } from '../lib/theme';
 
 function isFinePointer(): boolean {
   return typeof window !== 'undefined' && window.matchMedia('(pointer: fine)').matches;
@@ -21,9 +21,10 @@ export function Grain() {
 
 export function Cursor() {
   const ref = useRef<HTMLDivElement>(null);
+  const reduced = useReducedMotion();
 
   useEffect(() => {
-    if (!isFinePointer() || prefersReducedMotion()) return;
+    if (!isFinePointer() || reduced) return;
     const el = ref.current;
     if (!el) return;
 
@@ -75,7 +76,10 @@ export function Cursor() {
       document.removeEventListener('pointerleave', onLeave);
       document.documentElement.classList.remove('has-cursor');
     };
-  }, []);
+    // Re-runs when the preference changes, so turning motion off takes the custom cursor away
+    // immediately rather than at the next reload — and the cleanup above removes `has-cursor`,
+    // which is what gives the native cursor back.
+  }, [reduced]);
 
   return (
     <div className="cursor" ref={ref} aria-hidden="true">

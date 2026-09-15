@@ -57,7 +57,7 @@ test('a 429 that clears is retried and the call succeeds', async () => {
 
 test('a 429 that never clears surfaces the SERVER sentence, not a generic one', async () => {
   const s = await startServer({
-    'GET /api/docs/search': () => ({ status: 429, body: { error: 'Daily Sparks used up', hits: [] } }),
+    'GET /api/docs/search': () => ({ status: 429, body: { error: 'Daily Credits used up', hits: [] } }),
   });
   try {
     const t = createTransport({ baseUrl: s.baseUrl, token: 'x', sleep: instant, maxAttempts: 2 });
@@ -66,7 +66,7 @@ test('a 429 that never clears surfaces the SERVER sentence, not a generic one', 
       (e) => {
         assert.ok(e instanceof ApiError);
         assert.equal(e.status, 429);
-        assert.equal(e.message, 'Daily Sparks used up');
+        assert.equal(e.message, 'Daily Credits used up');
         assert.equal(e.attempts, 2);
         assert.deepEqual(e.body.hits, [], 'the body survives so a caller can read the rest of it');
         return true;

@@ -72,7 +72,7 @@ export function roleRank(role: unknown): number {
  * What a caller can be doing. Routes name one of these; roles hold a set of them.
  *
  * `read` is the transcript, the memory, the checkpoint list, the export — everything the project
- * already knows. `chat` and `build` both spend the OWNER's Sparks, which is why they stop at
+ * already knows. `chat` and `build` both spend the OWNER's Credits, which is why they stop at
  * editor: an invitation to comment must not be an invitation to spend someone's money.
  */
 export const COLLAB_ACTIONS = [
@@ -149,9 +149,15 @@ export interface MemberGrantRow {
   revoked_at?: unknown;
   display_name?: unknown;
   invited_by?: unknown;
+  /**
+   * ISO timestamp; any value at all means the grant is PAUSED. Same rule `revoked_at` follows,
+   * and deliberately a separate column: an admin who cannot tell "paused pending a conversation"
+   * from "gone" has to re-invite the first, which is the same act as inviting a stranger.
+   */
+  suspended_at?: unknown;
 }
 
-export type GrantStatus = 'active' | 'expired' | 'revoked' | 'malformed';
+export type GrantStatus = 'active' | 'expired' | 'revoked' | 'suspended' | 'malformed';
 
 export interface NormalisedGrant {
   userId: string;
@@ -194,8 +200,17 @@ export function classifyGrant(row: unknown, nowMs: number): { status: GrantStatu
   const role = typeof r.role === 'string' && GRANTABLE_SET.has(r.role) ? (r.role as CollabRole) : null;
   if (role === null) return { status: 'malformed', grant: null };
 
-  // Revocation beats everything, including a still-valid expiry.
+  // Revocation beats everything, including a still-valid expiry — and including a suspension,
+  // so "restore this suspended member" can never resurrect someone who was actually removed.
   if (r.revoked_at !== undefined && r.revoked_at !== null) return { status: 'revoked', grant: null };
+
+  // SUSPENDED IS DEAD WHILE IT LASTS. The grant is not returned, so every caller that asks this
+  // function — resolveMembership, decideAccess, the directory, the roster — closes the door at
+  // once. A suspension that only greyed out a button in the UI would be a label, not a state.
+  //
+  // Present in ANY form means suspended, exactly as `revoked_at` reads: a column whose value we
+  // cannot parse must not mean "not suspended after all".
+  if (r.suspended_at !== undefined && r.suspended_at !== null) return { status: 'suspended', grant: null };
 
   let expiresAtMs: number | null = null;
   if (r.expires_at !== undefined && r.expires_at !== null) {

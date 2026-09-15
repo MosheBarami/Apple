@@ -59,7 +59,7 @@ export class AppleClient {
     return this.transport.request('/api/me/usage');
   }
 
-  /** Semantic search over the ingested Roblox documentation. Metered: costs one Spark. */
+  /** Semantic search over the ingested Roblox documentation. Metered: costs one Credit. */
   searchDocs(query) {
     return this.transport.request('/api/docs/search', { query: { q: String(query ?? '') } });
   }

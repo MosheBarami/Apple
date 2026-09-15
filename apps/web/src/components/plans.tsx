@@ -6,17 +6,20 @@
 // Everything here reads from PLAN_LIMITS and PLAN_COPY in @golem/shared, which is the same table
 // QuotaDO applies, so the two cannot drift apart again.
 //
-// The allowance is stated in BUILDS as well as Sparks. A five-figure Spark count means nothing on
+// The allowance is stated in BUILDS as well as Credits. A five-figure Credit count means nothing on
 // first read; "about 78 builds" is the sentence someone can act on. The conversion is measured,
 // not marketing: a quality-gated build is ~2,300 neurons, and it is floored, because a rounded-up
 // figure is a promise the allowance cannot keep.
+import { formatNumber } from '../lib/format';
 import {
   PLAN_COPY,
   PLAN_IDS,
   PLAN_LIMITS,
+  PRICE_CURRENCY,
   buildsPerDay,
   buildsPerMonth,
-  SPARKS_PER_BUILD,
+  formatMoney,
+  CREDITS_PER_BUILD,
   type PlanId,
 } from '@golem/shared';
 
@@ -35,12 +38,18 @@ export function PlanLadder({
   onChoose,
   busyPlan,
   availability = 'unavailable',
+  currency = PRICE_CURRENCY,
 }: {
   current: PlanId;
   /** Required for 'ready' to mean anything; ignored in every other state. */
   onChoose?: (plan: PlanId) => void;
   busyPlan?: PlanId | null;
   availability?: PlanAvailability;
+  /**
+   * What these prices are quoted in, as reported by the server rather than assumed by the page.
+   * Defaults to the declared currency so the marketing surfaces need not pass it.
+   */
+  currency?: string;
 }) {
   const currentIndex = PLAN_IDS.indexOf(current);
 
@@ -54,7 +63,10 @@ export function PlanLadder({
         // "Downgrade" rather than a second "Choose": moving down a tier loses allowance, and a
         // control that does not say so reads as an upgrade to someone skimming.
         const direction = index > currentIndex ? 'up' : 'down';
-        const priced = copy.priceUsdMonthly !== null;
+        // Narrowed to a number here so the formatter cannot be handed a null — `enterprise` has no
+        // price by design, and the branch below is the one that says so in words.
+        const price = copy.priceUsdMonthly;
+        const priced = price !== null;
 
         return (
           <section key={id} className={`plan${isCurrent ? ' is-current' : ''}`} aria-labelledby={`plan-${id}`}>
@@ -66,12 +78,14 @@ export function PlanLadder({
             </header>
 
             <p className="plan__price">
-              {priced ? (
-                copy.priceUsdMonthly === 0 ? (
+              {price !== null ? (
+                price === 0 ? (
                   <span className="plan__amount">Free</span>
                 ) : (
                   <>
-                    <span className="plan__amount">${copy.priceUsdMonthly}</span>
+                    {/* Formatted, not concatenated: the symbol's position belongs to the locale,
+                        and '$' alone does not name a currency. */}
+                    <span className="plan__amount">{formatMoney(price, { currency })}</span>
                     <span className="plan__per">/month</span>
                   </>
                 )
@@ -90,22 +104,22 @@ export function PlanLadder({
               made this call for the meter — it withholds the builds hint below one whole build,
               because "0 builds" reads as a fault in the account rather than as a remainder smaller
               than one job — and I did not carry the rule one file across.
-              Stating the Sparks and the price of a build is the honest version: it says the same
+              Stating the Credits and the price of a build is the honest version: it says the same
               thing without pretending a countable number of builds exists.
             */}
             <p className="plan__allowance">
               <strong>
-                About {buildsPerMonth(id).toLocaleString()} builds a month
+                About {formatNumber(buildsPerMonth(id))} builds a month
               </strong>
               <span className="plan__allowance-sub">
                 {buildsPerDay(id) >= 1 ? (
                   <>
-                    {limits.sparksPerMonth.toLocaleString()} Sparks · up to {buildsPerDay(id)} builds a day
+                    {formatNumber(limits.creditsPerMonth)} Credits · up to {buildsPerDay(id)} builds a day
                   </>
                 ) : (
                   <>
-                    {limits.sparksPerMonth.toLocaleString()} Sparks · {limits.sparksPerDay.toLocaleString()} a
-                    day, and one build costs {SPARKS_PER_BUILD}
+                    {formatNumber(limits.creditsPerMonth)} Credits · {formatNumber(limits.creditsPerDay)} a
+                    day, and one build costs {CREDITS_PER_BUILD}
                   </>
                 )}
               </span>
@@ -151,6 +165,10 @@ export function PlanLadder({
           </section>
         );
       })}
+      {/* SAID ONCE, IN WORDS. A symbol is not a currency — the same glyph is three different
+          currencies in en-US, en-CA and en-AU — and until this line the only place the charge
+          currency appeared was Stripe's own page, after the user had committed. */}
+      <p className="plans-currency">All prices in {currency}. You are charged in {currency}.</p>
     </div>
   );
 }

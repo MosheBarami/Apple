@@ -23,6 +23,21 @@ import {
   type ScannedScriptInput,
 } from './assets';
 import { searchAssetLibrary } from './asset-library';
+import {
+  applyEdits,
+  checkSyntax,
+  describeSyntax,
+  diffHunks,
+  diffStat,
+  formatScript,
+  reviewPlace,
+  reviewScript,
+  sourceHash,
+  symbolLookup,
+  symbolSearch,
+  symbolsInFile,
+  type ScriptFile,
+} from './luau-review';
 import { CENSUS_LUAU, parseCensus, destructiveDelta, needsProtection } from './playtest';
 import { countConsole, parseLogEntries } from './playtest-stream';
 import { PLAYTEST_FRAME_MIN_INTERVAL_MS } from './frame-bus';
@@ -64,7 +79,15 @@ export interface AgentCtx {
   createCheckpoint(label: string, kind: 'auto' | 'manual' | 'pre_agent'): Promise<CheckpointMeta | { error: string }>;
   /** Roll the place back to a checkpoint. Optional so an older caller still satisfies this type. */
   restoreCheckpoint?(id: string): Promise<{ ok: boolean; error?: string }>;
-  addMemoryFact(fact: string): Promise<void>;
+  /**
+   * Save one fact to project memory — or report that it was not saved.
+   *
+   * The outcome is part of the contract because the user's memory setting can turn this into a
+   * proposal (`suggested`) or refuse it outright (`off`). A tool that reported success for a write
+   * that did not happen would teach the model something false about the world, and it would keep
+   * acting on it for the rest of the run.
+   */
+  addMemoryFact(fact: string): Promise<'saved' | 'suggested' | 'refused'>;
   /**
    * Forward a rasterised frame to the browser.
    *
@@ -217,6 +240,45 @@ function round2(n: number): string {
 }
 
 const MAX_RESULT_CHARS = 3000; // tool output is re-sent every later step, so keep it tight
+
+/** Errors before warnings before anything else, so a size cap never truncates away the errors. */
+function severityRank(severity: string): number {
+  return severity === 'error' ? 0 : severity === 'warn' ? 1 : 2;
+}
+
+/** One finding as a line a model can act on: where, which rule, what, and why it matters. */
+function renderFinding(f: { line: number; rule: string; detail: string; why?: string }): string {
+  return `line ${f.line}: ${f.rule} — ${f.detail}${f.why ? ` (${f.why})` : ''}`;
+}
+
+/**
+ * Every script in the place, in ONE Studio round trip.
+ *
+ * The require graph, the place-wide symbol index and the run-context checks all need every source
+ * at once. `list_scripts` then N × `read_script` returns the same bytes at N times the latency,
+ * and a 40-script place would spend most of a turn waiting. `truncated` is carried through rather
+ * than dropped: a place-wide answer computed over an unknowingly partial place is exactly the
+ * failure-to-observe-rendered-as-observation this repository keeps finding.
+ */
+async function dumpScripts(
+  ctx: AgentCtx,
+  root?: string,
+): Promise<{ files: ScriptFile[]; truncated: boolean } | { error: string }> {
+  const raw = await op(ctx, { op: 'dump_scripts', root, maxScripts: 80, maxChars: 400_000 }, 45_000);
+  if (raw && typeof raw === 'object' && 'error' in (raw as Record<string, unknown>)) {
+    return { error: String((raw as { error: unknown }).error) };
+  }
+  const list = (raw as { scripts?: unknown }).scripts;
+  if (!Array.isArray(list)) return { error: 'the plugin returned no script list' };
+  const files: ScriptFile[] = [];
+  for (const entry of list) {
+    if (!entry || typeof entry !== 'object') continue;
+    const e = entry as Record<string, unknown>;
+    if (typeof e.path !== 'string' || typeof e.source !== 'string') continue;
+    files.push({ path: e.path, source: e.source, className: typeof e.class === 'string' ? e.class : undefined });
+  }
+  return { files, truncated: (raw as { truncated?: unknown }).truncated === true };
+}
 
 async function op(ctx: AgentCtx, studioOp: StudioOp, timeoutMs = 30_000): Promise<unknown> {
   const res = await ctx.execStudioOp(studioOp, timeoutMs);
@@ -962,7 +1024,12 @@ export const TOOLS: Record<string, ToolImpl> = {
     run: (ctx, a) => op(ctx, { op: 'list_scripts', root: a.root as string | undefined }),
   },
   read_script: {
-    def: { name: 'read_script', description: 'Read full source of a script by path.', parameters: S({ path: { type: 'string' } }, ['path']) },
+    def: {
+      name: 'read_script',
+      description:
+        'Read full source of a script by path. The reply carries `baseHash`: pass it back as `base_hash` on edit_script and the write is refused rather than overwriting a change someone made in Studio in between.',
+      parameters: S({ path: { type: 'string' } }, ['path']),
+    },
     studio: true,
     run: (ctx, a) => op(ctx, { op: 'read_script', path: String(a.path ?? '') }),
   },
@@ -970,7 +1037,8 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'edit_script',
       description:
-        'Create or edit a script. Provide either `source` (full new content) or `edits` (find/replace list, exact match). To create a new script set `create_class` + `create_parent`.',
+        'Create or edit a script. Provide either `source` (full new content) or `edits` (find/replace list, exact match). To create a new script set `create_class` + `create_parent`. ' +
+        'The result is parsed BEFORE it is written: a body that does not compile is refused and nothing is changed. Pass `base_hash` from read_script to also refuse a write over a concurrent Studio edit.',
       parameters: S(
         {
           path: { type: 'string', description: 'Full path, e.g. game.ServerScriptService.RoundManager' },
@@ -981,27 +1049,283 @@ export const TOOLS: Record<string, ToolImpl> = {
           },
           create_class: { type: 'string', enum: ['Script', 'LocalScript', 'ModuleScript'] },
           create_parent: { type: 'string', description: 'Parent path when creating' },
+          base_hash: {
+            type: 'string',
+            description: 'The `baseHash` read_script returned for this path. The edit is refused if the file has changed since.',
+          },
         },
         ['path'],
       ),
     },
     studio: true,
-    run: (ctx, a) =>
-      op(ctx, {
+    run: async (ctx, a) => {
+      const path = String(a.path ?? '');
+      const hasSource = typeof a.source === 'string';
+      const edits = Array.isArray(a.edits) ? (a.edits as { find: string; replace: string; all?: boolean }[]) : undefined;
+      if (!hasSource && !(edits && edits.length)) {
+        return { error: 'pass either `source` (the full new body) or a non-empty `edits` list' };
+      }
+      const create =
+        a.create_class && a.create_parent
+          ? { className: a.create_class as 'Script' | 'LocalScript' | 'ModuleScript', parent: String(a.create_parent) }
+          : undefined;
+
+      // READ BEFORE WRITING — for three things at once, all of which need the current text:
+      // the base hash the write is pinned to, the text `edits` will be applied to (so the RESULT
+      // can be parsed before Studio holds it), and the "before" side of the diff the user sees.
+      //
+      // Only the resolver's own not-found is absence. A timeout, a dropped plugin or a path that
+      // resolves to a Folder all produce an error too, and reading any of those as "nothing there,
+      // safe to create" is the overwrite this read exists to prevent.
+      const existing = await op(ctx, { op: 'read_script', path });
+      const readError =
+        existing && typeof existing === 'object' && 'error' in (existing as Record<string, unknown>)
+          ? String((existing as { error: unknown }).error)
+          : null;
+      const absent = readError !== null && /\bnot found\b/i.test(readError);
+      if (readError !== null && !absent) {
+        return { error: `could not read ${path} before editing: ${readError}. Nothing was written.` };
+      }
+      if (absent && !create) {
+        return { error: `script not found: ${path} — pass create_class and create_parent to create it` };
+      }
+      if (absent && !hasSource) {
+        return { error: `${path} does not exist yet, so there is nothing for \`edits\` to match. Pass \`source\` with the full body.` };
+      }
+
+      const before = absent ? null : String((existing as { source?: unknown }).source ?? '');
+      const baseHash = before === null ? undefined : sourceHash(before);
+      const claimed = typeof a.base_hash === 'string' ? a.base_hash.trim().toLowerCase() : '';
+      if (claimed && baseHash && claimed !== baseHash) {
+        return {
+          error:
+            `${path} has changed since you read it — the edit was computed against a version that is no longer there, so nothing was written. ` +
+            `Read the script again and re-apply your change on top of the current text.`,
+          currentBaseHash: baseHash,
+        };
+      }
+
+      let after: string;
+      if (hasSource) {
+        after = String(a.source);
+      } else {
+        const applied = applyEdits(before ?? '', edits!);
+        if (!applied.ok) {
+          return {
+            error: `${applied.error} in ${path}. Nothing was written — read the script again and match the text that is actually there.`,
+          };
+        }
+        after = applied.source;
+      }
+
+      // THE PRE-WRITE PARSE. A body that does not compile used to be discovered by run_spec, after
+      // the user's file had already been replaced, and reported as a spec failure rather than as
+      // the edit that caused it.
+      const problems = checkSyntax(after);
+      if (problems.length) {
+        return {
+          error:
+            `refused: the result would not parse — ${describeSyntax(problems)}. Nothing was written, ${path} is unchanged.`,
+          syntaxErrors: problems.slice(0, 5),
+        };
+      }
+
+      const res = await op(ctx, {
         op: 'edit_script',
-        path: String(a.path ?? ''),
-        source: a.source as string | undefined,
-        edits: a.edits as { find: string; replace: string; all?: boolean }[] | undefined,
-        create:
-          a.create_class && a.create_parent
-            ? { className: a.create_class as 'Script' | 'LocalScript' | 'ModuleScript', parent: String(a.create_parent) }
-            : undefined,
-      }),
+        path,
+        source: hasSource ? after : undefined,
+        edits: hasSource ? undefined : edits,
+        create,
+        baseHash,
+      });
+      if (res && typeof res === 'object' && 'error' in (res as Record<string, unknown>)) return res;
+
+      const hunks = diffHunks(before ?? '', after);
+      const stat = diffStat(hunks);
+      if (hunks.length) {
+        ctx.uiDetail = {
+          v: 1,
+          blocks: [
+            {
+              type: 'code_diff',
+              path,
+              language: 'luau',
+              hunks,
+              summary: `+${stat.added} / -${stat.removed}${before === null ? ' · new script' : ''}`,
+            },
+          ],
+        };
+      }
+
+      // The review runs on what was written, so a warning here is about the file as it now stands.
+      const review = reviewScript(path, after, create?.className);
+      const warnings = review.findings.filter((f) => f.severity !== 'error').slice(0, 3);
+      return {
+        ...(res as Record<string, unknown>),
+        added: stat.added,
+        removed: stat.removed,
+        ...(warnings.length ? { warnings: warnings.map((f) => `line ${f.line}: ${f.rule} — ${f.detail}`) } : {}),
+      };
+    },
   },
   search_scripts: {
-    def: { name: 'search_scripts', description: 'Search all script sources for a string. Returns matches with paths and line numbers.', parameters: S({ query: { type: 'string' } }, ['query']) },
+    def: { name: 'search_scripts', description: 'Search all script sources for a string. Returns matches with paths and line numbers. For a NAME rather than a substring, find_symbol resolves scope and search_scripts does not.', parameters: S({ query: { type: 'string' } }, ['query']) },
     studio: true,
     run: (ctx, a) => op(ctx, { op: 'search_scripts', query: String(a.query ?? ''), maxResults: 40 }),
+  },
+  review_scripts: {
+    def: {
+      name: 'review_scripts',
+      description:
+        'Static review of the project\'s Luau: syntax errors, dead code, unused and write-only locals, accidental globals, require cycles, ' +
+        'unvalidated RemoteEvent handlers and client-invoked RemoteFunctions, DataStore lost updates, and scripts whose class does not match ' +
+        'the container they live in. A whole-place review also reports the require graph: which module depends on which, what a require ' +
+        'expression failed to resolve to, load order, and cycles. Pass `path` for one script, or omit it to review the whole place. ' +
+        'This reads; it changes nothing.',
+      parameters: S({
+        path: { type: 'string', description: 'One script to review. Omit to review every script in the place.' },
+        root: { type: 'string', description: 'Limit a whole-place review to a subtree, e.g. game.ServerScriptService' },
+        include_warnings: { type: 'boolean', description: 'Include warnings as well as errors. Default true.' },
+        dependencies: { type: 'boolean', description: 'Include the full require graph, not just its cycles. Default false.' },
+      }),
+    },
+    studio: true,
+    run: async (ctx, a) => {
+      const includeWarnings = a.include_warnings !== false;
+      const keep = (severity: string): boolean => severity === 'error' || includeWarnings;
+
+      if (typeof a.path === 'string' && a.path.trim()) {
+        const path = a.path.trim();
+        const raw = await op(ctx, { op: 'read_script', path });
+        if (raw && typeof raw === 'object' && 'error' in (raw as Record<string, unknown>)) return raw;
+        const source = String((raw as { source?: unknown }).source ?? '');
+        const className = typeof (raw as { class?: unknown }).class === 'string' ? String((raw as { class: string }).class) : undefined;
+        const review = reviewScript(path, source, className);
+        const findings = review.findings.filter((f) => keep(f.severity));
+        return {
+          path,
+          parsed: review.ok,
+          context: review.context,
+          errors: review.errors,
+          warnings: review.warnings,
+          requires: review.requires.slice(0, 20),
+          findings: findings.slice(0, 25).map(renderFinding),
+          ...(findings.length > 25 ? { more: findings.length - 25 } : {}),
+        };
+      }
+
+      const dump = await dumpScripts(ctx, typeof a.root === 'string' ? a.root : undefined);
+      if ('error' in dump) return { error: dump.error };
+      if (!dump.files.length) return { scripts: 0, note: 'no scripts found in this place' };
+
+      const place = reviewPlace(dump.files);
+      const flat = place.scripts
+        .flatMap((s) => s.findings.filter((f) => keep(f.severity)).map((f) => ({ ...f, path: s.path })))
+        .concat(place.crossFile.filter((f) => keep(f.severity)));
+      // Errors first: a place with 200 style warnings and one require cycle must not bury the cycle.
+      flat.sort((x, y) => severityRank(x.severity) - severityRank(y.severity) || x.path.localeCompare(y.path) || x.line - y.line);
+      return {
+        scripts: place.totals.scripts,
+        parsed: place.totals.parsed,
+        errors: place.totals.errors,
+        warnings: place.totals.warnings,
+        requireCycles: place.dependencies.cycles.map((c) => c.join(' -> ')),
+        ...(dump.truncated ? { truncated: 'not every script was read — the reply hit the size budget, so this review covers only the scripts listed' } : {}),
+        findings: flat.slice(0, 30).map((f) => `${f.path}:${f.line} ${f.rule} — ${f.detail}`),
+        ...(flat.length > 30 ? { more: flat.length - 30 } : {}),
+      };
+    },
+  },
+  find_symbol: {
+    def: {
+      name: 'find_symbol',
+      description:
+        'Resolve a name the way the language does, not the way grep does. With `path` + `line` + `column` it returns the declaration the ' +
+        'identifier at that position refers to plus every read and write of THAT binding (shadowed names are different symbols). With `name` ' +
+        'alone it lists declarations across the place — functions, locals, types — with their file and line.',
+      parameters: S({
+        name: { type: 'string', description: 'Name, or part of one, to look up across the place.' },
+        path: { type: 'string', description: 'Script to resolve a position in.' },
+        line: { type: 'number', description: '1-based line of the identifier.' },
+        column: { type: 'number', description: '1-based column of the identifier.' },
+      }),
+    },
+    studio: true,
+    run: async (ctx, a) => {
+      const path = typeof a.path === 'string' ? a.path.trim() : '';
+      const line = Number(a.line);
+      const column = Number(a.column);
+      const name = typeof a.name === 'string' ? a.name.trim() : '';
+
+      if (path && Number.isFinite(line) && line > 0) {
+        const raw = await op(ctx, { op: 'read_script', path });
+        if (raw && typeof raw === 'object' && 'error' in (raw as Record<string, unknown>)) return raw;
+        const source = String((raw as { source?: unknown }).source ?? '');
+        if (!Number.isFinite(column) || column <= 0) {
+          // No column: report every declaration on that line rather than guessing one.
+          const onLine = symbolsInFile(path, source, name).filter((s) => s.line === line);
+          if (!onLine.length) return { error: `no declaration on ${path} line ${line} — pass \`column\` to resolve a reference instead` };
+          return { path, line, declarations: onLine.map((s) => `${s.kind} ${s.name} (line ${s.line})`) };
+        }
+        const hit = symbolLookup(path, source, line, column);
+        if (!hit) {
+          return { error: `nothing resolvable at ${path} line ${line} column ${column} — it may be a global, a field, or inside a comment or string` };
+        }
+        return {
+          name: hit.name,
+          kind: hit.kind,
+          definedAt: `${path}:${hit.definition.line}:${hit.definition.column}`,
+          reads: hit.reads,
+          writes: hit.writes,
+          references: hit.references.slice(0, 40).map((r) => `${path}:${r.line}:${r.column} ${r.kind}`),
+          ...(hit.references.length > 40 ? { more: hit.references.length - 40 } : {}),
+        };
+      }
+
+      if (!name) return { error: 'pass `name`, or `path` + `line` (+ `column`) to resolve a position' };
+      const dump = await dumpScripts(ctx);
+      if ('error' in dump) return { error: dump.error };
+      const hits = symbolSearch(dump.files, name);
+      if (!hits.length) return { name, declarations: [], note: 'no declaration of that name — search_scripts finds it as text if it is a field or a string' };
+      return {
+        name,
+        declarations: hits.slice(0, 40).map((s) => `${s.path}:${s.line} ${s.kind} ${s.name}`),
+        ...(hits.length > 40 ? { more: hits.length - 40 } : {}),
+      };
+    },
+  },
+  format_script: {
+    def: {
+      name: 'format_script',
+      description:
+        'Re-indent and normalise spacing in a script. The formatter proves its own output holds exactly the same tokens and comments as the ' +
+        'input, and the write is abandoned if it does not — so this can never change what a script does. Refuses a script that does not lex.',
+      parameters: S({ path: { type: 'string', description: 'Script to format.' } }, ['path']),
+    },
+    studio: true,
+    run: async (ctx, a) => {
+      const path = String(a.path ?? '').trim();
+      if (!path) return { error: 'pass `path`' };
+      const raw = await op(ctx, { op: 'read_script', path });
+      if (raw && typeof raw === 'object' && 'error' in (raw as Record<string, unknown>)) return raw;
+      const before = String((raw as { source?: unknown }).source ?? '');
+      const formatted = formatScript(before);
+      if (!formatted.ok) return { error: formatted.error };
+      if (!formatted.changed) return { path, changed: false, note: 'already formatted' };
+
+      const res = await op(ctx, { op: 'edit_script', path, source: formatted.code, baseHash: sourceHash(before) });
+      if (res && typeof res === 'object' && 'error' in (res as Record<string, unknown>)) return res;
+
+      const hunks = diffHunks(before, formatted.code);
+      const stat = diffStat(hunks);
+      if (hunks.length) {
+        ctx.uiDetail = {
+          v: 1,
+          blocks: [{ type: 'code_diff', path, language: 'luau', hunks, summary: `formatting only · +${stat.added} / -${stat.removed}` }],
+        };
+      }
+      return { path, changed: true, added: stat.added, removed: stat.removed };
+    },
   },
   create_instances: {
     def: {
@@ -1969,7 +2293,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'inspect_visually',
       description:
-        'Render the scene and have it critiqued as an image against a visual quality gate. Returns a score, named defects and specific fixes. Call this after building anything visual, and again after fixing, until it passes. It renders and calls a vision model, so it costs Sparks — run audit_build FIRST, which is free, checks geometry and the Lighting configuration, and finds a different class of defect. Use this for what only an image can show: whether the thing reads.',
+        'Render the scene and have it critiqued as an image against a visual quality gate. Returns a score, named defects and specific fixes. Call this after building anything visual, and again after fixing, until it passes. It renders and calls a vision model, so it costs Credits — run audit_build FIRST, which is free, checks geometry and the Lighting configuration, and finds a different class of defect. Use this for what only an image can show: whether the thing reads.',
       parameters: S(
         {
           target: { type: 'string', description: 'instance path to inspect. Omit for the whole workspace.' },
@@ -2403,8 +2727,16 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: false,
     run: async (ctx, a) => {
-      await ctx.addMemoryFact(String(a.fact ?? ''));
-      return { saved: true };
+      const outcome = await ctx.addMemoryFact(String(a.fact ?? ''));
+      // Each branch says what actually happened, in words the model can act on: under review it
+      // must not tell the user the fact is remembered, and with memory off it must stop trying.
+      if (outcome === 'suggested') {
+        return { saved: false, status: 'awaiting_approval', note: 'Queued for the user to approve in the memory panel. Do not tell them it is remembered yet.' };
+      }
+      if (outcome === 'refused') {
+        return { saved: false, status: 'memory_off', note: 'This user has turned memory off. Nothing was stored; do not call remember again this run.' };
+      }
+      return { saved: true, status: 'saved' };
     },
   },
   create_checkpoint: {

@@ -968,7 +968,7 @@ export const SEED_MANIFEST: AssetProvenance[] = [
   seed('kenney/game-icons/pack', 'Game Icons', 'ui_icon', 'kenney', 'https://kenney.nl/assets/game-icons', KENNEY_CC0, 'https://kenney.nl/assets/game-icons', 'Kenney', ['icon', 'ui', 'flat', 'monochrome']),
   seed('kenney/ui-pack/pack', 'UI Pack', 'ui_icon', 'kenney', 'https://kenney.nl/assets/ui-pack', KENNEY_CC0, 'https://kenney.nl/assets/ui-pack', 'Kenney', ['icon', 'ui', 'button', 'panel']),
   seed('kenney/prototype-textures/pack', 'Prototype Textures', 'texture', 'kenney', 'https://kenney.nl/assets/prototype-textures', KENNEY_CC0, 'https://kenney.nl/assets/prototype-textures', 'Kenney', ['texture', 'prototype', 'grid', 'greybox']),
-  seed('kenney/particle-pack/pack', 'Particle Pack', 'particle', 'kenney', 'https://kenney.nl/assets/particle-pack', KENNEY_CC0, 'https://kenney.nl/assets/particle-pack', 'Kenney', ['particle', 'sprite', 'smoke', 'spark']),
+  seed('kenney/particle-pack/pack', 'Particle Pack', 'particle', 'kenney', 'https://kenney.nl/assets/particle-pack', KENNEY_CC0, 'https://kenney.nl/assets/particle-pack', 'Kenney', ['particle', 'sprite', 'smoke', 'credit']),
 
   // --- Quaternius: characters and organics ------------------------------------------------------
   seed('quaternius/ultimate-modular-women/pack', 'Ultimate Modular Women', 'character', 'quaternius', 'https://quaternius.com/packs/ultimatemodularwomen.html', QUAT_CC0, 'https://quaternius.com/packs/ultimatemodularwomen.html', 'Quaternius', ['lowpoly', 'flat-shaded', 'character', 'rigged', 'modular']),

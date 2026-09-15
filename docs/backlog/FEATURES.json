@@ -342,7 +342,7 @@
      "id": "f-418655bf",
      "name": "Cost counter",
      "status": "partial",
-     "evidence": "apps/worker/tests/quota-day-boundary.test.mjs — the Sparks ledger is proven to meter and roll correctly. Still partial: per-message display is unverified because nothing renders it."
+     "evidence": "apps/worker/tests/quota-day-boundary.test.mjs — the Credits ledger is proven to meter and roll correctly. Still partial: per-message display is unverified because nothing renders it."
     },
     {
      "id": "f-e1433236",
@@ -5131,7 +5131,7 @@
      "id": "f-c325990a",
      "name": "Onboarding tours",
      "status": "done",
-     "evidence": "apps/web/src/lib/onboarding.ts (five steps, each anchored to a real data-tour element; a step whose anchor is not in the document is WITHHELD, not shown and not consumed; a step the user has already done is skipped, and only a literal true counts as done so 'false' cannot skip it; unknown ids in saved progress do not consume real steps; a corrupt localStorage blob restarts nothing and throws nothing) + apps/web/src/components/onboarding-tour.tsx (measures the real element, refuses to draw on a missing or zero-sized one, never steals focus from a text field — reuses isTypingTarget — non-modal, Escape yields to an open Modal) + anchors added in layout.tsx (new-chat, checkpoints), usage-meter.tsx, ws/composer.tsx, ws/connect-studio.tsx + a 'Show me around' palette entry that restarts it. Tests: apps/web/tests/onboarding.test.mjs (20 tests, incl. one that checks every step's anchor against the data-tour attributes actually present in the JSX). Verified live: the tour skipped step 1 for a user who already has projects, ringed Checkpoints, advanced to Sparks, and persisted {\"seen\":[...],\"dismissed\":false} without reappearing — proven by apps/web/tests/toast-model.test.mjs, apps/web/tests/undo.test.mjs, apps/web/tests/confirm-model.test.mjs"
+     "evidence": "apps/web/src/lib/onboarding.ts (five steps, each anchored to a real data-tour element; a step whose anchor is not in the document is WITHHELD, not shown and not consumed; a step the user has already done is skipped, and only a literal true counts as done so 'false' cannot skip it; unknown ids in saved progress do not consume real steps; a corrupt localStorage blob restarts nothing and throws nothing) + apps/web/src/components/onboarding-tour.tsx (measures the real element, refuses to draw on a missing or zero-sized one, never steals focus from a text field — reuses isTypingTarget — non-modal, Escape yields to an open Modal) + anchors added in layout.tsx (new-chat, checkpoints), usage-meter.tsx, ws/composer.tsx, ws/connect-studio.tsx + a 'Show me around' palette entry that restarts it. Tests: apps/web/tests/onboarding.test.mjs (20 tests, incl. one that checks every step's anchor against the data-tour attributes actually present in the JSX). Verified live: the tour skipped step 1 for a user who already has projects, ringed Checkpoints, advanced to Credits, and persisted {\"seen\":[...],\"dismissed\":false} without reappearing — proven by apps/web/tests/toast-model.test.mjs, apps/web/tests/undo.test.mjs, apps/web/tests/confirm-model.test.mjs"
     },
     {
      "id": "f-9876cd4b",
@@ -5991,7 +5991,7 @@
      "id": "f-786d88bb",
      "name": "Free plan",
      "status": "done",
-     "evidence": "G-OFFER-1. 231 Sparks/day, not the 60 this row claimed — ADR-019 repriced it, and 60/day could not afford one 77-Spark build, so the trial demonstrated the product failing."
+     "evidence": "G-OFFER-1. 231 Credits/day, not the 60 this row claimed — ADR-019 repriced it, and 60/day could not afford one 77-Credit build, so the trial demonstrated the product failing."
     },
     {
      "id": "f-09ffc4fa",
@@ -6009,7 +6009,7 @@
      "id": "f-326435f4",
      "name": "Enterprise plan",
      "status": "done",
-     "evidence": "G-OFFER-1. 833 Sparks/day, not 6,000 — the old figure was seven times what the whole service can serve in a day."
+     "evidence": "G-OFFER-1. 833 Credits/day, not 6,000 — the old figure was seven times what the whole service can serve in a day."
     },
     {
      "id": "f-3e9a9d8a",
@@ -6345,13 +6345,13 @@
      "id": "f-6ebc4d3e",
      "name": "Sandbox API",
      "status": "done",
-     "evidence": "sandboxCompletion in public-api.ts plus the test-mode branches in handleCompletion and POST /v1/projects/:id/runs in index.ts: a test key exercises the whole request path (auth, scopes, validation, headers, streaming, idempotency) against a deterministic answer, labelled by system_fingerprint 'golem-sandbox', an X-Golem-Sandbox header and its own text; writes are SIMULATED (status 'simulated', sandbox: true) and the SessionDO is never called. Tests: 'the sandbox completion is deterministic and labels itself', 'a test key is served by the sandbox: no model, no Sparks, and it says so', 'a test key cannot start a real run — the sandbox simulates it and says so' — proven by apps/worker/tests/public-api.test.mjs"
+     "evidence": "sandboxCompletion in public-api.ts plus the test-mode branches in handleCompletion and POST /v1/projects/:id/runs in index.ts: a test key exercises the whole request path (auth, scopes, validation, headers, streaming, idempotency) against a deterministic answer, labelled by system_fingerprint 'golem-sandbox', an X-Golem-Sandbox header and its own text; writes are SIMULATED (status 'simulated', sandbox: true) and the SessionDO is never called. Tests: 'the sandbox completion is deterministic and labels itself', 'a test key is served by the sandbox: no model, no Credits, and it says so', 'a test key cannot start a real run — the sandbox simulates it and says so' — proven by apps/worker/tests/public-api.test.mjs"
     },
     {
      "id": "f-26b18f55",
      "name": "Test API keys",
      "status": "done",
-     "evidence": "gk_test_ keys in apps/worker/src/api-keys.ts, minted through POST /api/keys with mode 'test'; they authenticate identically but never run a model, never spend Sparks, never start a run, carry X-Golem-Sandbox: true and a tighter rate limit. Tests: 'a test key is served by the sandbox: no model, no Sparks, and it says so', 'a test key cannot start a real run — the sandbox simulates it and says so', 'test keys are rate-limited more tightly than live keys' — proven by apps/worker/tests/public-api.test.mjs"
+     "evidence": "gk_test_ keys in apps/worker/src/api-keys.ts, minted through POST /api/keys with mode 'test'; they authenticate identically but never run a model, never spend Credits, never start a run, carry X-Golem-Sandbox: true and a tighter rate limit. Tests: 'a test key is served by the sandbox: no model, no Credits, and it says so', 'a test key cannot start a real run — the sandbox simulates it and says so', 'test keys are rate-limited more tightly than live keys' — proven by apps/worker/tests/public-api.test.mjs"
     },
     {
      "id": "f-43f4f307",
@@ -6381,7 +6381,7 @@
      "id": "f-1fcb1460",
      "name": "Usage headers",
      "status": "done",
-     "evidence": "usageHeaders in public-api.ts emits X-Golem-Usage-Input-Tokens / -Output-Tokens / X-Golem-Usage-Sparks and X-Golem-Sparks-Remaining, set in handleCompletion in index.ts from the real gateway usage and the QuotaDO spend result; unknown headroom is OMITTED rather than reported as 0. Tests: 'a live key returns an OpenAI-shaped completion with usage and rate-limit headers', 'usage headers omit headroom rather than inventing it' — proven by apps/worker/tests/public-api.test.mjs"
+     "evidence": "usageHeaders in public-api.ts emits X-Golem-Usage-Input-Tokens / -Output-Tokens / X-Golem-Usage-Credits and X-Golem-Credits-Remaining, set in handleCompletion in index.ts from the real gateway usage and the QuotaDO spend result; unknown headroom is OMITTED rather than reported as 0. Tests: 'a live key returns an OpenAI-shaped completion with usage and rate-limit headers', 'usage headers omit headroom rather than inventing it' — proven by apps/worker/tests/public-api.test.mjs"
     },
     {
      "id": "f-1a081f3f",

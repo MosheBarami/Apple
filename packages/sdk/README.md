@@ -40,7 +40,7 @@ const { messages } = await client.messages(projectId, { limit: 20 });
 const stream = new SessionStream({ baseUrl: client.baseUrl, projectId, token }).connect();
 stream.sendChat('build a door on the north wall', 'stone');
 const run = await stream.waitForRun();
-console.log(run.text, run.sparksSpent);
+console.log(run.text, run.creditsSpent);
 ```
 
 ```python

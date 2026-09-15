@@ -37,7 +37,7 @@ export interface TourStep {
  *
  * Deliberately not a tour of the interface. Each step answers "why does this exist", because the
  * things this product does that no one expects — that it reads your actual place, that a build is
- * checkpointed, that a run costs Sparks — are not discoverable by looking at a button.
+ * checkpointed, that a run costs Credits — are not discoverable by looking at a button.
  */
 export const TOUR_STEPS: readonly TourStep[] = [
   {
@@ -66,9 +66,9 @@ export const TOUR_STEPS: readonly TourStep[] = [
     anchor: 'checkpoints',
   },
   {
-    id: 'sparks',
-    title: 'Sparks are what a build costs',
-    body: 'Reading your place is free. Building spends Sparks, and this meter always shows what is left and when it renews.',
+    id: 'credits',
+    title: 'Credits are what a build costs',
+    body: 'Reading your place is free. Building spends Credits, and this meter always shows what is left and when it renews.',
     anchor: 'usage-meter',
   },
 ];

@@ -100,7 +100,7 @@ const AMBIGUOUS_RE = /\b(something|anything|whatever|surprise me|you decide|make
  * These need a reply, not a build, and the distinction is not cosmetic. Before this existed the
  * only short-text signal was `ambiguousRequest`, which fires on anything under 25 characters — so
  * "hi" was classified as an under-specified BUILD request. In Agent mode with Studio connected that
- * escalated the step to `high` effort, spent a Spark, took a full `snapshot` of the user's place,
+ * escalated the step to `high` effort, spent a Credit, took a full `snapshot` of the user's place,
  * fired the "you have not changed the project yet" nudge twice more, and ended by apologising:
  * "I did not change anything in your project... which is a fault on my side". For the word "hi".
  *

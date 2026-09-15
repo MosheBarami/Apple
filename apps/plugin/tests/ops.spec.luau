@@ -466,4 +466,63 @@ H.test("a FAILED insert grants nothing", function()
 	H.eq(target.MeshId, nil, "and never assigned")
 end)
 
+--[[ ------------------------------------------------------ typed failure kinds --
+
+	 WHY THESE EXIST. `OpResult.error` is a sentence. Until `failure` was added it was the only
+	 thing separating "that path does not exist" from "Studio never answered", so the agent decided
+	 whether to retry by reading English — and rewording an error silently changed the decision.
+
+	 The classifier deliberately reads NO message. It answers from the dispatch table, from whether
+	 a recording could be opened, and from whether the path the op addressed still resolves. The
+	 last is an observation of the place as it stands, which is why the assertions below change the
+	 WORLD to move the verdict rather than changing any wording. ]]
+
+H.test("an op this build does not implement is REFUSED, not reported as a mystery", function()
+	-- An older installed build lacking a newer op is the steady state, not an error, and it is the
+	-- one failure a retry can never fix.
+	local r = reply("definitely_not_an_op")
+	H.eq(r.failure, "refused", "failure kind")
+end)
+
+H.test("a failure aimed at a path that is not there is NOT_FOUND", function()
+	local r = Ops.execute("f1", { op = "get_instance", path = "game.Workspace.NothingHere" })
+	H.eq(r.ok, false, "it failed")
+	H.eq(r.failure, "not_found", "and the kind says why: " .. tostring(r.error))
+end)
+
+H.test("THE KIND FOLLOWS THE WORLD, NOT THE WORDING", function()
+	-- The same op, the same handler, the same error text: only the place changes. A classifier
+	-- that pattern-matched the message could not tell these two apart.
+	local before = Ops.execute("f2", { op = "read_script", path = "game.Workspace.Sometimes" })
+	H.eq(before.failure, "not_found", "absent: not_found")
+
+	local part = Instance.new("Part", game:GetService("Workspace"))
+	part.Name = "Sometimes"
+	local after = Ops.execute("f3", { op = "read_script", path = "game.Workspace.Sometimes" })
+	H.eq(after.ok, false, "still fails — a Part is not a script")
+	H.eq(after.failure, "internal", "present but wrong type: NOT not_found")
+	part:Destroy()
+end)
+
+H.test("an op that CREATES the path it names is not classified as not_found", function()
+	-- `edit_script` with `create` is called precisely because the path does not exist yet, so
+	-- re-checking it would label every failure of that op a missing target.
+	local r = Ops.execute("f4", {
+		op = "edit_script",
+		path = "game.Workspace.Fresh",
+		source = "print(1)",
+		create = { className = "NotARealClass", parent = "game.Workspace" },
+	})
+	H.eq(r.ok, false, "it failed")
+	H.ok(r.failure ~= "not_found", "the create path must not be mistaken for a missing target: " .. tostring(r.failure))
+end)
+
+H.test("a SUCCESS carries no failure kind at all", function()
+	-- A kind on a success would be read by the worker as a failure classification, and an
+	-- always-present field is one nothing can key off.
+	local r = reply("ping")
+	H.eq(r.ok, true, "ping succeeds")
+	H.eq(r.failure, nil, "no kind on a success")
+end)
+
 H.report("plugin/ops")

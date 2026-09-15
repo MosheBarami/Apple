@@ -34,7 +34,7 @@ export class ApiError extends Error {
  * The status codes worth trying again.
  *
  * 429 is in the list even though this deployment uses it for BOTH "slow down" and "you are
- * out of Sparks for today". Retrying the second is useless but bounded — three attempts
+ * out of Credits for today". Retrying the second is useless but bounded — three attempts
  * over a few seconds — while NOT retrying the first would hand a caller a hard failure for
  * a condition that clears on its own. The wrong answer costs a few hundred milliseconds;
  * the other wrong answer costs the call.

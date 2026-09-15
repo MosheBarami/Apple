@@ -305,9 +305,9 @@ function useSpecimens(): Specimen[] {
         unit: '%',
         tone: 'accent',
       }),
-      one('usage_summary', 'Sparks, from the live quota — never a hard-coded number.', {
+      one('usage_summary', 'Credits, from the live quota — never a hard-coded number.', {
         type: 'usage_summary',
-        title: "Today's Sparks",
+        title: "Today's Credits",
         remaining: 41,
         dailyLimit: 60,
         usedToday: 19,

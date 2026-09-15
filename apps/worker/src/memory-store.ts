@@ -25,6 +25,7 @@
 // project's instructions into another project's prompt is not a privacy bug at the edges; it is
 // the agent being told to do someone else's work.
 import type { Env } from './env';
+import { scanText, type Disclosure, type DisclosureKind } from './redaction';
 
 // ---------------------------------------------------------------------------------------------
 // the vocabulary — validated at runtime, because a union is a compile-time promise
@@ -143,11 +144,64 @@ export type RejectReason =
   | 'bad_ttl'
   | 'already_expired'
   | 'wrong_scope'
-  | 'forbidden';
+  | 'forbidden'
+  /** The value carried a credential or a government/financial identifier. See `refusedDisclosure`. */
+  | 'sensitive_value';
 
 export interface Rejected {
   key: string;
   reason: RejectReason;
+  /** What was wrong, when the reason alone does not say it. Never the value itself. */
+  detail?: string;
+}
+
+// ---------------------------------------------------------------------------------------------
+// what must never become a memory
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * Memory is the one store in this product that is deliberately forever and deliberately unread.
+ *
+ * A row written here is loaded into the system prompt of every later run, in the highest-trust
+ * position, and nobody looks at it again. So a credential that lands in it is not "a secret in a
+ * database": it is a secret that will be re-sent to a model provider on every run for as long as
+ * the project exists, by a product whose own egress guard (`checkEgress`) would have refused to
+ * send it anywhere else.
+ *
+ * The detector is `redaction.ts` — the same rules the egress guard and the analytics sink use, so
+ * there is exactly one definition of "this is a credential" in the worker and a rule added there
+ * covers this path on the same day. It is DERIVED rather than copied for that reason: a local list
+ * of kinds would be a second opinion that silently stops agreeing.
+ *
+ * `minConfidence: 'high'` is deliberate. `long_hex` is a heuristic that matches a git SHA and a
+ * Roblox content hash, and refusing "the map hash is 3f2a…" would be a store that rejects real
+ * memories to protect against a hypothetical one.
+ */
+export const REFUSED_PII_KINDS: readonly DisclosureKind[] = ['credit_card', 'us_ssn'];
+
+/**
+ * The one finding that makes a value unstorable, or null.
+ *
+ * Returns the FINDING rather than a boolean so the refusal can say what it saw — "that looks like
+ * an API key" is a sentence a person can act on, and "rejected" is not. The finding carries a
+ * masked preview and never the value.
+ */
+export function refusedDisclosure(value: unknown): Disclosure | null {
+  const secret = scanText(value, { classes: ['secret'], minConfidence: 'high' })[0];
+  if (secret) return secret;
+  return scanText(value, { kinds: REFUSED_PII_KINDS })[0] ?? null;
+}
+
+/**
+ * Personal data that is legitimate to remember and must not be rendered in the open.
+ *
+ * An email address or a phone number is a real thing to ask Apple to remember, so it is stored —
+ * but a settings panel that prints it in a shared screen share is a leak the user did not choose.
+ * The viewer masks these until asked. Card numbers and SSNs are NOT in this list: those are
+ * refused outright by `refusedDisclosure`, and a kind cannot be in both.
+ */
+export function personalDisclosures(value: unknown): Disclosure[] {
+  return scanText(value, { classes: ['pii'] }).filter((d) => !(REFUSED_PII_KINDS as readonly string[]).includes(d.kind));
 }
 
 /**
@@ -201,7 +255,7 @@ export function isExpired(entry: Pick<MemoryEntry, 'expiresAt'>, nowMs: number):
 export function normaliseEntry(
   input: MemoryEntryInput,
   ctx: { now: number; actorId: string; createdAt?: string },
-): { ok: true; entry: MemoryEntry } | { ok: false; reason: RejectReason } {
+): { ok: true; entry: MemoryEntry } | { ok: false; reason: RejectReason; detail?: string } {
   if (!isMemoryScope(input.scope)) return { ok: false, reason: 'bad_scope' };
   if (typeof input.scopeId !== 'string' || !input.scopeId.trim() || input.scopeId.length > 128) return { ok: false, reason: 'bad_scope_id' };
   if (typeof input.key !== 'string' || !MEMORY_KEY_RE.test(input.key) || hasReservedSegment(input.key)) return { ok: false, reason: 'bad_key' };
@@ -218,6 +272,11 @@ export function normaliseEntry(
   // cannot see the cut. `memory.ts` truncates because the model writes prose there; a person
   // writing a rule gets told it was too long.
   if (value.length > VALUE_MAX) return { ok: false, reason: 'value_too_long' };
+  // Checked HERE rather than at each route, because this function is the single door: the entry
+  // editor, the preferences form, the profile form and an imported bundle all arrive through it.
+  // A check on the routes would be a check on the routes that existed the day it was written.
+  const refused = refusedDisclosure(value);
+  if (refused) return { ok: false, reason: 'sensitive_value', detail: `${refused.why} (${refused.preview})` };
 
   let expiresAt: string | null;
   if (input.expiresAt !== undefined) {
@@ -425,7 +484,9 @@ export function parseImport(raw: unknown, target: { scope: MemoryScope; scopeId:
       { now: ctx.now, actorId: ctx.actorId, createdAt: typeof r.createdAt === 'string' ? r.createdAt : undefined },
     );
     if (!out.ok) {
-      rejected.push({ key: label, reason: out.reason });
+      // The detail travels with the refusal: "row 14 was refused" teaches nobody anything, and the
+      // rows an import refuses are exactly the ones the person has to go and fix by hand.
+      rejected.push({ key: label, reason: out.reason, ...(out.detail ? { detail: out.detail } : {}) });
       continue;
     }
     if (seen.has(out.entry.key)) continue;
@@ -462,6 +523,13 @@ export async function ensureMemoryTables(env: Corpus): Promise<void> {
     `create table if not exists memory_org_members(org_id text not null, user_id text not null, role text not null, added_at text not null, primary key(org_id, user_id))`,
   );
   await env.CORPUS.exec(`create index if not exists idx_memory_org_user on memory_org_members(user_id)`);
+  // The organisation itself. Membership alone was enough to AUTHORISE, and not enough to create:
+  // there was no row anybody could make, so `setOrgMember` had no caller and no user could be in an
+  // organisation at all. A name is the whole of it — everything else an org means in this product
+  // is the rows addressed to its id.
+  await env.CORPUS.exec(
+    `create table if not exists memory_orgs(id text primary key, name text not null, created_at text not null, created_by text not null)`,
+  );
 }
 
 interface Row {
@@ -509,7 +577,12 @@ export interface MemoryAuditRow {
   scope: MemoryScope;
   scopeId: string;
   key: string;
-  action: 'put' | 'delete' | 'import' | 'purge';
+  /**
+   * `move` appears TWICE for one operation — once on the scope the row left and once on the scope
+   * it arrived at — because each scope's history is read on its own, and a move that was recorded
+   * only at the destination looks, from the source, exactly like a deletion nobody explained.
+   */
+  action: 'put' | 'delete' | 'import' | 'purge' | 'move';
   actor: string;
   at: string;
   before: string | null;
@@ -530,21 +603,55 @@ async function appendAudit(env: Corpus, row: Omit<MemoryAuditRow, 'id'>): Promis
  * ISO-8601 UTC and exactly wrong for anything else, which is why every stamp in this file goes
  * through `toISOString` before it is stored.
  */
+export const SEARCH_MAX = 100;
+
+/**
+ * Make a user's text safe to put on the right-hand side of LIKE.
+ *
+ * `%` and `_` are wildcards there. A search box that did not escape them would answer a query for
+ * `100%` with every row in the scope — a result that looks like a successful search and is in fact
+ * the absence of one. The escape character is declared in the SQL (`escape '\\'`), because
+ * SQLite has no default one and a backslash would otherwise be a literal backslash.
+ */
+export function escapeLike(term: string): string {
+  return term.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+}
+
+/** The text a search actually runs on, or null when there is nothing to search for. */
+export function searchTerm(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const trimmed = raw.trim().slice(0, SEARCH_MAX);
+  return trimmed ? trimmed : null;
+}
+
 export async function listMemoryEntries(
   env: Corpus,
   access: MemoryAccess,
   scope: MemoryScope,
   scopeId: string,
-  opts: { now?: number; includeExpired?: boolean } = {},
+  opts: { now?: number; includeExpired?: boolean; query?: unknown } = {},
 ): Promise<MemoryEntry[]> {
   if (!canReadScope(access, scope, scopeId)) return [];
   const now = opts.now ?? Date.now();
   const nowIso = new Date(now).toISOString();
-  const sql = opts.includeExpired
-    ? `select ${SELECT_COLS} from memory_entries where scope = ? and scope_id = ? order by key`
-    : `select ${SELECT_COLS} from memory_entries where scope = ? and scope_id = ? and (expires_at is null or expires_at > ?) order by key`;
-  const stmt = opts.includeExpired ? env.CORPUS.prepare(sql).bind(scope, scopeId) : env.CORPUS.prepare(sql).bind(scope, scopeId, nowIso);
-  const res = await stmt.all<Row>();
+  //[[ SEARCH RUNS IN SQL, NOT IN THE VIEWER.
+  //
+  //   A scope holds up to ENTRIES_PER_SCOPE_MAX rows and the panel renders all of them today, so a
+  //   client-side filter would work — until the day the list is paged, at which point it answers
+  //   "no matches" for text that IS stored, and nothing distinguishes that from the true answer.
+  //   The same reasoning, and the same conclusion, as the conversation search in the DO.
+  //
+  //   Both the key and the value are searched: people look for `instruction.` rows by what they
+  //   say, and for preference rows by what they are called. ]]
+  const term = searchTerm(opts.query);
+  const like = term ? `%${escapeLike(term)}%` : null;
+  const liveClause = opts.includeExpired ? '' : ' and (expires_at is null or expires_at > ?)';
+  const matchClause = like ? " and (key like ? escape '\\' or value like ? escape '\\')" : '';
+  const sql = `select ${SELECT_COLS} from memory_entries where scope = ? and scope_id = ?${liveClause}${matchClause} order by key`;
+  const params: unknown[] = [scope, scopeId];
+  if (!opts.includeExpired) params.push(nowIso);
+  if (like) params.push(like, like);
+  const res = await env.CORPUS.prepare(sql).bind(...params).all<Row>();
   const rows = res.results ?? [];
   const out: MemoryEntry[] = [];
   for (const r of rows) {
@@ -556,7 +663,7 @@ export async function listMemoryEntries(
   return out;
 }
 
-export type PutResult = { ok: true; entry: MemoryEntry } | { ok: false; reason: RejectReason };
+export type PutResult = { ok: true; entry: MemoryEntry } | { ok: false; reason: RejectReason; detail?: string };
 
 /**
  * Write one entry.
@@ -637,6 +744,79 @@ export async function deleteMemoryEntry(
   return { ok: true, deleted: true };
 }
 
+export type MoveReject = RejectReason | 'not_found' | 'target_exists' | 'same_scope';
+
+/**
+ * Move one row from one scope to another — the operation the store was missing.
+ *
+ * WHY IT IS NOT EXPORT-THEN-IMPORT. It cannot be: `parseImport` refuses a row addressed to a
+ * different scope (`wrong_scope`), deliberately and for a good reason, so the only way to carry a
+ * rule from your account to a project was to retype it and delete the original. Two steps, and
+ * between them the rule applies twice or not at all.
+ *
+ * WHAT IS LOAD-BEARING:
+ *
+ *   - WRITE ACCESS TO **BOTH** ENDS. A move is a write to the destination and a delete at the
+ *     source. Checking only the source would let a member of an org they can read but not
+ *     administer push a personal instruction into the team's prompt; checking only the destination
+ *     would let them empty a scope they have no business editing.
+ *   - IT NEVER OVERWRITES. A destination that already holds this key is refused, not replaced. The
+ *     two rows are different settings that happen to share an address, and a move that silently
+ *     destroyed one would be a data loss the user never saw and cannot undo.
+ *   - THE PROFILE STAYS PERSONAL. `profile.*` rows are read from the user layer only
+ *     (`personalisationForProject`), so a profile row moved to a project scope would be a row that
+ *     exists, is visible, and is read by nothing — a setting that silently stopped applying.
+ *   - `created_at` SURVIVES. "Since when has Apple believed this" is not reset by relocating it.
+ */
+export async function moveMemoryEntry(
+  env: Corpus,
+  access: MemoryAccess,
+  from: { scope: MemoryScope; scopeId: string },
+  to: { scope: unknown; scopeId: unknown },
+  key: string,
+  opts: { now?: number } = {},
+): Promise<{ ok: true; entry: MemoryEntry } | { ok: false; reason: MoveReject }> {
+  const now = opts.now ?? Date.now();
+  if (!canWriteScope(access, from.scope, from.scopeId)) return { ok: false, reason: 'forbidden' };
+  if (!isMemoryScope(to.scope)) return { ok: false, reason: 'bad_scope' };
+  if (typeof to.scopeId !== 'string' || !to.scopeId.trim() || to.scopeId.length > 128) return { ok: false, reason: 'bad_scope_id' };
+  if (!canWriteScope(access, to.scope, to.scopeId)) return { ok: false, reason: 'forbidden' };
+  if (typeof key !== 'string' || !MEMORY_KEY_RE.test(key) || hasReservedSegment(key)) return { ok: false, reason: 'bad_key' };
+  if (from.scope === to.scope && from.scopeId === to.scopeId) return { ok: false, reason: 'same_scope' };
+
+  const prior = await env.CORPUS.prepare(`select ${SELECT_COLS} from memory_entries where scope = ? and scope_id = ? and key = ?`)
+    .bind(from.scope, from.scopeId, key)
+    .first<Row>();
+  if (!prior) return { ok: false, reason: 'not_found' };
+  const entry = fromRow(prior);
+  if (!entry) return { ok: false, reason: 'not_found' };
+  if (entry.kind === 'profile' && to.scope !== 'user') return { ok: false, reason: 'wrong_scope' };
+  // A row whose life has already run out is not moved: reads exclude it, so the move would produce
+  // an invisible row at the destination and an empty space at the source, which reads as a move
+  // that silently lost something.
+  if (isExpired(entry, now)) return { ok: false, reason: 'already_expired' };
+
+  const existing = await env.CORPUS.prepare(`select key from memory_entries where scope = ? and scope_id = ? and key = ?`)
+    .bind(to.scope, to.scopeId, key)
+    .first<{ key: string }>();
+  if (existing) return { ok: false, reason: 'target_exists' };
+
+  const at = new Date(now).toISOString();
+  const moved: MemoryEntry = { ...entry, scope: to.scope, scopeId: to.scopeId, updatedAt: at, updatedBy: access.userId };
+  await env.CORPUS.prepare(
+    `insert into memory_entries(scope, scope_id, key, kind, value, source, created_at, updated_at, expires_at, updated_by) values(?,?,?,?,?,?,?,?,?,?)`,
+  )
+    .bind(moved.scope, moved.scopeId, moved.key, moved.kind, moved.value, moved.source, moved.createdAt, moved.updatedAt, moved.expiresAt, moved.updatedBy)
+    .run();
+  await env.CORPUS.prepare(`delete from memory_entries where scope = ? and scope_id = ? and key = ?`).bind(from.scope, from.scopeId, key).run();
+
+  // Both sides, both with the value: the source history has to explain where the row went, and the
+  // destination history has to explain where it came from.
+  await appendAudit(env, { scope: from.scope, scopeId: from.scopeId, key, action: 'move', actor: access.userId, at, before: entry.value, after: null });
+  await appendAudit(env, { scope: moved.scope, scopeId: moved.scopeId, key, action: 'move', actor: access.userId, at, before: null, after: moved.value });
+  return { ok: true, entry: moved };
+}
+
 /** The sweeper. Reads already exclude these; this is what stops the table growing forever. */
 export async function purgeExpired(env: Corpus, opts: { now?: number; limit?: number } = {}): Promise<number> {
   const nowIso = new Date(opts.now ?? Date.now()).toISOString();
@@ -666,7 +846,7 @@ export async function readMemoryAudit(
       scope: r.scope as MemoryScope,
       scopeId: r.scope_id,
       key: r.key,
-      action: (['put', 'delete', 'import', 'purge'] as const).includes(r.action as 'put') ? (r.action as MemoryAuditRow['action']) : 'put',
+      action: (['put', 'delete', 'import', 'purge', 'move'] as const).includes(r.action as 'put') ? (r.action as MemoryAuditRow['action']) : 'put',
       actor: r.actor,
       at: r.at,
       before: r.before_value,
@@ -696,6 +876,159 @@ export async function setOrgMember(env: Corpus, orgId: string, userId: string, r
   await env.CORPUS.prepare(`insert into memory_org_members(org_id, user_id, role, added_at) values(?,?,?,?) on conflict(org_id, user_id) do update set role=excluded.role`)
     .bind(orgId, userId, role, new Date(now).toISOString())
     .run();
+}
+
+export const ORG_NAME_MAX = 80;
+
+export interface Org {
+  id: string;
+  /** Null when membership rows exist for an id that has no organisation row — see `listOrgsFor`. */
+  name: string | null;
+  role: OrgRole;
+}
+
+export interface OrgMember {
+  userId: string;
+  role: OrgRole;
+  addedAt: string;
+}
+
+/** A display name, or null. Collapsed and capped, like every other free-text field in this store. */
+export function normaliseOrgName(v: unknown): string | null {
+  if (typeof v !== 'string') return null;
+  const name = v.trim().replace(/\s+/g, ' ').slice(0, ORG_NAME_MAX);
+  return name || null;
+}
+
+/**
+ * Make an organisation, with its creator as the owner.
+ *
+ * ONE STATEMENT PAIR, AND THE MEMBERSHIP IS PART OF IT. An org with no owner is an org nobody can
+ * ever administer: `canWriteScope` requires owner or admin for team instructions, and there is no
+ * other way to gain the role. Creating the row without the membership would produce exactly that
+ * dead object, so the two are written together and the membership is written SECOND — if the org
+ * insert fails there is no orphan grant, and if the grant fails the org is visible to nobody, which
+ * is the recoverable direction.
+ */
+export async function createOrg(
+  env: Corpus,
+  ownerId: string,
+  name: unknown,
+  opts: { now?: number; id?: string } = {},
+): Promise<{ ok: true; org: Org } | { ok: false; reason: 'bad_name' | 'bad_owner' }> {
+  const clean = normaliseOrgName(name);
+  if (!clean) return { ok: false, reason: 'bad_name' };
+  if (typeof ownerId !== 'string' || !ownerId.trim()) return { ok: false, reason: 'bad_owner' };
+  const now = opts.now ?? Date.now();
+  const id = opts.id ?? crypto.randomUUID();
+  await env.CORPUS.prepare(`insert into memory_orgs(id, name, created_at, created_by) values(?,?,?,?)`)
+    .bind(id, clean, new Date(now).toISOString(), ownerId)
+    .run();
+  await setOrgMember(env, id, ownerId, 'owner', now);
+  return { ok: true, org: { id, name: clean, role: 'owner' } };
+}
+
+/**
+ * Every organisation this user is in, with its name.
+ *
+ * A LEFT JOIN, not an inner one. Membership rows and organisation rows are written by different
+ * statements, and a member whose org row is missing must still be able to see and read the scope
+ * they are in — an inner join would make that person's org disappear from their own switcher while
+ * the rules it sets kept applying to them. A missing name is reported as null and the viewer falls
+ * back to the id, which is a true statement rather than a blank.
+ */
+export async function listOrgsFor(env: Corpus, userId: string): Promise<Org[]> {
+  const res = await env.CORPUS.prepare(
+    `select m.org_id as org_id, m.role as role, o.name as name from memory_org_members m left join memory_orgs o on o.id = m.org_id where m.user_id = ? order by coalesce(o.name, m.org_id)`,
+  )
+    .bind(userId)
+    .all<{ org_id: string; role: string; name: string | null }>();
+  return (res.results ?? [])
+    .filter((r) => isOrgRole(r.role))
+    .map((r) => ({ id: r.org_id, name: r.name ?? null, role: r.role as OrgRole }));
+}
+
+/** Who is in an organisation. Readable by every member; changing it is `updateOrgMember`. */
+export async function orgMembersOf(env: Corpus, access: MemoryAccess, orgId: string): Promise<OrgMember[]> {
+  if (!canReadScope(access, 'org', orgId)) return [];
+  const res = await env.CORPUS.prepare(`select user_id, role, added_at from memory_org_members where org_id = ? order by added_at`)
+    .bind(orgId)
+    .all<{ user_id: string; role: string; added_at: string }>();
+  return (res.results ?? [])
+    .filter((r) => isOrgRole(r.role))
+    .map((r) => ({ userId: r.user_id, role: r.role as OrgRole, addedAt: r.added_at }));
+}
+
+/** Who may change the member list. The same test `canWriteScope` applies to the org's own rows. */
+export function canAdministerOrg(access: MemoryAccess, orgId: unknown): boolean {
+  if (typeof orgId !== 'string' || !orgId) return false;
+  const m = access.orgs.find((o) => o.orgId === orgId);
+  return m?.role === 'owner' || m?.role === 'admin';
+}
+
+export type MemberChangeReject = 'forbidden' | 'bad_role' | 'bad_user' | 'last_owner' | 'not_a_member';
+
+async function ownerCount(env: Corpus, orgId: string): Promise<number> {
+  const row = await env.CORPUS.prepare(`select count(*) as n from memory_org_members where org_id = ? and role = 'owner'`)
+    .bind(orgId)
+    .first<{ n: number }>();
+  return Number(row?.n ?? 0);
+}
+
+/**
+ * Add someone, or change what they may do.
+ *
+ * THE LAST OWNER CANNOT BE DEMOTED. Every path that changes an organisation — its team
+ * instructions, its tool policy, its member list — requires owner or admin, and an admin cannot
+ * promote anyone to owner. So an organisation whose last owner demotes themselves is an
+ * organisation whose settings can never be changed again by anybody, while they keep applying to
+ * everyone in it. Refusing here is the difference between a mistake and an unrecoverable one.
+ */
+export async function updateOrgMember(
+  env: Corpus,
+  access: MemoryAccess,
+  orgId: string,
+  userId: unknown,
+  role: unknown,
+  opts: { now?: number } = {},
+): Promise<{ ok: true; member: OrgMember } | { ok: false; reason: MemberChangeReject }> {
+  if (!canAdministerOrg(access, orgId)) return { ok: false, reason: 'forbidden' };
+  if (!isOrgRole(role)) return { ok: false, reason: 'bad_role' };
+  if (typeof userId !== 'string' || !userId.trim() || userId.length > 128) return { ok: false, reason: 'bad_user' };
+  // Only an owner may create another owner. An admin who could would be an admin who can promote
+  // themselves, which makes the two roles one role with two names.
+  const mine = access.orgs.find((o) => o.orgId === orgId);
+  if (role === 'owner' && mine?.role !== 'owner') return { ok: false, reason: 'forbidden' };
+
+  const current = await env.CORPUS.prepare(`select role from memory_org_members where org_id = ? and user_id = ?`)
+    .bind(orgId, userId)
+    .first<{ role: string }>();
+  if (current?.role === 'owner' && role !== 'owner' && (await ownerCount(env, orgId)) <= 1) return { ok: false, reason: 'last_owner' };
+
+  const now = opts.now ?? Date.now();
+  await setOrgMember(env, orgId, userId, role, now);
+  const added = await env.CORPUS.prepare(`select added_at from memory_org_members where org_id = ? and user_id = ?`)
+    .bind(orgId, userId)
+    .first<{ added_at: string }>();
+  return { ok: true, member: { userId, role, addedAt: added?.added_at ?? new Date(now).toISOString() } };
+}
+
+/** Remove someone. Same last-owner rule, for the same reason: it is the unrecoverable direction. */
+export async function removeOrgMember(
+  env: Corpus,
+  access: MemoryAccess,
+  orgId: string,
+  userId: unknown,
+): Promise<{ ok: true } | { ok: false; reason: MemberChangeReject }> {
+  if (!canAdministerOrg(access, orgId)) return { ok: false, reason: 'forbidden' };
+  if (typeof userId !== 'string' || !userId) return { ok: false, reason: 'bad_user' };
+  const current = await env.CORPUS.prepare(`select role from memory_org_members where org_id = ? and user_id = ?`)
+    .bind(orgId, userId)
+    .first<{ role: string }>();
+  if (!current) return { ok: false, reason: 'not_a_member' };
+  if (current.role === 'owner' && (await ownerCount(env, orgId)) <= 1) return { ok: false, reason: 'last_owner' };
+  await env.CORPUS.prepare(`delete from memory_org_members where org_id = ? and user_id = ?`).bind(orgId, userId).run();
+  return { ok: true };
 }
 
 /**

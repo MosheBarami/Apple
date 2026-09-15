@@ -1,6 +1,6 @@
 ---
 // ---------------------------------------------------------------------------
-// SparkMeter — the usage explorer. Move the sliders, see whether a real day of
+// CreditMeter — the usage explorer. Move the sliders, see whether a real day of
 // building fits inside the free allowance.
 //
 // All arithmetic uses the published figures and changes none of them:
@@ -8,13 +8,13 @@
 // "does a real day fit inside the free allowance", and a copy of that number which can drift is
 // the one thing that would make the answer worthless.
 //   Plan 2 · Agent 4 · Super Agent 10 (+1 per extra step)
-//   1 Spark = 30 neurons; Cloudflare bills $0.011 per 1,000 neurons
+//   1 Credit = 30 neurons; Cloudflare bills $0.011 per 1,000 neurons
 // "Whichever limit binds first applies."
 // ---------------------------------------------------------------------------
 
 import { PLAN_LIMITS } from '@golem/shared';
 
-const FREE_PER_DAY = PLAN_LIMITS.free.sparksPerDay;
+const FREE_PER_DAY = PLAN_LIMITS.free.creditsPerDay;
 
 interface Props {
   /** show the "what it costs to run" honesty panel */
@@ -23,7 +23,7 @@ interface Props {
 const { showCost = true } = Astro.props;
 ---
 
-<div class="meter slab slab--lift slab--pad" id="spark-meter" data-free-per-day={FREE_PER_DAY}>
+<div class="meter slab slab--lift slab--pad" id="credit-meter" data-free-per-day={FREE_PER_DAY}>
   <div class="meter__grid">
     <div class="meter__controls">
       <p class="meter__title">A day of building</p>
@@ -31,7 +31,7 @@ const { showCost = true } = Astro.props;
       <div class="ctl is-clay">
         <label for="sm-clay">
           <span class="ctl__name">Questions &amp; small edits</span>
-          <span class="ctl__mode mono">Plan · 2 sparks</span>
+          <span class="ctl__mode mono">Plan · 2 credits</span>
         </label>
         <div class="ctl__row">
           <input
@@ -52,7 +52,7 @@ const { showCost = true } = Astro.props;
       <div class="ctl is-stone">
         <label for="sm-stone">
           <span class="ctl__name">Features built</span>
-          <span class="ctl__mode mono">Agent · 4 sparks</span>
+          <span class="ctl__mode mono">Agent · 4 credits</span>
         </label>
         <div class="ctl__row">
           <input
@@ -73,7 +73,7 @@ const { showCost = true } = Astro.props;
       <div class="ctl is-rune">
         <label for="sm-rune">
           <span class="ctl__name">Verified autonomous runs</span>
-          <span class="ctl__mode mono">Super Agent · 10 sparks +1/step</span>
+          <span class="ctl__mode mono">Super Agent · 10 credits +1/step</span>
         </label>
         <div class="ctl__row">
           <input
@@ -94,7 +94,7 @@ const { showCost = true } = Astro.props;
       <div class="ctl ctl--sub">
         <label for="sm-steps">
           <span class="ctl__name">Extra steps per Super Agent run</span>
-          <span class="ctl__mode mono">+1 spark each</span>
+          <span class="ctl__mode mono">+1 credit each</span>
         </label>
         <div class="ctl__row">
           <input
@@ -114,7 +114,7 @@ const { showCost = true } = Astro.props;
 
     <div class="meter__result">
       <div class="gauge">
-        <p class="gauge__label mono">Sparks used per day</p>
+        <p class="gauge__label mono">Credits used per day</p>
         <p class="gauge__value" id="sm-total">{FREE_PER_DAY}</p>
 
         <div class="gauge__track" aria-hidden="true">
@@ -125,7 +125,7 @@ const { showCost = true } = Astro.props;
         </div>
 
         <p class="gauge__scale mono" aria-hidden="true">
-          <span>0</span><span>{Math.round(FREE_PER_DAY * 2)}</span><span>{PLAN_LIMITS.studio.sparksPerDay} · Studio</span>
+          <span>0</span><span>{Math.round(FREE_PER_DAY * 2)}</span><span>{PLAN_LIMITS.studio.creditsPerDay} · Studio</span>
         </p>
       </div>
 
@@ -133,25 +133,25 @@ const { showCost = true } = Astro.props;
         <!-- Pre-rendered to match what the script computes for these slider defaults,
              so the page tells the same story before JavaScript runs and for a reader
              who has it turned off. It said "Comfortably inside the free allowance"
-             while the defaults totalled 46; correcting Plan from 1 spark to 2 makes
+             while the defaults totalled 46; correcting Plan from 1 credit to 2 makes
              them total exactly the free daily allowance, which is the
              monthly cap binding, not comfort. -->
         A day like this fits the free plan — it is the monthly cap that binds. 900 free
-        sparks covers about <strong>15 days</strong> of building at this intensity.
+        credits covers about <strong>15 days</strong> of building at this intensity.
       </p>
 
       <dl class="figures">
         <div>
           <dt class="mono">Free plan</dt>
-          <dd id="sm-free">{FREE_PER_DAY} / day · {PLAN_LIMITS.free.sparksPerMonth.toLocaleString()} / month</dd>
+          <dd id="sm-free">{FREE_PER_DAY} / day · {PLAN_LIMITS.free.creditsPerMonth.toLocaleString()} / month</dd>
         </div>
         <div>
           <dt class="mono">Pro (waitlist)</dt>
-          <dd id="sm-pro">{PLAN_LIMITS.studio.sparksPerDay} / day · {PLAN_LIMITS.studio.sparksPerMonth.toLocaleString()} / month</dd>
+          <dd id="sm-pro">{PLAN_LIMITS.studio.creditsPerDay} / day · {PLAN_LIMITS.studio.creditsPerMonth.toLocaleString()} / month</dd>
         </div>
         <div>
           <dt class="mono">Your month</dt>
-          <dd id="sm-month">1,800 sparks</dd>
+          <dd id="sm-month">1,800 credits</dd>
         </div>
         <div>
           <dt class="mono">Binding limit</dt>
@@ -170,7 +170,7 @@ const { showCost = true } = Astro.props;
         </summary>
         <div class="honesty__body">
           <p>
-            Sparks are not a made-up currency. One Spark is 30 neurons of
+            Credits are not a made-up currency. One Credit is 30 neurons of
             real compute, billed at $0.011 per 1,000 neurons, and the
             ledger charges from the provider's own reported figure rather than
             an estimate.
@@ -546,7 +546,7 @@ const { showCost = true } = Astro.props;
 </style>
 
 <script>
-  const root = document.getElementById('spark-meter');
+  const root = document.getElementById('credit-meter');
   const FREE_DAY = Number(root?.dataset.freePerDay ?? 0);
 
   if (root) {
@@ -576,7 +576,7 @@ const { showCost = true } = Astro.props;
     const PRO_DAY = 400;
     const PRO_MONTH = 6000;
     const SCALE = 440; // gauge runs 0 → 440 so the Pro mark sits inside it
-    const NEURONS_PER_SPARK = 30;
+    const NEURONS_PER_CREDIT = 30;
     const USD_PER_KILONEURON = 0.011;
 
     const fmt = (n: number) => n.toLocaleString('en-US');
@@ -595,8 +595,8 @@ const { showCost = true } = Astro.props;
       // COSTS COME FROM THE INPUTS, not from literals here. `data-cost` was already on
       // every slider and this line ignored it, so the label a reader sees, the attribute
       // in the markup and the arithmetic were three copies of one number — and when Plan
-      // was corrected from 1 spark to 2 (37-43 neurons, ceil(43/30) = 2, the same
-      // `sparksForNeurons` the worker charges with), the first two changed and this did
+      // was corrected from 1 credit to 2 (37-43 neurons, ceil(43/30) = 2, the same
+      // `creditsForNeurons` the worker charges with), the first two changed and this did
       // not. The Super Agent slider adds its extra steps on top, which is the one cost that is
       // genuinely per-run rather than per-request.
       const cost = (el: HTMLInputElement) => Number(el.dataset.cost ?? 0);
@@ -604,7 +604,7 @@ const { showCost = true } = Astro.props;
       const perMonth = perDay * 30;
 
       totalEl.textContent = fmt(perDay);
-      monthEl.textContent = `${fmt(perMonth)} sparks`;
+      monthEl.textContent = `${fmt(perMonth)} credits`;
       (fillEl as HTMLElement).style.width = `${Math.min(100, (perDay / SCALE) * 100)}%`;
 
       // "Whichever limit binds first applies." The monthly cap is stricter
@@ -632,12 +632,12 @@ const { showCost = true } = Astro.props;
         verdictEl.innerHTML =
           perDay <= FREE_DAY * 0.5
             ? 'Comfortably inside the free plan, every day of the month — nothing to pay, no card, no trial clock.'
-            : `Inside the free plan, with <strong>${fmt(FREE_DAY - perDay)}</strong> sparks a day still spare.`;
+            : `Inside the free plan, with <strong>${fmt(FREE_DAY - perDay)}</strong> credits a day still spare.`;
       } else if (withinFreeDaily) {
         // fits any single day, but not thirty of them
         root!.classList.add('is-stone');
         (fillEl as HTMLElement).style.background = 'var(--good)';
-        verdictEl.innerHTML = `A day like this fits the free plan — it is the monthly cap that binds. 900 free sparks covers about <strong>${fmt(
+        verdictEl.innerHTML = `A day like this fits the free plan — it is the monthly cap that binds. 900 free credits covers about <strong>${fmt(
           daysAffordable
         )} days</strong> of building at this intensity.`;
       } else if (proOk) {
@@ -645,7 +645,7 @@ const { showCost = true } = Astro.props;
         (fillEl as HTMLElement).style.background = 'var(--accent)';
         verdictEl.innerHTML = `That is <strong>${fmt(
           dailyOver
-        )}</strong> sparks a day past the free allowance. Pro is designed for exactly this — 400 a day — and is on the waitlist while the price is settled.`;
+        )}</strong> credits a day past the free allowance. Pro is designed for exactly this — 400 a day — and is on the waitlist while the price is settled.`;
       } else {
         root!.classList.add('is-clay');
         (fillEl as HTMLElement).style.background = 'var(--warn)';
@@ -655,7 +655,7 @@ const { showCost = true } = Astro.props;
 
       if (costEl) {
         const usd =
-          (perDay * NEURONS_PER_SPARK * USD_PER_KILONEURON) / 1000;
+          (perDay * NEURONS_PER_CREDIT * USD_PER_KILONEURON) / 1000;
         costEl.innerHTML = `At the settings above that is roughly <strong>$${usd.toFixed(
           2
         )}</strong> of inference a day, which is why the free tier can be free without a card and without a trial clock.`;

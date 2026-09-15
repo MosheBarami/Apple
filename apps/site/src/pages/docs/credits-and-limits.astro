@@ -9,12 +9,12 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 ---
 
 <DocsLayout
-  title="Sparks & limits — Apple Docs"
-  description={`How Apple's Sparks quota works: ${free.sparksPerDay} per day free, per-mode costs, live metering, daily reset, and exactly what happens when you run out.`}
-  heading="Sparks &amp; limits"
+  title="Credits & limits — Apple Docs"
+  description={`How Apple's Credits quota works: ${free.creditsPerDay} per day free, per-mode costs, live metering, daily reset, and exactly what happens when you run out.`}
+  heading="Credits &amp; limits"
 >
   <p>
-    Sparks are Apple's unit of daily energy. Every AI request burns some; your balance refills to
+    Credits are Apple's unit of daily energy. Every AI request burns some; your balance refills to
     full once a day. The system exists for one reason: real inference costs real compute, and a
     hard, transparent quota is what lets the free tier be genuinely free — no card, no trial
     clock, no surprise bill.
@@ -22,13 +22,13 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
   <h2>The numbers</h2>
   <ul>
-    <li><strong>Free plan:</strong> {free.sparksPerDay} Sparks per day · {free.sparksPerMonth.toLocaleString()} a month.</li>
+    <li><strong>Free plan:</strong> {free.creditsPerDay} Credits per day · {free.creditsPerMonth.toLocaleString()} a month.</li>
     {paid.map((id) => (
-      <li><strong>{PLAN_COPY[id].name} plan:</strong> {PLAN_LIMITS[id].sparksPerDay} Sparks per day · {PLAN_LIMITS[id].sparksPerMonth.toLocaleString()} a month.</li>
+      <li><strong>{PLAN_COPY[id].name} plan:</strong> {PLAN_LIMITS[id].creditsPerDay} Credits per day · {PLAN_LIMITS[id].creditsPerMonth.toLocaleString()} a month.</li>
     ))}
-    <li><strong>Plan:</strong> 2 sparks per request.</li>
-    <li><strong>Agent:</strong> 4 sparks per request.</li>
-    <li><strong>Super Agent:</strong> 10 sparks per request, <strong>+1 per extra step</strong> beyond the included ones.</li>
+    <li><strong>Plan:</strong> 2 credits per request.</li>
+    <li><strong>Agent:</strong> 4 credits per request.</li>
+    <li><strong>Super Agent:</strong> 10 credits per request, <strong>+1 per extra step</strong> beyond the included ones.</li>
   </ul>
   <p>
     In practice the free allowance is a solid daily session: a good number of Plan questions, a bunch of Agent
@@ -44,15 +44,15 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   </p>
   <p>
     If a request fails on our side — an infrastructure error, not a build that turned out wrong —
-    the Sparks come back automatically.
+    the Credits come back automatically.
   </p>
 
   <h2>The daily reset</h2>
   <p>
     Quotas reset at midnight UTC — one fixed instant for every account, not a rolling window
-    that starts when you do. That is worth knowing if you build late in the UTC day: sparks
+    that starts when you do. That is worth knowing if you build late in the UTC day: credits
     spent at 23:00 UTC are refilled an hour later. The workspace shows your exact
-    reset time. Unused Sparks do not roll over — every day starts at your full allowance.
+    reset time. Unused Credits do not roll over — every day starts at your full allowance.
   </p>
 
   <h2>Running out</h2>
@@ -72,7 +72,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
   <div class="callout">
     <p>
-      <strong>Making Sparks go further:</strong> design the build in Plan before running it in Super Agent; give
+      <strong>Making Credits go further:</strong> design the build in Plan before running it in Super Agent; give
       specific requests (“the door in Workspace.Lobby”) rather than vague ones; and let Agent do
       the ordinary building — Super Agent shines when verification matters, not on every task.
     </p>

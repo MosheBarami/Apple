@@ -85,7 +85,7 @@ function session() {
   const doStub = (body) => ({ idFromName: () => 'id', get: () => ({ fetch: async () => Response.json(body) }) });
   const env = {
     AI: { run: async () => ({ response: 'ok' }) },
-    QUOTA_DO: doStub({ ok: true, allowed: true, remaining: 100, sparks: 100, plan: 'free' }),
+    QUOTA_DO: doStub({ ok: true, allowed: true, remaining: 100, credits: 100, plan: 'free' }),
     BUDGET_DO: doStub({ ok: true, reserved: 10, state: { killed: false } }),
     ADMIN_DO: doStub({ ok: true }),
   };

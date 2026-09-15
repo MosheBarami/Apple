@@ -158,7 +158,7 @@ export interface MeResponse {
 
 export interface UsageDay {
   day: string;
-  sparks: number;
+  credits: number;
   events: number;
 }
 
@@ -270,7 +270,7 @@ export interface Run {
   phase: string | null;
   stopReason: string | null;
   stopReasonRecognised: boolean;
-  sparksSpent: number | null;
+  creditsSpent: number | null;
   error: string | null;
   done: boolean;
   /** Deltas that named a message this run is not assembling. Counted, never merged. */

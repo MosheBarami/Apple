@@ -147,7 +147,7 @@ function makeEnv() {
       if (path === '/companion-op') return { id: 'op_1', ok: true, data: { reached: true } };
       return { ok: true };
     }),
-    QUOTA_DO: doNamespace('QUOTA_DO', async () => ({ sparksRemaining: 10, sparksLimit: 20, plan: 'free', day: '2026-09-15' })),
+    QUOTA_DO: doNamespace('QUOTA_DO', async () => ({ creditsRemaining: 10, creditsLimit: 20, plan: 'free', day: '2026-09-15' })),
     PAIRING_DO: doNamespace('PAIRING_DO', async () => ({ ok: true })),
     ADMIN_DO: doNamespace('ADMIN_DO', async () => ({ ok: true })),
     BUDGET_DO: doNamespace('BUDGET_DO', async () => ({ ok: true })),

@@ -13,6 +13,7 @@ import type {
   RunIntent,
   ServerMsg,
   StudioEventLog,
+  StudioEventSelection,
   StudioEventState,
 } from '@golem/shared';
 import type { PhaseMark } from '../components/ws/activity-model';
@@ -27,6 +28,7 @@ import {
   mockMessages,
   mockPlaytest,
   mockQuota,
+  mockSelection,
   mockStudioState,
 } from './mock';
 import { getAccessToken, supabase } from './supabase';
@@ -83,7 +85,20 @@ export interface ChatItem {
    * for a conversation loaded from history and for a worker too old to send it, which renders as
    * no cost line rather than a zero.
    */
-  sparksSpent?: number;
+  creditsSpent?: number;
+  /**
+   * What this run's prompt cost against its ceiling, and what the trim dropped — from the
+   * `context_budget` message.
+   *
+   * UNDEFINED UNTIL THE WORKER SENDS ONE, which is the whole contract: a conversation loaded from
+   * history and a worker too old to send it show no budget rather than a confident zero, and
+   * `dropped` being absent means nothing was dropped rather than "we did not look".
+   */
+  context?: {
+    usedChars: number;
+    maxChars: number;
+    dropped?: { groups: number; chars: number };
+  };
 }
 
 export interface AgentStatus {
@@ -92,12 +107,12 @@ export interface AgentStatus {
   step?: number;
   totalSteps?: number;
   /**
-   * What THIS run has cost so far, in Sparks. Reported by the worker; never estimated here.
+   * What THIS run has cost so far, in Credits. Reported by the worker; never estimated here.
    *
    * Distinct from the account-wide `quota` message. A user watching a build wants to know what
    * the build is costing, and that was the one figure the server tracked and never sent.
    */
-  sparksSpent?: number;
+  creditsSpent?: number;
   /** The tool running right now, when the phase came from one. */
   tool?: string;
   /**
@@ -126,7 +141,22 @@ export interface ProjectSocket {
    * different copy. Neither says anything about the plugin being installed;
    * there is no signal for that. See lib/studio-connection.ts.
    */
-  studio: { connected: boolean; state: StudioEventState | null; everConnected: boolean };
+  studio: {
+    connected: boolean;
+    state: StudioEventState | null;
+    everConnected: boolean;
+    /**
+     * What is selected in Studio right now, from the `studio_selection` broadcast.
+     *
+     * THE MESSAGE WAS ARRIVING AND BEING DROPPED. The plugin captured the selection, the worker
+     * re-derived every field of it and broadcast it on connect and on every real change — and
+     * `handleServerMsg` had no case for it, so it fell through the switch and the browser knew
+     * nothing about what the user was looking at. Null until the worker sends one, which is a
+     * different fact from "nothing is selected" and is why the composer's chip is absent rather
+     * than empty until then.
+     */
+    selection: StudioEventSelection | null;
+  };
   quota: QuotaState | null;
   /**
    * Everyone the worker can currently see on this project, from the `presence` message.
@@ -250,10 +280,12 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
     connected: boolean;
     state: StudioEventState | null;
     everConnected: boolean;
+    selection: StudioEventSelection | null;
   }>({
     connected: false,
     state: null,
     everConnected: false,
+    selection: null,
   });
   const [quota, setQuota] = useState<QuotaState | null>(null);
   const [presence, setPresence] = useState<PresenceState[]>([]);
@@ -280,7 +312,7 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
       setMessages(mockHistory());
       setHistoryState('ready');
       setConn('open');
-      setStudio({ connected: true, state: mockStudioState, everConnected: true });
+      setStudio({ connected: true, state: mockStudioState, everConnected: true, selection: mockSelection });
       setQuota(mockQuota);
       setLogs(mockLogs);
       return;
@@ -368,10 +400,21 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
         break;
       case 'studio_status':
         setStudio((s) => ({
+          ...s,
           connected: msg.connected,
           state: msg.state ?? null,
           everConnected: s.everConnected || msg.connected,
+          // A selection belongs to an attached Studio. Keeping the last one after the plugin
+          // dropped would offer the user a reference to objects nothing can act on any more.
+          selection: msg.connected ? s.selection : null,
         }));
+        break;
+      case 'studio_selection':
+        // Replaced wholesale, never merged: the worker sends the WHOLE selection each time and
+        // only when it genuinely changed (see sameSelection in companion.ts), so this message is
+        // the complete truth about what is selected. Merging would leave a deselected part on
+        // screen as something the user could still point at.
+        setStudio((s) => ({ ...s, selection: msg.selection }));
         break;
       case 'msg_start':
         setRunning(true);
@@ -496,9 +539,9 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
             streaming: false,
             stopReason: msg.stopReason,
             error: msg.error,
-            // Only when the worker sent one: `?? item.sparksSpent` rather than `?? 0`, so an older
+            // Only when the worker sent one: `?? item.creditsSpent` rather than `?? 0`, so an older
             // worker leaves the field absent instead of asserting that the run was free.
-            sparksSpent: msg.sparksSpent ?? item.sparksSpent,
+            creditsSpent: msg.creditsSpent ?? item.creditsSpent,
             tools: item.tools.map((t) => (t.done ? t : { ...t, done: true, ok: false, durationMs: Date.now() - t.startedAt })),
           };
           return next;
@@ -553,7 +596,7 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
           // Carried forward like effort, and for the same reason: the cost is settled once per
           // step while the phase changes several times within one. Falling back to `prev` keeps
           // the figure from flickering back to nothing between settlements.
-          sparksSpent: msg.sparksSpent ?? prev?.sparksSpent,
+          creditsSpent: msg.creditsSpent ?? prev?.creditsSpent,
         }));
         break;
       case 'run_state': {
@@ -613,6 +656,39 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
         });
         break;
       }
+      case 'context_budget':
+        // Kept on the MESSAGE, not on `agentStatus`, for the same reason `creditsSpent` is: the
+        // status is cleared by `msg_end`, so a figure stored there would be correct for one frame
+        // and then gone — and this one is most worth reading after the run, when the user is
+        // trying to understand why a long conversation started behaving differently.
+        //
+        // The LAST report of a run wins: a sixteen-step build trims on several steps, and the size
+        // of the prompt that was actually sent last is the one that describes where the run ended
+        // up. `dropped` is carried forward from any earlier step that dropped turns, because a turn
+        // dropped on step 4 is still gone at step 16 — clearing it would un-disclose a real loss.
+        setMessages((list) => {
+          const idx = list.findIndex((m) => m.id === msg.msgId);
+          if (idx === -1) return list;
+          const item = list[idx]!;
+          const next = [...list];
+          const prior = item.context?.dropped;
+          const dropped = msg.dropped
+            ? {
+                groups: (prior?.groups ?? 0) + msg.dropped.groups,
+                chars: (prior?.chars ?? 0) + msg.dropped.chars,
+              }
+            : prior;
+          next[idx] = {
+            ...item,
+            context: {
+              usedChars: msg.usedChars,
+              maxChars: msg.maxChars,
+              ...(dropped ? { dropped } : {}),
+            },
+          };
+          return next;
+        });
+        break;
       case 'quota':
         setQuota(msg.quota);
         break;

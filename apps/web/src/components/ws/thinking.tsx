@@ -1,6 +1,6 @@
 // The Thinking card — the centrepiece of the conversation.
 //
-// A bordered card with an amber sparkle, the word "Thinking" and a chevron;
+// A bordered card with an amber creditle, the word "Thinking" and a chevron;
 // inside, a vertical timeline of ring bullets joined by a hairline:
 // Intent → Plan → Actions → Validation.
 //
@@ -139,8 +139,8 @@ export function Thinking({
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
-        <span className="gx-think__spark" aria-hidden="true">
-          <Icon d={PATH.sparkle} size={15} />
+        <span className="gx-think__credit" aria-hidden="true">
+          <Icon d={PATH.creditle} size={15} />
         </span>
         <span className="gx-think__word">Thinking</span>
         <span className="gx-think__hint">{hint}</span>
@@ -166,21 +166,21 @@ export function Thinking({
           {/* The reasoning POLICY's own justification for the effort tier it
               picked. A classification of the request, not the model's private
               reasoning. */}
-          {(status?.effort || status?.sparksSpent != null || status?.step != null) && (
+          {(status?.effort || status?.creditsSpent != null || status?.step != null) && (
             <p className="gx-think__foot">
               {status?.step != null && status?.totalSteps != null && (
                 <>
                   Step <strong>{status.step}</strong> of {status.totalSteps}
-                  {(status.effort || status.sparksSpent != null) ? ' · ' : ''}
+                  {(status.effort || status.creditsSpent != null) ? ' · ' : ''}
                 </>
               )}
               {/* What THIS run has cost, settled by the worker and never estimated here. The
                   account-wide figure lives in the credits panel; this is the one a user watching a
                   build can actually act on. Rendered only once something has been spent, so an
                   opening run does not display a confident "0". */}
-              {status?.sparksSpent != null && status.sparksSpent > 0 && (
+              {status?.creditsSpent != null && status.creditsSpent > 0 && (
                 <>
-                  <strong>{status.sparksSpent}</strong> {status.sparksSpent === 1 ? 'Spark' : 'Sparks'} this run
+                  <strong>{status.creditsSpent}</strong> {status.creditsSpent === 1 ? 'Credit' : 'Credits'} this run
                   {status.effort ? ' · ' : ''}
                 </>
               )}

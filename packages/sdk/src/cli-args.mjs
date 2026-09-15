@@ -17,7 +17,7 @@ import { isFiniteNumber } from './numbers.mjs';
 export const COMMANDS = Object.freeze({
   health: { args: [], describe: 'service liveness and the deployed build sha' },
   me: { args: [], describe: 'the signed-in account, plan and quota' },
-  usage: { args: [], describe: 'Sparks spent per day' },
+  usage: { args: [], describe: 'Credits spent per day' },
   providers: { args: [], describe: 'whether this deployment can serve inference' },
   docs: { args: ['query'], describe: 'search the ingested Roblox documentation' },
   messages: { args: ['projectId'], flags: { limit: 'number' }, describe: 'recent conversation messages' },

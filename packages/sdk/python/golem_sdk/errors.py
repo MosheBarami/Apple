@@ -7,7 +7,7 @@ from typing import Any, Optional
 from .numbers import finite_int, is_finite_number, retry_after_seconds
 
 #: Statuses worth trying again. 429 is here even though this deployment uses it for both
-#: "slow down" and "out of Sparks today": retrying the second is useless but bounded,
+#: "slow down" and "out of Credits today": retrying the second is useless but bounded,
 #: while refusing to retry the first turns a self-clearing condition into a hard failure.
 RETRYABLE_STATUS = frozenset({408, 425, 429, 500, 502, 503, 504})
 

@@ -196,16 +196,16 @@ test('a stopReason this build has never heard of is recorded AND flagged', () =>
   assert.equal(ahead.done, true);
 });
 
-test('a non-finite sparksSpent never replaces the last real figure', () => {
+test('a non-finite creditsSpent never replaces the last real figure', () => {
   let run = applyServerMsg(emptyRun(), { type: 'msg_start', msgId: 'm1' });
-  run = applyServerMsg(run, { type: 'agent_status', phase: 'building', sparksSpent: 6 });
-  assert.equal(run.sparksSpent, 6);
+  run = applyServerMsg(run, { type: 'agent_status', phase: 'building', creditsSpent: 6 });
+  assert.equal(run.creditsSpent, 6);
   for (const bad of [NaN, Infinity, '9', null, undefined]) {
-    run = applyServerMsg(run, { type: 'agent_status', phase: 'building', sparksSpent: bad });
-    assert.equal(run.sparksSpent, 6, `${String(bad)} overwrote a real figure`);
+    run = applyServerMsg(run, { type: 'agent_status', phase: 'building', creditsSpent: bad });
+    assert.equal(run.creditsSpent, 6, `${String(bad)} overwrote a real figure`);
   }
-  run = applyServerMsg(run, { type: 'msg_end', msgId: 'm1', stopReason: 'done', sparksSpent: 11 });
-  assert.equal(run.sparksSpent, 11, 'the settled figure on msg_end wins');
+  run = applyServerMsg(run, { type: 'msg_end', msgId: 'm1', stopReason: 'done', creditsSpent: 11 });
+  assert.equal(run.creditsSpent, 11, 'the settled figure on msg_end wins');
 });
 
 test('waitForRun resolves with the assembled turn', async () => {
@@ -214,11 +214,11 @@ test('waitForRun resolves with the assembled turn', async () => {
   const finished = stream.waitForRun();
   sockets[0].deliver({ type: 'msg_start', msgId: 'm1', role: 'assistant', mode: 'clay' });
   sockets[0].deliver({ type: 'delta', msgId: 'm1', text: 'done.' });
-  sockets[0].deliver({ type: 'msg_end', msgId: 'm1', stopReason: 'done', sparksSpent: 4 });
+  sockets[0].deliver({ type: 'msg_end', msgId: 'm1', stopReason: 'done', creditsSpent: 4 });
   const run = await finished;
   assert.equal(run.text, 'done.');
   assert.equal(run.stopReason, 'done');
-  assert.equal(run.sparksSpent, 4);
+  assert.equal(run.creditsSpent, 4);
 });
 
 test('a FLAPPING connection backs off further each time, and does not reset on open', () => {

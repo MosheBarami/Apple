@@ -257,24 +257,37 @@ test('claims no second model, because there is not one', async ({ page }) => {
   }
 });
 
-test('counts in Sparks, not credits', async ({ page }) => {
+test('counts in Credits, not credits', async ({ page }) => {
   // "Credits" is already taken here: it is the purchased, non-expiring balance,
-  // and the allowance a plan grants is measured in Sparks. The design uses
+  // and the allowance a plan grants is measured in Credits. The design uses
   // "credits" for both. One word with two meanings on the page that introduces
   // the unit is how a reader ends up budgeting against the wrong number.
   await page.goto('/');
   const pricing = ((await page.locator('#pricing').textContent()) ?? '').toLowerCase();
-  expect(pricing).toContain('sparks');
-  expect(pricing, 'the allowance is Sparks; "credits" means the purchased balance').not.toContain(
+  expect(pricing).toContain('credits');
+  expect(pricing, 'the allowance is Credits; "credits" means the purchased balance').not.toContain(
     'credits',
   );
 });
 
-test('the primary call to action reaches the app', async ({ page }) => {
+test('the primary call to action reaches registration, not the sign-in form', async ({ page }) => {
+  // It used to assert `/app`, which looked right and was not: `/app` is the dashboard, the
+  // dashboard is inside AuthGuard, and a signed-out visitor is redirected to /login. So the button
+  // that says "Start building — free" put someone who has never heard of this product in front of
+  // a sign-in form and asked them to spot a small "Create an account" link underneath it.
+  //
+  // Asserted as the registration route rather than merely "not /app", because the failure this
+  // guards against is a destination that is plausible and wrong.
   await page.goto('/');
   const cta = page.getByRole('link', { name: 'Start building — free' });
   await expect(cta).toBeVisible();
-  await expect(cta).toHaveAttribute('href', '/app');
+  await expect(cta).toHaveAttribute('href', '/app/signup');
+
+  // The other half: a returning user must still be able to say so. Sending them to the
+  // registration form is the same defect mirrored, and it is the easy mistake to make while fixing
+  // the first one.
+  const signIn = page.getByRole('link', { name: 'Sign in', exact: true });
+  await expect(signIn).toHaveAttribute('href', '/app/login');
 });
 
 test('the secondary call to action reaches the honest install destination', async ({ page }) => {

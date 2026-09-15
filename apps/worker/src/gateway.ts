@@ -500,8 +500,8 @@ export interface RawProbeResult {
  * call like this one is metered here rather than at the route. So it is: reserve -> run -> settle,
  * release on failure, exactly like `embed()`.
  *
- * ONLY THE GLOBAL LEDGER IS CHARGED. No user Sparks are spent and QuotaDO is never touched —
- * Sparks are the per-user quota, and no user should be billed for an operator's diagnostic.
+ * ONLY THE GLOBAL LEDGER IS CHARGED. No user Credits are spent and QuotaDO is never touched —
+ * Credits are the per-user quota, and no user should be billed for an operator's diagnostic.
  */
 export async function rawProbe(env: Env, req: RawProbeRequest, kind = 'admin:raw-probe'): Promise<RawProbeResult> {
   const maxTokens = req.maxTokens ?? 200;

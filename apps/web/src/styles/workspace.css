@@ -1116,6 +1116,101 @@
   font-size: inherit;
 }
 
+/* --------------------------------------------------------------------------
+   8b. Fenced code: highlighted, and copyable
+   --------------------------------------------------------------------------
+   A header strip carrying the language and the copy control, over the same
+   raised panel a plain `pre` already used — so a code block does not become a
+   different KIND of thing from the rest of the reply, it simply grows the two
+   affordances it was missing. The control lives in the header rather than
+   floating over the code: an overlay covers the first line, which is the line
+   most worth reading. */
+
+.gx-code {
+  margin: 0 0 1em;
+  border: 1px solid var(--gx-line);
+  border-radius: var(--gx-r);
+  background: var(--gx-raise-2);
+  overflow: hidden;
+}
+
+.gx-code__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  min-height: 30px;
+  padding: 0 0.45rem 0 1rem;
+  border-bottom: 1px solid var(--gx-line);
+  color: var(--gx-ink-3);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
+.gx-code__lang {
+  text-transform: uppercase;
+}
+
+/* Legible without hovering — a copy control people cannot see is a control they keep not using —
+   but quiet enough that it does not compete with the code beside it. */
+.gx-code__copy {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--gx-ink-3);
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+  transition:
+    color var(--gx-t-hover) var(--gx-ease),
+    border-color var(--gx-t-hover) var(--gx-ease);
+}
+
+.gx-code__copy:hover {
+  color: var(--gx-ink);
+  border-color: var(--gx-line);
+}
+
+.gx-code__copy:focus-visible {
+  outline: 2px solid var(--gx-amber);
+  outline-offset: 1px;
+}
+
+.gx-code__body {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  overflow-x: auto;
+  font-size: 0.83rem;
+  line-height: 1.6;
+}
+
+/* The palette. Four hues on the charcoal ground, each already in the token set — nothing here
+   introduces a colour, and every one of them is declared for both themes so a light-mode reader
+   gets the same structure rather than a wash. Comments are the quietest thing on the block
+   BECAUSE they are prose: the code is what the eye is looking for. */
+.tok--kw {
+  color: var(--gx-amber);
+}
+
+.tok--str {
+  color: var(--gx-good);
+}
+
+.tok--num {
+  color: var(--gx-ink-warm);
+}
+
+.tok--com {
+  color: var(--gx-ink-3);
+  font-style: italic;
+}
+
+.tok--fn {
+  color: var(--gx-ink);
+  font-weight: 600;
+}
+
 .gx-outcome {
   margin: 0.6rem 0 0;
   color: var(--gx-ink-3);
@@ -1157,7 +1252,7 @@
   text-align: start;
 }
 
-.gx-think__spark {
+.gx-think__credit {
   flex: none;
   display: grid;
   place-items: center;
@@ -2020,6 +2115,70 @@
   line-height: 1.5;
 }
 
+/* The chord that actually sends, beside the disclaimer rather than on its own line: it is a
+   reminder, not an announcement, and a second centred line under the box reads as a second
+   warning. `dir="ltr"` on the element keeps ⇧↵ in order under a right-to-left layout. */
+.gx-composer__keys {
+  display: inline-block;
+  margin-inline-end: 0.5rem;
+  padding-inline-end: 0.5rem;
+  border-inline-end: 1px solid var(--gx-line);
+  color: var(--gx-ink-3);
+  white-space: nowrap;
+}
+
+/* HOW MUCH ROOM IS LEFT. Inside the box, bottom-aligned with the tool row, so it reads as a
+   property of the text rather than as an error about it. Absent entirely until the last few
+   hundred characters — see composer.tsx. */
+.gx-composer__count {
+  margin: 0;
+  padding: 0 0.85rem 0.15rem;
+  text-align: end;
+  color: var(--gx-ink-3);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+}
+
+/* At the ceiling the sentence changes from a count to an instruction, and the colour changes
+   with it. Amber, not red: nothing has failed and nothing was lost — the message is simply as
+   long as a message gets. --gx-amber is declared in BOTH themes; --gx-warn is dark-only. */
+.gx-composer__count.is-full {
+  color: var(--gx-amber);
+  font-weight: 500;
+}
+
+/* BACK TO THE LIVE EDGE. Centred over the composer, where the eye already is, and only present
+   while the reader has left the bottom — see routes/workspace.tsx. It is a real button rather than
+   a floating pill so it is reachable by keyboard in the order it appears. */
+.gx-jump {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 auto 0.35rem;
+  padding: 0.3rem 0.75rem;
+  border: 1px solid var(--gx-line);
+  border-radius: 999px;
+  background: var(--gx-raise);
+  color: var(--gx-ink-2);
+  font: inherit;
+  font-size: 0.76rem;
+  cursor: pointer;
+  transition:
+    color var(--gx-t-hover) var(--gx-ease),
+    border-color var(--gx-t-hover) var(--gx-ease);
+}
+
+.gx-jump:hover {
+  color: var(--gx-ink);
+  border-color: var(--gx-line-2);
+}
+
+.gx-jump:focus-visible {
+  outline: 2px solid var(--gx-amber);
+  outline-offset: 2px;
+}
+
 .gx-conn-note {
   margin: 0;
   padding: 0.35rem 0 0;
@@ -2072,6 +2231,26 @@
   place-items: center;
   opacity: 0.55;
   flex: none;
+}
+
+/* The Studio-selection chip. Lighter than the mode chip beside it — the mode is a decision
+   about the run, this is a reference you may or may not want — and it shrinks its own path
+   text rather than pushing the send button off a narrow bar. */
+.gx-chip--sel {
+  max-width: 14rem;
+  overflow: hidden;
+  color: var(--gx-ink-3);
+  border-style: dashed;
+}
+
+.gx-chip--sel:hover:not(:disabled) {
+  color: var(--gx-ink);
+  border-style: solid;
+}
+
+.gx-chip--sel:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 /* The filled circular send button. */
@@ -3285,6 +3464,59 @@
   margin: 0;
 }
 
+/* The one binding that is a choice. Two options, each showing the chord it would bind, so the
+   decision is made by looking at the keys rather than by reading a sentence about them. */
+.shortcuts__choice {
+  margin: 0;
+  padding: 14px 0 0;
+  border: 0;
+  border-top: 1px solid var(--gx-line);
+}
+
+.shortcuts__choice [role='radiogroup'] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.shortcuts__opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 11px;
+  border: 1px solid var(--gx-line);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--gx-ink-2);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    border-color var(--gx-t-hover) var(--gx-ease),
+    color var(--gx-t-hover) var(--gx-ease);
+}
+
+.shortcuts__opt:hover {
+  color: var(--gx-ink);
+  border-color: var(--gx-line-2);
+}
+
+/* The selected option is marked by border and ink, never by colour alone — `aria-checked` carries
+   it for assistive technology and this carries it for everyone looking at the screen. */
+.shortcuts__opt.is-on {
+  border-color: var(--gx-ink-2);
+  color: var(--gx-ink);
+}
+
+.shortcuts__opt:focus-visible {
+  outline: 2px solid var(--gx-amber);
+  outline-offset: 2px;
+}
+
+.shortcuts__choice-sub {
+  color: var(--gx-ink-3);
+  font-size: 0.78rem;
+}
+
 /* --------------------------------------------------- conversation search --- */
 
 .cs {
@@ -3378,6 +3610,212 @@
   background: none;
   color: var(--gx-accent, #6aa7ff);
   font-weight: 600;
+}
+
+/* --- search: the bar, the facets and the filters ------------------------------------------- */
+
+.cs__bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.cs__bar .cs__input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.cs__filters-toggle,
+.cs__facet {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 10px;
+  border: 1px solid var(--gx-line, rgb(255 255 255 / 12%));
+  border-radius: 999px;
+  background: transparent;
+  color: var(--gx-ink-3);
+  font: inherit;
+  font-size: 0.78rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.cs__filters-toggle:hover,
+.cs__facet:hover {
+  color: var(--gx-ink);
+}
+
+/* The selected facet is marked by more than colour: a filter you cannot see is a result set you
+   cannot explain. */
+.cs__facet.is-on,
+.cs__filters-toggle.is-on {
+  border-color: var(--gx-accent, #6aa7ff);
+  background: color-mix(in srgb, var(--gx-accent, #6aa7ff) 14%, transparent);
+  color: var(--gx-ink);
+  font-weight: 600;
+}
+
+.cs__filters-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gx-accent, #6aa7ff);
+}
+
+.cs__facets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cs__facet-count {
+  color: var(--gx-ink-3);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.cs__filters {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--gx-line, rgb(255 255 255 / 10%));
+  border-radius: 10px;
+}
+
+.cs__filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.cs__filter-label {
+  color: var(--gx-ink-3);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.cs__select,
+.cs__date {
+  padding: 6px 8px;
+  border: 1px solid var(--gx-line, rgb(255 255 255 / 12%));
+  border-radius: 8px;
+  background: var(--gx-surface-1, rgb(0 0 0 / 20%));
+  color: var(--gx-ink);
+  font: inherit;
+  font-size: 0.82rem;
+}
+
+.cs__clear,
+.cs__inline-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--gx-accent, #6aa7ff);
+  font: inherit;
+  font-size: 0.82rem;
+  text-align: start;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.cs__note--warn {
+  color: var(--gx-warn, #e4b363);
+}
+
+/* --- search: history and results ----------------------------------------------------------- */
+
+.cs__history-head {
+  margin: 0 0 6px;
+  color: var(--gx-ink-3);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.cs__history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cs__history-list li {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.cs__history-item {
+  flex: 1 1 auto;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--gx-ink-2, #c7ccd6);
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: start;
+  cursor: pointer;
+}
+
+.cs__history-item:hover {
+  background: var(--gx-surface-1, rgb(255 255 255 / 5%));
+  color: var(--gx-ink);
+}
+
+.cs__history-forget {
+  padding: 2px 8px;
+  border: 0;
+  background: none;
+  color: var(--gx-ink-3);
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cs__history-forget:hover {
+  color: var(--gx-ink);
+}
+
+/* The arrow-key selection. Same treatment as the command palette's, because it is the same
+   gesture and learning it twice is learning it badly. */
+.cs__hit.is-selected {
+  border-color: var(--gx-accent, #6aa7ff);
+  background: color-mix(in srgb, var(--gx-accent, #6aa7ff) 10%, var(--gx-surface-1, rgb(255 255 255 / 4%)));
+}
+
+.cs__kind {
+  color: var(--gx-ink-2, #c7ccd6);
+  font-weight: 600;
+}
+
+.cs__title {
+  color: var(--gx-ink);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.cs__foot {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 0;
+  color: var(--gx-ink-3);
+  font-size: 0.72rem;
+}
+
+.cs__foot kbd {
+  padding: 1px 5px;
+  border: 1px solid var(--gx-line, rgb(255 255 255 / 14%));
+  border-radius: 4px;
+  font-size: 0.68rem;
 }
 
 /* Where search landed you. A flash, not a persistent state: it answers "which one" and then gets

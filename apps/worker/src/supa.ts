@@ -2,6 +2,8 @@
 import type { Env, AuthedUser } from './env';
 import { classifyGrant, decideAccess, resolveMembership, type AccessDecision, type CollabAction, type Membership } from './collab';
 import { kvGrantsFor } from './collab-links';
+// One answer to "who is @maya", shared with the roster. See membership.ts.
+import { handleFor } from './membership';
 
 export async function supaRest<T = unknown>(
   env: Env,
@@ -132,9 +134,17 @@ export interface MemberRow {
   created_at: string | null;
   expires_at: string | null;
   revoked_at: string | null;
+  /** Migration 0006. A paused grant: dead while it lasts, and distinguishable from a revoked one. */
+  suspended_at: string | null;
+  suspended_reason: string | null;
+  suspended_by: string | null;
 }
 
-const MEMBER_SELECT = 'user_id,role,display_name,invited_by,created_at,expires_at,revoked_at';
+// SUSPENSION IS SELECTED, NOT ASSUMED ABSENT. `classifyGrant` closes a grant whose `suspended_at`
+// is set; a select that omitted the column would hand it a row where the field is undefined, and
+// every suspended member would read as active at the door while the roster showed them paused.
+const MEMBER_SELECT =
+  'user_id,role,display_name,invited_by,created_at,expires_at,revoked_at,suspended_at,suspended_reason,suspended_by';
 
 /** This caller's own membership rows for one project. An unreachable table reads as NO grants. */
 async function listMyGrants(env: Env, user: AuthedUser, projectId: string): Promise<MemberRow[]> {
@@ -195,12 +205,6 @@ export function memberDirectory(
     });
   }
   return out;
-}
-
-/** A stable `@handle`. Falls back to the user id so everyone is addressable, named or not. */
-function handleFor(displayName: string | null, userId: string): string {
-  const slug = (displayName ?? '').toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '');
-  return slug.length >= 2 ? slug : userId;
 }
 
 export async function getProfile(env: Env, userJwt: string, userId: string) {

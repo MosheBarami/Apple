@@ -6,7 +6,7 @@
  * and another frame delivered on the socket runs in that gap.
  *
  * That gap is what A3 was: two `chat` frames arriving together both read an idle agent from
- * storage, so both spent a Spark, both inserted a user row, and one of the two `msg_start`
+ * storage, so both spent a Credit, both inserted a user row, and one of the two `msg_start`
  * broadcasts never got its `msg_end` — a message left spinning in the transcript forever.
  *
  * A guard fixes it only if it is established SYNCHRONOUSLY, before the first await. A check

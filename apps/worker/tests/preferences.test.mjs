@@ -35,6 +35,7 @@ const {
   preferencesToEntries, instructionsFromEntries, needsForModelKey, routePreferredModel,
   PREFERENCE_KEYS, LANGUAGES, CODING_STYLES, RESPONSE_LENGTHS, ROBLOX_CONVENTIONS,
   ROBLOX_CONVENTIONS_MAX, PROFILE_FIELD_MAX, preferenceEntryKey,
+  memoryModeOf, mostRestrictiveMemoryMode,
 } = P;
 
 const MODELS = ['@cf/zai/glm-5.3-flash', '@cf/meta/llama-4-scout'];
@@ -414,4 +415,76 @@ test('every language has a name, and every style, convention and length has a ru
   for (const style of CODING_STYLES) one({ coding_style: style }, `style ${style}`);
   for (const len of RESPONSE_LENGTHS) one({ response_length: len }, `length ${len}`);
   for (const c of ROBLOX_CONVENTIONS) one({ roblox_conventions: [c] }, `convention ${c}`);
+});
+
+// ==========================================================================================
+// THE MEMORY SETTING
+//
+// Two claims: it is validated like every other preference, and it NARROWS like tool permissions
+// rather than overriding like taste. An organisation that turns memory off has made a decision
+// about what may be retained and re-sent to a model provider, and a rule a lower layer can switch
+// back on is not a rule.
+// ==========================================================================================
+
+test('the memory setting takes three values and nothing else', () => {
+  for (const good of ['auto', 'review', 'off']) {
+    const { prefs, rejected } = normalisePreferences({ memory_mode: good }, VOCAB);
+    assert.equal(prefs.memory_mode, good);
+    assert.deepEqual(rejected, []);
+  }
+  for (const bad of ['Off', 'disabled', true, 0, null, {}, 'AUTO']) {
+    const { prefs, rejected } = normalisePreferences({ memory_mode: bad }, VOCAB);
+    assert.equal(prefs.memory_mode, undefined, JSON.stringify(bad));
+    assert.deepEqual(rejected, [{ key: 'memory_mode', reason: 'bad_value' }], JSON.stringify(bad));
+  }
+});
+
+test('the default is stated in one place, and it is the behaviour the product already had', () => {
+  assert.equal(memoryModeOf(undefined), 'auto');
+  assert.equal(memoryModeOf(null), 'auto');
+  assert.equal(memoryModeOf({}), 'auto');
+  assert.equal(memoryModeOf({ memory_mode: 'banana' }), 'auto', 'a stored value nobody defined is not obeyed');
+  assert.equal(memoryModeOf({ memory_mode: 'off' }), 'off');
+});
+
+test('an organisation that turns memory off cannot be overridden by the layers below it', () => {
+  // The contrast is the point: `language` overrides downward, because it is taste.
+  const merged = mergePreferences({
+    org: { memory_mode: 'off', language: 'en' },
+    user: { memory_mode: 'auto', language: 'he' },
+    project: { memory_mode: 'auto' },
+  });
+  assert.equal(merged.prefs.memory_mode, 'off', 'the strictest layer wins wherever it was set');
+  assert.equal(merged.sources.memory_mode, 'org', 'and the panel can say which layer decided');
+  assert.equal(merged.prefs.language, 'he', 'while taste still overrides downward');
+});
+
+test('a project may make memory STRICTER than the account does', () => {
+  const merged = mergePreferences({ user: { memory_mode: 'auto' }, project: { memory_mode: 'review' } });
+  assert.equal(merged.prefs.memory_mode, 'review');
+  assert.equal(merged.sources.memory_mode, 'project');
+});
+
+test('the ranking is a relationship, not three literals', () => {
+  assert.equal(mostRestrictiveMemoryMode('auto', 'review'), 'review');
+  assert.equal(mostRestrictiveMemoryMode('review', 'off'), 'off');
+  assert.equal(mostRestrictiveMemoryMode('off', 'auto'), 'off');
+  assert.equal(mostRestrictiveMemoryMode(undefined, 'review'), 'review');
+  assert.equal(mostRestrictiveMemoryMode('review', undefined), 'review');
+  assert.equal(mostRestrictiveMemoryMode(undefined, undefined), 'auto', 'nobody set it, so it is the default');
+  assert.equal(mostRestrictiveMemoryMode('banana', 'off'), 'off', 'and a value nobody defined loses');
+});
+
+test('a layer that says nothing about memory leaves no setting behind', () => {
+  const merged = mergePreferences({ user: { language: 'he' }, project: {} });
+  assert.equal(merged.prefs.memory_mode, undefined, 'unset is a state the panel must be able to show');
+  assert.equal(memoryModeOf(merged.prefs), 'auto', 'and it reads as the default');
+});
+
+test('the setting round-trips through a stored row like every other preference', () => {
+  const rows = preferencesToEntries({ memory_mode: 'review' }, 'user', 'user-a');
+  const row = rows.find((r) => r.key === preferenceEntryKey('memory_mode'));
+  assert.ok(row, 'it is written as its own row, so it can expire and be audited alone');
+  const back = preferencesFromEntries([{ ...row, source: 'user', createdAt: '', updatedAt: '', expiresAt: null, updatedBy: 'u' }], VOCAB);
+  assert.equal(back.prefs.memory_mode, 'review');
 });

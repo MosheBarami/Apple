@@ -27,7 +27,10 @@ import { SearchPanel } from '../components/ws/search-panel';
 import { EditMessageDialog } from '../components/ws/edit-message-dialog';
 import { MemoryPanel } from '../components/ws/memory-panel';
 import { InstructionsPanel } from '../components/ws/instructions-panel';
-import { ApiError, downloadExport } from '../lib/api';
+import { ApiError, downloadExport, type SearchHit } from '../lib/api';
+import { isNearBottom, jumpLabel, unseenCount } from '../lib/follow-latest';
+import { replyAnnouncement } from '../lib/announce';
+import { readViewChoice, writeViewChoice } from '../lib/view-state';
 import { PairingDialog } from '../components/pairing-dialog';
 import { Composer } from '../components/ws/composer';
 import { Drawer, Icon, PATH } from '../components/ws/primitives';
@@ -55,6 +58,17 @@ const SUGGESTIONS = [
   'Look at the scene and tell me what reads as unfinished.',
 ];
 
+/**
+ * Every drawer this build can show, plus the name 'none' for "closed".
+ *
+ * `null` cannot be stored, and storing the empty string for it would make "closed" and "a value
+ * this build no longer recognises" the same state — which is precisely the distinction the
+ * validation exists to keep.
+ */
+type Drawer = null | 'checkpoints' | 'memory' | 'credits' | 'search';
+type DrawerName = 'none' | 'checkpoints' | 'memory' | 'credits' | 'search';
+const DRAWERS = ['none', 'checkpoints', 'memory', 'credits', 'search'] as const;
+
 export function WorkspacePage() {
   const params = useParams<{ id: string }>();
   const projectId = params.id ?? '';
@@ -64,7 +78,26 @@ export function WorkspacePage() {
   const navigate = useNavigate();
 
   const [showPairing, setShowPairing] = useState(false);
-  const [drawer, setDrawer] = useState<null | 'checkpoints' | 'memory' | 'credits' | 'search'>(null);
+  //[[ THE DRAWER YOU LEFT OPEN IS STILL OPEN.
+  //
+  //   This was plain `useState(null)`, so every navigation closed whatever you were reading and
+  //   coming back was a fresh start. Restored per project, because the drawer you want open in
+  //   one project is not evidence about another.
+  //
+  //   The stored value is CHECKED against the drawers this build actually has. A name left by an
+  //   older version would otherwise set the state open with nothing to render, and an interface
+  //   claiming to show something it is not is worse than one that forgot. ]]
+  const [drawer, setDrawerState] = useState<Drawer>(() => {
+    const stored = readViewChoice<DrawerName>(`drawer.${projectId}`, DRAWERS, 'none');
+    return stored === 'none' ? null : stored;
+  });
+  const setDrawer = useCallback(
+    (next: Drawer) => {
+      setDrawerState(next);
+      writeViewChoice(`drawer.${projectId}`, next ?? 'none');
+    },
+    [projectId],
+  );
   const [mode, setMode] = useState<ProductMode>('agent');
   const [seed, setSeed] = useState<string | undefined>(undefined);
   const [label, setLabel] = useState('');
@@ -190,6 +223,35 @@ export function WorkspacePage() {
     [toast],
   );
 
+  //[[ A RESULT OPENS THE THING IT FOUND.
+  //
+  //   Search now returns five kinds of record, and four of them are not messages. Sending every
+  //   hit through `jumpToMessage` would have looked for a `msg-` element that never existed and
+  //   toasted "further back than the loaded history" about a checkpoint — a wrong explanation,
+  //   which is worse than none, because the user goes looking for the history that is not missing.
+  //
+  //   Activity is the one kind with nowhere to go: the oplog row carries no anchor to a message,
+  //   and the result line already shows the whole record. It says that rather than scrolling
+  //   nowhere and leaving the user to wonder what they missed. ]]
+  const openHit = useCallback(
+    (hit: SearchHit) => {
+      if (hit.messageId) {
+        jumpToMessage(hit.messageId);
+        return;
+      }
+      if (hit.type === 'checkpoint') {
+        setDrawer('checkpoints');
+        return;
+      }
+      if (hit.type === 'memory') {
+        setDrawer('memory');
+        return;
+      }
+      toast('That is an activity record — the result line is the whole of it.', 'info');
+    },
+    [jumpToMessage, setDrawer, toast],
+  );
+
   useGlobalShortcut(SHORTCUTS.search, () => setDrawer('search'));
 
   // What this route contributes to the command palette. These exist ONLY while a workspace is
@@ -308,25 +370,73 @@ export function WorkspacePage() {
     wasConnected.current = studio.connected;
   }, [studio.connected, studio.state, toast]);
 
+  //[[ FOLLOWING THE LIVE EDGE IS A STATE THE USER CAN SEE AND LEAVE.
+  //
+  //   This was a `useRef` written from the scroll handler. As a heuristic it was right and it is
+  //   kept — `isNearBottom` is that same expression, named — but as the whole mechanism it had two
+  //   failures on a long build. It was INVISIBLE: scrolling up to re-read step 3 silently left the
+  //   live edge, and nothing said so or offered a way back. And a ref does not re-render, so no
+  //   control COULD have been offered from it.
+  //
+  //   `seen` is a WATERMARK, not a counter. The transcript can shrink — an edit-and-resend
+  //   truncates it, and `history_truncated` drops rows the server deleted — and an accumulating
+  //   counter would go on announcing turns that no longer exist. ]]
+  const [following, setFollowing] = useState(true);
+  const seen = useRef(0);
+
+  const jumpToLatest = useCallback(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+    stick.current = true;
+    setFollowing(true);
+    seen.current = 0;
+  }, []);
+
   useEffect(() => {
     const el = scrollRef.current;
     if (el && stick.current) el.scrollTop = el.scrollHeight;
+    // While following, there is nothing unseen by definition — the watermark tracks the total so
+    // the count starts from zero the moment the reader leaves.
+    if (stick.current) seen.current = messages.length;
   }, [messages]);
 
   const onScroll = () => {
     const el = scrollRef.current;
-    if (el) stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 90;
+    if (!el) return;
+    const near = isNearBottom(el);
+    stick.current = near;
+    if (near) seen.current = messages.length;
+    setFollowing(near);
   };
 
-  const send = (text: string) => {
+  const unseen = following ? 0 : unseenCount(messages.length, seen.current);
+
+  //[[ THE SETTLED REPLY, SAID ONCE.
+  //
+  //   The Thinking card already announces the phase while a run is in flight; nothing announced the
+  //   ANSWER, because the reply arrives as text mutated into an existing node and no live region
+  //   reports that. Wrapping the transcript in aria-live with the default `additions text` would
+  //   put every streaming delta into the polite queue — see lib/announce.ts for why that is worse
+  //   than silence. This announces the outcome of the last assistant turn, once it has settled. ]]
+  const lastTurn = messages[messages.length - 1];
+  const announcement = replyAnnouncement(lastTurn);
+
+  // RETURNS WHETHER THE MESSAGE LEFT, and the composer keeps the user's text when it did not.
+  // The toast said the send had been refused while the box had already been emptied, so the one
+  // thing the user needed to recover — what they had typed — was gone by the time they read why.
+  const send = (text: string): boolean => {
+    // Sending re-arms following: you have just added to the conversation, so you want to watch it.
     stick.current = true;
+    setFollowing(true);
     setSeed(undefined);
     // The product mode the user picked becomes the internal specialist here,
     // at the one point a message is built. Everything downstream — the wire
     // protocol, stored sessions, budget accounting — still speaks GolemMode.
     if (!sendChat(text, PRODUCT_MODE_TO_SPECIALIST[mode])) {
-      toast('Not connected yet — hang on a moment.', 'error');
+      toast('Not connected yet — hang on a moment. Your message is still in the box.', 'error');
+      return false;
     }
+    return true;
   };
 
   const lastAssistantId = useMemo(
@@ -515,7 +625,18 @@ export function WorkspacePage() {
 
       {/* --------------------------------------------------- conversation */}
       <div className="gx-scroll" ref={scrollRef} onScroll={onScroll}>
-        <div className="gx-thread">
+        {/* role="log" with `aria-relevant="additions"` — NOT the default "additions text".
+            A whole turn appearing is an addition worth reporting; the characters streaming into a
+            turn already on screen are a text mutation, and reporting those floods the polite queue
+            with fragments of a sentence that is still being written. The settled reply is
+            announced once, by the region at the foot of this view. */}
+        <div
+          className="gx-thread"
+          role="log"
+          aria-label="Conversation"
+          aria-live="polite"
+          aria-relevant="additions"
+        >
           {historyState === 'error' && (
             <EmptyState
               state="connectionFailed"
@@ -590,6 +711,23 @@ export function WorkspacePage() {
 
       {/* ------------------------------------------------------ composer -- */}
       <div>
+        {/* BACK TO THE LIVE EDGE.
+            Shown only while the reader has actually left it, so it is never a control sitting
+            there doing nothing, and it names how much arrived while they were away — counted from
+            a watermark, so a rewound conversation reports zero rather than a stale total. */}
+        {!following && (
+          <button type="button" className="gx-jump" onClick={jumpToLatest}>
+            <Icon d={PATH.chevronDown} size={13} />
+            {jumpLabel(unseen)}
+          </button>
+        )}
+
+        {/* The settled reply, said once. Empty while a run is in flight, which is silence rather
+            than an announcement of silence. */}
+        <span className="gx-sr" aria-live="polite" aria-atomic="true">
+          {announcement}
+        </span>
+
         {connNote && (
           <p className="gx-conn-note" role="status">
             {connNote}
@@ -604,6 +742,7 @@ export function WorkspacePage() {
           mode={mode}
           onModeChange={setMode}
           seed={seed}
+          selection={studio.selection}
         />
       </div>
 
@@ -686,7 +825,7 @@ export function WorkspacePage() {
       )}
 
       <Drawer open={drawer === 'search'} onClose={() => setDrawer(null)} title="Search this conversation">
-        <SearchPanel projectId={projectId} onJump={jumpToMessage} />
+        <SearchPanel projectId={projectId} onOpen={openHit} />
       </Drawer>
 
       <Drawer open={drawer === 'credits'} onClose={() => setDrawer(null)} title="Credits and clearance">

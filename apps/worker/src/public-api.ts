@@ -622,8 +622,8 @@ export function rateLimitHeaders(v: RateLimitVerdict): Record<string, string> {
 export interface UsageFacts {
   inputTokens: number;
   outputTokens: number;
-  sparksSpent: number;
-  sparksRemaining: number | null;
+  creditsSpent: number;
+  creditsRemaining: number | null;
 }
 
 /**
@@ -631,17 +631,17 @@ export interface UsageFacts {
  *
  * A caller should not have to make a second, separately-billed request to find out what the first
  * one spent — and a number that arrives after the fact cannot be used to stop before the limit.
- * `sparksRemaining` is omitted rather than guessed when the quota answer is unavailable: a
+ * `creditsRemaining` is omitted rather than guessed when the quota answer is unavailable: a
  * fabricated headroom figure is worse than none, because a client will act on it.
  */
 export function usageHeaders(u: UsageFacts): Record<string, string> {
   const h: Record<string, string> = {
     'X-Golem-Usage-Input-Tokens': String(Math.max(0, Math.trunc(u.inputTokens))),
     'X-Golem-Usage-Output-Tokens': String(Math.max(0, Math.trunc(u.outputTokens))),
-    'X-Golem-Usage-Sparks': String(Math.max(0, Math.trunc(u.sparksSpent))),
+    'X-Golem-Usage-Credits': String(Math.max(0, Math.trunc(u.creditsSpent))),
   };
-  if (u.sparksRemaining !== null && Number.isFinite(u.sparksRemaining)) {
-    h['X-Golem-Sparks-Remaining'] = String(Math.max(0, Math.trunc(u.sparksRemaining)));
+  if (u.creditsRemaining !== null && Number.isFinite(u.creditsRemaining)) {
+    h['X-Golem-Credits-Remaining'] = String(Math.max(0, Math.trunc(u.creditsRemaining)));
   }
   return h;
 }
@@ -745,7 +745,7 @@ export function sandboxCompletion(req: ChatCompletionRequest): GatewayResponse {
   const asked = typeof last?.content === 'string' ? last.content : '';
   const trimmed = asked.length > 200 ? `${asked.slice(0, 200)}…` : asked;
   const text =
-    `[golem sandbox] This is a deterministic test-mode response from ${req.publicModel}; no model ran and no Sparks were spent. ` +
+    `[golem sandbox] This is a deterministic test-mode response from ${req.publicModel}; no model ran and no Credits were spent. ` +
     `You said: ${JSON.stringify(trimmed)}`;
   // Token counts are the character estimate the rest of the worker uses (~4 chars/token), so a
   // caller's cost arithmetic exercises the same shape it will see in live mode.
@@ -775,7 +775,7 @@ export function discoveryDocument(): Record<string, unknown> {
     authentication: {
       scheme: 'bearer',
       description: 'Authorization: Bearer gk_live_… (or gk_test_… for the sandbox). Mint keys in the Golem dashboard.',
-      modes: { live: 'Runs the model and spends Sparks.', test: 'Deterministic sandbox; nothing runs and nothing is spent.' },
+      modes: { live: 'Runs the model and spends Credits.', test: 'Deterministic sandbox; nothing runs and nothing is spent.' },
     },
     routes: PUBLIC_ROUTES.map((r) => ({
       method: r.method,
@@ -807,7 +807,7 @@ function openApiOperation(route: PublicRoute): Record<string, unknown> {
       },
       '401': { description: 'Missing, malformed, revoked or expired API key.' },
       '403': { description: 'The key lacks the scope, or was not granted this project.' },
-      '429': { description: 'Per-key rate limit, or the account is out of Sparks.' },
+      '429': { description: 'Per-key rate limit, or the account is out of Credits.' },
     },
   };
 }

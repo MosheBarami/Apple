@@ -30,7 +30,7 @@ of the same endpoint: **423 ms / 123 ms / 133 ms**. Steady-state is ~130 ms; `/a
 
 ## Quota
 
-After the run, user 1 showed `79/80` Sparks — exactly one Clay request (1 Spark) debited.
+After the run, user 1 showed `79/80` Credits — exactly one Clay request (1 Credit) debited.
 The ledger is authoritative per user in its own Durable Object, so concurrent requests
 cannot race past the daily cap.
 
@@ -38,4 +38,4 @@ cannot race past the daily cap.
 
 30 simultaneous users is comfortably inside Workers Free limits (100k req/day, DO 100k req/day)
 and the 10,000 free daily neurons. The binding constraint at scale is inference, not the platform —
-which is exactly what the Sparks quota governs.
+which is exactly what the Credits quota governs.

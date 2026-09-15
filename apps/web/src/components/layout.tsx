@@ -96,7 +96,7 @@ function AccountMenu({ name, email, isAdmin }: { name: string | null; email: str
           </Link>
           <Link to="/usage" className="gx-pop__item" role="menuitem" onClick={() => setOpen(false)}>
             <Icon d={PATH.gauge} size={15} />
-            Usage and Sparks
+            Usage and Credits
           </Link>
           <a className="gx-pop__item" role="menuitem" href="/docs" target="_blank" rel="noopener noreferrer">
             <Icon d={PATH.docs} size={15} />

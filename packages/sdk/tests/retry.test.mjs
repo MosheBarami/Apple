@@ -74,7 +74,7 @@ test("the server's Retry-After wins over the client's own schedule", () => {
 });
 
 test('an error message comes from the server when it sent one, and never reads as [object Object]', () => {
-  assert.equal(messageFromBody({ error: 'Daily Sparks used up' }, 429), 'Daily Sparks used up');
+  assert.equal(messageFromBody({ error: 'Daily Credits used up' }, 429), 'Daily Credits used up');
   assert.equal(messageFromBody({ error: '   ' }, 500), 'Request failed (500)');
   assert.equal(messageFromBody(null, 502), 'Request failed (502)');
   assert.equal(messageFromBody({ nope: 1 }, 500), 'Request failed (500)');

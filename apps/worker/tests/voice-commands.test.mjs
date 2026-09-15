@@ -39,9 +39,11 @@ test('EVERY command targets a real ClientMsg type, read from the union itself', 
   const shared = readFileSync(join(REPO, 'packages', 'shared', 'src', 'index.ts'), 'utf8');
   const start = shared.indexOf('export type ClientMsg =');
   assert.ok(start > 0, 'the ClientMsg union has moved or been renamed — this test is now measuring nothing');
-  const end = shared.indexOf("| { type: 'ping' };", start);
+  // The union grows. Anchoring on a specific LAST member ('ping') meant every addition after it
+  // silently truncated the slice; anchor on the next top-level declaration instead.
+  const end = shared.indexOf('\nexport ', start + 10);
   assert.ok(end > start, 'the end of the ClientMsg union was not found');
-  const union = shared.slice(start, end + 20);
+  const union = shared.slice(start, end);
 
   const declared = new Set([...union.matchAll(/\{\s*type:\s*'([a-z_]+)'/g)].map((m) => m[1]));
   assert.ok(declared.has('chat') && declared.has('ping'), `the union parse found only ${[...declared].join(', ')}`);

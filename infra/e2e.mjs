@@ -46,8 +46,8 @@ log('2. project created', project.id);
 
 // 3. quota + me
 const me = await (await fetch(`${BASE}/api/me`, { headers: { Authorization: `Bearer ${jwt}` } })).json();
-log('3. /api/me → quota', me.quota?.sparksRemaining + '/' + me.quota?.sparksDaily, 'plan', me.quota?.plan);
-if (typeof me.quota?.sparksRemaining !== 'number') fail('quota shape wrong');
+log('3. /api/me → quota', me.quota?.creditsRemaining + '/' + me.quota?.creditsDaily, 'plan', me.quota?.plan);
+if (typeof me.quota?.creditsRemaining !== 'number') fail('quota shape wrong');
 
 // 4. pairing + claim
 const pairRes = await (await fetch(`${BASE}/api/projects/${project.id}/pairing`, { method: 'POST', headers: { Authorization: `Bearer ${jwt}` } })).json();

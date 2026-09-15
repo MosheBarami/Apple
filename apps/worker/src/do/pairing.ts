@@ -53,6 +53,14 @@ export class PairingDO extends DurableObject<Env> {
         else if (val.userId === body.userId) userCodes++;
       }
       if (userCodes >= 5) return Response.json({ error: 'too many active codes' }, { status: 429 });
+      //[[ A SUPERSEDED CODE IS CANCELLED BY THE SURFACE THAT SUPERSEDED IT, NOT HERE.
+      //
+      //   Retiring every other live code for this project at mint time was tried and taken back
+      //   out. It kills a code that a SECOND open tab is still displaying, beside a live countdown
+      //   — a dialog that shows an expiry time for a credential the server has already destroyed,
+      //   which is this repository's central defect wearing a clock. The dialog cancels the code
+      //   it was itself holding, explicitly, before it mints a replacement: that is the one caller
+      //   that knows the old code is no longer on anybody's screen. See /cancel below. ]]
       const code = newPairingCode();
       await this.ctx.storage.put(`code:${code}`, { ...body, createdAt: Date.now() } satisfies Pairing);
       await this.ctx.storage.setAlarm(Date.now() + TTL_MS + 1000);
@@ -70,6 +78,32 @@ export class PairingDO extends DurableObject<Env> {
       await this.ctx.storage.delete(key); // single use
       return Response.json(pairing);
     }
+    //[[ CANCEL A CODE THAT IS NO LONGER WANTED.
+    //
+    //   Closing the pairing dialog did nothing to the code it had just shown: it stayed claimable
+    //   for its full ten minutes, and `/api/studio/claim` is UNAUTHENTICATED, so an abandoned code
+    //   on somebody's screen or in a screenshot was a live credential to a project.
+    //
+    //   OWNERSHIP IS CHECKED AGAINST THE MINTING USER, which is the whole security content of this
+    //   route. Without it, cancel is a denial-of-service primitive: guess a code, revoke somebody
+    //   else's pairing. The answer is deliberately the SAME for a code that does not exist, a code
+    //   that expired, and a code belonging to another user — `{ ok: true, cancelled: false }` — so
+    //   this cannot be used to test whether a code exists. That is the same reasoning that makes
+    //   /claim answer one sentence for every kind of bad code. ]]
+    if (url.pathname === '/cancel' && req.method === 'POST') {
+      const body = (await req.json().catch(() => null)) as { code?: unknown; userId?: unknown } | null;
+      const rawCode = body?.code;
+      const userId = body?.userId;
+      if (typeof rawCode !== 'string' || typeof userId !== 'string' || !userId) {
+        return Response.json({ ok: true, cancelled: false });
+      }
+      const key = `code:${rawCode.toUpperCase().replace(/[^A-Z0-9]/g, '')}`;
+      const pairing = await this.ctx.storage.get<Pairing>(key);
+      if (!pairing || pairing.userId !== userId) return Response.json({ ok: true, cancelled: false });
+      await this.ctx.storage.delete(key);
+      return Response.json({ ok: true, cancelled: true });
+    }
+
     return Response.json({ error: 'not found' }, { status: 404 });
   }
 

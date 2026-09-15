@@ -70,12 +70,12 @@ for (let i = 2; i < process.argv.length; i += 1) {
 // ---------------------------------------------------- the §12.5 spend ceiling ---
 //
 // REFUSE BEFORE SPENDING, NOT REPORT AFTER. §12.5 caps a pass at 500 neurons. A `stone` turn is
-// 4-18 Sparks and a `rune` one 10-30, which at 30 neurons per Spark is up to 540 and 900 — so a
+// 4-18 Credits and a `rune` one 10-30, which at 30 neurons per Credit is up to 540 and 900 — so a
 // single documented invocation of this script can blow the whole pass ceiling, and nothing in it
-// knew the ceiling existed. Clay, at 2 Sparks / 60 neurons, is the only mode that fits.
+// knew the ceiling existed. Clay, at 2 Credits / 60 neurons, is the only mode that fits.
 //
-// Both numbers are DERIVED from the files the product actually bills with — `typicalSparks` in
-// @golem/shared and NEURONS_PER_SPARK in the worker's pricing — rather than restated here, because
+// Both numbers are DERIVED from the files the product actually bills with — `typicalCredits` in
+// @golem/shared and NEURONS_PER_CREDIT in the worker's pricing — rather than restated here, because
 // a ceiling check that keeps its own copy of the prices stops agreeing with them and then permits
 // exactly what it was written to refuse. An unreadable source is a hard error, never a default:
 // failing open on a spend guard is the one direction that costs money.
@@ -83,22 +83,22 @@ const SPEND_CEILING_NEURONS = 500; // §12.5, the owner's number; there is no ma
 if (!NO_MODEL) {
   const shared = readFileSync(root + '/packages/shared/src/index.ts', 'utf8');
   const pricing = readFileSync(root + '/apps/worker/src/pricing.ts', 'utf8');
-  const perSpark = Number(pricing.match(/NEURONS_PER_SPARK\s*=\s*(\d+)/)?.[1]);
-  const typical = shared.match(new RegExp(`\\b${MODE}:\\s*\\{[^}]*typicalSparks:\\s*'([^']+)'`))?.[1];
-  if (!Number.isFinite(perSpark) || !typical) {
-    console.error(`smoke: cannot derive the cost of --mode ${MODE} (perSpark=${perSpark}, typicalSparks=${typical}).`);
+  const perCredit = Number(pricing.match(/NEURONS_PER_CREDIT\s*=\s*(\d+)/)?.[1]);
+  const typical = shared.match(new RegExp(`\\b${MODE}:\\s*\\{[^}]*typicalCredits:\\s*'([^']+)'`))?.[1];
+  if (!Number.isFinite(perCredit) || !typical) {
+    console.error(`smoke: cannot derive the cost of --mode ${MODE} (perCredit=${perCredit}, typicalCredits=${typical}).`);
     console.error('Refusing to run a model turn against an unknown price. This is deliberate: a spend guard that cannot read the prices must not fall back to permitting the spend.');
     process.exit(2);
   }
   // The UPPER end of the range. A ceiling checked against the optimistic figure is not a ceiling.
-  const worstSparks = Math.max(...typical.split('-').map(Number));
-  const worstNeurons = worstSparks * perSpark;
+  const worstCredits = Math.max(...typical.split('-').map(Number));
+  const worstNeurons = worstCredits * perCredit;
   if (worstNeurons > SPEND_CEILING_NEURONS) {
-    console.error(`smoke: --mode ${MODE} costs up to ${worstSparks} Sparks = ${worstNeurons} neurons, over the §12.5 ceiling of ${SPEND_CEILING_NEURONS} per pass.`);
+    console.error(`smoke: --mode ${MODE} costs up to ${worstCredits} Credits = ${worstNeurons} neurons, over the §12.5 ceiling of ${SPEND_CEILING_NEURONS} per pass.`);
     console.error('Use --no-model, or --mode clay. Refused before spending rather than reported after.');
     process.exit(2);
   }
-  console.log(`spend — --mode ${MODE} is at most ${worstSparks} Sparks = ${worstNeurons} neurons, within the ${SPEND_CEILING_NEURONS} ceiling`);
+  console.log(`spend — --mode ${MODE} is at most ${worstCredits} Credits = ${worstNeurons} neurons, within the ${SPEND_CEILING_NEURONS} ceiling`);
 }
 
 const checks = [];
@@ -212,7 +212,7 @@ const runOnce = () =>
       seen.types.add(m.type);
       if (m.type === 'hello') {
         check('websocket — connects and authenticates over the subprotocol', true,
-          `studioConnected=${m.studioConnected}, sparks=${m.quota?.sparksRemaining}`);
+          `studioConnected=${m.studioConnected}, credits=${m.quota?.creditsRemaining}`);
         ws.send(JSON.stringify({ type: 'chat', text: TEXT, mode: MODE }));
       } else if (m.type === 'run_intent') {
         seen.intent = m.intent;
@@ -246,8 +246,8 @@ const runOnce = () =>
 //
 // Two different figures describe the cost and they must not be confused. COST-MODEL records
 // MEASURED turns — clay ~29 neurons, a stone full build-and-verify in Studio ~1,266. The guard
-// above uses neither: it derives the upper end of the mode's `typicalSparks` range, which puts
-// stone at 18 Sparks = 540 neurons. That is the conservative choice for clay, where 2 Sparks = 60
+// above uses neither: it derives the upper end of the mode's `typicalCredits` range, which puts
+// stone at 18 Credits = 540 neurons. That is the conservative choice for clay, where 2 Credits = 60
 // neurons is more than the ~29 actually measured, and it refuses stone and rune on the §12.5
 // ceiling either way. The derived figure is used because it comes from the file the product bills
 // with, and a guard that keeps its own copy of the prices stops agreeing with them.

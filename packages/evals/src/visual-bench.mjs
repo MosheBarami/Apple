@@ -98,7 +98,7 @@ function makeClient({ apiBase, adminKey, projectId, fetchImpl = fetch }) {
       call(`/api/admin/agent-run/${projectId}`, { method: 'POST', body: JSON.stringify({ text, mode, effort }) }).then((r) => r.body),
     info: () => call(`/api/admin/session-info/${projectId}`).then((r) => r.body),
     critique: (payload) => call('/api/admin/critique', { method: 'POST', body: JSON.stringify(payload) }).then((r) => r.body),
-    // Benchmark-only. One quality-gated build costs more Sparks than a day's free allowance, so a
+    // Benchmark-only. One quality-gated build costs more Credits than a day's free allowance, so a
     // four-task ladder cannot complete without this. It clears usage accounting for the benchmark
     // account only; the global neuron ledger and every hard spend cap are untouched, and the real
     // cost of the run is still read back from the ledger afterwards.

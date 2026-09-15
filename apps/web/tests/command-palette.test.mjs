@@ -185,11 +185,18 @@ test('every signed-in route is a child of the shell, so every one of them has th
     `found ${inside.length + outside.length} paths across ${totalRoutes} Route tags — the sweep is missing routes`,
   );
 
-  // The only routes that legitimately live outside the shell are the guest pages: someone who is
-  // not signed in has no projects to command.
+  // The only routes that legitimately live outside the shell are the ones reached without a usable
+  // session: someone who is not signed in has no projects to command.
+  //
+  // /forgot is a guest page like the other two. /reset and /confirm are NOT — they are where an
+  // emailed link lands, and a link carrying a token establishes a session before the route renders,
+  // so a visitor there may well be "signed in". They still belong outside the shell: a password
+  // recovery screen wrapped in the rail, the project list and ⌘K invites someone mid-recovery to go
+  // and do something else, and the shell's queries would fire against a session that exists only to
+  // authorise one password change. See the comment on those routes in app.tsx.
   assert.deepEqual(
     outside.sort(),
-    ['/login', '/signup'],
+    ['/confirm', '/forgot', '/login', '/reset', '/signup'],
     `these routes are outside the shell and therefore have no command palette: ${outside.join(', ')}`,
   );
   // And the signed-in surfaces really are in there, so the assertion above cannot pass by the
