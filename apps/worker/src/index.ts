@@ -9,10 +9,12 @@ import {
   interpretStripeEvent,
   entitlementFor,
   buildCheckoutRequest,
+  buildInvoicePreviewRequest,
   buildPortalRequest,
   checkoutConfigured,
   checkoutGuard,
   priceIdFor,
+  readInvoicePreview,
   subscriptionView,
   type Subscription,
 } from './billing';
@@ -1948,7 +1950,16 @@ app.post('/api/billing/portal', async (c) => {
     customerId: string | null;
   };
 
-  const returnTo = new URL('/app/usage', new URL(c.req.url).origin).toString();
+  /*
+   * THE FLAG IS HOW THE PAGE KNOWS THERE IS ANYTHING TO SAY.
+   *
+   * Cancelling happens on Stripe's page, and with a bare return_url the product had no moment at
+   * which to acknowledge it: the user came back to a page identical to the one they left, and it
+   * stayed that way until the webhook landed. It carries no claim about WHAT changed — the page
+   * refetches and reports the server's own state, exactly as the checkout return does, because a
+   * URL parameter is not evidence that a subscription was cancelled.
+   */
+  const returnTo = new URL('/app/usage?billing=returned', new URL(c.req.url).origin).toString();
   const built = buildPortalRequest(c.env, { customerId: customerId ?? '', returnTo });
   if (!built.ok) return c.json({ error: built.error }, built.status);
 
@@ -1967,6 +1978,60 @@ app.post('/api/billing/portal', async (c) => {
   const session = (await res.json()) as { url?: string };
   if (!session.url) return c.json({ error: 'the portal returned no url' }, 502);
   return c.json({ url: session.url });
+});
+
+/**
+ * WHAT A TIER CHANGE WOULD COST THIS ACCOUNT, ASKED BEFORE THE USER COMMITS TO IT.
+ *
+ * The ladder on /app/usage prints every tier's monthly price, and for anyone already paying that is
+ * not the number they will be charged: a mid-period change is prorated, net of a credit for the
+ * time already paid for on the old tier, and applies from a date neither price implies. Until this
+ * route existed the whole of that was first seen on Stripe's own page, AFTER the user had clicked
+ * through to it — nothing in this worker had ever asked Stripe what a change would cost.
+ *
+ * READ-ONLY, AND THAT IS THE POINT. It moves nothing, grants nothing and writes nothing; the change
+ * is still made in the Billing Portal and still lands here as a webhook. GET, so it can be nothing
+ * else. `entitlementFor` remains the only thing that decides what anyone may spend.
+ *
+ * IT REFUSES RATHER THAN GUESSES. No running subscription, a record with no item id, or a Stripe
+ * that will not answer all produce an error status and no amount. A 200 carrying a zero would be a
+ * sentence about money — "this change costs nothing today" — assembled out of a failure to observe.
+ *
+ * Scoped to the caller's own DO by construction: the id comes from the verified JWT subject, and
+ * the only parameter is which tier to price.
+ */
+app.get('/api/billing/preview', async (c) => {
+  const user = c.get('user');
+  const plan: string = String(c.req.query('plan') ?? '');
+  if (!isPlanId(plan)) return c.json({ error: `unknown plan "${plan}"` }, 400);
+
+  const record = await readBillingRecord(c.env, user.userId);
+  const built = buildInvoicePreviewRequest(c.env, {
+    // The subscription's own customer first: it is the one the item belongs to. The DO's stored id
+    // is the fallback, and is the same value in every case where both exist.
+    customerId: record.subscription?.customerId ?? record.customerId,
+    subscriptionId: record.subscription?.subscriptionId ?? null,
+    itemId: record.subscription?.itemId ?? null,
+    plan,
+  });
+  if (!built.ok) return c.json({ error: built.error }, built.status);
+
+  const res = await fetch('https://api.stripe.com/v1/invoices/create_preview', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${c.env.STRIPE_SECRET_KEY}`,
+      'content-type': 'application/x-www-form-urlencoded',
+    },
+    body: built.body,
+  });
+  if (!res.ok) {
+    // Stripe's own message names prices and accounts; it is not for the user.
+    console.warn('stripe invoice preview failed:', res.status, await res.text().catch(() => ''));
+    return c.json({ error: 'could not price this change' }, 502);
+  }
+  const preview = readInvoicePreview(await res.json().catch(() => null));
+  if (!preview) return c.json({ error: 'could not read the price of this change' }, 502);
+  return c.json(preview);
 });
 
 /**

@@ -57,6 +57,8 @@ let doBilling = { plan: 'free', customerId: null, subscription: null, events: []
 let doCalls = [];
 /** Every request that left for Stripe. */
 let stripeCalls = [];
+/** Set to make Stripe refuse, so a route's behaviour when it cannot see can be asserted. */
+let stripeDown = false;
 
 globalThis.fetch = async (input, init) => {
   const url = typeof input === 'string' ? input : input.url;
@@ -64,6 +66,22 @@ globalThis.fetch = async (input, init) => {
   if (url.includes('/.well-known/jwks.json')) return json({ keys: [jwk] });
   if (url.startsWith('https://api.stripe.com/')) {
     stripeCalls.push({ url, body: String(init?.body ?? '') });
+    if (stripeDown) return json({ error: { message: 'no' } }, 500);
+    // The preview is an INVOICE, not a session with a url. Amounts in minor units, as Stripe sends
+    // them: 1234 is twelve dollars thirty-four.
+    if (url.includes('/v1/invoices/create_preview')) {
+      return json({
+        object: 'invoice',
+        amount_due: 1234,
+        currency: 'usd',
+        lines: {
+          data: [
+            { description: 'Unused time on Builder', amount: -766, proration: true, period: { start: NOW_S } },
+            { description: 'Remaining time on Studio', amount: 2000, proration: true, period: { start: NOW_S } },
+          ],
+        },
+      });
+    }
     return json({ url: 'https://checkout.stripe.com/c/pay/cs_test_1' });
   }
   if (url.includes('/rest/v1/profiles')) return json([{ id: USER_ID, plan: 'free', is_admin: false, display_name: 'buyer' }]);
@@ -132,10 +150,11 @@ const reset = (billing) => {
   doBilling = { plan: 'free', customerId: null, subscription: null, events: [], ...billing };
   doCalls = [];
   stripeCalls = [];
+  stripeDown = false;
 };
 
 const sub = (over) => ({
-  plan: 'builder', customerId: 'cus_1', subscriptionId: 'sub_1',
+  plan: 'builder', customerId: 'cus_1', subscriptionId: 'sub_1', itemId: 'si_1',
   status: 'active', currentPeriodEnd: LATER, cancelAtPeriodEnd: false, ...over,
 });
 
@@ -322,4 +341,86 @@ test('a webhook with no price item still grants what the metadata says', async (
                       cancel_at_period_end: false, metadata: { userId: USER_ID, plan: 'studio' } } },
   });
   assert.equal(doCalls.find((c) => c.path === '/set-plan').body.plan, 'studio');
+});
+
+test('THE PORTAL SENDS THE USER BACK TO A PAGE THAT KNOWS THEY WERE THERE', async () => {
+  // The cancellation happens on Stripe's page. With a bare return_url the product had no moment at
+  // which to say anything about it: the page rendered exactly as it had before the visit, and the
+  // only return flag it read was the checkout one, which is a different round trip.
+  reset({ plan: 'builder', customerId: 'cus_1', subscription: sub() });
+  const r = await call('/api/billing/portal', { method: 'POST' });
+  assert.equal(r.status, 200, r.text);
+  const p = new URLSearchParams(stripeCalls[0].body);
+  const back = new URL(p.get('return_url'));
+  assert.equal(back.pathname, '/app/usage', 'still our own page, never a caller-supplied one');
+  assert.equal(back.searchParams.get('billing'), 'returned',
+    'and it must carry the flag the page reads to report what changed');
+});
+
+// ------------------------------------------------ what a change costs, asked before it is made
+
+test('A PAYING CUSTOMER CAN BE TOLD WHAT A TIER CHANGE COSTS BEFORE LEAVING THE PRODUCT', async () => {
+  // The ladder priced every tier per month and then handed a paying user to Stripe's portal, so the
+  // amount for THIS change — prorated, net of the credit for time already paid for — was first seen
+  // on a page outside the product, after the user had committed to going there.
+  reset({ plan: 'builder', customerId: 'cus_1', subscription: sub() });
+  const r = await call('/api/billing/preview?plan=studio');
+  assert.equal(r.status, 200, r.text);
+  assert.equal(r.json.amountDue, 12.34, 'minor units read as money');
+  assert.equal(r.json.currency, 'USD');
+  assert.equal(r.json.lines.length, 2, 'the credit and the charge are both shown, not only the net');
+  assert.equal(r.json.prorationDate, NOW_S);
+
+  assert.equal(stripeCalls.length, 1);
+  assert.match(stripeCalls[0].url, /\/v1\/invoices\/create_preview$/);
+  const sent = new URLSearchParams(stripeCalls[0].body);
+  assert.equal(sent.get('subscription'), 'sub_1');
+  // Without the item id Stripe prices BOTH tiers together and quotes their sum.
+  assert.equal(sent.get('subscription_details[items][0][id]'), 'si_1');
+  assert.equal(sent.get('subscription_details[items][0][price]'), 'price_studio_1');
+});
+
+test('the preview changes nothing — it never asks the DO to set a plan', async () => {
+  reset({ plan: 'builder', customerId: 'cus_1', subscription: sub() });
+  await call('/api/billing/preview?plan=studio');
+  assert.deepEqual(doCalls.filter((c) => c.path === '/set-plan'), [], 'a quote is not a purchase');
+});
+
+test('A USER WITH NOTHING RUNNING IS REFUSED RATHER THAN QUOTED ZERO', async () => {
+  // Nothing to prorate against. Returning an amount of 0 here would print "this costs nothing
+  // today" over a change that charges the full price.
+  reset();
+  const r = await call('/api/billing/preview?plan=studio');
+  assert.equal(r.status, 400, r.text);
+  assert.equal(stripeCalls.length, 0, 'and Stripe is not asked a question with no subject');
+});
+
+test('a subscription stored before the item id was kept is refused, not priced wrongly', async () => {
+  reset({ plan: 'builder', customerId: 'cus_1', subscription: sub({ itemId: null }) });
+  const r = await call('/api/billing/preview?plan=studio');
+  assert.equal(r.status, 400, r.text);
+  assert.equal(stripeCalls.length, 0);
+});
+
+test('an unknown plan is refused before Stripe is troubled', async () => {
+  reset({ plan: 'builder', customerId: 'cus_1', subscription: sub() });
+  const r = await call('/api/billing/preview?plan=platinum');
+  assert.equal(r.status, 400, r.text);
+  assert.equal(stripeCalls.length, 0);
+});
+
+test('WHEN STRIPE CANNOT ANSWER, THE ROUTE SAYS SO — it does not invent a figure', async () => {
+  // A failure to observe must not render as an observation. The page says "we could not get the
+  // amount" off the back of this, which is true; a 200 with a zero would be a sentence about money.
+  reset({ plan: 'builder', customerId: 'cus_1', subscription: sub() });
+  stripeDown = true;
+  const r = await call('/api/billing/preview?plan=studio');
+  assert.equal(r.status, 502, r.text);
+  assert.equal(r.json.amountDue, undefined, 'no amount may leave this route when none was read');
+});
+
+test('the preview is scoped to the caller, with no id to point elsewhere', async () => {
+  reset({ plan: 'builder', customerId: 'cus_1', subscription: sub() });
+  const anon = await call('/api/billing/preview?plan=studio', { jwt: null });
+  assert.notEqual(anon.status, 200, "an unauthenticated caller must not price someone else's change");
 });

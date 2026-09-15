@@ -154,6 +154,26 @@ export const openBillingPortal = (): Promise<{ url: string }> =>
   request<{ url: string }>('/api/billing/portal', { method: 'POST' });
 
 /**
+ * What moving to `plan` would cost this account right now.
+ *
+ * READ-ONLY. It asks Stripe a question; it does not buy anything, and the change is still made in
+ * the portal. It REJECTS rather than resolving to a zero when there is nothing to price against or
+ * Stripe cannot answer — the caller has to say the amount is unknown, because it is. A resolved
+ * zero would be the page telling someone a charge costs nothing on the strength of a failed fetch.
+ */
+export interface BillingPreview {
+  /** Major units, already converted by the worker. Negative when the change leaves a credit. */
+  amountDue: number;
+  currency: string;
+  /** Unix SECONDS, Stripe's clock. */
+  prorationDate: number | null;
+  lines: { description: string; amount: number }[];
+}
+
+export const fetchBillingPreview = (plan: PlanId): Promise<BillingPreview> =>
+  request<BillingPreview>(`/api/billing/preview?plan=${encodeURIComponent(plan)}`);
+
+/**
  * What has happened to this account's billing, newest first.
  *
  * The plan used to be overwritten in place, so an account's history was whatever its current row
