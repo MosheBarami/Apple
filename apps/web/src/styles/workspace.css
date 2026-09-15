@@ -5024,3 +5024,24 @@
   line-height: 1.4;
   overflow-wrap: anywhere;
 }
+
+/* The checkpoint's own words — the field it takes, and the field it shows.
+   Distinct from `gx-row__meta` above it: the metadata is derived and the
+   description is authored, and a reader has to be able to tell which is which. */
+
+.gx-cp__note {
+  margin: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  resize: vertical;
+}
+
+.gx-cp__desc {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--gx-ink-2, var(--gx-ink-3));
+  font-size: 0.84rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}

@@ -432,7 +432,12 @@ export type ClientMsg =
   | { type: 'edit_resend'; messageId: string; text: string; mode: GolemMode }
   | { type: 'stop' } // interrupt agent
   | { type: 'resume' }
-  | { type: 'checkpoint_create'; label: string }
+  /**
+   * `description` is what the snapshot CONTAINS or why it was taken, in the user's own words.
+   * Optional: the label alone is still a valid checkpoint, and a required field on a save people
+   * take mid-thought would be a tax on the habit this feature depends on.
+   */
+  | { type: 'checkpoint_create'; label: string; description?: string }
   | { type: 'checkpoint_restore'; checkpointId: string }
   /**
    * "I am still here, and this is what I am doing."
@@ -1028,6 +1033,15 @@ export interface CheckpointMeta {
   scriptCount: number;
   instanceCount: number;
   sizeBytes: number;
+  /**
+   * What this snapshot contains or why it was taken, or null when nobody wrote one.
+   *
+   * The only authored text on a checkpoint was a 60-character label. Everything else the drawer
+   * showed — the timestamp, the object count, the script count — is derived metadata that says
+   * nothing about what is inside. And every automatic checkpoint carries the same label, so a list
+   * of them was a column of identical rows that a person restoring had to choose between by time.
+   */
+  description?: string | null;
   /**
    * The person who asked for it, or null.
    *

@@ -412,6 +412,15 @@ const POLL_WAIT_IDLE_MS = 5_000;
 const POLL_STALE_GRACE_MS = 8_000;
 const PLUGIN_TOKEN_TTL_MS = 30 * 24 * 3600 * 1000; // 30 days, then re-pair
 const MAX_SNAPSHOT_BYTES = 12 * 1024 * 1024; // refuse absurd checkpoints
+/**
+ * How much of a checkpoint's description is kept.
+ *
+ * Long enough for a paragraph about what is in the snapshot and why it was taken, which is the
+ * whole point of having a field beyond the 60-character label. CAPPED rather than rejected: losing
+ * somebody's sentence because they wrote one more than the limit is a worse outcome than a
+ * truncated one, and every checkpoint on this object shares one SQLite.
+ */
+const MAX_CHECKPOINT_DESCRIPTION = 500;
 const MAX_PROMPT_CHARS = 24_000; // ~7k tokens; the transcript is re-sent every step
 
 export class SessionDO extends DurableObject<Env> {
@@ -482,6 +491,18 @@ export class SessionDO extends DurableObject<Env> {
       //   in with whoever happens to be connected would put a name on work they did not do. ]]
       try {
         this.sql.exec(`alter table checkpoints add column author_id text`);
+      } catch {
+        /* already added on an earlier boot */
+      }
+      //[[ WHAT THIS SNAPSHOT CONTAINS, AND WHY IT WAS TAKEN.
+      //
+      //   A 60-character label was the only authored text on a checkpoint; everything else the
+      //   drawer showed — the timestamp, the object count, the script count — is derived metadata
+      //   that says nothing about what is IN the snapshot. And every automatic one carries the
+      //   same label, so a list of them is a column of identical rows and the person restoring
+      //   picks by timestamp. ]]
+      try {
+        this.sql.exec(`alter table checkpoints add column description text`);
       } catch {
         /* already added on an earlier boot */
       }
@@ -1087,8 +1108,8 @@ export class SessionDO extends DurableObject<Env> {
 
     if (path === '/checkpoints' && req.method === 'GET') {
       const rows = this.sql
-        .exec(`select id, label, kind, script_count, instance_count, size_bytes, created_at, author_id from checkpoints order by created_at desc limit 50`)
-        .toArray() as { id: string; label: string; kind: string; script_count: number; instance_count: number; size_bytes: number; created_at: number; author_id: string | null }[];
+        .exec(`select id, label, kind, script_count, instance_count, size_bytes, created_at, author_id, description from checkpoints order by created_at desc limit 50`)
+        .toArray() as { id: string; label: string; kind: string; script_count: number; instance_count: number; size_bytes: number; created_at: number; author_id: string | null; description: string | null }[];
       return json({
         checkpoints: rows.map((r) => ({
           id: r.id,
@@ -1100,6 +1121,8 @@ export class SessionDO extends DurableObject<Env> {
           sizeBytes: r.size_bytes,
           /** Who took it, or null for one Apple took and for a row that predates the column. */
           authorId: r.author_id,
+          /** What it contains or why it was taken. Null when nobody wrote one. */
+          description: r.description,
         })),
       });
     }
@@ -1108,12 +1131,11 @@ export class SessionDO extends DurableObject<Env> {
       // `authorId` is set by index.ts from the AUTHENTICATED user, never by a browser: this object
       // is reachable only through its stub, and every route that forwards here has already
       // resolved who is asking. See socketRole's comment for the same reasoning on the ws path.
-      const { label, authorId } = (await req.json()) as { label: string; authorId?: string };
-      const res = await this.createCheckpoint(
-        (label || 'manual checkpoint').slice(0, 60),
-        'manual',
-        typeof authorId === 'string' && authorId ? authorId : undefined,
-      );
+      const { label, authorId, description } = (await req.json()) as { label: string; authorId?: string; description?: string };
+      const res = await this.createCheckpoint((label || 'manual checkpoint').slice(0, 60), 'manual', {
+        authorId: typeof authorId === 'string' && authorId ? authorId : null,
+        description: typeof description === 'string' ? description : null,
+      });
       return json(res, 'error' in res ? 409 : 200);
     }
 
@@ -1551,7 +1573,10 @@ export class SessionDO extends DurableObject<Env> {
         // `me.userId` — the socket's own identity, resolved at the handshake from a header the
         // worker sets. NOT anything on the frame: the frame is written by the browser, and an
         // authorId taken from it would let any member sign a checkpoint with another's name.
-        const res = await this.createCheckpoint(msg.label.slice(0, 60) || 'checkpoint', 'manual', me?.userId);
+        const res = await this.createCheckpoint(msg.label.slice(0, 60) || 'checkpoint', 'manual', {
+          authorId: me?.userId ?? null,
+          description: msg.description ?? null,
+        });
         if ('error' in res) this.broadcast({ type: 'error', code: 'checkpoint', message: res.error });
         return;
       }
@@ -1761,7 +1786,18 @@ export class SessionDO extends DurableObject<Env> {
     // and silently pressing on is the thing this codebase keeps getting wrong.
     if (studioConnected && mode !== 'clay') {
       try {
-        const checkpoint = await this.createCheckpoint('before Apple changes', 'pre_agent'); // broadcasts internally
+        //[[ SAY WHAT THE RUN WAS ABOUT TO DO.
+        //
+        //   Every pre-run checkpoint carries this same label, so a project's list of them was a
+        //   column of identical rows and the person restoring one was choosing by timestamp. The
+        //   request that caused it is right here in scope and was being thrown away.
+        //
+        //   `intent.summary` when the local classifier produced one — it restates the request in
+        //   the agent's own terms — and otherwise the user's own words, which are never worse. No
+        //   model call: this runs before the first one. ]]
+        const checkpoint = await this.createCheckpoint('before Apple changes', 'pre_agent', {
+          description: `Apple was asked to: ${intent?.summary ?? text}`,
+        }); // broadcasts internally
         if ('error' in checkpoint) {
           this.broadcast({
             type: 'error',
@@ -3377,11 +3413,20 @@ export class SessionDO extends DurableObject<Env> {
 
   // ------------------------------------------------------------------ checkpoints
   /**
-   * @param authorId the person who asked for it, or undefined when Apple took it itself. The
+   * @param meta.authorId the person who asked for it, or undefined when Apple took it itself. The
    * CALLER resolves this — the socket's own attachment or the worker's authenticated user — never
    * a value off the wire, or any member could sign a checkpoint with someone else's name.
+   * @param meta.description what the snapshot contains or why it was taken, in the user's words
+   * for a manual one and from the request for an automatic one. Blank becomes null: "" and "nobody
+   * wrote one" would render identically and mean different things.
    */
-  async createCheckpoint(label: string, kind: CheckpointMeta['kind'], authorId?: string): Promise<CheckpointMeta | { error: string }> {
+  async createCheckpoint(
+    label: string,
+    kind: CheckpointMeta['kind'],
+    meta2: { authorId?: string | null; description?: string | null } = {},
+  ): Promise<CheckpointMeta | { error: string }> {
+    const authorId = meta2.authorId ?? null;
+    const description = (meta2.description ?? '').trim().slice(0, MAX_CHECKPOINT_DESCRIPTION) || null;
     if (!(await this.pluginConnected())) return { error: 'Studio is not connected — connect Studio to create checkpoints.' };
     const snap = await this.execStudioOp({ op: 'snapshot', root: 'game', includeScripts: true }, 60_000);
     if (!snap.ok) return { error: snap.error ?? 'snapshot failed' };
@@ -3402,7 +3447,7 @@ export class SessionDO extends DurableObject<Env> {
       );
     }
     this.sql.exec(
-      `insert into checkpoints(id, label, kind, script_count, instance_count, size_bytes, created_at, author_id) values(?,?,?,?,?,?,?,?)`,
+      `insert into checkpoints(id, label, kind, script_count, instance_count, size_bytes, created_at, author_id, description) values(?,?,?,?,?,?,?,?,?)`,
       id,
       label,
       kind,
@@ -3410,7 +3455,8 @@ export class SessionDO extends DurableObject<Env> {
       meta.instanceCount ?? 0,
       gz.byteLength,
       Date.now(),
-      authorId ?? null,
+      authorId,
+      description,
     );
     // retention: keep last 25
     this.sql.exec(
@@ -3425,7 +3471,8 @@ export class SessionDO extends DurableObject<Env> {
       scriptCount: meta.scriptCount ?? 0,
       instanceCount: meta.instanceCount ?? 0,
       sizeBytes: gz.byteLength,
-      authorId: authorId ?? null,
+      authorId,
+      description,
     };
     this.broadcast({ type: 'checkpoint', checkpoint: cp });
     return cp;

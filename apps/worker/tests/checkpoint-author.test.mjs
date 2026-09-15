@@ -17,7 +17,11 @@ import { sessionHarness, makeSql, answerNextOp, rows } from './session-harness.m
 const SNAPSHOT = { scriptCount: 1, instanceCount: 4 };
 
 async function take(h, label, kind = 'manual', authorId) {
-  const pending = h.session.createCheckpoint(label, kind, authorId);
+  // `createCheckpoint(label, kind, meta)` — the third argument became an options object when the
+  // description landed beside the author. Both are things the CALLER resolves, and two optional
+  // positionals would have forced `createCheckpoint(l, k, undefined, desc)` on the automatic path,
+  // which is the one that has a description and no author.
+  const pending = h.session.createCheckpoint(label, kind, { authorId });
   await answerNextOp(h, { ok: true, data: SNAPSHOT });
   const cp = await pending;
   assert.ok(!('error' in cp), JSON.stringify(cp));

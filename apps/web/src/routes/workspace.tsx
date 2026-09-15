@@ -115,6 +115,10 @@ export function WorkspacePage() {
   const [mode, setMode] = useState<ProductMode>('agent');
   const [seed, setSeed] = useState<string | undefined>(undefined);
   const [label, setLabel] = useState('');
+  // Kept beside the label rather than inside the form element so clearing both after a save is one
+  // statement — a description left behind after a save reappears on the NEXT checkpoint and
+  // describes the wrong snapshot.
+  const [note, setNote] = useState('');
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
@@ -938,27 +942,46 @@ export function WorkspacePage() {
 
       {/* ------------------------------------------------------- drawers -- */}
       <Drawer open={drawer === 'checkpoints'} onClose={() => setDrawer(null)} title="Checkpoints">
+        {/* A NAME IS NOT A DESCRIPTION.
+
+            The label is capped at 60 characters and everything else the row showed — the time, the
+            object count, the script count — is derived metadata. Nothing said what was IN the
+            snapshot or why it was taken, which is the only thing that makes a list of twenty of
+            them choosable. Optional on purpose: a required field on a save people take
+            mid-thought would be a tax on the habit the whole feature depends on. */}
         <form
-          style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.9rem' }}
+          style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '0.9rem' }}
           onSubmit={(e) => {
             e.preventDefault();
             if (!studio.connected) return;
-            createCheckpoint(label.trim() || 'manual checkpoint');
+            createCheckpoint(label.trim() || 'manual checkpoint', note.trim() || undefined);
             setLabel('');
+            setNote('');
           }}
         >
-          <input
-            className="gx-row"
-            style={{ flex: 1, margin: 0, background: 'transparent', color: 'inherit' }}
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            placeholder="Name this checkpoint"
-            aria-label="Checkpoint name"
+          <div style={{ display: 'flex', gap: '0.4rem' }}>
+            <input
+              className="gx-row"
+              style={{ flex: 1, margin: 0, background: 'transparent', color: 'inherit' }}
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="Name this checkpoint"
+              aria-label="Checkpoint name"
+              disabled={!studio.connected}
+            />
+            <button type="submit" className="gx-btn gx-btn--outline" disabled={!studio.connected}>
+              Save
+            </button>
+          </div>
+          <textarea
+            className="gx-row gx-cp__note"
+            value={note}
+            onChange={(e) => setNote(e.target.value.slice(0, 500))}
+            placeholder="What is in it, or why you are taking it (optional)"
+            aria-label="What this checkpoint contains"
+            rows={2}
             disabled={!studio.connected}
           />
-          <button type="submit" className="gx-btn gx-btn--outline" disabled={!studio.connected}>
-            Save
-          </button>
         </form>
 
         {!studio.connected && (
@@ -988,6 +1011,10 @@ export function WorkspacePage() {
                 {checkpointAuthorView(c, userId || null, memberNames).label} · {new Date(c.createdAt).toLocaleString()} ·{' '}
                 {c.instanceCount} objects · {c.scriptCount} scripts
               </span>
+              {/* The authored sentence, under the derived numbers. Shown verbatim and never
+                  truncated in the markup: the worker already caps it at 500 characters, and a
+                  second cap here would hide the end of somebody's own words for no reason. */}
+              {c.description && <span className="gx-cp__desc">{c.description}</span>}
               {/* THE RESTORE, WHILE IT IS HAPPENING AND WHEN IT IS OVER.
 
                   This drawer used to close on the click, and the worker used to broadcast nothing

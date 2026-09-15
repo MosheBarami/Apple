@@ -1443,13 +1443,20 @@ app.get('/api/projects/:id/attribution', async (c) => {
 app.post('/api/projects/:id/checkpoints', async (c) => {
   const ctx = await withOwnedProject(c, c.req.param('id'));
   if (!ctx) return c.json({ error: 'not found' }, 404);
-  const body = await c.req.json<{ label?: string }>().catch(() => ({ label: '' }));
+  const body = await c.req
+    .json<{ label?: string; description?: string }>()
+    .catch(() => ({ label: '' }) as { label?: string; description?: string });
   // The author comes from the AUTHENTICATED caller and nothing else. Reading it out of the request
   // body would let anyone sign a checkpoint with another member's name, and a checkpoint's author
-  // is the field a restore argument turns on.
+  // is the field a restore argument turns on. The description, by contrast, IS the caller's own
+  // text — it is a claim about the snapshot, not about a person.
   return ctx.stub.fetch('https://do/checkpoint', {
     method: 'POST',
-    body: JSON.stringify({ label: body.label ?? 'checkpoint', authorId: ctx.user.userId }),
+    body: JSON.stringify({
+      label: body.label ?? 'checkpoint',
+      authorId: ctx.user.userId,
+      description: body.description ?? null,
+    }),
   });
 });
 

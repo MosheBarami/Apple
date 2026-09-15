@@ -205,7 +205,8 @@ export interface ProjectSocket {
   /** Replace an earlier prompt and re-run from it. Everything after it is discarded. */
   editAndResend: (messageId: string, text: string, mode: GolemMode) => boolean;
   stop: () => void;
-  createCheckpoint: (label: string) => void;
+  /** @param description what the snapshot contains or why it was taken. Optional — see ClientMsg. */
+  createCheckpoint: (label: string, description?: string) => void;
   restoreCheckpoint: (checkpointId: string) => void;
   reloadHistory: () => void;
   reloadCheckpoints: () => void;
@@ -920,8 +921,10 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
   }, [sendRaw]);
 
   const createCheckpoint = useCallback(
-    (label: string) => {
-      sendRaw({ type: 'checkpoint_create', label });
+    (label: string, description?: string) => {
+      // Omitted rather than sent empty: the worker turns blank into null, and a frame that always
+      // carries the field would make "they wrote nothing" indistinguishable from an older client.
+      sendRaw(description ? { type: 'checkpoint_create', label, description } : { type: 'checkpoint_create', label });
     },
     [sendRaw],
   );
