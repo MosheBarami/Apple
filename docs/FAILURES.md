@@ -119,10 +119,27 @@ package ran and one binary resolved, so the harness looked alive from every angl
 one that mattered, which was how many packages `pnpm` could see.
 **The rule:** **a partial harness reports a verdict, not an error.** Before believing any suite
 result, compare its TEST COUNT to the count you expect; a suite that cannot run most of itself
-fails in exactly the shape of a suite that ran and found problems. For a workspace monorepo
-specifically, symlinked `node_modules` is not a working install — `pnpm` needs its own metadata in
-the tree it is invoked from. `pnpm install --frozen-lockfile` inside the worktree takes eleven
-seconds and yields eleven packages; the symlinks took none and yielded none.
+fails in exactly the shape of a suite that ran and found problems.
+
+**AND THE EXPECTED COUNT MUST COME FROM OUTSIDE THE INSTRUMENT.** rbxai-04's addition, and it is
+the half that makes the rule usable: they validated their own 790/790 by taking the file count from
+`git ls-tree` (55 tracked test files, 55 present in the worktree, 790 named `✔`/`✖` lines). Asking
+the test runner how many files it found would have returned 55 — about the 55 it could see. An
+instrument cannot report its own blind spot; the baseline has to be drawn from a different tool.
+
+**WHEN THE SYMLINK IS ENOUGH, AND WHEN IT IS NOT** — the line, because the next person will reach
+for it again and it works right up until it silently does not:
+
+- `node` resolves modules by walking parent directories, so a symlink at
+  `apps/worker/node_modules` satisfies it COMPLETELY. A direct `node --test` inside a package is
+  fine, which is exactly why the 42/42 sanity check passed.
+- `pnpm -r` does not resolve modules at all. It reads WORKSPACE STATE — `pnpm-workspace.yaml`, the
+  lockfile, `.pnpm` — from the tree it is invoked in, and a symlink gives it none of that.
+
+So a symlinked `node_modules` satisfies module RESOLUTION and nothing that reads workspace STATE.
+Anything invoked per-package is fine; anything that ENUMERATES packages is not.
+`pnpm install --frozen-lockfile` inside the worktree takes eleven seconds and yields eleven
+packages; the symlinks took none and yielded none.
 **Relation to F-58:** this is reading 3, dead harness, at suite scale rather than test scale — and
 it is the third instance in one night of the same root: *the instrument was broken and returned the
 answer we were emotionally prepared for.* F-64 was a parser matching nothing and reporting zero
