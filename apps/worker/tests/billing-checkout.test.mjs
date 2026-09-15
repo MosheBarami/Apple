@@ -229,6 +229,38 @@ test('the portal opens the right customer and comes back to us', () => {
   assert.equal(p.get('return_url'), RETURN_TO);
 });
 
+/**
+ * WHICH CONTROLS THE PORTAL OFFERS IS A DASHBOARD SETTING, AND THIS IS HOW IT STOPS BEING ONE.
+ *
+ * The request carried only `customer` and `return_url`, so the portal rendered whatever the Stripe
+ * dashboard's DEFAULT configuration happened to have switched on. Every claim this product makes
+ * about managing a card — 'Update your payment method' on a past_due notice, 'Manage billing,
+ * invoices and cancellation' on /usage — depends on a toggle in a web UI this repo cannot see,
+ * cannot assert, and cannot notice being turned off. Naming the configuration pins it to a version
+ * a deployment controls.
+ */
+test('THE PORTAL CONFIGURATION IS PINNED WHEN THE DEPLOYMENT NAMES ONE', () => {
+  const p = params(B.buildPortalRequest(
+    { ...LIVE, STRIPE_PORTAL_CONFIGURATION: 'bpc_live_1' },
+    { customerId: 'cus_9', returnTo: RETURN_TO },
+  ));
+  assert.equal(p.get('configuration'), 'bpc_live_1',
+    'without this, payment-method management is whatever the dashboard default has on today');
+  assert.equal(p.get('customer'), 'cus_9', 'and it still opens the right customer');
+});
+
+test('and is ABSENT rather than empty when the deployment names none', () => {
+  // An empty `configuration` is not "the default": Stripe refuses the session, and the portal — the
+  // only route to a card, an invoice or a cancellation — stops opening at all.
+  const p = params(B.buildPortalRequest(LIVE, { customerId: 'cus_9', returnTo: RETURN_TO }));
+  assert.equal(p.get('configuration'), null);
+  const blank = params(B.buildPortalRequest(
+    { ...LIVE, STRIPE_PORTAL_CONFIGURATION: '   ' },
+    { customerId: 'cus_9', returnTo: RETURN_TO },
+  ));
+  assert.equal(blank.get('configuration'), null, 'whitespace is not a configuration id');
+});
+
 test('the portal is unavailable on a deployment with no key', () => {
   const r = B.buildPortalRequest({ STRIPE_WEBHOOK_SECRET: 'whsec_x' }, { customerId: 'cus_9', returnTo: RETURN_TO });
   assert.equal(r.ok, false);

@@ -105,6 +105,7 @@ const env = () => ({
   STRIPE_SECRET_KEY: 'sk_test_x',
   STRIPE_PRICE_BUILDER: 'price_builder_1',
   STRIPE_PRICE_STUDIO: 'price_studio_1',
+  STRIPE_PORTAL_CONFIGURATION: 'bpc_test_1',
   KV: { get: async () => null, put: async () => {}, delete: async () => {}, list: async () => ({ keys: [] }) },
   AI: { run: async () => ({ choices: [{ message: { content: '{}' } }] }) },
   // Records what was prepared and what was bound to it. A notification is written through D1, and
@@ -401,4 +402,29 @@ test('CONTROL: an ordinary subscription event raises no billing alarm', async ()
   });
   assert.equal(r.json.dunning, null, 'a successful subscription is not a payment problem');
   assert.equal(d1Calls.find((c) => /insert into notifications/i.test(c.sql)), undefined);
+});
+
+// ----------------------------------------------- what the page is told before it offers to sell
+
+test('THE CONFIG ROUTE NAMES THE CURRENCY, so the ladder is not guessing', async () => {
+  // The page falls back to the declared code when the field is missing, which is a plausible-looking
+  // answer arrived at from no information — and that was the state of the deployed worker, which
+  // returned {checkout, purchasable} and no currency at all while the page already read one.
+  reset();
+  const r = await call('/api/billing/config');
+  assert.equal(r.status, 200, r.text);
+  assert.match(String(r.json.currency), /^[A-Z]{3}$/, `an ISO 4217 code, saw ${r.json.currency}`);
+  assert.equal(r.json.checkout, true, 'and it still says whether anything can be bought');
+  assert.deepEqual(r.json.purchasable, ['builder', 'studio'], 'and which tiers');
+});
+
+test('THE PORTAL ROUTE SENDS THE PINNED CONFIGURATION, not the dashboard default', async () => {
+  // The pure test proves the builder sets it. This proves the ROUTE hands the env to the builder — a
+  // configuration nothing passes through is the same as no configuration at all.
+  reset({ plan: 'builder', customerId: 'cus_1', subscription: sub() });
+  const r = await call('/api/billing/portal', { method: 'POST' });
+  assert.equal(r.status, 200, r.text);
+  const p = new URLSearchParams(stripeCalls[0].body);
+  assert.equal(p.get('configuration'), 'bpc_test_1');
+  assert.equal(p.get('customer'), 'cus_1', "and the caller's own customer, which is not a parameter");
 });

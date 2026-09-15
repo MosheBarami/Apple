@@ -45,6 +45,20 @@ export interface Env {
   STRIPE_PRICE_BUILDER?: string;
   STRIPE_PRICE_STUDIO?: string;
   /**
+   * Which Billing Portal configuration (`bpc_…`) the portal opens with.
+   *
+   * Unset, Stripe uses the dashboard's default configuration — so whether a customer can update
+   * their card at all is a toggle in a web UI this repo cannot read, cannot assert and cannot
+   * notice being turned off, while the product's own copy promises the control by name. Set it to
+   * a configuration with payment_method_update, invoice_history and subscription_cancel enabled:
+   * those three are what 'Update your payment method' and 'Manage billing, invoices and
+   * cancellation' claim exists.
+   *
+   * Optional, and an ABSENT value is sent as no parameter rather than as an empty one — Stripe
+   * refuses a blank configuration id, and the portal is a customer's only route to their own card.
+   */
+  STRIPE_PORTAL_CONFIGURATION?: string;
+  /**
    * Open Cloud key, scope `creator-store-product:read`, free from
    * https://create.roblox.com/dashboard/credentials. When unset, Creator Store search degrades to
    * the unauthenticated toolbox-service/v1 endpoint — it is never required.

@@ -382,6 +382,7 @@ interface CheckoutEnv {
   STRIPE_SECRET_KEY?: string;
   STRIPE_PRICE_BUILDER?: string;
   STRIPE_PRICE_STUDIO?: string;
+  STRIPE_PORTAL_CONFIGURATION?: string;
 }
 
 /**
@@ -575,5 +576,20 @@ export function buildPortalRequest(
   const p = new URLSearchParams();
   p.set('customer', opts.customerId);
   p.set('return_url', opts.returnTo);
+  /*
+   * WHICH CONTROLS THE PORTAL OFFERS WAS A SETTING IN A WEB UI THIS REPO CANNOT SEE.
+   *
+   * With no `configuration`, Stripe renders the dashboard's DEFAULT portal configuration — so
+   * 'Update your payment method' on a past_due notice, and 'Manage billing, invoices and
+   * cancellation' on /usage, both promised a control that somebody could switch off in another tab
+   * without anything here noticing. Naming a configuration pins the feature set to a version the
+   * deployment controls: payment_method_update, invoice_history and subscription_cancel are the
+   * three this product's copy actually promises.
+   *
+   * ABSENT IS NOT EMPTY. An unset or whitespace value must not be sent: Stripe refuses a blank
+   * configuration id, and the portal is the only route a customer has to their own card.
+   */
+  const configuration = (env as unknown as CheckoutEnv).STRIPE_PORTAL_CONFIGURATION?.trim();
+  if (configuration) p.set('configuration', configuration);
   return { ok: true, body: p.toString() };
 }
