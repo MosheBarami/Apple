@@ -880,7 +880,7 @@ export function assetEmbeddingInput(rec: AssetProvenance): string {
  * become permanent for the isolate's life.
  */
 export function ensureAssetTables(env: Pick<Env, 'CORPUS'>): Promise<void> {
-  return oncePerIsolate('assets', () => createAssetTables(env));
+  return oncePerIsolate('assets', () => createAssetTables(env), env.CORPUS);
 }
 
 /** Test seam: the record is per-isolate and otherwise unreachable. */

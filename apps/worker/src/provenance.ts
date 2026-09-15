@@ -131,7 +131,7 @@ export interface ProjectAsset {
  * there is nothing for a second key to distinguish.
  */
 export function ensureProvenanceTables(env: Pick<Env, 'CORPUS'>): Promise<void> {
-  return oncePerIsolate('provenance', () => createProvenanceTables(env));
+  return oncePerIsolate('provenance', () => createProvenanceTables(env), env.CORPUS);
 }
 
 async function createProvenanceTables(env: Pick<Env, 'CORPUS'>): Promise<void> {

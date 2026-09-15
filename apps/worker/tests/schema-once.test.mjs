@@ -135,6 +135,39 @@ test('an overloaded database is NOT answered with more DDL', async () => {
   }
 });
 
+test('two databases each get their own schema run', async () => {
+  //[[ THE REGRESSION THIS IS WRITTEN FROM, AND IT COST 52 TESTS.
+  //
+  //   The memo keyed on the store's NAME alone, justified by a comment saying one isolate serves
+  //   one worker with one binding set — true in production, false the moment anything fabricates a
+  //   second database. The suite does exactly that: every test builds a fresh in-memory D1 stub.
+  //   The second stub was told the schema was already made, never got its tables, and 52 tests
+  //   failed with `no such table: memory_orgs`.
+  //
+  //   The comment asserted an invariant instead of enforcing one. Keying on the binding OBJECT
+  //   enforces it: identical and free in a Worker, correct in a test, and no seam anybody has to
+  //   remember to call.
+  S.resetSchemaOnce();
+  const dbA = { name: 'A' };
+  const dbB = { name: 'B' };
+  const ran = [];
+  const mk = (tag) => async () => { ran.push(tag); };
+  await S.oncePerIsolate('memory', mk('A1'), dbA);
+  await S.oncePerIsolate('memory', mk('A2'), dbA);
+  await S.oncePerIsolate('memory', mk('B1'), dbB);
+  assert.deepEqual(ran, ['A1', 'B1'],
+    'the same store on a DIFFERENT database is a different run; on the same database it is not');
+});
+
+test('a caller with no database still gets the isolate-wide memo', async () => {
+  S.resetSchemaOnce();
+  let runs = 0;
+  const fn = async () => { runs++; };
+  await S.oncePerIsolate('k', fn);
+  await S.oncePerIsolate('k', fn);
+  assert.equal(runs, 1);
+});
+
 test('every store that asserts a schema goes through it', async () => {
   //[[ THE CHECK THAT STOPS THIS GOING STALE.
   //

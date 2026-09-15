@@ -36,17 +36,46 @@
 //   THE KEY IS THE CALLER\'S OWN. Seven stores share one isolate; one flag between them would let
 //   the first store to run silence the other six.
 
-/** In-flight or completed DDL runs, by store key. A rejected entry is deleted, never kept. */
-const running = new Map<string, Promise<void>>();
+//[[ THE MEMO IS KEYED ON THE DATABASE, NOT ONLY ON THE STORE'S NAME.
+//
+//   The first version keyed on the string alone, on the reasoning that one isolate serves one
+//   worker with one binding set — true in production, and false the moment anything fabricates a
+//   second database. The test suite does exactly that: each test builds a fresh in-memory D1 stub
+//   and calls ensureMemoryTables on it. The second stub was told the schema was already made,
+//   never got its tables, and 52 tests failed with `no such table: memory_orgs`.
+//
+//   The comment claiming "there is nothing for a second key to distinguish" was the defect: it
+//   asserted an invariant instead of enforcing one. A WeakMap on the binding OBJECT enforces it —
+//   in a Worker there is one CORPUS object per isolate, so the behaviour is identical and free; in
+//   a test each stub is a different object and gets its own run, with no test-only seam to
+//   remember to call. The assumption is now true by construction rather than by comment.
+//
+//   WeakMap, so a discarded database does not pin its entry for the life of the isolate.
+const perDb = new WeakMap<object, Map<string, Promise<void>>>();
+
+/** Fallback for a caller that has no object to key on. Same semantics, isolate-wide. */
+const anonymous = new Map<string, Promise<void>>();
+
+function tableFor(db: unknown): Map<string, Promise<void>> {
+  if (db === null || (typeof db !== 'object' && typeof db !== 'function')) return anonymous;
+  let m = perDb.get(db as object);
+  if (!m) { m = new Map(); perDb.set(db as object, m); }
+  return m;
+}
 
 /**
- * Run `fn` at most once per isolate for this `key`.
+ * Run `fn` at most once per isolate for this `key` against this `db`.
  *
  * Returns the same promise to every caller while it is in flight, and thereafter returns
  * immediately. If `fn` rejects, the entry is removed and the rejection propagates to every caller
  * that was waiting — so a failed schema run is reported, not swallowed, and is retried next time.
+ *
+ * `db` is the binding the schema belongs to. Pass it. Omitting it falls back to an isolate-wide
+ * table, which is right for a caller that genuinely has no database to point at and wrong for one
+ * that does.
  */
-export function oncePerIsolate(key: string, fn: () => Promise<void>): Promise<void> {
+export function oncePerIsolate(key: string, fn: () => Promise<void>, db?: unknown): Promise<void> {
+  const running = tableFor(db);
   const existing = running.get(key);
   if (existing) return existing;
   const p = fn().catch((e) => {
@@ -57,10 +86,10 @@ export function oncePerIsolate(key: string, fn: () => Promise<void>): Promise<vo
   return p;
 }
 
-/** Test seam: the map is per-isolate and otherwise unreachable. */
+/** Test seam: clears the isolate-wide table. Per-database entries die with their database. */
 export function resetSchemaOnce(key?: string): void {
-  if (key === undefined) running.clear();
-  else running.delete(key);
+  if (key === undefined) anonymous.clear();
+  else anonymous.delete(key);
 }
 
 /**

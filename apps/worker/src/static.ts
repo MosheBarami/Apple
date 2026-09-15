@@ -118,7 +118,7 @@ function withSecurityHeaders(res: Response): Response {
  * there is nothing for a second key to distinguish.
  */
 export function ensureStaticTables(env: Env): Promise<void> {
-  return oncePerIsolate('static', () => createStaticTables(env));
+  return oncePerIsolate('static', () => createStaticTables(env), env.CORPUS);
 }
 
 async function createStaticTables(env: Env): Promise<void> {
