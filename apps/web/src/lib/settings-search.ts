@@ -66,6 +66,27 @@ export const SETTING_FIELDS: readonly SettingField[] = [
     // Nobody searching for this types "Discord" — they type the thing they want to do from it.
     keywords: ['discord', 'bot', 'chat', 'slash command', 'link', 'unlink', 'pair', 'build from chat', 'connect'],
   },
+  // Notifications. Three rows rather than one, because "stop waking me at night", "send it all at
+  // once in the morning" and "stop telling me about builds" are three different requests and a
+  // person types the one they have.
+  {
+    id: 'notify-quiet-hours',
+    title: 'Quiet hours',
+    section: 'Notifications',
+    keywords: ['do not disturb', 'dnd', 'night', 'sleep', 'mute', 'silence', 'interrupt', 'notification'],
+  },
+  {
+    id: 'notify-digest',
+    title: 'How often',
+    section: 'Notifications',
+    keywords: ['digest', 'daily', 'hourly', 'summary', 'batch', 'frequency', 'notification'],
+  },
+  {
+    id: 'notify-events',
+    title: 'What to tell me about',
+    section: 'Notifications',
+    keywords: ['notification', 'alerts', 'mentions', 'build failed', 'email me', 'unsubscribe', 'turn off'],
+  },
   { id: 'training-opt-in', title: 'Contribute anonymised snippets', section: 'Privacy', keywords: ['training', 'privacy', 'data', 'opt in', 'opt out'] },
   { id: 'reset-settings', title: 'Reset settings', section: 'Privacy', keywords: ['default', 'defaults', 'restore', 'undo', 'clear'] },
 ];

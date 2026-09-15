@@ -8,6 +8,7 @@ import type { FilesResponse, FileVersion } from '../components/ws/files-model';
 import { mockBrief, mockNext, mockRoadmap } from '../components/roadmap/mock';
 import { MOCK_MODE, mockAttribution, mockCounters, mockDiagnostics, mockMe, mockMemory, mockNotifications, mockSpend, mockUsageDays } from './mock';
 import type { InboxResponse, MarkReadResult } from './notification-inbox.ts';
+import type { DeliveryPreference, NotificationEventPrefs } from './notification-prefs.ts';
 import type { BillingChange, SubscriptionView } from './billing-copy';
 import { getAccessToken } from './supabase';
 import { noteReachability } from './connectivity';
@@ -339,6 +340,18 @@ export interface Preferences {
   tool_permissions?: Record<string, ToolPermission>;
   /** Where a build may take assets from. NARROWS across layers — the server decides, not this. */
   asset_sources?: AssetSourcePolicy;
+  /**
+   * When a notification is allowed to arrive: the zone, the quiet window, the digest.
+   *
+   * WHOLESALE across layers, unlike the one below. Half of one person's window and half of
+   * another's is a window nobody set — see apps/worker/src/preferences.ts.
+   */
+  notify_delivery?: DeliveryPreference;
+  /**
+   * Which kinds to hear about at all. MERGES PER ENTRY across org, account and project, so a
+   * project can mute one kind without un-muting everything the person silenced account-wide.
+   */
+  notify_events?: NotificationEventPrefs;
 }
 
 export interface PromptProfile {
