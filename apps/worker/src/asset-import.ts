@@ -18,9 +18,12 @@ import type { Env } from './env';
 import type { AssetProvenance } from './asset-library';
 import { ingestAssets } from './asset-ingest';
 import { uploadTypeFor, uploadAsset, pollOperation, archiveAsset, type UploadEnv, type UploadResult } from './roblox-upload';
+import { useRobloxCredential } from './user-credentials';
 
 export interface ImportEnv extends UploadEnv {
   CORPUS: Env['CORPUS'];
+  /** 32 bytes, base64 — unwraps a customer's own stored Roblox key. See user-credentials.ts. */
+  CREDENTIAL_KEY?: string;
 }
 
 export interface ImportOutcome {
@@ -73,10 +76,44 @@ const hex = (buf: ArrayBuffer) =>
   [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
 
 /**
+ * Resolve WHICH ACCOUNT an import writes to, and refuse rather than guess.
+ *
+ * With a userId, the customer's own stored key is used and the asset lands in THEIR account —
+ * which is the only arrangement that makes sense for a product, and the arrangement that was
+ * missing when 299 assets went into one person's account because a single shared credential was
+ * all there was.
+ *
+ * Without one, the deployment's own key is used, and that path still has to pass the consent check
+ * in `preflight`. A shared key is for Apple's own library work, not for a customer's build, and
+ * nothing here quietly falls back to it: an import for a user whose key is missing FAILS, with the
+ * reason, instead of writing into somebody else's account.
+ */
+async function accountFor(env: ImportEnv, userId?: string): Promise<{ ok: true; env: UploadEnv } | { ok: false; error: string }> {
+  if (!userId) return { ok: true, env };
+  const use = await useRobloxCredential(env as never, userId, 'asset:write');
+  if (!use.ok) return { ok: false, error: use.error ?? 'the connected Roblox key cannot be used to create assets' };
+  return {
+    ok: true,
+    env: {
+      ROBLOX_API_KEY: use.apiKey,
+      ...(use.creatorType === 'group'
+        ? { ROBLOX_CREATOR_GROUP_ID: use.creatorId }
+        : { ROBLOX_CREATOR_USER_ID: use.creatorId }),
+      // The customer connected this key, ticked asset:write, and confirmed the permanence warning.
+      // That IS the consent the shared-key path has to look up in configuration, so it is stated
+      // here at the point the two paths converge rather than assumed by the caller.
+      ROBLOX_UPLOAD_AUTHORISED_FOR: use.creatorId,
+    },
+  };
+}
+
+/**
  * Import one row. Returns an outcome for every input, always — a row that could not be imported
  * produces a failure with a reason, never an absence from the results array.
+ *
+ * `userId` names whose account the asset is created in. See `accountFor`.
  */
-export async function importAsset(env: ImportEnv, rec: AssetProvenance): Promise<ImportOutcome> {
+export async function importAsset(env: ImportEnv, rec: AssetProvenance, userId?: string): Promise<ImportOutcome> {
   if (rec.robloxAssetId !== null) {
     return { id: rec.id, ok: true, robloxAssetId: rec.robloxAssetId };
   }
@@ -91,7 +128,10 @@ export async function importAsset(env: ImportEnv, rec: AssetProvenance): Promise
   const type = uploadTypeFor(rec.kind, resolved.contentType);
   if (!type) return { id: rec.id, ok: false, error: `no Open Use upload type for ${resolved.contentType}` };
 
-  const up = await uploadAsset(env, {
+  const account = await accountFor(env, userId);
+  if (!account.ok) return { id: rec.id, ok: false, error: account.error };
+
+  const up = await uploadAsset(account.env, {
     file: bytes,
     contentType: resolved.contentType,
     displayName: rec.name,
@@ -108,7 +148,7 @@ export async function importAsset(env: ImportEnv, rec: AssetProvenance): Promise
   // beyond the budget the operation id is handed back so a later pass can resume it, because an
   // upload that succeeded and was then forgotten is a real asset on Roblox with nothing pointing
   // at it — a leak that costs the owner storage and gives the library nothing.
-  const settled = up.done ? up : await settle(env, up.operationId);
+  const settled = up.done ? up : await settle(account.env, up.operationId);
   if (!settled.ok) return { id: rec.id, ok: false, error: `upload failed: ${settled.error}`, pendingOperation: settled.operationId ?? undefined };
   if (!settled.done) return { id: rec.id, ok: false, pendingOperation: settled.operationId, error: 'upload accepted, Roblox is still processing it' };
   const assetId = settled.assetId;
@@ -139,7 +179,7 @@ export async function importAsset(env: ImportEnv, rec: AssetProvenance): Promise
 /** Wait for an operation, briefly. The delays are stated rather than tuned by feel: ~15 s total. */
 const POLL_DELAYS_MS = [1200, 1800, 2500, 3500, 6000];
 
-async function settle(env: ImportEnv, operationId: string): Promise<UploadResult> {
+async function settle(env: UploadEnv, operationId: string): Promise<UploadResult> {
   let last: UploadResult = { ok: true, done: false, operationId };
   for (const wait of POLL_DELAYS_MS) {
     await new Promise((r) => setTimeout(r, wait));
@@ -252,14 +292,14 @@ async function selectAssets(env: Pick<ImportEnv, 'CORPUS'>, o: SelectOpts): Prom
  * 429 that this code would then have to distinguish from a real rejection. One at a time is slower
  * and its failures mean what they say.
  */
-export async function importPending(env: ImportEnv, limit: number, source?: string, idPrefix?: string, after?: string): Promise<{
+export async function importPending(env: ImportEnv, limit: number, source?: string, idPrefix?: string, after?: string, userId?: string): Promise<{
   attempted: number; imported: number; failed: number; outcomes: ImportOutcome[]; lastId: string | null;
 }> {
   const rows = await pendingAssets(env, Math.max(1, Math.min(limit, 25)), source, idPrefix, after);
   const outcomes: ImportOutcome[] = [];
   for (const rec of rows) {
     try {
-      outcomes.push(await importAsset(env, rec));
+      outcomes.push(await importAsset(env, rec, userId));
     } catch (e) {
       outcomes.push({ id: rec.id, ok: false, error: `threw: ${String((e as Error)?.message ?? e).slice(0, 200)}` });
     }

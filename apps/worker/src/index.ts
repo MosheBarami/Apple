@@ -2400,6 +2400,22 @@ app.delete('/api/me/roblox-key', async (c) => {
   return c.json({ removed: await deleteRobloxCredential(c.env as never, user.userId) });
 });
 
+/**
+ * Import library assets into the CALLER'S OWN Roblox account, using the key they connected.
+ *
+ * Under `/api/me/` and not `/api/admin/`: the assets land in the caller's account, so the caller
+ * is the only person who may ask for it. The admin route beside it exists for Apple's own library
+ * work and writes to the deployment's account — two different acts that would be one route, and
+ * one accident, if they shared a path.
+ */
+app.post('/api/me/roblox-import', async (c) => {
+  const user = c.get('user');
+  if (!user) return c.json({ error: 'not signed in' }, 401);
+  const body = await c.req.json<{ limit?: number; idPrefix?: string; after?: string }>().catch(() => null);
+  const limit = Number.isFinite(body?.limit) ? Number(body?.limit) : 3;
+  return c.json(await importPending(c.env as never, limit, undefined, body?.idPrefix, body?.after, user.userId));
+});
+
 app.post('/api/admin/kill-switch', async (c) => {
   const { killed, reason } = await c.req.json<{ killed: boolean; reason?: string }>();
   return c.json(await setKillSwitch(c.env, !!killed, reason));
