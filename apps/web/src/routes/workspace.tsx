@@ -27,7 +27,7 @@ import { SearchPanel } from '../components/ws/search-panel';
 import { EditMessageDialog } from '../components/ws/edit-message-dialog';
 import { MemoryPanel } from '../components/ws/memory-panel';
 import { InstructionsPanel } from '../components/ws/instructions-panel';
-import { ApiError, downloadExport, fetchPersonalisation, savePreferences, type SearchHit } from '../lib/api';
+import { ApiError, downloadExport, fetchPersonalisation, fetchProjectAccess, savePreferences, type SearchHit } from '../lib/api';
 import type { AssetSourcePolicy } from '@golem/shared';
 import { owesAnswer } from '../lib/asset-sources';
 import { AssetSourceDialog } from '../components/asset-source-dialog';
@@ -35,12 +35,14 @@ import { isNearBottom, jumpLabel, unseenCount } from '../lib/follow-latest';
 import { replyAnnouncement } from '../lib/announce';
 import { readViewChoice, writeViewChoice } from '../lib/view-state';
 import { fidelityLine, restoreInFlight, restoreSentence, restoreTone } from '../lib/restore-status';
+import { ACCESS_LOADING, allows, normaliseAccess } from '../lib/capabilities';
 import { PairingDialog } from '../components/pairing-dialog';
 import { Composer } from '../components/ws/composer';
 import { Drawer, Icon, PATH } from '../components/ws/primitives';
 import { Turn } from '../components/ws/turn';
 import { StudioView } from '../components/ws/studio-view';
 import { StudioActivity } from '../components/ws/studio-activity';
+import { FilesPanel } from '../components/ws/files-panel';
 import { PlaytestCard } from '../components/ws/playtest-card';
 import { ConnectStudio } from '../components/ws/connect-studio';
 import { EmptyState } from '../components/empty-state';
@@ -70,9 +72,9 @@ const SUGGESTIONS = [
  * this build no longer recognises" the same state — which is precisely the distinction the
  * validation exists to keep.
  */
-type Drawer = null | 'checkpoints' | 'memory' | 'credits' | 'search' | 'history';
-type DrawerName = 'none' | 'checkpoints' | 'memory' | 'credits' | 'search' | 'history';
-const DRAWERS = ['none', 'checkpoints', 'memory', 'credits', 'search', 'history'] as const;
+type Drawer = null | 'checkpoints' | 'memory' | 'credits' | 'search' | 'history' | 'files';
+type DrawerName = 'none' | 'checkpoints' | 'memory' | 'credits' | 'search' | 'history' | 'files';
+const DRAWERS = ['none', 'checkpoints', 'memory', 'credits', 'search', 'history', 'files'] as const;
 
 export function WorkspacePage() {
   const params = useParams<{ id: string }>();
@@ -175,6 +177,22 @@ export function WorkspacePage() {
     enabled: projectId.length > 0,
   });
   const sourcePolicy = personal.data?.preferences.asset_sources ?? null;
+
+  //[[ WHAT THIS PERSON MAY DO HERE, ANSWERED BY THE SERVER.
+  //
+  //   Asked only when the files drawer is open, because that is the only control on this route
+  //   whose availability depends on it, and a project's access check is not worth a request on
+  //   every workspace load for everyone who never opens it.
+  //
+  //   `normaliseAccess` drops a role or capability this build does not know rather than keeping
+  //   it, and `allows` answers false for both 'loading' and 'unavailable' — unknown is never yes.
+  //   So the window before this resolves shows a read-only panel, not a permissive one. ]]
+  const accessQuery = useQuery({
+    queryKey: ['project-access', projectId],
+    queryFn: () => fetchProjectAccess(projectId),
+    enabled: projectId.length > 0 && drawer === 'files',
+  });
+  const access = accessQuery.data ? normaliseAccess(accessQuery.data) : ACCESS_LOADING;
 
   const saveSources = async (policy: AssetSourcePolicy) => {
     if (!userId) throw new Error('not signed in');
@@ -318,6 +336,13 @@ export function WorkspacePage() {
       keywords: ['history', 'restore', 'undo'],
       hint: shortcutLabel(SHORTCUTS.checkpoints),
       run: () => setDrawer('checkpoints'),
+    },
+    {
+      id: 'ws-files',
+      title: "This project's files",
+      section: 'Project',
+      keywords: ['files', 'notes', 'versions', 'revert', 'put back', 'history'],
+      run: () => setDrawer('files'),
     },
     {
       id: 'ws-history',
@@ -929,6 +954,20 @@ export function WorkspacePage() {
           for everyone who never opens it. */}
       <Drawer open={drawer === 'history'} onClose={() => setDrawer(null)} title="What Apple did in Studio">
         {drawer === 'history' && <StudioActivity projectId={projectId} onOpenRun={jumpToMessage} />}
+      </Drawer>
+
+      {/* THE FILE HISTORY THAT NOBODY COULD OPEN.
+
+          FilesPanel renders the workspace store's real per-file versions and the per-version "Put
+          back" — the only selective reversal this product has. A repo-wide grep for FilesPanel
+          found its own definition and a comment: nothing rendered it, so the whole thing was as
+          good as absent, worker route and live test and all.
+
+          `canEdit` comes from the SERVER's answer about this person, not from an assumption:
+          `allows` is false while the check is still in flight and false when it failed, so a
+          viewer is never shown a Put back the worker is going to refuse. */}
+      <Drawer open={drawer === 'files'} onClose={() => setDrawer(null)} title="This project's files">
+        {drawer === 'files' && <FilesPanel projectId={projectId} canEdit={allows(access, 'build')} />}
       </Drawer>
 
       <Drawer open={drawer === 'credits'} onClose={() => setDrawer(null)} title="Credits and clearance">
