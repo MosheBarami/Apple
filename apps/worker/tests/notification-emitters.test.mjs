@@ -186,8 +186,12 @@ const NO_EMITTER = [
   // Nothing in roblox-upload.ts, asset-import.ts, user-credentials.ts or gateway.ts passes this
   // kind to notify(), so an Open Cloud publish rejected for a dead key still tells nobody.
   'integration_failure',
-  // There is no scheduled-job runner in this worker, so there is no failure for it to report.
-  'automation_failed',
+  // 'automation_failed' WAS HERE AND IS NOT ANY MORE. When this test was written there was no
+  // scheduled-job runner, so the kind was apparatus for an event nothing could raise; the
+  // automation runner in index.ts now notifies the project owner on a fire that did not start,
+  // keyed on the EXECUTION rather than the automation. The list shrank, which is the direction it
+  // is allowed to move — leaving the entry in would have made this file assert that a working
+  // emitter does not exist.
 ];
 
 test('every kind either has a producer, or is named here as having none', () => {

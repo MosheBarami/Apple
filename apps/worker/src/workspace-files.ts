@@ -47,7 +47,10 @@ export type WorkspaceOpCode =
   | 'not_in_trash'
   | 'no_such_version'
   | 'same_path'
-  | 'too_large';
+  | 'too_large'
+  // The BODY was wrong, not the path. Telling someone "that file name cannot be used" about a
+  // missing payload sends them to fix the one field that was correct.
+  | 'bad_content';
 
 export type WorkspaceOp<T> = ({ ok: true } & T) | { ok: false; code: WorkspaceOpCode; error: string };
 
@@ -200,6 +203,45 @@ export async function copyWorkspaceFile(
   return { ok: true, from: paths.from, to: paths.to, bytes: written.bytes, historyCopied: false };
 }
 
+/**
+ * Put text at a path, for a PERSON rather than for the agent.
+ *
+ * `workspace_write` (webtools.ts) is the agent's door and it replaces whatever is there, which is
+ * right for a tool that has just read the file it is editing. A person picking a file off their own
+ * disk has not read anything, and the name they are carrying — `plan.md` — is exactly the name Apple
+ * is most likely to have used. So this refuses an occupied path by default, the same rule copy and
+ * move already keep, and `overwrite` is how the user says they meant it.
+ *
+ * The overwrite is safe to offer because the store archives the previous text on every write: the
+ * replaced version stays readable and revertible. An upload that destroyed the agent's work with no
+ * way back would be a worse feature than no upload.
+ *
+ * The size is measured in BYTES of UTF-8, which is what the store holds and what the limit is
+ * stated in. `content.length` would let a document of em dashes and emoji past a ceiling it is over.
+ */
+export async function writeWorkspaceFile(
+  store: WorkspaceStore,
+  pathRaw: string,
+  content: unknown,
+  opts: { overwrite?: boolean } = {},
+): Promise<WorkspaceOp<{ path: string; bytes: number; version: number; created: boolean }>> {
+  const verdict = checkWorkspacePath(pathRaw ?? '');
+  if (!verdict.ok) return fail('bad_path', verdict.detail);
+  if (typeof content !== 'string') return fail('bad_content', 'the file has to arrive as text');
+  const bytes = new TextEncoder().encode(content).length;
+  if (bytes > WORKSPACE_MAX_BYTES) {
+    return fail('too_large', `${bytes} bytes is past the ${WORKSPACE_MAX_BYTES}-byte limit for one workspace file`);
+  }
+  // Asked before the write, because `write` replaces: "was something there" is a question that
+  // stops having an answer the moment the write lands.
+  const existing = await store.read(verdict.path);
+  if (existing && opts.overwrite !== true) {
+    return fail('occupied', `there is already a file at ${verdict.path}`);
+  }
+  const written = await store.write(verdict.path, content);
+  return { ok: true, path: verdict.path, bytes: written.bytes, version: written.version, created: !existing };
+}
+
 /** Delete, recoverably. The result carries the deadline, so the UI never has to guess it. */
 export async function deleteWorkspaceFile(
   store: WorkspaceStore,
@@ -284,6 +326,7 @@ export async function freeCopyPath(store: WorkspaceStore, pathRaw: string, limit
 export const WORKSPACE_OP_STATUS: Record<WorkspaceOpCode, 400 | 404 | 409 | 413> = {
   bad_path: 400,
   bad_destination: 400,
+  bad_content: 400,
   not_found: 404,
   not_in_trash: 404,
   no_such_version: 404,

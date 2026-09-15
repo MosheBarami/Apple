@@ -46,8 +46,16 @@ export interface Milestone {
   /** Prerequisites that have not landed. The reason a blocked milestone is blocked. */
   blockedBy: string[];
   complexity: MilestoneComplexity;
-  /** Effort in the units the product bills in, in the worker's own words. */
+  /** Effort in runs, in the worker's own words. Runs are not what anyone is billed in. */
   effort: string;
+  /**
+   * What it costs, derived by the worker from `runs × the mode's typical Credits`.
+   *
+   * Null when the worker could not derive it. Rendered through `creditRangeLabel`, which prints
+   * nothing at all rather than a zero — see the refusals documented there.
+   */
+  creditsLow?: number | null;
+  creditsHigh?: number | null;
   detected: Detected;
   /** What the scan saw that produced `detected`. */
   evidence: string[];
@@ -364,6 +372,36 @@ export function effortLabel(effort: string | null | undefined): string {
     .replace(/\bClay\b/g, 'Plan')
     .replace(/\bStone\b/g, 'Agent')
     .replace(/\bRune\b/g, 'Super Agent');
+}
+
+/**
+ * The milestone's cost, in the unit the user is billed in.
+ *
+ * `effortLabel` above says how much WORK a milestone is — "about two Agent runs". Nobody is
+ * charged in runs. The worker derives the credit range from the same `runs` that line is built
+ * from, through `creditRangeForRuns` in @golem/shared, so the two can never disagree.
+ *
+ * THE THREE REFUSALS, each of which would otherwise print a price that is not true:
+ *
+ *   - an absent bound renders NOTHING. The worker sends null when it could not derive a figure,
+ *     and a card that turned that into "0 Credits" would quote a price of nothing for work that
+ *     costs something. A missing chip is honest; a zero is not.
+ *   - a backwards range renders nothing rather than being quietly reordered, because reordering
+ *     hides a worker bug behind a plausible-looking chip.
+ *   - a range whose ends are equal renders as ONE number. Plan is published as "2", not "2-2",
+ *     and printing "2–2 Credits" would invent a spread the measurement does not have.
+ *
+ * An en dash, not a hyphen: this is a range, and it is read by a person.
+ */
+export function creditRangeLabel(
+  low: number | null | undefined,
+  high: number | null | undefined,
+): string {
+  if (typeof low !== 'number' || typeof high !== 'number') return '';
+  if (!Number.isFinite(low) || !Number.isFinite(high)) return '';
+  if (low <= 0 || high < low) return '';
+  const unit = high === 1 ? 'Credit' : 'Credits';
+  return low === high ? `${low} ${unit}` : `${low}–${high} ${unit}`;
 }
 
 /**

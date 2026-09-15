@@ -36,6 +36,14 @@ export const SETTING_FIELDS: readonly SettingField[] = [
   { id: 'email-address', title: 'Email address', section: 'Security', keywords: ['mail', 'address', 'change email', 'verified', 'confirm'] },
   { id: 'password', title: 'Password', section: 'Security', keywords: ['change password', 'passphrase', 'credentials', 'reset'] },
   { id: 'sign-out-everywhere', title: 'Sign out everywhere', section: 'Security', keywords: ['sessions', 'devices', 'revoke', 'logout all', 'stolen', 'lost laptop'] },
+  {
+    id: 'security-history',
+    title: 'Account history',
+    section: 'Security',
+    // The words someone types when they are worried, which are not the words in the title. Somebody
+    // who has just seen a key they do not recognise searches "audit" or "alerts", never "history".
+    keywords: ['security history', 'audit', 'log', 'recent activity', 'activity', 'alerts', 'events', 'notifications', 'who signed in', 'suspicious'],
+  },
   { id: 'appearance', title: 'Appearance', section: 'Appearance', keywords: ['theme', 'dark', 'light', 'night', 'colour', 'color', 'system'] },
   { id: 'motion', title: 'Motion', section: 'Appearance', keywords: ['animation', 'reduce', 'accessibility', 'vestibular', 'movement'] },
   { id: 'region', title: 'Regional formatting', section: 'Language and region', keywords: ['locale', 'date format', 'number format', 'decimal', 'separator', 'language'] },

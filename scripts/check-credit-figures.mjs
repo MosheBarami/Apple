@@ -259,6 +259,51 @@ for (const [mode, rows] of Object.entries(RANGE)) {
   }
 }
 
+// THE MILESTONE PRICE MUST BE DERIVED, NOT TYPED.
+//
+// The roadmap card shows a milestone's cost as a Credit range: `runs × the mode's typical
+// Credits`. That is a fourth surface for a number this file already tracks through three, and
+// the whole reason this guard exists is that the same figure, typed into more than one place,
+// drifted in three of them inside a single component.
+//
+// So what is checked is not the arithmetic — milestone-credits.test.mjs does that — but that
+// there is still only ONE place a price is written down. `creditRangeForRuns` must read
+// MODE_INFO, and must not contain a published figure of its own; roadmap.ts must call it rather
+// than multiply by hand.
+const rangeFn = shared.slice(shared.indexOf('export function creditRangeForRuns'));
+if (!rangeFn || rangeFn === shared) {
+  problems.push('packages/shared no longer exports creditRangeForRuns — the roadmap card has no derivation to use');
+} else {
+  const body = rangeFn.slice(0, rangeFn.indexOf('\n}\n'));
+  if (!/MODE_INFO\[/.test(body)) {
+    problems.push('creditRangeForRuns does not read MODE_INFO — the milestone price is a second copy free to drift');
+  }
+  // Only the MULTI-DIGIT published figures are searched for, and the single-digit ones are
+  // deliberately not. `2` and `4` are indistinguishable from the arity literals a parser
+  // legitimately contains (`parts.length > 2`), so looking for them finds the parser and reports
+  // it as a hard-coded price — which is how this check first went red against correct code. The
+  // limitation is stated rather than papered over: a hard-coded '2' here would not be caught by
+  // this line, and milestone-credits.test.mjs is what would catch the wrong answer it produced.
+  const published = new Set();
+  for (const mode of ['clay', 'stone', 'rune']) {
+    const line = new RegExp(`${mode}: \\{[^}]*typicalCredits: '([^']+)'`).exec(shared);
+    for (const n of (line?.[1] ?? '').split('-')) if (n.trim().length >= 2) published.add(n.trim());
+  }
+  if (published.size === 0) {
+    problems.push('no multi-digit typicalCredits figure was parsed, so the hard-coding check below is vacuous');
+  }
+  for (const n of published) {
+    if (new RegExp(`\\b${n}\\b`).test(body)) {
+      problems.push(`creditRangeForRuns hard-codes the published figure ${n}; it must read it from MODE_INFO`);
+    }
+  }
+}
+
+const roadmapSrc = stripComments(read('apps/worker/src/roadmap.ts'));
+if (/creditsLow:/.test(roadmapSrc) && !/creditRangeForRuns\(/.test(roadmapSrc)) {
+  problems.push('apps/worker/src/roadmap.ts sets a milestone credit figure without going through creditRangeForRuns');
+}
+
 // The dead constant must not come back: nothing charges from it, and its comment used
 // to say otherwise.
 if (/creditsPerRequest/.test(shared)) {

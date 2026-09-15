@@ -58,6 +58,9 @@ export const ICON_PATH = {
   usage: 'M5 20V10m7 10V4m7 16v-7',
   admin: 'M12 3l7 4v5c0 4.4-3 8-7 9-4-1-7-4.6-7-9V7z',
   lab: 'M9 3h6M10 3v6l-5 8.5A2 2 0 0 0 6.7 21h10.6a2 2 0 0 0 1.7-3.5L14 9V3',
+  /** Members and sharing. Two figures, the second half-drawn behind the first — one head
+   *  and shoulders reads as "account", which already means the profile menu. */
+  people: 'M9.5 11.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM3 20a6.5 6.5 0 0 1 13 0M16.5 5.2a3.5 3.5 0 0 1 0 6.6M18 14.2a6.5 6.5 0 0 1 3 5.8',
   rail: 'M3 4h18v16H3zM15 4v16',
   surface: 'M3 4h18v16H3zM3 10h18',
 } as const;

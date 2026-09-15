@@ -256,7 +256,8 @@ export type FileOpCode =
   | 'not_in_trash'
   | 'no_such_version'
   | 'same_path'
-  | 'too_large';
+  | 'too_large'
+  | 'bad_content';
 
 /**
  * What to show the user when the worker refuses.
@@ -285,6 +286,9 @@ export function refusalCopy(code: string | undefined, serverSaid: string): strin
       return 'That is the name it already has.';
     case 'too_large':
       return 'That file is past the size limit for this workspace.';
+    case 'bad_content':
+      // Deliberately says nothing about the file's NAME, which is the one field the user got right.
+      return 'That file could not be read as text. Only text files can be added here.';
     default:
       return serverSaid;
   }
@@ -297,3 +301,89 @@ export const deleteConfirm = (path: string, retentionDays: number): string =>
 /** The sentence on the revert confirmation. */
 export const revertConfirm = (path: string, version: number): string =>
   `Put version ${version} of ${path} back? The current text is kept as its own version, so this can be undone.`;
+
+
+/* -------------------------------------------------------------------- adding --- */
+
+/**
+ * CAN THIS FILE GO IN, AND UNDER WHAT NAME — asked before the picker's click does anything.
+ *
+ * The workspace's three rules (a segment shape, an extension list, a per-file ceiling) lived only
+ * in the worker, so a user met all three as a refusal AFTER choosing a file, and the sentence came
+ * back about a path they had never typed. This is the same rules, stated first. It does not replace
+ * the worker's check — the client is not an authority on anything — it stops the round trip whose
+ * only outcome was a confusing no.
+ *
+ * A NAME OFF SOMEBODY'S DISK IS NOT A PATH. "Level Data (final).csv" has three characters the
+ * store's own segment rule refuses. Rewriting it is the only way to accept the file at all, so the
+ * rewrite is REPORTED: `renamed` is what lets the panel say what the file will be called, instead
+ * of saving it under a name the user cannot find again.
+ */
+export interface UploadLimits {
+  maxFileBytes: number;
+  extensions: string[];
+}
+
+export type UploadPlan =
+  | { ok: true; path: string; name: string; renamed: boolean }
+  | { ok: false; why: string };
+
+/** One path segment the store will accept, or null when the name has nothing usable in it. */
+function segmentFrom(rawName: string): string | null {
+  const dot = rawName.lastIndexOf('.');
+  const stem = dot > 0 ? rawName.slice(0, dot) : rawName;
+  const ext = dot > 0 ? rawName.slice(dot).toLowerCase() : '';
+  const cleaned = stem
+    .replace(/[^A-Za-z0-9._-]+/g, '-')
+    .replace(/-{2,}/g, '-')
+    // The store's segment rule requires the FIRST character to be a letter or a digit, so a leading
+    // dash or dot is stripped rather than left to be refused one layer down.
+    .replace(/^[^A-Za-z0-9]+/, '')
+    .replace(/[-.]+$/, '');
+  if (!cleaned) return null;
+  return `${cleaned}${ext}`;
+}
+
+export function uploadCheck(file: { name: string; size: number }, limits: UploadLimits, prefix: string): UploadPlan {
+  const raw = (file.name ?? '').trim();
+  if (!raw) return { ok: false, why: 'That file has no name.' };
+
+  const dot = raw.lastIndexOf('.');
+  const ext = dot > 0 ? raw.slice(dot).toLowerCase() : '';
+  if (!ext || !limits.extensions.includes(ext)) {
+    // The list is in the sentence. Telling someone "no" without telling them "yes, these" is half
+    // a refusal, and the list is the server's own rather than a copy kept here.
+    return { ok: false, why: `The workspace holds text files only: ${limits.extensions.join(' ')}.` };
+  }
+
+  // PAST the limit, not AT it: the worker refuses `bytes > max`, and a client that refused one byte
+  // earlier would be a second, stricter limit that nobody declared and no error explains.
+  if (file.size > limits.maxFileBytes) {
+    return { ok: false, why: `That file is ${kb(file.size)}. The limit is ${kb(limits.maxFileBytes)} per file.` };
+  }
+
+  const name = segmentFrom(raw);
+  if (!name) return { ok: false, why: 'That file name has nothing usable in it — letters, numbers, dashes and dots.' };
+
+  const folder = prefix ? (prefix.endsWith('/') ? prefix : `${prefix}/`) : '';
+  return { ok: true, path: `${folder}${name}`, name, renamed: name !== raw };
+}
+
+/**
+ * Does this text look like it was never text?
+ *
+ * The extension allowlist cannot catch a `.txt` full of binary: the name is legal and the bytes are
+ * not. `File.text()` decodes as UTF-8 regardless, turning every undecodable byte into U+FFFD, so the
+ * upload would "succeed" and store a file that cannot be read. A NUL is decisive on its own; a page
+ * of replacement characters is a decode that failed rather than a document with an odd glyph in it.
+ */
+export function looksBinary(text: string): boolean {
+  if (text === '') return false;
+  if (text.includes('\u0000')) return true;
+  const replacements = (text.match(/\uFFFD/g) ?? []).length;
+  return replacements > 0 && replacements / text.length > 0.02;
+}
+
+/** The sentence on the replace confirmation. It says where the replaced text goes. */
+export const replaceConfirm = (path: string): string =>
+  `There is already a file at ${path}. Replace it? The text that is there now is kept as an earlier version, so this can be undone.`;
