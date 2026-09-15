@@ -414,7 +414,18 @@ async function kenney() {
         source: 'kenney',
         sourceUrl: `https://kenney.nl/assets/${s}`,
         licence: 'Creative Commons CC0',
-        licenceUrl: 'http://creativecommons.org/publicdomain/zero/1.0/',
+        //[[ https, AND THE ONE CHARACTER HERE COST 56,718 ASSETS.
+        //
+        //   Kenney's own licence.txt writes the CC0 deed as `http://`, so this row was copied from
+        //   it verbatim — which reads like fidelity and is not. `validateProvenance` requires
+        //   https, so the entire Kenney harvest was refused at ingest: "written 453,598 · rejected
+        //   57,049", every rejection the same sentence, and the biggest curated pack in the
+        //   library — the one the whole "not a Creator Store scrape" argument rests on — never
+        //   reached D1.
+        //
+        //   creativecommons.org redirects http to https and serves the identical deed, so this is
+        //   the same document correctly addressed, not a different claim about the licence.
+        licenceUrl: 'https://creativecommons.org/publicdomain/zero/1.0/',
         author: 'Kenney',
         tags: ['kenney', 'pack', ...title.split(/\s+/)],
         download: zip,

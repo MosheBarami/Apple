@@ -105,6 +105,9 @@ const parts = [
   // The three numbers a visitor is invited to check. One of them was false on both halves
   // while a comment above it named a test that had never been written.
   { label: 'check-proof-figures', ...run('node', ['scripts/check-proof-figures.mjs']) },
+  // 57,049 rows were refused by an ingest that ran for half an hour before saying so, and the
+  // rejects print at the end. This predicts the run in seconds, per source, before it starts.
+  { label: 'check-harvest-licences', ...run('node', ['scripts/check-harvest-licences.mjs']) },
   { label: 'pnpm -r test', ...run('pnpm', ['-r', 'test']) },
 ];
 // Skipped rather than passed vacuously if the directory holds none: an empty glob would make
