@@ -61,7 +61,13 @@ export interface Deprecation {
 }
 
 export interface PublicRoute {
-  method: 'GET' | 'POST';
+  /**
+   * DELETE is here for one reason: the MCP endpoint has to answer 405 to it. MCP revisions before
+   * 2026-07-28 ended a session by DELETEing the endpoint, and this server has no sessions to end.
+   * Answering 404 instead would tell a client on an old revision that the endpoint does not exist,
+   * which is a different and wrong thing to learn.
+   */
+  method: 'GET' | 'POST' | 'DELETE';
   /** Hono-style path with `:param` segments. */
   path: string;
   /**
@@ -103,6 +109,23 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
   { method: 'POST', path: '/v1/projects/:id/runs', scope: 'runs:write', summary: 'Start an agent run from a text instruction.', idempotent: true },
   { method: 'GET', path: '/v1/projects/:id/runs/current', scope: 'runs:read', summary: 'The run in flight, or null when idle.' },
   { method: 'GET', path: '/v1/projects/:id/events', scope: 'events:read', summary: 'Server-sent event stream of run and Studio state changes.', sse: true },
+
+  /**
+   * MCP, over Streamable HTTP.
+   *
+   * THE SCOPE IS `null` AND THAT IS A DECISION, not an omission. Every other row here is one
+   * operation, so one scope describes it. This row is a JSON-RPC endpoint that multiplexes a
+   * handshake, a tool list and a tool call, and those do not demand the same thing: listing tools
+   * reveals only the shape of the surface, while calling one reads a customer's place. A single
+   * scope on the path would therefore have to be the widest of them, applied to all of them.
+   *
+   * So the path demands a VALID KEY and the handler demands the rest: `tools/call` runs the same
+   * `authorizeKey` the middleware runs, with the called tool's own scope and the project id out of
+   * the arguments. mcp.test.mjs asserts that it does, because this row is only safe while it does.
+   */
+  { method: 'POST', path: '/v1/mcp', scope: null, summary: 'Model Context Protocol endpoint (Streamable HTTP, 2026-07-28). Read-only tools over a granted project.' },
+  { method: 'GET', path: '/v1/mcp', scope: null, summary: 'Answers 405: this endpoint has no server-initiated stream and does not implement the deprecated HTTP+SSE transport.' },
+  { method: 'DELETE', path: '/v1/mcp', scope: null, summary: 'Answers 405: MCP sessions were removed in 2026-07-28 and this server never issues one.' },
 ];
 
 export interface RouteMatch {

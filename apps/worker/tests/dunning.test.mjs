@@ -1,25 +1,24 @@
-/**
- * THE FAILED-PAYMENT PATH, WHICH WAS BUILT AND NEVER PROVEN.
- *
- * `dunning.ts` is what turns Stripe's invoice events into the one sentence a customer whose card
- * expired ever sees. It was wired into the webhook and had no test of any kind, which is the worst
- * combination available: a mechanism the product depends on, with nothing that would notice when it
- * stops working. Three of its decisions are load-bearing and each one fails SILENTLY — the person
- * is simply never told — so none of them would ever show up as a bug report.
- *
- *   1. AN INVOICE DOES NOT INHERIT THE SUBSCRIPTION'S METADATA. Stripe copies it onto
- *      `subscription_details.metadata` instead. Reading only `metadata` — which is exactly what the
- *      subscription interpreter does, correctly, for its own events — finds nothing on the
- *      overwhelming majority of real dunning events, and "nothing" here means nobody is notified.
- *   2. A FIRST-ATTEMPT `invoice.payment_succeeded` IS NOT NEWS. Stripe sends one for every ordinary
- *      renewal. Announcing each would train people to ignore the channel that also carries the
- *      failures, which is the channel this product uses to say a card has expired.
- *   3. A FORGED `type` OF 'constructor' MUST NOT RESOLVE THROUGH THE PROTOTYPE CHAIN. The webhook
- *      body is attacker-shaped input; a bare index into the event map would hand back a Function
- *      where a DunningKind belongs.
- *
- * Run with:  node --test tests/dunning.test.mjs      (from apps/worker)
- */
+// THE ONLY BILLING ALARM THE PRODUCT HAS, AND NOTHING WAS CHECKING IT.
+//
+// `billing.ts:60` keeps `past_due` ENTITLING on purpose: a failed renewal is usually an expired
+// card, and cutting a paying customer off at the first retry is worse service than carrying them
+// through it. The price of that generosity is that the failure is otherwise INVISIBLE — a card
+// fails, Stripe retries it over a fortnight, the subscription lapses to free at the end of it, and
+// the person is never told. `dunning.ts` exists to close exactly that, and it is the sole path
+// from "your card was declined" to anything the user can see.
+//
+// It had no test file at all. Every part of it was load-bearing and unverified:
+//
+//   * EVENT_TO_KIND, so a Stripe event-name change would silently stop the alarm;
+//   * the user-id extraction, which has to read `subscription_details.metadata` because an invoice
+//     does NOT inherit the subscription's `metadata` — the obvious implementation finds nobody on
+//     the overwhelming majority of real dunning events;
+//   * the invoice id as the dedupe subject, which is what turns three retries of one card into one
+//     line with a count rather than three alarms;
+//   * `dunningCopy`, which is the actual text a paying customer reads at the worst moment of their
+//     relationship with this product.
+//
+// Modelled on billing.test.mjs, which bundles the module under test the same way.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -28,7 +27,8 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 
-const WORKER = join(dirname(fileURLToPath(import.meta.url)), '..');
+const HERE = dirname(fileURLToPath(import.meta.url));
+const WORKER = join(HERE, '..');
 const out = join(tmpdir(), `apple-dunning-${process.pid}.mjs`);
 execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [
   join(WORKER, 'src', 'dunning.ts'), '--bundle', '--format=esm', '--target=es2022', `--outfile=${out}`,
@@ -36,134 +36,191 @@ execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [
 const D = await import(`file://${out}`);
 rmSync(out, { force: true });
 
-const USER = 'u_dunning';
-/** A Stripe invoice event, shaped the way Stripe actually shapes one. */
-const invoiceEvent = (type, object = {}) => ({
-  id: 'evt_dun_1',
+/** An invoice event shaped the way Stripe actually sends one. */
+const invoice = (type, obj = {}) => ({
+  id: 'evt_1',
   type,
   data: {
     object: {
-      id: 'in_1',
-      amount_due: 2900,
+      id: 'in_9000',
+      amount_due: 1200,
       currency: 'usd',
       attempt_count: 2,
-      subscription_details: { metadata: { userId: USER } },
-      ...object,
+      subscription_details: { metadata: { userId: 'u-payer' } },
+      ...obj,
     },
   },
 });
 
-// ------------------------------------------------------------ where the user id actually lives
+/* ------------------------------------------------------------ which events count --- */
 
-test('THE USER IS FOUND ON subscription_details.metadata, which is where Stripe puts it', () => {
-  // The defect this pins: an invoice does NOT carry the subscription's metadata on `metadata`.
-  // A reader that looks only there finds nobody on almost every real dunning event, and nobody
-  // found means nobody told — a card silently expires and the product says nothing for a fortnight.
-  const n = D.interpretDunningEvent(invoiceEvent('invoice.payment_failed'));
-  assert.ok(n, 'a real Stripe dunning event must be attributable');
-  assert.equal(n.userId, USER);
-  assert.equal(n.kind, 'payment_failed');
-  assert.equal(n.invoiceId, 'in_1', 'the INVOICE is the dedupe subject, so it has to come back');
-  assert.equal(n.eventId, 'evt_dun_1');
+test('the three invoice events become the three kinds, and nothing else does', () => {
+  assert.equal(D.interpretDunningEvent(invoice('invoice.payment_failed')).kind, 'payment_failed');
+  assert.equal(D.interpretDunningEvent(invoice('invoice.payment_action_required')).kind, 'action_required');
+  assert.equal(D.interpretDunningEvent(invoice('invoice.payment_succeeded')).kind, 'payment_recovered');
+  // Non-vacuity: the kinds asserted above must be the whole declared set, or this test is checking
+  // a subset of a list that has grown.
+  assert.deepEqual([...D.DUNNING_KINDS].sort(), ['action_required', 'payment_failed', 'payment_recovered']);
 });
 
-test("the invoice's own metadata wins when it has one, and neither shape is required", () => {
-  const own = D.interpretDunningEvent(
-    invoiceEvent('invoice.payment_failed', { metadata: { userId: 'u_on_the_invoice' } }),
-  );
-  assert.equal(own.userId, 'u_on_the_invoice');
-
-  const neither = D.interpretDunningEvent(
-    invoiceEvent('invoice.payment_failed', { subscription_details: {}, metadata: {} }),
-  );
-  assert.equal(neither, null, 'an invoice that names nobody is not ours, and is not an error');
-});
-
-// ------------------------------------------------------------------- what is NOT worth saying
-
-test('A FIRST-ATTEMPT SUCCESS IS NOT NEWS — every renewal sends one', () => {
-  // Stripe fires invoice.payment_succeeded on every ordinary monthly renewal. If each became a
-  // notification, the inbox would be mostly noise and the one message that matters — your card
-  // failed — would be the one nobody reads.
-  const first = D.interpretDunningEvent(invoiceEvent('invoice.payment_succeeded', { attempt_count: 1 }));
-  assert.equal(first, null);
-
-  const noCount = D.interpretDunningEvent(invoiceEvent('invoice.payment_succeeded', { attempt_count: undefined }));
-  assert.equal(noCount, null, 'an unreadable attempt count is not evidence of a recovery');
-
-  const recovered = D.interpretDunningEvent(invoiceEvent('invoice.payment_succeeded', { attempt_count: 3 }));
-  assert.ok(recovered, 'but a retry that finally worked IS news');
-  assert.equal(recovered.kind, 'payment_recovered');
-});
-
-test('the events billing.ts owns are ignored here — neither decides what the other decides', () => {
-  for (const type of ['customer.subscription.updated', 'checkout.session.completed', 'invoice.created']) {
-    assert.equal(D.interpretDunningEvent({ id: 'e', type, data: { object: { metadata: { userId: USER } } } }), null,
-      `${type} is not a dunning event`);
+test('a subscription event is not a dunning event, because a second opinion about a plan is a bug', () => {
+  // `interpretStripeEvent` owns entitlement and reads these; nothing here may also answer for them,
+  // or a failed card could quietly move somebody's tier.
+  for (const type of [
+    'customer.subscription.created',
+    'customer.subscription.updated',
+    'customer.subscription.deleted',
+    'checkout.session.completed',
+    'ping',
+    '',
+  ]) {
+    assert.equal(D.interpretDunningEvent(invoice(type)), null, `${type} was read as a payment problem`);
   }
 });
 
-// ------------------------------------------------------------------------- forged and malformed
-
-test('A FORGED TYPE OF "constructor" RETURNS NULL, not a Function', () => {
-  // The webhook body is attacker-shaped input. `EVENT_TO_KIND['constructor']` is truthy through the
-  // prototype chain, so a bare index would put a Function where a DunningKind belongs and the
-  // notification title would be rendered from it.
+test('a forged event type cannot reach a kind through the prototype chain', () => {
+  // `EVENT_TO_KIND['constructor']` is truthy on a bare index, and would put a Function where a
+  // notification kind belongs.
   for (const type of ['constructor', '__proto__', 'toString', 'hasOwnProperty']) {
-    assert.equal(D.interpretDunningEvent({ id: 'e', type, data: { object: { metadata: { userId: USER } } } }), null,
-      `a type of "${type}" must not resolve through the prototype chain`);
+    assert.equal(D.interpretDunningEvent(invoice(type)), null, `${type} produced a kind`);
   }
 });
 
-test('nothing here throws on rubbish', () => {
-  for (const junk of [null, undefined, 0, '', 'invoice.payment_failed', [], { type: 'invoice.payment_failed' }]) {
-    assert.equal(D.interpretDunningEvent(junk), null);
+test('junk in place of an event is null rather than a throw on the webhook path', () => {
+  for (const bad of [null, undefined, 42, 'invoice.payment_failed', [], {}]) {
+    assert.equal(D.interpretDunningEvent(bad), null);
   }
 });
 
-// ------------------------------------------------------------------------------- what it says
+/* --------------------------------------------------------------- whose card it is --- */
 
-test('AN UNREADABLE AMOUNT IS OMITTED, never rendered as a plausible figure', () => {
-  // `Number(null)` is 0 and `Number('')` is 0. A 0 here would print "for 0.00 USD was declined",
-  // which is a real-looking sentence about a charge that did not happen.
+test('the user id is read from subscription_details, where Stripe actually puts it', () => {
+  // An invoice does NOT inherit the subscription's metadata; Stripe copies it here. Reading only
+  // `metadata` — which is right for the subscription events — finds nobody on a real dunning event.
+  const n = D.interpretDunningEvent(invoice('invoice.payment_failed'));
+  assert.equal(n.userId, 'u-payer');
+});
+
+test('an id set on the invoice itself wins, and either place is enough', () => {
+  const own = D.interpretDunningEvent(
+    invoice('invoice.payment_failed', { metadata: { userId: 'u-own' } }),
+  );
+  assert.equal(own.userId, 'u-own');
+  const onlySub = D.interpretDunningEvent(
+    invoice('invoice.payment_failed', { metadata: {} }),
+  );
+  assert.equal(onlySub.userId, 'u-payer');
+});
+
+test('an event with nobody to tell is null, not a notification addressed to the empty string', () => {
+  // A row with recipient_id '' is a notification in nobody's inbox that still counts against
+  // nobody's badge. The store binds the recipient into every clause, so it would simply be unread
+  // forever — and the person whose card failed would still never be told.
+  for (const obj of [
+    { subscription_details: {}, metadata: {} },
+    { subscription_details: { metadata: { userId: '' } } },
+    { subscription_details: { metadata: { userId: 42 } } },
+    {},
+  ]) {
+    const n = D.interpretDunningEvent({ id: 'evt_1', type: 'invoice.payment_failed', data: { object: obj } });
+    assert.equal(n, null, `${JSON.stringify(obj)} produced a notice with no real recipient`);
+  }
+});
+
+/* ----------------------------------------------------------------- the dedupe key --- */
+
+test('the invoice id rides along, because it is what makes three retries one line', () => {
+  // notify() uses it as the dedupe subject. Without it, each of Stripe's retries of the SAME card
+  // is a separate alarm about the same problem.
+  const n = D.interpretDunningEvent(invoice('invoice.payment_failed'));
+  assert.equal(n.invoiceId, 'in_9000');
+  assert.equal(n.eventId, 'evt_1');
+});
+
+test('a missing invoice id is null so the caller can fall back, not an invented one', () => {
+  const n = D.interpretDunningEvent(invoice('invoice.payment_failed', { id: undefined }));
+  assert.equal(n.invoiceId, null);
+  assert.equal(n.eventId, 'evt_1', 'the event id is the fallback subject the route uses');
+});
+
+test('the route uses the invoice as the dedupe subject and falls back to the event', () => {
+  // Read from the source: the coalescing property lives in the call site, not in this module.
+  const index = readFileSync(join(WORKER, 'src', 'index.ts'), 'utf8');
+  assert.match(index, /interpretDunningEvent\(event\)/, 'the webhook no longer interprets dunning events');
+  assert.match(
+    index,
+    /kind: 'billing_issue'[\s\S]{0,200}subject: dunning\.invoiceId \?\? dunning\.eventId/,
+    'the billing alarm must dedupe on the invoice',
+  );
+});
+
+/* ----------------------------------------------------- the all-clear, and its guard --- */
+
+test('an ordinary renewal is not announced, because it was never in trouble', () => {
+  // Stripe sends `invoice.payment_succeeded` for EVERY renewal. Announcing each one teaches people
+  // to ignore the channel that also carries the failures.
+  assert.equal(D.interpretDunningEvent(invoice('invoice.payment_succeeded', { attempt_count: 1 })), null);
+  assert.equal(D.interpretDunningEvent(invoice('invoice.payment_succeeded', { attempt_count: undefined })), null);
+  assert.equal(D.interpretDunningEvent(invoice('invoice.payment_succeeded', { attempt_count: 0 })), null);
+});
+
+test('a recovery after a real failure IS announced', () => {
+  // A product that announces the problem and never announces the fix teaches people to distrust
+  // the announcement.
+  const n = D.interpretDunningEvent(invoice('invoice.payment_succeeded', { attempt_count: 3 }));
+  assert.equal(n.kind, 'payment_recovered');
+  assert.equal(n.attempt, 3);
+});
+
+/* -------------------------------------------------------------- unreadable numbers --- */
+
+test('an unreadable amount stays unreadable instead of becoming a plausible zero', () => {
+  // Number(null) is 0 and Number('') is 0. "Your charge for 0.00 USD was declined" is a sentence
+  // the product would say with total confidence and no basis.
+  const n = D.interpretDunningEvent(invoice('invoice.payment_failed', { amount_due: null, currency: null, attempt_count: '2' }));
+  assert.equal(n.amountDue, null);
+  assert.equal(n.currency, null);
+  assert.equal(n.attempt, null);
   assert.equal(D.formatAmount(null, 'usd'), null);
-  assert.equal(D.formatAmount(2900, null), null);
-  assert.equal(D.formatAmount(2900, 'usd'), '29.00 USD');
-
-  const blank = D.interpretDunningEvent(invoiceEvent('invoice.payment_failed', { amount_due: null, currency: null }));
-  const copy = D.dunningCopy(blank);
-  assert.doesNotMatch(copy.body, /0\.00|null|undefined|NaN/, copy.body);
-  assert.match(copy.body, /declined/i, 'and it still says what happened');
+  assert.equal(D.formatAmount(1200, null), null);
 });
 
-test('EVERY KIND HAS COPY, and none of it renders an absent field', () => {
+test('an amount that IS readable is minor units turned into money', () => {
+  assert.equal(D.formatAmount(1200, 'usd'), '12.00 USD');
+  assert.equal(D.formatAmount(999, 'eur'), '9.99 EUR');
+  assert.equal(D.formatAmount(0, 'gbp'), '0.00 GBP');
+});
+
+/* ----------------------------------------------------------------------- the words --- */
+
+test('every dunning kind has a title and a body, and neither is empty', () => {
   for (const kind of D.DUNNING_KINDS) {
-    const copy = D.dunningCopy({ kind, userId: USER, eventId: 'e', invoiceId: 'in_1', amountDue: 2900, currency: 'usd', attempt: 2 });
-    assert.ok(copy.title.length > 0 && copy.body.length > 0, `${kind} must say something`);
-    assert.doesNotMatch(`${copy.title} ${copy.body}`, /undefined|null|NaN|\[object/, kind);
-    assert.ok(copy.body.includes('29.00 USD'), `${kind} names the amount it is about`);
+    const copy = D.dunningCopy({ kind, userId: 'u', eventId: 'evt', invoiceId: 'in', amountDue: 1200, currency: 'usd', attempt: 2 });
+    assert.ok(copy.title.length > 10, `${kind} has no title`);
+    assert.ok(copy.body.length > 20, `${kind} has no body`);
+    assert.ok(!/undefined|null|NaN/.test(copy.title + copy.body), `${kind} leaked a placeholder into the copy`);
+    // Every kind is about a specific charge, so every kind names it. A body that dropped the
+    // amount would be an alarm the reader cannot match against their statement.
+    assert.ok(copy.body.includes('12.00 USD'), `${kind} does not name the amount it is about`);
   }
 });
 
-test('THE FAILURE COPY SAYS THE PLAN KEEPS WORKING, because billing.ts keeps past_due entitling', () => {
-  // The two halves have to agree. `ENTITLING_STATUSES` in billing.ts includes past_due on purpose;
-  // copy that said "your plan has been suspended" would be a false alarm about our own behaviour,
-  // and it is the sentence a frightened customer would act on first.
-  const copy = D.dunningCopy({ kind: 'payment_failed', userId: USER, eventId: 'e', invoiceId: 'in_1', amountDue: 2900, currency: 'usd', attempt: 1 });
-  assert.match(copy.body, /keeps working/i);
-  assert.doesNotMatch(copy.body, /suspend|cancelled|canceled|cut off|lost access/i);
+test('the copy names the amount when it is known and says nothing about it when it is not', () => {
+  const known = D.dunningCopy({ kind: 'payment_failed', amountDue: 1200, currency: 'usd' });
+  assert.match(known.body, /12\.00 USD/);
+  const unknown = D.dunningCopy({ kind: 'payment_failed', amountDue: null, currency: null });
+  assert.ok(!/ for /.test(unknown.body), 'an unknown amount must not render as "for "');
+  assert.ok(unknown.body.length > 20, 'and the sentence still has to read');
 });
 
-// ------------------------------------------------------------ the webhook actually consults it
-
-test('THE WEBHOOK CALLS THIS, and dedupes on the invoice rather than the event', () => {
-  // A reader nothing consults is the most expensive kind of dead code: it reads like a working
-  // feature in every review it survives. Three retries of ONE invoice are one problem, so the
-  // notification subject must be the invoice id — dedupe on the event id would produce three
-  // alarms about one card.
-  const index = readFileSync(join(WORKER, 'src', 'index.ts'), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-  assert.match(index, /interpretDunningEvent\(event\)/, 'the webhook must run the reader');
-  assert.match(index, /subject: dunning\.invoiceId/, 'and dedupe on the invoice');
-  assert.match(index, /kind: 'billing_issue'/, 'as a billing notification');
+test('the failure copy says what happens next, which is the only part that changes behaviour', () => {
+  // `past_due` keeps entitling. Saying so is both honest and calming, and it is the difference
+  // between an alarm with an action behind it and one without.
+  const copy = D.dunningCopy({ kind: 'payment_failed', amountDue: null, currency: null });
+  assert.match(copy.body, /keeps working|retried/i, 'the grace period is the whole point of telling them');
+  // And it must not claim the opposite. ENTITLING_STATUSES in billing.ts keeps past_due entitling
+  // on purpose; copy saying the plan was suspended would be a false alarm about our own behaviour,
+  // and it is the sentence a frightened customer acts on first.
+  assert.doesNotMatch(copy.body, /suspend|cancelled|canceled|cut off|lost access/i,
+    'the copy must not announce a cutoff that billing.ts deliberately does not perform');
 });

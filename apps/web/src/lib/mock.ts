@@ -22,7 +22,7 @@ import type {
   StudioEventState,
   StudioFrame,
 } from '@golem/shared';
-import type { MeResponse, UsageDay } from './api';
+import type { MeResponse, StudioDiagnosticsResponse, UsageDay } from './api';
 import type { AttributionResponse } from '../components/ws/credits-model';
 import type { ProfileRow, ProjectRow } from './supabase';
 import { NOTIFICATION_KINDS, type InboxResponse, type NotificationRow } from './notification-inbox.ts';
@@ -377,6 +377,37 @@ export const mockStudioState: StudioEventState = {
 };
 
 /**
+ * The connection record, in mock mode: paired, connected, with a real clock on it.
+ *
+ * Coherent with mockStudioState above on purpose — the same place name and ids — because a fixture
+ * where the bound place and the open place disagree would render the mismatch warning on every
+ * design review and teach whoever is looking that the warning is decoration.
+ */
+export function mockDiagnostics(): StudioDiagnosticsResponse {
+  const paired = now - 6 * 864e5;
+  return {
+    link: {
+      paired: true,
+      connected: true,
+      lastSeenAt: now - 4_000,
+      queuedOps: 0,
+      pluginVersion: '0.4.1',
+      pluginProtocol: 1,
+      place: { placeId: 1849204711, gameId: 5512240193, placeName: 'Ember Halls', boundAt: paired },
+    },
+    agentStatus: 'idle',
+    pairedAt: paired,
+    pairingExpiresAt: paired + 30 * 864e5,
+    openPlace: { placeName: 'Ember Halls', placeId: 1849204711, gameId: 5512240193, isRunMode: false },
+    placeMismatch: null,
+    recentOps: [
+      { op_id: 'op-91', kind: 'run_code', ok: 1, summary: 'Added 6 checkpoint pads to Stage 1', created_at: now - 26 * 60_000 },
+      { op_id: 'op-90', kind: 'set_property', ok: 1, summary: 'Lobby.Door.Anchored = true', created_at: now - 31 * 60_000 },
+    ],
+  };
+}
+
+/**
  * The Studio selection, in mock mode. Two items against a `selectionCount: 2` on mockStudioState —
  * the fixture would be incoherent otherwise, and a fixture that cannot happen teaches the UI to
  * render a state the product never produces.
@@ -483,14 +514,20 @@ export interface MockToolDetail {
 
 /**
  * What a `run_intent` message carries: a deterministic restatement of the
- * user's own words, the things the request named by hand, and the places it
- * genuinely did not say. This is the ONLY source the Thinking card's Intent and
- * Plan rows read from — without it those rows do not render at all.
+ * user's own words, the things the request named by hand, the places it
+ * genuinely did not say, and the places it did not say where Apple decided
+ * anyway. This is the ONLY source the Thinking card's Intent and Plan rows read
+ * from — without it those rows do not render at all.
+ *
+ * `questions` and `assumptions` are both populated here because the card draws
+ * them as a contrasting pair and a mock carrying only one would never show that
+ * the pair reads correctly side by side.
  */
 export const mockIntent: RunIntent = {
   summary: 'Check the lobby floor visually and fix whatever the critique finds.',
   checklist: ['lobby floor', 'visual critique pass', 'material variation'],
   questions: ['Which tile size to use for the floor', 'Whether the seating cluster is wanted now or later'],
+  assumptions: ['mood: warm (from "cosy")', 'likely focal point: "lobby floor" (inferred, not stated)'],
 };
 
 /**

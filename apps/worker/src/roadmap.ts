@@ -21,6 +21,7 @@
 // signal in a project whose scripts were truncated). An `unknown` milestone is never presented as
 // the confident next step — it is offered with `verify` telling the user Golem could not tell.
 import type { StudioOp, OpResult, GolemMode } from '@golem/shared';
+import { creditRangeForRuns } from '@golem/shared';
 
 // -----------------------------------------------------------------------------------------------
 // The scan. ONE Studio round trip.
@@ -1418,6 +1419,20 @@ export interface Milestone {
   blockedBy: string[];
   complexity: Complexity;
   effort: string;
+  /**
+   * What the milestone costs, in the unit the user is actually billed in.
+   *
+   * `effort` above says how much WORK it is — "about two Agent runs" — which is not a unit anyone
+   * is charged in. These are `runs × MODE_INFO[mode].typicalCredits`, derived through
+   * `creditRangeForRuns` so the figure cannot drift from the price the composer and the pricing
+   * page publish.
+   *
+   * Kept as a RANGE, never collapsed: the measurements behind docs/COST-MODEL.md do not support
+   * quoting one number. Null when the derivation could not be made, so a card shows no chip
+   * rather than a wrong price.
+   */
+  creditsLow: number | null;
+  creditsHigh: number | null;
   mode: GolemMode;
   category: MilestoneCategory;
   /** the concrete things that exist once it lands — the same list the execution brief builds from */
@@ -1531,6 +1546,10 @@ export function buildRoadmap(shape: ProjectShape, now = Date.now()): Roadmap {
       blockedBy,
       complexity: s.complexity,
       effort: effortLine(s),
+      // The same `runs` the effort line above is built from, so the two can never disagree about
+      // how big this milestone is — one says it in runs, the other in the billing unit.
+      creditsLow: creditRangeForRuns(s.mode, s.runs)?.low ?? null,
+      creditsHigh: creditRangeForRuns(s.mode, s.runs)?.high ?? null,
       mode: s.mode,
       category: MILESTONE_CATEGORY[s.id] ?? 'core',
       deliverables: [...s.build],

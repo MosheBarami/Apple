@@ -118,6 +118,47 @@ test('TWO OFFERS OF UNDO ARE NEVER MERGED, even word for word', () => {
   assert.notEqual(list[0].action, list[1].action, 'and each must keep its OWN reversal');
 });
 
+/* ------------------------------------------------------- a row that updates --- */
+//
+// A download reporting its progress has ONE piece of news whose wording changes every few hundred
+// milliseconds. Coalescing cannot help — "Preparing… 41%" and "Preparing… 42%" are different
+// strings — so without a key a single export builds a column of forty rows and evicts everything
+// else on screen. A keyed row replaces itself in place instead.
+
+const keyed = (id, message, key, kind = 'info') => ({ id, kind, message, action: null, key });
+
+test('A KEYED ROW REPLACES ITSELF RATHER THAN STACKING', () => {
+  let list = admitToast([], keyed(1, 'Preparing… 10%', 'export:p1:md'), 0);
+  list = admitToast(list, keyed(2, 'Preparing… 40%', 'export:p1:md'), 100);
+  list = admitToast(list, keyed(3, 'Preparing… 90%', 'export:p1:md'), 200);
+  assert.equal(list.length, 1, 'one download is one row');
+  assert.equal(list[0].message, 'Preparing… 90%', 'showing the latest news');
+  assert.equal(list[0].id, 1, 'and keeping the row the user is already looking at');
+  assert.equal(list[0].count, 1, 'an updated row is one event, not three — a ×3 here would be a lie');
+});
+
+test('the row that updates is the row that reports the outcome', () => {
+  // The success replaces the progress line in place. A second row would leave "Preparing… 90%"
+  // on screen next to "Saved …", which reads as two exports, one of them stuck.
+  let list = admitToast([], keyed(1, 'Preparing… 90%', 'export:p1:md'), 0);
+  list = admitToast(list, keyed(2, 'Saved tower-defence.md', 'export:p1:md', 'success'), 100);
+  assert.equal(list.length, 1);
+  assert.equal(list[0].kind, 'success', 'the row takes on the outcome it is reporting');
+  assert.equal(list[0].expiresAt, 100 + toastLifetimeMs('success', false), 'and gets a fresh deadline to be read in');
+});
+
+test('two different keys are two different events', () => {
+  let list = admitToast([], keyed(1, 'Preparing… 10%', 'export:p1:md'), 0);
+  list = admitToast(list, keyed(2, 'Preparing… 10%', 'export:p1:json'), 0);
+  assert.equal(list.length, 2, 'the same words about two exports are two rows');
+});
+
+test('a keyed row never replaces an unkeyed one that happens to read the same', () => {
+  let list = admitToast([], plain(1, 'Saved'), 0);
+  list = admitToast(list, keyed(2, 'Saved', 'export:p1:md', 'info'), 0);
+  assert.equal(list.length, 2, 'a key is an identity, not a wildcard');
+});
+
 /* ------------------------------------------------------------------ cap --- */
 
 test('the cap drops the oldest plain toast', () => {

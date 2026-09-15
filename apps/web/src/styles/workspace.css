@@ -1585,6 +1585,29 @@
   padding-inline-start: 1.05rem;
 }
 
+/* What Apple decided for itself. Same typographic weight as the open questions above — neither
+   is more important than the other — but ruled in amber, because these are decisions already
+   acting on the build rather than gaps still waiting on an answer. The rule is what lets the eye
+   tell the two lists apart at a glance without a second heading size. */
+.gx-assumed {
+  margin-top: 0.45rem;
+  padding-inline-start: 0.6rem;
+  border-inline-start: 2px solid color-mix(in srgb, var(--gx-amber) 45%, transparent);
+  color: var(--gx-ink-3);
+  font-size: 0.77rem;
+  line-height: 1.55;
+}
+
+.gx-assumed__label {
+  display: block;
+  color: var(--gx-ink-2);
+}
+
+.gx-assumed ul {
+  margin: 0.1rem 0 0;
+  padding-inline-start: 1.05rem;
+}
+
 /* --- the Actions checklist ------------------------------------------------ */
 
 .gx-checks {
@@ -4563,6 +4586,47 @@
   color: var(--gx-ink);
 }
 
+/* --------------------------------------------------------------------------
+   The restore, while it is happening.
+
+   A restore clears the place before it rebuilds it, so the one state that must
+   never read as settled is the one in flight: `is-working` stays in the muted
+   ink the rest of the row uses and the sentence itself carries the ellipsis.
+   `is-caveat` is warn and not good on purpose — a restore nobody could verify,
+   or one that dropped properties, is not a success.
+   -------------------------------------------------------------------------- */
+
+.gx-restore {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  color: var(--gx-ink-3);
+}
+
+.gx-restore.is-good { color: var(--gx-good); }
+.gx-restore.is-caveat { color: var(--gx-warn); }
+.gx-restore.is-bad { color: var(--gx-bad); }
+
+.gx-restore__counts {
+  display: block;
+  color: var(--gx-ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The op-log row. `is-bad` tints only the meta line, not the sentence: the
+   thing that failed is still the thing that happened, and colouring the whole
+   row red turns a readable history into a wall of alarm. */
+
+.gx-op__detail {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--gx-ink-3);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.gx-op.is-bad .gx-row__meta { color: var(--gx-bad); }
 /* ------------------------------------------------------------ members drawer --- */
 /*
  * The panel existed with no styles because it had no call site — mounting it made every
@@ -4622,8 +4686,11 @@
   border-bottom: 0;
 }
 
-/* A dead row is dimmed, never hidden: "was an editor" is the sentence an admin needs. */
-.mb__row.is-inactive .mb__handle {
+/* A dead row is dimmed, never hidden: "was an editor" is the sentence an admin needs.
+   The sub-line goes with it — dimming the handle alone leaves "editor · joined by link"
+   at full strength under a faded name, which reads as the row being half-alive. */
+.mb__row.is-inactive .mb__handle,
+.mb__row.is-inactive .mb__sub {
   color: var(--gx-ink-3);
 }
 
@@ -4632,18 +4699,28 @@
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+  /* Takes the slack so the actions sit at the row's end, and yields before the
+     role select and the date input reach the width their own text needs. */
+  flex: 1 1 12rem;
 }
 
+/* `anywhere`: a handle is user-supplied and has no spaces to break at, and the drawer
+   is narrow. Without it one long id widens the row and scrolls the whole drawer. */
 .mb__handle {
   color: var(--gx-ink);
   font-size: 0.9rem;
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 .mb__sub,
 .mb__status {
   color: var(--gx-ink-3);
   font-size: 0.78rem;
+}
+
+.mb__sub {
+  overflow-wrap: anywhere;
 }
 
 .mb__status {
@@ -4681,6 +4758,19 @@
   border-top: 1px solid var(--gx-line, rgb(255 255 255 / 12%));
 }
 
+/* `.field` carries its own bottom margin for the page forms it was written for. Inside a
+   flex column that already has `gap`, that margin is added to the gap and the invite form
+   drifts apart. The gap is the one spacing authority here. */
+.mb__invite .field {
+  margin-block-end: 0;
+}
+
+.mb__invite .cs__input,
+.mb__invite .cs__select,
+.mb__invite .cs__date {
+  width: 100%;
+}
+
 .mb__invite-head {
   margin: 0;
   color: var(--gx-ink-3);
@@ -4698,6 +4788,11 @@
 
 .mb__invite-row .field {
   flex: 1 1 140px;
+  /* `min-width: 0`, because a flex item's default `auto` floors it at its content width: the
+     date input would refuse to shrink and push the row wider than the drawer. */
+  min-width: 0;
+}
+
 /* --------------------------------------------------------------------------
    23. The files drawer — components/ws/files-panel.tsx
 
@@ -4760,4 +4855,224 @@
 .gx-files__table tr:first-child td {
   color: var(--gx-ink);
   font-weight: 600;
+}
+
+/* --- members: adding several at once ------------------------------------------------------- */
+/*
+   Folded away behind a <details> rather than sitting open under the single-invite form. Adding
+   one person is the common act and adding thirty is the rare one; two full forms stacked in a
+   drawer make the common act look like a choice between two things to read.
+*/
+
+.mb__bulk {
+  padding-top: 12px;
+  border-top: 1px solid var(--gx-line);
+}
+
+.mb__bulk-summary {
+  color: var(--gx-ink-2);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.mb__bulk-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 10px;
+}
+
+.mb__textarea {
+  min-height: 6.5rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+/* The per-row answer. The route refuses row by row with a reason each, and this is the half a
+   count would have thrown away — so it is a list of rows, with the line number the person is
+   looking at, not the array index the server answered about. */
+.mb__problems {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mb__problem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-inline-start: 2px solid var(--gx-warn, #e4b363);
+  border-radius: 0 6px 6px 0;
+  background: var(--gx-surface-1, rgb(0 0 0 / 20%));
+}
+
+.mb__problem-line {
+  color: var(--gx-ink-2);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.mb__problem-id {
+  color: var(--gx-ink-3);
+  font-size: 0.74rem;
+  overflow-wrap: anywhere;
+}
+
+.mb__problem-why {
+  color: var(--gx-ink-2);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+/* --- members: the second step on a row ----------------------------------------------------- */
+/*
+   Removing somebody and pausing them both open UNDER their row rather than over the page. They
+   are not modal and they trap no focus, because neither is a confirmation in the sense
+   lib/confirm-model.ts means: a member removal is reversible and destroys nothing, so the ladder
+   says 'none' and a dialog in front of it would be the exact habit that file exists to stop.
+
+   What opens here is an ANSWER — what this person holds, and what the removal does and does not
+   do — placed where the question is asked. Inset and ruled on the leading edge so it reads as
+   belonging to the row above it rather than as the next member in the list.
+*/
+
+.mb__step {
+  display: flex;
+  flex: 1 1 100%;
+  flex-direction: column;
+  gap: 8px;
+  margin: 2px 0 8px;
+  padding: 10px 12px;
+  border-inline-start: 2px solid var(--gx-line-2);
+  border-radius: 0 8px 8px 0;
+  background: var(--gx-surface-1, rgb(0 0 0 / 20%));
+}
+
+.mb__step-head {
+  margin: 0;
+  color: var(--gx-ink);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.mb__step-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+/* The counts. A number and the thing it counts, never a number alone — and this list is simply
+   absent when the footprint could not be read, rather than drawn full of zeroes. */
+.mb__counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mb__count {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.mb__count-n {
+  color: var(--gx-ink);
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.mb__count-label {
+  color: var(--gx-ink-3);
+  font-size: 0.76rem;
+}
+
+/* What the removal does, and what survives it. Stated rather than implied by the numbers above:
+   a list of counts invites the reader to assume the counts are about to be destroyed. */
+.mb__effects {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  padding-inline-start: 1.1em;
+}
+
+.mb__effect {
+  color: var(--gx-ink-2);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+/* --- members: one membership's history ----------------------------------------------------- */
+/*
+   Newest first, the way the route returns it. Numbered by <ol> because the order is the meaning —
+   "paused, then reinstated, then removed" is a different story from the same three events in any
+   other sequence — but the marker is suppressed: the number of an entry is not a fact about it.
+*/
+
+.mb__events {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mb__event {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.mb__event-what {
+  color: var(--gx-ink-2);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.mb__event-when {
+  color: var(--gx-ink-3);
+  font-size: 0.72rem;
+}
+
+/* The administrator's own words, quoted rather than glued onto the sentence above: it is somebody's
+   writing, and it can run to five hundred characters. */
+.mb__event-why {
+  color: var(--gx-ink-3);
+  font-size: 0.76rem;
+  font-style: italic;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+/* The checkpoint's own words — the field it takes, and the field it shows.
+   Distinct from `gx-row__meta` above it: the metadata is derived and the
+   description is authored, and a reader has to be able to tell which is which. */
+
+.gx-cp__note {
+  margin: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  resize: vertical;
+}
+
+.gx-cp__desc {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--gx-ink-2, var(--gx-ink-3));
+  font-size: 0.84rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
