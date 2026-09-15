@@ -4715,6 +4715,40 @@ textarea {
   border-inline-start-color: var(--muted);
 }
 
+/* An integration refusing is about a credential on somebody ELSE'S service. It is a real failure
+   and it is not ours, so it is marked rather than alarmed. */
+.failure.is-integration {
+  border-inline-start-color: var(--warn, var(--accent));
+}
+
+/* ---------------------------------------------- the connected Roblox account (settings) --- */
+/* Three states in one line under the connection sentence. `unknown` is deliberately the MUTED one:
+   a check that could not be made must not read as either good news or bad news. */
+.rk__health {
+  margin: 0.3rem 0 0;
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
+.rk__health.is-ok {
+  color: var(--ink, inherit);
+}
+
+.rk__health.is-rejected {
+  color: var(--bad);
+}
+
+/* A permission nothing in the product asks for yet. Quiet, beside the thing it qualifies — the
+   point is that it is visible where the tickbox is, not that it shouts. */
+.rk__unused {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.rk__scope.is-unused .rk__scope-title {
+  color: var(--muted);
+}
+
 .failure__title {
   margin: 0;
   font-weight: 600;

@@ -34,6 +34,12 @@ export type FailureKind =
   | 'not_configured'
   | 'upstream'
   | 'ours'
+  // A THIRD PARTY THE CUSTOMER CONNECTED refused, which is not the same failure as any of the
+  // above and used to be reported as one of them. A dead Roblox Open Cloud key arrives as a 401
+  // and was classified `signed_out` — "Your session has expired, sign in again" — sending somebody
+  // to re-authenticate their APPLE account when the thing that expired was a credential on
+  // somebody else's service. The integration's own mapper fills this in (lib/roblox-key.ts).
+  | 'integration'
   | 'rejected';
 
 export interface Explained {
@@ -86,6 +92,23 @@ export function explainFailure(err: unknown): Explained {
   const status = statusOf(err);
   const detail = messageOf(err);
   const lower = (detail ?? '').toLowerCase();
+
+  // A CONNECTED THIRD PARTY REFUSED, CHECKED BEFORE THE STATUS BRANCHES BELOW, because the status
+  // is what gets this one wrong: a revoked Roblox key is a 401 and every 401 below this line means
+  // "your Apple session expired, sign in again". The narrow test — the provider named in the
+  // server's own words — is deliberate; a broad one would swallow ordinary auth failures. The
+  // titled, actionable version lives in lib/roblox-key.ts, which is where the panel gets it from.
+  if (/\broblox\b|open cloud/i.test(lower)) {
+    return {
+      kind: 'integration',
+      title: 'Your connected Roblox account refused that',
+      safety: 'Your Apple account and your work are unaffected — this is about the key you connected.',
+      next: 'Check the connection in Settings → Connections.',
+      href: '/app/settings',
+      retryable: false,
+      detail,
+    };
+  }
 
   // Status 0 is what the client sets when fetch itself threw — the request never left the browser.
   if (status === 0) {

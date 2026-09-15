@@ -1265,6 +1265,21 @@ export const putRobloxKey = (body: {
 export const deleteRobloxKey = (): Promise<{ removed: boolean }> =>
   request('/api/me/roblox-key', { method: 'DELETE' });
 
+/**
+ * What Roblox says about the stored key RIGHT NOW. Four answers, and `unknown` is not a soft `ok`.
+ *
+ * Never on a timer and never prefetched: it spends a real call on somebody's Open Cloud key, so it
+ * happens when a person asks. It is also why the panel's button is "Test connection" rather than a
+ * status dot that would have to be kept fresh — a dot implies continuous knowledge nobody has.
+ */
+export type RobloxKeyHealth =
+  | { status: 'none' }
+  | { status: 'ok'; accountName: string | null; checkedAt?: string }
+  | { status: 'rejected'; reason: string; checkedAt?: string }
+  | { status: 'unknown'; reason: string; checkedAt?: string };
+
+export const checkRobloxKey = (): Promise<RobloxKeyHealth> => request('/api/me/roblox-key/check');
+
 // ---------------------------------------------------------------- the inbox / security history
 //
 // The worker has written a `security_event` row on every key mint, rotation, revocation and

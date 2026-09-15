@@ -5,20 +5,30 @@
 // in a fixed order — what happened, whether anything was lost, what to do — because that order is
 // the order the questions arrive in.
 import { Link } from 'react-router-dom';
-import { explainFailure } from '../lib/error-taxonomy';
+import { explainFailure, type Explained } from '../lib/error-taxonomy';
 
 export function Failure({
   error,
   onRetry,
   compact,
+  explain = explainFailure,
 }: {
   error: unknown;
   /** Offered ONLY when repeating the request could actually work. */
   onRetry?: () => void;
   /** Inside a card that already has its own heading. */
   compact?: boolean;
+  /**
+   * A narrower classifier for one surface, when the shared taxonomy would get it wrong.
+   *
+   * ONE RENDERER, TWO VOCABULARIES. The Roblox panel is the case this exists for: a revoked Open
+   * Cloud key is a 401, and `explainFailure` reads every 401 as "your session has expired, sign in
+   * again" — sending somebody to re-authenticate their Apple account over a credential on another
+   * service. The shape of the answer, and the order it is read in, stays the same for both.
+   */
+  explain?: (err: unknown) => Explained;
 }) {
-  const e = explainFailure(error);
+  const e = explain(error);
 
   return (
     <div className={`failure is-${e.kind}${compact ? ' is-compact' : ''}`} role="alert">
