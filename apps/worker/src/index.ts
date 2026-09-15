@@ -2005,8 +2005,9 @@ app.post('/api/billing/webhook', async (c) => {
   //   the invoice events `interpretStripeEvent` returns `ignored` for, and it returns no plan:
   //   entitlement stays the single opinion of `entitlementFor`, computed from status and period.
   //
-  //   The INVOICE is the dedupe subject, so Stripe's three retries of one invoice are one line in
-  //   the inbox with a count, rather than three alarms about one card. ]]
+  //   The SUBJECT is what the notice is about - the invoice for a payment problem, the session for
+  //   an abandoned checkout - so Stripe's three retries of one invoice are one line in the inbox
+  //   with a count, rather than three alarms about one card. ]]
   const dunning = interpretDunningEvent(event);
   if (dunning) {
     const copy = dunningCopy(dunning);
@@ -2014,7 +2015,7 @@ app.post('/api/billing/webhook', async (c) => {
       notify(c.env, {
         kind: 'billing_issue',
         recipientId: dunning.userId,
-        subject: dunning.invoiceId ?? dunning.eventId,
+        subject: dunning.subjectId ?? dunning.eventId,
         title: copy.title,
         body: copy.body,
         at: Date.now(),
@@ -2056,7 +2057,15 @@ app.post('/api/billing/webhook', async (c) => {
       body: JSON.stringify({ credits: outcome.creditsDelta, eventId: outcome.eventId }),
     });
   }
-  return c.json({ ok: true, applied: { plan: !!outcome.subscription, credits: outcome.creditsDelta ?? 0 } });
+  // `dunning` is reported on BOTH exits, not only the one where nothing could be attributed. An
+  // event that raised a notice and applied no entitlement — an expired checkout is exactly that —
+  // otherwise came back indistinguishable from one the product ignored entirely, in the response
+  // that is the only thing Stripe's dashboard and our own tests can see.
+  return c.json({
+    ok: true,
+    applied: { plan: !!outcome.subscription, credits: outcome.creditsDelta ?? 0 },
+    dunning: dunning?.kind ?? null,
+  });
 });
 
 /**
@@ -2099,7 +2108,15 @@ app.post('/api/billing/checkout', async (c) => {
   // an open redirect signed by Stripe's domain.
   const returnTo = new URL('/app/usage', new URL(c.req.url).origin).toString();
 
-  const built = buildCheckoutRequest(c.env, { userId: user.userId, email: user.email, plan, returnTo });
+  const built = buildCheckoutRequest(c.env, {
+    userId: user.userId,
+    email: user.email,
+    plan,
+    returnTo,
+    // The clock the session's expiry is measured from. Passed in rather than read inside, so the
+    // window is assertable at a chosen instant.
+    nowSeconds: Math.floor(Date.now() / 1000),
+  });
   if (!built.ok) return c.json({ error: built.error }, built.status);
 
   const res = await fetch('https://api.stripe.com/v1/checkout/sessions', {

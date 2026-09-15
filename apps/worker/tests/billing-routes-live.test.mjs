@@ -57,6 +57,8 @@ let doBilling = { plan: 'free', customerId: null, subscription: null, events: []
 let doCalls = [];
 /** Every request that left for Stripe. */
 let stripeCalls = [];
+/** Every prepared D1 statement, so a notification can be observed rather than assumed. */
+let d1Calls = [];
 /** Set to make Stripe refuse, so a route's behaviour when it cannot see can be asserted. */
 let stripeDown = false;
 
@@ -121,9 +123,21 @@ const env = () => ({
   STRIPE_SECRET_KEY: 'sk_test_x',
   STRIPE_PRICE_BUILDER: 'price_builder_1',
   STRIPE_PRICE_STUDIO: 'price_studio_1',
+  STRIPE_PORTAL_CONFIGURATION: 'bpc_test_1',
   KV: { get: async () => null, put: async () => {}, delete: async () => {}, list: async () => ({ keys: [] }) },
   AI: { run: async () => ({ choices: [{ message: { content: '{}' } }] }) },
-  CORPUS: { exec: async () => ({}), prepare: () => ({ bind: () => ({ all: async () => ({ results: [] }), first: async () => null, run: async () => ({}) }) }), batch: async () => [] },
+  // Records what was prepared and what was bound to it. A notification is written through D1, and
+  // "the route said it would notify" is not the same fact as "a row exists for the person to find".
+  CORPUS: {
+    exec: async () => ({}),
+    prepare: (sql) => ({
+      bind: (...args) => {
+        d1Calls.push({ sql, args });
+        return { all: async () => ({ results: [] }), first: async () => null, run: async () => ({}) };
+      },
+    }),
+    batch: async () => [],
+  },
   VEC: { query: async () => ({ matches: [] }), upsert: async () => ({}) },
   SESSION_DO: quotaNamespace(),
   QUOTA_DO: quotaNamespace(),
@@ -150,6 +164,7 @@ const reset = (billing) => {
   doBilling = { plan: 'free', customerId: null, subscription: null, events: [], ...billing };
   doCalls = [];
   stripeCalls = [];
+  d1Calls = [];
   stripeDown = false;
 };
 
@@ -269,12 +284,20 @@ async function signedWebhook(event) {
     { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${ts}.${body}`));
   const hex = [...new Uint8Array(mac)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  // A real ExecutionContext, and the background work is AWAITED before the assertions run. Anything
+  // the route hands to waitUntil — the notification about a payment problem, for one — outlives the
+  // response, and a test that returns at the response observes a product that has not finished
+  // doing the thing under test.
+  const waited = [];
+  const ctx = { waitUntil: (p) => waited.push(Promise.resolve(p)), passThroughOnException: () => {} };
   const res = await APP.fetch(new Request('https://golem.test/api/billing/webhook', {
     method: 'POST',
     headers: { 'stripe-signature': `t=${ts},v1=${hex}`, 'content-type': 'application/json' },
     body,
-  }), env());
-  return { status: res.status, json: await res.json() };
+  }), env(), ctx);
+  const out = { status: res.status, json: await res.json() };
+  await Promise.allSettled(waited);
+  return out;
 }
 
 test('THE WEBHOOK FORWARDS THE EVENT ID AND THE WHOLE SUBSCRIPTION', async () => {
@@ -341,6 +364,88 @@ test('a webhook with no price item still grants what the metadata says', async (
                       cancel_at_period_end: false, metadata: { userId: USER_ID, plan: 'studio' } } },
   });
   assert.equal(doCalls.find((c) => c.path === '/set-plan').body.plan, 'studio');
+});
+
+// ------------------------------------------------------- the checkout nobody came back from
+
+/**
+ * A SESSION THE USER ABANDONED PRODUCED NO STATE, NO NOTICE AND NO RECORD.
+ *
+ * `?checkout=done` and `?checkout=cancelled` both require coming back through the redirect. Someone
+ * who opens Stripe's page, is interrupted, and closes the tab hits neither — the session lapses and
+ * `checkout.session.expired` arrived into an interpreter whose default branch dropped it. Nothing
+ * was charged, and nothing said so.
+ */
+test('AN EXPIRED CHECKOUT TELLS THE PERSON AND TOUCHES NOTHING THEY OWN', async () => {
+  reset();
+  const r = await signedWebhook({
+    id: 'evt_expired_1',
+    type: 'checkout.session.expired',
+    data: { object: { id: 'cs_test_9', currency: 'usd', metadata: { userId: USER_ID } } },
+  });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  assert.equal(r.json.dunning, 'checkout_expired', 'the route must recognise it as something to say');
+
+  // Entitlement is the half that must NOT move: an expiry means nothing happened.
+  assert.equal(doCalls.find((c) => c.path === '/set-plan'), undefined, 'no plan may be applied');
+  assert.equal(doCalls.find((c) => c.path === '/grant-credits'), undefined, 'and no credits');
+
+  // And the half that must: a row the person can actually find.
+  const insert = d1Calls.find((c) => /insert into notifications/i.test(c.sql));
+  assert.ok(insert, 'a notification row must actually be written, not merely intended');
+  assert.ok(insert.args.includes(USER_ID), 'addressed to the account whose checkout it was');
+  assert.match(JSON.stringify(insert.args), /nothing was charged/i,
+    'and it must say the thing that stops this reading as a failed payment');
+});
+
+test('an expired checkout for a session with no user is ignored, and says so', async () => {
+  reset();
+  const r = await signedWebhook({
+    id: 'evt_expired_2',
+    type: 'checkout.session.expired',
+    data: { object: { id: 'cs_test_10' } },
+  });
+  assert.equal(r.status, 200, 'the event is valid; Stripe must not retry it forever');
+  assert.equal(d1Calls.find((c) => /insert into notifications/i.test(c.sql)), undefined,
+    'a notification attached to a guessed account is worse than none');
+});
+
+test('CONTROL: an ordinary subscription event raises no billing alarm', async () => {
+  // Without this, the assertion above could pass because every webhook notifies.
+  reset();
+  const r = await signedWebhook({
+    id: 'evt_plain_1',
+    type: 'customer.subscription.created',
+    data: { object: { id: 'sub_9', customer: 'cus_1', status: 'active', current_period_end: LATER,
+                      cancel_at_period_end: false, metadata: { userId: USER_ID, plan: 'builder' } } },
+  });
+  assert.equal(r.json.dunning, null, 'a successful subscription is not a payment problem');
+  assert.equal(d1Calls.find((c) => /insert into notifications/i.test(c.sql)), undefined);
+});
+
+// ----------------------------------------------- what the page is told before it offers to sell
+
+test('THE CONFIG ROUTE NAMES THE CURRENCY, so the ladder is not guessing', async () => {
+  // The page falls back to the declared code when the field is missing, which is a plausible-looking
+  // answer arrived at from no information — and that was the state of the deployed worker, which
+  // returned {checkout, purchasable} and no currency at all while the page already read one.
+  reset();
+  const r = await call('/api/billing/config');
+  assert.equal(r.status, 200, r.text);
+  assert.match(String(r.json.currency), /^[A-Z]{3}$/, `an ISO 4217 code, saw ${r.json.currency}`);
+  assert.equal(r.json.checkout, true, 'and it still says whether anything can be bought');
+  assert.deepEqual(r.json.purchasable, ['builder', 'studio'], 'and which tiers');
+});
+
+test('THE PORTAL ROUTE SENDS THE PINNED CONFIGURATION, not the dashboard default', async () => {
+  // The pure test proves the builder sets it. This proves the ROUTE hands the env to the builder — a
+  // configuration nothing passes through is the same as no configuration at all.
+  reset({ plan: 'builder', customerId: 'cus_1', subscription: sub() });
+  const r = await call('/api/billing/portal', { method: 'POST' });
+  assert.equal(r.status, 200, r.text);
+  const p = new URLSearchParams(stripeCalls[0].body);
+  assert.equal(p.get('configuration'), 'bpc_test_1');
+  assert.equal(p.get('customer'), 'cus_1', "and the caller's own customer, which is not a parameter");
 });
 
 test('THE PORTAL SENDS THE USER BACK TO A PAGE THAT KNOWS THEY WERE THERE', async () => {

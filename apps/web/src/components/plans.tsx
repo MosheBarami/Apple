@@ -167,8 +167,16 @@ export function PlanLadder({
       })}
       {/* SAID ONCE, IN WORDS. A symbol is not a currency — the same glyph is three different
           currencies in en-US, en-CA and en-AU — and until this line the only place the charge
-          currency appeared was Stripe's own page, after the user had committed. */}
-      <p className="plans-currency">All prices in {currency}. You are charged in {currency}.</p>
+          currency appeared was Stripe's own page, after the user had committed.
+
+          AND THE SAME IS TRUE OF TAX. The checkout asks Stripe to calculate it, so a buyer in a
+          jurisdiction we are registered in pays the figure above PLUS tax — for a German buyer,
+          19% more than the number they just read. Quoting the bare figure and letting them find
+          out from their bank statement is the same failure as quoting a bare '$'. */}
+      <p className="plans-currency">
+        All prices in {currency}, excluding tax. You are charged in {currency}, and any VAT or sales
+        tax is calculated at checkout from your billing address.
+      </p>
     </div>
   );
 }

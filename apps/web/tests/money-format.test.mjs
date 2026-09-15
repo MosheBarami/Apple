@@ -114,6 +114,35 @@ test('every surface that prints a price formats it', () => {
   }
 });
 
+/**
+ * A PRICE THAT DOES NOT SAY WHETHER TAX IS IN IT IS TWO DIFFERENT PRICES.
+ *
+ * The checkout now asks Stripe to calculate tax (automatic_tax), so a buyer in a jurisdiction we
+ * are registered in is charged the figure on the page PLUS tax. A page that quotes the bare figure
+ * and says nothing has mis-stated the amount that will leave the account — for a German buyer by
+ * 19%. The surfaces that quote a price must therefore say which of the two numbers it is.
+ *
+ * Matched as a statement about tax next to the price, not as an exact sentence, so the copy can be
+ * rewritten without this test dictating the words.
+ */
+test('EVERY SURFACE THAT QUOTES A PRICE SAYS WHETHER TAX IS IN IT', () => {
+  const excludes = /\b(?:excl(?:ude|uding|\.)|plus|before|without)\b[^.]{0,60}\b(?:tax|VAT|GST)\b/i;
+  for (const [what, src] of Object.entries(sources)) {
+    if (what === 'the landing page') continue; // it names no monthly figure; the pricing page does
+    assert.match(src, excludes,
+      `${what} quotes a price without saying tax is added on top of it`);
+  }
+});
+
+test('and says where the tax is worked out, since it is not worked out here', () => {
+  // Stripe computes it from the address it collects on its own page. "Tax may apply" with no
+  // statement of where it is decided leaves the buyer to find out from their bank statement.
+  for (const [what, src] of Object.entries(sources)) {
+    if (what === 'the landing page') continue;
+    assert.match(src, /\bcheckout\b/i, `${what} must say tax is calculated at checkout`);
+  }
+});
+
 test('the prices being formatted are the ones the product actually charges', () => {
   // Not a literal in this file: the table the ladder and the pricing page both read.
   for (const id of PLAN_IDS) {
