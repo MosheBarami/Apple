@@ -10,16 +10,17 @@ Newest first. Each entry: what was believed, what was true, how it was caught.
 
 ## 2026-09-15
 
-### F-58 · A falsification that turns nothing red usually means the BREAK was mis-aimed
+### F-58 · A falsification that turns nothing red has SIX readings, and most are not defects
 **Believed:** red-first is settled practice here. Break the mechanism, watch the gate go
 red, restore. If the break turns nothing red, the test is vacuous or the mechanism it
 claims to guard is absent — the two readings we had.
-**True:** there are five readings, and the one we were missing is the most common. A
+**True:** there are six readings, and the one we were missing is the most common.
+The sixth was added later and inverts the advice: it means the code is right as it stands. A
 break that reports 0 red most often landed somewhere other than where it was recorded as
 landing, because it was applied by replacing the FIRST OCCURRENCE of a string that
 appears at several call sites.
 
-The five, in descending order of how often they actually occur:
+The six, in descending order of how often they actually occur:
 
 1. **Mis-aimed break.** The edit landed on a different call site than the one named.
 2. **Vacuous test.** The assertion can never fire — `if (over.length)` on an array that
@@ -33,6 +34,23 @@ The five, in descending order of how often they actually occur:
 5. **Unfalsifiable by construction, kept for a stated future.** Correct code no test can
    redden today, load-bearing the day a named condition changes. Legitimate — but it must
    say so in a comment, or it sits there looking tested.
+6. **The break was real and the behaviour is unchanged.** Not a defect in the test, the
+   harness, or the aim — the code you broke was genuinely REDUNDANT, and something else
+   downstream produces the identical outcome. This is what defence in depth looks like from
+   inside a falsifier. Found 2026-09-15 by rbxai-04, auditing the security and spend guards:
+   of seven breaks, three came back uncaught and NONE meant what uncaught usually means.
+   Deleting `gateway.ts:299`'s per-request neuron pre-check changes nothing observable,
+   because `reserve()` throws `BudgetError` with the DO's own reason one network hop later —
+   the same error, the same message, a different line number. Removing `getOwnedProject`'s
+   `if (!ok || !data ...)` is a NO-OP for a subtler reason: `supaRest` parses the body
+   regardless of `ok`, so on failure `data` is PostgREST's error OBJECT and `data[0]` is
+   `undefined` either way.
+   **Why this reading matters more than the others:** readings 1-4 tell you to fix something.
+   This one tells you to LEAVE IT ALONE, and it is the reading most likely to be misfiled as
+   reading 2. A redundant guard and an untested guard produce byte-identical falsification
+   output, and only one of them should be deleted. The way to tell them apart is to ask what
+   happened INSTEAD of the failure you expected — a redundant guard's absence is covered by a
+   named, locatable second mechanism; a vacuous test's absence is covered by nothing.
 
 **Cost of the error:** three sessions reached a wrong conclusion about their own work in
 one night. Two breaks aimed at `/reserve` landed on `/probe`, because
