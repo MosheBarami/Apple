@@ -18,8 +18,8 @@ import LegalLayout from '../layouts/LegalLayout.astro';
     <p>
       <strong>The short version:</strong> we store your account email, your projects, your chat
       history and your checkpoints — because the product cannot work without them. We never sell
-      your data, we never use your project content to train AI models, and you can delete
-      everything from your account settings.
+      your data, we never use your project content to train AI models, you can download everything
+      we hold about you from your account settings, and you can delete it from the same page.
     </p>
   </div>
 
@@ -30,13 +30,17 @@ import LegalLayout from '../layouts/LegalLayout.astro';
     <li><strong>Chat history.</strong> The messages you exchange with Apple, including attachments you add, and the record of tool actions Apple took (which scripts it edited, which instances it created). This is what lets a project remember its own past.</li>
     <li><strong>Checkpoints.</strong> Compressed snapshots of the parts of your place Apple works on, so you can roll back changes. Checkpoints exist for your benefit and are only readable by you.</li>
     <li><strong>Usage data.</strong> A ledger of your Credits usage (which mode, when, how many), used to enforce daily quotas fairly and to keep the free tier viable. We also keep coarse, aggregated counters (e.g. total requests per day service-wide) that contain no content.</li>
+    <li><strong>A request log.</strong> Which API route was called, when, how long it took and whether it failed — so a broken feature can be told from a slow one. Routes are recorded as routes, never as the raw path, so a project id is never in the log. Each entry carries your account id for 30 days unless you switch that off in Settings → Privacy, in which case the request is still counted with nobody's name on it.</li>
+    <li><strong>Billing identifiers.</strong> If you subscribe or buy Credits, Stripe handles the payment and we keep the subscription state and invoice references it sends back. We never see or store your card.</li>
+    <li><strong>A Roblox Open Cloud key, if you give us one.</strong> Only so Apple can upload assets to your own Roblox account when you ask it to. It is encrypted at rest with a key the database does not hold, it is never returned to anyone — including you; the settings page shows a fingerprint and the last four characters — and deleting it from Settings removes it outright.</li>
+    <li><strong>A Discord account id, if you link one.</strong> Only so builds you start from Discord reach the right account.</li>
   </ul>
 
   <h2>What we deliberately do not collect</h2>
   <ul>
-    <li>No payment details — v1 collects no payment of any kind.</li>
+    <li>No card numbers. Payments go to Stripe and card details never touch our servers.</li>
     <li>No advertising identifiers, no third-party tracking pixels, no analytics that follow you across the web.</li>
-    <li>No contents of your Roblox account beyond what the plugin sends for the place you explicitly connect.</li>
+    <li>No contents of your Roblox account beyond what the plugin sends for the place you explicitly connect, and — if you gave us an Open Cloud key — what you asked Apple to upload with it.</li>
   </ul>
 
   <h2>Training — the promise</h2>
@@ -48,10 +52,13 @@ import LegalLayout from '../layouts/LegalLayout.astro';
   </p>
 
   <h2>Who processes your data</h2>
-  <p>Apple runs on two infrastructure providers, each processing data on our behalf:</p>
+  <p>Everyone who receives any of it because of something Apple does, and what each one gets:</p>
   <ul>
-    <li><strong>Cloudflare</strong> — hosts the application, the API, and project session storage (including chat history and checkpoints). Requests to Apple pass through Cloudflare's network.</li>
+    <li><strong>Cloudflare</strong> — hosts the application, the API, and project session storage (including chat history and checkpoints). Requests to Apple pass through Cloudflare's network, and AI inference runs on Cloudflare's infrastructure.</li>
     <li><strong>Supabase</strong> — hosts authentication and the account registry (your email, your project list). Access is scoped so that every query runs with your own credentials; our servers hold no master key to your rows.</li>
+    <li><strong>Stripe</strong> — subscriptions and Credit purchases. Stripe receives your email and billing identifiers and holds your payment method; we receive back only the subscription state and invoice references. We never hold card details.</li>
+    <li><strong>Discord</strong> — only if you link a Discord account. It receives the replies Apple sends to the channel you started a build from, and we store the link between the two accounts until you unlink it.</li>
+    <li><strong>Roblox</strong> — only if you give Apple an Open Cloud key, and only for the uploads you ask for. What is sent is the asset being uploaded, to your own account, under your own key.</li>
   </ul>
   <p>
     AI inference runs on infrastructure we operate through these providers. Your prompts and
@@ -61,17 +68,46 @@ import LegalLayout from '../layouts/LegalLayout.astro';
 
   <h2>How long we keep it</h2>
   <p>
-    Your data is kept while your account exists. Checkpoints may be pruned on a rolling basis (the
-    oldest go first) as documented in the product. When you delete a project, its chat history and
-    checkpoints are deleted with it.
+    Your projects, conversations and memory are kept while your account exists. The things with a
+    fixed window have one because the product needs a bound, not because the date is arbitrary:
+  </p>
+  <ul>
+    <li><strong>Checkpoints</strong> — the newest 25 per project. Taking the twenty-sixth deletes the oldest, in the same write.</li>
+    <li><strong>The request log</strong> — 30 days, or 5,000 entries, whichever comes first.</li>
+    <li><strong>Notifications</strong> — 30 days once read, 90 days if never read.</li>
+    <li><strong>Automation run history</strong> — 90 days, so "what did this cost me last month" is still answerable.</li>
+    <li><strong>Your Credits ledger</strong> — 35 days of daily detail, plus monthly totals.</li>
+    <li><strong>Generated images and sound</strong> — one hour in cache; what you keep, you keep in your place.</li>
+    <li><strong>Deleted workspace files</strong> — 30 days in the trash, recoverable until then.</li>
+  </ul>
+  <p>
+    When you delete a project, its conversation, checkpoints, memory, notifications, automations,
+    workspace files, generated media and any share links go with it.
+  </p>
+
+  <h2>Taking your data with you</h2>
+  <p>
+    Settings → Privacy → <strong>Download my data</strong> gives you one file with everything we
+    hold about you in our database: your profile, your projects, every message, your checkpoints,
+    what you have spent, and the API keys you have issued. It also names the things it does not
+    contain and where to get those instead, so the file is honest about being one part of the
+    answer rather than quietly incomplete.
   </p>
 
   <h2>Deleting your data</h2>
   <p>
-    You can delete individual projects — or your entire account — from settings inside the app.
-    Account deletion removes your profile, projects, chat history, checkpoints and usage ledger.
-    Residual copies in backups expire on the backup rotation schedule (at most 30 days). If
-    anything ever seems left behind, email us and we will remove it by hand.
+    Settings → Danger zone → <strong>Delete my account</strong> erases your projects,
+    conversations, checkpoints, workspace files, memory, notifications, automations, API keys and
+    your stored Roblox key from every store we can reach. It cannot be undone, and you get a
+    receipt listing what was cleared.
+  </p>
+  <p>
+    Two things survive it, and we would rather say so than let you find out: your <strong>sign-in
+    identity</strong> — the empty account can still log in until an operator removes it, which we
+    do on request — and your <strong>usage ledger and support messages</strong>, which are
+    accounting and correspondence records rather than profile data. The receipt names both, and
+    anything else it could not reach, with the reason. Residual copies in backups expire on the
+    backup rotation schedule (at most 30 days). If anything ever seems left behind, email us.
   </p>
 
   <h2>Your rights</h2>

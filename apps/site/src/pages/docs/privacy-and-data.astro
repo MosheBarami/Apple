@@ -27,12 +27,19 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     <li><strong>Chat history</strong> — your conversations with Apple plus the tool trace of what it did. This is your project's memory; deleting a project deletes it.</li>
     <li><strong>Checkpoints</strong> — compressed snapshots of the parts of your place Apple works on, kept so rollback works across sessions.</li>
     <li><strong>Usage ledger</strong> — when you spent Credits and on which mode, so quotas reset fairly.</li>
+    <li><strong>A request log</strong> — which route, when, how long, and whether it failed. Routes are logged as routes, never as raw paths, so no project id is in it. It carries your account id for 30 days unless you turn that off in Settings → Privacy; the request is still counted either way, with nobody's name on it.</li>
+    <li><strong>Billing state</strong> — if you subscribe or buy Credits, the subscription and invoice references Stripe sends back. Your card stays with Stripe.</li>
+    <li><strong>Your Roblox Open Cloud key, if you gave one</strong> — encrypted at rest and never returned to anybody, including you: the settings page shows a fingerprint and the last four characters, which is what a key looks like when the only thing that can use it is the uploader.</li>
+    <li><strong>A Discord account id, if you linked one</strong> — so a build started in Discord reaches the right account.</li>
   </ul>
 
   <h2>Where it lives</h2>
   <ul>
-    <li><strong>Cloudflare</strong> runs the application and stores project session data — chat and checkpoints — isolated per project.</li>
+    <li><strong>Cloudflare</strong> runs the application and stores project session data — chat and checkpoints — isolated per project, and runs the model inference.</li>
     <li><strong>Supabase</strong> runs authentication and the account registry (your email, your project list). Every row is protected so that only requests carrying <em>your</em> verified credentials can read it — our own servers hold no master key that bypasses this.</li>
+    <li><strong>Stripe</strong> takes the payments. It gets your email and billing identifiers and holds the payment method; we get back the subscription state. No card number reaches us.</li>
+    <li><strong>Discord</strong> gets whatever Apple posts back to the channel you started a build from — only if you linked an account.</li>
+    <li><strong>Roblox</strong> gets the assets you ask Apple to upload, to your own account, under your own key — only if you gave one.</li>
   </ul>
 
   <h2>What the Studio plugin sees</h2>
@@ -60,14 +67,39 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     <li><strong>Nobody else.</strong> No data sales, no ad networks, no cross-site tracking. Operators can access production systems for debugging under access controls, and treat content as radioactive.</li>
   </ul>
 
+  <h2>How long things stay</h2>
+  <ul>
+    <li><strong>Checkpoints:</strong> the newest 25 per project. The twenty-sixth pushes the oldest out in the same write.</li>
+    <li><strong>The request log:</strong> 30 days, or 5,000 entries, whichever comes first.</li>
+    <li><strong>Notifications:</strong> 30 days once read, 90 if never read.</li>
+    <li><strong>Automation runs:</strong> 90 days.</li>
+    <li><strong>Credits ledger:</strong> 35 days of daily detail, plus monthly totals.</li>
+    <li><strong>Generated images and sound:</strong> one hour in cache.</li>
+    <li><strong>Deleted workspace files:</strong> 30 days in the trash.</li>
+  </ul>
+  <p>A nightly sweep is what enforces the ones with a date on them, not a promise that somebody will remember.</p>
+
+  <h2>Taking it with you</h2>
+  <p>
+    Settings → Privacy → <strong>Download my data</strong> hands you one file: your profile,
+    projects, every message, checkpoints, spend and issued API keys. It also lists what it does not
+    contain and the route that serves each of those — your per-project transcript, your memory
+    scopes, your workspace archive — because a file that quietly stopped at the database would be
+    the smallest true part of the answer.
+  </p>
+
   <h2>Deleting things</h2>
   <ul>
     <li><strong>A checkpoint:</strong> delete it in the workspace sidebar.</li>
-    <li><strong>A project:</strong> deleting a project deletes its chat history and checkpoints.</li>
-    <li><strong>Your account:</strong> settings → delete account. Everything above goes with it; backup copies expire within 30 days.</li>
+    <li><strong>A project:</strong> deleting a project deletes its conversation, checkpoints, memory, notifications, automations, workspace files, generated media and any share links that opened it.</li>
+    <li><strong>Your account:</strong> Settings → Danger zone → delete account. It erases every store we can reach and hands you a receipt of what it cleared.</li>
   </ul>
   <p>
-    Anything the UI cannot delete for you, a human will:
+    Two things outlive that, and the receipt names them rather than leaving you to find out: your
+    <strong>sign-in identity</strong> (the empty account can still log in until an operator removes
+    it — ask and we will) and your <strong>usage ledger and support messages</strong>, which are
+    accounting and correspondence records. Backup copies expire within 30 days. Anything else the
+    UI cannot delete for you, a human will:
     <a href="mailto:apple.labs.app@gmail.com">apple.labs.app@gmail.com</a>.
   </p>
 

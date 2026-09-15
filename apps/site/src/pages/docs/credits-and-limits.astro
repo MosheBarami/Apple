@@ -88,7 +88,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <h2>Other limits worth knowing</h2>
   <ul>
     <li><strong>Rate limiting:</strong> requests are queued per account. Under heavy load, free-tier requests may briefly wait; Pro (when it ships) queues ahead.</li>
-    <li><strong>Checkpoints:</strong> stored per project with a rolling cap — the oldest automatic checkpoints are pruned first. Manual checkpoints outlive automatic ones.</li>
+    <li><strong>Checkpoints:</strong> Apple keeps your 25 most recent checkpoints per project. Taking the twenty-sixth deletes the oldest in the same write — by age, whether you took it yourself or Apple took it before a change. Restore the one you want before it falls off the end.</li>
     <li><strong>One account per person:</strong> multiplying free accounts to farm quota is against the <a href="/terms">terms</a> and gets caught.</li>
   </ul>
 

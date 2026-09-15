@@ -26,6 +26,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..', '..', '..');
 const page = readFileSync(join(ROOT, 'apps', 'site', 'src', 'pages', 'docs', 'credits-and-limits.astro'), 'utf8');
 const webtools = readFileSync(join(ROOT, 'apps', 'worker', 'src', 'webtools.ts'), 'utf8');
+const retention = readFileSync(join(ROOT, 'apps', 'worker', 'src', 'retention.ts'), 'utf8');
 
 /** A numeric constant as the worker declares it, evaluated — or a hard failure saying it is gone. */
 function constant(name) {
@@ -36,9 +37,27 @@ function constant(name) {
   return value;
 }
 
+/**
+ * A retention window, from the one table that now declares them all.
+ *
+ * `WORKSPACE_TRASH_TTL_SECONDS` used to be a literal in webtools.ts and this test read it from
+ * there. It is now `seconds(RETENTION.workspaceTrashDays)` — every window in the worker moved into
+ * apps/worker/src/retention.ts, because eight files each holding their own number is how the
+ * privacy page came to quote a window the code did not keep. This follows it rather than being
+ * deleted: the property is still "the page states the window the worker enforces", and the
+ * harness-is-broken failure below is still a hard failure rather than a skip.
+ */
+function window_(name) {
+  const m = new RegExp(`${name}: ([0-9_]+),`).exec(retention);
+  assert.ok(m, `THIS TEST IS BROKEN, NOT THE PAGE: ${name} is no longer declared in apps/worker/src/retention.ts`);
+  const value = Number(m[1].replace(/_/g, ''));
+  assert.ok(Number.isFinite(value) && value > 0, `${name} did not read as a usable number`);
+  return value;
+}
+
 const MAX_BYTES = constant('WORKSPACE_MAX_BYTES');
 const MAX_VERSIONS = constant('WORKSPACE_MAX_VERSIONS');
-const TRASH_DAYS = Math.round(constant('WORKSPACE_TRASH_TTL_SECONDS') / 86_400);
+const TRASH_DAYS = window_('workspaceTrashDays');
 
 const EXTENSIONS = (() => {
   const m = /export const WORKSPACE_EXTENSIONS: readonly string\[\] = \[([^\]]+)\]/.exec(webtools);
@@ -63,6 +82,31 @@ test('and how many earlier versions are kept, and for how long a deleted file co
   assert.match(section, new RegExp(`\\b${MAX_VERSIONS}\\b`), `the page must state that ${MAX_VERSIONS} versions are kept`);
   assert.match(section, new RegExp(`\\b${TRASH_DAYS}\\b`), `the page must state the ${TRASH_DAYS}-day recovery window`);
   assert.match(section, /recover|trash/i, 'a number with no sentence around it is not a retention promise');
+});
+
+test('THE CHECKPOINT CAP IS A NUMBER, AND THE PAGE SAYS WHICH ONE', () => {
+  // "a rolling cap" is not a limit a person can plan around, and the sentence that followed it —
+  // "the oldest automatic checkpoints are pruned first, manual checkpoints outlive automatic ones"
+  // — was not true of any code. SessionDO's prune orders by `created_at desc` and deletes past an
+  // offset; `kind` is not in the clause. So the page promised a protection nothing implemented.
+  const session = readFileSync(join(ROOT, 'apps', 'worker', 'src', 'do', 'session.ts'), 'utf8');
+  const prune = /delete from checkpoints where id in \(select id from checkpoints[^`]*/.exec(session);
+  assert.ok(prune, 'THIS TEST IS BROKEN, NOT THE PAGE: the checkpoint prune is no longer where this looks');
+  const kept = window_('checkpointsKept');
+
+  const cap = page.indexOf('Checkpoints:');
+  assert.notEqual(cap, -1, 'the docs page no longer has a checkpoints limit at all');
+  const sentence = page.slice(cap, cap + 400);
+  assert.match(sentence, new RegExp(`\\b${kept}\\b`), `the page must state the cap the worker enforces (${kept})`);
+
+  // And it may only claim manual checkpoints are privileged if the prune actually looks at `kind`.
+  if (!/\bkind\b/.test(prune[0])) {
+    assert.equal(
+      /manual checkpoints outlive/i.test(sentence),
+      false,
+      'the page promises manual checkpoints survive longer, and the prune does not look at kind at all',
+    );
+  }
 });
 
 test('and which file types the workspace holds, every one of them', () => {
