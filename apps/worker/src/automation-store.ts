@@ -33,11 +33,12 @@ import {
   type FireOutcome,
   type Schedule,
 } from './automations';
+import { RETENTION, days } from './retention';
 
 type Corpus = Pick<Env, 'CORPUS'>;
 
 /** How long an execution record is kept. Long enough to answer "what did this cost me last month". */
-export const RETAIN_RUNS_MS = 90 * 86_400_000;
+export const RETAIN_RUNS_MS = days(RETENTION.automationRunDays);
 
 /** A per-owner ceiling, so one account cannot fill the dispatcher's working set. */
 export const AUTOMATIONS_PER_OWNER_MAX = 25;

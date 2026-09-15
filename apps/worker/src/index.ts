@@ -29,6 +29,7 @@ import {
 } from './billing';
 import { exportFilename, renderTranscriptMarkdown, type TranscriptExport } from './export';
 import { accountExportFilename, collectAccountExport } from './account-export';
+import { describeSweep, runRetentionSweeps } from './retention-sweep';
 import {
   ERASURE_CONFIRMATION,
   eraseAccountData,
@@ -6020,4 +6021,56 @@ app.notFound(async (c) => {
   return serveStatic(c.env, c.req.raw);
 });
 
-export default app;
+/**
+ * THE CRON. Three retention sweeps existed and nothing called any of them.
+ *
+ * `purgeExpired`, `pruneNotifications` and `pruneExecutions` were written, exported and tested, and
+ * the only other mention of each in this tree was its own test file. Three published retention
+ * windows, no mechanism — an expired memory entry a person had deliberately given a TTL to stayed
+ * forever, and the docs page said thirty days.
+ *
+ * WHY THE DEFAULT EXPORT IS ASSEMBLED RATHER THAN REPLACED. The runtime looks up `scheduled` on the
+ * module's default export, and every route suite in tests/ drives that same object through
+ * `app.request(...)`. Replacing it with `{ fetch, scheduled }` would satisfy the runtime and break
+ * a dozen suites that have nothing to do with cron; `Object.assign` gives the platform the handler
+ * it looks for and leaves the Hono app exactly as it was.
+ *
+ * IT AWAITS THE SWEEP. Cloudflare keeps the invocation alive for the promise a scheduled handler
+ * returns, so there is no `waitUntil` here and no fire-and-forget: a sweep that is still running
+ * when the handler resolves is a sweep that gets cancelled halfway, and it would be cancelled at a
+ * different halfway point every night.
+ */
+async function runScheduled(env: Env): Promise<void> {
+  const report = await runRetentionSweeps(env);
+  // ONE AUDIT LINE PER NIGHT, carrying the counts. The point is not the tidy log: a night the cron
+  // did not fire looks identical to a night with nothing to delete unless the run itself is
+  // recorded, and "retention is running" is exactly the kind of claim this product will not make
+  // without something that would notice its absence.
+  recordEvent({
+    kind: 'audit',
+    action: 'retention_sweep',
+    actorKind: 'system',
+    allowed: true,
+    subject: describeSweep(report),
+  });
+  for (const failure of report.failures) {
+    recordEvent({
+      kind: 'error',
+      scope: `retention:${failure.store}`,
+      errorKind: 'sweep_failed',
+      message: failure.error ?? 'the sweep did not run and gave no reason',
+      // Not fatal to the request — there is no request — but it IS the retention policy not
+      // happening, which is the thing somebody has to see.
+      fatal: false,
+      actorId: null,
+    });
+  }
+  // Flushed here rather than left to `maybeFlush`: a scheduled invocation makes a handful of events
+  // and then the isolate goes away, so a threshold-based flush would drop exactly the record that
+  // says the sweep happened.
+  await flushEvents(env);
+}
+
+export default Object.assign(app, {
+  scheduled: (_event: unknown, env: Env, _ctx: unknown) => runScheduled(env),
+});

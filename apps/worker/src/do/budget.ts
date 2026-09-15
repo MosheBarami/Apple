@@ -5,6 +5,7 @@
 // race past the ceiling: reservations are serialized. If this object says no, no tokens are spent.
 import { DurableObject } from 'cloudflare:workers';
 import type { Env } from '../env';
+import { RETENTION, days } from '../retention';
 import {
   BILLABLE_NEURONS_PER_DAY,
   BILLABLE_NEURONS_PER_MONTH,
@@ -360,7 +361,7 @@ export class BudgetDO extends DurableObject<Env> {
         String(kind).slice(0, 40),
         spent,
       );
-      this.sql.exec(`delete from spend where day < ?`, new Date(Date.now() - 62 * 864e5).toISOString().slice(0, 10));
+      this.sql.exec(`delete from spend where day < ?`, new Date(Date.now() - days(RETENTION.serviceSpendDays)).toISOString().slice(0, 10));
       return Response.json({
         ok: true,
         ...(unreadable.length

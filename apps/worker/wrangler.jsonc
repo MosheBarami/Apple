@@ -33,5 +33,15 @@
     "AI_GATEWAY_ID": "golem",
     "BUILD_SHA": "93eacbf"
   },
+  //[[ THE NIGHTLY RETENTION SWEEP.
+  //
+  //   Three sweeps existed with no caller: expired memory entries, read and stale notifications,
+  //   and automation run history. Every one of those windows is published; none of them was being
+  //   applied. `scheduled` in src/index.ts is what this calls.
+  //
+  //   03:00 UTC, once a day. It deletes whole ranges from D1, which is single-threaded, so it runs
+  //   when almost nothing else does — see schema-once.ts for what happens to this database when
+  //   bulk work and ordinary requests arrive together. ]]
+  "triggers": { "crons": ["0 3 * * *"] },
   "observability": { "enabled": true }
 }

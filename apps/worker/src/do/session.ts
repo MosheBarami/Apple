@@ -3,6 +3,7 @@
 // plugin (HTTP long-poll). Survives eviction between agent steps via persisted state.
 import { DurableObject } from 'cloudflare:workers';
 import type { Env } from '../env';
+import { RETENTION } from '../retention';
 import type {
   ClientMsg,
   ServerMsg,
@@ -3902,9 +3903,13 @@ export class SessionDO extends DurableObject<Env> {
     );
     // retention: keep last 25
     this.sql.exec(
-      `delete from checkpoint_chunks where checkpoint_id in (select id from checkpoints order by created_at desc limit -1 offset 25)`,
+      `delete from checkpoint_chunks where checkpoint_id in (select id from checkpoints order by created_at desc limit -1 offset ?)`,
+      RETENTION.checkpointsKept,
     );
-    this.sql.exec(`delete from checkpoints where id in (select id from checkpoints order by created_at desc limit -1 offset 25)`);
+    this.sql.exec(
+      `delete from checkpoints where id in (select id from checkpoints order by created_at desc limit -1 offset ?)`,
+      RETENTION.checkpointsKept,
+    );
     const cp: CheckpointMeta = {
       id,
       label,

@@ -6,6 +6,7 @@ import type { QuotaState } from '@golem/shared';
 import { isPlanId, type PlanId } from '../pricing';
 import type { Subscription } from '../billing';
 import { dayKey, monthKey, monthTotalComplete, prevMonthKey, quotaState, splitSpend } from '../quota-math';
+import { RETENTION, days } from '../retention';
 
 /** One line of this account's billing history, as the product reads it back. */
 interface BillingChange {
@@ -93,7 +94,7 @@ export class QuotaDO extends DurableObject<Env> {
     if (seen.length > 0) return false;
     this.sql.exec(`insert into applied_events(event_id, at) values(?,?)`, key, Date.now());
     // Far outside any redelivery window Stripe uses, and the same horizon the ledger is pruned on.
-    this.sql.exec(`delete from applied_events where at < ?`, Date.now() - 35 * 864e5);
+    this.sql.exec(`delete from applied_events where at < ?`, Date.now() - days(RETENTION.quotaLedgerDays));
     return true;
   }
 
@@ -169,7 +170,7 @@ export class QuotaDO extends DurableObject<Env> {
           await this.ctx.storage.put('ledgerCountingSince', this.today());
         }
       }
-      this.sql.exec(`delete from ledger where day < ?`, dayKey(Date.now() - 35 * 864e5));
+      this.sql.exec(`delete from ledger where day < ?`, dayKey(Date.now() - days(RETENTION.quotaLedgerDays)));
       const after = await this.state();
       return Response.json({ ok: true, state: after });
     }

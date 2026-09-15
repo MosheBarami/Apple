@@ -27,6 +27,7 @@
 // below answers "can this run here", and it answers from the bindings present at call time.
 
 import type { Env } from './env';
+import { RETENTION, seconds } from './retention';
 import {
   checkUrl,
   compileHostPolicy,
@@ -196,7 +197,7 @@ export function checkWorkspacePath(raw: string): PathVerdict {
  * ever runs a sweep. A trash that depends on a cron to empty is a trash that grows forever on the
  * day the cron breaks, and one that depends on nothing to empty is a retention claim nobody keeps.
  */
-export const WORKSPACE_TRASH_TTL_SECONDS = 30 * 24 * 3600;
+export const WORKSPACE_TRASH_TTL_SECONDS = seconds(RETENTION.workspaceTrashDays);
 
 /**
  * How many superseded versions of one file are kept.

@@ -16,9 +16,10 @@
 //      rather than trusting what is in KV.
 //   2. There is no equivalent of the flatness gate. Nothing here judges the audio.
 import type { Env } from './env';
+import { RETENTION } from './retention';
 
 /** How long generated audio stays retrievable. Long enough to listen and download, short enough not to accrete. */
-export const AUDIO_TTL_SECONDS = 3600;
+export const AUDIO_TTL_SECONDS = RETENTION.generatedAudioSeconds;
 
 /**
  * The only media types this worker will hand back, and the extension each one downloads as.
