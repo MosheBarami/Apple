@@ -17,7 +17,7 @@
 import type { Env } from './env';
 import type { AssetProvenance } from './asset-library';
 import { ingestAssets } from './asset-ingest';
-import { uploadTypeFor, uploadAsset, pollOperation, type UploadEnv, type UploadResult } from './roblox-upload';
+import { uploadTypeFor, uploadAsset, pollOperation, archiveAsset, type UploadEnv, type UploadResult } from './roblox-upload';
 
 export interface ImportEnv extends UploadEnv {
   CORPUS: Env['CORPUS'];
@@ -164,6 +164,25 @@ export async function pendingAssets(
   idPrefix?: string,
   after?: string,
 ): Promise<AssetProvenance[]> {
+  return selectAssets(env, { limit, source, idPrefix, after, onlyPending: true });
+}
+
+/** One row by id regardless of whether it has been imported — what the undo path needs. */
+export async function pendingAssetsRaw(env: Pick<ImportEnv, 'CORPUS'>, id: string): Promise<AssetProvenance[]> {
+  return selectAssets(env, { limit: 1, exactId: id, onlyPending: false });
+}
+
+interface SelectOpts {
+  limit: number;
+  source?: string;
+  idPrefix?: string;
+  after?: string;
+  exactId?: string;
+  onlyPending: boolean;
+}
+
+async function selectAssets(env: Pick<ImportEnv, 'CORPUS'>, o: SelectOpts): Promise<AssetProvenance[]> {
+  const { limit, source, idPrefix, after, exactId, onlyPending } = o;
   // The prefix exists because the id namespace IS the taxonomy: `poly_haven/textures/…` are the
   // rows with an Open Use image path, and `poly_haven/hdris/…` are not. Filtering on `kind` would
   // not separate them — an HDRI and a texture are both `texture` to the planner, correctly.
@@ -175,11 +194,14 @@ export async function pendingAssets(
   // that never moved. Ordering by id and stepping past the last one seen is what makes the queue
   // drain instead of stall.
   const clauses = [
+    onlyPending ? 'and roblox_asset_id is null' : '',
+    exactId ? 'and id = ?' : '',
     source ? 'and source = ?' : '',
     idPrefix ? "and id like ? escape '\\'" : '',
     after ? 'and id > ?' : '',
   ].join(' ');
   const binds: unknown[] = [];
+  if (exactId) binds.push(exactId);
   if (source) binds.push(source);
   // The wildcards in a LIKE pattern are escaped so a prefix containing _ or % cannot widen the
   // match: `poly_haven/…` contains an underscore, which LIKE reads as "any character".
@@ -191,7 +213,7 @@ export async function pendingAssets(
     `select id, name, kind, source, source_url, licence, licence_url, commercial_use,
             attribution_required, author, retrieved_at, imported_at, modifications,
             roblox_asset_id, triangles, texture_resolution, bounds_studs, tags, sha256
-     from asset_library where roblox_asset_id is null ${where} order by id limit ?`,
+     from asset_library where 1=1 ${where} order by id limit ?`,
   ).bind(...binds).all<Record<string, unknown>>();
 
   return rows.results.map((r) => {
@@ -251,4 +273,48 @@ export async function importPending(env: ImportEnv, limit: number, source?: stri
     // then, because that is the case the cursor exists for.
     lastId: rows.length ? rows[rows.length - 1]!.id : null,
   };
+}
+
+/**
+ * Undo an import: archive the asset on Roblox and put the library row back to pending.
+ *
+ * ORDER MATTERS AND IS THE OPPOSITE OF THE OBVIOUS ONE. The row is cleared only AFTER Roblox has
+ * confirmed the archive. Clearing first would, on a failed archive, leave a live asset in the
+ * owner's account with nothing in the library pointing at it — the same orphan the import path
+ * goes out of its way to avoid, produced by the code meant to clean up.
+ */
+export async function unimportAssets(env: ImportEnv, limit: number): Promise<{
+  attempted: number; archived: number; failed: number; outcomes: ImportOutcome[];
+}> {
+  const rows = await env.CORPUS.prepare(
+    `select id, roblox_asset_id from asset_library where roblox_asset_id is not null order by imported_at limit ?`,
+  ).bind(Math.max(1, Math.min(limit, 25))).all<{ id: string; roblox_asset_id: number }>();
+
+  const outcomes: ImportOutcome[] = [];
+  for (const r of rows.results) {
+    const res = await archiveAsset(env, r.roblox_asset_id);
+    if (!res.ok) {
+      outcomes.push({ id: r.id, ok: false, error: `archive failed (${res.status}): ${res.error}` });
+      continue;
+    }
+    const [rec] = await pendingRowById(env, r.id);
+    if (!rec) { outcomes.push({ id: r.id, ok: false, error: 'archived on Roblox but the row vanished' }); continue; }
+    const cleared: AssetProvenance = { ...rec, robloxAssetId: null, importedAt: null, sha256: null };
+    const w = await ingestAssets(env, { assets: [cleared], seed: true, status: 'pending_ingest' });
+    outcomes.push(w.written === 1
+      ? { id: r.id, ok: true }
+      : { id: r.id, ok: false, error: `archived ${r.roblox_asset_id} but the row would not clear: ${JSON.stringify(w.rejected)}` });
+  }
+  return {
+    attempted: rows.results.length,
+    archived: outcomes.filter((o) => o.ok).length,
+    failed: outcomes.filter((o) => !o.ok).length,
+    outcomes,
+  };
+}
+
+/** One row by id, in full. Shares `pendingAssets`'s mapping by reusing its query with no filters. */
+async function pendingRowById(env: Pick<ImportEnv, 'CORPUS'>, id: string): Promise<AssetProvenance[]> {
+  const all = await pendingAssetsRaw(env, id);
+  return all;
 }

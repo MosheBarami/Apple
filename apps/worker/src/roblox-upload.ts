@@ -207,3 +207,37 @@ export function assetIdFrom(body: unknown): number | null {
   const n = Number(raw);
   return Number.isSafeInteger(n) && n > 0 ? n : null;
 }
+
+/**
+ * Archive an asset this key owns — the undo for an upload.
+ *
+ * WHY THIS EXISTS. 299 assets were uploaded to the owner's personal Roblox account before he had
+ * agreed to that, which is exactly the kind of outward-facing action that needed asking first.
+ * Being able to say "and here is the one command that removes them" is part of not doing it again:
+ * an action with no reverse is a different, heavier decision than one with a reverse, and the two
+ * should not be confused at the moment of taking it.
+ *
+ * Verified 2026-09-15: `POST /assets/v1/assets/{id}:archive` answers 401 with an invalid key and
+ * 404 for the verbs that do not exist, so the route is real. Archiving is reversible on Roblox's
+ * side (`:restore`), which is why this is archive and not a delete.
+ */
+export async function archiveAsset(
+  env: UploadEnv,
+  robloxAssetId: number,
+  fetchImpl: typeof fetch = fetch,
+): Promise<{ ok: boolean; status: number; error?: string }> {
+  if (!env.ROBLOX_API_KEY) return { ok: false, status: 0, error: 'ROBLOX_API_KEY is not set' };
+  if (!Number.isSafeInteger(robloxAssetId) || robloxAssetId <= 0) {
+    // The same refusal as assetIdFrom, for the same reason: asset 0 is not an asset, and a request
+    // built from one would be a well-formed call against nothing.
+    return { ok: false, status: 0, error: `${robloxAssetId} is not an asset id` };
+  }
+  const res = await fetchImpl(`${ASSETS_ENDPOINT}/${robloxAssetId}:archive`, {
+    method: 'POST',
+    // A JSON body here, unlike the multipart upload, so the type is stated.
+    headers: { 'x-api-key': env.ROBLOX_API_KEY, 'content-type': 'application/json' },
+    body: '{}',
+  });
+  if (res.ok) return { ok: true, status: res.status };
+  return { ok: false, status: res.status, error: (await res.text()).slice(0, 300) || `HTTP ${res.status}` };
+}

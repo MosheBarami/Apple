@@ -1,6 +1,6 @@
 // Golem worker entry: API routes + static serving + DO exports.
 import { ingestAssets, type IngestRequest } from './asset-ingest';
-import { importPending } from './asset-import';
+import { importPending, unimportAssets } from './asset-import';
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import {
@@ -2349,6 +2349,17 @@ app.post('/api/admin/assets/import', async (c) => {
   const body = await c.req.json<{ limit?: number; source?: string; idPrefix?: string; after?: string }>().catch(() => null);
   const limit = Number.isFinite(body?.limit) ? Number(body?.limit) : 5;
   return c.json(await importPending(c.env as never, limit, body?.source, body?.idPrefix, body?.after));
+});
+
+/**
+ * Undo imports: archive the assets on Roblox and return the rows to pending. Bounded per call.
+ * Exists because 299 assets were uploaded to the owner's personal account before he had agreed to
+ * it, and an action with a reverse is a different decision from one without.
+ */
+app.post('/api/admin/assets/unimport', async (c) => {
+  const body = await c.req.json<{ limit?: number }>().catch(() => null);
+  const limit = Number.isFinite(body?.limit) ? Number(body?.limit) : 5;
+  return c.json(await unimportAssets(c.env as never, limit));
 });
 
 app.post('/api/admin/kill-switch', async (c) => {
