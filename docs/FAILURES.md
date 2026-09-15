@@ -48,9 +48,29 @@ The six, in descending order of how often they actually occur:
    **Why this reading matters more than the others:** readings 1-4 tell you to fix something.
    This one tells you to LEAVE IT ALONE, and it is the reading most likely to be misfiled as
    reading 2. A redundant guard and an untested guard produce byte-identical falsification
-   output, and only one of them should be deleted. The way to tell them apart is to ask what
-   happened INSTEAD of the failure you expected — a redundant guard's absence is covered by a
-   named, locatable second mechanism; a vacuous test's absence is covered by nothing.
+   output, and only one of them should be deleted.
+
+   **The discriminator, and it took two attempts.** The first version asked "what happened
+   INSTEAD of the failure you expected?" — a redundant guard's absence covered by a named
+   second mechanism, a vacuous test's by nothing. rbxai-04 broke it with a case from the same
+   night: `budget-admission.test.mjs` asserted `warnings.length >= 1` with a fixture that made
+   two fields unreadable, so the leaked-reservation warning already satisfied the count and
+   deleting the upper-bound warning left it green. Genuinely vacuous — and the substitute WAS
+   nameable and locatable: the other `console.warn`, at the un-released-hold branch. The
+   question as posed says "redundant, leave it alone". It was broken and needed fixing.
+
+   **So ask what covers THE PROPERTY THE TEST NAMES, not what covers the assertion's surface.**
+   That assertion's surface was "a warning exists", which the leak warning satisfied. The
+   property was "charging an upper bound is announced, with the figure" — and nothing in the
+   codebase names the charged ceiling, so nothing covered it. Run the repaired question on the
+   real cases and it separates them cleanly: for `gateway.ts:299` the property is "a request
+   above the per-request cap is refused", and `reserve()` throwing the identical `BudgetError`
+   satisfies it exactly; for `supaRest` the property is "a failed ownership lookup yields no
+   row", and `data[0]` on an error object being `undefined` satisfies it exactly.
+
+   This also explains WHY vacuous tests are vacuous — **an assertion weaker than the property
+   it claims**. The defect and the discriminator have the same root, which is the best evidence
+   available that it is the right question to ask.
 
 **Cost of the error:** three sessions reached a wrong conclusion about their own work in
 one night. Two breaks aimed at `/reserve` landed on `/probe`, because
