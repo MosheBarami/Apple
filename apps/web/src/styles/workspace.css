@@ -4371,3 +4371,188 @@
 .tour-skip:hover {
   color: var(--gx-ink);
 }
+
+/* --------------------------------------------------------------------------
+   Saved instructions (automations)
+
+   A reading surface with an editor folded into it. The list has to stay
+   readable when a row carries three notes — paused, dormant, and a
+   daylight-saving disclosure — because those notes are the whole point of the
+   row: an automation whose state the person cannot see is one they cannot
+   trust with their Credits.
+   -------------------------------------------------------------------------- */
+
+.au {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.au-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.au-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--gx-line, rgb(255 255 255 / 12%));
+  border-radius: 9px;
+  background: var(--gx-surface-1, rgb(0 0 0 / 14%));
+}
+
+.au-item__text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.au-item__name {
+  font-size: 0.92rem;
+  font-weight: 560;
+  color: var(--gx-ink);
+  overflow-wrap: anywhere;
+}
+
+.au-item__meta {
+  font-size: 0.78rem;
+  color: var(--gx-ink-3);
+  overflow-wrap: anywhere;
+}
+
+/* A note is not meta. It says something the person has to act on — that this will not start on
+   its own, or which of two mornings a run landed in — so it reads at the weight of a sentence
+   rather than a timestamp. */
+.au-item__note {
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--gx-warn, #c2943f);
+}
+
+.au-badge {
+  align-self: flex-start;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  border: 1px solid currentcolor;
+}
+
+.au-badge--off {
+  color: var(--gx-ink-3);
+}
+
+.au-item__acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.au-item__acts .btn {
+  padding: 5px 10px;
+  font-size: 0.78rem;
+}
+
+.au-editor {
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid var(--gx-line, rgb(255 255 255 / 12%));
+}
+
+/* The counter reports; it never corrects. Over-limit is coloured rather than enforced, because
+   the server refuses an over-long value and does not trim one — a client that cut the text short
+   would store a name nobody typed. */
+.au-count {
+  float: inline-end;
+  font-weight: 440;
+  color: var(--gx-ink-3);
+}
+
+.au-count--over {
+  color: var(--gx-bad, #d27653);
+}
+
+.au-err {
+  margin: -0.6rem 0 0.9rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--gx-bad, #d27653);
+}
+
+.au-history {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--gx-line, rgb(255 255 255 / 12%));
+}
+
+.au-runs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.au-run {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.au-run__mark {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--gx-ink-3);
+}
+
+.au-run__mark--good {
+  background: var(--gx-good, #7dad6e);
+}
+
+.au-run__mark--bad {
+  background: var(--gx-bad, #d27653);
+}
+
+.au-run__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.au-run__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.au-run__what {
+  font-size: 0.85rem;
+  color: var(--gx-ink);
+}
+
+.au-run__when,
+.au-run__meta {
+  font-size: 0.75rem;
+  color: var(--gx-ink-3);
+}
+
+.au-run__err {
+  font-size: 0.78rem;
+  color: var(--gx-bad, #d27653);
+  overflow-wrap: anywhere;
+}

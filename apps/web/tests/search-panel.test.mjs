@@ -287,5 +287,20 @@ test('the drawer you left open is the drawer you come back to', () => {
 test('“closed” and “a name this build does not know” are different stored states', () => {
   // Storing the empty string for closed would collapse them, and the validation that makes
   // restoring safe would have nothing left to distinguish.
-  assert.match(WSCODE, /const DRAWERS = \['none', 'checkpoints', 'memory', 'credits', 'search'\] as const/);
+  //
+  // Held as a PROPERTY rather than as a copy of the literal. Pinning the exact array made every
+  // new drawer a failure of this test, which says nothing about search and nothing about the
+  // distinction above — and a test that goes red for the wrong reason is one people edit without
+  // reading. What matters is that 'none' is a NAME, and that every drawer the build has is in the
+  // validated list: one that is missing restores as closed and never reopens.
+  const list = WSCODE.match(/const DRAWERS = \[([^\]]*)\] as const/);
+  assert.ok(list, 'the validated list must still exist');
+  const names = [...list[1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
+  assert.ok(names.includes('none'), 'closed is stored as a name, not as an empty string');
+
+  const type = WSCODE.match(/type Drawer = null \| ([^;]+);/);
+  assert.ok(type, 'the drawer union must still be spelled out');
+  for (const d of [...type[1].matchAll(/'([^']+)'/g)].map((m) => m[1])) {
+    assert.ok(names.includes(d), `'${d}' is a drawer this build has and the validator would reject`);
+  }
 });

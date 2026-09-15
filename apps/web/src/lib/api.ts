@@ -656,6 +656,98 @@ export const fetchMilestoneBrief = (projectId: string, milestoneId: string): Pro
         body: JSON.stringify({ milestoneId }),
       });
 
+// ---------------------------------------------------------------- automations
+//
+// The saved instructions a project keeps. Every one of these routes is driven end-to-end by
+// apps/worker/tests/automation-routes-live.test.mjs, which instantiates the real app — so the
+// spellings below are held against the server rather than against a reading of its source.
+
+/** One automation as the worker renders it: the row, plus the two sentences a person checks it by. */
+export interface AutomationView {
+  id: string;
+  ownerId: string;
+  projectId: string;
+  name: string;
+  description: string | null;
+  prompt: string;
+  mode: string;
+  trigger: string;
+  timezone: string;
+  event: string | null;
+  enabled: boolean;
+  overlap: string;
+  missedRuns: string;
+  maxRetries: number;
+  budget: { maxCreditsPerRun: number; maxRunsPerDay: number };
+  createdAt: number;
+  updatedAt: number;
+  nextFireAt: number | null;
+  lastFireAt: number | null;
+  /** `describeSchedule` — a schedule a person cannot read back is one they cannot check. */
+  describes: string;
+  /** The daylight-saving disclosure, or null when the schedule has no wall hour to be moved. */
+  dstNote: string | null;
+}
+
+export interface AutomationRunRow {
+  id: string;
+  automationId: string;
+  projectId: string;
+  trigger: string;
+  dueAt: number | null;
+  startedAt: number;
+  finishedAt: number | null;
+  outcome: string | null;
+  attempt: number;
+  runId: string | null;
+  credits: number | null;
+  error: string | null;
+  fold: string | null;
+}
+
+export interface AutomationSpend {
+  runs: number;
+  credits: number;
+  /** Fires whose cost was never recorded. NOT zero — see automationSpend in the worker. */
+  unreadable: number;
+  failures: number;
+}
+
+export const fetchAutomations = (projectId: string): Promise<{ automations: AutomationView[] }> =>
+  request(`/api/projects/${encodeURIComponent(projectId)}/automations`);
+
+export const createAutomation = (projectId: string, body: unknown): Promise<{ automation: AutomationView }> =>
+  request(`/api/projects/${encodeURIComponent(projectId)}/automations`, { method: 'POST', body: JSON.stringify(body) });
+
+export const updateAutomation = (id: string, body: unknown): Promise<{ automation: AutomationView }> =>
+  request(`/api/automations/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(body) });
+
+export const deleteAutomation = (id: string): Promise<{ ok: true }> =>
+  request(`/api/automations/${encodeURIComponent(id)}`, { method: 'DELETE' });
+
+/**
+ * Pause or resume.
+ *
+ * The worker answers with the state its own WRITE produced rather than echoing the request, so a
+ * toggle that changed nothing cannot render as a toggle that worked. Callers must use the returned
+ * value, not the one they sent.
+ */
+export const setAutomationEnabled = (id: string, enabled: boolean): Promise<{ ok: true; enabled: boolean }> =>
+  request(`/api/automations/${encodeURIComponent(id)}/enabled`, { method: 'POST', body: JSON.stringify({ enabled }) });
+
+/**
+ * Fire it now. Answers 202 with the execution id, because the build takes minutes and the request
+ * must not hold the connection open for it — the history is where the outcome arrives.
+ */
+export const runAutomation = (id: string): Promise<{ ok: true; executionId: string }> =>
+  request(`/api/automations/${encodeURIComponent(id)}/run`, { method: 'POST' });
+
+export const fetchAutomationRuns = (id: string, limit = 25): Promise<{ runs: AutomationRunRow[] }> =>
+  request(`/api/automations/${encodeURIComponent(id)}/runs?limit=${limit}`);
+
+export const fetchAutomationSpend = (id: string, days = 30): Promise<AutomationSpend> =>
+  request(`/api/automations/${encodeURIComponent(id)}/spend?days=${days}`);
+
 // ---------------------------------------------------------------- admin (X-Admin-Key)
 
 export interface AdminCounterRow {

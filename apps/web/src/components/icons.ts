@@ -32,6 +32,8 @@ export const ICON_PATH = {
     'M20 11.5l-8.1 8.1a4.6 4.6 0 0 1-6.5-6.5l8.6-8.6a3.1 3.1 0 0 1 4.4 4.4l-8.6 8.6a1.6 1.6 0 0 1-2.2-2.2l7.9-7.9',
   mic: 'M12 3.5a2.8 2.8 0 0 1 2.8 2.8v5.4a2.8 2.8 0 0 1-5.6 0V6.3A2.8 2.8 0 0 1 12 3.5zM5.5 11.2a6.5 6.5 0 0 0 13 0M12 17.7V21',
   history: 'M3 12a9 9 0 1 0 3-6.7M3 4v4h4',
+  /** A saved instruction that can be run again: the repeat arc, with a clock hand inside it. */
+  automation: 'M20 12a8 8 0 1 1-2.4-5.7M20 4v4h-4M12 8.5V12l2.6 1.6',
   brain: 'M9 4a3 3 0 0 0-3 3 3 3 0 0 0-1 5.8V16a3 3 0 0 0 4 2.8M15 4a3 3 0 0 1 3 3 3 3 0 0 1 1 5.8V16a3 3 0 0 1-4 2.8M12 4v15',
   close: 'M6 6l12 12M18 6L6 18',
   send: 'M12 19V5M5 12l7-7 7 7',
