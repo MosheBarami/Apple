@@ -27,7 +27,7 @@ import { SearchPanel } from '../components/ws/search-panel';
 import { EditMessageDialog } from '../components/ws/edit-message-dialog';
 import { MemoryPanel } from '../components/ws/memory-panel';
 import { InstructionsPanel } from '../components/ws/instructions-panel';
-import { ApiError, downloadExport, fetchPersonalisation, fetchProjectAccess, savePreferences, type SearchHit } from '../lib/api';
+import { ApiError, downloadExport, fetchMembers, fetchPersonalisation, fetchProjectAccess, savePreferences, type SearchHit } from '../lib/api';
 import type { AssetSourcePolicy } from '@golem/shared';
 import { owesAnswer } from '../lib/asset-sources';
 import { AssetSourceDialog } from '../components/asset-source-dialog';
@@ -36,6 +36,7 @@ import { replyAnnouncement } from '../lib/announce';
 import { readViewChoice, writeViewChoice } from '../lib/view-state';
 import { fidelityLine, restoreInFlight, restoreSentence, restoreTone } from '../lib/restore-status';
 import { ACCESS_LOADING, allows, normaliseAccess } from '../lib/capabilities';
+import { checkpointAuthorView, rosterNames } from '../lib/checkpoint-author';
 import { PairingDialog } from '../components/pairing-dialog';
 import { Composer } from '../components/ws/composer';
 import { Drawer, Icon, PATH } from '../components/ws/primitives';
@@ -187,6 +188,21 @@ export function WorkspacePage() {
   //   `normaliseAccess` drops a role or capability this build does not know rather than keeping
   //   it, and `allows` answers false for both 'loading' and 'unavailable' — unknown is never yes.
   //   So the window before this resolves shows a read-only panel, not a permissive one. ]]
+  //[[ NAMES FOR THE PEOPLE WHO TOOK THE CHECKPOINTS.
+  //
+  //   Asked only while the checkpoints drawer is open. The roster rather than presence: a
+  //   checkpoint taken last week by someone who is not connected right now is exactly the row
+  //   whose author a user wants, and presence only knows who is here at this moment.
+  //
+  //   When it has not loaded, or a member has since left, the row says "Another member" — an
+  //   honest gap. It must never fall back to the reader. ]]
+  const roster = useQuery({
+    queryKey: ['members', projectId, 'active', ''],
+    queryFn: () => fetchMembers(projectId, new URLSearchParams({ status: 'active' })),
+    enabled: projectId.length > 0 && drawer === 'checkpoints',
+  });
+  const memberNames = roster.data ? rosterNames(roster.data.members) : {};
+
   const accessQuery = useQuery({
     queryKey: ['project-access', projectId],
     queryFn: () => fetchProjectAccess(projectId),
@@ -889,7 +905,13 @@ export function WorkspacePage() {
             <span className="gx-row__main">
               {c.label}
               <span className="gx-row__meta">
-                {new Date(c.createdAt).toLocaleString()} · {c.instanceCount} objects · {c.scriptCount} scripts
+                {/* WHO, first. The row carried a timestamp and two counts and never said whose
+                    work it was — and the one surface that claimed an author guessed it from the
+                    kind, so on a shared project a teammate's checkpoint read as yours. This says
+                    "Another member" or "Author not recorded" rather than picking the reader, which
+                    is the wrong guess in exactly the argument the field exists for. */}
+                {checkpointAuthorView(c, userId || null, memberNames).label} · {new Date(c.createdAt).toLocaleString()} ·{' '}
+                {c.instanceCount} objects · {c.scriptCount} scripts
               </span>
               {/* THE RESTORE, WHILE IT IS HAPPENING AND WHEN IT IS OVER.
 

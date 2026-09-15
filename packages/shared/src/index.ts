@@ -996,6 +996,15 @@ export interface CheckpointMeta {
   scriptCount: number;
   instanceCount: number;
   sizeBytes: number;
+  /**
+   * The person who asked for it, or null.
+   *
+   * Null means two different true things and neither of them is "you": Apple took this one itself
+   * (`auto`, `pre_agent`), or the row predates the column. It was inferred from `kind` before this
+   * field existed, which told every member of a shared project that a teammate's checkpoint was
+   * theirs — on exactly the row a restore is about to be argued over.
+   */
+  authorId?: string | null;
 }
 
 /**
