@@ -209,7 +209,7 @@ jobs:
         run: rojo --version
 
       - name: Build plugin
-        run: rojo build apps/plugin/default.project.json --output golem-plugin.rbxm
+        run: rojo build apps/plugin/default.project.json --output apple-plugin.rbxm
 
       - name: Upload plugin
         uses: actions/upload-artifact@v4
@@ -222,8 +222,8 @@ jobs:
           #   PR runs CI there are many more of them. It is a build check, not a
           #   release. The release artifact comes from plugin-release.yml, which is
           #   workflow_dispatch-only. ]]
-          name: golem-plugin-pr-unverified
-          path: golem-plugin.rbxm
+          name: apple-plugin-pr-unverified
+          path: apple-plugin.rbxm
           retention-days: 7
 
   # --------------------------------------------------------- static checks --

@@ -48,6 +48,6 @@ the deploy runbook in memory/`infra`:
 pnpm install
 cd apps/worker && pnpm exec wrangler deploy     # API
 node infra/deploy-static.mjs                    # site + app -> D1 static store
-cd apps/plugin && rojo build -o release/golem-plugin.rbxm
+cd apps/plugin && rojo build -o release/apple-plugin.rbxm
 node infra/e2e.mjs                              # production end-to-end test
 ```

@@ -513,7 +513,7 @@ test('STATIC — no /v1 handler addresses a session except through grantedStub',
 });
 
 test('the OpenAI request parser refuses numbers that are not numbers', () => {
-  const ok = { model: 'golem-chat', messages: [{ role: 'user', content: 'hi' }] };
+  const ok = { model: 'apple-chat', messages: [{ role: 'user', content: 'hi' }] };
   assert.equal(P.parseChatCompletionRequest(ok).ok, true);
 
   // `??` defends undefined and null only. Each of these survives it, and then every `>` and
@@ -560,13 +560,13 @@ test('a foundation-model id is refused by name rather than silently aliased', ()
 });
 
 test('the request parser refuses the shapes this surface cannot honour', () => {
-  const base = { model: 'golem-chat', messages: [{ role: 'user', content: 'hi' }] };
+  const base = { model: 'apple-chat', messages: [{ role: 'user', content: 'hi' }] };
   const cases = [
     [{ ...base, tools: [{ type: 'function' }] }, 'tools_not_supported'],
     [{ ...base, functions: [] }, 'tools_not_supported'],
     [{ ...base, n: 2 }, 'invalid_request_error'],
-    [{ model: 'golem-chat', messages: [] }, 'invalid_request_error'],
-    [{ model: 'golem-chat' }, 'invalid_request_error'],
+    [{ model: 'apple-chat', messages: [] }, 'invalid_request_error'],
+    [{ model: 'apple-chat' }, 'invalid_request_error'],
     [{ ...base, messages: [{ role: 'tool', content: 'x' }] }, 'invalid_request_error'],
     [{ ...base, messages: [{ role: 'user', content: [{ type: 'image_url', image_url: {} }] }] }, 'invalid_request_error'],
     [{ ...base, messages: [{ role: 'user' }] }, 'invalid_request_error'],
@@ -587,11 +587,11 @@ test('the request parser refuses the shapes this surface cannot honour', () => {
 });
 
 test('the deprecated /v1/completions parser is the same validator, not a laxer one', () => {
-  const r = P.parseLegacyCompletionRequest({ model: 'golem-chat', prompt: 'hello', max_tokens: '8' });
+  const r = P.parseLegacyCompletionRequest({ model: 'apple-chat', prompt: 'hello', max_tokens: '8' });
   assert.equal(r.ok, false, 'the legacy route accepted a max_tokens the chat route rejects');
-  assert.equal(P.parseLegacyCompletionRequest({ model: 'golem-chat', prompt: '' }).ok, false);
-  assert.equal(P.parseLegacyCompletionRequest({ model: 'golem-chat' }).ok, false);
-  const good = P.parseLegacyCompletionRequest({ model: 'golem-chat', prompt: 'hello' });
+  assert.equal(P.parseLegacyCompletionRequest({ model: 'apple-chat', prompt: '' }).ok, false);
+  assert.equal(P.parseLegacyCompletionRequest({ model: 'apple-chat' }).ok, false);
+  const good = P.parseLegacyCompletionRequest({ model: 'apple-chat', prompt: 'hello' });
   assert.equal(good.ok, true);
   assert.equal(good.value.legacy, true);
   assert.equal(good.value.messages[0].content, 'hello');
@@ -608,7 +608,7 @@ test('a finish reason this API cannot represent never becomes "stop"', () => {
 
 test('streamed chunks carry the finish reason last, and usage only when asked', () => {
   const resp = { text: 'hello', toolCalls: [], usage: { inputTokens: 3, outputTokens: 2 }, neurons: 1, provider: 'p', model: 'm', finishReason: 'stop' };
-  const meta = { id: 'chatcmpl_1', model: 'golem-chat', createdAtMs: 1_700_000_000_000, fingerprint: 'fp' };
+  const meta = { id: 'chatcmpl_1', model: 'apple-chat', createdAtMs: 1_700_000_000_000, fingerprint: 'fp' };
 
   const without = P.chatCompletionChunks(resp, meta, 'stop', false);
   assert.equal(without[0].choices[0].delta.role, 'assistant');
@@ -755,14 +755,14 @@ test('usage headers omit headroom rather than inventing it', () => {
 });
 
 test('the sandbox completion is deterministic and labels itself', () => {
-  const req = P.parseChatCompletionRequest({ model: 'golem-chat', messages: [{ role: 'user', content: 'ping' }] }).value;
+  const req = P.parseChatCompletionRequest({ model: 'apple-chat', messages: [{ role: 'user', content: 'ping' }] }).value;
   const a = P.sandboxCompletion(req);
   const b = P.sandboxCompletion(req);
   assert.equal(a.text, b.text, 'the sandbox is not deterministic');
   assert.match(a.text, /sandbox/i);
   assert.equal(a.neurons, 0, 'the sandbox must cost nothing');
   assert.equal(a.finishReason, 'stop');
-  const other = P.sandboxCompletion(P.parseChatCompletionRequest({ model: 'golem-chat', messages: [{ role: 'user', content: 'pong' }] }).value);
+  const other = P.sandboxCompletion(P.parseChatCompletionRequest({ model: 'apple-chat', messages: [{ role: 'user', content: 'pong' }] }).value);
   assert.notEqual(a.text, other.text, 'the sandbox ignores the request');
 });
 
@@ -815,7 +815,7 @@ test('a key without chat:write cannot create a completion, and the model is neve
     method: 'POST',
     key: reader.key,
     env: bundle.env,
-    body: { model: 'golem-chat', messages: [{ role: 'user', content: 'hi' }] },
+    body: { model: 'apple-chat', messages: [{ role: 'user', content: 'hi' }] },
   });
   assert.equal(r.status, 403);
   assert.equal(r.json.error.code, 'insufficient_scope');
@@ -831,11 +831,11 @@ test('a live key returns an OpenAI-shaped completion with usage and rate-limit h
     method: 'POST',
     key: key.key,
     env: bundle.env,
-    body: { model: 'golem-chat', messages: [{ role: 'user', content: 'describe a plaza' }], max_tokens: 64 },
+    body: { model: 'apple-chat', messages: [{ role: 'user', content: 'describe a plaza' }], max_tokens: 64 },
   });
   assert.equal(r.status, 200, r.text.slice(0, 300));
   assert.equal(r.json.object, 'chat.completion');
-  assert.equal(r.json.model, 'golem-chat');
+  assert.equal(r.json.model, 'apple-chat');
   assert.equal(r.json.choices[0].message.role, 'assistant');
   assert.equal(r.json.choices[0].message.content, 'A stone plaza with a clock tower.');
   assert.equal(r.json.choices[0].finish_reason, 'stop');
@@ -850,7 +850,7 @@ test('a live key returns an OpenAI-shaped completion with usage and rate-limit h
   assert.equal(r.res.headers.get('X-RateLimit-Limit'), String(K.rateLimitFor('live')));
   assert.ok(Number(r.res.headers.get('X-RateLimit-Remaining')) < Number(r.res.headers.get('X-RateLimit-Limit')));
   assert.ok(Number(r.res.headers.get('X-RateLimit-Reset')) > 0);
-  assert.equal(r.res.headers.get('Golem-Version'), P.CURRENT_API_VERSION);
+  assert.equal(r.res.headers.get('Apple-Version'), P.CURRENT_API_VERSION);
   assert.equal(r.res.headers.get('Deprecation'), null, 'the current route announced a deprecation');
 
   assert.equal(bundle.trace.ai.length, 1, 'the model should have run exactly once');
@@ -872,7 +872,7 @@ test('a run that ends in a tool call is an error, not an empty completion', asyn
     method: 'POST',
     key: key.key,
     env: bundle.env,
-    body: { model: 'golem-chat', messages: [{ role: 'user', content: 'edit my script' }] },
+    body: { model: 'apple-chat', messages: [{ role: 'user', content: 'edit my script' }] },
   });
   assert.equal(r.status, 502, `expected a refusal, got ${r.status}: ${r.text.slice(0, 200)}`);
   assert.equal(r.json.error.code, 'upstream_incomplete');
@@ -886,7 +886,7 @@ test('a test key is served by the sandbox: no model, no Credits, and it says so'
     method: 'POST',
     key: key.key,
     env: bundle.env,
-    body: { model: 'golem-chat', messages: [{ role: 'user', content: 'ping' }] },
+    body: { model: 'apple-chat', messages: [{ role: 'user', content: 'ping' }] },
   });
   assert.equal(r.status, 200, r.text.slice(0, 200));
   assert.equal(r.json.system_fingerprint, P.SANDBOX_FINGERPRINT);
@@ -900,7 +900,7 @@ test('a test key is served by the sandbox: no model, no Credits, and it says so'
     method: 'POST',
     key: key.key,
     env: bundle.env,
-    body: { model: 'golem-chat', messages: [{ role: 'user', content: 'ping' }] },
+    body: { model: 'apple-chat', messages: [{ role: 'user', content: 'ping' }] },
   });
   assert.equal(again.json.choices[0].message.content, r.json.choices[0].message.content);
   // The live key's rate limit is not the test key's.
@@ -1011,7 +1011,7 @@ test('stream: true produces a real SSE body terminated by [DONE]', async () => {
     key: key.key,
     env: bundle.env,
     raw: true,
-    body: { model: 'golem-chat', messages: [{ role: 'user', content: 'go' }], stream: true, stream_options: { include_usage: true } },
+    body: { model: 'apple-chat', messages: [{ role: 'user', content: 'go' }], stream: true, stream_options: { include_usage: true } },
   });
   assert.equal(res.status, 200, text.slice(0, 200));
   assert.match(res.headers.get('Content-Type') ?? '', /text\/event-stream/);
@@ -1031,7 +1031,7 @@ test('stream: true produces a real SSE body terminated by [DONE]', async () => {
 test('Idempotency-Key replays the first answer and refuses a second, different body', async () => {
   const bundle = makeEnv({ aiText: 'once' });
   const key = await seedKey(bundle, { scopes: ['chat:write'] });
-  const body = { model: 'golem-chat', messages: [{ role: 'user', content: 'charge me once' }] };
+  const body = { model: 'apple-chat', messages: [{ role: 'user', content: 'charge me once' }] };
   const headers = { 'Idempotency-Key': 'order-42' };
 
   const first = await call('/v1/chat/completions', { method: 'POST', key: key.key, env: bundle.env, headers, body });
@@ -1095,30 +1095,30 @@ test('an unknown /v1 path is a JSON 404, not the marketing 404 page', async () =
   assert.ok(bare.res.headers.get('X-Request-Id'));
 });
 
-test('an unknown Golem-Version is refused before anything else happens', async () => {
+test('an unknown Apple-Version is refused before anything else happens', async () => {
   const bundle = makeEnv();
   const key = await seedKey(bundle, { scopes: ['chat:write'] });
   const r = await call('/v1/chat/completions', {
     method: 'POST',
     key: key.key,
     env: bundle.env,
-    headers: { 'Golem-Version': '2019-01-01' },
-    body: { model: 'golem-chat', messages: [{ role: 'user', content: 'hi' }] },
+    headers: { 'Apple-Version': '2019-01-01' },
+    body: { model: 'apple-chat', messages: [{ role: 'user', content: 'hi' }] },
   });
   assert.equal(r.status, 400);
   assert.equal(r.json.error.code, 'unsupported_api_version');
   assert.equal(bundle.trace.ai.length, 0);
   // The current version is accepted and echoed.
-  const ok = await call('/v1/models', { key: key.key, env: bundle.env, headers: { 'Golem-Version': P.CURRENT_API_VERSION } });
+  const ok = await call('/v1/models', { key: key.key, env: bundle.env, headers: { 'Apple-Version': P.CURRENT_API_VERSION } });
   assert.equal(ok.status, 200);
-  assert.equal(ok.res.headers.get('Golem-Version'), P.CURRENT_API_VERSION);
+  assert.equal(ok.res.headers.get('Apple-Version'), P.CURRENT_API_VERSION);
 });
 
 test('the deprecated completion route still works and announces its own sunset', async () => {
   const bundle = makeEnv({ aiText: 'legacy answer' });
   const key = await seedKey(bundle, { scopes: ['chat:write'] });
   const r = await call('/v1/completions', {
-    method: 'POST', key: key.key, env: bundle.env, body: { model: 'golem-chat', prompt: 'hello' },
+    method: 'POST', key: key.key, env: bundle.env, body: { model: 'apple-chat', prompt: 'hello' },
   });
   assert.equal(r.status, 200, r.text.slice(0, 200));
   assert.equal(r.json.object, 'text_completion');
@@ -1160,7 +1160,7 @@ test('a caller\'s request id is echoed when it is safe, replaced when it is not,
   const chatKey = await seedKey(chatBundle, { scopes: ['chat:write'] });
   await call('/v1/chat/completions', {
     method: 'POST', key: chatKey.key, env: chatBundle.env, headers: { 'X-Request-Id': 'chat-trace-3' },
-    body: { model: 'golem-chat', messages: [{ role: 'user', content: 'hi' }] },
+    body: { model: 'apple-chat', messages: [{ role: 'user', content: 'hi' }] },
   });
   const spend = chatBundle.trace.calls.find((cc) => cc.ns === 'QUOTA_DO' && cc.path === '/spend');
   assert.ok(spend, 'no Credit spend was recorded');
@@ -1192,7 +1192,7 @@ test('an account out of Credits gets 429 and the model does not run', async () =
   const bundle = makeEnv({ quota: async ({ path }) => (path === '/spend' ? { ok: false, state: { ...QUOTA_STATE, creditsRemaining: 0 } } : QUOTA_STATE) });
   const key = await seedKey(bundle, { scopes: ['chat:write'] });
   const r = await call('/v1/chat/completions', {
-    method: 'POST', key: key.key, env: bundle.env, body: { model: 'golem-chat', messages: [{ role: 'user', content: 'hi' }] },
+    method: 'POST', key: key.key, env: bundle.env, body: { model: 'apple-chat', messages: [{ role: 'user', content: 'hi' }] },
   });
   assert.equal(r.status, 429);
   assert.equal(r.json.error.code, 'insufficient_quota');

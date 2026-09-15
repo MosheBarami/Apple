@@ -197,7 +197,7 @@ jobs:
         run: rojo --version
 
       - name: Build plugin
-        run: rojo build apps/plugin/default.project.json --output golem-plugin.rbxm
+        run: rojo build apps/plugin/default.project.json --output apple-plugin.rbxm
 
       # ------------------------------------------------- refuse to ship junk --
       - name: Inspect the built artifact for secrets
@@ -211,7 +211,7 @@ jobs:
         env:
           EXPECT_VERSION: ${{ steps.version.outputs.version }}
         run: |
-          python3 scripts/inspect-plugin-build.py golem-plugin.rbxm \
+          python3 scripts/inspect-plugin-build.py apple-plugin.rbxm \
             --expect-version "$EXPECT_VERSION"
 
       # ------------------------------------------------------------ record --
@@ -226,8 +226,8 @@ jobs:
           ROJO: ${{ env.ROJO_VERSION }}
         run: |
           set -euo pipefail
-          SHA=$(sha256sum golem-plugin.rbxm | cut -d' ' -f1)
-          SIZE=$(stat -c%s golem-plugin.rbxm)
+          SHA=$(sha256sum apple-plugin.rbxm | cut -d' ' -f1)
+          SIZE=$(stat -c%s apple-plugin.rbxm)
           echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
           BUILT_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           # Built with jq so the values are JSON-encoded rather than string-pasted.
@@ -242,16 +242,16 @@ jobs:
             '{$version, $protocol, $sha256, $bytes, $commit, $builtAt, $rojo,
               published: false,
               publishNote: "Publishing is a human step in Roblox Studio. Open Cloud cannot update a Plugin asset."}' \
-            > golem-plugin.manifest.json
-          cat golem-plugin.manifest.json
+            > apple-plugin.manifest.json
+          cat apple-plugin.manifest.json
 
       - name: Upload plugin build
         uses: actions/upload-artifact@v4
         with:
-          name: golem-plugin-${{ steps.version.outputs.version }}
+          name: apple-plugin-${{ steps.version.outputs.version }}
           path: |
-            golem-plugin.rbxm
-            golem-plugin.manifest.json
+            apple-plugin.rbxm
+            apple-plugin.manifest.json
           retention-days: 90
 
       # ------------------------------------------- hand off to the human ----
@@ -291,8 +291,8 @@ jobs:
             echo ""
             echo "### To release it (human, in Roblox Studio)"
             echo ""
-            echo "1. Download the \`golem-plugin-$VERSION\` artifact."
-            echo "2. Put \`golem-plugin.rbxm\` in your local Plugins folder and restart Studio."
+            echo "1. Download the \`apple-plugin-$VERSION\` artifact."
+            echo "2. Put \`apple-plugin.rbxm\` in your local Plugins folder and restart Studio."
             echo "3. Smoke-test it: pair with a code, run one build."
             echo "4. Right-click the plugin in Explorer -> **Publish as Plugin**."
             echo "5. Choose **Overwrite an existing asset** and select **Golem** (asset 132128477945417)."
