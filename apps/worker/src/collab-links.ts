@@ -35,8 +35,31 @@ export function isShareToken(value: unknown): value is string {
   return typeof value === 'string' && TOKEN_RE.test(value);
 }
 
+export const SHARE_LINK_PREFIX = 'share:link:';
+
 export function shareLinkKey(token: string): string {
-  return `share:link:${token}`;
+  return `${SHARE_LINK_PREFIX}${token}`;
+}
+
+/**
+ * A name for a link that is not the link.
+ *
+ * An administrator needs to point at one of their outstanding links — to see it, and to turn it
+ * off — and the one thing that must not travel back to the browser to let them is the token, which
+ * IS the access. So the id is a truncated SHA-256 of it: stable, so the same link is the same row
+ * across two page loads; one-way, so a list of ids is not a list of keys; and long enough that two
+ * links colliding is not a thing that happens.
+ *
+ * 96 bits, not 256. The id is looked up by scanning the project's own links, so a collision costs
+ * a wrong row rather than an escalation, and a 24-character string is something a support
+ * conversation can actually contain.
+ */
+export async function shareLinkId(token: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
+  return [...new Uint8Array(digest)]
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+    .slice(0, 24);
 }
 
 export function shareGrantKey(projectId: string, userId: string): string {
@@ -66,8 +89,22 @@ export interface StoredShareLink {
   created_at: string;
 }
 
+/**
+ * The project id rides along as KV METADATA rather than in a second index key.
+ *
+ * `shareGrantPrefix` gets to say "the prefix is the index — no second key to keep in step with the
+ * first". A link cannot do that: the token is the lookup key because the token is the credential,
+ * and a key that also named the project would have to be known before the project is, which at
+ * redemption time it is not.
+ *
+ * A companion index key would have two failure modes this does not: an entry pointing at a link
+ * that no longer exists, and — worse — a link minted before the index existed that is silently
+ * absent from every listing afterwards. Metadata avoids the first because there is still exactly
+ * one record, and `listProjectShareLinks` avoids the second by READING any key whose metadata is
+ * missing rather than assuming it belongs to somebody else.
+ */
 export async function putShareLink(env: Env, link: StoredShareLink): Promise<void> {
-  await env.KV.put(shareLinkKey(link.token), JSON.stringify(link));
+  await env.KV.put(shareLinkKey(link.token), JSON.stringify(link), { metadata: { p: link.project_id } });
 }
 
 /** The stored row, or null. An unreadable value is null, never a partially-trusted object. */
@@ -256,4 +293,65 @@ export async function kvGrantsFor(env: Env, projectId: string, userId: string): 
   } catch {
     return [];
   }
+}
+
+/**
+ * EVERY SHARE LINK THIS PROJECT HAS ISSUED, AND WHETHER THE LIST IS COMPLETE.
+ *
+ * Until this existed a link could only be revoked by somebody who still held its token, which means
+ * an administrator who minted one, sent it, and closed the tab had handed out access they could
+ * never take back. That is not a missing convenience; it is a credential with no off switch.
+ *
+ * `complete` is the same promise `listKvGrants` makes and for the same reason (F-58): KV is a
+ * separate store that can be unreachable, and an empty array from a failed list is
+ * indistinguishable from "this project has issued no links" — which is the most reassuring possible
+ * way to be wrong about outstanding credentials. A key that lists and cannot be read is a link we
+ * know exists and cannot describe; that is incompleteness, not absence.
+ *
+ * A KEY WITH NO METADATA IS READ, NOT SKIPPED. Links minted before `putShareLink` attached the
+ * project id have none, and skipping them would leave exactly the oldest outstanding links — the
+ * ones most likely to want revoking — permanently invisible, with the listing still claiming to be
+ * complete. Filtering on metadata alone is the cheap version and it lies.
+ *
+ * It scans the whole link namespace, which is right at this size and will not be forever. When one
+ * list page stops holding a deployment's links, the links belong in Postgres, where they can be
+ * indexed by project; `complete: false` is what will say so rather than a silently short list.
+ */
+export async function listProjectShareLinks(
+  env: Env,
+  projectId: string,
+  limit = 1000,
+): Promise<{ links: StoredShareLink[]; complete: boolean }> {
+  let listed: { keys: { name: string; metadata?: unknown }[]; list_complete?: boolean };
+  try {
+    listed = (await env.KV.list({ prefix: SHARE_LINK_PREFIX, limit })) as {
+      keys: { name: string; metadata?: unknown }[];
+      list_complete?: boolean;
+    };
+  } catch {
+    return { links: [], complete: false };
+  }
+  const keys = Array.isArray(listed?.keys) ? listed.keys : null;
+  if (keys === null) return { links: [], complete: false };
+
+  const links: StoredShareLink[] = [];
+  let complete = listed.list_complete !== false;
+  for (const key of keys) {
+    if (typeof key?.name !== 'string' || !key.name.startsWith(SHARE_LINK_PREFIX)) continue;
+    const owner = (key.metadata as { p?: unknown } | null | undefined)?.p;
+    // Only a metadata value we can READ and that names another project is a reason not to look.
+    if (typeof owner === 'string' && owner !== projectId) continue;
+    const token = key.name.slice(SHARE_LINK_PREFIX.length);
+    if (token.length === 0) continue;
+    const link = await readShareLink(env, token);
+    if (link === null) {
+      // Unreadable, or a token shape this build refuses to use as a key. Either way there is a link
+      // here we cannot describe, and saying the list is whole would be a lie about a credential.
+      complete = false;
+      continue;
+    }
+    if (link.project_id !== projectId) continue;
+    links.push(link);
+  }
+  return { links, complete };
 }

@@ -83,3 +83,62 @@ export function redeemRefusal(reason: unknown): string | null {
   // than as a link that was.
   return REFUSALS[reason] ?? `That link was refused: ${reason}.`;
 }
+
+/**
+ * WHAT STANDING A LINK IS IN — read the way the server reads it.
+ *
+ * `redeemShareLink` on the worker is the authority, and three of its refusals are visible from the
+ * row alone: `revoked`, `expired`, and — the one worth writing down — `malformed`, which is what an
+ * `expires_at` the server cannot PARSE produces. A client that treated an unreadable expiry as "no
+ * expiry" would show an administrator a live link that the server refuses on sight, which is the
+ * most misleading direction for this particular screen to be wrong in: they would believe access
+ * they are looking at still works, and leave it in place.
+ *
+ * Revoked outranks expired because it is the thing somebody DID, and the two lead to different next
+ * actions.
+ */
+export interface LinkStanding {
+  state: 'live' | 'revoked' | 'expired' | 'unreadable';
+  /** True for anything that will not open the project. Unknown counts as dead, never as live. */
+  dead: boolean;
+  label: string;
+}
+
+export function linkStanding(row: unknown, nowMs: number): LinkStanding {
+  if (!row || typeof row !== 'object') {
+    return { state: 'unreadable', dead: true, label: 'We could not read this link' };
+  }
+  const r = row as { revokedAt?: unknown; expiresAt?: unknown };
+  if (typeof r.revokedAt === 'string' && r.revokedAt.length > 0) {
+    return { state: 'revoked', dead: true, label: 'Turned off' };
+  }
+  if (r.expiresAt !== null && r.expiresAt !== undefined && r.expiresAt !== '') {
+    const exp = typeof r.expiresAt === 'string' ? Date.parse(r.expiresAt) : NaN;
+    if (!Number.isFinite(exp)) {
+      // The server's `malformed`. See the header.
+      return { state: 'unreadable', dead: true, label: 'Its expiry cannot be read, so it will not open anything' };
+    }
+    if (exp <= nowMs) return { state: 'expired', dead: true, label: 'Ran out' };
+  }
+  return { state: 'live', dead: false, label: 'Working' };
+}
+
+/**
+ * The hole in an inventory OF CREDENTIALS, which is the reason this is not the same warning twice.
+ *
+ * A short list of links shown as a whole one tells an administrator they have withdrawn everything
+ * while one link is still working. A missing redemption count is a smaller failure — the link is on
+ * screen and revocable, we simply cannot say how many people used it — and collapsing the two into
+ * one sentence would either overstate the second or understate the first.
+ */
+export function linkInventoryGap(res: unknown): string | null {
+  if (!res || typeof res !== 'object') return null;
+  const r = res as { complete?: unknown; redemptionsComplete?: unknown };
+  if (r.complete === false) {
+    return 'We could not read all of this project’s links, so one may be missing from this list — and a link missing from it is still working.';
+  }
+  if (r.redemptionsComplete === false) {
+    return 'We could not check how many people have used these links. The links themselves are all here.';
+  }
+  return null;
+}

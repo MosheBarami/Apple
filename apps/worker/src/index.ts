@@ -34,6 +34,8 @@ import {
   restoreKvGrant,
   revokeKvGrant,
   revokeShareLink,
+  listProjectShareLinks,
+  shareLinkId,
 } from './collab-links';
 import {
   BULK_INVITE_MAX,
@@ -4156,6 +4158,62 @@ app.post('/api/shared/:id/members/:userId/reactivate', async (c) => {
   return c.json({ ok: true, userId, reactivated: true, role, linkGrantRestored, audited: audit.ok });
 });
 
+/**
+ * WHAT THIS PROJECT HAS HANDED OUT — the outstanding links, and no tokens.
+ *
+ * Until now a link could only be revoked by somebody who still held it, so an administrator who
+ * minted one, sent it and closed the tab had given out access they could never take back. There
+ * was no route that listed them either, which meant no UI could have offered it. That is a
+ * credential with no off switch, and the web app gaining a mint control is what made it urgent.
+ *
+ * THE TOKEN IS NEVER IN THE ANSWER. Each row carries an opaque `id` — a truncated SHA-256 of the
+ * token — which is enough to name a link for revocation and is not the link. A list endpoint that
+ * returned the secrets would turn one `share` capability into every link the project ever issued,
+ * and this is a screen people take screenshots of.
+ *
+ * `complete: false` is an answer, not an error. See listProjectShareLinks: a short list presented
+ * as a whole one is the worst shape here, because the link it left out is the one still working.
+ */
+app.get('/api/shared/:id/links', async (c) => {
+  const gate = await sharedAccess(c, c.req.param('id') ?? '', 'share');
+  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  const ctx = gate.ctx;
+
+  const { links, complete } = await listProjectShareLinks(c.env, ctx.project.id);
+  // How many people came in through each link. Counted from the grants rather than stored on the
+  // link, so it cannot drift — and its own completeness is reported separately, because "nobody
+  // has used this link" and "we could not check who has" are different sentences.
+  const grants = await listKvGrants(c.env, ctx.project.id);
+  const redeemedBy = new Map<string, number>();
+  for (const g of grants.grants) {
+    if (typeof g.via_token !== 'string') continue;
+    redeemedBy.set(g.via_token, (redeemedBy.get(g.via_token) ?? 0) + 1);
+  }
+
+  const rows = await Promise.all(
+    links.map(async (link) => ({
+      id: await shareLinkId(link.token),
+      scope: link.scope,
+      role: link.role,
+      resourceId: link.resource_id,
+      createdBy: link.created_by,
+      createdAt: link.created_at,
+      expiresAt: link.expires_at,
+      revokedAt: link.revoked_at,
+      redeemed: redeemedBy.get(link.token) ?? 0,
+    })),
+  );
+  rows.sort((a, b) => Date.parse(b.createdAt ?? '') - Date.parse(a.createdAt ?? ''));
+
+  const incomplete = [...(complete ? [] : ['links']), ...(grants.complete ? [] : ['redemptions'])];
+  return c.json({
+    links: rows,
+    complete,
+    redemptionsComplete: grants.complete,
+    ...(incomplete.length > 0 ? { partial: true, incomplete } : {}),
+  });
+});
+
 app.post('/api/shared/:id/links', async (c) => {
   const gate = await sharedAccess(c, c.req.param('id') ?? '', 'share');
   if (gate.ctx === null) return collabRefusal(c, gate.status);
@@ -4226,16 +4284,48 @@ app.post('/api/shared/links/redeem', async (c) => {
   return c.json({ ok: true, projectId: link.project_id, role: out.grant.role, scope: out.grant.scope, resourceId: out.grant.resourceId }, 201);
 });
 
+/**
+ * Turning a link off, BY TOKEN OR BY ID.
+ *
+ * By token is how the person who still has the link does it. By id is how everybody else does it —
+ * the listing above hands back ids precisely so that an administrator can revoke a link they no
+ * longer hold, which was the whole problem: revocation used to require the secret, so losing the
+ * secret meant losing the ability to withdraw it.
+ *
+ * AN ID IS RESOLVED WITHIN THIS PROJECT AND NOWHERE ELSE. It is matched against the project's own
+ * links, so an id lifted from another project's screen names nothing here — the same rule the
+ * token path enforces by comparing `project_id`, arrived at from the other direction.
+ */
 app.post('/api/shared/:id/links/revoke', async (c) => {
   const gate = await sharedAccess(c, c.req.param('id') ?? '', 'share');
   if (gate.ctx === null) return collabRefusal(c, gate.status);
-  const body = (await c.req.json().catch(() => null)) as { token?: unknown } | null;
-  if (!isShareToken(body?.token)) return c.json({ error: 'bad_token' }, 400);
-  const link = await readShareLink(c.env, body.token);
+  const ctx = gate.ctx;
+  const body = (await c.req.json().catch(() => null)) as { token?: unknown; id?: unknown } | null;
+
+  let token: string | null = null;
+  if (isShareToken(body?.token)) {
+    token = body.token;
+  } else if (typeof body?.id === 'string' && /^[0-9a-f]{24}$/.test(body.id)) {
+    const { links, complete } = await listProjectShareLinks(c.env, ctx.project.id);
+    for (const link of links) {
+      if ((await shareLinkId(link.token)) === body.id) {
+        token = link.token;
+        break;
+      }
+    }
+    // NOT FOUND IS NOT THE SAME AS NOT LOOKED AT. If the listing was short, an id we did not match
+    // may belong to a link we could not read — answering 404 would tell an administrator that the
+    // link they can see on their screen does not exist, and leave it working.
+    if (token === null && !complete) return c.json({ error: 'links_unavailable' }, 503);
+  } else {
+    return c.json({ error: 'bad_token' }, 400);
+  }
+
+  const link = token === null ? null : await readShareLink(c.env, token);
   // A link is revocable only from the project it belongs to. Without this, holding ANY project
   // would let you revoke any link in the system by presenting its token.
-  if (!link || link.project_id !== gate.ctx.project.id) return c.json({ error: 'no_such_link' }, 404);
-  await revokeShareLink(c.env, body.token, new Date().toISOString());
+  if (token === null || !link || link.project_id !== ctx.project.id) return c.json({ error: 'no_such_link' }, 404);
+  await revokeShareLink(c.env, token, new Date().toISOString());
   return c.json({ ok: true, revoked: true });
 });
 

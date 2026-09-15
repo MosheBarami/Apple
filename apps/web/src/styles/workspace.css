@@ -4801,3 +4801,54 @@
   color: var(--gx-ink-3);
   font-size: 0.82rem;
 }
+
+/* --- members: the links still open ----------------------------------------------------------- */
+/*
+   An inventory of things that currently open this project, so a dead row is dimmed and never
+   hidden: a link that vanished from this list reads as a link that was withdrawn, and the whole
+   purpose of the list is to say which ones were not.
+*/
+
+.mb__links {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--gx-line);
+}
+
+.mb__links-head {
+  margin: 0;
+  color: var(--gx-ink-2);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.mb__links-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mb__linkrow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--gx-line);
+}
+
+.mb__linkrow:last-child {
+  border-bottom: 0;
+}
+
+.mb__linkrow.is-inactive .mb__handle,
+.mb__linkrow.is-inactive .mb__sub {
+  color: var(--gx-ink-3);
+}

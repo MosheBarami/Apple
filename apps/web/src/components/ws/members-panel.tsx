@@ -31,6 +31,8 @@ import {
   bulkInviteMembers,
   createShareLink,
   fetchMemberEvents,
+  fetchShareLinks,
+  revokeShareLinkById,
   fetchMemberImpact,
   fetchMembers,
   inviteMember,
@@ -56,7 +58,7 @@ import { rankMembers } from '../../lib/member-match';
 import { BULK_INVITE_MAX, bulkRefusal, explainRejections, parseBulkIds, type BulkProblem } from '../../lib/bulk-invite';
 import { MEMBER_REASON_MAX, describeEvent, historyGap, unauditedNote } from '../../lib/member-history';
 import { readImpact } from '../../lib/member-impact';
-import { shareLinkUrl } from '../../lib/share-link';
+import { linkInventoryGap, linkStanding, shareLinkUrl } from '../../lib/share-link';
 import { relativeTime } from '../../lib/format';
 import { useToast } from '../toast';
 import { createUndoable } from '../../lib/undo';
@@ -695,6 +697,111 @@ function BulkInviteForm({
 }
 
 /**
+ * WHAT IS STILL OPEN.
+ *
+ * A share link was revocable only by somebody who still held it, and nothing listed the links a
+ * project had issued — so an administrator who minted one, sent it and closed the tab had handed
+ * out access they could never withdraw. Adding the mint control above without this would have made
+ * that worse rather than better, which is why they land together.
+ *
+ * NO TOKENS COME BACK, by design at the route. Each row is named by an opaque id, which is what
+ * Revoke sends; the secret stays on the server and this screen stays safe to screenshot.
+ *
+ * A SHORT LIST IS SAID OUT LOUD, and it is not the same warning as the roster's. This is an
+ * inventory of credentials: a link missing from it is a link still working, and an administrator
+ * reading a complete-looking list concludes they have withdrawn everything.
+ */
+function OutstandingLinks({ projectId, mayShare }: { projectId: string; mayShare: boolean }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const now = Date.now();
+
+  const links = useQuery({
+    queryKey: ['share-links', projectId],
+    queryFn: () => fetchShareLinks(projectId),
+    enabled: mayShare,
+  });
+
+  const revoke = useMutation({
+    mutationFn: (id: string) => revokeShareLinkById(projectId, id),
+    onSuccess: () => {
+      toast('That link will not let anybody else in.', 'success');
+      void qc.invalidateQueries({ queryKey: ['share-links', projectId] });
+    },
+    onError: (e: Error) => toast(`Could not turn it off: ${e.message}`, 'error'),
+  });
+
+  if (!mayShare) return null;
+
+  const gap = links.isSuccess ? linkInventoryGap(links.data) : null;
+  const rows = links.data?.links ?? [];
+
+  return (
+    <div className="mb__links">
+      <h4 className="mb__links-head">Links you have made</h4>
+
+      {links.isPending && (
+        <p className="cs__note" aria-busy="true">
+          Reading them…
+        </p>
+      )}
+
+      {links.isError && (
+        <p className="cs__note cs__note--bad" role="alert">
+          {/* Loudly, because the thing we cannot read is a list of working credentials. */}
+          We could not read this project’s links, so we cannot tell you what is still open.
+        </p>
+      )}
+
+      {gap && (
+        <p className="cs__note cs__note--warn" role="status">
+          {gap}
+        </p>
+      )}
+
+      {links.isSuccess && rows.length === 0 && !gap && <p className="cs__note">None. Nothing is open by link.</p>}
+
+      {rows.length > 0 && (
+        <ul className="mb__links-list">
+          {rows.map((row) => {
+            const standing = linkStanding(row, now);
+            return (
+              <li key={row.id} className={`mb__linkrow${standing.dead ? ' is-inactive' : ''}`}>
+                <div className="mb__who">
+                  <span className="mb__handle">
+                    {ROLE_LABELS[row.role as keyof typeof ROLE_LABELS] ?? row.role} link
+                  </span>
+                  <span className="mb__sub">
+                    {standing.label}
+                    {' · made '}
+                    {relativeTime(row.createdAt)}
+                    {row.expiresAt && !standing.dead ? ` · until ${relativeTime(row.expiresAt)}` : ''}
+                    {` · used ${row.redeemed} ${row.redeemed === 1 ? 'time' : 'times'}`}
+                  </span>
+                </div>
+                <div className="mb__actions">
+                  <button
+                    type="button"
+                    className="btn btn-quiet mb__remove"
+                    // Nothing to turn off on a link that is already off. An expired one is still
+                    // offered: revoking it is how an administrator stops it coming back if the
+                    // expiry was ever extended.
+                    disabled={standing.state === 'revoked' || revoke.isPending}
+                    onClick={() => revoke.mutate(row.id)}
+                  >
+                    Turn off
+                  </button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/**
  * Why removing somebody is not a ConfirmDialog.
  *
  * lib/confirm-model.ts decides ceremony from consequence, and a member removal is REVERSIBLE — the
@@ -958,6 +1065,7 @@ function MemberHistory({ projectId, member }: { projectId: string; member: Membe
  */
 function ShareLinkForm({ projectId, access }: { projectId: string; access: AccessState }) {
   const { toast } = useToast();
+  const qc = useQueryClient();
   const mayShare = allows(access, 'share');
   const cannotShare = whyNot(access, 'share');
   const [role, setRole] = useState<LinkableRole>('viewer');
@@ -972,7 +1080,12 @@ function ShareLinkForm({ projectId, access }: { projectId: string; access: Acces
         // midnight that opens it — the same reading the invite form gives the same control.
         expiresAt: expiresAt ? new Date(`${expiresAt}T23:59:59.999Z`).toISOString() : null,
       }),
-    onSuccess: (res) => setLink(shareLinkUrl(res.token, window.location.origin)),
+    onSuccess: (res) => {
+      setLink(shareLinkUrl(res.token, window.location.origin));
+      // The inventory below is now one row out of date, and it is the only place this link can be
+      // turned off from once the token leaves the screen.
+      void qc.invalidateQueries({ queryKey: ['share-links', projectId] });
+    },
     onError: (e: Error) => toast(`Could not make a link: ${e.message}`, 'error'),
   });
 
@@ -1047,6 +1160,8 @@ function ShareLinkForm({ projectId, access }: { projectId: string; access: Acces
             </button>
           </div>
         )}
+
+        <OutstandingLinks projectId={projectId} mayShare={mayShare} />
       </form>
     </details>
   );

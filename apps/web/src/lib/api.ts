@@ -794,6 +794,46 @@ export const createShareLink = (
 export const redeemShareLink = (token: string): Promise<{ ok: boolean; projectId: string; role: string; scope: string }> =>
   request(`/api/shared/links/redeem`, { method: 'POST', body: JSON.stringify({ token }) });
 
+/**
+ * THE LINKS THIS PROJECT HAS ISSUED, AND NO TOKENS.
+ *
+ * Each row is named by an opaque `id` — a truncated hash of the token — which is enough to revoke a
+ * link and is not the link. Without this route a link could only be withdrawn by somebody who still
+ * held the secret, so an administrator who minted one, sent it and closed the tab had handed out
+ * access they could never take back.
+ *
+ * `complete: false` is an answer about CREDENTIALS and must be rendered: a short list shown as a
+ * whole one tells somebody they have withdrawn everything while one link is still working.
+ * `redemptionsComplete` is the smaller, separate failure — the links are all here and the count of
+ * who used them is not.
+ */
+export interface ShareLinkRow {
+  id: string;
+  scope: string;
+  role: string;
+  resourceId: string | null;
+  createdBy: string;
+  createdAt: string;
+  expiresAt: string | null;
+  revokedAt: string | null;
+  redeemed: number;
+}
+
+export interface ShareLinksResponse {
+  links: ShareLinkRow[];
+  complete: boolean;
+  redemptionsComplete: boolean;
+  partial?: boolean;
+  incomplete?: string[];
+}
+
+export const fetchShareLinks = (projectId: string): Promise<ShareLinksResponse> =>
+  request<ShareLinksResponse>(`/api/shared/${encodeURIComponent(projectId)}/links`);
+
+/** By id, which is the whole point: the caller no longer needs to hold the secret to withdraw it. */
+export const revokeShareLinkById = (projectId: string, id: string): Promise<{ ok: boolean; revoked: boolean }> =>
+  request(`/api/shared/${encodeURIComponent(projectId)}/links/revoke`, { method: 'POST', body: JSON.stringify({ id }) });
+
 // ---------------------------------------------------------------- roadmap
 
 // The wire shapes live in components/roadmap/model.ts and are imported here as
