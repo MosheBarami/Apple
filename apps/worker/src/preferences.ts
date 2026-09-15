@@ -49,6 +49,11 @@ export const PREFERENCE_KEYS = [
   // every other one here — set it for yourself, or for one project, or for a whole organisation —
   // and because a compliance rule that could not be set at the org layer would not be a rule.
   'memory_mode',
+  // Where Apple is allowed to get assets from when it builds. The owner's rule: ask before
+  // building unless the answer has been settled once. It lives here rather than in a dialog's own
+  // local state because "settled once" has to mean settled for this project, or this person, or
+  // this organisation — which is the layering this file already does.
+  'asset_sources',
 ] as const;
 export type PreferenceKey = (typeof PREFERENCE_KEYS)[number];
 
@@ -110,6 +115,64 @@ export const isRobloxConvention = (v: unknown): v is RobloxConvention => inList(
 export const isLanguageTag = (v: unknown): v is LanguageTag => inList(LANGUAGES, v);
 export const isResponseLength = (v: unknown): v is ResponseLength => inList(RESPONSE_LENGTHS, v);
 export const isToolPermission = (v: unknown): v is ToolPermission => inList(TOOL_PERMISSIONS, v);
+/**
+ * Where a build may take assets from.
+ *
+ *   apple_library — the curated CC0 library Apple harvested and hosts by Roblox asset id.
+ *   creator_store — Roblox's own Creator Store, bought or free, under the customer's account.
+ *   from_scratch  — generated or procedurally built during the run.
+ *
+ * A SET, not one choice: "the library and the Creator Store, but do not invent geometry" is the
+ * common answer, and a single-pick control could not express it.
+ */
+export const ASSET_SOURCE_CHOICES = ['apple_library', 'creator_store', 'from_scratch'] as const;
+export type AssetSourceChoice = (typeof ASSET_SOURCE_CHOICES)[number];
+
+/**
+ * `ask` shows the pop-up before each build. `remember` uses `allow` without asking.
+ *
+ * The default is `ask` WITH AN EMPTY ALLOW LIST, and the two together are deliberate: a person who
+ * has never answered must be asked, and until they answer nothing is permitted. An empty list that
+ * defaulted to "everything" would mean the pop-up existed only to be dismissed.
+ */
+export interface AssetSourcePolicy {
+  mode: 'ask' | 'remember';
+  allow: AssetSourceChoice[];
+}
+
+export const ASSET_SOURCE_DEFAULT: AssetSourcePolicy = { mode: 'ask', allow: [] };
+
+export function isAssetSourcePolicy(v: unknown): v is AssetSourcePolicy {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return false;
+  const p = v as Partial<AssetSourcePolicy>;
+  if (p.mode !== 'ask' && p.mode !== 'remember') return false;
+  if (!Array.isArray(p.allow)) return false;
+  // Duplicates are rejected rather than de-duplicated. A client sending the same choice twice has
+  // a bug, and quietly repairing it hides the bug while the next one may not be repairable.
+  if (new Set(p.allow).size !== p.allow.length) return false;
+  return p.allow.every((c) => inList(ASSET_SOURCE_CHOICES, c));
+}
+
+/**
+ * Layering for asset sources NARROWS, like tool permissions and memory mode, and for the same
+ * reason: an organisation that has decided its builds may not pull from the Creator Store has made
+ * a spending and licensing decision, and a rule a project can switch back on is not a rule.
+ *
+ * So the result allows only what BOTH layers allow, and `ask` beats `remember` — being asked is
+ * the more conservative of the two, because it is the state in which nothing happens by default.
+ */
+export function narrowAssetSources(
+  a: AssetSourcePolicy | undefined,
+  b: AssetSourcePolicy | undefined,
+): AssetSourcePolicy {
+  if (!isAssetSourcePolicy(a)) return isAssetSourcePolicy(b) ? b : ASSET_SOURCE_DEFAULT;
+  if (!isAssetSourcePolicy(b)) return a;
+  return {
+    mode: a.mode === 'ask' || b.mode === 'ask' ? 'ask' : 'remember',
+    allow: a.allow.filter((c) => b.allow.includes(c)),
+  };
+}
+
 export const isPreferenceKey = (v: unknown): v is PreferenceKey => inList(PREFERENCE_KEYS, v);
 
 export interface Preferences {
@@ -126,6 +189,8 @@ export interface Preferences {
   notify_events?: NotificationEventPrefs;
   /** `auto`, `review` or `off`. See memory.ts — and `mergePreferences`, where it NARROWS. */
   memory_mode?: MemoryMode;
+  /** Where builds may take assets from. NARROWS across layers — see `narrowAssetSources`. */
+  asset_sources?: AssetSourcePolicy;
 }
 
 export type PreferenceReject =
@@ -188,6 +253,10 @@ export function normalisePreferences(input: unknown, vocab: PreferenceVocabulary
         break;
       case 'response_length':
         if (isResponseLength(value)) prefs.response_length = value;
+        else rejected.push({ key, reason: 'bad_value' });
+        break;
+      case 'asset_sources':
+        if (isAssetSourcePolicy(value)) prefs.asset_sources = value;
         else rejected.push({ key, reason: 'bad_value' });
         break;
       case 'memory_mode':
@@ -309,7 +378,12 @@ export function mergePreferences(layers: Partial<Record<MemoryScope, Preferences
       // as the code stands - the per-entry merge runs afterwards and overwrites whatever this loop
       // wrote - and it is kept because it states the intent at the place a reader looks for it,
       // and because the redundancy disappears the moment the two are reordered.
-      if (key === 'tool_permissions' || key === 'notify_events' || key === 'memory_mode') continue;
+      //
+      // `asset_sources` is in the same position and was MEASURED to be: deleting it from this list
+      // leaves all 13 assertions in asset-source-policy.test.mjs green, because the narrowing loop
+      // below overwrites this one. Recorded rather than removed, for the reason above - and so the
+      // next person to read a green suite does not count this line as covered.
+      if (key === 'tool_permissions' || key === 'notify_events' || key === 'memory_mode' || key === 'asset_sources') continue;
       const v = layer[key];
       if (v === undefined) continue;
       (prefs as Record<string, unknown>)[key] = v;
@@ -350,6 +424,21 @@ export function mergePreferences(layers: Partial<Record<MemoryScope, Preferences
     mode = next;
   }
   if (mode !== undefined) prefs.memory_mode = mode;
+
+  // `asset_sources` narrows for the same reason memory_mode does, and is layered the same way.
+  // The one difference worth stating: narrowing an intersection means a project can only ever
+  // REMOVE a source its organisation already allowed. A project that lists a source the org did
+  // not is not an error and is not reported as one — it simply does not get that source, which is
+  // what `sources` is for.
+  let assets: AssetSourcePolicy | undefined;
+  for (const scope of order) {
+    const v = layers[scope]?.asset_sources;
+    if (v === undefined) continue;
+    const next = narrowAssetSources(assets, v);
+    if (JSON.stringify(next) !== JSON.stringify(assets)) sources.asset_sources = scope;
+    assets = next;
+  }
+  if (assets !== undefined) prefs.asset_sources = assets;
 
   // `notify_events` merges PER ENTRY, in precedence order, for a reason unrelated to the one that
   // makes tool permissions narrow: nothing about it is a safety rule, and a project that overrode

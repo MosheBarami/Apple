@@ -1,4 +1,5 @@
 // Golem worker entry: API routes + static serving + DO exports.
+import { ingestAssets, type IngestRequest } from './asset-ingest';
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import {
@@ -2325,6 +2326,18 @@ app.post('/api/admin/spend-simulate', async (c) => {
 app.post('/api/admin/spend-reset', async (c) => {
   const stub = c.env.BUDGET_DO.get(c.env.BUDGET_DO.idFromName('singleton'));
   return c.json(await (await stub.fetch('https://do/reset-ledger', { method: 'POST' })).json());
+});
+
+/**
+ * Populate the curated asset library. The harvest lives in packages/corpus/data/asset-seeds.json
+ * and is pushed here in batches by scripts/ingest-assets.mjs.
+ */
+app.post('/api/admin/assets/ingest', async (c) => {
+  const body = await c.req.json<IngestRequest>().catch(() => null);
+  if (!body || !Array.isArray(body.assets)) {
+    return c.json({ error: 'assets must be an array of provenance records' }, 400);
+  }
+  return c.json(await ingestAssets(c.env, body));
 });
 
 app.post('/api/admin/kill-switch', async (c) => {

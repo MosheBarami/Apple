@@ -67,9 +67,16 @@ test('nothing lazily creates the asset tables', () => {
   assert.doesNotMatch(body, /ensureAssetTables\s*\(/, 'search must not conjure an empty library');
 });
 
-test('the library write path still has no caller, so the blocker is not silently stale', () => {
-  // If someone wires up an ingest, this fails and the note in BLOCKERS.md gets
-  // revisited rather than sitting there contradicting the code.
+test('THE LIBRARY NOW HAS EXACTLY ONE WRITE PATH, AND IT IS asset-ingest.ts', () => {
+  // This assertion replaced its own opposite. It used to read "the write path still has no
+  // caller", and it said in its own comment that wiring an ingest should make it fail so the
+  // blocker got revisited rather than sitting there contradicting the code. The ingest was wired;
+  // it failed; this is the revisit.
+  //
+  // What it asserts now is stronger than "a caller exists". ONE module may write to the library,
+  // so the column list, the licence gate and the FTS mirror cannot acquire a second implementation
+  // that drifts from the first — which is the whole reason the ingest went through upsertAssets
+  // instead of emitting SQL.
   const hits = [];
   const walk = (dir) => {
     for (const e of readdirSync(dir, { withFileTypes: true })) {
@@ -87,7 +94,20 @@ test('the library write path still has no caller, so the blocker is not silently
   for (const d of ['apps/worker/src', 'apps/web/src', 'packages', 'scripts']) walk(join(ROOT, d));
   assert.deepEqual(
     hits,
-    [],
-    `the library can now be populated from ${hits.join(', ')} — revisit the blocker and this test`,
+    ['apps/worker/src/asset-ingest.ts'],
+    `the library gained a second write path: ${hits.join(', ')}`,
   );
+});
+
+test('and that write path is reachable — an unreferenced ingest is not an ingest', () => {
+  // The failure this guards is the one with no symptom: a correct, tested, well-commented module
+  // that no route imports. The library would stay empty and every search would answer "nothing
+  // like that in the library", which reads exactly like a populated library with no match.
+  const index = readFileSync(join(ROOT, 'apps/worker/src/index.ts'), 'utf8');
+  assert.match(index, /from '\.\/asset-ingest'/, 'index.ts must import the ingest');
+  assert.match(index, /ingestAssets\s*\(/, 'and actually call it');
+  assert.match(index, /'\/api\/admin\/assets\/ingest'/, 'behind an admin route');
+  // The admin gate is what makes that route safe to exist. Asserted here rather than assumed,
+  // because the route is a write to shared product data from outside.
+  assert.match(index, /app\.use\('\/api\/admin\/\*'/, 'and /api/admin/* must still be gated');
 });
