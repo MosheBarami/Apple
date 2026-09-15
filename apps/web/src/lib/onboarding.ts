@@ -49,7 +49,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
   },
   {
     id: 'composer',
-    title: 'Say what you want, not how to build it',
+    title: 'Say how it should feel',
     body: 'Apple inspects the project before it changes anything, so "make the lobby feel colder" is a sentence it can act on.',
     anchor: 'composer',
   },

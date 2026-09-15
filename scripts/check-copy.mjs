@@ -72,6 +72,32 @@ const SHAPES = [
     why: 'Defining yourself against a competitor spends your own headline on theirs.',
   },
   {
+    /*
+     * THE OTHER HALF OF "X not Y", and the half the owner actually kept naming.
+     *
+     * `x-not-y` above is anchored on the PRODUCT as subject — "Apple is not a one-shot generator"
+     * — because its first version matched "That is not a user ID", a form message that is the
+     * opposite of marketing copy. Narrowing it that far left the construction itself unguarded,
+     * and the onboarding tour shipped with "Say what you want, not how to build it" while this
+     * check printed CLEAN over 94 pages.
+     *
+     * This one is anchored on an imperative that OPENS the line — a quote mark, a JSX `>`, or the
+     * start of a line — followed by a comma and a negation. That is the headline shape and not the
+     * validation shape: a message telling somebody what they typed wrong does not begin with "Say"
+     * or "Build".
+     *
+     * Opening position is load-bearing, not decoration. Without it this matched "Written into
+     * every project you build, not just this one" in the instructions panel — a scope
+     * clarification, specific and useful, where `build` is a relative-clause verb rather than an
+     * instruction. A checker that flags the good sentence next to the bad one gets muted, which is
+     * a slower way of not having it.
+     */
+    id: 'imperative-x-not-y',
+    re: /(?:^|['"\u2018\u201c>]|\{\s*['"])\s*(say|tell|describe|ask|build|make|write|think|prompt)\b[^.!?\n]{0,48},\s*not\s+(how|what|where|why|when|the|a|an|just|another)\b/im,
+    found: 'this product\'s own onboarding tour, until it was read',
+    why: 'A line defined by what it is not spends itself on the thing it is refusing. The owner named this shape by hand, twice.',
+  },
+  {
     id: 'without-learning',
     re: /\bwithout\s+(learning|knowing|writing|touching)\b[^.!?]{0,20}\b(to\s+)?(code|scripting|luau|programming)\b/i,
     found: 'superbullet.ai H2, at 60px: "Make Roblox Games Without Learning To Code"',
@@ -108,6 +134,17 @@ function pages() {
   walk(join(ROOT, 'apps', 'site', 'src'), /\.(astro|md|mdx)$/);
   walk(join(ROOT, 'apps', 'web', 'src', 'routes'), /\.tsx$/);
   walk(join(ROOT, 'apps', 'web', 'src', 'components'), /\.tsx$/);
+  //[[ AND lib, WHICH HOLDS COPY AND WAS NEVER READ.
+  //
+  //   The walk took routes and components because that is where JSX lives, and a reader's words do
+  //   not only live in JSX. `apps/web/src/lib/onboarding.ts` is the five-step tour every new
+  //   account is shown, written entirely as title/body strings in a const array — and it carried
+  //   "Say what you want, not how to build it" while this file printed CLEAN over 93 pages. The
+  //   shape is banned by name; the file was simply not in the denominator.
+  //
+  //   `.ts` as well as `.tsx`: the point is that the copy is NOT in markup. This is the same gap
+  //   the index.html note below records, found a second time in a different directory. ]]
+  walk(join(ROOT, 'apps', 'web', 'src', 'lib'), /\.tsx?$/);
   //[[ THE APP'S SHELL, WHICH THIS CHECK NEVER OPENED.
   //
   //   `apps/web/index.html` carries the <title> and the meta description, and it is neither a

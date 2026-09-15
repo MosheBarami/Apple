@@ -5785,3 +5785,123 @@
   background: var(--gx-line);
   color: var(--gx-ink);
 }
+
+/* --------------------------------------------------------------------------
+   The empty conversation.
+
+   Everything here paints from the shared --gx-* tokens, so it follows the theme
+   with the rest of the workspace and there is no colour of its own to drift.
+   -------------------------------------------------------------------------- */
+
+.cw {
+  position: relative;
+  display: grid;
+  place-items: center;
+  /* The thread is a tall scroller; without a floor this centres in the content
+     rather than in the column, and the composition sits at the top of an empty
+     page. 52vh is measured, not chosen: below that the block collides with the
+     composer on a 13-inch screen. */
+  min-height: min(52vh, 30rem);
+  padding: 2rem 1.25rem 1rem;
+  text-align: center;
+}
+
+/* THE LIGHT. A layer rather than a box-shadow on the mark: a shadow scales with
+   its element and clips to its box, and what makes this read as a light in a
+   dark room instead of a glowing icon is that it reaches well past the thing it
+   is behind. `pointer-events: none` because it covers the seeds. */
+.cw__bloom {
+  position: absolute;
+  left: 50%;
+  top: 38%;
+  width: min(44rem, 120%);
+  aspect-ratio: 1.6;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  background: radial-gradient(
+    50% 50% at 50% 50%,
+    var(--gx-ember-soft) 0%,
+    rgb(255 255 255 / 0.04) 38%,
+    transparent 72%
+  );
+  animation: cw-breathe 9s var(--gx-ease, cubic-bezier(0.4, 0, 0.2, 1)) infinite alternate;
+}
+
+@keyframes cw-breathe {
+  from { transform: translate(-50%, -50%) scale(1); opacity: 0.85; }
+  to { transform: translate(-50%, -50%) scale(1.12); opacity: 1; }
+}
+
+.cw__inner {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 0.9rem;
+  max-width: 34rem;
+}
+
+.cw__mark {
+  display: grid;
+  place-items: center;
+  width: 3.4rem;
+  height: 3.4rem;
+  border-radius: 999px;
+  color: var(--gx-ink);
+  border: 1px solid var(--gx-line-2);
+  background: var(--gx-raise);
+}
+
+.cw__line {
+  margin: 0.35rem 0 0;
+  font-size: clamp(1.35rem, 2.6vw, 1.75rem);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--gx-ink);
+  text-wrap: balance;
+}
+
+.cw__sub {
+  margin: 0;
+  max-width: 30rem;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--gx-ink-2);
+  text-wrap: pretty;
+}
+
+.cw__seeds {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+
+/* A pill, and it declares its own background. A <button> with no background
+   inherits the BROWSER's — #6b6b6b in dark mode — which has shipped in this app
+   twice; `appearance: none` plus an explicit fill is what stops it a third time. */
+.cw__seed {
+  appearance: none;
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--gx-line-2);
+  background: var(--gx-raise);
+  color: var(--gx-ink-2);
+  font: inherit;
+  font-size: 0.86rem;
+  cursor: pointer;
+  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+
+.cw__seed:hover:not(:disabled),
+.cw__seed:focus-visible {
+  color: var(--gx-ink);
+  border-color: var(--gx-line-3, var(--gx-line-2));
+  background: var(--gx-raise-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cw__bloom {
+    animation: none;
+  }
+}

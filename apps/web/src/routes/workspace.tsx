@@ -63,6 +63,7 @@ import { StudioView } from '../components/ws/studio-view';
 import { StudioActivity } from '../components/ws/studio-activity';
 import { PlaytestCard } from '../components/ws/playtest-card';
 import { ConnectStudio } from '../components/ws/connect-studio';
+import { ChatWelcome } from '../components/ws/chat-welcome';
 import { EmptyState } from '../components/empty-state';
 import { Spinner } from '../components/loading';
 
@@ -77,11 +78,28 @@ async function fetchProject(id: string): Promise<ProjectRow | null> {
   return (data as ProjectRow | null) ?? null;
 }
 
+/*
+ * THE LABEL AND THE PROMPT ARE NOT THE SAME STRING.
+ *
+ * These were three full instructions rendered as three stacked buttons, which reads as a form to
+ * fill in rather than a way in. The label is the move each one makes; the prompt is still the whole
+ * sentence, because a seed that inserts three words leaves the person with more typing than they
+ * started with.
+ */
 const SUGGESTIONS = [
-  'Build a lobby with a spinning golden portal that teleports players to the arena.',
-  'Add a coin pickup that awards 5 points and plays a chime.',
-  'Look at the scene and tell me what reads as unfinished.',
-];
+  {
+    label: 'A lobby with a portal',
+    prompt: 'Build a lobby with a spinning golden portal that teleports players to the arena.',
+  },
+  {
+    label: 'A coin that scores',
+    prompt: 'Add a coin pickup that awards 5 points and plays a chime.',
+  },
+  {
+    label: 'Tell me what is unfinished',
+    prompt: 'Look at the scene and tell me what reads as unfinished.',
+  },
+] as const;
 
 /**
  * Every drawer this build can show, plus the name 'none' for "closed".
@@ -963,21 +981,7 @@ export function WorkspacePage() {
           )}
 
           {historyState === 'ready' && messages.length === 0 && (
-            <EmptyState
-              state="noConversation"
-              detail={
-                <p className="es__body">Tell me what you want to build and I&rsquo;ll make it in your place.</p>
-              }
-              action={
-                <div className="gx-seeds">
-                  {SUGGESTIONS.map((s) => (
-                    <button key={s} type="button" className="gx-row" onClick={() => setSeed(s)}>
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              }
-            />
+            <ChatWelcome seeds={SUGGESTIONS} onSeed={setSeed} />
           )}
 
           {messages.map((item) => (

@@ -34,13 +34,31 @@ export function AppleGlyph({ size = 28, className }: { size?: number; className?
         strokeLinejoin="round"
         fill="none"
       />
-      {/* The cube's three visible faces, expressed as the three shared edges. */}
+      {/* The cube's three visible faces, as the three shared edges.
+
+          THE Y POINTS DOWN, NOT UP, and that is a correction rather than a preference. Running it
+          from the APEX to the centre and out to the two LOWER vertices draws a cube seen from
+          BELOW: what reads as the top of the shape is two side faces meeting at an edge, and there
+          is no top face at all. This app drew that version while apps/site drew the corrected one,
+          so the mark in the product and the mark on the site were different objects. */}
       <path
-        d="M16 3 V16 M16 16 L4.74 22.5 M16 16 L27.26 22.5"
+        d="M16 28.6 V16 M16 16 L4.95 9.62 M16 16 L27.05 9.62"
         stroke="currentColor"
         strokeWidth="1.6"
         strokeLinecap="round"
         strokeLinejoin="round"
+        fill="none"
+      />
+      {/* And the stud. A cube is a box; a box with a stud is the thing this product builds with,
+          and it is the one detail that says Roblox without writing Roblox. Lighter than the
+          structure so it drops out first at small sizes rather than closing into a dot. */}
+      <ellipse
+        cx="16"
+        cy="8.63"
+        rx="4.2"
+        ry="2.4"
+        stroke="currentColor"
+        strokeWidth="1.15"
         fill="none"
       />
     </svg>
