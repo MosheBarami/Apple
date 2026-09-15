@@ -42,6 +42,12 @@ export interface ProjectRow {
    * — see infra/supabase/migrations/0007_project_pinning.sql.
    */
   pinned_at?: string | null;
+  /**
+   * The user's own labels for this project. `not null default '{}'` in Postgres, so the array is
+   * never null — but optional HERE, because a row fetched by an older build, or before 0008 lands,
+   * arrives without the field. See lib/tags.ts.
+   */
+  tags?: string[];
 }
 
 /** Current access token, refreshed by supabase-js when expired. */
