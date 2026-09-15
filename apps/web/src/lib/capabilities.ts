@@ -59,19 +59,6 @@ export const ROLE_BLURBS: Record<CollabRole, string> = {
 export const GRANTABLE_ROLES = ['viewer', 'commenter', 'editor', 'admin'] as const;
 export type GrantableRole = (typeof GRANTABLE_ROLES)[number];
 
-/**
- * The roles a SHARE LINK may carry — a shorter list than GRANTABLE_ROLES, and deliberately so.
- *
- * Mirrors SHARE_LINK_MAX_RANK in apps/worker/src/collab.ts, which caps at `editor`. The mint route
- * runs the link it is about to hand out through the very function that redeems it, so a link
- * asking for admin is refused with `role_too_strong` before it is ever stored — an unredeemable
- * link is a support ticket and an over-powered one is a breach. A picker that offered Admin here
- * would therefore be a control whose top option always fails, which is a promise the product
- * cannot keep. Ordered weakest-first: tests/share-link.test.mjs reads the last entry as the cap.
- */
-export const LINKABLE_ROLES = ['viewer', 'commenter', 'editor'] as const;
-export type LinkableRole = (typeof LINKABLE_ROLES)[number];
-
 export type AccessState =
   | { status: 'loading' }
   | { status: 'ready'; role: CollabRole; capabilities: readonly CollabAction[] }

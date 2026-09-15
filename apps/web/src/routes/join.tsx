@@ -1,99 +1,131 @@
-// Opening a share link.
+// Where a share link lands.
 //
-// This page is the other half of the mint control in the member panel, and neither is worth
-// shipping without it: a token with nowhere to present it is a control that produces a useless
-// string, and a redemption route nothing can reach is the same dead branch from the server's side.
-// The worker has had POST /api/shared/links/redeem the whole time — it writes the KV grant that
-// makes somebody a GUEST, `origin: 'link'`, which the roster has always been able to name and
-// filter and suspend and revoke, and which until now could only be created by curl.
+// The worker has redeemed links since the feature was written, and until now nothing could reach
+// that route: there was no page in this app that a link could point at, so every link this product
+// could mint was a token with nowhere to take it. A "Copy link" button without this page would be
+// the exact defect this codebase keeps finding — a control wired to nothing.
 //
-// THREE THINGS IT REFUSES TO DO:
+// IT REDEEMS ONCE, AND SAYS WHICH THING HAPPENED. Three outcomes are genuinely different and are
+// rendered differently: you are in (and are taken to the project), the link was READ AND REFUSED
+// (and the reason is named — revoked, expired, removed), or the REQUEST ITSELF FAILED. The third
+// is not a refusal: the link may be perfectly good, so it offers a retry instead of telling
+// somebody to go and ask for a replacement.
 //
-//   IT DOES NOT SAY "FORBIDDEN". The route answers nine different refusals and they are not
-//   variations on no: expired and revoked are things the person can ask the sender to fix; the
-//   wrong_* three mean the link is for something else; and removed_from_project means an
-//   administrator removed them and pressing it again will never work. lib/share-link.ts has the
-//   sentence for each, and prints an unrecognised one as itself rather than as a blank page.
-//
-//   IT DOES NOT REDEEM ON ITS OWN. A GET that grants access is a link that any preview fetcher,
-//   mail scanner or chat unfurler can spend on the recipient's behalf — and this one grants
-//   membership of somebody else's project. The person presses Join.
-//
-//   IT DOES NOT ASSUME THE TOKEN IS IN THE URL. A link pasted into a chat client loses its query
-//   string often enough that "nothing happened" is a common way to arrive here, so there is a box.
-import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ApiError, redeemShareLink } from '../lib/api';
-import { readToken, redeemRefusal, tokenFrom } from '../lib/share-link';
+// THE TOKEN LEAVES THE ADDRESS BAR once it has been spent or judged dead. It is a bearer secret,
+// and leaving it in history costs nothing to avoid. It is deliberately NOT cleared when the
+// request failed, because the retry needs it.
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { ApiError, redeemShareLinkToken } from '../lib/api';
+import { redeemRefusal } from '../lib/share-links';
+
+type JoinState =
+  | { status: 'redeeming' }
+  | { status: 'joined'; projectId: string; role: string }
+  /** The link was read and refused. A sentence, not a retry. */
+  | { status: 'refused'; detail: string }
+  /** No answer came back. Not a refusal, and must never be shown as one. */
+  | { status: 'failed'; detail: string }
+  | { status: 'no_token' };
 
 export function JoinPage() {
-  const location = useLocation();
+  const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
-  const [token, setToken] = useState(() => readToken(location.search) ?? '');
+  const token = params.get('token') ?? '';
+  const [state, setState] = useState<JoinState>(token ? { status: 'redeeming' } : { status: 'no_token' });
+  // A redemption is a WRITE — it mints a membership — so it runs once per arrival rather than once
+  // per render, including under React's development double-invoke. The retry below clears this
+  // deliberately, which is the only way it runs twice.
+  const spent = useRef(false);
 
-  const join = useMutation({
-    mutationFn: () => redeemShareLink(tokenFrom(token) ?? ''),
-    onSuccess: (res) => {
-      // `replace`, so Back does not return to a page whose only purpose was to spend a token that
-      // is now spent.
-      navigate(`/projects/${encodeURIComponent(res.projectId)}`, { replace: true });
+  const redeem = useCallback(
+    async (value: string) => {
+      if (value === '' || spent.current) return;
+      spent.current = true;
+      setState({ status: 'redeeming' });
+      try {
+        const out = await redeemShareLinkToken(value);
+        setParams(new URLSearchParams(), { replace: true });
+        setState({ status: 'joined', projectId: out.projectId, role: out.role });
+      } catch (e) {
+        // 403 and 404 are the link being JUDGED; anything else is the request failing to arrive,
+        // and showing the two as one sentence is how somebody throws away a working link.
+        if (e instanceof ApiError && (e.status === 403 || e.status === 404)) {
+          setParams(new URLSearchParams(), { replace: true });
+          setState({ status: 'refused', detail: redeemRefusal(e.message) });
+        } else {
+          // The token stays in the address bar here, because the retry needs it.
+          spent.current = false;
+          setState({ status: 'failed', detail: e instanceof Error ? e.message : 'The request did not go through.' });
+        }
+      }
     },
-  });
+    [setParams],
+  );
 
-  const refusal =
-    join.error instanceof ApiError
-      ? (redeemRefusal((join.error.body as { error?: unknown } | null)?.error) ?? join.error.message)
-      : join.error
-        ? 'Something went wrong opening that link.'
-        : null;
+  useEffect(() => {
+    void redeem(token);
+  }, [token, redeem]);
+
+  useEffect(() => {
+    if (state.status !== 'joined') return;
+    const t = setTimeout(() => navigate(`/projects/${state.projectId}`, { replace: true }), 900);
+    return () => clearTimeout(t);
+  }, [state, navigate]);
 
   return (
     <div className="page">
-      <div className="join">
-        <h2 className="join__head">Join a project</h2>
-        <p className="join__lede">
-          Somebody shared a project with you. Opening it adds you to their project at the role their
-          link carries — a link can never make you an administrator or an owner.
-        </p>
-
-        <form
-          className="join__form"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (tokenFrom(token) !== null && !join.isPending) join.mutate();
-          }}
-        >
-          <label className="field">
-            <span className="field-label">Invitation link or code</span>
-            <input
-              className="mono"
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              placeholder="Paste the link you were sent"
-              autoComplete="off"
-              spellCheck={false}
-              // Focused only when the URL did not carry one: moving the caret for somebody who
-              // arrived by clicking the link is interrupting them to fill in a box they cannot see
-              // the point of.
-              autoFocus={readToken(location.search) === null}
-            />
-          </label>
-
-          <button type="submit" className="btn btn-primary" disabled={tokenFrom(token) === null || join.isPending}>
-            {join.isPending ? 'Opening…' : 'Join the project'}
-          </button>
-        </form>
-
-        {refusal && (
-          <p className="join__refusal" role="alert">
-            {refusal}
-          </p>
+      <div className="empty-state">
+        {state.status === 'redeeming' && (
+          <>
+            <h2>Opening the link…</h2>
+            <p aria-busy="true">Checking whether it still works.</p>
+          </>
         )}
 
-        <Link to="/" className="join__back">
-          Back to your projects
-        </Link>
+        {state.status === 'no_token' && (
+          <>
+            <h2>This link is incomplete</h2>
+            <p>There is no token in the address, so there is nothing to open. Ask whoever sent it for the whole link.</p>
+            <Link to="/" className="btn btn-primary">
+              Back to your projects
+            </Link>
+          </>
+        )}
+
+        {state.status === 'joined' && (
+          <>
+            <h2>You&rsquo;re in</h2>
+            <p>
+              You joined as <strong>{state.role}</strong>. Taking you to the project…
+            </p>
+            <Link to={`/projects/${state.projectId}`} className="btn btn-primary">
+              Open it now
+            </Link>
+          </>
+        )}
+
+        {state.status === 'refused' && (
+          <>
+            <h2>This link didn&rsquo;t work</h2>
+            <p role="alert">{state.detail}</p>
+            <Link to="/" className="btn btn-primary">
+              Back to your projects
+            </Link>
+          </>
+        )}
+
+        {state.status === 'failed' && (
+          <>
+            <h2>We couldn&rsquo;t check this link</h2>
+            {/* Deliberately NOT "your link is invalid". We do not know that, and saying it would
+                send somebody to ask for a replacement for a link that is perfectly good. */}
+            <p role="alert">{state.detail} The link may still be fine.</p>
+            <button type="button" className="btn btn-primary" onClick={() => void redeem(token)}>
+              Try again
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

@@ -37,8 +37,8 @@ const AdminPage = lazy(() => import('./routes/admin').then((m) => ({ default: m.
 // Only these two are lazy. Dashboard and workspace are where a user lands, and splitting
 // those would trade bundle size for a round trip on the path that matters most.
 const UiLabPage = lazy(() => import('./routes/ui-lab').then((m) => ({ default: m.UiLabPage })));
-import { NotFoundPage } from './routes/not-found';
 import { JoinPage } from './routes/join';
+import { NotFoundPage } from './routes/not-found';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -108,10 +108,9 @@ export function App() {
                     {/* The plan for one project. Scoped under the project
                         because a roadmap without one has nothing to describe. */}
                     <Route path="/projects/:id/roadmap" element={<RoadmapPage />} />
-                    {/* Opening a share link. INSIDE the guard: redeeming writes a membership, so
-                        it needs an identity to write it for — and AuthGuard now carries the query
-                        string through the login round trip, because for this route the token IS
-                        the content of the URL. */}
+                    {/* Where a share link lands. INSIDE the guard on purpose: redeeming mints a
+                        membership for the signed-in person, so a signed-out visitor is sent to
+                        /login and returned here with the token intact — see AuthGuard. */}
                     <Route path="/join" element={<JoinPage />} />
                     <Route path="/usage" element={<UsagePage />} />
                     <Route path="/settings" element={<SettingsPage />} />

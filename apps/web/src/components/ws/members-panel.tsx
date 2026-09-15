@@ -31,19 +31,31 @@ import {
   bulkInviteMembers,
   createShareLink,
   fetchMemberEvents,
-  fetchShareLinks,
-  revokeShareLinkById,
   fetchMemberImpact,
   fetchMembers,
+  fetchShareLinks,
   inviteMember,
   reactivateMember,
   removeMember,
+  revokeShareLink,
   suspendMember,
   type MemberRow,
+  type ShareLinkRow,
 } from '../../lib/api';
 import {
-  GRANTABLE_ROLES,
+  DEFAULT_EXPIRY,
   LINKABLE_ROLES,
+  SHARE_LINK_EXPIRIES,
+  describeLinkState,
+  expiryIso,
+  isLiveLink,
+  shareLinkUrl,
+  tokenPreview,
+  type ExpiryChoice,
+  type LinkableRole,
+} from '../../lib/share-links';
+import {
+  GRANTABLE_ROLES,
   ROLE_BLURBS,
   ROLE_LABELS,
   allows,
@@ -52,13 +64,11 @@ import {
   whyNot,
   type AccessState,
   type GrantableRole,
-  type LinkableRole,
 } from '../../lib/capabilities';
 import { rankMembers } from '../../lib/member-match';
 import { BULK_INVITE_MAX, bulkRefusal, explainRejections, parseBulkIds, type BulkProblem } from '../../lib/bulk-invite';
 import { MEMBER_REASON_MAX, describeEvent, historyGap, unauditedNote } from '../../lib/member-history';
 import { readImpact } from '../../lib/member-impact';
-import { linkInventoryGap, linkStanding, shareLinkUrl } from '../../lib/share-link';
 import { relativeTime } from '../../lib/format';
 import { useToast } from '../toast';
 import { createUndoable } from '../../lib/undo';
@@ -418,10 +428,200 @@ export function MembersPanel({ projectId, access }: { projectId: string; access:
 
       <InviteForm projectId={projectId} mayManage={mayManage} cannotManage={cannotManage} onDone={invalidate} />
       <BulkInviteForm projectId={projectId} mayManage={mayManage} cannotManage={cannotManage} onDone={invalidate} />
-      {/* Gated on `share` rather than `manage_members`: they are separate capabilities in
-          COLLAB_ACTIONS and the mint route asks for the first one. */}
-      <ShareLinkForm projectId={projectId} access={access} />
+      <ShareLinks projectId={projectId} access={access} />
     </div>
+  );
+}
+
+/**
+ * Links this project has handed out — and the only place one can be revoked.
+ *
+ * Revocation has always worked and could never be reached: the route takes the exact token, and
+ * the token was unrecoverable the moment the mint response scrolled away. A link sent to somebody
+ * was therefore permanent, in a product whose whole model is that access can be withdrawn.
+ *
+ * WHAT THIS REFUSES TO DO, and each refusal is the feature:
+ *
+ *   IT DOES NOT PUT THE SECRET ON THE PAGE. The list shows the first characters; the whole link
+ *   goes to the clipboard. A token is a bearer credential and a screenshot of this panel should
+ *   not be one.
+ *
+ *   IT DOES NOT DEFAULT TO "NEVER". A link with no expiry is the one that turns up working two
+ *   years later. Seven days is the default and "Never" is the last option, chosen on purpose.
+ *
+ *   IT DOES NOT OFFER A ROLE THE SERVER WILL REFUSE. A link may carry at most `editor`
+ *   (SHARE_LINK_MAX_RANK), so `admin` is not in the select rather than in the select and rejected.
+ *
+ *   IT DOES NOT PRESENT A SHORT LIST AS A WHOLE ONE. `partial` means KV could not be read whole,
+ *   and an admin looking for a link that is not on screen must be able to tell that from "it was
+ *   already revoked".
+ */
+function ShareLinks({ projectId, access }: { projectId: string; access: AccessState }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const mayShare = allows(access, 'share');
+  const cannotShare = whyNot(access, 'share');
+  const [role, setRole] = useState<LinkableRole>('viewer');
+  const [expiry, setExpiry] = useState<ExpiryChoice>(DEFAULT_EXPIRY);
+
+  // Asked only when the answer is ours to have. The route is gated on `share` and answers 403
+  // otherwise; fetching anyway would render a refusal this panel already knows is coming.
+  const links = useQuery({
+    queryKey: ['share-links', projectId],
+    queryFn: () => fetchShareLinks(projectId),
+    enabled: mayShare,
+  });
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['share-links', projectId] });
+
+  const mint = useMutation({
+    mutationFn: () =>
+      createShareLink(projectId, { scope: 'project', role, expiresAt: expiryIso(expiry, Date.now()) }),
+    onSuccess: async (made) => {
+      void invalidate();
+      const url = shareLinkUrl(window.location.origin, made.token);
+      // Copying can fail — a browser without clipboard permission, an insecure origin — and a
+      // toast saying "Copied" over a clipboard that did not change is a claim outliving the fact.
+      try {
+        await navigator.clipboard.writeText(url);
+        toast('Link created and copied.', 'success');
+      } catch {
+        toast('Link created. Copy it from the list below.', 'success');
+      }
+    },
+    onError: (e: Error) => toast(`Could not create a link: ${e.message}`, 'error'),
+  });
+
+  const revoke = useMutation({
+    mutationFn: (token: string) => revokeShareLink(projectId, token),
+    onSuccess: () => {
+      // Said plainly, because it is the one thing about revocation people get wrong: it stops the
+      // NEXT person, and whoever already redeemed it is a member until they are removed.
+      toast('Revoked. Anyone who already joined with it is still a member.', 'success');
+      void invalidate();
+    },
+    onError: (e: Error) => toast(`Could not revoke it: ${e.message}`, 'error'),
+  });
+
+  const copy = async (token: string) => {
+    try {
+      await navigator.clipboard.writeText(shareLinkUrl(window.location.origin, token));
+      toast('Link copied.', 'success');
+    } catch {
+      toast('Your browser would not let us copy. Select the link and copy it yourself.', 'error');
+    }
+  };
+
+  return (
+    <section className="mb__invite">
+      <h3 className="mb__invite-head">Share links</h3>
+      <p className="cs__note">
+        Anyone with the link joins at the role you choose. They stop working when they expire or
+        when you revoke them.
+      </p>
+
+      {!mayShare && <p className="cs__note cs__note--warn">{cannotShare}</p>}
+
+      <div className="mb__invite-row">
+        <label className="field">
+          <span className="field-label">Role</span>
+          <select
+            className="cs__select"
+            value={role}
+            onChange={(e) => setRole(e.target.value as LinkableRole)}
+            disabled={!mayShare}
+            title={cannotShare ?? undefined}
+          >
+            {LINKABLE_ROLES.map((r) => (
+              <option key={r} value={r} title={ROLE_BLURBS[r]}>
+                {ROLE_LABELS[r]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field">
+          <span className="field-label">Expires</span>
+          <select
+            className="cs__select"
+            value={expiry}
+            onChange={(e) => setExpiry(e.target.value as ExpiryChoice)}
+            disabled={!mayShare}
+            title={cannotShare ?? undefined}
+          >
+            {SHARE_LINK_EXPIRIES.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <p className="cs__note">{ROLE_BLURBS[role]}</p>
+      <button
+        type="button"
+        className="btn btn-primary"
+        disabled={!mayShare || mint.isPending}
+        title={cannotShare ?? undefined}
+        onClick={() => mint.mutate()}
+      >
+        {mint.isPending ? 'Creating…' : 'Create a link'}
+      </button>
+
+      {mayShare && links.isPending && (
+        <p className="cs__note" aria-busy="true">
+          Loading the links…
+        </p>
+      )}
+      {mayShare && links.isError && (
+        <p className="cs__note cs__note--bad" role="alert">
+          {links.error instanceof ApiError ? links.error.message : 'Could not load the links.'}
+        </p>
+      )}
+      {mayShare && links.isSuccess && (
+        <>
+          {links.data.partial && (
+            <p className="cs__note cs__note--warn" role="status">
+              Part of this list could not be read, so a link may be missing from it.
+            </p>
+          )}
+          {links.data.links.length === 0 ? (
+            <p className="cs__note">No links have been made for this project.</p>
+          ) : (
+            <ul className="mb__list">
+              {links.data.links.map((l: ShareLinkRow) => (
+                <li key={l.token} className={`mb__row${isLiveLink(l.state) ? '' : ' is-inactive'}`}>
+                  <div className="mb__who">
+                    <span className="mb__handle mono">{tokenPreview(l.token)}</span>
+                    <span className="mb__sub">
+                      {ROLE_LABELS[l.role as keyof typeof ROLE_LABELS] ?? l.role}
+                      {l.scope === 'project' ? '' : ` · ${l.scope} only`}
+                      {l.expiresAt ? ` · expires ${relativeTime(l.expiresAt)}` : ' · no expiry'}
+                    </span>
+                    {/* The state comes from the server, computed through the same function the
+                        redeem route uses, so this line can never call a link live that the door
+                        will refuse. A state this build does not know prints as itself. */}
+                    <span className="mb__status">{describeLinkState(l.state)}</span>
+                  </div>
+                  <div className="mb__actions">
+                    <button type="button" className="btn btn-quiet" onClick={() => void copy(l.token)}>
+                      Copy link
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-quiet mb__remove"
+                      disabled={!isLiveLink(l.state) || revoke.isPending}
+                      onClick={() => revoke.mutate(l.token)}
+                    >
+                      Revoke
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </section>
   );
 }
 
@@ -697,111 +897,6 @@ function BulkInviteForm({
 }
 
 /**
- * WHAT IS STILL OPEN.
- *
- * A share link was revocable only by somebody who still held it, and nothing listed the links a
- * project had issued — so an administrator who minted one, sent it and closed the tab had handed
- * out access they could never withdraw. Adding the mint control above without this would have made
- * that worse rather than better, which is why they land together.
- *
- * NO TOKENS COME BACK, by design at the route. Each row is named by an opaque id, which is what
- * Revoke sends; the secret stays on the server and this screen stays safe to screenshot.
- *
- * A SHORT LIST IS SAID OUT LOUD, and it is not the same warning as the roster's. This is an
- * inventory of credentials: a link missing from it is a link still working, and an administrator
- * reading a complete-looking list concludes they have withdrawn everything.
- */
-function OutstandingLinks({ projectId, mayShare }: { projectId: string; mayShare: boolean }) {
-  const { toast } = useToast();
-  const qc = useQueryClient();
-  const now = Date.now();
-
-  const links = useQuery({
-    queryKey: ['share-links', projectId],
-    queryFn: () => fetchShareLinks(projectId),
-    enabled: mayShare,
-  });
-
-  const revoke = useMutation({
-    mutationFn: (id: string) => revokeShareLinkById(projectId, id),
-    onSuccess: () => {
-      toast('That link will not let anybody else in.', 'success');
-      void qc.invalidateQueries({ queryKey: ['share-links', projectId] });
-    },
-    onError: (e: Error) => toast(`Could not turn it off: ${e.message}`, 'error'),
-  });
-
-  if (!mayShare) return null;
-
-  const gap = links.isSuccess ? linkInventoryGap(links.data) : null;
-  const rows = links.data?.links ?? [];
-
-  return (
-    <div className="mb__links">
-      <h4 className="mb__links-head">Links you have made</h4>
-
-      {links.isPending && (
-        <p className="cs__note" aria-busy="true">
-          Reading them…
-        </p>
-      )}
-
-      {links.isError && (
-        <p className="cs__note cs__note--bad" role="alert">
-          {/* Loudly, because the thing we cannot read is a list of working credentials. */}
-          We could not read this project’s links, so we cannot tell you what is still open.
-        </p>
-      )}
-
-      {gap && (
-        <p className="cs__note cs__note--warn" role="status">
-          {gap}
-        </p>
-      )}
-
-      {links.isSuccess && rows.length === 0 && !gap && <p className="cs__note">None. Nothing is open by link.</p>}
-
-      {rows.length > 0 && (
-        <ul className="mb__links-list">
-          {rows.map((row) => {
-            const standing = linkStanding(row, now);
-            return (
-              <li key={row.id} className={`mb__linkrow${standing.dead ? ' is-inactive' : ''}`}>
-                <div className="mb__who">
-                  <span className="mb__handle">
-                    {ROLE_LABELS[row.role as keyof typeof ROLE_LABELS] ?? row.role} link
-                  </span>
-                  <span className="mb__sub">
-                    {standing.label}
-                    {' · made '}
-                    {relativeTime(row.createdAt)}
-                    {row.expiresAt && !standing.dead ? ` · until ${relativeTime(row.expiresAt)}` : ''}
-                    {` · used ${row.redeemed} ${row.redeemed === 1 ? 'time' : 'times'}`}
-                  </span>
-                </div>
-                <div className="mb__actions">
-                  <button
-                    type="button"
-                    className="btn btn-quiet mb__remove"
-                    // Nothing to turn off on a link that is already off. An expired one is still
-                    // offered: revoking it is how an administrator stops it coming back if the
-                    // expiry was ever extended.
-                    disabled={standing.state === 'revoked' || revoke.isPending}
-                    onClick={() => revoke.mutate(row.id)}
-                  >
-                    Turn off
-                  </button>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-/**
  * Why removing somebody is not a ConfirmDialog.
  *
  * lib/confirm-model.ts decides ceremony from consequence, and a member removal is REVERSIBLE — the
@@ -1044,125 +1139,3 @@ function MemberHistory({ projectId, member }: { projectId: string; member: Membe
   );
 }
 
-/**
- * Sharing the project by link — the only way to make a GUEST.
- *
- * `origin: 'link'` has been a first-class member class since the roster was built: named, filtered,
- * suspended and revoked on the same terms as an invited member, and tested at every layer. It could
- * only be created by curl, because nothing in the app posted to POST /api/shared/:id/links — and
- * nothing could have opened the result either, which is why routes/join.tsx lands in the same
- * change. Half of this feature is worse than none of it.
- *
- * THE TOKEN IS SHOWN ONCE AND CANNOT BE ASKED FOR AGAIN. It is not on the roster, the membership
- * history deliberately never echoes it, and there is no route that lists a project's issued links.
- * So the panel says so plainly instead of letting somebody close the drawer and find out. It is
- * held in component state and not in the query cache, for the same reason.
- *
- * WHAT IT DOES NOT OFFER. No Admin in the role picker: the mint route redeems the link it is about
- * to hand out and refuses `role_too_strong` above editor, so that option would fail every time —
- * see LINKABLE_ROLES. And no scope picker: the narrower scopes need a `resourceId` naming the thing
- * the link opens, and this panel has nothing to name, so two of the three options would be dead.
- */
-function ShareLinkForm({ projectId, access }: { projectId: string; access: AccessState }) {
-  const { toast } = useToast();
-  const qc = useQueryClient();
-  const mayShare = allows(access, 'share');
-  const cannotShare = whyNot(access, 'share');
-  const [role, setRole] = useState<LinkableRole>('viewer');
-  const [expiresAt, setExpiresAt] = useState('');
-  const [link, setLink] = useState<string | null>(null);
-
-  const mint = useMutation({
-    mutationFn: () =>
-      createShareLink(projectId, {
-        role,
-        // A date is a day, and the link should last to the end of it rather than expiring at the
-        // midnight that opens it — the same reading the invite form gives the same control.
-        expiresAt: expiresAt ? new Date(`${expiresAt}T23:59:59.999Z`).toISOString() : null,
-      }),
-    onSuccess: (res) => {
-      setLink(shareLinkUrl(res.token, window.location.origin));
-      // The inventory below is now one row out of date, and it is the only place this link can be
-      // turned off from once the token leaves the screen.
-      void qc.invalidateQueries({ queryKey: ['share-links', projectId] });
-    },
-    onError: (e: Error) => toast(`Could not make a link: ${e.message}`, 'error'),
-  });
-
-  const copy = () => {
-    if (!link) return;
-    // Clipboard access can be refused, and a Copy button that silently did nothing would send
-    // somebody away believing they had the link.
-    navigator.clipboard?.writeText(link).then(
-      () => toast('Link copied.', 'success'),
-      () => toast('Could not copy it — select the link and copy it by hand.', 'error'),
-    );
-  };
-
-  return (
-    <details className="mb__bulk">
-      <summary className="mb__bulk-summary">Share by link</summary>
-      <form
-        className="mb__bulk-body"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (mayShare && !mint.isPending) mint.mutate();
-        }}
-      >
-        <p className="cs__note">
-          Anyone who opens the link joins this project at the role you choose. A link can never make
-          somebody an administrator or an owner.
-        </p>
-
-        <div className="mb__invite-row">
-          <label className="field">
-            <span className="field-label">Role</span>
-            <select
-              className="cs__select"
-              value={role}
-              onChange={(e) => setRole(e.target.value as LinkableRole)}
-              disabled={!mayShare}
-            >
-              {LINKABLE_ROLES.map((r) => (
-                <option key={r} value={r}>
-                  {ROLE_LABELS[r]}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
-            <span className="field-label">Until (optional)</span>
-            <input
-              className="cs__date"
-              type="date"
-              value={expiresAt}
-              onChange={(e) => setExpiresAt(e.target.value)}
-              disabled={!mayShare}
-            />
-          </label>
-        </div>
-        <p className="cs__note">{ROLE_BLURBS[role]}</p>
-
-        <button type="submit" className="btn btn-primary" disabled={!mayShare || mint.isPending} title={cannotShare ?? undefined}>
-          {mint.isPending ? 'Making a link…' : 'Make a link'}
-        </button>
-        {cannotShare && <p className="cs__note cs__note--warn">{cannotShare}</p>}
-
-        {link && (
-          <div className="mb__link" role="status">
-            <p className="cs__note cs__note--warn">
-              Copy it now. We cannot show it again — nothing stores it, not the member list and not
-              the history. If you lose it, make another and turn this one off.
-            </p>
-            <input className="cs__input mono" value={link} readOnly onFocus={(e) => e.currentTarget.select()} aria-label="Share link" />
-            <button type="button" className="btn btn-quiet" onClick={copy}>
-              Copy link
-            </button>
-          </div>
-        )}
-
-        <OutstandingLinks projectId={projectId} mayShare={mayShare} />
-      </form>
-    </details>
-  );
-}

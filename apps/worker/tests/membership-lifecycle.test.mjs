@@ -81,8 +81,6 @@ let eventRows = [];
 /** Tables PostgREST should fail for, so "the write worked" can be told from "we said it did". */
 let failTable = new Set();
 const kv = new Map();
-/** KV metadata, which the real binding carries per key and the link index is stored in. */
-const kvMeta = new Map();
 /** KV can be unreachable; an empty list from a failed read must not read as "no guests". */
 let kvListFails = false;
 
@@ -225,22 +223,11 @@ const env = () => ({
   ENVIRONMENT: 'test',
   KV: {
     get: async (k) => kv.get(k) ?? null,
-    // METADATA IS CARRIED, because the share-link index is metadata rather than a second key. A
-    // fake that dropped it would make every link look like one minted before the index existed —
-    // which is a case the listing handles, so the tests would pass while measuring the wrong path.
-    put: async (k, v, opts) => {
-      kv.set(k, v);
-      if (opts && opts.metadata !== undefined) kvMeta.set(k, opts.metadata);
-    },
-    delete: async (k) => {
-      kv.delete(k);
-      kvMeta.delete(k);
-    },
+    put: async (k, v) => void kv.set(k, v),
+    delete: async (k) => void kv.delete(k),
     list: async ({ prefix = '', limit = 1000 } = {}) => {
       if (kvListFails) throw new Error('kv unreachable');
-      const keys = [...kv.keys()]
-        .filter((k) => k.startsWith(prefix))
-        .map((name) => ({ name, metadata: kvMeta.get(name) ?? null }));
+      const keys = [...kv.keys()].filter((k) => k.startsWith(prefix)).map((name) => ({ name }));
       return { keys: keys.slice(0, limit), list_complete: keys.length <= limit };
     },
   },
@@ -281,7 +268,6 @@ function reset({ members = [] } = {}) {
   eventRows = [];
   failTable = new Set();
   kv.clear();
-  kvMeta.clear();
   kvListFails = false;
   store = new CollabStore(sqlite());
   doWrites = 0;
@@ -764,200 +750,4 @@ test('the impact preview of somebody who was never here says so, rather than inv
   assert.equal(impact.json.footprint.comments, 0);
   const bad = await call(`${M}/not-a-uuid/impact`, { jwt: OWNER_JWT });
   assert.equal(bad.status, 400);
-});
-
-// ====================================================== the links a project has issued
-//
-// A link was revocable only by somebody who still held it. An administrator who minted one, sent
-// it, and closed the tab had handed out access they could never withdraw — a credential with no
-// off switch — and no route listed them, so no interface could have offered one either. The web
-// app gaining a mint control is what made that urgent rather than theoretical.
-
-const L = `/api/shared/${PROJECT_ID}/links`;
-
-/** Mint a link without redeeming it. Returns the token. */
-async function mintLink(role = 'viewer') {
-  const res = await call(L, { method: 'POST', jwt: OWNER_JWT, body: { scope: 'project', role } });
-  assert.equal(res.status, 201, 'fixture: the link must mint');
-  return res.json.token;
-}
-
-test('AN ADMINISTRATOR CAN SEE THE LINKS THIS PROJECT ISSUED — and not one of them is a token', async () => {
-  reset({ members: [{ user_id: ADMIN_ID, role: 'admin' }] });
-  const first = await mintLink('viewer');
-  const second = await mintLink('editor');
-
-  const res = await call(L, { jwt: ADMIN_JWT });
-  assert.equal(res.status, 200);
-  assert.equal(res.json.links.length, 2);
-  assert.equal(res.json.complete, true);
-
-  // THE WHOLE SECRET, ABSENT. A list route that returned tokens would turn one `share` capability
-  // into every link the project ever issued, on a screen people take screenshots of.
-  const body = JSON.stringify(res.json);
-  assert.equal(body.includes(first), false, 'the listing handed back a token');
-  assert.equal(body.includes(second), false, 'the listing handed back a token');
-
-  for (const row of res.json.links) {
-    assert.match(row.id, /^[0-9a-f]{24}$/, 'a row must be nameable without its token');
-    assert.equal(row.createdBy, OWNER_ID);
-    assert.equal(row.revokedAt, null);
-    assert.equal(row.redeemed, 0);
-  }
-  assert.deepEqual(res.json.links.map((r) => r.role).sort(), ['editor', 'viewer']);
-});
-
-test('the id is stable for a link and different between links', async () => {
-  // Stable, or the row moves under the administrator's cursor between two page loads and the
-  // Revoke they press belongs to a different link than the one they read.
-  reset();
-  await mintLink('viewer');
-  await mintLink('commenter');
-  const a = await call(L, { jwt: OWNER_JWT });
-  const b = await call(L, { jwt: OWNER_JWT });
-  assert.deepEqual(
-    a.json.links.map((r) => r.id).sort(),
-    b.json.links.map((r) => r.id).sort(),
-  );
-  assert.equal(new Set(a.json.links.map((r) => r.id)).size, 2, 'two links share one id');
-});
-
-test('a link belonging to another project is not in this project’s list', async () => {
-  reset();
-  await mintLink('viewer');
-  // A link in the same KV namespace, correctly indexed, for somewhere else.
-  const foreign = 'f'.repeat(32);
-  kv.set(`share:link:${foreign}`, JSON.stringify({
-    token: foreign,
-    project_id: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
-    scope: 'project',
-    resource_id: null,
-    role: 'editor',
-    expires_at: null,
-    revoked_at: null,
-    created_by: STRANGER_ID,
-    created_at: new Date().toISOString(),
-  }));
-  kvMeta.set(`share:link:${foreign}`, { p: 'ffffffff-ffff-4fff-8fff-ffffffffffff' });
-
-  const res = await call(L, { jwt: OWNER_JWT });
-  assert.equal(res.json.links.length, 1, 'somebody else’s link is in this project’s inventory');
-  assert.equal(res.json.complete, true);
-});
-
-test('A LINK MINTED BEFORE THE INDEX EXISTED IS STILL LISTED', async () => {
-  // The cheap version of this listing filters on metadata and skips anything without it. That
-  // leaves precisely the OLDEST outstanding links — the ones most likely to want revoking —
-  // permanently invisible, while the answer still claims to be complete. A key with no metadata is
-  // read and judged by what is inside it.
-  reset();
-  const old = 'a'.repeat(32);
-  kv.set(`share:link:${old}`, JSON.stringify({
-    token: old,
-    project_id: PROJECT_ID,
-    scope: 'project',
-    resource_id: null,
-    role: 'viewer',
-    expires_at: null,
-    revoked_at: null,
-    created_by: OWNER_ID,
-    created_at: new Date().toISOString(),
-  }));
-  // …and deliberately NO kvMeta entry for it.
-
-  const res = await call(L, { jwt: OWNER_JWT });
-  assert.equal(res.json.links.length, 1, 'a link with no index entry vanished from the inventory');
-  assert.equal(res.json.complete, true);
-});
-
-test('WHEN THE LINKS CANNOT BE LISTED THE ANSWER SAYS SO, rather than showing none', async () => {
-  // An empty array from a failed list is indistinguishable from "this project has issued no
-  // links", which is the most reassuring possible way to be wrong about outstanding credentials.
-  reset();
-  await mintLink('viewer');
-  kvListFails = true;
-  const res = await call(L, { jwt: OWNER_JWT });
-  assert.equal(res.status, 200);
-  assert.deepEqual(res.json.links, []);
-  assert.equal(res.json.complete, false, 'an unreadable store reported as an empty inventory');
-  assert.equal(res.json.partial, true);
-  assert.ok(res.json.incomplete.includes('links'));
-});
-
-test('a key that lists and cannot be READ makes the inventory incomplete', async () => {
-  // Not the same failure as above and not the same shape: the store answered, and one link in it
-  // is a link we know exists and cannot describe.
-  reset();
-  await mintLink('viewer');
-  kv.set('share:link:' + 'b'.repeat(32), '{not json');
-  const res = await call(L, { jwt: OWNER_JWT });
-  assert.equal(res.json.links.length, 1);
-  assert.equal(res.json.complete, false, 'an undescribable link was silently dropped');
-});
-
-test('the redeemed count is counted from the grants, and its own completeness is reported', async () => {
-  reset();
-  const token = await mintLink('commenter');
-  assert.equal((await call('/api/shared/links/redeem', { method: 'POST', jwt: STRANGER_JWT, body: { token } })).status, 201);
-
-  const res = await call(L, { jwt: OWNER_JWT });
-  assert.equal(res.json.links[0].redeemed, 1);
-  assert.equal(res.json.redemptionsComplete, true);
-});
-
-// ------------------------------------------------------------ revoking one you no longer hold
-
-test('A LINK IS REVOKED BY ITS ID, BY SOMEBODY WHO NEVER HAD THE TOKEN', async () => {
-  // This is the point of the id. Revocation used to require the secret, so an administrator who
-  // did not keep it could not withdraw the access they had handed out.
-  reset({ members: [{ user_id: ADMIN_ID, role: 'admin' }] });
-  const token = await mintLink('commenter');
-  const { id } = (await call(L, { jwt: ADMIN_JWT })).json.links[0];
-
-  const revoked = await call(`${L}/revoke`, { method: 'POST', jwt: ADMIN_JWT, body: { id } });
-  assert.equal(revoked.status, 200);
-  assert.equal(revoked.json.revoked, true);
-
-  // …and it is the NEXT person who is stopped, which is what revoking a link means.
-  const late = await call('/api/shared/links/redeem', { method: 'POST', jwt: STRANGER_JWT, body: { token } });
-  assert.equal(late.status, 403);
-  assert.equal(late.json.error, 'revoked');
-
-  const after = await call(L, { jwt: ADMIN_JWT });
-  assert.notEqual(after.json.links[0].revokedAt, null, 'the inventory still shows it as live');
-});
-
-test('an id from somewhere else names nothing here', async () => {
-  reset();
-  await mintLink('viewer');
-  const res = await call(`${L}/revoke`, { method: 'POST', jwt: OWNER_JWT, body: { id: '0'.repeat(24) } });
-  assert.equal(res.status, 404);
-});
-
-test('AN ID WE COULD NOT LOOK UP IS NOT AN ID THAT DOES NOT EXIST', async () => {
-  // 404 here would tell an administrator that the link on their screen is already gone, and leave
-  // it working. The refusal has to say "we could not check" instead.
-  reset();
-  await mintLink('viewer');
-  const { id } = (await call(L, { jwt: OWNER_JWT })).json.links[0];
-  kvListFails = true;
-  const res = await call(`${L}/revoke`, { method: 'POST', jwt: OWNER_JWT, body: { id } });
-  assert.equal(res.status, 503);
-  assert.equal(res.json.error, 'links_unavailable');
-});
-
-test('revoking by token still works, for the person who does hold it', async () => {
-  reset();
-  const token = await mintLink('viewer');
-  const res = await call(`${L}/revoke`, { method: 'POST', jwt: OWNER_JWT, body: { token } });
-  assert.equal(res.status, 200);
-});
-
-test('the inventory needs `share`, which a commenter does not have', async () => {
-  reset({ members: [{ user_id: MEMBER_ID, role: 'commenter' }] });
-  await mintLink('viewer');
-  const res = await call(L, { jwt: MEMBER_JWT });
-  assert.equal(res.status, 403, 'a commenter read the project’s outstanding credentials');
-  // The control: the same request from somebody who may share is answered.
-  assert.equal((await call(L, { jwt: OWNER_JWT })).status, 200);
 });

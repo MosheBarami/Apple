@@ -98,7 +98,17 @@ test('the only hand-written block states are the two that have no canonical form
   // not-found: a 404 is a routing state, not a product state — M01–M10 has no entry
   //   for it and inventing one would be the drift, not the fix.
   // admin: "this area is for operators" is an authorization notice, same reasoning.
-  assert.deepEqual(offenders.sort(), ['admin.tsx', 'not-found.tsx'],
+  // join: the fate of a share-link TOKEN, which is not one of the product states either.
+  //   Four of its five branches have no canonical form at all — "Opening the link…" is a
+  //   write in flight, "You're in" is a success confirmation, "This link is incomplete" is a
+  //   malformed address (not-found's reasoning) and "This link didn't work" is an
+  //   authorization notice (admin's). Only the fifth, the request failing to arrive, is near
+  //   M07 — and M07's title is "Could not reach Apple", which is not what happened: the
+  //   sentence that branch exists to say is that the LINK MAY STILL BE FINE, and a title this
+  //   component deliberately does not let a caller override would contradict it. Routing one
+  //   of five branches through <EmptyState> would also leave the other four hand-written, so
+  //   the file would still be here.
+  assert.deepEqual(offenders.sort(), ['admin.tsx', 'join.tsx', 'not-found.tsx'],
     'a route is hand-writing a block empty state. If it maps to an M01–M10 state, use '
     + '<EmptyState>. If it genuinely does not, add it here with the reason.');
 });

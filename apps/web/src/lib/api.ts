@@ -1,12 +1,15 @@
 // Typed fetch helpers for the Apple worker API. All authed calls carry the
 // user's Supabase access token as a Bearer header.
 import { PRICE_CURRENCY, type RobloxScope, type AssetSourcePolicy } from '@golem/shared';
-import type { CheckpointMeta, MessageDto, PairingCodeDto, QuotaState, PlanId } from '@golem/shared';
+import type { CheckpointMeta, MessageDto, PairingCodeDto, QuotaState, PlanId, StudioLinkSummary } from '@golem/shared';
 import type { MilestoneBrief, NextResponse, RoadmapResponse } from '../components/roadmap/model';
 import type { AttributionResponse } from '../components/ws/credits-model';
 import type { FilesResponse, FileVersion } from '../components/ws/files-model';
+import type { OpLogRow } from '../components/ws/op-vocabulary';
 import { mockBrief, mockNext, mockRoadmap } from '../components/roadmap/mock';
-import { MOCK_MODE, mockAttribution, mockCounters, mockMe, mockMemory, mockSpend, mockUsageDays } from './mock';
+import { MOCK_MODE, mockAttribution, mockCounters, mockDiagnostics, mockMe, mockMemory, mockNotifications, mockSpend, mockUsageDays } from './mock';
+import type { InboxResponse, MarkReadResult } from './notification-inbox.ts';
+import type { DeliveryPreference, NotificationEventPrefs } from './notification-prefs.ts';
 import type { BillingChange, SubscriptionView } from './billing-copy';
 import { getAccessToken } from './supabase';
 import { noteReachability } from './connectivity';
@@ -68,6 +71,34 @@ async function request<T>(path: string, init: RequestInit = {}, extraHeaders: Re
   return body as T;
 }
 
+// ---------------------------------------------------------------- notifications
+//
+// The worker has served an inbox, an unread count, a collapsed view and a mark-read write for a
+// while, and nothing in this app ever called any of it — so a person who closed the tab never
+// learned their build had failed, which is the hole the whole subsystem was written to close.
+//
+// `items`, `unread` and `groups` arrive on ONE response deliberately. The worker's own comment on
+// the route explains why: two requests would be two reads at two instants, and the number under
+// the heading would disagree with the list under it. So there is no separate groups fetcher here,
+// and tests/notification-inbox.test.mjs fails if the component grows one.
+
+export const fetchNotifications = (unreadOnly = false): Promise<InboxResponse> =>
+  MOCK_MODE
+    ? Promise.resolve(mockNotifications())
+    : request<InboxResponse>(unreadOnly ? '/api/notifications?unread=true' : '/api/notifications');
+
+/**
+ * Mark rows read — specific ids, or everything that has been delivered.
+ *
+ * The response carries `unread` as well as `marked` precisely so the badge can be updated from the
+ * write instead of a refetch. Use the number it returns: `all: true` does NOT mark a row that
+ * quiet hours is still holding, so the answer to "mark everything" is often not zero.
+ */
+export const markNotificationsRead = (body: { ids?: string[]; all?: boolean }): Promise<MarkReadResult> =>
+  MOCK_MODE
+    ? Promise.resolve({ marked: body.all ? 2 : (body.ids?.length ?? 0), unread: 0 })
+    : request<MarkReadResult>('/api/notifications/read', { method: 'POST', body: JSON.stringify(body) });
+
 // ---------------------------------------------------------------- me / usage
 
 export interface MeResponse {
@@ -125,6 +156,26 @@ export const openBillingPortal = (): Promise<{ url: string }> =>
   request<{ url: string }>('/api/billing/portal', { method: 'POST' });
 
 /**
+ * What moving to `plan` would cost this account right now.
+ *
+ * READ-ONLY. It asks Stripe a question; it does not buy anything, and the change is still made in
+ * the portal. It REJECTS rather than resolving to a zero when there is nothing to price against or
+ * Stripe cannot answer — the caller has to say the amount is unknown, because it is. A resolved
+ * zero would be the page telling someone a charge costs nothing on the strength of a failed fetch.
+ */
+export interface BillingPreview {
+  /** Major units, already converted by the worker. Negative when the change leaves a credit. */
+  amountDue: number;
+  currency: string;
+  /** Unix SECONDS, Stripe's clock. */
+  prorationDate: number | null;
+  lines: { description: string; amount: number }[];
+}
+
+export const fetchBillingPreview = (plan: PlanId): Promise<BillingPreview> =>
+  request<BillingPreview>(`/api/billing/preview?plan=${encodeURIComponent(plan)}`);
+
+/**
  * What has happened to this account's billing, newest first.
  *
  * The plan used to be overwritten in place, so an account's history was whatever its current row
@@ -142,8 +193,19 @@ export const fetchBillingHistory = (): Promise<{ events: BillingChange[] }> =>
 // exposes that roster for ADMIN diagnostics; if it is ever needed on screen it
 // belongs behind /admin, never in the normal product surface.
 
+/**
+ * The transcript — asked as a MEMBER, not as the owner.
+ *
+ * This used to request /api/projects/:id/messages, which `withOwnedProject` gates owner-only. A
+ * collaborator opening a shared project therefore loaded an EMPTY conversation and saw only
+ * whatever arrived live over the socket afterwards: the whole history of the project they had just
+ * been invited into was a 404 the client rendered as "no messages". /api/shared/:id/messages
+ * proxies the same Durable Object read and gates on `read`, which the owner passes too — so there
+ * is no separate owner path to keep in step, and there is exactly one way the app reads a
+ * transcript.
+ */
 export const fetchMessages = (projectId: string, limit = 100) =>
-  request<{ messages: MessageDto[] }>(`/api/projects/${encodeURIComponent(projectId)}/messages?limit=${limit}`);
+  request<{ messages: MessageDto[] }>(`/api/shared/${encodeURIComponent(projectId)}/messages?limit=${limit}`);
 
 export interface SearchHit {
   id: string;
@@ -279,6 +341,18 @@ export interface Preferences {
   tool_permissions?: Record<string, ToolPermission>;
   /** Where a build may take assets from. NARROWS across layers — the server decides, not this. */
   asset_sources?: AssetSourcePolicy;
+  /**
+   * When a notification is allowed to arrive: the zone, the quiet window, the digest.
+   *
+   * WHOLESALE across layers, unlike the one below. Half of one person's window and half of
+   * another's is a window nobody set — see apps/worker/src/preferences.ts.
+   */
+  notify_delivery?: DeliveryPreference;
+  /**
+   * Which kinds to hear about at all. MERGES PER ENTRY across org, account and project, so a
+   * project can mute one kind without un-muting everything the person silenced account-wide.
+   */
+  notify_events?: NotificationEventPrefs;
 }
 
 export interface PromptProfile {
@@ -417,13 +491,125 @@ export async function downloadMemoryExport(scope: MemoryScope, scopeId: string):
   URL.revokeObjectURL(url);
 }
 
+/** The history of builds, read the same way the transcript is — see fetchMessages. */
 export const fetchCheckpoints = (projectId: string) =>
-  request<{ checkpoints: CheckpointMeta[] }>(`/api/projects/${encodeURIComponent(projectId)}/checkpoints`);
+  request<{ checkpoints: CheckpointMeta[] }>(`/api/shared/${encodeURIComponent(projectId)}/checkpoints`);
+
+/**
+ * WHAT APPLE ACTUALLY DID INSIDE STUDIO.
+ *
+ * The worker has recorded every op since the oplog existed and served it here, and nothing in this
+ * app had ever called it — a grep for 'studio/diagnostics' across apps/web returned nothing at all.
+ * `limit` and `before` page it; the worker owns their bounds and answers a cursor it cannot parse
+ * with a refusal rather than the newest page.
+ */
+export interface StudioOpLog {
+  recentOps: OpLogRow[];
+  limit: number;
+  nextBefore: number | null;
+}
+
+//[[ TWO AGENTS NAMED TWO DIFFERENT ENDPOINTS `fetchStudioDiagnostics`, AND BOTH ARE REAL.
+//
+//   One returns the connection's state — is Studio paired, when does the token lapse, is the open
+//   place the bound one. The other returns the op LOG: what Studio has been asked to do, paged.
+//   They answer different questions, and the name that fitted both was the reason they collided.
+//
+//   The op log is the one renamed, because "diagnostics" in every message the pairing dialog
+//   prints means the connection, and a rename there would leave the word meaning two things in
+//   one product.
+export const fetchStudioOpLog = (projectId: string, opts: { limit?: number; before?: number | null } = {}) => {
+  const q = new URLSearchParams();
+  if (opts.limit) q.set('limit', String(opts.limit));
+  if (opts.before) q.set('before', String(opts.before));
+  const query = q.toString();
+  return request<StudioOpLog>(
+    `/api/projects/${encodeURIComponent(projectId)}/studio/diagnostics${query ? `?${query}` : ''}`,
+  );
+};
 
 export const createPairingCode = (projectId: string): Promise<PairingCodeDto> =>
   MOCK_MODE
     ? Promise.resolve({ code: 'GLM-7F3K2Q', expiresAtIso: new Date(Date.now() + 9 * 60_000).toISOString() })
     : request<PairingCodeDto>(`/api/projects/${encodeURIComponent(projectId)}/pairing`, { method: 'POST' });
+
+// ---------------------------------------------------------------- the Studio link, for its owner
+//
+// THREE ROUTES THE WORKER HAS SERVED WITH NOTHING CALLING THEM. `/studio/diagnostics` carries the
+// bound place, when the pairing was made and when its 30-day clock runs out, any place mismatch,
+// and the last operations; `/studio/disconnect` revokes the plugin's token; `/studio/place/rebind`
+// is the way out of a place mismatch that is not re-pairing. docs/troubleshooting and docs/plugin
+// have both been telling users to "disconnect from the web workspace" — a promise with no control
+// behind it until these were called from somewhere.
+//
+// All three are under /api/projects, so all three are OWNER ONLY: a collaborator is answered 404,
+// and the dialog has to render that as "we could not check" rather than as "nothing is paired".
+
+/**
+ * The whole state of this project's Studio link.
+ *
+ * Mirrors what apps/worker/src/do/session.ts assembles at `/studio/diagnostics`, the way MemberRow
+ * below mirrors RosterEntry. Every field that can be unknown is `null` rather than a zero or an
+ * empty string, because "Studio has never reported a place" and "Studio has a place open" are two
+ * different sentences and the record exists to keep them apart.
+ */
+export interface StudioDiagnosticsResponse {
+  link: StudioLinkSummary;
+  agentStatus: string;
+  /** When the pairing token was issued, and when it lapses. Null when nothing is paired. */
+  pairedAt: number | null;
+  pairingExpiresAt: number | null;
+  /** What Studio last said about itself. Null when it has never reported. */
+  openPlace: { placeName: string; placeId: number; gameId: number; isRunMode: boolean } | null;
+  /** Set when the open place is not the bound one. `message` is the worker's own wording. */
+  placeMismatch: {
+    expectedPlaceName: string;
+    openPlaceName: string;
+    openPlaceId: number;
+    message: string;
+  } | null;
+  recentOps: { op_id: string; kind: string | null; ok: number | null; summary: string | null; created_at: number }[];
+}
+
+export const fetchStudioDiagnostics = (projectId: string): Promise<StudioDiagnosticsResponse> =>
+  MOCK_MODE
+    ? Promise.resolve(mockDiagnostics())
+    : request<StudioDiagnosticsResponse>(`/api/projects/${encodeURIComponent(projectId)}/studio/diagnostics`);
+
+/** Revoke the plugin's token. The next poll is answered 401 and Studio clears its own session. */
+export const disconnectStudio = (projectId: string): Promise<{ ok: boolean; revoked: boolean }> =>
+  request(`/api/projects/${encodeURIComponent(projectId)}/studio/disconnect`, { method: 'POST' });
+
+/** Forget the bound place, so the next state event from Studio binds whatever is open now. */
+export const rebindPlace = (projectId: string): Promise<{ ok: boolean }> =>
+  request(`/api/projects/${encodeURIComponent(projectId)}/studio/place/rebind`, { method: 'POST' });
+
+/**
+ * CONNECTING DISCORD, FROM THE SIDE THAT CAN PROVE WHO YOU ARE.
+ *
+ * The code is minted here — signed in, on a project this account owns — and typed into Discord.
+ * That direction is the proof: only somebody signed in to this account can produce a code, so
+ * presenting one in Discord is evidence of having been signed in. Doing it the other way round
+ * would prove nothing about the Discord user at all.
+ */
+export interface DiscordLink {
+  discordUserId: string;
+  appleUserId: string;
+  projectId: string;
+  projectName: string;
+  linkedAt: number;
+}
+
+export const createDiscordCode = (projectId: string): Promise<PairingCodeDto> =>
+  MOCK_MODE
+    ? Promise.resolve({ code: 'K7MQ2XRB', expiresAtIso: new Date(Date.now() + 9 * 60_000).toISOString() })
+    : request<PairingCodeDto>(`/api/projects/${encodeURIComponent(projectId)}/discord-code`, { method: 'POST' });
+
+export const fetchDiscordLink = (): Promise<{ link: DiscordLink | null }> =>
+  MOCK_MODE ? Promise.resolve({ link: null }) : request<{ link: DiscordLink | null }>('/api/discord/link');
+
+export const disconnectDiscord = (): Promise<{ removed: boolean }> =>
+  MOCK_MODE ? Promise.resolve({ removed: true }) : request<{ removed: boolean }>('/api/discord/link', { method: 'DELETE' });
 
 /**
  * Download the whole conversation as a file.
@@ -489,7 +675,116 @@ export function parseImagePath(src: string): { projectId: string; imageId: strin
   return { projectId: m[1], imageId: m[2] };
 }
 
-export async function downloadExport(projectId: string, format: 'md' | 'json'): Promise<void> {
+/**
+ * The same, for generated sound — and it is not symmetry for its own sake.
+ *
+ * `generate_sound` emits an asset_picker whose link is this path, labelled "Listen". That link was
+ * rendered as a plain anchor, and every /api/* path needs a Bearer JWT an anchor cannot send, so
+ * the click opened a tab holding `{"error":"unauthorized"}` for a sound that existed and worked.
+ * An asset link may legitimately point anywhere — a catalogue page, a fragment — so the player is
+ * offered only for a path this app generated, and everything else stays the link it was.
+ */
+export function parseAudioPath(src: string): { projectId: string; audioId: string } | null {
+  // The UUID shape rather than 36 loose hex-or-dash characters: the worker's route validates the id
+  // with UUID_RE and 404s anything else before it touches KV, so a laxer regex here would only
+  // build players that fail for a reason unrelated to the sound.
+  const m = /^\/api\/projects\/([A-Za-z0-9_-]{1,64})\/audio\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/.exec(src);
+  if (!m || m[1] === undefined || m[2] === undefined) return null;
+  return { projectId: m[1], audioId: m[2] };
+}
+
+/**
+ * Fetch generated audio and hand back an object URL an <audio> element can play.
+ *
+ * fetchImageObjectUrl's reasoning, for the other media type: a bearer credential in a URL is a
+ * credential in logs, referrers and history, so there is one auth mechanism and the cost is that
+ * the bytes do not stream. Generated sounds are seconds long and already bounded by the worker's
+ * one-hour TTL, so that cost is small and the caller owns the revoke.
+ */
+export async function fetchAudioObjectUrl(projectId: string, audioId: string): Promise<string> {
+  const token = await getAccessToken();
+  const headers = new Headers();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+
+  let res: Response;
+  try {
+    res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/audio/${encodeURIComponent(audioId)}`, { headers });
+  } catch {
+    noteReachability(false);
+    throw new ApiError('Network error — check your connection.', 0);
+  }
+  noteReachability(true);
+  if (!res.ok) {
+    // 404 is a real expiry; 401 is a session that timed out. explainFailure draws that line for the
+    // caller, and it can only draw it if the status arrives intact.
+    throw new ApiError(res.status === 404 ? 'sound expired or not found' : `sound fetch failed (${res.status})`, res.status);
+  }
+  return URL.createObjectURL(await res.blob());
+}
+
+/**
+ * Save a generated sound to disk.
+ *
+ * `?download=1` is the worker's own attachment branch, which builds the filename from the id and
+ * the served content type — never from anything stored. Naming the file here instead would be a
+ * second rule for what a generated sound is called, and the two would disagree the first time
+ * either changed.
+ */
+export async function downloadProjectAudio(projectId: string, audioId: string): Promise<void> {
+  const token = await getAccessToken();
+  const headers = new Headers();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  const res = await fetch(
+    `/api/projects/${encodeURIComponent(projectId)}/audio/${encodeURIComponent(audioId)}?download=1`,
+    { headers },
+  );
+  if (!res.ok) throw new ApiError(`Could not download that sound (${res.status})`, res.status);
+  const named = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') ?? '')?.[1];
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = named ?? `sound-${audioId}`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // Next frame rather than immediately, for downloadExport's reason: a synchronous revoke can race
+  // the browser's own read of the blob and save a zero-byte file.
+  requestAnimationFrame(() => URL.revokeObjectURL(url));
+}
+
+/** What a finished export was, so the caller can name the file rather than guess at it. */
+export interface ExportSaved {
+  filename: string;
+  bytes: number;
+  /** True only when the worker sent a digest AND it matched. False means unchecked, never "bad". */
+  verified: boolean;
+}
+
+/**
+ * Save the conversation, watching it arrive and checking what arrived.
+ *
+ * TWO THINGS THIS DOES THAT `res.blob()` CANNOT.
+ *
+ *   IT CAN BE WATCHED. A single await produces one event — "done" — so the UI's only honest state
+ *   was "Preparing…", indefinitely, whether the transfer was moving or dead. The reader loop
+ *   reports bytes as they land, with the server's declared total when there is one and `null` when
+ *   there is not: a missing Content-Length must reach the caller as an ABSENCE, because the moment
+ *   it becomes 0 somebody divides by it.
+ *
+ *   IT IS CHECKED. The worker sends X-Golem-Export-SHA256 over the bytes it actually wrote, and a
+ *   truncated transfer is otherwise undetectable — a Markdown file that ends mid-sentence and a
+ *   JSON file that will not parse both save silently. The digest is recomputed over what was
+ *   received and the file is saved ONLY if it matches, because a half file on disk under a
+ *   plausible name is worse than no file: it looks like the export, and it gets kept.
+ *
+ * A response with no digest header saves anyway and reports `verified: false`. An older worker is
+ * the normal case during a deploy, and refusing to save then would turn a rollout into an outage.
+ */
+export async function downloadExport(
+  projectId: string,
+  format: 'md' | 'json',
+  onProgress?: (p: { received: number; total: number | null }) => void,
+): Promise<ExportSaved> {
   const token = await getAccessToken();
   const headers = new Headers();
   if (token) headers.set('Authorization', `Bearer ${token}`);
@@ -515,19 +810,63 @@ export async function downloadExport(projectId: string, format: 'md' | 'json'): 
     throw new ApiError(msg, res.status);
   }
 
-  const disposition = res.headers.get('Content-Disposition') ?? '';
-  const named = /filename="([^"]+)"/.exec(disposition);
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
+  const declaredLength = Number(res.headers.get('Content-Length'));
+  const total = Number.isFinite(declaredLength) && declaredLength > 0 ? declaredLength : null;
+  const declaredDigest = (res.headers.get('X-Golem-Export-SHA256') ?? '').trim().toLowerCase();
+
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+  const reader = res.body?.getReader();
+  if (reader) {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      chunks.push(value);
+      received += value.byteLength;
+      onProgress?.({ received, total });
+    }
+  } else {
+    // No readable body — a response double, or an engine that does not expose one. The file still
+    // has to save; what is lost is the watching, and that is reported as one final event rather
+    // than as silence.
+    const whole = new Uint8Array(await res.arrayBuffer());
+    chunks.push(whole);
+    received = whole.byteLength;
+    onProgress?.({ received, total });
+  }
+
+  const bytes = new Uint8Array(received);
+  let at = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, at);
+    at += chunk.byteLength;
+  }
+
+  let verified = false;
+  if (declaredDigest) {
+    const digest = await crypto.subtle.digest('SHA-256', bytes);
+    const hex = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+    if (hex !== declaredDigest) {
+      // Named as a broken TRANSFER. "Export failed" would send the user to look at their project.
+      throw new ApiError('That export arrived incomplete and was not saved — try again.', 0);
+    }
+    verified = true;
+  }
+
+  const filename = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') ?? '')?.[1] ?? `project-export.${format}`;
+  const type = format === 'md' ? 'text/markdown;charset=utf-8' : 'application/json;charset=utf-8';
+  const url = URL.createObjectURL(new Blob([bytes], { type }));
   const a = document.createElement('a');
   a.href = url;
-  a.download = named?.[1] ?? `project-export.${format}`;
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   a.remove();
   // Revoked on the next frame rather than immediately: a synchronous revoke can race the browser's
   // own read of the blob and produce a zero-byte file on some engines.
   requestAnimationFrame(() => URL.revokeObjectURL(url));
+  return { filename, bytes: received, verified };
 }
 
 export const purgeProject = (projectId: string) =>
@@ -638,6 +977,63 @@ export const reactivateMember = (projectId: string, userId: string): Promise<Mem
   request(`/api/shared/${encodeURIComponent(projectId)}/members/${encodeURIComponent(userId)}/reactivate`, {
     method: 'POST',
   });
+
+// ---------------------------------------------------------------- share links
+//
+// Minting, listing, revoking and redeeming a link by URL. The worker has had all four for a while
+// and none of them had a caller: there was no share-link function in this file at all, so a link
+// could only be created with curl and — until GET /links existed — could never be revoked at all,
+// because the token was unrecoverable the moment the mint response scrolled away.
+
+/** One link, exactly as GET /api/shared/:id/links reports it. */
+export interface ShareLinkRow {
+  /** The secret itself. It IS the link: revoking takes it, and re-sending needs it. */
+  token: string;
+  scope: 'project' | 'chat' | 'build';
+  resourceId: string | null;
+  role: string;
+  expiresAt: string | null;
+  revokedAt: string | null;
+  createdBy: string;
+  createdAt: string;
+  /**
+   * Computed by the worker THROUGH `redeemShareLink` — the function that actually decides — rather
+   * than by reading the columns a second way, so this can never say live about a link the door
+   * will refuse.
+   */
+  state: string;
+}
+
+export interface ShareLinksResponse {
+  links: ShareLinkRow[];
+  /** True when KV could not be read whole: a short list, said out loud rather than shown short. */
+  partial: boolean;
+}
+
+export const fetchShareLinks = (projectId: string): Promise<ShareLinksResponse> =>
+  request<ShareLinksResponse>(`/api/shared/${encodeURIComponent(projectId)}/links`);
+
+export const createShareLink = (
+  projectId: string,
+  body: { scope: 'project' | 'chat' | 'build'; role: string; resourceId?: string | null; expiresAt?: string | null },
+): Promise<{ token: string; scope: string; role: string; resourceId: string | null; expiresAt: string | null }> =>
+  request(`/api/shared/${encodeURIComponent(projectId)}/links`, { method: 'POST', body: JSON.stringify(body) });
+
+/** Stops the NEXT person. Grants already minted from the link are a membership revocation. */
+export const revokeShareLink = (projectId: string, token: string): Promise<{ ok: boolean; revoked: boolean }> =>
+  request(`/api/shared/${encodeURIComponent(projectId)}/links/revoke`, { method: 'POST', body: JSON.stringify({ token }) });
+
+/**
+ * Present a link and become a member, or be told exactly why not.
+ *
+ * The project id is NOT sent: the token is looked up by itself, and the answer carries the project
+ * it belongs to. A caller that had to name the project would have to learn it from somewhere, and
+ * the only place to learn it is the link.
+ */
+export const redeemShareLinkToken = (
+  token: string,
+): Promise<{ ok: boolean; projectId: string; role: string; scope: string; resourceId?: string | null }> =>
+  request('/api/shared/links/redeem', { method: 'POST', body: JSON.stringify({ token }) });
 
 /**
  * MANY INVITATIONS, ONE REQUEST — and a per-row answer for every one of them.
@@ -751,88 +1147,6 @@ export const fetchMemberEvents = (projectId: string, userId?: string, limit?: nu
     `/api/shared/${encodeURIComponent(projectId)}/members/events${qs ? `?${qs}` : ''}`,
   );
 };
-
-/**
- * MINTING A SHARE LINK — the only way to create a guest.
- *
- * Scope is fixed at 'project' here on purpose. The route also takes 'chat' and 'build', and both
- * require a `resourceId` naming the thing the link opens; this panel has no such thing to name, and
- * a scope picker offering two options that cannot be satisfied is three dead branches wearing one
- * control. When there is a place to share a single conversation from, that is where the narrower
- * scopes belong.
- *
- * THE TOKEN COMES BACK ONCE AND IS NEVER STORED. It is not in the roster, it is not in the
- * membership history — the events route deliberately never echoes it — and there is no route that
- * lists issued links. A caller that loses it cannot ask for it again; it can only mint another and
- * revoke this one.
- */
-export interface ShareLinkResponse {
-  token: string;
-  scope: string;
-  role: string;
-  resourceId: string | null;
-  projectId: string;
-}
-
-export const createShareLink = (
-  projectId: string,
-  body: { role: string; expiresAt?: string | null },
-): Promise<ShareLinkResponse> =>
-  request<ShareLinkResponse>(`/api/shared/${encodeURIComponent(projectId)}/links`, {
-    method: 'POST',
-    body: JSON.stringify({ scope: 'project', ...body }),
-  });
-
-/**
- * Presenting one. The project id is NOT in this request: it is on the link, server-side, so a probe
- * with a guessed token learns nothing about what exists — which is why the refusal comes back as a
- * reason and not as a project.
- *
- * 200 rather than 201 when the caller minted the link themselves: they already had access and
- * nothing was granted.
- */
-export const redeemShareLink = (token: string): Promise<{ ok: boolean; projectId: string; role: string; scope: string }> =>
-  request(`/api/shared/links/redeem`, { method: 'POST', body: JSON.stringify({ token }) });
-
-/**
- * THE LINKS THIS PROJECT HAS ISSUED, AND NO TOKENS.
- *
- * Each row is named by an opaque `id` — a truncated hash of the token — which is enough to revoke a
- * link and is not the link. Without this route a link could only be withdrawn by somebody who still
- * held the secret, so an administrator who minted one, sent it and closed the tab had handed out
- * access they could never take back.
- *
- * `complete: false` is an answer about CREDENTIALS and must be rendered: a short list shown as a
- * whole one tells somebody they have withdrawn everything while one link is still working.
- * `redemptionsComplete` is the smaller, separate failure — the links are all here and the count of
- * who used them is not.
- */
-export interface ShareLinkRow {
-  id: string;
-  scope: string;
-  role: string;
-  resourceId: string | null;
-  createdBy: string;
-  createdAt: string;
-  expiresAt: string | null;
-  revokedAt: string | null;
-  redeemed: number;
-}
-
-export interface ShareLinksResponse {
-  links: ShareLinkRow[];
-  complete: boolean;
-  redemptionsComplete: boolean;
-  partial?: boolean;
-  incomplete?: string[];
-}
-
-export const fetchShareLinks = (projectId: string): Promise<ShareLinksResponse> =>
-  request<ShareLinksResponse>(`/api/shared/${encodeURIComponent(projectId)}/links`);
-
-/** By id, which is the whole point: the caller no longer needs to hold the secret to withdraw it. */
-export const revokeShareLinkById = (projectId: string, id: string): Promise<{ ok: boolean; revoked: boolean }> =>
-  request(`/api/shared/${encodeURIComponent(projectId)}/links/revoke`, { method: 'POST', body: JSON.stringify({ id }) });
 
 // ---------------------------------------------------------------- roadmap
 
@@ -970,6 +1284,18 @@ export interface RagHit {
 export const adminRagTest = (adminKey: string, query: string) =>
   request<{ hits: RagHit[] }>('/api/admin/rag-test', { method: 'POST', body: JSON.stringify({ query }) }, { 'X-Admin-Key': adminKey });
 
+/**
+ * Publish the Discord slash-command list. Idempotent — the PUT replaces the whole list — and the
+ * only place the bot token is used. It has to be run once after the Discord application exists,
+ * and again whenever the command list changes, or Discord keeps offering commands that are gone.
+ */
+export const adminRegisterDiscordCommands = (adminKey: string) =>
+  request<{ ok: boolean; registered: string[] }>(
+    '/api/admin/discord/register-commands',
+    { method: 'POST' },
+    { 'X-Admin-Key': adminKey },
+  );
+
 // ---------------------------------------------------------------- project files
 //
 // The workspace Apple writes into, from the browser. `request<T>` for everything except the
@@ -993,7 +1319,10 @@ export const fetchFileHistory = (projectId: string, path: string) =>
   );
 
 export interface FileOpRequest {
-  op: 'rename' | 'move' | 'copy' | 'delete' | 'undelete' | 'revert';
+  // The folder operations take a PREFIX in `path` rather than a file, and are named separately for
+  // that reason: one op that guessed from the shape of the string would delete a whole folder for
+  // anyone who typed a path without an extension.
+  op: 'rename' | 'move' | 'copy' | 'delete' | 'undelete' | 'revert' | 'move_folder' | 'delete_folder';
   path: string;
   to?: string;
   version?: number;
@@ -1029,6 +1358,76 @@ export async function fileOp(projectId: string, body: FileOpRequest): Promise<{ 
     };
   }
   return { ok: true, result: parsed ?? {} };
+}
+
+/**
+ * Put a text file into the project workspace.
+ *
+ * Shaped like `fileOp` rather than like `request<T>`, and for the same reason: the worker sends a
+ * machine-readable `code` with every refusal and `request` drops it, so the panel would be left
+ * matching on prose to tell "that name is taken" from "that is not a workspace file type".
+ *
+ * `overwrite` is never sent on the first attempt. An occupied path comes back as a refusal the user
+ * answers, so replacing the plan Apple wrote is always something they chose.
+ */
+export async function uploadProjectFile(
+  projectId: string,
+  path: string,
+  content: string,
+  opts: { overwrite?: boolean } = {},
+): Promise<{ ok: true; result: Record<string, unknown> } | { ok: false; code?: string; error: string }> {
+  const token = await getAccessToken();
+  const headers = new Headers({ 'Content-Type': 'application/json' });
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  let res: Response;
+  try {
+    res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/files/content`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ path, content, ...(opts.overwrite ? { overwrite: true } : {}) }),
+    });
+  } catch {
+    noteReachability(false);
+    return { ok: false, error: 'Network error — check your connection.' };
+  }
+  noteReachability(true);
+  const parsed = (await res.json().catch(() => null)) as Record<string, unknown> | null;
+  if (!res.ok) {
+    return {
+      ok: false,
+      code: typeof parsed?.code === 'string' ? parsed.code : undefined,
+      error: typeof parsed?.error === 'string' ? parsed.error : `Request failed (${res.status})`,
+    };
+  }
+  return { ok: true, result: parsed ?? {} };
+}
+
+/**
+ * Save the whole workspace as one ZIP.
+ *
+ * Same shape as downloadProjectFile — the route needs a Bearer token, an <a href> sends none, so
+ * the bytes are fetched and handed over as a blob, and the SERVER names the file. It is also the
+ * one download here that can legitimately be empty-handed: a project with no files is answered with
+ * a sentence rather than with a zip of nothing, and that arrives as an ApiError like any refusal.
+ */
+export async function downloadProjectArchive(projectId: string): Promise<void> {
+  const token = await getAccessToken();
+  const headers = new Headers();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/files/archive`, { headers });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { error?: unknown } | null;
+    throw new ApiError(typeof body?.error === 'string' ? body.error : `Could not download those files (${res.status})`, res.status);
+  }
+  const named = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') ?? '')?.[1];
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = named ?? 'project-files.zip';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  requestAnimationFrame(() => URL.revokeObjectURL(url));
 }
 
 /**
@@ -1090,3 +1489,39 @@ export const putRobloxKey = (body: {
 
 export const deleteRobloxKey = (): Promise<{ removed: boolean }> =>
   request('/api/me/roblox-key', { method: 'DELETE' });
+
+// ---------------------------------------------------------------- the inbox / security history
+//
+// The worker has written a `security_event` row on every key mint, rotation, revocation and
+// membership change for a while, and until now nothing in this app fetched it — a security log the
+// account holder could not open. See lib/security-history.ts for what the settings page does with
+// the rows.
+//
+// BOUND TO THE CALLER BY THE TOKEN. There is no user id in either path and no variant that takes
+// one; the worker reads `c.get('user').userId` off the verified JWT and binds it into every clause.
+
+//[[ THERE IS ONE PAIR OF THESE, AND IT USED TO BE TWO.
+//
+//   Two agents wrote notification helpers against the same two routes with different signatures —
+//   one taking `{ids?, all?}` for the inbox, one taking a bare `ids` array for the security panel.
+//   The second version's comment carried a real constraint and it is kept below rather than lost:
+//   IDS, NEVER `all`, for a panel that shows only security events, because "mark all read" there
+//   would clear the run failures sitting unread beside them.
+//
+//   That is a rule about the CALL SITE, not about the function. The function above takes both and
+//   the security panel passes only ids — which is checked, not merely intended: see
+//   apps/web/tests/security-log.test.mjs.
+
+/**
+ * Record that this account's password was changed.
+ *
+ * Supabase performs the change and this worker never sees it, which is why the record has to be
+ * ASKED FOR rather than observed. `recorded` comes back from the write and is false when the notice
+ * did not land — the page says different things for the two, because "we have noted it in your
+ * security history" printed over a notice that was dropped is the observation-failure this
+ * codebase keeps finding.
+ */
+export const reportPasswordChanged = (): Promise<{ recorded: boolean; reason?: string }> =>
+  MOCK_MODE
+    ? Promise.resolve({ recorded: true })
+    : request<{ recorded: boolean; reason?: string }>('/api/security/password-changed', { method: 'POST' });
