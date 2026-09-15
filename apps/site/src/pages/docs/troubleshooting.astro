@@ -102,6 +102,45 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     </li>
   </ul>
 
+  <h2 id="model-failures">The model failed part-way</h2>
+  <p>
+    Three different things are meant by “it stopped on its own”, and they need different responses.
+    The chat says which one happened; this is what each means, and what it costs.
+  </p>
+
+  <h3>“The model dropped that step”</h3>
+  <p>
+    A single inference call failed after Apple had already done real work. Everything up to that
+    step is saved in your place, and the dropped step is <strong>not</strong> charged — Credits are
+    billed from the compute a call actually reports, and a call that returned nothing reports
+    nothing. Send another message and Apple continues from where it stopped; you do not need to
+    repeat the whole instruction.
+  </p>
+
+  <h3>“Apple is busy” or “too many requests”</h3>
+  <p>
+    The model provider rate-limited us, not you. Nothing about your account changed and your
+    allowance is untouched. Wait a few seconds and continue — this clears on its own, and it clears
+    faster than retrying immediately, which joins the same queue.
+  </p>
+
+  <h3>“Apple has reached today's shared building capacity”</h3>
+  <p>
+    Different from running out of your own Credits: this is a ceiling on what the whole service will
+    spend in a day, and it protects the free tier from a single runaway build. The message says when
+    it resets — midnight UTC, the same instant for everyone. Your Credits are not consumed by a run
+    that stops here, and your project and checkpoints are exactly where you left them. See
+    <a href="/docs/credits-and-limits">Credits &amp; limits</a> for the difference between the two.
+  </p>
+
+  <div class="callout">
+    <p>
+      In all three cases the work already done is in your place and the conversation is intact.
+      Apple never rolls back finished steps because a later one failed — that is what the checkpoint
+      before the run is for, and it is still there if you want it.
+    </p>
+  </div>
+
   <h2>Apple changed something I didn't want</h2>
   <p>Three exits, smallest first:</p>
   <ol>
@@ -116,6 +155,13 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     Either one ends Apple's access to the place immediately, without uninstalling anything. To
     remove the plugin entirely, uninstall it from Studio's plugin management window.
   </p>
+
+  <div class="callout">
+    <p>
+      Before writing in, check <a href="/status">Status</a> — it lists what is currently known to be
+      broken or limited, with the workaround for each, and it says when the API last answered.
+    </p>
+  </div>
 
   <div class="callout">
     <p>

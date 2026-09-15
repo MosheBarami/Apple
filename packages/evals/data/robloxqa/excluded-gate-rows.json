@@ -1,0 +1,429 @@
+{
+  "builtBy": "scripts/harvest-hf.mjs",
+  "dataset": "TorpedoSoftware/RobloxQA-v2.0",
+  "revision": "3d983bf3a4702ef33719de4bb9fa8eaedbe626f1",
+  "why": "each of these gate rows restates a headroom question at or above the idf-weighted Jaccard threshold. Headroom is offered as tuning material; a gate row that is also a headroom row would be scoring memorisation the day anyone uses it.",
+  "threshold": 0.6,
+  "rows": [
+    {
+      "gateRowIdx": 2954,
+      "headroomRowIdx": 3624,
+      "score": 0.933,
+      "gateQuestion": "What is the primary purpose of calling GetPropertyChangedSignal(property) on a Roblox Instance?",
+      "headroomQuestion": "What is the primary purpose of calling GetPropertyChangedSignal on a Roblox Instance?"
+    },
+    {
+      "gateRowIdx": 254,
+      "headroomRowIdx": 104,
+      "score": 0.9198,
+      "gateQuestion": "In Roblox, what does the Instance method `IsA(className)` return when called on an object?",
+      "headroomQuestion": "In Roblox, what does the `IsA(className)` method return when called on an Instance?"
+    },
+    {
+      "gateRowIdx": 2214,
+      "headroomRowIdx": 104,
+      "score": 0.9138,
+      "gateQuestion": "What does the IsA(className) method return when called on a Roblox Instance?",
+      "headroomQuestion": "In Roblox, what does the `IsA(className)` method return when called on an Instance?"
+    },
+    {
+      "gateRowIdx": 357,
+      "headroomRowIdx": 1800,
+      "score": 0.911,
+      "gateQuestion": "In Roblox Analytics, what does the \"Day 1 retention\" metric specifically measure?",
+      "headroomQuestion": "In game analytics, what does the Day 1 retention metric specifically measure?"
+    },
+    {
+      "gateRowIdx": 1276,
+      "headroomRowIdx": 4108,
+      "score": 0.8939,
+      "gateQuestion": "In Roblox API documentation, what does it mean when a method is marked with the capability \"Thread Safety: Unsafe\"?",
+      "headroomQuestion": "In Roblox API documentation, what does it mean when a method is marked with `Thread Safety: Unsafe`?"
+    },
+    {
+      "gateRowIdx": 2050,
+      "headroomRowIdx": 2277,
+      "score": 0.8845,
+      "gateQuestion": "How does connecting a function to an Instance's `GetPropertyChangedSignal(\"PropertyName\")` differ from connecting it directly to the Instance's `Changed` event?",
+      "headroomQuestion": "How does `GetPropertyChangedSignal(\"PropertyName\")` differ from connecting directly to an instance's `Changed` event?"
+    },
+    {
+      "gateRowIdx": 2636,
+      "headroomRowIdx": 1754,
+      "score": 0.863,
+      "gateQuestion": "When a BasePart's `Touched` event fires in Roblox, what does the passed argument typically represent?",
+      "headroomQuestion": "When a BasePart's `Touched` event fires, what does the passed argument represent?"
+    },
+    {
+      "gateRowIdx": 2733,
+      "headroomRowIdx": 3076,
+      "score": 0.8601,
+      "gateQuestion": "In Roblox, what is the effect of setting a BasePart's CanCollide property to false?",
+      "headroomQuestion": "What is the direct effect of setting a BasePart's CanCollide property to false in Roblox?"
+    },
+    {
+      "gateRowIdx": 2507,
+      "headroomRowIdx": 2995,
+      "score": 0.8404,
+      "gateQuestion": "In Roblox, what does calling the `IsA(className)` method on an Instance return?",
+      "headroomQuestion": "When calling IsA(className) on a Roblox Instance in Luau, what does the method return?"
+    },
+    {
+      "gateRowIdx": 2593,
+      "headroomRowIdx": 3753,
+      "score": 0.8037,
+      "gateQuestion": "What is the effect of setting the Anchored property of a BasePart to true in the Roblox engine?",
+      "headroomQuestion": "What is the effect of setting a BasePart's Anchored property to true?"
+    },
+    {
+      "gateRowIdx": 2381,
+      "headroomRowIdx": 2386,
+      "score": 0.7901,
+      "gateQuestion": "What does the read-only ClassName property of any Roblox Instance return?",
+      "headroomQuestion": "In Roblox, what does the read-only ClassName property of an Instance return?"
+    },
+    {
+      "gateRowIdx": 1818,
+      "headroomRowIdx": 4574,
+      "score": 0.7899,
+      "gateQuestion": "What is the primary behavior of calling WaitForChild on a parent Instance in Roblox?",
+      "headroomQuestion": "What is the primary purpose of calling `WaitForChild` on a parent Instance in Roblox?"
+    },
+    {
+      "gateRowIdx": 735,
+      "headroomRowIdx": 1257,
+      "score": 0.7862,
+      "gateQuestion": "When a BasePart's Touched event fires in Roblox, what does its callback function receive as an argument?",
+      "headroomQuestion": "When a Roblox BasePart's Touched event fires, what does the connected callback function receive as its first argument?"
+    },
+    {
+      "gateRowIdx": 474,
+      "headroomRowIdx": 3713,
+      "score": 0.782,
+      "gateQuestion": "When authenticating a request to the Roblox Open Cloud API using an API Key, which HTTP header must contain the credentials?",
+      "headroomQuestion": "When authenticating a Roblox Open Cloud API request using an API key, which HTTP header must contain the credential?"
+    },
+    {
+      "gateRowIdx": 26,
+      "headroomRowIdx": 2857,
+      "score": 0.7757,
+      "gateQuestion": "What is the primary purpose of using `SetAttribute` and `GetAttribute` on a Roblox Instance?",
+      "headroomQuestion": "What is the primary purpose of calling SetAttribute and GetAttribute on a Roblox instance in Luau?"
+    },
+    {
+      "gateRowIdx": 2146,
+      "headroomRowIdx": 1672,
+      "score": 0.7641,
+      "gateQuestion": "What numeric data type does the GetValue() method return for a StatsItem?",
+      "headroomQuestion": "What numeric type does StatsItem:GetValue() return?"
+    },
+    {
+      "gateRowIdx": 319,
+      "headroomRowIdx": 1694,
+      "score": 0.7485,
+      "gateQuestion": "What is the effect of enabling the FaceCamera property on a Beam object in Roblox?",
+      "headroomQuestion": "When configuring a Roblox Beam object, what is the effect of enabling its FaceCamera property?"
+    },
+    {
+      "gateRowIdx": 1157,
+      "headroomRowIdx": 2525,
+      "score": 0.7409,
+      "gateQuestion": "When a script executes require on a ModuleScript, what does it receive as its return value?",
+      "headroomQuestion": "When a Luau script uses require() on a ModuleScript, what does it receive as its return value?"
+    },
+    {
+      "gateRowIdx": 1814,
+      "headroomRowIdx": 3928,
+      "score": 0.7401,
+      "gateQuestion": "What is the fundamental purpose of declaring a variable in Luau?",
+      "headroomQuestion": "In Luau, what is the fundamental purpose of a variable?"
+    },
+    {
+      "gateRowIdx": 2298,
+      "headroomRowIdx": 3928,
+      "score": 0.7401,
+      "gateQuestion": "In Luau, what is the fundamental purpose of declaring a variable?",
+      "headroomQuestion": "In Luau, what is the fundamental purpose of a variable?"
+    },
+    {
+      "gateRowIdx": 1137,
+      "headroomRowIdx": 1916,
+      "score": 0.7334,
+      "gateQuestion": "What is the primary function of setting a SpawnLocation's Neutral property to true?",
+      "headroomQuestion": "What is the effect of setting a SpawnLocation's Neutral property to true in Roblox?"
+    },
+    {
+      "gateRowIdx": 2955,
+      "headroomRowIdx": 786,
+      "score": 0.7293,
+      "gateQuestion": "When calling `IsA(className)` on a Roblox Instance, what condition must be true for the method to return true?",
+      "headroomQuestion": "When calling an Instance's `IsA(className)` method in Roblox, what condition must be met for it to return true?"
+    },
+    {
+      "gateRowIdx": 873,
+      "headroomRowIdx": 2030,
+      "score": 0.7256,
+      "gateQuestion": "What does the `Angle` method return when called on a Vector2 with another Vector2 argument?",
+      "headroomQuestion": "What does the `Dot` method return when called on a Vector2 with another Vector2 argument?"
+    },
+    {
+      "gateRowIdx": 825,
+      "headroomRowIdx": 1257,
+      "score": 0.7254,
+      "gateQuestion": "When the BasePart.Touched event fires, what does its callback function receive as its first parameter?",
+      "headroomQuestion": "When a Roblox BasePart's Touched event fires, what does the connected callback function receive as its first argument?"
+    },
+    {
+      "gateRowIdx": 2583,
+      "headroomRowIdx": 123,
+      "score": 0.7242,
+      "gateQuestion": "In Roblox, how does enabling the Sandboxed property on an Instance affect scripts executing inside it?",
+      "headroomQuestion": "How does enabling the `Sandboxed` property on a Roblox instance affect scripts running inside it?"
+    },
+    {
+      "gateRowIdx": 324,
+      "headroomRowIdx": 2053,
+      "score": 0.7228,
+      "gateQuestion": "In Roblox, when you connect a callback function to a `BasePart`'s `Touched` event, what does the first argument passed to that function represent?",
+      "headroomQuestion": "In Roblox, what does the first argument passed to a callback function connected to a BasePart's Touched event represent?"
+    },
+    {
+      "gateRowIdx": 585,
+      "headroomRowIdx": 1905,
+      "score": 0.7191,
+      "gateQuestion": "What is the effect of setting TextChatService.ChatVersion to ChatVersion.LegacyChatService?",
+      "headroomQuestion": "What is the functional effect of setting `TextChatService.ChatVersion` to `Enum.ChatVersion.TextChatService` instead of `LegacyChatService`?"
+    },
+    {
+      "gateRowIdx": 2412,
+      "headroomRowIdx": 2386,
+      "score": 0.7159,
+      "gateQuestion": "In Roblox scripting, what does the read-only ClassName property return?",
+      "headroomQuestion": "In Roblox, what does the read-only ClassName property of an Instance return?"
+    },
+    {
+      "gateRowIdx": 1516,
+      "headroomRowIdx": 341,
+      "score": 0.708,
+      "gateQuestion": "What is the primary purpose of an avatar cage mesh in Roblox?",
+      "headroomQuestion": "What is the primary purpose of a cage mesh on a Roblox avatar body?"
+    },
+    {
+      "gateRowIdx": 2078,
+      "headroomRowIdx": 3608,
+      "score": 0.706,
+      "gateQuestion": "How does UIGridLayout handle a child GuiObject that has a UISizeConstraint with a MinSize larger than the layout's CellSize?",
+      "headroomQuestion": "How does a UIGridLayout handle a child element that has a UISizeConstraint with a MinSize larger than the grid's configured CellSize?"
+    },
+    {
+      "gateRowIdx": 1629,
+      "headroomRowIdx": 3935,
+      "score": 0.7013,
+      "gateQuestion": "In Roblox development, what is the structural relationship between a \"place\" and an \"experience\"?",
+      "headroomQuestion": "In Roblox Studio, what is the structural relationship between an experience (project) and a place?"
+    },
+    {
+      "gateRowIdx": 2929,
+      "headroomRowIdx": 2279,
+      "score": 0.6949,
+      "gateQuestion": "When calling `instance:IsA(className)` in Roblox, what determines whether it returns true?",
+      "headroomQuestion": "When using an Instance's `IsA(className)` method in Luau, what determines whether it returns true?"
+    },
+    {
+      "gateRowIdx": 2382,
+      "headroomRowIdx": 1663,
+      "score": 0.6848,
+      "gateQuestion": "What happens when a SpawnLocation's Neutral property is set to false?",
+      "headroomQuestion": "When a SpawnLocation's Enabled property is set to false, what happens?"
+    },
+    {
+      "gateRowIdx": 695,
+      "headroomRowIdx": 4001,
+      "score": 0.6842,
+      "gateQuestion": "What is the rendering effect of setting a CylinderHandleAdornment's AlwaysOnTop property to true?",
+      "headroomQuestion": "What is the rendering effect of setting a SurfaceGui's AlwaysOnTop property to true?"
+    },
+    {
+      "gateRowIdx": 1936,
+      "headroomRowIdx": 3231,
+      "score": 0.6796,
+      "gateQuestion": "In a Roblox experience, what is the primary functional difference between a Developer Product and a Game Pass?",
+      "headroomQuestion": "In a Roblox experience, what is the primary difference between selling a Developer Product and selling a Pass?"
+    },
+    {
+      "gateRowIdx": 2738,
+      "headroomRowIdx": 2566,
+      "score": 0.6766,
+      "gateQuestion": "In Roblox, what does it mean when a class is tagged as NotCreatable?",
+      "headroomQuestion": "In the Roblox engine, what does it mean for an Instance class to be tagged as NotCreatable?"
+    },
+    {
+      "gateRowIdx": 1468,
+      "headroomRowIdx": 1204,
+      "score": 0.6693,
+      "gateQuestion": "In Luau, what value does the IsA method return when an object's class matches or inherits from the specified string argument?",
+      "headroomQuestion": "In Roblox Luau scripts, what value does the IsA method return when an instance matches or inherits from the specified class name?"
+    },
+    {
+      "gateRowIdx": 2917,
+      "headroomRowIdx": 1189,
+      "score": 0.6656,
+      "gateQuestion": "In a LayerCollector with ZIndexBehavior set to Global, how is the rendering order of descendant GuiObjects determined?",
+      "headroomQuestion": "When a ScreenGui's LayerCollector.ZIndexBehavior is set to Global, how does it determine the rendering order of descendant GuiObjects?"
+    },
+    {
+      "gateRowIdx": 1540,
+      "headroomRowIdx": 295,
+      "score": 0.6638,
+      "gateQuestion": "When importing custom 3D models into Roblox Studio using the built-in Importer, which file format is officially supported?",
+      "headroomQuestion": "When importing 3D meshes into Roblox Studio using the built-in Importer, which file extension is officially supported?"
+    },
+    {
+      "gateRowIdx": 1997,
+      "headroomRowIdx": 37,
+      "score": 0.6598,
+      "gateQuestion": "What is the primary function of a ColorGradingEffect instance within Roblox's rendering pipeline?",
+      "headroomQuestion": "What is the primary function of a WrapTarget instance within Roblox's rendering pipeline?"
+    },
+    {
+      "gateRowIdx": 1798,
+      "headroomRowIdx": 1513,
+      "score": 0.6533,
+      "gateQuestion": "What is the primary function of PhysicsSettings.PhysicsEnvironmentalThrottle in Roblox?",
+      "headroomQuestion": "In Roblox, what is the primary purpose of configuring the PhysicsSettings.PhysicsEnvironmentalThrottle property?"
+    },
+    {
+      "gateRowIdx": 2887,
+      "headroomRowIdx": 2053,
+      "score": 0.6498,
+      "gateQuestion": "When a BasePart's Touched event fires, what does the parameter passed to the connected callback function represent?",
+      "headroomQuestion": "In Roblox, what does the first argument passed to a callback function connected to a BasePart's Touched event represent?"
+    },
+    {
+      "gateRowIdx": 872,
+      "headroomRowIdx": 2826,
+      "score": 0.6482,
+      "gateQuestion": "What does calling IsA on a Roblox Instance return when passed a specific class name?",
+      "headroomQuestion": "What does the `IsA` method on a Roblox Object return when passed a class name?"
+    },
+    {
+      "gateRowIdx": 1002,
+      "headroomRowIdx": 3250,
+      "score": 0.6462,
+      "gateQuestion": "When connecting to the Changed event of a Color3Value, what argument does the callback function receive?",
+      "headroomQuestion": "When connecting a callback to a BoolValue's Changed event, what argument does the function receive?"
+    },
+    {
+      "gateRowIdx": 1852,
+      "headroomRowIdx": 1244,
+      "score": 0.6411,
+      "gateQuestion": "What is the effect of setting the Wraps property to true on a UIListLayout?",
+      "headroomQuestion": "When using UIListLayout in Roblox, what effect does setting the Wraps property to true have?"
+    },
+    {
+      "gateRowIdx": 2851,
+      "headroomRowIdx": 2605,
+      "score": 0.6395,
+      "gateQuestion": "What is the direct result of calling the Disconnect method on an existing RBXScriptConnection object?",
+      "headroomQuestion": "What is the direct effect of calling Disconnect on an RBXScriptConnection object in Luau?"
+    },
+    {
+      "gateRowIdx": 2951,
+      "headroomRowIdx": 410,
+      "score": 0.6369,
+      "gateQuestion": "In Luau, what does calling the `tick()` function return?",
+      "headroomQuestion": "In Luau, what value does the `tick()` function return when called?"
+    },
+    {
+      "gateRowIdx": 2671,
+      "headroomRowIdx": 4268,
+      "score": 0.6353,
+      "gateQuestion": "In Roblox, what does it mean for an engine class to have the \"NotCreatable\" tag?",
+      "headroomQuestion": "In Roblox Studio, what does it mean when an engine class has the \"NotCreatable\" tag applied to it?"
+    },
+    {
+      "gateRowIdx": 1492,
+      "headroomRowIdx": 1204,
+      "score": 0.6308,
+      "gateQuestion": "In Roblox Luau scripts, what does calling an instance's `IsA(className)` method return when verifying if it matches or inherits from a specified class?",
+      "headroomQuestion": "In Roblox Luau scripts, what value does the IsA method return when an instance matches or inherits from the specified class name?"
+    },
+    {
+      "gateRowIdx": 2897,
+      "headroomRowIdx": 955,
+      "score": 0.6234,
+      "gateQuestion": "In Roblox, what is the maximum triangle count permitted for a single individual mesh?",
+      "headroomQuestion": "What is the maximum triangle count permitted for a single mesh in a standard Roblox rigid accessory asset?"
+    },
+    {
+      "gateRowIdx": 2198,
+      "headroomRowIdx": 3155,
+      "score": 0.6226,
+      "gateQuestion": "What value does the IsA method return when an instance belongs to the specified class name or a subclass of it?",
+      "headroomQuestion": "When calling an Instance's IsA method with a specific class name, what does it return if the instance belongs to a subclass of that class?"
+    },
+    {
+      "gateRowIdx": 373,
+      "headroomRowIdx": 3624,
+      "score": 0.6149,
+      "gateQuestion": "What is the purpose of calling instance:GetPropertyChangedSignal(\"Anchored\") in Roblox?",
+      "headroomQuestion": "What is the primary purpose of calling GetPropertyChangedSignal on a Roblox Instance?"
+    },
+    {
+      "gateRowIdx": 1637,
+      "headroomRowIdx": 1059,
+      "score": 0.6148,
+      "gateQuestion": "What is the immediate effect of calling Destroy() on a Roblox Instance?",
+      "headroomQuestion": "What is the immediate and guaranteed effect of calling the Instance:Destroy() method?"
+    },
+    {
+      "gateRowIdx": 1212,
+      "headroomRowIdx": 1835,
+      "score": 0.6105,
+      "gateQuestion": "In Roblox, what is the structural relationship between a Universe and a Place?",
+      "headroomQuestion": "In Roblox's addressing system, what is the structural relationship between a place ID and a universe ID?"
+    },
+    {
+      "gateRowIdx": 1044,
+      "headroomRowIdx": 2279,
+      "score": 0.6104,
+      "gateQuestion": "When a Roblox developer calls instance:IsA(className), what determines whether the method returns true?",
+      "headroomQuestion": "When using an Instance's `IsA(className)` method in Luau, what determines whether it returns true?"
+    },
+    {
+      "gateRowIdx": 425,
+      "headroomRowIdx": 2484,
+      "score": 0.6085,
+      "gateQuestion": "In a Roblox PlaneConstraint, which attachment's orientation determines the normal vector of the constrained plane?",
+      "headroomQuestion": "When configuring a PlaneConstraint, which attachment determines the normal vector of the constraint plane?"
+    },
+    {
+      "gateRowIdx": 1488,
+      "headroomRowIdx": 3142,
+      "score": 0.6038,
+      "gateQuestion": "When publishing a cross-server message via the Roblox Open Cloud v1 Messaging Service API, what is the maximum allowed length for the topic name?",
+      "headroomQuestion": "In the Roblox Open Cloud v1 Messaging Service API, what is the maximum allowed size for a cross-server message payload?"
+    },
+    {
+      "gateRowIdx": 2452,
+      "headroomRowIdx": 630,
+      "score": 0.6033,
+      "gateQuestion": "How does modifying a VideoPlayer's PlaybackSpeed property affect its output?",
+      "headroomQuestion": "How does modifying an AudioPlayer's PlaybackSpeed property affect the output?"
+    },
+    {
+      "gateRowIdx": 926,
+      "headroomRowIdx": 1224,
+      "score": 0.6001,
+      "gateQuestion": "What happens to an Instance when its `Archivable` property is set to false and its parent is cloned?",
+      "headroomQuestion": "What happens when an Instance's Archivable property is set to false?"
+    },
+    {
+      "gateRowIdx": 1630,
+      "headroomRowIdx": 3477,
+      "score": 0.6,
+      "gateQuestion": "Based on Roblox documentation, what do the C0 and C1 properties of a JointInstance represent?",
+      "headroomQuestion": "In Roblox, what do the C0 and C1 properties of a JointInstance define?"
+    }
+  ]
+}

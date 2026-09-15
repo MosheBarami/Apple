@@ -6,10 +6,11 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { PlanLadder } from '../components/plans';
+import { OrderSummaryDialog } from '../components/order-summary';
 import { meterView, periodComparisonLine, spendByKind } from '../components/usage-meter-model';
 import { formatNumber } from '../lib/format';
 import { Failure } from '../components/failure';
-import { PLAN_COPY, PRODUCT_MODE_INFO, formatMoney, isPlanId, type PlanId, type ProductMode } from '@golem/shared';
+import { PRODUCT_MODES_OFFERED, PLAN_COPY, PRODUCT_MODE_INFO, formatMoney, isPlanId, type PlanId } from '@golem/shared';
 import {
   billingChangeLine,
   billingHistoryCsv,
@@ -36,7 +37,9 @@ import {
 import { ConfirmDialog } from '../components/confirm-dialog';
 import { useToast } from '../components/toast';
 
-const MODES: ProductMode[] = ['plan', 'agent', 'super'];
+// The modes a person may CHOOSE. PRODUCT_MODES is every mode the system can produce —
+// pricing one nobody can start is how "Super Agent" survived being removed from the composer.
+const MODES = PRODUCT_MODES_OFFERED;
 
 /**
  * The ring shows the ALLOWANCE, and credits are reported beside it — never added into the arc.
@@ -450,6 +453,16 @@ export function UsagePage() {
   const billing = useQuery({ queryKey: ['billing-config'], queryFn: fetchBillingConfig, retry: false });
   const { toast } = useToast();
   const [busyPlan, setBusyPlan] = useState<PlanId | null>(null);
+  /**
+   * THE ORDER WAITING TO BE CONFIRMED.
+   *
+   * The first click used to call the checkout mutation and the browser left for Stripe's card form.
+   * The only pre-purchase statement in the product was the plan card behind it, which describes a
+   * TIER — price, allowance, highlights — and not an order: it never said what the account was
+   * moving from, that the charge repeats, or that tax is added to the figure being read. Choosing a
+   * plan now opens the summary; nothing is bought until it is confirmed.
+   */
+  const [pendingPlan, setPendingPlan] = useState<PlanId | null>(null);
 
   /**
    * COMING BACK FROM STRIPE IS NOT AN ENTITLEMENT.
@@ -700,7 +713,10 @@ export function UsagePage() {
                     // for both. Swapping, proration and when a downgrade takes effect are Stripe's
                     // to decide, and the portal is where it does that.
                     const canBuy = billing.data.purchasable.includes(plan);
-                    if (currentPlan === 'free' && canBuy) checkout.mutate(plan);
+                    // A FIRST SUBSCRIPTION IS SUMMARISED BEFORE IT IS STARTED: the order dialog
+                    // states the charge, the term and the allowance, and it is the only thing that
+                    // can start a checkout.
+                    if (currentPlan === 'free' && canBuy) setPendingPlan(plan);
                     // A PRICED SWAP IS QUOTED FIRST. The portal is still where it happens; the
                     // dialog exists so the prorated amount is seen here rather than only there.
                     else if (canBuy) setPendingChange(plan);
@@ -710,6 +726,20 @@ export function UsagePage() {
                   }
                 : undefined
             }
+          />
+
+          {/*
+            THE ORDER, BEFORE THE PAYMENT PAGE. It states the plan, the charge, how often it repeats,
+            the allowance it moves to and that tax is added — and only then hands over to Stripe.
+            Every sentence in it comes from lib/order-summary.ts, which is tested on its own.
+          */}
+          <OrderSummaryDialog
+            plan={pendingPlan}
+            currentPlan={currentPlan}
+            currency={billing.data?.currency}
+            busy={busyPlan != null}
+            onConfirm={(plan) => checkout.mutate(plan)}
+            onCancel={() => setPendingPlan(null)}
           />
 
           {/*
@@ -784,6 +814,17 @@ export function UsagePage() {
               </button>
             </p>
           )}
+
+          {/* NOT gated on having a billing account, for the same reason the portal button no longer
+              is: someone on Free deciding whether to pay has billing questions too, and the answers
+              are the same ones. A real anchor in a new tab — /docs belongs to the Astro site, so a
+              router Link would resolve against this app's routes and land on not-found. */}
+          <p className="plans-manage">
+            <a href="/docs/billing" target="_blank" rel="noopener noreferrer">
+              What happens if a payment fails, and where invoices live
+            </a>
+            <span className="gx-sr"> (opens in a new tab)</span>
+          </p>
         </section>
       )}
     </div>

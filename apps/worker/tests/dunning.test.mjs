@@ -18,6 +18,13 @@
 //   * `dunningCopy`, which is the actual text a paying customer reads at the worst moment of their
 //     relationship with this product.
 //
+// THE MODULE SINCE GREW A FOURTH KIND, and the two facts that follow from it are asserted at the
+// bottom of this file. `checkout.session.expired` — a purchase somebody started and never came
+// back to — is not a payment problem, so the dedupe subject is no longer always an invoice: the
+// field is `subjectId`, holding the invoice for a payment event and the session for an expiry.
+// A field named `invoiceId` holding `cs_…` is the kind of quiet mislabelling that survives review
+// because it reads correctly, which is why the rename happened and why this file follows it.
+//
 // Modelled on billing.test.mjs, which bundles the module under test the same way.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -52,15 +59,24 @@ const invoice = (type, obj = {}) => ({
   },
 });
 
+/** A Checkout Session event. It carries `metadata`, and never `subscription_details`. */
+const session = (type, obj = {}) => ({
+  id: 'evt_1',
+  type,
+  data: { object: { id: 'cs_test_1', currency: 'usd', metadata: { userId: 'u-payer' }, ...obj } },
+});
+
 /* ------------------------------------------------------------ which events count --- */
 
-test('the three invoice events become the three kinds, and nothing else does', () => {
+test('the invoice events become their kinds, and nothing else does', () => {
   assert.equal(D.interpretDunningEvent(invoice('invoice.payment_failed')).kind, 'payment_failed');
   assert.equal(D.interpretDunningEvent(invoice('invoice.payment_action_required')).kind, 'action_required');
   assert.equal(D.interpretDunningEvent(invoice('invoice.payment_succeeded')).kind, 'payment_recovered');
+  assert.equal(D.interpretDunningEvent(session('checkout.session.expired')).kind, 'checkout_expired');
   // Non-vacuity: the kinds asserted above must be the whole declared set, or this test is checking
   // a subset of a list that has grown.
-  assert.deepEqual([...D.DUNNING_KINDS].sort(), ['action_required', 'payment_failed', 'payment_recovered']);
+  assert.deepEqual([...D.DUNNING_KINDS].sort(),
+    ['action_required', 'checkout_expired', 'payment_failed', 'payment_recovered']);
 });
 
 test('a subscription event is not a dunning event, because a second opinion about a plan is a bug', () => {
@@ -70,12 +86,17 @@ test('a subscription event is not a dunning event, because a second opinion abou
     'customer.subscription.created',
     'customer.subscription.updated',
     'customer.subscription.deleted',
-    'checkout.session.completed',
     'ping',
     '',
   ]) {
     assert.equal(D.interpretDunningEvent(invoice(type)), null, `${type} was read as a payment problem`);
   }
+});
+
+test('a COMPLETED checkout is not a dunning event — the entitlement path owns it', () => {
+  // Both readers see every event. If this one claimed the completed session too, a successful
+  // purchase would raise a billing alert beside the plan it just granted.
+  assert.equal(D.interpretDunningEvent(session('checkout.session.completed', { payment_status: 'paid' })), null);
 });
 
 test('a forged event type cannot reach a kind through the prototype chain', () => {
@@ -127,30 +148,40 @@ test('an event with nobody to tell is null, not a notification addressed to the 
   }
 });
 
+test('an expired checkout for nobody we can name is dropped, like every other orphan', () => {
+  assert.equal(D.interpretDunningEvent(session('checkout.session.expired', { metadata: {} })), null);
+});
+
 /* ----------------------------------------------------------------- the dedupe key --- */
 
 test('the invoice id rides along, because it is what makes three retries one line', () => {
   // notify() uses it as the dedupe subject. Without it, each of Stripe's retries of the SAME card
   // is a separate alarm about the same problem.
   const n = D.interpretDunningEvent(invoice('invoice.payment_failed'));
-  assert.equal(n.invoiceId, 'in_9000');
+  assert.equal(n.subjectId, 'in_9000');
   assert.equal(n.eventId, 'evt_1');
 });
 
-test('a missing invoice id is null so the caller can fall back, not an invented one', () => {
+test('for an expired checkout the SESSION is the subject, not the event', () => {
+  const n = D.interpretDunningEvent(session('checkout.session.expired'));
+  assert.equal(n.subjectId, 'cs_test_1');
+  assert.equal(n.eventId, 'evt_1');
+});
+
+test('a missing subject id is null so the caller can fall back, not an invented one', () => {
   const n = D.interpretDunningEvent(invoice('invoice.payment_failed', { id: undefined }));
-  assert.equal(n.invoiceId, null);
+  assert.equal(n.subjectId, null);
   assert.equal(n.eventId, 'evt_1', 'the event id is the fallback subject the route uses');
 });
 
-test('the route uses the invoice as the dedupe subject and falls back to the event', () => {
+test('the route uses the subject as the dedupe key and falls back to the event', () => {
   // Read from the source: the coalescing property lives in the call site, not in this module.
   const index = readFileSync(join(WORKER, 'src', 'index.ts'), 'utf8');
   assert.match(index, /interpretDunningEvent\(event\)/, 'the webhook no longer interprets dunning events');
   assert.match(
     index,
-    /kind: 'billing_issue'[\s\S]{0,200}subject: dunning\.invoiceId \?\? dunning\.eventId/,
-    'the billing alarm must dedupe on the invoice',
+    /kind: 'billing_issue'[\s\S]{0,200}subject: dunning\.subjectId \?\? dunning\.eventId/,
+    'the billing alarm must dedupe on what the notice is about',
   );
 });
 
@@ -193,15 +224,50 @@ test('an amount that IS readable is minor units turned into money', () => {
 
 /* ----------------------------------------------------------------------- the words --- */
 
+/**
+ * THE KINDS THAT ARE NOT ABOUT A CHARGE, LISTED RATHER THAN SKIPPED.
+ *
+ * "every kind names the amount" was true of the three payment kinds and became false the moment a
+ * fourth arrived: `checkout_expired` is a purchase somebody abandoned, nothing was charged, and a
+ * figure in that sentence would invent a transaction. The rule below is therefore scoped — but by
+ * an EXPLICIT list, not by dropping the assertion, so a new kind still has to be classified on
+ * purpose and cannot escape the rule by existing. What this one says instead is pinned by
+ * 'an expired checkout is told...' at the foot of this file.
+ */
+const KINDS_WITHOUT_A_CHARGE = ['checkout_expired'];
+
 test('every dunning kind has a title and a body, and neither is empty', () => {
   for (const kind of D.DUNNING_KINDS) {
-    const copy = D.dunningCopy({ kind, userId: 'u', eventId: 'evt', invoiceId: 'in', amountDue: 1200, currency: 'usd', attempt: 2 });
+    const copy = D.dunningCopy({ kind, userId: 'u', eventId: 'evt', subjectId: 'in', amountDue: 1200, currency: 'usd', attempt: 2 });
     assert.ok(copy.title.length > 10, `${kind} has no title`);
     assert.ok(copy.body.length > 20, `${kind} has no body`);
     assert.ok(!/undefined|null|NaN/.test(copy.title + copy.body), `${kind} leaked a placeholder into the copy`);
-    // Every kind is about a specific charge, so every kind names it. A body that dropped the
-    // amount would be an alarm the reader cannot match against their statement.
+  }
+});
+
+test('a kind that IS about a charge names the charge, so the reader can match it to a statement', () => {
+  // Non-vacuity first: the exemption list has to name real kinds, and something has to be left to
+  // check. An exemption that quietly covered the whole set would make this test pass by testing
+  // nothing at all.
+  for (const kind of KINDS_WITHOUT_A_CHARGE) {
+    assert.ok(D.DUNNING_KINDS.includes(kind), `${kind} is exempted from a rule it is not subject to`);
+  }
+  const charged = D.DUNNING_KINDS.filter((k) => !KINDS_WITHOUT_A_CHARGE.includes(k));
+  assert.ok(charged.length > 0, 'every kind is exempt, so this asserts nothing');
+
+  for (const kind of charged) {
+    const copy = D.dunningCopy({ kind, userId: 'u', eventId: 'evt', subjectId: 'in', amountDue: 1200, currency: 'usd', attempt: 2 });
+    // A body that dropped the amount would be an alarm the reader cannot match against their
+    // statement.
     assert.ok(copy.body.includes('12.00 USD'), `${kind} does not name the amount it is about`);
+  }
+});
+
+test('and does so with every field missing, so a new kind cannot land with nothing to say', () => {
+  for (const kind of D.DUNNING_KINDS) {
+    const copy = D.dunningCopy({ kind, userId: 'u', eventId: null, subjectId: null, amountDue: null, currency: null, attempt: null });
+    assert.ok(copy && copy.title.length > 0 && copy.body.length > 0, `${kind} produced no copy`);
+    assert.doesNotMatch(`${copy.title} ${copy.body}`, /undefined|null|NaN/, `${kind} rendered a missing field`);
   }
 });
 
@@ -223,4 +289,30 @@ test('the failure copy says what happens next, which is the only part that chang
   // and it is the sentence a frightened customer acts on first.
   assert.doesNotMatch(copy.body, /suspend|cancelled|canceled|cut off|lost access/i,
     'the copy must not announce a cutoff that billing.ts deliberately does not perform');
+});
+
+test('a bank confirmation request is its own sentence, not a decline', () => {
+  const n = D.interpretDunningEvent(invoice('invoice.payment_action_required'));
+  assert.equal(n.kind, 'action_required');
+  assert.match(`${D.dunningCopy(n).title} ${D.dunningCopy(n).body}`, /bank/i);
+});
+
+/* ------------------------------------------------- the checkout nobody came back to --- */
+
+/**
+ * A CHECKOUT THAT LAPSES PRODUCED NO STATE, NO NOTICE AND NO RECORD.
+ *
+ * The page knows `?checkout=done` and `?checkout=cancelled` — both of which require the user to come
+ * back through the redirect. Someone who opens Stripe's page, gets interrupted, and closes the tab
+ * hits neither: the session simply expires. Nothing was charged, and nothing said so, so the next
+ * thing that account hears about the plan it tried to buy is silence.
+ */
+test('an expired checkout is told, in the same breath, that nothing was charged and where to start again', () => {
+  const n = D.interpretDunningEvent(session('checkout.session.expired'));
+  const copy = D.dunningCopy(n);
+  assert.match(`${copy.title} ${copy.body}`, /nothing (?:was|has been) charged/i,
+    'the one sentence that stops this reading as a failed payment');
+  assert.match(copy.body, /again/i, 'and it must say the purchase can simply be restarted');
+  assert.doesNotMatch(`${copy.title} ${copy.body}`, /declin|failed|problem/i,
+    'an abandoned checkout is not a payment failure, and alarming copy about one is a false alarm');
 });

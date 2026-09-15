@@ -136,36 +136,86 @@ test('THE METADATA THE WEBHOOK READS IS THE METADATA THE CHECKOUT SETS', () => {
 test('THE CHECKOUT COLLECTS A BILLING ADDRESS, because an invoice without one is not a document', () => {
   // Stripe's default collects only what the payment method itself demands, which for a card is
   // often nothing but a postal code — and an invoice with no address on it is not something a
-  // company's finance department can accept or a tax authority can read.
+  // company's finance department can accept or a tax authority can read. It is also the address
+  // `automatic_tax` is calculated against, so the two are asserted separately on purpose: losing
+  // this line would leave the tax flag enabled and computing against nothing.
   const p = params(build(LIVE));
   assert.equal(p.get('billing_address_collection'), 'required');
 });
 
-test('A VAT-REGISTERED BUYER CAN PUT THEIR TAX ID ON THE INVOICE', () => {
-  // Without tax_id_collection there is no field for a VAT/GST/ABN number anywhere in this product,
-  // so an EU business buyer cannot get a compliant invoice out of it at all — they can pay and
-  // then cannot reclaim, which is a refund request wearing a different hat.
+/**
+ * TAX IS CALCULATED BY STRIPE, AND THE PAGES SAY SO.
+ *
+ * Before this the request carried no tax parameter at all, so Stripe computed none and displayed
+ * none: a VAT-registered buyer in the EU was quoted a bare monthly figure and charged it, and the
+ * invoice that followed was one nobody could reclaim against. The price stays exclusive — that is
+ * what the ladder and the pricing page now state in words — and the amount owed on top of it is
+ * worked out on Stripe's own page, before the card is entered.
+ */
+test('THE CHECKOUT ASKS STRIPE TO CALCULATE TAX, and lets a business enter its VAT id', () => {
   const p = params(build(LIVE));
-  assert.equal(p.get('tax_id_collection[enabled]'), 'true');
+  assert.equal(p.get('automatic_tax[enabled]'), 'true', 'without this Stripe shows and charges no tax');
+  assert.equal(p.get('tax_id_collection[enabled]'), 'true',
+    'a business buyer must be able to enter a VAT/GST id, or the invoice is useless to them');
 });
 
-test('AUTOMATIC TAX IS NOT SWITCHED ON HERE, and the refusal is deliberate', () => {
-  // Stripe rejects `automatic_tax[enabled]=true` outright on an account that has not activated
-  // Stripe Tax and registered an origin address. Setting it from code would not make this product
-  // tax-compliant; it would make every checkout 400 until someone finished a task in a dashboard
-  // this repo cannot see. It is a configuration decision, not a line of code.
-  const body = build(LIVE).body;
-  assert.doesNotMatch(body, /automatic_tax/);
+test('and it does NOT send customer_update, which Stripe would refuse here', () => {
+  // `customer_update` is only accepted alongside `customer`. This session identifies the buyer by
+  // `customer_email` and lets Checkout create the customer, so sending it would make Stripe reject
+  // the whole session — the tax feature would read as "enabled" and no checkout would open at all.
+  const p = params(build(LIVE));
+  assert.equal(p.get('customer_update[address]'), null);
+  assert.doesNotMatch(build(LIVE).body, /customer_update/, 'in any form, not merely the address key');
+  assert.equal(p.get('customer'), null, 'and there is no customer id here to attach it to');
+  assert.equal(p.get('customer_email'), 'a@b.c');
 });
 
-test('CUSTOMER_UPDATE IS NOT SENT — this session has no customer to update', () => {
-  // The audit proposed `customer_update[name]=auto` to get a business name onto the invoice.
-  // Stripe only accepts customer_update when the session names an existing `customer`, and this
-  // one identifies the buyer by `customer_email` so Stripe creates the customer itself. Sending it
-  // would be a 400 from Stripe on every first purchase. The name arrives with the address instead.
-  const p = params(build(LIVE));
-  assert.equal(p.get('customer'), null, 'no existing customer is named');
-  assert.doesNotMatch(build(LIVE).body, /customer_update/);
+test('THE PROMOTION-CODE FIELD IS SWITCHED ON, so a discount code can be entered at all', () => {
+  // Stripe validates the code itself, on its own page, against its own list — which is why there is
+  // no code-entry box in this app. The one thing the repo owns is the flag, and nothing asserted it:
+  // the comment above the line described "one subscription per account" instead, so deleting the
+  // line would have read as removing a stray and the field would have vanished from the page.
+  assert.equal(params(build(LIVE)).get('allow_promotion_codes'), 'true');
+});
+
+/**
+ * THE WINDOW IS OURS, SO THE EXPIRY IS SOMETHING WE CAN TELL SOMEBODY ABOUT.
+ *
+ * Unset, a session lapses 24 hours later — long after the person has forgotten they started it, and
+ * with `checkout.session.expired` arriving into a product that had no case for it. An hour is long
+ * enough to finish a purchase and short enough that "the checkout you started has expired, nothing
+ * was charged" is still about something the reader remembers doing.
+ */
+test('THE CHECKOUT WINDOW IS OURS, AND IT IS INSIDE WHAT STRIPE ACCEPTS', () => {
+  const NOW = 1_800_000_000;
+  const p = params(build(LIVE, { nowSeconds: NOW }));
+  const expires = Number(p.get('expires_at'));
+  assert.ok(Number.isInteger(expires), `expires_at must be a unix second, saw ${p.get('expires_at')}`);
+  assert.ok(expires - NOW >= 30 * 60, 'Stripe refuses a window shorter than 30 minutes');
+  assert.ok(expires - NOW <= 24 * 3600, 'and one longer than 24 hours');
+});
+
+test('a request built with no clock passed in still carries a usable expiry', () => {
+  // A NaN here would be sent to Stripe as the string "NaN" and refuse the whole session, so the
+  // fallback is a real clock rather than an absent field.
+  const now = Math.floor(Date.now() / 1000);
+  const expires = Number(params(build(LIVE)).get('expires_at'));
+  assert.ok(expires - now >= 30 * 60 && expires - now <= 24 * 3600, `expires_at was ${expires} at ${now}`);
+});
+
+test('AN EXPIRED CHECKOUT IS HANDLED, NOT MERELY UNHANDLED', () => {
+  // It reaches the entitlement reader like everything else, and must touch nothing — but "unhandled
+  // event type" is what this reader says about an event it does not know, and this is one it knows
+  // and deliberately does nothing about. The two must not read the same in a log.
+  const out = B.interpretStripeEvent({
+    id: 'evt_exp',
+    type: 'checkout.session.expired',
+    data: { object: { id: 'cs_1', metadata: { userId: 'u_9' } } },
+  });
+  assert.equal(out.userId, 'u_9', 'the session carries the user, so the person can be told');
+  assert.equal(out.subscription, undefined, 'and nothing is applied to their entitlement');
+  assert.ok(!out.creditsDelta, 'nor to their credits');
+  assert.doesNotMatch(out.ignored ?? '', /unhandled/i);
 });
 
 test('the checkout never carries a plan the webhook would trust', () => {
@@ -188,6 +238,38 @@ test('the portal opens the right customer and comes back to us', () => {
   const p = params(B.buildPortalRequest(LIVE, { customerId: 'cus_9', returnTo: RETURN_TO }));
   assert.equal(p.get('customer'), 'cus_9');
   assert.equal(p.get('return_url'), RETURN_TO);
+});
+
+/**
+ * WHICH CONTROLS THE PORTAL OFFERS IS A DASHBOARD SETTING, AND THIS IS HOW IT STOPS BEING ONE.
+ *
+ * The request carried only `customer` and `return_url`, so the portal rendered whatever the Stripe
+ * dashboard's DEFAULT configuration happened to have switched on. Every claim this product makes
+ * about managing a card — 'Update your payment method' on a past_due notice, 'Manage billing,
+ * invoices and cancellation' on /usage — depends on a toggle in a web UI this repo cannot see,
+ * cannot assert, and cannot notice being turned off. Naming the configuration pins it to a version
+ * a deployment controls.
+ */
+test('THE PORTAL CONFIGURATION IS PINNED WHEN THE DEPLOYMENT NAMES ONE', () => {
+  const p = params(B.buildPortalRequest(
+    { ...LIVE, STRIPE_PORTAL_CONFIGURATION: 'bpc_live_1' },
+    { customerId: 'cus_9', returnTo: RETURN_TO },
+  ));
+  assert.equal(p.get('configuration'), 'bpc_live_1',
+    'without this, payment-method management is whatever the dashboard default has on today');
+  assert.equal(p.get('customer'), 'cus_9', 'and it still opens the right customer');
+});
+
+test('and is ABSENT rather than empty when the deployment names none', () => {
+  // An empty `configuration` is not "the default": Stripe refuses the session, and the portal — the
+  // only route to a card, an invoice or a cancellation — stops opening at all.
+  const p = params(B.buildPortalRequest(LIVE, { customerId: 'cus_9', returnTo: RETURN_TO }));
+  assert.equal(p.get('configuration'), null);
+  const blank = params(B.buildPortalRequest(
+    { ...LIVE, STRIPE_PORTAL_CONFIGURATION: '   ' },
+    { customerId: 'cus_9', returnTo: RETURN_TO },
+  ));
+  assert.equal(blank.get('configuration'), null, 'whitespace is not a configuration id');
 });
 
 test('the portal is unavailable on a deployment with no key', () => {

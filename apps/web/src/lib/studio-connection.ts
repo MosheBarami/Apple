@@ -71,7 +71,7 @@ export function studioConnection(
 // wearing the clothes of an observation, and 0 ms is also the single most reassuring value it
 // could possibly show.
 
-import type { StudioPlace } from '@golem/shared';
+import type { ServerMsg, StudioPlace } from '@golem/shared';
 
 export interface StudioLinkFacts {
   /** When the plugin last polled, in server time. Null means it never has. */
@@ -93,6 +93,70 @@ export const NO_LINK_FACTS: StudioLinkFacts = {
   placeMismatch: null,
   rttMs: null,
 };
+
+/**
+ * WHAT THE WIRE JUST TOLD US ABOUT THE LINK, folded into what we already knew.
+ *
+ * The facts above were formatted by nothing and produced by nothing: `handleServerMsg` read
+ * `studioConnected` and `state` and dropped every other field of `hello` and `studio_status` on the
+ * floor. This is the missing half, pulled out of the hook so it can be driven with real message
+ * shapes rather than asserted about by reading source.
+ *
+ * TWO RULES, AND THEY ARE THE WHOLE POINT.
+ *
+ *   AN ABSENT FIELD IS NOT A VALUE. A worker build that does not send `queuedOps` is saying
+ *   nothing, and turning that into 0 would print "no changes waiting" — the reassuring answer —
+ *   about a queue nobody measured. Absent therefore keeps what was already known.
+ *
+ *   AN EXPLICIT NULL IS A VALUE, and clears. `/studio/place/rebind` and `/studio/revoke` both
+ *   broadcast `place: null`, and the worker sends `placeMismatch: null` the instant the user
+ *   switches back to the right place. Remembering those would leave "nothing will build" printed
+ *   over a link that is building. JSON.stringify drops undefined and keeps null, so the two
+ *   genuinely arrive distinguishable.
+ *
+ * Anything that is not a number, not a place-shaped object, not a mismatch-shaped object, is
+ * refused and leaves the field null. The formatters below then say nothing at all, which is the
+ * correct thing to say about a measurement that did not arrive.
+ */
+const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+
+function asPlace(v: unknown): StudioPlace | null {
+  if (typeof v !== 'object' || v === null) return null;
+  const p = v as Partial<StudioPlace>;
+  return typeof p.placeId === 'number' && typeof p.placeName === 'string' ? (v as StudioPlace) : null;
+}
+
+function asMismatch(v: unknown): StudioLinkFacts['placeMismatch'] {
+  if (typeof v !== 'object' || v === null) return null;
+  const m = v as Record<string, unknown>;
+  if (typeof m.expectedPlaceName !== 'string' || typeof m.openPlaceName !== 'string') return null;
+  return {
+    expectedPlaceName: m.expectedPlaceName,
+    openPlaceName: m.openPlaceName,
+    openPlaceId: typeof m.openPlaceId === 'number' ? m.openPlaceId : 0,
+  };
+}
+
+export function linkFactsFrom(prev: StudioLinkFacts, msg: ServerMsg): StudioLinkFacts {
+  if (msg.type === 'hello') {
+    return {
+      ...prev,
+      lastSeenAt: 'studioLastSeenAt' in msg ? num(msg.studioLastSeenAt) : prev.lastSeenAt,
+      queuedOps: num(msg.queuedOps) ?? prev.queuedOps,
+      place: 'studioPlace' in msg ? asPlace(msg.studioPlace) : prev.place,
+    };
+  }
+  if (msg.type === 'studio_status') {
+    return {
+      ...prev,
+      lastSeenAt: 'lastSeenAt' in msg ? num(msg.lastSeenAt) : prev.lastSeenAt,
+      queuedOps: num(msg.queuedOps) ?? prev.queuedOps,
+      place: 'place' in msg ? asPlace(msg.place) : prev.place,
+      placeMismatch: 'placeMismatch' in msg ? asMismatch(msg.placeMismatch) : prev.placeMismatch,
+    };
+  }
+  return prev;
+}
 
 /**
  * "just now", "4 minutes ago", "3 days ago" — or null when there is nothing to date.

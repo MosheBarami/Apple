@@ -354,6 +354,16 @@ export function interpretStripeEvent(event: unknown, env?: Env): BillingOutcome 
       return { userId, eventId, creditsDelta: Math.floor(credits) };
     }
 
+    /*
+     * HANDLED, AND DELIBERATELY INERT. The default branch below says "unhandled event type", which
+     * is this reader's word for an event it does not know about — and an expiry is one it knows
+     * about exactly: the person abandoned a checkout, so nothing was bought, so no entitlement and
+     * no credit may move. The two are the same no-op and must not read the same in a log, because
+     * one of them is a gap and the other is a decision. `dunning.ts` is what tells the person.
+     */
+    case 'checkout.session.expired':
+      return { userId, eventId, ignored: 'checkout session expired — nothing was bought, so nothing changes' };
+
     default:
       return { userId, eventId, ignored: `unhandled event type ${type}` };
   }
@@ -383,6 +393,7 @@ interface CheckoutEnv {
   STRIPE_SECRET_KEY?: string;
   STRIPE_PRICE_BUILDER?: string;
   STRIPE_PRICE_STUDIO?: string;
+  STRIPE_PORTAL_CONFIGURATION?: string;
 }
 
 /**
@@ -585,9 +596,30 @@ export interface CheckoutRequest {
  * reads — so a session that somehow carried no metadata is ignored by the webhook rather than
  * applied to the wrong account.
  */
+/**
+ * How long a checkout page stays open.
+ *
+ * Stripe accepts anything from 30 minutes to 24 hours and defaults to 24. An hour is long enough to
+ * finish a purchase and short enough that "the checkout you started has expired, nothing was
+ * charged" is still about something the reader remembers doing — a notice a day later reads as news
+ * about a stranger.
+ */
+const CHECKOUT_WINDOW_SECONDS = 60 * 60;
+
 export function buildCheckoutRequest(
   env: Env,
-  opts: { userId: string; email?: string | null; plan: PlanId; returnTo: string },
+  opts: {
+    userId: string;
+    email?: string | null;
+    plan: PlanId;
+    returnTo: string;
+    /**
+     * Unix seconds, passed in so the expiry can be asserted at a chosen instant rather than against
+     * the wall clock. It falls back to the real clock instead of to nothing: an absent value would
+     * reach Stripe as the string "NaN" and refuse the whole session.
+     */
+    nowSeconds?: number;
+  },
 ): CheckoutRequest | CheckoutRefusal {
   if (!checkoutConfigured(env)) {
     return { ok: false, status: 503, error: 'checkout is not configured for this deployment' };
@@ -629,31 +661,59 @@ export function buildCheckoutRequest(
    * itself demands — for a card that is often a postal code and nothing else. The invoice Stripe
    * then prints carries no address, and an invoice with no address is not a document a finance
    * department can accept or a tax authority can read. Required, so it is there from the first
-   * charge rather than chased afterwards.
+   * charge rather than chased afterwards — and it is the address `automatic_tax` below is
+   * calculated against, so the two lines stand or fall together.
    *
-   * `tax_id_collection` is the field a VAT/GST/ABN number goes in. Without it this product has
-   * nowhere to put one, so an EU business buyer can pay and then cannot reclaim — which comes back
-   * as a refund request. Stripe prints whatever is entered on every invoice for that customer.
+   * EDITING IT AFTERWARDS BELONGS TO THE PORTAL. Do not build a second address form in this
+   * product: it would be a copy that drifts from the one Stripe actually prints on invoices, and
+   * the two would disagree in front of a customer disputing a charge.
    *
-   * TWO THINGS DELIBERATELY NOT SET HERE:
-   *   - `automatic_tax[enabled]`. Stripe rejects it outright until Stripe Tax is activated on the
-   *     account and an origin address is registered. Setting it from code would not make this
-   *     product tax-compliant; it would 400 every checkout until someone finished a task in a
-   *     dashboard this repo cannot see. It is a configuration decision, not a line of code.
-   *   - `customer_update`. Stripe accepts it only when the session names an existing `customer`,
-   *     and this session identifies the buyer by `customer_email` so that Stripe creates the
-   *     customer. Sending it would 400 on every first purchase. The buyer's name arrives with the
-   *     address above and is written to the new customer by Checkout itself.
-   *
-   * EDITING ANY OF THIS AFTERWARDS BELONGS TO THE PORTAL. Do not build a second address form in
-   * this product: it would be a copy that drifts from the one Stripe actually prints on invoices,
-   * and the two would disagree in front of a customer disputing a charge.
+   * The VAT/GST/ABN field is `tax_id_collection`, and `customer_update` is deliberately absent;
+   * both are set out with the tax parameters below, where they belong, rather than twice.
    */
   p.set('billing_address_collection', 'required');
-  p.set('tax_id_collection[enabled]', 'true');
-  // One subscription per account: without this a second checkout adds a second subscription and the
-  // user is charged twice for tiers that were meant to replace one another.
+  /*
+   * THE PROMOTION-CODE FIELD, AND THE COMMENT THAT USED TO SIT HERE.
+   *
+   * This line switches on the code box on Stripe's hosted page; Stripe validates what is typed into
+   * it against its own promotion codes and applies the discount before the card is charged, which
+   * is why this app has no code-entry box of its own. The comment that stood here described "one
+   * subscription per account" — a different rule, enforced by `checkoutGuard` and the route, not by
+   * this flag — so anyone deleting the line would have read it as removing a stray, and the field
+   * would have silently disappeared from the page. The rule it described lives at its own call site
+   * now; this says what this line does.
+   */
   p.set('allow_promotion_codes', 'true');
+  /*
+   * TAX IS STRIPE'S TO CALCULATE, AND IT IS SHOWN BEFORE THE CARD IS ENTERED.
+   *
+   * With no tax parameter at all Stripe computed none and displayed none, so a VAT-registered buyer
+   * was quoted a bare monthly figure, charged exactly that, and handed an invoice they could not
+   * reclaim against. The listed price stays EXCLUSIVE of tax — the plan ladder and the pricing page
+   * both say so in words — and what is owed on top is worked out on Stripe's page, against the
+   * address it collects, before anything is charged.
+   *
+   * REQUIRES STRIPE TAX TO BE ACTIVE ON THE ACCOUNT. Stripe refuses the whole session otherwise, so
+   * a deployment that has not switched it on fails loudly at the first checkout rather than quietly
+   * selling untaxed. That is the intended failure: the alternative — a flag defaulting to off — is
+   * a page that claims tax is calculated while no tax ever is.
+   *
+   * `customer_update` IS DELIBERATELY ABSENT. Stripe accepts it only alongside `customer`, and this
+   * session names the buyer by `customer_email` and lets Checkout create the customer; sending it
+   * here would make Stripe reject every session, which is the shape of "the feature is enabled and
+   * nothing works".
+   */
+  p.set('automatic_tax[enabled]', 'true');
+  // So a business can put its VAT/GST number on the invoice, and reverse-charge applies where it
+  // should. Without it every EU business buyer is charged consumer VAT they cannot reclaim.
+  p.set('tax_id_collection[enabled]', 'true');
+  // The window is ours rather than Stripe's 24-hour default, which is what makes the expiry worth
+  // telling somebody about — see CHECKOUT_WINDOW_SECONDS, and the 'checkout.session.expired' case
+  // in interpretStripeEvent that this makes reachable within the hour.
+  const now = typeof opts.nowSeconds === 'number' && Number.isFinite(opts.nowSeconds)
+    ? Math.floor(opts.nowSeconds)
+    : Math.floor(Date.now() / 1000);
+  p.set('expires_at', String(now + CHECKOUT_WINDOW_SECONDS));
   return { ok: true, body: p.toString() };
 }
 
@@ -848,5 +908,20 @@ export function buildPortalRequest(
   const p = new URLSearchParams();
   p.set('customer', opts.customerId);
   p.set('return_url', opts.returnTo);
+  /*
+   * WHICH CONTROLS THE PORTAL OFFERS WAS A SETTING IN A WEB UI THIS REPO CANNOT SEE.
+   *
+   * With no `configuration`, Stripe renders the dashboard's DEFAULT portal configuration — so
+   * 'Update your payment method' on a past_due notice, and 'Manage billing, invoices and
+   * cancellation' on /usage, both promised a control that somebody could switch off in another tab
+   * without anything here noticing. Naming a configuration pins the feature set to a version the
+   * deployment controls: payment_method_update, invoice_history and subscription_cancel are the
+   * three this product's copy actually promises.
+   *
+   * ABSENT IS NOT EMPTY. An unset or whitespace value must not be sent: Stripe refuses a blank
+   * configuration id, and the portal is the only route a customer has to their own card.
+   */
+  const configuration = (env as unknown as CheckoutEnv).STRIPE_PORTAL_CONFIGURATION?.trim();
+  if (configuration) p.set('configuration', configuration);
   return { ok: true, body: p.toString() };
 }
