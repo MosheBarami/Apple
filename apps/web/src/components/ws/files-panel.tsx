@@ -20,6 +20,7 @@
 import { useCallback, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
+  downloadProjectArchive,
   downloadProjectFile,
   fetchFileHistory,
   fetchProjectFile,
@@ -202,6 +203,26 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
     <div className="gx-files">
       <p className="gx-row__meta" style={{ marginBottom: '0.7rem' }}>
         {summary.lines.join(' · ')}
+        {data.fileCount > 0 && (
+          <>
+            {' · '}
+            <button
+              type="button"
+              className="gx-btn gx-btn--ghost"
+              onClick={() => {
+                // Offered only when there is something to archive: the worker answers an empty
+                // workspace with a refusal, and a button whose only outcome is that refusal is a
+                // button that does nothing.
+                setNotice(null);
+                void downloadProjectArchive(projectId).catch((e: unknown) =>
+                  setNotice(e instanceof ApiError ? e.message : 'Could not download those files.'),
+                );
+              }}
+            >
+              Download all
+            </button>
+          </>
+        )}
       </p>
 
       {canEdit && (

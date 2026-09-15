@@ -69,6 +69,7 @@ import {
   WORKSPACE_OP_STATUS,
   type WorkspaceOpCode,
 } from './workspace-files';
+import { zipStoredStream } from './zip-write';
 import { auditCitations, corpusCensus, renderCitedContext, searchDocsDetailed } from './rag';
 import type { Citation, RetrievalOutcome } from './retrieval';
 import { serveStatic, ensureStaticTables } from './static';
@@ -1305,6 +1306,50 @@ app.get('/api/projects/:id/files/content', async (c) => {
  * `sharedAccess(…, 'build')` rather than owner-only, exactly as /files/op is gated, so a viewer is
  * told 403 and looks at their role rather than at a missing file.
  */
+/**
+ * THE WHOLE WORKSPACE, AS ONE FILE.
+ *
+ * Downloading was one file per request, so thirty notes were thirty clicks and keeping a copy of
+ * the project's own notes meant making all of them.
+ *
+ * STORED, AND STREAMED. zip-write.ts holds one entry at a time, so memory is bounded by the largest
+ * file rather than by the archive — and every workspace file is capped at 48 KB, which is also why
+ * compressing them is not worth the data descriptor a streaming deflate would force into the
+ * format. The listing is taken first and each entry is read as it is written; a file deleted in
+ * between is skipped rather than written empty.
+ *
+ * `'read'` like the listing itself: reading the files and reading them all at once is the same
+ * permission, and a collaborator who can open one can have the set.
+ */
+app.get('/api/projects/:id/files/archive', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'), 'read');
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+  if (!c.env.KV) return c.json({ error: 'this deployment has no file storage' }, 503);
+  const store = kvWorkspace(c.env.KV, ctx.project.id);
+  const listing = await listWorkspace(store, '');
+  // An archive of nothing saves as a file that opens as nothing, which reads as a broken download
+  // rather than as an empty project. Said in words instead.
+  if (!listing.files.length) return c.json({ error: 'there are no files in this project to download' }, 404);
+
+  const stream = zipStoredStream(
+    listing.files.map((f) => f.path),
+    async (name) => {
+      const got = await store.read(name);
+      return got ? new TextEncoder().encode(got.content) : null;
+    },
+  );
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'application/zip',
+      // The same slug helper the transcript export uses, so a user-controlled project name cannot
+      // put a quote or a newline into this header. `.zip` through the same path as `.md`/`.json`.
+      'Content-Disposition': `attachment; filename="${exportFilename(ctx.project.name, new Date().toISOString(), 'md').replace(/\.md$/, '.zip')}"`,
+      'X-Content-Type-Options': 'nosniff',
+      'Cache-Control': 'private, no-store',
+    },
+  });
+});
+
 app.post('/api/projects/:id/files/content', async (c) => {
   const access = await sharedAccess(c, c.req.param('id'), 'build');
   if (!access.ctx) return collabRefusal(c, access.status);
