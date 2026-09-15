@@ -234,6 +234,47 @@ export const fetchInvoices = (): Promise<{ invoices: Invoice[] }> =>
 export const fetchInvoice = (id: string): Promise<{ invoice: InvoiceDetail | null }> =>
   request<{ invoice: InvoiceDetail | null }>(`/api/billing/invoices/${encodeURIComponent(id)}`);
 
+/**
+ * THE FIELDS PRINTED ON EVERY INVOICE — who it is addressed to, what the entity is called, and
+ * which purchase order it quotes.
+ *
+ * Until these existed, all three were whatever Stripe's Checkout page collected once, at the first
+ * purchase, and nothing here could correct them afterwards: the portal edits a card and an address,
+ * not these. A company that changed its finance contact, renamed itself, or issued a new PO had
+ * invoices that no longer matched its own records.
+ */
+export interface BillingDetails {
+  email: string | null;
+  name: string | null;
+  poNumber: string | null;
+}
+
+export const fetchBillingDetails = (): Promise<{ details: BillingDetails }> =>
+  MOCK_MODE
+    ? Promise.resolve({ details: { email: null, name: null, poNumber: null } })
+    : request<{ details: BillingDetails }>('/api/billing/details');
+
+/**
+ * Save them, and say whether they reached Stripe.
+ *
+ * `synced` IS THREE-VALUED ON PURPOSE, and the page renders all three:
+ *   - `true`  — stored here and written to the Stripe customer, so the next invoice carries them;
+ *   - `false` — stored here, but Stripe refused. The next save re-sends everything, so this is
+ *               recoverable — but it must not be reported as done, because the document does not
+ *               have it yet;
+ *   - `null`  — no Stripe customer exists yet (nothing has been bought). Kept, and used by the
+ *               checkout when the first purchase creates the customer.
+ * Collapsing `false` into `true` would be this codebase's own defect — a failure to observe
+ * rendered as an observation — on a document about money.
+ */
+export const saveBillingDetails = (
+  details: BillingDetails,
+): Promise<{ details: BillingDetails; synced: boolean | null }> =>
+  request<{ details: BillingDetails; synced: boolean | null }>('/api/billing/details', {
+    method: 'PUT',
+    body: JSON.stringify({ details }),
+  });
+
 // ---------------------------------------------------------------- project session
 
 // There is deliberately NO fetch for the model/provider roster here. Which

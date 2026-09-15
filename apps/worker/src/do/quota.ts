@@ -4,7 +4,7 @@ import { DurableObject } from 'cloudflare:workers';
 import type { Env } from '../env';
 import type { QuotaState } from '@golem/shared';
 import { isPlanId, type PlanId } from '../pricing';
-import type { Subscription } from '../billing';
+import { NO_BILLING_DETAILS, readBillingDetails, type BillingDetails, type Subscription } from '../billing';
 import { dayKey, monthKey, monthTotalComplete, prevMonthKey, quotaState, splitSpend } from '../quota-math';
 
 /** One line of this account's billing history, as the product reads it back. */
@@ -75,6 +75,17 @@ export class QuotaDO extends DurableObject<Env> {
   /** The full Stripe subscription as last seen, or null for an account that never bought one. */
   private async subscription(): Promise<Subscription | null> {
     return (await this.ctx.storage.get<Subscription>('subscription')) ?? null;
+  }
+
+  /**
+   * What THIS PRODUCT last set on the Stripe customer's invoice fields.
+   *
+   * It is not a second address book: Stripe prints the invoice and Stripe's copy is the one that
+   * counts. This record exists so a save can tell "never set" from "set and then removed" — the two
+   * are the same null on the way in, and only one of them may erase a field on Stripe's side.
+   */
+  private async billingDetails(): Promise<BillingDetails> {
+    return (await this.ctx.storage.get<BillingDetails>('billingDetails')) ?? NO_BILLING_DETAILS;
   }
 
   /**
@@ -225,6 +236,29 @@ export class QuotaDO extends DurableObject<Env> {
     if (url.pathname === '/billing-customer' && req.method === 'GET') {
       return Response.json({ customerId: (await this.ctx.storage.get<string>('stripeCustomerId')) ?? null });
     }
+    if (url.pathname === '/billing-details' && req.method === 'GET') {
+      return Response.json({ details: await this.billingDetails() });
+    }
+    /**
+     * Set the invoice fields, and say what was there before.
+     *
+     * THE PREVIOUS RECORD IS PART OF THE ANSWER. The caller's next move is to make Stripe's customer
+     * match, and it must send an empty value to erase a field this product set while sending nothing
+     * at all for a field it never set — otherwise the very first save wipes the billing name that
+     * Checkout collected at the purchase. Returning it here means the route needs no second read and
+     * cannot race one.
+     *
+     * Validated HERE, at the boundary that persists, rather than only at the edge: this is the last
+     * place that can refuse, and the values go out again to a browser and into a Stripe request.
+     */
+    if (url.pathname === '/billing-details' && req.method === 'POST') {
+      const { details } = (await req.json().catch(() => ({}))) as { details?: unknown };
+      const verdict = readBillingDetails(details ?? {});
+      if (!verdict.ok) return Response.json({ error: verdict.error }, { status: verdict.status });
+      const previous = await this.billingDetails();
+      await this.ctx.storage.put('billingDetails', verdict.details);
+      return Response.json({ ok: true, details: verdict.details, previous });
+    }
     /**
      * Everything this account's billing surfaces need, in one read: the enforced plan, the Stripe
      * customer the portal opens, the full subscription record, and the change history.
@@ -238,6 +272,9 @@ export class QuotaDO extends DurableObject<Env> {
         plan: await this.plan(),
         customerId: (await this.ctx.storage.get<string>('stripeCustomerId')) ?? null,
         subscription: sub,
+        // Carried on the read the billing page already makes, so showing the invoice fields costs
+        // no extra round trip and cannot show a record from a different moment than the plan above.
+        details: await this.billingDetails(),
         // Renamed on the way out rather than leaking column spellings into the API.
         events: events.map((r): BillingChange => ({
           at: Number(r['at']),

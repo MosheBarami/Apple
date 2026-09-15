@@ -25,6 +25,12 @@ import {
   isInvoiceId,
   mapInvoiceDetail,
   mapInvoiceList,
+  buildCustomerDetailsRequest,
+  reconcileReport,
+  reconcileSubscription,
+  NO_BILLING_DETAILS,
+  type BillingDetails,
+  type ReconcileRow,
   type Subscription,
 } from './billing';
 import { exportFilename, renderTranscriptMarkdown, type TranscriptExport } from './export';
@@ -1968,14 +1974,29 @@ app.post('/api/studio/poll', async (c) => {
 async function readBillingRecord(
   env: Env,
   userId: string,
-): Promise<{ plan: string; customerId: string | null; subscription: Subscription | null; events: unknown[] }> {
+): Promise<{
+  plan: string;
+  customerId: string | null;
+  subscription: Subscription | null;
+  events: unknown[];
+  details: BillingDetails;
+}> {
   const res = await env.QUOTA_DO.get(env.QUOTA_DO.idFromName(userId)).fetch('https://do/billing');
-  const body = (await res.json()) as { plan?: string; customerId?: string | null; subscription?: Subscription | null; events?: unknown[] };
+  const body = (await res.json()) as {
+    plan?: string;
+    customerId?: string | null;
+    subscription?: Subscription | null;
+    events?: unknown[];
+    details?: BillingDetails;
+  };
   return {
     plan: body.plan ?? 'free',
     customerId: body.customerId ?? null,
     subscription: body.subscription ?? null,
     events: body.events ?? [],
+    // A DO written before this field existed answers without it, and that is an account with no
+    // invoice fields set — not a reason for the billing page to fail to render.
+    details: body.details ?? NO_BILLING_DETAILS,
   };
 }
 
@@ -2138,6 +2159,9 @@ app.post('/api/billing/checkout', async (c) => {
   const built = buildCheckoutRequest(c.env, {
     userId: user.userId,
     email: user.email,
+    // THE BILLING CONTACT APPLIES TO THE FIRST INVOICE, not from the second one onwards. Read off
+    // the record this route already fetched for the guard above, so it costs no extra round trip.
+    billingEmail: record.details.email,
     plan,
     returnTo,
     // The clock the session's expiry is measured from. Passed in rather than read inside, so the
@@ -2270,6 +2294,84 @@ app.get('/api/billing/history', async (c) => {
   const user = c.get('user');
   const record = await readBillingRecord(c.env, user.userId);
   return c.json({ events: record.events });
+});
+
+/**
+ * THE INVOICE FIELDS — who the document is addressed to, what the entity is called, which PO it
+ * quotes.
+ *
+ * Until this existed, all three were whatever Stripe's Checkout page collected once, at the first
+ * purchase. A company that changed its finance contact, renamed itself or issued a new purchase
+ * order had invoices that no longer matched its own records and nowhere in this product to say so —
+ * the portal edits a card and an address, not these.
+ *
+ * SCOPED BY CONSTRUCTION. Both routes address the caller's own QuotaDO through
+ * `idFromName(user.userId)` from the verified JWT subject. There is no customer parameter here, and
+ * the Stripe write below names the customer id read out of that DO, never one that was sent in.
+ */
+app.get('/api/billing/details', async (c) => {
+  const user = c.get('user');
+  const quota = c.env.QUOTA_DO.get(c.env.QUOTA_DO.idFromName(user.userId));
+  const { details } = (await (await quota.fetch('https://do/billing-details')).json()) as {
+    details?: BillingDetails;
+  };
+  return c.json({ details: details ?? NO_BILLING_DETAILS });
+});
+
+/**
+ * Store the fields, then make Stripe's customer match.
+ *
+ * THE ORDER IS DELIBERATE, and so is what happens when the second half fails. Our record is written
+ * first because it is what makes the NEXT save able to tell a cleared field from an unset one; the
+ * Stripe update is then sent and every field we hold is re-sent with it, so a save that failed at
+ * Stripe is repaired by the following one rather than leaving the two permanently apart.
+ *
+ * A FAILED SYNC IS REPORTED, NOT SWALLOWED. `synced: false` comes back and the page says the fields
+ * are saved here but not yet on the invoice. Returning a bare 200 would be this codebase's own
+ * defect — a failure to observe rendered as an observation — on a document about money.
+ *
+ * An account with no Stripe customer yet is `synced: null`: there is nothing to write to, the
+ * values are kept, and the checkout reads them when the first purchase creates the customer.
+ */
+app.put('/api/billing/details', async (c) => {
+  const user = c.get('user');
+  const body = (await c.req.json().catch(() => ({}))) as { details?: unknown };
+  const quota = c.env.QUOTA_DO.get(c.env.QUOTA_DO.idFromName(user.userId));
+
+  const stored = await quota.fetch('https://do/billing-details', {
+    method: 'POST',
+    body: JSON.stringify({ details: body.details ?? {} }),
+  });
+  if (!stored.ok) {
+    const { error } = (await stored.json().catch(() => ({}))) as { error?: string };
+    return c.json({ error: error ?? 'those billing details were refused' }, 400);
+  }
+  const { details, previous } = (await stored.json()) as { details: BillingDetails; previous: BillingDetails };
+
+  const customerId = (
+    (await (await quota.fetch('https://do/billing-customer')).json()) as { customerId: string | null }
+  ).customerId;
+  if (!customerId || !checkoutConfigured(c.env)) return c.json({ details, synced: null });
+
+  const form = buildCustomerDetailsRequest(details, previous);
+  // Nothing to say to Stripe is not a failed sync. An empty body would be a request that changes
+  // nothing and could still fail, turning "you edited nothing" into "we could not save".
+  if (form === '') return c.json({ details, synced: true });
+
+  const res = await fetch(`https://api.stripe.com/v1/customers/${customerId}`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${c.env.STRIPE_SECRET_KEY}`,
+      'content-type': 'application/x-www-form-urlencoded',
+    },
+    body: form,
+  });
+  if (!res.ok) {
+    // Stripe's message can name the account or the key; it is not for the user.
+    console.warn('stripe customer update failed:', res.status, await res.text().catch(() => ''));
+    return c.json({ details, synced: false });
+  }
+  return c.json({ details, synced: true });
 });
 
 /**
@@ -2836,6 +2938,72 @@ app.post('/api/admin/raw-probe', async (c) => {
 
 /** Full AI spend picture: today, this month, per-model, per-purpose, against the hard caps. */
 app.get('/api/admin/spend', async (c) => c.json(await budgetReport(c.env)));
+
+/**
+ * DOES STRIPE STILL THINK WHAT WE THINK?
+ *
+ * Every entitlement in this product is applied by one webhook, and a webhook is a delivery. Stripe
+ * gives up after its retries; a deploy can be mid-flight; a signing secret can be rotated on one
+ * side. When that happens nothing says so: Stripe charges the customer, we serve whatever tier the
+ * last event we did receive implied, and the only way anybody finds out is a complaint. Nothing in
+ * this worker read Stripe's subscription list at all before this route.
+ *
+ * IT READS AND COMPARES. NOTHING ELSE. No plan is written, no credit granted, no subscription
+ * touched. A job that silently repaired entitlement from a list it paged would be a second,
+ * untested entitlement path with nobody watching it — which is how the first one came to drift.
+ *
+ * THE DENOMINATOR IS PART OF THE ANSWER. "No disagreements" over zero subscriptions is a broken
+ * query wearing the words of a clean account, so `checked` is always returned — and when Stripe
+ * cannot be paged at all this refuses with 502 rather than reporting an all-clear it did not earn.
+ */
+const RECONCILE_PAGES_MAX = 20;
+
+app.get('/api/admin/billing-reconcile', async (c) => {
+  if (!checkoutConfigured(c.env)) return c.json({ error: 'billing is not configured for this deployment' }, 503);
+
+  const subs: unknown[] = [];
+  let startingAfter: string | null = null;
+  // Set from the branch that actually decided to stop early, never inferred afterwards from the
+  // row count: `subs.length >= pages * 100` is a guess that is wrong whenever a page came back
+  // short, and a truncation flag that can be wrong is worse than none on a report about silence.
+  let truncated = false;
+  // Bounded rather than "until has_more is false": an upstream that always answers `has_more` would
+  // otherwise spin this route until the worker is killed, and a truncated report that says it was
+  // truncated is worth more than one that never returns.
+  for (let page = 0; page < RECONCILE_PAGES_MAX; page += 1) {
+    const q = new URLSearchParams({ status: 'all', limit: '100' });
+    if (startingAfter) q.set('starting_after', startingAfter);
+    const res = await fetch(`https://api.stripe.com/v1/subscriptions?${q.toString()}`, {
+      headers: { authorization: `Bearer ${c.env.STRIPE_SECRET_KEY}` },
+    });
+    if (!res.ok) {
+      console.warn('stripe subscriptions failed:', res.status, await res.text().catch(() => ''));
+      // No partial count leaves here. A number that silently means "as far as we got" is the same
+      // failure this route exists to catch, committed by the tool that catches it.
+      return c.json({ error: 'could not page Stripe subscriptions' }, 502);
+    }
+    const body = (await res.json()) as { data?: unknown[]; has_more?: boolean };
+    const data = Array.isArray(body.data) ? body.data : [];
+    subs.push(...data);
+    const last = data[data.length - 1];
+    startingAfter = typeof (last as { id?: unknown })?.id === 'string' ? ((last as { id: string }).id) : null;
+    if (!body.has_more || !startingAfter) break;
+    if (page === RECONCILE_PAGES_MAX - 1) truncated = true;
+  }
+
+  const rows: ReconcileRow[] = [];
+  for (const raw of subs) {
+    const userId = (raw as { metadata?: Record<string, string> } | null)?.metadata?.userId;
+    // No DO lookup for a subscription that names nobody: there is no account to read, and
+    // addressing one derived from a guess is exactly what the webhook refuses to do.
+    const ours =
+      typeof userId === 'string' && userId.length > 0
+        ? (await readBillingRecord(c.env, userId)).subscription
+        : null;
+    rows.push(reconcileSubscription(raw, ours, c.env));
+  }
+  return c.json({ ...reconcileReport(rows), truncated });
+});
 
 /** Emergency stop. Flips a flag the gateway checks before every single inference call. */
 /** Tune the hard caps without a redeploy. Lowering takes effect on the very next call. */

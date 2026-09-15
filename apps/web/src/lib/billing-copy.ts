@@ -282,6 +282,45 @@ export function billingChangeLine(change: BillingChange, opts: ChangeLineOptions
 }
 
 // ---------------------------------------------------------------------------
+// THE FIELDS PRINTED ON THE INVOICE
+// ---------------------------------------------------------------------------
+
+/** What to say after a save, and how loudly. `null` when there is nothing honest to say. */
+export interface BillingDetailsSaveLine {
+  tone: 'ok' | 'warn' | 'pending';
+  text: string;
+}
+
+/**
+ * The three outcomes of saving the invoice fields, as three different sentences.
+ *
+ * They are three different FACTS, which is why this is a function with a test rather than a ternary
+ * inside a form:
+ *   - `true`  — written here and on the Stripe customer, so the next invoice carries them;
+ *   - `false` — written here and REFUSED by Stripe. Recoverable, because every save re-sends every
+ *               field — but until then the document does not have them, and saying it does would be
+ *               a sentence about a printed invoice assembled out of a failed request;
+ *   - `null`  — nothing has been bought, so there is no Stripe customer to write to. Not an error:
+ *               reporting it as one sends somebody hunting a fault that is not there.
+ *
+ * ANYTHING ELSE PRODUCES NO SENTENCE. An older worker answers without the field, and "saved
+ * everywhere" inferred from a missing value is the claim this whole function exists to prevent.
+ */
+export function billingDetailsSaveLine(synced: unknown): BillingDetailsSaveLine | null {
+  if (synced === true) return { tone: 'ok', text: 'Saved. Your next invoice will carry these details.' };
+  if (synced === false) {
+    return {
+      tone: 'warn',
+      text: 'Saved here, but we could not update your billing record at Stripe — your invoices do not carry these yet. Saving again will retry it.',
+    };
+  }
+  if (synced === null) {
+    return { tone: 'pending', text: 'Saved. These will be used from your first invoice onwards.' };
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
 // TAKING THE RECORD AWAY WITH YOU
 // ---------------------------------------------------------------------------
 
