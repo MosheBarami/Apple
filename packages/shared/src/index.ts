@@ -859,7 +859,13 @@ export type ServerMsg =
   | { type: 'studio_selection'; selection: StudioEventSelection }
   | { type: 'msg_start'; msgId: string; role: 'assistant'; mode: GolemMode }
   | { type: 'delta'; msgId: string; text: string }
-  | { type: 'tool_start'; msgId: string; toolId: string; tool: string; summary: string }
+  //[[ `target` is WHICH THING this step is about — the script path, the instance paths, the URL —
+  //   read from the call's arguments BEFORE it runs. `summary` at this point is only the tool's
+  //   name; the sentence that names the resource used to arrive with `tool_end`, after the write.
+  //   Optional because a tool with no resource worth naming gets none: a guessed target is worse
+  //   than a missing one, since this is what a person reads to tell whether the step about to run
+  //   is the one they meant. ]]
+  | { type: 'tool_start'; msgId: string; toolId: string; tool: string; summary: string; target?: string }
   // `detail` carries the tool's STRUCTURED result, which the web app offers to
   // the typed generative-UI validator. Anything that validates becomes a real
   // component; anything that does not is simply not rendered. It is capped in

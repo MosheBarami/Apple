@@ -37,6 +37,8 @@ export interface ToolEvent {
   toolId: string;
   tool: string;
   summary: string;
+  /** Which resource this step is about — see `ToolStartEvent.target` in ws/activity-model.ts. */
+  target?: string;
   ok?: boolean;
   startedAt: number;
   durationMs?: number;
@@ -482,6 +484,9 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
                 toolId: msg.toolId,
                 tool: msg.tool,
                 summary: msg.summary,
+                // Which thing this step is about. `summary` here is only the tool's name; the
+                // sentence naming the resource arrives with tool_end, after the work is done.
+                target: msg.target,
                 startedAt: Date.now(),
                 // The one path where the start really is our own clock.
                 startObserved: true,

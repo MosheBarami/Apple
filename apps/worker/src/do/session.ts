@@ -39,7 +39,7 @@ import { creditsForNeurons } from '../pricing';
 import { chat as llmChat, BudgetError, RateLimitedError } from '../gateway';
 import { systemPrompt, collapseArtDirection, MEMORY_UPDATE_PROMPT } from '../prompts';
 import { designBrief } from '../design-brief';
-import { toolDefs, toolNames, runTool, type AgentCtx, type PlaytestBus } from '../tools';
+import { toolDefs, toolNames, targetOf, runTool, type AgentCtx, type PlaytestBus } from '../tools';
 import { planFromDetail, planDetail, settlePlan, type RunPlan } from '../run-plan';
 import { critiqueToText } from '../vision';
 import { toolsForMode } from '../router';
@@ -2088,7 +2088,7 @@ export class SessionDO extends DurableObject<Env> {
       const sig = `${call.name}:${call.arguments}`;
       if (agent.seenCalls.includes(sig)) {
         // the model is looping — refuse the duplicate and steer it back to building
-        this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name });
+        this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name, target: targetOf(call.name, call.arguments) });
         this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: false, summary: `↺ ${call.name} (already done)` });
         agent.llm.push({
           role: 'tool',
@@ -2117,7 +2117,7 @@ export class SessionDO extends DurableObject<Env> {
         totalSteps: agent.maxSteps,
         tool: call.name,
       });
-      this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name });
+      this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name, target: targetOf(call.name, call.arguments) });
       const out = await runTool(ctx, call.name, call.arguments);
       const entry: ToolTraceEntry = { tool: call.name, summary: out.summary, ok: out.ok, durationMs: Date.now() - t0 };
       agent.trace.push(entry);

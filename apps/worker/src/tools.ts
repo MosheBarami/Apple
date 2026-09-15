@@ -3106,6 +3106,86 @@ export function toolNames(): string[] {
   return Object.keys(TOOLS);
 }
 
+/* ------------------------------------------------------------ which thing, though --- */
+
+/** One line beside an activity label, not a paragraph. Long enough for a real Roblox path. */
+const TARGET_MAX = 120;
+
+/**
+ * Where in the arguments each tool's SUBJECT is. A tool absent from this table has no resource
+ * worth naming, and gets none — a guess is worse than silence here, because this string is what a
+ * person reads to decide whether the step about to run is the one they meant.
+ */
+const TARGET_ARG: Readonly<Record<string, { key: string; kind: 'string' | 'list' | 'number' | 'items' }>> = {
+  read_script: { key: 'path', kind: 'string' },
+  edit_script: { key: 'path', kind: 'string' },
+  format_script: { key: 'path', kind: 'string' },
+  set_properties: { key: 'path', kind: 'string' },
+  get_instance: { key: 'path', kind: 'string' },
+  delete_instances: { key: 'paths', kind: 'list' },
+  select_instances: { key: 'paths', kind: 'list' },
+  create_instances: { key: 'items', kind: 'items' },
+  install_module: { key: 'name', kind: 'string' },
+  insert_asset: { key: 'assetId', kind: 'number' },
+  web_fetch: { key: 'url', kind: 'string' },
+  browse_page: { key: 'url', kind: 'string' },
+  screenshot_page: { key: 'url', kind: 'string' },
+  workspace_read: { key: 'path', kind: 'string' },
+  workspace_write: { key: 'path', kind: 'string' },
+  run_spec: { key: 'path', kind: 'string' },
+};
+
+/** Collapse to one line and cap. The target sits beside a label; it may not push the layout. */
+function oneLine(v: string): string | undefined {
+  const s = v.replace(/\s+/g, ' ').trim();
+  if (!s) return undefined;
+  return s.length > TARGET_MAX ? `${s.slice(0, TARGET_MAX - 1)}…` : s;
+}
+
+/**
+ * WHICH THING THIS CALL IS ABOUT, read from the arguments BEFORE it runs.
+ *
+ * `tool_start` used to broadcast the bare tool name, and the sentence naming the script or the
+ * instances only arrived at `tool_end` — after the write. For the whole time a step was running,
+ * the one question a person has about it had no answer on screen, and by the time it did the thing
+ * was already changed.
+ *
+ * ARGUMENTS ARE MODEL-AUTHORED. Malformed JSON, a missing key, a wrong type and a 40KB string are
+ * all reachable, and this runs inside the step loop: a throw here ends a paid run at the moment it
+ * was about to do the work. So every path returns `undefined` rather than raising, and the result
+ * is collapsed to one capped line before anything renders it.
+ */
+export function targetOf(tool: string, argsJson: unknown): string | undefined {
+  const spec = TARGET_ARG[tool];
+  if (!spec) return undefined;
+  let args: unknown;
+  try {
+    args = typeof argsJson === 'string' ? JSON.parse(argsJson) : argsJson;
+  } catch {
+    return undefined;
+  }
+  if (!args || typeof args !== 'object' || Array.isArray(args)) return undefined;
+  const raw = (args as Record<string, unknown>)[spec.key];
+
+  if (spec.kind === 'string') return typeof raw === 'string' ? oneLine(raw) : undefined;
+  if (spec.kind === 'number') return typeof raw === 'number' && Number.isFinite(raw) ? String(raw) : typeof raw === 'string' ? oneLine(raw) : undefined;
+
+  const names: string[] =
+    spec.kind === 'list'
+      ? (Array.isArray(raw) ? raw : []).filter((v): v is string => typeof v === 'string')
+      : (Array.isArray(raw) ? raw : [])
+          .map((it) => (it && typeof it === 'object' ? (it as { name?: unknown }).name : null))
+          .filter((v): v is string => typeof v === 'string');
+
+  const cleaned = names.map((n) => n.replace(/\s+/g, ' ').trim()).filter(Boolean);
+  if (!cleaned.length) return undefined;
+  // Three, then a count. Twelve paths on one line is noise; "+9 more" is the honest summary of the
+  // rest, and it keeps the number visible — which is the part that says how big this step is.
+  const shown = cleaned.slice(0, 3).join(', ');
+  const rest = cleaned.length - 3;
+  return oneLine(rest > 0 ? `${shown} +${rest} more` : shown);
+}
+
 /**
  * Tools the model may call, given what this deployment can actually do.
  *
