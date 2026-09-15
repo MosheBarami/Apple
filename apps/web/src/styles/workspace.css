@@ -4135,6 +4135,13 @@
   margin: 0;
 }
 
+/* A clean run has no sentence to sit beside — only the Regenerate control. It tucks closer to the
+   reply than an outcome line does, so it reads as an affordance on the turn rather than as a
+   verdict on it. */
+.gx-outcome--bare {
+  margin-top: 0.35rem;
+}
+
 .gx-outcome__retry {
   padding: 0;
   border: none;

@@ -39,12 +39,40 @@ test('a failed run offers to run again', () => {
   assert.match(TURN, /onClick=\{onRetry\}/);
 });
 
-test('retry is offered only when the run did not succeed', () => {
-  // `outcome` is undefined for a clean run, and the button lives inside that block — a "Try again"
-  // under a successful run invites the user to spend a Credit undoing work that went fine.
-  const block = TURN.slice(TURN.indexOf('{outcome && ('), TURN.indexOf('<Stamp at={item.createdAt} align="start"'));
-  assert.match(block, /Try again/);
+test('a reply that SUCCEEDED can be regenerated too', () => {
+  // This assertion used to say the opposite: the control lived inside `{outcome && (...)}`, so a
+  // run that finished cleanly offered nothing at all. "That answer is fine but not what I meant"
+  // is the ordinary case, and the only way out of it was to retype the prompt into the edit
+  // dialog — which refuses an unchanged message, so there was no way out of it.
+  //
+  // The control is now built once, outside the outcome block, and rendered in both branches.
   assert.match(TURN, /const outcome = item\.stopReason && item\.stopReason !== 'done'/);
+  const beforeOutcome = TURN.slice(0, TURN.indexOf('{outcome ? ('));
+  assert.match(beforeOutcome, /const retryControl =/, 'the control is built before the outcome branch, not inside it');
+  assert.match(TURN, /\{outcome \? \(/, 'both branches render it — success as well as failure');
+  const branch = TURN.slice(TURN.indexOf('{outcome ? ('), TURN.indexOf('<Stamp at={item.createdAt} align="start"'));
+  const split = branch.indexOf(') : (');
+  assert.notEqual(split, -1, 'the branch has both halves');
+  assert.match(branch.slice(0, split), /retryControl/, 'the failed half renders it');
+  assert.match(branch.slice(split), /retryControl/, 'the clean half renders it too');
+});
+
+test('the two cases are not labelled the same thing', () => {
+  // "Try again" under a reply that worked reads as "that was broken". It was not; the user just
+  // wants another take.
+  assert.match(TURN, /Try again/);
+  assert.match(TURN, /Regenerate/);
+  assert.match(TURN, /outcome \? 'Try again' : 'Regenerate'/);
+});
+
+test('regenerating states the discard, because it throws away a reply the user may want back', () => {
+  // There is no message-revision store yet, so the previous reply is gone. Saying so in a title
+  // is the honest minimum; a confirmation dialog belongs here only once there is something to
+  // restore FROM.
+  const control = TURN.slice(TURN.indexOf('const retryControl ='), TURN.indexOf('{outcome ? ('));
+  assert.match(control, /title=/);
+  assert.match(control, /replaces this reply/);
+  assert.match(control, /cannot be brought back/);
 });
 
 test('a quota stop offers no retry', () => {
