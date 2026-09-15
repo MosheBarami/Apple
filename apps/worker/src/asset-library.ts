@@ -522,7 +522,38 @@ export function assetEmbeddingInput(rec: AssetProvenance): string {
  * The columns are the AssetProvenance record verbatim, plus operational state (status, health) and
  * timestamps that are not part of the provenance itself.
  */
+//[[ THE SCHEMA IS SETTLED ONCE PER ISOLATE, NOT ONCE PER BATCH.
+//
+//   This ran its ten DDL statements on EVERY ingest request. Ten sequential round trips to a
+//   single-threaded D1, before a single row of the batch is written, to assert a schema that has
+//   not changed since the deployment booted.
+//
+//   It is also where the 510,979-row ingest died. D1 reported, on the first statement of a fresh
+//   request:
+//
+//     D1_EXEC_ERROR: Error in line 1: create index if not exists idx_asset_kind
+//     on asset_library(kind, status): D1 DB exceeded its CPU time limit and was reset.
+//
+//   That index already exists — `sqlite_master` was queried on the live database to check, and all
+//   five are there. So the statement did no work; it was merely the first thing to touch a
+//   database the PREVIOUS batch had exhausted, and it reported the reset on the previous batch's
+//   behalf. Ten free statements per request is ten more chances to be that messenger, and the
+//   whole request 500s without writing anything.
+//
+//   WHAT THE CACHE IS AND IS NOT. It remembers that this isolate has already run the DDL — nothing
+//   more. It is not a claim the tables exist (that is `assetLibraryAvailable`, which reads
+//   sqlite_master and is the thing search consults), and a throw is NOT cached: a run that failed
+//   halfway leaves the flag unset so the next request tries again. Caching a failure would turn a
+//   half-built schema into a permanent one for the isolate's whole life. ]]
+let schemaEnsured = false;
+
+/** Test seam: the flag is per-isolate and otherwise unreachable. */
+export function resetAssetSchemaCache(): void {
+  schemaEnsured = false;
+}
+
 export async function ensureAssetTables(env: Pick<Env, 'CORPUS'>): Promise<void> {
+  if (schemaEnsured) return;
   await env.CORPUS.exec(
     `create table if not exists asset_library(id text primary key, name text not null, kind text not null, source text not null, source_url text not null, licence text not null, licence_url text not null, commercial_use integer not null, attribution_required integer not null, author text not null, retrieved_at text not null, imported_at text, modifications text, roblox_asset_id integer, triangles integer, texture_resolution integer, bounds_studs text, tags text not null, sha256 text, status text not null default 'pending_ingest', health_ok integer not null default 1, last_health_check text, created_at text not null, updated_at text not null)`,
   );
@@ -549,6 +580,8 @@ export async function ensureAssetTables(env: Pick<Env, 'CORPUS'>): Promise<void>
     `create table if not exists asset_verification_log(id integer primary key autoincrement, roblox_asset_id integer not null, checked_at text not null, check_source text not null, provenance text not null, http_status integer, resolved_name text, resolved_type_id integer, resolved_creator_id integer, resolved_has_scripts integer, resolved_is_free integer, resolved_triangles integer, verdict text not null, reasons text, raw_response text, requested_by text)`,
   );
   await env.CORPUS.exec(`create index if not exists idx_verif_asset on asset_verification_log(roblox_asset_id, checked_at desc)`);
+  // Set LAST, and only on the path that reached here without throwing.
+  schemaEnsured = true;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -666,8 +699,39 @@ export async function upsertAssets(env: Pick<Env, 'CORPUS'>, records: AssetProve
           .bind(r.id, r.name, r.tags.join(' '), r.kind, r.author),
       ]),
     ];
-    await env.CORPUS.batch(statements);
-    written += slice.length;
+    //[[ A CHUNK THAT D1 REFUSES IS A REJECT, NOT AN EXCEPTION.
+    //
+    //   This used to `await` the batch bare. One failure anywhere in a 500-row ingest threw out of
+    //   `upsertAssets`, out of `ingestAssets`, out of the route — and the caller got an empty
+    //   `text/plain` 500. Not a count, not an id, not the D1 message: the rows that HAD been
+    //   written in earlier chunks of the same call were reported as nothing at all, and the one
+    //   sentence that explained the failure only ever existed in `wrangler tail`.
+    //
+    //   The failure that made this matter is D1's own, and it is transient:
+    //   "D1 DB exceeded its CPU time limit and was reset." A 106 MB database with an FTS mirror
+    //   under sustained bulk write hits it, recovers, and hits it again. So the chunk is retried
+    //   with backoff — and if it still will not go, its rows join `rejected` carrying D1's
+    //   sentence, which is what `rejected` is for. `written + rejected.length === received` holds
+    //   either way, so a partial ingest still cannot pass for a clean one. ]]
+    let lastError: unknown = null;
+    let stored = false;
+    for (let attempt = 0; attempt < 3 && !stored; attempt++) {
+      try {
+        await env.CORPUS.batch(statements);
+        stored = true;
+      } catch (e) {
+        lastError = e;
+        // 250ms, then 1s. D1's reset clears in well under that; a longer wait would only spend the
+        // request's own wall clock on a database that is already ready again.
+        if (attempt < 2) await new Promise((r) => setTimeout(r, 250 * (attempt + 1) ** 2));
+      }
+    }
+    if (stored) {
+      written += slice.length;
+    } else {
+      const message = lastError instanceof Error ? lastError.message : String(lastError);
+      for (const r of slice) rejected.push({ id: r.id, errors: [`d1 write failed after 3 attempts: ${message}`] });
+    }
   }
   return { written, rejected };
 }
