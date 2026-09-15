@@ -1818,7 +1818,10 @@ app.post('/api/billing/webhook', async (c) => {
     );
   }
 
-  const outcome = interpretStripeEvent(event);
+  // The env goes in so the TIER can be read from the price Stripe is actually billing. A tier change
+  // made in the Billing Portal never touches subscription metadata, so without this an upgrade
+  // bought there charged the new plan and entitled the old one.
+  const outcome = interpretStripeEvent(event, c.env);
   if (!outcome.userId) return c.json({ ok: true, ignored: outcome.ignored ?? 'no user', dunning: dunning?.kind ?? null });
 
   const quota = c.env.QUOTA_DO.get(c.env.QUOTA_DO.idFromName(outcome.userId));

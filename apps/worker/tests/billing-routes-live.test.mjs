@@ -289,3 +289,37 @@ test('the credits webhook forwards its event id too', async () => {
   assert.equal(grant.body.credits, 500);
   assert.equal(grant.body.eventId, 'evt_route_2', 'without this a redelivery credits the account twice');
 });
+
+test('A PORTAL UPGRADE GRANTS THE TIER IT CHARGES FOR, over the real webhook route', async () => {
+  // THE DEFECT, END TO END. metadata.plan is written once, at checkout. A tier change made in the
+  // Billing Portal swaps items[].price and leaves metadata alone, so this event — a genuine Studio
+  // upgrade for a customer who first bought Builder — was applied as Builder. The customer paid
+  // Studio and was served Builder, and nothing in the product said a word.
+  reset({ plan: 'builder', customerId: 'cus_1', subscription: sub() });
+  const r = await signedWebhook({
+    id: 'evt_portal_upgrade',
+    type: 'customer.subscription.updated',
+    data: { object: { id: 'sub_1', customer: 'cus_1', status: 'active', current_period_end: LATER,
+                      cancel_at_period_end: false,
+                      items: { data: [{ id: 'si_1', price: { id: 'price_studio_1' } }] },
+                      metadata: { userId: USER_ID, plan: 'builder' } } },
+  });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  const setPlan = doCalls.find((c) => c.path === '/set-plan');
+  assert.ok(setPlan, 'the plan must still be applied');
+  assert.equal(setPlan.body.plan, 'studio', 'the ENFORCED tier is the one Stripe is billing');
+  assert.equal(setPlan.body.subscription.plan, 'studio', 'and the stored record agrees with it');
+});
+
+test('a webhook with no price item still grants what the metadata says', async () => {
+  // The control. If reading the price had become the ONLY way to a tier, every first checkout — and
+  // every event Stripe sends without expanding the item — would demote the customer to free.
+  reset();
+  await signedWebhook({
+    id: 'evt_no_items',
+    type: 'customer.subscription.created',
+    data: { object: { id: 'sub_2', customer: 'cus_1', status: 'active', current_period_end: LATER,
+                      cancel_at_period_end: false, metadata: { userId: USER_ID, plan: 'studio' } } },
+  });
+  assert.equal(doCalls.find((c) => c.path === '/set-plan').body.plan, 'studio');
+});

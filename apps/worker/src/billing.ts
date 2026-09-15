@@ -279,8 +279,12 @@ export interface BillingOutcome {
  * is editable by the customer and is not an identity. A subscription with no `metadata.userId` is
  * ignored loudly rather than guessed at — attaching a plan to the wrong account is worse than
  * attaching it to none.
+ *
+ * `env` is what makes the TIER readable from the price. It is optional only because an event from a
+ * deployment with no prices configured still has to be interpretable; when it is absent the reader
+ * falls back to the metadata exactly as it always did.
  */
-export function interpretStripeEvent(event: unknown): BillingOutcome {
+export function interpretStripeEvent(event: unknown, env?: Env): BillingOutcome {
   if (typeof event !== 'object' || event === null) return { userId: null, eventId: null, ignored: 'not an object' };
   const e = event as { id?: unknown; type?: string; data?: { object?: Record<string, unknown> } };
   const obj = e.data?.object ?? {};
@@ -301,7 +305,20 @@ export function interpretStripeEvent(event: unknown): BillingOutcome {
       const status = typeof obj['status'] === 'string' ? obj['status'] : null;
       // A deletion is a lapse to free regardless of what the plan metadata still says.
       const deleted = type === 'customer.subscription.deleted';
-      const plan: PlanId = deleted ? 'free' : isPlanId(planRaw) ? planRaw : 'free';
+      /*
+       * THE PRICE OUTRANKS THE METADATA, because the price is what Stripe bills.
+       *
+       * `metadata.plan` is written exactly once — by buildCheckoutRequest, at the FIRST purchase.
+       * Every later tier change happens in the Billing Portal, which swaps `items[].price` and
+       * leaves `metadata` untouched. So an upgrade bought there charged the new tier and entitled
+       * the old one, and a downgrade kept serving the tier nobody was paying for; the event carried
+       * the right answer all along and nothing read it.
+       *
+       * The metadata stays as the FALLBACK rather than being dropped: a price this deployment does
+       * not recognise (a legacy one, a test-mode id) must not silently demote a paying customer.
+       */
+      const fromPrice = env ? planForPriceId(env, priceIdOfSubscription(obj)) : null;
+      const plan: PlanId = deleted ? 'free' : (fromPrice ?? (isPlanId(planRaw) ? planRaw : 'free'));
       return {
         userId,
         eventId,
@@ -367,6 +384,42 @@ export function priceIdFor(env: Env, plan: PlanId): string | null {
   const e = env as unknown as CheckoutEnv;
   if (plan === 'builder') return e.STRIPE_PRICE_BUILDER?.trim() || null;
   if (plan === 'studio') return e.STRIPE_PRICE_STUDIO?.trim() || null;
+  return null;
+}
+
+/**
+ * The inverse: which tier a Stripe price sells, or null when this deployment does not sell it.
+ *
+ * This is the half that was missing, and its absence is why a tier change made in the Billing
+ * Portal entitled the wrong plan — see the comment in `interpretStripeEvent`. An unknown price is
+ * null rather than 'free': not recognising an id is not the same as the customer having no plan.
+ */
+export function planForPriceId(env: Env, priceId: string | null | undefined): PlanId | null {
+  if (typeof priceId !== 'string' || priceId.length === 0) return null;
+  const e = env as unknown as CheckoutEnv;
+  // Compared against the trimmed value, so a price id with a stray newline in a secret still maps.
+  if (e.STRIPE_PRICE_BUILDER?.trim() === priceId) return 'builder';
+  if (e.STRIPE_PRICE_STUDIO?.trim() === priceId) return 'studio';
+  return null;
+}
+
+/**
+ * The price id of a subscription's first item, however Stripe expanded it.
+ *
+ * `price` arrives as an object on a webhook and as a bare id when the object was fetched without
+ * expansion; reading only one shape would make the tier unreadable half the time. One item per
+ * subscription is this product's invariant (`line_items[0][quantity]=1`), so the first is the one.
+ */
+export function priceIdOfSubscription(obj: Record<string, unknown>): string | null {
+  const items = obj['items'] as { data?: unknown[] } | undefined;
+  const first = Array.isArray(items?.data) ? items.data[0] : null;
+  if (!first || typeof first !== 'object') return null;
+  const price = (first as Record<string, unknown>)['price'];
+  if (typeof price === 'string') return price;
+  if (price && typeof price === 'object') {
+    const id = (price as Record<string, unknown>)['id'];
+    return typeof id === 'string' ? id : null;
+  }
   return null;
 }
 
