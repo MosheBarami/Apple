@@ -112,8 +112,12 @@ sessions independently:
     apps/worker/node_modules/@golem/shared -> ../../../../.claude/worktrees/probe-9423f2c/packages/shared
     apps/worker/node_modules/esbuild       -> ../../../.claude/worktrees/probe-9423f2c/node_modules/.pnpm/esbuild@0.25.12/...
 
-Fifteen links across `apps/web`, `apps/site` and `apps/worker`. **The workspace globs are not the
-cause** — `apps/*`, `apps/benchmark/*`, `packages/*` match nothing under `.claude/`. The direction
+Fifteen links across `apps/web`, `apps/site` and `apps/worker`. **Nobody knows whose install did
+it, and that is the point** — three sessions shared the checkout, the worktree was created and
+deleted inside one hour, and by the time the damage was visible its cause was gone. An early
+attribution in this record was wrong and is removed: the only fact worth keeping is that ANY
+install inside ANY in-repo worktree does this, so it is not a habit one session can fix.
+**The workspace globs are not the cause** — `apps/*`, `apps/benchmark/*`, `packages/*` match nothing under `.claude/`. The direction
 is the opposite of the obvious one: not the main workspace reaching into the worktree, but an
 install inside the worktree reaching out to the main workspace root it happens to be nested under.
 **Cost of the error:** every typecheck, test and build in the main checkout resolved `@golem/shared`
@@ -124,6 +128,11 @@ exported on line 271. When the worktree was later deleted the links dangled and
 `node_modules/.bin/esbuild` stopped existing, which takes down every test that bundles through it.
 **Caught by:** the contradiction between what `grep` saw in the source and what `tsc` reported —
 two tools disagreeing about one file is only possible if they are reading two files.
+**A THIRD CHECK, from rbxai-04, and it is the only one that sees this class:** after removing a
+worktree, `readlink` a couple of the main tree's `@golem/*` links before the next measurement. Every
+instinct built today — check the count, prove the parser, capture once — inspects the MEASUREMENT.
+None of them inspects the RESOLUTION. `tsc` read a different file than `grep` did and both were
+correct.
 **The rule:** **put verification worktrees OUTSIDE the repository.** `git worktree add /tmp/verify-x`
 or a sibling directory; never a path under the workspace root. A worktree inside the repo shares the
 workspace root, and pnpm's notion of "the workspace" is ancestral, not configured.
