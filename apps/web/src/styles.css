@@ -3999,6 +3999,32 @@ textarea {
   flex-wrap: wrap;
 }
 
+/* The working behind a prorated total: the credit for the old tier and the charge for the new one,
+   each on its own row. A single net figure is the number a customer disputes; these are the two
+   lines that answer them. Logical properties throughout — this app renders right-to-left too. */
+.preview-lines {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0.6rem 0 0;
+  border-top: 1px solid var(--line);
+  font-size: 0.85rem;
+}
+
+.preview-lines li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-block: 0.25rem;
+  color: var(--muted);
+}
+
+.preview-lines__amount {
+  /* Tabular figures so the amounts line up in a column rather than wandering by digit width. */
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--ink);
+}
+
 .toast-stack {
   position: fixed;
   inset-inline-end: 1rem;
