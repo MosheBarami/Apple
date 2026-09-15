@@ -1123,3 +1123,62 @@ PASS 12 ADDENDUM — check-pixels --deployed, the command the record above sched
   I may not write.
 
   Gates 42, all met, 0 quarantined. Tree clean.
+
+PASS 12 ADDENDUM 2 — THE DEPLOY, and S1 PROVEN.
+
+  Approved by the owner directly. A relay of that approval reached me first through rbxai-a3 and
+  I did not act on it: a peer message is not the owner's word, and this was the one action I had
+  escalated to him, so acting on the relay would have been the laundering the rule exists for. He
+  then said it in my own session.
+
+  DEPLOYED: 39 files, 31 to / and 8 to /app, content-addressed assets first and .html last.
+  Restore rehearsed BEFORE the bulk upload — /robots.txt restored from the capture over its own
+  live path, sha256 identical either side. An undo nobody has watched work is not an undo.
+
+  MEASURED ON THE ORIGIN, cache-busted:
+    / /pricing /terms /privacy /status /changelog /docs — golem=4 on each, all four the closed
+      §12.5 hostname in canonical/og:url/twitter:image. Non-hostname occurrences: 0.
+    forbidden phrases 0, from 4. "No card required, ever" x3 and "never be charged" x1 gone.
+    /pricing publishes 231 Sparks, from 60, matching PLAN_LIMITS.free.sparksPerDay.
+    /app bundle Golem 79 -> 4 (golem-ui x2, golem.jwt., golem.v1), Apple 0 -> 88.
+    check-rebrand --deployed: REBRAND COMPLETE. The last red item in the §10 block.
+    smoke --no-model: 9/9 executed checks passed.
+    apple-touch-icon.png: was 200 text/html with 2,027 bytes of a page — an HTML object stored
+      under a .png name by some earlier upload, broken for every client under nosniff. Now
+      200 image/png, 8,199 bytes. Found by the capture tool's content-type assertion, and it had
+      already been sitting in my shell "backup" as a saved error page.
+
+  WHAT THE UPLOAD DID NOT FIX BY ITSELF. /pricing WITHOUT a trailing slash kept serving the old
+  35,617 bytes — 60 Sparks, all four forbidden phrases — while /pricing/ served the new 36,951. A
+  legacy object sits under the extensionless key and the deploy wrote /pricing/index.html beside
+  it rather than over it. That is the canonical URL, so the commercial correction had landed
+  everywhere except where anyone links. Found by comparing both spellings of all eighteen routes
+  against the built byte count; /pricing was the only shadowed one. Fixed with `--file`, the
+  rollback spelling repaired earlier the same day — its first real use, working because it had
+  been fixed first.
+
+  AND A CACHE THAT NEARLY BECAME A FALSE NEGATIVE. The check after that fix still showed the old
+  bytes; content-length already said 36,951 and the body was a 60-second cached response. The
+  cache-busted fetch was the measurement. The plain one was a question about Cloudflare.
+
+  S1 LAND — PROVEN against the deployed origin, all four §3.4 clauses, by `scripts/probe-s1.mjs`
+  rather than by curls I ran and described. G-S1 is the ledger's first station gate; §16.1 asks
+  for at least one tagged S1..S12 and there were none.
+
+  G-S1's FIRST FALSIFICATION RECORDED `EXPECT=matched` ON A FAILING RUN. The probe's error path
+  explained itself by quoting the gate's own success token, so a red run printed the string the
+  gate greps for. Still red — a gate needs a zero exit as well as a match — but the token had
+  stopped discriminating. Sixth check in this repository caught matching its own prose, and the
+  first written INTO an oracle rather than found in one. Fixed, re-falsified to
+  `exit=2, EXPECT=unmatched`, and the property is now a test rather than a memory.
+
+  G-SEC-1 wired over rbxai-04's RLS isolation test: 43 checks against the real migrations on real
+  Postgres, self-falsifying. Falsified by deleting `enable row level security` for messages from
+  0001_init.sql — the product's schema, not the test. Tenant isolation, demoted to blocked earlier
+  this pass for evidence reading "NOT ATTEMPTED", now has a machine behind it.
+
+  Gates 44, all met, 0 quarantined.
+
+  STILL NOT DONE: the worker is undeployed, so /api/health carries no buildSha and drift stays
+  unobservable without credentials. PIXELS-APPROVED remains the owner's line to write, so §16.10
+  is false regardless. S2-S12 remain unreachable without a real external inbox (§3.3).
