@@ -476,6 +476,83 @@ export function parseImagePath(src: string): { projectId: string; imageId: strin
   return { projectId: m[1], imageId: m[2] };
 }
 
+/**
+ * The same, for generated sound — and it is not symmetry for its own sake.
+ *
+ * `generate_sound` emits an asset_picker whose link is this path, labelled "Listen". That link was
+ * rendered as a plain anchor, and every /api/* path needs a Bearer JWT an anchor cannot send, so
+ * the click opened a tab holding `{"error":"unauthorized"}` for a sound that existed and worked.
+ * An asset link may legitimately point anywhere — a catalogue page, a fragment — so the player is
+ * offered only for a path this app generated, and everything else stays the link it was.
+ */
+export function parseAudioPath(src: string): { projectId: string; audioId: string } | null {
+  // The UUID shape rather than 36 loose hex-or-dash characters: the worker's route validates the id
+  // with UUID_RE and 404s anything else before it touches KV, so a laxer regex here would only
+  // build players that fail for a reason unrelated to the sound.
+  const m = /^\/api\/projects\/([A-Za-z0-9_-]{1,64})\/audio\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/.exec(src);
+  if (!m || m[1] === undefined || m[2] === undefined) return null;
+  return { projectId: m[1], audioId: m[2] };
+}
+
+/**
+ * Fetch generated audio and hand back an object URL an <audio> element can play.
+ *
+ * fetchImageObjectUrl's reasoning, for the other media type: a bearer credential in a URL is a
+ * credential in logs, referrers and history, so there is one auth mechanism and the cost is that
+ * the bytes do not stream. Generated sounds are seconds long and already bounded by the worker's
+ * one-hour TTL, so that cost is small and the caller owns the revoke.
+ */
+export async function fetchAudioObjectUrl(projectId: string, audioId: string): Promise<string> {
+  const token = await getAccessToken();
+  const headers = new Headers();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+
+  let res: Response;
+  try {
+    res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/audio/${encodeURIComponent(audioId)}`, { headers });
+  } catch {
+    noteReachability(false);
+    throw new ApiError('Network error — check your connection.', 0);
+  }
+  noteReachability(true);
+  if (!res.ok) {
+    // 404 is a real expiry; 401 is a session that timed out. explainFailure draws that line for the
+    // caller, and it can only draw it if the status arrives intact.
+    throw new ApiError(res.status === 404 ? 'sound expired or not found' : `sound fetch failed (${res.status})`, res.status);
+  }
+  return URL.createObjectURL(await res.blob());
+}
+
+/**
+ * Save a generated sound to disk.
+ *
+ * `?download=1` is the worker's own attachment branch, which builds the filename from the id and
+ * the served content type — never from anything stored. Naming the file here instead would be a
+ * second rule for what a generated sound is called, and the two would disagree the first time
+ * either changed.
+ */
+export async function downloadProjectAudio(projectId: string, audioId: string): Promise<void> {
+  const token = await getAccessToken();
+  const headers = new Headers();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  const res = await fetch(
+    `/api/projects/${encodeURIComponent(projectId)}/audio/${encodeURIComponent(audioId)}?download=1`,
+    { headers },
+  );
+  if (!res.ok) throw new ApiError(`Could not download that sound (${res.status})`, res.status);
+  const named = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') ?? '')?.[1];
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = named ?? `sound-${audioId}`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // Next frame rather than immediately, for downloadExport's reason: a synchronous revoke can race
+  // the browser's own read of the blob and save a zero-byte file.
+  requestAnimationFrame(() => URL.revokeObjectURL(url));
+}
+
 export async function downloadExport(projectId: string, format: 'md' | 'json'): Promise<void> {
   const token = await getAccessToken();
   const headers = new Headers();
