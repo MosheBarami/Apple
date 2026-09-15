@@ -24,7 +24,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const { unauditedNote } = await import('../src/lib/member-history.ts');
+const { unauditedNote, MEMBER_REASON_MAX } = await import('../src/lib/member-history.ts');
 
 test('a change the server could not record says so, out loud', () => {
   const note = unauditedNote({ ok: true, audited: false });
@@ -59,4 +59,14 @@ test('THE ROUTES THAT PROMISE `audited` STILL PROMISE IT', () => {
   const worker = readFileSync(join(HERE, '../../worker/src/index.ts'), 'utf8');
   const audited = worker.match(/audited: audit\.ok/g) ?? [];
   assert.ok(audited.length >= 4, `only ${audited.length} membership routes return audited`);
+});
+
+test('THE REASON BOX CANNOT ASK FOR MORE THAN THE COLUMN HOLDS', () => {
+  // The route truncates at EVENT_REASON_MAX and the column has a CHECK at the same number. An
+  // input that accepts more silently loses the end of what somebody wrote — the half of a reason
+  // that says what to do about it.
+  const membership = readFileSync(join(HERE, '../../worker/src/membership.ts'), 'utf8');
+  const declared = /export const EVENT_REASON_MAX = (\d+)/.exec(membership);
+  assert.ok(declared, 'the worker no longer declares EVENT_REASON_MAX where this test can read it');
+  assert.equal(MEMBER_REASON_MAX, Number(declared[1]));
 });

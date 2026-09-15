@@ -29,6 +29,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ApiError,
   bulkInviteMembers,
+  fetchMemberImpact,
   fetchMembers,
   inviteMember,
   reactivateMember,
@@ -49,7 +50,8 @@ import {
 } from '../../lib/capabilities';
 import { rankMembers } from '../../lib/member-match';
 import { BULK_INVITE_MAX, bulkRefusal, explainRejections, parseBulkIds, type BulkProblem } from '../../lib/bulk-invite';
-import { unauditedNote } from '../../lib/member-history';
+import { MEMBER_REASON_MAX, unauditedNote } from '../../lib/member-history';
+import { readImpact } from '../../lib/member-impact';
 import { relativeTime } from '../../lib/format';
 import { useToast } from '../toast';
 import { createUndoable } from '../../lib/undo';
@@ -88,6 +90,11 @@ export function MembersPanel({ projectId, access }: { projectId: string; access:
    * unrecorded change is gone by the time anybody needs to say which change it was.
    */
   const [auditNote, setAuditNote] = useState<string | null>(null);
+  /**
+   * Which row has opened its second step, and which step. One at a time: two half-filled pause
+   * reasons on screen is two chances to attach the wrong one to the wrong person.
+   */
+  const [pending, setPending] = useState<{ userId: string; kind: 'remove' | 'pause' } | null>(null);
 
   const mayManage = allows(access, 'manage_members');
   const cannotManage = whyNot(access, 'manage_members');
@@ -138,8 +145,12 @@ export function MembersPanel({ projectId, access }: { projectId: string; access:
     onError: (e: Error) => toast(`Could not remove them: ${e.message}`, 'error'),
   });
 
+  // THE REASON IS PART OF THE ACT. The route stores it, audits it and returns it; this control
+  // passed '' and so every suspension in the history said null — the server being careful about a
+  // field the only caller never filled in.
   const suspend = useMutation({
-    mutationFn: (member: MemberRow) => suspendMember(projectId, member.userId, ''),
+    mutationFn: ({ member, reason }: { member: MemberRow; reason: string }) =>
+      suspendMember(projectId, member.userId, reason.trim().slice(0, MEMBER_REASON_MAX)),
     onSuccess: (res) => {
       toast('Paused. They cannot open the project until you reactivate them.', 'success');
       setAuditNote(unauditedNote(res));
@@ -167,7 +178,7 @@ export function MembersPanel({ projectId, access }: { projectId: string; access:
   const busyFor = (userId: string) =>
     (setRole.isPending && setRole.variables?.userId === userId) ||
     (remove.isPending && remove.variables?.userId === userId) ||
-    (suspend.isPending && suspend.variables?.userId === userId) ||
+    (suspend.isPending && suspend.variables?.member.userId === userId) ||
     (reactivate.isPending && reactivate.variables?.userId === userId);
 
   return (
@@ -296,7 +307,14 @@ export function MembersPanel({ projectId, access }: { projectId: string; access:
                       </select>
                     </label>
 
-                    {m.status === 'suspended' ? (
+                    {/* REACTIVATE IS OFFERED FOR A REMOVAL TOO, not only a pause. The route
+                        clears revoked_at and the suspension together and restores at the role the
+                        grant carried, so undoing a removal from the list is one press — it used to
+                        require re-inviting, which records an invitation rather than a
+                        reinstatement and lets the admin pick a role by accident. Not offered for
+                        'expired': reactivate does not touch expires_at, so it would appear to work
+                        and change nothing. */}
+                    {m.status === 'suspended' || m.status === 'revoked' ? (
                       <button
                         type="button"
                         className="btn btn-quiet"
@@ -304,15 +322,18 @@ export function MembersPanel({ projectId, access }: { projectId: string; access:
                         title={cannotManage ?? undefined}
                         onClick={() => reactivate.mutate(m)}
                       >
-                        Reactivate
+                        {m.status === 'revoked' ? 'Put back' : 'Reactivate'}
                       </button>
                     ) : (
                       <button
                         type="button"
                         className="btn btn-quiet"
-                        disabled={!mayManage || busyFor(m.userId) || m.status === 'revoked'}
+                        disabled={!mayManage || busyFor(m.userId)}
                         title={cannotManage ?? undefined}
-                        onClick={() => suspend.mutate(m)}
+                        aria-expanded={pending?.userId === m.userId && pending.kind === 'pause'}
+                        onClick={() =>
+                          setPending((p) => (p?.userId === m.userId && p.kind === 'pause' ? null : { userId: m.userId, kind: 'pause' }))
+                        }
                       >
                         Pause
                       </button>
@@ -323,11 +344,39 @@ export function MembersPanel({ projectId, access }: { projectId: string; access:
                       className="btn btn-quiet mb__remove"
                       disabled={!mayManage || busyFor(m.userId) || m.status === 'revoked'}
                       title={cannotManage ?? undefined}
-                      onClick={() => remove.mutate(m)}
+                      aria-expanded={pending?.userId === m.userId && pending.kind === 'remove'}
+                      onClick={() =>
+                        setPending((p) => (p?.userId === m.userId && p.kind === 'remove' ? null : { userId: m.userId, kind: 'remove' }))
+                      }
                     >
                       Remove
                     </button>
                   </div>
+                )}
+
+                {pending?.userId === m.userId && pending.kind === 'pause' && (
+                  <PauseForm
+                    member={m}
+                    busy={busyFor(m.userId)}
+                    onCancel={() => setPending(null)}
+                    onPause={(reason) => {
+                      setPending(null);
+                      suspend.mutate({ member: m, reason });
+                    }}
+                  />
+                )}
+
+                {pending?.userId === m.userId && pending.kind === 'remove' && (
+                  <RemovePreview
+                    projectId={projectId}
+                    member={m}
+                    busy={busyFor(m.userId)}
+                    onCancel={() => setPending(null)}
+                    onRemove={() => {
+                      setPending(null);
+                      remove.mutate(m);
+                    }}
+                  />
                 )}
               </li>
             ))}
@@ -609,5 +658,170 @@ function BulkInviteForm({
         )}
       </form>
     </details>
+  );
+}
+
+/**
+ * Why removing somebody is not a ConfirmDialog.
+ *
+ * lib/confirm-model.ts decides ceremony from consequence, and a member removal is REVERSIBLE — the
+ * route revokes rather than deletes, and Put back restores at the role the grant carried — and
+ * destroys nothing the user made. `confirmationFor` therefore returns 'none', and putting a modal
+ * "are you sure?" in front of it is precisely the habit that file exists to stop: a dialog in front
+ * of a reversible action teaches people to dismiss dialogs, which is the training you do not want
+ * them to arrive with when the permanent one appears.
+ *
+ * What this is instead is the ANSWER TO A QUESTION THEY CANNOT OTHERWISE ASK. `GET
+ * /members/:userId/impact` counts what the departing member holds — in SQL, in the project's own
+ * store — and states what the removal does and does not do. That is information, not friction, and
+ * the moment it is worth reading is the moment somebody reaches for Remove. So it opens under the
+ * row, not over the page; it is not modal, it traps no focus, and Cancel is a plain button rather
+ * than a dismissal.
+ *
+ * IT DOES NOT BLOCK ON ITS OWN FAILURE. If the preview cannot be read, Remove is still offered
+ * with the failure said out loud — refusing to let an administrator remove somebody because a
+ * count did not come back would be this panel deciding that its own telemetry outranks the person
+ * using it. What it must never do is render the missing count as a zero, which is the whole reason
+ * lib/member-impact.ts is a module and not an inline `?? 0`.
+ */
+function RemovePreview({
+  projectId,
+  member,
+  busy,
+  onCancel,
+  onRemove,
+}: {
+  projectId: string;
+  member: MemberRow;
+  busy: boolean;
+  onCancel: () => void;
+  onRemove: () => void;
+}) {
+  const impact = useQuery({
+    queryKey: ['member-impact', projectId, member.userId],
+    queryFn: () => fetchMemberImpact(projectId, member.userId),
+    // A preview is only worth showing while it is current; refetched each time the row is opened.
+    staleTime: 0,
+    gcTime: 0,
+  });
+
+  const reading = impact.isSuccess ? readImpact(impact.data) : null;
+
+  return (
+    <div className="mb__step" role="group" aria-label={`Remove ${member.handle}`}>
+      <p className="mb__step-head">Remove {member.displayName ?? member.handle}?</p>
+
+      {impact.isPending && (
+        <p className="cs__note" aria-busy="true">
+          Counting what they hold here…
+        </p>
+      )}
+
+      {impact.isError && (
+        <p className="cs__note cs__note--warn" role="status">
+          We could not read what removing them would do. You can still remove them — we simply
+          cannot tell you what they hold first.
+        </p>
+      )}
+
+      {reading && (
+        <>
+          {reading.warnings.map((w) => (
+            <p key={w} className="cs__note cs__note--warn" role="status">
+              {w}
+            </p>
+          ))}
+
+          {reading.counts === null ? null : (
+            <ul className="mb__counts">
+              {reading.counts.map((c) => (
+                <li key={c.label} className="mb__count">
+                  <span className="mb__count-n">{c.value}</span>
+                  <span className="mb__count-label">{c.label}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <ul className="mb__effects">
+            {reading.effects.map((e) => (
+              <li key={e} className="mb__effect">
+                {e}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      <div className="mb__step-actions">
+        <button type="button" className="btn btn-quiet" onClick={onCancel} disabled={busy}>
+          Cancel
+        </button>
+        <button type="button" className="btn btn-quiet mb__remove" onClick={onRemove} disabled={busy}>
+          {busy ? 'Removing…' : 'Remove them'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Pausing somebody, and saying why.
+ *
+ * The route stores the reason, audits it, and hands it back on the roster row. The one control
+ * that reached it passed `''`, so every suspension in the history said null — the server being
+ * careful about a field its only caller never filled in, which is the same defect as an unmounted
+ * panel one layer down.
+ *
+ * Optional, because a pause is reversible and demanding an essay before an admin may act is its own
+ * kind of obstruction. Capped at the length the column actually holds: the route truncates
+ * silently, and the end of a reason is usually the half that says what to do about it.
+ */
+function PauseForm({
+  member,
+  busy,
+  onCancel,
+  onPause,
+}: {
+  member: MemberRow;
+  busy: boolean;
+  onCancel: () => void;
+  onPause: (reason: string) => void;
+}) {
+  const [reason, setReason] = useState('');
+
+  return (
+    <form
+      className="mb__step"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!busy) onPause(reason);
+      }}
+    >
+      <p className="mb__step-head">Pause {member.displayName ?? member.handle}</p>
+      <p className="cs__note">
+        They cannot open the project until you reactivate them. Nothing they have made is touched.
+      </p>
+      <label className="field">
+        <span className="field-label">Why? (optional — it goes in the membership history)</span>
+        <input
+          className="cs__input"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          maxLength={MEMBER_REASON_MAX}
+          placeholder="Left the team for now"
+          autoComplete="off"
+          autoFocus
+        />
+      </label>
+      <div className="mb__step-actions">
+        <button type="button" className="btn btn-quiet" onClick={onCancel} disabled={busy}>
+          Cancel
+        </button>
+        <button type="submit" className="btn btn-quiet" disabled={busy}>
+          {busy ? 'Pausing…' : 'Pause them'}
+        </button>
+      </div>
+    </form>
   );
 }

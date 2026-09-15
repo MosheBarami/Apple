@@ -167,3 +167,43 @@ test('AN UNRECORDED CHANGE IS SHOWN — every membership route answers `audited`
   assert.match(PANEL_CODE, /unauditedNote\(/, 'the audited flag is never read');
   assert.match(PANEL_CODE, /\{auditNote &&/, 'it is read and never drawn');
 });
+
+// --------------------------------------------- the destructive controls say what they do ---
+
+test('THE IMPACT ROUTE IS REACHED BEFORE THE REMOVAL, not after it and not never', () => {
+  // GET /members/:userId/impact counts what the departing member holds, in SQL, and states what
+  // the removal does. `grep impact apps/web/src/lib/api.ts` returned nothing: the Remove button
+  // called removeMember directly, so the route was dead even once the panel was mounted.
+  assert.match(API, /export const fetchMemberImpact/, 'no client function for the impact route');
+  assert.match(PANEL_CODE, /fetchMemberImpact\(/, 'nothing calls it');
+  assert.match(PANEL_CODE, /<RemovePreview\b/, 'the preview exists and the panel does not open it');
+});
+
+test('the preview is read through the module that refuses to print an unread count as zero', () => {
+  // `impact.footprint?.comments ?? 0` in JSX is the whole defect: it tells an administrator the
+  // departing member holds nothing at the moment we could not find out.
+  assert.match(PANEL_CODE, /readImpact\(/, 'the answer is rendered without going through readImpact');
+  assert.equal(/footprint\?\./.test(PANEL_CODE), false, 'the panel reads the raw footprint around the module');
+});
+
+test('a preview that did not load does not block the removal, and does not pretend either', () => {
+  assert.match(PANEL_CODE, /impact\.isError &&/, 'the failed preview is not handled');
+});
+
+test('PAUSING ASKS WHY, because the server stores and audits the answer', () => {
+  // suspendMember was called with '' from the only control that reached it, so the audit row the
+  // route is careful to write always said null.
+  assert.equal(/suspendMember\(projectId, member\.userId, ''\)/.test(PANEL_CODE), false, 'the reason is still hardcoded empty');
+  assert.match(PANEL_CODE, /<PauseForm\b/, 'no control collects a reason');
+  assert.match(PANEL_CODE, /MEMBER_REASON_MAX/, 'the box does not cap at the length the column holds');
+});
+
+test('a REMOVED member can be put back from the list, not only a paused one', () => {
+  // The route reinstates both, at the role the grant carried. The panel offered Reactivate for
+  // 'suspended' alone, so undoing a removal meant re-inviting — which records an invitation rather
+  // than a reinstatement and invites the admin to pick a role by hand.
+  assert.match(PANEL_CODE, /m\.status === 'suspended' \|\| m\.status === 'revoked'/, 'reactivation is still suspended-only');
+  // …and NOT for 'expired': reactivate does not clear expires_at, so it would appear to work and
+  // change nothing. A control that runs and does nothing is worse than one that is not there.
+  assert.equal(/status === 'expired'[^\n]*reactivate/.test(PANEL_CODE), false, 'reactivation is offered for an expiry it cannot lift');
+});

@@ -4602,3 +4602,85 @@
   font-size: 0.8rem;
   line-height: 1.45;
 }
+
+/* --- members: the second step on a row ----------------------------------------------------- */
+/*
+   Removing somebody and pausing them both open UNDER their row rather than over the page. They
+   are not modal and they trap no focus, because neither is a confirmation in the sense
+   lib/confirm-model.ts means: a member removal is reversible and destroys nothing, so the ladder
+   says 'none' and a dialog in front of it would be the exact habit that file exists to stop.
+
+   What opens here is an ANSWER — what this person holds, and what the removal does and does not
+   do — placed where the question is asked. Inset and ruled on the leading edge so it reads as
+   belonging to the row above it rather than as the next member in the list.
+*/
+
+.mb__step {
+  display: flex;
+  flex: 1 1 100%;
+  flex-direction: column;
+  gap: 8px;
+  margin: 2px 0 8px;
+  padding: 10px 12px;
+  border-inline-start: 2px solid var(--gx-line-2);
+  border-radius: 0 8px 8px 0;
+  background: var(--gx-surface-1, rgb(0 0 0 / 20%));
+}
+
+.mb__step-head {
+  margin: 0;
+  color: var(--gx-ink);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.mb__step-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+/* The counts. A number and the thing it counts, never a number alone — and this list is simply
+   absent when the footprint could not be read, rather than drawn full of zeroes. */
+.mb__counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mb__count {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.mb__count-n {
+  color: var(--gx-ink);
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.mb__count-label {
+  color: var(--gx-ink-3);
+  font-size: 0.76rem;
+}
+
+/* What the removal does, and what survives it. Stated rather than implied by the numbers above:
+   a list of counts invites the reader to assume the counts are about to be destroyed. */
+.mb__effects {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  padding-inline-start: 1.1em;
+}
+
+.mb__effect {
+  color: var(--gx-ink-2);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}

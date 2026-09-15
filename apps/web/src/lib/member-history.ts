@@ -16,6 +16,13 @@
  *   states for consequences we cannot read.
  */
 
+/**
+ * Mirrors EVENT_REASON_MAX in apps/worker/src/membership.ts, which is also the CHECK constraint on
+ * `project_members.suspended_reason`. The route truncates at it silently, so a box that accepts
+ * more loses the end of what somebody wrote — usually the half that says what to do about it.
+ */
+export const MEMBER_REASON_MAX = 500;
+
 export function unauditedNote(res: unknown): string | null {
   if (!res || typeof res !== 'object') return null;
   const audited = (res as { audited?: unknown }).audited;
