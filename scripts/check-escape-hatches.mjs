@@ -331,7 +331,21 @@ for (const rel of examined) {
 // because they produced false positives at LINE granularity; the sentence-plus-work-verb rule
 // below is what makes them safe to carry, and a refuter demonstrated three real deferrals that
 // passed while they were missing — "Wire the payout route after the key rotation" among them.
-const DEFERRAL = /\b(will|pending|next pass|later|once|after|gated on|parked|carried|deferred|to be done|TODO)\b/i;
+// `once` and `after` are WEAK: unlike the others they are as common in narrative as in
+// commitments. "once the plugin ships, wire the panel" is a deferral; "the check after that fix
+// still showed the old bytes" is a measurement someone already took. Both put a temporal word and
+// a work verb in one sentence, which is all the co-occurrence rule below can see.
+//
+// Splitting them out rather than deleting them: dropping `once` entirely would miss a real
+// deferral that carries no stronger marker, and this file has already been narrowed once by
+// deleting a pattern that turned out to be doing work.
+const DEFERRAL_STRONG = /\b(will|pending|next pass|later|gated on|parked|carried|deferred|to be done|TODO)\b/i;
+const DEFERRAL_WEAK = /\b(once|after)\b/i;
+const DEFERRAL = new RegExp(`${DEFERRAL_STRONG.source}|${DEFERRAL_WEAK.source}`, 'i');
+// A sentence reporting what HAPPENED is a narrative, not a commitment to unowned future work. This
+// only rescues sentences whose sole deferral marker is weak — a `TODO` or a `will` in past-tense
+// prose is still a deferral, and should still be caught.
+const PAST_TENSE = /\b(was|were|had|did|showed|said|found|turned out|landed|shipped|failed|passed|caught|ran|wrote|became|went|came|gave|took|made|saw|left|reported|printed|returned|served)\b/i;
 const WORK_VERB = /\b(add|fix|build|write|implement|ship|close|land|wire|deploy|do|update|create|finish|revisit|handle)\b/i;
 const ROW_ID = /\b(w\d+|G[\w-]+|F-[A-Za-z0-9-]+|OH-\d+|S\d+|§\d)/;
 
@@ -350,6 +364,8 @@ for (const rel of ['docs/PASS-LOG.md', 'GATES.md', 'WORKLIST.md', 'docs/MISSION-
     for (const sentence of line.split(/(?<=[.;!?])\s+|\s\|\s/)) {
       if (!DEFERRAL.test(sentence) || !WORK_VERB.test(sentence)) continue;
       if (ROW_ID.test(sentence)) continue;
+      // Weak marker + past tense = someone describing what they measured, not promising anything.
+      if (!DEFERRAL_STRONG.test(sentence) && PAST_TENSE.test(sentence)) continue;
       fail('a deferral with no row id', `${rel}:${i + 1}`, `nothing tracks this: ${sentence.trim().slice(0, 80)}`);
       break;
     }
