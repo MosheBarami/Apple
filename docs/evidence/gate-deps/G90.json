@@ -229,6 +229,7 @@
   "scripts/gate-check.mjs",
   "scripts/gate-suite.mjs",
   "scripts/lib/offer-rules.mjs",
+  "scripts/lib/tree-fingerprint.mjs",
   "tests/check-backlog.test.mjs",
   "tests/check-deadends.test.mjs",
   "tests/check-dispositions.test.mjs",
@@ -237,5 +238,6 @@
   "tests/check-pixels.test.mjs",
   "tests/gate-check.test.mjs",
   "tests/pixel-primitives.test.mjs",
+  "tests/tree-fingerprint.test.mjs",
   "tests/workspace-coverage.test.mjs"
 ]
