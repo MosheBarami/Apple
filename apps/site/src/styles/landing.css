@@ -153,17 +153,17 @@
 
   /* --- the motion budget, in one place ----------------------------------
      Primes, so the arrangement never resolves into a loop a reader can catch:
-     LCM(43, 79, 62) is 210,854s, a little over 58 hours. `alternate` is what
-     doubles the bloom's 31s into a real 62s period, so somebody present for
-     thirty seconds never sees it return to where it started. */
-  --dur-bloom: 31s;
-  --dur-studs: 43s;
-  --dur-catch: 79s;
+     LCM(79, 62) is 4,898s, about 82 minutes. `alternate` is what doubles the
+     bloom's 31s into a real 62s period, so somebody present for thirty seconds
+     never sees it return to where it started.
 
-  /* The plate is at full strength across the top of the hero and gone by the
-     time the copy ends. 46% held it at full strength straight through the
-     headline; 32% puts the falloff where the reader starts reading. */
-  --field-mask: radial-gradient(128% 96% at 50% 0%, #000 0%, #000 32%, transparent 88%);
+     There were three. --dur-studs drove the plate's drift and went with it; the
+     guard that reports a declared token nothing reads is what caught it still
+     sitting here, along with --field-mask, which masked a plate that no longer
+     exists. Both deleted rather than kept "in case" — a value nothing reads is
+     not a setting, it is a claim that something is configurable. */
+  --dur-bloom: 31s;
+  --dur-catch: 79s;
 }
 
 /* THE SYSTEM-DARK OVERRIDE. `:not([data-theme='light'])` is load-bearing: it
