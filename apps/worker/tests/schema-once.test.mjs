@@ -88,6 +88,53 @@ test('one store’s run does not silence another’s', async () => {
   assert.deepEqual(runs, { assets: 1, static: 1, memory: 1 });
 });
 
+test('the happy path issues NO schema work at all', async () => {
+  // The memo is per-isolate, and a site deploy is one POST per file spread across many fresh
+  // isolates — so almost every request ran the DDL anyway, and under a concurrent bulk ingest D1
+  // answered "is overloaded. Requests queued for too long." on the first `create table`, before a
+  // byte was stored. withSchema inverts it: do the work, and build the schema only if SQLite says
+  // it is missing.
+  let created = 0;
+  const r = await S.withSchema(async () => 'stored', async () => { created++; });
+  assert.equal(r, 'stored');
+  assert.equal(created, 0, 'a working store must not be asked to prove it exists');
+});
+
+test('a missing table is built once and the work retried', async () => {
+  let created = 0;
+  let calls = 0;
+  const run = async () => {
+    calls++;
+    if (calls === 1) throw new Error('D1_ERROR: no such table: static_assets');
+    return 'stored';
+  };
+  assert.equal(await S.withSchema(run, async () => { created++; }), 'stored');
+  assert.equal(created, 1);
+  assert.equal(calls, 2);
+});
+
+test('an overloaded database is NOT answered with more DDL', async () => {
+  //[[ THE WHOLE POINT, AND THE EASY THING TO GET WRONG.
+  //
+  //   "D1 DB is overloaded. Requests queued for too long." and "exceeded its CPU time limit and
+  //   was reset" are not missing-table errors. Treating any failure as "maybe the schema is gone"
+  //   would hand a struggling database a fresh pile of DDL at the moment it has least room —
+  //   which is the outage this file exists for, arrived at from the other direction. ]]
+  for (const msg of [
+    'D1_ERROR: D1 DB is overloaded. Requests queued for too long.',
+    'D1_EXEC_ERROR: D1 DB exceeded its CPU time limit and was reset.',
+    'Network connection lost.',
+  ]) {
+    let created = 0;
+    await assert.rejects(
+      () => S.withSchema(async () => { throw new Error(msg); }, async () => { created++; }),
+      (e) => e.message === msg,
+      msg,
+    );
+    assert.equal(created, 0, `"${msg}" must not trigger schema creation`);
+  }
+});
+
 test('every store that asserts a schema goes through it', async () => {
   //[[ THE CHECK THAT STOPS THIS GOING STALE.
   //

@@ -193,6 +193,7 @@ import {
 } from './public-api';
 import type { RenderViewResult, OpResult, StudioOp, PairingCodeDto, StudioLinkSummary } from '@golem/shared';
 import { isPlanId, PLAN_IDS, PRICE_CURRENCY, type PlanId } from '@golem/shared';
+import { withSchema } from './schema-once';
 
 export { SessionDO } from './do/session';
 export { QuotaDO } from './do/quota';
@@ -2769,8 +2770,14 @@ app.post('/api/admin/static-upload', async (c) => {
     append?: boolean;
   }>();
   if (!path?.startsWith('/')) return c.json({ error: 'path must start with /' }, 400);
-  await ensureStaticTables(c.env);
   const bytes = Uint8Array.from(atob(b64), (ch) => ch.charCodeAt(0));
+  //[[ NO DDL ON THE HAPPY PATH. A deploy is one POST per file and each lands on a different
+  //   isolate, so `ensureStaticTables` ran its whole list on very nearly every request — and under
+  //   a concurrent bulk ingest D1 answered "is overloaded. Requests queued for too long." on the
+  //   first `create table if not exists`, before a single byte was stored. The tables have existed
+  //   since the first deploy; the work now simply runs, and the schema is built only if SQLite
+  //   itself says it is missing. ]]
+  return await withSchema(async () => {
   let idx = 0;
   if (append) {
     const row = await c.env.CORPUS.prepare(`select n_chunks from static_assets where path = ?`).bind(path).first<{ n_chunks: number }>();
@@ -2788,6 +2795,7 @@ app.post('/api/admin/static-upload', async (c) => {
   // bust edge cache for this path
   await caches.default.delete(new Request(`https://static-cache${path}`)).catch(() => {});
   return c.json({ ok: true, path, chunks: idx + 1, bytes: bytes.length });
+  }, () => ensureStaticTables(c.env));
 });
 
 app.get('/api/admin/static-list', async (c) => {

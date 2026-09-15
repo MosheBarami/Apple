@@ -62,3 +62,36 @@ export function resetSchemaOnce(key?: string): void {
   if (key === undefined) running.clear();
   else running.delete(key);
 }
+
+/**
+ * Do the work; make the schema only if the work says it is missing.
+ *
+ * WHY THE MEMO ABOVE IS NOT ENOUGH ON ITS OWN. `oncePerIsolate` remembers within ONE isolate, and
+ * a burst of small requests is spread across many fresh ones — a site deploy is one POST per file,
+ * so almost every one landed on an isolate that had never run the DDL and ran it again. The memo
+ * removes the repetition inside a warm isolate and does nothing for the case that matters most.
+ *
+ * So the happy path issues no DDL at all. SQLite says `no such table: X` and says it precisely,
+ * which makes "the schema is missing" a fact the database reports rather than one we check for in
+ * advance on every call. The creation still goes through `oncePerIsolate`, so a cold isolate
+ * handling several concurrent requests builds it once.
+ *
+ * ONLY that error triggers a rebuild. "D1 DB is overloaded" and "exceeded its CPU time limit" are
+ * NOT missing-table errors, and answering them by issuing DDL is how a loaded database gets more
+ * work at the moment it has least room — which is the outage this whole file is about, arrived at
+ * from the other direction.
+ */
+export async function withSchema<T>(run: () => Promise<T>, create: () => Promise<void>): Promise<T> {
+  try {
+    return await run();
+  } catch (e) {
+    if (!isMissingTable(e)) throw e;
+    await create();
+    return await run();
+  }
+}
+
+/** SQLite's own words for it, through D1's wrapper. Nothing else counts. */
+export function isMissingTable(e: unknown): boolean {
+  return /no such table|no such column|no such index/i.test(String((e as Error)?.message ?? e));
+}
