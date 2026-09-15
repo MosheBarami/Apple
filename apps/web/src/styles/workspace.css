@@ -266,6 +266,19 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Why a pinned conversation sits above newer ones. Quiet — it marks the row, it does not compete
+   with the name for it. */
+.gx-conv__pin {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  color: var(--gx-ink-3);
+}
+
+.gx-conv.is-active .gx-conv__pin {
+  color: inherit;
+}
+
 .gx-conv:hover {
   background: rgba(245, 242, 236, 0.04);
   color: var(--gx-ink);

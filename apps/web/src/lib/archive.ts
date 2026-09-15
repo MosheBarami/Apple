@@ -11,7 +11,7 @@
 
 /** Selected columns, shared so the two list queries cannot drift apart. */
 export const PROJECT_COLUMNS =
-  'id, owner_id, name, description, place_name, place_id, memory_summary, created_at, updated_at, last_activity_at, archived_at';
+  'id, owner_id, name, description, place_name, place_id, memory_summary, created_at, updated_at, last_activity_at, archived_at, pinned_at';
 
 export type ProjectScope = 'active' | 'archived';
 

@@ -35,6 +35,13 @@ export interface ProjectRow {
   last_activity_at: string | null;
   /** Null while the project is active. Set when it is archived — see lib/archive.ts. */
   archived_at?: string | null;
+  /**
+   * Null unless the user pinned this project to the top of both lists.
+   *
+   * A timestamp rather than a flag so several pins sort among themselves by when they were pinned
+   * — see infra/supabase/migrations/0007_project_pinning.sql.
+   */
+  pinned_at?: string | null;
 }
 
 /** Current access token, refreshed by supabase-js when expired. */

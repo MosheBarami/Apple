@@ -1300,6 +1300,20 @@ textarea {
   font-size: 1.02rem;
   margin: 0;
   overflow-wrap: anywhere;
+  /* Takes the slack so the menu stays hard right once a pin marker joins the row. `space-between`
+     alone would centre the name between the two of them. */
+  flex: 1;
+  min-width: 0;
+}
+
+/* The pin marker leads the name rather than sitting in a corner of the card: it is a fact about
+   this project's place in the list, and the eye reads it on the way into the title. */
+.project-card-pin {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.2rem;
+  color: var(--accent);
 }
 
 .project-card-desc {

@@ -35,13 +35,25 @@ async function fetchProjects(scope: ProjectScope = 'active'): Promise<ProjectRow
   const q = supabase.from('projects').select(PROJECT_COLUMNS);
   const { data, error } =
     scope === 'active'
-      ? await q.is('archived_at', null).order('updated_at', { ascending: false })
+      ? // PINNED FIRST, AND WHY `nullsFirst: false` IS LOAD-BEARING.
+        // Postgres sorts `desc` NULLS FIRST by default, so the obvious ordering puts every
+        // unpinned project ABOVE every pinned one. The result still contains the pinned project,
+        // just in the wrong half of a long list, so it reads as a feature that does not work
+        // rather than one that is absent.
+        //
+        // The archived list is deliberately NOT reordered by pins: it is ordered by when a project
+        // was put away, which is what someone hunting for the thing they just archived is scanning
+        // for.
+        await q
+          .is('archived_at', null)
+          .order('pinned_at', { ascending: false, nullsFirst: false })
+          .order('updated_at', { ascending: false })
       : await q.not('archived_at', 'is', null).order('archived_at', { ascending: false });
   if (error) throw new Error(error.message);
   return (data ?? []) as ProjectRow[];
 }
 
-function ProjectMenu({ onDelete, onExport, onRename, onArchive, archived }: { onDelete: () => void; onExport: (format: 'md' | 'json') => void; onRename: () => void; onArchive: () => void; archived: boolean }) {
+function ProjectMenu({ onDelete, onExport, onRename, onArchive, onPin, archived, pinned }: { onDelete: () => void; onExport: (format: 'md' | 'json') => void; onRename: () => void; onArchive: () => void; onPin: () => void; archived: boolean; pinned: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -96,6 +108,23 @@ function ProjectMenu({ onDelete, onExport, onRename, onArchive, archived }: { on
           >
             Rename…
           </button>
+          {/* Not offered on an archived project: pinning something to the top of a list it is not
+              in is a control that reports success and changes nothing on screen. */}
+          {!archived && (
+            <button
+              type="button"
+              role="menuitem"
+              className="menu-item"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setOpen(false);
+                onPin();
+              }}
+            >
+              {pinned ? 'Unpin' : 'Pin to top'}
+            </button>
+          )}
           <button
             type="button"
             role="menuitem"
@@ -375,6 +404,30 @@ export function DashboardPage() {
     if (shown !== scope) setScope(shown);
   }, [scope, archivedCount, setScope]);
 
+  /*
+   * Pinning. Reversible from the same menu item that set it, so it gets no dialog and no undo
+   * toast — the toast would be an extra way to do what the menu already does in one click.
+   *
+   * It invalidates all three list caches even though a pinned project cannot be archived: the row
+   * moves WITHIN the active list and WITHIN the sidebar, and the sidebar is a separate query that
+   * would otherwise keep showing the old order until its staleTime expired.
+   */
+  const setPinned = useMutation({
+    mutationFn: async ({ project, pin }: { project: ProjectRow; pin: boolean }) => {
+      const { error } = await supabase
+        .from('projects')
+        .update({ pinned_at: pin ? new Date().toISOString() : null })
+        .eq('id', project.id);
+      if (error) throw new Error(error.message);
+      return { project, pin };
+    },
+    onSuccess: ({ project, pin }) => {
+      for (const key of PROJECT_LIST_KEYS) void qc.invalidateQueries({ queryKey: key });
+      toast(pin ? `"${project.name}" pinned to the top` : `"${project.name}" unpinned`, 'success');
+    },
+    onError: (e: Error) => toast(`Could not pin: ${e.message}`, 'error'),
+  });
+
   const setArchived = useMutation({
     mutationFn: async ({ project, archive }: { project: ProjectRow; archive: boolean }) => {
       const { error } = await supabase
@@ -541,6 +594,16 @@ export function DashboardPage() {
           {projects.data.map((p) => (
             <Link key={p.id} to={`/projects/${p.id}`} className="project-card">
               <div className="project-card-top">
+                {/* The pin is drawn on the card, not only in the menu. Without it the top card is
+                    simply somewhere the user did not put it, and the only way to find out why is
+                    to open a menu they have no reason to open. */}
+                {p.pinned_at && (
+                  <span className="project-card-pin" aria-label="Pinned" title="Pinned to the top">
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                      <path d="M9.6 1.2 14.8 6.4l-1.1 1.1-1.2-.3-2.6 2.6.2 2.3-1.1 1.1-3-3-3.3 3.3-.8-.8L5.2 9.4l-3-3L3.3 5.3l2.3.2 2.6-2.6-.3-1.2z" />
+                    </svg>
+                  </span>
+                )}
                 {/* A project name is the user's string, not ours. */}
                 <h2 className="project-card-name" dir="auto">{p.name}</h2>
                 <ProjectMenu
@@ -548,7 +611,9 @@ export function DashboardPage() {
                   onExport={(f) => void runExport(p, f)}
                   onRename={() => setRenaming(p)}
                   onArchive={() => setArchived.mutate({ project: p, archive: !p.archived_at })}
+                  onPin={() => setPinned.mutate({ project: p, pin: !p.pinned_at })}
                   archived={Boolean(p.archived_at)}
+                  pinned={Boolean(p.pinned_at)}
                 />
               </div>
               <p className="project-card-desc">
