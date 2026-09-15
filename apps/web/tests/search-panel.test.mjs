@@ -288,16 +288,30 @@ test('“closed” and “a name this build does not know” are different store
   // Storing the empty string for closed would collapse them, and the validation that makes
   // restoring safe would have nothing left to distinguish.
   //
-  // Held as a PROPERTY rather than as a copy of the literal. Pinning the exact array made every
-  // new drawer a failure of this test, which says nothing about search and nothing about the
-  // distinction above — and a test that goes red for the wrong reason is one people edit without
-  // reading. What matters is that 'none' is a NAME, and that every drawer the build has is in the
-  // validated list: one that is missing restores as closed and never reopens.
-  const list = WSCODE.match(/const DRAWERS = \[([^\]]*)\] as const/);
-  assert.ok(list, 'the validated list must still exist');
-  const names = [...list[1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
-  assert.ok(names.includes('none'), 'closed is stored as a name, not as an empty string');
+  // Asserted as the PROPERTY rather than as the literal list it used to be: pinning the exact
+  // five names made adding a sixth drawer fail this test for a reason that has nothing to do with
+  // what it is guarding, and the cheapest way past that failure is to paste the new list in, which
+  // teaches nobody anything. What must hold is that 'none' is a real name in the list, that no
+  // name is blank, and that the runtime list and the type union describe the same set — a drawer
+  // in one and not the other is either a state that cannot be restored or a name that restores to
+  // nothing, i.e. a drawer that comes back closed for ever.
+  const list = /const DRAWERS = \[([^\]]+)\] as const/.exec(WSCODE);
+  assert.ok(list, 'the DRAWERS list is gone');
+  const names = [...list[1].matchAll(/'([^']*)'/g)].map((m) => m[1]);
+  assert.ok(names.includes('none'), "'none' is not a stored name, so closed has no name of its own");
+  assert.ok(!names.includes(''), 'the empty string is a drawer name, which collapses closed and unknown');
 
+  const union = /type DrawerName = ([^;]+);/.exec(WSCODE);
+  assert.ok(union, 'the DrawerName union is gone');
+  const declared = [...union[1].matchAll(/'([^']*)'/g)].map((m) => m[1]);
+  // Set equality, not containment: it catches the drawer that can be stored but not restored AND
+  // the name that restores to nothing, which is the pair of failures this guard exists for.
+  assert.deepEqual([...names].sort(), [...declared].sort(), 'DRAWERS and DrawerName disagree');
+
+  // Three declarations have to agree, not two. DrawerName is what gets STORED; Drawer is what the
+  // component actually switches on, and it is the one a new drawer gets added to first. A name in
+  // Drawer that never reached DRAWERS is validated away on restore, so that drawer comes back
+  // closed for ever and looks like a user who simply never opened it.
   const type = WSCODE.match(/type Drawer = null \| ([^;]+);/);
   assert.ok(type, 'the drawer union must still be spelled out');
   for (const d of [...type[1].matchAll(/'([^']+)'/g)].map((m) => m[1])) {

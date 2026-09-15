@@ -373,7 +373,17 @@ export const REAUTH_WINDOW_MS = 10 * 60_000;
  * can need both — settings reset asks for a confirmation AND for a password — and each answers a
  * question the other cannot.
  */
-export const SENSITIVE_ACTIONS = ['change-email', 'change-password', 'sign-out-everywhere', 'reset-settings'] as const;
+export const SENSITIVE_ACTIONS = [
+  'change-email',
+  'change-password',
+  // Turning the second factor OFF is the takeover the second factor exists to stop: whoever sits
+  // down at an unlocked screen would otherwise remove it in one click and leave the password as the
+  // only thing between them and the account. Enrolling is NOT on this list — adding a defence needs
+  // no ceremony, and Supabase requires the current code to finish it anyway.
+  'remove-two-step',
+  'sign-out-everywhere',
+  'reset-settings',
+] as const;
 export type SensitiveAction = (typeof SENSITIVE_ACTIONS)[number];
 
 export const isSensitiveAction = (v: unknown): v is SensitiveAction =>

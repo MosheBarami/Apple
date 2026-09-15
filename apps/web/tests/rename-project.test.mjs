@@ -56,7 +56,12 @@ test('all three caches holding the name are invalidated', () => {
 test('the rename goes to Supabase under RLS, not through a worker route', () => {
   // withOwnedProject posts the current name to the DO's /init on every request, so the session
   // picks it up on its next call. A route would be a second place the name could be wrong.
-  assert.match(HOOK, /supabase\s*\.from\('projects'\)\s*\.update\(\{ name: next \}\)\s*\.eq\('id', projectId\)/);
+  //
+  // The update takes a computed PATCH now rather than a literal `{ name }` — the same hook carries
+  // the description, and edit-project.test.mjs holds the patch rule. What matters here is unchanged
+  // and is asserted as the property rather than as the old spelling: one Supabase update, scoped to
+  // this row, and no HTTP anywhere in the path.
+  assert.match(HOOK, /supabase\.from\('projects'\)\.update\(\w+\)\.eq\('id', projectId\)/);
   assert.equal(/fetch\(|\/api\//.test(HOOK), false, 'no HTTP call belongs in the rename path');
 });
 
@@ -94,7 +99,7 @@ test('an external rename does not clobber an edit in progress', () => {
 });
 
 test('the editor commits through the shared hook, not its own write', () => {
-  assert.match(TITLE, /useRenameProject/);
+  assert.match(TITLE, /useEditProject/);
   assert.match(TITLE, /isRenameWorthwhile/);
   assert.equal(/supabase/.test(TITLE), false, 'one rename implementation, not two');
 });
@@ -104,9 +109,11 @@ test('the editor commits through the shared hook, not its own write', () => {
 const DASH = readFileSync(join(WEB, 'src', 'routes', 'dashboard.tsx'), 'utf8');
 const WS = readFileSync(join(WEB, 'src', 'routes', 'workspace.tsx'), 'utf8');
 
-test('the dashboard menu offers rename and uses the shared hook', () => {
-  assert.match(DASH, /Rename…/);
-  assert.match(DASH, /useRenameProject\(project\.id, project\.name/);
+test('the dashboard menu offers the edit and uses the shared hook', () => {
+  // The item said "Rename…" while the dialog behind it could only rename. It edits the description
+  // too now, so the menu says what the dialog does.
+  assert.match(DASH, /Edit…/);
+  assert.match(DASH, /useEditProject\(project\.id, \{ name: project\.name/);
   assert.equal(/\.update\(\{ name/.test(DASH), false, 'the dashboard must not write the name itself');
 });
 

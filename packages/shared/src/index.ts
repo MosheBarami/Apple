@@ -432,7 +432,12 @@ export type ClientMsg =
   | { type: 'edit_resend'; messageId: string; text: string; mode: GolemMode }
   | { type: 'stop' } // interrupt agent
   | { type: 'resume' }
-  | { type: 'checkpoint_create'; label: string }
+  /**
+   * `description` is what the snapshot CONTAINS or why it was taken, in the user's own words.
+   * Optional: the label alone is still a valid checkpoint, and a required field on a save people
+   * take mid-thought would be a tax on the habit this feature depends on.
+   */
+  | { type: 'checkpoint_create'; label: string; description?: string }
   | { type: 'checkpoint_restore'; checkpointId: string }
   /**
    * "I am still here, and this is what I am doing."
@@ -526,6 +531,11 @@ export function phaseForTool(tool: string): AgentPhase {
     // is rasterising the Roblox scene — a different machine doing a different thing.
     case 'screenshot_page':
       return 'inspecting';
+    // Announcing the plan is not doing the work. This tool runs before anything in the project
+    // moves, so the one phase it must never fall through to is the `default` below — 'building'
+    // would have the workspace claim the place is being changed at the exact moment it is not.
+    case 'propose_plan':
+      return 'planning';
     // Writing a file into Golem's own store, which is what `remembering` already covers: it is
     // the phase for durable state that belongs to Golem rather than to the place. `building`
     // would say the agent changed the game, and it did not touch it.
@@ -608,13 +618,40 @@ export interface RunIntent {
   summary: string;
   /**
    * The concrete things the request named by hand — "bar counter", "stools",
-   * "warm interior lighting". The build is checked against this list, so it is
-   * the honest content of a "Plan" row: not a predicted sequence of steps, but
-   * the set of things that must exist when the run is done.
+   * "warm interior lighting". It is the honest content of a "Plan" row: not a
+   * predicted sequence of steps, but the set of things the user asked for by
+   * name, extracted from their own words at zero model cost.
+   *
+   * THIS LIST IS DISPLAYED. IT IS NOT VERIFIED. This comment used to assert
+   * the opposite, and nothing backed it: grep the worker and the checklist is
+   * built (semantic.ts), trimmed (run-intent.ts) and broadcast
+   * (do/session.ts), and never read back after the run. The only
+   * post-build check in the loop is `semanticCheck`, which measures geometry
+   * and never looks at this list. It is not even handed to the model.
+   *
+   * Corrected rather than left, because a comment describing a verification
+   * that does not happen is the same failure as a UI string describing one —
+   * it just misleads the next engineer instead of the user.
+   * `apps/worker/tests/intent-checklist-claim.test.mjs` holds the sentence to
+   * the code: implement a consumer that reads the checklist back, and the
+   * guard lets the stronger claim return.
    */
   checklist: string[];
   /** Where the request genuinely did not say. Surfaced rather than assumed. */
   questions: string[];
+  /**
+   * Where the request did not say and Apple DECIDED ANYWAY — a mood read off "cozy", a focal
+   * point nobody named outright.
+   *
+   * The opposite of `questions`, and kept apart from it for that reason: a question is still
+   * open, an assumption has already been acted on and is steering the build right now. A product
+   * that shows only the questions is reporting the choices it declined to make and hiding the
+   * ones it made.
+   *
+   * Optional on the wire because a client can be replaying a `run_intent` frame recorded by an
+   * older worker, and an absent list is not an empty one.
+   */
+  assumptions?: string[];
 }
 
 /**
@@ -908,6 +945,33 @@ export type ServerMsg =
     }
   | { type: 'quota'; quota: QuotaState }
   | { type: 'checkpoint'; checkpoint: CheckpointMeta }
+  /**
+   * A RESTORE, WHILE IT IS HAPPENING AND WHEN IT IS OVER.
+   *
+   * There was no restore counterpart to `checkpoint` above. The worker issued one opaque op with a
+   * 120s ceiling, broadcast nothing while it ran, and broadcast only on failure when it ended — so
+   * the person who pressed Restore watched the drawer close and then had no signal at all, for up
+   * to two minutes, about the operation that was at that moment deleting and rebuilding their
+   * place. Modelled on `playtest_state`, which already streams its phases for the same reason.
+   *
+   * `fidelity` is the plugin's own count of what it put back, and it travels on the DONE frame as
+   * well as the FAILED one: a restore that recreated every instance but could not set 40
+   * properties is a success the user has to be told about, and that report reached the HTTP caller
+   * and the SDK while the browser — the only caller with a human attached — got nothing.
+   *
+   * `note` is a caveat on a SUCCEEDED restore (properties failed, or the plugin is too old to
+   * report and the result is therefore unverified); `error` is why a restore did not succeed. They
+   * are separate fields because "it worked, with a caveat" and "it did not work" must never render
+   * as the same sentence.
+   */
+  | {
+      type: 'restore_status';
+      checkpointId: string;
+      phase: 'reading' | 'applying' | 'verifying' | 'done' | 'failed';
+      fidelity?: RestoreFidelity;
+      note?: string;
+      error?: string;
+    }
   | { type: 'studio_log'; entries: StudioEventLog[] }
   // Sent in reply to `resume`, and unprompted on connect when a run is live.
   | { type: 'run_state'; run: RunSnapshot | null }
@@ -969,6 +1033,39 @@ export interface CheckpointMeta {
   scriptCount: number;
   instanceCount: number;
   sizeBytes: number;
+  /**
+   * What this snapshot contains or why it was taken, or null when nobody wrote one.
+   *
+   * The only authored text on a checkpoint was a 60-character label. Everything else the drawer
+   * showed — the timestamp, the object count, the script count — is derived metadata that says
+   * nothing about what is inside. And every automatic checkpoint carries the same label, so a list
+   * of them was a column of identical rows that a person restoring had to choose between by time.
+   */
+  description?: string | null;
+  /**
+   * The person who asked for it, or null.
+   *
+   * Null means two different true things and neither of them is "you": Apple took this one itself
+   * (`auto`, `pre_agent`), or the row predates the column. It was inferred from `kind` before this
+   * field existed, which told every member of a shared project that a teammate's checkpoint was
+   * theirs — on exactly the row a restore is about to be argued over.
+   */
+  authorId?: string | null;
+}
+
+/**
+ * What the plugin reports it ACTUALLY put back, counted inside Studio.
+ *
+ * Absent — not zeroed — when the op never reached Studio at all: zeros would say "it restored
+ * nothing", which is a claim about the place, and we would not have looked.
+ */
+export interface RestoreFidelity {
+  instancesCreated: number;
+  scriptsRestored: number;
+  scriptsExpected: number;
+  failedInstances: number;
+  failedScripts: number;
+  failedProperties: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -1105,6 +1202,41 @@ export const MODE_INFO: Record<GolemMode, { name: string; blurb: string; typical
   stone: { name: 'Stone', blurb: 'Builds features across your project', typicalCredits: '4-18' },
   rune: { name: 'Rune', blurb: 'Plans, builds, tests and fixes autonomously', typicalCredits: '10-30' },
 };
+
+/**
+ * WHAT A PIECE OF WORK COSTS, WHEN IT TAKES MORE THAN ONE RUN.
+ *
+ * `typicalCredits` above is per RUN. A roadmap milestone is sized in runs — "about two Agent
+ * runs" — so the card said how much work it was in a unit nobody is billed in, while the number
+ * that would answer "what will this cost me" sat two clicks away in the composer, unmultiplied.
+ *
+ * The multiplication is the whole value. With `runs` varying across the catalogue, a two-run
+ * Super Agent milestone is 20-60 Credits where the mode's own line reads 10-30; reprinting the
+ * mode range on the card would have understated half the catalogue by a factor of two.
+ *
+ * It PARSES `typicalCredits` rather than keeping its own table, so there is exactly one place a
+ * price is written down. A second copy of a price is a second copy free to drift, which is the
+ * defect scripts/check-credit-figures.mjs exists because of — that number had drifted in three
+ * places inside one component.
+ *
+ * Returns a RANGE even when the published figure is a single number ("2" -> 2-2). It never
+ * collapses a spread to one number: the measurements behind docs/COST-MODEL.md do not support
+ * that precision, and a single figure would read as a quote.
+ *
+ * `null` for a run count that is not a positive whole number — an unreadable input produces no
+ * figure rather than a wrong one, because a wrong price is worse than a missing one.
+ */
+export function creditRangeForRuns(mode: GolemMode, runs: number): { low: number; high: number } | null {
+  if (!Number.isInteger(runs) || runs < 1) return null;
+  const published = MODE_INFO[mode]?.typicalCredits;
+  if (!published) return null;
+  const parts = published.split('-').map((p) => Number(p.trim()));
+  if (parts.length < 1 || parts.length > 2 || parts.some((n) => !Number.isFinite(n) || n <= 0)) return null;
+  const low = parts[0]!;
+  const high = parts.length === 2 ? parts[1]! : low;
+  if (high < low) return null;
+  return { low: low * runs, high: high * runs };
+}
 
 // ---------------------------------------------------------------------------
 // Product modes — the only mode concept the product surfaces
