@@ -234,9 +234,18 @@ export interface Outcome {
   reply?: { applicationId: string; token: string };
 }
 
+/**
+ * The only instruction an unlinked user ever gets — and it describes a screen that lives in another
+ * app. Every bolded word is something the reader will hunt for by that exact name, so
+ * discord-commands.test.mjs checks each one against the settings screen's own source. It used to
+ * say "open your project and click Connect Discord": there is no such button, and never was. The
+ * control is in Settings, not on a project, and it is called "Get a code". A message naming a
+ * button nobody can find is indistinguishable, from the user's side, from a bot that is broken.
+ */
 const NOT_LINKED =
   'This Discord account is not connected to Apple yet.\n' +
-  'Open your project in Apple, click **Connect Discord**, and run `/link` with the code it gives you.';
+  'In Apple, open **Settings** → **Connections** → **Discord**, choose your project and press ' +
+  '**Get a code**. Then run `/link` here with the code it shows. Codes last 10 minutes.';
 
 export async function handleInteraction(raw: unknown, ports: DiscordPorts): Promise<Outcome> {
   const i = (raw ?? {}) as Interaction;
@@ -329,12 +338,22 @@ export async function handleInteraction(raw: unknown, ports: DiscordPorts): Prom
       deferred: async (edit) => {
         // Refused BEFORE a Credit is spent rather than after: a build with no Studio attached burns
         // the allowance producing changes that have nowhere to land.
+        // A null health is a FAILURE TO LOOK, and `health && …` quietly promotes it to consent:
+        // both refusals below are skipped and the run starts anyway — with no Studio to land in,
+        // or on top of a live run — having spent the Credit either way. /status already draws this
+        // distinction; it matters more here, where being wrong costs money rather than a sentence.
         const health = await ports.projectHealth(link.projectId);
-        if (health && !health.pluginConnected) {
+        if (!health) {
+          await edit(
+            `**${link.projectName}** — Apple could not reach this project, so it cannot tell whether Studio is attached or whether a build is already running. Nothing was started.\nTry again in a moment: ${ports.projectUrl(link.projectId)}`,
+          );
+          return;
+        }
+        if (!health.pluginConnected) {
           await edit(`**${link.projectName}** — Roblox Studio is not connected, so there is nothing to build into.\nOpen Studio with the Apple plugin, then try again.`);
           return;
         }
-        if (health && health.agentStatus === 'running') {
+        if (health.agentStatus === 'running') {
           await edit(`**${link.projectName}** is already building. \`/status\` will tell you how far along it is.`);
           return;
         }
