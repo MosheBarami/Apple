@@ -283,31 +283,56 @@ export async function importPending(env: ImportEnv, limit: number, source?: stri
  * owner's account with nothing in the library pointing at it — the same orphan the import path
  * goes out of its way to avoid, produced by the code meant to clean up.
  */
-export async function unimportAssets(env: ImportEnv, limit: number): Promise<{
-  attempted: number; archived: number; failed: number; outcomes: ImportOutcome[];
+export async function unimportAssets(env: ImportEnv, limit: number, force = false): Promise<{
+  attempted: number; archived: number; unlinked: number; failed: number; outcomes: ImportOutcome[];
 }> {
   const rows = await env.CORPUS.prepare(
     `select id, roblox_asset_id from asset_library where roblox_asset_id is not null order by imported_at limit ?`,
   ).bind(Math.max(1, Math.min(limit, 25))).all<{ id: string; roblox_asset_id: number }>();
 
   const outcomes: ImportOutcome[] = [];
+  let archived = 0;
+  let unlinked = 0;
   for (const r of rows.results) {
     const res = await archiveAsset(env, r.roblox_asset_id);
-    if (!res.ok) {
+    //[[ ROBLOX WILL NOT TAKE AN IMAGE BACK. Measured, not assumed: the live API answers
+    //   400 INVALID_ARGUMENT "Asset <id> is not an archivable asset type" for every Image and
+    //   Decal this project uploaded. Archiving is for Models, Plugins and Audio.
+    //
+    //   That breaks the ordering rule this function was written with — clear the row only after
+    //   Roblox confirms — and the rule's REASON is what decides what to do instead. It existed to
+    //   avoid an orphan: a live asset with nothing pointing at it. Here the orphan is unavoidable,
+    //   because the platform will not accept the withdrawal. So `force` unlinks the row anyway and
+    //   SAYS the asset is still live, which is the honest answer: the product stops referencing
+    //   something the owner did not agree to, and nobody is told it was removed when it was not. ]]
+    if (!res.ok && !force) {
       outcomes.push({ id: r.id, ok: false, error: `archive failed (${res.status}): ${res.error}` });
       continue;
     }
     const [rec] = await pendingRowById(env, r.id);
-    if (!rec) { outcomes.push({ id: r.id, ok: false, error: 'archived on Roblox but the row vanished' }); continue; }
+    if (!rec) { outcomes.push({ id: r.id, ok: false, error: 'the row vanished mid-unimport' }); continue; }
     const cleared: AssetProvenance = { ...rec, robloxAssetId: null, importedAt: null, sha256: null };
     const w = await ingestAssets(env, { assets: [cleared], seed: true, status: 'pending_ingest' });
-    outcomes.push(w.written === 1
-      ? { id: r.id, ok: true }
-      : { id: r.id, ok: false, error: `archived ${r.roblox_asset_id} but the row would not clear: ${JSON.stringify(w.rejected)}` });
+    if (w.written !== 1) {
+      outcomes.push({ id: r.id, ok: false, error: `the row would not clear: ${JSON.stringify(w.rejected)}` });
+      continue;
+    }
+    if (res.ok) { archived++; outcomes.push({ id: r.id, ok: true }); }
+    else {
+      unlinked++;
+      outcomes.push({
+        id: r.id,
+        ok: true,
+        // Not an error — the unlink succeeded. It is the state of the REMOTE asset, recorded so a
+        // reader of these results never concludes the upload was undone.
+        error: `unlinked, but asset ${r.roblox_asset_id} is STILL LIVE on Roblox: ${res.error}`,
+      });
+    }
   }
   return {
     attempted: rows.results.length,
-    archived: outcomes.filter((o) => o.ok).length,
+    archived,
+    unlinked,
     failed: outcomes.filter((o) => !o.ok).length,
     outcomes,
   };

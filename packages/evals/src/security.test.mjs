@@ -58,14 +58,38 @@ function workerSourceFiles(dir = '') {
   return out;
 }
 
-/** Every `app.<verb>('<path>', …)` in index.ts, with the source that belongs to it. */
+/**
+ * Every `app.<verb>('<path>', …)` in index.ts, with THE HANDLER'S OWN SOURCE.
+ *
+ * It used to slice to the next route registration, which charges every top-level helper defined
+ * between two routes to the earlier one. `securityNotice` sits after `GET /api/admin/static-list`
+ * and carries `actorId: c.get('user')?.userId`, so a four-line handler that reads a table of
+ * static asset paths was reported as an admin route acting on a named user.
+ *
+ * A guard that names the wrong route is not evidence about that route, and the damage is not the
+ * false alarm. It is what the false alarm teaches: the next reader's move is to widen the pinned
+ * inventory to make the suite green, and a real cross-tenant route gets waved through in the same
+ * edit.
+ *
+ * A handler's own lines are all indented; the first column-0 line after the first ends it, and
+ * belongs to it only when it is that handler's own closing `});`.
+ */
 function routeBodies(src) {
   const routes = [...src.matchAll(/app\.(get|post|put|patch|delete)\('([^']+)'/g)].map((m) => ({
     method: m[1].toUpperCase(),
     path: m[2],
     at: m.index,
   }));
-  return routes.map((r, i) => ({ ...r, body: src.slice(r.at, routes[i + 1] ? routes[i + 1].at : src.length) }));
+  return routes.map((r, i) => {
+    const span = src.slice(r.at, routes[i + 1] ? routes[i + 1].at : src.length).split('\n');
+    let end = span.length;
+    for (let j = 1; j < span.length; j += 1) {
+      if (!/^\S/.test(span[j])) continue; // indented or blank — still inside the handler
+      end = /^\}\)/.test(span[j]) ? j + 1 : j; // the handler's own `});` belongs to it
+      break;
+    }
+    return { ...r, body: span.slice(0, end).join('\n') };
+  });
 }
 
 const TMP = mkdtempSync(join(tmpdir(), 'golem-security-'));
@@ -609,6 +633,21 @@ const LAYOUT_PARTS = [
   [-8, 2, -6, 3, 3, 2, 0], [7, 2, 5, 4, 3, 2, 0], [0, 20, 0, 6, 16, 6, 0],
 ];
 
+/**
+ * A script the code-intelligence tools can actually chew on: it parses, it declares a symbol at a
+ * known position (line 2, column 16 is `greet`), and its indentation is wrong — so `format_script`
+ * reaches its WRITE and emits the `code_diff` panel rather than returning "already formatted".
+ */
+const REVIEWABLE_LUAU = [
+  'local Players = game:GetService("Players")',
+  'local function greet(who)',
+  '    print("hello "..who.Name)',
+  'end',
+  'Players.PlayerAdded:Connect(function(p)',
+  'greet(p)',
+  '  end)',
+].join('\n');
+
 /** A fake Studio that answers every op with something benign and well-formed. */
 function studioCtx(env, overrides = {}) {
   const calls = [];
@@ -635,6 +674,14 @@ function studioCtx(env, overrides = {}) {
       }
       if (op.op === 'get_logs') return { id: 'x', ok: true, data: { entries: [{ kind: 'log', message: 'server started' }] } };
       if (op.op === 'snapshot') return { id: 'x', ok: true, data: { scriptCount: 3, instanceCount: 60 } };
+      // read_script must answer with a real body. The catch-all below carries no `source`, and
+      // review_scripts / find_symbol / format_script all read one first: without this they return
+      // "nothing resolvable" / an empty review / "already formatted", and the egress sweep sees no
+      // detail from any of them — three tools enumerated, none scanned.
+      if (op.op === 'read_script') return { id: 'x', ok: true, data: { path: op.path, source: REVIEWABLE_LUAU, class: 'Script' } };
+      if (op.op === 'dump_scripts') {
+        return { id: 'x', ok: true, data: { scripts: [{ path: 'game.ServerScriptService.Main', source: REVIEWABLE_LUAU, class: 'Script' }], truncated: false } };
+      }
       return { id: 'x', ok: true, data: { ok: true, note: 'studio result' } };
     },
     createCheckpoint: async (label, kind) => ({ id: 'cp-1', label, kind, createdAt: 1, scriptCount: 3, instanceCount: 60, sizeBytes: 900 }),
@@ -691,6 +738,14 @@ const TOOL_ARGS = {
   read_script: { path: 'game.ServerScriptService.Main' },
   edit_script: { path: 'game.ServerScriptService.Main', source: 'print(1)' },
   search_scripts: { query: 'Humanoid' },
+
+  // The three code-intelligence tools. The arguments are chosen to reach each BODY, which is the
+  // whole difficulty: `find_symbol` with only a `name` and `review_scripts` with no `path` both go
+  // through dump_scripts, and `format_script` on an already-formatted file returns before it
+  // writes — three early returns that would satisfy this enumeration while scanning nothing.
+  review_scripts: { path: 'game.ServerScriptService.Main' },
+  find_symbol: { path: 'game.ServerScriptService.Main', line: 2, column: 16 },
+  format_script: { path: 'game.ServerScriptService.Main' },
   create_instances: { items: [{ className: 'Part', name: 'A', parent: 'game.Workspace' }] },
   set_properties: { path: 'game.Workspace.A', props: {} },
   delete_instances: { paths: ['game.Workspace.A'] },
@@ -762,6 +817,7 @@ test('A2 no tool can put a credential, a JWT or a pairing token into tool_end.de
   reset();
   const env = makeEnv();
   let withDetail = 0;
+  const detailByTool = new Map();
   for (const [name, args] of Object.entries(TOOL_ARGS)) {
     const { ctx } = studioCtx(env);
     const out = await T.runTool(ctx, name, JSON.stringify(args));
@@ -770,11 +826,29 @@ test('A2 no tool can put a credential, a JWT or a pairing token into tool_end.de
     assert.equal(PAIRING_TOKEN_RE.test(blob), false, `runTool(${name}) produced a value shaped like a plugin pairing token`);
     assert.equal(JWT_RE.test(blob), false, `runTool(${name}) produced a value shaped like a JWT`);
     assert.equal(/Bearer\s+\S/.test(blob), false, `runTool(${name}) produced an Authorization-header-shaped value`);
-    if (out.detail !== undefined) withDetail++;
+    if (out.detail !== undefined) { withDetail++; detailByTool.set(name, out.detail); }
     t.diagnostic(`${name}: ok=${out.ok} detail=${out.detail === undefined ? 'none' : 'present'}`);
   }
   // Non-vacuity: if every tool errored, the loop above would prove nothing.
   assert.ok(withDetail >= 10, `only ${withDetail} tools produced a detail payload — the egress test is not exercising the channel`);
+  // PER-TOOL NON-VACUITY FOR THE CODE-INTELLIGENCE THREE. `withDetail >= 10` is satisfied by forty
+  // other tools, so it cannot notice these three falling back to an early return if the studio
+  // stub ever stops returning a source — and a fixture that returns early is a tool whose egress
+  // nothing above scanned, wearing a green tick.
+  for (const n of ['review_scripts', 'find_symbol', 'format_script']) {
+    assert.ok(
+      detailByTool.has(n),
+      `${n} produced no detail — its fixture returns early, so the sweep above proved nothing about the channel it opens`,
+    );
+  }
+  // format_script's detail must be the code_diff panel specifically: that is the branch that
+  // WRITES and puts a payload on ctx.uiDetail, which is the widest of the three new egress paths.
+  // "already formatted" would satisfy the check above while leaving that path unscanned.
+  assert.match(
+    JSON.stringify(detailByTool.get('format_script')),
+    /"type":"code_diff"/,
+    'format_script returned no diff panel — its fixture never reached the write, so the uiDetail path is unscanned',
+  );
 });
 
 test('A1 a thrown tool error names no model and no provider — §1 across the tool boundary', async () => {
@@ -865,7 +939,42 @@ test('A2 STATIC CHECK — the pairing token exists in exactly one place and only
   // The DO stores a hash and compares in constant time; it never reads a token back out.
   assert.match(session, /pluginTokenHash/, 'the session DO should store a token HASH');
   assert.equal(/pluginToken(?!Hash|IssuedAt)/.test(session), false, 'the session DO must not store a cleartext plugin token');
-  assert.match(session, /timingSafeEqual\(await sha256hex\(token\), expect\)/);
+  //[[ WHY THIS IS NO LONGER ONE REGEX. It pinned `timingSafeEqual(await sha256hex(token), expect)`
+  //   verbatim; 04d3800 hoisted the digest into a local so the superseded-pairing branch could
+  //   reuse it, and the pin went red on a refactor that weakened nothing.
+  //
+  //   The replacement asserts the property from both sides. The positive half says the digest is
+  //   taken and compared in constant time. The NEGATIVE half is the half that matters: it is easy
+  //   to keep a `timingSafeEqual` call and add a path around it, so the failed-compare block is
+  //   located and every exit from it is required to be a 401 json() refusal that never reaches the
+  //   poll handler. Both halves were measured against a deliberately broken version that adds a
+  //   grace period: the negative assertions go red, the positive one does not. ]]
+  const pollStart = session.indexOf("if (path === '/plugin/poll'");
+  const pollGate = session.slice(pollStart, session.indexOf("if (path === '/messages'", pollStart));
+  assert.ok(pollStart !== -1 && pollGate.length > 200, 'the poll gate was not found — this test would check nothing');
+  assert.match(pollGate, /const presented = await sha256hex\(token\)/, 'the presented token must be hashed before any comparison');
+  assert.equal(/timingSafeEqual\(\s*token\b/.test(pollGate), false, 'the RAW token must never be a comparison operand');
+
+  // lastIndexOf, not indexOf: a bypass that inlined `readPluginHeaders` inside the block would
+  // otherwise move the end anchor and hide itself inside the part no longer being read.
+  const failed = pollGate.slice(
+    pollGate.indexOf('if (!(await timingSafeEqual('),
+    pollGate.lastIndexOf('const reported = readPluginHeaders'),
+  );
+  assert.ok(failed.length > 100 && failed.length < 1500, 'the failed-compare block moved — re-locate it before trusting this check');
+  assert.deepEqual(
+    [...failed.matchAll(/return\s+(?!json\()/g)].map((m) => m[0]),
+    [],
+    'a failed token compare must return nothing but a json() refusal',
+  );
+  assert.equal(/handlePluginPoll/.test(failed), false, 'a failed token compare must never reach the poll handler');
+  for (const [, args] of failed.matchAll(/return json\(([\s\S]*?)\);/g)) {
+    assert.match(args.trim(), /401,?$/, 'every refusal on a failed compare is a 401');
+  }
+  assert.ok(
+    [...failed.matchAll(/timingSafeEqual\(presented,\s*(expect|superseded\.hash)\)/g)].length >= 1,
+    'the comparison operands are hashes the DO itself stored, never anything off the request',
+  );
   // Nothing broadcasts the hash or the live JWT to a client.
   for (const secretish of ['pluginTokenHash', 'liveJwt']) {
     const broadcasts = [...session.matchAll(new RegExp(`broadcast\\([^)]*${secretish}`, 'g'))];
@@ -1070,6 +1179,19 @@ test('A3 STATIC CHECK — every project-scoped route goes through withOwnedProje
   const routes = [...src.matchAll(/app\.(get|post|put|patch|delete)\('([^']+)'/g)].map((m) => ({ method: m[1], path: m[2], at: m.index }));
   const projectRoutes = routes.filter((r) => r.path.startsWith('/api/projects/'));
   assert.ok(projectRoutes.length >= 7, 'expected the project routes to still exist');
+
+  // The capability vocabulary, READ OUT OF collab.ts rather than retyped here. A new capability
+  // must not fail this sweep for being new — but only a spelled-out member of the real list counts
+  // as an action, which is what stops `withOwnedProject(c, id, c.req.query('action'))` passing.
+  const COLLAB_ACTIONS = [
+    ...(/export const COLLAB_ACTIONS = \[([\s\S]*?)\] as const;/.exec(readCode('collab.ts'))?.[1] ?? '').matchAll(/'([a-z_]+)'/g),
+  ].map((m) => m[1]);
+  assert.ok(
+    COLLAB_ACTIONS.includes('read') && COLLAB_ACTIONS.includes('build'),
+    'the capability vocabulary must be readable from collab.ts — this sweep is worthless without it',
+  );
+  const ACTION = `'(?:${COLLAB_ACTIONS.join('|')})'`;
+
   for (const r of projectRoutes) {
     const next = routes.find((o) => o.at > r.at);
     const body = src.slice(r.at, next ? next.at : src.length);
@@ -1084,8 +1206,26 @@ test('A3 STATIC CHECK — every project-scoped route goes through withOwnedProje
     // "mentions ownership somewhere". Each accepted proof is named here, so a route that invents a
     // THIRD way to authorise still fails this sweep and someone has to come and add it on purpose.
     // A guard that accepts a pattern accepts everything that resembles the pattern.
+    //
+    // THE GATE HAS TWO FORMS AND THIS LIST NOW NAMES BOTH. `withOwnedProject(c, id)` is owner-only.
+    // `withOwnedProject(c, id, '<action>')` is the SAME helper, the same `getOwnedProject` under the
+    // caller's own JWT, the same `return null` on a miss — the third argument only names what the
+    // caller is about to do, so a member's grant can be weighed against it. The old pattern pinned
+    // the closing paren after `param('id')`, so adding a capability argument to a route failed a
+    // guard about authorisation for a reason that was about arity.
+    //
+    // THE ACTION MUST BE A LITERAL FROM COLLAB_ACTIONS. That is the load-bearing part: a route that
+    // let the CALLER name the action — `withOwnedProject(c, id, c.req.query('action'))` — would
+    // pass a looser pattern while handing the decision to the request it is meant to judge.
+    //
+    // `sharedAccess(c, id, '<action>')` is the third form, and it is the same gate wrapped: it
+    // calls `withOwnedProject(c, projectId, action)` first and only reaches a 403 after a
+    // SUCCESSFUL separate `read` probe, so a caller who cannot see the project still gets 404.
+    // That is what stops it being an existence oracle, and it is asserted below rather than
+    // trusted — admitting a third proof here is only safe while that remains true.
     const PROOFS = [
-      /withOwnedProject\(c, c\.req\.param\('id'\)\)/,
+      new RegExp(`withOwnedProject\\(c, c\\.req\\.param\\('id'\\)(?:, ${ACTION})?\\)`),
+      new RegExp(`sharedAccess\\(c, c\\.req\\.param\\('id'\\), ${ACTION}\\)`),
       /memoryScopeAccess\(c, '(?:project|user|org)', /,
     ];
     assert.ok(
@@ -1100,12 +1240,25 @@ test('A3 STATIC CHECK — every project-scoped route goes through withOwnedProje
     const REFUSALS = [
       /if \(!ctx\) return c\.json\(\{ error: 'not found' \}, 404\)/,
       /if \(!proven\) return c\.json\(\{ error: 'not found' \}, 404\)/,
+      // The sharedAccess form refuses through one helper that maps its own status to a body, so
+      // the 404-vs-403 decision lives in exactly one place instead of at every call site.
+      /if \(!access\.ctx\) return collabRefusal\(c, access\.status\)/,
     ];
     assert.ok(
       REFUSALS.some((re) => re.test(body)),
       `${r.method.toUpperCase()} ${r.path} does not refuse with a 404 when ownership fails`,
     );
   }
+  // ADMITTING sharedAccess AS A PROOF IS CONDITIONAL, and this is the condition. It must still go
+  // through the one gate, and its 403 must still be reachable only after a read probe SUCCEEDS —
+  // otherwise the 403 itself tells an outsider the project exists, which is the oracle every other
+  // assertion in this test is built to prevent.
+  const shared = src.slice(src.indexOf('async function sharedAccess('), src.indexOf('const collabRefusal'));
+  assert.ok(shared.length > 100, 'sharedAccess was not found — the PROOFS entry above would be unguarded');
+  assert.match(shared, /const ctx = await withOwnedProject\(c, projectId, action\)/, 'sharedAccess must go through the same gate');
+  assert.match(shared, /getProjectAccess\(c\.env, c\.get\('user'\), projectId, 'read'\)/, 'the 403 must be gated on a read probe');
+  assert.match(shared, /probe\.project === null \? 404 : 403/, 'a caller who cannot read must get 404, never 403');
+
   // …and withOwnedProject itself still does the two things that make it work.
   const helper = src.slice(src.indexOf('async function withOwnedProject'), src.indexOf("app.get('/api/projects/:id/ws'"));
   assert.match(helper, /getOwnedProject\(c\.env, user\.jwt, projectId\)/, 'ownership must be resolved with the USER jwt');
@@ -1401,8 +1554,22 @@ test('A4 PRE-EXISTING FINDING — admin routes carry no user identity and bypass
     ],
     'an admin route that addresses a project by id was added or removed — review it: these bypass RLS entirely',
   );
-  const byBodyUser = routeBodies(src)
-    .filter((r) => r.path.startsWith('/api/admin/') && /\buserId\b/.test(r.body))
+  // The inventory is only evidence if each body IS the handler and not the file that follows it.
+  // Asserted, not assumed: a body that swallowed a top-level declaration is exactly how this guard
+  // came to accuse `GET /api/admin/static-list`, whose four lines name no user at all.
+  const bodies = routeBodies(src);
+  for (const r of bodies) {
+    const stray = r.body.split('\n').slice(1).find((l) => /^(function|const|let|class|async function|export|app\.)/.test(l));
+    assert.equal(
+      stray,
+      undefined,
+      `${r.method} ${r.path}: the route body ran past its handler into "${stray}" — the inventory below would be attributing that code to this route`,
+    );
+  }
+  // `user_id` as well as `userId`: the property is "this route acts on a caller-named user", and a
+  // route that spells it the snake_case way is the same finding, not a new one.
+  const byBodyUser = bodies
+    .filter((r) => r.path.startsWith('/api/admin/') && /\b(userId|user_id)\b/.test(r.body))
     .map((r) => `${r.method} ${r.path}`);
   assert.deepEqual(byBodyUser.sort(), ['POST /api/admin/quota-reset', 'POST /api/admin/set-plan'],
     'an admin route that acts on a named user was added or removed — review it');
@@ -1831,11 +1998,66 @@ test('A8 claim mints a <uuid>.<48-hex> token and registers only its hash', async
 
 test('A8 STATIC CHECK — the plugin token is hashed, TTL-bounded and compared in constant time', () => {
   const session = read('do/session.ts');
-  assert.match(session, /const PLUGIN_TOKEN_TTL_MS = 30 \* 24 \* 3600 \* 1000/, 'the plugin token TTL must remain bounded');
-  const poll = session.slice(session.indexOf("if (path === '/plugin/poll'"), session.indexOf("if (path === '/messages'"));
-  assert.match(poll, /if \(!expect \|\| Date\.now\(\) - issuedAt > PLUGIN_TOKEN_TTL_MS\) return json\(\{ error: 'token expired' \}, 401\)/,
-    'an expired or unregistered token must be refused');
-  assert.match(poll, /timingSafeEqual\(await sha256hex\(token\), expect\)/, 'the token comparison must be constant-time over the hash');
+  // ANCHORED ON THE TERMINATOR. Without the `;` this matched as a PREFIX: multiplying the literal
+  // to `30 * 24 * 3600 * 100000` — a hundred-fold longer pairing lifetime — left this assertion
+  // green, because the shorter pattern is contained in the longer text. Measured, not theorised.
+  assert.match(session, /const PLUGIN_TOKEN_TTL_MS = 30 \* 24 \* 3600 \* 1000;/, 'the plugin token TTL must remain bounded');
+  const start = session.indexOf("if (path === '/plugin/poll'");
+  const poll = session.slice(start, session.indexOf("if (path === '/messages'", start));
+  assert.ok(start !== -1 && poll.length > 200, 'the poll handler was not found — this test would check nothing');
+
+  //[[ PROPERTY, NOT SPELLING.
+  //
+  //   These three lines used to pin two exact expressions, one of which read
+  //   `timingSafeEqual(await sha256hex(token), expect)`. Commit 04d3800 hoisted that digest into a
+  //   `presented` local so the SUPERSEDED-pairing branch could compare against a second stored
+  //   hash, and reformatted the expiry guard onto several lines with an added `message`. Nothing
+  //   was weakened — every exit is still a 401 — but both pins went red, and a pin that reddens
+  //   on a reformat trains people to edit the assertion rather than read it.
+  //
+  //   So each guarantee is now asserted as its own fact, and the negative ones carry the weight:
+  //   it is easy to keep a `timingSafeEqual` call while quietly adding a path around it. ]]
+  assert.match(
+    poll,
+    /if \(!expect \|\| Date\.now\(\) - issuedAt > PLUGIN_TOKEN_TTL_MS\)[\s\S]{0,300}?error: 'token expired'[\s\S]{0,300}?\},?\s*401\s*\)/,
+    'an unregistered or TTL-expired token must be refused with a 401',
+  );
+  assert.match(poll, /await sha256hex\(token\)/, 'the presented cleartext must be SHA-256 hashed');
+  assert.match(
+    poll,
+    /timingSafeEqual\(\s*(?:await sha256hex\(token\)|presented)\s*,\s*expect\s*\)/,
+    'the token comparison must be constant-time over the hash',
+  );
+  assert.equal(
+    /\btoken\s*[!=]==?\s*expect|\bexpect\s*[!=]==?\s*token/.test(poll),
+    false,
+    'the cleartext token must never be compared directly',
+  );
+  assert.equal(
+    /expect\.(slice|substring|substr)|sha256hex\(token\)\.(slice|substring|substr)/.test(poll),
+    false,
+    'a truncated digest must never stand in for the hash',
+  );
+  // SCOPED TO THE GUARD, not to the whole handler. My first version counted `401` across the
+  // entire poll slice and failed on healthy code: the handler legitimately returns six json()
+  // responses and only three of them are refusals. Counting the wrong region is how an assertion
+  // ends up being relaxed to fit rather than corrected — so the region is the guard, and inside it
+  // EVERY json() response must be a 401.
+  const guardRegion = poll.slice(0, poll.lastIndexOf('const reported = readPluginHeaders'));
+  const guardReturns = [...guardRegion.matchAll(/return json\(([\s\S]*?)\);/g)].map((m) => m[1]);
+  assert.ok(guardReturns.length >= 3, `the guard must have three refusal branches, found ${guardReturns.length}`);
+  for (const args of guardReturns) {
+    assert.match(args.trim(), /401,?$/, 'every response the token guard can produce must be a 401');
+  }
+  // AND NO OTHER KIND OF RETURN AT ALL. Counting the refusals is not enough on its own: inserting
+  // `if (Date.now() - issuedAt < 60000) return handlePluginPoll();` ahead of the compare leaves
+  // all three refusals intact and every one of them a 401, while opening a minute-wide hole that
+  // accepts any token. Measured — that mutant passed every other assertion in this test.
+  assert.deepEqual(
+    [...guardRegion.matchAll(/return\s+(?!json\()/g)].map((m) => m[0].trim()),
+    [],
+    'the token guard must return nothing but a json() refusal — any other return is a path around the compare',
+  );
   assert.ok(poll.indexOf('return json({ error') < poll.indexOf('handlePluginPoll'), 'every refusal must precede any work');
 
   const index = read('index.ts');

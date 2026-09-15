@@ -132,7 +132,11 @@ async function creatorStore() {
           + (pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : '');
         let body;
         try { body = await get(url); } catch { break; }
-        const items = body?.assets ?? body?.data ?? [];
+        // `creatorStoreAssets` is the key this endpoint actually returns — verified against a
+        // live response. The earlier `assets ?? data` guessed at two names it does not use and
+        // harvested 0 rows while reporting success, which is why the index now separates "failed"
+        // from "returned nothing".
+        const items = body?.creatorStoreAssets ?? body?.assets ?? body?.data ?? [];
         if (!items.length) break;
         for (const a of items) {
           const assetId = Number(a?.asset?.id ?? a?.id);
@@ -255,6 +259,7 @@ async function openGameArt() {
   const splits = await get('https://datasets-server.huggingface.co/splits?dataset=nyuuzyou%2FOpenGameArt-CC0');
   const out = [];
   const skipped = {};
+  const truncated = [];
   for (const s of splits?.splits ?? []) {
     const kind = OGA_SPLIT_KIND[s.split];
     if (!kind) { skipped[s.split] = 'no Roblox-ingestible form (audio or text)'; continue; }
@@ -263,7 +268,12 @@ async function openGameArt() {
       try {
         page = await get(`https://datasets-server.huggingface.co/rows?dataset=nyuuzyou%2FOpenGameArt-CC0`
           + `&config=${encodeURIComponent(s.config)}&split=${encodeURIComponent(s.split)}&offset=${offset}&length=100`);
-      } catch { break; }
+      } catch (e) {
+        // A swallowed break here stopped the 2d_art split at 5,400 of its 7,302 rows and reported
+        // a clean finish. A partial harvest must say which split stopped and where.
+        truncated.push({ split: s.split, atOffset: offset, why: String(e.message ?? e).slice(0, 120) });
+        break;
+      }
       const rows = page?.rows ?? [];
       if (!rows.length) break;
       for (const { row: r } of rows) {
@@ -287,7 +297,7 @@ async function openGameArt() {
       await sleep(80);
     }
   }
-  return { rows: out, skipped };
+  return { rows: out, skipped, truncated, expectedRows: splits?.splits?.reduce((n, x) => n + (x.num_rows ?? 0), 0) ?? null };
 }
 
 /* ------------------------------------------------------------------------ cgbookcase --- */
@@ -330,11 +340,11 @@ async function kenney() {
   }
   const uniq = [...new Set(slugs)];
   const out = [];
-  const failed = [];
+  const failedPacks = [];
   for (const s of uniq) {
     let html;
     try { html = await get(`https://kenney.nl/assets/${s}`, { json: false }); }
-    catch (e) { failed.push({ slug: s, why: String(e.message ?? e) }); continue; }
+    catch (e) { failedPacks.push({ slug: s, why: String(e.message ?? e) }); continue; }
     const zip = /href='(https:\/\/kenney\.nl\/media\/pages\/assets\/[^']+\.zip)'/.exec(String(html))?.[1] ?? null;
     const title = /<h1[^>]*>([^<]+)</.exec(String(html))?.[1]?.trim() ?? s.replace(/-/g, ' ');
     const count = Number(/\((\d[\d,]*) assets\)/.exec(String(html))?.[1]?.replace(/,/g, '') ?? 0) || null;
@@ -356,10 +366,14 @@ async function kenney() {
       }),
       assetCount: count,
     });
-    if (!zip) failed.push({ slug: s, why: 'no download zip found on the detail page' });
+    if (!zip) failedPacks.push({ slug: s, why: 'no download zip found on the detail page' });
     await sleep(250);
   }
-  return { rows: out, failed, packsSeen: uniq.length };
+  // NOT named `failed`. It used to be, and the spread below merged it over the source-level
+  // `failed: false` flag — so an empty array (which is TRUTHY in JavaScript) turned a harvest of
+  // 215 packs into "kenney: failed" in the index. A successful run rendered as a failure, which is
+  // the same defect class as a failure rendering as a success and just as hard to notice.
+  return { rows: out, failedPacks, packsSeen: uniq.length };
 }
 
 /* ------------------------------------------------------------------------------ main --- */
@@ -422,6 +436,9 @@ writeFileSync(join(OUT_DIR, 'index.json'), JSON.stringify({
   generatedAt: NOW,
   total,
   usableWithoutUpload: withRobloxId,
-  perSource: Object.fromEntries(parts.map((p) => [p.source, p.failed ? { failed: true, error: p.error } : p.counts])),
+  // `p.failed === true`, never `p.failed` — the loose form read an empty detail array as a
+  // failure. An identity check is the difference between "this source failed" and "this source
+  // returned a value JavaScript happens to consider truthy".
+  perSource: Object.fromEntries(parts.map((p) => [p.source, p.failed === true ? { failed: true, error: p.error } : p.counts])),
 }, null, 1) + '\n');
 console.error(`\nTOTAL ${total} rows · ${withRobloxId} already carry a Roblox asset id`);
