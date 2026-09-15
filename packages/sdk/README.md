@@ -7,7 +7,7 @@ from, plus the command line.
 |---|---|---|
 | JavaScript | `src/` | `import { AppleClient } from '@golem/sdk'` |
 | TypeScript | `types/index.d.ts` | the same import, typed |
-| Python | `python/golem_sdk/` | `from golem_sdk import AppleClient` |
+| Python | `python/apple_sdk/` | `from apple_sdk import AppleClient` |
 | Luau (in Studio) | `luau/AppleClient.luau` | `local Client = require(script.AppleClient)` |
 | CLI | `bin/apple.mjs` | `apple health` |
 
@@ -44,7 +44,7 @@ console.log(run.text, run.creditsSpent);
 ```
 
 ```python
-from golem_sdk import AppleClient
+from apple_sdk import AppleClient
 client = AppleClient(token=os.environ["APPLE_TOKEN"])
 print(client.health())
 ```

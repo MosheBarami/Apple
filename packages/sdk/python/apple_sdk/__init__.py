@@ -1,6 +1,6 @@
-"""golem_sdk — the Python client for the Apple REST API.
+"""apple_sdk — the Python client for the Apple REST API.
 
-    from golem_sdk import AppleClient
+    from apple_sdk import AppleClient
     client = AppleClient(token="<supabase access token>")
     print(client.health())
 """

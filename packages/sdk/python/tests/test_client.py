@@ -17,7 +17,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from golem_sdk import (  # noqa: E402
+from apple_sdk import (  # noqa: E402
     ApiError,
     AppleClient,
     StudioClient,
