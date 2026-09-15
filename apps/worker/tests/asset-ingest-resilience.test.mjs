@@ -119,15 +119,61 @@ test('a chunk D1 keeps refusing becomes rejects carrying D1’s own sentence', a
   assert.deepEqual(res.rejected.map((r) => r.id).sort(), ['fixture/d1-resilience/thing-1', 'fixture/d1-resilience/thing-2', 'fixture/d1-resilience/thing-3']);
 });
 
-test('a refused chunk does not discard the chunks that succeeded', async () => {
-  // 22 columns means 4 rows per statement, so 8 rows is two chunks. The first goes, the second
-  // does not, and the count of the first must survive.
+test('a refused group does not discard the groups that landed', async () => {
+  // 600 rows is two groups — 500 and 100. The first goes, the second does not, and the count of
+  // the first must survive. An earlier version of this test used 8 rows and a group size of 4;
+  // when the grouping changed to 500 it silently became a one-group test that could no longer
+  // fail for the reason its name gives, which is the defect this whole file is about.
   const d1 = fakeD1();
   let seen = 0;
-  d1.CORPUS.batch = async () => { seen++; if (seen === 2) throw new Error('D1 DB exceeded its CPU time limit and was reset.'); return []; };
-  const rows = Array.from({ length: 8 }, (_, i) => row(i));
+  d1.CORPUS.batch = async () => { seen++; if (seen > 1) throw new Error('D1 DB exceeded its CPU time limit and was reset.'); return []; };
+  const rows = Array.from({ length: 600 }, (_, i) => row(i));
   const res = await L.upsertAssets(d1, rows, { seed: true, cc0Only: false, requireImportDate: false });
   assert.equal(res.written + res.rejected.length, rows.length,
     'the two numbers must still add up to what was handed in');
-  assert.ok(res.written > 0, 'the chunk that landed must be counted, not thrown away with the one that did not');
+  assert.equal(res.written, 500, 'the group that landed must be counted, not thrown away with the one that did not');
+  assert.equal(res.rejected.length, 100);
+});
+
+test('THE FIX ITSELF: the FTS mirror is not cleared one row at a time', async () => {
+  //[[ THIS IS THE ASSERTION THE OUTAGE WAS ABOUT.
+  //
+  //   `asset_library_fts` declares `asset_id unindexed`, so a delete keyed on it scans the whole
+  //   mirror. One delete per row meant 500 full scans of an 86,000-row index per batch, which is
+  //   why the ingest ran for hours and then died — the cost grows with the very table the job
+  //   exists to fill.
+  //
+  //   Counting statements is the only way to see it from outside: a test that merely checked the
+  //   rows landed would pass just as happily against the version that took seventeen hours. ]]
+  // The statements are inspected AS BATCHED, not as prepared. An earlier version of this test read
+  // the order `prepare` happened to be called in — which is deletes-first whatever order they are
+  // then queued in, so the ordering assertion below could not fail. Reversing the batch left it
+  // green, which is how it was caught.
+  const sql = [];
+  const d1 = fakeD1();
+  d1.CORPUS.prepare = (q) => { sql.push(q); const st = { sql: q, bind: () => st }; return st; };
+  const batches = [];
+  let queued = [];
+  d1.CORPUS.batch = async (st) => { batches.push(st.length); queued = st.map((x) => x.sql); return []; };
+
+  await L.upsertAssets(d1, Array.from({ length: 500 }, (_, i) => row(i)),
+    { seed: true, cc0Only: false, requireImportDate: false });
+
+  const deletes = sql.filter((q) => q.startsWith('delete from asset_library_fts'));
+  assert.equal(deletes.length, 5, '500 ids at D1\u2019s 100-parameter ceiling is five deletes, not five hundred');
+  for (const q of deletes) {
+    assert.ok(!/where asset_id = \?/.test(q), 'a single-id delete is the per-row scan coming back');
+  }
+
+  const ftsInserts = sql.filter((q) => q.startsWith('insert into asset_library_fts'));
+  assert.equal(ftsInserts.length, 25, 'five columns at the same ceiling is twenty rows a statement');
+
+  assert.equal(batches.length, 1, '500 rows must be ONE round trip to D1, not one per chunk');
+
+  // Ordering is load-bearing: inserts before deletes would leave every re-ingested row duplicated
+  // in the mirror, and a duplicated FTS row is a search hit that comes back twice.
+  const firstInsert = queued.findIndex((q) => q.startsWith('insert into'));
+  const lastDelete = queued.map((q) => q.startsWith('delete from asset_library_fts')).lastIndexOf(true);
+  assert.ok(firstInsert !== -1 && lastDelete !== -1, 'the batch must carry both kinds of statement');
+  assert.ok(lastDelete < firstInsert, 'every delete must be queued before every insert');
 });

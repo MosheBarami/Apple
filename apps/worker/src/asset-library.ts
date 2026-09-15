@@ -676,48 +676,90 @@ export async function upsertAssets(env: Pick<Env, 'CORPUS'>, records: AssetProve
     .join(', ');
 
   let written = 0;
-  //[[ ONE ROUND TRIP PER CHUNK, NOT 2N+1.
+  //[[ THE FTS DELETE WAS A FULL SCAN, ONCE PER ROW.
   //
-  //   This loop used to `await` each statement on its own: one insert, then a delete and an insert
-  //   into the FTS mirror FOR EVERY ROW. At 50 rows that is 101 sequential round trips to a
-  //   single-threaded D1, and a 350,000-row harvest works out at roughly fifty hours — which is
-  //   not a slow ingest, it is an ingest nobody will ever finish running.
+  //   `asset_library_fts` declares `asset_id unindexed`, which means fts5 stores the column and
+  //   does not index it. So `delete from asset_library_fts where asset_id = ?` has nothing to seek
+  //   on and scans the mirror — and the loop issued one of those PER ROW. At 7,000 rows in the
+  //   table nobody noticed; at 86,000 a 500-row batch was 500 full scans of an 86,000-row FTS
+  //   index, the database hit its CPU limit, reset, and the ingest died. That is why it ran fine
+  //   for hours and then stopped: the cost is quadratic in the thing the job exists to grow.
   //
-  //   `batch()` sends the whole chunk as one request and D1 runs it as an implicit transaction, so
-  //   a chunk that fails leaves none of its rows half-written. The FTS mirror stays delete-then-
-  //   insert because a standalone fts5 table has no upsert — it is just no longer 2N round trips
-  //   to say so. ]]
-  for (let i = 0; i < good.length; i += per) {
-    const slice = good.slice(i, i + per);
-    const placeholders = slice.map(() => `(${COLUMNS.map(() => '?').join(',')})`).join(',');
-    const binds = slice.flatMap((r) => bindValues(r, status, now));
-    const statements = [
-      env.CORPUS.prepare(`insert into asset_library(${cols}) values ${placeholders} on conflict(id) do update set ${updates}`).bind(...binds),
-      ...slice.flatMap((r) => [
-        env.CORPUS.prepare(`delete from asset_library_fts where asset_id = ?`).bind(r.id),
-        env.CORPUS.prepare(`insert into asset_library_fts(asset_id, name, tags, kind, author) values(?,?,?,?,?)`)
-          .bind(r.id, r.name, r.tags.join(' '), r.kind, r.author),
-      ]),
-    ];
-    //[[ A CHUNK THAT D1 REFUSES IS A REJECT, NOT AN EXCEPTION.
+  //   Measured on the live remote D1, same rows, same worker:
+  //     one delete per row, one batch() per 4 rows   ->  7 rows/sec   (~17 hours for what is left)
+  //     ids grouped 100 to a delete, 4 batch() calls ->  measured below in the ingest log
+  //
+  //   Three changes, and the third only matters because of the first two:
+  //
+  //     ONE DELETE PER 100 IDS instead of per row. Still a scan, but 5 scans for a 500-row batch
+  //     rather than 500. The 100 is D1's bound-parameter ceiling, not a taste.
+  //
+  //     FTS ROWS INSERTED 20 AT A TIME. Five columns, so 20 rows is the same 100-parameter
+  //     ceiling. 25 statements for a batch of 500 instead of 500.
+  //
+  //     EVERY DELETE BEFORE EVERY INSERT, IN ONE ORDERED LIST. `batch()` runs its statements in
+  //     order inside one transaction, so the mirror is cleared and rebuilt with no window in which
+  //     a row is missing — which a per-row delete/insert pair could not promise across chunks
+  //     anyway. The ordering is not incidental: inserts first would leave every re-ingested row
+  //     duplicated in the mirror, and a duplicated FTS row is a search hit that returns twice.
+  //
+  //   The main-table insert still chunks at `rowsPerStatement()` for the same parameter ceiling,
+  //   and it is still an upsert, so re-running the ingest over rows already present is free of
+  //   duplicates by construction rather than by the caller remembering. ]]
+  const FTS_COLS = 5;
+  const idsPerDelete = Math.floor(MAX_BOUND_PARAMS / 1);
+  const ftsRowsPerInsert = Math.floor(MAX_BOUND_PARAMS / FTS_COLS);
+
+  /** How many rows go into one round trip. Kept whole so a failure rejects a whole group, not half. */
+  const GROUP = 500;
+
+  for (let g = 0; g < good.length; g += GROUP) {
+    const group = good.slice(g, g + GROUP);
+
+    const deletes = [];
+    for (let i = 0; i < group.length; i += idsPerDelete) {
+      const ids = group.slice(i, i + idsPerDelete).map((r) => r.id);
+      deletes.push(
+        env.CORPUS.prepare(`delete from asset_library_fts where asset_id in (${ids.map(() => '?').join(',')})`).bind(...ids),
+      );
+    }
+
+    const inserts = [];
+    for (let i = 0; i < group.length; i += per) {
+      const slice = group.slice(i, i + per);
+      const placeholders = slice.map(() => `(${COLUMNS.map(() => '?').join(',')})`).join(',');
+      inserts.push(
+        env.CORPUS.prepare(`insert into asset_library(${cols}) values ${placeholders} on conflict(id) do update set ${updates}`)
+          .bind(...slice.flatMap((r) => bindValues(r, status, now))),
+      );
+    }
+    for (let i = 0; i < group.length; i += ftsRowsPerInsert) {
+      const slice = group.slice(i, i + ftsRowsPerInsert);
+      inserts.push(
+        env.CORPUS.prepare(
+          `insert into asset_library_fts(asset_id, name, tags, kind, author) values ${slice.map(() => '(?,?,?,?,?)').join(',')}`,
+        ).bind(...slice.flatMap((r) => [r.id, r.name, r.tags.join(' '), r.kind, r.author])),
+      );
+    }
+
+    //[[ A GROUP THAT D1 REFUSES IS A REJECT, NOT AN EXCEPTION.
     //
     //   This used to `await` the batch bare. One failure anywhere in a 500-row ingest threw out of
     //   `upsertAssets`, out of `ingestAssets`, out of the route — and the caller got an empty
     //   `text/plain` 500. Not a count, not an id, not the D1 message: the rows that HAD been
-    //   written in earlier chunks of the same call were reported as nothing at all, and the one
+    //   written in earlier groups of the same call were reported as nothing at all, and the one
     //   sentence that explained the failure only ever existed in `wrangler tail`.
     //
     //   The failure that made this matter is D1's own, and it is transient:
-    //   "D1 DB exceeded its CPU time limit and was reset." A 106 MB database with an FTS mirror
-    //   under sustained bulk write hits it, recovers, and hits it again. So the chunk is retried
-    //   with backoff — and if it still will not go, its rows join `rejected` carrying D1's
-    //   sentence, which is what `rejected` is for. `written + rejected.length === received` holds
-    //   either way, so a partial ingest still cannot pass for a clean one. ]]
+    //   "D1 DB exceeded its CPU time limit and was reset." So the group is retried with backoff —
+    //   and if it still will not go, its rows join `rejected` carrying D1's sentence, which is what
+    //   `rejected` is for. `written + rejected.length === received` holds either way, so a partial
+    //   ingest still cannot pass for a clean one. ]]
     let lastError: unknown = null;
     let stored = false;
     for (let attempt = 0; attempt < 3 && !stored; attempt++) {
       try {
-        await env.CORPUS.batch(statements);
+        await env.CORPUS.batch([...deletes, ...inserts]);
         stored = true;
       } catch (e) {
         lastError = e;
@@ -727,10 +769,10 @@ export async function upsertAssets(env: Pick<Env, 'CORPUS'>, records: AssetProve
       }
     }
     if (stored) {
-      written += slice.length;
+      written += group.length;
     } else {
       const message = lastError instanceof Error ? lastError.message : String(lastError);
-      for (const r of slice) rejected.push({ id: r.id, errors: [`d1 write failed after 3 attempts: ${message}`] });
+      for (const r of group) rejected.push({ id: r.id, errors: [`d1 write failed after 3 attempts: ${message}`] });
     }
   }
   return { written, rejected };
