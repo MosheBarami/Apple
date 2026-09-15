@@ -956,6 +956,48 @@ export async function fileOp(projectId: string, body: FileOpRequest): Promise<{ 
 }
 
 /**
+ * Put a text file into the project workspace.
+ *
+ * Shaped like `fileOp` rather than like `request<T>`, and for the same reason: the worker sends a
+ * machine-readable `code` with every refusal and `request` drops it, so the panel would be left
+ * matching on prose to tell "that name is taken" from "that is not a workspace file type".
+ *
+ * `overwrite` is never sent on the first attempt. An occupied path comes back as a refusal the user
+ * answers, so replacing the plan Apple wrote is always something they chose.
+ */
+export async function uploadProjectFile(
+  projectId: string,
+  path: string,
+  content: string,
+  opts: { overwrite?: boolean } = {},
+): Promise<{ ok: true; result: Record<string, unknown> } | { ok: false; code?: string; error: string }> {
+  const token = await getAccessToken();
+  const headers = new Headers({ 'Content-Type': 'application/json' });
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  let res: Response;
+  try {
+    res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/files/content`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ path, content, ...(opts.overwrite ? { overwrite: true } : {}) }),
+    });
+  } catch {
+    noteReachability(false);
+    return { ok: false, error: 'Network error — check your connection.' };
+  }
+  noteReachability(true);
+  const parsed = (await res.json().catch(() => null)) as Record<string, unknown> | null;
+  if (!res.ok) {
+    return {
+      ok: false,
+      code: typeof parsed?.code === 'string' ? parsed.code : undefined,
+      error: typeof parsed?.error === 'string' ? parsed.error : `Request failed (${res.status})`,
+    };
+  }
+  return { ok: true, result: parsed ?? {} };
+}
+
+/**
  * Save one workspace file to disk.
  *
  * Same shape as downloadExport: the server names the file in Content-Disposition, an <a href>
