@@ -2440,7 +2440,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'search_asset_library',
       description:
-        "Search Apple's curated CC0 asset library. Every hit has a recorded licence that permits use — which is not the same as being safe, and each id is still resolved and security-gated by insert_asset like any other. Prefer this over the Creator Store for anything procedural geometry cannot do — foliage and characters especially.",
+        "Search Apple's curated CC0 asset library. Every hit has a recorded licence that permits use — which is not the same as being safe, and each id is still resolved and security-gated by insert_asset like any other. Prefer this over the Creator Store for anything procedural geometry cannot do — foliage and characters especially. EVERY HIT CARRIES `availability`: \"insertable\" means assetId is a real Roblox id you can pass to insert_asset now; \"needs_import\" means the library holds this asset but its bytes have not been uploaded to Roblox yet, so assetId is null — say so plainly and build the thing another way for now, never invent an id for it. Results are ranked with the curated packs above the bulk Creator Store scrape, so the earlier hits are the better-made ones.",
       parameters: S(
         {
           query: { type: 'string' },
@@ -2462,7 +2462,18 @@ export const TOOLS: Record<string, ToolImpl> = {
         hits = await searchAssetLibrary(ctx.env, String(a.query ?? ''), {
           kind: a.kind ? (String(a.kind) as AssetKind) : undefined,
           maxTriangles: a.maxTriangles ? Number(a.maxTriangles) : undefined,
-          insertableOnly: true,
+          //[[ THIS USED TO PASS `insertableOnly: true`, AND THAT ONE FLAG HID THE LIBRARY.
+          //
+          //   In this library "has a Roblox id" means "came from the Creator Store scrape" — 2008
+          //   user uploads named "Bakiiiiiiiiiiiiiiii" and "Part2". The curated CC0 packs (Kenney,
+          //   Poly Haven, ambientCG, Quaternius, OpenGameArt, game-icons) carry no id until
+          //   somebody imports them, so filtering on an id returned the junk and nothing else.
+          //
+          //   So the filter is gone and the FACT is returned instead: every hit says whether it is
+          //   insertable now or needs an import, and the model is told below what to do with each.
+          //   A caller that genuinely cannot wait for an import asks for `insertableOnly`; this one
+          //   can, because telling the person "the library has this, it needs importing" is a far
+          //   better answer than handing them an anime rip. ]]
           k: 8,
         });
       } catch (e) {
@@ -2494,7 +2505,20 @@ export const TOOLS: Record<string, ToolImpl> = {
         (ctx.discoveredAssetIds ??= new Set()).add(h.robloxAssetId);
         (ctx.libraryAssetIds ??= new Set()).add(h.robloxAssetId);
       }
-      return hits.map((h) => ({ assetId: h.robloxAssetId, name: h.name, kind: h.kind, triangles: h.triangles, boundsStuds: h.boundsStuds, tags: h.tags }));
+      // `availability` travels with every hit, because "we have nothing like that" and "we have
+      // exactly that, it is not imported yet" are different answers and the person deserves the
+      // second one. `assetId` is null on a needs_import row — that is the truth, and insert_asset
+      // would refuse an invented id anyway.
+      return hits.map((h) => ({
+        assetId: h.robloxAssetId,
+        name: h.name,
+        kind: h.kind,
+        triangles: h.triangles,
+        boundsStuds: h.boundsStuds,
+        tags: h.tags,
+        availability: h.availability,
+        source: h.source,
+      }));
     },
   },
   find_verified_asset: {
