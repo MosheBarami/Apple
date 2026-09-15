@@ -147,21 +147,32 @@ export interface Automation {
   updatedAt: number;
 }
 
-export type AutomationReject =
-  | 'bad_name'
-  | 'bad_description'
-  | 'bad_prompt'
-  | 'bad_mode'
-  | 'bad_trigger'
-  | 'bad_schedule'
-  | 'unknown_timezone'
-  | 'bad_event'
-  | 'bad_overlap'
-  | 'bad_missed_runs'
-  | 'bad_retries'
-  | 'bad_budget'
-  | 'bad_project'
-  | 'bad_owner';
+/**
+ * Every reason this file refuses an automation, as a RUNTIME list with the type derived from it.
+ *
+ * It was a bare union, which no test and no client can enumerate: the editor's job is to put each
+ * refusal on the field that caused it, and a refusal with no sentence renders as a generic failure
+ * on no field while the person retypes the same value. Derived rather than restated, so adding a
+ * reason to `normaliseAutomation` without giving it a sentence is a red test rather than a dead end
+ * in the interface — the same argument MEMBER_STATUSES makes in membership.ts.
+ */
+export const AUTOMATION_REJECTS = [
+  'bad_name',
+  'bad_description',
+  'bad_prompt',
+  'bad_mode',
+  'bad_trigger',
+  'bad_schedule',
+  'unknown_timezone',
+  'bad_event',
+  'bad_overlap',
+  'bad_missed_runs',
+  'bad_retries',
+  'bad_budget',
+  'bad_project',
+  'bad_owner',
+] as const;
+export type AutomationReject = (typeof AUTOMATION_REJECTS)[number];
 
 export interface AutomationInput {
   name?: unknown;
@@ -413,12 +424,9 @@ export function missedRunVerdict(
 // whether it may start
 // ---------------------------------------------------------------------------------------------
 
-export type StartRefusal =
-  | 'disabled'
-  | 'overlapping'
-  | 'daily_cap'
-  | 'no_access'
-  | 'killed';
+/** Every way a fire can be refused before it starts. Runtime, for the reason AUTOMATION_REJECTS is. */
+export const START_REFUSALS = ['disabled', 'overlapping', 'daily_cap', 'no_access', 'killed'] as const;
+export type StartRefusal = (typeof START_REFUSALS)[number];
 
 export interface StartVerdict {
   start: boolean;
@@ -515,6 +523,23 @@ export function retryVerdict(outcome: FireOutcome, attempt: number, maxRetries: 
  */
 export function fireKey(automationId: string, dueAt: number): string {
   return `${automationId}@${dueAt}`;
+}
+
+/**
+ * The key for a fire somebody ASKED for.
+ *
+ * A manual fire has no due instant, and keying it by the wall clock — `fireKey(id, Date.now())` —
+ * makes the millisecond the identity. Two presses inside one millisecond, which is what a double
+ * click on a fast connection is, then collide on the unique `fire_key` and the second is answered
+ * `already_fired`: a fire that never started, reported as one that already had. That is the
+ * observation-failure shape this tree refuses.
+ *
+ * The `nonce` is the caller's own per-press value. A press is idempotent by the person pressing it;
+ * what stops a second BUILD is the overlap policy in `startVerdict`, which is an observation about
+ * the project rather than an accident of representation.
+ */
+export function manualFireKey(automationId: string, nonce: string): string {
+  return `${automationId}#${nonce}`;
 }
 
 /**

@@ -763,6 +763,10 @@ const TOOL_ARGS = {
   check_composition: { intent: 'a town plaza with a clock tower' },
   inspect_visually: { intent: 'a town plaza with a clock tower' },
   choose_asset_source: { need: 'foliage' },
+  // A real genre, not a made-up one: an unknown name returns the error branch, which emits no
+  // palette, no lighting and no sound ids — so the egress scan below would inspect a refusal and
+  // report that a tool leaking asset ids is clean.
+  get_genre_kit: { genre: 'horror' },
   search_asset_library: { query: 'oak tree' },
   find_verified_asset: { query: 'oak tree' },
   insert_asset: { assetId: 424242, parent: 'game.Workspace' },

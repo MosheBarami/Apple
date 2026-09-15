@@ -135,9 +135,67 @@ test('the checkout flag is taken back out of the URL', () => {
 test('A CHECKOUT ONLY EVER STARTS A FIRST SUBSCRIPTION', () => {
   // Stripe checkout ADDS a subscription; it does not replace one. A paid user sent to checkout for
   // a different tier is billed for both, so every move from a paid plan goes to the portal.
-  assert.match(usageCode, /currentPlan === 'free' && canBuy\) checkout\.mutate/,
-    'checkout is gated on having no subscription yet');
+  //
+  // The gate is unchanged; what the gate OPENS is. It used to call the checkout mutation directly
+  // and now it opens the order summary, which is the only thing that can start one — so the
+  // property still reads "nobody with a subscription can reach a checkout", asserted one step
+  // earlier in the same handler.
+  assert.match(usageCode, /currentPlan === 'free' && canBuy\) setPendingPlan/,
+    'only an account with no subscription yet may reach an order at all');
   assert.match(usageCode, /else portal\.mutate\(\)/, 'everything else is a portal visit');
+});
+
+/**
+ * THE CLICK THAT USED TO GO STRAIGHT TO A CARD FORM.
+ *
+ * `onChoose` called the checkout mutation and the browser left for Stripe. The only pre-purchase
+ * statement anywhere in the product was the plan card behind it, which describes a TIER and not an
+ * order: it never said what the account was moving from, that the charge repeats, or that tax is
+ * added to the figure being read. The words themselves are tested in order-summary.test.mjs; what
+ * is tested here is that a payment cannot be started without passing through them.
+ */
+test('A CHECKOUT IS CONFIRMED BEFORE IT IS STARTED', () => {
+  assert.match(usageCode, /<OrderSummaryDialog/, 'the confirm step must actually be rendered');
+  const starts = [...usageCode.matchAll(/checkout\.mutate\(/g)];
+  assert.equal(starts.length, 1, `a checkout must start in exactly one place, saw ${starts.length}`);
+  const confirm = usageCode.indexOf('onConfirm=');
+  assert.ok(confirm >= 0, 'the dialog must have a confirm handler');
+  assert.ok(starts[0].index > confirm, 'and the one place a checkout starts is that handler');
+});
+
+test('CHOOSING A PLAN OPENS THE SUMMARY — it does not open a payment page', () => {
+  const chooseBlock = usageCode.slice(usageCode.indexOf('onChoose='), usageCode.indexOf('onConfirm='));
+  assert.ok(chooseBlock.length > 0, 'the ladder must still have a choose handler');
+  assert.doesNotMatch(chooseBlock, /checkout\.mutate/,
+    'the first click must not take the user to a card form');
+  assert.match(chooseBlock, /setPendingPlan\(/, 'it opens the order summary instead');
+  assert.match(chooseBlock, /portal\.mutate\(\)/, 'and a paid account still goes to the portal, unchanged');
+});
+
+test('cancelling the summary starts nothing', () => {
+  // A dialog whose cancel path still fires the mutation is worse than no dialog: it teaches the user
+  // that the confirm step is decorative.
+  assert.match(usageCode, /onCancel=\{\(\) => setPendingPlan\(null\)\}/);
+});
+
+test('every class the order summary uses is styled, so it cannot render as a raw block', () => {
+  // The same failure the plan ladder had: written, rendered, and never styled, which puts an
+  // unstyled stack of text in front of somebody at the moment they are deciding to pay.
+  const dialogSrc = readFileSync(join(WEB, 'src', 'components', 'order-summary.tsx'), 'utf8');
+  const used = [...dialogSrc.matchAll(/className="([^"]+)"/g)]
+    .flatMap((m) => m[1].split(/\s+/))
+    .filter((c) => /^order-summary/.test(c));
+  const missing = [...new Set(used)].filter((c) => !css.includes(`.${c}`));
+  assert.deepEqual(missing, [], `order-summary classes with no style: ${missing.join(', ')}`);
+  assert.ok(used.length >= 4, `expected the summary to use several of its own classes, saw ${used.length}`);
+});
+
+test('the summary is fed the SERVER currency and the enforced allowances', () => {
+  // The figures a person agrees to must be the ones the service charges and enforces, read from the
+  // same places the ladder reads them rather than restated beside it.
+  const dialog = usageCode.slice(usageCode.indexOf('<OrderSummaryDialog'));
+  assert.match(dialog, /currency=\{billing\.data\?\.currency/, 'the currency the server reported');
+  assert.match(dialog, /currentPlan=\{currentPlan\}/, 'and what the account is on today');
 });
 
 test('a deployment with no Stripe key offers no button at all', () => {
@@ -198,4 +256,94 @@ test('EVERY TIER NOW AFFORDS AT LEAST ONE BUILD A DAY', () => {
         'it would advertise itself as affording no builds',
     );
   }
+});
+
+// --- coming back from the PORTAL, not only from the checkout -------------------------------
+
+/**
+ * THE END STATE WAS CONFIRMED; THE ACT WAS NOT.
+ *
+ * Cancelling happens in Stripe's portal. The return_url was a bare /app/usage, and the only return
+ * handling on this page read `?checkout=`, which is the other round trip entirely — so a user who
+ * had just cancelled came back to a page that looked exactly as it had before, and stayed that way
+ * until the webhook landed. Stripe's own confirmation was the last thing the product said to them.
+ *
+ * The note reports what the SERVER now says, for the same reason the checkout branch does: the
+ * cancellation is real when the webhook applies it, not when a browser returns to a URL.
+ */
+test('THE RETURN FROM THE PORTAL IS RECOGNISED AT ALL', () => {
+  assert.match(usageCode, /get\('billing'\)|billing=returned/,
+    'the portal return flag must be read, or a cancellation is invisible until the webhook lands');
+});
+
+test('and it reports the SERVER state rather than asserting the cancellation', () => {
+  // Never "You have cancelled" from a URL parameter. The same rule the checkout return already
+  // follows, and the reason this page stopped lying about plans.
+  assert.match(usageCode, /billingView\?\.state === 'cancelling'|billingView\.state === 'cancelling'/,
+    "the note must read the server's own state");
+  assert.doesNotMatch(usage, /You(?:'|’)ve cancelled|Your plan has been cancelled|Cancellation confirmed/i,
+    'a client-side claim about a cancellation is the sentence this page exists not to print');
+});
+
+test('the portal flag is taken back out of the URL too', () => {
+  // Same reason as the checkout flag: a reload or a shared link would replay a confirmation.
+  assert.match(usageCode, /searchParams\.delete\('billing'\)/);
+});
+
+test('and the return refetches, because the webhook may not have landed yet', () => {
+  const effect = usageCode.slice(usageCode.indexOf("get('billing')") - 600, usageCode.indexOf("get('billing')") + 600);
+  assert.match(effect, /me\.refetch\(\)/, 'the page must ask the server again rather than assume');
+});
+
+// --- what the change costs, before the user leaves for Stripe ---------------------------------
+
+/**
+ * A PAYING CUSTOMER WAS HANDED STRAIGHT TO STRIPE.
+ *
+ * The ladder prints each tier's monthly price, and for someone already on a paid tier that is not
+ * the number about to be charged: a mid-period change is prorated, net of a credit for the time
+ * already bought. `else portal.mutate()` sent them off the page and the first figure they saw was
+ * on Stripe's own checkout — the amount, the credit and the date all first appeared after they had
+ * committed to going there.
+ */
+test('A PAID-TO-PAID CHANGE IS NO LONGER A BARE REDIRECT', () => {
+  const at = usageCode.indexOf('onChoose=');
+  const choose = usageCode.slice(at, at + 900);
+  // The FIRST branch is the free account's, and it opens the order summary — the only thing that
+  // can start a checkout. This test is about the branch after it: what a PAYING customer gets.
+  assert.match(
+    choose,
+    /if \(currentPlan === 'free' && canBuy\) setPendingPlan\(plan\);[\s\S]*?else if \(canBuy\) setPendingChange\(plan\);/,
+    'a paying user choosing a tier that HAS a price must be quoted, not redirected',
+  );
+  // The redirect that survives is the move down to Free, which is a cancellation and has no
+  // upgrade invoice to preview. It must come after the priced branch, never instead of it.
+  assert.ok(
+    choose.indexOf('setPendingChange(plan)') < choose.indexOf('else portal.mutate()'),
+    'the bare redirect may only be the fall-through for a tier with no price',
+  );
+  assert.match(usageCode, /import \{ ConfirmDialog \}/, 'it asks first');
+  assert.match(usageCode, /fetchBillingPreview/, 'and the amount comes from the server');
+});
+
+test('the sentence about money comes from billing-copy, not from a template on this page', () => {
+  // The same rule the notice follows. A page that formats an amount inline makes the "is this a
+  // charge or a credit" call again in every place it prints one.
+  assert.match(usageCode, /planChangePreviewLine\(/);
+  assert.doesNotMatch(usageCode, /costs \$\{|charges \$\{/, 'no hand-rolled money sentence here');
+});
+
+test('THE CHANGE IS STILL STRIPE’S TO MAKE — confirming opens the portal, it does not set a plan', () => {
+  assert.match(usageCode, /onConfirm=\{\(\) => portal\.mutate\(\)\}/,
+    'the dialog is a preview and a confirmation, never an entitlement');
+});
+
+test('nothing is priced until a tier is actually chosen', () => {
+  // A preview on page load would ask Stripe a question on every visit to /usage.
+  assert.match(usageCode, /enabled: pendingChange !== null/);
+});
+
+test('a preview still in flight says so rather than showing an empty amount', () => {
+  assert.match(usageCode, /preview\.isPending/,
+    'the pending case is its own sentence — a blank where a number goes reads as free');
 });

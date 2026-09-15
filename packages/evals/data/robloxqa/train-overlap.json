@@ -1,0 +1,63 @@
+{
+  "measuredAt": "2026-09-15T15:29:43.288Z",
+  "measuredBy": "packages/evals/src/train-gate-overlap.mjs",
+  "gateDataset": "TorpedoSoftware/RobloxQA-v2.0",
+  "gateRevision": "3d983bf3a4702ef33719de4bb9fa8eaedbe626f1",
+  "trainingBuilder": "packages/training/src/build-dataset.mjs",
+  "trainingSplits": {
+    "train": 327,
+    "val": 39,
+    "test": 38
+  },
+  "instructionSuffixStripped": "\n\nWrite the Luau implementation.",
+  "gateRows": 3000,
+  "trainingRows": 404,
+  "exactShared": 0,
+  "shingle": {
+    "n": 8,
+    "flaggedRows": 0,
+    "flaggedBeforeStemFilter": 0,
+    "stemsIgnored": 0
+  },
+  "nearDuplicate": {
+    "method": "idf-weighted Jaccard over the whole text, both sides supplying the weights",
+    "threshold": 0.6,
+    "flaggedRows": 0,
+    "countsByThreshold": {
+      "0.6": 0,
+      "0.7": 0,
+      "0.8": 0,
+      "0.9": 0
+    },
+    "maxScore": 0.1985,
+    "margin": 0.4015,
+    "closest": [
+      {
+        "score": 0.1985,
+        "gateQuestion": "Which property on a GuiObject must typically be enabled for UITextSizeConstraint to dynamically adjust text size based on container dimensions?",
+        "trainingInstruction": "Returns the text bounds size based on given text, label (from which properties will be pulled), and optional Vector2 container size."
+      },
+      {
+        "score": 0.1902,
+        "gateQuestion": "What is the primary operational difference between a regular queue and a priority queue when storing and retrieving data?",
+        "trainingInstruction": "Handles both priority and regular particles"
+      },
+      {
+        "score": 0.1877,
+        "gateQuestion": "In Roblox's cloud localization table, what is the strict requirement for every entry's Source column?",
+        "trainingInstruction": "Reads the localization table back into a Key -> entry lookup for assertions."
+      },
+      {
+        "score": 0.1847,
+        "gateQuestion": "What is the purpose of the Label property on a PathfindingModifier instance?",
+        "trainingInstruction": "Sets the place name label on the interface"
+      },
+      {
+        "score": 0.1799,
+        "gateQuestion": "In Luau, what does an Offset value of (1, 0) do to a UIGradient applied to a GuiObject?",
+        "trainingInstruction": "Find the base 10 offset needed to make 0.1 <= abs(number) < 1"
+      }
+    ]
+  },
+  "clean": true
+}

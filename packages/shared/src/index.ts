@@ -319,6 +319,55 @@ export interface StudioLinkSummary {
   place: StudioPlace | null;
 }
 
+/**
+ * ONE ROW OF THE PROJECT'S OP LOG, as /studio/diagnostics serves it.
+ *
+ * The column names are the STORAGE spellings for everything the oplog table already had, and
+ * camelCase for `runId`, which the DO renames on the way out. That inconsistency is deliberate and
+ * is recorded here rather than tidied: renaming the rest would be a schema change dressed as a
+ * readability improvement, and the browser reading a shape that does not match the table is how a
+ * migration silently breaks a panel.
+ */
+export interface StudioOpLogRow {
+  op_id: string;
+  kind: string;
+  /** SQLite has no boolean; 1 is applied and 0 is not. */
+  ok: number;
+  summary: string;
+  created_at: number;
+  /** The failure KIND, or null — never a sentence. See apps/worker/src/op-failure.ts. */
+  failure: string | null;
+  /** The run that asked for this op, or null for one taken outside a run. */
+  runId: string | null;
+}
+
+/**
+ * EVERYTHING THE OWNER MAY KNOW ABOUT THEIR STUDIO LINK.
+ *
+ * Declared here rather than inside the worker so the DO that produces it and the panel that reads
+ * it are checked against ONE shape. The route existed and was tested for a long while with no
+ * caller in the web app at all, which is exactly the arrangement in which a field gets renamed and
+ * nothing notices.
+ *
+ * Every optional-looking value is `| null` rather than absent: "we do not know when this pairing
+ * lapses" and "it lapses at 0" must not be the same thing to a reader.
+ */
+export interface StudioDiagnostics {
+  link: StudioLinkSummary;
+  agentStatus: string;
+  /** The page size actually applied to `recentOps`, which is not necessarily the one asked for. */
+  limit: number;
+  /** The cursor for the next page of ops, or null when this page reached the end of the log. */
+  nextBefore: number | null;
+  /** When the pairing token was issued, and when it lapses. The 30-day clock, made visible. */
+  pairedAt: number | null;
+  pairingExpiresAt: number | null;
+  /** What Studio last said about itself. Null when it has never reported — NOT the same as no match. */
+  openPlace: { placeName: string; placeId: number; gameId: number; isRunMode: boolean } | null;
+  placeMismatch: { expectedPlaceName: string; openPlaceName: string; openPlaceId: number; message: string } | null;
+  recentOps: StudioOpLogRow[];
+}
+
 export interface StudioEventLog {
   kind: 'log';
   message: string;
@@ -432,7 +481,12 @@ export type ClientMsg =
   | { type: 'edit_resend'; messageId: string; text: string; mode: GolemMode }
   | { type: 'stop' } // interrupt agent
   | { type: 'resume' }
-  | { type: 'checkpoint_create'; label: string }
+  /**
+   * `description` is what the snapshot CONTAINS or why it was taken, in the user's own words.
+   * Optional: the label alone is still a valid checkpoint, and a required field on a save people
+   * take mid-thought would be a tax on the habit this feature depends on.
+   */
+  | { type: 'checkpoint_create'; label: string; description?: string }
   | { type: 'checkpoint_restore'; checkpointId: string }
   /**
    * "I am still here, and this is what I am doing."
@@ -501,6 +555,10 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'find_symbol':
     case 'search_docs':
     case 'choose_asset_source':
+    // Asking for a genre kit reads a static table and touches the place not at all. It sits with
+    // the other two asset-decision tools because it is the same act: deciding what to use before
+    // anything is built. Announcing "Building world" for a lookup would be the wrong claim.
+    case 'get_genre_kit':
     case 'search_asset_library':
     case 'find_verified_asset':
     case 'inspect_model':
@@ -526,6 +584,11 @@ export function phaseForTool(tool: string): AgentPhase {
     // is rasterising the Roblox scene — a different machine doing a different thing.
     case 'screenshot_page':
       return 'inspecting';
+    // Announcing the plan is not doing the work. This tool runs before anything in the project
+    // moves, so the one phase it must never fall through to is the `default` below — 'building'
+    // would have the workspace claim the place is being changed at the exact moment it is not.
+    case 'propose_plan':
+      return 'planning';
     // Writing a file into Golem's own store, which is what `remembering` already covers: it is
     // the phase for durable state that belongs to Golem rather than to the place. `building`
     // would say the agent changed the game, and it did not touch it.
@@ -608,13 +671,40 @@ export interface RunIntent {
   summary: string;
   /**
    * The concrete things the request named by hand — "bar counter", "stools",
-   * "warm interior lighting". The build is checked against this list, so it is
-   * the honest content of a "Plan" row: not a predicted sequence of steps, but
-   * the set of things that must exist when the run is done.
+   * "warm interior lighting". It is the honest content of a "Plan" row: not a
+   * predicted sequence of steps, but the set of things the user asked for by
+   * name, extracted from their own words at zero model cost.
+   *
+   * THIS LIST IS DISPLAYED. IT IS NOT VERIFIED. This comment used to assert
+   * the opposite, and nothing backed it: grep the worker and the checklist is
+   * built (semantic.ts), trimmed (run-intent.ts) and broadcast
+   * (do/session.ts), and never read back after the run. The only
+   * post-build check in the loop is `semanticCheck`, which measures geometry
+   * and never looks at this list. It is not even handed to the model.
+   *
+   * Corrected rather than left, because a comment describing a verification
+   * that does not happen is the same failure as a UI string describing one —
+   * it just misleads the next engineer instead of the user.
+   * `apps/worker/tests/intent-checklist-claim.test.mjs` holds the sentence to
+   * the code: implement a consumer that reads the checklist back, and the
+   * guard lets the stronger claim return.
    */
   checklist: string[];
   /** Where the request genuinely did not say. Surfaced rather than assumed. */
   questions: string[];
+  /**
+   * Where the request did not say and Apple DECIDED ANYWAY — a mood read off "cozy", a focal
+   * point nobody named outright.
+   *
+   * The opposite of `questions`, and kept apart from it for that reason: a question is still
+   * open, an assumption has already been acted on and is steering the build right now. A product
+   * that shows only the questions is reporting the choices it declined to make and hiding the
+   * ones it made.
+   *
+   * Optional on the wire because a client can be replaying a `run_intent` frame recorded by an
+   * older worker, and an absent list is not an empty one.
+   */
+  assumptions?: string[];
 }
 
 /**
@@ -825,7 +915,19 @@ export type ServerMsg =
    * repeat of the selection it last reported, so this is an event rather than a heartbeat.
    */
   | { type: 'studio_selection'; selection: StudioEventSelection }
-  | { type: 'msg_start'; msgId: string; role: 'assistant'; mode: GolemMode }
+  //[[ `userMsgId` NAMES THE ROW THE USER'S OWN MESSAGE WAS STORED UNDER.
+  //
+  //   The client appends its own message optimistically under a locally minted id — the send is
+  //   fire-and-forget over this socket and the message has to appear at once — while the server
+  //   inserts its row under a uuid it never reported. So Edit, Try again and Regenerate, all of
+  //   which resolve that id server-side, failed on every message sent in the current session and
+  //   worked after a reload, because history comes back from /messages with real ids.
+  //
+  //   Carried here rather than on a new variant because msg_start is broadcast exactly once per
+  //   run, after the user row is inserted, and already carries the run's other id. OPTIONAL
+  //   because the worker and the web app deploy separately: a client that required it would be
+  //   describing a worker that may not be live yet. See web/src/lib/message-identity.ts. ]]
+  | { type: 'msg_start'; msgId: string; role: 'assistant'; mode: GolemMode; userMsgId?: string }
   | { type: 'delta'; msgId: string; text: string }
   | { type: 'tool_start'; msgId: string; toolId: string; tool: string; summary: string }
   // `detail` carries the tool's STRUCTURED result, which the web app offers to
@@ -908,6 +1010,33 @@ export type ServerMsg =
     }
   | { type: 'quota'; quota: QuotaState }
   | { type: 'checkpoint'; checkpoint: CheckpointMeta }
+  /**
+   * A RESTORE, WHILE IT IS HAPPENING AND WHEN IT IS OVER.
+   *
+   * There was no restore counterpart to `checkpoint` above. The worker issued one opaque op with a
+   * 120s ceiling, broadcast nothing while it ran, and broadcast only on failure when it ended — so
+   * the person who pressed Restore watched the drawer close and then had no signal at all, for up
+   * to two minutes, about the operation that was at that moment deleting and rebuilding their
+   * place. Modelled on `playtest_state`, which already streams its phases for the same reason.
+   *
+   * `fidelity` is the plugin's own count of what it put back, and it travels on the DONE frame as
+   * well as the FAILED one: a restore that recreated every instance but could not set 40
+   * properties is a success the user has to be told about, and that report reached the HTTP caller
+   * and the SDK while the browser — the only caller with a human attached — got nothing.
+   *
+   * `note` is a caveat on a SUCCEEDED restore (properties failed, or the plugin is too old to
+   * report and the result is therefore unverified); `error` is why a restore did not succeed. They
+   * are separate fields because "it worked, with a caveat" and "it did not work" must never render
+   * as the same sentence.
+   */
+  | {
+      type: 'restore_status';
+      checkpointId: string;
+      phase: 'reading' | 'applying' | 'verifying' | 'done' | 'failed';
+      fidelity?: RestoreFidelity;
+      note?: string;
+      error?: string;
+    }
   | { type: 'studio_log'; entries: StudioEventLog[] }
   // Sent in reply to `resume`, and unprompted on connect when a run is live.
   | { type: 'run_state'; run: RunSnapshot | null }
@@ -969,6 +1098,39 @@ export interface CheckpointMeta {
   scriptCount: number;
   instanceCount: number;
   sizeBytes: number;
+  /**
+   * What this snapshot contains or why it was taken, or null when nobody wrote one.
+   *
+   * The only authored text on a checkpoint was a 60-character label. Everything else the drawer
+   * showed — the timestamp, the object count, the script count — is derived metadata that says
+   * nothing about what is inside. And every automatic checkpoint carries the same label, so a list
+   * of them was a column of identical rows that a person restoring had to choose between by time.
+   */
+  description?: string | null;
+  /**
+   * The person who asked for it, or null.
+   *
+   * Null means two different true things and neither of them is "you": Apple took this one itself
+   * (`auto`, `pre_agent`), or the row predates the column. It was inferred from `kind` before this
+   * field existed, which told every member of a shared project that a teammate's checkpoint was
+   * theirs — on exactly the row a restore is about to be argued over.
+   */
+  authorId?: string | null;
+}
+
+/**
+ * What the plugin reports it ACTUALLY put back, counted inside Studio.
+ *
+ * Absent — not zeroed — when the op never reached Studio at all: zeros would say "it restored
+ * nothing", which is a claim about the place, and we would not have looked.
+ */
+export interface RestoreFidelity {
+  instancesCreated: number;
+  scriptsRestored: number;
+  scriptsExpected: number;
+  failedInstances: number;
+  failedScripts: number;
+  failedProperties: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -993,6 +1155,23 @@ export interface MessageDto {
   mode: GolemMode | null;
   content: string;
   toolTrace: ToolTraceEntry[] | null;
+  createdAt: string;
+  /**
+   * How many earlier versions of this message the user wrote before editing it.
+   *
+   * Counted by the DO and sent with the list so the conversation can decide whether to draw an
+   * "edited" mark without one request per turn. The TEXT is fetched only when someone asks to read
+   * it. Optional: a worker that predates message_revisions sends no field, and the absence means
+   * "none known", never "none".
+   */
+  revisions?: number;
+}
+
+/** One earlier version of a user's message, as served by .../messages/:messageId/revisions. */
+export interface MessageRevisionDto {
+  /** Position in the chain, oldest first. */
+  seq: number;
+  content: string;
   createdAt: string;
 }
 
@@ -1106,6 +1285,41 @@ export const MODE_INFO: Record<GolemMode, { name: string; blurb: string; typical
   rune: { name: 'Rune', blurb: 'Plans, builds, tests and fixes autonomously', typicalCredits: '10-30' },
 };
 
+/**
+ * WHAT A PIECE OF WORK COSTS, WHEN IT TAKES MORE THAN ONE RUN.
+ *
+ * `typicalCredits` above is per RUN. A roadmap milestone is sized in runs — "about two Agent
+ * runs" — so the card said how much work it was in a unit nobody is billed in, while the number
+ * that would answer "what will this cost me" sat two clicks away in the composer, unmultiplied.
+ *
+ * The multiplication is the whole value. With `runs` varying across the catalogue, a two-run
+ * Super Agent milestone is 20-60 Credits where the mode's own line reads 10-30; reprinting the
+ * mode range on the card would have understated half the catalogue by a factor of two.
+ *
+ * It PARSES `typicalCredits` rather than keeping its own table, so there is exactly one place a
+ * price is written down. A second copy of a price is a second copy free to drift, which is the
+ * defect scripts/check-credit-figures.mjs exists because of — that number had drifted in three
+ * places inside one component.
+ *
+ * Returns a RANGE even when the published figure is a single number ("2" -> 2-2). It never
+ * collapses a spread to one number: the measurements behind docs/COST-MODEL.md do not support
+ * that precision, and a single figure would read as a quote.
+ *
+ * `null` for a run count that is not a positive whole number — an unreadable input produces no
+ * figure rather than a wrong one, because a wrong price is worse than a missing one.
+ */
+export function creditRangeForRuns(mode: GolemMode, runs: number): { low: number; high: number } | null {
+  if (!Number.isInteger(runs) || runs < 1) return null;
+  const published = MODE_INFO[mode]?.typicalCredits;
+  if (!published) return null;
+  const parts = published.split('-').map((p) => Number(p.trim()));
+  if (parts.length < 1 || parts.length > 2 || parts.some((n) => !Number.isFinite(n) || n <= 0)) return null;
+  const low = parts[0]!;
+  const high = parts.length === 2 ? parts[1]! : low;
+  if (high < low) return null;
+  return { low: low * runs, high: high * runs };
+}
+
 // ---------------------------------------------------------------------------
 // Product modes — the only mode concept the product surfaces
 //
@@ -1129,8 +1343,22 @@ export const MODE_INFO: Record<GolemMode, { name: string; blurb: string; typical
 /** What the user picks. This is the only mode concept the product surfaces. */
 export type ProductMode = 'plan' | 'agent' | 'super';
 
-/** The three product modes in the order they are offered. */
+//[[ WHAT EXISTS AND WHAT IS OFFERED ARE TWO DIFFERENT LISTS, AND CONFLATING THEM IS WHY
+//   "Super Agent" SURVIVED BEING REMOVED.
+//
+//   The owner said he does not want Super Agent. The composer dropped it and the sign-in page
+//   dropped it — and the usage page and the pricing calculator went on advertising it and pricing
+//   it, because both read PRODUCT_MODES, which is the list of modes that EXIST. A person could
+//   read what a Super Agent run costs on a page and find no way to start one anywhere.
+//
+//   `super` stays in the type and in the engine: `rune` is a real specialist the worker runs, and
+//   an automation or an API caller can still name it. What changed is that nothing OFFERS it.
+//   Every surface a person chooses from reads PRODUCT_MODES_OFFERED; anything that must handle
+//   every mode the system can produce — a stored run, a bill, a migration — reads PRODUCT_MODES.
 export const PRODUCT_MODES: readonly ProductMode[] = ['plan', 'agent', 'super'];
+
+/** The modes a person may choose, in the order they are shown. */
+export const PRODUCT_MODES_OFFERED: readonly ProductMode[] = ['plan', 'agent'];
 
 /**
  * Product mode -> internal specialist. Plan is inspection and design, and is
@@ -1399,6 +1627,53 @@ export const PLAN_COPY: Record<PlanId, PlanCopy> = {
   },
 };
 
+/**
+ * The one address support reaches a human at.
+ *
+ * IT WAS TWO. The marketing site, the docs footer, the status page and the FAQ all used
+ * apple.labs.app@gmail.com; the plan ladder in the signed-in app — the only support-ish link
+ * anywhere behind the login — used hello@apple.build. A customer cannot tell which of those is
+ * read, and writing to the wrong one looks, from their side, exactly like being ignored.
+ *
+ * Declared here so the two halves of the product cannot drift again, and asserted across both
+ * trees by tests/support-expectations.test.mjs.
+ */
+export const SUPPORT_EMAIL = 'apple.labs.app@gmail.com';
+
+/** What a plan can expect when it writes in. */
+export interface PlanSupport {
+  /** How you reach us on this plan. */
+  channel: string;
+  /**
+   * What is promised about a reply.
+   *
+   * NO RESPONSE TIME IS STATED, and that is the honest answer rather than an omission: nobody has
+   * committed to one, and a published SLA that is missed is worse than a published "best effort"
+   * that is met. What is NOT acceptable is the previous state, where three of four plans said
+   * nothing at all and a buyer could not tell whether anyone would answer.
+   */
+  promise: string;
+}
+
+export const PLAN_SUPPORT: Record<PlanId, PlanSupport> = {
+  free: {
+    channel: `Email ${SUPPORT_EMAIL}`,
+    promise: 'A human reads it. While Apple is in beta no reply time is promised, and busy weeks are slower.',
+  },
+  builder: {
+    channel: `Email ${SUPPORT_EMAIL}`,
+    promise: 'A human reads it, and paid accounts are answered first. No reply time is promised while Apple is in beta.',
+  },
+  studio: {
+    channel: `Email ${SUPPORT_EMAIL}`,
+    promise: 'A human reads it, and paid accounts are answered first. No reply time is promised while Apple is in beta.',
+  },
+  enterprise: {
+    channel: `Email ${SUPPORT_EMAIL} to start`,
+    promise: 'A named contact and whatever response terms are agreed in your contract — these are negotiated, not published.',
+  },
+};
+
 /** Credits in one quality-gated build, from the measured neuron cost. */
 export const CREDITS_PER_BUILD = 77;
 
@@ -1548,6 +1823,15 @@ export const ROBLOX_SCOPES = [
   'universe.place:write',
   'user.social:read',
   'creator-store-product:read',
+  // The Creator Dashboard set. Spelled exactly as Roblox's own published Cloud spec spells them
+  // (github.com/Roblox/creator-docs, content/en-us/reference/cloud/openapi.json, read 2026-09-15),
+  // because these strings are what a person has to recognise on Roblox's API-key page — a scope we
+  // named ourselves would be a tick-box nobody could match to a permission.
+  'universe:read',
+  'user.inventory-item:read',
+  'game-pass:read',
+  'game-pass:write',
+  'asset-permissions:write',
 ] as const;
 export type RobloxScope = (typeof ROBLOX_SCOPES)[number];
 
@@ -1580,3 +1864,65 @@ export interface AssetSourcePolicy {
 }
 
 export const ASSET_SOURCE_DEFAULT: AssetSourcePolicy = { mode: 'ask', allow: [] };
+
+/* --------------------------------------------------------------- message revisions --- */
+
+/**
+ * Does replacing `previous` with `next` produce an earlier version worth keeping?
+ *
+ * Shared because BOTH sides answer it and they must answer it the same way: the DO decides whether
+ * to write a `message_revisions` row, and the web app decides whether to increment the count it is
+ * showing optimistically before the server has said anything. If they disagreed, the conversation
+ * would offer to show earlier versions that do not exist, or hide ones that do.
+ *
+ * NO for an unchanged resend, which is not a hypothetical: "Try again" and "Regenerate" both go
+ * through `edit_resend` with the text untouched, on purpose, so that running again has exactly one
+ * definition. Recording those would tell a user who regenerated four times that their message has
+ * four earlier versions, every one of them identical to the one on screen.
+ *
+ * Compared trimmed, because the client trims before sending and the DO trims on arrival — a rule
+ * that counted whitespace would record a revision nobody can see a difference in.
+ *
+ * NO for an empty previous message: there is no version of nothing.
+ */
+export function recordsRevision(previous: string, next: string): boolean {
+  const before = previous.trim();
+  if (!before) return false;
+  return before !== next.trim();
+}
+
+/* ---------------------------------------------------------------- run failures --- */
+
+/**
+ * Why a run ended badly, as a closed set the worker and the app both read.
+ *
+ * WHAT THIS REPLACES. `finishRun`'s `error` argument is broadcast to the browser on the `msg_end`
+ * frame, and the workspace rendered it as the outcome sentence. The values being passed were
+ * 'run interrupted', 'rate_limited', and — on two paths — whatever the inference provider had
+ * thrown, unredacted. A person whose build died read a note one server wrote to another, which is
+ * exactly the failure apps/web/src/lib/error-taxonomy.ts exists to prevent, one process upstream
+ * of where it can act.
+ *
+ * SO THE WIRE CARRIES A CODE AND THE APP OWNS THE SENTENCE. The provider's words stay on the
+ * server, logged, where support can read them; they never reach a screen. An app that meets a code
+ * it does not know falls back to the generic sentence rather than printing the code — a worker
+ * deployed ahead of the app must degrade, not leak.
+ *
+ * The values below are descriptions for whoever reads this file. Nothing renders them.
+ */
+export const RUN_FAILURES = {
+  /** The model was rate-limited upstream. Everything finished before that step is saved. */
+  busy: 'upstream rate limit',
+  /** No step completed inside the stale window — usually an instance evicted mid-run. */
+  interrupted: 'run went stale between steps',
+  /** Inference failed after the run had already done real work. */
+  dropped_step: 'inference failed past step 1',
+  /** Anything else thrown out of a step. The provider's message is logged, never sent. */
+  model_failed: 'unclassified step failure',
+} as const;
+
+export type RunFailure = keyof typeof RUN_FAILURES;
+
+export function isRunFailure(v: unknown): v is RunFailure {
+  return typeof v === 'string' && Object.prototype.hasOwnProperty.call(RUN_FAILURES, v);
+}

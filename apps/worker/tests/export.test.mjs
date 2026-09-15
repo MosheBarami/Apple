@@ -185,7 +185,12 @@ test('the export route refuses a project the caller does not own', () => {
 test('both formats come from one payload, so they cannot disagree', () => {
   assert.equal((route.match(/stub\.fetch\('https:\/\/do\/export'\)/g) ?? []).length, 1);
   assert.match(route, /renderTranscriptMarkdown\(data\)/);
-  assert.match(route, /JSON\.stringify\(data, null, 2\)/);
+  // WAS `JSON.stringify(data, null, 2)`. The JSON body now carries one added field — a sha256 of
+  // its own messages, so the file can be verified after it leaves this origin — and the literal
+  // moved with it. The PROPERTY is unchanged and is what is asserted: the JSON is that one payload
+  // spread, not a second document assembled from the same DO read.
+  assert.match(route, /JSON\.stringify\(\{ \.\.\.data,/);
+  assert.match(route, /\}, null, 2\)/);
 });
 
 test('the export route is not in the auth exemption list', () => {

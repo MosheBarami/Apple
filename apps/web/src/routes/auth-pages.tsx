@@ -8,8 +8,10 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { safeInternalPath } from '../lib/safe-redirect';
-import { PRODUCT_MODE_INFO, type ProductMode } from '@golem/shared';
+import { PRODUCT_MODES_OFFERED, PRODUCT_MODE_INFO } from '@golem/shared';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../lib/auth';
+import { codeProblem, normaliseCode, secondStep, verifiedTotpFactors } from '../lib/mfa';
 import { useTheme } from '../lib/theme';
 import { AppleGlyph } from '../components/glyphs';
 import {
@@ -25,7 +27,19 @@ import {
   signupOutcome,
 } from '../lib/auth-flows';
 
-const MODES: ProductMode[] = ['plan', 'agent', 'super'];
+/**
+ * What the signed-out hero lists, which is NOT every mode the product has.
+ *
+ * 'super' is deliberately absent: the owner does not want Super Agent on the
+ * front of the product, and this panel is the first thing a person who has not
+ * signed up yet reads. It is presentation only — `PRODUCT_MODE_INFO` still
+ * defines all three, the composer inside the app still offers all three, and
+ * nothing in apps/worker changed. A visitor is not being told there are two
+ * modes; they are being shown the two that answer what they arrived asking.
+ */
+// The modes a person may CHOOSE. PRODUCT_MODES is every mode the system can produce —
+// pricing one nobody can start is how "Super Agent" survived being removed from the composer.
+const MODES = PRODUCT_MODES_OFFERED;
 
 function ThemeCorner() {
   const { theme, setTheme } = useTheme();
@@ -140,6 +154,17 @@ function CheckEmailCard({
       <Link to="/login" className="btn btn-primary btn-block">
         Go to sign in
       </Link>
+      {/*[[ THE WAY OUT WHEN NO MAIL ARRIVES, WHICH IS A REAL CASE AND NOT AN EDGE ONE.
+            Signing up with an address that ALREADY has an account returns 200 and sends nothing —
+            deliberately, so that this screen cannot be used to discover who is registered. The
+            owner of this product sat on this card four times in one hour waiting for a message
+            that was never going to be sent, because the only thing it offered was patience.
+            Nothing here reveals whether the account exists; it offers the two doors that work in
+            the case where it does. */}
+      <p className="auth-switch">
+        No mail after a minute? You may already have an account —{' '}
+        <Link to={`/forgot${address ? `?email=${encodeURIComponent(address)}` : ''}`}>reset your password</Link>.
+      </p>
     </div>
   );
 }
@@ -155,11 +180,27 @@ function FormError({ message }: { message: string | null }) {
 
 /* ------------------------------------------------------------------- sign in --- */
 
+/**
+ * SIGN IN — and, for an account that has enrolled one, the second step.
+ *
+ * THE PASSWORD IS NOT THE END OF THIS PAGE. `signInWithPassword` succeeding produces a session at
+ * assurance level aal1, which for an account with a verified factor is a half-finished sign-in. The
+ * decision about that is `secondStep` in lib/mfa.ts, and it FAILS CLOSED: an assurance level that
+ * cannot be read stops here and says so, rather than doing the comfortable thing and letting the
+ * person in — which would turn any interference with the network into a password-only sign-in to an
+ * account whose owner asked for a code every time.
+ *
+ * WHICH SCREEN IS SHOWING IS READ FROM THE SESSION, not from a local flag. `stepOwed` comes from
+ * AuthProvider, so a reload in the middle of the challenge comes back to the code field rather than
+ * to a password field for a password that has already been accepted.
+ */
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { stepOwed, signOut } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -173,14 +214,117 @@ export function LoginPage() {
     setError(null);
     setBusy(true);
     const { error: err } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-    setBusy(false);
     const outcome = signInOutcome(err);
     if (outcome.kind === 'retry') {
+      setBusy(false);
       setError(outcome.message);
+      return;
+    }
+    // The password worked. Whether that is a sign-in depends on what this account asked for.
+    const { data, error: aalErr } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    const next = secondStep(data, aalErr);
+    setBusy(false);
+    if (next.step === 'blocked') {
+      setError(next.message);
+      return;
+    }
+    // 'code' needs no branch here: AuthProvider read the same thing, and the code field below is
+    // what this page renders while it is owed.
+    if (next.step === 'in') navigate(from, { replace: true });
+  };
+
+  /**
+   * The second step.
+   *
+   * The factor id is read fresh rather than carried from the password step, because the page may
+   * have been reloaded since — and because an account with no verified factor must not be able to
+   * reach a challenge at all. An unreadable list stops here; it does not fall through to "in".
+   */
+  const onVerify = async (e: FormEvent) => {
+    e.preventDefault();
+    if (busy) return;
+    const problem = codeProblem(code);
+    if (problem) {
+      setError(problem);
+      return;
+    }
+    setError(null);
+    setBusy(true);
+    const { data, error: listErr } = await supabase.auth.mfa.listFactors();
+    const factor = listErr ? undefined : verifiedTotpFactors(data)[0];
+    if (!factor) {
+      setBusy(false);
+      setError('We could not reach the verification settings on this account. Try signing in again.');
+      return;
+    }
+    const { error: verifyErr } = await supabase.auth.mfa.challengeAndVerify({
+      factorId: factor.id,
+      code: normaliseCode(code),
+    });
+    setBusy(false);
+    if (verifyErr) {
+      setError(authErrorMessage(verifyErr));
+      setCode('');
       return;
     }
     navigate(from, { replace: true });
   };
+
+  if (stepOwed?.step === 'blocked') {
+    return (
+      <AuthShell>
+        <div className="auth-card" role="alert">
+          <h2 className="auth-card-title">We could not finish signing you in</h2>
+          <p className="auth-card-sub">{stepOwed.message}</p>
+          {/* An exit, not a dead end: the half-made session is dropped so the password form comes
+              back rather than this card returning for ever. */}
+          <button type="button" className="btn btn-primary btn-block" onClick={() => void signOut()}>
+            Start again
+          </button>
+        </div>
+      </AuthShell>
+    );
+  }
+
+  if (stepOwed?.step === 'code') {
+    return (
+      <AuthShell>
+        <form className="auth-card" onSubmit={onVerify} noValidate>
+          <h2 className="auth-card-title">One more step</h2>
+          <p className="auth-card-sub">Enter the six-digit code from your authenticator app.</p>
+          <FormError message={error} />
+          <label className="field">
+            <span className="field-label">Verification code</span>
+            <input
+              name="totpCode"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              autoFocus
+              maxLength={12}
+              required
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="123456"
+            />
+          </label>
+          <button type="submit" className="btn btn-primary btn-block" disabled={busy || !code.trim()}>
+            {busy ? 'Checking…' : 'Sign in'}
+          </button>
+          <p className="auth-switch">
+            {/* Honest about the one thing this product cannot yet do for them. Offering a "lost my
+                phone" link to a flow that does not exist would be worse than saying nothing. */}
+            Without that app you cannot get in — there are no backup codes yet. Signing out below
+            returns you to the password screen.
+          </p>
+          <p className="auth-switch">
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => void signOut()}>
+              Use a different account
+            </button>
+          </p>
+        </form>
+      </AuthShell>
+    );
+  }
 
   return (
     <AuthShell>
@@ -296,7 +440,10 @@ export function SignupPage() {
           resending={resend === 'sending'}
           resent={resend === 'sent'}
         >
-          <p className="auth-card-sub">Click the link to confirm your address, then come back and sign in.</p>
+          {/* Conditional, because the unconditional version was false half the time. An address
+              that already has an account gets no mail at all, and "click the link" then reads as an
+              instruction the person cannot follow and cannot explain. */}
+          <p className="auth-card-sub">If this address is new, the link confirms it. Then come back and sign in.</p>
         </CheckEmailCard>
       ) : (
         <form className="auth-card" onSubmit={onSubmit} noValidate>

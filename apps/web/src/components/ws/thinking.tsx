@@ -86,6 +86,22 @@ function Stage({
           </div>
         )}
 
+        {/* The other half of the same honesty, and the half that was missing. The block above
+            lists what Apple DECLINED to decide; this lists what it decided anyway and is acting
+            on right now. Shipping only the first told the user about the restraint and hid the
+            choices. The label is an invitation because these are the cheapest possible
+            corrections — a wrong assumption caught here costs a sentence, not a rebuild. */}
+        {stage.assumptions && (
+          <div className="gx-assumed">
+            <span className="gx-assumed__label">Apple assumed — say so if this is wrong:</span>
+            <ul>
+              {stage.assumptions.map((a) => (
+                <li key={a}>{a}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {/* The Actions stage is drawn by <Activity>, which groups the same real
             events into ordered, timed phases and hangs each step's evidence on
             it. `stage.actions` still decides whether this stage EXISTS AT ALL —

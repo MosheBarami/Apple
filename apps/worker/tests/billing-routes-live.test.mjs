@@ -57,6 +57,10 @@ let doBilling = { plan: 'free', customerId: null, subscription: null, events: []
 let doCalls = [];
 /** Every request that left for Stripe. */
 let stripeCalls = [];
+/** Every prepared D1 statement, so a notification can be observed rather than assumed. */
+let d1Calls = [];
+/** Set to make Stripe refuse, so a route's behaviour when it cannot see can be asserted. */
+let stripeDown = false;
 
 globalThis.fetch = async (input, init) => {
   const url = typeof input === 'string' ? input : input.url;
@@ -64,6 +68,22 @@ globalThis.fetch = async (input, init) => {
   if (url.includes('/.well-known/jwks.json')) return json({ keys: [jwk] });
   if (url.startsWith('https://api.stripe.com/')) {
     stripeCalls.push({ url, body: String(init?.body ?? '') });
+    if (stripeDown) return json({ error: { message: 'no' } }, 500);
+    // The preview is an INVOICE, not a session with a url. Amounts in minor units, as Stripe sends
+    // them: 1234 is twelve dollars thirty-four.
+    if (url.includes('/v1/invoices/create_preview')) {
+      return json({
+        object: 'invoice',
+        amount_due: 1234,
+        currency: 'usd',
+        lines: {
+          data: [
+            { description: 'Unused time on Builder', amount: -766, proration: true, period: { start: NOW_S } },
+            { description: 'Remaining time on Studio', amount: 2000, proration: true, period: { start: NOW_S } },
+          ],
+        },
+      });
+    }
     return json({ url: 'https://checkout.stripe.com/c/pay/cs_test_1' });
   }
   if (url.includes('/rest/v1/profiles')) return json([{ id: USER_ID, plan: 'free', is_admin: false, display_name: 'buyer' }]);
@@ -103,9 +123,21 @@ const env = () => ({
   STRIPE_SECRET_KEY: 'sk_test_x',
   STRIPE_PRICE_BUILDER: 'price_builder_1',
   STRIPE_PRICE_STUDIO: 'price_studio_1',
+  STRIPE_PORTAL_CONFIGURATION: 'bpc_test_1',
   KV: { get: async () => null, put: async () => {}, delete: async () => {}, list: async () => ({ keys: [] }) },
   AI: { run: async () => ({ choices: [{ message: { content: '{}' } }] }) },
-  CORPUS: { exec: async () => ({}), prepare: () => ({ bind: () => ({ all: async () => ({ results: [] }), first: async () => null, run: async () => ({}) }) }), batch: async () => [] },
+  // Records what was prepared and what was bound to it. A notification is written through D1, and
+  // "the route said it would notify" is not the same fact as "a row exists for the person to find".
+  CORPUS: {
+    exec: async () => ({}),
+    prepare: (sql) => ({
+      bind: (...args) => {
+        d1Calls.push({ sql, args });
+        return { all: async () => ({ results: [] }), first: async () => null, run: async () => ({}) };
+      },
+    }),
+    batch: async () => [],
+  },
   VEC: { query: async () => ({ matches: [] }), upsert: async () => ({}) },
   SESSION_DO: quotaNamespace(),
   QUOTA_DO: quotaNamespace(),
@@ -132,10 +164,12 @@ const reset = (billing) => {
   doBilling = { plan: 'free', customerId: null, subscription: null, events: [], ...billing };
   doCalls = [];
   stripeCalls = [];
+  d1Calls = [];
+  stripeDown = false;
 };
 
 const sub = (over) => ({
-  plan: 'builder', customerId: 'cus_1', subscriptionId: 'sub_1',
+  plan: 'builder', customerId: 'cus_1', subscriptionId: 'sub_1', itemId: 'si_1',
   status: 'active', currentPeriodEnd: LATER, cancelAtPeriodEnd: false, ...over,
 });
 
@@ -250,12 +284,20 @@ async function signedWebhook(event) {
     { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${ts}.${body}`));
   const hex = [...new Uint8Array(mac)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  // A real ExecutionContext, and the background work is AWAITED before the assertions run. Anything
+  // the route hands to waitUntil — the notification about a payment problem, for one — outlives the
+  // response, and a test that returns at the response observes a product that has not finished
+  // doing the thing under test.
+  const waited = [];
+  const ctx = { waitUntil: (p) => waited.push(Promise.resolve(p)), passThroughOnException: () => {} };
   const res = await APP.fetch(new Request('https://golem.test/api/billing/webhook', {
     method: 'POST',
     headers: { 'stripe-signature': `t=${ts},v1=${hex}`, 'content-type': 'application/json' },
     body,
-  }), env());
-  return { status: res.status, json: await res.json() };
+  }), env(), ctx);
+  const out = { status: res.status, json: await res.json() };
+  await Promise.allSettled(waited);
+  return out;
 }
 
 test('THE WEBHOOK FORWARDS THE EVENT ID AND THE WHOLE SUBSCRIPTION', async () => {
@@ -288,4 +330,202 @@ test('the credits webhook forwards its event id too', async () => {
   assert.ok(grant, 'credits must still be granted');
   assert.equal(grant.body.credits, 500);
   assert.equal(grant.body.eventId, 'evt_route_2', 'without this a redelivery credits the account twice');
+});
+
+test('A PORTAL UPGRADE GRANTS THE TIER IT CHARGES FOR, over the real webhook route', async () => {
+  // THE DEFECT, END TO END. metadata.plan is written once, at checkout. A tier change made in the
+  // Billing Portal swaps items[].price and leaves metadata alone, so this event — a genuine Studio
+  // upgrade for a customer who first bought Builder — was applied as Builder. The customer paid
+  // Studio and was served Builder, and nothing in the product said a word.
+  reset({ plan: 'builder', customerId: 'cus_1', subscription: sub() });
+  const r = await signedWebhook({
+    id: 'evt_portal_upgrade',
+    type: 'customer.subscription.updated',
+    data: { object: { id: 'sub_1', customer: 'cus_1', status: 'active', current_period_end: LATER,
+                      cancel_at_period_end: false,
+                      items: { data: [{ id: 'si_1', price: { id: 'price_studio_1' } }] },
+                      metadata: { userId: USER_ID, plan: 'builder' } } },
+  });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  const setPlan = doCalls.find((c) => c.path === '/set-plan');
+  assert.ok(setPlan, 'the plan must still be applied');
+  assert.equal(setPlan.body.plan, 'studio', 'the ENFORCED tier is the one Stripe is billing');
+  assert.equal(setPlan.body.subscription.plan, 'studio', 'and the stored record agrees with it');
+});
+
+test('a webhook with no price item still grants what the metadata says', async () => {
+  // The control. If reading the price had become the ONLY way to a tier, every first checkout — and
+  // every event Stripe sends without expanding the item — would demote the customer to free.
+  reset();
+  await signedWebhook({
+    id: 'evt_no_items',
+    type: 'customer.subscription.created',
+    data: { object: { id: 'sub_2', customer: 'cus_1', status: 'active', current_period_end: LATER,
+                      cancel_at_period_end: false, metadata: { userId: USER_ID, plan: 'studio' } } },
+  });
+  assert.equal(doCalls.find((c) => c.path === '/set-plan').body.plan, 'studio');
+});
+
+// ------------------------------------------------------- the checkout nobody came back from
+
+/**
+ * A SESSION THE USER ABANDONED PRODUCED NO STATE, NO NOTICE AND NO RECORD.
+ *
+ * `?checkout=done` and `?checkout=cancelled` both require coming back through the redirect. Someone
+ * who opens Stripe's page, is interrupted, and closes the tab hits neither — the session lapses and
+ * `checkout.session.expired` arrived into an interpreter whose default branch dropped it. Nothing
+ * was charged, and nothing said so.
+ */
+test('AN EXPIRED CHECKOUT TELLS THE PERSON AND TOUCHES NOTHING THEY OWN', async () => {
+  reset();
+  const r = await signedWebhook({
+    id: 'evt_expired_1',
+    type: 'checkout.session.expired',
+    data: { object: { id: 'cs_test_9', currency: 'usd', metadata: { userId: USER_ID } } },
+  });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  assert.equal(r.json.dunning, 'checkout_expired', 'the route must recognise it as something to say');
+
+  // Entitlement is the half that must NOT move: an expiry means nothing happened.
+  assert.equal(doCalls.find((c) => c.path === '/set-plan'), undefined, 'no plan may be applied');
+  assert.equal(doCalls.find((c) => c.path === '/grant-credits'), undefined, 'and no credits');
+
+  // And the half that must: a row the person can actually find.
+  const insert = d1Calls.find((c) => /insert into notifications/i.test(c.sql));
+  assert.ok(insert, 'a notification row must actually be written, not merely intended');
+  assert.ok(insert.args.includes(USER_ID), 'addressed to the account whose checkout it was');
+  assert.match(JSON.stringify(insert.args), /nothing was charged/i,
+    'and it must say the thing that stops this reading as a failed payment');
+});
+
+test('an expired checkout for a session with no user is ignored, and says so', async () => {
+  reset();
+  const r = await signedWebhook({
+    id: 'evt_expired_2',
+    type: 'checkout.session.expired',
+    data: { object: { id: 'cs_test_10' } },
+  });
+  assert.equal(r.status, 200, 'the event is valid; Stripe must not retry it forever');
+  assert.equal(d1Calls.find((c) => /insert into notifications/i.test(c.sql)), undefined,
+    'a notification attached to a guessed account is worse than none');
+});
+
+test('CONTROL: an ordinary subscription event raises no billing alarm', async () => {
+  // Without this, the assertion above could pass because every webhook notifies.
+  reset();
+  const r = await signedWebhook({
+    id: 'evt_plain_1',
+    type: 'customer.subscription.created',
+    data: { object: { id: 'sub_9', customer: 'cus_1', status: 'active', current_period_end: LATER,
+                      cancel_at_period_end: false, metadata: { userId: USER_ID, plan: 'builder' } } },
+  });
+  assert.equal(r.json.dunning, null, 'a successful subscription is not a payment problem');
+  assert.equal(d1Calls.find((c) => /insert into notifications/i.test(c.sql)), undefined);
+});
+
+// ----------------------------------------------- what the page is told before it offers to sell
+
+test('THE CONFIG ROUTE NAMES THE CURRENCY, so the ladder is not guessing', async () => {
+  // The page falls back to the declared code when the field is missing, which is a plausible-looking
+  // answer arrived at from no information — and that was the state of the deployed worker, which
+  // returned {checkout, purchasable} and no currency at all while the page already read one.
+  reset();
+  const r = await call('/api/billing/config');
+  assert.equal(r.status, 200, r.text);
+  assert.match(String(r.json.currency), /^[A-Z]{3}$/, `an ISO 4217 code, saw ${r.json.currency}`);
+  assert.equal(r.json.checkout, true, 'and it still says whether anything can be bought');
+  assert.deepEqual(r.json.purchasable, ['builder', 'studio'], 'and which tiers');
+});
+
+test('THE PORTAL ROUTE SENDS THE PINNED CONFIGURATION, not the dashboard default', async () => {
+  // The pure test proves the builder sets it. This proves the ROUTE hands the env to the builder — a
+  // configuration nothing passes through is the same as no configuration at all.
+  reset({ plan: 'builder', customerId: 'cus_1', subscription: sub() });
+  const r = await call('/api/billing/portal', { method: 'POST' });
+  assert.equal(r.status, 200, r.text);
+  const p = new URLSearchParams(stripeCalls[0].body);
+  assert.equal(p.get('configuration'), 'bpc_test_1');
+  assert.equal(p.get('customer'), 'cus_1', "and the caller's own customer, which is not a parameter");
+});
+
+test('THE PORTAL SENDS THE USER BACK TO A PAGE THAT KNOWS THEY WERE THERE', async () => {
+  // The cancellation happens on Stripe's page. With a bare return_url the product had no moment at
+  // which to say anything about it: the page rendered exactly as it had before the visit, and the
+  // only return flag it read was the checkout one, which is a different round trip.
+  reset({ plan: 'builder', customerId: 'cus_1', subscription: sub() });
+  const r = await call('/api/billing/portal', { method: 'POST' });
+  assert.equal(r.status, 200, r.text);
+  const p = new URLSearchParams(stripeCalls[0].body);
+  const back = new URL(p.get('return_url'));
+  assert.equal(back.pathname, '/app/usage', 'still our own page, never a caller-supplied one');
+  assert.equal(back.searchParams.get('billing'), 'returned',
+    'and it must carry the flag the page reads to report what changed');
+});
+
+// ------------------------------------------------ what a change costs, asked before it is made
+
+test('A PAYING CUSTOMER CAN BE TOLD WHAT A TIER CHANGE COSTS BEFORE LEAVING THE PRODUCT', async () => {
+  // The ladder priced every tier per month and then handed a paying user to Stripe's portal, so the
+  // amount for THIS change — prorated, net of the credit for time already paid for — was first seen
+  // on a page outside the product, after the user had committed to going there.
+  reset({ plan: 'builder', customerId: 'cus_1', subscription: sub() });
+  const r = await call('/api/billing/preview?plan=studio');
+  assert.equal(r.status, 200, r.text);
+  assert.equal(r.json.amountDue, 12.34, 'minor units read as money');
+  assert.equal(r.json.currency, 'USD');
+  assert.equal(r.json.lines.length, 2, 'the credit and the charge are both shown, not only the net');
+  assert.equal(r.json.prorationDate, NOW_S);
+
+  assert.equal(stripeCalls.length, 1);
+  assert.match(stripeCalls[0].url, /\/v1\/invoices\/create_preview$/);
+  const sent = new URLSearchParams(stripeCalls[0].body);
+  assert.equal(sent.get('subscription'), 'sub_1');
+  // Without the item id Stripe prices BOTH tiers together and quotes their sum.
+  assert.equal(sent.get('subscription_details[items][0][id]'), 'si_1');
+  assert.equal(sent.get('subscription_details[items][0][price]'), 'price_studio_1');
+});
+
+test('the preview changes nothing — it never asks the DO to set a plan', async () => {
+  reset({ plan: 'builder', customerId: 'cus_1', subscription: sub() });
+  await call('/api/billing/preview?plan=studio');
+  assert.deepEqual(doCalls.filter((c) => c.path === '/set-plan'), [], 'a quote is not a purchase');
+});
+
+test('A USER WITH NOTHING RUNNING IS REFUSED RATHER THAN QUOTED ZERO', async () => {
+  // Nothing to prorate against. Returning an amount of 0 here would print "this costs nothing
+  // today" over a change that charges the full price.
+  reset();
+  const r = await call('/api/billing/preview?plan=studio');
+  assert.equal(r.status, 400, r.text);
+  assert.equal(stripeCalls.length, 0, 'and Stripe is not asked a question with no subject');
+});
+
+test('a subscription stored before the item id was kept is refused, not priced wrongly', async () => {
+  reset({ plan: 'builder', customerId: 'cus_1', subscription: sub({ itemId: null }) });
+  const r = await call('/api/billing/preview?plan=studio');
+  assert.equal(r.status, 400, r.text);
+  assert.equal(stripeCalls.length, 0);
+});
+
+test('an unknown plan is refused before Stripe is troubled', async () => {
+  reset({ plan: 'builder', customerId: 'cus_1', subscription: sub() });
+  const r = await call('/api/billing/preview?plan=platinum');
+  assert.equal(r.status, 400, r.text);
+  assert.equal(stripeCalls.length, 0);
+});
+
+test('WHEN STRIPE CANNOT ANSWER, THE ROUTE SAYS SO — it does not invent a figure', async () => {
+  // A failure to observe must not render as an observation. The page says "we could not get the
+  // amount" off the back of this, which is true; a 200 with a zero would be a sentence about money.
+  reset({ plan: 'builder', customerId: 'cus_1', subscription: sub() });
+  stripeDown = true;
+  const r = await call('/api/billing/preview?plan=studio');
+  assert.equal(r.status, 502, r.text);
+  assert.equal(r.json.amountDue, undefined, 'no amount may leave this route when none was read');
+});
+
+test('the preview is scoped to the caller, with no id to point elsewhere', async () => {
+  reset({ plan: 'builder', customerId: 'cus_1', subscription: sub() });
+  const anon = await call('/api/billing/preview?plan=studio', { jwt: null });
+  assert.notEqual(anon.status, 200, "an unauthenticated caller must not price someone else's change");
 });

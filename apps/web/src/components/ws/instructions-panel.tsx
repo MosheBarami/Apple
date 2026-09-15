@@ -30,6 +30,9 @@ import {
   type PromptProfile,
 } from '../../lib/api';
 import { useToast } from '../toast';
+import { GOVERNABLE_TOOLS, blockedTools, withToolBlocked } from './tool-permissions';
+import { KIND_LABELS, MANDATORY_KINDS, NOTIFICATION_KINDS } from '../../lib/notification-inbox.ts';
+import { MANDATORY_REASON, eventEnabled, toggledEvents } from '../../lib/notification-prefs.ts';
 
 const CODING_STYLES = ['idiomatic', 'minimal', 'commented', 'strict-typed', 'oop', 'functional'] as const;
 const RESPONSE_LENGTHS = ['brief', 'normal', 'detailed'] as const;
@@ -294,6 +297,52 @@ export function InstructionsPanel({ projectId }: { projectId: string }) {
         </select>
       </label>
 
+      {/* --------------------------------------------------------- what Apple may touch -- */}
+      {/*
+        The worker has enforced `tool_permissions` on every step of every run for a long time —
+        applyToolPermissions narrows the mode's toolset, and preferences.test.mjs pins that it can
+        only ever narrow. Nothing in the product could set it: the only mention anywhere in
+        apps/web was the TYPE. This is the decision that enforcement was waiting for.
+
+        Two states, not three. `allow` is the absence of a restriction rather than a grant, so
+        storing one would read like permission and confer nothing; `ask` is collapsed to a refusal
+        by the worker because nothing here can interrupt a run to ask, so offering it would promise
+        a confirmation that never comes. See tool-permissions.ts.
+      */}
+      <fieldset className="prefs__set" disabled={!canWrite}>
+        <legend className="field-label">What Apple may do here</legend>
+        <p className="prefs__note">
+          Everything is allowed unless you block it. Blocks add up across your organisation, your
+          account and this project — the strictest one wins, so a block set elsewhere cannot be
+          undone here.
+        </p>
+        {(['changes', 'spends'] as const).map((group) => (
+          <div key={group} className="prefs__group">
+            <span className="prefs__group-label">
+              {group === 'changes' ? 'Changes your project' : 'Costs Credits beyond the run'}
+            </span>
+            {GOVERNABLE_TOOLS.filter((t) => t.group === group).map((t) => {
+              const blocked = blockedTools(prefs.tool_permissions).has(t.tool);
+              return (
+                <label key={t.tool} className="prefs__check prefs__check--reasoned">
+                  <input
+                    type="checkbox"
+                    checked={blocked}
+                    onChange={() => setPref('tool_permissions', withToolBlocked(prefs.tool_permissions, t.tool, !blocked))}
+                  />
+                  <span>
+                    <span className="prefs__check-label">Block: {t.label}</span>
+                    {/* The reason is shown, not hidden behind a tooltip. A permission control
+                        whose consequences are invisible is one people either ignore or misuse. */}
+                    <span className="prefs__check-why">{t.why}</span>
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        ))}
+      </fieldset>
+
       <fieldset className="prefs__set" disabled={!canWrite}>
         <legend className="field-label">Roblox conventions</legend>
         {CONVENTIONS.map((c) => {
@@ -309,6 +358,41 @@ export function InstructionsPanel({ projectId }: { projectId: string }) {
                 }}
               />
               <span>{c.label}</span>
+            </label>
+          );
+        })}
+      </fieldset>
+
+      {/* THE SAME SWITCHES AS /settings, AT WHICHEVER SCOPE IS SELECTED ABOVE, and that is the
+          whole point of them being here. `notify_events` is the one preference the server merges
+          PER ENTRY rather than wholesale, precisely so that muting one kind on one project does
+          not silently un-mute everything the person turned off account-wide. That layering existed
+          and was tested, and nothing could write the project layer. */}
+      <fieldset className="prefs__set" disabled={!canWrite}>
+        <legend className="field-label">
+          {scope === 'project' ? 'Tell me about, on this project' : 'Tell me about'}
+        </legend>
+        {/* The kinds come from the shared list rather than being typed out here. It is a copy of
+            the worker's allowlist, and tests/notification-inbox.test.mjs fails in BOTH directions
+            if the two ever disagree — a kind added on the server with no row here would be one no
+            project could ever mute. */}
+        {NOTIFICATION_KINDS.map((kind) => {
+          const locked = MANDATORY_KINDS.includes(kind);
+          return (
+            <label key={kind} className="prefs__check">
+              <input
+                type="checkbox"
+                checked={eventEnabled(prefs.notify_events, kind)}
+                disabled={locked}
+                onChange={(e) => setPref('notify_events', toggledEvents(prefs.notify_events, kind, e.target.checked))}
+              />
+              <span>
+                {KIND_LABELS[kind]}
+                {/* Disabled and PRESENT. The server refuses to mute these with the reason
+                    `mandatory`; a row that was simply missing would read as "this product does not
+                    tell me about billing", which is the opposite of true. */}
+                {locked && <span className="field-hint"> — {MANDATORY_REASON}</span>}
+              </span>
             </label>
           );
         })}

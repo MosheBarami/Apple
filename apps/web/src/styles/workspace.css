@@ -266,6 +266,19 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Why a pinned conversation sits above newer ones. Quiet — it marks the row, it does not compete
+   with the name for it. */
+.gx-conv__pin {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  color: var(--gx-ink-3);
+}
+
+.gx-conv.is-active .gx-conv__pin {
+  color: inherit;
+}
+
 .gx-conv:hover {
   background: rgba(245, 242, 236, 0.04);
   color: var(--gx-ink);
@@ -545,6 +558,191 @@
 .gx-user-card__gear {
   flex: none;
   text-decoration: none;
+}
+
+/* --------------------------------------------------------------------------
+   3b. The inbox — the bell in the user card, and its popover
+   -------------------------------------------------------------------------- */
+
+.gx-inbox {
+  flex: none;
+}
+
+.gx-inbox__bell {
+  position: relative;
+  overflow: visible;
+}
+
+/* The count rides in the bell's own notch. Hidden entirely at zero — see badgeText: a "0" beside
+   a bell is a notification about there being no notifications. */
+.gx-inbox__badge {
+  position: absolute;
+  top: 1px;
+  inset-inline-end: 1px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  border-radius: 999px;
+  border: 1.5px solid var(--gx-raise-2);
+  background: var(--gx-bad);
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 600;
+  line-height: 12px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.gx-inbox__head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.3rem 0.55rem 0.45rem;
+  border-bottom: 1px solid var(--gx-line);
+  margin-bottom: 0.3rem;
+}
+
+.gx-inbox__title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--gx-ink);
+}
+
+.gx-inbox__all {
+  margin-inline-start: auto;
+  border: 0;
+  background: transparent;
+  color: var(--gx-ink-3);
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 0.15rem 0.2rem;
+  border-radius: var(--gx-r-sm);
+}
+
+.gx-inbox__all:hover:not(:disabled) {
+  color: var(--gx-ink);
+}
+
+.gx-inbox__all:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.gx-inbox__all--group {
+  display: block;
+  margin: 0.25rem 0 0.1rem auto;
+}
+
+.gx-inbox__none {
+  padding: 0.55rem 0.65rem 0.7rem;
+  color: var(--gx-ink-3);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.gx-inbox__group,
+.gx-inbox__row,
+.gx-inbox__back {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  width: 100%;
+  padding: 0.45rem 0.55rem;
+  border: 0;
+  border-radius: var(--gx-r-sm);
+  background: transparent;
+  color: var(--gx-ink-2);
+  font-size: 0.82rem;
+  text-align: start;
+  cursor: pointer;
+  transition: background-color var(--gx-t-hover) var(--gx-ease);
+}
+
+.gx-inbox__group:hover,
+.gx-inbox__row:hover,
+.gx-inbox__back:hover {
+  background: rgba(245, 242, 236, 0.055);
+  color: var(--gx-ink);
+}
+
+.gx-inbox__back {
+  align-items: center;
+  color: var(--gx-ink-3);
+  font-size: 0.76rem;
+}
+
+/* The chevron points back, not down: the same glyph, rotated, rather than a second drawing of the
+   same idea. */
+.gx-inbox__back svg {
+  transform: rotate(90deg);
+}
+
+.gx-inbox__dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-top: 0.42rem;
+  border-radius: 999px;
+}
+
+.gx-note--info { background: var(--gx-ink-3); }
+.gx-note--warn { background: var(--gx-warn); }
+.gx-note--urgent { background: var(--gx-bad); }
+
+.gx-inbox__gtext,
+.gx-inbox__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.gx-inbox__gkind,
+.gx-inbox__rtitle {
+  color: var(--gx-ink);
+  font-weight: 500;
+}
+
+.gx-inbox__gproject,
+.gx-inbox__body,
+.gx-inbox__meta {
+  color: var(--gx-ink-3);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.gx-inbox__body {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.gx-inbox__meta {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.gx-inbox__times {
+  font-variant-numeric: tabular-nums;
+  color: var(--gx-ink-2);
+}
+
+.gx-inbox__gcount {
+  margin-inline-start: auto;
+  flex: none;
+  color: var(--gx-ink-3);
+  font-size: 0.73rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Unread is carried by weight and a rule, not by colour alone. */
+.gx-inbox__row.is-unread {
+  box-shadow: inset 2px 0 0 var(--gx-amber);
+}
+
+.gx-inbox__row.is-unread .gx-inbox__rtitle {
+  font-weight: 600;
 }
 
 /* --------------------------------------------------------------------------
@@ -1396,6 +1594,29 @@
 }
 
 .gx-open-qs ul {
+  margin: 0.1rem 0 0;
+  padding-inline-start: 1.05rem;
+}
+
+/* What Apple decided for itself. Same typographic weight as the open questions above — neither
+   is more important than the other — but ruled in amber, because these are decisions already
+   acting on the build rather than gaps still waiting on an answer. The rule is what lets the eye
+   tell the two lists apart at a glance without a second heading size. */
+.gx-assumed {
+  margin-top: 0.45rem;
+  padding-inline-start: 0.6rem;
+  border-inline-start: 2px solid color-mix(in srgb, var(--gx-amber) 45%, transparent);
+  color: var(--gx-ink-3);
+  font-size: 0.77rem;
+  line-height: 1.55;
+}
+
+.gx-assumed__label {
+  display: block;
+  color: var(--gx-ink-2);
+}
+
+.gx-assumed ul {
   margin: 0.1rem 0 0;
   padding-inline-start: 1.05rem;
 }
@@ -2355,6 +2576,15 @@
   padding: 0.9rem;
 }
 
+/*
+   THE BACKGROUND IS DECLARED, AND IT WAS NOT. `.gx-row` is used on a <button> for the three prompt
+   suggestions on an empty project. No rule set a background, so Chrome supplied its own —
+   `buttonface`, which in dark mode is #6b6b6b: a flat neutral grey in a product whose every token
+   is warm. The first thing anybody sees in a new project was three grey slabs, and no stylesheet
+   in the repository contains that colour.
+   A button with no background does not inherit the page's. It inherits the BROWSER's, and the
+   browser's changes with the colour scheme — which is why this was invisible in light mode.
+*/
 .gx-row {
   display: flex;
   align-items: center;
@@ -2364,6 +2594,20 @@
   border: 1px solid var(--gx-line);
   margin-bottom: 0.45rem;
   font-size: 0.85rem;
+  /* The four the UA supplies and a <button> must give back. */
+  appearance: none;
+  background: var(--gx-raised, transparent);
+  color: inherit;
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: start;
+}
+
+/* A suggestion is an invitation, so it answers the pointer. */
+.gx-seeds .gx-row:hover,
+.gx-seeds .gx-row:focus-visible {
+  border-color: var(--gx-accent, var(--gx-ink-2));
+  background: var(--gx-panel, var(--gx-raised));
 }
 
 .gx-row__main {
@@ -2646,8 +2890,14 @@
     padding: 0;
   }
 
+  /* The bell is NOT hidden with the gear. Settings is somewhere you go on purpose; the bell is the
+     only thing in this rail that carries news, and hiding its badge in a state people choose and
+     then leave set would put the inbox back where it started. It stacks instead — 68px has no room
+     for an avatar and an icon side by side. */
   .gx-rail.is-collapsed .gx-user-card {
+    flex-direction: column;
     justify-content: center;
+    gap: 0.15rem;
     padding: 0.25rem;
   }
 
@@ -3162,6 +3412,24 @@
 }
 
 .es__action { margin-top: 0.5rem; }
+
+/* The written answer, a step quieter than the action. An empty state gets ONE action (see
+   empty-state.tsx); this is a second thing to READ, so it is typeset as a footnote rather than
+   competing with the button above it. */
+.es__help {
+  margin: 0.15rem 0 0;
+  font-size: 0.8rem;
+}
+
+.es__help a {
+  color: var(--ink-3);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.es__help a:hover {
+  color: var(--ink);
+}
 
 .es--creation { --es-edge: color-mix(in srgb, var(--acc-ember) 30%, var(--line)); --es-tint: var(--acc-ember); }
 .es--studio   { --es-edge: color-mix(in srgb, var(--acc-stone) 30%, var(--line)); --es-tint: var(--acc-stone); }
@@ -3921,6 +4189,73 @@
   margin: 0;
 }
 
+/* "Edited" sits beside Edit on a user turn. Unlike Edit it is ALWAYS drawn rather than revealed on
+   hover: it is a fact about the message, not a tool, and a fact that only appears when the pointer
+   is over it is a fact nobody knows. */
+.gx-user__edited {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--gx-ink-3);
+  font: inherit;
+  font-size: 0.74rem;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.gx-user__edited:hover {
+  color: var(--gx-ink);
+}
+
+.gx-user__edited:focus-visible {
+  outline: 2px solid var(--gx-accent, #6aa7ff);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* The earlier-versions list. Each version is a block of the user's own words, so it is set as
+   text and not as a diff: a character-level diff of two freely rewritten prompts is noise. */
+.gx-revs {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Logical, not physical: a Hebrew prompt's history has its rule on the right. */
+.gx-revs__item {
+  border-inline-start: 2px solid var(--gx-line);
+  padding-inline-start: 0.75rem;
+}
+
+/* The version in force reads as current, not as one more draft. */
+.gx-revs__item.is-current {
+  border-inline-start-color: var(--gx-accent, #6aa7ff);
+}
+
+.gx-revs__when {
+  margin: 0 0 0.2rem;
+  color: var(--gx-ink-3);
+  font-size: 0.74rem;
+}
+
+.gx-revs__text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* A clean run has no sentence to sit beside — only the Regenerate control. It tucks closer to the
+   reply than an outcome line does, so it reads as an affordance on the turn rather than as a
+   verdict on it. */
+.gx-outcome--bare {
+  margin-top: 0.35rem;
+}
+
 .gx-outcome__retry {
   padding: 0;
   border: none;
@@ -3938,6 +4273,26 @@
 }
 
 .gx-outcome__retry:focus-visible {
+  outline: 2px solid var(--gx-accent, #6aa7ff);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* "Why runs stop" sits beside "Try again" and must not look like a second button competing with
+   it: retrying is the action, reading is the alternative when retrying has already failed. Muted
+   rather than accented for exactly that reason. */
+.gx-outcome__help {
+  color: var(--gx-ink-3);
+  font-size: 0.85rem;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.gx-outcome__help:hover {
+  color: var(--gx-ink-1, inherit);
+}
+
+.gx-outcome__help:focus-visible {
   outline: 2px solid var(--gx-accent, #6aa7ff);
   outline-offset: 2px;
   border-radius: 3px;
@@ -4090,6 +4445,65 @@
   gap: 6px;
   font-size: 0.82rem;
   color: var(--gx-ink-2, var(--gx-ink));
+}
+
+/* --- the tool block list -------------------------------------------------
+   The conventions fieldset above wraps into a row of short chips. This one cannot: each row
+   carries a reason, and the reason is the part that makes the control usable. So the group is a
+   COLUMN, and the checkbox aligns to the top of its two-line label rather than centring against
+   a block of text. */
+
+.prefs__note {
+  margin: 0 0 0.35rem;
+  flex-basis: 100%;
+  color: var(--gx-ink-3);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.prefs__group {
+  display: flex;
+  flex-direction: column;
+  /* Wider than the one-line conventions list below it: each row here is two lines, and at 0.4rem
+     the reason of one row sat as close to the label of the next as to its own. */
+  gap: 0.62rem;
+  flex-basis: 100%;
+  margin-bottom: 0.75rem;
+}
+
+.prefs__group-label {
+  margin-top: 0.15rem;
+  color: var(--gx-ink-3);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.prefs__check-why {
+  margin-top: 0.1rem;
+}
+
+.prefs__check--reasoned {
+  align-items: flex-start;
+  gap: 0.5rem;
+  line-height: 1.45;
+}
+
+.prefs__check--reasoned input {
+  /* Nudged down to sit on the first line of the label rather than between the two lines. */
+  margin-top: 0.18rem;
+  flex: none;
+}
+
+.prefs__check-label {
+  display: block;
+  color: var(--gx-ink-2);
+}
+
+.prefs__check-why {
+  display: block;
+  color: var(--gx-ink-3);
+  font-size: 0.75rem;
 }
 
 .prefs__profile {
@@ -4370,4 +4784,732 @@
 
 .tour-skip:hover {
   color: var(--gx-ink);
+}
+
+/* --------------------------------------------------------------------------
+   The restore, while it is happening.
+
+   A restore clears the place before it rebuilds it, so the one state that must
+   never read as settled is the one in flight: `is-working` stays in the muted
+   ink the rest of the row uses and the sentence itself carries the ellipsis.
+   `is-caveat` is warn and not good on purpose — a restore nobody could verify,
+   or one that dropped properties, is not a success.
+   -------------------------------------------------------------------------- */
+
+.gx-restore {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  color: var(--gx-ink-3);
+}
+
+.gx-restore.is-good { color: var(--gx-good); }
+.gx-restore.is-caveat { color: var(--gx-warn); }
+.gx-restore.is-bad { color: var(--gx-bad); }
+
+.gx-restore__counts {
+  display: block;
+  color: var(--gx-ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The op-log row. `is-bad` tints only the meta line, not the sentence: the
+   thing that failed is still the thing that happened, and colouring the whole
+   row red turns a readable history into a wall of alarm. */
+
+.gx-op__detail {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--gx-ink-3);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.gx-op.is-bad .gx-row__meta { color: var(--gx-bad); }
+/* ------------------------------------------------------------ members drawer --- */
+/*
+ * The panel existed with no styles because it had no call site — mounting it made every
+ * `mb__` class in it a selector that matched nothing, and an unstyled roster reads as a
+ * broken page rather than a list. It borrows the `cs__` controls (input, select, note,
+ * count) deliberately: the search drawer and this one are the same drawer chrome, and a
+ * second set of form styles would drift from the first.
+ */
+.mb {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.mb__role {
+  margin: 0;
+  color: var(--gx-ink-2);
+  font-size: 0.88rem;
+}
+
+/* The reason a control is off, in the same muted voice the rest of the drawer uses. */
+.mb__why {
+  color: var(--gx-ink-3);
+}
+
+.mb__controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.mb__controls .cs__input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.mb__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mb__row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--gx-line, rgb(255 255 255 / 8%));
+  flex-wrap: wrap;
+}
+
+.mb__row:last-child {
+  border-bottom: 0;
+}
+
+/* A dead row is dimmed, never hidden: "was an editor" is the sentence an admin needs.
+   The sub-line goes with it — dimming the handle alone leaves "editor · joined by link"
+   at full strength under a faded name, which reads as the row being half-alive. */
+.mb__row.is-inactive .mb__handle,
+.mb__row.is-inactive .mb__sub {
+  color: var(--gx-ink-3);
+}
+
+.mb__who {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  /* Takes the slack so the actions sit at the row's end, and yields before the
+     role select and the date input reach the width their own text needs. */
+  flex: 1 1 12rem;
+}
+
+/* `anywhere`: a handle is user-supplied and has no spaces to break at, and the drawer
+   is narrow. Without it one long id widens the row and scrolls the whole drawer. */
+.mb__handle {
+  color: var(--gx-ink);
+  font-size: 0.9rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.mb__sub,
+.mb__status {
+  color: var(--gx-ink-3);
+  font-size: 0.78rem;
+}
+
+.mb__sub {
+  overflow-wrap: anywhere;
+}
+
+.mb__status {
+  color: var(--gx-warn, #e4b363);
+}
+
+.mb__actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.mb__role-label {
+  display: inline-flex;
+}
+
+.mb__owner {
+  color: var(--gx-ink-3);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.mb__remove:not(:disabled) {
+  color: var(--gx-bad, #f0776a);
+}
+
+.mb__invite {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--gx-line, rgb(255 255 255 / 12%));
+}
+
+/* `.field` carries its own bottom margin for the page forms it was written for. Inside a
+   flex column that already has `gap`, that margin is added to the gap and the invite form
+   drifts apart. The gap is the one spacing authority here. */
+.mb__invite .field {
+  margin-block-end: 0;
+}
+
+.mb__invite .cs__input,
+.mb__invite .cs__select,
+.mb__invite .cs__date {
+  width: 100%;
+}
+
+.mb__invite-head {
+  margin: 0;
+  color: var(--gx-ink-3);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.mb__invite-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.mb__invite-row .field {
+  flex: 1 1 140px;
+  /* `min-width: 0`, because a flex item's default `auto` floors it at its content width: the
+     date input would refuse to shrink and push the row wider than the drawer. */
+  min-width: 0;
+}
+
+/* --------------------------------------------------------------------------
+   23. The files drawer — components/ws/files-panel.tsx
+
+   The panel was written before these rules existed and mounted after, which is
+   why it lands here rather than beside the rows it reuses: everything it draws
+   except the preview is a `.gx-row`, a breadcrumb button and a meta line, all
+   of which already had a look. Only the preview needed one.
+
+   THE PREVIEW WRAPS. It is a `<pre>` of somebody's file inside a drawer that
+   is a third of the screen at most, and a `<pre>` that does not wrap turns one
+   long line — a minified JSON blob, a CSV row — into a horizontal scrollbar on
+   the whole drawer. `pre-wrap` keeps the newlines that make a file readable and
+   drops the overflow that makes the drawer unusable.
+
+   The table scrolls sideways instead, because a CSV column that wraps stops
+   being a column. Its container in the panel already sets `overflow-x: auto`,
+   so the scroll is the table's own and not the drawer's.
+   -------------------------------------------------------------------------- */
+
+.gx-files {
+  font-size: 0.85rem;
+}
+
+.gx-files__text {
+  margin: 0;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--gx-line);
+  border-radius: var(--gx-r-sm);
+  background: var(--gx-raise-2);
+  font-family: var(--gx-mono);
+  font-size: 0.78rem;
+  line-height: 1.55;
+  /* Wraps rather than widening the drawer. Long tokens with no spaces — a base64
+     line, a URL — break instead of forcing a scrollbar. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 26rem;
+  overflow-y: auto;
+}
+
+.gx-files__table {
+  border-collapse: collapse;
+  font-family: var(--gx-mono);
+  font-size: 0.75rem;
+  /* Not 100%: a wide CSV should scroll inside its container, not squeeze every
+     column to illegibility to fit a width it does not have. */
+  min-width: 100%;
+}
+
+.gx-files__table td {
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--gx-line);
+  white-space: nowrap;
+  color: var(--gx-ink-2);
+}
+
+/* The first row of a CSV is nearly always its header. Nearly, so it is weighted
+   rather than restyled — a data file whose first row is data still reads as
+   data, just slightly bolder. */
+.gx-files__table tr:first-child td {
+  color: var(--gx-ink);
+  font-weight: 600;
+}
+
+/* --- members: adding several at once ------------------------------------------------------- */
+/*
+   Folded away behind a <details> rather than sitting open under the single-invite form. Adding
+   one person is the common act and adding thirty is the rare one; two full forms stacked in a
+   drawer make the common act look like a choice between two things to read.
+*/
+
+.mb__bulk {
+  padding-top: 12px;
+  border-top: 1px solid var(--gx-line);
+}
+
+.mb__bulk-summary {
+  color: var(--gx-ink-2);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.mb__bulk-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 10px;
+}
+
+.mb__textarea {
+  min-height: 6.5rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+/* The per-row answer. The route refuses row by row with a reason each, and this is the half a
+   count would have thrown away — so it is a list of rows, with the line number the person is
+   looking at, not the array index the server answered about. */
+.mb__problems {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mb__problem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-inline-start: 2px solid var(--gx-warn, #e4b363);
+  border-radius: 0 6px 6px 0;
+  background: var(--gx-surface-1, rgb(0 0 0 / 20%));
+}
+
+.mb__problem-line {
+  color: var(--gx-ink-2);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.mb__problem-id {
+  color: var(--gx-ink-3);
+  font-size: 0.74rem;
+  overflow-wrap: anywhere;
+}
+
+.mb__problem-why {
+  color: var(--gx-ink-2);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+/* --- members: the second step on a row ----------------------------------------------------- */
+/*
+   Removing somebody and pausing them both open UNDER their row rather than over the page. They
+   are not modal and they trap no focus, because neither is a confirmation in the sense
+   lib/confirm-model.ts means: a member removal is reversible and destroys nothing, so the ladder
+   says 'none' and a dialog in front of it would be the exact habit that file exists to stop.
+
+   What opens here is an ANSWER — what this person holds, and what the removal does and does not
+   do — placed where the question is asked. Inset and ruled on the leading edge so it reads as
+   belonging to the row above it rather than as the next member in the list.
+*/
+
+.mb__step {
+  display: flex;
+  flex: 1 1 100%;
+  flex-direction: column;
+  gap: 8px;
+  margin: 2px 0 8px;
+  padding: 10px 12px;
+  border-inline-start: 2px solid var(--gx-line-2);
+  border-radius: 0 8px 8px 0;
+  background: var(--gx-surface-1, rgb(0 0 0 / 20%));
+}
+
+.mb__step-head {
+  margin: 0;
+  color: var(--gx-ink);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.mb__step-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+/* The counts. A number and the thing it counts, never a number alone — and this list is simply
+   absent when the footprint could not be read, rather than drawn full of zeroes. */
+.mb__counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mb__count {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.mb__count-n {
+  color: var(--gx-ink);
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.mb__count-label {
+  color: var(--gx-ink-3);
+  font-size: 0.76rem;
+}
+
+/* What the removal does, and what survives it. Stated rather than implied by the numbers above:
+   a list of counts invites the reader to assume the counts are about to be destroyed. */
+.mb__effects {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  padding-inline-start: 1.1em;
+}
+
+.mb__effect {
+  color: var(--gx-ink-2);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+/* --- members: one membership's history ----------------------------------------------------- */
+/*
+   Newest first, the way the route returns it. Numbered by <ol> because the order is the meaning —
+   "paused, then reinstated, then removed" is a different story from the same three events in any
+   other sequence — but the marker is suppressed: the number of an entry is not a fact about it.
+*/
+
+.mb__events {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mb__event {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.mb__event-what {
+  color: var(--gx-ink-2);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.mb__event-when {
+  color: var(--gx-ink-3);
+  font-size: 0.72rem;
+}
+
+/* The administrator's own words, quoted rather than glued onto the sentence above: it is somebody's
+   writing, and it can run to five hundred characters. */
+.mb__event-why {
+  color: var(--gx-ink-3);
+  font-size: 0.76rem;
+  font-style: italic;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+/* THE STUDIO LINK NOTE — the sentence under the pill (components/ws/studio-link-note.tsx).
+   A strip directly beneath the topbar rather than text inside it: the topbar is a fixed
+   60px row that already truncates a project title at 860px, and a sentence in there would
+   push the pill off the end. It draws only when there is something true to say, so a
+   healthy link costs zero height. */
+.gx-link-note {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  padding: 0.45rem 1.1rem;
+  border-bottom: 1px solid var(--gx-line);
+  color: var(--gx-ink-3);
+  font-size: 0.78rem;
+}
+
+.gx-link-note__text { min-width: 0; }
+
+/* A place mismatch is the one state where the pill is green and nothing will ever build,
+   so it is the one that gets a colour. Everything else here is a timestamp or a queue
+   depth — information, not a problem — and tinting those would spend the warning colour
+   on the ordinary case and leave nothing louder for the state that actually needs it.
+   The tint is on the LEFT EDGE and the text, never a filled background: the sentence has
+   to stay at 4.5:1 and --gx-warn on a wash does not. */
+.gx-link-note--warn {
+  border-inline-start: 2px solid var(--gx-warn);
+  background: color-mix(in srgb, var(--gx-warn) 7%, transparent);
+  color: var(--gx-ink);
+}
+
+/* Small, because it sits inside a one-line strip and must not set that strip's height. */
+.gx-link-note__act {
+  flex: none;
+  min-height: 28px;
+  padding: 0 0.6rem;
+  font-size: 0.75rem;
+}
+
+/* The checkpoint's own words — the field it takes, and the field it shows.
+   Distinct from `gx-row__meta` above it: the metadata is derived and the
+   description is authored, and a reader has to be able to tell which is which. */
+
+.gx-cp__note {
+  margin: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  resize: vertical;
+}
+
+.gx-cp__desc {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--gx-ink-2, var(--gx-ink-3));
+  font-size: 0.84rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+/* --------------------------------------------------------------------------
+   Saved instructions (automations)
+
+   A reading surface with an editor folded into it. The list has to stay
+   readable when a row carries three notes — paused, dormant, and a
+   daylight-saving disclosure — because those notes are the whole point of the
+   row: an automation whose state the person cannot see is one they cannot
+   trust with their Credits.
+   -------------------------------------------------------------------------- */
+
+.au {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.au-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.au-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--gx-line, rgb(255 255 255 / 12%));
+  border-radius: 9px;
+  background: var(--gx-surface-1, rgb(0 0 0 / 14%));
+}
+
+.au-item__text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.au-item__name {
+  font-size: 0.92rem;
+  font-weight: 560;
+  color: var(--gx-ink);
+  overflow-wrap: anywhere;
+}
+
+.au-item__meta {
+  font-size: 0.78rem;
+  color: var(--gx-ink-3);
+  overflow-wrap: anywhere;
+}
+
+/* A note is not meta. It says something the person has to act on — that this will not start on
+   its own, or which of two mornings a run landed in — so it reads at the weight of a sentence
+   rather than a timestamp. */
+.au-item__note {
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--gx-warn, #c2943f);
+}
+
+.au-badge {
+  align-self: flex-start;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  border: 1px solid currentcolor;
+}
+
+.au-badge--off {
+  color: var(--gx-ink-3);
+}
+
+.au-item__acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.au-item__acts .btn {
+  padding: 5px 10px;
+  font-size: 0.78rem;
+}
+
+.au-editor {
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid var(--gx-line, rgb(255 255 255 / 12%));
+}
+
+/* The counter reports; it never corrects. Over-limit is coloured rather than enforced, because
+   the server refuses an over-long value and does not trim one — a client that cut the text short
+   would store a name nobody typed. */
+.au-count {
+  float: inline-end;
+  font-weight: 440;
+  color: var(--gx-ink-3);
+}
+
+.au-count--over {
+  color: var(--gx-bad, #d27653);
+}
+
+.au-err {
+  margin: -0.6rem 0 0.9rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--gx-bad, #d27653);
+}
+
+.au-history {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--gx-line, rgb(255 255 255 / 12%));
+}
+
+.au-runs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.au-run {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.au-run__mark {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--gx-ink-3);
+}
+
+.au-run__mark--good {
+  background: var(--gx-good, #7dad6e);
+}
+
+.au-run__mark--bad {
+  background: var(--gx-bad, #d27653);
+}
+
+.au-run__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.au-run__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.au-run__what {
+  font-size: 0.85rem;
+  color: var(--gx-ink);
+}
+
+.au-run__when,
+.au-run__meta {
+  font-size: 0.75rem;
+  color: var(--gx-ink-3);
+}
+
+.au-run__err {
+  font-size: 0.78rem;
+  color: var(--gx-bad, #d27653);
+  overflow-wrap: anywhere;
+}
+
+/* A <button> wearing a row's class. The UA reset belongs here rather than as seven inline
+   properties at the call site — where it was, which made it invisible to every check that reads
+   stylesheets and impossible to reuse at the next button that needs it. */
+.gx-row__main--button {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
 }

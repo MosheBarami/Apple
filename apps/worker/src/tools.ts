@@ -2,6 +2,7 @@
 // op queue) or run worker-side (docs search, memory, checkpoints).
 import type { Env } from './env';
 import { rgbBase64ToDataUrl } from './png';
+import { retryHint } from './op-failure';
 import type { GatewayToolDef, StudioOp, OpResult, CheckpointMeta, RenderViewResult, StudioFrame, AssetSourcePolicy } from '@golem/shared';
 import { RENDER_VIEWS } from '@golem/shared';
 import { searchDocsDetailed } from './rag';
@@ -24,6 +25,7 @@ import {
   type ScannedScriptInput,
 } from './assets';
 import { searchAssetLibrary } from './asset-library';
+import { GENRE_KIT_IDS, getGenreKit, admitToKit } from './genre-kits';
 import {
   applyEdits,
   checkSyntax,
@@ -39,6 +41,7 @@ import {
   symbolsInFile,
   type ScriptFile,
 } from './luau-review';
+import { propertyChangeGroups } from './property-diff';
 import { CENSUS_LUAU, parseCensus, destructiveDelta, needsProtection } from './playtest';
 import { countConsole, parseLogEntries } from './playtest-stream';
 import { PLAYTEST_FRAME_MIN_INTERVAL_MS } from './frame-bus';
@@ -210,6 +213,103 @@ interface ToolImpl {
   run(ctx: AgentCtx, args: Record<string, unknown>): Promise<unknown>;
 }
 
+/* ------------------------------------------------------------- propose_plan --- */
+
+/**
+ * One step of the plan the agent announces before it builds.
+ *
+ * `tool` is REQUIRED and is validated against the real registry. It is not decoration: it is what
+ * lets the run loop settle the step against what actually ran, and what stops a plan naming a
+ * capability the product does not have.
+ */
+export interface ProposedStep {
+  title: string;
+  detail?: string;
+  tool: string;
+}
+
+export interface ProposedPlan {
+  title?: string;
+  steps: ProposedStep[];
+}
+
+/**
+ * Twelve, not forty.
+ *
+ * The browser's validator accepts 40 steps per build_plan. That is the shape limit, not the useful
+ * one: a plan nobody reads to the end is the same as no plan, and the step ceiling for a Stone run
+ * (session.ts) is in this neighbourhood anyway — a 30-step plan is a promise the run cannot keep.
+ */
+const MAX_PLAN_STEPS = 12;
+
+/**
+ * The five tools that answer "is this any good", pinned by verification-tools.test.mjs.
+ *
+ * Kept as a list here rather than a substring test so that renaming a verifier breaks a plan's
+ * verification requirement loudly instead of quietly accepting a plan with no check in it.
+ */
+const VERIFIER_TOOLS = ['run_and_check', 'run_spec', 'audit_build', 'check_composition', 'inspect_visually'] as const;
+
+const clip = (v: unknown, max: number): string => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+
+/**
+ * Read the model's plan, or say exactly why it is not one.
+ *
+ * Every `error` return is phrased as an instruction the model can act on in the next step, because
+ * that is the only channel a refusal has. "steps must be an array" teaches nothing; naming the tool
+ * that does not exist, or the five that would satisfy the verification rule, does.
+ */
+function readProposedPlan(a: Record<string, unknown>): ProposedPlan | { error: string } {
+  const raw = a.steps;
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return { error: 'propose_plan needs a non-empty `steps` array; each step is { title, detail?, tool }.' };
+  }
+  if (raw.length > MAX_PLAN_STEPS) {
+    return {
+      error:
+        `that plan has ${raw.length} steps and the limit is ${MAX_PLAN_STEPS}. It was refused rather than ` +
+        'truncated, because a clipped plan reads as the whole commitment. Group the small steps together.',
+    };
+  }
+
+  const registered = new Set(toolNames());
+  const steps: ProposedStep[] = [];
+  for (let i = 0; i < raw.length; i++) {
+    const entry = raw[i];
+    if (typeof entry !== 'object' || entry === null) return { error: `step ${i + 1} is not an object.` };
+    const step = entry as Record<string, unknown>;
+    const title = clip(step.title, 200);
+    if (!title) return { error: `step ${i + 1} has no title. Say what the step delivers.` };
+    const tool = clip(step.tool, 64);
+    if (!tool) {
+      return {
+        error: `step ${i + 1} ("${title}") names no tool. Every step must say which tool will carry it out — a step with no tool is a wish, not a plan.`,
+      };
+    }
+    if (tool === 'propose_plan') {
+      return { error: `step ${i + 1} names propose_plan. The plan does not contain itself; list the work.` };
+    }
+    if (!registered.has(tool)) {
+      return {
+        error:
+          `step ${i + 1} names the tool "${tool}", which does not exist. The user reads a plan as a commitment, ` +
+          'so a step that cannot be carried out is refused. Use an exact name from the tools you were given.',
+      };
+    }
+    steps.push({ title, ...(clip(step.detail, 800) ? { detail: clip(step.detail, 800) } : {}), tool });
+  }
+
+  if (!steps.some((s) => (VERIFIER_TOOLS as readonly string[]).includes(s.tool))) {
+    return {
+      error:
+        'this plan never checks its own work. Add at least one verification step using one of: ' +
+        `${VERIFIER_TOOLS.join(', ')}. A build with no planned check ends with "Done." and nothing proven.`,
+    };
+  }
+
+  return { ...(clip(a.title, 200) ? { title: clip(a.title, 200) } : {}), steps };
+}
+
 /**
  * EVERY VALUE THE PLUGIN RETURNS IS WRAPPED. Unwrap one.
  *
@@ -292,9 +392,26 @@ async function dumpScripts(
   return { files, truncated: (raw as { truncated?: unknown }).truncated === true };
 }
 
+/**
+ * THE FAILURE'S CLASSIFICATION TRAVELS WITH IT, or the classifier protects nobody.
+ *
+ * This reduced every failed op to `{ error }` and threw `res.failure` away — at the last step
+ * before the model, which is the only reader whose behaviour the classification was written to
+ * change. src/op-failure.ts states the load-bearing rule (delivery is at-most-once, so a timed-out
+ * MUTATION may already have been applied and must not be repeated) and had no caller outside its
+ * own test. The model saw "the operation timed out" and re-issued the create, which is how a door
+ * gets built twice.
+ *
+ * `retry` is a separate field rather than more prose glued onto `error`, because the two are
+ * different kinds of thing: one is what happened, the other is what may be done about it, and a
+ * model that skims the first still gets the second.
+ */
 async function op(ctx: AgentCtx, studioOp: StudioOp, timeoutMs = 30_000): Promise<unknown> {
   const res = await ctx.execStudioOp(studioOp, timeoutMs);
-  if (!res.ok) return { error: res.error ?? 'operation failed' };
+  if (!res.ok) {
+    const hint = retryHint(studioOp, res);
+    return { error: res.error ?? 'operation failed', ...(hint ? { retry: hint } : {}) };
+  }
   return res.data ?? { ok: true };
 }
 
@@ -1349,14 +1466,57 @@ export const TOOLS: Record<string, ToolImpl> = {
     studio: true,
     run: (ctx, a) => op(ctx, { op: 'create_instances', items: (a.items as never[]) ?? [] }),
   },
+  /**
+   * SET, AND SAY WHAT IT WAS.
+   *
+   * This was a bare pass-through to the plugin op: it read nothing first and emitted no panel, so a
+   * run that moved a wall forty studs reported "set_properties ok" and the person had to go and
+   * look. Meanwhile `PropertyRow.changed` / `.previous` and the renderer that draws
+   * `<s>previous</s> → value` had existed since the schema was written with no producer in the
+   * product at all — the before→after block only ever showed the after.
+   *
+   * Read-before-write is the pattern edit_script already uses to compute its diff (it reads the
+   * current source to hash it, and turns the same read into hunks). One extra op, on a call the
+   * model makes when it is changing something a person asked for.
+   *
+   * THE READ COMES FIRST AND ITS FAILURE IS NOT SWALLOWED INTO A CLAIM. If the instance could not
+   * be read, `propertyChangeGroups` marks nothing changed — see its comment. A panel that said
+   * "0 → 0.5" on the strength of having written 0.5 would be asserting something never observed.
+   */
   set_properties: {
     def: {
       name: 'set_properties',
-      description: 'Set properties/attributes on an existing instance. Same typed prop format as create_instances.',
+      description: 'Set properties/attributes on an existing instance. Same typed prop format as create_instances. Reports what each value WAS, so you can quote the change rather than the intention.',
       parameters: S({ path: { type: 'string' }, props: { type: 'object' }, attributes: { type: 'object' } }, ['path']),
     },
     studio: true,
-    run: (ctx, a) => op(ctx, { op: 'set_props', path: String(a.path ?? ''), props: a.props as never, attributes: a.attributes as never }),
+    run: async (ctx, a) => {
+      const path = String(a.path ?? '');
+      const props = (a.props ?? undefined) as Record<string, unknown> | undefined;
+      const attributes = (a.attributes ?? undefined) as Record<string, unknown> | undefined;
+
+      // Best effort, and its failure is recorded as a failure rather than as "nothing changed":
+      // a refusal here must not stop the write the user asked for.
+      const seen = await op(ctx, { op: 'get_instance', path });
+      const prior =
+        seen && typeof seen === 'object' && !('error' in (seen as Record<string, unknown>))
+          ? (seen as { class?: string; props?: Record<string, unknown>; attributes?: Record<string, unknown> })
+          : null;
+
+      const res = await op(ctx, { op: 'set_props', path, props: props as never, attributes: attributes as never });
+      if (!res || typeof res !== 'object' || 'error' in (res as Record<string, unknown>)) return res;
+
+      const groups = propertyChangeGroups({ props, attributes }, prior, displayTagged);
+      if (groups.length) {
+        ctx.uiDetail = {
+          v: 1,
+          blocks: [{ type: 'property_inspector', path, className: prior?.class, groups }],
+        };
+      }
+      // Stated on the RESULT as well as in the panel, because the model reads this and the person
+      // reads that: a step that could not see the previous values must not be quoted as if it had.
+      return { ...(res as Record<string, unknown>), priorValuesRead: prior !== null };
+    },
   },
   delete_instances: {
     def: { name: 'delete_instances', description: 'Delete instances by path.', parameters: S({ paths: { type: 'array', items: { type: 'string' } } }, ['paths']) },
@@ -2413,7 +2573,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       description:
         'Where should this piece of the scene come from? Returns an ordered list of sources with rationale and the verification gate each requires. Call this BEFORE building anything you might be tempted to search for. Procedural wins almost everywhere; foliage and characters are the exceptions.',
       parameters: S(
-        { need: { type: 'string', enum: ['ground', 'building', 'prop', 'foliage', 'character', 'vehicle', 'ui_icon', 'texture', 'particle', 'lighting'] } },
+        { need: { type: 'string', enum: ['ground', 'building', 'prop', 'foliage', 'character', 'vehicle', 'ui_icon', 'texture', 'particle', 'sfx', 'lighting'] } },
         ['need'],
       ),
     },
@@ -2436,15 +2596,66 @@ export const TOOLS: Record<string, ToolImpl> = {
       };
     },
   },
+  get_genre_kit: {
+    def: {
+      name: 'get_genre_kit',
+      description:
+        'Ask for a genre by name and get the whole matched set at once: palette with the job each colour does, Lighting values, the library queries for UI/VFX/textures/props, five sound-effect ids already chosen for that genre, and what to build procedurally instead of fetching. Call this FIRST on any build that has a genre — one call replaces five searches that each return a good answer belonging to a different game.',
+      parameters: S({ genre: { type: 'string', enum: [...GENRE_KIT_IDS] } }, ['genre']),
+    },
+    studio: false,
+    run: async (ctx, a) => {
+      const kit = getGenreKit(String(a.genre ?? ''));
+      if (!kit) {
+        // Naming the ten is the whole answer: a model told only "unknown genre" guesses again, and
+        // the second guess is no better informed than the first.
+        return { error: `there is no "${String(a.genre)}" kit. The ten are: ${GENRE_KIT_IDS.join(', ')}.` };
+      }
+
+      // THE GATE RUNS ON THE WAY OUT, not only in the test. A pin that stopped being admissible —
+      // because the licence table changed, not because this file did — must not reach a customer's
+      // place just because it was correct when it was written.
+      const admitted: { assetId: number; name: string; role: string; use: string }[] = [];
+      const refused: { id: string; why: string }[] = [];
+      for (const p of kit.pinned) {
+        const verdict = admitToKit(p);
+        if (!verdict.admitted) { refused.push({ id: p.id, why: verdict.why }); continue; }
+        admitted.push({
+          assetId: p.robloxAssetId,
+          name: p.name,
+          role: p.role,
+          // Never insert_asset: an Audio id has no geometry, and insert_asset refuses typeId 3.
+          use: `AudioPlayer.AssetId = "rbxassetid://${p.robloxAssetId}"`,
+        });
+      }
+
+      // These ids are already public Creator Store assets, so they are not "discovered" in the
+      // sense insert_asset means — they are not added to libraryAssetIds, because that set waives
+      // three marketplace assertions and nothing here has earned that waiver.
+      return {
+        genre: kit.id,
+        pitch: kit.pitch,
+        palette: kit.palette,
+        lighting: kit.lighting,
+        buildTheseYourself: kit.procedural,
+        searchTheLibraryFor: kit.slots.map((s) => ({ need: s.need, query: s.query, styleTags: s.tags, take: s.count, why: s.why })),
+        sounds: admitted,
+        // Present even when empty is wrong — an empty key reads as "we checked and all were fine",
+        // which is true here only because the loop above actually ran. It is included ONLY when
+        // something was refused, so its presence is always a real event.
+        ...(refused.length ? { soundsRefusedOnLicence: refused } : {}),
+      };
+    },
+  },
   search_asset_library: {
     def: {
       name: 'search_asset_library',
       description:
-        "Search Apple's curated CC0 asset library. Every hit has a recorded licence that permits use — which is not the same as being safe, and each id is still resolved and security-gated by insert_asset like any other. Prefer this over the Creator Store for anything procedural geometry cannot do — foliage and characters especially.",
+        "Search Apple's curated CC0 asset library. Every hit has a recorded licence that permits use — which is not the same as being safe, and each id is still resolved and security-gated by insert_asset like any other. Prefer this over the Creator Store for anything procedural geometry cannot do — foliage and characters especially. EVERY HIT CARRIES `availability`: \"insertable\" means assetId is a real Roblox id you can pass to insert_asset now; \"needs_import\" means the library holds this asset but its bytes have not been uploaded to Roblox yet, so assetId is null — say so plainly and build the thing another way for now, never invent an id for it. Results are ranked with the curated packs above the bulk Creator Store scrape, so the earlier hits are the better-made ones.",
       parameters: S(
         {
           query: { type: 'string' },
-          kind: { type: 'string', enum: ['ground', 'building', 'prop', 'foliage', 'character', 'vehicle', 'ui_icon', 'texture', 'particle'] },
+          kind: { type: 'string', enum: ['ground', 'building', 'prop', 'foliage', 'character', 'vehicle', 'ui_icon', 'texture', 'particle', 'sfx'] },
           maxTriangles: { type: 'number' },
         },
         ['query'],
@@ -2462,7 +2673,18 @@ export const TOOLS: Record<string, ToolImpl> = {
         hits = await searchAssetLibrary(ctx.env, String(a.query ?? ''), {
           kind: a.kind ? (String(a.kind) as AssetKind) : undefined,
           maxTriangles: a.maxTriangles ? Number(a.maxTriangles) : undefined,
-          insertableOnly: true,
+          //[[ THIS USED TO PASS `insertableOnly: true`, AND THAT ONE FLAG HID THE LIBRARY.
+          //
+          //   In this library "has a Roblox id" means "came from the Creator Store scrape" — 2008
+          //   user uploads named "Bakiiiiiiiiiiiiiiii" and "Part2". The curated CC0 packs (Kenney,
+          //   Poly Haven, ambientCG, Quaternius, OpenGameArt, game-icons) carry no id until
+          //   somebody imports them, so filtering on an id returned the junk and nothing else.
+          //
+          //   So the filter is gone and the FACT is returned instead: every hit says whether it is
+          //   insertable now or needs an import, and the model is told below what to do with each.
+          //   A caller that genuinely cannot wait for an import asks for `insertableOnly`; this one
+          //   can, because telling the person "the library has this, it needs importing" is a far
+          //   better answer than handing them an anime rip. ]]
           k: 8,
         });
       } catch (e) {
@@ -2494,7 +2716,20 @@ export const TOOLS: Record<string, ToolImpl> = {
         (ctx.discoveredAssetIds ??= new Set()).add(h.robloxAssetId);
         (ctx.libraryAssetIds ??= new Set()).add(h.robloxAssetId);
       }
-      return hits.map((h) => ({ assetId: h.robloxAssetId, name: h.name, kind: h.kind, triangles: h.triangles, boundsStuds: h.boundsStuds, tags: h.tags }));
+      // `availability` travels with every hit, because "we have nothing like that" and "we have
+      // exactly that, it is not imported yet" are different answers and the person deserves the
+      // second one. `assetId` is null on a needs_import row — that is the truth, and insert_asset
+      // would refuse an invented id anyway.
+      return hits.map((h) => ({
+        assetId: h.robloxAssetId,
+        name: h.name,
+        kind: h.kind,
+        triangles: h.triangles,
+        boundsStuds: h.boundsStuds,
+        tags: h.tags,
+        availability: h.availability,
+        source: h.source,
+      }));
     },
   },
   find_verified_asset: {
@@ -2795,6 +3030,86 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     run: async (ctx, a) => ctx.createCheckpoint(String(a.label ?? 'checkpoint'), 'auto'),
+  },
+  /**
+   * SAY WHAT YOU ARE ABOUT TO DO, BEFORE YOU DO IT.
+   *
+   * Everything downstream of this has existed since the component registry was written and none of
+   * it could ever run: `BuildPlanBlock` (apps/web/src/lib/generative-ui/schema.ts), `BuildPlanView`
+   * (render.tsx), `plannedStepsFromDocs` lifting pending steps into the Thinking card's Actions
+   * list (gates.ts), `PlanStep.tool` rendered as a monospace chip. `grep -r "build_plan"
+   * apps/worker/src` returned nothing, so the only producer in the whole product was a fixture in
+   * /ui-lab. This is the producer.
+   *
+   * It is deliberately NOT in PLAN_TOOLS (router.ts). Plan mode's whole deliverable is a prose
+   * roadmap; a second, structured plan on top of that is two answers to one question. This is for
+   * Agent and Super Agent, which otherwise start building with nothing announced.
+   *
+   * THREE REFUSALS, and each one is a defect this codebase has shipped in another form:
+   *
+   *   - a step whose `tool` is not a registered tool. The user reads a plan as a commitment, and
+   *     `edit_scripts` is a commitment the run cannot keep. Same class as the system prompt naming
+   *     `get_instance` while it was not a tool (see prompt-tool-names.test.mjs).
+   *   - a plan with no verification step. Announcing the build and not the check is how a run ends
+   *     with "Done." and nothing proven — the thing the five verifiers exist to prevent.
+   *   - a plan longer than the cap. Truncating would show a card the user reads as the whole
+   *     commitment while the tail was silently dropped.
+   *
+   * Titles are CLIPPED rather than refused, because the browser's validator drops a whole document
+   * whose label exceeds LIMITS.maxLabelLength — a plan that vanishes is worse than a clipped one.
+   */
+  propose_plan: {
+    def: {
+      name: 'propose_plan',
+      description:
+        'Announce the ordered plan for this request BEFORE you start building it. Call this once, as your first step, then carry it out. Each step is { title, detail?, tool } — `tool` must be the exact name of a tool you will actually call for that step, and at least one step must be a verification step (run_and_check, run_spec, audit_build, check_composition or inspect_visually), because a build with no planned check proves nothing. The plan is shown to the user as a checklist while the run happens, so write each title as the thing they will get ("A platform players spawn onto"), not as an internal action. Costs nothing: no model calls, no images, no change to the project. Do not call it twice — if the work turns out differently, say so in your reply rather than re-planning.',
+      parameters: S(
+        {
+          steps: {
+            type: 'array',
+            description: `The ordered steps, up to ${MAX_PLAN_STEPS}. At least one must use a verification tool.`,
+            items: {
+              type: 'object',
+              properties: {
+                title: { type: 'string', description: 'What this step delivers, as a short phrase the user would recognise.' },
+                detail: { type: 'string', description: 'One sentence of specifics: which instance, which script, which property.' },
+                tool: { type: 'string', description: 'The exact name of the tool this step will call.' },
+              },
+              required: ['title', 'tool'],
+            },
+          },
+          title: { type: 'string', description: 'Optional name for the plan, e.g. "Spawn platform".' },
+        },
+        ['steps'],
+      ),
+    },
+    studio: false,
+    run: async (ctx, a) => {
+      const plan = readProposedPlan(a);
+      if ('error' in plan) return plan;
+
+      ctx.uiDetail = {
+        v: 1,
+        blocks: [
+          {
+            type: 'build_plan',
+            ...(plan.title ? { title: plan.title } : {}),
+            // PENDING, every one of them. Nothing in this list has happened at the moment it is
+            // proposed, and a step drawn as done before it ran is this house's own
+            // failure-to-observe defect wearing a plan's clothes. session.ts settles the statuses
+            // against the oplog when the run ends.
+            steps: plan.steps.map((s) => ({ title: s.title, ...(s.detail ? { detail: s.detail } : {}), tool: s.tool, status: 'pending' as const })),
+          },
+        ],
+      };
+
+      return {
+        steps: plan.steps.length,
+        // The model gets the plan back so the transcript carries the commitment it just made;
+        // without it the plan exists only in a UI payload the model never sees again.
+        plan: plan.steps.map((s, i) => `${i + 1}. ${s.title} — ${s.tool}`),
+      };
+    },
   },
 
   /* ------------------------------------------------------- the web-facing tools ---

@@ -143,6 +143,15 @@ export function capabilitiesFor(role: unknown): readonly CollabAction[] {
 export interface MemberGrantRow {
   user_id?: unknown;
   role?: unknown;
+  /**
+   * WHAT THIS GRANT REACHES. Absent means `project`, because a `project_members` row is a
+   * membership of the whole project and always has been. A share link redeemed for one chat
+   * writes `chat` here with that chat's id in `resource_id`, and the difference between the two
+   * is the difference between "someone shared a conversation with me" and "someone added me to
+   * their project".
+   */
+  scope?: unknown;
+  resource_id?: unknown;
   /** ISO timestamp, or null/absent for "never expires". */
   expires_at?: unknown;
   /** ISO timestamp; any value at all means the grant is over. */
@@ -162,6 +171,10 @@ export type GrantStatus = 'active' | 'expired' | 'revoked' | 'suspended' | 'malf
 export interface NormalisedGrant {
   userId: string;
   role: CollabRole;
+  /** `project` for every membership row; a share link redeemed for one chat or build narrows it. */
+  scope: ShareScope;
+  /** The chat or build a scoped grant opens. Null exactly when `scope` is `project`. */
+  resourceId: string | null;
   expiresAtMs: number | null;
   displayName: string | null;
   invitedBy: string | null;
@@ -200,6 +213,24 @@ export function classifyGrant(row: unknown, nowMs: number): { status: GrantStatu
   const role = typeof r.role === 'string' && GRANTABLE_SET.has(r.role) ? (r.role as CollabRole) : null;
   if (role === null) return { status: 'malformed', grant: null };
 
+  // THE SCOPE IS PART OF THE GRANT, not a property of the link that minted it. Absent is
+  // `project`, which is what a membership row has always been. PRESENT BUT UNREADABLE IS
+  // MALFORMED, never widened back to `project`: the only job this column has is to narrow, so a
+  // value nobody can read must not be the value that narrows nothing.
+  let scope: ShareScope = 'project';
+  let resourceId: string | null = null;
+  if (r.scope !== undefined && r.scope !== null) {
+    const parsed = asShareScope(r.scope);
+    if (parsed === null) return { status: 'malformed', grant: null };
+    scope = parsed;
+  }
+  if (scope !== 'project') {
+    // A scoped grant that names no resource cannot be confined to one, and "cannot be confined"
+    // must close the door rather than remove it — the same direction the expiry rule goes.
+    resourceId = nonEmptyId(r.resource_id);
+    if (resourceId === null) return { status: 'malformed', grant: null };
+  }
+
   // Revocation beats everything, including a still-valid expiry — and including a suspension,
   // so "restore this suspended member" can never resurrect someone who was actually removed.
   if (r.revoked_at !== undefined && r.revoked_at !== null) return { status: 'revoked', grant: null };
@@ -225,6 +256,8 @@ export function classifyGrant(row: unknown, nowMs: number): { status: GrantStatu
     grant: {
       userId,
       role,
+      scope,
+      resourceId,
       expiresAtMs,
       displayName: typeof r.display_name === 'string' ? r.display_name : null,
       invitedBy: nonEmptyId(r.invited_by),
@@ -237,7 +270,26 @@ export interface Membership {
   role: CollabRole;
   /** `owner` means the projects.owner_id column; `grant` means a project_members row. */
   via: 'owner' | 'grant';
+  /** What the grant in force reaches. `project` for ownership and for every membership row. */
+  scope: ShareScope;
+  /** The chat or build a scoped grant opens, or null for a project-wide one. */
+  resourceId: string | null;
 }
+
+/**
+ * WHAT A ROUTE IS TOUCHING, so a scoped grant opens its own resource and nothing else.
+ *
+ * `undefined` means the route is project-wide — the roster, the link list, the version list, the
+ * review queue — and only a project-scoped grant survives it. `{ kind, id }` names the surface;
+ * `id: null` is for a surface this product has exactly one of per project (the chat), where
+ * "which one" cannot differ and pretending to compare an id would be theatre.
+ *
+ * `'any'` is the one deliberate exception, and it is a promise by the caller: this route admits a
+ * grant of any scope BECAUSE IT REPORTS THE SCOPE AND NARROWS ITS OWN ANSWER. Today that is only
+ * GET /api/shared/:id, which tells a scoped guest their role and withholds the member directory
+ * instead of handing it over.
+ */
+export type ShareResource = { kind: ShareScope; id: string | null } | 'any';
 
 export interface AccessInput {
   userId: unknown;
@@ -245,6 +297,41 @@ export interface AccessInput {
   /** Rows for THIS project. Rows for other users are ignored rather than trusted. */
   grants?: readonly unknown[];
   nowMs: number;
+  /** What the caller is reaching for. Omitted means project-wide; see ShareResource. */
+  resource?: ShareResource;
+}
+
+/** Does this grant reach what the route named? A project grant reaches everything on its project. */
+function grantReaches(grant: NormalisedGrant, resource: ShareResource | undefined): boolean {
+  if (grant.scope === 'project') return true;
+  if (resource === undefined) return false;
+  if (resource === 'any') return true;
+  if (resource.kind !== grant.scope) return false;
+  return resource.id === null || resource.id === grant.resourceId;
+}
+
+/**
+ * The strongest grant that reaches here, and WHETHER ONE WAS TURNED AWAY FOR ITS SCOPE.
+ *
+ * The second half is what lets the door tell a chat guest apart from a stranger. Both have no
+ * membership of this project; only one of them is holding a link to it.
+ */
+function pickGrant(input: AccessInput): { best: NormalisedGrant | null; scopedOut: boolean } {
+  const userId = nonEmptyId(input.userId);
+  if (userId === null || !Number.isFinite(input.nowMs)) return { best: null, scopedOut: false };
+  let best: NormalisedGrant | null = null;
+  let scopedOut = false;
+  for (const raw of input.grants ?? []) {
+    const { status, grant } = classifyGrant(raw, input.nowMs);
+    if (status !== 'active' || grant === null) continue;
+    if (grant.userId !== userId) continue; // a row about someone else is not a grant to you
+    if (!grantReaches(grant, input.resource)) {
+      scopedOut = true;
+      continue;
+    }
+    if (best === null || roleRank(grant.role) > roleRank(best.role)) best = grant;
+  }
+  return { best, scopedOut };
 }
 
 /**
@@ -259,16 +346,12 @@ export function resolveMembership(input: AccessInput): Membership | null {
   const ownerId = nonEmptyId(input.ownerId);
   if (userId === null) return null;
   // A project with no owner id is a broken row; nobody is its owner, not even another broken row.
-  if (ownerId !== null && ownerId === userId) return { userId, role: 'owner', via: 'owner' };
-
-  let best: NormalisedGrant | null = null;
-  for (const raw of input.grants ?? []) {
-    const { status, grant } = classifyGrant(raw, input.nowMs);
-    if (status !== 'active' || grant === null) continue;
-    if (grant.userId !== userId) continue; // a row about someone else is not a grant to you
-    if (best === null || roleRank(grant.role) > roleRank(best.role)) best = grant;
+  if (ownerId !== null && ownerId === userId) {
+    return { userId, role: 'owner', via: 'owner', scope: 'project', resourceId: null };
   }
-  return best === null ? null : { userId, role: best.role, via: 'grant' };
+
+  const { best } = pickGrant(input);
+  return best === null ? null : { userId, role: best.role, via: 'grant', scope: best.scope, resourceId: best.resourceId };
 }
 
 /**
@@ -339,6 +422,15 @@ export function effectivePermissions(
     const { status, grant } = classifyGrant(raw, opts.now);
     if (status !== 'active' || grant === null) continue;
     if (grant.userId !== membership.userId) continue;
+    // Only grants that reach the SAME place the effective one does. A chat-scoped link this
+    // person also holds is not a superseded project membership, and counting it as one would
+    // report "1 other grant" about a grant that opens somewhere else entirely.
+    //
+    // A membership with no scope on it is PROJECT-WIDE, not "matches nothing". This function
+    // reports provenance, and a mismatch here loses `invitedBy` silently — the direction that
+    // turns "Maya invited you" into "nobody did".
+    if (grant.scope !== (membership.scope ?? 'project')) continue;
+    if (grant.resourceId !== (membership.resourceId ?? null)) continue;
     active.push({ role: grant.role, invitedBy: grant.invitedBy, expiresAtMs: grant.expiresAtMs });
   }
   let inForce: (typeof active)[number] | null = null;
@@ -360,7 +452,7 @@ export interface AccessDecision {
   /** The HTTP status a route should answer with when `allowed` is false. */
   status: 200 | 403 | 404;
   role: CollabRole | null;
-  reason: 'ok' | 'not_a_member' | 'insufficient_role' | 'unknown_action';
+  reason: 'ok' | 'not_a_member' | 'insufficient_role' | 'unknown_action' | 'scoped_grant';
 }
 
 /**
@@ -375,7 +467,14 @@ export interface AccessDecision {
  */
 export function decideAccess(input: AccessInput & { action: unknown }): AccessDecision {
   const membership = resolveMembership(input);
-  if (membership === null) return { allowed: false, status: 404, role: null, reason: 'not_a_member' };
+  if (membership === null) {
+    // A LIVE GRANT THAT DOES NOT REACH HERE IS NOT "NO SUCH PROJECT". 404 is the right answer to a
+    // stranger and the wrong one to someone holding a chat link: they can already prove the
+    // project exists, and "not found" hides the single fact they can act on — that their link
+    // opens the conversation and not the project around it.
+    if (pickGrant(input).scopedOut) return { allowed: false, status: 403, role: null, reason: 'scoped_grant' };
+    return { allowed: false, status: 404, role: null, reason: 'not_a_member' };
+  }
   if (asCollabAction(input.action) === null) {
     return { allowed: false, status: 403, role: membership.role, reason: 'unknown_action' };
   }

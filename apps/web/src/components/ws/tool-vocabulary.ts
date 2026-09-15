@@ -109,6 +109,10 @@ export const TOOL = {
 
   // C05
   choose_asset_source: { kind: 'searching_assets', label: 'Chose an asset source' },
+  // Named for what the player gets, not for the table it read. "Picked the horror kit" is a
+  // sentence the owner can check against the game on screen; "Got a genre kit" is a sentence about
+  // our own data model, which is not a thing anybody watching a build is trying to find out.
+  get_genre_kit: { kind: 'searching_assets', label: 'Picked the style for this genre' },
   search_asset_library: { kind: 'searching_assets', label: 'Searched the asset library' },
   find_verified_asset: { kind: 'searching_assets', label: 'Looked for a verified asset' },
 
@@ -166,6 +170,10 @@ export const TOOL = {
   create_checkpoint: { kind: 'saving', label: 'Saved a checkpoint' },
   remember: { kind: 'remembering', label: 'Noted a fact about the project' },
 
+  // C03. The past tense is the rule this whole table follows, and it is right here too: by the
+  // time a row is drawn the plan HAS been announced. The panel under the row is the plan itself,
+  // so the label says what happened rather than restating what the panel already shows.
+  propose_plan: { kind: 'planning', label: 'Planned the work' },
   // The web-facing tools. Each label says what was READ and where, because "Working" over ten
   // different substrates is the fallback these entries exist to avoid.
   web_fetch: { kind: 'browsing', label: 'Fetched a page' },

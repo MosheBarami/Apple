@@ -55,7 +55,7 @@ export const AUTOMATIONS_PER_OWNER_MAX = 25;
  * there is nothing for a second key to distinguish.
  */
 export function ensureAutomationTables(env: Corpus): Promise<void> {
-  return oncePerIsolate('automation', () => createAutomationTables(env));
+  return oncePerIsolate('automation', () => createAutomationTables(env), env.CORPUS);
 }
 
 async function createAutomationTables(env: Corpus): Promise<void> {

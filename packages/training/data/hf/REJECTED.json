@@ -1,0 +1,431 @@
+{
+  "generatedAt": "2026-09-15T15:29:38.951Z",
+  "harvester": "scripts/harvest-hf.mjs",
+  "rowCapPerSplit": null,
+  "gates": {
+    "licence": "SPDX in {MIT, Apache-2.0, BSD-3-Clause, BSD-2-Clause, 0BSD, Unlicense}, and not asserted over third-party content",
+    "currency": "lastModified within 365 days",
+    "content": "over every row read: template share <= 25%, inert share <= 35%. Over an evenly spaced sample of at most 300: checkLuauSyntax + checkNoAntipattern >= 90%"
+  },
+  "admitted": [
+    {
+      "id": "TorpedoSoftware/RobloxQA-v2.0",
+      "role": "eval-gate",
+      "note": "multiple-choice prose over the engine + Luau; a knowledge regression instrument, not a code corpus",
+      "revision": "3d983bf3a4702ef33719de4bb9fa8eaedbe626f1",
+      "downloads": 115,
+      "spdx": "MIT",
+      "lastModified": "2026-07-01T22:57:23.000Z",
+      "ageDays": 75,
+      "buckets": {
+        "gate": {
+          "referenceEngine": 1477,
+          "luau": 43,
+          "education": 384,
+          "cloudLegacy": 49,
+          "otherDocs": 1047,
+          "uniqueGroundingDocs": 1486
+        },
+        "headroom": {
+          "referenceEngine": 2273,
+          "luau": 61,
+          "education": 586,
+          "cloudLegacy": 70,
+          "otherDocs": 1624,
+          "uniqueGroundingDocs": 1735
+        }
+      },
+      "codeContent": {
+        "rows": 7614,
+        "withFencedCode": 0,
+        "withNewlineInsideAField": 0,
+        "withInlineBacktick": 1478
+      },
+      "written": {
+        "gate": {
+          "path": "packages/evals/data/robloxqa/gate.jsonl",
+          "rows": 3000,
+          "remoteSplit": "test",
+          "sha256": "9bdc37b33966003c1107cc8796c2a562ed0c3f152901aa33cb277e7a8b81c4bb"
+        },
+        "headroom": {
+          "path": "packages/evals/data/robloxqa/headroom.jsonl",
+          "rows": 4614,
+          "remoteSplit": "train",
+          "sha256": "9f7f5013e3c60c5d71a01d4383c974db6498c0adf62be0f9ac7471d5ed290247"
+        }
+      },
+      "overlap": {
+        "gateVsHeadroom": {
+          "exactShared": 0,
+          "gateRows": 3000,
+          "gateUniqueQuestions": 3000,
+          "headroomRows": 4614,
+          "headroomUniqueQuestions": 4614,
+          "shingle": {
+            "n": 8,
+            "flaggedRows": 209,
+            "flaggedBeforeStemFilter": 237,
+            "stockStemsIgnored": 20,
+            "verdict": "NOT USED for exclusion — these are question stems, not duplicate questions",
+            "examples": [
+              {
+                "shingle": "in roblox development what is the primary purpose",
+                "gateQuestion": "In Roblox development, what is the primary purpose of publishing a place to test it before final release?"
+              },
+              {
+                "shingle": "in luau what is the effect of calling",
+                "gateQuestion": "In Luau, what is the effect of calling `table.freeze` on a table that already contains nested tables?"
+              },
+              {
+                "shingle": "in roblox what data type must be assigned",
+                "gateQuestion": "In Roblox, what data type must be assigned to the Adornee property on any instance derived from PartAdornment?"
+              }
+            ]
+          },
+          "nearDuplicate": {
+            "method": "idf-weighted Jaccard over the whole question, both splits supplying the weights",
+            "threshold": 0.6,
+            "flaggedRows": 60,
+            "countsByThreshold": {
+              "0.6": 60,
+              "0.7": 31,
+              "0.8": 10,
+              "0.9": 4
+            },
+            "examples": [
+              {
+                "score": 0.933,
+                "gateQuestion": "What is the primary purpose of calling GetPropertyChangedSignal(property) on a Roblox Instance?",
+                "headroomQuestion": "What is the primary purpose of calling GetPropertyChangedSignal on a Roblox Instance?"
+              },
+              {
+                "score": 0.9198,
+                "gateQuestion": "In Roblox, what does the Instance method `IsA(className)` return when called on an object?",
+                "headroomQuestion": "In Roblox, what does the `IsA(className)` method return when called on an Instance?"
+              },
+              {
+                "score": 0.9138,
+                "gateQuestion": "What does the IsA(className) method return when called on a Roblox Instance?",
+                "headroomQuestion": "In Roblox, what does the `IsA(className)` method return when called on an Instance?"
+              }
+            ]
+          }
+        },
+        "gateVsRepoTrainingRows": {
+          "splits": {
+            "train": 327,
+            "val": 39,
+            "test": 38
+          },
+          "gateRows": 3000,
+          "trainingRows": 404,
+          "exactShared": 0,
+          "shingle": {
+            "n": 8,
+            "flaggedRows": 0,
+            "flaggedBeforeStemFilter": 0,
+            "stemsIgnored": 0
+          },
+          "nearDuplicate": {
+            "method": "idf-weighted Jaccard over the whole text, both sides supplying the weights",
+            "threshold": 0.6,
+            "flaggedRows": 0,
+            "countsByThreshold": {
+              "0.6": 0,
+              "0.7": 0,
+              "0.8": 0,
+              "0.9": 0
+            },
+            "maxScore": 0.1985,
+            "margin": 0.4015,
+            "closest": [
+              {
+                "score": 0.1985,
+                "gateQuestion": "Which property on a GuiObject must typically be enabled for UITextSizeConstraint to dynamically adjust text size based on container dimensions?",
+                "trainingInstruction": "Returns the text bounds size based on given text, label (from which properties will be pulled), and optional Vector2 container size."
+              },
+              {
+                "score": 0.1902,
+                "gateQuestion": "What is the primary operational difference between a regular queue and a priority queue when storing and retrieving data?",
+                "trainingInstruction": "Handles both priority and regular particles"
+              },
+              {
+                "score": 0.1877,
+                "gateQuestion": "In Roblox's cloud localization table, what is the strict requirement for every entry's Source column?",
+                "trainingInstruction": "Reads the localization table back into a Key -> entry lookup for assertions."
+              },
+              {
+                "score": 0.1847,
+                "gateQuestion": "What is the purpose of the Label property on a PathfindingModifier instance?",
+                "trainingInstruction": "Sets the place name label on the interface"
+              },
+              {
+                "score": 0.1799,
+                "gateQuestion": "In Luau, what does an Offset value of (1, 0) do to a UIGradient applied to a GuiObject?",
+                "trainingInstruction": "Find the base 10 offset needed to make 0.1 <= abs(number) < 1"
+              }
+            ]
+          },
+          "clean": true
+        }
+      },
+      "excludedGateRows": 60
+    }
+  ],
+  "rejected": [
+    {
+      "id": "8BitStudio/Roblox-luau-coding_L1",
+      "role": "training",
+      "note": "the one training candidate that clears licence AND currency; judged on its rows below",
+      "revision": "54c0c302cf42b37bd9d5821f1add5ec2108bdeb3",
+      "downloads": 301,
+      "spdx": "Apache-2.0",
+      "lastModified": "2026-08-01T19:28:06.000Z",
+      "ageDays": 44,
+      "content": {
+        "read": 12306,
+        "verifySampled": 293,
+        "syntaxFail": 0,
+        "antipatternFail": 0,
+        "dupeOutput": 747,
+        "template": 7446,
+        "inert": 8209,
+        "noInstruction": 0,
+        "templateShare": 0.6051,
+        "inertShare": 0.6671,
+        "verifiedShare": 1
+      },
+      "gate": "content",
+      "reason": "60.5% of sampled rows are pure Instance.new property-setting templates (bar: 25%)"
+    },
+    {
+      "id": "Roblox/luau_corpus",
+      "role": "training",
+      "note": "Roblox's own opt-in Data Sharing corpus — the licence is real and the clock is not",
+      "revision": "e739f802aacff689535281c0da8bf523a249f3a7",
+      "downloads": 342,
+      "spdx": "MIT",
+      "lastModified": "2023-11-20T01:09:48.000Z",
+      "ageDays": 1030,
+      "gate": "currency",
+      "reason": "last updated 1030 days ago; the currency bar is 365 days"
+    },
+    {
+      "id": "TorpedoSoftware/Roblox-Luau-Reasoning-v1.0",
+      "role": "training",
+      "note": "reasoning traces over Luau",
+      "revision": "e370cb83c0d66cac71aef56a7c711417a019476a",
+      "downloads": 354,
+      "spdx": "MIT",
+      "lastModified": "2025-03-26T10:27:52.000Z",
+      "ageDays": 538,
+      "gate": "currency",
+      "reason": "last updated 538 days ago; the currency bar is 365 days"
+    },
+    {
+      "id": "TorpedoSoftware/roblox-info-dump",
+      "role": "training",
+      "note": "API dump scraped from the documentation",
+      "revision": "6426e8988649b95e1b27139ed853f1c9791b544f",
+      "downloads": 165,
+      "spdx": "MIT",
+      "lastModified": "2025-08-18T05:37:10.000Z",
+      "ageDays": 393,
+      "gate": "currency",
+      "reason": "last updated 393 days ago; the currency bar is 365 days"
+    },
+    {
+      "id": "khtsly/roblox_docs_corpus_text",
+      "role": "training",
+      "note": null,
+      "revision": "c2c645ebe295170fc04193e3fdf7cc14c17c5b1f",
+      "downloads": 90,
+      "spdx": "other",
+      "gate": "licence",
+      "reason": "licence \"other\" is not permissive for training"
+    },
+    {
+      "id": "khtsly/devforum-roblox-text",
+      "role": "training",
+      "note": null,
+      "revision": "d7821a28af73c20796aa177a5ba332d762a67ff4",
+      "downloads": 117,
+      "spdx": "other",
+      "gate": "licence",
+      "reason": "licence \"other\" is not permissive for training"
+    },
+    {
+      "id": "PatoFlamejanteTV/RobloxCodeLarge2UNFILTRED-Lua-Luau",
+      "role": "training",
+      "note": null,
+      "revision": "ec3fc5b317ea75b4574e18e1e735583d29177b70",
+      "downloads": 64,
+      "spdx": "MIT",
+      "gate": "licence",
+      "reason": "licence \"MIT\" is asserted over content the uploader did not author — a 1.9 GB scrape of other people's Roblox game scripts, stamped MIT by a card whose ENTIRE body is the three lines \"---/license: mit/---\". The uploader cannot grant rights to code they did not write, and \"UNFILTRED\" in the repository name is the author telling us nothing was checked."
+    }
+  ],
+  "notJudged": [],
+  "models": [
+    {
+      "id": "Roblox/Llama-3.1-8B-Instruct-RobloxGuard-1.0",
+      "purpose": "prompt/response safety classification",
+      "licence": "openrail",
+      "gated": false,
+      "lastModified": "2026-01-05T22:34:48.000Z",
+      "artefact": "PEFT LoRA adapter",
+      "pipeline": "text-classification",
+      "parameters": null,
+      "precision": null,
+      "baseModel": "meta-llama/Meta-Llama-3.1-8B-Instruct",
+      "loraRank": 16,
+      "baseGated": "manual",
+      "baseLicence": "llama3.1",
+      "baseResolvedAs": "meta-llama/Llama-3.1-8B-Instruct",
+      "baseParameters": 8030261248,
+      "basePrecision": "BF16",
+      "serving": {
+        "footprintGB": 16.06,
+        "footprintGB4bit": 4.42,
+        "workersAi": {
+          "servable": false,
+          "blockers": [
+            "adapter rank 16 exceeds Cloudflare's r<=8 upload cap",
+            "base meta-llama/Llama-3.1-8B-Instruct is not a Cloudflare LoRA-capable base (mistral-7b-v0.2 | gemma-2b/7b | llama-2-7b per docs/audit/INFERENCE-PROVIDERS.md §2), and Cloudflare will not host a base you supply"
+          ]
+        },
+        "localM2Pro": {
+          "servable": false,
+          "blockers": [
+            "its base meta-llama/Llama-3.1-8B-Instruct is gated \"manual\" under llama3.1 — only the owner can accept those terms, and this harvester must not pretend he has"
+          ]
+        },
+        "licenceOk": false,
+        "licenceNote": "licence \"openrail\" is not on this repository's permissive list. OpenRAIL permits commercial use but attaches use-based restrictions that must flow down to every end user; nothing in packages/corpus/data/sources.json can express a flow-down obligation, which is why the gate admits permissive ids only.",
+        "wiredAsACheck": false,
+        "productUsesInstead": "apps/worker/src/assets.ts — scanScriptSource() + brokerAsset() static Luau scanning on every inserted third-party asset, plus the metadata/provenance gate in verifyCreatorStoreAsset(); proven to RUN, not merely to exist, by packages/evals/src/asset-safety.test.mjs §6-§10."
+      }
+    },
+    {
+      "id": "Roblox/roblox-pii-classifier-v2",
+      "purpose": "PII detection",
+      "licence": "Apache-2.0",
+      "gated": false,
+      "lastModified": "2026-08-19T06:32:25.000Z",
+      "artefact": "full weights",
+      "pipeline": "text-classification",
+      "parameters": 559893507,
+      "precision": "F32",
+      "serving": {
+        "footprintGB": 2.24,
+        "footprintGB4bit": 0.31,
+        "workersAi": {
+          "servable": false,
+          "blockers": [
+            "text-classification weights cannot be uploaded to Workers AI at all — it serves its own catalogue plus LoRA adapters onto that catalogue, and nothing in apps/worker/src/providers/workers-ai.ts is this architecture"
+          ]
+        },
+        "localM2Pro": {
+          "servable": true,
+          "blockers": []
+        },
+        "licenceOk": true,
+        "licenceNote": null,
+        "wiredAsACheck": false,
+        "productUsesInstead": "apps/worker/src/assets.ts — scanScriptSource() + brokerAsset() static Luau scanning on every inserted third-party asset, plus the metadata/provenance gate in verifyCreatorStoreAsset(); proven to RUN, not merely to exist, by packages/evals/src/asset-safety.test.mjs §6-§10."
+      }
+    },
+    {
+      "id": "Roblox/voice-safety-classifier-v3",
+      "purpose": "voice moderation",
+      "licence": "Apache-2.0",
+      "gated": false,
+      "lastModified": "2026-05-19T16:16:42.000Z",
+      "artefact": "full weights",
+      "pipeline": null,
+      "parameters": 319909259,
+      "precision": "F32",
+      "serving": {
+        "footprintGB": 1.28,
+        "footprintGB4bit": 0.18,
+        "workersAi": {
+          "servable": false,
+          "blockers": [
+            "these weights cannot be uploaded to Workers AI at all — it serves its own catalogue plus LoRA adapters onto that catalogue, and nothing in apps/worker/src/providers/workers-ai.ts is this architecture"
+          ]
+        },
+        "localM2Pro": {
+          "servable": true,
+          "blockers": []
+        },
+        "licenceOk": true,
+        "licenceNote": null,
+        "wiredAsACheck": false,
+        "productUsesInstead": "apps/worker/src/assets.ts — scanScriptSource() + brokerAsset() static Luau scanning on every inserted third-party asset, plus the metadata/provenance gate in verifyCreatorStoreAsset(); proven to RUN, not merely to exist, by packages/evals/src/asset-safety.test.mjs §6-§10."
+      }
+    },
+    {
+      "id": "Roblox/cubepart",
+      "purpose": "text-to-3d part generation",
+      "licence": "openrail",
+      "gated": false,
+      "lastModified": "2026-05-28T18:26:37.000Z",
+      "artefact": "full weights",
+      "pipeline": "text-to-3d",
+      "parameters": null,
+      "precision": null,
+      "serving": {
+        "footprintGB": null,
+        "footprintGB4bit": null,
+        "workersAi": {
+          "servable": false,
+          "blockers": [
+            "text-to-3d weights cannot be uploaded to Workers AI at all — it serves its own catalogue plus LoRA adapters onto that catalogue, and nothing in apps/worker/src/providers/workers-ai.ts is this architecture"
+          ]
+        },
+        "localM2Pro": {
+          "servable": false,
+          "blockers": [
+            "the Hub reports no safetensors index, so the footprint cannot be derived — NOT MEASURED, which is not the same as \"it fits\""
+          ]
+        },
+        "licenceOk": false,
+        "licenceNote": "licence \"openrail\" is not on this repository's permissive list. OpenRAIL permits commercial use but attaches use-based restrictions that must flow down to every end user; nothing in packages/corpus/data/sources.json can express a flow-down obligation, which is why the gate admits permissive ids only.",
+        "wiredAsACheck": false,
+        "productUsesInstead": "apps/worker/src/assets.ts — scanScriptSource() + brokerAsset() static Luau scanning on every inserted third-party asset, plus the metadata/provenance gate in verifyCreatorStoreAsset(); proven to RUN, not merely to exist, by packages/evals/src/asset-safety.test.mjs §6-§10."
+      }
+    },
+    {
+      "id": "Roblox/cube3d-v0.5",
+      "purpose": "text-to-3d shape generation",
+      "licence": "openrail",
+      "gated": false,
+      "lastModified": "2025-07-20T23:01:44.000Z",
+      "artefact": "full weights",
+      "pipeline": null,
+      "parameters": null,
+      "precision": null,
+      "serving": {
+        "footprintGB": null,
+        "footprintGB4bit": null,
+        "workersAi": {
+          "servable": false,
+          "blockers": [
+            "these weights cannot be uploaded to Workers AI at all — it serves its own catalogue plus LoRA adapters onto that catalogue, and nothing in apps/worker/src/providers/workers-ai.ts is this architecture"
+          ]
+        },
+        "localM2Pro": {
+          "servable": false,
+          "blockers": [
+            "the Hub reports no safetensors index, so the footprint cannot be derived — NOT MEASURED, which is not the same as \"it fits\""
+          ]
+        },
+        "licenceOk": false,
+        "licenceNote": "licence \"openrail\" is not on this repository's permissive list. OpenRAIL permits commercial use but attaches use-based restrictions that must flow down to every end user; nothing in packages/corpus/data/sources.json can express a flow-down obligation, which is why the gate admits permissive ids only.",
+        "wiredAsACheck": false,
+        "productUsesInstead": "apps/worker/src/assets.ts — scanScriptSource() + brokerAsset() static Luau scanning on every inserted third-party asset, plus the metadata/provenance gate in verifyCreatorStoreAsset(); proven to RUN, not merely to exist, by packages/evals/src/asset-safety.test.mjs §6-§10."
+      }
+    }
+  ]
+}

@@ -8,9 +8,11 @@ import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { supabase, type ProjectRow } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { downloadExport, purgeProject, ApiError } from '../lib/api';
-import { PROJECT_NAME_MAX, isRenameWorthwhile, useRenameProject } from '../lib/rename-project';
+import { PROJECT_DESCRIPTION_MAX, PROJECT_NAME_MAX, projectEditPatch, useEditProject } from '../lib/rename-project';
 import { PROJECT_COLUMNS, PROJECT_LIST_KEYS, PROJECT_SCOPES, scopeToShow, type ProjectScope } from '../lib/archive';
+import { BLANK_TEMPLATE_ID, PROJECT_TEMPLATES, templateSeed } from '../lib/project-templates';
 import { readViewChoice, writeViewChoice } from '../lib/view-state';
+import { TAG_MAX_LEN, TAGS_MAX, addTag, normaliseTag, removeTag, tagUniverse } from '../lib/tags';
 import { relativeTime, truncate } from '../lib/format';
 import { Modal } from '../components/modal';
 import { SummonIllustration } from '../components/glyphs';
@@ -30,18 +32,51 @@ import { SHORTCUTS, shortcutLabel } from '../lib/shortcuts';
  * download every archived project on every dashboard load, and the whole point of archiving is
  * that the pile grows without bound.
  */
-async function fetchProjects(scope: ProjectScope = 'active'): Promise<ProjectRow[]> {
+async function fetchProjects(scope: ProjectScope = 'active', tag?: string | null): Promise<ProjectRow[]> {
   if (MOCK_MODE) return scope === 'active' ? mockProjects : [];
-  const q = supabase.from('projects').select(PROJECT_COLUMNS);
+  const base = supabase.from('projects').select(PROJECT_COLUMNS);
+  // The tag narrows the QUERY, for the same reason the archived filter does: filtering after the
+  // fetch still downloads every project on every chip click, and a tag is the one axis a user with
+  // a lot of projects reaches for precisely because they have a lot of projects.
+  //
+  // Active only. The archived list is a place you go to find something you put away, and it is
+  // ordered and searched by that; narrowing it by a label as well means a restored project can be
+  // invisible in both lists at once.
+  const q = tag && scope === 'active' ? base.contains('tags', [tag]) : base;
   const { data, error } =
     scope === 'active'
-      ? await q.is('archived_at', null).order('updated_at', { ascending: false })
+      ? // PINNED FIRST, AND WHY `nullsFirst: false` IS LOAD-BEARING.
+        // Postgres sorts `desc` NULLS FIRST by default, so the obvious ordering puts every
+        // unpinned project ABOVE every pinned one. The result still contains the pinned project,
+        // just in the wrong half of a long list, so it reads as a feature that does not work
+        // rather than one that is absent.
+        //
+        // The archived list is deliberately NOT reordered by pins: it is ordered by when a project
+        // was put away, which is what someone hunting for the thing they just archived is scanning
+        // for.
+        await q
+          .is('archived_at', null)
+          .order('pinned_at', { ascending: false, nullsFirst: false })
+          .order('updated_at', { ascending: false })
       : await q.not('archived_at', 'is', null).order('archived_at', { ascending: false });
   if (error) throw new Error(error.message);
   return (data ?? []) as ProjectRow[];
 }
 
-function ProjectMenu({ onDelete, onExport, onRename, onArchive, archived }: { onDelete: () => void; onExport: (format: 'md' | 'json') => void; onRename: () => void; onArchive: () => void; archived: boolean }) {
+/**
+ * Every tag in use on an active project — one column, no filter, no order.
+ *
+ * Its own query rather than a read of the list above because the list is what the filter narrows,
+ * and a chip row derived from a narrowed list has exactly one chip on it: the one already chosen.
+ */
+async function fetchTagUniverse(): Promise<{ tags?: string[] }[]> {
+  if (MOCK_MODE) return mockProjects;
+  const { data, error } = await supabase.from('projects').select('tags').is('archived_at', null);
+  if (error) throw new Error(error.message);
+  return (data ?? []) as { tags?: string[] }[];
+}
+
+function ProjectMenu({ onDelete, onExport, onEdit, onArchive, onPin, onTags, archived, pinned }: { onDelete: () => void; onExport: (format: 'md' | 'json') => void; onEdit: () => void; onArchive: () => void; onPin: () => void; onTags: () => void; archived: boolean; pinned: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -91,10 +126,40 @@ function ProjectMenu({ onDelete, onExport, onRename, onArchive, archived }: { on
               e.preventDefault();
               e.stopPropagation();
               setOpen(false);
-              onRename();
+              onEdit();
             }}
           >
-            Rename…
+            Edit…
+          </button>
+          {/* Not offered on an archived project: pinning something to the top of a list it is not
+              in is a control that reports success and changes nothing on screen. */}
+          {!archived && (
+            <button
+              type="button"
+              role="menuitem"
+              className="menu-item"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setOpen(false);
+                onPin();
+              }}
+            >
+              {pinned ? 'Unpin' : 'Pin to top'}
+            </button>
+          )}
+          <button
+            type="button"
+            role="menuitem"
+            className="menu-item"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setOpen(false);
+              onTags();
+            }}
+          >
+            Tags…
           </button>
           <button
             type="button"
@@ -162,6 +227,7 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
   const { toast } = useToast();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [template, setTemplate] = useState(BLANK_TEMPLATE_ID);
 
   const create = useMutation({
     mutationFn: async () => {
@@ -179,7 +245,17 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
       void qc.invalidateQueries({ queryKey: ['projects'] });
       void qc.invalidateQueries({ queryKey: ['projects-nav'] });
       toast('Project summoned', 'success');
-      navigate(`/projects/${row.id}`);
+      //[[ THE TEMPLATE IS A SEEDED REQUEST, NOT SEEDED CONTENT.
+      //
+      //   It rides the handoff the workspace already consumes — the same one the suggestion chips
+      //   and the roadmap's briefs use — so the message lands in the composer and the person reads
+      //   it and presses send. Nothing is built, and no Credit is spent, until they do.
+      //
+      //   A blank start navigates with no state at all rather than `{ seed: null }`: the workspace
+      //   consumes-and-clears any state it is handed, and handing it nothing to clear keeps the
+      //   history entry as it was. ]]
+      const seed = templateSeed(template);
+      navigate(`/projects/${row.id}`, seed ? { state: { seed } } : undefined);
     },
     onError: (e: Error) => toast(`Could not create project: ${e.message}`, 'error'),
   });
@@ -220,6 +296,29 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
             placeholder="A lava-parkour obby with checkpoints, coins and a shop."
           />
         </label>
+        <fieldset className="field tpl">
+          <legend className="field-label">Starting point</legend>
+          {/* Said plainly, because the last template claim this product made was false: these fill
+              in the first message, they do not fill in the place. */}
+          <p className="field-hint tpl__note">
+            Each of these writes your first request for you. You can edit it before you send it.
+          </p>
+          <div className="tpl__grid">
+            {PROJECT_TEMPLATES.map((t) => (
+              <label key={t.id} className={`tpl__card${template === t.id ? ' is-on' : ''}`}>
+                <input
+                  type="radio"
+                  name="projectTemplate"
+                  value={t.id}
+                  checked={template === t.id}
+                  onChange={() => setTemplate(t.id)}
+                />
+                <span className="tpl__label">{t.label}</span>
+                <span className="tpl__blurb">{t.blurb}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
         <div className="modal-actions">
           <button type="button" className="btn" onClick={onClose} disabled={create.isPending}>
             Cancel
@@ -234,36 +333,146 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
 }
 
 /**
- * Rename a project.
+ * Edit one project's tags.
+ *
+ * Applied on each add and remove rather than collected behind a Save: a tag is one word and the
+ * list is at most six of them, so a Save button here guards nothing and is one more thing to
+ * forget on the way out of the dialog. `existing` is offered as suggestions so the second project
+ * tagged "client" is tagged by clicking, not by spelling it the same way again — which is the
+ * failure mode the normaliser exists to survive, not one to invite.
+ */
+function TagsModal({
+  project,
+  existing,
+  pending,
+  onApply,
+  onClose,
+}: {
+  project: ProjectRow;
+  existing: string[];
+  pending: boolean;
+  onApply: (tags: string[]) => void;
+  onClose: () => void;
+}) {
+  const [draft, setDraft] = useState('');
+  const tags = project.tags ?? [];
+  const full = tags.length >= TAGS_MAX;
+  const suggestions = existing.filter((t) => !tags.some((own) => normaliseTag(own) === t)).slice(0, 8);
+
+  const commit = (raw: string) => {
+    const next = addTag(tags, raw);
+    setDraft('');
+    if (next !== tags) onApply(next);
+  };
+
+  return (
+    <Modal title={`Tags for ${project.name}`} onClose={onClose} locked={pending}>
+      <form
+        onSubmit={(e: FormEvent) => {
+          e.preventDefault();
+          commit(draft);
+        }}
+      >
+        {tags.length > 0 ? (
+          <div className="tag-row">
+            {tags.map((t) => (
+              <button
+                key={t}
+                type="button"
+                className="tag-chip tag-chip--own"
+                onClick={() => onApply(removeTag(tags, t))}
+                disabled={pending}
+                title={`Remove "${t}"`}
+              >
+                {t} <span aria-hidden="true">×</span>
+                <span className="visually-hidden">Remove tag</span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="page-note">No tags yet. A tag groups projects on the dashboard — "client", "obby", "experiment".</p>
+        )}
+
+        <label className="field">
+          <span className="field-label">
+            Add a tag {full && <span className="field-hint">({TAGS_MAX} is the limit)</span>}
+          </span>
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            maxLength={TAG_MAX_LEN}
+            name="projectTag"
+            id="project-tag"
+            placeholder="client"
+            disabled={full || pending}
+            autoFocus
+          />
+        </label>
+
+        {suggestions.length > 0 && !full && (
+          <div className="tag-row">
+            {suggestions.map((t) => (
+              <button key={t} type="button" className="tag-chip" onClick={() => commit(t)} disabled={pending}>
+                + {t}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="modal-actions">
+          <button type="button" className="btn" onClick={onClose} disabled={pending}>
+            Done
+          </button>
+          <button type="submit" className="btn btn-primary" disabled={!normaliseTag(draft) || full || pending}>
+            Add
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+/**
+ * Edit a project's name and description.
  *
  * The write goes straight to Supabase under RLS, exactly like create and delete do — there is no
  * worker route because there is nothing for one to do. `withOwnedProject` posts the CURRENT name
  * from Supabase to the Durable Object's `/init` on every single request, so the session picks the
  * new name up on its next call without being told. A rename endpoint would exist only to repeat
  * that, and would then be a second place where the name could be wrong.
+ *
+ * THE DESCRIPTION USED TO BE WRITE-ONCE. It was collected at creation, rendered on the card behind
+ * `memory_summary`, and then never writable again — this dialog said so in its own words ("Only the
+ * name changes"), which made a defect read like a policy. What a person is building changes more
+ * often than what they called it.
  */
-function RenameProjectModal({ project, onClose }: { project: ProjectRow; onClose: () => void }) {
+function EditProjectModal({ project, onClose }: { project: ProjectRow; onClose: () => void }) {
   const { toast } = useToast();
   const [name, setName] = useState(project.name);
+  const [description, setDescription] = useState(project.description ?? '');
 
-  const rename = useRenameProject(project.id, project.name, {
+  const edit = useEditProject(project.id, { name: project.name, description: project.description }, {
     onDone: (next) => {
-      toast(`Renamed to "${next}"`, 'success');
+      toast(next.name === project.name ? 'Description saved' : `Renamed to "${next.name}"`, 'success');
       onClose();
     },
-    onFail: (msg) => toast(`Rename failed: ${msg}`, 'error'),
+    onFail: (msg) => toast(`Could not save: ${msg}`, 'error'),
   });
 
-  const canSave = isRenameWorthwhile(name, project.name) && !rename.isPending;
+  // The same rule the write uses, so the button is disabled exactly when the write would do
+  // nothing — rather than enabled on a change the rule will then refuse.
+  const canSave =
+    projectEditPatch({ name, description }, { name: project.name, description: project.description }) !== null &&
+    !edit.isPending;
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!canSave) return;
-    rename.mutate(name);
+    edit.mutate({ name, description });
   };
 
   return (
-    <Modal title="Rename project" onClose={onClose} locked={rename.isPending}>
+    <Modal title="Edit project" onClose={onClose} locked={edit.isPending}>
       <form onSubmit={onSubmit}>
         <label className="field">
           <span className="field-label">Name</span>
@@ -272,22 +481,35 @@ function RenameProjectModal({ project, onClose }: { project: ProjectRow; onClose
             onChange={(e) => setName(e.target.value)}
             maxLength={PROJECT_NAME_MAX}
             required
-            name="renameProjectName"
-            id="rename-project-name"
+            name="editProjectName"
+            id="edit-project-name"
             autoFocus
             onFocus={(e) => e.currentTarget.select()}
           />
         </label>
+        <label className="field">
+          <span className="field-label">
+            What are you building? <span className="field-hint">(optional)</span>
+          </span>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={3}
+            maxLength={PROJECT_DESCRIPTION_MAX}
+            name="editProjectDescription"
+            id="edit-project-description"
+            placeholder="A lava-parkour obby with checkpoints, coins and a shop."
+          />
+        </label>
         <p className="field-hint">
-          Only the name changes. The Studio pairing, chat history and everything Apple has built stay
-          where they are.
+          The Studio pairing, chat history and everything Apple has built stay where they are.
         </p>
         <div className="modal-actions">
-          <button type="button" className="btn" onClick={onClose} disabled={rename.isPending}>
+          <button type="button" className="btn" onClick={onClose} disabled={edit.isPending}>
             Cancel
           </button>
           <button type="submit" className="btn btn-primary" disabled={!canSave}>
-            {rename.isPending ? 'Renaming…' : 'Rename'}
+            {edit.isPending ? 'Saving…' : 'Save changes'}
           </button>
         </div>
       </form>
@@ -343,7 +565,7 @@ function DeleteProjectModal({ project, onClose }: { project: ProjectRow; onClose
 export function DashboardPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [deleting, setDeleting] = useState<ProjectRow | null>(null);
-  const [renaming, setRenaming] = useState<ProjectRow | null>(null);
+  const [editing, setEditing] = useState<ProjectRow | null>(null);
   const [exporting, setExporting] = useState<string | null>(null);
   //[[ THE TAB YOU WERE READING.
   //
@@ -356,17 +578,60 @@ export function DashboardPage() {
     setScopeState(next);
     writeViewChoice('dashboard.scope', next);
   }, []);
+  // Which tag is narrowing the grid, if any. Not remembered across reloads on purpose: a
+  // remembered filter greets the user with a dashboard that is missing most of their projects for
+  // a reason they set days ago and have no memory of.
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [tagging, setTagging] = useState<ProjectRow | null>(null);
   const qc = useQueryClient();
   const { toast } = useToast();
 
   const projects = useQuery({
-    queryKey: scope === 'active' ? ['projects'] : ['projects-archived'],
-    queryFn: () => fetchProjects(scope),
+    // The filter is PART OF THE KEY, or two different filters share one cached answer and the grid
+    // shows the previous tag's projects until a refetch lands. The 'filter' segment keeps the
+    // shape distinct from the tag-universe key below — otherwise a user who names a tag
+    // "tag-universe" collides the two queries and the grid tries to render bare tag arrays.
+    queryKey: scope === 'active' ? ['projects', 'filter', tagFilter ?? ''] : ['projects-archived'],
+    queryFn: () => fetchProjects(scope, tagFilter),
   });
 
   // Counted separately and always, so the Archived tab can show how many are in there without
   // switching to it — a tab that might be empty is a tab nobody clicks.
   const archived = useQuery({ queryKey: ['projects-archived'], queryFn: () => fetchProjects('archived') });
+
+  //[[ THE CHIP ROW IS BUILT FROM ITS OWN, UNFILTERED QUERY.
+  //
+  //   Deriving the available tags from `projects.data` is the obvious thing and it collapses:
+  //   choose "client" and the list contains only client projects, so "client" becomes the only
+  //   chip on screen and there is no control left to get back to the others. The universe of tags
+  //   has to come from a query the filter does not touch.
+  //
+  //   Keyed UNDER 'projects' rather than beside it, so the three places that already invalidate
+  //   PROJECT_LIST_KEYS — archiving, deleting, tagging — refresh the chip row by prefix without
+  //   anyone having to remember a fourth cache. That is the same argument PROJECT_LIST_KEYS itself
+  //   is built on. It selects one column, so the duplicate read costs a few bytes. ]]
+  const tagged = useQuery({ queryKey: ['projects', 'tag-universe'], queryFn: fetchTagUniverse });
+  const allTags = tagUniverse(tagged.data ?? []);
+
+  // A filter for a tag that no longer exists anywhere hides every project with no chip on screen
+  // still pressed. Same failure as a remembered scope with nothing in it — see scopeToShow.
+  useEffect(() => {
+    if (tagFilter && tagged.isSuccess && !allTags.includes(tagFilter)) setTagFilter(null);
+  }, [tagFilter, tagged.isSuccess, allTags]);
+
+  const setTags = useMutation({
+    mutationFn: async ({ project, tags }: { project: ProjectRow; tags: string[] }) => {
+      const { error } = await supabase.from('projects').update({ tags }).eq('id', project.id);
+      if (error) throw new Error(error.message);
+      return { project, tags };
+    },
+    onSuccess: () => {
+      // The chip row's query is keyed under 'projects', so this one loop refreshes the grid, the
+      // sidebar and the tag universe together — no fourth cache to remember.
+      for (const key of PROJECT_LIST_KEYS) void qc.invalidateQueries({ queryKey: key });
+    },
+    onError: (e: Error) => toast(`Could not save tags: ${e.message}`, 'error'),
+  });
 
   // A remembered scope must yield to what the page can actually show — see `scopeToShow`.
   const archivedCount = archived.isSuccess ? archived.data.length : null;
@@ -374,6 +639,30 @@ export function DashboardPage() {
     const shown = scopeToShow(scope, archivedCount);
     if (shown !== scope) setScope(shown);
   }, [scope, archivedCount, setScope]);
+
+  /*
+   * Pinning. Reversible from the same menu item that set it, so it gets no dialog and no undo
+   * toast — the toast would be an extra way to do what the menu already does in one click.
+   *
+   * It invalidates all three list caches even though a pinned project cannot be archived: the row
+   * moves WITHIN the active list and WITHIN the sidebar, and the sidebar is a separate query that
+   * would otherwise keep showing the old order until its staleTime expired.
+   */
+  const setPinned = useMutation({
+    mutationFn: async ({ project, pin }: { project: ProjectRow; pin: boolean }) => {
+      const { error } = await supabase
+        .from('projects')
+        .update({ pinned_at: pin ? new Date().toISOString() : null })
+        .eq('id', project.id);
+      if (error) throw new Error(error.message);
+      return { project, pin };
+    },
+    onSuccess: ({ project, pin }) => {
+      for (const key of PROJECT_LIST_KEYS) void qc.invalidateQueries({ queryKey: key });
+      toast(pin ? `"${project.name}" pinned to the top` : `"${project.name}" unpinned`, 'success');
+    },
+    onError: (e: Error) => toast(`Could not pin: ${e.message}`, 'error'),
+  });
 
   const setArchived = useMutation({
     mutationFn: async ({ project, archive }: { project: ProjectRow; archive: boolean }) => {
@@ -492,6 +781,31 @@ export function DashboardPage() {
         </div>
       )}
 
+      {/* The chip row exists only once there is something to filter by, on the same argument as the
+          Archived tab: a control that is always present and always does nothing is chrome. It is
+          hidden on the Archived tab because the archived list is not narrowed by tags — see
+          fetchProjects. */}
+      {scope === 'active' && allTags.length > 0 && (
+        <div className="tag-row tag-row--filter" role="group" aria-label="Filter by tag">
+          {allTags.map((t) => {
+            const on = tagFilter === t;
+            return (
+              <button
+                key={t}
+                type="button"
+                className={`tag-chip${on ? ' is-on' : ''}`}
+                aria-pressed={on}
+                // Clicking the pressed chip clears it. Without that the only way out of a filter is
+                // a second control somewhere else, which people do not find.
+                onClick={() => setTagFilter(on ? null : t)}
+              >
+                {t}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {projects.isPending && (
         <div className="card-grid" aria-busy="true" aria-label="Loading projects">
           {[0, 1, 2].map((i) => (
@@ -523,7 +837,20 @@ export function DashboardPage() {
         <p className="page-note">Nothing archived. Archived projects keep everything — restore one any time.</p>
       )}
 
-      {projects.isSuccess && projects.data.length === 0 && scope === 'active' && (
+      {/* A FILTER THAT MATCHES NOTHING IS NOT AN EMPTY ACCOUNT.
+          Offering "Summon a project" to someone who has fifteen projects and one wrong chip
+          pressed answers a question they did not ask, and leaves the actual way out — unpress the
+          chip — somewhere above the fold. The way out is the control in this message. */}
+      {projects.isSuccess && projects.data.length === 0 && scope === 'active' && tagFilter && (
+        <p className="page-note">
+          Nothing tagged “{tagFilter}”.{' '}
+          <button type="button" className="btn btn-quiet" onClick={() => setTagFilter(null)}>
+            Show all projects
+          </button>
+        </p>
+      )}
+
+      {projects.isSuccess && projects.data.length === 0 && scope === 'active' && !tagFilter && (
         <EmptyState
           state="noProjects"
           illustration={<SummonIllustration />}
@@ -541,14 +868,27 @@ export function DashboardPage() {
           {projects.data.map((p) => (
             <Link key={p.id} to={`/projects/${p.id}`} className="project-card">
               <div className="project-card-top">
+                {/* The pin is drawn on the card, not only in the menu. Without it the top card is
+                    simply somewhere the user did not put it, and the only way to find out why is
+                    to open a menu they have no reason to open. */}
+                {p.pinned_at && (
+                  <span className="project-card-pin" aria-label="Pinned" title="Pinned to the top">
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                      <path d="M9.6 1.2 14.8 6.4l-1.1 1.1-1.2-.3-2.6 2.6.2 2.3-1.1 1.1-3-3-3.3 3.3-.8-.8L5.2 9.4l-3-3L3.3 5.3l2.3.2 2.6-2.6-.3-1.2z" />
+                    </svg>
+                  </span>
+                )}
                 {/* A project name is the user's string, not ours. */}
                 <h2 className="project-card-name" dir="auto">{p.name}</h2>
                 <ProjectMenu
                   onDelete={() => setDeleting(p)}
                   onExport={(f) => void runExport(p, f)}
-                  onRename={() => setRenaming(p)}
+                  onEdit={() => setEditing(p)}
                   onArchive={() => setArchived.mutate({ project: p, archive: !p.archived_at })}
+                  onPin={() => setPinned.mutate({ project: p, pin: !p.pinned_at })}
+                  onTags={() => setTagging(p)}
                   archived={Boolean(p.archived_at)}
+                  pinned={Boolean(p.pinned_at)}
                 />
               </div>
               <p className="project-card-desc">
@@ -564,6 +904,14 @@ export function DashboardPage() {
                 ) : (
                   <span className="pill pill-quiet">Not linked</span>
                 )}
+                {/* Drawn as text, not as buttons: the whole card is a link to the project, and a
+                    control inside a link either swallows the navigation or fires alongside it.
+                    Filtering by a tag is what the chip row above the grid is for. */}
+                {(p.tags ?? []).map((t) => (
+                  <span key={t} className="pill pill-tag">
+                    {t}
+                  </span>
+                ))}
                 <span style={{ marginLeft: 'auto' }}>updated {relativeTime(p.updated_at)}</span>
               </div>
             </Link>
@@ -599,7 +947,19 @@ export function DashboardPage() {
       )}
 
       {showCreate && <CreateProjectModal onClose={() => setShowCreate(false)} />}
-      {renaming && <RenameProjectModal project={renaming} onClose={() => setRenaming(null)} />}
+      {editing && <EditProjectModal project={editing} onClose={() => setEditing(null)} />}
+      {/* Fed the LIVE row from the current list rather than the one captured when the menu was
+          clicked, so a chip removed in the dialog disappears from the dialog. The captured row is
+          the fallback for the frame in which the list is refetching. */}
+      {tagging && (
+        <TagsModal
+          project={projects.data?.find((p) => p.id === tagging.id) ?? tagging}
+          existing={allTags}
+          pending={setTags.isPending}
+          onApply={(tags) => setTags.mutate({ project: tagging, tags })}
+          onClose={() => setTagging(null)}
+        />
+      )}
       {deleting && <DeleteProjectModal project={deleting} onClose={() => setDeleting(null)} />}
     </div>
   );

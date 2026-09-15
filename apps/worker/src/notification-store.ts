@@ -53,7 +53,7 @@ export const RETAIN_UNREAD_MS = 90 * 86_400_000;
  * there is nothing for a second key to distinguish.
  */
 export function ensureNotificationTables(env: Corpus): Promise<void> {
-  return oncePerIsolate('notification', () => createNotificationTables(env));
+  return oncePerIsolate('notification', () => createNotificationTables(env), env.CORPUS);
 }
 
 async function createNotificationTables(env: Corpus): Promise<void> {

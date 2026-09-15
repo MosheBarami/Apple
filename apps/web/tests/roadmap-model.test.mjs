@@ -17,6 +17,7 @@ import assert from 'node:assert/strict';
 
 import {
   buildRoadmapLayout,
+  creditRangeLabel,
   deriveReadiness,
   effortLabel,
   genreConfidenceLabel,
@@ -250,6 +251,45 @@ test('the internal specialist names are stripped out of the effort line', () => 
   assert.equal(effortLabel('about one Stone run'), 'about one Agent run');
   assert.equal(effortLabel('about two Clay runs'), 'about two Plan runs');
   assert.equal(effortLabel('about three Rune runs'), 'about three Super Agent runs');
+});
+
+// --- what it costs, not just how much work it is --------------------------
+//
+// The effort line is in runs. Nobody is billed in runs. The worker now derives the milestone's
+// credit range from the same `runs` the effort line is built from, and the card has to render it
+// without inventing anything the worker did not send.
+
+test('A CREDIT RANGE IS SHOWN AS A RANGE, in the unit the user is billed in', () => {
+  assert.equal(creditRangeLabel(20, 60), '20–60 Credits');
+});
+
+test('a range of one number is not printed as a fake spread', () => {
+  // Plan is published as "2", not "2-2". Rendering "2–2 Credits" would invent a spread.
+  assert.equal(creditRangeLabel(2, 2), '2 Credits');
+  assert.equal(creditRangeLabel(1, 1), '1 Credit');
+});
+
+test('NO RANGE MEANS NO CHIP — a missing price is never rendered as a zero', () => {
+  // The worker sends null when the derivation could not be made. A card that turned that into
+  // "0 Credits" would be quoting a price of nothing for work that costs something.
+  assert.equal(creditRangeLabel(null, null), '');
+  assert.equal(creditRangeLabel(undefined, undefined), '');
+  assert.equal(creditRangeLabel(20, null), '');
+  assert.equal(creditRangeLabel(null, 60), '');
+  assert.equal(creditRangeLabel(0, 0), '');
+});
+
+test('a range that runs backwards is refused rather than silently reordered', () => {
+  // Reordering would hide a worker bug behind a plausible-looking chip.
+  assert.equal(creditRangeLabel(60, 20), '');
+});
+
+test('the card actually renders the range it is handed', async () => {
+  // The field exists on the model and on the wire; a field no component reads is the dead branch
+  // this section of the audit keeps finding.
+  const { readFileSync: read } = await import('node:fs');
+  const tsx = read(new URL('../src/components/roadmap/milestone-card.tsx', import.meta.url), 'utf8');
+  assert.match(tsx, /creditRangeLabel\(/, 'the milestone card never prints the credit range');
 });
 
 test('an effort line that never named a specialist is left exactly as it is', () => {

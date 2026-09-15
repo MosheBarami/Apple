@@ -15,28 +15,7 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 const DIST = 'apps/site/dist';
-
-/**
- * RAISED FROM 12,000 FOR THE LIBRARY WALL, and the arithmetic is written down because a budget
- * that moves without a reason is not a budget.
- *
- *   before the wall   index.html 7,934 + css 3,691 = 11,625   (375 B under the old 12,000)
- *   with the wall     index.html 10,422 + css 4,205 = 14,627
- *
- * The wall costs ~3.0 KB gzip: ~2.5 KB of card text — 42 asset names, packs, licences, authors
- * and image paths, each one a fact rather than markup — and ~0.5 KB of CSS. It could not have
- * been fitted under the old number by trimming: the section's stylesheet alone is +514 B against
- * 375 B of headroom, so a wall with ZERO cards would still have failed. The number had to move
- * for the section to exist at all, so it was moved on purpose rather than by deleting the cards
- * until the guard went quiet.
- *
- * WHAT DID NOT MOVE is the part with teeth: ALLOW_JS_BYTES stays 0 and the three.js sweep below
- * is untouched. Those are what this guard is actually for — the wall is HTML and CSS, it drifts
- * on a keyframe, and it added no JavaScript to the route.
- *
- * Headroom is ~1.4 KB, which absorbs copy edits and would not absorb a bundle.
- */
-const BUDGET_GZIP_BYTES = 16_000; // measured 14,627 with the library wall
+const BUDGET_GZIP_BYTES = 12_000; // measured 4,662 at the time of writing
 const ALLOW_JS_BYTES = 0; // the root route ships no JavaScript, full stop
 
 if (!existsSync(DIST)) {

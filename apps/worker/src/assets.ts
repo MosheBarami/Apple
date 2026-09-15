@@ -60,6 +60,7 @@ export const ASSET_NEEDS = [
   'ui_icon',
   'texture',
   'particle',
+  'sfx',
   'lighting',
 ] as const;
 export type AssetNeed = (typeof ASSET_NEEDS)[number];
@@ -81,14 +82,29 @@ export interface SourceChoice {
 
 const V = {
   none: 'none — nothing is fetched and no asset id is involved',
+  //[[ THIS SENTENCE WAS THE INVERTED LIBRARY, STATED A SECOND TIME.
+  //
+  //   It used to require `status=active, health_ok=1`, and `choose_asset_source` is documented
+  //   "call this BEFORE building anything you might be tempted to search for" — so this is the rule
+  //   the model is holding when the search results land. `status` is an import lifecycle
+  //   (asset-library.ts): the rows that are 'active' are the Creator Store scrape, and Kenney,
+  //   Poly Haven, ambientCG and Quaternius sit at 'pending_ingest' until somebody imports them.
+  //   Search was fixed to return both; this string still told the model to discard the curated half
+  //   of what it was being handed, which is worse than the original bug because it arrives first.
+  //
+  //   So it names the two facts separately, in the words the hits actually carry. What makes a row
+  //   dead is `quarantined`/`retired` (markHealth writes the first when an id stops resolving —
+  //   that is what "health" meant). What makes a row usable TODAY is having a Roblox id at all. ]]
   library:
-    'library gate: the row must exist in asset_library with status=active, health_ok=1 and a licence permitting commercial use; the plugin inserts roblox_asset_id and nothing else',
+    'library gate: the row must carry a recorded licence permitting commercial use and must not be quarantined or retired; the plugin inserts roblox_asset_id and nothing else. Being in the library is not the same as being insertable today: every hit says availability=insertable, meaning a Roblox id exists and you can pass it to insert_asset now, or availability=needs_import, meaning the library holds this asset but its bytes have never been uploaded to Roblox, so assetId is null — say that plainly and build the thing another way for now, never invent an id for it. Either way the id is still resolved and security-gated by insert_asset like any other',
   generated:
     'QC gate: Generation.inspect() must return verdict=pass in Studio, then a human accepts the preview, then the mesh is persisted via AssetService:CreateAssetAsync — GenerateModelAsync output is session-scoped and does not survive save/publish',
   creatorStore:
     'full verifyCreatorStoreAsset() gate: the id must have come from a search response in this session, resolve to a Mesh/Image/Decal (never a Model), carry zero scripts, be free, publicly visible, from a verified or Roblox creator, and fit the triangle budget',
   builtinRig:
     'none — Roblox default rigs and HumanoidDescription are first-party, already moderated, and involve no third-party asset id',
+  sfxReference:
+    'the id must be free on the Creator Store and is REFERENCED, never inserted: set AudioPlayer.AssetId = "rbxassetid://<id>" (or Sound.SoundId). insert_asset builds geometry and refuses an Audio id by name — an audio asset has nothing to place in the world',
 } as const;
 
 /**
@@ -247,6 +263,27 @@ const DECISION_TABLE: Record<AssetNeed, readonly SourceChoice[]> = {
       verification: V.none,
     },
     { source: 'library', rationale: 'a CC0 sprite Image asset behind a procedural emitter config, when a specific shape is needed', verification: V.library },
+  ],
+  // Sound is the one need with no procedural fallback at all — there is no Roblox API that
+  // synthesises a gunshot — and no upload path either. Audio is NOT Open Use: a file uploaded under
+  // Apple's account stays private to Apple's account and a customer's place gets silence unless
+  // Apple grants that universe permission asset by asset
+  // (https://create.roblox.com/docs/en-us/audio/assets, read 2026-09-15 — NOT the asset-privacy
+  // page, which states that Asset Privacy does not affect Audio at all). So Kenney's ten CC0 audio
+  // packs, OpenGameArt's sound_effect split and freesound are all permissively licensed and all
+  // unusable. What is left is audio that is ALREADY public on the Creator Store, referenced by id.
+  sfx: [
+    {
+      source: 'library',
+      rationale:
+        'free Creator Store audio, harvested with its id and licence recorded — already public and moderated, so it is referenced rather than uploaded, and a genre kit can hand over a matched set',
+      verification: V.sfxReference,
+    },
+    {
+      source: 'creator_store',
+      rationale: 'a live Creator Store audio search when the library has no match for this specific sound',
+      verification: V.sfxReference,
+    },
   ],
   lighting: [
     {
@@ -438,6 +475,16 @@ export const ACCEPTABLE_ASSET_TYPES: Readonly<Record<number, string>> = {
 /** Types that resolve but are deliberately refused, with the reason surfaced to the caller. */
 export const REFUSED_ASSET_TYPES: Readonly<Record<number, string>> = {
   10: 'Model',
+  // Not an oversight and not a licence problem — an SFX row in the library is meant to be
+  // REFERENCED. It is named here rather than left to fall through to the generic "not on the
+  // allowlist" message so the model is told what to do instead of being told no.
+  3: 'Audio',
+};
+
+/** Why each refused type is refused, and what to do instead. Refusing without this is just "no". */
+export const REFUSAL_REASONS: Readonly<Record<number, string>> = {
+  10: 'Models are not Open Use and can contain scripts; use the Mesh (40) or Image (1) inside it instead',
+  3: 'audio has no geometry to place. Reference it instead: AudioPlayer.AssetId = "rbxassetid://<id>", or Sound.SoundId on a part',
 };
 
 export type AssetVerdictCode =
@@ -619,10 +666,10 @@ export function judgeAssetDetails(assetId: number, entry: unknown, opts: VerifyO
     if (v.assetTypeId === null) {
       fail('fail_wrong_type', 'asset type could not be determined');
     } else if (REFUSED_ASSET_TYPES[v.assetTypeId]) {
-      fail(
-        'fail_wrong_type',
-        `asset is a ${REFUSED_ASSET_TYPES[v.assetTypeId]} (typeId ${v.assetTypeId}) — Models are not Open Use and can contain scripts; use the Mesh (40) or Image (1) instead`,
-      );
+      // The reason has to be per-type. One message that said "Models are not Open Use and can
+      // contain scripts; use the Mesh (40) or Image (1) instead" was correct for a Model and a lie
+      // for an Audio id, which is refused for the opposite reason — there is nothing to place.
+      fail('fail_wrong_type', `asset is a ${REFUSED_ASSET_TYPES[v.assetTypeId]} (typeId ${v.assetTypeId}) — ${REFUSAL_REASONS[v.assetTypeId] ?? 'not insertable'}`);
     } else if (!ACCEPTABLE_ASSET_TYPES[v.assetTypeId]) {
       fail('fail_wrong_type', `asset typeId ${v.assetTypeId} is not on the allowlist (${Object.values(ACCEPTABLE_ASSET_TYPES).join(', ')})`);
     } else if (opts.expectType && v.assetType !== opts.expectType) {

@@ -6,23 +6,33 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { PlanLadder } from '../components/plans';
+import { OrderSummaryDialog } from '../components/order-summary';
 import { meterView } from '../components/usage-meter-model';
 import { formatNumber } from '../lib/format';
 import { Failure } from '../components/failure';
-import { PLAN_COPY, PRODUCT_MODE_INFO, isPlanId, type PlanId, type ProductMode } from '@golem/shared';
-import { billingChangeLine, billingNotice, type SubscriptionView } from '../lib/billing-copy';
+import { PRODUCT_MODES_OFFERED, PLAN_COPY, PRODUCT_MODE_INFO, formatMoney, isPlanId, type PlanId } from '@golem/shared';
+import {
+  billingChangeLine,
+  billingNotice,
+  planChangePreviewLine,
+  type SubscriptionView,
+} from '../lib/billing-copy';
 import {
   fetchBillingConfig,
   fetchBillingHistory,
+  fetchBillingPreview,
   fetchMe,
   fetchUsage,
   openBillingPortal,
   startCheckout,
   type UsageDay,
 } from '../lib/api';
+import { ConfirmDialog } from '../components/confirm-dialog';
 import { useToast } from '../components/toast';
 
-const MODES: ProductMode[] = ['plan', 'agent', 'super'];
+// The modes a person may CHOOSE. PRODUCT_MODES is every mode the system can produce —
+// pricing one nobody can start is how "Super Agent" survived being removed from the composer.
+const MODES = PRODUCT_MODES_OFFERED;
 
 /**
  * The ring shows the ALLOWANCE, and credits are reported beside it — never added into the arc.
@@ -81,13 +91,17 @@ function CreditsRing({ remaining, daily, period }: { remaining: number; daily: n
  * Every sentence here comes from `billingNotice`, which is tested on its own. Nothing in this
  * component decides what a date means.
  */
+/**
+ * A billing instant in the viewer's OWN locale and timezone. A date shown in UTC to someone in
+ * Auckland can be the wrong day, on the one subject where the day is the whole point.
+ */
+const formatDay = (unixSeconds: number): string =>
+  new Date(unixSeconds * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+
 function BillingNotice({ view, onManage }: { view: SubscriptionView; onManage: () => void }) {
   const notice = billingNotice(view, {
     planName: PLAN_COPY[isPlanId(view.plan) ? view.plan : 'free'].name,
-    // The viewer's own locale and timezone. A billing date shown in UTC to someone in Auckland can
-    // be the wrong day.
-    formatDate: (seconds) =>
-      new Date(seconds * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }),
+    formatDate: formatDay,
   });
   if (!notice) return null;
   return (
@@ -225,6 +239,16 @@ export function UsagePage() {
   const billing = useQuery({ queryKey: ['billing-config'], queryFn: fetchBillingConfig, retry: false });
   const { toast } = useToast();
   const [busyPlan, setBusyPlan] = useState<PlanId | null>(null);
+  /**
+   * THE ORDER WAITING TO BE CONFIRMED.
+   *
+   * The first click used to call the checkout mutation and the browser left for Stripe's card form.
+   * The only pre-purchase statement in the product was the plan card behind it, which describes a
+   * TIER — price, allowance, highlights — and not an order: it never said what the account was
+   * moving from, that the charge repeats, or that tax is added to the figure being read. Choosing a
+   * plan now opens the summary; nothing is bought until it is confirmed.
+   */
+  const [pendingPlan, setPendingPlan] = useState<PlanId | null>(null);
 
   /**
    * COMING BACK FROM STRIPE IS NOT AN ENTITLEMENT.
@@ -235,15 +259,30 @@ export function UsagePage() {
    * this page lie again, in the same way the waitlist did.
    */
   const [returned, setReturned] = useState<'done' | 'cancelled' | null>(null);
+  /**
+   * AND COMING BACK FROM THE BILLING PORTAL IS NOT A CANCELLATION.
+   *
+   * The end state was already confirmed — "Your Builder plan ends on 3 October" — but only once the
+   * webhook had landed, and nothing acknowledged the ACT. A user who cancelled on Stripe's page came
+   * back to a page identical to the one they left, so the last word on the subject was Stripe's.
+   *
+   * This is the same shape as the checkout return and for the same reason: the flag says a visit
+   * happened, never what was done. What is printed comes from the server, after a refetch.
+   */
+  const [fromPortal, setFromPortal] = useState(false);
   useEffect(() => {
-    const flag = new URLSearchParams(window.location.search).get('checkout');
-    if (flag !== 'done' && flag !== 'cancelled') return;
-    setReturned(flag);
-    // Take the flag back out of the URL, so a reload or a shared link does not replay it.
+    const params = new URLSearchParams(window.location.search);
+    const flag = params.get('checkout');
+    const portal = params.get('billing') === 'returned';
+    if (flag !== 'done' && flag !== 'cancelled' && !portal) return;
+    if (flag === 'done' || flag === 'cancelled') setReturned(flag);
+    if (portal) setFromPortal(true);
+    // Take the flags back out of the URL, so a reload or a shared link does not replay them.
     const url = new URL(window.location.href);
     url.searchParams.delete('checkout');
+    url.searchParams.delete('billing');
     window.history.replaceState({}, '', url.toString());
-    if (flag === 'done') void me.refetch();
+    if (flag === 'done' || portal) void me.refetch();
   }, []);
 
   const checkout = useMutation({
@@ -264,6 +303,33 @@ export function UsagePage() {
     mutationFn: () => openBillingPortal(),
     onSuccess: ({ url }) => window.location.assign(url),
     onError: (e: Error) => toast(`Couldn't open billing: ${e.message}`, 'error'),
+  });
+
+  /**
+   * WHAT THIS CHANGE COSTS, ASKED BEFORE THE USER LEAVES THE PRODUCT.
+   *
+   * The ladder prints each tier's monthly price, and for someone already paying that is not the
+   * number about to be charged: a mid-period change is prorated, net of a credit for the time
+   * already bought on the old tier. This page used to send them straight to Stripe, so the amount,
+   * the credit and the date it applies from were first seen on a page outside the product, after
+   * they had already clicked through to it.
+   *
+   * IT STILL BUYS NOTHING. Confirming opens the Billing Portal exactly as before; proration, tax
+   * and when a downgrade takes effect remain Stripe's to decide and the webhook remains the only
+   * thing that moves an entitlement. This is a quote, shown first.
+   */
+  const [pendingChange, setPendingChange] = useState<PlanId | null>(null);
+  const preview = useQuery({
+    queryKey: ['billing-preview', pendingChange],
+    queryFn: () => fetchBillingPreview(pendingChange as PlanId),
+    // Nothing is priced on page load: this asks Stripe a question, and only a chosen tier is a
+    // question worth asking.
+    enabled: pendingChange !== null,
+    // A quote goes stale the moment the period moves on, and a retry storm on a billing endpoint
+    // is not worth a second attempt at a number the dialog can honestly say it does not have.
+    retry: false,
+    gcTime: 0,
+    staleTime: 0,
   });
 
   const currentPlan: PlanId = isPlanId(me.data?.quota?.plan) ? me.data.quota.plan : 'free';
@@ -373,6 +439,34 @@ export function UsagePage() {
             </p>
           )}
 
+          {/*
+            BACK FROM THE BILLING PORTAL. Every word here is read off the server's own state after a
+            refetch — the flag in the URL only says a visit happened. Claiming the cancellation from
+            the return alone would be the same lie the checkout branch is careful not to tell, on the
+            change a customer is most likely to come back and check.
+          */}
+          {fromPortal && billingView && (
+            <p className="plans-note" role="status">
+              {billingView.state === 'cancelling' ? (
+                <>
+                  Your plan is set to end
+                  {typeof billingView.endsAt === 'number' && Number.isFinite(billingView.endsAt)
+                    ? ` on ${formatDay(billingView.endsAt)}`
+                    : ''}
+                  . You keep it until then, and nothing is charged after that.
+                </>
+              ) : (
+                <>
+                  Nothing here has changed yet. A change made in the billing portal takes effect when
+                  Stripe confirms it, usually within a few seconds.
+                </>
+              )}{' '}
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => void me.refetch()}>
+                Check again
+              </button>
+            </p>
+          )}
+
           {billingView && <BillingNotice view={billingView} onManage={() => portal.mutate()} />}
 
           <PlanLadder
@@ -397,12 +491,82 @@ export function UsagePage() {
                     // for both. Swapping, proration and when a downgrade takes effect are Stripe's
                     // to decide, and the portal is where it does that.
                     const canBuy = billing.data.purchasable.includes(plan);
-                    if (currentPlan === 'free' && canBuy) checkout.mutate(plan);
+                    // A FIRST SUBSCRIPTION IS SUMMARISED BEFORE IT IS STARTED: the order dialog
+                    // states the charge, the term and the allowance, and it is the only thing that
+                    // can start a checkout.
+                    if (currentPlan === 'free' && canBuy) setPendingPlan(plan);
+                    // A PRICED SWAP IS QUOTED FIRST. The portal is still where it happens; the
+                    // dialog exists so the prorated amount is seen here rather than only there.
+                    else if (canBuy) setPendingChange(plan);
+                    // Moving down to Free is a cancellation, not a priced swap — there is no
+                    // upgrade invoice to preview, and the portal IS the cancellation flow.
                     else portal.mutate();
                   }
                 : undefined
             }
           />
+
+          {/*
+            THE ORDER, BEFORE THE PAYMENT PAGE. It states the plan, the charge, how often it repeats,
+            the allowance it moves to and that tax is added — and only then hands over to Stripe.
+            Every sentence in it comes from lib/order-summary.ts, which is tested on its own.
+          */}
+          <OrderSummaryDialog
+            plan={pendingPlan}
+            currentPlan={currentPlan}
+            currency={billing.data?.currency}
+            busy={busyPlan != null}
+            onConfirm={(plan) => checkout.mutate(plan)}
+            onCancel={() => setPendingPlan(null)}
+          />
+
+          {/*
+            THE QUOTE, SHOWN BEFORE THE USER LEAVES FOR STRIPE.
+
+            Three states and three different sentences, because the honest answer differs: a figure
+            while it is being fetched is not yet knowable, the amount once it arrives, and — when
+            Stripe could not answer or the record has nothing to price against — a plain statement
+            that we could not get it. That last one is why the copy lives in billing-copy.ts: a
+            template here would have rendered the missing amount as a formatted zero, which is a
+            sentence about money made out of a failed request.
+          */}
+          {pendingChange && (
+            <ConfirmDialog
+              title={`Move to ${PLAN_COPY[pendingChange].name}`}
+              ceremony="dialog"
+              tone="primary"
+              confirmLabel="Continue to Stripe"
+              busyLabel="Opening Stripe…"
+              busy={portal.isPending}
+              onConfirm={() => portal.mutate()}
+              onClose={() => setPendingChange(null)}
+              details={
+                preview.data && preview.data.lines.length > 0 ? (
+                  <ul className="preview-lines">
+                    {preview.data.lines.map((line, i) => (
+                      <li key={`${line.description}-${i}`}>
+                        <span>{line.description}</span>
+                        {/* Formatted in the currency the SERVER said it charges, never with a '$'
+                            glued on here. */}
+                        <span className="preview-lines__amount">
+                          {formatMoney(line.amount, { currency: preview.data.currency })}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : undefined
+              }
+            >
+              {preview.isPending
+                ? 'Asking Stripe what this change costs…'
+                : planChangePreviewLine(preview.data ?? null, {
+                    planName: PLAN_COPY[pendingChange].name,
+                    formatMoney: (amount, currency) => formatMoney(amount, { currency }),
+                    formatDate: formatDay,
+                  })}{' '}
+              You will confirm the change on Stripe&rsquo;s own page.
+            </ConfirmDialog>
+          )}
 
           {/*
             GATED ON HAVING A BILLING ACCOUNT, NOT ON BEING ON A PAID PLAN.
@@ -421,6 +585,17 @@ export function UsagePage() {
               </button>
             </p>
           )}
+
+          {/* NOT gated on having a billing account, for the same reason the portal button no longer
+              is: someone on Free deciding whether to pay has billing questions too, and the answers
+              are the same ones. A real anchor in a new tab — /docs belongs to the Astro site, so a
+              router Link would resolve against this app's routes and land on not-found. */}
+          <p className="plans-manage">
+            <a href="/docs/billing" target="_blank" rel="noopener noreferrer">
+              What happens if a payment fails, and where invoices live
+            </a>
+            <span className="gx-sr"> (opens in a new tab)</span>
+          </p>
         </section>
       )}
     </div>

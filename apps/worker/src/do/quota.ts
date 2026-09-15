@@ -15,6 +15,14 @@ interface BillingChange {
   toPlan: PlanId | null;
   status: string | null;
   eventId: string | null;
+  /**
+   * Which way the cancellation flag moved, on the row where it actually moved — and NULL everywhere
+   * else.
+   *
+   * It is not "the flag as it stood": a past_due row that merely carried `false` along would then
+   * read as "cancellation undone" over a failed payment. Non-null means this change WAS the flag.
+   */
+  cancelAtPeriodEnd: boolean | null;
 }
 
 export class QuotaDO extends DurableObject<Env> {
@@ -31,6 +39,15 @@ export class QuotaDO extends DurableObject<Env> {
         id integer primary key autoincrement, at integer not null, kind text not null,
         from_plan text, to_plan text, status text, event_id text);
         create table if not exists applied_events(event_id text primary key, at integer not null);`);
+      // billing_events gained a column after rows already existed in every deployed DO, and
+      // `create table if not exists` does not add one to a table that is already there. SQLite has
+      // no `add column if not exists`, so the alter is attempted on every start and throws
+      // harmlessly once it has been applied. Swallowing it here is the migration.
+      try {
+        this.sql.exec(`alter table billing_events add column cancel_at_period_end integer`);
+      } catch {
+        /* already migrated */
+      }
     });
   }
 
@@ -79,10 +96,20 @@ export class QuotaDO extends DurableObject<Env> {
     return true;
   }
 
-  private record(kind: 'plan' | 'credits', from: PlanId | null, to: PlanId | null, status: string | null, eventId: string | null): void {
+  private record(
+    kind: 'plan' | 'credits',
+    from: PlanId | null,
+    to: PlanId | null,
+    status: string | null,
+    eventId: string | null,
+    // Null unless this change WAS the cancellation flag moving. Stored as 0/1 because SQLite has no
+    // boolean, and read back through a null check so "no opinion" survives the round trip.
+    cancelAtPeriodEnd: boolean | null = null,
+  ): void {
     this.sql.exec(
-      `insert into billing_events(at, kind, from_plan, to_plan, status, event_id) values(?,?,?,?,?,?)`,
+      `insert into billing_events(at, kind, from_plan, to_plan, status, event_id, cancel_at_period_end) values(?,?,?,?,?,?,?)`,
       Date.now(), kind, from, to, status, eventId,
+      cancelAtPeriodEnd === null ? null : cancelAtPeriodEnd ? 1 : 0,
     );
   }
 
@@ -157,10 +184,19 @@ export class QuotaDO extends DurableObject<Env> {
         await this.ctx.storage.put('stripeCustomerId', customerId);
       }
       const status = subscription?.status ?? null;
-      // A ROW PER CHANGE, NOT A ROW PER DELIVERY. Stripe sends subscription.updated for things this
-      // product does not model at all; logging those would bury the changes that matter.
-      if (next !== before || status !== (beforeSub?.status ?? null)) {
-        this.record('plan', before, next, status, eventId ?? null);
+      /*
+       * A ROW PER CHANGE, NOT A ROW PER DELIVERY. Stripe sends subscription.updated for things this
+       * product does not model at all; logging those would bury the changes that matter.
+       *
+       * THE CANCELLATION IS A CHANGE. It arrives as customer.subscription.updated with the status
+       * still 'active' and only cancel_at_period_end flipped — so a condition of "plan moved or
+       * status moved" wrote no row for it, nor for undoing it. Those are the two changes a customer
+       * is most likely to ring up about, and they were the two the history could not show.
+       */
+      const cancelNow = subscription?.cancelAtPeriodEnd ?? false;
+      const cancelMoved = cancelNow !== (beforeSub?.cancelAtPeriodEnd ?? false);
+      if (next !== before || status !== (beforeSub?.status ?? null) || cancelMoved) {
+        this.record('plan', before, next, status, eventId ?? null, cancelMoved ? cancelNow : null);
       }
       return Response.json({ ok: true, state: await this.state() });
     }
@@ -174,7 +210,7 @@ export class QuotaDO extends DurableObject<Env> {
     if (url.pathname === '/billing' && req.method === 'GET') {
       const sub = await this.subscription();
       const events = this.sql
-        .exec(`select at, kind, from_plan, to_plan, status, event_id from billing_events order by at desc, id desc limit 50`)
+        .exec(`select at, kind, from_plan, to_plan, status, event_id, cancel_at_period_end from billing_events order by at desc, id desc limit 50`)
         .toArray() as Record<string, unknown>[];
       return Response.json({
         plan: await this.plan(),
@@ -188,6 +224,12 @@ export class QuotaDO extends DurableObject<Env> {
           toPlan: (r['to_plan'] as PlanId | null) ?? null,
           status: (r['status'] as string | null) ?? null,
           eventId: (r['event_id'] as string | null) ?? null,
+          // Rows written before the column existed read back null, which is exactly right: they
+          // are not rows about the cancellation flag, and must not be described as if they were.
+          cancelAtPeriodEnd:
+            r['cancel_at_period_end'] === null || r['cancel_at_period_end'] === undefined
+              ? null
+              : Number(r['cancel_at_period_end']) === 1,
         })),
       });
     }
