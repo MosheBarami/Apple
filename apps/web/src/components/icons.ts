@@ -56,6 +56,9 @@ export const ICON_PATH = {
   usage: 'M5 20V10m7 10V4m7 16v-7',
   admin: 'M12 3l7 4v5c0 4.4-3 8-7 9-4-1-7-4.6-7-9V7z',
   lab: 'M9 3h6M10 3v6l-5 8.5A2 2 0 0 0 6.7 21h10.6a2 2 0 0 0 1.7-3.5L14 9V3',
+  /** Who else is in this project. Two figures, not one: one figure is an account, and the
+   *  account glyph is already the initial in the top-right. */
+  people: 'M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19M10 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM20 19v-1.5a3.5 3.5 0 0 0-2.6-3.4M15 4.1a3.5 3.5 0 0 1 0 6.8',
   rail: 'M3 4h18v16H3zM15 4v16',
   surface: 'M3 4h18v16H3zM3 10h18',
 } as const;

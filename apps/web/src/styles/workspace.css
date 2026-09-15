@@ -4371,3 +4371,171 @@
 .tour-skip:hover {
   color: var(--gx-ink);
 }
+
+/* ------------------------------------------------------- who has access --- */
+
+/* The members drawer. It borrows `cs__input`, `cs__select` and the `cs__note`
+   family from the search panel above rather than restating them: both are
+   drawer contents, and two drawers whose inputs are a pixel apart is exactly
+   the drift the one-icon-set rule exists to stop. What is here is only the
+   roster's own layout. */
+
+.mb {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.mb__role {
+  margin: 0;
+  color: var(--gx-ink-2);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+/* The reason a control is off, shown next to the role rather than only in a
+   tooltip: a title attribute is invisible on a touch device, which is where a
+   disabled control is most likely to be pressed twice. */
+.mb__why {
+  color: var(--gx-ink-3);
+}
+
+.mb__controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.mb__controls .cs__input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.mb__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mb__row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  padding: 10px 2px;
+  border-block-end: 1px solid var(--gx-line);
+}
+
+.mb__row:last-child {
+  border-block-end: 0;
+}
+
+/* Dimmed, not hidden. A removed or paused member is a fact an admin came here
+   to check; fading them to invisible would answer "are they still in?" with
+   silence. Ink only — the row keeps its full layout so nothing jumps when a
+   Pause lands. */
+.mb__row.is-inactive .mb__handle,
+.mb__row.is-inactive .mb__sub {
+  color: var(--gx-ink-3);
+}
+
+.mb__who {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 12rem;
+}
+
+.mb__handle {
+  color: var(--gx-ink);
+  font-size: 0.92rem;
+  overflow-wrap: anywhere;
+}
+
+.mb__sub {
+  color: var(--gx-ink-3);
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+.mb__status {
+  color: var(--gx-warn);
+  font-size: 0.78rem;
+}
+
+.mb__owner {
+  align-self: center;
+  color: var(--gx-ink-3);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.mb__actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.mb__role-label {
+  display: flex;
+}
+
+/* Removal reads as removal. Not red until hovered — a row of three controls
+   with one permanently alarming is noise, and an admin scanning the list is
+   not being warned about anything until they reach for it. */
+.mb__remove:hover:not(:disabled),
+.mb__remove:focus-visible:not(:disabled) {
+  color: var(--gx-bad);
+  border-color: var(--gx-bad);
+}
+
+.mb__invite {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-block-start: 14px;
+  border-block-start: 1px solid var(--gx-line-2);
+}
+
+.mb__invite-head {
+  margin: 0;
+  color: var(--gx-ink);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Wraps rather than compressing: the role select and the date input both have
+   a floor below which their own text is unreadable, and the drawer is narrow. */
+.mb__invite-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.mb__invite-row .field {
+  flex: 1 1 9rem;
+  min-width: 0;
+}
+
+/* `.field` carries its own bottom margin for the page forms it was written for.
+   Inside a flex column that already has `gap`, that margin is added to the gap
+   and the invite form drifts apart. The gap is the one spacing authority here. */
+.mb__invite .field {
+  margin-block-end: 0;
+}
+
+.mb__invite .cs__input,
+.mb__invite .cs__select,
+.mb__invite .cs__date {
+  width: 100%;
+}

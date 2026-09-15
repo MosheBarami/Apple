@@ -26,8 +26,17 @@ import { useGlobalShortcut } from '../components/shortcuts-dialog';
 import { SearchPanel } from '../components/ws/search-panel';
 import { EditMessageDialog } from '../components/ws/edit-message-dialog';
 import { MemoryPanel } from '../components/ws/memory-panel';
+import { MembersPanel } from '../components/ws/members-panel';
 import { InstructionsPanel } from '../components/ws/instructions-panel';
-import { ApiError, downloadExport, fetchPersonalisation, savePreferences, type SearchHit } from '../lib/api';
+import {
+  ApiError,
+  downloadExport,
+  fetchPersonalisation,
+  fetchProjectAccess,
+  savePreferences,
+  type SearchHit,
+} from '../lib/api';
+import { ACCESS_LOADING, normaliseAccess, type AccessState } from '../lib/capabilities';
 import type { AssetSourcePolicy } from '@golem/shared';
 import { owesAnswer } from '../lib/asset-sources';
 import { AssetSourceDialog } from '../components/asset-source-dialog';
@@ -68,9 +77,9 @@ const SUGGESTIONS = [
  * this build no longer recognises" the same state — which is precisely the distinction the
  * validation exists to keep.
  */
-type Drawer = null | 'checkpoints' | 'memory' | 'credits' | 'search';
-type DrawerName = 'none' | 'checkpoints' | 'memory' | 'credits' | 'search';
-const DRAWERS = ['none', 'checkpoints', 'memory', 'credits', 'search'] as const;
+type Drawer = null | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members';
+type DrawerName = 'none' | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members';
+const DRAWERS = ['none', 'checkpoints', 'memory', 'credits', 'search', 'members'] as const;
 
 export function WorkspacePage() {
   const params = useParams<{ id: string }>();
@@ -117,6 +126,38 @@ export function WorkspacePage() {
     queryFn: () => fetchProject(projectId),
     enabled: projectId.length > 0,
   });
+
+  //[[ WHAT THIS PERSON MAY DO HERE — asked, rather than assumed.
+  //
+  //   `GET /api/shared/:id` resolves the role from `projects.owner_id` and the membership rows and
+  //   answers with the capability set. The owner is a member of their own project through that
+  //   column, so there is no separate owner path: one query serves both.
+  //
+  //   THE THIRD STATE IS THE POINT. `useQuery` is pending before the first answer and errors on a
+  //   refusal, and NEITHER of those is a role. Rendering either as one would hand a stranger a live
+  //   Remove button on an authority nothing established — the failure-to-observe pattern exactly.
+  //   So the two non-answers are carried through as themselves and `lib/capabilities` decides what
+  //   a control may do with them.
+  //
+  //   `retry: false`: a 403 here is the correct answer to a question we asked, not a flake, and
+  //   three silent retries would only delay the panel telling the user what it found out. ]]
+  const accessQuery = useQuery({
+    queryKey: ['access', projectId],
+    queryFn: () => fetchProjectAccess(projectId),
+    enabled: projectId.length > 0,
+    retry: false,
+  });
+
+  const access: AccessState = useMemo(() => {
+    if (accessQuery.isPending) return ACCESS_LOADING;
+    if (accessQuery.isError) {
+      const e = accessQuery.error;
+      return { status: 'unavailable', detail: e instanceof ApiError ? e.message : 'the access check failed' };
+    }
+    // normaliseAccess, not a hand-built object: a role this build does not know has to land as
+    // `unavailable` rather than as an empty permission set, and that decision lives in one place.
+    return normaliseAccess(accessQuery.data);
+  }, [accessQuery.isPending, accessQuery.isError, accessQuery.error, accessQuery.data]);
 
   const onServerError = useCallback(
     (code: string, message: string) => toast(message || `Something went wrong (${code})`, 'error'),
@@ -327,6 +368,16 @@ export function WorkspacePage() {
       section: 'Project',
       keywords: ['licence', 'license', 'attribution', 'assets'],
       run: () => setDrawer('credits'),
+    },
+    {
+      // Listed for everybody, including a viewer who cannot manage anyone. The panel shows the
+      // roster to any member and says in a sentence why the controls are off; hiding the command
+      // would teach a viewer the product has no sharing at all.
+      id: 'ws-members',
+      title: 'Who has access',
+      section: 'Project',
+      keywords: ['members', 'share', 'invite', 'collaborators', 'permissions', 'roles'],
+      run: () => setDrawer('members'),
     },
     {
       id: 'ws-connect',
@@ -621,6 +672,25 @@ export function WorkspacePage() {
             <Icon d={PATH.licence} />
           </button>
 
+          {/* Who else is in this project. An icon button beside memory and
+              credits rather than a named control: it is opened rarely, and the
+              named slots in this row belong to Checkpoints and Roadmap.
+
+              It is NOT hidden from a viewer. The panel answers "who can see
+              this" for anybody who can see the project at all, and turns its
+              own controls off with the reason attached — a control that
+              disappears teaches people the feature does not exist, which is
+              how the roster stayed invisible for as long as it did. */}
+          <button
+            type="button"
+            className="gx-icon-btn"
+            onClick={() => setDrawer('members')}
+            aria-label="Who has access to this project"
+            title="Who has access"
+          >
+            <Icon d={PATH.people} />
+          </button>
+
           {/* The way into the plan. The conversation says what is happening
               now; the roadmap says what is worth doing next, so it sits beside
               Checkpoints — forward and back from the same row.
@@ -880,6 +950,13 @@ export function WorkspacePage() {
 
       <Drawer open={drawer === 'search'} onClose={() => setDrawer(null)} title="Search this conversation">
         <SearchPanel projectId={projectId} onOpen={openHit} />
+      </Drawer>
+
+      {/* Mounted only while open, for the same reason the memory drawer is: the panel holds a
+          half-typed invitation in local state and runs a roster query, and neither should outlive
+          the drawer the user closed. */}
+      <Drawer open={drawer === 'members'} onClose={() => setDrawer(null)} title="Who has access">
+        {drawer === 'members' && <MembersPanel projectId={projectId} access={access} />}
       </Drawer>
 
       <Drawer open={drawer === 'credits'} onClose={() => setDrawer(null)} title="Credits and clearance">

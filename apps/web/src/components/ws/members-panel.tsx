@@ -251,7 +251,7 @@ export function MembersPanel({ projectId, access }: { projectId: string; access:
                 ) : (
                   <div className="mb__actions">
                     <label className="mb__role-label">
-                      <span className="sr-only">Role for {m.handle}</span>
+                      <span className="visually-hidden">Role for {m.handle}</span>
                       <select
                         className="cs__select"
                         value={GRANTABLE_ROLES.includes(m.role as GrantableRole) ? (m.role as GrantableRole) : ''}

@@ -287,5 +287,21 @@ test('the drawer you left open is the drawer you come back to', () => {
 test('“closed” and “a name this build does not know” are different stored states', () => {
   // Storing the empty string for closed would collapse them, and the validation that makes
   // restoring safe would have nothing left to distinguish.
-  assert.match(WSCODE, /const DRAWERS = \['none', 'checkpoints', 'memory', 'credits', 'search'\] as const/);
+  //
+  // Asserted as the PROPERTY rather than as the literal list it used to be: pinning the exact
+  // five names made adding a sixth drawer fail this test for a reason that has nothing to do with
+  // what it is guarding, and a test that fails for the wrong reason gets edited until it passes.
+  // What must hold is that 'none' is a real name in the list, that no name is blank, and that the
+  // runtime list and the type union describe the same set — a drawer in one and not the other is
+  // either a state that cannot be restored or a name that restores to nothing.
+  const list = /const DRAWERS = \[([^\]]+)\] as const/.exec(WSCODE);
+  assert.ok(list, 'the DRAWERS list is gone');
+  const names = [...list[1].matchAll(/'([^']*)'/g)].map((m) => m[1]);
+  assert.ok(names.includes('none'), "'none' is not a stored name, so closed has no name of its own");
+  assert.ok(!names.includes(''), 'the empty string is a drawer name, which collapses closed and unknown');
+
+  const union = /type DrawerName = ([^;]+);/.exec(WSCODE);
+  assert.ok(union, 'the DrawerName union is gone');
+  const declared = [...union[1].matchAll(/'([^']*)'/g)].map((m) => m[1]);
+  assert.deepEqual([...names].sort(), [...declared].sort(), 'DRAWERS and DrawerName disagree');
 });
