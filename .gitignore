@@ -37,8 +37,23 @@ packages/corpus/raw/*
 # NOTE the order: un-ignoring the DIRECTORY is what makes anything inside it reachable at all,
 # and a LATER pattern wins — so the two exclusions have to come after it, not before.
 !packages/corpus/data/library/
-packages/corpus/data/library/iconify.json
-packages/corpus/data/library/creator_store.json
+# AND THE EXCLUSION IS A DEFAULT, NOT A LIST OF TWO FILENAMES.
+#
+# It named iconify.json and creator_store.json. Then the same harvester produced
+# kenney-expanded.json at 41 MB and opengameart-expanded.json at 6 MB, and both sailed straight
+# past a rule written as a list of the files that happened to be big on the day it was written.
+# Same shape as the copy checker that read two of six stylesheets: an allow-list pretending to be
+# a policy.
+#
+# So everything in here is ignored and a file earns its place by being named. The four small ones
+# below predate this rule and stay tracked; index.json is the manifest and is the reason the
+# directory is reachable at all.
+packages/corpus/data/library/*
+!packages/corpus/data/library/index.json
+!packages/corpus/data/library/cgbookcase.json
+!packages/corpus/data/library/game_icons.json
+!packages/corpus/data/library/kenney.json
+!packages/corpus/data/library/opengameart.json
 # ...except the CHECKOUT LOCK. The comment above has always said the corpus is
 # "re-fetchable from raw/manifest.json" — but `packages/corpus/raw/` (with the
 # trailing slash this file's own note warns against, four lines up) ignored the
