@@ -518,6 +518,23 @@ export function fireKey(automationId: string, dueAt: number): string {
 }
 
 /**
+ * The key for a fire somebody ASKED for.
+ *
+ * A manual fire has no due instant, and keying it by the wall clock — `fireKey(id, Date.now())` —
+ * makes the millisecond the identity. Two presses inside one millisecond, which is what a double
+ * click on a fast connection is, then collide on the unique `fire_key` and the second is answered
+ * `already_fired`: a fire that never started, reported as one that already had. That is the
+ * observation-failure shape this tree refuses.
+ *
+ * The `nonce` is the caller's own per-press value. A press is idempotent by the person pressing it;
+ * what stops a second BUILD is the overlap policy in `startVerdict`, which is an observation about
+ * the project rather than an accident of representation.
+ */
+export function manualFireKey(automationId: string, nonce: string): string {
+  return `${automationId}#${nonce}`;
+}
+
+/**
  * The key for an EVENT-triggered fire.
  *
  * The event's own subject is in it - a run id, a checkpoint id - so the same build finishing does

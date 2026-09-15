@@ -263,3 +263,78 @@ test('and a checkout is ALLOWED for everyone with nothing running', () => {
     'and so must one whose period simply ran out',
   );
 });
+
+// ------------------------------------------------- the tier a PORTAL upgrade actually charges for
+
+/**
+ * THE PLAN IS ON THE PRICE, NOT ONLY IN THE METADATA.
+ *
+ * `metadata.plan` is written exactly once, by `buildCheckoutRequest`. Anyone already on a paid tier
+ * is sent to the Stripe Billing Portal instead, and a price swap there changes
+ * `subscription.items[].price` and leaves `subscription.metadata` exactly as the original checkout
+ * left it. So the `customer.subscription.updated` that follows an upgrade still named the OLD plan:
+ * the customer was charged Studio and entitled Builder, silently, with no row anywhere saying so.
+ *
+ * The price id is the thing Stripe bills against, so it is the thing entitlement is read from.
+ */
+function portalEvent(over = {}, metadata = { userId: 'u_1', plan: 'builder' }) {
+  return {
+    id: 'evt_portal',
+    type: 'customer.subscription.updated',
+    data: {
+      object: {
+        id: 'sub_1', customer: 'cus_1', status: 'active',
+        current_period_end: 4_102_444_800, cancel_at_period_end: false, metadata, ...over,
+      },
+    },
+  };
+}
+const withPrice = (priceId) => ({ items: { data: [{ id: 'si_1', price: { id: priceId } }] } });
+
+test('AN UPGRADE BOUGHT IN THE PORTAL ENTITLES THE TIER IT CHARGES FOR', () => {
+  // metadata still says builder because the checkout that wrote it was a builder checkout. The item
+  // price says studio because that is what Stripe is now billing. Studio wins.
+  const outcome = B.interpretStripeEvent(portalEvent(withPrice(LIVE.STRIPE_PRICE_STUDIO)), LIVE);
+  assert.equal(outcome.subscription.plan, 'studio',
+    'the price Stripe bills against is the tier the customer is entitled to');
+  assert.equal(B.entitlementFor(outcome.subscription, 1_000), 'studio');
+});
+
+test('and a DOWNGRADE bought in the portal loses the tier it stopped charging for', () => {
+  // The opposite direction, which the same defect got wrong the other way: metadata says studio,
+  // the price says builder, and reading metadata would keep serving the tier nobody is paying for.
+  const outcome = B.interpretStripeEvent(
+    portalEvent(withPrice(LIVE.STRIPE_PRICE_BUILDER), { userId: 'u_1', plan: 'studio' }),
+    LIVE,
+  );
+  assert.equal(outcome.subscription.plan, 'builder');
+});
+
+test('an UNRECOGNISED price falls back to the metadata rather than to free', () => {
+  // A price this deployment does not know — a legacy one, or a test-mode id against live keys — must
+  // not silently demote a paying customer. The metadata is the weaker answer, not no answer.
+  const outcome = B.interpretStripeEvent(portalEvent(withPrice('price_from_another_account')), LIVE);
+  assert.equal(outcome.subscription.plan, 'builder');
+});
+
+test('a subscription with no items at all still reads its metadata', () => {
+  // Every event hand-built before this one has no `items`, and none of them may change meaning.
+  assert.equal(B.interpretStripeEvent(portalEvent(), LIVE).subscription.plan, 'builder');
+});
+
+test('a DELETION lapses to free however good the price id is', () => {
+  // Reading the price must not become a way to keep a cancelled subscription paid.
+  const e = portalEvent(withPrice(LIVE.STRIPE_PRICE_STUDIO));
+  e.type = 'customer.subscription.deleted';
+  assert.equal(B.interpretStripeEvent(e, LIVE).subscription.plan, 'free');
+});
+
+test('planForPriceId maps only the prices this deployment actually sells', () => {
+  assert.equal(B.planForPriceId(LIVE, LIVE.STRIPE_PRICE_BUILDER), 'builder');
+  assert.equal(B.planForPriceId(LIVE, LIVE.STRIPE_PRICE_STUDIO), 'studio');
+  assert.equal(B.planForPriceId(LIVE, 'price_nope'), null);
+  assert.equal(B.planForPriceId(LIVE, null), null);
+  // The empty-string trap: a deployment with no prices configured must not match an absent id.
+  assert.equal(B.planForPriceId({}, ''), null);
+  assert.equal(B.planForPriceId({}, 'price_builder_1'), null);
+});

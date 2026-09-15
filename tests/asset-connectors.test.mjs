@@ -18,6 +18,8 @@ import {
   ALLOWED,
   canonicalLicence,
   polyHavenRows,
+  readPolyHavenLicence,
+  sketchfab,
   sketchfabRows,
   PH_LICENCE_URL,
   SKETCHFAB_LICENCE_SLUGS,
@@ -208,4 +210,83 @@ test('rows from both connectors satisfy the field rules validateProvenance enfor
     assert.equal(r.triangles, null);
     assert.equal(r.commercialUse, true);
   }
+});
+
+/* ------------------------------------------- the failure path, which is the other half --- */
+
+// WHY THESE EXIST. Every assertion above is about a row that got made. These are about the run
+// where no row can be made, and they matter more, because main() writes `failed: false, kept: 0`
+// for any source that RETURNS. A sweep that cannot reach its API therefore has exactly one way to
+// say so — throw — and if it does not, the index records "sketchfab: 0 assets" in the same voice
+// it uses for a source that genuinely holds nothing. That is the house failure by name: a failure
+// to observe rendering as an observation.
+
+test('poly haven: a licence page that has lost its sentence takes the whole source down', () => {
+  // Not "fall back to CC0". The constant this connector replaced would have gone on asserting CC0
+  // for years after the site changed its mind, inside a paying customer's place.
+  assert.throws(
+    () => readPolyHavenLicence('<html><body><h1>License</h1><p>Assets are free to use.</p></body></html>'),
+    /no longer contains the sentence/,
+  );
+});
+
+test('poly haven: a licence the library may not keep is refused, never recorded', () => {
+  assert.throws(() => readPolyHavenLicence('<p>Our assets are all licensed as CC BY-NC 4.0, so use them.</p>'), /may not keep/);
+  // The sentence still parses — the refusal is about the licence, not about a read that broke.
+  assert.equal(canonicalLicence('CC BY-NC 4.0'), 'CC-BY-NC-4.0');
+  assert.equal(readPolyHavenLicence('<p>Our assets are all licensed as CC0, no rights reserved.</p>'), 'CC0');
+});
+
+test('sketchfab: a sweep the API answers with nothing is a real, reportable zero', async () => {
+  const r = await sketchfab({ fetchPage: async () => ({ results: [] }), sleepMs: 0 });
+  assert.equal(r.rows.length, 0);
+  assert.equal(r.requestFailures, 0);
+  assert.ok(r.queriesAttempted > 0, 'a sweep that attempted nothing is evidence of nothing');
+  assert.equal(r.queriesAnswered, r.queriesAttempted);
+});
+
+test('sketchfab: an API that answers NO query fails the source instead of reporting zero rows', async () => {
+  // The change this is written against is not hypothetical: public search starts wanting a key and
+  // every request comes back 403. Before this guard the sweep swallowed each one and returned [].
+  await assert.rejects(
+    () => sketchfab({ fetchPage: async () => { throw new Error('HTTP 403'); }, sleepMs: 0 }),
+    (e) => {
+      assert.match(e.message, /HTTP 403/, `the real error must reach the failure file: ${e.message}`);
+      assert.match(e.message, /answered none/i, `the message must say what was not observed: ${e.message}`);
+      return true;
+    },
+  );
+});
+
+test('sketchfab: queries lost mid-sweep are COUNTED in the artefact, not smoothed away', async () => {
+  const fetchPage = async (url) => {
+    if (/q=rock|q=tree/.test(url)) throw new Error('HTTP 500');
+    return { results: SF.results, next: null };
+  };
+  const r = await sketchfab({ fetchPage, sleepMs: 0 });
+  assert.ok(r.rows.length > 0, 'the queries that answered must still produce their rows');
+  // Two terms lost, under each of the two licence slugs.
+  assert.equal(r.requestFailures, 4);
+  assert.equal(r.queriesAttempted - r.queriesAnswered, 4);
+  assert.ok(
+    r.failures.some((f) => /HTTP 500/.test(f.error) && f.term === 'rock'),
+    `the artefact must name what failed: ${JSON.stringify(r.failures)}`,
+  );
+});
+
+test('sketchfab: zero rows WITH lost queries is not a zero anyone may publish', async () => {
+  // Half the sweep 403s and the half that answers is empty. Kept: 0 — arithmetically identical to
+  // a catalogue that holds nothing, and only the source knows the difference.
+  let n = 0;
+  await assert.rejects(
+    () => sketchfab({ fetchPage: async () => { if (n++ % 2) throw new Error('HTTP 403'); return { results: [] }; }, sleepMs: 0 }),
+    /failure to look/,
+  );
+});
+
+test('sketchfab: a response missing its results array is a shape change, not an empty page', async () => {
+  await assert.rejects(
+    () => sketchfab({ fetchPage: async () => ({ models: [] }), sleepMs: 0 }),
+    /shape has changed/,
+  );
 });

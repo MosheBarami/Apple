@@ -78,6 +78,13 @@ const PROJECT_ROW = {
   memory_facts: [],
 };
 
+/** What the session Durable Object holds, so a read can be checked by its CONTENT and not its status. */
+const TRANSCRIPT = [
+  { id: 'm-1', role: 'user', mode: 'agent', content: 'build me a lobby', toolTrace: null, createdAt: '2026-01-01T00:00:00.000Z' },
+  { id: 'm-2', role: 'assistant', mode: 'agent', content: 'here is the lobby', toolTrace: null, createdAt: '2026-01-01T00:00:01.000Z' },
+];
+const CHECKPOINTS = [{ id: 'ck-1', label: 'before the lobby', kind: 'manual', createdAt: 1, scriptCount: 2, instanceCount: 3, sizeBytes: 4 }];
+
 /** Membership rows PostgREST will hand back, keyed by nothing: the fake filters like the real one. */
 let memberRows = [];
 /** Every request the Durable Object stub received. */
@@ -154,6 +161,11 @@ function sessionNamespace() {
         if (u.pathname === '/collab') {
           return new Response(JSON.stringify(doCollabReply.body), { status: doCollabReply.status });
         }
+        // The session DO's own reads. `{ok:true}` for everything made a 200 the only observable
+        // fact about /messages and /checkpoints, which is why nothing could tell "the member
+        // reached the transcript" from "the member reached a stub". These answer with CONTENT.
+        if (u.pathname === '/messages') return new Response(JSON.stringify({ messages: TRANSCRIPT }), { status: 200 });
+        if (u.pathname === '/checkpoints') return new Response(JSON.stringify({ checkpoints: CHECKPOINTS }), { status: 200 });
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       },
     }),
@@ -550,4 +562,47 @@ test('a malformed project id never reaches the project layer', async () => {
     assert.equal(res.text.includes(PROJECT_ROW.name), false, `${id} must not reach the project`);
     assert.equal(res.text.includes(OWNER_ID), false, `${id} must not describe the project`);
   }
+});
+
+test('A VIEWER READS THE TRANSCRIPT ITSELF, not just a 200', async () => {
+  //[[ THE ROUTE WAS TESTED BY ITS STATUS CODE AND NOTHING ELSE.
+  //
+  //   `/api/shared/:id/messages` was asserted at 200 for a viewer while the DO stub answered
+  //   `{ok:true}` to every path — so the assertion could not tell a proxied transcript from a
+  //   route that returned an empty object, and would have stayed green if the proxy dropped the
+  //   body entirely. The browser's half of this was worse: apps/web/src/lib/api.ts asked
+  //   /api/projects/:id/messages, which is owner-only, so a collaborator opening a shared project
+  //   saw an EMPTY conversation and only whatever arrived live over the socket afterwards.
+  //
+  //   Same defect, same shape, for the history of builds: fetchCheckpoints hit the owner-only
+  //   route while the shared mirror sat unused. ]]
+  reset({ members: [{ user_id: MEMBER_ID, role: 'viewer' }] });
+  const msgs = await call(`/api/shared/${PROJECT_ID}/messages?limit=100`, { jwt: MEMBER_JWT });
+  assert.equal(msgs.status, 200);
+  assert.deepEqual(msgs.json.messages, TRANSCRIPT, 'the viewer must receive the rows, not an empty body');
+
+  const cks = await call(`/api/shared/${PROJECT_ID}/checkpoints`, { jwt: MEMBER_JWT });
+  assert.equal(cks.status, 200);
+  assert.deepEqual(cks.json.checkpoints, CHECKPOINTS, 'the build history is a read, and a viewer may read it');
+
+  // The owner takes the SAME door — these routes gate on 'read', which the owner passes, so there
+  // is no second owner path to keep in step. If this ever fails, the browser has two code paths.
+  const asOwner = await call(`/api/shared/${PROJECT_ID}/messages?limit=100`, { jwt: OWNER_JWT });
+  assert.equal(asOwner.status, 200);
+  assert.deepEqual(asOwner.json.messages, TRANSCRIPT);
+
+  const forwarded = doCalls.filter((d) => d.path === '/messages');
+  assert.ok(forwarded.length >= 2, 'the shared route must actually reach the session DO');
+});
+
+test('THE BROWSER ASKS THE SHARED ROUTE — the owner-only one showed a collaborator nothing', () => {
+  // A source assertion, because apps/web has no DOM renderer and this is a wiring fact: which URL
+  // the client builds. It would have failed before the change, and it is the whole of the bug.
+  const api = readFileSync(join(WORKER, '..', 'web', 'src', 'lib', 'api.ts'), 'utf8');
+  const fetchMessages = /export const fetchMessages[\s\S]*?;\n/.exec(api)?.[0] ?? '';
+  const fetchCheckpoints = /export const fetchCheckpoints[\s\S]*?;\n/.exec(api)?.[0] ?? '';
+  assert.match(fetchMessages, /\/api\/shared\//, 'fetchMessages must ask the shared route');
+  assert.doesNotMatch(fetchMessages, /\/api\/projects\//, 'the owner-only route answers a member 404');
+  assert.match(fetchCheckpoints, /\/api\/shared\//, 'fetchCheckpoints must ask the shared route');
+  assert.doesNotMatch(fetchCheckpoints, /\/api\/projects\//, 'the owner-only route answers a member 404');
 });

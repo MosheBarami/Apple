@@ -11,6 +11,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PRODUCT_MODES, PRODUCT_MODE_TO_SPECIALIST, type ProductMode } from '@golem/shared';
 import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { shortRelative } from '../lib/format';
+import { exportDoneLine, exportProgressLine, exportStartLine, exportToastKey } from '../lib/export-progress';
 import { useShell, useProvideCheckpoints } from '../lib/shell';
 import { CreditsPanel } from '../components/ws/credits-panel';
 import { supabase, type ProjectRow } from '../lib/supabase';
@@ -28,6 +29,9 @@ import { EditMessageDialog } from '../components/ws/edit-message-dialog';
 import { MemoryPanel } from '../components/ws/memory-panel';
 import { InstructionsPanel } from '../components/ws/instructions-panel';
 import { ApiError, downloadExport, fetchMembers, fetchPersonalisation, fetchProjectAccess, savePreferences, type SearchHit } from '../lib/api';
+import { MembersPanel } from '../components/ws/members-panel';
+import { FilesPanel } from '../components/ws/files-panel';
+import { ACCESS_LOADING, allows, normaliseAccess, type AccessState } from '../lib/capabilities';
 import type { AssetSourcePolicy } from '@golem/shared';
 import { owesAnswer } from '../lib/asset-sources';
 import { AssetSourceDialog } from '../components/asset-source-dialog';
@@ -73,9 +77,13 @@ const SUGGESTIONS = [
  * this build no longer recognises" the same state — which is precisely the distinction the
  * validation exists to keep.
  */
-type Drawer = null | 'checkpoints' | 'memory' | 'credits' | 'search' | 'history' | 'files';
-type DrawerName = 'none' | 'checkpoints' | 'memory' | 'credits' | 'search' | 'history' | 'files';
-const DRAWERS = ['none', 'checkpoints', 'memory', 'credits', 'search', 'history', 'files'] as const;
+// Three agents added a drawer each, from three checklist sections, and all three belong. The union
+// and the literal list are kept in step deliberately: search-panel.test.mjs asserts every name the
+// union can hold is a name DRAWERS accepts, because a drawer missing from the list restores as
+// closed for ever and looks like a user who simply never opened it.
+type Drawer = null | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members' | 'files' | 'history';
+type DrawerName = 'none' | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members' | 'files' | 'history';
+const DRAWERS = ['none', 'checkpoints', 'memory', 'credits', 'search', 'members', 'files', 'history'] as const;
 
 export function WorkspacePage() {
   const params = useParams<{ id: string }>();
@@ -122,6 +130,44 @@ export function WorkspacePage() {
     queryFn: () => fetchProject(projectId),
     enabled: projectId.length > 0,
   });
+
+  //[[ WHAT THIS PERSON MAY DO, ASKED RATHER THAN ASSUMED.
+  //
+  //   The files drawer offers Rename, Duplicate and Delete. Showing those to an editor is right and
+  //   showing them to a viewer is three refusals waiting to happen, so `canEdit` below comes from
+  //   the server's own answer — `lib/capabilities` turns it into a state where "we have not checked
+  //   yet" and "you may not" are different values, and only the second is a permission.
+  //
+  //   Asked only while the drawer is open. A permission check fired on every workspace load, for
+  //   every user who never opens Files, would be a request bought for nobody. ]]
+  //[[ ONE ACCESS QUERY, NOT ONE PER DRAWER.
+  //
+  //   Two drawers arrived needing the same answer — Files to decide whether Rename/Delete are
+  //   offered, Members to decide whether the roster's controls are live — and each brought its own
+  //   copy of this query. Two `useQuery` calls on the same key is not twice the cost, but it is two
+  //   places for `enabled` and the error mapping to drift apart, and they already had: one retried
+  //   and one did not, one carried the HTTP status into `detail` and one wrote 'unreachable' over
+  //   everything.
+  //
+  //   Declared once, here, and gated on either drawer being open — the check is still not bought
+  //   for a user who opens neither.
+  const accessQuery = useQuery({
+    queryKey: ['project-access', projectId],
+    queryFn: () => fetchProjectAccess(projectId),
+    enabled: projectId.length > 0 && (drawer === 'files' || drawer === 'members'),
+    retry: false,
+    staleTime: 5 * 60_000,
+  });
+  //[[ THE THREE STATES ARE KEPT APART on purpose. `unavailable` is not `viewer`: a check that did
+  //   not come back is not a verdict about the person, and rendering it as one would be this
+  //   repository's failure-to-observe pattern in its most expensive place — an authority claim the
+  //   interface has not established. `normaliseAccess` owns the mapping; nothing here reads the
+  //   payload field by field. ]]
+  const access: AccessState = accessQuery.isSuccess
+    ? normaliseAccess(accessQuery.data)
+    : accessQuery.isError
+      ? { status: 'unavailable', detail: accessQuery.error instanceof ApiError ? String(accessQuery.error.status) : 'unreachable' }
+      : ACCESS_LOADING;
 
   const onServerError = useCallback(
     (code: string, message: string) => toast(message || `Something went wrong (${code})`, 'error'),
@@ -179,15 +225,6 @@ export function WorkspacePage() {
   });
   const sourcePolicy = personal.data?.preferences.asset_sources ?? null;
 
-  //[[ WHAT THIS PERSON MAY DO HERE, ANSWERED BY THE SERVER.
-  //
-  //   Asked only when the files drawer is open, because that is the only control on this route
-  //   whose availability depends on it, and a project's access check is not worth a request on
-  //   every workspace load for everyone who never opens it.
-  //
-  //   `normaliseAccess` drops a role or capability this build does not know rather than keeping
-  //   it, and `allows` answers false for both 'loading' and 'unavailable' — unknown is never yes.
-  //   So the window before this resolves shows a read-only panel, not a permissive one. ]]
   //[[ NAMES FOR THE PEOPLE WHO TOOK THE CHECKPOINTS.
   //
   //   Asked only while the checkpoints drawer is open. The roster rather than presence: a
@@ -195,20 +232,16 @@ export function WorkspacePage() {
   //   whose author a user wants, and presence only knows who is here at this moment.
   //
   //   When it has not loaded, or a member has since left, the row says "Another member" — an
-  //   honest gap. It must never fall back to the reader. ]]
+  //   honest gap. It must never fall back to the reader.
+  //
+  //   The ACCESS check this route also needs is declared once, above, and gated on the drawers
+  //   that need it — see its comment for why two copies of it drifted apart the first time. ]]
   const roster = useQuery({
     queryKey: ['members', projectId, 'active', ''],
     queryFn: () => fetchMembers(projectId, new URLSearchParams({ status: 'active' })),
     enabled: projectId.length > 0 && drawer === 'checkpoints',
   });
   const memberNames = roster.data ? rosterNames(roster.data.members) : {};
-
-  const accessQuery = useQuery({
-    queryKey: ['project-access', projectId],
-    queryFn: () => fetchProjectAccess(projectId),
-    enabled: projectId.length > 0 && drawer === 'files',
-  });
-  const access = accessQuery.data ? normaliseAccess(accessQuery.data) : ACCESS_LOADING;
 
   const saveSources = async (policy: AssetSourcePolicy) => {
     if (!userId) throw new Error('not signed in');
@@ -223,11 +256,17 @@ export function WorkspacePage() {
   // Shared by both export commands so the toast copy and the failure handling cannot diverge.
   const exportConversation = useCallback(
     async (format: 'md' | 'json') => {
-      toast(`Preparing ${projectNameRef.current} as ${format === 'md' ? 'Markdown' : 'JSON'}…`, 'info');
+      // ONE ROW FOR THE WHOLE EXPORT. The key makes the progress line replace itself and the
+      // outcome replace the progress line — before this, the only signal was "Preparing…", which
+      // never changed and never ended, so a finished export and a dead one looked identical.
+      const name = projectNameRef.current;
+      const key = exportToastKey(projectId, format);
+      toast(exportStartLine(name, format), 'info', { key });
       try {
-        await downloadExport(projectId, format);
+        const saved = await downloadExport(projectId, format, (p) => toast(exportProgressLine(name, format, p), 'info', { key }));
+        toast(exportDoneLine(saved.filename), 'success', { key });
       } catch (e) {
-        toast(e instanceof ApiError ? e.message : 'Export failed', 'error');
+        toast(e instanceof ApiError ? e.message : 'Export failed', 'error', { key });
       }
     },
     [projectId, toast],
@@ -381,6 +420,20 @@ export function WorkspacePage() {
       section: 'Project',
       keywords: ['memory', 'context', 'knows'],
       run: () => setDrawer('memory'),
+    },
+    {
+      id: 'ws-members',
+      title: 'Who can build here',
+      section: 'Project',
+      keywords: ['members', 'share', 'collaborators', 'invite', 'permissions', 'role'],
+      run: () => setDrawer('members'),
+    },
+    {
+      id: 'ws-files',
+      title: 'Project files',
+      section: 'Project',
+      keywords: ['files', 'workspace', 'notes', 'download', 'trash'],
+      run: () => setDrawer('files'),
     },
     {
       id: 'ws-credits',
@@ -657,6 +710,33 @@ export function WorkspacePage() {
               {studioStatus === 'disconnected' ? 'Studio disconnected' : 'Connect Studio'}
             </button>
           )}
+
+          {/* Who else is in this project. An icon button beside memory rather than a named
+              control: it is opened when someone wants to add or remove a collaborator, which is
+              rarer than the thing this screen is for. The label says what the drawer answers,
+              because "Members" alone does not tell a viewer they will find their own role there. */}
+          <button
+            type="button"
+            className="gx-icon-btn"
+            onClick={() => setDrawer('members')}
+            aria-label="Who can build here"
+            title="Who can build here"
+          >
+            <Icon d={PATH.people} />
+          </button>
+          {/* The way into the files Apple keeps for this project — notes, plans and generated
+              data, which are Golem's own storage and not the Roblox place. Beside memory because
+              it is the same kind of thing: something that persists between turns and is read
+              occasionally rather than worked in. */}
+          <button
+            type="button"
+            className="gx-icon-btn"
+            onClick={() => setDrawer('files')}
+            aria-label="Files Apple keeps for this project"
+            title="Project files"
+          >
+            <Icon d={PATH.docs} />
+          </button>
 
           <button
             type="button"
@@ -978,17 +1058,17 @@ export function WorkspacePage() {
         {drawer === 'history' && <StudioActivity projectId={projectId} onOpenRun={jumpToMessage} />}
       </Drawer>
 
-      {/* THE FILE HISTORY THAT NOBODY COULD OPEN.
+      <Drawer open={drawer === 'members'} onClose={() => setDrawer(null)} title="Who can build here">
+        {/* Mounted only while open, like the others: the roster is a live read and a search box
+            whose text belongs to the moment it was typed in. */}
+        {drawer === 'members' && <MembersPanel projectId={projectId} access={access} />}
+      </Drawer>
 
-          FilesPanel renders the workspace store's real per-file versions and the per-version "Put
-          back" — the only selective reversal this product has. A repo-wide grep for FilesPanel
-          found its own definition and a comment: nothing rendered it, so the whole thing was as
-          good as absent, worker route and live test and all.
-
-          `canEdit` comes from the SERVER's answer about this person, not from an assumption:
-          `allows` is false while the check is still in flight and false when it failed, so a
-          viewer is never shown a Put back the worker is going to refuse. */}
-      <Drawer open={drawer === 'files'} onClose={() => setDrawer(null)} title="This project's files">
+      <Drawer open={drawer === 'files'} onClose={() => setDrawer(null)} title="Files">
+        {/* Mounted only while open, for the same reason: the listing, the file body and the
+            version history are three requests, and none of them is worth making for a user who
+            never opens this. `canEdit` is the server's answer about this person, not a guess —
+            see the access query above. */}
         {drawer === 'files' && <FilesPanel projectId={projectId} canEdit={allows(access, 'build')} />}
       </Drawer>
 

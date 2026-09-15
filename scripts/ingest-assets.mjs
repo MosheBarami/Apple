@@ -56,7 +56,26 @@ if (duplicates) console.error(`${duplicates} duplicate ids skipped across source
 // rather than being sent and silently ignored.
 // The underscore-prefixed fields are harvest bookkeeping, not provenance: the server would not
 // store them, so they are dropped at the boundary rather than sent and silently ignored.
-const assets = doc.assets.slice(0, LIMIT).map(({ _download, _publishedAt, _licenceId, assetCount, ...rec }) => rec);
+//[[ THE HARVESTS ALREADY ON DISK CARRY THE http SPELLING, AND RE-HARVESTING IS NOT THE FIX.
+//
+//   `validateProvenance` requires https and is right to. Kenney's licence.txt writes the CC0 deed
+//   as `http://`, the harvester copied it verbatim, and the ingest reported
+//   "written 453,598 · rejected 57,049" — 57,049 rejections, every one the same sentence, the
+//   entire Kenney pack refused. The harvester is fixed for the next run; the 41 MB of JSON already
+//   on disk is not going to be re-fetched to change one character.
+//
+//   ONLY http→https, and ONLY where the host serves the identical document over https. This is not
+//   a place to repair a licence URL that is wrong — a row whose licence cannot be reached is a row
+//   whose obligation cannot be checked, and it must still be refused.
+const HTTPS_SAME_DOC = /^http:\/\/((www\.)?creativecommons\.org|opengameart\.org|kenney\.nl)\//;
+const httpsLicence = (rec) =>
+  typeof rec.licenceUrl === 'string' && HTTPS_SAME_DOC.test(rec.licenceUrl)
+    ? { ...rec, licenceUrl: rec.licenceUrl.replace(/^http:/, 'https:') }
+    : rec;
+
+const assets = doc.assets.slice(0, LIMIT)
+  .map(({ _download, _publishedAt, _licenceId, assetCount, ...rec }) => rec)
+  .map(httpsLicence);
 console.error(`${assets.length} assets -> ${BASE}`);
 
 //[[ TWO KINDS OF ROW, AND THE DIFFERENCE DECIDES WHETHER ANYONE EVER SEES THEM.
