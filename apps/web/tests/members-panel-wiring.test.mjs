@@ -125,3 +125,45 @@ test('the screen-reader-only label uses the class this app actually ships', () =
   assert.equal(/"sr-only"/.test(PANEL_CODE), false, 'sr-only is not a class this app defines');
   assert.match(PANEL_CODE, /visually-hidden/, 'the hidden label must use the shipped utility');
 });
+
+// ------------------------------------------------------- the bulk list is reachable ---
+
+test('THE BULK ROUTE HAS A CLIENT AND THE CLIENT HAS A CONTROL', () => {
+  // `grep bulk apps/web/src/lib/api.ts` used to return nothing. The worker route was complete and
+  // heavily tested and no code path in the product could reach it — not even a dead component, as
+  // the single invite at least had.
+  assert.match(API, /export const bulkInviteMembers/, 'no client function for /members/bulk');
+  assert.match(PANEL_CODE, /bulkInviteMembers\(/, 'nothing calls it');
+  assert.match(PANEL_CODE, /<BulkInviteForm\b/, 'the form exists but the panel does not render it');
+});
+
+test('the per-row answer is RENDERED, not collapsed into a count', () => {
+  // `rejected[]` names each refused row with its reason. A UI that shows only "3 of 5 added" has
+  // discarded the half the person needs in order to fix their list.
+  assert.match(PANEL_CODE, /explainRejections\(/, 'the rejected rows are not read');
+  assert.match(PANEL_CODE, /problems\.map\(/, 'the rejected rows are read and never drawn');
+});
+
+test('A 400 THAT CARRIES THE ANSWER IS READ AS AN ANSWER', () => {
+  // When every row is refused the route replies 400 with the same `rejected` list a 201 would
+  // carry. That body reaches the client only because `request` attaches it to ApiError — without
+  // that line the catch branch has nothing but "Request failed (400)" and the whole per-row
+  // apparatus above is unreachable in exactly the case it was built for.
+  assert.match(API, /throw new ApiError\(msg, res\.status, body\)/, 'request drops the error body');
+  assert.match(PANEL_CODE, /e instanceof ApiError \? \(e\.body/, 'the form does not read it back');
+});
+
+test('the cap is said BEFORE the press, and the batch is refused whole', () => {
+  // Fifty-one lines is not fifty invitations and one refusal: `planBulkInvite` refuses the batch.
+  // A person who is not told that beforehand loses all fifty and is not told why afterwards
+  // either, because the 400 has no per-row list on it.
+  assert.match(PANEL_CODE, /BULK_INVITE_MAX/, 'the cap is not mentioned in the panel');
+  assert.match(PANEL_CODE, /overCap/, 'nothing checks the list length before sending');
+});
+
+test('AN UNRECORDED CHANGE IS SHOWN — every membership route answers `audited`', () => {
+  // `ok: true, audited: false` means the change happened and the history does not know. Reading
+  // the first word and dropping the second is the claim surviving while the fact does not.
+  assert.match(PANEL_CODE, /unauditedNote\(/, 'the audited flag is never read');
+  assert.match(PANEL_CODE, /\{auditNote &&/, 'it is read and never drawn');
+});

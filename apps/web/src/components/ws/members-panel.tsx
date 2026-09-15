@@ -28,6 +28,7 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ApiError,
+  bulkInviteMembers,
   fetchMembers,
   inviteMember,
   reactivateMember,
@@ -47,6 +48,8 @@ import {
   type GrantableRole,
 } from '../../lib/capabilities';
 import { rankMembers } from '../../lib/member-match';
+import { BULK_INVITE_MAX, bulkRefusal, explainRejections, parseBulkIds, type BulkProblem } from '../../lib/bulk-invite';
+import { unauditedNote } from '../../lib/member-history';
 import { relativeTime } from '../../lib/format';
 import { useToast } from '../toast';
 import { createUndoable } from '../../lib/undo';
@@ -77,6 +80,14 @@ export function MembersPanel({ projectId, access }: { projectId: string; access:
   const qc = useQueryClient();
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<StatusFilter>('active');
+  /**
+   * "It happened, and we did not write it down."
+   *
+   * Every membership route answers `audited`, because the change lands before the history append
+   * runs and a failed append must not undo it. Held here rather than toasted: a toast for an
+   * unrecorded change is gone by the time anybody needs to say which change it was.
+   */
+  const [auditNote, setAuditNote] = useState<string | null>(null);
 
   const mayManage = allows(access, 'manage_members');
   const cannotManage = whyNot(access, 'manage_members');
@@ -97,8 +108,9 @@ export function MembersPanel({ projectId, access }: { projectId: string; access:
 
   const setRole = useMutation({
     mutationFn: ({ userId, role }: { userId: string; role: GrantableRole }) => inviteMember(projectId, { userId, role }),
-    onSuccess: (_r, v) => {
+    onSuccess: (res, v) => {
       toast(`Role changed to ${ROLE_LABELS[v.role]}.`, 'success');
+      setAuditNote(unauditedNote(res));
       void invalidate();
     },
     onError: (e: Error) => toast(`Could not change the role: ${e.message}`, 'error'),
@@ -106,7 +118,8 @@ export function MembersPanel({ projectId, access }: { projectId: string; access:
 
   const remove = useMutation({
     mutationFn: (member: MemberRow) => removeMember(projectId, member.userId),
-    onSuccess: (_r, member) => {
+    onSuccess: (res, member) => {
+      setAuditNote(unauditedNote(res));
       void invalidate();
       // Revoked rather than deleted, so putting it back is a re-invitation at the role they had.
       // Offered only when we still KNOW that role: re-inviting at a guessed one would hand someone
@@ -127,8 +140,9 @@ export function MembersPanel({ projectId, access }: { projectId: string; access:
 
   const suspend = useMutation({
     mutationFn: (member: MemberRow) => suspendMember(projectId, member.userId, ''),
-    onSuccess: () => {
+    onSuccess: (res) => {
       toast('Paused. They cannot open the project until you reactivate them.', 'success');
+      setAuditNote(unauditedNote(res));
       void invalidate();
     },
     onError: (e: Error) => toast(`Could not pause them: ${e.message}`, 'error'),
@@ -136,8 +150,9 @@ export function MembersPanel({ projectId, access }: { projectId: string; access:
 
   const reactivate = useMutation({
     mutationFn: (member: MemberRow) => reactivateMember(projectId, member.userId),
-    onSuccess: () => {
+    onSuccess: (res) => {
       toast('Back in.', 'success');
+      setAuditNote(unauditedNote(res));
       void invalidate();
     },
     onError: (e: Error) => toast(`Could not reactivate them: ${e.message}`, 'error'),
@@ -161,6 +176,12 @@ export function MembersPanel({ projectId, access }: { projectId: string; access:
         You are <strong>{roleLabel(access)}</strong> here.
         {cannotManage && <span className="mb__why"> {cannotManage}</span>}
       </p>
+
+      {auditNote && (
+        <p className="cs__note cs__note--warn" role="status">
+          {auditNote}
+        </p>
+      )}
 
       <div className="mb__controls">
         <input
@@ -315,6 +336,7 @@ export function MembersPanel({ projectId, access }: { projectId: string; access:
       )}
 
       <InviteForm projectId={projectId} mayManage={mayManage} cannotManage={cannotManage} onDone={invalidate} />
+      <BulkInviteForm projectId={projectId} mayManage={mayManage} cannotManage={cannotManage} onDone={invalidate} />
     </div>
   );
 }
@@ -421,5 +443,171 @@ function InviteForm({
       </button>
       {cannotManage && <p className="cs__note cs__note--warn">{cannotManage}</p>}
     </form>
+  );
+}
+
+/**
+ * Adding a class, a team or a playtest group in one go.
+ *
+ * The route has been there the whole time — capped at fifty, refused WHOLE rather than truncated,
+ * every row validated before anything is written, one PostgREST call so the accepted rows land
+ * together or not at all. Nothing in the app posted to it; unlike the single invite it did not even
+ * have an orphaned control.
+ *
+ * WHAT THIS RENDERS THAT A COUNT WOULD NOT. The answer is per row: `rejected[]` names each refused
+ * row by its index with a reason — bad_user, unknown_role, duplicate, bad_expiry. "3 of 5 added" is
+ * the same information with the actionable half removed, and it leaves somebody bisecting their own
+ * list to find the two lines they need to fix. lib/bulk-invite.ts turns those indexes back into the
+ * LINES they typed, which is not the same number once a blank line is in the list.
+ *
+ * AND WHY THE BOX IS NOT REWRITTEN AFTERWARDS. The tempting nicety — drop the accepted rows and
+ * leave the refused ones to fix — renumbers every line under the problem list that is pointing at
+ * them. The text stays exactly as typed while there is anything to correct, and is cleared only
+ * when there is nothing left to say.
+ */
+function BulkInviteForm({
+  projectId,
+  mayManage,
+  cannotManage,
+  onDone,
+}: {
+  projectId: string;
+  mayManage: boolean;
+  cannotManage: string | null;
+  onDone: () => void;
+}) {
+  const [text, setText] = useState('');
+  const [role, setRole] = useState<GrantableRole>('viewer');
+  const [problems, setProblems] = useState<BulkProblem[]>([]);
+  const [refusal, setRefusal] = useState<string | null>(null);
+  const [added, setAdded] = useState<number | null>(null);
+  const [auditNote, setAuditNote] = useState<string | null>(null);
+
+  const entries = useMemo(() => parseBulkIds(text), [text]);
+  // Said before they press rather than after the server refuses: the batch is rejected whole, so a
+  // fifty-first line costs them all fifty.
+  const overCap = entries.length > BULK_INVITE_MAX;
+
+  const clearAnswer = () => {
+    setProblems([]);
+    setRefusal(null);
+    setAdded(null);
+    setAuditNote(null);
+  };
+
+  const send = useMutation({
+    mutationFn: () => bulkInviteMembers(projectId, entries.map((e) => ({ userId: e.userId, role }))),
+    onSuccess: (res) => {
+      const rejected = explainRejections(res.rejected, entries);
+      setProblems(rejected);
+      setRefusal(res.applied ? null : bulkRefusal(res.error, res.max));
+      setAdded(res.counts?.invited ?? res.invited?.length ?? 0);
+      setAuditNote(unauditedNote(res));
+      if (res.applied && rejected.length === 0) setText('');
+      onDone();
+    },
+    onError: (e: Error) => {
+      // A 400 from this route is usually an ANSWER, not a failure: when every row is refused the
+      // body carries the same per-row list a 201 would. Reading only `message` here would print
+      // "Request failed (400)" over the top of the only useful thing the server said.
+      const body = e instanceof ApiError ? (e.body as { rejected?: unknown; error?: unknown; max?: unknown } | null) : null;
+      const rejected = explainRejections(body?.rejected, entries);
+      setProblems(rejected);
+      setRefusal(bulkRefusal(body?.error, body?.max) ?? (rejected.length > 0 ? null : e.message));
+      setAdded(0);
+      setAuditNote(null);
+    },
+  });
+
+  return (
+    <details className="mb__bulk">
+      <summary className="mb__bulk-summary">Add several at once</summary>
+      <form
+        className="mb__bulk-body"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!mayManage || entries.length === 0 || overCap) return;
+          clearAnswer();
+          send.mutate();
+        }}
+      >
+        <p className="cs__note">
+          One user ID per line. Everyone on the list is added at the same role — invite anyone who
+          needs a different one on their own above.
+        </p>
+        <label className="field">
+          <span className="field-label">User IDs</span>
+          <textarea
+            className="cs__input mb__textarea mono"
+            rows={5}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder={'00000000-0000-0000-0000-000000000000\n00000000-0000-0000-0000-000000000001'}
+            disabled={!mayManage}
+            spellCheck={false}
+            autoComplete="off"
+          />
+        </label>
+        <p className="cs__count">{entries.length === 1 ? '1 person' : `${entries.length} people`}</p>
+        {overCap && (
+          <p className="cs__note cs__note--warn">
+            That is more than {BULK_INVITE_MAX} at once, and the list is refused whole rather than
+            cut short. Send it in batches of {BULK_INVITE_MAX} or fewer.
+          </p>
+        )}
+        <label className="field">
+          <span className="field-label">Role for everyone on the list</span>
+          <select
+            className="cs__select"
+            value={role}
+            onChange={(e) => setRole(e.target.value as GrantableRole)}
+            disabled={!mayManage}
+          >
+            {GRANTABLE_ROLES.map((r) => (
+              <option key={r} value={r}>
+                {ROLE_LABELS[r]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className="cs__note">{ROLE_BLURBS[role]}</p>
+        <button
+          type="submit"
+          className="btn btn-primary"
+          disabled={!mayManage || entries.length === 0 || overCap || send.isPending}
+          title={cannotManage ?? undefined}
+        >
+          {send.isPending ? 'Adding…' : `Add ${entries.length === 1 ? 'them' : 'them all'}`}
+        </button>
+        {cannotManage && <p className="cs__note cs__note--warn">{cannotManage}</p>}
+
+        {added !== null && (
+          <p className="cs__count" role="status">
+            {added} added
+          </p>
+        )}
+        {refusal && (
+          <p className="cs__note cs__note--bad" role="alert">
+            {refusal}
+          </p>
+        )}
+        {auditNote && (
+          <p className="cs__note cs__note--warn" role="status">
+            {auditNote}
+          </p>
+        )}
+        {problems.length > 0 && (
+          <ul className="mb__problems">
+            {problems.map((p) => (
+              <li key={`${p.line ?? 'x'}-${p.userId ?? ''}-${p.message}`} className="mb__problem">
+                <span className="mb__problem-line">{p.line === null ? 'On the list' : `Line ${p.line}`}</span>
+                {p.userId && <span className="mb__problem-id mono">{p.userId}</span>}
+                <span className="mb__problem-why">{p.message}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </form>
+    </details>
   );
 }

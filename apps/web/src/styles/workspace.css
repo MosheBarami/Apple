@@ -4528,3 +4528,77 @@
   flex: 1 1 8rem;
   min-width: 0;
 }
+
+/* --- members: adding several at once ------------------------------------------------------- */
+/*
+   Folded away behind a <details> rather than sitting open under the single-invite form. Adding
+   one person is the common act and adding thirty is the rare one; two full forms stacked in a
+   drawer make the common act look like a choice between two things to read.
+*/
+
+.mb__bulk {
+  padding-top: 12px;
+  border-top: 1px solid var(--gx-line);
+}
+
+.mb__bulk-summary {
+  color: var(--gx-ink-2);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.mb__bulk-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 10px;
+}
+
+.mb__textarea {
+  min-height: 6.5rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+/* The per-row answer. The route refuses row by row with a reason each, and this is the half a
+   count would have thrown away — so it is a list of rows, with the line number the person is
+   looking at, not the array index the server answered about. */
+.mb__problems {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mb__problem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-inline-start: 2px solid var(--gx-warn, #e4b363);
+  border-radius: 0 6px 6px 0;
+  background: var(--gx-surface-1, rgb(0 0 0 / 20%));
+}
+
+.mb__problem-line {
+  color: var(--gx-ink-2);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.mb__problem-id {
+  color: var(--gx-ink-3);
+  font-size: 0.74rem;
+  overflow-wrap: anywhere;
+}
+
+.mb__problem-why {
+  color: var(--gx-ink-2);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
