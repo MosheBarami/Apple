@@ -636,7 +636,7 @@ function bucketise(rows) {
 
 /** Is there any code in here at all? The answer decides what this dataset may be used for. */
 function codeStats(rows) {
-  const all = rows.map((r) => `${r.question}\n \n${r.answer}`);
+  const all = rows.map((r) => `${r.question}\n\u0000\n${r.answer}`);
   return {
     rows: rows.length,
     withFencedCode: all.filter((t) => /```/.test(t)).length,
