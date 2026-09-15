@@ -62,6 +62,47 @@ export function memberDirectory(project, rows, ownerHandle) {
   ];
 }
 
-export async function supaRest() {
-  return { ok: true, status: 200, data: [] };
+// ---------------------------------------------------------------------------------------------
+// PostgREST, modelled just far enough to be worth executing against.
+//
+// ROWS is table -> rows. Empty by default, which is exactly what this stub returned before it had
+// a body at all, so every suite that aliases this module and never touches ROWS keeps asserting
+// what it asserted before. FAILING is table -> status, because "the query could not run" and "the
+// query found nothing" are different answers and the account export has to be able to tell them
+// apart — a test where every table succeeds cannot show that it does.
+// ---------------------------------------------------------------------------------------------
+export const ROWS = new Map();
+export const FAILING = new Map();
+
+export async function supaRest(_env, jwt, path, init) {
+  const table = /^\/([a-z_]+)/.exec(path)?.[1] ?? '';
+  if (FAILING.has(table)) return { ok: false, status: FAILING.get(table), data: null };
+  const rows = ROWS.get(table) ?? [];
+  // The owner filter, applied — so a stub cannot pass a test that the real RLS would fail.
+  const eq = /[?&]([a-z_]+)=eq\.([^&]+)/.exec(path);
+  const scoped = eq ? rows.filter((r) => String(r[eq[1]]) === decodeURIComponent(eq[2])) : rows;
+  // A DELETE actually deletes. A stub where the rows survive would let a post-condition check
+  // ("are they really gone?") pass or fail for reasons that have nothing to do with the code.
+  if (init?.method === 'DELETE') {
+    ROWS.set(table, rows.filter((r) => !scoped.includes(r)));
+    return { ok: true, status: 200, data: scoped.map((r) => ({ ...r })) };
+  }
+  if (init?.method === 'PATCH') {
+    const patch = JSON.parse(init.body ?? '{}');
+    for (const r of scoped) Object.assign(r, patch);
+    return { ok: true, status: 200, data: scoped.map((r) => ({ ...r })) };
+  }
+  // `select=` is an allowlist in the caller; honour it, so a field the spec does not name cannot
+  // reach the response just because the fixture row carries it.
+  const select = /[?&]select=([^&]+)/.exec(path);
+  const fields = select ? decodeURIComponent(select[1]).split(',') : null;
+  const limit = Number(/[?&]limit=(\d+)/.exec(path)?.[1] ?? 0) || scoped.length;
+  const projected = scoped.slice(0, limit).map((r) => {
+    if (!fields) return { ...r };
+    const out = {};
+    for (const f of fields) if (f in r) out[f] = r[f];
+    return out;
+  });
+  void jwt;
+  return { ok: true, status: 200, data: projected };
 }
