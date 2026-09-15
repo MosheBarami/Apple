@@ -4834,6 +4834,21 @@ samp {
   flex-wrap: wrap;
 }
 
+/* Two fields that are one setting — the start and the end of the quiet window. Side by side
+   because "from 22:00" and "until 07:00" are read as one sentence, and they wrap rather than
+   shrink so the time inputs keep their own controls usable on a phone. */
+.settings-pair {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.settings-pair .field {
+  flex: 1 1 8rem;
+  min-width: 8rem;
+}
+
 /* A 700px-wide box for a display name reads as a mistake; cap the measure. */
 .settings-grow {
   flex: 1;

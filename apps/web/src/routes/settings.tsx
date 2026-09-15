@@ -53,6 +53,24 @@ import {
 } from '../lib/auth-flows';
 import { fullStamp, formatNumber } from '../lib/format.ts';
 import { matchSettings } from '../lib/settings-search.ts';
+import { fetchScopeMemory, savePreferences } from '../lib/api';
+import { KIND_LABELS, MANDATORY_KINDS, NOTIFICATION_KINDS } from '../lib/notification-inbox.ts';
+import {
+  DEFAULT_DELIVERY,
+  DIGEST_MODES,
+  MANDATORY_REASON,
+  deviceTimeZone,
+  digestHourLabel,
+  digestLabel,
+  eventEnabled,
+  quietHoursOf,
+  rejectSentence,
+  toggledEvents,
+  withQuietHours,
+  type DeliveryPreference,
+  type DigestMode,
+  type NotificationEventPrefs,
+} from '../lib/notification-prefs.ts';
 
 async function fetchProfile(userId: string): Promise<ProfileRow | null> {
   if (MOCK_MODE) return mockProfile;
@@ -139,6 +157,256 @@ const HOUR_NAMES: Record<HourCycle, string> = {
   h12: '12-hour',
   h23: '24-hour',
 };
+
+/* --------------------------------------------------------- notifications --- */
+
+/**
+ * When Apple is allowed to interrupt you, and about what.
+ *
+ * THE ENGINE BEHIND THIS ALREADY EXISTED and could never engage. apps/worker holds a quiet window
+ * that wraps midnight and survives a clock change, an hourly and a daily digest, and a per-kind
+ * mute list layered across an organisation, a person and one project — the most heavily tested
+ * part of that subsystem. Its defaults are `quiet_hours: null` and `digest: 'off'`, and there was
+ * no control anywhere in this app to change either, so on a live deployment every branch of it was
+ * unreachable.
+ *
+ * Three things about the shape of this, all of them the server's:
+ *
+ *   * THE WHOLE PREFERENCE OBJECT IS SENT. `PUT .../preferences` replaces the scope and DELETES
+ *     any key it does not receive, so that clearing a setting is reachable. Sending only the two
+ *     notification keys would therefore silently wipe this person's language and coding-style
+ *     preferences — hence the spread over what is stored.
+ *   * WHAT WAS REFUSED IS PRINTED. `unknown_timezone` and `empty_window` make the server discard
+ *     the value and answer with the DEFAULT; a page that rendered the response without reading
+ *     `rejected` would show the setting snapping back with no explanation.
+ *   * THE ZONE IS A REAL ZONE. The display setting above may hold the literal `system` because the
+ *     browser resolves it at render time. This one is read on the server, where there is no device
+ *     to ask.
+ */
+function NotificationSettings({
+  userId,
+  shows,
+  sectionShows,
+}: {
+  userId: string;
+  shows: (id: string) => boolean;
+  sectionShows: (...ids: string[]) => boolean;
+}) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+
+  // The same key the workspace's instructions panel uses, so the two surfaces cannot show
+  // different values for the same stored preference.
+  const stored = useQuery({
+    queryKey: ['scope-memory', 'user', userId],
+    queryFn: () => fetchScopeMemory('user', userId),
+    enabled: userId.length > 0,
+  });
+
+  const [dirty, setDirty] = useState(false);
+  const [delivery, setDelivery] = useState<DeliveryPreference>(DEFAULT_DELIVERY);
+  const [events, setEvents] = useState<NotificationEventPrefs>({});
+  const [start, setStart] = useState('');
+  const [end, setEnd] = useState('');
+  const [rejected, setRejected] = useState<{ key: string; reason: string }[]>([]);
+
+  useEffect(() => {
+    if (dirty || !stored.data) return;
+    const prefs = stored.data.preferences.prefs;
+    const d = prefs.notify_delivery ?? DEFAULT_DELIVERY;
+    setDelivery(d);
+    setEvents(prefs.notify_events ?? {});
+    setStart(d.quiet_hours?.start ?? '');
+    setEnd(d.quiet_hours?.end ?? '');
+  }, [stored.data, dirty]);
+
+  const window = quietHoursOf(start, end);
+
+  const save = useMutation({
+    mutationFn: async () => {
+      // Everything already stored, plus the two keys this section owns. See the header: what is
+      // not sent is deleted.
+      const base = stored.data?.preferences.prefs ?? {};
+      return savePreferences('user', userId, {
+        ...base,
+        notify_delivery: withQuietHours(delivery, window.hours),
+        notify_events: events,
+      });
+    },
+    onSuccess: (out) => {
+      setDirty(false);
+      setRejected(out.rejected);
+      const back = out.preferences.notify_delivery ?? DEFAULT_DELIVERY;
+      // What came back, not what was sent: a value the server refused has already been replaced by
+      // the default here, and showing the submission would be this page lying about what is stored.
+      setDelivery(back);
+      setEvents(out.preferences.notify_events ?? {});
+      setStart(back.quiet_hours?.start ?? '');
+      setEnd(back.quiet_hours?.end ?? '');
+      if (out.rejected.length === 0) toast('Notification settings saved', 'success');
+      void qc.invalidateQueries({ queryKey: ['scope-memory', 'user', userId] });
+    },
+    onError: (e: Error) => toast(`Couldn't save: ${e.message}`, 'error'),
+  });
+
+  const edit = (fn: () => void) => {
+    setDirty(true);
+    setRejected([]);
+    fn();
+  };
+
+  const zoneOptions = [delivery.timezone, deviceTimeZone(), ...COMMON_TIME_ZONES].filter(
+    (z, i, all) => all.indexOf(z) === i,
+  );
+
+  return (
+    <Section title="Notifications" visible={sectionShows('notify-quiet-hours', 'notify-digest', 'notify-events')}>
+      {/* A FAILED READ IS NOT "NOTHING IS SET". Rendering the defaults over a fetch that never
+          answered would show quiet hours as off to somebody who has them on. */}
+      {stored.isError && (
+        <p className="muted" role="alert">
+          Could not read your notification settings, so nothing below is showing what is actually stored.
+        </p>
+      )}
+
+      <Row id="notify-quiet-hours" visible={shows('notify-quiet-hours')}>
+        <h3 className="settings-sub">Quiet hours</h3>
+        <p className="muted">
+          Nothing arrives inside this window except a billing or security alert, which are never held. Leave both
+          empty for no quiet hours.
+        </p>
+        <div className="settings-pair">
+          <label className="field">
+            <span className="field-label">From</span>
+            <input
+              type="time"
+              name="quietStart"
+              value={start}
+              disabled={stored.isPending}
+              onChange={(e) => edit(() => setStart(e.target.value))}
+            />
+          </label>
+          <label className="field">
+            <span className="field-label">Until</span>
+            <input
+              type="time"
+              name="quietEnd"
+              value={end}
+              disabled={stored.isPending}
+              onChange={(e) => edit(() => setEnd(e.target.value))}
+            />
+          </label>
+        </div>
+        {window.problem && (
+          <p className="muted" role="alert">
+            {window.problem === 'half_window'
+              ? 'A quiet window needs both a start and an end.'
+              : rejectSentence('notify_delivery:quiet_hours', window.problem)}
+          </p>
+        )}
+
+        <label className="field">
+          <span className="field-label">Read these times in</span>
+          <select
+            name="notifyTimeZone"
+            value={delivery.timezone}
+            disabled={stored.isPending}
+            onChange={(e) => edit(() => setDelivery({ ...delivery, timezone: e.target.value }))}
+          >
+            {zoneOptions.map((z) => (
+              <option key={z} value={z}>
+                {z.replace(/_/g, ' ')}
+                {z === deviceTimeZone() ? ' — this device' : ''}
+              </option>
+            ))}
+          </select>
+        </label>
+      </Row>
+
+      <Row id="notify-digest" visible={shows('notify-digest')}>
+        <h3 className="settings-sub">How often</h3>
+        <label className="field">
+          <span className="field-label">Delivery</span>
+          <select
+            name="notifyDigest"
+            value={delivery.digest}
+            disabled={stored.isPending}
+            onChange={(e) => edit(() => setDelivery({ ...delivery, digest: e.target.value as DigestMode }))}
+          >
+            {DIGEST_MODES.map((m) => (
+              <option key={m} value={m}>
+                {digestLabel(m)}
+              </option>
+            ))}
+          </select>
+        </label>
+        {/* The hour means nothing for 'off' and 'hourly' — the server ignores it — and a control
+            that is always visible invites somebody to set a value that changes nothing. */}
+        {delivery.digest === 'daily' && (
+          <label className="field">
+            <span className="field-label">Arriving at</span>
+            <select
+              name="notifyDigestHour"
+              value={String(delivery.digest_hour)}
+              disabled={stored.isPending}
+              onChange={(e) => edit(() => setDelivery({ ...delivery, digest_hour: Number(e.target.value) }))}
+            >
+              {Array.from({ length: 24 }, (_, h) => (
+                <option key={h} value={String(h)}>
+                  {digestHourLabel(h)}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+      </Row>
+
+      <Row id="notify-events" visible={shows('notify-events')}>
+        <h3 className="settings-sub">What to tell me about</h3>
+        <fieldset className="prefs__set">
+          <legend className="gx-sr">Notification kinds</legend>
+          {NOTIFICATION_KINDS.map((kind) => {
+            const locked = MANDATORY_KINDS.includes(kind);
+            return (
+              <label key={kind} className="prefs__check">
+                <input
+                  type="checkbox"
+                  name={`notify-${kind}`}
+                  checked={eventEnabled(events, kind)}
+                  disabled={locked || stored.isPending}
+                  onChange={(e) => edit(() => setEvents(toggledEvents(events, kind, e.target.checked)))}
+                />
+                <span>
+                  {KIND_LABELS[kind]}
+                  {/* Disabled AND PRESENT. A row that is simply absent reads as "this product does
+                      not notify me about billing" — it does, and it always will. */}
+                  {locked && <span className="field-hint"> — {MANDATORY_REASON}</span>}
+                </span>
+              </label>
+            );
+          })}
+        </fieldset>
+      </Row>
+
+      {rejected.length > 0 && (
+        <ul className="muted" role="alert">
+          {rejected.map((r) => (
+            <li key={`${r.key}:${r.reason}`}>{rejectSentence(r.key, r.reason)}</li>
+          ))}
+        </ul>
+      )}
+
+      <button
+        type="button"
+        className="btn"
+        disabled={!dirty || save.isPending || window.problem !== null || stored.isPending}
+        onClick={() => save.mutate()}
+      >
+        {save.isPending ? 'Saving…' : 'Save notification settings'}
+      </button>
+    </Section>
+  );
+}
 
 /* ------------------------------------------------------------------ page --- */
 
@@ -508,6 +776,8 @@ export function SettingsPage() {
           <RobloxKeyPanel />
         </Row>
       </Section>
+
+      <NotificationSettings userId={userId} shows={shows} sectionShows={sectionShows} />
 
       <Section title="Appearance" visible={sectionShows('appearance', 'motion')}>
         <Row id="appearance" visible={shows('appearance')}>
