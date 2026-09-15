@@ -166,6 +166,13 @@ export interface BillingChange {
   toPlan: string | null;
   status: string | null;
   eventId: string | null;
+  /**
+   * Which way the cancellation flag moved, on the row where it moved — null on every other row.
+   *
+   * Absent on rows written before the column existed, which reads the same as null and is correct:
+   * they are not rows about a cancellation and must not be described as if they were.
+   */
+  cancelAtPeriodEnd?: boolean | null;
 }
 
 export interface ChangeLineOptions {
@@ -194,6 +201,17 @@ export function billingChangeLine(change: BillingChange, opts: ChangeLineOptions
   // The tier did not move, so this row is about the subscription's state. Naming the plan here
   // would report a change that did not happen.
   if (change.fromPlan !== null && change.fromPlan === change.toPlan) {
+    /*
+     * THE CANCELLATION IS READ BEFORE THE STATUS, because a cancellation leaves the status alone.
+     * Stripe reports it as an update with status still 'active', so the branch below would have
+     * printed "Subscription became active" over the row where the customer cancelled — the exact
+     * opposite of what happened, on the change they are most likely to dispute.
+     *
+     * Non-null means the row IS the flag moving. A past_due row that merely carried the same flag
+     * along is null here and falls through to the status sentence, where it belongs.
+     */
+    if (change.cancelAtPeriodEnd === true) return `Set to end at the period end${on}.`;
+    if (change.cancelAtPeriodEnd === false) return `Cancellation undone${on}.`;
     return change.status ? `Subscription became ${change.status}${on}.` : null;
   }
   if (change.fromPlan === null) return `Moved to ${to}${on}.`;
