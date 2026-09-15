@@ -68,6 +68,7 @@ import { usageBand } from '../notifications';
 import { dayKey } from '../quota-math';
 import { chooseEffort, classifyRequest, tokensForEffort, type ReasoningSignals, type Effort } from '../reasoning';
 import { phaseForTool, type AgentPhase, type RunSnapshot, type RunSnapshotTool } from '@golem/shared';
+import type { RunFailure } from '@golem/shared';
 import { trimTranscriptReport } from '../transcript';
 import { persistWithShedding } from '../persist';
 import { clearStop, requestStop, stopRequested } from '../stop-signal';
@@ -2176,7 +2177,7 @@ export class SessionDO extends DurableObject<Env> {
     }
     if (Date.now() - agent.lastStepAt > STEP_STALE_MS && agent.step > 0) {
       agent.finalText = agent.finalText || 'The run was interrupted. Everything up to the last completed step is saved — you can continue from here.';
-      await this.finishRun(agent, 'error', 'run interrupted');
+      await this.finishRun(agent, 'error', 'interrupted');
       return;
     }
     try {
@@ -2204,7 +2205,7 @@ export class SessionDO extends DurableObject<Env> {
           (agent.finalText ? agent.finalText + '\n\n' : '') +
           `${e.message} Everything I finished is saved.`;
         this.broadcast({ type: 'error', code: 'busy', message: e.message });
-        await this.finishRun(agent, 'error', 'rate_limited');
+        await this.finishRun(agent, 'error', 'busy');
         return;
       }
       const msg = e instanceof Error ? e.message : String(e);
@@ -2214,7 +2215,10 @@ export class SessionDO extends DurableObject<Env> {
         agent.finalText =
           (agent.finalText ? agent.finalText + '\n\n' : '') +
           'The model dropped that step. Everything up to here is saved — send another message and I will pick up where I left off.';
-        await this.finishRun(agent, 'error', msg);
+        // The provider's own words stay here, where support can read them. They are not sent: see
+        // RUN_FAILURES in @golem/shared for why the wire carries a code instead.
+        console.warn('[session] dropped step:', msg);
+        await this.finishRun(agent, 'error', 'dropped_step');
         return;
       }
       if (msg === 'CAPACITY_EXHAUSTED') {
@@ -2228,8 +2232,15 @@ export class SessionDO extends DurableObject<Env> {
         await this.finishRun(agent, 'quota');
         return;
       }
-      agent.finalText = agent.finalText || `Something went wrong: ${msg}`;
-      await this.finishRun(agent, 'error', msg);
+      // NOT `Something went wrong: ${msg}`. That interpolated the upstream's unredacted message
+      // into the reply, on the one path where nothing else had classified the failure — so the
+      // least-understood failure produced the least comprehensible sentence. Same shape as the
+      // branch above it instead, and it answers "did I lose anything" first.
+      agent.finalText =
+        agent.finalText ||
+        'That step failed on our side. Everything up to here is saved — send another message and I will pick up where I left off.';
+      console.warn('[session] step failed:', msg);
+      await this.finishRun(agent, 'error', 'model_failed');
     }
   }
 
@@ -2754,7 +2765,12 @@ export class SessionDO extends DurableObject<Env> {
   private async finishRun(
     agent: AgentState,
     reason: 'done' | 'stopped' | 'error' | 'quota' | 'incomplete',
-    error?: string,
+    /**
+     * A CODE, never prose. It is broadcast to the browser on `msg_end`, and the app owns the
+     * sentence — see RUN_FAILURES in @golem/shared. Typing it as the closed set is what makes
+     * "just pass the message through" a compile error rather than a leak nobody notices.
+     */
+    error?: RunFailure,
   ) {
     agent.status = 'idle';
 
@@ -2838,7 +2854,9 @@ export class SessionDO extends DurableObject<Env> {
       this.playtestRun = advance(this.playtestRun, {
         phase: 'failed',
         action: 'The run ended before the playtest finished',
-        error: error ?? (reason === 'stopped' ? 'stopped by you' : `the run ended (${reason})`),
+        // NOT the run's failure code: this field is rendered to the user by playtest-card.tsx,
+        // and a code is not a sentence. The playtest reports the run ending in its own words.
+        error: reason === 'stopped' ? 'stopped by you' : `the run ended (${reason})`,
         now: Date.now(),
       });
       this.emitPlaytest();

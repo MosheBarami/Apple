@@ -20,21 +20,8 @@ import type { AgentStatus, ChatItem } from '../../lib/use-project-socket';
 import { useNow } from './activity';
 import { eventsFromTurn, reduceActivity, type PhaseMark } from './activity-model';
 import { buildEvidence } from './evidence-model';
+import { outcomeLine } from './outcome-model';
 import { Thinking } from './thinking';
-
-/** Copy for a run that ended without doing the work, or failed. */
-const OUTCOME: Record<string, { tone: 'note' | 'bad'; text: string }> = {
-  incomplete: {
-    tone: 'note',
-    text: 'That run finished without changing anything. Try telling me more specifically what to build.',
-  },
-  stopped: { tone: 'note', text: 'Stopped.' },
-  quota: {
-    tone: 'note',
-    text: 'That used the last of today’s Credits. They reset tomorrow.',
-  },
-  error: { tone: 'bad', text: 'Something went wrong partway through.' },
-};
 
 function Stamp({ at, align }: { at: number; align: 'start' | 'end' }) {
   const label = clockTime(at);
@@ -198,7 +185,10 @@ export function Turn({
     );
   }
 
-  const outcome = item.stopReason && item.stopReason !== 'done' ? OUTCOME[item.stopReason] : undefined;
+  // The worker's `error` field is a CODE, not a sentence — outcome-model.ts turns it into one and
+  // drops anything it does not recognise. It used to be rendered verbatim, which put
+  // 'rate_limited' and raw provider messages in front of users.
+  const outcome = outcomeLine(item.stopReason, item.error);
 
   /* RUNNING IT AGAIN, AND WHY THIS IS NOT INSIDE THE OUTCOME BLOCK ANY MORE.
      It used to be: the control lived inside `{outcome && (...)}`, so it existed only after a run
@@ -262,8 +252,30 @@ export function Turn({
 
         {outcome ? (
           <div className={`gx-outcome${outcome.tone === 'bad' ? ' is-bad' : ''}`}>
-            <p className="gx-outcome__text">{item.error ? item.error : outcome.text}</p>
+            {/* The sentence comes from outcome-model.ts, NOT from `item.error`. That field is a
+                code the worker sends ('rate_limited', 'interrupted', and on two paths the raw
+                provider message); rendering it verbatim — which is what stood here — put one
+                server's note to another in front of the person whose build died. The model turns
+                a known code into a sentence and drops anything it does not recognise. */}
+            <p className="gx-outcome__text">{outcome.text}</p>
+            {/* `retryControl` is built above and is null on a quota stop, so a run that did not
+                fail but ran out of Credits still offers nothing to press. */}
             {retryControl}
+            {/* A failed run had exactly one affordance — Try again — and pressing it is the right
+                first move only when the cause was transient. /docs/troubleshooting has a section
+                per cause (Studio closed, a place too large to read, Credits gone) and nothing in
+                the product pointed at it, so the second attempt was the user's only diagnostic.
+                New tab: reading it must not discard the conversation it happened in. */}
+            {item.stopReason === 'error' && (
+              <a
+                className="gx-outcome__help"
+                href="/docs/troubleshooting#messages"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Why runs stop
+              </a>
+            )}
           </div>
         ) : (
           // Same row, no sentence: there is nothing to explain about a run that worked. It is the

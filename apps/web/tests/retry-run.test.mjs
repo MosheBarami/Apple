@@ -46,7 +46,11 @@ test('a reply that SUCCEEDED can be regenerated too', () => {
   // dialog — which refuses an unchanged message, so there was no way out of it.
   //
   // The control is now built once, outside the outcome block, and rendered in both branches.
-  assert.match(TURN, /const outcome = item\.stopReason && item\.stopReason !== 'done'/);
+  // The "was this a clean run" decision moved into ws/outcome-model.ts, where it is asserted by
+  // EXECUTING it (run-outcome.test.mjs: `outcomeLine('done', undefined)` is null) rather than by
+  // matching an expression. What is checked here is that turn.tsx still asks that question through
+  // the model instead of deciding for itself.
+  assert.match(TURN, /const outcome = outcomeLine\(item\.stopReason, item\.error\)/);
   const beforeOutcome = TURN.slice(0, TURN.indexOf('{outcome ? ('));
   assert.match(beforeOutcome, /const retryControl =/, 'the control is built before the outcome branch, not inside it');
   assert.match(TURN, /\{outcome \? \(/, 'both branches render it — success as well as failure');

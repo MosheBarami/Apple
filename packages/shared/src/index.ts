@@ -1609,6 +1609,53 @@ export const PLAN_COPY: Record<PlanId, PlanCopy> = {
   },
 };
 
+/**
+ * The one address support reaches a human at.
+ *
+ * IT WAS TWO. The marketing site, the docs footer, the status page and the FAQ all used
+ * apple.labs.app@gmail.com; the plan ladder in the signed-in app — the only support-ish link
+ * anywhere behind the login — used hello@apple.build. A customer cannot tell which of those is
+ * read, and writing to the wrong one looks, from their side, exactly like being ignored.
+ *
+ * Declared here so the two halves of the product cannot drift again, and asserted across both
+ * trees by tests/support-expectations.test.mjs.
+ */
+export const SUPPORT_EMAIL = 'apple.labs.app@gmail.com';
+
+/** What a plan can expect when it writes in. */
+export interface PlanSupport {
+  /** How you reach us on this plan. */
+  channel: string;
+  /**
+   * What is promised about a reply.
+   *
+   * NO RESPONSE TIME IS STATED, and that is the honest answer rather than an omission: nobody has
+   * committed to one, and a published SLA that is missed is worse than a published "best effort"
+   * that is met. What is NOT acceptable is the previous state, where three of four plans said
+   * nothing at all and a buyer could not tell whether anyone would answer.
+   */
+  promise: string;
+}
+
+export const PLAN_SUPPORT: Record<PlanId, PlanSupport> = {
+  free: {
+    channel: `Email ${SUPPORT_EMAIL}`,
+    promise: 'A human reads it. While Apple is in beta no reply time is promised, and busy weeks are slower.',
+  },
+  builder: {
+    channel: `Email ${SUPPORT_EMAIL}`,
+    promise: 'A human reads it, and paid accounts are answered first. No reply time is promised while Apple is in beta.',
+  },
+  studio: {
+    channel: `Email ${SUPPORT_EMAIL}`,
+    promise: 'A human reads it, and paid accounts are answered first. No reply time is promised while Apple is in beta.',
+  },
+  enterprise: {
+    channel: `Email ${SUPPORT_EMAIL} to start`,
+    promise: 'A named contact and whatever response terms are agreed in your contract — these are negotiated, not published.',
+  },
+};
+
 /** Credits in one quality-gated build, from the measured neuron cost. */
 export const CREDITS_PER_BUILD = 77;
 
@@ -1824,4 +1871,40 @@ export function recordsRevision(previous: string, next: string): boolean {
   const before = previous.trim();
   if (!before) return false;
   return before !== next.trim();
+}
+
+/* ---------------------------------------------------------------- run failures --- */
+
+/**
+ * Why a run ended badly, as a closed set the worker and the app both read.
+ *
+ * WHAT THIS REPLACES. `finishRun`'s `error` argument is broadcast to the browser on the `msg_end`
+ * frame, and the workspace rendered it as the outcome sentence. The values being passed were
+ * 'run interrupted', 'rate_limited', and — on two paths — whatever the inference provider had
+ * thrown, unredacted. A person whose build died read a note one server wrote to another, which is
+ * exactly the failure apps/web/src/lib/error-taxonomy.ts exists to prevent, one process upstream
+ * of where it can act.
+ *
+ * SO THE WIRE CARRIES A CODE AND THE APP OWNS THE SENTENCE. The provider's words stay on the
+ * server, logged, where support can read them; they never reach a screen. An app that meets a code
+ * it does not know falls back to the generic sentence rather than printing the code — a worker
+ * deployed ahead of the app must degrade, not leak.
+ *
+ * The values below are descriptions for whoever reads this file. Nothing renders them.
+ */
+export const RUN_FAILURES = {
+  /** The model was rate-limited upstream. Everything finished before that step is saved. */
+  busy: 'upstream rate limit',
+  /** No step completed inside the stale window — usually an instance evicted mid-run. */
+  interrupted: 'run went stale between steps',
+  /** Inference failed after the run had already done real work. */
+  dropped_step: 'inference failed past step 1',
+  /** Anything else thrown out of a step. The provider's message is logged, never sent. */
+  model_failed: 'unclassified step failure',
+} as const;
+
+export type RunFailure = keyof typeof RUN_FAILURES;
+
+export function isRunFailure(v: unknown): v is RunFailure {
+  return typeof v === 'string' && Object.prototype.hasOwnProperty.call(RUN_FAILURES, v);
 }

@@ -1,5 +1,15 @@
 ---
-import { PLAN_COPY, PLAN_FEATURES, PLAN_IDS, PLAN_LIMITS, PRICE_CURRENCY, buildsPerMonth, formatMoney, CREDITS_PER_BUILD } from '@golem/shared';
+import {
+  PLAN_COPY,
+  PLAN_FEATURES,
+  PLAN_IDS,
+  PLAN_LIMITS,
+  PLAN_SUPPORT,
+  PRICE_CURRENCY,
+  buildsPerMonth,
+  formatMoney,
+  CREDITS_PER_BUILD,
+} from '@golem/shared';
 
 // THE NUMBERS ON THIS PAGE ARE READ, NOT WRITTEN. They used to be typed in prose and in the plan
 // cards, so the marketing site and the thing enforcing the quota could drift apart — and they had:
@@ -128,6 +138,9 @@ const limitFaq = [
             <li>Unlimited projects</li>
             <li>Checkpoints &amp; rollback</li>
             <li>Studio plugin included</li>
+            {/* Published for every plan, including this one. Three of the four tiers said nothing
+                about support anywhere, and a buyer cannot tell silence from "there is none". */}
+            <li>{PLAN_SUPPORT.free.channel}</li>
           </ul>
           <a href="/app/signup" class="btn btn-primary plan__cta">Start building — free</a>
           <p class="plan__note">
@@ -158,6 +171,7 @@ const limitFaq = [
                 {PLAN_COPY[id].highlights.map((h) => (
                   <li>{h}</li>
                 ))}
+                <li>{PLAN_SUPPORT[id].channel}</li>
               </ul>
               <a href="/app/usage" class="btn btn-ghost plan__cta">Choose {PLAN_COPY[id].name}</a>
             </article>
@@ -181,6 +195,11 @@ const limitFaq = [
           Prices are in {PRICE_CURRENCY} and exclude tax. Any VAT or sales tax that applies where you
           are is calculated at checkout, and businesses can enter a VAT or GST number there so the
           invoice carries it.
+        </p>
+
+        <p class="plan__note" style="grid-column:1/-1;max-width:62ch">
+          <strong>What support means on every plan above:</strong> {PLAN_SUPPORT.free.promise} Paid
+          accounts are answered first. Enterprise is different — {PLAN_SUPPORT.enterprise.promise.toLowerCase()}
         </p>
       </div>
     </div>

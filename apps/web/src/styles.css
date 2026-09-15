@@ -4979,6 +4979,29 @@ textarea {
   opacity: 0.55;
 }
 
+/* Support is a STATEMENT, not another feature bullet, so it is set apart from the list rather than
+   added to it: a buyer scanning bullets skims them, and "will anyone answer me" is the one line on
+   this card they should not skim past. */
+.plan__support {
+  margin: 0.9rem 0 0;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.plan__support-label {
+  font-family: var(--font-mono);
+  font-size: 0.63rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
 /* Pushed to the bottom so every tier's control sits on one line however long its list is. */
 .plan__action {
   margin-top: auto;
@@ -5059,6 +5082,23 @@ textarea {
   align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
+}
+
+/* The page written for this failure. Below `next`, and quieter than it: `next` is the one action,
+   this is where the long answer lives for someone whose retry did not work. */
+.failure__help {
+  margin: 0.15rem 0 0;
+  font-size: 0.82rem;
+}
+
+.failure__help a {
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.failure__help a:hover {
+  color: var(--ink, inherit);
 }
 
 .failure__detail {

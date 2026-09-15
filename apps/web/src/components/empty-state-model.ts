@@ -32,6 +32,11 @@
  * of the state id here and not a prop a caller can pass.
  */
 
+// Type-only, so this module still imports nothing at runtime. The shape is shared with the failure
+// taxonomy deliberately: an empty state and a failure are the two places a person is stuck, and one
+// definition of "where this is written down" means one renderer rule and one test.
+import type { HelpLink } from '../lib/error-taxonomy';
+
 /** §16.2's semantic axes. Not a palette — a meaning. */
 export type EmptyTone = 'creation' | 'studio' | 'proven' | 'future' | 'failure';
 
@@ -42,6 +47,14 @@ export interface EmptyStateSpec {
   /** What the user can do next. Absent only when there is genuinely nothing to do. */
   body?: string;
   tone: EmptyTone;
+  /**
+   * The page that explains this state at length, for the states where one exists.
+   *
+   * ABSENT IS A REAL ANSWER. "Summon your first project" needs no documentation; "Apple needs your
+   * place open" does, because the remedy involves a second application and a pairing step. A link
+   * on every state would train people to ignore all of them.
+   */
+  help?: HelpLink;
 }
 
 /**
@@ -68,12 +81,14 @@ export const EMPTY_STATES = {
     title: 'Nothing to plan yet',
     body: 'Build something first — the roadmap is read out of your place, not generated from a template.',
     tone: 'future',
+    help: { href: '/docs/getting-started', label: 'Getting started' },
   },
   waitingForStudio: {
     canonical: 'M04',
     title: 'Waiting for Studio',
     body: 'Open your place in Roblox Studio and pair it. Apple reads the project itself rather than guessing at it.',
     tone: 'studio',
+    help: { href: '/docs/connect', label: 'Connect a project' },
   },
   studioDisconnected: {
     canonical: 'M05',
@@ -84,12 +99,14 @@ export const EMPTY_STATES = {
     title: 'Apple needs your place open',
     body: 'The roadmap and the build both read the project itself. Reopen your place in Studio — everything Apple has already done is saved.',
     tone: 'studio',
+    help: { href: '/docs/connect', label: 'Connect a project' },
   },
   connectionFailed: {
     canonical: 'M07',
     title: 'Could not reach Apple',
     body: 'Check your connection and try again. Nothing in your project was changed.',
     tone: 'failure',
+    help: { href: '/docs/troubleshooting', label: 'Troubleshooting' },
   },
   playtestUnavailable: {
     canonical: 'M08',
@@ -102,6 +119,7 @@ export const EMPTY_STATES = {
     title: 'That run did not finish',
     body: 'Apple stopped before it was done. Your project is at its last checkpoint.',
     tone: 'failure',
+    help: { href: '/docs/troubleshooting', label: 'Why runs stop' },
   },
   projectComplete: {
     canonical: 'M10',

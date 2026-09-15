@@ -583,6 +583,17 @@ export function UsagePage() {
               </button>
             </p>
           )}
+
+          {/* NOT gated on having a billing account, for the same reason the portal button no longer
+              is: someone on Free deciding whether to pay has billing questions too, and the answers
+              are the same ones. A real anchor in a new tab — /docs belongs to the Astro site, so a
+              router Link would resolve against this app's routes and land on not-found. */}
+          <p className="plans-manage">
+            <a href="/docs/billing" target="_blank" rel="noopener noreferrer">
+              What happens if a payment fails, and where invoices live
+            </a>
+            <span className="gx-sr"> (opens in a new tab)</span>
+          </p>
         </section>
       )}
     </div>
