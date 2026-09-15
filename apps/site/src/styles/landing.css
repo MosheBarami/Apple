@@ -186,7 +186,7 @@
     --ink-2: #d4d4d9;
     --muted: #a3a3ad;
     --accent: #ededf2;
-    --accent-ink: #08080a;
+    --accent-ink: #ffffff;
     --accent-on: #08080a;
     --accent-soft: rgba(237, 237, 242, 0.10);
     --link: #d4d4d9;
@@ -221,8 +221,15 @@
   --ink-2: #d4d4d9;
   --muted: #a3a3ad;
   --accent: #ededf2;
-  --accent-ink: #08080a;
-  /* THE LABEL ON A FILLED CONTROL. This token went out with the ember block when the accent stopped
+  --accent-ink: #ffffff;
+  /* TWO TOKENS, TWO JOBS, AND MIXING THEM UP IS WHY HALF THE HEADLINE VANISHED.
+     `--accent-ink` is the accent AS TEXT, on the page. `--accent-on` is a label ON an accent fill.
+     I set both to near-black for dark, which is right for the second and catastrophic for the
+     first: the H1's second line is set in --accent-ink, so "you already have open." rendered
+     #08080a on #08080a and the sentence lost its second half. Pure white here rather than --ink,
+     so the emphasised line is a shade brighter than the one above it — which is the whole of the
+     hierarchy left once the accent stopped being a hue.
+     THE LABEL ON A FILLED CONTROL. This token went out with the ember block when the accent stopped
      being a hue, and `color: var(--accent-on)` then resolved to nothing on every primary button —
      the hero's CTA shipped with an invisible label for the length of one deploy. It is the same
      failure this repository already measured at contrast ratio 1 inside the app, in a second place,
