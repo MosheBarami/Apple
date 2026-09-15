@@ -7,6 +7,17 @@ import { isPlanId, type PlanId } from '../pricing';
 import type { Subscription } from '../billing';
 import { dayKey, monthKey, monthTotalComplete, prevMonthKey, quotaState, splitSpend } from '../quota-math';
 
+/**
+ * How long a ledger row survives. The prune in `/spend` deletes anything older, so this number is
+ * part of every answer the ledger gives: an empty list means "nothing in the last 35 days", which
+ * is not the same sentence as "this account has never spent".
+ */
+export const LEDGER_RETENTION_DAYS = 35;
+
+/** Rows one `/ledger` read may return, and the ceiling on what a caller may ask for. */
+const LEDGER_DEFAULT_LIMIT = 200;
+const LEDGER_MAX_LIMIT = 500;
+
 /** One line of this account's billing history, as the product reads it back. */
 interface BillingChange {
   at: number;
@@ -169,7 +180,9 @@ export class QuotaDO extends DurableObject<Env> {
           await this.ctx.storage.put('ledgerCountingSince', this.today());
         }
       }
-      this.sql.exec(`delete from ledger where day < ?`, dayKey(Date.now() - 35 * 864e5));
+      // The SAME constant the `/ledger` read reports as its window. Two spellings of 35 is how the
+      // horizon a reader is told about drifts away from the horizon that actually deletes rows.
+      this.sql.exec(`delete from ledger where day < ?`, dayKey(Date.now() - LEDGER_RETENTION_DAYS * 864e5));
       const after = await this.state();
       return Response.json({ ok: true, state: after });
     }
@@ -281,6 +294,45 @@ export class QuotaDO extends DurableObject<Env> {
       const target = day && /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : this.today();
       this.sql.exec(`delete from ledger where day = ?`, target);
       return Response.json({ ok: true, cleared: target, state: await this.state() });
+    }
+    /*
+     * THE INDIVIDUAL CHARGES, for the person who has to answer "what was this?".
+     *
+     * `/history` below is the user's own usage chart: credits per day, with a per-kind breakdown
+     * riding on each day. That is the right shape for a chart and the wrong shape for an
+     * investigation. A day total of 40 cannot distinguish one charge of 40 from two of 20 a second
+     * apart, and "I was billed twice for one build" is exactly the complaint that needs telling
+     * apart. This returns the rows.
+     *
+     * `total` and `retentionDays` are not decoration. A read that comes back empty means one of two
+     * things — this account has never spent, or its spending is older than the prune horizon — and
+     * an operator staring at `[]` with no window attached will read the first. The same goes for a
+     * capped read: 2 rows returned out of 5 must not look like an account with 2 charges.
+     */
+    if (url.pathname === '/ledger') {
+      const asked = Number(url.searchParams.get('limit') ?? NaN);
+      const limit = Number.isFinite(asked)
+        ? Math.max(1, Math.min(LEDGER_MAX_LIMIT, Math.floor(asked)))
+        : LEDGER_DEFAULT_LIMIT;
+      const total = (this.sql.exec(`select count(*) as n from ledger`).toArray() as { n: number }[])[0]?.n ?? 0;
+      const rows = this.sql
+        .exec(`select id, day, kind, credits, created_at from ledger order by created_at desc, id desc limit ?`, limit)
+        .toArray() as { id: number; day: string; kind: string; credits: number; created_at: number }[];
+      return Response.json({
+        entries: rows.map((r) => ({
+          id: Number(r.id),
+          day: String(r.day),
+          kind: String(r.kind),
+          credits: Number(r.credits),
+          // `at` rather than `created_at`: the column spelling is this DO's business, and a charge
+          // is distinguished from the one a second before it by the millisecond, not by the day.
+          at: Number(r.created_at),
+        })),
+        total,
+        limit,
+        truncated: total > rows.length,
+        retentionDays: LEDGER_RETENTION_DAYS,
+      });
     }
     if (url.pathname === '/history') {
       /*

@@ -9,7 +9,7 @@ import type { AttributionResponse } from '../components/ws/credits-model';
 import type { FilesResponse, FileVersion } from '../components/ws/files-model';
 import type { OpLogRow } from '../components/ws/op-vocabulary';
 import { mockBrief, mockNext, mockRoadmap } from '../components/roadmap/mock';
-import { MOCK_MODE, mockAttribution, mockCounters, mockDiagnostics, mockMe, mockMemory, mockNotifications, mockSpend, mockUsageDays } from './mock';
+import { MOCK_MODE, mockAccount, mockAttribution, mockCounters, mockDiagnostics, mockMe, mockMemory, mockNotifications, mockSpend, mockUsageDays } from './mock';
 import type { InboxResponse, MarkReadResult } from './notification-inbox.ts';
 import type { DeliveryPreference, NotificationEventPrefs } from './notification-prefs.ts';
 import type { BillingChange, Invoice, InvoiceDetail, SubscriptionView } from './billing-copy';
@@ -1446,6 +1446,104 @@ export const adminSpendLimits = (adminKey: string, limits: Record<string, number
     { method: 'POST', body: JSON.stringify(limits) },
     { 'X-Admin-Key': adminKey },
   );
+
+/**
+ * One account, as much of it as the worker can see.
+ *
+ * `profile` is deliberately a verdict rather than a record. `public.profiles` is own-row-only under
+ * RLS and the worker holds the anon key, so display name, admin flag and signup date cannot be read
+ * from there — and a response that simply omitted them would let the panel present a partial
+ * account as a whole one.
+ */
+export interface AdminSubscriptionRecord {
+  plan: string;
+  customerId: string | null;
+  subscriptionId: string | null;
+  status: string | null;
+  /** Unix seconds. After this, entitlement lapses unless it renews. */
+  currentPeriodEnd: number | null;
+  cancelAtPeriodEnd: boolean;
+}
+
+export interface AdminAccount {
+  userId: string;
+  profile: { known: false; why: string } | { known: true; displayName: string | null; isAdmin: boolean };
+  quota: Partial<QuotaState>;
+  billing: {
+    plan: string;
+    customerId: string | null;
+    /** The STORED Stripe record, not the product's reading of it — this is the support surface. */
+    subscription: AdminSubscriptionRecord | null;
+    events: BillingChange[];
+  };
+  credits: {
+    entries: { id: number; day: string; kind: string; credits: number; at: number }[];
+    total: number;
+    truncated: boolean;
+    /** The age beyond which ledger rows are deleted. An empty list is not a clean account. */
+    retentionDays: number | null;
+  };
+  usage: {
+    days: number;
+    /** `truncated` means the event window was cut — every total below it is a floor. */
+    window: { truncated: boolean; retained: number };
+    modelCalls: {
+      key: string;
+      calls: number;
+      success: Metric;
+      latencyP50: Metric;
+      neurons: Metric;
+      usd: Metric;
+      tokens: Metric;
+    } | null;
+    builds: {
+      at: number; projectId: string | null; runId: string | null; outcome: string;
+      steps: number | null; opsApplied: number | null; opsFailed: number | null; durationMs: number | null;
+    }[];
+    errors: { at: number; scope: string; errorKind: string; message: string; fatal: boolean }[];
+  };
+}
+
+/**
+ * A number the worker could compute, or the reason it could not. See apps/worker/src/analytics.ts:
+ * an unreadable metric renders as unknown and never as zero, and `complete:false` means the value
+ * is a floor rather than a measurement.
+ */
+export type Metric =
+  | { known: true; value: number; samples: number; unreadable: number; complete: boolean }
+  | { known: false; value: null; samples: number; unreadable: number; why: string };
+
+/** One row of `GET /api/admin/analytics?by=…` — the ranked breakdown over model calls. */
+export interface AdminBreakdown {
+  requested?:
+    | { known: true; dimension: string; rows: { key: string; calls: number; neurons: Metric; usd: Metric; success: Metric }[]; unattributed: number }
+    | { known: false; why: string; allowed: readonly string[] };
+}
+
+/**
+ * The ranked breakdown, grouped by a dimension the caller names.
+ *
+ * `by=actorId` is what makes the account lookup usable by someone who does not already have an id
+ * in front of them: the worker has ranked accounts by spend since analytics landed, and no client
+ * ever asked for it. `unattributed` is returned SEPARATELY and must be rendered that way — a call
+ * with no actor bucketed under a plausible key sends an operator looking for an account that does
+ * not exist.
+ */
+export const adminAnalytics = (adminKey: string, { days = 7, by }: { days?: number; by: string }) =>
+  request<AdminBreakdown>(
+    `/api/admin/analytics?days=${days}&by=${encodeURIComponent(by)}`,
+    {},
+    { 'X-Admin-Key': adminKey },
+  );
+
+export const adminAccount = (adminKey: string, userId: string, days = 7): Promise<AdminAccount> =>
+  MOCK_MODE
+    ? Promise.resolve({ ...(mockAccount(userId) as AdminAccount), usage: { ...(mockAccount(userId) as AdminAccount).usage, days } })
+    : request<AdminAccount>(
+        `/api/admin/account/${encodeURIComponent(userId)}?days=${days}`,
+        {},
+        { 'X-Admin-Key': adminKey },
+      );
 
 export interface ModelTestResponse {
   ok: boolean;

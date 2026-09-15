@@ -223,23 +223,44 @@ export function redactMessage(v: unknown, max = 240): string {
  * Anything that looks like an id becomes `:id`. Over-collapsing a legitimately static segment costs
  * a row in a table; under-collapsing writes an identifier into a log forever.
  */
+function looksLikeId(seg: string): boolean {
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(seg)) return true;
+  if (/^\d+$/.test(seg)) return true;
+  if (/^[A-Fa-f0-9]{16,}$/.test(seg)) return true;
+  // The catch-all, and the threshold is 40 rather than 24 ON PURPOSE. At 24 it swallowed every
+  // UUID (36 characters) before the clause above ever saw one, which made that clause impossible
+  // to falsify — break it and nothing turns red, which is the signature of a guard nobody is
+  // relying on. Above 36 each clause now covers a shape no other clause reaches.
+  return seg.length > 40;
+}
+
 export function routeLabel(pathname: unknown): string {
   const raw = readText(pathname, 200);
   if (raw === null) return 'unknown';
-  const parts = raw.split('/').map((seg) => {
-    if (!seg) return seg;
-    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(seg)) return ':id';
-    if (/^\d+$/.test(seg)) return ':id';
-    if (/^[A-Fa-f0-9]{16,}$/.test(seg)) return ':id';
-    // The catch-all, and the threshold is 40 rather than 24 ON PURPOSE. At 24 it swallowed every
-    // UUID (36 characters) before the clause above ever saw one, which made that clause impossible
-    // to falsify — break it and nothing turns red, which is the signature of a guard nobody is
-    // relying on. Above 36 each clause now covers a shape no other clause reaches.
-    if (seg.length > 40) return ':id';
-    return seg;
-  });
+  const parts = raw.split('/').map((seg) => (seg && looksLikeId(seg) ? ':id' : seg));
   const label = parts.join('/');
   return label.length > 120 ? label.slice(0, 120) : label;
+}
+
+/**
+ * The id a path ADDRESSES — `routeLabel`'s twin, pointed the other way.
+ *
+ * `routeLabel` exists to keep identifiers out of the request log, where a per-path key turns an
+ * operational table into a per-tenant activity record nobody meant to keep. This exists because the
+ * audit log is the one place the identifier IS the record: "an operator changed a plan" is not an
+ * audit entry, "an operator changed THIS PERSON's plan" is. Same id detection, so the two can never
+ * disagree about what an id looks like.
+ *
+ * Null rather than a placeholder when the path addresses nobody. A subject field that always holds
+ * something route-shaped reads, at a glance, exactly like one that names an account — and the whole
+ * value of this field is that a reader can trust it when it is populated.
+ */
+export function pathSubject(pathname: unknown): string | null {
+  const raw = readText(pathname, 200);
+  if (raw === null) return null;
+  const ids = raw.split('/').filter((seg) => seg.length > 0 && looksLikeId(seg));
+  if (ids.length === 0) return null;
+  return readText(ids.join('/'), 120);
 }
 
 // ---------------------------------------------------------------------------

@@ -31,7 +31,13 @@ test('a failed verification returns 400 without telling the prober why', () => {
   assert.match(route, /if \(!verdict\.ok\)/);
   assert.match(route, /return c\.json\(\{ error: 'invalid signature' \}, 400\)/);
   // The reason is logged, not returned — otherwise the response is an oracle for forging.
-  assert.match(route, /console\.warn\('billing webhook rejected:', verdict\.reason\)/);
+  //
+  // It used to be logged with `console.warn`, which in a Worker means `wrangler tail`: live only,
+  // watched by nobody, and unreadable by the person who runs this business. It now goes to the
+  // error log the admin console reads, which is what makes a rotated signing secret — every
+  // webhook refused, nobody upgraded or downgraded — something anyone can notice. The property
+  // asserted here is unchanged: the reason is RECORDED and is not in the response.
+  assert.match(route, /recordEvent\(\{[^}]*errorKind: 'stripe_signature'[^}]*message: verdict\.reason/s);
   assert.equal(/c\.json\(\{ error: verdict\.reason/.test(route), false, 'the reason must not be returned to the caller');
 });
 
