@@ -550,7 +550,116 @@ export function parseImagePath(src: string): { projectId: string; imageId: strin
   return { projectId: m[1], imageId: m[2] };
 }
 
-export async function downloadExport(projectId: string, format: 'md' | 'json'): Promise<void> {
+/**
+ * The same, for generated sound — and it is not symmetry for its own sake.
+ *
+ * `generate_sound` emits an asset_picker whose link is this path, labelled "Listen". That link was
+ * rendered as a plain anchor, and every /api/* path needs a Bearer JWT an anchor cannot send, so
+ * the click opened a tab holding `{"error":"unauthorized"}` for a sound that existed and worked.
+ * An asset link may legitimately point anywhere — a catalogue page, a fragment — so the player is
+ * offered only for a path this app generated, and everything else stays the link it was.
+ */
+export function parseAudioPath(src: string): { projectId: string; audioId: string } | null {
+  // The UUID shape rather than 36 loose hex-or-dash characters: the worker's route validates the id
+  // with UUID_RE and 404s anything else before it touches KV, so a laxer regex here would only
+  // build players that fail for a reason unrelated to the sound.
+  const m = /^\/api\/projects\/([A-Za-z0-9_-]{1,64})\/audio\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/.exec(src);
+  if (!m || m[1] === undefined || m[2] === undefined) return null;
+  return { projectId: m[1], audioId: m[2] };
+}
+
+/**
+ * Fetch generated audio and hand back an object URL an <audio> element can play.
+ *
+ * fetchImageObjectUrl's reasoning, for the other media type: a bearer credential in a URL is a
+ * credential in logs, referrers and history, so there is one auth mechanism and the cost is that
+ * the bytes do not stream. Generated sounds are seconds long and already bounded by the worker's
+ * one-hour TTL, so that cost is small and the caller owns the revoke.
+ */
+export async function fetchAudioObjectUrl(projectId: string, audioId: string): Promise<string> {
+  const token = await getAccessToken();
+  const headers = new Headers();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+
+  let res: Response;
+  try {
+    res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/audio/${encodeURIComponent(audioId)}`, { headers });
+  } catch {
+    noteReachability(false);
+    throw new ApiError('Network error — check your connection.', 0);
+  }
+  noteReachability(true);
+  if (!res.ok) {
+    // 404 is a real expiry; 401 is a session that timed out. explainFailure draws that line for the
+    // caller, and it can only draw it if the status arrives intact.
+    throw new ApiError(res.status === 404 ? 'sound expired or not found' : `sound fetch failed (${res.status})`, res.status);
+  }
+  return URL.createObjectURL(await res.blob());
+}
+
+/**
+ * Save a generated sound to disk.
+ *
+ * `?download=1` is the worker's own attachment branch, which builds the filename from the id and
+ * the served content type — never from anything stored. Naming the file here instead would be a
+ * second rule for what a generated sound is called, and the two would disagree the first time
+ * either changed.
+ */
+export async function downloadProjectAudio(projectId: string, audioId: string): Promise<void> {
+  const token = await getAccessToken();
+  const headers = new Headers();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  const res = await fetch(
+    `/api/projects/${encodeURIComponent(projectId)}/audio/${encodeURIComponent(audioId)}?download=1`,
+    { headers },
+  );
+  if (!res.ok) throw new ApiError(`Could not download that sound (${res.status})`, res.status);
+  const named = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') ?? '')?.[1];
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = named ?? `sound-${audioId}`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // Next frame rather than immediately, for downloadExport's reason: a synchronous revoke can race
+  // the browser's own read of the blob and save a zero-byte file.
+  requestAnimationFrame(() => URL.revokeObjectURL(url));
+}
+
+/** What a finished export was, so the caller can name the file rather than guess at it. */
+export interface ExportSaved {
+  filename: string;
+  bytes: number;
+  /** True only when the worker sent a digest AND it matched. False means unchecked, never "bad". */
+  verified: boolean;
+}
+
+/**
+ * Save the conversation, watching it arrive and checking what arrived.
+ *
+ * TWO THINGS THIS DOES THAT `res.blob()` CANNOT.
+ *
+ *   IT CAN BE WATCHED. A single await produces one event — "done" — so the UI's only honest state
+ *   was "Preparing…", indefinitely, whether the transfer was moving or dead. The reader loop
+ *   reports bytes as they land, with the server's declared total when there is one and `null` when
+ *   there is not: a missing Content-Length must reach the caller as an ABSENCE, because the moment
+ *   it becomes 0 somebody divides by it.
+ *
+ *   IT IS CHECKED. The worker sends X-Golem-Export-SHA256 over the bytes it actually wrote, and a
+ *   truncated transfer is otherwise undetectable — a Markdown file that ends mid-sentence and a
+ *   JSON file that will not parse both save silently. The digest is recomputed over what was
+ *   received and the file is saved ONLY if it matches, because a half file on disk under a
+ *   plausible name is worse than no file: it looks like the export, and it gets kept.
+ *
+ * A response with no digest header saves anyway and reports `verified: false`. An older worker is
+ * the normal case during a deploy, and refusing to save then would turn a rollout into an outage.
+ */
+export async function downloadExport(
+  projectId: string,
+  format: 'md' | 'json',
+  onProgress?: (p: { received: number; total: number | null }) => void,
+): Promise<ExportSaved> {
   const token = await getAccessToken();
   const headers = new Headers();
   if (token) headers.set('Authorization', `Bearer ${token}`);
@@ -576,19 +685,63 @@ export async function downloadExport(projectId: string, format: 'md' | 'json'): 
     throw new ApiError(msg, res.status);
   }
 
-  const disposition = res.headers.get('Content-Disposition') ?? '';
-  const named = /filename="([^"]+)"/.exec(disposition);
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
+  const declaredLength = Number(res.headers.get('Content-Length'));
+  const total = Number.isFinite(declaredLength) && declaredLength > 0 ? declaredLength : null;
+  const declaredDigest = (res.headers.get('X-Golem-Export-SHA256') ?? '').trim().toLowerCase();
+
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+  const reader = res.body?.getReader();
+  if (reader) {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      chunks.push(value);
+      received += value.byteLength;
+      onProgress?.({ received, total });
+    }
+  } else {
+    // No readable body — a response double, or an engine that does not expose one. The file still
+    // has to save; what is lost is the watching, and that is reported as one final event rather
+    // than as silence.
+    const whole = new Uint8Array(await res.arrayBuffer());
+    chunks.push(whole);
+    received = whole.byteLength;
+    onProgress?.({ received, total });
+  }
+
+  const bytes = new Uint8Array(received);
+  let at = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, at);
+    at += chunk.byteLength;
+  }
+
+  let verified = false;
+  if (declaredDigest) {
+    const digest = await crypto.subtle.digest('SHA-256', bytes);
+    const hex = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+    if (hex !== declaredDigest) {
+      // Named as a broken TRANSFER. "Export failed" would send the user to look at their project.
+      throw new ApiError('That export arrived incomplete and was not saved — try again.', 0);
+    }
+    verified = true;
+  }
+
+  const filename = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') ?? '')?.[1] ?? `project-export.${format}`;
+  const type = format === 'md' ? 'text/markdown;charset=utf-8' : 'application/json;charset=utf-8';
+  const url = URL.createObjectURL(new Blob([bytes], { type }));
   const a = document.createElement('a');
   a.href = url;
-  a.download = named?.[1] ?? `project-export.${format}`;
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   a.remove();
   // Revoked on the next frame rather than immediately: a synchronous revoke can race the browser's
   // own read of the blob and produce a zero-byte file on some engines.
   requestAnimationFrame(() => URL.revokeObjectURL(url));
+  return { filename, bytes: received, verified };
 }
 
 export const purgeProject = (projectId: string) =>
@@ -994,6 +1147,48 @@ export async function fileOp(projectId: string, body: FileOpRequest): Promise<{ 
   let res: Response;
   try {
     res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/files/op`, { method: 'POST', headers, body: JSON.stringify(body) });
+  } catch {
+    noteReachability(false);
+    return { ok: false, error: 'Network error — check your connection.' };
+  }
+  noteReachability(true);
+  const parsed = (await res.json().catch(() => null)) as Record<string, unknown> | null;
+  if (!res.ok) {
+    return {
+      ok: false,
+      code: typeof parsed?.code === 'string' ? parsed.code : undefined,
+      error: typeof parsed?.error === 'string' ? parsed.error : `Request failed (${res.status})`,
+    };
+  }
+  return { ok: true, result: parsed ?? {} };
+}
+
+/**
+ * Put a text file into the project workspace.
+ *
+ * Shaped like `fileOp` rather than like `request<T>`, and for the same reason: the worker sends a
+ * machine-readable `code` with every refusal and `request` drops it, so the panel would be left
+ * matching on prose to tell "that name is taken" from "that is not a workspace file type".
+ *
+ * `overwrite` is never sent on the first attempt. An occupied path comes back as a refusal the user
+ * answers, so replacing the plan Apple wrote is always something they chose.
+ */
+export async function uploadProjectFile(
+  projectId: string,
+  path: string,
+  content: string,
+  opts: { overwrite?: boolean } = {},
+): Promise<{ ok: true; result: Record<string, unknown> } | { ok: false; code?: string; error: string }> {
+  const token = await getAccessToken();
+  const headers = new Headers({ 'Content-Type': 'application/json' });
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  let res: Response;
+  try {
+    res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/files/content`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ path, content, ...(opts.overwrite ? { overwrite: true } : {}) }),
+    });
   } catch {
     noteReachability(false);
     return { ok: false, error: 'Network error — check your connection.' };

@@ -65,6 +65,7 @@ import {
   restoreWorkspaceFile,
   revertWorkspaceFile,
   trashOf,
+  writeWorkspaceFile,
   WORKSPACE_OP_STATUS,
   type WorkspaceOpCode,
 } from './workspace-files';
@@ -1204,11 +1205,27 @@ app.get('/api/projects/:id/export', async (c) => {
   const data = (await res.json()) as TranscriptExport;
 
   const md = c.req.query('format') === 'md';
-  const body = md ? renderTranscriptMarkdown(data) : JSON.stringify(data, null, 2);
-  return new Response(body, {
+  // THE JSON FILE CARRIES ITS OWN CHECK. `truncated` and `messageCount` already say whether the
+  // transcript is COMPLETE; neither says whether the bytes arrived intact, and a transfer cut in
+  // half is a file that ends mid-sentence. The digest is over `data.messages` — the part that can
+  // be clipped — and it travels inside the file because a header only exists during the download.
+  // Markdown gets no such line: a hex string in the prose would be part of the transcript.
+  const body = md
+    ? renderTranscriptMarkdown(data)
+    : JSON.stringify({ ...data, sha256: await sha256hex(JSON.stringify(data.messages)) }, null, 2);
+  const bytes = new TextEncoder().encode(body);
+  return new Response(bytes, {
     headers: {
       'Content-Type': md ? 'text/markdown; charset=utf-8' : 'application/json; charset=utf-8',
       'Content-Disposition': `attachment; filename="${exportFilename(data.project.name, data.exportedAt, md ? 'md' : 'json')}"`,
+      // BYTES, NOT CHARACTERS, and that is the whole reason the body is encoded here rather than
+      // handed over as a string: a transcript is full of em dashes and emoji, and a length in
+      // characters is a progress meter that reaches 100% with bytes still arriving.
+      'Content-Length': String(bytes.byteLength),
+      // The digest of what was ACTUALLY SENT, so the client can tell a short file from a short
+      // conversation. Nothing else on the wire can: JSON that will not parse and Markdown that
+      // stops mid-sentence both save without complaint.
+      'X-Golem-Export-SHA256': await sha256hex(body),
     },
   });
 });
@@ -1296,6 +1313,34 @@ app.get('/api/projects/:id/files/content', async (c) => {
     });
   }
   return c.json({ path: got.path, version: got.version, bytes: got.bytes, savedAt: got.savedAt, content: got.content });
+});
+
+/**
+ * PUT A FILE IN, WITHOUT ASKING APPLE TO TYPE IT OUT.
+ *
+ * Every file in a workspace arrived through `workspace_write`, which is a TOOL: to get a design
+ * brief or a CSV of level data where Apple can read it, a user had to paste the whole thing into
+ * the chat and ask for it to be saved — a turn, the credits for that turn, and a model in the
+ * middle that may reword it.
+ *
+ * TEXT ONLY, and that is not a limitation to apologise for: the workspace is a text store with a
+ * declared extension list and a per-file ceiling, and `checkWorkspacePath` already enforces both.
+ * There is no object store behind this worker and this route does not pretend otherwise.
+ *
+ * `sharedAccess(…, 'build')` rather than owner-only, exactly as /files/op is gated, so a viewer is
+ * told 403 and looks at their role rather than at a missing file.
+ */
+app.post('/api/projects/:id/files/content', async (c) => {
+  const access = await sharedAccess(c, c.req.param('id'), 'build');
+  if (!access.ctx) return collabRefusal(c, access.status);
+  const ctx = access.ctx;
+  if (!c.env.KV) return c.json({ error: 'this deployment has no file storage' }, 503);
+  const store = kvWorkspace(c.env.KV, ctx.project.id);
+  const body = (await c.req.json().catch(() => null)) as { path?: unknown; content?: unknown; overwrite?: unknown } | null;
+  const res = await writeWorkspaceFile(store, typeof body?.path === 'string' ? body.path : '', body?.content, {
+    overwrite: body?.overwrite === true,
+  });
+  return res.ok ? c.json(res) : workspaceRefusal(res);
 });
 
 app.get('/api/projects/:id/files/history', async (c) => {
