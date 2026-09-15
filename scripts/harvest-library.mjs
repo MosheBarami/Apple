@@ -80,6 +80,34 @@ function canonicalLicence(verbatim) {
 const ALLOWED = new Set(['CC0-1.0', 'CC-BY-4.0', 'CC-BY-3.0', 'MIT', 'ISC', 'Apache-2.0', 'BSD-3-Clause', 'Unlicense', 'PD', 'ROBLOX-TOU']);
 const ATTRIBUTION = new Set(['CC-BY-4.0', 'CC-BY-3.0', 'MIT', 'ISC', 'Apache-2.0', 'BSD-3-Clause']);
 
+/**
+ * Map a source's own vocabulary onto ASSET_KINDS.
+ *
+ * A whitelist with a stated default rather than a guess per asset: a mis-kinded row is worse than
+ * a generically-kinded one, because `keep()` in asset-library.ts filters STRICTLY on kind and the
+ * planner would never see it again.
+ *
+ * This is the second copy — harvest-assets.mjs has the same table — and the duplication is the
+ * reason the Creator Store re-harvest died with "kindFrom is not defined" after an edit assumed
+ * one was shared. Kept separate on purpose: the two scripts are independent entry points with no
+ * shared module, and a lib/ for one function would be a worse trade than eleven duplicated lines.
+ */
+const KIND_WORDS = [
+  ['foliage', /\b(tree|plant|foliage|grass|bush|flower|leaf|leaves|forest|nature|moss|fern)\b/],
+  ['character', /\b(character|human|person|people|creature|animal|figure|npc|avatar)\b/],
+  ['vehicle', /\b(vehicle|car|truck|boat|ship|plane|aircraft|bike|train)\b/],
+  ['building', /\b(building|house|architecture|structure|wall|roof|door|window|bridge|tower|ruin|castle)\b/],
+  ['ground', /\b(ground|terrain|floor|road|path|pavement|gravel|sand|soil|dirt|rock|cliff|snow|asphalt|concrete|tiles?|paving)\b/],
+  ['ui_icon', /\b(icon|button|cursor|badge|ui|hud|interface|menu|logo)\b/],
+  ['particle', /\b(particle|smoke|spark|flame|explosion|dust|trail)\b/],
+  ['prop', /\b(furniture|prop|decor|tool|weapon|sword|shield|gun|food|container|barrel|crate|lamp|chair|table|bench|sign|chest|key|coin|gem)\b/],
+];
+function kindFrom(words, fallback) {
+  const t = ' ' + words.filter(Boolean).join(' ').toLowerCase() + ' ';
+  for (const [kind, re] of KIND_WORDS) if (re.test(t)) return kind;
+  return fallback;
+}
+
 /** One row, with every required provenance field filled or explicitly null. */
 function row(o) {
   const id = canonicalLicence(o.licence);
@@ -119,7 +147,14 @@ const STORE_TERMS = [
   'food','bread','apple','flower','bush','grass texture','brick','metal','wood','stone','sand','snow',
   'dirt','concrete','tile','fabric','glass','icon','button','panel','frame','arrow','cursor','badge',
 ];
-const STORE_CATEGORIES = [['Decal', 'ui_icon'], ['MeshPart', 'prop']];
+// The DEFAULT kind per category, used only when the name and tags say nothing more specific.
+//
+// Decal defaulted to `ui_icon` in the first version and that was wrong in a way that would have
+// hidden the whole category: a Decal on the Creator Store is far more often a surface — a wall, a
+// sign, a poster — than a piece of interface, and `keep()` in asset-library.ts filters STRICTLY on
+// kind when the planner asks for one. Every "find me a wall texture" would have matched nothing
+// while 60,000 wall textures sat in the table under `ui_icon`.
+const STORE_CATEGORIES = [['Decal', 'texture'], ['MeshPart', 'prop']];
 
 async function creatorStore() {
   const out = [];
@@ -146,7 +181,10 @@ async function creatorStore() {
           out.push(row({
             id: `creator_store/${slug(category)}/${assetId}`,
             name,
-            kind: category === 'Decal' ? 'ui_icon' : defaultKind,
+            // The same word-based mapping every other source uses, so a Creator Store row lands
+            // in the same kind an equivalent Poly Haven row would. The category only decides the
+            // fallback.
+            kind: kindFrom([name, term, ...(Array.isArray(a?.asset?.tags) ? a.asset.tags : [])], defaultKind),
             source: 'creator_store',
             sourceUrl: `https://create.roblox.com/store/asset/${assetId}`,
             // Verbatim from the Creator Hub: Images, Decals and Meshes default to Open Use, and a
@@ -407,8 +445,15 @@ for (const [name, fn] of run) {
   }
   const rows = Array.isArray(result) ? result : result.rows;
   const extra = Array.isArray(result) ? {} : { ...result, rows: undefined };
-  const kept = rows.filter((r) => r._licenceId && ALLOWED.has(r._licenceId));
-  const dropped = rows.length - kept.length;
+  const licensed = rows.filter((r) => r._licenceId && ALLOWED.has(r._licenceId));
+  const dropped = rows.length - licensed.length;
+  // DEDUPED PER SOURCE, and the count is reported. The Creator Store sweep finds the same asset
+  // under several keywords — 102,780 rows collapse to 81,311 assets — and a source that reported
+  // the pre-dedup figure would overstate the library by a fifth. The ingest deduped across files
+  // already, so nothing wrong was ever WRITTEN; the number said out loud was the wrong one.
+  const seen = new Set();
+  const kept = licensed.filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
+  const duplicates = licensed.length - kept.length;
   const byKind = {};
   for (const r of kept) byKind[r.kind] = (byKind[r.kind] ?? 0) + 1;
   const byLicence = {};
@@ -418,11 +463,11 @@ for (const [name, fn] of run) {
     source: name,
     failed: false,
     tookMs: Date.now() - started,
-    counts: { fetched: rows.length, kept: kept.length, droppedOnLicence: dropped, byKind, byLicence },
+    counts: { fetched: rows.length, kept: kept.length, droppedOnLicence: dropped, duplicateIds: duplicates, byKind, byLicence },
     ...extra,
     assets: kept,
   }, null, 1) + '\n');
-  console.error(`${name}: ${kept.length} kept, ${dropped} dropped on licence  ${JSON.stringify(byKind)}`);
+  console.error(`${name}: ${kept.length} kept, ${duplicates} duplicate ids, ${dropped} dropped on licence  ${JSON.stringify(byKind)}`);
 }
 
 // A combined index, so one file answers "how big is the library" without reading six.

@@ -325,11 +325,11 @@ like it covers it.
 
 ## Whole-product gates
 
-- [ ] G90: The full suite passes
+- [x] G90: The full suite passes
     CHECK: node scripts/gate-suite.mjs
     EXPECT: SUITE GREEN
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=1cbbd2d; tree-clean=yes; break-sha=1cbbd2d; EXPECT=unmatched; output-sha256=d3ca83a0f1c28c107d19848521978c0fed503026b5dd9621c7b7078b3a626ac6; output-bytes=43; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=224; deps-sha=26ef956a96cd451b185f2c1f; at=2026-09-14T20:29:15.030Z
-  EVIDENCE: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=e66fac3; tree-clean=no; deps-clean=yes; EXPECT=unmatched; output-sha256=640284070f001d672e2d844d855b7c0df446eb091098b8c4050ef5b7909a02e2; output-bytes=44; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=247; deps-sha=44b2aa9b1472c48db13c14fa; at=2026-09-15T05:56:28.985Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=376fee90deee/55 entries; EXPECT=matched; output-sha256=35181ed01f9275d0e17030aee8053c28de14bf8d35ed8be366ca4c1b38d7f2b4; output-bytes=45
 
 - [x] G91: Every package typechecks
     CHECK: node scripts/gate-typecheck.mjs

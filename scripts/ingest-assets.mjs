@@ -93,10 +93,15 @@ for (let i = 0; i < queue.length; i += BATCH) {
   let res, body;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
+      // A TIMEOUT, because node's fetch has none. A stalled connection hangs for ever, and a job
+      // that hangs is indistinguishable from a job that is merely slow: the process is alive, the
+      // log is quiet, the row count does not move, and nothing anywhere says which of the two it
+      // is. Measured — one batch of 500 takes about 9 seconds, so 120 is generous and finite.
       res = await fetch(`${BASE}/api/admin/assets/ingest`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'X-Admin-Key': KEY },
         body: JSON.stringify({ assets: slice, seed, status }),
+        signal: AbortSignal.timeout(120_000),
       });
       body = await res.json().catch(() => null);
       if (res.ok) break;
@@ -111,7 +116,7 @@ for (let i = 0; i < queue.length; i += BATCH) {
   written += body.written ?? 0;
   for (const r of body.rejected ?? []) rejected.push(r);
   if (body.truncated) console.error(`batch ${i}: SERVER TRUNCATED — batch size exceeds INGEST_MAX_BATCH`);
-  if ((i / BATCH) % 20 === 0) console.error(`${written}/${queue.length}`);
+  console.error(`${written}/${queue.length}`);
 }
 
 console.error(`\nwritten ${written} · rejected ${rejected.length} · failed batches ${failedBatches.length}`);
