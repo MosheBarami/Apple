@@ -1,5 +1,6 @@
 // Golem worker entry: API routes + static serving + DO exports.
 import { ingestAssets, type IngestRequest } from './asset-ingest';
+import { importPending } from './asset-import';
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import {
@@ -2338,6 +2339,16 @@ app.post('/api/admin/assets/ingest', async (c) => {
     return c.json({ error: 'assets must be an array of provenance records' }, 400);
   }
   return c.json(await ingestAssets(c.env, body));
+});
+
+/**
+ * Import pending library rows into Roblox as Open Use assets. Bounded per call; driven in a loop
+ * by scripts/import-assets.mjs so no single request runs long enough to be killed mid-upload.
+ */
+app.post('/api/admin/assets/import', async (c) => {
+  const body = await c.req.json<{ limit?: number; source?: string }>().catch(() => null);
+  const limit = Number.isFinite(body?.limit) ? Number(body?.limit) : 5;
+  return c.json(await importPending(c.env as never, limit, body?.source));
 });
 
 app.post('/api/admin/kill-switch', async (c) => {
