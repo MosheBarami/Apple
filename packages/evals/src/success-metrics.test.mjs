@@ -83,7 +83,14 @@ test('the acceptance tally accounts for every scenario the brief names', () => {
 
 test('the completion figure is recomputed from the marks, not copied from the header', () => {
   const c = REPORT.completion;
-  assert.equal(c.overall.total, c.overall.done + c.overall.partial + c.overall.notFound + c.overall.other);
+  // `total` is EVERY item; the four counts must account for all of them, not-planned included.
+  // This read `done + partial + notFound + other` and fired on the very first ⊘ ever written —
+  // 1200 !== 1199 — because that mark leaves the denominator but not the file.
+  assert.equal(
+    c.overall.total,
+    c.overall.done + c.overall.partial + c.overall.notFound + c.overall.notPlanned + c.overall.other,
+  );
+  assert.equal(c.overall.counted, c.overall.total - c.overall.notPlanned, 'the counted set is everything except ⊘');
   assert.ok(c.overall.total > 0, 'the checklist parsed to zero items — the report would print a number from nothing');
   assert.ok(c.overall.weightedPct >= 0 && c.overall.weightedPct <= 100, 'the weighted figure is not a percentage');
 });
@@ -211,11 +218,25 @@ test('the total typed at the top of the checklist is the total of the marks belo
   assert.equal(claim.done, WHOLE_FILE.done, `the header says ✓ ${claim.done}; the marks say ✓ ${WHOLE_FILE.done}`);
   assert.equal(claim.partial, WHOLE_FILE.partial, `the header says ~ ${claim.partial}; the marks say ~ ${WHOLE_FILE.partial}`);
   assert.equal(claim.notFound, WHOLE_FILE.notFound, `the header says ☐ ${claim.notFound}; the marks say ☐ ${WHOLE_FILE.notFound}`);
-  const weighted = +((WHOLE_FILE.weight / WHOLE_FILE.total) * 100).toFixed(1);
+  assert.equal(claim.notPlanned, WHOLE_FILE.notPlanned, `the header says ⊘ ${claim.notPlanned}; the marks say ⊘ ${WHOLE_FILE.notPlanned}`);
+  //[[ THE DENOMINATOR EXCLUDES ⊘, and this line divided by the whole file.
+  //
+  //   Dividing by `total` is arithmetically identical to marking all 73 not-planned items ☐ — the
+  //   exact outcome ADR-021 exists to prevent — so the assertion meant to hold the header honest
+  //   was demanding the dishonest number. It disagreed with the report (`counted`) and with the
+  //   section-heading test two tests below (`t.total - t.notPlanned`), and nothing noticed because
+  //   nothing was marked ⊘ when it was written.
+  //
+  //   That is the gap in how I falsified it: I proved the new assertion could turn RED with a
+  //   planted mark, then removed the mark and committed. A suite proven able to fail was never once
+  //   run green in the state it was built for. ]]
+  const counted = WHOLE_FILE.total - WHOLE_FILE.notPlanned;
+  const weighted = +((WHOLE_FILE.weight / counted) * 100).toFixed(1);
   assert.equal(
     claim.weightedPct,
     weighted,
-    `the header says weighted ${claim.weightedPct}%; ✓=1 ~=0.5 ☐=0 over ${WHOLE_FILE.total} items gives ${weighted}%`,
+    `the header says weighted ${claim.weightedPct}%; ✓=1 ~=0.5 ☐=0 over ${counted} counted items `
+      + `(${WHOLE_FILE.total} less ${WHOLE_FILE.notPlanned} not planned) gives ${weighted}%`,
   );
 });
 
