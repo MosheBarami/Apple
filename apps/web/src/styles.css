@@ -4626,14 +4626,31 @@ textarea {
   background: var(--paper);
 }
 
+/*[[ THE SEAM. Looked at on the deployed page at 1440x842: a hard vertical edge ran the full height
+ *   at x=738, and the ruled grid behind the pitch stopped dead against it. Two causes, both here.
+ *
+ *   The border was a solid hairline from top to bottom. On a page whose whole direction is one
+ *   unlit room, a rule drawn corner to corner is the one element announcing that the room is
+ *   actually two boxes. It is now a gradient that exists only across the middle and fades out at
+ *   both ends, so it reads as light catching an edge rather than as a drawn division.
+ *
+ *   The grid was the louder half: `overflow: hidden` clips this panel at its right edge, and the
+ *   mask below reached 117% of the width, so the lines were still at full strength where they were
+ *   cut. A mask that fades inside the panel has nothing to clip. ]]*/
 .auth-hero {
   position: relative;
   overflow: hidden;
   display: flex;
   align-items: center;
   padding: clamp(2rem, 5vw, 4rem);
-  background: linear-gradient(160deg, var(--paper-2), var(--paper) 65%);
-  border-inline-end: 1px solid var(--hairline);
+  /* Two layers: the room, and a 1px edge at its right that exists only across the middle. Carried
+     as a background rather than a border because a border cannot fade along its own length, and
+     both pseudo-elements here are already spent — one on the grid, one on the glow. */
+  background:
+    linear-gradient(to bottom, transparent 0%, var(--hairline) 20%, var(--hairline) 80%, transparent 100%)
+      100% 0 / 1px 100% no-repeat,
+    linear-gradient(160deg, var(--paper-2), var(--paper) 65%);
+  border-inline-end: 0;
 }
 
 /* A drafting sheet behind the pitch: visible enough to read as ruled paper,
@@ -4645,7 +4662,10 @@ textarea {
   background-image: linear-gradient(var(--line) 1px, transparent 1px),
     linear-gradient(90deg, var(--line) 1px, transparent 1px);
   background-size: 44px 44px;
-  mask-image: radial-gradient(ellipse 85% 65% at 32% 45%, #000 15%, transparent 78%);
+  /* 30% + 52% = 82% of the width, and the ramp is fully out by 76% of that — so the last visible
+     line sits well inside the clip. Any ellipse whose reach exceeds 100% is a grid cut off by the
+     panel's own edge, which is the artifact this replaces. */
+  mask-image: radial-gradient(ellipse 52% 60% at 30% 46%, #000 12%, transparent 76%);
   opacity: 0.75;
   pointer-events: none;
 }
@@ -4674,10 +4694,14 @@ textarea {
   margin-bottom: 1.75rem;
 }
 
+/* `pretty`, not `balance`. Balance minimises the LONGEST line and is indifferent to the last one,
+   so at 48px in a 480px column it produced 4 words / 3 words / "open." — a one-word final line
+   under a three-line headline. `pretty` is the property that exists for exactly that. */
 .auth-hero-title {
   font-size: clamp(2rem, 4vw, 3rem);
   line-height: 1.06;
   margin: 0 0 0.9rem;
+  text-wrap: pretty;
 }
 
 .auth-hero-sub {
