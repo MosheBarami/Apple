@@ -1202,6 +1202,25 @@
    8. Conversation
    -------------------------------------------------------------------------- */
 
+/*[[ WHY THE PIXEL SIZES IN THIS FILE STAYED PIXELS when the root font-size went to 80%.
+ *
+ *   Scaling the interface down moved every `rem` — type, padding, gaps, radii — and left about a
+ *   hundred `px` declarations where they were. That is not an oversight to tidy up later, so it is
+ *   written here before someone does.
+ *
+ *   Nearly all of them are `min-height: 40px` / `44px` on buttons, inputs and rows. A tap target is
+ *   a PHYSICAL size — the smallest area a fingertip can reliably hit — and it does not get smaller
+ *   because the words inside it did. 44px is the floor every platform's guidance names, and
+ *   converting these to rem would have taken them to 35px at this scale, which is a real
+ *   accessibility regression bought for nothing: the buttons were never what looked too big.
+ *
+ *   The hairlines (1px borders, 2px rules) are the same argument at the other end: a border is one
+ *   device pixel, not a fraction of a word.
+ *
+ *   The handful that genuinely are decorative — avatar plates at 26-36px, the stage bullets at 11px
+ *   — sit between the two, and they stay in px so that this rule has no exceptions to argue about.
+ *   If the scale drops again and they start to read as chunky, convert THOSE and leave the targets
+ *   and the hairlines alone. ]]*/
 .gx-scroll {
   overflow-y: auto;
   min-height: 0;
