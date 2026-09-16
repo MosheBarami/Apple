@@ -133,6 +133,64 @@ test('allow: [creator_store] -> find_verified_asset PROCEEDS to the real search'
 // drives insert_asset directly, with a `globalThis.fetch` stub standing in for the Roblox details
 // call `verifyCreatorStoreAsset` makes — the network call this policy question must never reach.
 
+//[[ FROM SCRATCH MEANS NOTHING COMES FROM ANYWHERE ELSE.
+//
+//   The owner's third choice is the one where the refusal has to be absolute rather than a
+//   preference the model may weigh against a better-looking search hit. A project set to build
+//   from scratch that can still place a Creator Store mesh has not been set to anything: it has
+//   been given a hint. Both doors are driven here — the search that finds an id, and the insert
+//   that would place one found some other way — because closing only the first leaves the second
+//   reachable by any id already in the transcript. ]]
+
+test('allow: [from_scratch] -> insert_asset REFUSES a Creator Store id BEFORE any network call', async () => {
+  const assetId = 918_273_648;
+  const ctx = {
+    assetSources: pol(['from_scratch']),
+    discoveredAssetIds: new Set([assetId]),
+    libraryAssetIds: new Set(),
+  };
+  const stub = stubFetch();
+  try {
+    const result = await TOOLS.insert_asset.run(ctx, { assetId });
+    assert.ok(result && typeof result === 'object' && 'error' in result, 'must refuse');
+    assert.match(result.error, /Creator Store/);
+    assert.doesNotMatch(result.error, /was not verified/, 'must be the SOURCE refusal, not a verification failure');
+    assert.equal(stub.calls(), 0, 'must refuse before ever reaching the network');
+  } finally {
+    stub.restore();
+  }
+});
+
+test('allow: [from_scratch] -> insert_asset REFUSES a curated-library id too', async () => {
+  // The library is somebody else's work as much as the Creator Store is. "From scratch" that still
+  // placed a curated mesh would be the same broken promise with better licensing.
+  const assetId = 918_273_649;
+  const ctx = {
+    assetSources: pol(['from_scratch']),
+    discoveredAssetIds: new Set(),
+    libraryAssetIds: new Set([assetId]),
+  };
+  const stub = stubFetch();
+  try {
+    const result = await TOOLS.insert_asset.run(ctx, { assetId });
+    assert.ok(result && typeof result === 'object' && 'error' in result, 'must refuse');
+    assert.match(result.error, /Apple library/);
+    assert.equal(stub.calls(), 0, 'must refuse before ever reaching the network');
+  } finally {
+    stub.restore();
+  }
+});
+
+test('allow: [from_scratch] -> BOTH searches refuse, so no id is ever discovered to insert', async () => {
+  const ctx = envThatMustNotBeTouched({ assetSources: pol(['from_scratch']) });
+  const library = await TOOLS.search_asset_library.run(ctx, { query: 'rock' });
+  assert.ok(library && 'error' in library, 'the curated library must refuse');
+  assert.match(library.error, /Apple library/);
+  const store = await TOOLS.find_verified_asset.run(ctx, { query: 'rock' });
+  assert.ok(store && 'error' in store, 'the Creator Store must refuse');
+  assert.match(store.error, /Creator Store/);
+});
+
 test('allow: [apple_library] -> insert_asset REFUSES a search_result (Creator Store) id BEFORE any network call', async () => {
   const assetId = 918_273_645;
   const ctx = {

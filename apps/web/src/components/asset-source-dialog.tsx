@@ -17,11 +17,24 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { type AssetSourceChoice, type AssetSourcePolicy } from '@golem/shared';
-import { SOURCE_EXPLANATIONS, cleanSelection, initialSelection } from '../lib/asset-sources';
+import {
+  SOURCE_EXPLANATIONS,
+  availableChoices,
+  cleanSelection,
+  initialSelection,
+  unavailableReason,
+} from '../lib/asset-sources';
 
 export interface AssetSourceDialogProps {
   /** The policy as stored. null means nobody has ever answered. */
   policy: AssetSourcePolicy | null;
+  /**
+   * What the account and organisation layers already allow, or null when neither has an opinion.
+   *
+   * A source missing from the ceiling cannot be turned on for one project — the layers narrow
+   * downwards — so it is offered as unavailable rather than as a tick that would be swallowed.
+   */
+  ceiling?: AssetSourcePolicy | null;
   /** Persist the answer. Resolves when it is stored; the build waits for that. */
   onSave: (policy: AssetSourcePolicy) => Promise<unknown>;
   /** The answer is in and the build may start. */
@@ -30,17 +43,25 @@ export interface AssetSourceDialogProps {
   onCancel: () => void;
 }
 
-export function AssetSourceDialog({ policy, onSave, onDone, onCancel }: AssetSourceDialogProps) {
-  const [chosen, setChosen] = useState<AssetSourceChoice[]>(() => initialSelection(policy));
+export function AssetSourceDialog({ policy, ceiling = null, onSave, onDone, onCancel }: AssetSourceDialogProps) {
+  const [chosen, setChosen] = useState<AssetSourceChoice[]>(() => initialSelection(policy, ceiling));
   const [remember, setRemember] = useState(true);
 
+  const open = availableChoices(ceiling);
+  // Belt and braces with the disabled checkbox: a selection is filtered through the ceiling on the
+  // way out too, so a choice that became unavailable while the dialog sat open cannot be saved
+  // into a policy that would resolve to nothing.
+  const sending = cleanSelection(chosen).filter((c) => open.includes(c));
+
   const save = useMutation({
-    mutationFn: () => onSave({ mode: remember ? 'remember' : 'ask', allow: cleanSelection(chosen) }),
+    mutationFn: () => onSave({ mode: remember ? 'remember' : 'ask', allow: sending }),
     onSuccess: () => onDone(),
   });
 
-  const toggle = (c: AssetSourceChoice) =>
+  const toggle = (c: AssetSourceChoice) => {
+    if (!open.includes(c)) return;
     setChosen((cur) => (cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c]));
+  };
 
   return (
     <div
@@ -55,18 +76,23 @@ export function AssetSourceDialog({ policy, onSave, onDone, onCancel }: AssetSou
       <div className="asrc">
         <h2 className="asrc__title" id="asrc-title">Where should Apple get assets from?</h2>
         <p className="asrc__lede">
-          Pick as many as you like. Apple asks once and then gets on with it — you can change this
-          in Settings whenever you want.
+          Pick as many as you like. This is remembered for this project — Apple asks once and then
+          gets on with it, and you can change it from the command palette whenever you want.
         </p>
 
         <div className="asrc__choices">
           {SOURCE_EXPLANATIONS.map((e) => {
-            const on = chosen.includes(e.choice);
+            const blocked = unavailableReason(ceiling, e.choice);
+            const on = !blocked && chosen.includes(e.choice);
             return (
-              <label key={e.choice} className={`asrc__choice${on ? ' is-on' : ''}`}>
+              <label
+                key={e.choice}
+                className={`asrc__choice${on ? ' is-on' : ''}${blocked ? ' is-blocked' : ''}`}
+              >
                 <input
                   type="checkbox"
                   checked={on}
+                  disabled={Boolean(blocked)}
                   onChange={() => toggle(e.choice)}
                   aria-describedby={`asrc-${e.choice}-does`}
                 />
@@ -77,6 +103,14 @@ export function AssetSourceDialog({ policy, onSave, onDone, onCancel }: AssetSou
                     <span className="asrc__cost">{e.costs}</span>
                     <span className="asrc__reach">{e.reach}</span>
                   </span>
+                  {/* A greyed box with no sentence beside it reads as a bug rather than a rule.
+                      It borrows `asrc__meta` for its layout ON PURPOSE: `.asrc__body` is a flex
+                      column, so a span with only a new class would render at full size and make
+                      the disabled row the loudest thing in the dialog — and this file may not add
+                      rules to styles.css. `asrc__meta` already supplies the muted, small,
+                      own-line treatment this needs; `asrc__blocked` rides along as the hook for
+                      anyone who later wants to style it properly. */}
+                  {blocked && <span className="asrc__meta asrc__blocked">{blocked}</span>}
                 </span>
               </label>
             );
@@ -88,7 +122,16 @@ export function AssetSourceDialog({ policy, onSave, onDone, onCancel }: AssetSou
           Remember this and stop asking
         </label>
 
-        {chosen.length === 0 && (
+        {open.length === 0 ? (
+          <p className="asrc__warn" role="alert">
+            {/* There is nothing to tick, so "pick at least one" would be advice that cannot be
+                taken. The only move left is at the account or organisation layer, and saying so is
+                the difference between a rule and a dead dialog. */}
+            Every source is switched off for your account or organisation, so there is nothing to
+            choose here. Someone has to turn one back on in Settings before Apple can build with
+            anything but plain parts.
+          </p>
+        ) : sending.length === 0 && (
           <p className="asrc__warn" role="alert">
             With none of these, Apple can only place plain parts. Pick at least one, or come back
             when you have decided.
@@ -102,7 +145,7 @@ export function AssetSourceDialog({ policy, onSave, onDone, onCancel }: AssetSou
           <button
             type="button"
             className="btn btn--primary"
-            disabled={chosen.length === 0 || save.isPending}
+            disabled={sending.length === 0 || save.isPending}
             onClick={() => save.mutate()}
           >
             {save.isPending ? 'Saving…' : 'Start building'}
@@ -111,8 +154,10 @@ export function AssetSourceDialog({ policy, onSave, onDone, onCancel }: AssetSou
 
         {save.isError && (
           <p className="asrc__warn" role="alert">
-            {/* The answer was not stored, so the build must not start as if it had been. */}
-            That did not save — {(save.error as Error).message}. Nothing has changed yet.
+            {/* Says what is TRUE of both causes — a write that failed and a write that was
+                narrowed away by a higher layer. In neither case may the build start, and in
+                neither case has what Apple is allowed to use actually changed. */}
+            Apple's sources are unchanged — {(save.error as Error).message}
           </p>
         )}
       </div>

@@ -22,6 +22,7 @@ execFileSync(join(WEB, '..', 'worker', 'node_modules', '.bin', 'esbuild'),
 const A = await import(`file://${out}`);
 
 const DIALOG = readFileSync(join(WEB, 'src', 'components', 'asset-source-dialog.tsx'), 'utf8');
+const WS = readFileSync(join(WEB, 'src', 'routes', 'workspace.tsx'), 'utf8');
 
 /* ------------------------------------------------------------------ when to ask --- */
 
@@ -107,7 +108,11 @@ test('the build waits for the answer to be STORED, not for the click', () => {
 });
 
 test('nothing chosen cannot be submitted, and the reason is on screen', () => {
-  assert.match(DIALOG, /disabled=\{chosen\.length === 0 \|\| save\.isPending\}/);
+  // `sending`, not `chosen`: the button is gated on what would actually be SAVED — the selection
+  // after the ceiling has been applied. Gated on `chosen` it would enable itself for a tick that
+  // the layers above strip out, which saves a policy allowing nothing and reopens this dialog on
+  // the next send, forever.
+  assert.match(DIALOG, /disabled=\{sending\.length === 0 \|\| save\.isPending\}/);
   assert.match(DIALOG, /Apple can only place plain parts/, 'the consequence, not "select an option"');
 });
 
@@ -116,4 +121,140 @@ test('it is a real dialog for a screen reader', () => {
   assert.match(DIALOG, /aria-modal="true"/);
   assert.match(DIALOG, /aria-labelledby="asrc-title"/);
   assert.match(DIALOG, /role="alert"/, 'the refusal and the failure must be announced');
+});
+
+/* ------------------------------------------------------------------- the ceiling --- */
+//
+// `asset_sources` NARROWS through org, account and project (apps/worker/src/preferences.ts), so a
+// project row can only ever REMOVE a source the layers above already allow. A dialog that ignored
+// that would accept a tick its organisation forbids, resolve the intersection to nothing, and then
+// — because nothing allowed is also the state that means "still owes an answer" — ask the same
+// question again on the very next send, forever. The box has to be unavailable when it is offered.
+
+test('NO CEILING MEANS NO LIMIT — the ordinary case leaves all three open', () => {
+  // The default that matters most, because getting it backwards would grey out every box for every
+  // project that ever existed. This is deliberately the OPPOSITE default from the worker's
+  // `allowedSources`, which answers a different question — what a build may touch, where absent
+  // must mean nothing.
+  assert.deepEqual(A.availableChoices(null), ['apple_library', 'creator_store', 'from_scratch']);
+  assert.deepEqual(A.availableChoices(undefined), ['apple_library', 'creator_store', 'from_scratch']);
+  for (const c of ['apple_library', 'creator_store', 'from_scratch']) {
+    assert.equal(A.unavailableReason(null, c), null, `${c} must be pickable when nobody has restricted it`);
+  }
+});
+
+test('A CEILING IS A LIMIT — what it does not allow cannot be ticked for one project', () => {
+  const ceiling = { mode: 'remember', allow: ['apple_library'] };
+  assert.deepEqual(A.availableChoices(ceiling), ['apple_library']);
+  assert.equal(A.unavailableReason(ceiling, 'apple_library'), null);
+  for (const c of ['creator_store', 'from_scratch']) {
+    const why = A.unavailableReason(ceiling, c);
+    assert.ok(why, `${c} must be refused`);
+    // It names WHERE the rule lives and that it is not this project's to change. A greyed box with
+    // no sentence beside it reads as a bug in the product rather than as a rule.
+    assert.match(why, /account or organisation/i, `${c}: the reason must say which layer decided`);
+    assert.match(why, /project/i, `${c}: and that one project cannot override it`);
+  }
+});
+
+test('a ceiling that allows nothing leaves nothing pickable — and says so rather than pretending', () => {
+  assert.deepEqual(A.availableChoices({ mode: 'remember', allow: [] }), []);
+  assert.match(DIALOG, /Every source is switched off for your account or organisation/,
+    'with nothing to tick, "pick at least one" would be advice that cannot be taken');
+});
+
+test('a ceiling never invents a source that is not in the vocabulary', () => {
+  assert.deepEqual(A.availableChoices({ mode: 'remember', allow: ['toolbox', 'apple_library'] }), ['apple_library']);
+});
+
+test('THE PRE-TICKED SELECTION RESPECTS THE CEILING — a default must not be unsaveable', () => {
+  // initialSelection pre-ticks the two free choices. Under a ceiling that forbids one of them, a
+  // person who touched nothing and pressed the button would be saving a selection the server
+  // strips — so the default is filtered, not merely the checkbox.
+  const ceiling = { mode: 'remember', allow: ['from_scratch'] };
+  assert.deepEqual(A.initialSelection(null, ceiling), [], 'neither free choice survives this ceiling');
+  assert.deepEqual(
+    A.initialSelection({ mode: 'remember', allow: ['apple_library', 'from_scratch'] }, ceiling),
+    ['from_scratch'],
+    'a stored answer is filtered too — the layers above may have changed since it was given',
+  );
+  // And with no ceiling it is unchanged, so this costs nothing in the ordinary case.
+  assert.deepEqual(A.initialSelection(null), ['apple_library', 'creator_store']);
+});
+
+test('the dialog disables what the ceiling forbids rather than letting it be swallowed', () => {
+  assert.match(DIALOG, /unavailableReason\(ceiling, e\.choice\)/, 'each choice must ask about the ceiling');
+  assert.match(DIALOG, /disabled=\{Boolean\(blocked\)\}/, 'and a forbidden choice must not be tickable');
+  assert.match(DIALOG, /\{blocked && <span/, 'and it must say why on screen');
+  // Belt and braces: the selection is filtered on the way out too, for a ceiling that changed
+  // while the dialog sat open.
+  assert.match(DIALOG, /cleanSelection\(chosen\)\.filter\(\(c\) => open\.includes\(c\)\)/);
+});
+
+/* ----------------------------------------------------- remembered, for THIS project --- */
+//
+// The owner asked for the answer to be remembered and changeable. It was remembered on the
+// ACCOUNT, which is a different feature: answering once in one project silently settled the
+// question for every project that person would ever open. A game built entirely from parts and a
+// game assembled out of the Creator Store are the same person making two different decisions.
+
+/** The body of `saveSources`, so a match cannot be satisfied by some other call elsewhere. */
+function saveSourcesBody() {
+  const start = WS.indexOf('const saveSources = async');
+  assert.notEqual(start, -1, 'saveSources moved or was renamed');
+  const end = WS.indexOf('\n  };', start);
+  assert.notEqual(end, -1, 'could not find the end of saveSources');
+  return WS.slice(start, end);
+}
+
+test('THE ANSWER IS STORED AGAINST THE PROJECT, NOT THE ACCOUNT', () => {
+  const body = saveSourcesBody();
+  assert.match(body, /savePreferences\('project', projectId,/, 'it must write the project scope');
+  assert.equal(
+    /savePreferences\('user'/.test(body),
+    false,
+    'writing the user scope settles the question for every project this person will ever open',
+  );
+});
+
+test('AND IT KEEPS THE PROJECT\'S OTHER PREFERENCES — the PUT deletes what it is not sent', () => {
+  // PUT /preferences treats the body as the whole scope: a key it does not receive is DELETED.
+  // Posting `{ asset_sources }` alone therefore wiped every other preference on that scope. The
+  // read has to be fresh rather than a held query, or a stale copy restores settings somebody
+  // changed in another tab.
+  const body = saveSourcesBody();
+  assert.match(body, /fetchScopeMemory\('project', projectId\)/, 'it must read what is stored first');
+  assert.match(body, /\.\.\.stored\.preferences\.prefs/, 'and send it back alongside the new key');
+});
+
+test('AND IT REFUSES TO START A BUILD ON AN ANSWER THAT WAS SWALLOWED', () => {
+  // The layers narrow, so an org or account layer can strip what was ticked and leave nothing
+  // allowed — which is also the state that means "still owes an answer". Closing the dialog then
+  // would reopen it on the very next send, forever. Throwing keeps it open and says so once.
+  const body = saveSourcesBody();
+  // ANCHORED TO THE WHOLE GUARD, not to the name `owesAnswer`. A condition can be added and then
+  // silently disarmed — `if (false && owesAnswer(...))` still contains the call, and a match on the
+  // token alone stays green while the check does nothing. This pins the shape of the `if` itself.
+  assert.match(
+    body,
+    /if \(owesAnswer\(after\.preferences\.asset_sources \?\? null\)\) \{/,
+    'the check must be the condition, not merely present in the file',
+  );
+  assert.match(body, /throw new Error\(/, 'and refuse rather than close over a policy that allows nothing');
+});
+
+test('THE QUESTION IS ASKED BEFORE THE MESSAGE LEAVES, and the words are not lost', () => {
+  // A build that has already started has already decided. `send` returns false so the composer
+  // keeps what was typed, and the held text goes on its own once the policy is stored.
+  const send = WS.slice(WS.indexOf('const askFirst ='), WS.indexOf('const lastAssistantId'));
+  assert.match(send, /if \(askFirst\(text\)\) return false/, 'the send must be held, not allowed through');
+  assert.match(send, /if \(!owesAnswer\(sourcePolicy\)\) return false/, 'and held only when an answer is owed');
+});
+
+test('A SETTLED ANSWER IS STILL CHANGEABLE — "and configurable" was the other half of the ask', () => {
+  // The dialog only ever opened on a build that owed an answer. Remembering it per project without
+  // this would mean a project could be answered once and never revisited.
+  assert.match(WS, /id: 'ws-asset-sources'/, 'there must be a way back to the dialog');
+  assert.match(WS, /run: \(\) => setSourceAsk\(\{ held: null \}\)/, 'opened with nothing held — no message to release');
+  assert.match(WS, /ceiling=\{sourceCeiling\}/, 'and the dialog must be told what the layers above allow');
 });

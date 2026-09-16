@@ -71,13 +71,56 @@ export function owesAnswer(policy: AssetSourcePolicy | null | undefined): boolea
   return policy.allow.length === 0;
 }
 
-/** What the dialog should start with. */
-export function initialSelection(policy: AssetSourcePolicy | null | undefined): AssetSourceChoice[] {
+/**
+ * Which choices this project may actually pick.
+ *
+ * `asset_sources` NARROWS downwards through org, account and project (apps/worker/src/
+ * preferences.ts), so a project row can only ever REMOVE a source the layers above already allow.
+ * A dialog that ignored that would offer three boxes, accept a tick on one an organisation
+ * forbids, resolve the intersection to nothing, and then — because nothing is allowed —
+ * `owesAnswer` would be true again and the same question would be asked forever. The box has to
+ * be unavailable at the moment it is offered, not refused afterwards.
+ *
+ * NO CEILING MEANS NO LIMIT, and that is the ordinary case: nobody above this project has an
+ * opinion, so all three are open. This is the opposite default from `allowedSources` in the worker
+ * — deliberately. That one answers "what may a build touch", where absent must mean nothing. This
+ * one answers "what may a person tick", where absent means nobody has restricted them.
+ */
+export function availableChoices(
+  ceiling: AssetSourcePolicy | null | undefined,
+): AssetSourceChoice[] {
+  if (!ceiling || !Array.isArray(ceiling.allow)) return [...ASSET_SOURCE_CHOICES];
+  return cleanSelection(ceiling.allow);
+}
+
+/** Why this choice cannot be picked here, or null when it can. */
+export function unavailableReason(
+  ceiling: AssetSourcePolicy | null | undefined,
+  choice: AssetSourceChoice,
+): string | null {
+  if (availableChoices(ceiling).includes(choice)) return null;
+  // It names the layer that decided AND the fact it is not this project's to change, because a
+  // greyed box with no sentence beside it reads as a bug in the product rather than a rule.
+  return 'Switched off for your account or organisation, so it cannot be turned on for one project.';
+}
+
+/**
+ * What the dialog should start with.
+ *
+ * The ceiling is applied here too rather than only at the checkbox: a pre-ticked box that the
+ * person never touched must not be a selection they cannot save.
+ */
+export function initialSelection(
+  policy: AssetSourcePolicy | null | undefined,
+  ceiling?: AssetSourcePolicy | null,
+): AssetSourceChoice[] {
+  const open = availableChoices(ceiling);
   // A person who has chosen before sees their own answer again, not a blank form. A person who
   // has not gets the two that cost nothing — pre-ticking `from_scratch` would quietly opt them
   // into spending on every asset.
-  if (policy && policy.allow.length) return [...policy.allow];
-  return ['apple_library', 'creator_store'];
+  const want: AssetSourceChoice[] =
+    policy && policy.allow.length ? [...policy.allow] : ['apple_library', 'creator_store'];
+  return want.filter((c) => open.includes(c));
 }
 
 export interface SourceSummary {

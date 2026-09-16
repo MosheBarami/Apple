@@ -38,6 +38,7 @@ import {
   fetchMembers,
   fetchPersonalisation,
   fetchProjectAccess,
+  fetchScopeMemory,
   // Renamed at the import rather than in the module: `rebindPlace` is already the name of the
   // handler below, and shadowing the client with the callback that calls it is how a later edit
   // ends up calling itself.
@@ -298,6 +299,17 @@ export function WorkspacePage() {
     enabled: projectId.length > 0,
   });
   const sourcePolicy = personal.data?.preferences.asset_sources ?? null;
+  // The most this project could ever be allowed. Resolved by the server from the org and account
+  // layers — see PersonalisationResponse.assetSourceCeiling.
+  const sourceCeiling = personal.data?.assetSourceCeiling ?? null;
+
+  //[[ IS THE ASSET-SOURCE DIALOG OPEN, AND IS A MESSAGE WAITING ON IT?
+  //
+  //   Declared here, beside the policy it is about, rather than down beside `send` where it is
+  //   set: the command palette is registered further up this component and opens this dialog, so
+  //   a declaration below that point would read as reachable only by luck. See `askFirst` for
+  //   what `held` means and why answering releases the message. ]]
+  const [sourceAsk, setSourceAsk] = useState<{ held: string | null } | null>(null);
 
   //[[ NAMES FOR THE PEOPLE WHO TOOK THE CHECKPOINTS.
   //
@@ -317,10 +329,43 @@ export function WorkspacePage() {
   });
   const memberNames = roster.data ? rosterNames(roster.data.members) : {};
 
+  //[[ THE ANSWER IS REMEMBERED FOR THIS PROJECT, NOT FOR THE ACCOUNT.
+  //
+  //   It used to write the `user` scope, which meant answering once in one project silently
+  //   settled the question for every project the person would ever open — including ones where
+  //   the right answer is different. A game built entirely from scratch and a game assembled out
+  //   of the Creator Store are the same person making two different decisions.
+  //
+  //   READ-MODIFY-WRITE, because PUT /preferences DELETES every preference key it is not sent:
+  //   posting `{ asset_sources }` alone wiped the whole scope's other preferences. The settings
+  //   page already spreads what is stored for exactly this reason; this is the same discipline at
+  //   the other surface. The read is done here rather than held in a query because it must be
+  //   FRESH — a stale copy would restore preferences somebody changed in another tab.
+  //
+  //   AND IT VERIFIES THE ANSWER TOOK. `asset_sources` narrows downwards, so a project row can be
+  //   swallowed whole by an org or account layer that forbids what was ticked. The dialog greys
+  //   those choices out, but the layers can change between the dialog opening and the save landing
+  //   — and a swallowed answer leaves the policy still owing an answer, which would reopen the
+  //   dialog on the very next send, forever. Throwing here keeps the dialog open, says so once,
+  //   and never starts the build. ]]
   const saveSources = async (policy: AssetSourcePolicy) => {
-    if (!userId) throw new Error('not signed in');
-    await savePreferences('user', userId, { asset_sources: policy });
+    if (!projectId) throw new Error('this project is not loaded yet');
+    const stored = await fetchScopeMemory('project', projectId);
+    await savePreferences('project', projectId, {
+      ...stored.preferences.prefs,
+      asset_sources: policy,
+    });
     await qc.invalidateQueries({ queryKey: ['personalisation', projectId] });
+    const after = await qc.fetchQuery({
+      queryKey: ['personalisation', projectId],
+      queryFn: () => fetchPersonalisation(projectId),
+    });
+    if (owesAnswer(after.preferences.asset_sources ?? null)) {
+      throw new Error(
+        'your account or organisation does not allow the sources you picked, so nothing was left '
+        + 'to build with. Change it in Settings under Connections, or pick a source it permits.',
+      );
+    }
   };
   const selfUserId = session?.user?.id ?? null;
 
@@ -557,6 +602,16 @@ export function WorkspacePage() {
       run: () => setDrawer('credits'),
     },
     {
+      // THE "AND CONFIGURABLE" HALF. The answer is remembered per project, which without this
+      // would mean remembered and unreachable: the dialog only ever opened on a build that owed
+      // an answer, so the one thing a settled project could not do was change its mind.
+      id: 'ws-asset-sources',
+      title: 'Where Apple gets assets',
+      section: 'Project',
+      keywords: ['asset', 'assets', 'sources', 'library', 'creator store', 'from scratch', 'toolbox'],
+      run: () => setSourceAsk({ held: null }),
+    },
+    {
       id: 'ws-automations',
       title: 'Saved instructions',
       section: 'Project',
@@ -687,12 +742,18 @@ export function WorkspacePage() {
   //
   //   `send` still returns false in that case, and that is deliberate rather than a compromise —
   //   false means "not sent", the composer keeps the words, and nothing is lost if the person
-  //   closes the dialog. A true here would clear the box for a message that never left. ]]
-  const [heldMessage, setHeldMessage] = useState<string | null>(null);
-
+  //   closes the dialog. A true here would clear the box for a message that never left.
+  //
+  //   `held` IS THE MESSAGE WAITING ON THE ANSWER, and null means nobody is waiting: the dialog
+  //   was opened deliberately to CHANGE a settled answer, from the command palette. The two are
+  //   the same dialog because they are the same question — the only difference is whether
+  //   answering it also releases a message. Before this, the open state WAS the held message, so
+  //   a project whose answer was already settled had no way to reach the dialog at all and the
+  //   choice was remembered but not changeable. The state itself is declared beside the policy,
+  //   above, because the command palette opens it from further up this component. ]]
   const askFirst = (text: string): boolean => {
     if (!owesAnswer(sourcePolicy)) return false;
-    setHeldMessage(text);
+    setSourceAsk({ held: text });
     return true;
   };
 
@@ -1053,19 +1114,23 @@ export function WorkspacePage() {
             {connNote}
           </p>
         )}
-        {heldMessage !== null && (
+        {sourceAsk !== null && (
           <AssetSourceDialog
             policy={sourcePolicy}
+            ceiling={sourceCeiling}
             onSave={saveSources}
             onDone={() => {
               // The answer is stored, so the held message goes now — on its own, with no second
               // click. Making somebody press send twice for a question they just answered is the
               // kind of small rudeness that reads as the product not listening.
-              const text = heldMessage;
-              setHeldMessage(null);
+              //
+              // Nothing held means the dialog was opened to change a settled answer: there is no
+              // message to release, and sending one would be the product putting words in.
+              const text = sourceAsk.held;
+              setSourceAsk(null);
               if (text) send(text);
             }}
-            onCancel={() => setHeldMessage(null)}
+            onCancel={() => setSourceAsk(null)}
           />
         )}
 

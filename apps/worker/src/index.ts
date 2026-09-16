@@ -1490,6 +1490,13 @@ app.get('/api/projects/:id/personalisation', async (c) => {
   return c.json({
     preferences: p.prefs,
     sources: p.sources,
+    // The most this project could ever be allowed, so the per-project asset-source dialog can grey
+    // out a box an organisation forbids instead of accepting a tick that narrows to nothing.
+    // `null` rather than omitted: "nobody above has an opinion" is an answer the browser acts on.
+    assetSourceCeiling: p.assetSourceCeiling ?? null,
+    // The most this project could ever be allowed, so the per-project asset-source dialog can grey
+    // out a box an organisation forbids instead of accepting a tick that narrows to nothing.
+    // `null` rather than omitted: "nobody above has an opinion" is an answer the browser acts on.
     profile: p.profile,
     projectInstructions: p.projectInstructions,
     teamInstructions: p.teamInstructions,

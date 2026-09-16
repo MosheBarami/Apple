@@ -560,6 +560,14 @@ export interface ScopeMemoryResponse {
 export interface PersonalisationResponse {
   preferences: Preferences;
   sources: Partial<Record<keyof Preferences, MemoryScope>>;
+  /**
+   * What the org and account layers allow between them — the most this project can ever be given.
+   *
+   * `asset_sources` narrows downwards, so a project row only ever REMOVES a source. The dialog
+   * needs this to avoid offering a box that would resolve to nothing. `null` means nobody above
+   * the project has an opinion, which leaves all three choices open.
+   */
+  assetSourceCeiling: AssetSourcePolicy | null;
   profile: PromptProfile;
   projectInstructions: string[];
   teamInstructions: string[];

@@ -802,6 +802,23 @@ export interface Personalisation {
   promptBlock: string;
   /** Rows the layers disagreed about, so the viewer can explain the disagreement. */
   resolved: ResolvedMemory;
+  /**
+   * What the layers ABOVE the project already allow — the most this project could ever be given.
+   *
+   * `asset_sources` NARROWS (see `mergePreferences`), so a project row can only ever remove a
+   * source org and user already permit. Without this, the per-project dialog offers three boxes,
+   * the person ticks one their organisation forbids, the intersection comes back empty, and the
+   * product asks the same question again forever — a control that cannot take effect and never
+   * says so. The dialog therefore needs to know the ceiling BEFORE it offers the choice.
+   *
+   * Computed by `mergePreferences` with the project layer left out rather than by a second pass
+   * over the precedence rule, because two implementations of "which layer wins" is exactly the
+   * divergence this whole function exists to prevent.
+   *
+   * `undefined` means NOBODY above the project has an opinion, which is not the same as "nothing
+   * is allowed": it is the ordinary case, and it leaves all three choices open.
+   */
+  assetSourceCeiling?: AssetSourcePolicy;
 }
 
 export const EMPTY_PERSONALISATION: Personalisation = {
@@ -842,11 +859,17 @@ export async function personalisationForProject(
   const userEntries = await listMemoryEntries(env, access, 'user', access.userId, { now });
   const projectEntries = await listMemoryEntries(env, access, 'project', target.projectId, { now });
 
+  const orgPrefs = preferencesFromEntries(orgEntries, vocab).prefs;
+  const userPrefs = preferencesFromEntries(userEntries, vocab).prefs;
   const merged = mergePreferences({
-    org: preferencesFromEntries(orgEntries, vocab).prefs,
-    user: preferencesFromEntries(userEntries, vocab).prefs,
+    org: orgPrefs,
+    user: userPrefs,
     project: preferencesFromEntries(projectEntries, vocab).prefs,
   });
+  // The same merge, one layer short: what org and user allow between them is the ceiling a project
+  // row can narrow but never raise. See `Personalisation.assetSourceCeiling` for why the dialog
+  // needs it, and why it is derived here rather than re-derived in the browser.
+  const assetSourceCeiling = mergePreferences({ org: orgPrefs, user: userPrefs }).prefs.asset_sources;
   // The profile is PERSONAL. It is read from the user layer only — a project that could write a
   // "user profile" row would be writing a description of the person into their own prompt.
   const profile = profileFromEntries(userEntries);
@@ -863,5 +886,6 @@ export async function personalisationForProject(
     teamInstructions,
     promptBlock,
     resolved: resolveMemoryLayers([...orgEntries, ...userEntries, ...projectEntries], now),
+    ...(assetSourceCeiling !== undefined ? { assetSourceCeiling } : {}),
   };
 }

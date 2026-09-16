@@ -372,10 +372,17 @@ const HOUR_NAMES: Record<HourCycle, string> = {
  * configurable". The dialog exists and gates the first build; until now the only way to change the
  * answer was to clear it and be asked again.
  *
- * IT READS AND WRITES THE SAME KEY THE DIALOG DOES, `asset_sources` on the user scope. Two surfaces
- * for one stored preference is fine; two representations of it is how they come to disagree, so
- * `summarise`, `cleanSelection` and SOURCE_EXPLANATIONS are the workspace's own — not a second copy
- * of the same words with different punctuation.
+ * IT READS AND WRITES THE SAME KEY THE DIALOG DOES, `asset_sources` — but at a DIFFERENT LAYER, and
+ * the difference is the feature rather than an inconsistency. The dialog answers for one project,
+ * because the right answer genuinely differs between a game built out of parts and a game assembled
+ * from the Creator Store. This panel answers for the ACCOUNT, and because `asset_sources` narrows
+ * downwards (apps/worker/src/preferences.ts) that answer is a ceiling: switching a source off here
+ * switches it off in every project, and no project can turn it back on. The dialog greys out what
+ * this panel forbids rather than accepting a tick that would be swallowed — see `availableChoices`.
+ *
+ * Two surfaces for one stored preference is fine; two representations of it is how they come to
+ * disagree, so `summarise`, `cleanSelection` and SOURCE_EXPLANATIONS are the workspace's own — not a
+ * second copy of the same words with different punctuation.
  */
 function AssetSourceSettings({
   userId,
