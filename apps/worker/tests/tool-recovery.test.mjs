@@ -56,6 +56,39 @@ const REAL = JSON.stringify(
   1,
 );
 
+//[[ THE WIRING, NOT JUST THE FUNCTION. Everything above tests `recoverToolCall` in isolation, and
+//   a perfect pure function that nothing calls at the right moment fixes nothing. The run loop has
+//   to consult it BEFORE it reads `res.text`, because the whole defect was the payload being
+//   assigned to `finalText` and broadcast — and it has to pass the run's OWN toolset, because
+//   `offered` is what stops text widening a permission decision router.ts already made.
+//
+//   Static, because this lives inside a Durable Object's step loop and the behavioural version
+//   needs the Cloudflare runtime. Labelled as static for the same reason the security suite labels
+//   its own: a source assertion is weaker than a behavioural one and should say so. ]]
+test('STATIC CHECK — the run loop consults recovery before it reads the model text', () => {
+  const session = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
+  assert.match(session, /import \{ recoverToolCall \} from '\.\.\/tool-recovery'/, 'the loop must import it');
+
+  const call = session.indexOf('recoverToolCall(res.text, allowed)');
+  assert.notEqual(call, -1, 'recovery must be called with the model text and the run OWN toolset');
+
+  // `res.text` becomes the visible reply here. Recovery has to happen first or the payload is
+  // already on its way to the browser.
+  const assign = session.indexOf('agent.finalText = res.text;');
+  assert.notEqual(assign, -1, 'the assignment this guards moved — re-locate it before trusting this check');
+  assert.ok(call < assign, 'recovery runs AFTER the text is published — the payload reaches the user anyway');
+
+  // And the broadcast, which is the half the user actually sees.
+  const delta = session.indexOf("type: 'delta', msgId: agent.msgId");
+  assert.notEqual(delta, -1, 'the delta broadcast moved — re-locate it');
+  assert.ok(call < delta, 'recovery runs after the text is broadcast');
+
+  // Only when the model made no call of its own: a real tool call must never be second-guessed.
+  const guard = session.slice(Math.max(0, call - 400), call);
+  assert.match(guard, /if \(!res\.toolCalls\.length && res\.text\)/,
+    'recovery must only run when the model made NO call — reinterpreting a real one is a different and worse bug');
+});
+
 test('THE BOUNDARY — every recoverable tool is inert in the real registry', () => {
   const src = readFileSync(join(WORKER, 'src', 'tools.ts'), 'utf8');
   assert.ok(RECOVERABLE.size >= 1, 'an empty allowlist would make every other test here vacuous');
