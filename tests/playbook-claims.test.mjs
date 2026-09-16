@@ -24,6 +24,10 @@ const read = (p) => readFileSync(join(ROOT, p), 'utf8');
 
 const SKILL = '.claude/skills/rbxai-working-rules/SKILL.md';
 const PLAYBOOK = 'docs/playbook';
+const AGENTS = 'AGENTS.md';
+
+/** Every document an agent is told to read before its first edit. */
+const guidance = () => [SKILL, AGENTS, ...readdirSync(join(ROOT, PLAYBOOK)).map((f) => `${PLAYBOOK}/${f}`)];
 
 test('the skill and the playbook are where everything says they are', () => {
   assert.ok(existsSync(join(ROOT, SKILL)), `${SKILL} is gone — sessions load it automatically and would silently get nothing`);
@@ -38,8 +42,14 @@ test('the skill has the frontmatter a session needs to load it', () => {
   assert.match(s, /\ndescription: .{40,}/, 'the description is what decides whether a session reads it');
 });
 
+test('AGENTS.md is at the root, where an agent will find it without being told', () => {
+  assert.ok(existsSync(join(ROOT, AGENTS)), 'AGENTS.md is gone — it is the map');
+  const s = read(AGENTS);
+  assert.match(s, /rbxai-working-rules/, 'AGENTS.md must point at the skill that carries the method');
+});
+
 test('every repository path the guidance names exists', () => {
-  const docs = [SKILL, ...readdirSync(join(ROOT, PLAYBOOK)).map((f) => `${PLAYBOOK}/${f}`)];
+  const docs = guidance();
   const missing = [];
   for (const doc of docs) {
     const body = read(doc);
@@ -78,8 +88,34 @@ test('THE CHECKABLE CLAIMS — each mechanism the prose points at is really in t
   }
 });
 
+test('THE MEASURED FACTS — a figure in the prose is the figure in the data', () => {
+  //[[ AGENTS.md states counts. A count in prose is a second copy of a fact, and the copy is the one
+  //   that rots — so each of these is compared against its source. A re-harvest or a new Durable
+  //   Object turns this red, which is the point: the document gets corrected instead of quietly
+  //   becoming wrong for the next agent who has no way to check it. ]]
+  const s = read(AGENTS);
+
+  const index = JSON.parse(read('packages/corpus/data/library/index.json'));
+  const total = index.total.toLocaleString('en-US');
+  assert.ok(s.includes(total), `AGENTS.md does not state the library total; index.json says ${total}`);
+  const usable = index.usableWithoutUploadKnown.toLocaleString('en-US');
+  assert.ok(s.includes(usable), `AGENTS.md does not state the usable-without-upload figure; index.json says ${usable}`);
+
+  const wrangler = read('apps/worker/wrangler.apple.jsonc');
+  const classes = [...new Set([...wrangler.matchAll(/"class_name":\s*"(\w+)"/g)].map((m) => m[1]))];
+  assert.ok(classes.length >= 5, 'no Durable Object classes parsed — this check would be vacuous');
+  for (const c of classes) {
+    assert.ok(s.includes(c), `${c} is a Durable Object in wrangler.apple.jsonc and AGENTS.md does not name it`);
+  }
+
+  // The bindings it tells you not to rename must be the bindings that exist.
+  for (const b of [...new Set([...wrangler.matchAll(/"binding":\s*"([A-Z_]+)"/g)].map((m) => m[1]))]) {
+    assert.ok(s.includes(`\`${b}\``), `binding ${b} exists and AGENTS.md does not name it`);
+  }
+});
+
 test('the decisions and failures the guidance cites by id are in their logs', () => {
-  const text = [SKILL, ...readdirSync(join(ROOT, PLAYBOOK)).map((f) => `${PLAYBOOK}/${f}`)].map(read).join('\n');
+  const text = guidance().map(read).join('\n');
   const decisions = read('docs/DECISIONS.md');
   const failures = read('docs/FAILURES.md');
   for (const [, id] of text.matchAll(/\b(ADR-\d{3})\b/g)) {
