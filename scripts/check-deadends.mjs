@@ -19,6 +19,7 @@
 //
 //   node scripts/check-deadends.mjs              report, exit 0
 //   node scripts/check-deadends.mjs --gate       fail when an entry has no disposition
+//   node scripts/check-deadends.mjs --list-unresolved   name every in-repo specifier the graph dropped
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
@@ -43,12 +44,22 @@ const DISPOSITIONS = join(ROOT, 'docs', 'backlog', 'DEADENDS.md');
 for (let i = 0; i < args.length; i += 1) {
   const a = args[i];
   if (a === '--gate') continue;
+  if (a === '--list-unresolved') continue;
   if (a === '--root') { i += 1; continue; }
   console.error(`check-deadends: unrecognised flag ${a}`);
   process.exit(2);
 }
 if (rootFlag !== -1 && !args[rootFlag + 1]) { console.error('check-deadends: --root needs a directory'); process.exit(2); }
 const GATE = args.includes('--gate');
+
+//[[ `--list-unresolved` exists because the unresolved COUNT is an assertion nobody can act on.
+//
+//   The count was 55 and the gate demanded fewer than 50, and every attempt to move it was a guess
+//   about which class of specifier the resolver was dropping — so the temptation was to raise the
+//   threshold, which measures nothing. Naming the specifier and the file it sits in turns the
+//   number back into a list of decisions: this one is a typo, that one is a resolver bug, the third
+//   is a bare module the resolver is right to skip. ]]
+const LIST_UNRESOLVED = args.includes('--list-unresolved');
 
 const git = (a) => {
   try { return execFileSync('git', a, { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).trim(); }
@@ -134,6 +145,25 @@ const tracked = git(['ls-files', '*.ts', '*.tsx', '*.mjs', '*.js']).split('\n').
 const importerSources = [...tracked, ...git(['ls-files', '*.astro']).split('\n').filter(Boolean)];
 const examined = tracked.filter((f) => !isExcepted(f) && !f.includes('node_modules/'));
 
+/**
+ * What a specifier may resolve TO — deliberately wider than `tracked`, which is what may BE a dead
+ * end.
+ *
+ * An Astro page importing `../layouts/Base.astro` is a real edge, but `Base.astro` cannot itself be
+ * a finding (the framework routes it, it has no importer by design). Collapsing the two sets is why
+ * thirty-one of the fifty-five unresolved specifiers were Astro-to-Astro: the candidate path was
+ * found on disk every time and then THROWN AWAY by a `tracked.includes` membership test that only
+ * knew about .ts/.tsx/.mjs/.js. Same for `../data/asset-wall.json`, which the landing page imports.
+ *
+ * The lesson is which half was broken. The obvious repair — add a `.astro` extension candidate —
+ * resolves nothing at all, because these specifiers already carry their extension. Measured both
+ * ways before either was kept.
+ *
+ * Keeping the two sets separate means the graph gets the edge and the denominator does not move:
+ * 318 files before and after.
+ */
+const RESOLVABLE = new Set([...importerSources, ...git(['ls-files', '*.json']).split('\n').filter(Boolean)]);
+
 console.log(`DENOMINATOR ${examined.length} files; EXCEPTIONS ${EXCEPTIONS.length}: ${EXCEPTIONS.map((e) => e.glob).join(', ')}`);
 
 /* ----------------------------------------------------------------- the graph --- */
@@ -151,6 +181,7 @@ function readText(rel) {
  * packages/shared and packages/design looks unimported. That is the checker's blind spot reported
  * as the repository's defect, which is the worst kind of finding: confident, specific and wrong.
  */
+const WORKSPACE_DIRS = new Map();
 const WORKSPACE = (() => {
   const map = new Map();
   for (const manifest of git(['ls-files', '*/package.json', '*/*/package.json']).split('\n').filter(Boolean)) {
@@ -158,6 +189,7 @@ const WORKSPACE = (() => {
       const pkg = JSON.parse(readFileSync(join(ROOT, manifest), 'utf8'));
       if (!pkg.name?.startsWith('@')) continue;
       const dir = dirname(manifest);
+      WORKSPACE_DIRS.set(pkg.name, dir);
       const entry = pkg.main ?? pkg.module ?? 'src/index.ts';
       map.set(pkg.name, `${dir}/${entry}`);
 
@@ -180,23 +212,85 @@ const WORKSPACE = (() => {
   return map;
 })();
 
-/** Resolve a specifier to a tracked path, trying the extensions this repo actually uses. */
-function resolveSpecifier(fromRel, spec) {
-  // A workspace import counts as an import. It is how one package reaches another, and treating it
-  // as unresolvable makes every shared module look dead.
-  if (WORKSPACE.has(spec)) return WORKSPACE.get(spec);
-  if (!spec.startsWith('.')) return null;
-  const base = resolve(dirname(join(ROOT, fromRel)), spec);
+/**
+ * Try one absolute base path against the extensions and index files this repo actually uses.
+ *
+ * `.d.ts` earns its place: a package's public surface can be a declaration file and nothing else.
+ * `packages/sdk/types/index.d.ts` is what `types/fixtures/{bad,ok}.ts` mean by `../index`, and
+ * without the candidate the compiler fixtures that PROVE the SDK's types looked like they imported
+ * nothing. Measured: adding it resolves exactly those two.
+ *
+ * A `${base}.astro` candidate was tried here and removed — it resolved NOTHING, because Astro
+ * specifiers always carry their extension, so `base` itself is the hit. What the Astro imports
+ * needed was to be accepted as targets at all (see RESOLVABLE), which is a different bug. A
+ * candidate nobody can show an edge for is weight, not safety.
+ */
+function tryCandidates(base) {
   const candidates = [
-    base, `${base}.ts`, `${base}.tsx`, `${base}.mjs`, `${base}.js`,
+    base, `${base}.ts`, `${base}.tsx`, `${base}.mjs`, `${base}.js`, `${base}.d.ts`,
     join(base, 'index.ts'), join(base, 'index.tsx'), join(base, 'index.mjs'),
   ];
   for (const c of candidates) {
     if (!existsSync(c)) continue;
     const rel = relative(ROOT, c);
-    if (tracked.includes(rel)) return rel;
+    if (RESOLVABLE.has(rel)) return rel;
   }
   return null;
+}
+
+/**
+ * The nearest ancestor directory that owns a package.json — the base an esbuild `stdin` module
+ * resolves against.
+ */
+const PACKAGE_ROOTS = git(['ls-files', 'package.json', '*/package.json', '*/*/package.json'])
+  .split('\n').filter(Boolean).map((m) => (m === 'package.json' ? '' : dirname(m)))
+  .sort((a, b) => b.length - a.length);
+
+/** Resolve a specifier to a repo path, trying the extensions this repo actually uses. */
+function resolveSpecifier(fromRel, spec, { virtualBase = false } = {}) {
+  // A workspace import counts as an import. It is how one package reaches another, and treating it
+  // as unresolvable makes every shared module look dead.
+  if (WORKSPACE.has(spec)) return WORKSPACE.get(spec);
+
+  //[[ A DEEP PATH INTO A WORKSPACE PACKAGE IS STILL A WORKSPACE IMPORT.
+  //
+  //   `apps/worker/src/luau-review.ts` imports seven modules as `@golem/evals/src/luau-*.mjs`.
+  //   packages/evals declares no `exports` map, so neither the exact-name branch above nor the
+  //   subpath branch saw them, and ten specifiers — the entire Luau intelligence cluster the
+  //   PRODUCT calls on every review — were dropped. The consequence is worse than a miscount: those
+  //   modules are excepted from the denominator today, but the moment that exception is narrowed
+  //   the checker would report the worker's own dependencies as reached by nothing.
+  //
+  //   Node resolves a deep path only when `exports` permits it; this checker is measuring what the
+  //   bundler follows, and the bundler follows it. ]]
+  if (spec.startsWith('@')) {
+    for (const [name, dir] of WORKSPACE_DIRS) {
+      if (!spec.startsWith(`${name}/`)) continue;
+      const hit = tryCandidates(resolve(ROOT, dir, spec.slice(name.length + 1)));
+      if (hit) return hit;
+    }
+    return null;
+  }
+
+  if (!spec.startsWith('.')) return null;
+  const direct = tryCandidates(resolve(dirname(join(ROOT, fromRel)), spec));
+  if (direct) return direct;
+
+  //[[ A VIRTUAL MODULE IS WRITTEN AGAINST ITS `resolveDir`, NOT AGAINST THE FILE THAT HOLDS IT.
+  //
+  //   `apps/worker/tests/retention.test.mjs` hands esbuild a stdin module that re-exports eight
+  //   constants from `./src/retention`, `./src/do/admin` and six more, with `resolveDir: WORKER`.
+  //   Read literally from the test's own directory those are `apps/worker/tests/src/...` and
+  //   resolve to nothing; read from the package root they are the eight worker modules the test
+  //   really bundles and really asserts on. Eight unresolved specifiers, every one of them a live
+  //   edge.
+  //
+  //   Narrow on purpose: only a file that DECLARES a resolveDir gets the second attempt, so a
+  //   genuinely wrong relative path in an ordinary module stays unresolved and stays visible. ]]
+  if (!virtualBase) return null;
+  const root = PACKAGE_ROOTS.find((d) => fromRel.startsWith(d ? `${d}/` : ''));
+  if (root === undefined || root === dirname(fromRel)) return null;
+  return tryCandidates(resolve(ROOT, root, spec));
 }
 
 // Every file that imports each file. Built over ALL tracked sources including tests, because a
@@ -229,19 +323,26 @@ const IMPORT_RE = /(?:^|\n)\s*(?:import|export)[^;]{0,4000}?from\s*['"]([^'"]+)[
 //
 // The edge count is what actually changes, so the edge count is what is published.
 let resolvedEdges = 0;
-let unresolvedSpecifiers = 0;
+const unresolved = [];
 
 for (const rel of importerSources) {
   const src = readText(rel);
+  // esbuild's own signal that some of this file's specifiers are written against another directory.
+  const virtualBase = /\bresolveDir\s*:/.test(src);
   for (const m of src.matchAll(IMPORT_RE)) {
     const spec = m[1] ?? m[2] ?? m[3];
-    const target = resolveSpecifier(rel, spec);
+    const target = resolveSpecifier(rel, spec, { virtualBase });
     if (target) { importers.get(target)?.add(rel); resolvedEdges += 1; }
-    else if (spec.startsWith('.') || spec.startsWith('@golem/')) unresolvedSpecifiers += 1;
+    else if (spec.startsWith('.') || spec.startsWith('@golem/')) unresolved.push({ rel, spec });
   }
 }
+const unresolvedSpecifiers = unresolved.length;
 
 console.log(`  GRAPH ${resolvedEdges} import edge(s) resolved, ${unresolvedSpecifiers} in-repo specifier(s) unresolved`);
+
+if (LIST_UNRESOLVED) {
+  for (const { rel, spec } of unresolved) console.log(`  UNRESOLVED ${rel}  ->  ${spec}`);
+}
 
 /* --------------------------------------------------------------- the findings --- */
 

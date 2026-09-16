@@ -49,17 +49,65 @@ test('a workspace import counts as an import, and the count is what proves it', 
   // the bug in place and with it removed, because that file has relative importers too. It was
   // green and measuring nothing: the exact shape of a test whose mechanism is inert.
   //
-  // What actually moves is the EDGE COUNT. Restoring the blind spot takes the graph from 546
-  // resolved edges and 31 unresolved to 496 and 81 — fifty `@golem/*` specifiers that stop being
-  // followed. So the graph's own completeness is published, and asserted here.
+  // What actually moves is the EDGE COUNT. Restoring the blind spot takes fifty `@golem/*`
+  // specifiers out of the graph. So the graph's own completeness is published, and asserted here.
   const r = run();
   const resolved = Number(/GRAPH (\d+) import edge\(s\) resolved/.exec(r.out)[1]);
   const unresolved = Number(/resolved, (\d+) in-repo specifier\(s\) unresolved/.exec(r.out)[1]);
 
-  assert.ok(resolved > 500, `only ${resolved} edges resolved — a resolver that drops a class of specifier reports fewer edges, not an error`);
-  // Some unresolved specifiers are legitimate: a bare package name, a type-only path. What must not
-  // happen is dozens of in-repo ones going unfollowed.
-  assert.ok(unresolved < 50, `${unresolved} in-repo specifiers unresolved — the graph has a hole`);
+  assert.ok(resolved > 1000, `only ${resolved} edges resolved — a resolver that drops a class of specifier reports fewer edges, not an error`);
+
+  //[[ THIS BOUND WAS `unresolved < 50` AGAINST A MEASURED 55, AND RAISING IT WAS THE WRONG FIX.
+  //
+  //   `node scripts/check-deadends.mjs --list-unresolved` names every dropped specifier, and the
+  //   fifty-five it named contained ZERO dead ends. Fifty-two pointed at files that exist and were
+  //   dropped by four separate holes in the resolver, each measured by removing the fix again:
+  //
+  //     32  Astro and JSON targets. `.astro` files were read as IMPORTERS but never accepted as
+  //         TARGETS, so `../layouts/Base.astro` — imported by fourteen pages — resolved to
+  //         nothing, as did the landing page's `../data/asset-wall.json`.
+  //     10  Deep paths into a workspace package. `@golem/evals/src/luau-*.mjs` is how the worker
+  //         reaches the whole Luau intelligence cluster on every review; packages/evals declares
+  //         no `exports` map, so neither the exact-name nor the subpath branch saw them.
+  //      8  `apps/worker/tests/retention.test.mjs`, whose esbuild `stdin` module is written
+  //         against `resolveDir: WORKER` rather than against the test's own directory.
+  //      2  `packages/sdk/types/fixtures/{bad,ok}.ts` meaning `packages/sdk/types/index.d.ts` by
+  //         `../index` — there was no `.d.ts` candidate.
+  //
+  //   THE RESIDUE IS THREE, and all three are legitimate because none of them is an import:
+  //
+  //     apps/worker/tests/sandbox-contract.test.mjs -> ./secret.js   and  -> ./other.luau
+  //       Hostile sample PROGRAMS, quoted inside that file's case table as the source a scan must
+  //       return `node_dynamic_import` and `luau_require` for. Resolving either would mean the
+  //       checker had found the escape the test exists to prove is blocked.
+  //
+  //       Quoting one of those case lines VERBATIM here made this comment a fourth unresolved
+  //       specifier — the scanner reads test files too, and a dynamic import inside a `//` line is
+  //       still a match for its regex. The residue was three, the note explaining the residue made
+  //       it four, and the ceiling below caught the note. Describe them; do not re-type them.
+  //     tests/release-check.test.mjs -> ../layouts/Base.astro
+  //       A line inside the `PAGE` template literal, the changelog fixture written into a temp
+  //       tree. It is Astro source the test GENERATES, not source this repository holds.
+  //
+  //   So the bound is a ratio plus an absolute ceiling rather than a slack constant: `< 50` would
+  //   now sit forty-seven above the truth and let any one of the four holes reopen in silence. ]]
+  const share = unresolved / (resolved + unresolved);
+  assert.ok(share < 0.005, `${(share * 100).toFixed(2)}% of in-repo specifiers unresolved — the graph has a hole; run with --list-unresolved`);
+  assert.ok(unresolved <= 4, `${unresolved} in-repo specifiers unresolved, and only three are by design — run with --list-unresolved to see which class reopened`);
+});
+
+test('--list-unresolved names the specifiers the count is counting', () => {
+  // The count alone is an assertion nobody can act on: 55 was a number, and every attempt to move
+  // it was a guess about which class the resolver was dropping. The flag turns it back into a list
+  // of decisions.
+  const r = run(['--list-unresolved']);
+  const unresolved = Number(/resolved, (\d+) in-repo specifier\(s\) unresolved/.exec(r.out)[1]);
+  const listed = r.out.split('\n').filter((l) => l.includes('UNRESOLVED '));
+  assert.equal(listed.length, unresolved, `the count says ${unresolved} and the list names ${listed.length}`);
+  // Each line carries the file AND the specifier — a specifier with no file is not actionable.
+  for (const l of listed) assert.match(l, /UNRESOLVED \S+ {2}-> {2}\S+/, l);
+  // And the flag is opt-in: the default report stays the size it was.
+  assert.doesNotMatch(run().out, /UNRESOLVED /);
 });
 
 test('an Astro page counts as an importer', () => {
