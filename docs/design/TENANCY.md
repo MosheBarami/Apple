@@ -1,7 +1,9 @@
 # Organizations and workspaces — the gap under 77 checklist items
 
-Found while assessing docs/backlog/CHECKLIST-V2.md. This is a note for whoever builds it,
-including agents; it is not a decision. The decision is the owner's and is stated at the bottom.
+Found while assessing docs/backlog/CHECKLIST-V2.md. This was a note for whoever builds it,
+including agents; the question it put has since been answered. **The answer is option 3 and it
+is recorded at the bottom of this file and as ADR-021 in docs/DECISIONS.md.** Read the decision
+before acting on anything above it.
 
 ## What the checklist assumes
 
@@ -58,9 +60,44 @@ repository that tenants cannot read each other.
 
 Doing it late is more expensive than doing it early, and it is already late.
 
-## THE DECISION, which is the owner's
+## THE DECISION, which is the owner's — TAKEN 2026-09-16: OPTION 3, ADR-021
 
-Three honest options, and the second is not a cop-out:
+The question was put to the owner on **2026-09-16** with the three options below. His answer,
+in his own words:
+
+> **לא צריך — משתמש יחיד**
+
+*Not needed — a single user.* That is **option 3**, recorded as **ADR-021** in
+docs/DECISIONS.md. There is no organization row, no workspace row and no seat. A person owns
+projects; a project is shared with named people through `project_members`
+(viewer / commenter / editor / admin / owner), isolated by RLS and proven by the 43 checks in
+`infra/supabase/tests/rls-isolation.mjs`. That is the whole tenancy model, and it is now the
+intended one rather than the interim one.
+
+**What the decision does NOT touch.** Nothing is deleted. `memory_org_members`,
+`orgMembership()` and the `/api/orgs/:id/members` routes keep their names and keep working —
+they are the MEMORY SCOPE described under THE NAMING COLLISION above, and they never were an
+organization. The same goes for `workspaceFor()` / `WorkspaceStore`: that is the agent's
+per-project file store, not a tenant.
+
+**What it did to the backlog.** 73 items in docs/backlog/CHECKLIST-V2.md are marked `⊘` not
+planned and leave the denominator, which is the fourth option this file names below as the one
+that must not happen. They are marked per item rather than by keyword: a blanket match on
+organization / workspace / seat catches 77, and four of those are this file's own naming
+collision appearing inside the checklist — section 42's Desktop / Laptop / Tablet "workspace
+layout" are SCREEN layouts and section 60's "enters a usable workspace" is the application's
+working area. Two more are kept on the same principle for their own reasons: section 21's
+"Organization memory scope" IS the memory scope this decision keeps, and section 10's "Project
+creation from an empty workspace" is the dashboard's empty state. Every `⊘` cites ADR-021 on its
+own line, and `packages/evals/src/success-metrics.test.mjs` fails on one that cites nothing.
+
+**If this is ever reopened,** reopen it here and in a new ADR — do not start building against
+the memory scope because it is org-shaped. The cost section above is still accurate, and it is
+later now than it was.
+
+---
+
+The three options as they were put, kept for the record — the second is not a cop-out:
 
 1. **Build the full hierarchy.** Organizations and workspaces as first-class rows, membership at
    each level, RLS rewritten, seats billed per organization. Unblocks all 77 items. It is the

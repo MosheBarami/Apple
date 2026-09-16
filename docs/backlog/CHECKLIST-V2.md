@@ -1,13 +1,20 @@
 # COMPLETE AI ROBLOX SAAS SHELL — 1,200-ITEM CHECKLIST
 
-**✓ 413 done · ~ 520 partly built · ☐ 267 not found — weighted 56.1%**
+**✓ 413 done · ~ 511 partly built · ☐ 203 not found · ⊘ 73 not planned — weighted 59.3%**
 
 *Counted from the marks in this file, not carried forward. The header before this one said
-✓390 ~535 ☐275 / 54.8%, and the one before that ✓356 ~543 ☐301 / 52.3%. A total typed at the
-top of a 3,440-line file is a number that will disagree with the lines below it, so it is no
-longer only typed: `packages/evals/src/success-metrics.test.mjs` recomputes this line AND every
-section heading from the marks and fails when either drifts by one. The figure and the marks
-can no longer part company in silence.*
+✓413 ~520 ☐267 / 56.1%, before that ✓390 ~535 ☐275 / 54.8%, and before that ✓356 ~543 ☐301 /
+52.3%. A total typed at the top of a 3,440-line file is a number that will disagree with the
+lines below it, so it is no longer only typed: `packages/evals/src/success-metrics.test.mjs`
+recomputes this line AND every section heading from the marks and fails when either drifts by
+one. The figure and the marks can no longer part company in silence.*
+
+*The jump from 56.1% to 59.3% is not work that got done. 73 items were marked `⊘` not planned
+under ADR-021 — the owner was asked on 2026-09-16 whether this product needs organizations and
+workspaces and answered «לא צריך — משתמש יחיד», not needed, single user — and a `⊘` leaves the
+denominator, so the figure is now over the 1,127 items somebody intends to build rather than
+over all 1,200. Nothing was built and nothing was deleted; the count of items actually built
+(✓ 413) has not moved. See `docs/design/TENANCY.md` for what was decided and what was not.*
 
 *Re-marked 2026-09-16 against the work that had landed since the 09-15 pass: 29 items moved up
 and 3 moved down. Every move names a test that goes red if the capability stops being true. The
@@ -26,134 +33,179 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
     worker with no UI, or in the UI with no route behind it. What is missing is stated.
 `☐` searched and not found. Where the search looked is stated, so a failure to observe
     is never printed as an observation.
+`⊘` not planned — the owner decided against it and the decision is written down. This is the
+    one mark that LEAVES THE DENOMINATOR: a `⊘` is not a `☐` scored zero, because a zero is a
+    promise to do it later and these are not promises. The price of the mark is an ADR: every
+    `⊘` line names the decision that made it one, and `success-metrics.test.mjs` refuses one
+    that names none, so the cheapest way to raise this figure is closed.
 
-## 09. WORKSPACE MANAGEMENT  —  0%   ✓0 ~0 ☐20
+## 09. WORKSPACE MANAGEMENT  —  0%   ✓0 ~0 ☐0 ⊘20
 
-- [☐] Workspace creation
+- [⊘] Workspace creation
+      ⊘ NOT PLANNED. ADR-021 declined the tenant-workspace level outright. The only `workspace` this codebase has is the agent's per-project FILE STORE (webtools.ts), which is not a tenant and needs no creation flow.
       · No workspace entity exists at any layer. `grep -rn "create table" infra/supabase/migrations` returns exactly ten tables (profiles, projects, messages, checkpoints, usage_events, feedback, studio_pairings, waitlist, project_members, membersh
       → This item is the foundation for the other nineteen. Create infra/supabase/migrations/0007_tenant_workspaces.sql adding `public.tenant_workspaces (id uuid pk, owner_id uuid -> profiles, name text check length 1..80, created_at, archived_at)` plus `public.projects.tenant_workspace_id uuid references t
-- [☐] Workspace naming and description
+- [⊘] Workspace naming and description
+      ⊘ NOT PLANNED. There is no tenant-workspace row to name after ADR-021; `projects.name` and `projects.description` remain the only container names the product stores.
       · There is no row to name. infra/supabase/migrations/0001_init.sql:13 gives `name` and `description` to public.projects, not to any parent; apps/web/src/lib/rename-project.ts and apps/web/src/components/editable-title.tsx rename a PROJECT. gr
       → Depends on the 0007 migration from `Workspace creation`. Add `name` and `description` columns there, a PATCH `/api/tenant-workspaces/:id` route in apps/worker/src/index.ts that validates length the way projects.name is validated (1..80) and refuses a whitespace-only name, and a settings form in apps
-- [☐] Workspace icon and color
+- [⊘] Workspace icon and color
+      ⊘ NOT PLANNED. Decoration for a container ADR-021 decided not to create.
       · No icon or colour column exists at any level: the full projects DDL at infra/supabase/migrations/0001_init.sql:13-25 is id/owner_id/name/description/place_name/place_id/memory_summary/memory_facts/created_at/updated_at/last_activity_at — no
       → Depends on the 0007 migration. Add `icon text` (a name from the app's own glyph set, not a URL — an arbitrary URL is an SSRF and a tracking pixel) and `color text check (color ~ '^#[0-9a-f]{6}$')` to tenant_workspaces, accept them on the PATCH route in apps/worker/src/index.ts, and render them on th
-- [☐] Workspace membership
+- [⊘] Workspace membership
+      ⊘ NOT PLANNED. ADR-021 keeps `project_members` as the only membership table; a second one at workspace level is precisely what was declined.
       · Membership exists, but it attaches a person to a PROJECT, never to a workspace: infra/supabase/migrations/0005_collaboration.sql:29 `public.project_members`, role ladder at apps/worker/src/collab.ts:55 `GRANTABLE_ROLES = ['viewer','commente
       → Depends on the 0007 migration. Add `public.tenant_workspace_members (workspace_id, user_id, role, granted_at, revoked_at, suspended_at)` with the same three refusals 0005_collaboration.sql documents: a membership row may never say `owner` (ownership is the owner_id column), policies must not recurse
-- [☐] Workspace administrator assignment
+- [⊘] Workspace administrator assignment
+      ⊘ NOT PLANNED. Administering a workspace requires a workspace. The role ladder ADR-021 kept is the project one in collab.ts, and it already has an admin rung.
       · The only administer-check in the tree above project level is apps/worker/src/memory-store.ts:980 `canAdministerOrg`, used by the /api/orgs/:id/members routes at apps/worker/src/index.ts:887-912 — that is the memory ORG scope, not a workspac
       → Depends on `Workspace membership`. Port the last-owner guard from apps/worker/src/memory-store.ts:988 `ownerCount` / :1023 (`last_owner` returned as 409, not 403, because it is the state of the tenant that refuses, not the caller's right) into apps/worker/src/tenant-workspace.ts, and add PUT `/api/t
-- [☐] Workspace visibility controls
+- [⊘] Workspace visibility controls
+      ⊘ NOT PLANNED. Visibility is decided per project after ADR-021; the container whose visibility this item would control is not planned.
       · There is no visibility flag on any container. grep for `visibility|is_public|public_project` across apps/worker/src, apps/web/src and infra/supabase/migrations returns only Roblox asset moderation fields (apps/worker/src/assets.ts:480 `visi
       → Depends on the 0007 migration. Add `visibility text not null default 'private' check (visibility in ('private','members','link'))` to tenant_workspaces, enforce it in the RLS select policy (not only in the worker route — RLS is the backstop), and add the control to apps/web/src/routes/settings.tsx. 
-- [☐] Workspace switcher
+- [⊘] Workspace switcher
+      ⊘ NOT PLANNED. Nothing to switch between after ADR-021 — the sidebar scopes to the person's own projects, and that is the whole hierarchy.
       · No switcher of any tenant scope exists in the UI. apps/web/src/app.tsx registers nine routes (:65-:128) — login, signup, forgot, reset, confirm, /projects/:id, /projects/:id/roadmap, /usage, /settings, /admin, /ui-lab — and none is scoped b
       → Depends on `Workspace creation`. Add a switcher to apps/web/src/components/layout.tsx's sidebar header that lists GET /api/tenant-workspaces, persists the choice through apps/web/src/lib/prefs.ts, and re-keys the dashboard's React Query keys (apps/web/src/routes/dashboard.tsx:363 `['projects']` / `[
-- [☐] Workspace project directory
+- [⊘] Workspace project directory
+      ⊘ NOT PLANNED. The project directory is account-scoped and stays that way after ADR-021; scoping it to a workspace needs the level that was declined.
       · The project directory is account-scoped, not workspace-scoped: apps/web/src/routes/dashboard.tsx:35 `supabase.from('projects').select(PROJECT_COLUMNS)` with active/archived scopes at :362-369 and cards at :541. The query filters on archived
       → Depends on `Workspace creation`. Change `fetchProjects` in apps/web/src/routes/dashboard.tsx:35 to add `.eq('tenant_workspace_id', activeWorkspaceId)` and add the matching partial index to the 0007 migration alongside the existing projects_owner_active_idx (infra/supabase/migrations/0004_project_arc
-- [☐] Workspace-level defaults
+- [⊘] Workspace-level defaults
+      ⊘ NOT PLANNED. ADR-021 leaves MEMORY_SCOPES at org/user/project — where `org` is the memory scope, not a tenant — and adds no workspace layer above them.
       · Defaults are layered across exactly three scopes and workspace is not one: apps/worker/src/memory-store.ts:43 `MEMORY_SCOPES = ['org','user','project']`, precedence at :358 `precedenceOf`, and the header at memory-store.ts:12 describes the 
       → Depends on `Workspace creation`. Either add 'workspace' to MEMORY_SCOPES in apps/worker/src/memory-store.ts:43 and give it a precedence rank in `precedenceOf` (:358 — note it throws on an unknown scope by design, so every switch over scopes must be updated together), or decide workspace defaults are
-- [☐] Workspace-specific integrations
+- [⊘] Workspace-specific integrations
+      ⊘ NOT PLANNED. Integrations stay bound to a user or a project after ADR-021; a shared tenant to own one Roblox Open Cloud key for several people is exactly the shape that was declined.
       · Every integration in the product is bound to a user or a project, never to a container. Roblox Open Cloud credentials: apps/worker/src/user-credentials.ts with routes /api/me/roblox-key at apps/worker/src/index.ts:2376/:2392/:2398 (per user
       → Depends on `Workspace membership`. Decide which integrations are tenant-owned rather than person-owned — the Roblox Open Cloud key in apps/worker/src/user-credentials.ts is the one that matters, since a studio would want one key the members share — and add `tenant_workspace_id` to its row plus an au
-- [☐] Workspace-specific AI policies
+- [⊘] Workspace-specific AI policies
+      ⊘ NOT PLANNED. Policy layering exists at the memory scopes ADR-021 keeps; a workspace layer above them is not planned.
       · The one policy layer above the individual is org-scoped and memory-shaped: apps/worker/src/memory-store.ts:999 describes an org's "instructions, its tool policy, its member list" as requiring owner or admin, and the write gate is canWriteSc
       → Depends on `Workspace-level defaults` (the scope must exist before a policy can hang off it). Then reuse the org policy machinery rather than duplicating it: apps/worker/src/memory-store.ts already stores per-scope instructions and a tool policy and resolves precedence — give the workspace scope the
-- [☐] Workspace usage allocation
+- [⊘] Workspace usage allocation
+      ⊘ NOT PLANNED. Quota is per user per UTC day after ADR-021; there is no container to hold an allowance or to allocate one from.
       · Usage accounting is per user, per UTC day, per plan: apps/worker/src/quota-math.ts (`dayKey`, ledger keyed by user + day), plan ceilings from apps/worker/src/pricing.ts:106 PLAN_LIMITS, the ledger table public.usage_events at infra/supabase
       → Depends on `Workspace creation`. Add `tenant_workspace_id` to public.usage_events in the 0007 migration (nullable, backfilled null for pre-workspace rows) and an allowance column on tenant_workspaces; then extend apps/worker/src/quota-math.ts so the admission check is `min(user allowance, workspace 
-- [☐] Workspace spending allocation
+- [⊘] Workspace spending allocation
+      ⊘ NOT PLANNED. Spending is capped per account and globally in BudgetDO after ADR-021; a per-workspace cap needs the workspace.
       · Spending is guarded per account and globally, never per container: apps/worker/src/billing.ts with /api/billing/checkout (apps/worker/src/index.ts:1869) and /api/billing/portal (:1916), the admin spend controls /api/admin/spend, /api/admin/
       → Depends on `Workspace usage allocation`. Add a per-workspace cap (dollars/day) to tenant_workspaces and enforce it in the same admission path apps/worker/tests/budget-admission.test.mjs covers, before the provider call — an after-the-fact ledger is not a cap. Decide explicitly whether a workspace ha
-- [☐] Workspace activity history
+- [⊘] Workspace activity history
+      ⊘ NOT PLANNED. The audit trails this product keeps are per project and per membership; ADR-021 leaves no workspace whose activity this history would be.
       · Two audit trails exist, both below workspace level: infra/supabase/migrations/0006_membership_lifecycle.sql:111 `public.membership_events` (append-only, per project, no update or delete policy — routes at apps/worker/src/index.ts:3723 `/api
       → Depends on `Workspace creation`. Add `tenant_workspace_id` to public.membership_events and to the attribution rows, then add GET `/api/tenant-workspaces/:id/events` in apps/worker/src/index.ts that unions membership changes, project creation/archival and run attribution for the workspace, members-on
-- [☐] Workspace resource transfer
+- [⊘] Workspace resource transfer
+      ⊘ NOT PLANNED. Moving a resource between workspaces needs two workspaces, and ADR-021 leaves exactly one scope above a project: its owner.
       · Nothing moves a resource between containers, because there are no containers. The only transfer function in the tree is apps/worker/src/automation-store.ts:297 `transferAutomation`, and it is DEAD: a repo-wide grep (all .ts/.tsx/.mjs/.js ou
       → Depends on `Workspace creation`. Add POST `/api/projects/:id/move` in apps/worker/src/index.ts that sets projects.tenant_workspace_id after proving the caller may administer BOTH the source and the destination, and that refuses when the destination's members would lose or gain access silently. While
-- [☐] Workspace duplication
+- [⊘] Workspace duplication
+      ⊘ NOT PLANNED. Duplicating a container ADR-021 decided not to create.
       · No duplication of any container exists. grep for `duplicate|clone project|fork` across apps/worker/src and apps/web/src returns only de-duplication logic (membership.ts:362, critic.ts:101, asset-library.ts:700) and the per-file duplicate in
       → Depends on `Workspace creation`. Add POST `/api/tenant-workspaces/:id/duplicate` in apps/worker/src/index.ts that copies the workspace row, its settings and (optionally) its projects' file stores, and decide explicitly what is NOT copied — members, API keys, Studio pairings and usage history must no
-- [☐] Workspace archival
+- [⊘] Workspace archival
+      ⊘ NOT PLANNED. Archival stays at the project after ADR-021 (0004_project_archive); there is no workspace to archive.
       · Archival is implemented for PROJECTS only: infra/supabase/migrations/0004_project_archive.sql:11 adds `archived_at timestamptz` to public.projects with partial indexes at :17 and :21, the UI is apps/web/src/routes/dashboard.tsx:379-409 (Arc
       → Depends on `Workspace creation`. Add `archived_at timestamptz` to tenant_workspaces in the 0007 migration, copying 0004's reasoning verbatim (a nullable timestamp, never an `is_archived` boolean beside it — two facts that can disagree), plus a partial index for the active-workspaces list. Archiving 
-- [☐] Workspace restoration
+- [⊘] Workspace restoration
+      ⊘ NOT PLANNED. The counterpart of the workspace archival above, declined with it by ADR-021.
       · Restore exists at two levels below this one and neither is a workspace: project restore (apps/web/src/routes/dashboard.tsx:379 setArchived with archive=false, toast + undo at :403, covered by apps/web/tests/archive.test.mjs) and file-store 
       → Depends on `Workspace archival`. Add the un-archive branch to PATCH `/api/tenant-workspaces/:id` and surface it where archived workspaces are listed in apps/web/src/components/layout.tsx's switcher. Follow the pattern in apps/web/src/routes/dashboard.tsx:399 — report a rejected request as failed rat
-- [☐] Workspace export
+- [⊘] Workspace export
+      ⊘ NOT PLANNED. Export stays per account and per project after ADR-021; a workspace export would export a level that does not exist.
       · Two exports exist, neither workspace-scoped. (1) Per-project transcript export: apps/worker/src/export.ts, route /api/projects/:id/export at apps/worker/src/index.ts:1171, menu item in apps/web/src/routes/dashboard.tsx:44, test apps/worker/
       → Depends on `Workspace creation`. Add GET `/api/tenant-workspaces/:id/export` in apps/worker/src/index.ts building on the per-table column spec in apps/worker/src/user-export.ts (it is a spec precisely so a new column cannot leak silently) scoped to the workspace's projects, admin-only. Separately wo
-- [☐] Workspace deletion impact preview
+- [⊘] Workspace deletion impact preview
+      ⊘ NOT PLANNED. Deleting a workspace can have no impact to preview when ADR-021 leaves no workspace to delete.
       · An impact statement exists for project deletion only, and it is prose rather than a computed preview: apps/web/src/routes/dashboard.tsx:337 says deletion takes "chat history, checkpoints and the Studio pairing" and that the Roblox place is 
       → Depends on `Workspace creation`. Add GET `/api/tenant-workspaces/:id/deletion-preview` in apps/worker/src/index.ts returning real counts (projects, members who lose access, checkpoints, stored file bytes, automations that will stop firing) and render them in a ConfirmDialog in apps/web/src/component
 
-## 06. ORGANIZATION MANAGEMENT  —  15%   ✓0 ~6 ☐14
+## 06. ORGANIZATION MANAGEMENT  —  0%   ✓0 ~0 ☐0 ⊘20
 
-- [~] Organization creation
+- [⊘] Organization creation
+      ⊘ NOT PLANNED. ADR-021 decided there is no organization row, so there is nothing for a creation flow to insert; `createOrg` in memory-store.ts makes a MEMORY SCOPE, not a tenant, and that keeps working.
       · Built in the worker and tested, but unreachable from any UI. Store: apps/worker/src/memory-store.ts:930 `createOrg` (inserts into `memory_orgs`, DDL at memory-store.ts:548, and writes the creator as owner via `setOrgMember`). Route: apps/wo
       → apps/web/src/lib/api.ts has no org helpers; add `fetchOrgs()` -> GET /api/orgs and `createOrg(name)` -> POST /api/orgs {name} (400 body is {error:'bad_name'|'bad_owner'}). Then add an 'Organisations' section to apps/web/src/routes/settings.tsx that lists the orgs from fetchOrgs() and has a name fiel
-- [☐] Organization profile editing
+- [⊘] Organization profile editing
+      ⊘ NOT PLANNED. A tenant profile needs a tenant record to hold it, and ADR-021 left the person's own profile as the only identity the product stores.
       · No code path ever updates an organisation row. `grep -n "memory_orgs" apps/worker/src/*.ts` returns exactly three hits: the DDL (memory-store.ts:548), one INSERT inside createOrg (memory-store.ts:941) and one SELECT in listOrgsFor (memory-s
       → Add `renameOrg(env, access, orgId, name)` to apps/worker/src/memory-store.ts next to createOrg (line 930): require `canAdministerOrg(access, orgId)`, run the name through the existing `normaliseOrgName` (memory-store.ts:914), reject 'bad_name' on empty, `update memory_orgs set name = ? where id = ?`
-- [☐] Organization logo management
+- [⊘] Organization logo management
+      ⊘ NOT PLANNED. A logo is an attribute of the organization row ADR-021 declined; nothing in the product renders a tenant brand.
       · Searched apps/worker/src, apps/web/src, apps/site/src, packages/shared, packages/sdk and infra for 'logo' — every hit is the image generator refusing to draw brand marks (apps/worker/src/imagegen.ts:195 MARK_REQUEST, imagegen.ts:241, apps/w
       → Add a `logo_key text` column to the `memory_orgs` DDL in apps/worker/src/memory-store.ts:548 (create-if-not-exists plus an idempotent add-column, matching how other stores evolve), an `app.put('/api/orgs/:id/logo')` in apps/worker/src/index.ts that requires `canAdministerOrg`, size- and type-caps th
-- [☐] Organization identifier management
+- [⊘] Organization identifier management
+      ⊘ NOT PLANNED. Slugs and handles address a tenant; after ADR-021 the only addressable scopes are the user and the project, both of which already have ids.
       · An org id is an opaque UUID minted server-side and never chosen or changed by a user: apps/worker/src/memory-store.ts:944 `const id = opts.id ?? crypto.randomUUID()`, and the only caller (apps/worker/src/index.ts:881) passes no `opts`, so t
       → Add a `slug text unique` column to `memory_orgs` in apps/worker/src/memory-store.ts:548 and a `normaliseOrgSlug()` beside `normaliseOrgName` (memory-store.ts:914) enforcing /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/. Have `createOrg` (memory-store.ts:930) derive a slug from the name and retry on unique-con
-- [~] Organization switcher
+- [⊘] Organization switcher
+      ⊘ NOT PLANNED. ADR-021 leaves exactly one tenant — the signed-in person — so there is nothing to switch between.
       · The server half is built and even documented as being for a switcher; the client half is dead code. apps/worker/src/index.ts:846 `app.get('/api/memory/scopes')` returns `orgs: [{scopeId, name, role, canWrite}]` with the comment 'what the me
       → In apps/web/src/components/ws/instructions-panel.tsx call the already-exported `fetchMemoryScopes()` (apps/web/src/lib/api.ts:330) in a useQuery, replace the hardcoded `['user','project']` array at line 226 with user + project + one button per returned org, and change the scopeId derivation at line 
-- [~] Organization ownership display
+- [⊘] Organization ownership display
+      ⊘ NOT PLANNED. Ownership above the project does not exist after ADR-021: `projects.owner_id` is the whole of it, and the dashboard already shows it.
       · The data is served and tested; no screen renders it. GET /api/orgs (apps/worker/src/index.ts:872) returns each org with the caller's role, and GET /api/orgs/:id/members (index.ts:887) returns `{members:[{userId, role, addedAt}], canAdminist
       → Create apps/web/src/routes/organization.tsx (registered in the router beside settings) that takes an org id, calls a new `fetchOrgMembers(orgId)` helper in apps/web/src/lib/api.ts hitting GET /api/orgs/:id/members, and renders the roster with each member's role, marking role==='owner' with an explic
-- [~] Organization ownership transfer
+- [⊘] Organization ownership transfer
+      ⊘ NOT PLANNED. Transferring a tenant presupposes the tenant; ADR-021 keeps ownership at the project, where transfer is a separate item that is still planned.
       · Transfer is achievable as two calls but exists as no single operation and has no UI. apps/worker/src/memory-store.ts:1004 `updateOrgMember` lets an owner set role 'owner' on someone else (an admin is refused: memory-store.ts:1019 'Only an o
       → Add `app.post('/api/orgs/:id/transfer-ownership')` to apps/worker/src/index.ts taking {userId} and calling a new `transferOrgOwnership` in apps/worker/src/memory-store.ts that, in one D1 batch, promotes the target to 'owner' and demotes the caller to 'admin' — requiring the caller's own role to be '
-- [~] Sole-owner departure protection
+- [⊘] Sole-owner departure protection
+      ⊘ NOT PLANNED. The `last_owner` guard the evidence below points at belongs to the memory scope in memory-store.ts, which ADR-021 explicitly keeps — what is not planned is the ORGANIZATION whose sole owner could depart.
       · Built, wired and named by a test. The guard is in both mutating store functions: apps/worker/src/memory-store.ts:1023 refuses a demotion when `ownerCount(env, orgId) <= 1` with reason 'last_owner', and apps/worker/src/memory-store.ts:1044 (
       · REFUTED: REFUTED on three independent grounds; the guard code is real and correct, but the capability is not done. (1) THE CHECKLIST ITSELF SAYS NOT PLANNED, BY THE OWNER'S OWN DECISION. docs/backlog/CHECKLIST-V2.md:127 heads the
-- [☐] Organization billing contact
+- [⊘] Organization billing contact
+      ⊘ NOT PLANNED. Billing is per person after ADR-021 — one Stripe customer per profile — so there is no tenant for which to nominate a contact.
       · Billing has no organisation dimension at all. Stripe subscriptions and credit purchases are keyed to a single user through subscription metadata — apps/worker/src/billing.ts:289 `const userId = metadata['userId']`, with billing.ts:299 rejec
       → Only worth building after organisations own billing. Add a `billing_user_id`/`billing_email` column to `memory_orgs` in apps/worker/src/memory-store.ts:548, an `app.put('/api/orgs/:id/billing-contact')` in apps/worker/src/index.ts gated on `canAdministerOrg`, and change apps/worker/src/billing.ts:28
-- [☐] Organization security settings
+- [⊘] Organization security settings
+      ⊘ NOT PLANNED. ADR-021 removed the level at which an administrator would impose security policy on other members; an account governs only itself.
       · Searched apps/worker/src, apps/web/src, apps/site/src, packages/shared, packages/sdk and infra for 'sso', 'saml', 'scim', '2fa', 'mfa' and 'session policy' — zero hits. The only org-level policy that exists is the memory preference floor (a
       → Requires an auth-level decision first (auth is Supabase JWT — apps/worker/src/auth.ts). If built: store the settings as org-scoped memory entries under a reserved key prefix so they inherit the existing `canWriteScope` owner/admin gate (apps/worker/src/memory-store.ts), add an `app.put('/api/orgs/:i
-- [☐] Organization default member role
+- [⊘] Organization default member role
+      ⊘ NOT PLANNED. A default role for people joining a tenant needs the tenant. ADR-021 keeps roles on the PROJECT, chosen per invitation.
       · Every membership write takes an explicit role and there is no configured default anywhere. `createOrg` hardcodes the creator as 'owner' (apps/worker/src/memory-store.ts:946 `setOrgMember(env, id, ownerId, 'owner', now)`), and `updateOrgMemb
       → Add a `default_role text` column to `memory_orgs` in apps/worker/src/memory-store.ts:548 defaulting to 'member', validated with the existing `isOrgRole` (memory-store.ts:69) and never allowed to be 'owner'. Expose it on `app.patch('/api/orgs/:id')` (see Organization profile editing) and read it in w
-- [☐] Organization domain verification
+- [⊘] Organization domain verification
+      ⊘ NOT PLANNED. Verifying a domain only matters if a verified domain admits people to a tenant, and ADR-021 leaves no tenant to admit them to.
       · Searched apps/worker/src, apps/web/src, apps/site/src, packages/shared, packages/sdk and infra with `grep -rniE 'domain_verif|verifyDomain|domain verification|verified_domain'` — zero hits. The only domain-shaped code in the worker is the o
       → Create apps/worker/src/org-domains.ts with a `memory_org_domains(org_id, domain, token, verified_at)` table, a `claimDomain` that mints a TXT token and a `checkDomain` that resolves `_apple-verify.<domain>` via DNS-over-HTTPS (the only DNS available in a Worker) and stamps verified_at on a match. Wi
-- [☐] Domain-based membership policies
+- [⊘] Domain-based membership policies
+      ⊘ NOT PLANNED. Downstream of domain verification and blocked by the same absence: after ADR-021 people are admitted to a PROJECT by explicit invitation, never to an organization by email suffix.
       · Depends on domain verification, which is itself absent (see above — no 'domain_verif|verifyDomain' hits anywhere in apps or infra). Membership into an org is only ever written by an explicit admin action: `setOrgMember` (apps/worker/src/mem
       → After domain verification exists, add a `join_policy` column ('closed' | 'request' | 'auto') to `memory_orgs` in apps/worker/src/memory-store.ts:548 and a `matchOrgForEmailDomain(env, email)` in the new apps/worker/src/org-domains.ts that only considers rows with a non-null verified_at. Call it at f
-- [☐] Organization workspace inventory
+- [⊘] Organization workspace inventory
+      ⊘ NOT PLANNED. Both halves of this item were declined by ADR-021 — the organization that would hold the inventory and the workspaces that would fill it.
       · There is no tenant workspace level to take an inventory of. The Postgres schema is flat — `grep -rniE 'organi[sz]ation|org_id|tenant' infra/supabase` finds only comments about per-user tenancy (infra/supabase/migrations/0001_init.sql:1 'Ten
       → Blocked on the tenancy decision in docs/design/TENANCY.md, which currently records option 3 (no workspaces). If it is reversed: add the workspace level as a Postgres table with RLS in a new infra/supabase/migrations file, re-derive the 43 checks in infra/supabase/tests/rls-isolation.mjs against the 
-- [☐] Organization usage overview
+- [⊘] Organization usage overview
+      ⊘ NOT PLANNED. Usage rolls up per user and per project after ADR-021; there is no tenant boundary to sum across.
       · Usage is per-user and addressed only by the caller's own token: apps/worker/src/index.ts:2009 `app.get('/api/me/usage')` fetches `QUOTA_DO.idFromName(user.userId)` — the Durable Object is keyed by user id, so there is no aggregate to read f
       → Add `app.get('/api/orgs/:id/usage')` to apps/worker/src/index.ts, gated on `canAdministerOrg(proven.access, orgId)` via the existing `memoryScopeAccess` helper (index.ts:819). It should read the member list with `orgMembersOf` (apps/worker/src/memory-store.ts:969) and fan out to each member's QUOTA_
-- [☐] Organization integration inventory
+- [⊘] Organization integration inventory
+      ⊘ NOT PLANNED. Integrations are owned by a person or a project after ADR-021, so a tenant-level inventory would list a set that cannot exist.
       · Every integration in the product is owned by one user and none is enumerable by an organisation. Studio pairings, the Roblox Open Cloud key (apps/worker/src/index.ts:2392 `app.get('/api/me/roblox-key')`) and API keys (apps/worker/src/api-ke
       → Add `app.get('/api/orgs/:id/integrations')` to apps/worker/src/index.ts behind `canAdministerOrg`, listing per member (from `orgMembersOf`, apps/worker/src/memory-store.ts:969) which integrations are connected — Studio pairing present, Roblox key present, count of API keys — and deliberately returni
-- [☐] Organization lifecycle status
+- [⊘] Organization lifecycle status
+      ⊘ NOT PLANNED. A tenant lifecycle — active, suspended, closed — is a state of the organization row ADR-021 declined.
       · An organisation has no state to be in. The row is `memory_orgs(id text primary key, name text not null, created_at text not null, created_by text not null)` — apps/worker/src/memory-store.ts:548 — with no status, suspended_at, trial_ends_at
       → Add a `status text not null default 'active'` column to the `memory_orgs` DDL at apps/worker/src/memory-store.ts:548 with the allowed set 'active' | 'suspended' | 'deleting', return it from `listOrgsFor` (memory-store.ts:957) and from GET /api/orgs (apps/worker/src/index.ts:872), and make `memorySco
-- [~] Organization export initiation
+- [⊘] Organization export initiation
+      ⊘ NOT PLANNED. Export stays per account and per project after ADR-021; there is no organization whose data forms a unit to initiate an export of.
       · A route does export org-scoped data, but only one narrow slice of it and no UI reaches it. apps/worker/src/index.ts:1077 `app.get('/api/memory/:scope/:scopeId/export')` accepts scope='org' (proof via `memoryScopeAccess`, index.ts:819, which
       → Two separable pieces. (1) Reachability: once the scope switcher in apps/web/src/components/ws/instructions-panel.tsx:226 offers orgs, the existing Export button at instructions-panel.tsx:451 covers the memory slice with no worker change. (2) A real export: add `app.post('/api/orgs/:id/export')` in a
-- [☐] Organization deletion preview
+- [⊘] Organization deletion preview
+      ⊘ NOT PLANNED. There is no organization to delete after ADR-021. The deletion previews that matter here are account deletion and project deletion, and both are listed elsewhere in this checklist.
       · An organisation cannot be deleted at all, so there is nothing to preview. The router has no DELETE on /api/orgs/:id — the only DELETE in the org block is DELETE /api/orgs/:id/members/:userId (apps/worker/src/index.ts:912) — and apps/worker/
       → Add `app.get('/api/orgs/:id/deletion-preview')` to apps/worker/src/index.ts behind `canAdministerOrg`, returning counts of what deletion would destroy — members from `orgMembersOf` (apps/worker/src/memory-store.ts:969) and org-scoped memory rows from `listMemoryEntries` at org scope — computed from 
-- [☐] Organization deletion recovery window
+- [⊘] Organization deletion recovery window
+      ⊘ NOT PLANNED. The recovery window belongs to the organization deletion above, which ADR-021 declined; account and project deletion carry their own windows.
       · There is no org deletion (no DELETE /api/orgs/:id in apps/worker/src/index.ts, no `deleteOrg` in apps/worker/src/memory-store.ts), therefore no grace period, no scheduled purge and no restore. Searched apps/worker/src, apps/web/src and infr
       → Build it together with deletion, and soft first: add `deleting_at text` to `memory_orgs` (apps/worker/src/memory-store.ts:548), have `app.delete('/api/orgs/:id')` (new, owner-only) stamp it rather than remove rows, make `memoryScopeAccess` (apps/worker/src/index.ts:819) refuse writes to an org insid
 
-## 02. REGISTRATION AND SIGN-IN  —  48%   ✓8 ~3 ☐9
+## 02. REGISTRATION AND SIGN-IN  —  50%   ✓8 ~3 ☐8 ⊘1
 
 - [✓] Email and password registration
       · apps/web/src/routes/auth-pages.tsx:235 SignupPage, calling supabase.auth.signUp at :255 with emailRedirectTo('/confirm'). Route registered at apps/web/src/app.tsx:76 behind GuestGuard and served by the SPA fallback at apps/worker/src/static
@@ -171,7 +223,8 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [☐] Enterprise single sign-on
       · Grepped for saml, sso, ssoProvider, 'single sign' across apps, packages and infra — the only hits are docs/research/supabase-auth-worker.md:21, which records that SAML/SSO is not included on the project's current Supabase plan, and the chec
       → Blocked on plan and on product scope rather than on code: Supabase SSO requires a paid tier (docs/research/supabase-auth-worker.md:21) and docs/design/TENANCY.md records that organizations are not being built, so there is no tenant for an SSO connection to attach to. If it is ever taken on, it needs
-- [☐] Organization-specific sign-in policies
+- [⊘] Organization-specific sign-in policies
+      ⊘ NOT PLANNED. Sign-in is governed per account after ADR-021; there is no organization above the account to impose an SSO domain rule or a password policy on its members.
       · Deliberately descoped, and the decision is written down: docs/design/TENANCY.md records that the owner chose a single-user product with per-project sharing on 2026-09-15, and that `grep -rn "create table.*organizations" infra/supabase/migra
       → No change. This is descoped by an owner decision recorded in docs/design/TENANCY.md; anyone picking it up should reopen that decision first rather than build against a table that does not exist.
 - [☐] Invitation-based registration
@@ -208,7 +261,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [✓] Sign-out from the current session
       · The mark's cited file (apps/plugin/src/init.server.luau) is the wrong one; the real implementation is apps/web/src/lib/auth.tsx:91, signOut() calling supabase.auth.signOut({ scope: 'local' }) with a comment explaining why local rather than 
 
-## 03. ACCOUNT SECURITY AND RECOVERY  —  50%   ✓9 ~2 ☐9
+## 03. ACCOUNT SECURITY AND RECOVERY  —  53%   ✓9 ~2 ☐8 ⊘1
 
 - [✓] Multifactor authentication enrollment
       · RE-AUDITED 2026-09-15 AND NOW BUILT — the grep above is stale. apps/web/src/lib/mfa.ts is the decision layer (verifiedTotpFactors reads `all` and filters to status==="verified", so an abandoned enrolment is not counted as protection; factorsState refuses to say "off" for anything but a well-formed empty list). apps/web/src/routes/settings.tsx:720-873 is the panel — enroll({factorType:"totp"}), QR, challengeAndVerify, unenroll behind guard("remove-two-step") — and settings-search.ts:39 registers the "two-step" row. Proof: node --test apps/web/tests/mfa.test.mjs = 23 pass / 0 fail.
@@ -257,13 +310,14 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       → SHIPPED: POST /api/recovery-request (in AUTH_EXEMPT — the premise is that there is no token), GET/POST /api/admin/recovery-requests[/:id], apps/web/src/lib/account-recovery.ts (recoveryOutcome reaches "received" from exactly one shape, so a proxy error page and a dead connection cannot render as thanks), and the /recovery page, linked from the sign-in form, the check-your-email card and the two-step prompt. Proof: node --test apps/worker/tests/recovery-requests.test.mjs = 20 pass, apps/worker/tests/recovery-routes-live.test.mjs = 12 pass, apps/web/tests/account-recovery.test.mjs = 11 pass, 0 fail. STILL MISSING: nothing notifies the operator that a row arrived — the queue has to be opened to be seen.
 - [✓] Security event history
       · RE-AUDITED 2026-09-15 AND NOW BUILT — the consumer exists. apps/web/src/lib/security-history.ts holds the two decisions a page gets wrong quietly: historyState refuses to say "nothing has happened on your account" for anything but a well-formed empty list (a failed read is a different sentence), and unreadSecurityIds marks read by ID rather than passing "all", so opening the security panel cannot clear unseen run failures from a panel that is not about runs. apps/web/src/routes/settings.tsx:925 SecurityHistory renders it at :1449 in the Security section, which is where notifications.ts:117 already pointed. Proof: node --test apps/web/tests/security-history.test.mjs = 16 pass / 0 fail.
-- [☐] Organization-enforced security requirements
+- [⊘] Organization-enforced security requirements
+      ⊘ NOT PLANNED. ADR-021 leaves nobody above the account to enforce MFA or a session lifetime on it. The account's own security settings are separate items in this section and are unaffected.
       · Nothing exists and nothing is intended to. There is no organization row anywhere in infra/supabase/migrations/0001-0006, and the only 'org' concept in the worker is apps/worker/src/memory-store.ts orgMembership used for preference layering 
       → Not planned — do not build. If the tenancy decision in docs/design/TENANCY.md is ever reversed, this item needs organization rows with an enforced policy document (minimum password length, MFA required, session lifetime) checked at sign-in and at each sensitive action, which presumes every other ite [2026-09-15: left alone as instructed — this is the one item in the section whose → line says do not build it.]
 - [✓] Protection against account enumeration
       · The strongest-built item in the section. apps/web/src/lib/auth-flows.ts:55 CHECK_EMAIL_LINE is one conditional sentence used for registered and unregistered addresses alike; :73 revealsAccountExistence filters provider phrasings on the way  [Re-verified 2026-09-15: CHECK_EMAIL_LINE at auth-flows.ts:52, revealsAccountExistence at :77, and signupOutcome still reads `session` and never `identities`. The new /recovery route was built to the same rule and its route test asserts it on the wire.]
 
-## 07. MEMBERSHIP AND INVITATIONS  —  38%   ✓0 ~15 ☐5
+## 07. MEMBERSHIP AND INVITATIONS  —  42%   ✓0 ~15 ☐3 ⊘2
 
 - [~] Member directory
       · Worker half is complete and proven: memberDirectory at apps/worker/src/supa.ts:182 feeds GET /api/shared/:id (apps/worker/src/index.ts:3622) and mention resolution; buildRoster at apps/worker/src/membership.ts:140 backs GET /api/shared/:id/
@@ -280,7 +334,8 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [~] Invitation role selection
       · The role is required and validated on every path that confers access: POST /api/shared/:id/members rejects anything outside GRANTABLE_ROLES at apps/worker/src/index.ts:3861; planBulkInvite does the same at apps/worker/src/membership.ts:346;
       → Covered by mounting MembersPanel (see 'Member directory'). No worker change needed.
-- [☐] Invitation workspace assignment
+- [⊘] Invitation workspace assignment
+      ⊘ NOT PLANNED. Invitations attach a person to a PROJECT — the sharing model ADR-021 kept — so there is no workspace for an invitation to assign them to.
       · There is no workspace level in the data model to assign to. docs/design/TENANCY.md records the owner's decision on 2026-09-15 to stay single-user with per-project sharing, and grep 'create table.*workspace' over infra/supabase/migrations (0
       → Not planned. Building it means adding a tenant-workspace table between organizations and projects, a scope column on project_members, and rewriting the 43 RLS checks in infra/supabase/tests/rls-isolation.mjs. If the owner reverses the decision, start from docs/design/TENANCY.md option 1 and pick a n
 - [~] Invitation expiration
@@ -322,11 +377,12 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [~] Temporary membership expiration
       · A time-boxed membership works at every layer. expires_at is on the row (infra/supabase/migrations/0005_collaboration.sql:39) and excluded by RLS (infra/supabase/migrations/0006_membership_lifecycle.sql:80, :103); classifyGrant produces the 
       → (1) Mount MembersPanel (see 'Member directory'). (2) For the warning: add an 'access_expiring' kind to NOTIFICATION_KINDS in apps/worker/src/notifications.ts:47 and a scheduled handler in apps/worker/src/index.ts that selects project_members rows whose expires_at falls inside the next 48 hours and w
-- [☐] Seat availability visibility
+- [⊘] Seat availability visibility
+      ⊘ NOT PLANNED. ADR-021 names the seat explicitly as something this product does not have: collaborators are invited per project and the plan is billed to one owner, so there is no seat pool whose remaining count could be shown.
       · There is no seat concept anywhere in the product. I grepped 'seat' case-insensitively across apps/worker/src, apps/web/src, apps/site/src and packages/shared: every hit is Roblox furniture or level-design vocabulary (apps/worker/src/worldbu
       → Not planned. If the owner reverses it, the minimum honest version without organizations is a per-project collaborator cap tied to the owner's plan: add a limit to the plan definitions in apps/worker/src/pricing.ts, enforce it in POST /api/shared/:id/members (apps/worker/src/index.ts:3852) and in pla
 
-## 04. USER PROFILE AND PERSONAL SETTINGS  —  68%   ✓11 ~5 ☐4
+## 04. USER PROFILE AND PERSONAL SETTINGS  —  75%   ✓11 ~5 ☐2 ⊘2
 
 - [✓] Display name management
       · Control: apps/web/src/routes/settings.tsx:367 (<Row id="display-name"> form, maxLength 60) writing profiles.display_name at apps/web/src/routes/settings.tsx:262. Read back in the app shell at apps/web/src/components/layout.tsx:346 and serve
@@ -352,10 +408,12 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [~] Notification channel preferences
       · Worker half is real and tested: channels and the refusal vocabulary at apps/worker/src/notifications.ts:135 (NOTIFICATION_CHANNELS = ['inapp']) and :142 (UNBUILT_CHANNELS), per-event and delivery preferences stored as scoped preference rows
       → Add a 'Notifications' Section to apps/web/src/routes/settings.tsx with rows id="notify-events" (a switch per NOTIFICATION_KIND, disabled with an explanation for the two kinds where spec.optional is false) and id="notify-delivery" (timezone, quiet-hours start/end, digest mode + hour); register both i
-- [☐] Default organization selection
+- [⊘] Default organization selection
+      ⊘ NOT PLANNED. A default organization presupposes more than one, and ADR-021 leaves none — settings has no tenant to default to.
       · There is no organization to select. docs/design/TENANCY.md records the measured finding that `grep -rn "create table.*organizations" infra/supabase/migrations` returns nothing and that the schema is flat (profiles → projects → project_membe
       → Out of scope by the owner's 2026-09-15 single-user decision (docs/design/TENANCY.md). If that is ever reversed, organizations must exist as rows first (new migration adding public.organizations and public.organization_members, RLS re-derived, infra/supabase/tests/rls-isolation.mjs rewritten); only t
-- [☐] Default workspace selection
+- [⊘] Default workspace selection
+      ⊘ NOT PLANNED. The same absence one level down. Note the collision ADR-021 leaves standing: the `workspace` this codebase does have is the agent's per-project file store, and it is selected by opening the project.
       · Same absence as the organization item, plus a naming trap documented in docs/design/TENANCY.md: 'workspace' in this tree already means the agent's per-project FILE STORE (workspaceFor/WorkspaceStore in apps/worker/src/webtools.ts), and apps
       → Out of scope by the owner's 2026-09-15 single-user decision (docs/design/TENANCY.md). If reversed, pick a distinct code name (tenantWorkspace) before writing any of it, because the existing WorkspaceStore collision is where a tenant-isolation bug would hide.
 - [☐] Default project landing view
@@ -378,7 +436,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [✓] Settings reset with confirmation
       · apps/web/src/routes/settings.tsx:628 (<Row id="reset-settings">): the button names how many settings will change and disables itself when everything is already default (isDefaultPrefs), then goes through BOTH gates — needsReauth → ReauthDia
 
-## 08. AUTHORIZATION AND TENANT ISOLATION  —  73%   ✓11 ~7 ☐2
+## 08. AUTHORIZATION AND TENANT ISOLATION  —  78%   ✓11 ~6 ☐1 ⊘2
 
 - [✓] Explicit resource ownership
       · Ownership is a column plus an asserted query, not an implication. infra/supabase/migrations/0001_init.sql:13 declares projects.owner_id; :132 is the `own projects` RLS policy. apps/worker/src/supa.ts:77 getOwnedProject reads the JWT subject
@@ -388,10 +446,12 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · Enforced at the route and again inside the Durable Object. packages/evals/src/security.test.mjs:1184 is a static sweep asserting EVERY /api/projects/* route proves ownership by one of three named forms and refuses with 404 — a route that in
 - [✓] Database-level tenant isolation
       · RLS is enabled on every public table (infra/supabase/migrations/0001_init.sql:106-113, 0005_collaboration.sql:53, 0006_membership_lifecycle.sql:133) and each has an explicit policy or is deliberately worker-only (0001_init.sql:144 notes pai
-- [~] Organization-scoped data access
+- [⊘] Organization-scoped data access
+      ⊘ NOT PLANNED. The organization TENANT whose data this would scope is what ADR-021 declined. The org-shaped access control the evidence below points at is the MEMORY SCOPE, which keeps working and is scored under §21's `Organization memory scope`.
       · The checklist marks this 'not planned' per docs/design/TENANCY.md, but org-scoped data access EXISTS for one data domain and that doc is now out of date. apps/worker/src/memory-store.ts:54 defines ORG_ROLES (owner/admin/member/viewer); :540
       → Two separable halves. (1) Reachability: apps/web has no organisation surface at all — add an Organisations section to apps/web/src/routes/settings.tsx that calls fetchMemoryScopes (apps/web/src/lib/api.ts:330, currently uncalled) plus new api.ts helpers for GET/POST /api/orgs and GET/PUT/DELETE /api
-- [☐] Workspace-scoped data access
+- [⊘] Workspace-scoped data access
+      ⊘ NOT PLANNED. Isolation after ADR-021 is per user and per project, proven by the 43 checks in infra/supabase/tests/rls-isolation.mjs; the workspace scope this item would add to them is not planned.
       · No tenant-workspace level exists. `grep -rn "create table.*workspaces\|workspace_id\|tenant_id" infra/supabase/migrations/` returns nothing; there is no workspaces table in apps/worker/src/memory-store.ts's D1 schema either (only memory_ent
       → Descoped by the owner on 2026-09-15 (docs/design/TENANCY.md) — build only if that is reversed. If it is: add infra/supabase/migrations/0007_workspaces.sql with a workspaces table, projects.workspace_id, workspace_members, and rewrite every 'own projects'/'members read shared *' policy to resolve thr
 - [✓] Project-scoped data access
@@ -430,7 +490,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · Two automated suites exist and one of them is not automatic. IN CI (`pnpm -r test`, .github/workflows/ci.yml:86): packages/evals/src/security.test.mjs A3 section (lines 1117-1316) and apps/worker/tests/collab-routes.test.mjs:238 both bundle
       → Two changes to close it. (1) Coverage: in infra/supabase/tests/rls-isolation.mjs extend the SEED (line ~78) with a third tenant who holds a project_members grant on Alice's project, and add checks that a member sees Alice's project/messages/checkpoints but not Bob's, that a member cannot read anothe
 
-## 10. PROJECT MANAGEMENT  —  33%   ✓2 ~9 ☐9
+## 10. PROJECT MANAGEMENT  —  34%   ✓2 ~9 ☐8 ⊘1
 
 - [~] Project creation from an empty workspace
       · apps/web/src/routes/dashboard.tsx:158 CreateProjectModal inserts into Supabase `projects` (dashboard.tsx:171) and navigates to /projects/:id; reachable three ways — the empty state at dashboard.tsx:526-537 (`state="noProjects"` with a 'Summ
@@ -470,7 +530,8 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [☐] Project duplication
       · No duplicate/clone path for a project. Grepped apps/web/src, apps/worker/src and infra for 'duplicate', 'clone project', 'copy project', 'fork project': the only real hit is DUPLICATING A FILE inside one project's workspace store (apps/web/
       → Add POST /api/projects/:id/duplicate to apps/worker/src/index.ts guarded by withOwnedProject: insert a new projects row copying name (suffixed 'copy'), description and memory_summary/memory_facts, then have the new project's SessionDO seed itself from the source DO's stored memory and workspace KV p
-- [☐] Project transfer between workspaces
+- [⊘] Project transfer between workspaces
+      ⊘ NOT PLANNED. With no workspaces after ADR-021 there are no endpoints to move a project between. Transferring a project to another OWNER is a different item and is not affected by this.
       · Nothing is built and nothing can be: there is no workspace or organization level in the schema. infra/supabase/migrations/0001_init.sql defines a flat profiles -> projects(owner_id) model, and docs/design/TENANCY.md lays out the three optio
       → No product work — the owner dropped organizations and workspaces. Record the decision where the doc expects it: append a dated 'Decision: option 3, single-user with per-project sharing' section to docs/design/TENANCY.md (which currently ends at the three open options) so the 73 '✗' checklist lines t
 - [~] Project archive and restore
@@ -491,7 +552,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · Two reachable surfaces. Per-run: apps/web/src/components/ws/activity.tsx renders the grouped step timeline built by apps/web/src/components/ws/activity-model.ts, mounted via thinking.tsx:94 (`{stage.actions && <Activity run={activity} evide
       · REFUTED: The code is real; the ITEM is not what the code does. The per-run surface checks out — apps/web/src/components/ws/activity.tsx is mounted at thinking.tsx:94 inside turn.tsx:185, rendered by workspace.tsx:712, and activit
 
-## 05. ONBOARDING AND ACTIVATION  —  57%   ✓8 ~7 ☐5
+## 05. ONBOARDING AND ACTIVATION  —  64%   ✓8 ~7 ☐3 ⊘2
 
 - [✓] First-use welcome flow
       · apps/web/src/components/layout.tsx:376 mounts `<OnboardingTour done={{ hasProject: hasProjects }} />` inside the Shell that wraps every signed-in route (apps/web/src/app.tsx:101-128), gated on layout.tsx:289 `knowsProjects = navProjects.isS
@@ -501,10 +562,12 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [☐] Individual or team setup
       · No individual-vs-team choice exists in any onboarding path. Searched apps/web/src/routes/auth-pages.tsx, apps/web/src/routes/dashboard.tsx, apps/web/src/lib/onboarding.ts and the worker router. Collaboration itself is real and reachable — p
       → Do not build a tenancy choice (docs/design/TENANCY.md rules it out). Build the per-project invite nudge instead: add a `data-tour="members"` attribute to the members-drawer trigger in apps/web/src/routes/workspace.tsx and a sixth step to TOUR_STEPS in apps/web/src/lib/onboarding.ts anchored at it ('
-- [☐] Organization creation during onboarding
+- [⊘] Organization creation during onboarding
+      ⊘ NOT PLANNED. Onboarding cannot offer to create a tenant ADR-021 decided not to build; the first run creates a PROJECT, which is the container this product has.
       · Deliberately out of scope, and genuinely absent. docs/design/TENANCY.md records the owner's 2026-09-15 decision (option 3: single-user with per-project sharing; 77 checklist items move to not-planned). Confirmed by looking: no onboarding su
       → No work planned; leave it. If the owner ever reverses the TENANCY.md decision, the onboarding half is the last step, not the first: organizations would need real rows in infra/supabase/migrations and RLS rewritten before any signup screen could offer to create one.
-- [☐] Workspace creation during onboarding
+- [⊘] Workspace creation during onboarding
+      ⊘ NOT PLANNED. The workspace step of the same onboarding flow, declined with the level itself by ADR-021.
       · Same decision and same verification as the previous item: docs/design/TENANCY.md, option 3 chosen 2026-09-15. Nothing in apps/web/src offers to create a workspace. Note the trap TENANCY.md flags for whoever reads this later: `workspace` alr
       → No work planned; leave it. If it is ever revived, pick a distinct identifier (tenantWorkspace) before writing a line, per the naming-collision section of docs/design/TENANCY.md.
 - [✓] First project creation
@@ -601,7 +664,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · There are demonstrations but no screenshots, and the demonstration that ships is failing its own guards. apps/site/public holds only icons and og.png — no product imagery — and grep finds no <img> or <video> of the product anywhere in apps/
       → Decide and record which way this goes, then make the page and the spec agree. Either (a) keep apps/site/src/components/BuildStage.astro and update tests/e2e/landing.spec.ts:227-236 to allow the pinned three.js CDN script and one canvas — and raise the .bs__step colour in that component's <style> unt
 
-## 13. ROBLOX STUDIO INSTALLATION AND PAIRING  —  70%   ✓11 ~6 ☐3
+## 13. ROBLOX STUDIO INSTALLATION AND PAIRING  —  74%   ✓11 ~6 ☐2 ⊘1
 
 - [~] Verified plugin installation entry point
       · The entry point exists, is single-sourced and is test-guarded: packages/shared/src/index.ts:1268 STUDIO_PLUGIN_INSTALL_HREF, consumed by apps/web/src/components/ws/connect-studio.tsx:74, apps/web/src/components/pairing-dialog.tsx:134, apps/
@@ -625,7 +688,8 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · Three surfaces, all driven by the live `studio_status` signal rather than by having shown a code: apps/web/src/components/pairing-dialog.tsx:75-82 swaps to a green 'Studio connected' panel, apps/web/src/routes/workspace.tsx:387-389 raises a
 - [✓] Pairing confirmation inside Studio
       · apps/plugin/src/init.server.luau:388-390 sets the dock to green 'Connected · <project>' and reveals the project label on a successful claim; init.server.luau:430-434 appends '· Place: <placeName>' using the binding the server confirmed back
-- [☐] Explicit organization selection during pairing
+- [⊘] Explicit organization selection during pairing
+      ⊘ NOT PLANNED. A pairing binds a Studio place to a project and a person after ADR-021; there is no organization to disambiguate between at pairing time.
       · There is no organization entity anywhere. Searched apps/worker/src (no org table, no org route in index.ts), infra/supabase/migrations/0001_init.sql (schema is flat: profiles -> projects -> messages/checkpoints/usage_events/studio_pairings)
       → Do not build this. The owner cancelled organizations (docs/design/TENANCY.md); the correct action is to strike this line from docs/backlog/CHECKLIST-V2.md section 13 along with the other 76 organization/workspace/seat items, rather than to leave it reading as unfinished work.
 - [✓] Explicit project selection during pairing
@@ -653,12 +717,13 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · The guidance exists and is reachable: apps/site/src/pages/docs/plugin.astro:121-127 'Removing it', apps/site/src/pages/docs/connect.astro:71-76 'Disconnecting', apps/site/src/pages/docs/troubleshooting.astro:115-117. All three are served un
       → Preferred: ship the Disconnect Studio control described under 'Installation revocation' (apps/web/src/routes/workspace.tsx:575-586), which makes all three pages true with no copy change. If it is not being built this cycle, instead delete the phrase 'or disconnect from the web workspace' from apps/s
 
-## 11. APPLICATION SHELL AND NAVIGATION  —  80%   ✓14 ~4 ☐2
+## 11. APPLICATION SHELL AND NAVIGATION  —  84%   ✓14 ~4 ☐1 ⊘1
 
 - [✓] Persistent application navigation
       · The shell is genuinely persistent on desktop: apps/web/src/app.tsx:105-129 nests every signed-in route under <AppLayout/>, which renders <Rail/> + <Outlet/> (apps/web/src/components/layout.tsx:357-370), and apps/web/tests/command-palette.te
       · UPDATED 2026-09-16: the fix is implemented verbatim — the rail opener moved out of the one route that owned it into the shell, apps/web/src/components/layout.tsx:529-531 (`gx-icon-btn gx-rail-toggle`, onClick={openRail}, aria-label="Open navigation") inside <main id="main-content">. Gated by apps/web/tests/mobile-nav.test.mjs:68 ('the opener sits beside <Outlet/>, so it is present on every signed-in route') and :77 ('no route renders a second opener that would draw on top of the shell one'), which scans apps/web/src/routes and fails if the control moves back.
-- [☐] Organization and workspace context display
+- [⊘] Organization and workspace context display
+      ⊘ NOT PLANNED. The shell has one context to display after ADR-021 — the signed-in person and the open project — and both are already in the header.
       · Nothing to display: docs/design/TENANCY.md records that the schema is flat (public.profiles -> public.projects.owner_id) with no organization or workspace table, and that the owner chose a single-user product with per-project sharing. I con
       → Nothing should be built unless tenancy is revived. If it ever is, the display belongs in apps/web/src/components/layout.tsx above the wordmark (a switcher button feeding the same ShellProvider in apps/web/src/lib/shell.tsx), and it must be preceded by the schema work described in docs/design/TENANCY
 - [✓] Project context display
@@ -709,15 +774,17 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · On desktop it is genuinely consistent: the AccountMenu sits in the rail foot on every signed-in route (apps/web/src/components/layout.tsx:263, defined :64-147) with the user's name and email, Settings, Usage and Credits, Docs, a theme toggl
       · UPDATED 2026-09-16: the only stated gap was mobile — the rail goes off-canvas and the opener was owned by one route. The opener is now the shell's (apps/web/src/components/layout.tsx:529-531) and the AccountMenu is still in the rail foot at :348. Gated by apps/web/tests/mobile-nav.test.mjs:68 ('the opener sits beside <Outlet/>, so it is present on every signed-in route') and :87 ('the opener appears exactly where the rail goes off-canvas, and nowhere else').
 
-## 12. SEARCH AND RESOURCE DISCOVERY  —  65%   ✓11 ~4 ☐5
+## 12. SEARCH AND RESOURCE DISCOVERY  —  72%   ✓11 ~4 ☐3 ⊘2
 
 - [☐] Global resource search
       · The worker has exactly two search routes: apps/worker/src/index.ts:790 (`/api/projects/:id/search`, one project, owner-gated by withOwnedProject) and apps/worker/src/index.ts:2062 (`/api/docs/search`, the Roblox docs RAG corpus). No route f
       → Add a cross-project endpoint `GET /api/search?q=` in apps/worker/src/index.ts beside the existing route at :790: resolve the caller's projects (the same Supabase `projects` rows the dashboard reads), fan out to each session Durable Object's `https://do/search` handler (apps/worker/src/do/session.ts:
-- [☐] Organization-scoped search
+- [⊘] Organization-scoped search
+      ⊘ NOT PLANNED. Search is scoped to what the person can reach after ADR-021; there is no organization boundary to filter results by.
       · Nothing to scope a search to: `grep -n 'organizations\|workspaces' infra/supabase/migrations/*.sql` returns nothing, and no project row carries an org id (apps/web/src/lib/supabase.ts ProjectRow / PROJECT_COLUMNS). The only org-shaped code 
       → Not planned per docs/design/TENANCY.md (option 3: single-user with per-project sharing). If that decision is ever reversed, this item depends on organizations existing as rows first (a migration under infra/supabase/migrations adding `organizations` and `organization_members`, plus an org id on `pro
-- [☐] Workspace-scoped search
+- [⊘] Workspace-scoped search
+      ⊘ NOT PLANNED. The same for the level below, with the naming trap ADR-021 leaves standing: the `workspace` in this tree is the per-project file store, so searching it IS project-scoped search.
       · Same absence as organizations, plus a naming trap: `workspace` in this codebase means the agent's per-project KV FILE STORE (apps/worker/src/workspace-files.ts:94 listWorkspace, apps/worker/src/webtools.ts workspaceFor) and the signed-in ch
       → Not planned per docs/design/TENANCY.md. If reversed, the tenant level must be named something other than `workspace` in code (TENANCY.md suggests `tenantWorkspace`) or the existing file store in apps/worker/src/workspace-files.ts must be renamed first, before any scoped-search work begins.
 - [✓] Project-scoped search
@@ -1185,7 +1252,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [✓] Retrieval failure and fallback visibility
       · apps/worker/src/retrieval.ts:463 classifyRetrieval returns a discriminated outcome — hits / miss / empty-index / unembedded-index / unsearchable / unavailable — plus `certain`, which is false whenever a backend was down or the census could 
 
-## 19. MODEL SELECTION AND PROVIDER CONTROL  —  38%   ✓1 ~13 ☐6
+## 19. MODEL SELECTION AND PROVIDER CONTROL  —  42%   ✓1 ~13 ☐4 ⊘2
 
 - [~] Available model catalog
       · Catalogue is real: apps/worker/src/providers/registry.ts:29 allModels() aggregates 7 rows from apps/worker/src/providers/workers-ai.ts:47 (4 models), openai.ts:29, google.ts:37, deepseek.ts:23. It egresses on a live route, apps/worker/src/i
@@ -1214,7 +1281,8 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [~] Per-run model override
       · The only per-run engine override the product makes is reasoning effort, and it is policy-chosen, not user-chosen: apps/worker/src/reasoning.ts classifies the step, GatewayRequest.reasoningEffort (packages/shared/src/index.ts:1057) carries i
       → Fix the stale hint first: change the placeholder at apps/web/src/routes/admin.tsx:250 from 'e.g. coder-large' to 'clay | stone | rune | memory | vision', and better, render it as a <select> populated from GET /api/admin/models (apps/worker/src/index.ts:2191) so it can never name a key the gateway do
-- [☐] Organization-approved model policies
+- [⊘] Organization-approved model policies
+      ⊘ NOT PLANNED. A per-tenant model allowlist needs the tenant ADR-021 declined; the model set stays global, gated by plan rather than by organization.
       · Descoped by a recorded owner decision, and genuinely absent. docs/design/TENANCY.md:31 records that `grep -rn "create table.*organizations" infra/supabase/migrations` returns nothing, and the closing section ('THE DECISION, which is the own
       → Not planned — do not build unless the tenancy decision in docs/design/TENANCY.md is reversed. If it is: the hook is apps/worker/src/gateway.ts:138 getModels(env), which would need a scope argument and a per-scope allowlist merged over DEFAULT_MODELS, plus a refusal path in chat() at gateway.ts:249 t
 - [~] Provider availability indicators
@@ -1243,7 +1311,8 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [~] Actual model attribution per response
       · Attribution is produced on every call and reaches two admin surfaces, but never the response a user reads. Produced: apps/worker/src/gateway.ts returns provider and model on every GatewayResponse (the return at the end of chat(), typed at p
       → Fix the false label first: delete the hardcoded 'glm-5.3-flash' span at apps/web/src/routes/admin.tsx:75 or replace it with the distinct model ids present in the loaded spend breakdown (d.breakdown). Then carry real attribution to the turn: add `model?: string; provider?: string` to MessageDto in pa
-- [☐] Organization controls for externally processed data
+- [⊘] Organization controls for externally processed data
+      ⊘ NOT PLANNED. Which provider may process a prompt stays a product-level decision after ADR-021 — there is no org administrator above the user to narrow it further.
       · Descoped by the same recorded decision as the other org item: docs/design/TENANCY.md ends with the owner's three options and the checklist records option 3 (single-user, per-project sharing) as taken 2026-09-15; TENANCY.md:31 shows no organ
       → Not planned — do not build unless the tenancy decision in docs/design/TENANCY.md is reversed. If it is: the enforcement point is apps/worker/src/providers/registry.ts:133 selectProvider(), which would take an allowed-processor set alongside its capability needs and reject providers outside it with a
 
@@ -1412,7 +1481,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [✓] Per-run execution history
       · User-facing, per run, and reachable: each run's tool trace (tool, summary, ok, durationMs) is written with the assistant row at apps/worker/src/do/session.ts:2402, served back by the history route at session.ts:954-967 and the export at :10
 
-## 24. APPROVALS AND TOOL PERMISSIONS  —  45%   ✓3 ~12 ☐5
+## 24. APPROVALS AND TOOL PERMISSIONS  —  45%   ✓3 ~11 ☐5 ⊘1
 
 - [✓] Read-only tool permissions
       · apps/worker/src/router.ts:56 PLAN_TOOLS is an inspection-only toolset; apps/worker/src/router.ts:89 toolsForMode returns it for mode 'clay' AND for any unrecognised mode (the default branch fails closed, router.ts:105-113). It is user-reach
@@ -1427,7 +1496,8 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [~] Project-specific tool policies
       · The worker half is complete and tested. apps/worker/src/preferences.ts:341-386 mergePreferences layers org→user→project and INTERSECTS tool_permissions towards the most restrictive rather than overriding; apps/worker/src/preferences.ts:769 
       → The same control described for 'Write tool permissions' fixes this one: once instructions-panel.tsx renders a tool-permission editor it will already be project-scoped, because the panel's scope tab at instructions-panel.tsx:226 sets `scope`/`scopeId` and savePreferences(scope, scopeId, prefs) at :12
-- [~] Organization-specific tool policies
+- [⊘] Organization-specific tool policies
+      ⊘ NOT PLANNED. The org preference layer in preferences.ts is the MEMORY SCOPE and keeps its strictest-wins tests untouched; ADR-021 declined the organization that would own a tool policy as a governance surface. This item's own → line asks for exactly this: stop counting it, delete nothing.
       · The checklist's '✗ not planned' mark understates what is already built. The org layer of tool permissions exists and is tested: apps/worker/src/preferences.ts:367-386 merges an `org` layer with strictest-wins, and apps/worker/tests/preferen
       → Decide first, per docs/design/TENANCY.md. If organizations stay unbuilt, delete nothing but stop counting this item: the org layer in apps/worker/src/preferences.ts:367-386 and the memory_org_members store are already load-bearing for the strictest-wins rule and should keep their tests. If organizat
 - [☐] Per-run permission grants
@@ -1936,7 +2006,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · Completeness is verified; integrity of the bytes is not. The export declares what it contains: apps/worker/src/do/session.ts:1099-1113 returns messageCount, totalMessages and `truncated` rather than silently clipping, and apps/worker/src/ex
       → Two changes. (1) In apps/worker/src/index.ts:1179-1184, compute `await crypto.subtle.digest('SHA-256', new TextEncoder().encode(body))` and emit it as an X-Golem-Export-SHA256 header alongside a Content-Length, and for format=json include the same hex digest as a top-level `sha256` field computed ov
 
-## 37. SUBSCRIPTION LIFECYCLE  —  30%   ✓0 ~12 ☐8
+## 37. SUBSCRIPTION LIFECYCLE  —  32%   ✓0 ~12 ☐7 ⊘1
 
 - [~] Subscription creation
       · Full path exists and is exercised end to end. Route: apps/worker/src/index.ts:1869 (POST /api/billing/checkout) building the Stripe session via buildCheckoutRequest at apps/worker/src/billing.ts:396; the resulting customer.subscription.crea
@@ -1965,7 +2035,8 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [☐] Proration preview
       · Searched 'proration|prorate|upcoming|invoices/upcoming' across apps/ and packages/ (excluding node_modules and packages/corpus). The only hits are three comments all saying Stripe owns it and we do not: apps/worker/src/billing.ts:349, apps/
       → Build the GET /api/billing/preview route described under 'Plan upgrade preview' — it is the same Stripe call. Add it in apps/worker/src/index.ts beside /api/billing/history (line 1955): read customerId and the subscription via readBillingRecord (index.ts:1737), GET https://api.stripe.com/v1/invoices
-- [☐] Seat count changes
+- [⊘] Seat count changes
+      ⊘ NOT PLANNED. A subscription covers one person after ADR-021, so its quantity never changes; a seat count that cannot move is not a lifecycle event to build.
       · Deliberately not built. There is no seat, organization or workspace concept in the code: the schema is one row per user with projects owned by a profile, recorded in docs/design/TENANCY.md:24-30, and the owner's decision of 2026-09-15 is ca
       → No work. Out of scope by the owner's decision recorded in docs/design/TENANCY.md and on the checklist line; this item should keep its [✗] mark rather than being scheduled.
 - [☐] Billing cycle changes
@@ -1999,7 +2070,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · The mechanism is real and tested, but it silently skips cancellation and its reversal — the two changes a customer is most likely to dispute. Built: billing_events table (apps/worker/src/do/quota.ts:30), written by record() (quota.ts:83), r
       → In apps/worker/src/do/quota.ts, widen the comparison at line 161 to include the cancellation flag: change the condition to `next !== before || status !== (beforeSub?.status ?? null) || (subscription?.cancelAtPeriodEnd ?? false) !== (beforeSub?.cancelAtPeriodEnd ?? false)`, and extend the billing_eve
 
-## 35. PLANS AND ENTITLEMENTS  —  45%   ✓3 ~12 ☐5
+## 35. PLANS AND ENTITLEMENTS  —  47%   ✓3 ~12 ☐4 ⊘1
 
 - [✓] Defined subscription plan catalog
       · packages/shared/src/index.ts:1299 PLAN_LIMITS defines four tiers (free 231/2,310, builder 416/12,600, studio 700/21,000, enterprise 833/25,000); PLAN_COPY at :1371 gives each a name, blurb, price and highlights; PLAN_FEATURES at :1469 is a 
@@ -2022,7 +2093,8 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       → Add `export function planAllows(plan: PlanId, featureId: string): boolean` to packages/shared/src/index.ts reading the PLAN_FEATURES row by id (string values count as allowed, false as denied), and a Hono helper in apps/worker/src/index.ts — `requireFeature(featureId)` — that reads the caller's plan
 - [✓] Client-visible entitlement state
       · Three independent surfaces, all fed from the server. GET /api/me (apps/worker/src/index.ts:1981) returns `quota` (plan + daily/monthly allowance + used, from QuotaDO state at do/quota.ts:89) and `billing: subscriptionView(...)` at index.ts:
-- [☐] Seat limits
+- [⊘] Seat limits
+      ⊘ NOT PLANNED. ADR-021 leaves no seat to limit — a plan is bought by one person and entitles that person, and collaborators are shared per project instead.
       · Searched apps/worker/src, apps/web/src and packages/shared/src for 'seat' and 'quantity': the only hits are unrelated (worldbuilding.ts:28 furniture dimensions, semantic.ts:575 'seating'). apps/worker/src/billing.ts:417 hardcodes `line_item
       → Deliberately out of scope — do not build this. The one concrete action worth taking is to record the decision where the design note lives: append a dated 'DECISION' section to docs/design/TENANCY.md stating that option 3 was chosen, so the next reader does not re-open the question from a file that s
 - [☐] Project limits
@@ -2059,7 +2131,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · The limit is named and an action is offered — in prose only, and one of the two actions does not exist. Prose: apps/web/src/components/usage-meter-model.ts:199-205 sets headline 'No Credits left' and nextAction 'Add credits, or upgrade — th
       → Two changes. (1) Build the credit purchase the copy already promises: add STRIPE_PRICE_CREDITS to apps/worker/src/env.ts:45 and a `buildCreditCheckoutRequest` beside buildCheckoutRequest in apps/worker/src/billing.ts:396 using mode=payment with `metadata[credits]` set to the pack size (the exact fie
 
-## 36. USAGE, QUOTAS, AND CREDITS  —  70%   ✓10 ~8 ☐2
+## 36. USAGE, QUOTAS, AND CREDITS  —  74%   ✓10 ~8 ☐1 ⊘1
 
 - [✓] Per-request usage metering
       · Every model call is metered individually. apps/worker/src/gateway.ts:420 settles that one call against BudgetDO and :421-428 records a `model_call` event carrying inputTokens/outputTokens/neurons/latency plus actorId, projectId and runId; a
@@ -2070,7 +2142,8 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [~] Per-project usage breakdown
       · The worker half is built and tested; nothing renders it and it cannot be expressed in Credits. apps/worker/src/analytics.ts:836 includes 'projectId' in BREAKDOWN_DIMENSIONS, :867-903 groups model calls by it (calls, neurons, usd, tokens, p5
       → Two changes. (1) apps/worker/src/do/quota.ts: add a `project text` column to the `ledger` table created at :26-28, accept an optional `projectId` in the `/spend` body at :111-126 and write it on the insert at :121; pass it from apps/worker/src/do/session.ts:3433 (it has `this.boundProjectId`) and fr
-- [☐] Per-organization usage breakdown
+- [⊘] Per-organization usage breakdown
+      ⊘ NOT PLANNED. BREAKDOWN_DIMENSIONS stays provider/model/feature/projectId/actorId after ADR-021; there is no organizationId to add because there is no organization.
       · There is no organization to break usage down by. apps/worker/src/analytics.ts:836 BREAKDOWN_DIMENSIONS is exactly ['provider','model','feature','projectId','actorId']; `grep -rn "create table.*organizations" infra/supabase/migrations` retur
       → Only if the tenancy decision is reversed. It is gated on organizations existing at all: add an `organizations` table plus `organization_members` to infra/supabase/migrations, give projects an `organization_id`, then add 'organizationId' to BREAKDOWN_DIMENSIONS in apps/worker/src/analytics.ts:836 and
 - [✓] Input and output token accounting
@@ -2173,7 +2246,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · POST /api/billing/portal (apps/worker/src/index.ts:1916) accepts no customer parameter at all: the customer id is read from the caller's own QuotaDO, addressed by idFromName(user.userId) where userId is the verified JWT subject (index.ts:19
       · REFUTED: The security property itself is correct and I confirmed it in both trees: the route takes no customer parameter, reads customerId from the caller's own QuotaDO addressed by idFromName(user.userId) from the verified JWT s
 
-## 39. INVOICES AND BILLING RECORDS  —  68%   ✓13 ~1 ☐6
+## 39. INVOICES AND BILLING RECORDS  —  71%   ✓13 ~1 ☐5 ⊘1
 
 - [✓] Invoice list
       · No invoice data of our own anywhere: the only two Stripe API calls in the repo are apps/worker/src/index.ts:1898 (checkout/sessions) and apps/worker/src/index.ts:1927 (billing_portal/sessions) — nothing calls /v1/invoices. The user's only p
@@ -2222,7 +2295,8 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [~] Billing adjustment history
       · A complete vertical slice. Store: the billing_events table created at apps/worker/src/do/quota.ts:30 and written by `record()` at quota.ts:82, called on every plan change and every credit grant (quota.ts:207). Read: `https://do/billing` ret
       · REFUTED: Every file:line in the evidence checks out, the tests pass, and the slice is genuinely deployed — I verified all of it — but it is a plan-change log, not an adjustment history, so the item does not survive. WHAT IS TRUE 
-- [☐] Seat charge breakdown
+- [⊘] Seat charge breakdown
+      ⊘ NOT PLANNED. An invoice line for seats requires seats, which ADR-021 declined. Invoices break down by plan and by Credits, which is what this product actually sells.
       · Deliberately descoped, not overlooked. docs/design/TENANCY.md records the decision (option 3, 'the product stays single-user with per-project sharing'), and the checklist line itself is marked [✗] not planned dated 2026-09-15. Consistent wi
       → No action while the single-user decision in docs/design/TENANCY.md stands. If seats are ever built, this item is downstream of the whole tenancy hierarchy (organizations, membership, per-seat price ids) and must not be started before it — a seat breakdown over a product with no seats would be a fabr
 - [✓] Usage charge breakdown
@@ -2238,7 +2312,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · Nothing reconciles our record of a subscription against Stripe's. The worker only ever POSTs two Stripe endpoints (apps/worker/src/index.ts:1898 checkout/sessions, :1927 billing_portal/sessions) — there is no read of /v1/invoices, /v1/charg
       · BUILT 2026-09-15. GET /api/admin/billing-reconcile (apps/worker/src/index.ts:2961, owner-key gated by the existing /api/admin/* middleware) pages Stripe /v1/subscriptions?status=all and, for each one naming a userId, compares it against that account's stored subscription. reconcileSubscription (apps/worker/src/billing.ts) reads the tier through planOfStripeSubscription — the SAME function interpretStripeEvent uses, extracted for this, so the report cannot agree with the drift it exists to find. Four verdicts: unattributed (somebody is paying and no account can ever be entitled), missing_here, plan_differs, status_differs. It reads and compares only; nothing is repaired automatically. The report carries `checked` and `truncated` set from the branch that decided to stop, so "no findings" over zero subscriptions is not readable as a clean account, and a failure to page Stripe is a 502 rather than an all-clear. Proof: apps/worker/tests/billing-reconcile.test.mjs and the reconciliation tests in apps/worker/tests/billing-routes-live.test.mjs.
 
-## 40. LOCALIZATION AND RIGHT-TO-LEFT SUPPORT  —  60%   ✓10 ~4 ☐6
+## 40. LOCALIZATION AND RIGHT-TO-LEFT SUPPORT  —  61%   ✓10 ~3 ☐6 ⊘1
 
 - [☐] Centralized translation catalog
       · No catalog exists anywhere. `find apps packages -type d -name i18n|locales|lang|translations|messages` returns nothing outside vendored data (packages/corpus/raw, packages/training/.venv). No i18n dependency in apps/web/package.json or apps
@@ -2260,7 +2334,8 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [~] User language override
       · The CONTENT half is fully wired; the INTERFACE half is built and dead. Content: apps/web/src/components/ws/instructions-panel.tsx:246-260 renders an 'Answer me in' select over 10 languages, writing through savePreferences (apps/web/src/lib/
       → apps/web/src/routes/settings.tsx has no interface-language/direction control. Add a Row id='interface-language' inside the existing 'Language and region' Section (line 546) whose select writes a new `uiLanguage` field added to Prefs in apps/web/src/lib/prefs.ts and then calls setDirection() from app
-- [~] Organization default language
+- [⊘] Organization default language
+      ⊘ NOT PLANNED. The preference layering that would carry a tenant default already exists and is tested; ADR-021 declined the organization that would set one, leaving user and project as the whole ladder.
       · The layering mechanism exists and is tested; the tenant it would belong to does not. apps/worker/src/preferences.ts:339-348 mergePreferences layers org -> user -> project and reports which layer won, and apps/worker/tests/preferences.test.m
       → Do not build: organizations are descoped per docs/design/TENANCY.md. If that decision is ever reversed, the preference layer in apps/worker/src/preferences.ts:339 already merges an org-scoped `language` correctly and is tested — the only missing piece is an organization row to hang the scope id on p
 - [~] Full right-to-left layout support
@@ -2291,12 +2366,13 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · Long-text has one real, hard-won test; mixed-language has none. Long-text: apps/web/tests/topbar-layout.test.mjs:43-51 pins `flex: none` on .gx-pill and overflow:hidden/text-overflow:ellipsis on the label, both found by rendering the worksp
       → Add tests/e2e/bidi-layout.spec.ts (Playwright, so it actually renders — apps/web mounts nothing in node --test) that loads the dashboard and workspace with document.dir forced to 'rtl' and again to 'ltr', and for each asserts no horizontal document overflow and correct punctuation placement on three
 
-## 44. PUBLIC API  —  68%   ✓9 ~9 ☐2
+## 44. PUBLIC API  —  71%   ✓9 ~9 ☐1 ⊘1
 
 - [~] Documented API resource model
       · Served and tested, but it documents paths only, not resources. apps/worker/src/public-api.ts:823 openApiDocument() builds OpenAPI 3.1 from PUBLIC_ROUTES; served at apps/worker/src/index.ts:3101 and proven live in apps/worker/tests/public-ap
       → In apps/worker/src/public-api.ts add a `components.schemas` block to openApiDocument() defining Project, Message, Run, ChatCompletionRequest/Response and the Error envelope (errorBody at public-api.ts:687 is the shape), and extend openApiOperation() (public-api.ts:790) to reference them in each resp
-- [☐] Organization-scoped API credentials
+- [⊘] Organization-scoped API credentials
+      ⊘ NOT PLANNED. API keys are issued to a user and optionally restricted to projects after ADR-021; an org-owned credential needs the org.
       · Deliberately out of scope, not an oversight. api_keys rows are keyed on user_id only (apps/worker/src/api-keys.ts:407 schema; ApiKeyRecord at api-keys.ts:84 has userId and projects, no org). docs/design/TENANCY.md records the owner's decisi
       → No work. Out of scope per docs/design/TENANCY.md — leave it marked not planned rather than not started.
 - [~] Project-scoped API credentials
@@ -2573,7 +2649,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · One real half exists: packages/sdk/tests/protocol-parity.test.mjs pins MODES, CLIENT_MSG_TYPES, STOP_REASONS and PLAN_IDS to the actual declarations parsed out of packages/shared/src/index.ts (anchored to each declaration, not to a substrin
       → Add packages/sdk/tests/route-parity.test.mjs that reads apps/worker/src/index.ts, extracts every `app.<verb>('/api/…')` literal into a set, extracts the paths AppleClient can build (export a route manifest from packages/sdk/src/client.mjs so this need not be a regex over method bodies), and asserts 
 
-## 45. WEBHOOKS AND EVENT DELIVERY  —  23%   ✓0 ~9 ☐11
+## 45. WEBHOOKS AND EVENT DELIVERY  —  24%   ✓0 ~9 ☐10 ⊘1
 
 - [☐] Webhook endpoint registration
       · No outbound webhook subsystem exists. Searched: all 138 route registrations in apps/worker/src/index.ts (the only match for 'webhook' is apps/worker/src/index.ts:1768 `app.post('/api/billing/webhook')`, which RECEIVES Stripe events); the pu
@@ -2584,7 +2660,8 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [~] Event type selection
       · Typed events exist but a consumer cannot choose which ones it gets. projectEvents (apps/worker/src/public-api.ts:516) emits four types — state, run.status, messages, studio — proven by apps/worker/tests/public-api.test.mjs:643 ('projectEven
       → Publish one event-type list and honour it in both places. Export EVENT_TYPES from apps/worker/src/public-api.ts next to projectEvents (line 516), accept `?events=run.status,studio` on GET /v1/projects/:id/events in apps/worker/src/index.ts:3423 (refuse an unknown name with a 400 rather than ignoring
-- [☐] Organization-scoped event subscriptions
+- [⊘] Organization-scoped event subscriptions
+      ⊘ NOT PLANNED. Webhook endpoints hang off a project after ADR-021; an org-scoped subscription would need membership at a level that is not planned.
       · No event subscription of any scope is stored, so no org-scoped one exists. Org machinery itself is partial: memory_orgs / memory_org_members tables (apps/worker/src/memory-store.ts:540,548) and /api/orgs routes (apps/worker/src/index.ts:872
       → Build nothing here while the single-user disposition in docs/design/TENANCY.md stands. If it is ever revisited, the org subscription must hang off memory_org_members (apps/worker/src/memory-store.ts:540) for membership and reuse the same webhook_endpoints table with org_id in place of project_id, wi
 - [~] Project-scoped event subscriptions
@@ -2636,7 +2713,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · The redactor is real, wired and hard-tested, but there is no delivery log for it to protect. redactSecrets (apps/worker/src/redaction.ts) is wired in exactly three places — outbound requests and upstream error excerpts in guardedFetch (apps
       → When webhook delivery rows are written in the new apps/worker/src/webhook-store.ts, pass every stored string — request body excerpt, response body excerpt, error message — through redactSecrets from apps/worker/src/redaction.ts in the redact-then-truncate order used at apps/worker/src/net-policy.ts:
 
-## 47. INTEGRATIONS AND CREDENTIAL MANAGEMENT  —  40%   ✓1 ~14 ☐5
+## 47. INTEGRATIONS AND CREDENTIAL MANAGEMENT  —  42%   ✓1 ~14 ☐4 ⊘1
 
 - [☐] Integration catalog
       · There is no catalog of integrations anywhere. apps/web/src/routes/settings.tsx:506-510 is the entire "Connections" section and it hard-codes one child, <RobloxKeyPanel/>. apps/web/src/lib/settings-search.ts:34-56 registers 12 settings, exac
@@ -2644,7 +2721,8 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [~] Integration capability descriptions
       · Descriptions exist and are good: apps/web/src/lib/roblox-key.ts:46-86 gives every Open Cloud scope a title, a consequence sentence and an `undoable` flag, rendered at apps/web/src/components/roblox-key-panel.tsx:190-203. THE HALF THAT IS MI
       → Two changes. (1) In apps/web/src/lib/roblox-key.ts:46-86 add an `implemented: boolean` field to ScopeExplanation, set it true only for 'asset:write', and in apps/web/src/components/roblox-key-panel.tsx:192 either hide unimplemented scopes or label them 'not used yet' — a checkbox that grants real ac
-- [☐] Organization integration installation
+- [⊘] Organization integration installation
+      ⊘ NOT PLANNED. Credentials are installed per user after ADR-021; a tenant-wide installation shared by its members is the shape that was declined.
       · There are no organizations. docs/design/TENANCY.md records the schema as flat (profiles → projects, owner_id) and ends with the owner's decision; the checklist line itself records that option 3 (single-user with per-project sharing) was cho
       → Nothing to build: this is a recorded not-planned item, not an unfinished one. If the tenancy decision is ever reversed, the work is to add an owner_scope ('user'|'org') plus owner_id pair to the user_credentials table in apps/worker/src/user-credentials.ts:158-170, change every query in that file fr
 - [☐] Project integration binding
@@ -2698,7 +2776,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · Most of this is genuinely built and tested. The stored key is write-only from the outside and never enters a prompt — apps/worker/src/user-credentials.ts:238 returns a fingerprint and last-four only, asserted by apps/worker/tests/user-crede
       → In apps/worker/src/do/session.ts:2268, move the `verdict.action === 'allow'` early return to AFTER handling disclosures: when verdict.disclosures is non-empty, recordEvent it and broadcast a non-blocking notice to the client carrying verdict.signals.find(s => s.code === 'secret_in_prompt').detail, t
 
-## 48. PRIVACY AND DATA LIFECYCLE  —  25%   ✓0 ~10 ☐10
+## 48. PRIVACY AND DATA LIFECYCLE  —  28%   ✓0 ~10 ☐8 ⊘2
 
 - [~] Personal data inventory
       · apps/worker/src/user-export.ts:30-98 is a real, column-by-column inventory of 7 tables (every column either exported or withheld with a stated reason), and infra/supabase/tests/export-completeness.mjs:83-115 audits it against a live Postgre
@@ -2721,7 +2799,8 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [~] User data export
       · Two exports exist and are reachable by a person: the per-project transcript, GET /api/projects/:id/export (apps/worker/src/index.ts:1171-1187, rendered by apps/worker/src/export.ts, ownership and auth-exemption both tested at apps/worker/te
       → Add GET /api/me/export to apps/worker/src/index.ts that iterates USER_EXPORT from apps/worker/src/user-export.ts: for each store:'postgres' table, select exactly spec.fields where ownerColumn = the caller's id using the caller's JWT through supa.ts (so RLS applies); for the store:'d1' api_keys row, 
-- [☐] Organization data export
+- [⊘] Organization data export
+      ⊘ NOT PLANNED. Export obligations land on the account and its projects after ADR-021; there is no organization whose data forms a unit to export.
       · No organization export exists: there is no organizations table in any of the 6 files under infra/supabase/migrations, and the only org-shaped thing in the tree is the memory scope (memory_org_members in apps/worker/src/memory-store.ts:1047,
       → No code work intended: the owner descoped organizations on 2026-09-15 (docs/design/TENANCY.md). The correct action is to strike this line from docs/backlog/CHECKLIST-V2.md along with the other 76 organization/workspace/seat items, not to build it. If orgs ever return, an org export would follow the 
 - [☐] Export identity verification
@@ -2736,7 +2815,8 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [☐] Account deletion status
       · Nothing tracks a deletion because no deletion exists. There is no deletion_requests/erasure table in infra/supabase/migrations (10 tables, none related), no status field on profiles (0001_init.sql:5-12), no route in apps/worker/src/index.ts
       → When the deletion route above is built, make it a record rather than a fire-and-forget: create public.deletion_requests (user_id uuid primary key references profiles(id), requested_at timestamptz not null default now(), scheduled_purge_at timestamptz not null, completed_at timestamptz, stores_done t
-- [☐] Organization deletion request
+- [⊘] Organization deletion request
+      ⊘ NOT PLANNED. There is no organization to request the deletion of after ADR-021. Account deletion and project deletion carry that duty and are listed separately; recorded here rather than struck, so the decision stays visible.
       · No organizations exist to delete: no organizations table in infra/supabase/migrations, and docs/design/TENANCY.md records the owner's 2026-09-15 decision that organizations and workspaces are not being built. The only org-shaped rows are me
       → No code work intended — descoped on 2026-09-15 per docs/design/TENANCY.md. Strike the line from docs/backlog/CHECKLIST-V2.md rather than building it. (If the org memory scope stays, the one real gap is that nothing deletes a whole memory scope; that is covered by the scope-purge fix under 'Deletion 
 - [☐] Retention policy configuration
@@ -2872,11 +2952,12 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · The quality SIGNALS are unusually complete and are exposed; nothing monitors them. Computed: per-reason rejects at the isolate boundary (logStats, apps/worker/src/analytics.ts:541) and at the durable ingest (apps/worker/src/do/admin.ts:88);
       → Two changes. (1) Make the figure global: persist the reject/drop/lost counters into AdminDO alongside the events table (apps/worker/src/do/admin.ts, next to the eventsEvicted counter at admin.ts:50) by having flushEvents (apps/worker/src/analytics-sink.ts:38) send logStats() with each batch, and ret
 
-## 50. AI SAFETY, ABUSE, AND SPENDING PROTECTION  —  70%   ✓11 ~6 ☐3
+## 50. AI SAFETY, ABUSE, AND SPENDING PROTECTION  —  78%   ✓11 ~6 ☐1 ⊘2
 
 - [✓] User request rate limits
       · apps/worker/src/index.ts:401 — the auth middleware calls ipLimited(`user:${user.userId}`, 240) on every /api/* request and returns 429. Proven live, not statically: packages/evals/src/security.test.mjs:1391-1393 floods /api/me 300 times on 
-- [☐] Organization request rate limits
+- [⊘] Organization request rate limits
+      ⊘ NOT PLANNED. Rate limits key on IP, account and project after ADR-021; the organization tier of the limiter has no tenant to key on.
       · No organization scope exists to rate-limit. Searched: `grep -rn "organization" infra/supabase/migrations` — the schema (0001_init.sql .. 0006_membership_lifecycle.sql) has profiles, projects, messages, checkpoints, studio_pairings, usage_ev
       → Blocked on a decision, not on code. If docs/design/TENANCY.md option 3 (single-user) stands, change this line in docs/backlog/CHECKLIST-V2.md to ✗ not-planned with the same wording the other two org items carry. If organizations are ever built, the limiter to extend is ipLimited() in apps/worker/src
 - [✓] IP-based abuse controls
@@ -2914,7 +2995,8 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · Two independent daily ceilings, both enforced. PER USER: apps/worker/src/quota-math.ts:62 quotaState() computes dailyLeft from PLAN_LIMITS[plan].creditsPerDay (packages/shared/src/index.ts:1300, free = 231/day) against a UTC-day-keyed ledge
 - [✓] Monthly spending caps
       · Also two, and the pair is tested for which one bites first. PER USER: apps/worker/src/quota-math.ts:65 monthlyLeft from PLAN_LIMITS[plan].creditsPerMonth, and allowanceLeft = min(daily, monthly) — apps/worker/tests/quota-day-boundary.test.m
-- [☐] Organization emergency execution stop
+- [⊘] Organization emergency execution stop
+      ⊘ NOT PLANNED. The emergency stop exists at the two scopes ADR-021 keeps — global and per account. An organization-wide stop needs the organization.
       · There is no organization to stop — same search as the org rate-limit item: no org or workspace table in infra/supabase/migrations, and docs/design/TENANCY.md records the absence. The capability DOES exist at the only two scopes that exist i
       → Blocked on the same decision as organization rate limits. If TENANCY.md option 3 stands, change this line in docs/backlog/CHECKLIST-V2.md to ✗ not-planned. If organizations are built, the stop to extend is apps/worker/src/do/budget.ts:163 — today `killed` is one flag on a singleton; it would need to
 - [~] Suspicious usage review queue
@@ -2983,11 +3065,12 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · No tracker, no board, no votes, no status. The product's only 'roadmap' is a different thing entirely: apps/worker/src/roadmap.ts generates a build plan for the user's own Roblox GAME, served at /api/projects/:id/roadmap (apps/worker/src/in
       → Decide the surface first — a public request board is a product, not a table. Minimum honest version: add 'feature' to the kind CHECK in a new migration and let the submit dialog file one, then publish what was actually accepted rather than a tracker: extend apps/site/src/pages/changelog.astro with a
 
-## 52. OWNER AND ADMIN OPERATIONS  —  45%   ✓6 ~6 ☐8
+## 52. OWNER AND ADMIN OPERATIONS  —  50%   ✓6 ~6 ☐6 ⊘2
 
 - [✓] Administrative dashboard
       · apps/web/src/routes/admin.tsx:345 `AdminPage`, lazy-registered at apps/web/src/app.tsx:113 on path /admin, reachable from the account menu at apps/web/src/components/layout.tsx:120 and the command palette at layout.tsx:335, both gated on `p
-- [☐] Organization lookup
+- [⊘] Organization lookup
+      ⊘ NOT PLANNED. Admin lookup covers users and projects after ADR-021; there is no organizations table to look one up in, and the /api/orgs routes are the memory scope, not a tenant directory.
       · No organization entity exists to look up. `grep -rn "create table" infra/supabase/migrations/*.sql` returns profiles, projects, messages, checkpoints, usage_events, feedback, studio_pairings, waitlist, project_members, membership_events — n
       → No work intended. If the decision in docs/design/TENANCY.md is ever reversed to option 1 or 2, this item becomes: add a `public.organizations` table plus RLS in a new infra/supabase/migrations/00NN_organizations.sql, then add `GET /api/admin/organizations/:id` in apps/worker/src/index.ts returning t
 - [~] Account lookup
@@ -3020,7 +3103,8 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [☐] Account restoration controls
       · There is nothing to restore from — see 'Account suspension controls'; public.profiles carries no suspension state (infra/supabase/migrations/0001_init.sql:4-11) and no /api/admin route writes one (inventory pinned at packages/evals/src/secu
       → Add `POST /api/admin/account/:userId/restore` to apps/worker/src/index.ts alongside the suspend route described in the previous item, clearing suspended_at/suspended_reason/suspended_by and writing a restoration row to whatever audit table the suspension writes to. Model the behaviour on apps/worker
-- [☐] Organization suspension controls
+- [⊘] Organization suspension controls
+      ⊘ NOT PLANNED. Suspension applies to an account or a membership after ADR-021. Suspending an organization needs the row the owner declined — and must not be built against the memory-scope /api/orgs routes, which are a different concept at a different level.
       · There is no organization to suspend. No organizations table exists in infra/supabase/migrations/*.sql, and the `/api/orgs*` routes at apps/worker/src/index.ts:872-887 are memory scopes rather than tenants (docs/design/TENANCY.md, 'THE NAMIN
       → No work intended — do not build this against the memory-scope `/api/orgs` routes, which are a different concept at a different level. If docs/design/TENANCY.md is ever revised to option 1 or 2, this becomes a POST /api/admin/organizations/:id/suspend in apps/worker/src/index.ts that bars every membe
 - [☐] Manual credit adjustment with reason
@@ -3393,11 +3477,12 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · There is no flag registry to retire from and no expiry mechanism of any kind. No flag definitions exist at all (see the Feature flag targeting row — feature_flag|featureFlag|feature-flag|FEATURE_FLAG returns zero hits across apps/, packages
       → Create docs/FLAGS.md as a table of every runtime toggle — name, file:line, owner, the date it was introduced, and a removal-by date or the word PERMANENT with a reason — seeded with MOCK_MODE (apps/web/src/lib/mock.ts:41), the `config:models` KV override (apps/worker/src/gateway.ts:142) and the kill
 
-## 60. END-TO-END RELEASE ACCEPTANCE  —  63%   ✓6 ~13 ☐1
+## 60. END-TO-END RELEASE ACCEPTANCE  —  66%   ✓6 ~13 ☐0 ⊘1
 
 - [✓] New user completes registration and enters a usable workspace
       · Registration: apps/web/src/routes/auth-pages.tsx:255 calls supabase.auth.signUp with emailRedirectTo('/confirm'); /confirm, /login, /forgot, /reset are all real routes in the same file (:1). Entry: apps/web/src/routes/dashboard.tsx:171-183 
-- [☐] Invited member joins the intended organization with correct access
+- [⊘] Invited member joins the intended organization with correct access
+      ⊘ NOT PLANNED. This acceptance journey is per-organization; ADR-021 replaced it with the per-project equivalent, which item 15 of this section already audits end to end.
       · No organization tenancy exists. docs/design/TENANCY.md states the schema is flat (profiles -> projects.owner_id) and records the owner's 2026-09-15 decision not to build organizations or workspaces. The /api/orgs routes at apps/worker/src/i
       → No work warranted. The owner dispositioned this as not-planned on 2026-09-15 (docs/design/TENANCY.md); the equivalent capability is per-project sharing, audited under item 15 of this section. If the disposition is ever reversed, the entry point is infra/supabase/migrations plus apps/worker/src/colla
 - [✓] Returning user resumes the correct project and conversation
