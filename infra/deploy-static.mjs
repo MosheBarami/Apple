@@ -19,6 +19,7 @@
 // assets that all exist. The reverse — new pages referencing assets that never uploaded — is a
 // broken site rather than a stale one.
 import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join, relative } from 'node:path';
 
 const root = new URL('..', import.meta.url).pathname;
@@ -159,6 +160,55 @@ async function uploadDir(dir, prefix) {
   return { count, bytes };
 }
 
+/**
+ * DID THE URL A READER TYPES ACTUALLY CHANGE?
+ *
+ * THE FAILURE THIS EXISTS FOR, and it was live for a day before anyone looked. `/pricing` served a
+ * page from the previous design — blue accents, a headline in 96px capitals, and the word "Sparks"
+ * the owner had the product renamed away from — while `apps/site/dist/pricing/index.html` held the
+ * current one and every deploy printed `done`. Both statements were true at once.
+ *
+ * The cause is in the worker's own lookup order. For a request to `/pricing` it tries, in order,
+ * `/pricing`, then `/pricing.html`, then `/pricing/index.html` — and an old row sitting at the
+ * bare `/pricing` key wins. This uploader writes `/pricing/index.html` and has no way to delete
+ * anything, so a stale row at the shadowing key is permanent and invisible: the upload succeeds,
+ * the row it wrote is correct, and the site serves the other one.
+ *
+ * Uploading is therefore not evidence of deploying. The only evidence is fetching the URL a reader
+ * would type and finding the bytes that were just sent. That is all this does.
+ *
+ * ON THE RETRY. The worker caches responses for 60s under a key built from the REQUEST path, while
+ * the upload busts a key built from the STORED path — for any extensionless URL those are
+ * different strings, so a correct upload can still be shadowed by a cache entry for up to a minute.
+ * A mismatch is therefore re-checked before it is believed. It is re-checked, not forgiven: if the
+ * bytes are still wrong at the end of the window, the deploy fails.
+ */
+async function verifyServed(dir, prefix) {
+  const pages = [...walk(dir)].filter((f) => f.endsWith('.html'));
+  const wrong = [];
+  for (const file of pages) {
+    const rel = '/' + relative(dir, file).split('\\').join('/');
+    const stored = prefix === '/' ? rel : prefix + rel;
+    // The URL a reader types: `/x/index.html` is reached as `/x`, and the root one as `/`.
+    const url = stored.replace(/\/index\.html$/, '') || '/';
+    const want = sha256(readFileSync(file));
+    let got = null;
+    for (const waitMs of [0, 3000, 12000, 30000, 30000]) {
+      if (waitMs) await new Promise((r) => setTimeout(r, waitMs));
+      const res = await fetch(BASE + url).catch(() => null);
+      if (!res || !res.ok) { got = res ? `HTTP ${res.status}` : 'no response'; continue; }
+      got = sha256(new Uint8Array(await res.arrayBuffer()));
+      if (got === want) break;
+    }
+    if (got !== want) wrong.push({ url, stored, got });
+  }
+  return wrong;
+}
+
+function sha256(bytes) {
+  return createHash('sha256').update(bytes).digest('hex').slice(0, 16);
+}
+
 const args = process.argv.slice(2);
 if (args[0] === '--file') {
   const size = await upload(args[1], args[2]);
@@ -184,4 +234,21 @@ if (args[0] === '--file') {
     process.exit(2);
   }
   console.log(`done — ${total} file(s)`);
+
+  // UPLOADED IS NOT DEPLOYED. See verifyServed.
+  const wrong = [];
+  if (!only || only === 'site') wrong.push(...(await verifyServed(join(root, 'apps/site/dist'), '/')));
+  if (!only || only === 'web') wrong.push(...(await verifyServed(join(root, 'apps/web/dist'), '/app')));
+  if (wrong.length) {
+    console.error(`\nDEPLOYED BYTES ARE NOT WHAT ${BASE} SERVES — ${wrong.length} page(s):`);
+    for (const w of wrong) console.error(`  ${w.url}   uploaded to ${w.stored}, served ${w.got}`);
+    console.error(
+      '\nThe usual cause is an older row at a SHADOWING key: the worker tries /x before /x/index.html,\n'
+      + 'so a stale bare-path row wins forever and no upload can replace or remove it. Check with\n'
+      + '  GET /api/admin/static-list   (header X-Admin-Key)\n'
+      + 'and delete the shadowing row.',
+    );
+    process.exit(3);
+  }
+  console.log(`verified — every page serves the bytes just uploaded`);
 }
