@@ -14,10 +14,23 @@
 //   identity to reset against, which is why its "Try to continue" used to re-render the same
 //   crashing route and crash again.
 //
-// Nothing is reported to the server. There is no endpoint for client errors, and a call to a
-// route that does not exist is the defect this codebase keeps finding; the console is what
-// exists, so the console is what is claimed.
+// WHAT HAPPENS TO THE ERROR ITSELF.
+//
+// This header used to end "Nothing is reported to the server … the console is what exists, so the
+// console is what is claimed." That is no longer true: `componentDidCatch` now also hands the
+// error to lib/sentry.ts, which is a no-op returning `not_installed` when no DSN is configured.
+//
+// THE CONSOLE LINE STAYS, and it stays above the report rather than instead of it. A developer
+// with devtools open is the fastest path from a crash to a cause, and reporting is an ADDITION to
+// that, never a replacement — the failure shape this repository keeps finding is a mechanism that
+// removed the old signal and then quietly failed to produce the new one.
+//
+// The report is deliberately not awaited and its outcome is deliberately not rendered. Whether
+// Sentry accepted the event has nothing to do with whether this component can show the crash card,
+// and a boundary that waits on the network before painting is a boundary that shows a white screen
+// when the network is the thing that broke.
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { captureException } from '../lib/sentry.ts';
 
 interface State {
   error: Error | null;
@@ -40,6 +53,10 @@ export class ErrorBoundary extends Component<Props, State> {
 
   override componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('Apple UI crashed:', error, info.componentStack);
+    // The component stack is NOT sent. It names this product's own files, which is diagnostic, but
+    // it is also the one string here that grows without bound and is composed from rendered
+    // content in development builds. The error and its own stack are what Sentry groups on.
+    void captureException(error, { kind: 'react_boundary', scope: this.props.scope ?? 'app' });
   }
 
   private reset = () => {

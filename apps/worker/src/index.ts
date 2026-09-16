@@ -124,6 +124,7 @@ import {
   summarize,
 } from './analytics';
 import { fetchStoredEvents, flushEvents, maybeFlush } from './analytics-sink';
+import { reportToSentry, sentryMiddleware } from './sentry';
 import {
   INBOX_KINDS,
   ensureNotificationTables,
@@ -456,6 +457,24 @@ function ipLimited(ip: string, limit = 20, windowMs = 60_000): boolean {
 }
 
 // ---------------------------------------------------------------- middleware
+/**
+ * ERROR MONITORING. FIRST, so it is OUTERMOST.
+ *
+ * Hono composes middleware in registration order, so this line's position in the file is
+ * load-bearing: registered here it wraps every other middleware and every handler — `/api/*`,
+ * `/v1/*`, the static handler, the not-found handler — and moving it below the `/api/*` block
+ * would silently stop reporting public-API and static failures. The request log immediately below
+ * only ever covered `/api/*`; a 500 out of `/v1` was invisible even in the table nobody reads.
+ *
+ * It CATCHES AND RE-THROWS. The response a client gets on an unhandled error is produced by the
+ * same Hono error handler that produced it before Sentry existed, and does not depend on whether
+ * SENTRY_DSN is set. With no DSN this middleware sends nothing and changes nothing.
+ *
+ * `routeLabel` is passed in rather than imported inside sentry.ts, so the route on a Sentry issue
+ * and the route on the analytics event are labelled by the same function and cannot drift.
+ */
+app.use('*', sentryMiddleware(routeLabel));
+
 app.use('/api/*', async (c, next) => {
   await next();
   c.header('X-Content-Type-Options', 'nosniff');
@@ -6804,6 +6823,32 @@ async function runScheduled(env: Env): Promise<void> {
   await flushEvents(env);
 }
 
+/**
+ * The cron, with the one thing a cron needs more than a request does: somebody told when it broke.
+ *
+ * A route that throws produces a 500 a customer complains about. A scheduled sweep that throws
+ * produces nothing at all — no response, no reader, and a retention policy that quietly stopped
+ * applying. So the scheduled handler reports before it re-throws, and it re-throws so Cloudflare
+ * still records the invocation as failed.
+ */
+async function reportedScheduled(env: Env): Promise<void> {
+  try {
+    await runScheduled(env);
+  } catch (e) {
+    const report = reportToSentry(env, e, {
+      kind: 'scheduled',
+      route: 'cron/retention-sweep',
+      method: 'CRON',
+      status: null,
+    });
+    // Awaited rather than waitUntil'd: the invocation is about to end, and a report handed to a
+    // dying isolate is a report nobody sent. `reportToSentry` is total, so this cannot throw and
+    // cannot mask the error below it.
+    await report;
+    throw e;
+  }
+}
+
 export default Object.assign(app, {
-  scheduled: (_event: unknown, env: Env, _ctx: unknown) => runScheduled(env),
+  scheduled: (_event: unknown, env: Env, _ctx: unknown) => reportedScheduled(env),
 });

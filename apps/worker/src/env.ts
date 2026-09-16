@@ -14,6 +14,25 @@ export interface Env {
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
   ENVIRONMENT: string;
+  /**
+   * Where uncaught errors are reported. `https://<publicKey>@<host>/<projectId>`, from
+   * Sentry → Settings → Projects → <project> → Client Keys (DSN).
+   *
+   * CONFIGURATION, NOT A CREDENTIAL. A DSN carries a PUBLIC key by construction — the browser
+   * half of this same integration ships its DSN inside the JavaScript bundle, where anybody can
+   * read it — so it grants nothing but the ability to send this project events. It is still kept
+   * out of the repository, because the repository is not where deployment-specific configuration
+   * belongs and because a DSN in git follows every fork of this tree forever:
+   *
+   *     cd apps/worker && npx wrangler secret put SENTRY_DSN      # production
+   *     echo 'SENTRY_DSN=https://…' >> apps/worker/.dev.vars      # local, untracked
+   *
+   * UNSET IS A SUPPORTED STATE AND THE DEFAULT ONE. With no DSN the worker reports nothing,
+   * crashes at nothing, and answers every request exactly as it would with monitoring on. See
+   * sentry.ts — the outermost middleware re-throws in every branch, so the error a client is
+   * shown does not depend on whether this variable is set.
+   */
+  SENTRY_DSN?: string;
   /** AI Gateway id; when unset, calls bypass the gateway (still budget-gated) */
   AI_GATEWAY_ID?: string;
   ADMIN_KEY?: string;
