@@ -406,11 +406,15 @@ const limitFaq = [
     z-index: 1;
   }
 
+  /* `margin-inline: auto`, not just a max-width. The wrap is 1200px and centred; a 900px grid
+     inside it with no auto margin sits against the LEFT edge, so the two cards were centred on 563
+     while the heading above them was centred on 713 — the same 150px disagreement the landing
+     page had, on a page nobody had measured. */
   .plans {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1.5rem;
-    margin-top: clamp(2.25rem, 5vw, 3.5rem);
+    margin: clamp(2.25rem, 5vw, 3.5rem) auto 0;
     max-width: 900px;
   }
 
@@ -515,9 +519,38 @@ const limitFaq = [
     border-block: 1px solid var(--line);
   }
 
+  /*[[ ONE AXIS, the same one the landing page settled on. Measured on the deployed page at
+   *   1425px: the plan grid is centred at 713 and every section head was centred at 355 — one page
+   *   drawn on two centre lines, which is the exact thing that made the landing look unfinished.
+   *   Scoped to this page style block rather than to the shared class, because /changelog uses the
+   *   same class and a dated log is a document, not a poster. ]]*/
   .sechead {
     max-width: 60ch;
-    margin-bottom: clamp(1.75rem, 4vw, 2.75rem);
+    margin: 0 auto clamp(1.75rem, 4vw, 2.75rem);
+    text-align: center;
+  }
+
+  .phead > .wrap > .eyebrow,
+  .phead > .wrap > h1,
+  .phead > .wrap > .lede,
+  .sechead .lede {
+    margin-inline: auto;
+    text-align: center;
+  }
+
+  /* THE EYEBROW IS `inline-flex`, which is why neither `margin-inline: auto` nor its own
+     `text-align` moved it: an inline box is placed by its PARENT alignment, and the wrap is
+     `text-align: start`. Measured: width 87, left 113, while the headline beside it was centred at
+     713. Making it block-level is what lets `justify-content` mean anything here. */
+  .phead > .wrap > .eyebrow,
+  .sechead .eyebrow {
+    display: flex;
+    justify-content: center;
+  }
+
+  .plan__note {
+    margin-inline: auto;
+    text-align: center;
   }
 
   .sechead h2 {
