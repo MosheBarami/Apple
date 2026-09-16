@@ -132,6 +132,12 @@ public channel.
   missing deploy, never Discord.
 - **`/build` says it could not reach the project.** That is the bot refusing to spend a Credit on a
   build it cannot confirm will land, not a bug. Try again in a moment.
+- **`/build` says there are no Credits left.** The balance is checked before the run is started, so
+  this refusal costs nothing — no Credit is spent on being told no. `/credits` shows when today's
+  allowance refills.
+- **"Too many commands too quickly."** Each Discord account gets 20 commands a minute, of which at
+  most 4 may be `/build`. The limit is per Discord account, not per server, and it clears by
+  itself within the minute. Nothing is spent on a command that was refused this way.
 
 ## What the bot cannot do, by design
 

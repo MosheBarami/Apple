@@ -20,8 +20,9 @@
 // that is already hopeless; the counter is there so the bound is a fact rather than an estimate.
 import { DurableObject } from 'cloudflare:workers';
 import type { Env } from '../env';
-import type { LinkRecord, RedeemResult } from '../discord';
-import { editOriginal, progressLine } from '../discord';
+import type { LinkRecord, RedeemResult, RateVerdict } from '../discord';
+import { editOriginal, progressLine, rateLimitForCommand, RATE_DEFAULT, RATE_WINDOW_MS } from '../discord';
+import { rateLimitCheck, type RateBucket } from '../public-api';
 import type { RunSnapshot } from '@golem/shared';
 
 const CODE_TTL_MS = 10 * 60 * 1000;
@@ -89,6 +90,12 @@ export class DiscordDO extends DurableObject<Env> {
     const codes = await this.ctx.storage.list<CodeRow>({ prefix: 'code:' });
     let soonest = Infinity;
     for (const [, row] of codes) soonest = Math.min(soonest, row.createdAt + CODE_TTL_MS);
+    // Rate-limit windows expire too, and nothing else would ever come back to delete them: with
+    // no watch and no live code the alarm is cleared, and a row written by the last command of the
+    // day would outlive this object's next hundred wakeups.
+    for (const [, row] of await this.ctx.storage.list<RateBucket>({ prefix: 'rate:' })) {
+      soonest = Math.min(soonest, row.startedAt + RATE_WINDOW_MS);
+    }
     if (Number.isFinite(soonest)) await this.ctx.storage.setAlarm(Math.max(Date.now() + 1000, soonest + 1000));
     else await this.ctx.storage.deleteAlarm();
   }
@@ -100,6 +107,12 @@ export class DiscordDO extends DurableObject<Env> {
     }
     for (const [key, row] of await this.ctx.storage.list<{ at: number }>({ prefix: 'fail:' })) {
       if (now - row.at > FAIL_WINDOW_MS) await this.ctx.storage.delete(key);
+    }
+    // A spent rate-limit window is indistinguishable from never having run a command, so the row
+    // is deleted rather than kept at zero: one row per Discord user id that ever typed a command,
+    // held for ever, is a storage bill for people who left.
+    for (const [key, row] of await this.ctx.storage.list<RateBucket>({ prefix: 'rate:' })) {
+      if (now - row.startedAt >= RATE_WINDOW_MS) await this.ctx.storage.delete(key);
     }
     for (const [key, watch] of await this.ctx.storage.list<WatchRow>({ prefix: 'watch:' })) {
       const done = await this.tick(watch, now);
@@ -144,6 +157,20 @@ export class DiscordDO extends DurableObject<Env> {
     watch.lastLine = line;
     await editOriginal(watch.applicationId, watch.token, `${line}\n${watch.projectUrl}`);
     return false;
+  }
+
+  /**
+   * Take one from a stored fixed-window bucket.
+   *
+   * The bucket is read, handed to the SAME `rateLimitCheck` the public API uses, and written back.
+   * Doing the arithmetic here instead would be a second counter to keep in step with the first.
+   */
+  private async consume(key: string, limit: number): Promise<RateVerdict> {
+    const stored = await this.ctx.storage.get<RateBucket>(key);
+    const buckets = new Map<string, RateBucket>(stored ? [[key, stored]] : []);
+    const v = rateLimitCheck(buckets, key, limit, RATE_WINDOW_MS, Date.now());
+    await this.ctx.storage.put(key, buckets.get(key)!);
+    return v.allowed ? { ok: true } : { ok: false, retryAfterS: v.retryAfter };
   }
 
   private async runSnapshot(projectId: string): Promise<RunSnapshot | null> {
@@ -250,6 +277,47 @@ export class DiscordDO extends DurableObject<Env> {
       await this.ctx.storage.delete(`link:${holder}`);
       await this.ctx.storage.delete(`owner:${link.appleUserId}`);
       return json({ removed: true });
+    }
+
+    /*
+     * -------------------------------------------------------------- limiting
+     *
+     * HOW FAST ONE DISCORD ACCOUNT MAY TALK TO US.
+     *
+     * TWO buckets, not one per command. A per-command bucket would bound each command and bound
+     * nothing overall: five commands at twenty a minute is a hundred a minute, and the "limit" a
+     * reader takes away from the constant would be wrong by a factor of five. So the wide bucket
+     * counts EVERY command, and a command with a tighter limit of its own — `build`, the only one
+     * that costs money — is counted a second time against that.
+     *
+     * A refusal by the wide bucket does not touch the narrow one: being told to slow down must not
+     * also consume the budget for the command you were not allowed to run.
+     *
+     * The bucket lives in storage rather than in a field on this object. An in-memory limiter is
+     * reset by eviction, and a Durable Object with no live work is evicted in seconds — so the
+     * ceiling would be "twenty a minute, unless you pause long enough for us to forget", which is
+     * not a ceiling. `rateLimitCheck` is the same fixed-window counter the public API's keys are
+     * limited by; a second implementation here is a second set of off-by-ones.
+     */
+    if (path === '/rate' && req.method === 'POST') {
+      const { discordUserId, command } = (await req.json()) as { discordUserId?: unknown; command?: unknown };
+      const who = String(discordUserId ?? '').slice(0, 32);
+      // Lower-cased before the ceiling is looked up, or `/BUILD` is an unrecognised command that
+      // quietly gets the wide ceiling instead of build's much lower one. Discord's own command
+      // names are lower-case, so nothing legitimate is changed by this; what it removes is a
+      // spelling that buys five times the budget. The punctuation strip is defence in depth behind
+      // the same lookup — a name that survives it still has to BE a known command to get a bucket.
+      const what = String(command ?? '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 32);
+      if (!who) return json({ ok: false, retryAfterS: 60 } satisfies RateVerdict);
+
+      let verdict = await this.consume(`rate:all:${who}`, RATE_DEFAULT);
+      const perCommand = rateLimitForCommand(what);
+      if (verdict.ok && perCommand < RATE_DEFAULT) verdict = await this.consume(`rate:${what}:${who}`, perCommand);
+      // Rescheduled on EVERY path, including the refusals. A row written by a request that was
+      // turned away is still a row, and without an alarm to expire it this object accumulates one
+      // per Discord user id that ever ran a command, permanently.
+      await this.reschedule();
+      return json(verdict);
     }
 
     // -------------------------------------------------------------- watching

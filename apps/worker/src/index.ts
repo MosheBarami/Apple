@@ -111,6 +111,7 @@ import {
   type DiscordPorts,
   type LinkRecord,
   type RedeemResult,
+  type RateVerdict,
 } from './discord';
 import {
   EVENT_KINDS,
@@ -2770,6 +2771,13 @@ function discordPorts(env: Env, origin: string): DiscordPorts {
   const d = discordStub(env);
   const projectUrl = (projectId: string) => `${origin}/app/projects/${projectId}`;
   return {
+    // A failed limiter check reads as REFUSED, never as allowed. This is the only guard standing
+    // between one Discord account and an unbounded number of free Durable Object reads, and a
+    // limiter that fails open is not a limiter — it is a limiter-shaped comment.
+    rateLimit: async (discordUserId, command) =>
+      (await okJson<RateVerdict>(
+        d.fetch('https://do/rate', { method: 'POST', body: JSON.stringify({ discordUserId, command }) }),
+      )) ?? { ok: false, retryAfterS: 60 },
     redeemLinkCode: async (discordUserId, code) =>
       (await okJson<RedeemResult>(
         d.fetch('https://do/redeem', { method: 'POST', body: JSON.stringify({ discordUserId, code }) }),

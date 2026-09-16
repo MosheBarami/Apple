@@ -22,7 +22,17 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { handleInteraction, CALLBACK, EPHEMERAL, MAX_CONTENT, COMMANDS, COMMAND_NAMES, progressLine } from '../src/discord.ts';
+import {
+  handleInteraction,
+  CALLBACK,
+  EPHEMERAL,
+  MAX_CONTENT,
+  COMMANDS,
+  COMMAND_NAMES,
+  progressLine,
+  rateLimitForCommand,
+  RATE_DEFAULT,
+} from '../src/discord.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 /** The screen the bot sends unlinked people to, read as text so the bot cannot name a button that is not there. */
@@ -65,6 +75,10 @@ function ports(over = {}) {
   const calls = [];
   const base = {
     calls,
+    rateLimit: async (...a) => {
+      calls.push(['rateLimit', ...a]);
+      return { ok: true };
+    },
     redeemLinkCode: async (...a) => {
       calls.push(['redeemLinkCode', ...a]);
       return { ok: true, link: LINK, replaced: null };
@@ -267,8 +281,12 @@ test('an unlinked Discord user cannot read or spend anything', async () => {
     const out = await handleInteraction(cmd(name, [{ name: 'prompt', value: 'x' }]), p);
     assertMessage(out.body);
     assert.match(out.body.data.content, /not connected to Apple/);
-    const touched = p.calls.map((c) => c[0]).filter((n) => n !== 'findLink');
+    // `rateLimit` is not "touching the account" — it is keyed on the Discord user id and reads
+    // nothing of anybody's. It has to run for an unlinked caller precisely BECAUSE the refusal is
+    // free: a stranger who is only ever told "not connected" must still be stoppable.
+    const touched = p.calls.map((c) => c[0]).filter((n) => n !== 'findLink' && n !== 'rateLimit');
     assert.deepEqual(touched, [], `/${name} must refuse before touching the account`);
+    assert.equal(p.calls[0][0], 'rateLimit', `/${name} is limited before anything is looked up`);
   }
 });
 
@@ -277,7 +295,8 @@ test('/link redeems the code and names the project it connected', async () => {
   const out = await handleInteraction(cmd('link', [{ name: 'code', value: ' abcd-efgh ' }]), p);
   assertMessage(out.body);
   assert.match(out.body.data.content, /Lava Obby/);
-  assert.deepEqual(p.calls[0], ['redeemLinkCode', '4242', 'abcd-efgh'], 'the code is trimmed, never the id');
+  assert.deepEqual(p.calls[0], ['rateLimit', '4242', 'link'], '/link is limited too, or it is the way in past the limiter');
+  assert.deepEqual(p.calls[1], ['redeemLinkCode', '4242', 'abcd-efgh'], 'the code is trimmed, never the id');
 });
 
 test('a wrong code and a throttled caller are told different things', async () => {
@@ -362,4 +381,131 @@ test('/status still reports a genuinely idle project as idle', async () => {
   const p = ports({ projectHealth: async () => ({ agentStatus: 'idle', pluginConnected: true }), run: async () => null });
   const out = await handleInteraction(cmd('status'), p);
   assert.match(out.body.data.content, /Nothing is building right now/);
+});
+
+// ------------------------------------------------- credits, before the spend
+
+/**
+ * THE REFUSAL HAS TO HAPPEN WHERE THE USER IS.
+ *
+ * `/build` goes through `/agent-run`, which is the same door a chat message and the eval harness
+ * go through, so the run charges itself from measured usage against QuotaDO — ONE ledger, and
+ * these tests do not add a second one. What they pin is that the balance is CHECKED before that
+ * door is opened, because the session's own check refuses by broadcasting onto a WebSocket, and a
+ * Discord interaction has no WebSocket. Without this gate the admission Credit is spent, the run
+ * dies at step one, `/agent-run` still answers `started: true`, and the only thing the user ever
+ * sees is a loading message that eventually says Apple could not see the build start.
+ */
+test('/build with no Credits is refused before anything is started or spent', async () => {
+  const p = ports({ quota: async () => ({ ...QUOTA, creditsRemaining: 0, allowanceRemaining: 0, credits: 0 }) });
+  const out = await handleInteraction(cmd('build', [{ name: 'prompt', value: 'a lava obby' }]), p);
+  assert.equal(out.body.type, CALLBACK.DEFERRED_MESSAGE, 'the balance is read after the three-second wall is met');
+
+  const edits = [];
+  await out.deferred(async (c) => void edits.push(c));
+  assert.equal(edits.length, 1, 'the loading message must be resolved, not left spinning');
+  assert.match(edits[0], /no Credits left/i, 'the user has to be told why nothing happened');
+  assert.match(edits[0], /no Credit was spent/i, 'and that this refusal itself cost them nothing');
+
+  const names = p.calls.map((c) => c[0]);
+  assert.equal(names.includes('startBuild'), false, 'a run must not be started for an account that cannot pay for it');
+  assert.equal(names.includes('watchRun'), false, 'and nothing may be watched, because nothing was started');
+});
+
+test('/build reads the balance before it reads anything else about the project', async () => {
+  // Order is the property. Checking Studio first would mean an account with no Credits is told to
+  // go and open Studio — sent away to fix the thing that is not the problem.
+  const p = ports();
+  p.quota = async (...a) => {
+    p.calls.push(['quota', ...a]);
+    return { ...QUOTA, creditsRemaining: 0 };
+  };
+  const out = await handleInteraction(cmd('build', [{ name: 'prompt', value: 'x' }]), p);
+  await out.deferred(async () => {});
+  const account = p.calls.map((c) => c[0]).filter((n) => n === 'quota' || n === 'projectHealth');
+  assert.equal(account[0], 'quota', 'the cheapest and most final refusal comes first');
+});
+
+test('/build refuses a balance it could not READ, instead of spending on the assumption it is fine', async () => {
+  // The observation failure, in the one place where being wrong costs money. A null from `quota`
+  // is "the Durable Object did not answer", not "this account has Credits".
+  const p = ports({ quota: async () => null });
+  const out = await handleInteraction(cmd('build', [{ name: 'prompt', value: 'x' }]), p);
+  const edits = [];
+  await out.deferred(async (c) => void edits.push(c));
+  assert.match(edits[0], /could not read/i, 'a failure to look must not render as an observation');
+  assert.equal(p.calls.map((c) => c[0]).includes('startBuild'), false, 'nothing is started on an unknown balance');
+});
+
+test('/build with Credits still starts, so the gate is a gate and not a wall', async () => {
+  const p = ports();
+  const out = await handleInteraction(cmd('build', [{ name: 'prompt', value: 'a lava obby' }]), p);
+  await out.deferred(async () => {});
+  assert.ok(p.calls.some((c) => c[0] === 'startBuild'), 'a funded account must still be able to build');
+});
+
+test('/status reports the balance as well as the run', async () => {
+  // "How is it going" and "can it keep going" are the same question mid-build: a run about to stop
+  // for want of Credits reads, in a progress line alone, exactly like one about to finish.
+  const p = ports();
+  const out = await handleInteraction(cmd('status'), p);
+  assertMessage(out.body);
+  assert.match(out.body.data.content, /140 Credits/, '/status must say what is left');
+  assert.ok(p.calls.some((c) => c[0] === 'quota' && c[1] === LINK.appleUserId), 'and read it for the LINKED account');
+});
+
+test('/status reports a balance it could not read as unread, never as zero', async () => {
+  const p = ports({ quota: async () => null });
+  const out = await handleInteraction(cmd('status'), p);
+  assert.doesNotMatch(out.body.data.content, /\b0 Credits\b/, 'an unreachable QuotaDO is not an empty balance');
+  assert.match(out.body.data.content, /could not read your balance/i);
+});
+
+// ------------------------------------------------------------- the limiter
+
+test('a rate-limited Discord user reaches nothing at all', async () => {
+  // Every command, including the ones that refuse for free. A limiter that only covers the
+  // expensive command leaves the cheap ones as an unmetered way to drive our Durable Objects.
+  for (const name of [...COMMAND_NAMES]) {
+    const p = ports();
+    p.rateLimit = async (...a) => {
+      p.calls.push(['rateLimit', ...a]);
+      return { ok: false, retryAfterS: 30 };
+    };
+    const out = await handleInteraction(cmd(name, [{ name: 'code', value: 'AAAABBBB' }, { name: 'prompt', value: 'x' }]), p);
+    assertMessage(out.body);
+    assert.match(out.body.data.content, /30 seconds/, `/${name} must say how long to wait`);
+    assert.deepEqual(
+      p.calls.map((c) => c[0]),
+      ['rateLimit'],
+      `/${name} must touch nothing once the limiter has refused`,
+    );
+    assert.equal(out.deferred, undefined, `/${name} must not schedule background work it was refused`);
+  }
+});
+
+test('the limiter is told WHICH command, so /build can be held to a lower ceiling than /status', async () => {
+  for (const name of [...COMMAND_NAMES]) {
+    const p = ports();
+    await handleInteraction(cmd(name, [{ name: 'code', value: 'AAAABBBB' }, { name: 'prompt', value: 'x' }]), p);
+    assert.deepEqual(p.calls[0], ['rateLimit', '4242', name], 'the command name must reach the limiter');
+  }
+  assert.ok(rateLimitForCommand('build') < rateLimitForCommand('status'), 'the command that spends money is limited harder');
+  assert.equal(rateLimitForCommand('something-else'), RATE_DEFAULT, 'an unknown command is limited, not waved through');
+});
+
+test('a PING is never rate-limited, because Discord health-checks the endpoint', async () => {
+  // Discord pings the interactions URL to validate it and again afterwards. Counting those against
+  // a user budget would let ordinary use knock the endpoint out of Discord's own checks — and
+  // there is no user to limit: a PING carries no member and no user.
+  const p = ports();
+  // Recorded, not just stubbed: an override that silently forgets to push would make the
+  // assertion below pass for a PING that DID consult the limiter and was let through anyway.
+  p.rateLimit = async (...a) => {
+    p.calls.push(['rateLimit', ...a]);
+    return { ok: false, retryAfterS: 30 };
+  };
+  const out = await handleInteraction({ type: 1 }, p);
+  assert.deepEqual(out.body, { type: CALLBACK.PONG });
+  assert.deepEqual(p.calls, [], 'a PING must not consult the limiter at all');
 });

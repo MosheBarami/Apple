@@ -110,6 +110,24 @@ export type RedeemResult =
   | { ok: true; link: LinkRecord; replaced: LinkRecord | null }
   | { ok: false; reason: 'invalid' | 'throttled' };
 
+export type RateVerdict = { ok: true } | { ok: false; retryAfterS: number };
+
+/**
+ * Commands a minute, per Discord user id.
+ *
+ * `build` is separate and much lower because it is the only command that spends money, and
+ * because a build takes minutes — a second one inside the same minute is a mistake or an attack,
+ * never a legitimate use. The rest are reads; they are limited to stop a hot loop, not to ration
+ * ordinary use, so the ceiling is far above anything a person types by hand.
+ */
+export const RATE_WINDOW_MS = 60_000;
+export const RATE_LIMITS: Record<string, number> = { build: 4 };
+export const RATE_DEFAULT = 20;
+
+export function rateLimitForCommand(command: string): number {
+  return RATE_LIMITS[command] ?? RATE_DEFAULT;
+}
+
 /**
  * Everything a command needs from the rest of the product, as functions.
  *
@@ -117,6 +135,17 @@ export type RedeemResult =
  * Durable Object, a network, or a Discord application that does not exist yet.
  */
 export interface DiscordPorts {
+  /**
+   * May this Discord user run another command right now?
+   *
+   * Keyed on the DISCORD user id and nothing else. Every other limiter in this product keys on
+   * something the Discord path does not have: the IP limiter sees Discord's edge rather than the
+   * person, and the per-account quota is not reached at all by `/link`, `/unlink` or a `/status`
+   * that never starts a run. Without this, one Discord account can hold a command key down and
+   * turn our own Durable Objects into the load — free, because none of those commands spend a
+   * Credit. `/build` is limited harder than the rest because it is the one that costs money.
+   */
+  rateLimit(discordUserId: string, command: string): Promise<RateVerdict>;
   redeemLinkCode(discordUserId: string, code: string): Promise<RedeemResult>;
   removeLink(discordUserId: string): Promise<boolean>;
   findLink(discordUserId: string): Promise<LinkRecord | null>;
@@ -159,6 +188,19 @@ export function say(content: string): InteractionResponse {
 
 export function thinking(): InteractionResponse {
   return { type: CALLBACK.DEFERRED_MESSAGE, data: { flags: EPHEMERAL } };
+}
+
+/**
+ * The one-line balance, shared by `/credits` and `/status`.
+ *
+ * A null quota is a FAILURE TO READ and says so. Rendering it as zero would tell a paying customer
+ * they are out of Credits because a Durable Object was briefly unreachable; rendering it as "fine"
+ * would hide a real empty balance behind a fetch that did not happen.
+ */
+export function balanceLine(q: QuotaState | null): string {
+  if (!q) return 'Apple could not read your balance just now.';
+  const purchased = q.credits > 0 ? `, plus ${q.credits} purchased` : '';
+  return `**${q.creditsRemaining} Credits** left — ${q.allowanceRemaining} from today's ${q.plan} allowance${purchased}.`;
 }
 
 /** One line describing where a run has got to, shared by `/status` and the progress pusher. */
@@ -259,6 +301,23 @@ export async function handleInteraction(raw: unknown, ports: DiscordPorts): Prom
   if (!discordUserId) return { status: 200, body: say('Apple could not tell who you are on Discord.') };
   const name = i.data?.name ?? '';
 
+  // BEFORE the link is even looked up, and before `/link` redeems anything.
+  //
+  // Putting this after `findLink` would mean an unlinked stranger still gets one Durable Object
+  // read per command, for ever, at no cost to themselves — the limiter would protect only the
+  // people who had already proved who they were. `/link` is inside the limit for the same reason:
+  // the code guess-counter in DiscordDO bounds guesses against ONE Discord user's own budget of
+  // wrong answers, which is a different question from how fast that user may ask.
+  const allowed = await ports.rateLimit(discordUserId, name);
+  if (!allowed.ok) {
+    return {
+      status: 200,
+      body: say(
+        `Too many commands too quickly. Apple is ignoring this Discord account for another ${allowed.retryAfterS} ${allowed.retryAfterS === 1 ? 'second' : 'seconds'}.`,
+      ),
+    };
+  }
+
   if (name === 'link') {
     const code = optionString(i, 'code');
     const res = await ports.redeemLinkCode(discordUserId, code);
@@ -297,13 +356,7 @@ export async function handleInteraction(raw: unknown, ports: DiscordPorts): Prom
   if (name === 'credits') {
     const q = await ports.quota(link.appleUserId);
     if (!q) return { status: 200, body: say('Apple could not read your balance just now. Try again in a moment.') };
-    return {
-      status: 200,
-      body: say(
-        `**${q.creditsRemaining} Credits** left — ${q.allowanceRemaining} from today's ${q.plan} allowance` +
-          `${q.credits > 0 ? `, plus ${q.credits} purchased` : ''}.\nToday's allowance refills ${friendlyReset(q.resetsAtIso)}.`,
-      ),
-    };
+    return { status: 200, body: say(`${balanceLine(q)}\nToday's allowance refills ${friendlyReset(q.resetsAtIso)}.`) };
   }
 
   if (name === 'status') {
@@ -320,9 +373,17 @@ export async function handleInteraction(raw: unknown, ports: DiscordPorts): Prom
         ),
       };
     }
-    const run = await ports.run(link.projectId);
+    // The balance belongs on this reply and not only on `/credits`. "How is it going" and "can it
+    // keep going" are the same question during a build: a run that is about to stop for want of
+    // Credits looks, in a progress line alone, exactly like one that is about to finish.
+    const [run, q] = await Promise.all([ports.run(link.projectId), ports.quota(link.appleUserId)]);
     const studio = health.pluginConnected ? '' : '\nStudio is not connected right now.';
-    return { status: 200, body: say(`**${link.projectName}** — ${progressLine(run)}${studio}\n${ports.projectUrl(link.projectId)}`) };
+    return {
+      status: 200,
+      body: say(
+        `**${link.projectName}** — ${progressLine(run)}${studio}\n${balanceLine(q)}\n${ports.projectUrl(link.projectId)}`,
+      ),
+    };
   }
 
   if (name === 'build') {
@@ -336,6 +397,37 @@ export async function handleInteraction(raw: unknown, ports: DiscordPorts): Prom
       body: thinking(),
       reply: { applicationId, token },
       deferred: async (edit) => {
+        /*
+         * CAN THIS ACCOUNT AFFORD TO START, asked before anything starts.
+         *
+         * This is NOT a second accounting path and deliberately spends nothing. The run charges
+         * itself through QuotaDO `/spend` from measured usage, exactly as a chat message, the
+         * public API and the eval harness do, because `/build` goes through the same `/agent-run`
+         * door they do — there is one ledger and this does not touch it. What is added here is the
+         * REFUSAL, moved to where the user can see it.
+         *
+         * Without it the session admits the run, spends the admission Credit, fails the balance
+         * check inside and broadcasts a `quota` error onto a WebSocket that a Discord interaction
+         * does not have. The command's own reply would still say "starting", because `/agent-run`
+         * answers `started: true` for a run that never began. The user is charged, told the build
+         * is under way, and then watches a loading message turn into "Apple could not see that
+         * build start" — which is true, and useless.
+         */
+        const q = await ports.quota(link.appleUserId);
+        if (!q) {
+          // A balance that could not be READ is not a balance of zero and not a balance that is
+          // fine. Starting here would spend Credits nobody confirmed were there.
+          await edit('Apple could not read your Credit balance, so it did not start a build. Try again in a moment.');
+          return;
+        }
+        if (q.creditsRemaining <= 0) {
+          await edit(
+            `You have no Credits left, so nothing was started — no Credit was spent on this.\n` +
+              `Today's allowance refills ${friendlyReset(q.resetsAtIso)}.`,
+          );
+          return;
+        }
+
         // Refused BEFORE a Credit is spent rather than after: a build with no Studio attached burns
         // the allowance producing changes that have nowhere to land.
         // A null health is a FAILURE TO LOOK, and `health && …` quietly promotes it to consent:
