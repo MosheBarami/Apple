@@ -2360,22 +2360,66 @@ textarea {
   box-shadow: var(--lift-1);
 }
 
+/*[[ SHAPE, NOT A BORROWED HUE.
+ *
+ *   These were `background: var(--acc-clay)` and `var(--acc-stone)` — two of the four SELECTABLE
+ *   ACCENT THEMES, used here as if they were a categorical palette. Two things wrong with that, and
+ *   the second is the one that bites:
+ *
+ *     A grep says `--acc-clay`, `--acc-stone` and `--acc-rune` have exactly two kinds of use in
+ *     this stylesheet: they define what `--accent` becomes when the reader picks that theme, and
+ *     they paint these three dots. So a reader on the clay theme sees the Plan marker in the same
+ *     colour as every primary button on the page — the mode marker stops being a marker at the
+ *     moment the theme makes that colour the loudest thing on screen.
+ *
+ *     And the hue was carrying nothing. The dot sits beside the mode's own name and its own blurb;
+ *     it never appears in a chart or anywhere else a colour has to be matched back to a key.
+ *
+ *   The difference between the modes is real and is worth drawing, so it is drawn with the thing
+ *   that actually differs: Plan PROPOSES and changes nothing, so it is an outline; Agent ACTS, so
+ *   it is filled. Nobody has to learn which hue meant which. ]]*/
+/*[[ `--muted`, NOT `--ink-2`. THE OUTLINE DID NOT RENDER AT ALL, and the way it failed is the
+ *   reason `tests/undefined-custom-property.test.mjs` now exists.
+ *
+ *   `--ink-2` is a token from the WORKSPACE stylesheet's family (`--gx-ink-2`); this file's
+ *   equivalent is `--muted`. So `border: 1.5px solid var(--ink-2)` referenced a custom property
+ *   that is never defined here — and an unresolvable `var()` makes the WHOLE shorthand invalid at
+ *   computed-value time. Every longhand falls back to its initial value: style `none`, width `0`.
+ *
+ *   What made it hard to see is the third longhand. `border-color`'s initial value is
+ *   `currentColor`, and the text beside this dot is `--muted` — the very colour the author meant.
+ *   So `getComputedStyle(...).borderTopColor` reported rgb(163,163,173), exactly as if the token
+ *   had resolved. The stylesheet said the border was there, the computed colour agreed, and only
+ *   the screen disagreed.
+ *
+ *   I first blamed the fractional width and wrote a guard banning `1.5px` beside a `var()`. That
+ *   was wrong: `border: 1.5px solid var(--gx-ink-3)` renders perfectly two files away, and
+ *   `border: 1px solid var(--ink-2)` fails identically here. The width was never involved. ]]*/
 .mode-dot {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 2px;
+  border: 1.5px solid var(--muted);
+  box-sizing: border-box;
   flex: none;
   rotate: 45deg;
 }
 
+/* Proposes; does not change anything. An outline. */
 .mode-dot-plan {
-  background: var(--acc-clay);
+  background: transparent;
 }
+/* Builds, tests and repairs. Filled. */
 .mode-dot-agent {
-  background: var(--acc-stone);
+  border-color: var(--ink);
+  background: var(--ink);
 }
+/* Not offered to anyone today — see auth-pages.tsx. Filled, with a ring, so that if it is ever
+   turned on it reads as "agent, and more" rather than as a third unrelated thing. */
 .mode-dot-super {
-  background: var(--acc-rune);
+  border-color: var(--ink);
+  background: var(--ink);
+  box-shadow: 0 0 0 2px var(--surface-3);
 }
 
 .credits-hint {

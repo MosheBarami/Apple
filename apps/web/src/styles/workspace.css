@@ -154,7 +154,7 @@
   inset-block: 0;
   inset-inline-end: 3px;
   width: 1px;
-  background: var(--gx-accent);
+  background: var(--gx-amber);
   opacity: 0;
   transition: opacity var(--gx-t-enter) var(--gx-ease);
 }
@@ -1076,7 +1076,7 @@
   width: 26px;
   height: 26px;
   border-radius: 999px;
-  border: 1px solid var(--gx-bg);
+  border: 1px solid var(--gx-ground);
   background: var(--gx-raise);
   color: var(--gx-ink-2);
   font-size: 0.66rem;
@@ -2536,7 +2536,7 @@
 .gx-chip--template:hover:not(:disabled),
 .gx-chip--template[aria-expanded='true'] {
   color: var(--gx-ink);
-  background: var(--gx-raised);
+  background: var(--gx-raise-2);
 }
 
 .gx-chip--sel:disabled {
@@ -2677,7 +2677,7 @@
 .gx-seeds .gx-row:hover,
 .gx-seeds .gx-row:focus-visible {
   border-color: var(--gx-accent, var(--gx-ink-2));
-  background: var(--gx-panel, var(--gx-raised));
+  background: var(--gx-panel, var(--gx-raise-2));
 }
 
 .gx-row__main {
@@ -3253,6 +3253,23 @@
   box-shadow: none;
 }
 
+/*[[ SEVEN TOKEN NAMES IN THIS FILE NAMED NOTHING, and every declaration using them did nothing.
+ *
+ *   `--ink-1`, `--ink-2`, `--ink-3`, `--gx-bg`, `--gx-accent`, `--gx-raised` and `--acc-studio`
+ *   are not defined anywhere in this app — they are near-misses for names that are
+ *   (`--ink`/`--muted`/`--faint`, `--gx-ground`, `--gx-amber`, `--gx-raise-2`, `--accent`). An
+ *   unresolvable `var()` does not fall back to something sensible; it makes the whole declaration
+ *   invalid at computed-value time and the property reverts to its INITIAL value.
+ *
+ *   For `color` the initial value is `inherit`-like in effect, so thirty declarations that meant
+ *   "a step quieter than the text above" rendered at exactly the same weight as the text above.
+ *   The hierarchy those rules were written to create did not exist on screen, and nothing said so.
+ *
+ *   Found by `tests/undefined-custom-property.test.mjs`, which exists because one of these —
+ *   `border: 1.5px solid var(--ink-2)` on the sign-in page's mode marker — deleted a border while
+ *   `getComputedStyle().borderTopColor` kept reporting the colour the author intended, because
+ *   border-color's initial value is `currentColor` and the text beside it was that same grey. ]]*/
+
 /* ---------------------------------------------------------------- playtest
    The inline playtest viewport.
 
@@ -3512,7 +3529,7 @@
   max-width: 34rem;
   font-size: 0.875rem;
   line-height: 1.55;
-  color: var(--ink-3);
+  color: var(--faint);
 }
 
 .es__action { margin-top: 0.5rem; }
@@ -3526,7 +3543,7 @@
 }
 
 .es__help a {
-  color: var(--ink-3);
+  color: var(--faint);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -3562,7 +3579,7 @@
   font: 500 0.7rem/1 var(--font-mono);
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--ink-3);
+  color: var(--faint);
 }
 
 /* The Studio pill's two labels. The place name is the useful one and wins at desktop
@@ -3593,7 +3610,7 @@
 .st--warn   { color: var(--warn); }
 .st--info   { color: var(--info); }
 .st--future { color: var(--acc-rune); }
-.st--muted  { color: var(--ink-3); }
+.st--muted  { color: var(--faint); }
 
 /* The status-mark specimen row in /ui-lab. */
 .lab-marks { display: flex; flex-wrap: wrap; gap: 1.1rem 1.6rem; align-items: center; }
@@ -3624,33 +3641,33 @@
 .cr-verdict--good  .cr-verdict__mark { color: var(--good); }
 .cr-verdict--bad   .cr-verdict__mark { color: var(--bad); }
 .cr-verdict--warn  .cr-verdict__mark { color: var(--warn); }
-.cr-verdict--muted .cr-verdict__mark { color: var(--ink-3); }
-.cr-verdict__title { margin: 0 0 0.2rem; font-size: 0.95rem; font-weight: 600; color: var(--ink-1); }
-.cr-verdict__body { margin: 0; font-size: 0.82rem; line-height: 1.5; color: var(--ink-2); }
+.cr-verdict--muted .cr-verdict__mark { color: var(--faint); }
+.cr-verdict__title { margin: 0 0 0.2rem; font-size: 0.95rem; font-weight: 600; color: var(--ink); }
+.cr-verdict__body { margin: 0; font-size: 0.82rem; line-height: 1.5; color: var(--muted); }
 
 .cr-group { display: flex; flex-direction: column; gap: 0.55rem; }
 .cr-group__head {
   margin: 0; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.06em;
-  text-transform: uppercase; color: var(--ink-3);
+  text-transform: uppercase; color: var(--faint);
 }
-.cr-note { margin: 0; font-size: 0.79rem; line-height: 1.5; color: var(--ink-3); }
+.cr-note { margin: 0; font-size: 0.79rem; line-height: 1.5; color: var(--faint); }
 
 .cr-entries, .cr-findings, .cr-ids { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.6rem; }
 .cr-entry { display: flex; flex-direction: column; gap: 0.15rem; }
-.cr-entry__line { font-size: 0.84rem; line-height: 1.45; color: var(--ink-1); }
+.cr-entry__line { font-size: 0.84rem; line-height: 1.45; color: var(--ink); }
 .cr-entry__links { display: flex; gap: 0.8rem; font-size: 0.74rem; }
-.cr-entry__links a { color: var(--ink-3); }
-.cr-entry__links a:hover { color: var(--acc-studio); }
+.cr-entry__links a { color: var(--faint); }
+.cr-entry__links a:hover { color: var(--accent); }
 
 .cr-finding { display: flex; flex-direction: column; gap: 0.2rem; padding-inline-start: 0.7rem; border-inline-start: 2px solid var(--line); }
 .cr-finding.is-blocker { border-inline-start-color: var(--bad); }
-.cr-finding__name { font-size: 0.84rem; font-weight: 600; color: var(--ink-1); }
-.cr-finding__why, .cr-finding__fix { font-size: 0.79rem; line-height: 1.5; color: var(--ink-2); }
-.cr-finding__fix { color: var(--ink-3); }
+.cr-finding__name { font-size: 0.84rem; font-weight: 600; color: var(--ink); }
+.cr-finding__why, .cr-finding__fix { font-size: 0.79rem; line-height: 1.5; color: var(--muted); }
+.cr-finding__fix { color: var(--faint); }
 
-.cr-ids { gap: 0.25rem; font-size: 0.8rem; color: var(--ink-2); }
+.cr-ids { gap: 0.25rem; font-size: 0.8rem; color: var(--muted); }
 
-.cr-stamp { margin: 0; font-size: 0.74rem; line-height: 1.5; color: var(--ink-3); }
+.cr-stamp { margin: 0; font-size: 0.74rem; line-height: 1.5; color: var(--faint); }
 
 /* ------------------------------------------------------------ command palette --- */
 /* Sits above everything, including the rail overlay and any modal that opened it, because it is
