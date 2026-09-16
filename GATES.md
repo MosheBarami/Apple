@@ -244,8 +244,9 @@ test it gated.
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=e2f019f; tree-clean=yes; deps-clean=yes; EXPECT=matched; output-sha256=4c194efe67925ac74d0fab7f3392b59e3ce328d8931e7d5e9c1dfd9c1e548dda; output-bytes=5587; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=7; deps-sha=e5512dbb298beacf08f9e3b5; at=2026-09-15T00:25:13.187Z
 
 - [x] G-ORACLE-4: Every module nothing reaches carries a disposition, and the checker sees past its own blind spots
-    CHECK: node scripts/assert-tests.mjs --floor 13 --label G-ORACLE-4 -- node --test tests/check-deadends.test.mjs
+    CHECK: node scripts/assert-tests.mjs --floor 14 --label G-ORACLE-4 -- node --test tests/check-deadends.test.mjs
     EXPECT: G-ORACLE-4 OK
+  CHECK-CHANGE: old=--floor 13 new=--floor 14 reason=a1e4acd-added-the---list-unresolved-test-and-a-floor-of-13-left-it-unpinned
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G-ORACLE-4; path=6765c31f4f12/53 entries; git-sha=9e60f65; tree-clean=yes; break-sha=9e60f65; EXPECT=unmatched; output-sha256=d7a766db8e441089bc63819e48bdd0ad52ac0d8482d049f451cfb0a54e3effc7; output-bytes=1968; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=849a707d7e2395fdffe292e6; at=2026-09-14T17:53:27.432Z
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=e2f019f; tree-clean=yes; deps-clean=yes; EXPECT=matched; output-sha256=0183aaa116510782d3002133ed59fdb98eca47c77d54cf9cd0a434ad088a0893; output-bytes=1073; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=3; deps-sha=61017c88de5b58016cab9ece; at=2026-09-15T00:25:13.175Z
 
