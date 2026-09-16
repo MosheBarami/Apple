@@ -64,6 +64,7 @@ import { MCP_TOOL_NAMES } from '../mcp';
 import { planFromDetail, planDetail, settlePlan, type RunPlan } from '../run-plan';
 import { critiqueToText } from '../vision';
 import { toolsForMode } from '../router';
+import { recoverToolCall } from '../tool-recovery';
 import { assetLibraryAvailable } from '../asset-library';
 import { notify } from '../notify';
 import { usageBand } from '../notifications';
@@ -2453,6 +2454,34 @@ export class SessionDO extends DurableObject<Env> {
         runId: agent.msgId,
       },
     );
+    //[[ THE MODEL SOMETIMES WRITES THE CALL INSTEAD OF MAKING IT, and until this ran the payload
+    //   was printed at the user as the answer. Observed in production: a request for a clicker
+    //   loop came back as eighty lines of `propose_plan` arguments in the chat window, nothing
+    //   built, and the whole day's Credits spent. See tool-recovery.ts for why only inert tools
+    //   may be recovered and why this is not the fence-parsing fallback gateway.ts refuses.
+    //
+    //   Done BEFORE `lastCalls` is taken and before `res.text` is read, so the recovered call is
+    //   indistinguishable downstream from one the model actually made. ]]
+    if (!res.toolCalls.length && res.text) {
+      const rescued = recoverToolCall(res.text, allowed);
+      if (rescued.call) {
+        res.toolCalls = [{ id: `rescued_${agent.step}`, name: rescued.call.name, arguments: rescued.call.arguments }];
+        res.text = rescued.text;
+      } else if (rescued.refused) {
+        // Not executed — but not shown either. A wall of JSON is never the answer to anything, and
+        // the model needs to be told what went wrong rather than the user being handed the
+        // evidence. The nudge path below turns this into another step.
+        res.text = '';
+        agent.priorStepFailed = true;
+        agent.llm.push({
+          role: 'user',
+          content:
+            `Your last message was the ARGUMENTS for \`${rescued.refused}\` written as text, not a tool call. ` +
+            'It was not run and the user did not see it. Call the tool.',
+        });
+      }
+    }
+
     //[[ Same reason as seenCalls: this holds raw tool arguments verbatim and is persisted.
     //   Only the most recent turn's calls are ever read, so keeping more is pure weight. ]]
     agent.lastCalls = (res.toolCalls ?? []).slice(-8);
