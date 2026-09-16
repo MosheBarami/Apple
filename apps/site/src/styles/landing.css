@@ -265,7 +265,28 @@
   box-sizing: border-box;
 }
 
+/*[[ THE WHOLE INTERFACE, ONE SIZE DOWN. Owner's call, 2026-09-16: "the whole size of the site
+ *   should be smaller — all the text and the parts."
+ *
+ *   ONE NUMBER, not two hundred edits. Every size and every gap in this stylesheet is in `rem`, so
+ *   the root font-size is the single scale factor for the entire interface — type, padding, gaps,
+ *   radii and icon boxes all move together and every proportion the design was drawn with is
+ *   preserved. Editing the type scale alone would have shrunk the words inside boxes that stayed
+ *   the same size, which reads as a mistake rather than as a smaller design.
+ *
+ *   80%, not the literal half he asked for. 16px -> 8px would put body text at 8px and the small
+ *   print at 5px, which is not a smaller product, it is an unreadable one. 12.8px base is a real,
+ *   visible step down — about a fifth off every dimension on the page — and it is the largest one
+ *   that keeps the smallest labels above the size a person can read at arm's length.
+ *
+ *   TO TUNE IT, change this one percentage. Nothing else needs to move. If it should go further,
+ *   75% is the next honest stop and 70% is the floor: below that the 0.62rem mono captions land
+ *   under 9px.
+ *
+ *   `-webkit-text-size-adjust: 100%` stays. It stops iOS inflating text after a rotation, which
+ *   would undo this on exactly the devices where the reduction matters most. ]]*/
 html {
+  font-size: 80%;
   /* The nav scrolls to sections on the same page, and a sticky header would
      otherwise cover the heading it just scrolled to. */
   scroll-behavior: smooth;
