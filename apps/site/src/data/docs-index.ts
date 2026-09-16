@@ -94,19 +94,59 @@ function stripExpressions(src: string): string {
  *
  * Long quoted strings only, and never from an `import` line: a path like '../../layouts/Base.astro'
  * is short and has no business in a haystack, while an answer is a sentence.
+ *
+ * AND NEVER FROM A COMMENT. Comments are the one part of a page written FOR the person editing it
+ * and never for the person reading it, and this indexed them: a page whose frontmatter explained
+ * why Super Agent had been withdrawn put the words "Plan, Agent and Super Agent" — the old copy,
+ * QUOTED so a maintainer could see what had changed — straight into the customer-facing search
+ * index, along with the `//` that opened the line. The result is worse than noise: the search box
+ * answers a question about the product with the commentary on its own source, and a mode a reader
+ * cannot select was findable in the docs search of a site whose pages no longer mention it.
+ * apps/site/tests/withdrawn-modes.test.mjs is what caught it, in dist/docs-index.json.
  */
 function frontmatterProse(front: string): string {
-  const lines = front.split('\n').filter((l) => !/^\s*import\s/.test(l));
+  const lines = stripComments(front)
+    .split('\n')
+    .filter((l) => !/^\s*import\s/.test(l));
   const strings = [...lines.join('\n').matchAll(/(['"`])((?:\\.|(?!\1)[\s\S])*?)\1/g)]
     .map((m) => m[2]!)
+    // A string with an interpolation in it is not text, it is a TEMPLATE, and nothing here can
+    // fill it in: the page's copy is derived at build time from the product, and this reads the
+    // file. Indexed anyway, it put `about ${m.perFreeDay} ${m.name} requests` and the argument of
+    // a `throw new Error` into the haystack and into the snippet a reader is shown. Dropping it
+    // loses a sentence from the index; keeping it showed source code to a customer.
+    .filter((s) => !s.includes('${'))
     .filter((s) => s.length >= 24 && !/^[./]/.test(s));
   return strings.join(' ').replace(/<[^>]+>/g, ' ');
 }
 
+/**
+ * Block and line comments out. The `[^:]` guard before `//` is load-bearing: without it the first
+ * `https://` in a frontmatter string takes the rest of that line with it.
+ */
+function stripComments(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/.*$/gm, '$1');
+}
+
+/**
+ * Section headings, which are the part of this index a person actually reads.
+ *
+ * EXPRESSIONS COME OUT HERE TOO. `stripExpressions` was applied to the body prose and not to the
+ * headings, so a page that derives its sections from the product — `<h2>{s.name} — {s.credits}
+ * credits</h2>`, which is how /docs/modes stopped being able to advertise a withdrawn mode —
+ * indexed the heading "{s.name} — {s.credits} credits" and offered it to a searcher as a section
+ * of the page. A heading with ANY expression in it is dropped whole rather than stripped down to
+ * what is left: "{s.name} — {s.credits} credits" strips to "— credits", and a searcher offered
+ * "— credits" as a section of the manual has been told something worse than nothing. This index
+ * reads sources and cannot know what the build put there; where it cannot know, it says nothing
+ * and lets the page's body text carry the words.
+ */
 function headingsOf(body: string): string[] {
   return [...body.matchAll(/<h([23])[^>]*>([\s\S]*?)<\/h\1>/gi)]
-    .map((m) => decode(m[2]!.replace(/<[^>]+>/g, '')).replace(/\s+/g, ' ').trim())
-    .filter(Boolean);
+    .map((m) => m[2]!)
+    .filter((h) => !h.includes('{'))
+    .map((h) => decode(h.replace(/<[^>]+>/g, '')).replace(/\s+/g, ' ').trim())
+    .filter((h) => /[\p{L}\p{N}]/u.test(h));
 }
 
 /**
