@@ -1,14 +1,25 @@
 ---
 import AppleMark from './AppleMark.astro';
 
-// The landing is one viewport now, so /#how, /#modes and /#proof no longer
-// exist. Anchors to sections that were deleted are worse than no links at
-// all — they land the reader at the top of the page with nothing to see and
-// no explanation. Those subjects live on real routes instead.
+//[[ ONE NAVIGATION FOR THE WHOLE SITE.
+//
+//   The comment that stood here said "the landing is one viewport now, so /#how, /#modes and
+//   /#proof no longer exist", and it was reasoning from a landing page that had already been
+//   rebuilt. Every one of those sections is back — index.astro's own header links to #product,
+//   #library, #modes, #how and #pricing. So the site had two navigations offering different
+//   destinations: the landing's six, and this one's three, which named none of the product.
+//   A reader who clicked Pricing could not get back to Library.
+//
+//   The hrefs are ROOT-RELATIVE (`/#product`, not `#product`) so one list works from every page.
+//   On the landing itself a same-document fragment still scrolls without a navigation; from
+//   /pricing it loads the landing and lands on the section.
 const links = [
+  { href: '/#product', label: 'Product' },
+  { href: '/#library', label: 'Library' },
+  { href: '/#modes', label: 'Modes' },
+  { href: '/#how', label: 'How it works' },
   { href: '/pricing', label: 'Pricing' },
   { href: '/docs', label: 'Docs' },
-  { href: '/changelog', label: 'Changelog' },
 ];
 const path = Astro.url.pathname;
 const isCurrent = (href: string) =>
@@ -73,7 +84,12 @@ const isCurrent = (href: string) =>
           <span class="visually-hidden">Toggle interface sound</span>
         </button>
 
-        <a href="/app" class="btn btn-primary nav__cta" data-cursor-label="open app">Open Apple</a>
+        {/* THE SAME PAIR THE LANDING OFFERS. A lone "Open Apple" sends a signed-out visitor — who
+            is most of this page's traffic — to a login screen with no account, and offers the
+            signed-in one nothing they cannot already do. Two doors, named for what is behind
+            them. */}
+        <a href="/app/login" class="btn btn-ghost nav__signin">Sign in</a>
+        <a href="/app/signup" class="btn btn-primary nav__cta" data-cursor-label="start building">Start building</a>
       </div>
     </nav>
 
@@ -142,10 +158,17 @@ const isCurrent = (href: string) =>
     gap: 2rem;
   }
 
+  /*[[ THE GAP, AND THE ONE I GOT WRONG. Going from three links to six, I added an override setting
+   *   this to 0.15rem — 2.4px at the interface's 80% scale — and the deployed header read
+   *   "Product Library Modes How it works Pricing Docs" as a single run-on string. Six items need
+   *   LESS room than 1.6rem, not none: 1.1rem is ~14px here, which separates them clearly and
+   *   leaves the wordmark and the two calls to action their space at 1280px.
+   *
+   *   The override is gone rather than corrected, so there is one rule setting this and not two. */
   .nav__links ul {
     display: flex;
     align-items: center;
-    gap: 1.6rem;
+    gap: 1.1rem;
     list-style: none;
     margin: 0;
     padding: 0;
@@ -248,6 +271,14 @@ const isCurrent = (href: string) =>
     font-size: 0.88rem;
     margin-left: 0.35rem;
   }
+
+  /* Quieter than its neighbour and the same height, so the pair reads as one control with a
+     primary side rather than as two competing buttons. */
+  .nav__signin {
+    padding: 0.52rem 0.85rem;
+    font-size: 0.88rem;
+  }
+
 
   .nav__burger {
     display: none;
