@@ -111,11 +111,29 @@ import Base from '../layouts/Base.astro';
               <code>edit_script</code> and <code>run_and_check</code> as it
               happens.
             </li>
+            <!--
+              THIS ENTRY IS NOT DOCUMENTATION AND IS NOT REWRITTEN.
+
+              Super Agent was withdrawn from what the product offers; every page that TEACHES the
+              modes now derives its list from PRODUCT_MODES_OFFERED, and this line is the one place
+              the name is still allowed to stand, because it records what shipped on a date. Editing
+              it would not remove a wrong claim — it would remove a true one, and leave a changelog
+              that quietly disagrees with the release it describes.
+
+              What was missing was not a deletion but an ANNOTATION. A reader met Super Agent here
+              and had nowhere to learn it was gone. The note below is dated-forward commentary, kept
+              visibly separate from the entry, and it names no current mode: /docs/modes owns that
+              list, and a second copy of it here would be the same defect one level along.
+            -->
             <li>
               Three modes: <strong>Plan</strong> (2 credits — fast answers and
               small edits), <strong>Agent</strong> (4 credits — features across
               your project), <strong>Super Agent</strong> (10 credits — plans, builds,
               tests and fixes autonomously).
+              <span class="release__since">
+                Since withdrawn: Super Agent is no longer offered, and cannot be selected anywhere
+                in the product. See <a href="/docs/modes">Modes</a> for what you can pick today.
+              </span>
             </li>
             <li>
               Unlimited projects per account, each with its own chat history and
@@ -221,6 +239,17 @@ import Base from '../layouts/Base.astro';
   .release__lede {
     color: var(--muted);
     max-width: 62ch;
+  }
+
+  /* Dated-forward commentary on an entry, never a correction of it — set apart so a reader can
+     see at a glance which sentence is the record and which is the note about it. */
+  .release__since {
+    display: block;
+    margin-top: 0.4rem;
+    color: var(--muted);
+    font-size: 0.86em;
+    border-left: 2px solid color-mix(in srgb, var(--accent) 40%, transparent);
+    padding-left: 0.7rem;
   }
 
   .release h3 {

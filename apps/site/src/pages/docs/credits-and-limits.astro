@@ -1,11 +1,61 @@
 ---
-import { PLAN_COPY, PLAN_IDS, PLAN_LIMITS } from '@golem/shared';
+import {
+  MODE_INFO,
+  PLAN_COPY,
+  PLAN_IDS,
+  PLAN_LIMITS,
+  PRODUCT_MODES_OFFERED,
+  PRODUCT_MODE_INFO,
+  PRODUCT_MODE_TO_SPECIALIST,
+  type ProductMode,
+} from '@golem/shared';
 
 // Read, never restated: this page explains the quota, so a stale copy of it here would be the
 // documentation contradicting the thing it documents.
 const free = PLAN_LIMITS.free;
 const paid = PLAN_IDS.filter((id) => id !== 'free' && PLAN_COPY[id].priceUsdMonthly !== null);
 import DocsLayout from '../../layouts/DocsLayout.astro';
+
+/*
+ * THE PER-MODE PRICES WERE TYPED HERE, AND ONE OF THEM PRICED A MODE NOBODY CAN BUY.
+ *
+ * Three lines under "The numbers" quoted Plan, Agent and Super Agent, with a surcharge —
+ * "+1 per extra step" — worked into the metering paragraph and the thrift advice below it. Super
+ * Agent is in PRODUCT_MODES, which is every mode the SYSTEM can produce, and not in
+ * PRODUCT_MODES_OFFERED, which is the modes a PERSON may choose. Quoting a price for it is worse
+ * than describing it: a price is the most concrete promise a page can make, and this one was
+ * attached to a button that does not exist.
+ *
+ * So the rows are DERIVED, the same way /pricing and /docs/modes derive theirs, through
+ * PRODUCT_MODE_TO_SPECIALIST into MODE_INFO. The advice under the callout is keyed by mode for the
+ * same reason: a tip for a withdrawn mode cannot be reached, and a mode that gains an offer needs
+ * one written before it can be advised about.
+ */
+const modes = PRODUCT_MODES_OFFERED.map((m) => {
+  // "4-18" quotes 4. What a request STARTS at is the comparable number; the paragraph under the
+  // list is where the rest of the range is explained, rather than in a figure that looks like two.
+  const published = MODE_INFO[PRODUCT_MODE_TO_SPECIALIST[m]].typicalCredits;
+  const credits = Number(String(published).split('-')[0]);
+  if (!Number.isFinite(credits) || credits <= 0) {
+    throw new Error(`credits-and-limits.astro: "${published}" does not start with a Credit count`);
+  }
+  return {
+    name: PRODUCT_MODE_INFO[m].name,
+    credits,
+    perFreeDay: Math.floor(free.creditsPerDay / credits),
+  };
+});
+
+/** Keyed, so a clause about a mode nobody is offered cannot be rendered by accident. */
+const THRIFT: Partial<Record<ProductMode, string>> = {
+  plan: 'design the build in Plan before you run it — a question costs a fraction of a wrong build',
+  agent: 'give Agent specific requests (“the door in Workspace.Lobby”) rather than vague ones',
+};
+const thrift = PRODUCT_MODES_OFFERED.map((m) => THRIFT[m]).filter(Boolean).join('; ');
+
+const sessionShape = modes
+  .map((m) => `about ${m.perFreeDay} ${m.name} requests`)
+  .join(', or ');
 ---
 
 <DocsLayout
@@ -26,21 +76,23 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     {paid.map((id) => (
       <li><strong>{PLAN_COPY[id].name} plan:</strong> {PLAN_LIMITS[id].creditsPerDay} Credits per day · {PLAN_LIMITS[id].creditsPerMonth.toLocaleString()} a month.</li>
     ))}
-    <li><strong>Plan:</strong> 2 credits per request.</li>
-    <li><strong>Agent:</strong> 4 credits per request.</li>
-    <li><strong>Super Agent:</strong> 10 credits per request, <strong>+1 per extra step</strong> beyond the included ones.</li>
+    {modes.map((m) => (
+      <li><strong>{m.name}:</strong> from {m.credits} credits per request.</li>
+    ))}
   </ul>
   <p>
-    In practice the free allowance is a solid daily session: a good number of Plan questions, a bunch of Agent
-    features, or a few serious Super Agent runs — usually a mix.
+    Those are starting prices, not ceilings: a request settles against the compute it actually
+    used, so a short question lands on its figure and a long build climbs past it. In practice the
+    free allowance is a solid daily session — {sessionShape}, or, far more usually, a mix.
   </p>
 
   <h2>How metering works</h2>
   <p>
-    Your balance is always visible in the workspace header, and it updates live. A request is
-    charged when it starts; Super Agent's per-step surcharge accrues visibly during the run. If Apple
-    estimates a Super Agent run will be unusually long, it says so before starting instead of silently
-    draining your day.
+    Your balance is always visible in the workspace header, and it updates live. One Credit is taken
+    when a request starts, and the rest settles against the compute the run actually consumed — so
+    the number moves while a long build is working, rather than arriving as a total you could not
+    see coming. If Apple estimates a run will be unusually expensive, it says so before starting
+    instead of silently draining your day.
   </p>
   <p>
     If a request fails on our side — an infrastructure error, not a build that turned out wrong —
@@ -94,9 +146,8 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
   <div class="callout">
     <p>
-      <strong>Making Credits go further:</strong> design the build in Plan before running it in Super Agent; give
-      specific requests (“the door in Workspace.Lobby”) rather than vague ones; and let Agent do
-      the ordinary building — Super Agent shines when verification matters, not on every task.
+      <strong>Making Credits go further:</strong> {thrift}. Nothing else moves the number much —
+      the expensive request is almost always the one that had to be sent twice.
     </p>
   </div>
 </DocsLayout>

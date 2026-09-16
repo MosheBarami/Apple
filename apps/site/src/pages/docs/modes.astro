@@ -1,88 +1,193 @@
 ---
+import {
+  MODE_INFO,
+  PLAN_LIMITS,
+  PRODUCT_MODES_OFFERED,
+  PRODUCT_MODE_INFO,
+  PRODUCT_MODE_TO_SPECIALIST,
+  type ProductMode,
+} from '@golem/shared';
 import DocsLayout from '../../layouts/DocsLayout.astro';
+
+/*
+ * THE MODES ON THIS PAGE ARE READ OUT OF THE PRODUCT, NOT TYPED BESIDE IT.
+ *
+ * This page taught three modes. The third, Super Agent, is in PRODUCT_MODES — every mode the
+ * SYSTEM can produce — and not in PRODUCT_MODES_OFFERED, the modes a PERSON may choose. It had a
+ * heading, a price, three worked examples and a line in the rule of thumb telling the reader when
+ * to reach for it, and it appears in no picker anywhere in the product. Every surface a person
+ * chooses from already read the offered list; documentation is a surface a person chooses from,
+ * because it is where they decide what to pick before they ever open the picker.
+ *
+ * So the sections below are GENERATED from PRODUCT_MODES_OFFERED. Withdraw a mode and its section
+ * leaves with it; offer one and the build fails until somebody writes its section. The prices come
+ * through PRODUCT_MODE_TO_SPECIALIST into MODE_INFO — the path /pricing takes — so the two pages
+ * cannot quote different numbers at the same reader.
+ *
+ * tests/withdrawn-modes.test.mjs is the guard that keeps it true: no built page may name a mode
+ * outside PRODUCT_MODES_OFFERED, with /changelog exempted because history is not documentation.
+ */
+const free = PLAN_LIMITS.free;
+
+/** 'no' for 0 so a sentence never reads "0 apples"; beyond the table, the digits will do. */
+const COUNT_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six'] as const;
+const spelled = (n: number): string => COUNT_WORDS[n] ?? String(n);
+
+/**
+ * The entry price in Credits.
+ *
+ * `typicalCredits` is a measured range ("4-18"), so a section quotes what a request STARTS at and
+ * the paragraph under it explains the rest — the same division /pricing makes. Never invented
+ * here: a second copy of a price is a price free to drift from the one that charges people.
+ */
+function entryCredits(m: ProductMode): number {
+  const published = MODE_INFO[PRODUCT_MODE_TO_SPECIALIST[m]].typicalCredits;
+  const n = Number(String(published).split('-')[0]);
+  if (!Number.isFinite(n) || n <= 0) {
+    throw new Error(`modes.astro: "${published}" does not start with a Credit count`);
+  }
+  return n;
+}
+
+/**
+ * The editorial copy, KEYED BY MODE rather than written out in order.
+ *
+ * A list renders whatever it holds. A key is only reachable through PRODUCT_MODES_OFFERED, so a
+ * withdrawn mode's paragraphs can sit here doing nothing, and an offered mode that nobody has
+ * written about stops the build below instead of quietly going missing from its own manual.
+ */
+type ModeCopy = {
+  /** What it is, in the reader's terms. */
+  lede: string;
+  /** Three or four things a person would actually type. */
+  examples: string[];
+  /** What happens after you send it — the part people are surprised by. */
+  after: string;
+  /** The left-hand side of the rule of thumb: what you are holding when you want this mode. */
+  reachFor: string;
+  /** Its place in the rhythm: "{name} to {verb}". */
+  verb: string;
+};
+
+const COPY: Partial<Record<ProductMode, ModeCopy>> = {
+  plan: {
+    lede:
+      'Plan is conversational and quick. It reads the parts of your project that matter to your question and answers in seconds — it proposes, and it changes nothing. This is enforced rather than promised: the only tools a Plan request is handed are reading tools, so it cannot edit a script or touch an instance even if you ask it to.',
+    examples: [
+      '“What does this script do?” / “Why is this deprecated?”',
+      '“Where does the coin logic live, and what would you change to make coins survive a death?”',
+      'Roblox API questions, answered with your actual project as context.',
+    ],
+    after:
+      'Because it cannot break anything, Plan is the mode to be careless in. It is also the cheapest way to <em>design</em> a big build before handing the design to a bigger apple — an hour of asking is worth more than a build that went the wrong way confidently.',
+    reachFor: 'a question, or a design you want before you commit to it',
+    verb: 'think',
+  },
+  agent: {
+    lede:
+      'Agent is the builder, and the mode you will spend most of your time in. It reads your project tree, edits scripts across it, creates and wires instances, runs the game in Studio to see whether what it built actually works, and repairs what it broke — then it tells you what it did.',
+    examples: [
+      '“Add a shop that sells speed boosts for coins.”',
+      '“Make a checkpoint system for the obby.”',
+      '“Something is clearing coins on death — find it, fix it, and prove it with a run.”',
+      'Refactors that touch several scripts at once.',
+    ],
+    after:
+      'A request runs until the work is done or until it genuinely needs you, and the cost climbs visibly while it runs rather than arriving as a surprise at the end. You can stop a run at any moment: the steps already applied stay applied, and stay undoable in one keystroke.',
+    reachFor: 'a feature, a refactor, or an outcome you want proven working',
+    verb: 'build',
+  },
+};
+
+const sections = PRODUCT_MODES_OFFERED.map((m) => {
+  const copy = COPY[m];
+  if (!copy) {
+    throw new Error(
+      `modes.astro: "${m}" is offered to people and this page has no section for it. ` +
+        `Write one: a mode whose own manual does not mention it is how a withdrawn mode survived being removed here before.`,
+    );
+  }
+  const credits = entryCredits(m);
+  return {
+    ...copy,
+    name: PRODUCT_MODE_INFO[m].name,
+    // PRODUCT_MODE_INFO, not MODE_INFO: the blurb under the heading should be the sentence the
+    // picker shows the person choosing, not the internal specialist's older description of itself.
+    blurb: PRODUCT_MODE_INFO[m].blurb,
+    credits,
+    perFreeDay: Math.floor(free.creditsPerDay / credits),
+  };
+});
+
+const names = new Intl.ListFormat('en', { type: 'conjunction' }).format(sections.map((s) => s.name));
+const first = sections[0]!;
 ---
 
 <DocsLayout
   title="Modes — Apple Docs"
-  description="Plan, Agent and Super Agent: what each Apple mode does, what it costs in Credits, and how to choose the right one for the job."
-  heading="Modes: Plan, Agent, Super Agent"
+  description={`${names}: what each Apple mode does, what it costs in Credits, and how to choose the right one for the job.`}
+  heading="Modes"
 >
   <p>
-    Every message you send wakes one of three apples. They differ in how much autonomy they take
-    and how much work they do per request — and therefore in what they cost. The craft of using
-    Apple well is mostly picking the smallest apple that can carry the job.
+    Every message you send wakes one of {spelled(sections.length)} apples. They differ in how much
+    autonomy they take and how much work they do per request — and therefore in what they cost. The
+    craft of using Apple well is mostly picking the smallest apple that can carry the job.
   </p>
 
-  <h2>Plan — 2 credits</h2>
-  <p><em>Fast answers and small edits.</em></p>
-  <p>
-    Plan is conversational and quick. It reads the parts of your project that matter to your
-    question and responds in seconds. Use Plan for:
-  </p>
-  <ul>
-    <li>“What does this script do?” / “Why is this deprecated?”</li>
-    <li>Single-script edits: tweak a value, rename things, fix an obvious bug.</li>
-    <li>Roblox API questions with your project as context.</li>
-  </ul>
-  <p>
-    At 2 credits per request — about thirty a day on the free plan — Plan is the cheapest
-    way to work, and the cheapest way to <em>design</em> a big build before handing the
-    design to a bigger apple.
-  </p>
-
-  <h2>Agent — 4 credits</h2>
-  <p><em>Builds features across your project.</em></p>
-  <p>
-    Agent is the everyday builder. It reads your project tree, edits multiple scripts, creates
-    and wires instances, and reports what it did. Use Agent for:
-  </p>
-  <ul>
-    <li>“Add a shop that sells speed boosts for coins.”</li>
-    <li>“Make a checkpoint system for the obby.”</li>
-    <li>Refactors that touch several scripts at once.</li>
-  </ul>
-  <p>
-    Agent finishes a request in one pass and then stops — it does not playtest on its own. Press
-    Play, see what you think, and tell it what to change.
-  </p>
-
-  <h2>Super Agent — 10 credits, +1 per extra step</h2>
-  <p><em>Plans, builds, tests and fixes autonomously.</em></p>
-  <p>
-    Super Agent is the deep agent. Give it an outcome, and it writes a plan, executes it step by step,
-    runs your game in Studio, reads the output, and repairs what breaks — repeating until the
-    outcome holds or it needs your input. Use Super Agent for:
-  </p>
-  <ul>
-    <li>“Build a complete round system: intermission, map vote, teleport, win detection.”</li>
-    <li>“Something is breaking coins on death — find it and fix it, prove it with a run.”</li>
-    <li>Anything where “done” means <em>verified working</em>, not <em>code written</em>.</li>
-  </ul>
-  <p>
-    Super Agent requests start at 10 credits and add <strong>1 credit per extra step</strong> beyond the
-    included ones. The running cost is displayed live during the run, and you can stop a Super Agent run
-    at any moment — completed steps stay applied (and undoable).
-  </p>
+  {
+    sections.map((s) => (
+      <Fragment>
+        <h2>
+          {s.name} — {s.credits} credits
+        </h2>
+        <p>
+          <em>{s.blurb}</em>
+        </p>
+        <p>{s.lede}</p>
+        <ul>
+          {s.examples.map((e) => (
+            <li set:html={e} />
+          ))}
+        </ul>
+        <p set:html={s.after} />
+        <p>
+          At {s.credits} credits a request, the free plan's {free.creditsPerDay} Credits a day is
+          about {s.perFreeDay} {s.name} requests.
+        </p>
+      </Fragment>
+    ))
+  }
 
   <div class="callout callout--violet">
     <p>
-      <strong>Rule of thumb:</strong> question → Plan. Feature → Agent. Outcome you want proven →
-      Super Agent. When unsure, start one size smaller; escalating costs you nothing but the retry.
+      <strong>Rule of thumb:</strong>{' '}
+      {sections.map((s) => `${s.reachFor} → ${s.name}`).join('; ')}. When unsure, start one size
+      smaller; escalating costs you nothing but the retry.
     </p>
   </div>
 
   <h2>Switching modes</h2>
   <p>
-    The mode picker sits next to the message box. Every message can use a different mode — a
-    common rhythm is Plan to plan, Super Agent to build, Plan to ask “what did you just do?”, Agent to
-    polish. All modes share the same project memory, so nothing is lost between switches.
+    The mode picker sits next to the message box, and every message can use a different mode. The
+    common rhythm is {sections.map((s) => `${s.name} to ${s.verb}`).join(', then ')}, then back to{' '}
+    {first.name} to ask “what did you just do?”. All modes share the same project memory, so nothing
+    is lost between switches.
   </p>
 
   <h2>Costs at a glance</h2>
   <ul>
-    <li><strong>Plan</strong> — 2 credits per request</li>
-    <li><strong>Agent</strong> — 4 credits per request</li>
-    <li><strong>Super Agent</strong> — 10 credits per request, +1 per extra step</li>
+    {
+      sections.map((s) => (
+        <li>
+          <strong>{s.name}</strong> — from {s.credits} credits a request, about {s.perFreeDay} a day
+          on the free plan
+        </li>
+      ))
+    }
   </ul>
-  <p>See <a href="/docs/credits-and-limits">Credits &amp; limits</a> for how the daily quota works.</p>
+  <p>
+    Those are starting prices rather than ceilings: a request settles against the compute it
+    actually used, so a short one lands on its figure and a long build climbs past it. See{' '}
+    <a href="/docs/credits-and-limits">Credits &amp; limits</a> for how the daily quota works.
+  </p>
 </DocsLayout>

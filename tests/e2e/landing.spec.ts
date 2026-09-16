@@ -136,10 +136,12 @@ test('holds the approved composition', async ({ page }) => {
   await expect(page.locator('.ap-hero__note')).toContainText('No card required');
 
   // TWO mode cards, and three plans. The landing no longer leads with Super
-  // Agent — the owner does not want it on the front of the product — while
-  // /pricing and /docs/modes still carry it, because the worker still offers it
-  // and still bills 10 Credits for it. The landing's own lede is careful not to
-  // COUNT the modes for exactly that reason.
+  // Agent — the owner does not want it on the front of the product — and the
+  // rest of the site has since caught up: `super` is in PRODUCT_MODES and not in
+  // PRODUCT_MODES_OFFERED, so /pricing and /docs/modes derive their lists from
+  // the offered one and no longer carry it either. Only /changelog still names
+  // it, because a release entry records what shipped on a date.
+  // apps/site/tests/withdrawn-modes.test.mjs is the guard on that.
   await expect(page.locator('#modes .ap-card')).toHaveCount(2);
   await expect(page.locator('#pricing .ap-card')).toHaveCount(3);
 

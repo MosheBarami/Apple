@@ -1,5 +1,15 @@
 ---
+import { PLAN_LIMITS, PRODUCT_MODES_OFFERED, PRODUCT_MODE_INFO } from '@golem/shared';
 import DocsLayout from '../../layouts/DocsLayout.astro';
+
+// "when to use Plan, Agent or Super Agent" — the third is in PRODUCT_MODES, which is every mode
+// the system can produce, and not in PRODUCT_MODES_OFFERED, which is what a person may pick. The
+// free allowance beside it was equally stale: it read 60 Credits against a free tier repriced to
+// PLAN_LIMITS.free.creditsPerDay. Both are read now, so neither can be left behind again.
+const modeNames = new Intl.ListFormat('en', { type: 'disjunction' }).format(
+  PRODUCT_MODES_OFFERED.map((m) => PRODUCT_MODE_INFO[m].name),
+);
+const free = PLAN_LIMITS.free;
 ---
 
 <DocsLayout
@@ -84,8 +94,8 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
   <h2>Where next</h2>
   <ul>
-    <li><a href="/docs/modes">Modes</a> — when to use Plan, Agent or Super Agent.</li>
-    <li><a href="/docs/credits-and-limits">Credits &amp; limits</a> — how far 60 Credits goes.</li>
+    <li><a href="/docs/modes">Modes</a> — when to use {modeNames}.</li>
+    <li><a href="/docs/credits-and-limits">Credits &amp; limits</a> — how far {free.creditsPerDay} Credits goes.</li>
     <li><a href="/docs/updating">Updating the plugin</a> — Roblox will not do it for you.</li>
     <li><a href="/docs/troubleshooting">Troubleshooting</a> — when the panel says something you didn't expect.</li>
   </ul>

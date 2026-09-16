@@ -1,10 +1,20 @@
 ---
+import { PRODUCT_MODES_OFFERED, PRODUCT_MODE_INFO } from '@golem/shared';
 import DocsLayout from '../../layouts/DocsLayout.astro';
+
+// The modes a person may choose, named from the product rather than from memory. This page said
+// "Plan, Agent and Super Agent" in its description and again in its own index of pages, and
+// `super` is not in PRODUCT_MODES_OFFERED — so the first page of the manual pointed at a mode the
+// manual's own modes page could no longer explain. A list of what exists is not a list of what is
+// offered, and a reader cannot tell the two apart from here.
+const modeNames = new Intl.ListFormat('en', { type: 'conjunction' }).format(
+  PRODUCT_MODES_OFFERED.map((m) => PRODUCT_MODE_INFO[m].name),
+);
 ---
 
 <DocsLayout
   title="Documentation — Apple"
-  description="Everything you need to build with Apple: getting started, installing and connecting the Studio plugin, the three modes, Credits, and how your data is handled."
+  description={`Everything you need to build with Apple: getting started, installing and connecting the Studio plugin, ${modeNames}, Credits, and how your data is handled.`}
   heading="Apple documentation"
 >
   <p>
@@ -32,7 +42,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <h2>Using Apple</h2>
   <ul>
     <li>
-      <strong><a href="/docs/modes">Modes</a></strong> — Plan, Agent and Super Agent: what each is for,
+      <strong><a href="/docs/modes">Modes</a></strong> — {modeNames}: what each is for,
       what each costs, and how to pick.
     </li>
     <li>

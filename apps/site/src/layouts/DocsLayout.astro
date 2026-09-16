@@ -1,4 +1,5 @@
 ---
+import { PRODUCT_MODES_OFFERED, PRODUCT_MODE_INFO } from '@golem/shared';
 import Base from './Base.astro';
 
 interface Props {
@@ -13,6 +14,10 @@ const { title, description, heading } = Astro.props;
 // reachable only by typing its URL, so adding a page under src/pages/docs/ and
 // not adding it here ships an orphan — which is what happened to /docs/connect,
 // /docs/updating, /docs/troubleshooting and /docs/build-from-source.
+const modeNames = new Intl.ListFormat('en', { type: 'conjunction' }).format(
+  PRODUCT_MODES_OFFERED.map((m) => PRODUCT_MODE_INFO[m].name),
+);
+
 const sections = [
   {
     label: 'Start here',
@@ -26,7 +31,11 @@ const sections = [
   {
     label: 'Using Apple',
     links: [
-      { href: '/docs/modes', label: 'Modes: Plan and Agent' },
+      // Named from PRODUCT_MODES_OFFERED. This label read "Modes: Plan, Agent and Super Agent",
+      // was corrected by hand to two, and a label corrected by hand is a label free to be wrong
+      // again the next time the list changes. The nav is on every docs page, so it is the mode
+      // list a reader sees most often.
+      { href: '/docs/modes', label: `Modes: ${modeNames}` },
       { href: '/docs/credits-and-limits', label: 'Credits & limits' },
       { href: '/docs/billing', label: 'Billing & payments' },
     ],
