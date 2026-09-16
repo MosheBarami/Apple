@@ -532,3 +532,38 @@ every write tool (`c79f7e3`).
 constructed the object. G4 — "the admin spend route can only ratchet down" — rested on that, was
 marked met with red-first evidence, and was honest about what it measured: a file. G4 now runs
 against the object.
+
+## ADR-021 — No organizations and no workspaces: the product is one developer, sharing per project
+
+Asked of the owner on 2026-09-16, after `docs/design/TENANCY.md` measured that **77 of the 1,200
+checklist items** describe a tenancy level that does not exist — organizations, workspaces, seats.
+Two whole sections (§06 ORGANIZATION MANAGEMENT, §09 WORKSPACE MANAGEMENT, forty items) sat at
+0–15% for that single reason.
+
+The question was put with the three options TENANCY.md names. The owner's answer, in his own words
+as selected:
+
+> **לא צריך — משתמש יחיד**
+
+That is TENANCY.md's option 3: *"The product stays single-user with per-project sharing, which is
+what it is today and what every test in the repository currently proves."*
+
+**WHAT THIS DECIDES.** There is no organization row, no workspace row, no seat. A person owns
+projects; a project is shared with named people through `project_members` (viewer / commenter /
+editor / admin / owner), isolated by RLS and proven by the 43 checks in
+`infra/supabase/tests/rls-isolation.mjs`. That is the whole tenancy model and it is now the intended
+one rather than the interim one.
+
+**WHAT IT DOES NOT DECIDE.** Nothing is deleted. `memory_org_members` and `orgMembership()` keep
+their names and keep working — TENANCY.md's naming-collision note explains that they are a MEMORY
+SCOPE and never were an organization. The `/api/orgs/:id/members` routes are that scope's routes.
+
+**WHY THE CHECKLIST CHANGES SHAPE.** TENANCY.md names the failure this avoids: *"What must NOT
+happen is the fourth option: leaving them 'not started' so the number stays at 1,200 while nobody
+intends to build them. A backlog that counts work nobody plans to do reports a completion percentage
+that is wrong."* Items covered by this decision are therefore marked `⊘` and **leave the
+denominator** — they are not counted as zero, because a zero is a promise to do it later. Every `⊘`
+must cite this ADR by id; `success-metrics.test.mjs` refuses one that does not.
+
+This raises the reported percentage, and the honest reading of that is: the figure stops describing
+work nobody plans to do. The count of items actually built does not move.

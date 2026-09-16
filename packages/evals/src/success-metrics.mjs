@@ -76,24 +76,62 @@ function parseChecklist(text) {
 }
 
 const SECTIONS = parseChecklist(CHECKLIST);
+
+//[[ FOUR MARKS, AND THE FOURTH LEAVES THE DENOMINATOR.
+//
+//   `⊘` means NOT PLANNED: the owner decided against it, and the decision is written down. It is
+//   not `☐` scored zero, because a zero is a promise to do it later — and counting work nobody
+//   intends to do produces a percentage that describes a plan that does not exist.
+//
+//   `docs/design/TENANCY.md` names this exact failure as the thing to avoid: "What must NOT happen
+//   is the fourth option: leaving them 'not started' so the number stays at 1,200 while nobody
+//   intends to build them." ADR-021 is the owner's answer to it.
+//
+//   THE DISCIPLINE THAT STOPS THIS BECOMING A DELETE KEY: a `⊘` must cite an ADR, and
+//   success-metrics.test.mjs fails on one that does not. Marking something not-planned then costs
+//   a decision record with the owner's own words in it, which is what it should cost. Without that
+//   rule the cheapest way to raise this figure would be to tick items off the list entirely.
 const MARK_WEIGHT = { '✓': 1, '~': 0.5, '☐': 0 };
+const NOT_PLANNED = '⊘';
 
 function tally(items) {
-  const t = { done: 0, partial: 0, notFound: 0, other: 0 };
+  const t = { done: 0, partial: 0, notFound: 0, notPlanned: 0, other: 0 };
   let weight = 0;
+  let counted = 0;
   for (const it of items) {
+    if (it.mark === NOT_PLANNED) { t.notPlanned += 1; continue; }
+    counted += 1;
     if (it.mark === '✓') t.done += 1;
     else if (it.mark === '~') t.partial += 1;
     else if (it.mark === '☐') t.notFound += 1;
     else t.other += 1;
     weight += MARK_WEIGHT[it.mark] ?? 0;
   }
-  return { ...t, total: items.length, weightedPct: items.length ? (weight / items.length) * 100 : null };
+  return {
+    ...t,
+    total: items.length,
+    counted,
+    weightedPct: counted ? (weight / counted) * 100 : null,
+  };
 }
 
 const allItems = SECTIONS.flatMap((s) => s.items);
 const overall = tally(allItems);
-const headerClaim = /\*\*✓\s*(\d+)\s+done\s+·\s+~\s*(\d+)\s+partly built\s+·\s+☐\s*(\d+)\s+not found\s+—\s+weighted\s+([\d.]+)%/.exec(CHECKLIST);
+const headerClaim = /\*\*✓\s*(\d+)\s+done\s+·\s+~\s*(\d+)\s+partly built\s+·\s+☐\s*(\d+)\s+not found(?:\s+·\s+⊘\s*(\d+)\s+not planned)?\s+—\s+weighted\s+([\d.]+)%/.exec(CHECKLIST);
+
+/** Every `⊘` must name the decision that made it one. An unexplained one is a deletion. */
+function notPlannedWithoutAdr(md) {
+  const out = [];
+  const lines = md.split('\n');
+  for (let i = 0; i < lines.length; i += 1) {
+    if (!/^-\s+\[⊘\]/.test(lines[i])) continue;
+    // The item's own indented notes run until the next item or heading.
+    let body = lines[i];
+    for (let j = i + 1; j < lines.length && !/^(-\s+\[|#)/.test(lines[j]); j += 1) body += '\n' + lines[j];
+    if (!/ADR-\d{3}/.test(body)) out.push(lines[i].replace(/^-\s+\[⊘\]\s*/, '').slice(0, 70));
+  }
+  return out;
+}
 
 const sectionOf = (n) => SECTIONS.find((s) => s.number === n) ?? null;
 const acceptanceSection = sectionOf(60);
@@ -310,7 +348,7 @@ export const REPORT = {
   completion: {
     overall,
     headerClaim: headerClaim
-      ? { done: +headerClaim[1], partial: +headerClaim[2], notFound: +headerClaim[3], weightedPct: +headerClaim[4] }
+      ? { done: +headerClaim[1], partial: +headerClaim[2], notFound: +headerClaim[3], notPlanned: +(headerClaim[4] ?? 0), weightedPct: +headerClaim[5] }
       : null,
   },
   analytics: {
@@ -386,14 +424,28 @@ console.log(
 console.log(rule('2 · THE BRIEF’S OWN COMPLETION FIGURE — recomputed from its marks'));
 console.log(
   `   ✓ ${overall.done} done · ~ ${overall.partial} partly built · ☐ ${overall.notFound} not found` +
+    `${overall.notPlanned ? ` · ⊘ ${overall.notPlanned} not planned` : ''}` +
     `${overall.other ? ` · ${overall.other} unrecognised mark` : ''}   over ${overall.total} items in ${SECTIONS.length} sections`,
 );
-console.log(`   weighted ${overall.weightedPct.toFixed(1)}%   (✓ = 1, ~ = 0.5, ☐ = 0)`);
+console.log(
+  `   weighted ${overall.weightedPct.toFixed(1)}%   (✓ = 1, ~ = 0.5, ☐ = 0`
+    + `${overall.notPlanned ? `; ⊘ left out of the denominator — ${overall.counted} items counted, see ADR-021` : ''})`,
+);
+if (overall.notPlanned) {
+  const orphans = notPlannedWithoutAdr(CHECKLIST);
+  console.log(
+    orphans.length
+      ? `   ${orphans.length} ⊘ item(s) cite NO decision — a not-planned mark with no ADR is a deletion:\n     ${orphans.join('\n     ')}`
+      : `   every ⊘ cites the decision that made it one`,
+  );
+}
 if (headerClaim) {
   const agrees =
-    +headerClaim[1] === overall.done && +headerClaim[2] === overall.partial && +headerClaim[3] === overall.notFound;
+    +headerClaim[1] === overall.done && +headerClaim[2] === overall.partial && +headerClaim[3] === overall.notFound
+    && +(headerClaim[4] ?? 0) === overall.notPlanned;
   console.log(
-    `   the file’s own header says ✓ ${headerClaim[1]} · ~ ${headerClaim[2]} · ☐ ${headerClaim[3]} · ${headerClaim[4]}%  — ${agrees ? 'agrees with the marks below it' : 'DISAGREES with the marks below it; the marks are what this report counted'}`,
+    `   the file’s own header says ✓ ${headerClaim[1]} · ~ ${headerClaim[2]} · ☐ ${headerClaim[3]}`
+      + `${headerClaim[4] ? ` · ⊘ ${headerClaim[4]}` : ''} · ${headerClaim[5]}%  — ${agrees ? 'agrees with the marks below it' : 'DISAGREES with the marks below it; the marks are what this report counted'}`,
   );
 } else {
   console.log('   the file carries no header total to compare against');

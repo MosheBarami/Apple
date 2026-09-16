@@ -118,11 +118,18 @@ function parseSections(text) {
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i];
     if (/^##\s/.test(line)) {
-      const head = /^##\s+(\d+)\.\s+(.+?)\s+—\s+(\d+)%\s+✓(\d+)\s+~(\d+)\s+☐(\d+)\s*$/.exec(line);
+      // `⊘` is optional and trailing: a section with nothing not-planned reads exactly as before.
+      const head = /^##\s+(\d+)\.\s+(.+?)\s+—\s+(\d+)%\s+✓(\d+)\s+~(\d+)\s+☐(\d+)(?:\s+⊘(\d+))?\s*$/.exec(line);
       // A heading that no longer matches would silently stop being checked, which is the failure
       // this file exists to prevent — so an unreadable heading is a red line, not a skipped one.
       assert.ok(head, `line ${i + 1} is a section heading this test cannot read, so its total would go unchecked: ${line}`);
-      current = { number: +head[1], title: head[2], line: i + 1, claim: { pct: +head[3], done: +head[4], partial: +head[5], notFound: +head[6] }, marks: [] };
+      current = {
+        number: +head[1],
+        title: head[2],
+        line: i + 1,
+        claim: { pct: +head[3], done: +head[4], partial: +head[5], notFound: +head[6], notPlanned: +(head[7] ?? 0) },
+        marks: [],
+      };
       sections.push(current);
       continue;
     }
@@ -133,8 +140,9 @@ function parseSections(text) {
 }
 
 function tallyMarks(marks) {
-  const t = { done: 0, partial: 0, notFound: 0, other: 0, weight: 0 };
+  const t = { done: 0, partial: 0, notFound: 0, notPlanned: 0, other: 0, weight: 0 };
   for (const m of marks) {
+    if (m === '⊘') { t.notPlanned += 1; continue; }
     if (m === '✓') t.done += 1;
     else if (m === '~') t.partial += 1;
     else if (m === '☐') t.notFound += 1;
@@ -161,7 +169,40 @@ test('this test reads the same marks the report reads', () => {
 test('no mark in the checklist is a character the weighting does not know', () => {
   // An unrecognised mark weighs 0, which silently reads as ☐ — a typo would quietly deflate the
   // figure and nothing above would say so.
-  assert.equal(WHOLE_FILE.other, 0, `${WHOLE_FILE.other} item(s) carry a mark that is not ✓, ~ or ☐`);
+  assert.equal(WHOLE_FILE.other, 0, `${WHOLE_FILE.other} item(s) carry a mark that is not ✓, ~, ☐ or ⊘`);
+});
+
+test('NOT-PLANNED IS THE ONLY MARK THAT LEAVES THE DENOMINATOR, so every one of them cites a decision', () => {
+  //[[ `⊘` is the one mark that raises the percentage by REMOVING work rather than doing it, which
+  //   makes it the cheapest possible way to make this number look better. The price is an ADR: the
+  //   owner's own decision, written down, with an id the item names.
+  //
+  //   `docs/design/TENANCY.md` set this out before there was a mark for it — "What must NOT happen
+  //   is the fourth option: leaving them 'not started' so the number stays at 1,200 while nobody
+  //   intends to build them" — and ADR-021 is the first answer to it: 77 items describing
+  //   organizations, workspaces and seats, for a product the owner has decided is one developer
+  //   sharing per project.
+  //
+  //   Two halves, because either alone can be satisfied without the other: the mark must name a
+  //   decision, and the decision must exist in the log. ]]
+  const md = readFileSync(CHECKLIST_PATH, 'utf8');
+  const lines = md.split('\n');
+  const orphans = [];
+  const cited = new Set();
+  for (let i = 0; i < lines.length; i += 1) {
+    if (!/^-\s+\[⊘\]/.test(lines[i])) continue;
+    let body = lines[i];
+    for (let j = i + 1; j < lines.length && !/^(-\s+\[|#)/.test(lines[j]); j += 1) body += '\n' + lines[j];
+    const adr = /ADR-\d{3}/.exec(body);
+    if (adr) cited.add(adr[0]);
+    else orphans.push(lines[i].replace(/^-\s+\[⊘\]\s*/, '').slice(0, 70));
+  }
+  assert.deepEqual(orphans, [], 'a not-planned mark with no ADR is a deletion, not a decision');
+
+  const decisions = readFileSync(new URL('../../../docs/DECISIONS.md', import.meta.url), 'utf8');
+  for (const id of cited) {
+    assert.match(decisions, new RegExp(`^##\\s+${id}\\b`, 'm'), `${id} is cited by a ⊘ item and is not in docs/DECISIONS.md`);
+  }
 });
 
 test('the total typed at the top of the checklist is the total of the marks below it', () => {
@@ -182,11 +223,22 @@ test('every section heading is the total of the marks under that heading', () =>
   const wrong = [];
   for (const s of SECTIONS_UNDER_TEST) {
     const t = tallyMarks(s.marks);
-    const pct = Math.round((t.weight / t.total) * 100);
-    if (t.done !== s.claim.done || t.partial !== s.claim.partial || t.notFound !== s.claim.notFound || pct !== s.claim.pct) {
+    // NOT-PLANNED ITEMS ARE OUT OF THE DENOMINATOR, here as in the report — see ADR-021. A section
+    // that is entirely not-planned has no percentage at all, which is the truthful answer: there is
+    // nothing to be a fraction of.
+    const counted = t.total - t.notPlanned;
+    const pct = counted ? Math.round((t.weight / counted) * 100) : 0;
+    if (
+      t.done !== s.claim.done ||
+      t.partial !== s.claim.partial ||
+      t.notFound !== s.claim.notFound ||
+      t.notPlanned !== s.claim.notPlanned ||
+      pct !== s.claim.pct
+    ) {
       wrong.push(
-        `line ${s.line} — section ${s.number} says ${s.claim.pct}% ✓${s.claim.done} ~${s.claim.partial} ☐${s.claim.notFound}, ` +
-          `its ${t.total} marks say ${pct}% ✓${t.done} ~${t.partial} ☐${t.notFound}`,
+        `line ${s.line} — section ${s.number} says ${s.claim.pct}% ✓${s.claim.done} ~${s.claim.partial} ☐${s.claim.notFound}` +
+          `${s.claim.notPlanned ? ` ⊘${s.claim.notPlanned}` : ''}, ` +
+          `its ${t.total} marks say ${pct}% ✓${t.done} ~${t.partial} ☐${t.notFound}${t.notPlanned ? ` ⊘${t.notPlanned}` : ''}`,
       );
     }
   }
