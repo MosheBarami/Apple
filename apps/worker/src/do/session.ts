@@ -3054,8 +3054,13 @@ export class SessionDO extends DurableObject<Env> {
           : `${agent.trace.filter((t) => t.ok).length} change(s) applied for ${agent.creditsSpent} Credit(s).`,
         at: Date.now(),
       }).then(() => undefined);
-      if (this.ctx.waitUntil) this.ctx.waitUntil(outcome);
-      else await outcome;
+      //[[ OFF THE CRITICAL PATH, AND ACTUALLY STARTED. This was `waitUntil(outcome)`, which drops
+      //   the promise on the floor in a Durable Object, and notification-emitters.test.mjs pinned
+      //   that exact spelling to keep the emit off the run's critical path. The property is right —
+      //   a slow inbox must not take down a finished run — and the spelling achieved it only by
+      //   never sending at all. `void … .catch()` keeps it off the path and lets it run: the object
+      //   stays alive while it has pending I/O, and this is pending I/O. ]]
+      void outcome.catch(() => {});
     }
 
     //[[ AND WHETHER THE RUN LEFT THEM SHORT.
@@ -3086,15 +3091,29 @@ export class SessionDO extends DurableObject<Env> {
               : `${state.creditsRemaining} of ${state.creditsDaily} left today. They refill at ${state.resetsAtIso}.`,
           at: Date.now(),
         }).then(() => undefined);
-        if (this.ctx.waitUntil) this.ctx.waitUntil(usage);
-        else await usage;
+        void usage.catch(() => {});
       }
     }
 
     // A Durable Object's isolate can be evicted the moment it goes idle, and a run ending is
     // exactly when that happens — so this one flushes rather than waiting for a threshold.
-    if (this.ctx.waitUntil) this.ctx.waitUntil(flushEvents(this.env).then(() => undefined));
-    else await flushEvents(this.env);
+    //[[ AWAITED, BECAUSE `state.waitUntil` DOES NOTHING HERE.
+    //
+    //   Cloudflare's own documentation for DurableObjectState: "Unlike in Workers, `waitUntil` has
+    //   no effect in Durable Objects. It does not extend the lifetime of a Durable Object or affect
+    //   when a request or RPC completes. It is available for API compatibility." So
+    //   `this.ctx.waitUntil` is always TRUTHY and always a no-op — which made every
+    //   `if (this.ctx.waitUntil) … else await …` in this file take the branch that does nothing and
+    //   left the correct branch as dead code.
+    //
+    //   MEASURED BEFORE BELIEVING IT. `/api/admin/logs` on production: `request` 2,499 rows,
+    //   `audit` 2,501 rows — both recorded in the WORKER. `build` 0, `model_call` 0, `error` 0 —
+    //   all three recorded in THIS isolate. A clean split along the boundary, with an un-awaited
+    //   flush on one side of it. The product had never recorded a single build.
+    //
+    //   Awaiting costs nothing: the object stays alive while it has pending I/O, which is exactly
+    //   what an await is. ]]
+    await flushEvents(this.env);
     // background memory distillation (only after substantive runs)
     //
     // The mode is checked BEFORE the model call, not inside the writer. `applyModelUpdate` would
@@ -3105,8 +3124,7 @@ export class SessionDO extends DurableObject<Env> {
       // (so it can never create an uncontrolled bill) but is not charged to the user's Credits.
       const budgetLeft = await this.quotaState(agent.userId);
       if (budgetLeft.creditsRemaining <= 0) return;
-      this.ctx.waitUntil?.(this.updateMemory(agent).catch(() => {}));
-      if (!this.ctx.waitUntil) await this.updateMemory(agent).catch(() => {});
+      void this.updateMemory(agent).catch(() => {});
     }
   }
 

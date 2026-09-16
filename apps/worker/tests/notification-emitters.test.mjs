@@ -77,8 +77,21 @@ test('the failure branch is the three reasons that are failures, and not the one
 });
 
 test('the run notification is best-effort, so a slow inbox cannot take down a finished run', () => {
+  //[[ THE PROPERTY, NOT THE SPELLING — and the old spelling was a no-op.
+  //
+  //   This asserted `waitUntil(outcome)` verbatim. The property behind it is right: a slow inbox
+  //   must not take down a finished run. But Cloudflare's docs say `DurableObjectState.waitUntil`
+  //   "has no effect in Durable Objects", so the guard was holding in place a line that kept the
+  //   emit off the critical path by never sending it. Measured alongside it: every event kind
+  //   recorded inside this isolate sat at 0 rows in production while the worker's own kinds had
+  //   ~2,500 each.
+  //
+  //   `void outcome.catch(() => {})` is the same intent that works: not awaited, so a slow inbox
+  //   cannot delay the run; started and error-handled, so it actually goes. ]]
   const body = code(session);
-  assert.match(body, /waitUntil\(outcome\)/, 'the emit must stay off the critical path');
+  assert.match(body, /void outcome\.catch\(/, 'the emit must be started and must handle its own failure');
+  assert.equal(/await outcome\b/.test(body), false, 'the emit must stay off the critical path — a slow inbox cannot delay a finished run');
+  assert.equal(/waitUntil\(outcome\)/.test(body), false, 'waitUntil has no effect in a Durable Object: the notification would never be sent');
 });
 
 /* ---------------------------------------------------------------- running out of credits --- */
