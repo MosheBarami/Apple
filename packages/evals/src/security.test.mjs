@@ -41,6 +41,50 @@ const readCode = (...p) =>
     .replace(/(^|[^:])\/\/.*$/gm, '$1');
 
 /**
+ * THE BLOCK A CONDITION OWNS, located by its own braces rather than by whatever follows it.
+ *
+ * WHY THIS EXISTS. A guard below used to isolate the failed-token-compare branch by slicing from
+ * the compare to a landmark further down the handler. That is a locator pinned to a NEIGHBOUR: the
+ * moment anything is inserted between the branch and the landmark — here, a sliding-expiry renewal
+ * — the slice silently grows to cover code the guard never meant to read, and starts judging
+ * statements that are not the ones it is named for. The failure mode is a false RED, which is the
+ * mild half; the other half is that an end anchor can be MOVED by the very change a guard exists
+ * to catch, and a slice that ends early hides what it was supposed to find.
+ *
+ * Braces are the property. Whatever grows above or below, `if (…) { … }` still ends where its own
+ * brace closes. Strings and comments are skipped so a `}` inside either cannot close the block.
+ */
+function braceBlock(src, from) {
+  const open = src.indexOf('{', from);
+  if (open === -1) return '';
+  let depth = 0;
+  for (let i = open; i < src.length; i++) {
+    const ch = src[i];
+    if (ch === '/' && src[i + 1] === '/') {
+      i = src.indexOf('\n', i);
+      if (i === -1) break;
+      continue;
+    }
+    if (ch === '/' && src[i + 1] === '*') {
+      const end = src.indexOf('*/', i + 2);
+      if (end === -1) break;
+      i = end + 1;
+      continue;
+    }
+    if (ch === "'" || ch === '"' || ch === '`') {
+      for (i++; i < src.length && src[i] !== ch; i++) if (src[i] === '\\') i++;
+      continue;
+    }
+    if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) return src.slice(from, i + 1);
+    }
+  }
+  return '';
+}
+
+/**
  * EVERY TypeScript source file under apps/worker/src, as `src`-relative paths.
  *
  * Enumerated by walking the tree, never by a hand-written list: a call-site guard that checks a
@@ -982,13 +1026,22 @@ test('A2 STATIC CHECK — the pairing token exists in exactly one place and only
   assert.match(pollGate, /const presented = await sha256hex\(token\)/, 'the presented token must be hashed before any comparison');
   assert.equal(/timingSafeEqual\(\s*token\b/.test(pollGate), false, 'the RAW token must never be a comparison operand');
 
-  // lastIndexOf, not indexOf: a bypass that inlined `readPluginHeaders` inside the block would
-  // otherwise move the end anchor and hide itself inside the part no longer being read.
-  const failed = pollGate.slice(
-    pollGate.indexOf('if (!(await timingSafeEqual('),
-    pollGate.lastIndexOf('const reported = readPluginHeaders'),
+  //[[ THE BLOCK IS LOCATED BY ITS OWN BRACES. This used to slice from the compare down to
+  //   `const reported = readPluginHeaders`, and that end anchor was a NEIGHBOUR, not a boundary:
+  //   f4bd8ff added a sliding-expiry renewal between the two, the slice grew from ~1000 to ~2000
+  //   characters, and the guard went red while the branch it is named for had not been touched.
+  //   Worse than the false red is the other direction — an end anchor can be moved by the very
+  //   edit a guard exists to catch, and a slice that stops early hides the thing it was written
+  //   to find. `braceBlock` reads the `if (…) { … }` to its own closing brace, so nothing added
+  //   above or below it changes what this test judges. ]]
+  const failed = braceBlock(pollGate, pollGate.indexOf('if (!(await timingSafeEqual('));
+  assert.ok(failed.length > 100, 'the failed-compare block was not found — this check would read nothing');
+  assert.equal(failed.trimEnd().endsWith('}'), true, 'the failed-compare block is unbalanced — it was not read to its own close');
+  assert.equal(
+    pollGate.indexOf('const reported = readPluginHeaders') > pollGate.indexOf(failed) + failed.length,
+    true,
+    'the poll handler is now reached from INSIDE the failed-compare branch',
   );
-  assert.ok(failed.length > 100 && failed.length < 1500, 'the failed-compare block moved — re-locate it before trusting this check');
   assert.deepEqual(
     [...failed.matchAll(/return\s+(?!json\()/g)].map((m) => m[0]),
     [],
@@ -1040,8 +1093,41 @@ test('A2 STATIC CHECK — run_state replays only the whitelisted RunSnapshot fie
   const intentFields = [...decl.matchAll(/^\s{2}(\w+)[?]?:/gm)].map((m) => m[1]);
   assert.deepEqual(
     new Set(intentFields),
-    new Set(['summary', 'checklist', 'questions']),
+    new Set([
+      'summary', 'checklist', 'questions',
+      // `assumptions` REVIEWED 2026-09-16, and the tripwire did its job: it went red on the day
+      // the field was added, before anything was signed off.
+      //
+      // WHAT IT IS. `runIntentFor` sets it to `intentCheck(request).notes`. Those notes are built
+      // in semantic.ts out of fixed policy sentences interpolating `c.value`, `c.evidence` and
+      // `c.axis` — all three lifted from the request string the extractor was handed.
+      //
+      // WHY THAT IS SAFE, and it is the same argument that admitted `checklist` and `questions`:
+      // `intentCheck` takes ONE parameter, the user's own request, and semantic.ts has no imports
+      // at all — so there is no second source for it to mix in. It cannot reach the transcript,
+      // the system prompt, another user's row, or a model. What reaches the browser is the user's
+      // own words, which the browser rendered when they typed them.
+      //
+      // The two assertions below hold that argument to the code rather than to this paragraph: if
+      // semantic.ts ever grows an import, or `assumptions` is ever fed by something other than the
+      // extractor's reading of the request, this goes red again.
+      'assumptions',
+    ]),
     'RunIntent grew a field — re-review it before it reaches the browser',
+  );
+  // THE REVIEW ABOVE IS ONLY TRUE WHILE THESE ARE. `intentCheck` is the sole producer, and its
+  // sole input is the request; semantic.ts having no imports is what makes that exhaustive.
+  const runIntent = read('run-intent.ts');
+  assert.match(
+    runIntent,
+    /const assumptions = report\.notes\b/,
+    'assumptions is no longer the extractor\'s own notes — re-review what now feeds it',
+  );
+  assert.match(runIntent, /const report = intentCheck\(request\)/, 'the extractor must be read from the request and nothing else');
+  assert.deepEqual(
+    [...readCode('semantic.ts').matchAll(/^\s*import\s/gm)].map((m) => m[0]),
+    [],
+    'semantic.ts grew an import — the intent extractor can now reach something other than the request',
   );
 });
 
@@ -1372,23 +1458,104 @@ test('A3 STATIC CHECK — every project-scoped route goes through withOwnedProje
 
 test('A3 STATIC CHECK — sessionStub is only reached from withOwnedProject, admin routes or the paired plugin', () => {
   const src = read('index.ts');
+
+  //[[ THE OWNER OF A CALL IS THE FUNCTION IT IS INSIDE, NOT THE LAST ROUTE ABOVE IT.
+  //
+  //   This used to attribute every `sessionStub(` to the last `app.get|post(…)` registered before
+  //   it in the file. That is not reachability, it is proximity, and the two parted company the
+  //   moment a plain helper was declared below a route: `discordPorts()` sits after
+  //   `/api/providers`, so its three calls were reported as reached FROM `/api/providers` — a
+  //   route whose handler does not mention projects at all. The guard printed a precise,
+  //   confident sentence about a call site that does not exist.
+  //
+  //   A failure to locate a call must not render as a location. index.ts is a flat module: every
+  //   route registration and every declaration starts at column 0, so the top-level constructs
+  //   PARTITION the file and a call belongs to the one whose region it lands in. The old model
+  //   used the same partition but drew boundaries at routes only — which is precisely why a
+  //   function declared after a route inherited that route's name. Declarations are boundaries
+  //   too, and a call before the first of them reports `module` rather than borrowing a name.
+  //
+  //   Deliberately NOT brace matching here. A TypeScript signature can carry an object RETURN
+  //   TYPE — `function grantedProjectStub(…): { id: string; stub: DurableObjectStub } | null` —
+  //   and the first brace after such a signature opens the type, not the body; a matcher aimed at
+  //   it stops before the function it was asked to measure. The partition needs no brace at all.
+  const owners = [
+    ...[...src.matchAll(/^app\.(?:get|post|put|patch|delete|all|use)\('([^']+)'/gm)].map((m) => ({ name: m[1], start: m.index })),
+    ...[...src.matchAll(/^(?:export )?(?:async )?(?:function|const|let|class)\s+(\w+)/gm)].map((m) => ({ name: m[1], start: m.index })),
+  ].sort((a, b) => a.start - b.start);
+  assert.ok(owners.length > 50, 'the partition is empty — this test would check nothing');
+  owners.forEach((o, i) => {
+    o.end = owners[i + 1]?.start ?? src.length;
+  });
+
   const sites = [...src.matchAll(/sessionStub\(/g)].map((m) => {
     const lineStart = src.lastIndexOf('\n', m.index) + 1;
-    // Which route (or helper) is this call inside?
-    const before = src.slice(0, m.index);
-    const route = [...before.matchAll(/app\.(?:get|post|put|patch|delete)\('([^']+)'/g)].pop();
-    const inHelper = before.lastIndexOf('async function withOwnedProject') > (route?.index ?? -1);
-    return { line: src.slice(lineStart, src.indexOf('\n', m.index)).trim(), owner: inHelper ? 'withOwnedProject' : (route?.[1] ?? 'declaration') };
+    const owner = owners.filter((o) => o.start < m.index && m.index < o.end)[0];
+    return {
+      line: src.slice(lineStart, src.indexOf('\n', m.index)).trim(),
+      owner: owner?.name ?? 'module',
+      at: src.slice(0, m.index).split('\n').length,
+    };
   });
+  assert.ok(sites.length >= 10, 'no call sites were found — the call was renamed and this test is checking nothing');
+
+  //[[ EVERY ENTRY BELOW IS A REVIEW, not an observation that a name appeared in the file.
+  //
+  //   withOwnedProject   resolves ownership with the caller's own JWT, then addresses the DO by
+  //                      the row id it read back. It IS the check.
+  //   sessionStub        the declaration itself.
+  //   /api/admin/*       owner-key gated, and asserted as such by the A4 tests.
+  //   /api/studio/*      the paired plugin, holding a token whose hash the DO stored at pairing.
+  //   /api/health        reads one DO's liveness for the project it just resolved; asserted below
+  //                      to stay a read.
+  //   discordPorts       REVIEWED 2026-09-16. It takes no project id from the request. Every port
+  //                      acts on `link.projectId`, and a link can only exist because
+  //                      `POST /api/projects/:id/discord-code` minted its code INSIDE
+  //                      withOwnedProject — so the id was proven to belong to the minting user at
+  //                      mint time and is carried, not re-supplied. The ownership check is real; it
+  //                      is just earlier than the call. The assertion under this list is what holds
+  //                      that sentence to the code: move the mint outside withOwnedProject and this
+  //                      goes red, because then a Discord user could name any project at all.
+  //   grantedProjectStub the `/v1` API-key surface. It materialises a session only after the id
+  //                      passes a set-membership test against the grant proven under RLS at key
+  //                      mint time — the same test whether the id came from the path or from
+  //                      JSON-RPC arguments, which is the whole reason the function exists.
+  const reviewed = new Set(['sessionStub', 'withOwnedProject', 'discordPorts', 'grantedProjectStub']);
   for (const s of sites) {
     const ok =
-      s.owner === 'declaration' ||
-      s.owner === 'withOwnedProject' ||
+      reviewed.has(s.owner) ||
       s.owner.startsWith('/api/admin/') ||
       s.owner === '/api/studio/claim' ||
-      s.owner === '/api/studio/poll';
-    assert.equal(ok, true, `sessionStub is reached from ${s.owner}, which is neither ownership-checked nor admin-gated`);
+      s.owner === '/api/studio/poll' ||
+      s.owner === '/api/health';
+    assert.equal(ok, true, `sessionStub is reached from ${s.owner} (index.ts:${s.at}), which is neither ownership-checked nor admin-gated`);
   }
+
+  // THE CHECK THAT MAKES grantedProjectStub SAFE, held to the code the same way: the id is tested
+  // against the grant BEFORE a session is materialised, and the refusal is a null, not a stub.
+  // Sliced from the partition, not brace-matched: this signature is the very one whose object
+  // return type defeats a brace matcher, and using the wrong tool here would read the TYPE.
+  const gspOwner = owners.find((o) => o.name === 'grantedProjectStub');
+  assert.ok(gspOwner, 'grantedProjectStub is gone — re-review how a /v1 caller reaches a session');
+  const granted = src.slice(gspOwner.start, gspOwner.end);
+  assert.ok(granted.includes('sessionStub('), 'grantedProjectStub no longer materialises the session — re-locate the /v1 door');
+  assert.equal(
+    granted.indexOf('key.projects.some') < granted.indexOf('sessionStub('),
+    true,
+    'the grant membership test must precede the stub — a session materialised first is a session an ungranted key created',
+  );
+
+  // THE EARLIER CHECK THAT MAKES discordPorts SAFE. A Discord link's project id is only ever
+  // whatever the mint route wrote, and the mint route must resolve ownership first.
+  const mint = braceBlock(src, src.indexOf("app.post('/api/projects/:id/discord-code'"));
+  assert.ok(mint.length > 100, 'the discord-code mint route is gone — re-review how a link gets its project id');
+  assert.match(mint, /await withOwnedProject\(c, c\.req\.param\('id'\)/, 'the discord link code must be minted behind an ownership check');
+  assert.match(mint, /projectId: ctx\.project\.id/, 'the minted link must carry the id the ownership check RESOLVED, not the one on the request');
+  assert.equal(
+    /projectId: c\.req\.param/.test(mint),
+    false,
+    'the minted link carries the id off the request — a casing variant would fan out into a second Durable Object',
+  );
 });
 
 // ===========================================================================
