@@ -93,13 +93,52 @@ function neuronsFor(label) {
 // should name them", and §15.3 gives the public modes as Plan / Agent / Super Agent.
 // This guard therefore reads the neuron figure by the internal name and checks the
 // published figure by the public one.
-const MODES = [
-  { mode: 'Plan', row: 'Clay question (Studio attached)' },
-  { mode: 'Agent', row: 'Stone, targeted edit + read-back verify in Studio' },
-  { mode: 'Super Agent', row: 'Rune, build + read-back verify + playtest in Studio' },
-];
+//[[ THE LIST IS DERIVED, because a hand-written one outlives what it lists.
+//
+//   This was three literal rows including Super Agent. That mode was withdrawn — it is in
+//   PRODUCT_MODES and not in PRODUCT_MODES_OFFERED, and no page names it any more — so this guard
+//   went on demanding a figure for a mode nobody can choose, found nothing, and reported `NaN`.
+//   Three of its five failures were about a page correctly not mentioning something.
+//
+//   PRODUCT_MODES_OFFERED is the list of modes a person may pick, and it is the same list the
+//   pricing page renders from. Parsed rather than imported, for the reason workspace-limits.test.mjs
+//   already gives: @golem/shared is unbuilt TypeScript and CI pins a Node that will not load it. ]]
+const offered = /PRODUCT_MODES_OFFERED: readonly ProductMode\[\] = \[([^\]]*)\]/.exec(shared_)?.[1];
+const specialistBlock = /PRODUCT_MODE_TO_SPECIALIST: Record<ProductMode, GolemMode> = \{([\s\S]*?)\n\};/.exec(shared_)?.[1];
+const productInfoBlock = /export const PRODUCT_MODE_INFO[\s\S]*?=\s*\{([\s\S]*?)\n\};/.exec(shared_)?.[1];
+if (!offered || !specialistBlock || !productInfoBlock) {
+  console.error(
+    'check-credit-figures: could not read PRODUCT_MODES_OFFERED, PRODUCT_MODE_TO_SPECIALIST or '
+    + 'PRODUCT_MODE_INFO from packages/shared/src/index.ts. One of them moved; follow it rather '
+    + 'than letting this pass.',
+  );
+  process.exit(1);
+}
+const specialistOf = Object.fromEntries(
+  [...specialistBlock.matchAll(/(\w+)\s*:\s*'(\w+)'/g)].map((m) => [m[1], m[2]]),
+);
+/** The public name the site shows, read from the same table the page renders. */
+const publicName = (key) =>
+  /name: '([^']+)'/.exec(new RegExp(`\n  ${key}: \\{[\\s\\S]*?\n  \\},`).exec(productInfoBlock)?.[0] ?? '')?.[1] ?? null;
 
-for (const { mode, row } of MODES) {
+/** The COST-MODEL row each specialist's advertised figure comes from. */
+const ROW_FOR = {
+  clay: 'Clay question (Studio attached)',
+  stone: 'Stone, targeted edit + read-back verify in Studio',
+  rune: 'Rune, build + read-back verify + playtest in Studio',
+};
+
+const MODES = [...offered.matchAll(/'(\w+)'/g)].map((m) => {
+  const key = m[1];
+  const specialist = specialistOf[key];
+  return { key, mode: publicName(key), specialist, row: ROW_FOR[specialist] };
+});
+if (!MODES.length || MODES.some((m) => !m.mode || !m.row)) {
+  console.error(`check-credit-figures: could not resolve every offered mode to a COST-MODEL row: ${JSON.stringify(MODES)}`);
+  process.exit(1);
+}
+
+for (const { mode, row, specialist } of MODES) {
   const neurons = neuronsFor(row);
   if (neurons === null) {
     problems.push(`COST-MODEL.md has no row "${row}" — the ${mode} figure cannot be derived`);
@@ -107,11 +146,36 @@ for (const { mode, row } of MODES) {
   }
   const expected = creditsFor(neurons);
 
-  // The pricing page's own table.
-  const block = page.slice(page.indexOf(`mode: '${mode}'`));
-  const stated = Number(/cost: '(\d+) credit/.exec(block)?.[1]);
-  if (stated !== expected) {
-    problems.push(`pricing.astro says ${mode} costs ${stated} credit(s); ${neurons} neurons / ${perCredit} = ${expected}`);
+  //[[ THE FIGURE IS NO LONGER A LITERAL ON THE PAGE, so this follows it to where it now lives.
+  //
+  //   pricing.astro used to carry `cost: '4 credits'` per row. It now derives the row from
+  //   `MODE_INFO[PRODUCT_MODE_TO_SPECIALIST[m]].typicalCredits`, so the regex below found nothing
+  //   and reported `NaN` — a guard failing because the thing it guards got BETTER, which is the
+  //   fourth time that shape has come up in this repository this week.
+  //
+  //   The chain is one link longer and one copy shorter: COST-MODEL neurons -> the worker's
+  //   NEURONS_PER_CREDIT -> `MODE_INFO.typicalCredits` -> the page. So the figure is checked where
+  //   it is now declared, and the page is checked for DERIVING it rather than for restating it —
+  //   the same stated-or-derived-but-never-neither rule this file already applies to perDay. ]]
+  const infoRow = new RegExp(`\\b${specialist}: \\{[^}]*typicalCredits: '([^']+)'`).exec(shared_)?.[1];
+  if (infoRow === undefined) {
+    problems.push(`packages/shared MODE_INFO has no typicalCredits for ${specialist} — the ${mode} figure has no source`);
+  } else {
+    // "4-18" advertises what a request STARTS at; the low end is the published number.
+    const low = Number(infoRow.split('-')[0]);
+    if (low !== expected) {
+      problems.push(`MODE_INFO.${specialist}.typicalCredits starts at ${low} for ${mode}; ${neurons} neurons / ${perCredit} = ${expected}`);
+    }
+  }
+  const derivesCost = /typicalCredits/.test(page) && /PRODUCT_MODE_TO_SPECIALIST\[m\]/.test(page);
+  const literal = Number(/cost: '(\d+) credit/.exec(page.slice(page.indexOf(`mode: '${mode}'`)))?.[1]);
+  if (!derivesCost && !Number.isFinite(literal)) {
+    problems.push(
+      `pricing.astro neither states a Credit cost for ${mode} nor derives one from MODE_INFO — `
+      + `the figure a reader plans around is unchecked`,
+    );
+  } else if (Number.isFinite(literal) && literal !== expected) {
+    problems.push(`pricing.astro says ${mode} costs ${literal} credit(s); ${neurons} neurons / ${perCredit} = ${expected}`);
   }
 
   // Requests per free day. The page may STATE it or DERIVE it, and this has to tell the
@@ -124,7 +188,7 @@ for (const { mode, row } of MODES) {
   // having checked nothing at all, which is precisely the defect this file was written
   // about in the first place. So: a literal is checked, a derivation is confirmed to be
   // present, and the absence of both is a failure.
-  const perDay = /perDay: '([^']+)'/.exec(block)?.[1];
+  const perDay = /perDay: '([^']+)'/.exec(page.slice(page.indexOf(`mode: '${mode}'`)))?.[1];
   if (perDay === undefined) {
     if (!/const perFreeDay\b/.test(page) || !/perDay: perFreeDay\(/.test(page)) {
       problems.push(
