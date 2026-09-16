@@ -248,7 +248,7 @@ test it gated.
     EXPECT: G-ORACLE-4 OK
   CHECK-CHANGE: old=--floor 13 new=--floor 14 reason=a1e4acd-added-the---list-unresolved-test-and-a-floor-of-13-left-it-unpinned
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G-ORACLE-4-floor14; path=c1b9265de6a1/55 entries; git-sha=d3b516e; tree-clean=yes; deps-clean=yes; break-sha=d3b516e; EXPECT=unmatched; output-sha256=c6f86b37450ca6c987754bd555303549aac781c68b52173c42f0f031b8d0f023; output-bytes=1867; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=3; deps-sha=8c1d5132e61f05f30fc96be5; at=2026-09-16T06:28:31.867Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=e2f019f; tree-clean=yes; deps-clean=yes; EXPECT=matched; output-sha256=0183aaa116510782d3002133ed59fdb98eca47c77d54cf9cd0a434ad088a0893; output-bytes=1073; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=3; deps-sha=61017c88de5b58016cab9ece; at=2026-09-15T00:25:13.175Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/ev-G-ORACLE-4; path=c1b9265de6a1/55 entries; git-sha=3d56ff7; tree-clean=yes; deps-clean=yes; EXPECT=matched; output-sha256=e976d0e1a90143abf4d209007d0ba3795f97284783f4e7a81d9adcaed86391d8; output-bytes=1106; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=3; deps-sha=5c7c6e7e0471c5b9fa328da4; at=2026-09-16T06:29:02.104Z
 
 - [x] G-BACKLOG-1: Every closed backlog row cites something a machine can run
     CHECK: node scripts/check-backlog.mjs --summary --floor-cited 127
