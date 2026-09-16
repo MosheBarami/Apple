@@ -979,7 +979,21 @@ test('B10 producing the Intent and Plan rows costs ZERO model calls', async () =
 
 test('B10 STATIC CHECK — the intent is derived once, persisted, and replayed', () => {
   const session = read('do/session.ts');
-  assert.match(session, /import \{ sceneSignature, shouldRebuild, semanticCheck, intentCheck, type PassRecord \} from '\.\.\/semantic';/);
+  //[[ THIS PINNED THE SPELLING OF AN IMPORT LIST, AND THE CALL HAD MOVED ONE FILE OVER.
+  //
+  //   It required session.ts to import `intentCheck` from '../semantic' by exact text. The
+  //   extraction into run-intent.ts — deliberate, and documented at the head of that file: the
+  //   function is pure, and a pure function buried in a Durable Object is a pure function nothing
+  //   tests — left session.ts calling `runIntentFor` instead. Nothing about the property this test
+  //   names changed; the import line did, and the import line was what was asserted.
+  //
+  //   So the guard is on the WIRING now: session.ts reaches the extractor through run-intent.ts,
+  //   and run-intent.ts reaches intentCheck. Delete either edge and this goes red, which is what it
+  //   was always for. The three assertions further down moved with the code for the same reason. ]]
+  assert.match(session, /import \{ runIntentFor \} from '\.\.\/run-intent';/, 'session.ts must reach the extractor');
+  assert.match(session, /import \{ sceneSignature, shouldRebuild, semanticCheck, type PassRecord \} from '\.\.\/semantic';/);
+  const runIntent = read('run-intent.ts');
+  assert.match(runIntent, /import \{ intentCheck \} from '\.\/semantic';/, 'run-intent.ts must reach intentCheck');
   // Derived at run start, on the same free/deterministic footing as the trait classifier.
   assert.match(session, /const traits = classifyRequest\(text\);/);
   assert.match(session, /const intent = runIntentFor\(text\);/, 'the intent must be derived at run start, from the request text');
@@ -988,10 +1002,15 @@ test('B10 STATIC CHECK — the intent is derived once, persisted, and replayed',
   assert.match(session, /if \(intent\) this\.broadcast\(\{ type: 'run_intent', msgId, intent \}\);/, 'exactly one broadcast, guarded');
   // Replayed by the reconnect snapshot.
   assert.match(session, /intent: agent\.intent,/, 'runSnapshot must replay the intent');
-  // Nothing here may pad. The checklist and questions come straight off the extractor.
-  assert.match(session, /const checklist = report\.checklist\.slice\(0, MAX_INTENT_CHECKLIST\);/);
-  assert.match(session, /const questions = report\.questions\.slice\(0, MAX_INTENT_QUESTIONS\);/);
-  assert.match(session, /if \(!summary && !checklist\.length && !questions\.length\) return null;/, 'nothing to say must mean no row');
+  // Nothing here may pad. The checklist and questions come straight off the extractor — in
+  // run-intent.ts, which is where they were read from before the pure half moved out of the DO.
+  assert.match(runIntent, /const checklist = report\.checklist\.slice\(0, MAX_INTENT_CHECKLIST\);/);
+  assert.match(runIntent, /const questions = report\.questions\.slice\(0, MAX_INTENT_QUESTIONS\);/);
+  // The list of things that must ALL be empty before a row is suppressed grew an `assumptions`
+  // clause after this was written. The property is "nothing to say means no row", so the three
+  // original conjuncts are still required and a fourth is allowed to join them — pinning the
+  // closing paren is what turned a strengthened guard into a red test.
+  assert.match(runIntent, /if \(!summary && !checklist\.length && !questions\.length[^)]*\) return null;/, 'nothing to say must mean no row');
 });
 
 test('B10 a long request is truncated at a word boundary and stays verbatim', async () => {

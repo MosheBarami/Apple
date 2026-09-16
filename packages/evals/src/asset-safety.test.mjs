@@ -1003,8 +1003,27 @@ function serveDetails(body) {
   respond = () => ({ ok: true, status: 200, json: async () => body });
 }
 
-/** An AgentCtx over the fake Studio above. `library` is what search_asset_library would have added. */
-function toolCtx(studio, { discovered = [], library = [] } = {}) {
+/**
+ * An AgentCtx over the fake Studio above. `library` is what search_asset_library would have added.
+ *
+ * `assetSources` IS A PRECONDITION OF THIS SECTION, NOT A DETAIL OF IT. An absent policy allows
+ * nothing — `allowedSources(undefined)` is `[]` by deliberate design in asset-policy.ts — so
+ * `insert_asset` short-circuits on `sourceRefusal` before a single byte of the safety pipeline
+ * runs. Thirteen tests in this section were therefore asserting on the sentence "this project has
+ * not been asked which asset sources it may use", while every line they were written to defend —
+ * the whole-asset removal, the post-strip re-list, the narrow library waiver, the absent-hasScripts
+ * refusal — went unexecuted. A consent gate in front of a safety gate makes the safety gate
+ * unmeasurable; a project whose owner HAS answered is the only state in which these questions can
+ * be asked at all, and it is the state every one of them describes.
+ *
+ * Overridable, so a test that wants to watch the refusal itself can pass its own policy.
+ * security.test.mjs:769 pins the same precondition for the same reason.
+ */
+function toolCtx(studio, {
+  discovered = [],
+  library = [],
+  assetSources = { mode: 'remember', allow: ['apple_library', 'creator_store', 'from_scratch'] },
+} = {}) {
   return {
     env: {},
     studioConnected: () => true,
@@ -1013,6 +1032,7 @@ function toolCtx(studio, { discovered = [], library = [] } = {}) {
     addMemoryFact: async () => {},
     discoveredAssetIds: new Set(discovered),
     libraryAssetIds: new Set(library),
+    assetSources,
   };
 }
 
