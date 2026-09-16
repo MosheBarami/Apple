@@ -94,8 +94,22 @@ function looksLikeProposePlan(o: Record<string, unknown>): boolean {
  * `offered` is the tool set this run was actually given. A name outside it is refused rather than
  * recovered — the run's toolset is a permission decision made upstream (see router.ts) and text
  * may not widen it.
+ *
+ * `known` is EVERY registered tool, and it exists because `refused` is a string the caller puts in
+ * front of the model. The name comes out of JSON the model wrote, so without this it is attacker
+ * -influenced text being interpolated into a user-role transcript turn — the model would be able to
+ * write its own instruction into the conversation by naming a "tool" whose name is that
+ * instruction. `packages/evals` A5 caught this on the first run after the nudge was added.
+ *
+ * Constraining it to the registry makes `refused` a value from a FIXED VOCABULARY, which is the
+ * property that makes it safe to interpolate. A name outside the registry is not a tool call at
+ * all, so the text is returned untouched rather than described as one.
  */
-export function recoverToolCall(raw: string, offered: ReadonlySet<string>): Recovery {
+export function recoverToolCall(
+  raw: string,
+  offered: ReadonlySet<string>,
+  known: ReadonlySet<string> = offered,
+): Recovery {
   if (!raw || !raw.trim()) return NOTHING(raw);
   const body = unfence(raw);
   // A cheap pre-filter, and ONLY that — it is not the boundary, and saying so cost a falsification
@@ -150,6 +164,9 @@ export function recoverToolCall(raw: string, offered: ReadonlySet<string>): Reco
   if (name === null && looksLikeProposePlan(parsed)) name = 'propose_plan';
   if (name === null) return NOTHING(raw);
   if (!isPlainObject(args)) return NOTHING(raw);
+  // A name nothing registers is not a tool call, whatever it looks like — and `refused` must never
+  // carry a string the model chose. See the note above.
+  if (!known.has(name)) return NOTHING(raw);
 
   // Outside the run's own toolset, or outside the inert allowlist: suppressed, and named.
   if (!offered.has(name) || !RECOVERABLE.has(name)) {

@@ -835,6 +835,21 @@ const TOOL_ARGS = {
   run_and_check: { seconds: 2 },
   get_output_logs: {},
   render_view: { view: 'hero' },
+  //[[ `compose_thumbnail` EGRESS REVIEWED 2026-09-16, which is what this enumeration is for.
+  //
+  //   It renders every camera angle of the place through the SAME Studio op `render_view` uses,
+  //   measures them with `compositionMetrics`, encodes a PNG and calls
+  //   `storeImage(ctx.env, pngBase64, ctx.projectId)` — the identical project-scoped store
+  //   `generate_image` writes to, with the same one-hour TTL and the same route behind it.
+  //
+  //   Grepped the whole tool body for a second exit: there is no `fetch(`, no URL, no
+  //   `useRobloxCredential`, no `env.<BINDING>` beyond the one `storeImage` takes. It cannot reach
+  //   the network, and it cannot write anywhere but under a project it was given. Its own tests
+  //   falsify the project guard and the absence of a credential call.
+  //
+  //   Worth stating because the tool's PURPOSE sounds like publishing: Roblox exposes no API for
+  //   experience thumbnails at all, so there is nothing for it to upload to even if it tried.
+  compose_thumbnail: { kind: 'thumbnail' },
   check_composition: { intent: 'a town plaza with a clock tower' },
   inspect_visually: { intent: 'a town plaza with a clock tower' },
   // A plan that SATISFIES its own admission rules, for the third time the same reason applies: a
@@ -2038,15 +2053,43 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
   const session = read('do/session.ts');
   const pushes = [...session.matchAll(/agent\.llm\.push\(\{[\s\S]{0,2600}?\n\s*\}\);/g)].map((m) => m[0]);
   const userPushes = pushes.filter((p) => /role:\s*'user'/.test(p));
-  // Three, and only three: the visual-gate hand-back, the "you have not changed anything" nudge,
-  // and the "stop researching and build" steer. The first is the only one carrying dynamic text
-  // (the vision model's own critique of the user's own scene) and is recorded here so a fourth,
-  // less careful, dynamic channel cannot be added without this test noticing.
-  assert.equal(userPushes.length, 3, 'a user-role transcript injection was added or removed — review it for injection risk');
+  //[[ FOUR, AND THIS TRIPWIRE EARNED ITS PLACE THE DAY THE FOURTH WAS ADDED.
+  //
+  //   The reviewed set: the visual-gate hand-back, the "you have not changed anything" nudge, the
+  //   "stop researching and build" steer, and — added 2026-09-16 — the tool-call-as-text steer.
+  //
+  //   THE FOURTH SHIPPED WITH A HOLE AND THIS TEST FOUND IT. `recoverToolCall` returns `refused`,
+  //   the name of the tool the model wrote as text, and session.ts puts it in front of the model:
+  //   "Your last message was the ARGUMENTS for `<name>` written as text". That name came out of
+  //   JSON THE MODEL WROTE and was not checked against anything — so a model could name a "tool"
+  //   whose name was an instruction and have it delivered to itself as a user-role turn. It is the
+  //   laundering channel this assertion exists to prevent, arriving as a bug fix.
+  //
+  //   Closed in tool-recovery.ts: a name outside the tool registry is not a tool call at all, so
+  //   the text is returned untouched and `refused` stays null. `refused` is therefore a value from
+  //   a FIXED VOCABULARY, which is the property that makes interpolating it safe — and that is what
+  //   the assertion below pins, rather than the absence of a `${`.
+  assert.equal(userPushes.length, 4, 'a user-role transcript injection was added or removed — review it for injection risk');
   const dynamic = userPushes.filter((p) => /\$\{/.test(p));
-  assert.equal(dynamic.length, 1, 'exactly one user-role injection should carry interpolated content');
-  assert.match(dynamic[0], /critiqueToText\(critique\)/, 'the one dynamic user-role injection should be the visual critique hand-back');
-  assert.equal(/out\.resultForLlm|res\.data|call\.arguments/.test(dynamic[0]), false, 'raw tool output must not be laundered into a user-role message');
+  assert.equal(dynamic.length, 2, 'exactly two user-role injections should carry interpolated content');
+  assert.ok(
+    dynamic.some((p) => /critiqueToText\(critique\)/.test(p)),
+    'the visual critique hand-back should still be one of the dynamic user-role injections',
+  );
+  const recovery = dynamic.find((p) => /rescued\.refused/.test(p));
+  assert.ok(recovery, 'the tool-call-as-text steer is gone, or no longer names what it refused');
+  // Its ONLY interpolation is `rescued.refused`, and that is a registry name by construction.
+  assert.deepEqual(
+    [...recovery.matchAll(/\$\{([^}]*)\}/g)].map((m) => m[1].trim()),
+    ['rescued.refused'],
+    'the recovery steer grew a second interpolation — every one of them is a channel into a user-role turn',
+  );
+  const src = read('tool-recovery.ts');
+  assert.match(src, /if \(!known\.has\(name\)\) return NOTHING\(raw\);/,
+    'tool-recovery no longer confines `refused` to the registry — the model can choose the string session.ts interpolates');
+  for (const p of dynamic) {
+    assert.equal(/out\.resultForLlm|res\.data|call\.arguments/.test(p), false, 'raw tool output must not be laundered into a user-role message');
+  }
 });
 
 // ===========================================================================

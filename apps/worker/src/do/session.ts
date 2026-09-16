@@ -2463,7 +2463,7 @@ export class SessionDO extends DurableObject<Env> {
     //   Done BEFORE `lastCalls` is taken and before `res.text` is read, so the recovered call is
     //   indistinguishable downstream from one the model actually made. ]]
     if (!res.toolCalls.length && res.text) {
-      const rescued = recoverToolCall(res.text, allowed);
+      const rescued = recoverToolCall(res.text, allowed, new Set(toolNames()));
       if (rescued.call) {
         res.toolCalls = [{ id: `rescued_${agent.step}`, name: rescued.call.name, arguments: rescued.call.arguments }];
         res.text = rescued.text;
