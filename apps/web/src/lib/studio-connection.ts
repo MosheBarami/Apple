@@ -214,8 +214,26 @@ export function linkDetail(state: StudioConnection, facts: StudioLinkFacts, now:
   const seen = lastSeenLabel(facts.lastSeenAt, now);
   if (state === 'connecting') return null; // no answer yet is not a finding
   if (state === 'connected') {
-    const parts = [latencyLabel(facts.rttMs), queueLabel(facts.queuedOps)].filter((p): p is string => p !== null);
-    return parts.length ? parts.join(' · ') : null;
+    //[[ LATENCY IS NOT A FINDING, and putting it here contradicted this component's own rule.
+    //
+    //   studio-link-note.tsx says, in as many words: "A healthy, quiet link draws no strip at all
+    //   rather than a row reading 'everything is fine', which is the kind of chrome that trains
+    //   people to stop looking." A connected link with nothing wrong was drawing exactly that row.
+    //
+    //   SEEN ON THE OWNER'S SCREEN. Above his conversation, left-aligned under a hairline, sat the
+    //   word-free string "71 ms" — and thirty seconds later "4.9 s", and later "141 ms". A number
+    //   with no noun, changing on its own, at the top of the transcript. It is unreadable as a
+    //   fact (71 ms of what?) and it moves, so it takes the eye every time it changes, and it is
+    //   present precisely when there is nothing to report.
+    //
+    //   A QUEUE IS DIFFERENT and stays. "3 changes waiting" names something the user can act on:
+    //   work has been accepted and has not landed yet. That is a finding; a round trip is a
+    //   measurement, and measurements belong where someone goes to look for them, not in the one
+    //   place everybody has to look anyway.
+    //
+    //   `latencyLabel` is kept and still tested — it is the right function for a diagnostics
+    //   surface — it simply no longer fires the strip on its own. ]]
+    return queueLabel(facts.queuedOps);
   }
   // Disconnected or never-connected. The timestamp is the whole point of these two branches: it is
   // what separates "close the lid and come back" from "this was never set up".

@@ -108,9 +108,19 @@ test('a mismatch with unnamed places still produces a sentence, not a hole', () 
 
 test('a healthy link reports what it has measured and nothing it has not', () => {
   assert.equal(linkDetail('connected', facts(), NOW), null, 'nothing measured, nothing said');
-  assert.equal(linkDetail('connected', facts({ rttMs: 42 }), NOW), '42 ms');
-  assert.equal(linkDetail('connected', facts({ rttMs: 42, queuedOps: 2 }), NOW), '42 ms · 2 changes waiting');
-  assert.equal(linkDetail('connected', facts({ queuedOps: 2 }), NOW), '2 changes waiting', 'the queue shows before latency ever arrives');
+  //[[ A HEALTHY LINK SAYS NOTHING, INCLUDING ITS LATENCY. This used to assert '42 ms', and that
+  //   string was on the owner's screen above his conversation: a number with no noun, changing by
+  //   itself every thirty seconds, drawn precisely when there was nothing to report. It is the row
+  //   studio-link-note.tsx's own comment forbids — "a row reading 'everything is fine', which is
+  //   the kind of chrome that trains people to stop looking".
+  //
+  //   The queue survives because it is a FINDING: work accepted and not yet landed is something
+  //   the user can act on. A round trip is a measurement, and it belongs where someone goes to
+  //   look for it. ]]
+  assert.equal(linkDetail('connected', facts({ rttMs: 42 }), NOW), null, 'a round trip alone is not worth a strip');
+  assert.equal(linkDetail('connected', facts({ rttMs: 9999 }), NOW), null, 'nor is a slow one — slow is not broken');
+  assert.equal(linkDetail('connected', facts({ rttMs: 42, queuedOps: 2 }), NOW), '2 changes waiting', 'the queue is the finding; the latency is not');
+  assert.equal(linkDetail('connected', facts({ queuedOps: 2 }), NOW), '2 changes waiting', 'and it reads the same with no measurement at all');
 });
 
 test('CONNECTING SAYS NOTHING — no answer yet is not a finding', () => {
