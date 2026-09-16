@@ -333,6 +333,7 @@ svg {
 .ap-eyebrow {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   margin: 0 0 0.6rem;
   font-size: 0.82rem;
@@ -356,8 +357,8 @@ svg {
 }
 
 .ap-lede {
-  margin: 0 0 2rem;
-  max-width: 62ch;
+  margin: 0 auto 2rem;
+  max-width: 58ch;
   font-size: 1rem;
   line-height: 1.65;
   color: var(--muted);
@@ -621,8 +622,11 @@ svg {
 .ap-hero__inner {
   position: relative;
   z-index: 1;
-  max-width: 62rem;
+  /* 51rem, not 62: the container is now the measure plus its frame, so nothing inside it can end
+     a third of the way across an empty box. */
+  max-width: 51rem;
   margin: 0 auto;
+  text-align: center;
 }
 
 .ap-badge {
@@ -680,6 +684,24 @@ svg {
    page, which is the whole accent budget of the hero spent in one place.
    tests/e2e/landing.spec.ts had an assertion that a background-clip:text
    element exists, and it went with the gradient. */
+/*[[ ONE AXIS FOR THE WHOLE PAGE.
+ *
+ * MEASURED ON THE DEPLOYED PAGE at 1440x900, which is where this kind of thing is found. The hero
+ * column was 992px wide and the type inside it wrapped at ~545px, so 450px of the container — a
+ * third of the viewport — was black nothing to the right of every line. Worse, it was not even
+ * consistent: `.ap-proof` was already `justify-content: center`, so the three figures sat on the
+ * page's centre line while the headline, the sub, the buttons and the chips above them all hugged
+ * the left. A reader sees a column that could not decide where it lived.
+ *
+ * Centred rather than widened. Widening the measure would fill the room and ruin the reading — 55
+ * characters is the measure, and it is not negotiable for the sake of a background. Centring keeps
+ * the measure and removes the void by putting the whitespace on BOTH sides, where it reads as
+ * framing rather than as an unfinished row.
+ *
+ * It also makes the marketing page and the product agree. The workspace's own empty state
+ * (`chat-welcome.tsx`) is a centred stack — a mark, one line, a row of seeds — and the owner asked
+ * for one design across the whole site. Two surfaces with two axes is two products. ]]*/
+
 /* THE EMPHASISED HALF OF THE HEADLINE.
  *
  * Its own token, and that is the fix rather than the style. It was `var(--accent-ink)`, which THIS
@@ -696,8 +718,8 @@ svg {
 }
 
 .ap-hero__sub {
-  max-width: 54ch;
-  margin: 1.4rem 0 0;
+  max-width: 50ch;
+  margin: 1.4rem auto 0;
   font-size: 1.06rem;
   line-height: 1.6;
   color: var(--ink-2);
@@ -707,6 +729,7 @@ svg {
 .ap-hero__cta {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 0.7rem;
   margin-top: 1.9rem;
 }
@@ -720,6 +743,7 @@ svg {
 .ap-chips {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 0.5rem;
   margin-top: 2.2rem;
 }
@@ -779,8 +803,14 @@ svg {
    "black minimal cinematic, no images" — and a grid that keeps reserving a track for something
    that no longer renders is dead space the heading cannot use. Left as a grid rather than deleted
    because the section headers still want its gap and alignment. */
+/* The section heads sit on the same axis as the hero. Below each one the content is already
+   symmetrical — a wide panel beside a narrow one — so a left-hugging heading above a centred body
+   was the only thing breaking the column. */
 .ap-head {
   display: grid;
+  max-width: 46rem;
+  margin-inline: auto;
+  text-align: center;
   /* THE FIGURE TRACK IS SIZED, NOT `auto`. With `minmax(0, auto)` the second track grows to the
      figure's max-content width — and a box that is `aspect-ratio: 4/3` with a percentage width has
      no intrinsic width to offer, so the track took nearly the whole row and left the heading
@@ -801,8 +831,13 @@ svg {
   }
 }
 
+/* `margin-inline: auto` and not just `text-align: center`. A 24ch cap on a 46rem head leaves the
+   heading's BOX 180px narrower than the lede's, and text-align centres the lines inside that box —
+   so the heading sat 92px left of the paragraph under it while both were, individually, centred.
+   Measured on the deployed page: heading centre 621, lede centre 713. Two centred elements on two
+   different axes is worse than one honest left edge. */
 .ap-section h2 {
-  margin: 0 0 0.7rem;
+  margin: 0 auto 0.7rem;
   font-size: clamp(1.6rem, 2.8vw, 2.2rem);
   line-height: 0.98;
   max-width: 24ch;
@@ -1383,12 +1418,16 @@ code {
 /* ------------------------------------------------------------------- the slip --
    The prompt, already written, with the caret at rest at the end of it. An
    invitation rather than a demonstration, and true either way. */
+/* THE BOX CENTRES; THE TEXT INSIDE IT DOES NOT. A prompt field is a place someone types, and
+   typed text starts at the left margin — centring the caret would make the one element on this
+   page that imitates the product the one element that lies about it. */
 .ap-slip {
   display: flex;
   align-items: center;
   gap: 0.55rem;
-  max-width: 34rem;
-  margin: 1.2rem 0 0;
+  max-width: 32rem;
+  margin: 1.2rem auto 0;
+  text-align: left;
   padding: 0.7rem 0.85rem;
   border: 1px solid var(--line-2);
   border-radius: var(--r-md);
@@ -1529,11 +1568,16 @@ code {
   padding: 0;
   list-style: none;
 }
+/* EQUAL TRACKS. The labels are 26, 28 and 47 characters, so with content-sized items the three
+   figures landed at uneven spacings and the longest label ran to three lines beside two one-line
+   neighbours — a row that reads as three strays rather than one set. A shared basis makes the
+   figures evenly spaced and every label wrap at the same place. */
 .ap-proof__item {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
+  flex: 0 1 13rem;
   min-width: 0;
 }
 .ap-proof__n {
@@ -1544,6 +1588,7 @@ code {
 }
 .ap-proof__what {
   font-size: 0.78rem;
+  line-height: 1.45;
   color: var(--muted);
   text-align: center;
   max-width: 22ch;
@@ -1638,14 +1683,19 @@ code {
   white-space: nowrap;
 }
 
-/* The licence, in the mono face the rest of the page uses for facts somebody can check. */
+/* The licence, in the mono face the rest of the page uses for facts somebody can check.
+ *
+ * IT WRAPS. It used to be `white-space: nowrap` with an ellipsis like the two lines above it, and
+ * on the deployed page every CC-BY card read `game-icons.net · CC BY 3…` — the section is titled
+ * "Every asset says where it came from" and it was cutting off the licence. Truncating a name to
+ * fit a card is a nuisance; truncating the terms you are relying on is the page contradicting its
+ * own argument in the one place a reader would check it. */
 .ap-wall__tag {
   font-family: var(--font-mono);
   font-size: 0.62rem;
+  line-height: 1.35;
   color: var(--muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 @media (prefers-reduced-motion: reduce) {

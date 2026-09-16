@@ -180,12 +180,44 @@ if (pools.every((p) => p === null)) {
   process.exit(2);
 }
 
-// Round-robin so one pack cannot fill the wall: a wall of 24 icons is not evidence of a library
-// with props, textures and icons in it.
+//[[ ROUND-ROBIN GUARDED THE PACK AND NOT THE PICTURE.
+//
+//   The rule was "one pack cannot fill the wall", and it worked — eight rows from each of three
+//   packs, every time. Then I looked at the deployed page. Eight of the twenty-four cards were
+//   PLAYING CARDS: card 10 clubs, card 10 diamonds, card 10 hearts, card 10 spades, card 2 clubs,
+//   card 2 diamonds. Four more were Ground 108, 109, 110 and 111. Both packs are enumerated in
+//   name order and this loop took each pool's HEAD, so the wall was the first page of an
+//   alphabetical index — and on a black page, six white rectangles bearing the number 10 are the
+//   first thing a visitor's eye lands on.
+//
+//   The guard measured exactly the property it was named for and none of the property that
+//   mattered. Pack balance is not variety; a wall can be perfectly balanced across three packs and
+//   still show one subject twelve times.
+//
+//   Two changes, both deterministic — no RNG, because a wall that differs between two runs cannot
+//   be reviewed:
+//
+//     STRIDE   each pool is walked at an interval instead of from its head, so the candidates come
+//              from across the pack rather than from whatever sorts first.
+//     FAMILY   a candidate whose leading word is already on the wall is skipped. "Chandelier 01"
+//              and "Chandelier 02" are one thing photographed twice; the second slot is worth more
+//              spent on something a reader has not seen yet.
+const family = (name) =>
+  String(name).toLowerCase().replace(/[^a-z ]+/g, ' ').trim().split(/\s+/)[0] ?? '';
+
 const picked = [];
 const live = pools.filter(Boolean);
+const seenFamily = new Set();
+const strides = live.map((p) => Math.max(1, Math.floor(p.length / (WANT * 3))));
 for (let i = 0; picked.length < WANT * 2 && i < 400; i++) {
-  for (const p of live) if (p[i]) picked.push(p[i]);
+  for (const [n, p] of live.entries()) {
+    const row = p[i * strides[n]];
+    if (!row) continue;
+    const f = family(row.name);
+    if (f && seenFamily.has(f)) continue;
+    if (f) seenFamily.add(f);
+    picked.push(row);
+  }
 }
 
 const kept = [];
