@@ -623,7 +623,11 @@ const { showCost = true } = Astro.props;
       }
     }
 
-    [clay, stone, rune, steps].forEach((el) =>
+    // `rune` and `steps` were in this list and were never declared again after the Super Agent
+    // slider was deleted, so the whole listener block threw a ReferenceError before a single
+    // handler was attached: the calculator rendered, and then did nothing at all when dragged.
+    // A control that does not respond is a worse advertisement than no control.
+    [clay, stone].forEach((el) =>
       el.addEventListener('input', () => {
         update();
         (window as any).appleTick?.(760);
