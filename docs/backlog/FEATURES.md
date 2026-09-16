@@ -7,11 +7,18 @@ Status is assigned from evidence in `docs/audit/APPLE-LEDGER.md` and from work v
 
 | status | count | share |
 |---|---:|---:|
-| done | 116 | 9.3% |
-| partial | 13 | 1.0% |
-| blocked | 8 | 0.6% |
-| conflicts-with-decision | 11 | 0.9% |
-| not-started | 1101 | 88.2% |
+| done | 310 | 24.8% |
+| partial | 21 | 1.7% |
+| blocked | 10 | 0.8% |
+| not-started | 902 | 72.2% |
+| declared duplicates, not counted | 6 | 0.5% |
+
+*Counted from the rows below, not carried forward.* This table said done 116 / partial 13 /
+blocked 8 / conflicts-with-decision 11 / not-started 1101, and the per-section headings summed to
+133 done — both written when the JSON held 133, before the closing pass that took it to 310. A
+tally typed above 1,249 rows is a number that will disagree with the rows, and this one did, in
+fourteen sections at once. `conflicts-with-decision` is not a status the JSON uses at all; those
+rows are listed by name below.
 
 ## Honest scale note
 
@@ -27,13 +34,15 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 - **Inference autoscaling** — recurring cost
 - **SOC2 readiness** — external audit, five figures, not an engineering task
 - **Multi-region deployment** — recurring cost
-- **Pro plan** — conflicts with zero-recurring-cost
-- **Team plan** — conflicts with zero-recurring-cost
-- **Enterprise plan** — conflicts with zero-recurring-cost
-- **Usage-based billing** — conflicts with zero-recurring-cost
 - **GPU billing** — conflicts with zero-recurring-cost
 - **Seat billing** — conflicts with zero-recurring-cost
-- **Stripe** — conflicts with the zero-recurring-cost decision (no payments)
+
+**Five of these were built, and this list still said they could not be.** The zero-recurring-cost
+decision was superseded by ADR-019 — Apple takes subscriptions and sells Credits — and the JSON
+says so: `Pro plan`, `Team plan` and `Enterprise plan` are done as the `builder`, `studio` and
+`enterprise` tiers, `Stripe` is done against `apps/worker/tests/billing.test.mjs`, and
+`Usage-based billing` is partial with metering proven and invoicing missing. A "conflicts with a
+decision" list that outlives the decision reads as a refusal the product never made.
 
 ## Blocked on the owner
 
@@ -317,7 +326,7 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 - [ ] Console compatibility audit
 - [ ] Accessibility audit
 
-### Roblox Studio Companion — 52 items  (done 0, partial 1)
+### Roblox Studio Companion — 52 items  (done 15, partial 1)
 
 - [!] Desktop companion app — owner chose rasteriser-only; out of scope for now
 - [ ] Native Studio bridge
@@ -559,7 +568,7 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 - [ ] User correction collection
 - [ ] Human approval queue
 
-### Evaluation — 64 items  (done 15, partial 1)
+### Evaluation — 64 items  (done 35, partial 1)
 
 - [x] Eval suite — packages/evals — 84 text + 12 visual tasks
 - [x] Task registry — packages/evals/tasks/*.json, 12 suites
@@ -626,7 +635,7 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 - [ ] Promotion gates
 - [ ] Rollback gates
 
-### Knowledge and RAG — 54 items  (done 8, partial 0)
+### Knowledge and RAG — 54 items  (done 15, partial 0)
 
 - [ ] Document ingestion
 - [ ] Website crawling
@@ -683,7 +692,7 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 - [ ] Failure memory
 - [ ] Successful pattern memory
 
-### Code Intelligence — 49 items  (done 6, partial 0)
+### Code Intelligence — 49 items  (done 16, partial 0)
 
 - [x] Luau parser — luau-lsp 1.69.0 integrated via packages/evals/src/luau.mjs
 - [ ] Luau formatter — NOT BUILT: nothing invokes stylua; the mission doc lists installing it as G-TOOLCHAIN-1, i.e. work not done
@@ -735,7 +744,7 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 - [ ] Comment generation
 - [ ] Changelog generation
 
-### 3D and Creative — 79 items  (done 0, partial 1)
+### 3D and Creative — 79 items  (done 11, partial 1)
 
 - [~] Text-to-3D — generate_model reaches GenerationService but result does not persist as a Roblox asset
 - [ ] Image-to-3D
@@ -817,7 +826,7 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 - [ ] Asset moderation
 - [ ] Asset licensing
 
-### Voice and Audio — 32 items  (done 0, partial 0)
+### Voice and Audio — 32 items  (done 18, partial 0)
 
 - [ ] Speech-to-text
 - [ ] Text-to-speech
@@ -852,7 +861,7 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 - [ ] Export MP3
 - [ ] Export OGG
 
-### Automation and Tools — 43 items  (done 0, partial 0)
+### Automation and Tools — 43 items  (done 11, partial 0)
 
 - [ ] Browser tool
 - [ ] Search tool
@@ -898,7 +907,7 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 - [ ] License scanner
 - [ ] Vulnerability scanner
 
-### Product UX — 59 items  (done 13, partial 4)
+### Product UX — 59 items  (done 18, partial 4)
 
 - [x] Dark mode — apple-brand.css dark-native tokens
 - [x] Light mode
@@ -960,7 +969,7 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 - [ ] Live code diff
 - [ ] Live test results
 
-### Safety and Security — 56 items  (done 4, partial 0)
+### Safety and Security — 56 items  (done 11, partial 0)
 
 - [x] Authentication — Supabase ES256 JWKS verify, auth.ts
 - [~] Authorization — Postgres RLS, infra/supabase/migrations
@@ -1115,7 +1124,7 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 - [ ] Model cost reports
 - [ ] Provider cost reports
 
-### Developer Platform — 42 items  (done 0, partial 0)
+### Developer Platform — 42 items  (done 21, partial 0)
 
 - [ ] Public API
 - [ ] REST API
@@ -1160,7 +1169,7 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 - [ ] Template marketplace
 - [ ] Community extensions
 
-### Collaboration — 30 items  (done 0, partial 0)
+### Collaboration — 30 items  (done 10, partial 0)
 
 - [ ] Shared projects
 - [ ] Shared chats
@@ -1193,7 +1202,7 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 - [ ] Private templates
 - [ ] Community publishing
 
-### Analytics and Observability — 37 items  (done 1, partial 0)
+### Analytics and Observability — 37 items  (done 16, partial 0)
 
 - [ ] Request logs
 - [x] Agent traces — ToolTraceEntry persisted per run
@@ -1233,7 +1242,7 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 - [ ] Data export
 - [ ] Scheduled reports
 
-### Release and Quality — 40 items  (done 3, partial 0)
+### Release and Quality — 40 items  (done 9, partial 0)
 
 - [x] CI/CD — .github/workflows/ci.yml — deterministic, no secrets, no paid calls
 - [x] Automated tests — pnpm -r test in CI
@@ -1276,7 +1285,7 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 - [ ] Load tests
 - [ ] Chaos tests
 
-### Model Memory and Personalization — 29 items  (done 0, partial 0)
+### Model Memory and Personalization — 29 items  (done 21, partial 0)
 
 - [ ] User memory
 - [ ] Project memory
