@@ -8,8 +8,10 @@
 // Offline. Importing the report runs it; it prints nothing unless invoked as a script.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { REPORT } from './success-metrics.mjs';
-import { BRIEF } from './acceptance.mjs';
+import { BRIEF, REPO } from './acceptance.mjs';
 
 test('every measure is either a real number or a stated reason, and never both and never neither', () => {
   assert.ok(REPORT.analytics.measures.length > 0, 'the report measures nothing at all');
@@ -84,4 +86,116 @@ test('the completion figure is recomputed from the marks, not copied from the he
   assert.equal(c.overall.total, c.overall.done + c.overall.partial + c.overall.notFound + c.overall.other);
   assert.ok(c.overall.total > 0, 'the checklist parsed to zero items — the report would print a number from nothing');
   assert.ok(c.overall.weightedPct >= 0 && c.overall.weightedPct <= 100, 'the weighted figure is not a percentage');
+});
+
+// ---------------------------------------------------------------------------------------------
+// THE HEADER IS A COPY OF THE MARKS, AND THE COPY IS THE ONE THAT ROTS.
+//
+// `docs/backlog/CHECKLIST-V2.md` carries its own totals in two places: one line at the top of the
+// file and one beside every section heading. Both are hand-typed, both are read by a human who
+// will never count 1,200 lines to check them, and both were wrong the moment a single mark moved.
+// The file's own preamble says so — "A total typed at the top of a 3,440-line file is a number
+// that will disagree with the lines below it" — and then asks the reader to trust it anyway.
+//
+// These tests are the thing that stops it. The header is not an assertion about the product; it
+// is an assertion about the file, and a file can check that against itself. The report above
+// PRINTS the disagreement; this one FAILS on it, because a disagreement nobody is stopped by is a
+// disagreement that ships.
+//
+// The parse is deliberately independent of the report's parse and is then checked against it, so
+// this file cannot drift into agreeing with a broken parser: if the two ever read the same marks
+// differently, the first assertion below goes red rather than both of them going quiet.
+// ---------------------------------------------------------------------------------------------
+const CHECKLIST_PATH = join(REPO, BRIEF.file);
+const CHECKLIST_TEXT = readFileSync(CHECKLIST_PATH, 'utf8');
+const WEIGHT = { '✓': 1, '~': 0.5, '☐': 0 };
+
+/** Every `## NN. TITLE — PP% ✓D ~P ☐N` heading and the marks that follow it, until the next one. */
+function parseSections(text) {
+  const sections = [];
+  let current = null;
+  const lines = text.split('\n');
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    if (/^##\s/.test(line)) {
+      const head = /^##\s+(\d+)\.\s+(.+?)\s+—\s+(\d+)%\s+✓(\d+)\s+~(\d+)\s+☐(\d+)\s*$/.exec(line);
+      // A heading that no longer matches would silently stop being checked, which is the failure
+      // this file exists to prevent — so an unreadable heading is a red line, not a skipped one.
+      assert.ok(head, `line ${i + 1} is a section heading this test cannot read, so its total would go unchecked: ${line}`);
+      current = { number: +head[1], title: head[2], line: i + 1, claim: { pct: +head[3], done: +head[4], partial: +head[5], notFound: +head[6] }, marks: [] };
+      sections.push(current);
+      continue;
+    }
+    const item = /^-\s+\[(.)\]\s+(.+)$/.exec(line);
+    if (item && current) current.marks.push(item[1]);
+  }
+  return sections;
+}
+
+function tallyMarks(marks) {
+  const t = { done: 0, partial: 0, notFound: 0, other: 0, weight: 0 };
+  for (const m of marks) {
+    if (m === '✓') t.done += 1;
+    else if (m === '~') t.partial += 1;
+    else if (m === '☐') t.notFound += 1;
+    else t.other += 1;
+    t.weight += WEIGHT[m] ?? 0;
+  }
+  t.total = marks.length;
+  return t;
+}
+
+const SECTIONS_UNDER_TEST = parseSections(CHECKLIST_TEXT);
+const ALL_MARKS = SECTIONS_UNDER_TEST.flatMap((s) => s.marks);
+const WHOLE_FILE = tallyMarks(ALL_MARKS);
+
+test('this test reads the same marks the report reads', () => {
+  const c = REPORT.completion.overall;
+  assert.deepEqual(
+    { done: WHOLE_FILE.done, partial: WHOLE_FILE.partial, notFound: WHOLE_FILE.notFound, other: WHOLE_FILE.other, total: WHOLE_FILE.total },
+    { done: c.done, partial: c.partial, notFound: c.notFound, other: c.other, total: c.total },
+    'the report and this test disagree about what is written in the checklist; one of the two parsers is wrong and neither number can be trusted until they agree',
+  );
+});
+
+test('no mark in the checklist is a character the weighting does not know', () => {
+  // An unrecognised mark weighs 0, which silently reads as ☐ — a typo would quietly deflate the
+  // figure and nothing above would say so.
+  assert.equal(WHOLE_FILE.other, 0, `${WHOLE_FILE.other} item(s) carry a mark that is not ✓, ~ or ☐`);
+});
+
+test('the total typed at the top of the checklist is the total of the marks below it', () => {
+  const claim = REPORT.completion.headerClaim;
+  assert.ok(claim, 'the checklist no longer carries a header total this test can read — the check would pass by not looking');
+  assert.equal(claim.done, WHOLE_FILE.done, `the header says ✓ ${claim.done}; the marks say ✓ ${WHOLE_FILE.done}`);
+  assert.equal(claim.partial, WHOLE_FILE.partial, `the header says ~ ${claim.partial}; the marks say ~ ${WHOLE_FILE.partial}`);
+  assert.equal(claim.notFound, WHOLE_FILE.notFound, `the header says ☐ ${claim.notFound}; the marks say ☐ ${WHOLE_FILE.notFound}`);
+  const weighted = +((WHOLE_FILE.weight / WHOLE_FILE.total) * 100).toFixed(1);
+  assert.equal(
+    claim.weightedPct,
+    weighted,
+    `the header says weighted ${claim.weightedPct}%; ✓=1 ~=0.5 ☐=0 over ${WHOLE_FILE.total} items gives ${weighted}%`,
+  );
+});
+
+test('every section heading is the total of the marks under that heading', () => {
+  const wrong = [];
+  for (const s of SECTIONS_UNDER_TEST) {
+    const t = tallyMarks(s.marks);
+    const pct = Math.round((t.weight / t.total) * 100);
+    if (t.done !== s.claim.done || t.partial !== s.claim.partial || t.notFound !== s.claim.notFound || pct !== s.claim.pct) {
+      wrong.push(
+        `line ${s.line} — section ${s.number} says ${s.claim.pct}% ✓${s.claim.done} ~${s.claim.partial} ☐${s.claim.notFound}, ` +
+          `its ${t.total} marks say ${pct}% ✓${t.done} ~${t.partial} ☐${t.notFound}`,
+      );
+    }
+  }
+  assert.deepEqual(wrong, [], `${wrong.length} section heading(s) disagree with their own items:\n  ${wrong.join('\n  ')}`);
+});
+
+test('the checklist holds the number of sections and items it says it holds', () => {
+  const prose = /(\d+)\s+sections,\s+([\d,]+)\s+items/.exec(CHECKLIST_TEXT);
+  assert.ok(prose, 'the checklist no longer states how many sections and items it has');
+  assert.equal(SECTIONS_UNDER_TEST.length, +prose[1], `the file says ${prose[1]} sections and carries ${SECTIONS_UNDER_TEST.length}`);
+  assert.equal(WHOLE_FILE.total, +prose[2].replace(/,/g, ''), `the file says ${prose[2]} items and carries ${WHOLE_FILE.total}`);
 });

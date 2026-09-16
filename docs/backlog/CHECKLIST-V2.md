@@ -1,12 +1,19 @@
 # COMPLETE AI ROBLOX SAAS SHELL — 1,200-ITEM CHECKLIST
 
-**✓ 390 done · ~ 535 partly built · ☐ 275 not found — weighted 54.8%**
+**✓ 413 done · ~ 520 partly built · ☐ 267 not found — weighted 56.1%**
 
-*Counted from the marks in this file, not carried forward. The previous header said ✓356 ~543
-☐301 / 52.3% and was written before six sections were reworked in parallel — account security
-and recovery, the composer, invoices, privacy and data lifecycle, support, and owner
-operations. A total typed at the top of a 3,440-line file is a number that will disagree with
-the lines below it; this one is recomputed from them.*
+*Counted from the marks in this file, not carried forward. The header before this one said
+✓390 ~535 ☐275 / 54.8%, and the one before that ✓356 ~543 ☐301 / 52.3%. A total typed at the
+top of a 3,440-line file is a number that will disagree with the lines below it, so it is no
+longer only typed: `packages/evals/src/success-metrics.test.mjs` recomputes this line AND every
+section heading from the marks and fails when either drifts by one. The figure and the marks
+can no longer part company in silence.*
+
+*Re-marked 2026-09-16 against the work that had landed since the 09-15 pass: 29 items moved up
+and 3 moved down. Every move names a test that goes red if the capability stops being true. The
+three downgrades are the more useful half: each was a ✓ whose only proof was a grep or a manual
+scan somebody ran once, which is a snapshot of a day rather than something the repository will
+ever check again.*
 
 Owner-authored list of record. 60 sections, 1,200 items.
 
@@ -539,7 +546,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [✓] Contextual next-step guidance
       · Guidance is derived per surface rather than generic. Canonical states with a next action, one vocabulary: apps/web/src/components/empty-state-model.ts:53-112 (M01 'Summon your first project', M02 'Nothing said yet', M04/M05 for Studio), tes
 
-## 01. PUBLIC WEBSITE AND PRODUCT DISCOVERY  —  68%   ✓9 ~9 ☐2
+## 01. PUBLIC WEBSITE AND PRODUCT DISCOVERY  —  73%   ✓10 ~9 ☐1
 
 - [✓] Clear product positioning
       · apps/site/src/pages/index.astro:232-246 ships the badge ("Works inside Roblox Studio"), the single h1 ("It works inside the place you already have open.") and the sub-head naming what it does; the title/description are at index.astro:199-20
@@ -552,8 +559,9 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [~] Interactive product walkthrough
       · A real interactive walkthrough exists but no public visitor can reach it: apps/web/src/components/onboarding-tour.tsx, driven by TOUR_STEPS in apps/web/src/lib/onboarding.ts:42, mounted at apps/web/src/components/layout.tsx:376 — which is i
       → Build a click-through demo on the marketing site — e.g. apps/site/src/components/Walkthrough.astro rendered into a new #walkthrough section of apps/site/src/pages/index.astro: three to five steps (prompt -> named tool steps -> checkpoint -> playtest) advanced by real buttons, using the same still-fr
-- [☐] Working sample projects
+- [~] Working sample projects
       · Nothing anywhere lets a visitor or a new user open a prepared project. Searched: apps/site/src (no /examples, /showcase, /templates route; sitemap-0.xml confirms 17 routes), apps/web/src (project creation has no template picker; the only 's
+      · UPDATED 2026-09-16: the search that justified ☐ ('project creation has no template picker') is now false. apps/web/src/lib/project-templates.ts declares PROJECT_TEMPLATES (5 entries) and apps/web/src/routes/dashboard.tsx:300-320 renders the picker; gated by apps/web/tests/project-templates.test.mjs:84 ('the create dialog offers the set and starts on blank') and :89 ('THE SEED IS HANDED TO A ROUTE THAT ACTUALLY READS IT'). NOT ✓: a template seeds the first prompt, not a prepared place — the module says so at :3-5 and the test at :59 ('NOTHING CLAIMS TO SHIP WITH ANYTHING') actively forbids claiming otherwise. WHAT IS MISSING: a sample project a reader can open and run.
       → Create a small curated set of starter places and a way to start from one. Minimum: a seed file (e.g. packages/corpus/seeds/starter-projects.json) with 3-5 entries, each holding a name, a one-line description, the prompt sequence that builds it and the expected instance counts; a worker route POST /a
 - [✓] Roblox Studio integration overview
       · apps/site/src/pages/docs/plugin.astro covers the two-step Creator Store install, Studio's per-plugin network permission prompt, removal, and a 'What it can and cannot do' boundary list at line 107-118; apps/site/src/pages/docs/connect.astro
@@ -578,9 +586,9 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · apps/site/src/pages/changelog.astro (256 lines) carries dated releases — v0.2 'One model, measured' (2026-08-30) with engine, spend-control and context sections, and v0.1 — built to apps/site/dist/changelog/index.html. Linked from apps/site
 - [✓] Public service status page
       · apps/site/src/pages/status.astro is a working status page, not a placeholder: its script (lines 238-316) fetches /api/health with cache: 'no-store' and a 10s abort, polls every 30s with a visible countdown, offers a 'Check now' button, dist
-- [~] Security and privacy overview
+- [✓] Security and privacy overview
       · Both surfaces exist and are substantial: apps/site/src/pages/privacy.astro (what is collected, what is deliberately not, the never-trained-on promise, processors, retention, deletion, rights, children, a Security section on TLS and scoped s
-      → Edit apps/site/src/pages/privacy.astro: delete the 'No payment details' bullet at line 38, add Stripe to the 'Who processes your data' list at lines 52-55 saying it handles checkout, subscription state and invoices and that card numbers reach Stripe and never this service, and add a short 'Billing d
+      · UPDATED 2026-09-16: all three prescribed edits landed. apps/site/src/pages/privacy.astro:41 now reads 'No card numbers' (the false 'No payment details' bullet is gone), :59 names Stripe among the processors with what each receives, and :34 adds the billing-identifiers disclosure. Gated by apps/site/tests/privacy-claims.test.mjs:68 ('the policy no longer says this product takes no payments') and :58 ('every third party the worker actually talks to is named on both pages') — the second builds its list from the worker source, so a new processor added tomorrow turns it red.
 - [~] Contact and support options
       · One published channel exists and is wired on most pages: apps/site/src/components/Footer.astro:47 (Contact -> mailto:apple.labs.app@gmail.com), the docs footer at apps/site/src/layouts/DocsLayout.astro:96-99, apps/site/src/pages/status.astr
       → Add a Contact link (mailto:apple.labs.app@gmail.com) and a Status link (/status) to the landing footer nav in apps/site/src/pages/index.astro:512-520 so they sit alongside Privacy and Terms. Change the Enterprise CTA at apps/web/src/components/plans.tsx:138 to the same address the site publishes, or
@@ -645,19 +653,19 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · The guidance exists and is reachable: apps/site/src/pages/docs/plugin.astro:121-127 'Removing it', apps/site/src/pages/docs/connect.astro:71-76 'Disconnecting', apps/site/src/pages/docs/troubleshooting.astro:115-117. All three are served un
       → Preferred: ship the Disconnect Studio control described under 'Installation revocation' (apps/web/src/routes/workspace.tsx:575-586), which makes all three pages true with no copy change. If it is not being built this cycle, instead delete the phrase 'or disconnect from the web workspace' from apps/s
 
-## 11. APPLICATION SHELL AND NAVIGATION  —  57%   ✓7 ~9 ☐4
+## 11. APPLICATION SHELL AND NAVIGATION  —  80%   ✓14 ~4 ☐2
 
-- [~] Persistent application navigation
+- [✓] Persistent application navigation
       · The shell is genuinely persistent on desktop: apps/web/src/app.tsx:105-129 nests every signed-in route under <AppLayout/>, which renders <Rail/> + <Outlet/> (apps/web/src/components/layout.tsx:357-370), and apps/web/tests/command-palette.te
-      → Move the hamburger out of apps/web/src/routes/workspace.tsx:548-556 into the shell. In apps/web/src/components/layout.tsx, render a `<button className="gx-icon-btn gx-rail-toggle" onClick={openRail} aria-label="Open navigation">` inside <main id="main-content"> (or a thin shell-owned header above <O
+      · UPDATED 2026-09-16: the fix is implemented verbatim — the rail opener moved out of the one route that owned it into the shell, apps/web/src/components/layout.tsx:529-531 (`gx-icon-btn gx-rail-toggle`, onClick={openRail}, aria-label="Open navigation") inside <main id="main-content">. Gated by apps/web/tests/mobile-nav.test.mjs:68 ('the opener sits beside <Outlet/>, so it is present on every signed-in route') and :77 ('no route renders a second opener that would draw on top of the shell one'), which scans apps/web/src/routes and fails if the control moves back.
 - [☐] Organization and workspace context display
       · Nothing to display: docs/design/TENANCY.md records that the schema is flat (public.profiles -> public.projects.owner_id) with no organization or workspace table, and that the owner chose a single-user product with per-project sharing. I con
       → Nothing should be built unless tenancy is revived. If it ever is, the display belongs in apps/web/src/components/layout.tsx above the wordmark (a switcher button feeding the same ShellProvider in apps/web/src/lib/shell.tsx), and it must be preceded by the schema work described in docs/design/TENANCY
 - [✓] Project context display
       · apps/web/src/routes/workspace.tsx:547-662 is a real context header a person reaches at /app/projects/:id: an in-place renamable title (EditableProjectTitle, :558), the last-activity time with a full timestamp on hover (:562-566), a live Stu
-- [~] Breadcrumb navigation
+- [✓] Breadcrumb navigation
       · A real breadcrumb trail is implemented — apps/web/src/components/ws/files-model.ts:117-127 builds crumbs from a storage prefix and apps/web/src/components/ws/files-panel.tsx:126-145 renders them inside <nav aria-label="Folder"> with aria-cu
-      → Two separate things. (1) Mount the existing FilesPanel: add 'files' to the Drawer union and DRAWERS array at apps/web/src/routes/workspace.tsx:73-75, add a topbar icon button beside the memory/credits buttons (workspace.tsx:600-630) that calls setDrawer('files'), and render `{drawer === 'files' && <
+      · UPDATED 2026-09-16: the trail was built and unmounted, which was the whole of the ~; it is mounted now. apps/web/src/routes/workspace.tsx imports FilesPanel and renders the files drawer with an opener in the topbar and a command-palette entry. Gated by apps/web/tests/files-drawer-wiring.test.mjs:34 ('THE PANEL IS ACTUALLY MOUNTED — it had zero importers'), :47 ('the drawer has an opener a user can find without the palette') and :66 ('THE DRAWER NAME SURVIVES A RELOAD'), plus a second route-level trail at apps/web/tests/breadcrumb.test.mjs:60 ('the folder trail is mounted somewhere a person can reach it').
 - [~] Stable deep links
       · Resource URLs are stable and survive a cold load: apps/web/src/app.tsx:101-104 keys routes on the project id (/projects/:id, /projects/:id/roadmap) and apps/worker/src/static.ts:65-72 serves /app/index.html for any unmatched /app/* path, so
       → Three edits. (1) In apps/web/src/lib/error-taxonomy.ts change href '/app/sign-in' -> '/login', '/app' -> '/', '/app/usage' -> '/usage' (they are passed to a <Link> inside basename="/app", which prepends the prefix itself), and update the assertions at apps/web/tests/error-taxonomy.test.mjs:81 and :1
@@ -665,9 +673,9 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · Standard history navigation works and is handled with care. apps/web/src/app.tsx:58 uses <BrowserRouter basename="/app"> over a real route table (:63-129); every in-app move is a <Link>/navigate, so Back and Forward move between dashboard, 
 - [✓] Restorable panel layouts
       · apps/web/src/lib/view-state.ts is the store, and it validates on the way in rather than obeying whatever is in localStorage (readViewChoice checks the value against the set this build can render, :20-27; readViewState requires a normaliser,
-- [☐] Resizable panels
+- [✓] Resizable panels
       · Nothing resizes. I grepped apps/web/src and apps/web/tests for resiz|splitter|gutter|drag-handle|gx-split and for pointer-driven width changes: the only `resize:` declarations are `resize: vertical` / `resize: none` on textareas (apps/web/s
-      → Add a drag handle on the rail's trailing edge. In apps/web/src/components/layout.tsx render a `<div role="separator" aria-orientation="vertical" aria-label="Resize the sidebar">` at the end of <aside className="gx-rail">, drive it with pointerdown/pointermove/pointerup writing a clamped px value (24
+      · UPDATED 2026-09-16: the ☐'s own grep (resiz|splitter|gutter) now hits. apps/web/src/lib/rail-width.ts holds clampRailWidth/nudgeRailWidth/widthFromPointer and apps/web/src/components/layout.tsx:355-371 renders the handle with role="separator", aria-valuenow/min/max, tabIndex={0} and both pointer and key handlers; the width is persisted through the validating reader at layout.tsx:417. Gated by apps/web/tests/rail-width.test.mjs:100 ('the handle exists, is announced as one, and is reachable without a mouse') and :114 ('the chosen width is remembered, through the validating reader').
 - [✓] Collapsible navigation
       · Built end to end. State and persistence: apps/web/src/lib/shell.tsx:57-62 (readCollapsed) and :74-87 (toggleRailCollapsed writes apple.rail.collapsed and survives a storage throw). Control: the panel-left button at apps/web/src/components/l
 - [☐] Tabbed project views
@@ -676,9 +684,9 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [~] Recently opened resources
       · A recents list exists in the rail and a person reaches it on every route: apps/web/src/components/layout.tsx:40-54 fetches projects and :156-158, :203-222 render up to RAIL_LIMIT (8) of them with a relative time and a 'View all chats' link.
       → Make 'recent' mean opened. Add a `last_opened_at timestamptz` column to public.projects, have apps/web/src/routes/workspace.tsx fire a one-shot PATCH of it when the project query first succeeds (next to the fetchProject useQuery at :115-119), and change fetchRecentProjects in apps/web/src/components
-- [☐] Favorite resource shortcuts
+- [✓] Favorite resource shortcuts
       · There is no way to favourite, star, pin or bookmark anything. I grepped favou?rite|pinned|star|bookmark across apps/web/src, apps/worker/src and apps/web/tests: every hit is unrelated — frame pinning in the Studio viewer (apps/web/src/compo
-      → Add a `favorited_at timestamptz` column to public.projects. In apps/web/src/routes/dashboard.tsx ProjectMenu (:85-160) add a 'Favourite' / 'Remove favourite' menu item that PATCHes it through supabase alongside the existing rename/archive mutations. In apps/web/src/components/layout.tsx render a 'Fa
+      · UPDATED 2026-09-16: the ☐ says the grep for favou?rite|pinned|star|bookmark found only Studio frame pinning; that is no longer true. infra/supabase/migrations/0007_project_pinning.sql adds pinned_at with a partial index, dashboard.tsx:148/:655/:888 offers the control, and layout.tsx:232-233 exempts pinned rows from RAIL_LIMIT. Gated by apps/web/tests/pinning.test.mjs:118 ('the menu offers Unpin on a pinned project, not Pin again'), :132 ('a pinned project says it is pinned, on the card and in the rail') and :96 ('a pinned conversation survives the rail limit'). The capability is spelled 'pin' by decision — 0007:14-16 refuses a second favorited_at axis — not by omission.
 - [✓] Global command palette
       · Built, mounted and tested. apps/web/src/components/command-palette.tsx:27-180 is the palette: opened by SHORTCUTS.palette through the shared matcher (:42), a role="listbox"/role="option" list (:137, :159), selection scrolled into view, focu
 - [✓] Contextual action menus
@@ -686,20 +694,20 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [~] Unsaved-change navigation protection
       · One class of unsaved work is protected and one is not. Protected: the composer draft, which survives a reload and a route change and is cleared only after the message actually leaves — apps/web/src/lib/draft.ts, with apps/web/tests/draft.te
       → Add a shared guard hook, e.g. apps/web/src/lib/unsaved.ts exporting `useUnsavedGuard(dirty: boolean)` that (a) registers a beforeunload listener while dirty and (b) registers the dirty flag on the ShellProvider context in apps/web/src/lib/shell.tsx so a caller can ask before navigating. Call it from
-- [~] Permission-aware navigation
+- [✓] Permission-aware navigation
       · The account-level axis is wired and tested; the per-project role axis is not wired at all. Wired: AuthGuard/GuestGuard gate every route and stash the intended path (apps/web/src/lib/auth.tsx:141-155), the post-login return is validated agai
-      → Mount the role model. In apps/web/src/routes/workspace.tsx call fetchProjectAccess (apps/web/src/lib/api.ts:539, GET /api/shared/:id) into an AccessState, pass it to a mounted <MembersPanel projectId access> behind a new 'members' drawer (extend the Drawer union at workspace.tsx:73-75 the same way t
+      · UPDATED 2026-09-16: the fix is implemented verbatim. apps/web/src/routes/workspace.tsx imports MembersPanel, fetches fetchProjectAccess, renders the members drawer with an opener and a palette command, and gates the panel on the server's answer (canEdit={allows(access, 'build')}). Gated by apps/web/tests/members-panel-wiring.test.mjs:49 ('THE WORKSPACE RENDERS THE PANEL — it had zero callers anywhere in the app'), :82 ('ACCESS COMES FROM THE SERVER, not from a literal the route made up') and :93 ('while the answer is not in hand the panel is told so, rather than told nothing').
 - [✓] Not-found pages
       · All three layers exist. In the app: apps/web/src/app.tsx:128 mounts `<Route path="*" element={<NotFoundPage />} />` INSIDE the shell layout route, so a bad /app/* URL keeps the rail and renders apps/web/src/routes/not-found.tsx with an illu
 - [~] Access-denied pages
       · One refusal page exists and is reachable — apps/web/src/routes/admin.tsx:357-366 renders 'Nothing here / This area is for Apple operators.' for a signed-in non-admin who types /app/admin — but it has the observation-failure defect this repo
       → Split the two states in apps/web/src/routes/admin.tsx:357-366: render `<Failure error={me.error} onRetry={() => void me.refetch()} />` when me.isError, and keep the 'Nothing here' card only for a profile that actually answered with is_admin !== true. Then add a shared <AccessDenied/> to apps/web/src
-- [~] Recoverable application error boundaries
+- [✓] Recoverable application error boundaries
       · Exactly one boundary exists and it does recover: apps/web/src/components/error-boundary.tsx:8-40 catches, shows a crash card with 'Your projects and data are safe' plus the error message, and offers both 'Reload the app' and 'Try to continu
-      → Add a second, route-level boundary. Wrap <Outlet/> in apps/web/src/components/layout.tsx:369 in an ErrorBoundary keyed on useLocation().pathname so navigating away clears the crash and the rail and palette survive it; keep the root one in apps/web/src/app.tsx:54 as the last resort. Extend apps/web/s
-- [~] Consistent account and settings access
+      · UPDATED 2026-09-16: the second, route-level boundary the fix asks for exists — apps/web/src/components/layout.tsx:541-543 wraps <Outlet/> in <ErrorBoundary key={location.pathname} scope="route">, so a crashing route keeps the rail and the palette and navigating away clears the crash. Gated by apps/web/tests/error-boundary.test.mjs:36 ('the shell wraps the route, so a crashing route keeps the rail and the palette'), :47 ('the route boundary is keyed on the path, so navigating away clears the crash') and :67 ('the root boundary is still there').
+- [✓] Consistent account and settings access
       · On desktop it is genuinely consistent: the AccountMenu sits in the rail foot on every signed-in route (apps/web/src/components/layout.tsx:263, defined :64-147) with the user's name and email, Settings, Usage and Credits, Docs, a theme toggl
-      → Same fix as 'Persistent application navigation': move the `.gx-rail-toggle` hamburger from apps/web/src/routes/workspace.tsx:548-556 into apps/web/src/components/layout.tsx so it renders in the shell on every route. Optionally also render a compact avatar button in that shell header that opens the s
+      · UPDATED 2026-09-16: the only stated gap was mobile — the rail goes off-canvas and the opener was owned by one route. The opener is now the shell's (apps/web/src/components/layout.tsx:529-531) and the AccountMenu is still in the rail foot at :348. Gated by apps/web/tests/mobile-nav.test.mjs:68 ('the opener sits beside <Outlet/>, so it is present on every signed-in route') and :87 ('the opener appears exactly where the rail goes off-canvas, and nowhere else').
 
 ## 12. SEARCH AND RESOURCE DISCOVERY  —  65%   ✓11 ~4 ☐5
 
@@ -859,19 +867,19 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [✓] Conversation state restoration across devices
       · Conversation state lives server-side in the SessionDO, not in the browser, so any device that can open the project gets it. History: apps/worker/src/do/session.ts:954 serves /messages from DO SQLite, exposed at apps/worker/src/index.ts:544,
 
-## 14. STUDIO CONNECTION AND SESSION MANAGEMENT  —  55%   ✓4 ~14 ☐2
+## 14. STUDIO CONNECTION AND SESSION MANAGEMENT  —  65%   ✓8 ~10 ☐2
 
 - [✓] Live connection status
       · Worker computes it and pushes it: apps/worker/src/do/session.ts:776 (`studioConnected` on `hello`) and :3022-3030 (`studio_status` broadcast the moment a plugin reappears), :1289 (broadcast on revoke). Browser consumes it at apps/web/src/li
-- [~] Last successful heartbeat
+- [✓] Last successful heartbeat
       · The worker half is finished: apps/worker/src/do/session.ts:692-696 (`pluginLastSeenAt`), :785 (`studioLastSeenAt` on `hello`), :3025 (`lastSeenAt` on `studio_status`), served at :712-718 (`linkSummary`) and proven by apps/worker/tests/studi
-      → In apps/web/src/lib/use-project-socket.ts, extend the `studio` state with `lastSeenAt: number | null` and set it from `msg.studioLastSeenAt` in the `case 'hello'` branch (line 393) and from `msg.lastSeenAt` in `case 'studio_status'` (line 401); both fields already exist on ServerMsg in packages/shar
+      · UPDATED 2026-09-16: the browser half this ~ says is missing now exists. apps/web/src/lib/studio-connection.ts:144 reads hello.studioLastSeenAt and :152 studio_status.lastSeenAt into studio.link, reduced in apps/web/src/lib/use-project-socket.ts:468/:477 and rendered through linkDetail -> lastSeenLabel in apps/web/src/components/ws/studio-link-note.tsx:40. Gated by apps/web/tests/studio-link-wiring.test.mjs:42 ('A TAB OPENED WHILE STUDIO IS ALREADY ATTACHED LEARNS EVERYTHING FROM `hello`') and :130 ('THE SENTENCE IS RENDERED UNDER THE PILL — every formatter had zero callers in src/').
 - [~] Connection latency display
       · The server half exists and is deliberate: apps/worker/src/do/session.ts:1393-1402 echoes the browser's own timestamp `t` back on `pong` so the round trip is measured in one clock domain, and packages/shared/src/index.ts:453 and :945 declare
       → In apps/web/src/lib/use-project-socket.ts:774 send `{ type: 'ping', t: Date.now() }`, keep a `rttMs` ref, and replace the `case 'pong': break;` at :727 with `if (typeof msg.t === 'number') setRtt(Date.now() - msg.t);` — never setting a value when `t` is absent, so an unmeasured trip stays null rathe
-- [~] Active place identification
+- [✓] Active place identification
       · The place is identified, bound and persisted server-side: apps/worker/src/studio-place.ts:110-135 (`placeAdmission`), apps/worker/src/do/session.ts:2982-2987 (bind/refresh on poll) and :859-876 (bound at claim time and handed back so the pl
-      → In apps/web/src/lib/use-project-socket.ts, add `place: StudioPlace | null` and `placeMismatch` to the `studio` state; set `place` from `msg.studioPlace` in `case 'hello'` (line 393) and from `msg.place` in `case 'studio_status'` (line 401), and set `placeMismatch` from `msg.placeMismatch ?? null` in
+      · UPDATED 2026-09-16: the browser half landed. apps/web/src/lib/studio-connection.ts:146 reads hello.studioPlace, :154 studio_status.place and :155 placeMismatch, with asPlace/asMismatch refusing junk, and the workspace pill reads studio.state?.placeName ?? studio.link.place?.placeName. Gated by apps/web/tests/studio-link-wiring.test.mjs:140 ('the pill names the place even when `state` never arrived'), :147 ('A MISMATCH OFFERS THE ONE BUTTON THAT ENDS IT'), :65 ('A MISMATCH THAT IS RESOLVED IS CLEARED, not remembered') and :77 ('a place binding the worker has cleared is cleared here too').
 - [~] Active Studio session identification
       · There is no identifier for a Studio session or instance anywhere. What exists is a description of whichever Studio is currently attached: apps/worker/src/do/session.ts:707-719 (`linkSummary` → paired, connected, lastSeenAt, queuedOps, plugi
       → Mint a per-Studio installation id in the plugin (a GUID stored under `plugin:SetSetting('apple_install_id', ...)` in apps/plugin/src/init.server.luau alongside `golem_session`) and send it on the existing `X-Golem-Plugin-*` header set in the `post` helper at apps/plugin/src/init.server.luau:107-125.
@@ -891,12 +899,12 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · Both halves reconnect without user action. Plugin: apps/plugin/src/init.server.luau:352-355 treats a failed poll as a hiccup, waits 3s and loops (the loop condition at :307 is the single place that decides to keep going), and :450 resumes t
 - [✓] Reconnection progress display
       · Browser: apps/web/src/routes/workspace.tsx:485-492 derives `connNote` ('Connecting…' / 'Offline — check your connection' / 'Reconnecting…') and renders it in a `role="status"` line at :769-773. Studio: apps/plugin/src/init.server.luau:353 s
-- [~] Offline operation queue visibility
+- [✓] Offline operation queue visibility
       · The depth is real and crosses the wire: apps/worker/src/do/session.ts:714 (`queuedOps` in linkSummary), :786, :3026 and :1289 put it on `hello` and every `studio_status`, and apps/worker/tests/studio-place-poll.test.mjs:281 ('the queue dept
-      → Add `queuedOps: number` to the `studio` state in apps/web/src/lib/use-project-socket.ts, set it from `msg.queuedOps` in both `case 'hello'` (line 393) and `case 'studio_status'` (line 401), and feed it into the `StudioLinkFacts` passed to `linkDetail` rendered under the Studio pill in apps/web/src/r
-- [~] Queue cancellation before reconnect
+      · UPDATED 2026-09-16: the depth now crosses into the UI. apps/web/src/lib/studio-connection.ts:145/:153 set queuedOps, :194 queueLabel formats it, and linkDetail returns it on a connected link (:236) and on a dropped one (:240-243, '…to be applied when it reconnects'). Gated by apps/web/tests/studio-link.test.mjs:109 ('a healthy link reports what it has measured and nothing it has not', asserting '2 changes waiting') and studio-link-wiring.test.mjs:87 ('A FIELD AN OLDER WORKER NEVER SENDS MUST NOT OVERWRITE WHAT IS KNOWN').
+- [✓] Queue cancellation before reconnect
       · Automatic cancellation is built and tested: apps/worker/src/do/session.ts:2344 drops every op the ending run queued (`dropOpsForEndedRuns(undefined)` in finishRun), :2816-2832 resolves each dropped op's waiter with a `transport` failure rat
-      → Add `if (path === '/studio/queue' && req.method === 'DELETE')` to apps/worker/src/do/session.ts's fetch (beside /studio/place/rebind at line 1303) that empties `opQueue`, persists it, resolves every outstanding waiter with `WORKER_FAILURES.runEnded`, and broadcasts a `studio_status` carrying the new
+      · UPDATED 2026-09-16: the route the fix asks for exists end to end — DELETE /studio/queue at apps/worker/src/do/session.ts:1608, the worker route at apps/worker/src/index.ts:1992, the client at apps/web/src/lib/api.ts:869 and the control at apps/web/src/components/pairing-dialog.tsx:79. Gated by apps/web/tests/studio-link-wiring.test.mjs:159 ('THE WAITING WORK CAN BE DISCARDED, and only while there is any').
 - [~] Session expiration handling
       · Wired end to end but unproven and unannounced. apps/worker/src/do/session.ts:401 defines the 30-day TTL and :888-890 answers an aged pairing with 401 `{error:'token expired'}` plus a sentence; apps/plugin/src/init.server.luau:321-334 reads 
       → Add a test to apps/worker/tests/studio-place-poll.test.mjs that seeds `pluginTokenIssuedAt` at `Date.now() - 31 days`, polls with the correct token, and asserts status 401 with `error === 'token expired'` and a non-empty `message` — the harness at the top of that file already builds a paired session
@@ -2337,13 +2345,14 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [✓] API deprecation notices
       · RFC 8594 signalling on the response of the exact call that will break, not just a changelog line. Deprecation metadata lives on the route entry (apps/worker/src/public-api.ts:75 and :91-97 for /v1/completions, sunset 2027-09-15 with a named
 
-## 41. ACCESSIBILITY  —  65%   ✓6 ~14 ☐0
+## 41. ACCESSIBILITY  —  60%   ✓4 ~16 ☐0
 
 - [~] Keyboard access to every primary workflow
       · Broad and real: apps/web/src/lib/shortcuts.ts:30 is a single chord map guarded by apps/web/tests/shortcuts.test.mjs (18 tests, incl. 'no two shortcuts claim the same chord'); the command palette is operable mouse-free and tested at apps/web
       → In apps/web/src/components/asset-source-dialog.tsx, wrap the dialog in the shared accessible primitive instead of hand-rolling it: import { Modal } from './modal' and render the choices as its children (Modal at apps/web/src/components/modal.tsx already does role/aria-modal/aria-label, focus-in, two
-- [✓] Visible keyboard focus
+- [~] Visible keyboard focus
       · App-wide rule at apps/web/src/styles.css:282 (bare :focus-visible) plus a workspace-scoped one at apps/web/src/styles/workspace.css:2498 ('.gx :focus-visible { outline: 2px solid var(--gx-amber); outline-offset: 2px }'), and the site's at a
+      · REFUTED 2026-09-16: both rules are live and nothing holds them there. The app-wide rule is at apps/web/src/styles.css:359 (cited :282) and the workspace one at apps/web/src/styles/workspace.css:2831 (cited :2498), but `grep -rn ':focus-visible' apps/web/tests scripts tests` finds only two COMPONENT pins — apps/web/tests/message-history.test.mjs:117 (.gx-user__edited) and retry-run.test.mjs:147 (.gx-outcome__retry) — plus tests/e2e/landing.spec.ts:382 ('is keyboard reachable and keeps a visible focus ring'), which loads '/' and therefore covers the marketing site, not the app. Delete both app-wide rules and every suite stays green. WHAT IS MISSING: one assertion per stylesheet that the bare :focus-visible rule is present, or an axe/Playwright pass over the signed-in routes.
 - [~] Logical focus order
       · The structural preconditions hold and were checked: grep for tabIndex across apps/web/src returns only tabIndex={-1} (modal.tsx:70, primitives.tsx:129/136, onboarding-tour.tsx:169, milestone-card.tsx:69) — no positive tabindex anywhere — an
       → Add tests/e2e/app-focus-order.spec.ts (a new Playwright spec beside tests/e2e/landing.spec.ts) that loads the signed-in shell in MOCK_MODE, presses Tab ~15 times from document.body and records document.activeElement's getBoundingClientRect() at each stop, then asserts the sequence is non-decreasing 
@@ -2356,8 +2365,9 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [~] Correct semantic headings
       · Marketing site: enforced in CI over all 18 built pages by scripts/check-site-semantics.mjs — exactly one <h1> (:96), no empty heading (:99), no level skip h(n)->h(n+2) (:102-106), and a heuristic for titles written as <span> (:115); run at 
       → Change apps/web/src/routes/not-found.tsx:10 from <h2>This apple is lost</h2> to <h1 className="page-title">This apple is lost</h1> (or add a page-level h1 above it), so the route has exactly one h1 like every other route. Then add apps/web/tests/headings.test.mjs that reads every file in apps/web/sr
-- [✓] Form field labels
+- [~] Form field labels
       · I scanned all 61 <input>/<textarea>/<select> in apps/web/src and found none without an accessible name. Three patterns, all valid: wrapping labels (apps/web/src/routes/auth-pages.tsx:191-202, 203-214, 306-330, 382-394, 516-539, 651-661 — <l
+      · REFUTED 2026-09-16: the proof printed beside this line is a one-off manual scan — 'I scanned all 61 <input>/<textarea>/<select> in apps/web/src' — which is a snapshot of a day, not a gate. Nothing enumerates them: the accessible-name assertions in apps/web/tests are all per-component (automations-panel.test.mjs:67, members-panel.test.mjs:79, rail-width.test.mjs:105, drawer-a11y.test.mjs:38) and scripts/check-site-semantics.mjs checks main/footer/headings only, over apps/site. The 62nd input can ship unlabelled and nothing in the repository says so. WHAT IS MISSING: a sweep over apps/web/src that fails on an input with no wrapping label, aria-label or aria-labelledby.
 - [~] Accessible validation feedback
       · One panel does it properly: apps/web/src/components/roblox-key-panel.tsx:145-146 and :165-166 set aria-invalid and aria-describedby pointing at the per-field problem text (ids rk-key-problem / rk-id-problem). Elsewhere it stops short. apps/
       → In apps/web/src/routes/auth-pages.tsx, give FormError (:147) an id prop, render it as <p id={id} className="form-error" role="alert">, and on each input in LoginPage/SignupPage/ForgotPage/ResetPage set aria-invalid={!!error || undefined} and aria-describedby={error ? id : undefined}. Add role="alert
@@ -2394,19 +2404,19 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · A real manual pass exists and is written up: docs/evidence/2026-09-01-accessibility-pass.md audits the live DOM of six app routes (36 focusables and 26 buttons on the workspace with 0 unlabelled; 0 images without alt; 0 SVGs neither aria-hi
       → Run one screen reader end to end over the two flows that matter — sign in -> create a project -> send a message -> read the reply (VoiceOver + Safari on macOS, then NVDA + Firefox on Windows) — and record it as docs/evidence/<date>-screen-reader-pass.md in the same shape as docs/evidence/2026-09-01-
 
-## 42. RESPONSIVE INTERACTION AND UI STATES  —  83%   ✓13 ~7 ☐0
+## 42. RESPONSIVE INTERACTION AND UI STATES  —  93%   ✓17 ~3 ☐0
 
 - [✓] Desktop workspace layout
       · apps/web/src/styles/workspace.css:95-97 `.gx-shell { display:grid; grid-template-columns: var(--gx-rail-w) minmax(0,1fr) }` with --gx-rail-w:320px (workspace.css:51). Rendered by apps/web/src/components/layout.tsx:349 (`gx gx-shell`) around
 - [~] Laptop workspace layout
       · There is no separate laptop rule and none is needed: the live shell has exactly one breakpoint above phone/tablet (apps/web/src/styles/workspace.css:2593 `@media (min-width:861px)`), so 1280x800 and 2560x1440 both get `grid-template-columns
       · REFUTED: The conclusion happens to be right but nothing was built or verified for laptops, and the exhaustiveness argument the claim rests on is itself incomplete. (1) The sweep is not exhaustive: main.tsx imports styles.css and 
-- [~] Tablet workspace layout
+- [✓] Tablet workspace layout
       · BUILT HALF: apps/web/src/styles/workspace.css:2664-2720 `@media (max-width:860px)` collapses .gx-shell to one column, turns .gx-rail into a fixed off-canvas panel (`transform: translateX(-100%)`, `width: min(320px, 86vw)`), reveals `.gx-rai
-      → Either delete the dead tablet CSS or wire it. apps/web/src/styles.css:5253-5311 defines `.ws-body`/`.ws-lane`/`.ws-mobile-tabs`/`.ws-mobile-tab` for a 1023px single-lane layout that no component renders — the live workspace is apps/web/src/routes/workspace.tsx using `gx-ws`/`gx-thread`. Decide: (a) 
-- [~] Mobile project overview
+      · UPDATED 2026-09-16: the fix offered two options and option (a) was taken — the dead single-lane CSS is gone. `grep -rn 'ws-body|ws-lane|ws-mobile-tab' apps/web/src` returns zero rows, and the deletion is pinned by apps/web/tests/no-dead-lanes.test.mjs:40 ('no stylesheet still lays out the three lanes'), :51 ('and nothing renders them, which is what made them dead') and :64 ('the workspace still says it is one lane, so the rules above stay deleted'). The live 860px collapse is additionally gated by mobile-nav.test.mjs:87. One breakpoint above phone is the answer here for the same reason it is the answer under 'Laptop workspace layout'.
+- [✓] Mobile project overview
       · CONTENT HALF WORKS: apps/web/src/routes/dashboard.tsx:458 renders `.page` (fluid padding, apps/web/src/styles.css:1175-1180 `clamp()`), the project list is `.card-grid` = `repeat(auto-fill, minmax(min(100%,19rem),1fr))` (styles.css:1234-123
-      → apps/web/src/components/layout.tsx has no mobile header. Add one inside the `gx-shell` div (before <main id="main-content">, layout.tsx:370) containing a button with className="gx-icon-btn gx-rail-toggle" aria-label="Open navigation" that calls `openRail` from useShell() — the same control apps/web/
+      · UPDATED 2026-09-16: the prescribed fix shipped — apps/web/src/components/layout.tsx:527-534 renders the shell-owned rail opener inside <main id="main-content"> above <Outlet/>. Gated by apps/web/tests/mobile-nav.test.mjs:58 ('the shell owns a control that opens the navigation rail'), :68 ('the opener sits beside <Outlet/>, so it is present on every signed-in route') and :87 ('the opener appears exactly where the rail goes off-canvas, and nowhere else').
 - [✓] Mobile conversation access
       · apps/web/src/routes/workspace.tsx:549-554 renders `<button className="gx-icon-btn gx-rail-toggle" onClick={openRail}>`; apps/web/src/styles/workspace.css:958 hides it by default and :2693-2696 shows it under `@media (max-width:860px)`. The 
 - [~] Mobile approval workflows
@@ -2431,12 +2441,12 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · apps/web/src/lib/connectivity.ts models three reaches — 'offline' (navigator.onLine === false, the one direction it is trusted in), 'unreachable' (a request observed to never leave, recorded by noteReachability from lib/api.ts), 'online' (n
 - [✓] Reconnecting states
       · apps/web/src/lib/use-project-socket.ts:128 `type ConnState = 'connecting' | 'open' | 'reconnecting' | 'offline'`; the socket sets 'reconnecting' and arms an exponential-backoff retry at use-project-socket.ts:797-801, exposes `reconnectNow` 
-- [~] Expired session states
+- [✓] Expired session states
       · THE STATE EXISTS AND IS CORRECT: apps/web/src/lib/error-taxonomy.ts:102-113 classifies 401 as kind 'signed_out', title 'Your session has expired', safety 'Your work is saved. Signing in again brings you back to it.', retryable:false (so no 
-      → apps/web/src/lib/error-taxonomy.ts:108 has `href: '/app/sign-in'`. Change it to `href: '/login'` — apps/web/src/components/failure.tsx:33 renders it through react-router's <Link> inside a BrowserRouter with basename="/app" (apps/web/src/app.tsx:58), so the value must be router-relative, and /login i
-- [~] Permission loss states
+      · UPDATED 2026-09-16: apps/web/src/lib/error-taxonomy.ts:165 now points at '/login'; no '/app/sign-in' remains. Gated by apps/web/tests/error-taxonomy.test.mjs:202 ('EVERY LINK A FAILURE OFFERS LANDS ON A ROUTE THAT EXISTS'), which builds the path set from app.tsx's own path="…" attributes and rejects any /app-prefixed href — so restoring the old link turns it red twice.
+- [✓] Permission loss states
       · REACTIVE HALF IS WIRED AND TESTED: apps/web/src/lib/error-taxonomy.ts:115-125 turns a 403 into kind 'not_permitted', 'You do not have access to this', safety 'The request was refused before it changed anything.', retryable:false; rendered b
-      → apps/web/src/routes/workspace.tsx does not fetch the caller's role. Add `const access = useQuery({ queryKey:['access',projectId], queryFn:()=>fetchProjectAccess(projectId) })` (client already exists at apps/web/src/lib/api.ts:538), map it with `normaliseAccess` from apps/web/src/lib/capabilities.ts,
+      · UPDATED 2026-09-16: apps/web/src/routes/workspace.tsx:184-206 runs the access query against fetchProjectAccess, maps it through normaliseAccess, reports 'unavailable' for an errored check and ACCESS_LOADING before the first answer. Gated by apps/web/tests/members-panel-wiring.test.mjs:82 ('ACCESS COMES FROM THE SERVER, not from a literal the route made up' — it asserts both the call and that the route never synthesises status:'ready') and :93 ('while the answer is not in hand the panel is told so, rather than told nothing').
 - [✓] Retryable error states
       · apps/web/src/lib/error-taxonomy.ts carries an explicit `retryable` flag per kind (status 0, 500, 502/504 and the rate-limit 429 are true) and apps/web/src/components/failure.tsx:37-41 renders the Try again button only when `onRetry && e.ret
 - [✓] Non-retryable error states
@@ -2862,7 +2872,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · The quality SIGNALS are unusually complete and are exposed; nothing monitors them. Computed: per-reason rejects at the isolate boundary (logStats, apps/worker/src/analytics.ts:541) and at the durable ingest (apps/worker/src/do/admin.ts:88);
       → Two changes. (1) Make the figure global: persist the reject/drop/lost counters into AdminDO alongside the events table (apps/worker/src/do/admin.ts, next to the eventsEvicted counter at admin.ts:50) by having flushEvents (apps/worker/src/analytics-sink.ts:38) send logStats() with each batch, and ret
 
-## 50. AI SAFETY, ABUSE, AND SPENDING PROTECTION  —  73%   ✓12 ~5 ☐3
+## 50. AI SAFETY, ABUSE, AND SPENDING PROTECTION  —  70%   ✓11 ~6 ☐3
 
 - [✓] User request rate limits
       · apps/worker/src/index.ts:401 — the auth middleware calls ipLimited(`user:${user.userId}`, 240) on every /api/* request and returns 429. Proven live, not statically: packages/evals/src/security.test.mjs:1391-1393 floods /api/me 300 times on 
@@ -2894,8 +2904,9 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · An allowlist that cannot fail open, re-checked on every redirect hop. apps/worker/src/net-policy.ts:78 compileHostPolicy() refuses the WHOLE list if any entry is `*` or a one-label suffix (a partially-applied allowlist is the dangerous outc
 - [✓] Secret and personal data leakage checks
       · One scanner (apps/worker/src/redaction.ts:323 scanText, 17 kinds across secret and pii classes, each rule carrying a confidence) with four live consumers: the EGRESS gate (checkEgress at redaction.ts:455, called on every outbound hop includ
-- [✓] Run duration limits
+- [~] Run duration limits
       · apps/worker/src/do/session.ts:272 RUN_WALL_MS gives clay/stone/rune a wall-clock ceiling, :303 runDurationVerdict() computes it with the clock as an argument, and it is ENFORCED at :1855 — checked before the step-limit branch on purpose, so
+      · REFUTED 2026-09-16: enforced, and gated by nothing. The three cited artifacts exist (line numbers drifted): RUN_WALL_MS at apps/worker/src/do/session.ts:315, runDurationVerdict at :346, and the enforcement at :2306-2311, correctly above the step-limit branch. But all six tests in apps/worker/tests/run-duration.test.mjs call the bundled PURE FUNCTION (S.runDurationVerdict at :47, :55, :56, :63, :82, :93) and none reads the call site; `grep -rn 'RUN_WALL|runDurationVerdict|duration\.over' apps/worker/tests apps/web/tests packages/evals/src tests scripts` returns nothing outside that one file. Delete the enforcement branch and all six stay green — built-and-not-wired, the shape this file exists to name. WHAT IS MISSING: the static assertion the spend gate already has one section away (packages/evals/src/security.test.mjs:2106, 'A6 STATIC CHECK — the gateway has exactly one adapter invocation and it is inside the spend gate').
 - [~] Per-run spending caps
       · There is no ceiling on what ONE RUN may spend. What is enforced is a per-INFERENCE-CALL cap — apps/worker/src/pricing.ts:93 MAX_NEURONS_PER_REQUEST = 1_200, refused in BudgetDO at apps/worker/src/do/budget.ts:274 with reason 'request_too_la
       → Two changes. (1) apps/worker/src/do/session.ts — add `const RUN_NEURON_CAP: Record<GolemMode, number>` beside STEP_LIMITS at line 208 (a sane start: clay 1,800 / stone 6,000 / rune 9,000, all under the 10,000 free daily allocation), and after `agent.neuronsUsed = (agent.neuronsUsed ?? 0) + res.neuro
@@ -2913,60 +2924,61 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · Nothing to appeal and nowhere to appeal it. There is no account-level restriction state at all: grep -rni 'suspend|banned|restrict|appeal' across apps and packages returns only project-membership suspension (apps/web/src/components/ws/membe
       → Order matters: an appeal workflow needs something to appeal, so build it after the restriction it answers. Minimum honest version, in two files. (1) apps/site/src/pages/terms.astro:78 — extend that paragraph with the actual path: that a suspended account is told the reason in-product, that replying 
 
-## 51. HELP, SUPPORT, AND CUSTOMER EDUCATION  —  45%   ✓5 ~8 ☐7
+## 51. HELP, SUPPORT, AND CUSTOMER EDUCATION  —  80%   ✓15 ~2 ☐3
 
 - [✓] In-product help access
       · apps/web/src/components/layout.tsx:101 — the account popover renders a "Docs" menuitem to /docs (same origin; the SPA is mounted at /app per apps/web/src/lib/auth-flows.ts:286). layout.tsx:327 binds SHORTCUTS.help to the shortcuts dialog (a
-- [~] Contextual help links
+- [✓] Contextual help links
       · Exactly one context is wired: every in-app install affordance routes to /docs/plugin via STUDIO_PLUGIN_INSTALL_HREF (packages/shared/src/index.ts:1268), used by apps/web/src/components/ws/connect-studio.tsx:27 and apps/web/src/routes/dashbo
-      → Add a `href`/`hrefLabel` to the failing states that have a doc behind them. In apps/web/src/lib/error-taxonomy.ts give kind 'upstream' and kind 'ours' `href: '/docs/troubleshooting'` and 'out_of_credits' a second link to '/docs/credits-and-limits'. In apps/web/src/components/ws/turn.tsx:209, when `i
-- [☐] Searchable knowledge base
+      · UPDATED 2026-09-16: apps/web/src/lib/error-taxonomy.ts:59 carries HelpLink.href with DOC_TROUBLESHOOTING (:64) and DOC_CREDITS (:65), and the failed-run block links /docs/troubleshooting#messages at apps/web/src/components/ws/turn.tsx:270-278. Gated by apps/web/tests/contextual-help.test.mjs:74 ('a failure with a page written for it carries the link to that page'), :84 ('every help link in the taxonomy names a docs page that is on disk' — so a renamed page turns it red), :111 ('the failed-run block in the workspace reaches the section written for it') and :140 ('the empty-state renderer actually draws the help link').
+- [✓] Searchable knowledge base
       · Searched: apps/site/src/layouts/DocsLayout.astro (lines 16–51 are a hand-maintained nav list; there is no input, no form, no search script); apps/site/astro.config.mjs (integrations = [sitemap()] only — no Pagefind or equivalent); grep -ri 
-      → Build a search over Apple's own 11 docs pages. Add a build step that walks apps/site/src/pages/docs/*.astro, strips frontmatter and tags, and emits apps/site/public/docs-index.json (path, title, heading, text). Then add a search input to apps/site/src/layouts/DocsLayout.astro above the nav that fetc
+      · UPDATED 2026-09-16: the claimed absence is gone. apps/site/src/data/docs-index.ts:158 buildDocsIndex and :195 searchDocs, with the search form on every docs page at apps/site/src/layouts/DocsLayout.astro:79-91 and its client script at :425. Gated by tests/docs-search.test.mjs:71 ('questions a person would actually type find the page written for them') and :111 ('the docs nav has a search box, and it does not call the worker'), which run in CI at .github/workflows/ci.yml:95.
 - [✓] Getting-started tutorials
       · apps/site/src/pages/docs/getting-started.astro is a complete six-step signup-to-first-build walkthrough, linked from the docs index (apps/site/src/pages/docs/index.astro:18), the sidebar (DocsLayout.astro:20) and the site footer (apps/site/
 - [✓] Studio connection troubleshooting
       · apps/site/src/pages/docs/troubleshooting.astro:15–90 documents every message the Studio panel can emit ("Invalid or expired code", "Could not reach Apple", "Session ended", version-too-old, the amber advisory, "Connection hiccup") plus the 
-- [~] Billing troubleshooting
+- [✓] Billing troubleshooting
       · The in-product half is built and tested: apps/web/src/lib/billing-copy.ts:124 ('past_due' — "Your last payment did not go through… Update it to keep the plan") and :134 ('needs_action' — SCA, "Nothing has been charged"), each with an action
-      → Create apps/site/src/pages/docs/billing.astro using DocsLayout, and add { href: '/docs/billing', label: 'Billing & payments' } to the 'Using Apple' section of apps/site/src/layouts/DocsLayout.astro:26. It must answer the four states apps/web/src/lib/billing-copy.ts already models — past_due (access 
-- [~] Model error troubleshooting
+      · UPDATED 2026-09-16: the fix is implemented — apps/site/src/pages/docs/billing.astro exists and is in the docs nav. Gated by tests/billing-help.test.mjs:31 ('the page exists and is built from the docs layout'), :36 ('it is in the navigation, so it is not an orphan'), :42 ('it answers the four questions a billing problem actually produces'), :57/:66 (its two factual claims checked against apps/worker/src/billing.ts, so the page cannot drift from the code) and :70 ('the app links to it from the one screen where money is handled').
+- [✓] Model error troubleshooting
       · Three model-failure paths produce real, actionable user sentences in apps/worker/src/do/session.ts: :1809 an inference failure past step 1 -> "The model dropped that step. Everything up to here is saved — send another message and I will pic
-      → In apps/worker/src/do/session.ts:1826 stop interpolating the raw error into user-visible finalText. Route it through the same shape as the branch above it: set finalText to a fixed sentence ("That step failed on our side. Everything up to here is saved — send another message and I will pick up where
+      · UPDATED 2026-09-16: the fix is implemented — apps/worker/src/do/session.ts:2275-2279 is now a fixed sentence and the raw provider message goes to console.warn only, so a provider string can no longer reach the person reading the transcript. Gated by apps/worker/tests/run-failure-vocabulary.test.mjs:65 ('the fallback stops interpolating the error into what the user reads'), plus :42 and :55.
 - [✓] Failed-run troubleshooting
       · apps/web/src/components/ws/turn.tsx:26 OUTCOME maps every non-'done' stopReason (incomplete/stopped/quota/error) to a sentence, rendered at turn.tsx:209 with a "Try again" button that is deliberately suppressed on a quota stop (turn.tsx:215
-- [☐] Known issue directory
+- [✓] Known issue directory
       · Searched every candidate surface. apps/site/src/pages/status.astro is a live probe of /api/health from the visitor's browser (status.astro:16) with a three-state legend at :50 — there is no incident list, no history, no per-subsystem breakd
-      → Add a known-issues list to apps/site/src/pages/status.astro below the live probe, sourced from a checked-in data file (e.g. apps/site/src/data/known-issues.json with {id, title, impact, workaround, openedAt, resolvedAt|null}) so publishing one is a commit rather than a deploy of new markup. Render u
-- [~] Support request submission
+      · UPDATED 2026-09-16: apps/site/src/data/known-issues.ts:36 declares KNOWN_ISSUES with openIssues (:80) and resolvedIssues (:91), rendered at apps/site/src/pages/status.astro:66-99. Gated by tests/known-issues.test.mjs:118 ('/status publishes the list rather than only probing the API'), :71 ('every published issue carries the four things a reader needs'), :94 ('an issue listed as OPEN is still true of the code that would close it' — so a fixed issue cannot be left published) and :129 ('the two pages a stuck person is already on link to it').
+- [✓] Support request submission
       · THE DEAD-SCHEMA PATTERN. infra/supabase/migrations/0001_init.sql:67 creates public.feedback (id, owner_id, kind check in ('feedback','bug','support'), content 1..5000, page, status, created_at), 0001_init.sql:141 and 0003_security_hardening
-      → Add POST /api/feedback to apps/worker/src/index.ts (authenticated, near the /api/me routes) taking {kind:'feedback'|'bug'|'support', content:string<=5000, page:string} and inserting into public.feedback via apps/worker/src/supa.ts with owner_id from c.get('user'), returning {id}. Then add the submit
-- [~] Support request categorization
+      · UPDATED 2026-09-16: POST /api/feedback at apps/worker/src/index.ts:2998 and GET /api/feedback at :3051, validated by parseSupportSubmission (apps/worker/src/support.ts:85), with the UI at apps/web/src/components/support-dialog.tsx opened from apps/web/src/components/layout.tsx:137 and rendered at :190. Gated by apps/worker/tests/support-requests.test.mjs:96 ('the kinds the code accepts are exactly the kinds the column allows'), :102, :121, :138 ('a token pasted into a report is not what gets stored') and :167, plus apps/web/tests/support-dialog.test.mjs:163 ('the dialog is reachable from inside the app, not only from the marketing site') and :169 ('the dialog posts through the api client').
+- [✓] Support request categorization
       · The taxonomy is declared and never used. infra/supabase/migrations/0001_init.sql:70 — `kind text not null default 'feedback' check (kind in ('feedback','bug','support'))` — is the only categorization in the product, and apps/worker/src/user
-      → Once POST /api/feedback exists, validate `kind` against the DB's three values server-side in apps/worker/src/index.ts and reject anything else with 400 (the CHECK constraint would otherwise surface as an opaque 500). In the web submit dialog, present the three as a labelled radio group with plain-la
+      · UPDATED 2026-09-16: the category is chosen by the submitter, carried on the request and constrained on both sides. Gated by apps/web/tests/support-dialog.test.mjs:58 ('the categories offered are exactly the categories the column allows'), :68, :77 and :176 ('the dialog sends a category and a page'), with the server half at apps/worker/tests/support-requests.test.mjs:96 — the two lists are checked against the same column, so one can never drift from the other in silence.
 - [~] Support request status
       · Schema-only, and the checklist's [✓] is a false positive. infra/supabase/migrations/0001_init.sql:73 declares `status text not null default 'open' check (status in ('open','closed'))`, and apps/worker/src/user-export.ts:82 deliberately EXCL
       → After submission exists, give the submitter the status back: have GET /api/feedback (new, in apps/worker/src/index.ts) return the caller's own rows (id, kind, content, status, created_at) under the existing 'own feedback read' RLS policy, and list them in the submit dialog so a user can see whether 
 - [☐] Support conversation history
       · There is no thread model anywhere. public.feedback (infra/supabase/migrations/0001_init.sql:67) has no parent_id, thread_id, reply or author column — it is a single flat row per report with no way to attach a response. I checked all six mig
       → This needs a thread model, not a column. Add a migration infra/supabase/migrations/0007_support_threads.sql creating public.support_messages (id uuid pk, request_id uuid references public.feedback(id) on delete cascade, author_id uuid null, from_staff boolean not null default false, body text not nu
-- [☐] User-approved diagnostic attachment
+- [✓] User-approved diagnostic attachment
       · Nothing anywhere collects a diagnostic bundle, asks the user's permission, or attaches one to anything. The nearest capability is built and orphaned: GET /api/projects/:id/studio/diagnostics (apps/worker/src/index.ts:1451 -> apps/worker/src
-      → Surface the existing endpoint and make attaching it an explicit choice. Add fetchStudioDiagnostics(projectId) to apps/web/src/lib/api.ts calling GET /api/projects/${id}/studio/diagnostics, and render it in a 'Connection details' disclosure inside apps/web/src/components/ws/connect-studio.tsx (visibl
+      · UPDATED 2026-09-16: an opt-in checkbox at apps/web/src/components/support-dialog.tsx:194-207 (useState(false) at :69) offers the diagnostics bundle from fetchStudioDiagnostics, and the preview shows the exact string that would be sent. Gated by apps/web/tests/support-dialog.test.mjs:316 ('the box is not pre-ticked, because a default is not a decision'), :321 ('what would be attached is shown before it is attached, and it is the same string'), :272 (bounded, so it cannot make the report unsendable) and :260 ('an unpaired project produces an attachment that says so rather than nothing').
 - [✓] Diagnostic secret redaction
       · apps/worker/src/redaction.ts is one scanner with an explicit DISCLOSURE_KINDS vocabulary (redaction.ts:42) and a per-rule confidence field so the log's wide net and the egress gate's narrow one cannot be collapsed. It is wired into four liv
-- [☐] Support identity verification
+- [~] Support identity verification
       · No support flow exists, so nothing verifies a requester, and there is no operator-side tool to verify one either. Searched: apps/worker/src/index.ts's /api/admin/* block (lines 2095–2801) has analytics, logs, stats, model-test, models, mode
+      · UPDATED 2026-09-16: for the in-app channel identity is now structural rather than claimed — owner_id comes from c.get('user').userId and the parsed body has no owner field at all (apps/worker/src/index.ts:3012-3014), so a report cannot say who it is from. Gated by apps/worker/tests/support-requests.test.mjs:196 ('the parsed value carries no owner, because the body is never asked who it is'). NOT ✓: SUPPORT_EMAIL is still an unverified channel and there is no operator-side verification tool — the admin block (apps/worker/src/index.ts:3246-4520) has no feedback route.
       → Make identity structural rather than claimed: the support submission route added for Support request submission must take owner_id from the verified JWT (c.get('user') in apps/worker/src/index.ts) and never from the request body, so every stored request is already attributable. For the email channel
 - [☐] Support escalation routing
       · Nothing routes, queues, prioritises or escalates. There is no support request to escalate (see Support request submission), no severity or priority field on public.feedback (infra/supabase/migrations/0001_init.sql:67-75), no on-call or owne
       → Once requests are stored, add routing as a stored decision, not a convention: extend public.feedback with `priority text not null default 'normal' check (priority in ('normal','urgent'))` and `assignee text null` in a new migration, set priority='urgent' server-side in the POST /api/feedback handler
-- [~] Plan-specific support expectations
+- [✓] Plan-specific support expectations
       · Exactly one plan says anything about support, and the page built to prevent that omission omits it. packages/shared/src/index.ts:1398 gives Enterprise the highlight 'Direct support' (and blurb :1396 '…their own limits, terms and support nee
-      → Add a support row to PLAN_FEATURES in packages/shared/src/index.ts (after the 'Invoicing and negotiated terms' entry at :1527): { id: 'support', label: 'Support', note: '…', values: { free: 'Email, best effort', builder: 'Email', studio: 'Email', enterprise: 'Direct support' } }. It renders automati
-- [~] Feedback submission
+      · UPDATED 2026-09-16: PLAN_SUPPORT at packages/shared/src/index.ts:1722 (interface at :1708) is the single table, read by both surfaces. Gated by tests/support-expectations.test.mjs:33 ('every plan the product sells states a support channel and a reply expectation'), :44, :77 ('the app shows it for every plan, including the one with no price') and :82 ('the pricing page shows it too — the page built to prevent this omission omitted it').
+- [✓] Feedback submission
       · Same dead schema as Support request submission, and the column layout shows an in-app widget was designed and never built: public.feedback has `page text` (infra/supabase/migrations/0001_init.sql:72) — a field that only makes sense for a fo
-      → Covered by the same route and dialog as Support request submission: POST /api/feedback in apps/worker/src/index.ts inserting {owner_id, kind, content, page} into public.feedback, and a dialog in apps/web opened from a new item in the account popover in apps/web/src/components/layout.tsx. The one thi
+      · UPDATED 2026-09-16: the same door as the support request, reachable from inside the product: apps/web/src/components/support-dialog.tsx posts through the api client to POST /api/feedback (apps/worker/src/index.ts:2998). Gated by apps/web/tests/support-dialog.test.mjs:169 ('the dialog posts through the api client'), :176 ('the dialog sends a category and a page') and apps/worker/tests/support-requests.test.mjs:96/:167.
 - [☐] Feature request tracking
       · No tracker, no board, no votes, no status. The product's only 'roadmap' is a different thing entirely: apps/worker/src/roadmap.ts generates a build plan for the user's own Roblox GAME, served at /api/projects/:id/roadmap (apps/worker/src/in
       → Decide the surface first — a public request board is a product, not a table. Minimum honest version: add 'feature' to the kind CHECK in a new migration and let the submit dialog file one, then publish what was actually accepted rather than a tracker: extend apps/site/src/pages/changelog.astro with a
@@ -3151,7 +3163,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [✓] Cost monitoring during scaling
       · Continuous, authoritative, and visible to an operator. apps/worker/src/do/budget.ts is a single globally-unique object every inference must reserve against (:1-5); it tracks dayNeurons, dayPending, monthBillableNeurons, `estimatedMonthUsd`,
 
-## 57. RELIABILITY AND INCIDENT MANAGEMENT  —  35%   ✓3 ~8 ☐9
+## 57. RELIABILITY AND INCIDENT MANAGEMENT  —  38%   ✓3 ~9 ☐8
 
 - [✓] Service health checks
       · Route: apps/worker/src/index.ts:462 `GET /api/health` returns {ok,version,buildSha,time}, auth-exempt at index.ts:392. Test: apps/worker/tests/image-route-live.test.mjs:159 'health reports the build sha, so drift is observable without crede
@@ -3198,8 +3210,9 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [☐] Customer incident notifications
       · The notification system is real and good (apps/worker/src/notifications.ts policy, notify.ts the single delivery door, notification-store.ts storage, tested in apps/worker/tests/notifications.test.mjs) but it has no service-incident concept
       → Two parts. (1) In apps/web/src/components/layout.tsx (which already renders OfflineBanner at :355), read `service.paused` and `service.capacityRemaining` from the existing /api/me response and render a persistent banner when paused or when capacity is near zero, reusing the net-banner styles in apps
-- [☐] Public incident status updates
+- [~] Public incident status updates
       · apps/site/src/pages/status.astro is a live client-side liveness probe and nothing else: its whole data source is one `fetch('/api/health')` at :275, and the page holds no incident list, no history, no operator-authored message and no 'past 
+      · UPDATED 2026-09-16: the sentence the ☐ rests on — that status.astro is a live probe and nothing else — is no longer true. apps/site/src/pages/status.astro:3 imports openIssues/resolvedIssues and :66-99 publishes the open issues (title, impact, workaround, 'Open since') plus the three most recently resolved with their fix dates. Gated by tests/known-issues.test.mjs:118 and :54 ('only the three most recently resolved are kept, by resolution date'). NOT ✓: KnownIssue (apps/site/src/data/known-issues.ts:22-34) carries no severity and no updates[], publishing an incident needs a commit and a deploy, and `grep -rn 'api/incidents' apps/worker/src` returns nothing.
       → Add `GET /api/incidents` (public, add it to AUTH_EXEMPT at apps/worker/src/index.ts:392) reading a D1 `incidents` table of {id, startedAt, resolvedAt, severity, title, body, updates[]}, plus admin routes POST /api/admin/incidents and POST /api/admin/incidents/:id/update to open, update and close one
 - [☐] Incident resolution confirmation
       · Nothing records an incident anywhere in the tree (see 'Incident severity classification' and 'Public incident status updates'), so there is nothing whose resolution could be confirmed. The nearest capability is scoped to one remediation, no
