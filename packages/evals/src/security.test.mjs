@@ -85,6 +85,37 @@ function braceBlock(src, from) {
 }
 
 /**
+ * A FUNCTION'S BODY, past a TypeScript return-type annotation.
+ *
+ * `braceBlock` aimed at a signature reads the wrong braces whenever the return type is an object:
+ * `restoreCheckpoint(id): Promise<{ ok: boolean; … }>` and
+ * `grantedProjectStub(…): { id: string; … } | null` both put a `{` between the parameter list and
+ * the body. Walking the parameter parens first and then skipping any `{` that sits in TYPE
+ * position — after `:` `|` `&` `,` `<` `(` or `=>` — leaves the body's own brace.
+ */
+function bodyBlock(src, from) {
+  let i = src.indexOf('(', from);
+  if (i === -1) return '';
+  for (let d = 0; i < src.length; i++) {
+    if (src[i] === '(') d++;
+    else if (src[i] === ')' && --d === 0) {
+      i++;
+      break;
+    }
+  }
+  for (; i < src.length; i++) {
+    if (src[i] !== '{') continue;
+    const prev = src.slice(0, i).replace(/\s+$/, '');
+    if (':|&,<('.includes(prev.slice(-1)) || prev.slice(-2) === '=>') {
+      i += braceBlock(src, i).length - 1;
+      continue;
+    }
+    return braceBlock(src, i);
+  }
+  return '';
+}
+
+/**
  * EVERY TypeScript source file under apps/worker/src, as `src`-relative paths.
  *
  * Enumerated by walking the tree, never by a hand-written list: a call-site guard that checks a
@@ -2262,17 +2293,53 @@ test('A7 restore and checkpoint routes are ownership-gated and validate their in
 
 test('A7 STATIC CHECK — checkpoints are scoped to the DO and restore cannot cross projects', () => {
   const session = read('do/session.ts');
+  //[[ THE BODY, NOT THE WHOLE FILE. Every assertion below reads `restore`, which is
+  //   restoreCheckpoint's own body. Matching against the 200 KB file had two costs: a failure
+  //   printed the entire module as `actual`, which is unreadable and therefore unread; and a
+  //   match found ANYWHERE in the file counted, so a second, unguarded reader of
+  //   `checkpoint_chunks` elsewhere in the DO would have satisfied a check named for this one.
+  //
+  //   `bodyBlock` and not `braceBlock`: the signature returns `Promise<{ ok: boolean; … }>`, and a
+  //   matcher aimed at the declaration reads that TYPE rather than the method.
+  // The DECLARATION, matched at its indentation — `this.restoreCheckpoint(id)` appears three times
+  // above it and a bare indexOf would happily measure a call site.
+  const decls = [...session.matchAll(/^ {2}(?:private )?async restoreCheckpoint\(/gm)];
+  assert.equal(decls.length, 1, 'restoreCheckpoint is not declared exactly once — re-locate it before trusting this check');
+  const restore = bodyBlock(session, decls[0].index);
+  assert.ok(restore.length > 400, 'restoreCheckpoint was not found — this test would check nothing');
+
   // Checkpoint rows live in the per-project DO's own SQL. There is no project id in the query,
   // because there cannot be another project's row in this storage.
-  assert.match(session, /select data from checkpoint_chunks where checkpoint_id = \?/);
-  assert.equal(/checkpoint_chunks where[\s\S]{0,80}project/.test(session), false, 'checkpoint storage must remain per-DO, not keyed by a caller-supplied project id');
-  assert.match(session, /if \(!chunks\.length\) return \{ ok: false, error: 'checkpoint not found' \}/, 'an unknown checkpoint id must be a clean refusal');
+  assert.match(restore, /select data from checkpoint_chunks where checkpoint_id = \?/);
+  assert.equal(
+    /checkpoint_chunks where[\s\S]{0,80}project/.test(session),
+    false,
+    'checkpoint storage must remain per-DO, not keyed by a caller-supplied project id',
+  );
+
+  //[[ THE REFUSAL IS A PROPERTY, NOT A SENTENCE. This pinned the exact line
+  //   `if (!chunks.length) return { ok: false, error: 'checkpoint not found' }` and went red when
+  //   the code got BETTER: the refusal now also broadcasts `restore_status` failed, because the
+  //   person who pressed Restore was otherwise watching a blank drawer for up to two minutes. A
+  //   guard that fails on a one-line refusal growing into a two-line one is measuring the shape of
+  //   the source, not the safety of the behaviour.
+  //
+  //   What actually has to be true: an id with no rows LEAVES, carrying ok:false, and does not
+  //   reach the code that clears and rebuilds the user's place. Asserted as: the empty-chunks block
+  //   exists; everything it returns is a refusal; and it names no studio op. ]]
+  const empty = braceBlock(restore, restore.indexOf('if (!chunks.length)'));
+  assert.ok(empty.length > 30, 'the empty-checkpoint branch is gone — an unknown id may now fall through into the restore');
+  const returns = [...empty.matchAll(/return ([^;]*);/g)].map((m) => m[1].trim());
+  assert.ok(returns.length >= 1, 'the empty-checkpoint branch must return');
+  for (const r of returns) {
+    assert.match(r, /\bok: false\b/, 'an unknown checkpoint id must be a clean refusal, never a success');
+  }
+  assert.equal(/studioOp|applyRestore|pendingOp/i.test(empty), false, 'an unknown checkpoint id must not reach Studio at all');
+
   // Asserted as ORDER, not as a character distance. The previous form required `pluginConnected`
   // within 200 characters of the signature, which broke the moment the return type grew to carry
   // the restore's fidelity report — a documentation change failing a security test for a reason
   // that has nothing to do with security.
-  const restore = session.slice(session.indexOf('async restoreCheckpoint('), session.indexOf('private async quotaSpend('));
-  assert.ok(restore.length > 0, 'restoreCheckpoint must exist');
   // Not named `read` — that is the module's file-reading helper, and shadowing it here puts the
   // very first line of this test inside a temporal dead zone.
   const guardAt = restore.indexOf('pluginConnected');
