@@ -140,6 +140,39 @@ every tool it can think of does not score 1.0 for including the right one somewh
 `gradeToolCalls(expect, [])` is **0** — it captured them and there were none. Those are one JSON
 field apart and they mean opposite things.
 
+## Release acceptance and success metrics
+
+The owner's checklist (`docs/backlog/CHECKLIST-V2.md`) names twenty user-visible outcomes in
+section **60. END-TO-END RELEASE ACCEPTANCE** and twenty measures in section **53. PRODUCT
+ANALYTICS**. Both are implemented here, and both are offline — no model call, no network, no spend.
+
+```sh
+pnpm --filter @golem/evals acceptance    # the twenty scenarios, as tests (also runs in `pnpm -r test`)
+pnpm --filter @golem/evals metrics       # the report: scenarios, completion figure, the 20 measures
+pnpm --filter @golem/evals metrics -- --json
+```
+
+`src/acceptance.mjs` holds the scenarios. Each drives the real production code — the worker's
+routing through the actual Hono app with a real ES256 JWT, its tool gating through the actual
+`TOOLS` table, its quota arithmetic, its refusals — and each carries two sentences: `checks`, what
+it asserted, and `notChecked`, the part of the brief's item no offline check can see. Thirteen of
+these twenty items are marked `~` in the brief, and a harness that asserted the built half and
+reported the whole item green would be pass/fail theatre.
+
+One scenario is skipped: organizations are not planned (owner disposition, 2026-09-15,
+`docs/design/TENANCY.md`). Its skip reason is guarded — the case fails if an organizations table
+ever appears — so a stale excuse cannot survive the thing it excuses being built.
+
+`src/success-metrics.mjs` is a REPORT, not a gate: it prints numbers with the date and commit it
+measured, and a measure this repository cannot compute prints `not measured, because <reason>` and
+never a plausible figure. Seventeen of the twenty land there, because the event catalog holds five
+infrastructure events and no product event. `src/success-metrics.test.mjs` holds that rule against
+the report's data.
+
+Both were falsified: every scenario was made to go red by breaking the mechanism it names, one
+uniquely-anchored edit at a time, reverted and sha-compared. The table is in
+[docs/evals/ACCEPTANCE.md](../../docs/evals/ACCEPTANCE.md).
+
 ## Other commands
 
 ```sh
