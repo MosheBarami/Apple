@@ -202,18 +202,29 @@ for (const s of sections) {
 
 /* ------------------------------------------- a closed row must cite a machine --- */
 
-/** Gate ids that are MET, from the ledger — `[x]` with an EVIDENCE line under it. */
-const metGates = (() => {
+/**
+ * Gate ids that are MET, and gate ids that merely EXIST — two different facts.
+ *
+ * Only `met` decides whether a row's citation is redeemed. `known` exists so the FINDING can tell
+ * the truth about why it was not: a row citing `G90` is not citing prose. It is citing a gate that
+ * is in the ledger, has a CHECK a machine runs, and is UNTICKED — whose own EVIDENCE line records
+ * `exit=1` and `SUITE RED`. Collapsing that into "citing prose, not a runnable thing" sent the
+ * reader to rewrite a sentence when the defect was a red gate, and no amount of rewriting would
+ * have moved it. The distinction is already drawn on the other branch — a cited test file that
+ * fails says so by name — and its absence here was the asymmetry, not the rule.
+ */
+const [metGates, knownGates] = (() => {
   const met = new Set();
-  if (!existsSync(GATES_PATH)) return met;
+  const known = new Set();
+  if (!existsSync(GATES_PATH)) return [met, known];
   const lines = readFileSync(GATES_PATH, 'utf8').split('\n');
   let cur = null;
   for (const line of lines) {
     const head = /^- \[([ xX~])\] (G[\w-]+)(?:\s+\[S\d+\])?: /.exec(line);
-    if (head) { cur = head[1].toLowerCase() === 'x' ? head[2] : null; continue; }
+    if (head) { known.add(head[2]); cur = head[1].toLowerCase() === 'x' ? head[2] : null; continue; }
     if (cur && /^\s{2}EVIDENCE:/.test(line)) { met.add(cur); cur = null; }
   }
-  return met;
+  return [met, known];
 })();
 
 const tracked = new Set(
@@ -319,6 +330,28 @@ for (const r of closedRows) {
     const passing = paths.filter((p) => { try { return testPasses(p); } catch { return false; } });
     if (passing.length) { cited += 1; continue; }
     fail(`${r.id} cites ${paths.join(', ')}, which does not pass`, `FEATURES.json · ${r.section}`, 'a citation that does not hold up');
+    continue;
+  }
+
+  // A GATE THAT EXISTS AND IS NOT MET IS NOT PROSE, AND SAYING SO WAS SENDING THE WRONG REPAIR.
+  //
+  // Two rows cited `G90`. G90 is in GATES.md, carries `CHECK: node scripts/gate-suite.mjs`, and is
+  // UNTICKED — its own EVIDENCE line records exit=1, EXPECT=unmatched, SUITE RED. The finding
+  // called that "citing prose, not a runnable thing", which is false twice over: the citation names
+  // something a machine runs, and the fix is not to write a better sentence. Whoever acted on the
+  // old wording would have rewritten the evidence and watched the finding survive, because the
+  // defect is one file over, in a red gate.
+  //
+  // The branch above already draws this distinction for test files — "cites X, which does not
+  // pass" — and the asymmetry was the whole defect. Prose is what is left when the row names
+  // neither.
+  const unmet = [...ev.matchAll(/\b(G[A-Z]*-?[A-Z]*-?\d+|G\d+)\b/g)].map((m) => m[1]).filter((g) => knownGates.has(g));
+  if (unmet.length) {
+    fail(
+      `${r.id} cites ${[...new Set(unmet)].join(', ')}, which the ledger does not mark met`,
+      `FEATURES.json · ${r.section}`,
+      'a gate that exists and is red — close the gate or reopen the row; rewriting the sentence changes nothing',
+    );
     continue;
   }
 

@@ -3054,7 +3054,7 @@
      "id": "f-01276ef7",
      "name": "Unit tests",
      "status": "done",
-     "evidence": "G90 — the full suite passes, with a red-first falsification record behind it."
+     "evidence": "G-CRITIC-2 — `node scripts/assert-tests.mjs --floor 50 --label G-CRITIC-2 -- node --test packages/evals/src/critic.test.mjs`, met with a red-first FALSIFIED record. This row deliberately does NOT claim the whole suite is green: it used to cite G90 for that, and G90 is unticked with its own EVIDENCE recording exit=1 and SUITE RED."
     },
     {
      "id": "f-96404349",
@@ -6893,7 +6893,7 @@
      "id": "f-2a0cf202",
      "name": "Automated tests",
      "status": "done",
-     "evidence": "G90 — the full suite passes, with a red-first falsification record."
+     "evidence": "G81 — a package cannot silently fall out of `pnpm -r test`, and the checker that says so is itself checked (floor 12 over tests/workspace-coverage.test.mjs); .github/workflows/ci.yml runs both `pnpm -r test` and the root `node --test tests/*.test.mjs` on every push, the second because root tests are in no workspace member. Not a claim that the suite passes: it used to cite G90 for that, and G90 is unticked with its own EVIDENCE recording exit=1 and SUITE RED."
     },
     {
      "id": "f-b04c1627",

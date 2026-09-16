@@ -268,7 +268,27 @@ test('a row citing a MET gate is proven; citing an unmet one is not', () => {
   const unmet = [{ section: 'A', items: [{ id: 'f-1', name: 'x', status: 'done', evidence: 'proven by G2' }] }];
   const bad = run(keep(scratch(unmet, bucket('A', 1, 1))));
   assert.equal(bad.exit, 1, bad.out);
-  assert.match(bad.out, /citing prose, not a runnable thing/);
+  //[[ THIS ASSERTION USED TO READ /citing prose, not a runnable thing/, AND IT WAS WRONG IN THE
+  //   SAME WAY THE CHECKER WAS.
+  //
+  //   G2 is in the ledger and carries a CHECK. It is not prose; it is a gate that is red. Two real
+  //   rows cited G90 that way, and the finding told whoever read it to fix the sentence — which
+  //   would not have moved the finding by one line, because the thing that is wrong is a gate.
+  //   A test that pins a misleading message is what keeps the message misleading. ]]
+  assert.match(bad.out, /cites G2, which the ledger does not mark met/);
+  assert.match(bad.out, /close the gate or reopen the row/);
+  assert.doesNotMatch(bad.out, /citing prose/, 'a named gate is never prose');
+});
+
+test('...and a gate id the ledger has never heard of IS prose, which is the control', () => {
+  // The separation only means something if the other branch still fires. `G404` is not in the
+  // fixture ledger at all, so nothing in the repository runs when someone writes it down — which
+  // is exactly what "prose, not a runnable thing" is for, and the only shape it should cover now.
+  const invented = [{ section: 'A', items: [{ id: 'f-1', name: 'x', status: 'done', evidence: 'proven by G404, obviously' }] }];
+  const r = run(keep(scratch(invented, bucket('A', 1, 1))));
+  assert.equal(r.exit, 1, r.out);
+  assert.match(r.out, /citing prose, not a runnable thing/);
+  assert.doesNotMatch(r.out, /does not mark met/);
 });
 
 /* ------------------------------ a status its own evidence contradicts --- */
