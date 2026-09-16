@@ -652,6 +652,10 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'assign_sounds':
       return 'building';
     case 'render_view':
+    // Framing a store-page image IS a rasterise of the place — the same five camera angles, at the
+    // aspect ratio Roblox requires — so it announces the same phase. It changes nothing in the
+    // place, which is why it must not fall through to the `building` default below.
+    case 'compose_thumbnail':
       return 'rendering';
     case 'check_composition':
     case 'inspect_visually':

@@ -151,6 +151,7 @@ export const TOOL = {
 
   // C13
   render_view: { kind: 'rendering', label: 'Rendered the scene' },
+  compose_thumbnail: { kind: 'rendering', label: 'Framed a store-page image' },
   get_instance: { kind: 'inspecting', label: 'Read an instance back' },
   get_selection: { kind: 'inspecting', label: 'Checked what you have selected' },
   focus_camera: { kind: 'inspecting', label: 'Moved the Studio camera' },

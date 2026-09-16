@@ -1,7 +1,7 @@
 // Agent tool definitions + dispatcher. Tools either talk to Studio (via the session DO's
 // op queue) or run worker-side (docs search, memory, checkpoints).
 import type { Env } from './env';
-import { rgbBase64ToDataUrl } from './png';
+import { rgbBase64ToDataUrl, decodeRgbBase64, encodePng, bytesToBase64 } from './png';
 import { retryHint } from './op-failure';
 import type { GatewayToolDef, StudioOp, OpResult, CheckpointMeta, RenderViewResult, StudioFrame, AssetSourcePolicy } from '@golem/shared';
 import { RENDER_VIEWS } from '@golem/shared';
@@ -45,9 +45,21 @@ import { propertyChangeGroups } from './property-diff';
 import { CENSUS_LUAU, parseCensus, destructiveDelta, needsProtection } from './playtest';
 import { countConsole, parseLogEntries } from './playtest-stream';
 import { PLAYTEST_FRAME_MIN_INTERVAL_MS } from './frame-bus';
-import { compositionHardFails, structureFromLayout, structureLine, LAYOUT_LUAU, parseLayout } from './composition';
+import { compositionHardFails, structureFromLayout, structureLine, LAYOUT_LUAU, parseLayout, compositionMetrics } from './composition';
+import {
+  ROBLOX_IMAGE_SPECS,
+  THUMBNAIL_UPLOAD,
+  captureSizeFor,
+  chooseFraming,
+  isFramableView,
+  publishSteps,
+  shortfallAgainst,
+  thumbnailPanel,
+  type FramingInput,
+  type ThumbnailKind,
+} from './thumbnail';
 import { semanticCheck, semanticLine } from './semantic';
-import { generateImage, storeImage, imagePanel, type ImageRequest, type PaletteRole } from './imagegen';
+import { generateImage, storeImage, imagePanel, imagePathFor, type ImageRequest, type PaletteRole } from './imagegen';
 import { ensureProvenanceTables, recordAssetUse } from './provenance';
 import { MOODS, PALETTES, moodLuau } from './worldbuilding';
 import { EFFECTS, EFFECT_NAMES, effectCatalogue, effectLuau, removeEffectLuau, parseInstancePath } from './effects';
@@ -458,10 +470,26 @@ function capStudioPrints(raw: unknown, job: SandboxJob): unknown {
 /**
  * Ask the plugin to rasterise the scene. Rendering five views of a busy place is real CPU work
  * inside Studio, so this gets a longer timeout than an ordinary op.
+ *
+ * `size` is optional and omitted by every caller that wants the critique loop's own frame (the
+ * plugin's 288x180 default). `compose_thumbnail` passes one because a store-page image has a
+ * REQUIRED aspect ratio, and a 16:9 composition judged on a 16:10 frame is a composition judged on
+ * a picture nobody will see. The op has carried `width`/`height` since it was written; nothing had
+ * ever set them.
  */
-async function renderViews(ctx: AgentCtx, target: string | undefined, view: string): Promise<RenderViewResult | { error: string }> {
+async function renderViews(
+  ctx: AgentCtx,
+  target: string | undefined,
+  view: string,
+  size?: { width: number; height: number },
+): Promise<RenderViewResult | { error: string }> {
   const res = await ctx.execStudioOp(
-    { op: 'render_view', target, view: view as RenderViewResult['views'][number]['name'] | 'all' },
+    {
+      op: 'render_view',
+      target,
+      view: view as RenderViewResult['views'][number]['name'] | 'all',
+      ...(size ? { width: size.width, height: size.height } : {}),
+    },
     view === 'all' ? 90_000 : 45_000,
   );
   if (!res.ok) return { error: res.error ?? 'render failed' };
@@ -1866,6 +1894,128 @@ export const TOOLS: Record<string, ToolImpl> = {
       // are re-sent on every later step. inspect_visually is what actually shows them to a model.
       ctx.lastRender = res;
       return { subject: res.subject, boundsSizeStuds: res.boundsSize, views: res.views.map((v) => ({ view: v.name, ...v.meta })) };
+    },
+  },
+  /**
+   * THE STORE-PAGE IMAGE — a framed, composed use of the render path, not a second pipeline.
+   *
+   * Everything here already existed and had never been pointed at this question: `render_view`
+   * makes real pixels of the real place, `compositionMetrics` measures them over the geometry mask,
+   * `encodePng` turns packed RGB into a file, `storeImage` parks it where the project's own serving
+   * route can hand it back. What was missing was the FRAMING — a required aspect ratio, a choice
+   * between angles made on measurement, and an honest account of the gap between what we can
+   * capture and what Roblox asks for. thumbnail.ts holds all three.
+   *
+   * THE TWO REFUSALS ARE THE FEATURE.
+   *   * No Studio, or a render that fails, produces NOTHING. It does not fall through to
+   *     `generate_image`, because a picture of a game that does not exist is a misrepresentation of
+   *     the product on its own store page, and the owner has rejected that explicitly.
+   *   * No upload, ever, by any path. Roblox has no Open Cloud endpoint for experience thumbnails,
+   *     and the scope that would let us try (`asset:write`) creates a permanently undeletable
+   *     Image. See THUMBNAIL_UPLOAD.
+   */
+  compose_thumbnail: {
+    def: {
+      name: 'compose_thumbnail',
+      description:
+        "Frame and capture a store-page image of the place the user is actually building — the thumbnail shown on Roblox's home page and experience detail page, or the square experience icon. It renders the real place from every camera angle, measures each one, and proposes the best-framed shot at the aspect ratio Roblox requires. The image is SHOWN to the user and saved for an hour where they can download it. IT IS NOT AN UPLOAD-READY ASSET and you must not say it is: the Studio plugin's rasteriser caps far below the size Roblox wants and draws no lighting, shadows or materials, so this settles the COMPOSITION and the user takes the full-resolution shot in Studio themselves. There is no way to upload it — Roblox publishes no API for experience thumbnails — so never tell the user it has been set on their experience. Report the steps this returns instead. Never substitute generate_image for this: a store-page image must be the actual place.",
+      parameters: S({
+        kind: { type: 'string', enum: ['thumbnail', 'icon'], description: 'thumbnail = the wide store-page image; icon = the square experience icon. Default thumbnail.' },
+        target: { type: 'string', description: 'instance path to frame, e.g. game.Workspace.Plaza. Omit to frame the whole place, which is usually what a store-page image wants.' },
+      }),
+    },
+    studio: true,
+    run: async (ctx, a) => {
+      // Checked BEFORE the render, not after: without a project the pixels are unretrievable by
+      // anyone, so stalling the user's Studio to rasterise five angles would spend their editor's
+      // main thread on something nobody could ever open.
+      if (!ctx.projectId) return { error: 'compose_thumbnail needs a project to save the image against' };
+
+      const kind: ThumbnailKind = a.kind === 'icon' ? 'icon' : 'thumbnail';
+      const spec = ROBLOX_IMAGE_SPECS[kind];
+      const capture = captureSizeFor(kind);
+
+      // Every angle, because choosing between them IS the framing. `all` is what inspect_visually
+      // already asks for, at the timeout that path has been using.
+      const res = await renderViews(ctx, a.target ? String(a.target) : undefined, 'all', capture);
+      if ('error' in res) {
+        return {
+          error:
+            `No ${spec.what} was made: the place could not be rendered (${res.error}). ` +
+            'A store-page image has to be a picture of the actual place, so nothing is produced when the render fails. ' +
+            'Fix the render first — check that there is geometry in the workspace and that Studio is still connected.',
+        };
+      }
+
+      const candidates: FramingInput[] = [];
+      for (const v of res.views) {
+        if (!isFramableView(v.name)) continue;
+        const px = v.meta.width * v.meta.height * 3;
+        const rgb = decodeRgbBase64(v.rgbBase64);
+        if (rgb.length < px) continue; // a frame whose payload is short of its declared size is not a frame
+        const m = compositionMetrics(rgb.subarray(0, px), v.meta.width, v.meta.height);
+        candidates.push({
+          view: v.name,
+          coverage: v.meta.subjectCoverage,
+          colourfulness: m.maskedColorfulness,
+          centroidOffset: m.centroidOffset,
+          silhouetteRange: m.silhouetteRange,
+        });
+      }
+
+      const chosen = chooseFraming(candidates);
+      if (!chosen) {
+        return {
+          error:
+            `No ${spec.what} was made: none of the rendered angles can stand as a store-page image. ` +
+            'The plan view is excluded on purpose — a floor plan is a diagram, not a thumbnail — so this means ' +
+            'the perspective angles came back empty or unreadable. Build or reposition something and render again.',
+        };
+      }
+
+      const frame = res.views.find((v) => v.name === chosen.view)!;
+      const png = await encodePng(
+        decodeRgbBase64(frame.rgbBase64).subarray(0, frame.meta.width * frame.meta.height * 3),
+        frame.meta.width,
+        frame.meta.height,
+      );
+      // Hoisted rather than nested inside the call: image-route.test.mjs reads this call site out
+      // of the source to prove every store is project-scoped, and a nested call hides the argument
+      // list from it. A guard that cannot see the argument is a guard that passes for no reason.
+      const pngBase64 = bytesToBase64(png);
+      const imageId = await storeImage(ctx.env, pngBase64, ctx.projectId);
+
+      // The pixels reach the BROWSER by path and the transcript carries only the id half — the same
+      // split generate_image follows, and for the same reason: a leaked transcript must not carry a
+      // fetchable handle, and the model cannot read a PNG anyway.
+      ctx.uiDetail = thumbnailPanel({
+        imageId,
+        src: imagePathFor(ctx.projectId, imageId),
+        kind,
+        subject: res.subject,
+        capture: { width: frame.meta.width, height: frame.meta.height },
+        view: chosen.view,
+      });
+
+      const short = shortfallAgainst(kind);
+      return {
+        imageId,
+        kind,
+        view: chosen.view,
+        framing: chosen.because,
+        captured: { width: frame.meta.width, height: frame.meta.height },
+        requirement: { width: spec.width, height: spec.height, aspect: spec.aspectLabel },
+        shortfallScale: short.scale,
+        // Said in several fields rather than one sentence, because each is a different claim and the
+        // one that matters most has to survive the result being truncated.
+        uploadReady: false,
+        uploadedToRoblox: false,
+        uploadSupported: THUMBNAIL_UPLOAD.supported,
+        limitation: short.note,
+        whyNoUpload: THUMBNAIL_UPLOAD.reason,
+        nextSteps: publishSteps(kind),
+        alsoConsidered: candidates.filter((c) => c.view !== chosen.view).map((c) => c.view),
+      };
     },
   },
   /**

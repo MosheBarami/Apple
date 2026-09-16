@@ -260,6 +260,7 @@ export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
 
   // ---- spends on inference ---------------------------------------------------------------
   render_view: 'Rasterises the viewport and returns images. It bills against the render budget, and the budget exists because this is the expensive thing the product does.',
+  compose_thumbnail: 'Rasterises every camera angle of the place and stores a PNG against the project. It reads nothing a client could not get from render_view, and it costs the same five rasterises — each of which briefly freezes the window of whoever is sitting at that Studio.',
   inspect_visually: 'Renders the scene and has a vision model critique it. Paid inference on every call.',
   check_composition: 'Runs a model over the blockout. Paid inference on every call.',
   generate_image: 'Paid image generation on every call, billed to the project owner rather than to whoever is driving the client.',

@@ -156,12 +156,26 @@ test('storeImage refuses to park pixels anywhere but under a project', () => {
       /await storeImage\([^)]*,\s*ctx\.projectId\s*\)/,
       `tools.ts:${line} stores pixels without passing ctx.projectId as the key`,
     );
-    // The refusal has to be REACHABLE from the call, so look only at the enclosing run of source
-    // rather than anywhere in the file — the whole point of the previous failure.
+    // The refusal has to be REACHABLE from the call, so look only at the ENCLOSING FUNCTION rather
+    // than anywhere in the file — the whole point of the previous failure.
+    //
+    // This used to be a fixed 700-byte window, which is a proxy for "the enclosing function" and
+    // drifts away from it the moment a tool does real work between its guard and its store. It
+    // broke on exactly that: `compose_thumbnail` refuses without a project as its FIRST statement —
+    // before rasterising five angles of the user's place, because a render nobody could ever open
+    // is a render that froze their editor for nothing — and by the time it stores, the guard is
+    // two thousand characters back. The window said "no refusal" about a tool whose refusal is the
+    // first line of its body, which is the same bad gradient the note above describes.
+    //
+    // So walk back to the start of the function the call actually sits in. Every store in this file
+    // is inside an `async (` arrow — `run: async (ctx, a)` for a tool, `showImage: async (...)` for
+    // the web-tool bridge — so the nearest preceding one is the enclosing body.
+    const fnStart = TOOLS.lastIndexOf(': async (', at);
+    assert.ok(fnStart > 0 && at - fnStart < 12_000, `tools.ts:${line}: could not find the enclosing function`);
     assert.match(
-      TOOLS.slice(Math.max(0, at - 700), at),
+      TOOLS.slice(fnStart, at),
       /if \(!ctx\.projectId\)/,
-      `tools.ts:${line} calls storeImage with no !ctx.projectId refusal above it`,
+      `tools.ts:${line} calls storeImage with no !ctx.projectId refusal above it in the same function`,
     );
   }
 });
