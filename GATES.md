@@ -306,7 +306,7 @@ like it covers it.
     CHECK: node scripts/assert-tests.mjs --floor 29 --label G-ORACLE-6 -- node --test tests/check-backlog.test.mjs
     EXPECT: G-ORACLE-6 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G-ORACLE-6; path=6765c31f4f12/53 entries; git-sha=0ad417f; tree-clean=yes; deps-clean=yes; break-sha=0ad417f; EXPECT=unmatched; output-sha256=81af4261000cc4f947e1bca612db3ca165d603387648e9065a7d9c418ade9a79; output-bytes=4305; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=2; deps-sha=e32fdcb88870ce5d5369834e; at=2026-09-14T23:25:54.622Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=e2f019f; tree-clean=yes; deps-clean=yes; EXPECT=matched; output-sha256=2da3f2d7bb60cca6b96c37b2dae9dacfa4e9e270bb7d7f1305384f32b474350b; output-bytes=2573; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=2; deps-sha=e32fdcb88870ce5d5369834e; at=2026-09-15T00:25:13.137Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/ev-G-ORACLE-6; path=c1b9265de6a1/55 entries; git-sha=1920158; tree-clean=yes; deps-clean=yes; EXPECT=matched; output-sha256=b3a05b6b297fe656927ceacef5df3b23dcce27c1136a845e41d5bc7798f009a5; output-bytes=2671; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=2; deps-sha=3c5d698c76aceabe17d78b63; at=2026-09-16T06:32:16.595Z
 
 - [x] G-ORACLE-5: Every disposition rule is proven to fire, and every one carries a control
     CHECK: node scripts/assert-tests.mjs --floor 17 --label G-ORACLE-5 -- node --test tests/check-dispositions.test.mjs
