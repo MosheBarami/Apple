@@ -112,6 +112,12 @@ import { PLAN_LIMITS } from '@golem/shared';
               tool trace — you see every <code>get_project_tree</code>,
               <code>edit_script</code> and <code>run_and_check</code> as it
               happens.
+              <span class="release__since">
+                Since narrowed: the independent Studio plugin never executes code it is sent, so
+                <code>run_and_check</code> and the other tools that would need it are not offered
+                while it is the plugin you have paired. The trace shows what actually ran. See
+                <a href="/docs/plugin">the plugin docs</a> for the current refusals.
+              </span>
             </li>
             <!--
               THIS ENTRY IS NOT DOCUMENTATION AND IS NOT REWRITTEN.
@@ -150,6 +156,10 @@ import { PLAN_LIMITS } from '@golem/shared';
             <li>
               Pairing by short-lived code (<code>GLM-XXXXXX</code>, 10-minute
               expiry) — no tokens to copy around.
+              <span class="release__since">
+                Since changed: codes are six characters with no prefix, and the expiry is shown
+                counting down in the pairing dialog.
+              </span>
             </li>
             <li>Reads and searches your scripts, edits them through Studio's own script editor APIs.</li>
             <li>Creates, moves, configures and deletes instances with typed, validated operations.</li>
@@ -157,7 +167,13 @@ import { PLAN_LIMITS } from '@golem/shared';
               Wraps every operation batch in a ChangeHistory waypoint — native
               <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo.
             </li>
-            <li>Starts and stops run mode, captures logs, and reports results back for verification.</li>
+            <li>
+              Starts and stops run mode, captures logs, and reports results back for verification.
+              <span class="release__since">
+                Since withdrawn: the independent plugin does not drive Studio's run mode — you start
+                and stop tests yourself. Log capture and result reporting still work.
+              </span>
+            </li>
           </ul>
 
           <h3>Safety net</h3>

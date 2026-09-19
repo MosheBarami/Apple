@@ -1915,6 +1915,37 @@ export function buildsPerDay(plan: PlanId): number {
   return Math.floor(PLAN_LIMITS[plan].creditsPerDay / CREDITS_PER_BUILD);
 }
 
+/**
+ * How many days a plan can actually spend its DAILY allowance before the MONTHLY one stops it.
+ *
+ * `quotaState` spends `Math.min(dailyLeft, monthlyLeft)` (apps/worker/src/quota-math.ts), so a plan
+ * has two limits and the smaller one is the one the user has. For three of the four plans the
+ * monthly figure is about thirty times the daily figure and the distinction never shows. On **free**
+ * it is ten: 231 a day against 2,310 a month. A free user who spends their full daily allowance
+ * reaches the monthly ceiling on the tenth and gets nothing for the rest of the month.
+ *
+ * That is a legitimate way to shape a free tier. It is not a legitimate thing to leave out of the
+ * sentence "Credits reset to your full daily amount every day", which the pricing page ran for as
+ * long as these numbers have been live, and which is false for two thirds of every month for the
+ * only plan anyone can currently have.
+ *
+ * Exported so the claim is DERIVED wherever it is made. A page that wants to say "every day" has to
+ * ask this function whether that is true for the plan it is describing.
+ */
+export function fullRateDays(plan: PlanId): number {
+  return Math.floor(PLAN_LIMITS[plan].creditsPerMonth / PLAN_LIMITS[plan].creditsPerDay);
+}
+
+/**
+ * Whether the monthly ceiling bites before the month ends.
+ *
+ * 28 is the shortest month, so a plan clearing 28 full days can honestly be described by its daily
+ * rate alone in every month of the year. Anything below that cannot.
+ */
+export function monthlyCeilingBitesFirst(plan: PlanId): boolean {
+  return fullRateDays(plan) < 28;
+}
+
 // PLACED AFTER `CREDITS_PER_BUILD` AND `buildsPerMonth` ON PURPOSE. The table below is built at
 // module-evaluation time and calls `buildsPerMonth`, which reads the `const CREDITS_PER_BUILD`.
 // Declared above them, that read happens inside the temporal dead zone and the whole module

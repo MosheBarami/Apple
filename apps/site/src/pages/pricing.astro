@@ -9,6 +9,8 @@ import {
   buildsPerMonth,
   formatMoney,
   CREDITS_PER_BUILD,
+  fullRateDays,
+  monthlyCeilingBitesFirst,
   PRODUCT_MODES_OFFERED,
   PRODUCT_MODE_INFO,
   MODE_INFO,
@@ -126,7 +128,7 @@ const modeRows = PRODUCT_MODES_OFFERED.map((m) => {
 const limitFaq = [
   {
     q: 'What happens when I run out of Credits?',
-    a: `<p>Apple tells you plainly, mid-conversation, and shows when your quota resets (daily, at midnight UTC — the same instant for everyone, not 24 hours after you started). Nothing is lost — your chat, project and checkpoints stay exactly where they are. You can keep reading, browsing your project and restoring checkpoints; only new AI requests wait for the reset.</p>`,
+    a: `<p>Apple tells you plainly, mid-conversation, and shows when your quota resets (daily, at midnight UTC — the same instant for everyone, not 24 hours after you started). Nothing is lost — your chat, project and checkpoints stay exactly where they are. You can keep reading, browsing your project and restoring checkpoints; only new AI requests wait for the reset. If it is the <em>monthly</em> ceiling you have reached rather than the day's, the next reset that helps you is the start of the month, and the workspace says which of the two you hit.</p>`,
   },
   {
     q: 'Why is there a limit at all?',
@@ -134,7 +136,11 @@ const limitFaq = [
   },
   {
     q: 'Do unused Credits roll over?',
-    a: `<p>No. Credits reset to your full daily amount every day. Rollover sounds nice but pushes people to hoard; a fresh daily allowance keeps the math simple and the queue fair.</p>`,
+    a:
+      `<p>No. Credits reset to your full daily amount each day, up to your plan's monthly ceiling. Rollover sounds nice but pushes people to hoard; a fresh daily allowance keeps the math simple and the queue fair.</p>` +
+      (monthlyCeilingBitesFirst('free')
+        ? `<p><strong>On Free the monthly ceiling is the one that bites.</strong> ${free.creditsPerDay.toLocaleString()} a day against ${free.creditsPerMonth.toLocaleString()} a month is <strong>${fullRateDays('free')} full days</strong>; spend the whole daily allowance every day and there is nothing left for the rest of the month. Whichever limit is lower is the one you actually have, and the workspace shows both.</p>`
+        : ''),
   },
   {
     q: 'Can one request cost more than the price in the table?',
