@@ -924,7 +924,80 @@ const TOOL_ARGS = {
   assign_sounds: { assignments: [{ path: 'game.Workspace.A', bus: 'SFX' }] },
   generate_sound: { preset: 'ui_click' },
   speak_line: { text: 'The gate is open.', preset: 'guide' },
+
+  //[[ THE THREE KNOWLEDGE TOOLS THE CREATOR-SKILLS BRANCH ADDED. EGRESS REVIEWED 2026-09-19.
+  //
+  //   All three answer out of source committed to this repository, and the fixtures below are
+  //   chosen to reach a MATCH rather than a refusal: `searchCreatorSkills` returns `noMatch` for an
+  //   unscored query, `readCreatorSkill` returns a suggestion list for an unknown id, and
+  //   `getGenreReferenceGuide` returns `noMatch` for an unknown genre or aspect — three early
+  //   returns that would each satisfy the enumeration above while scanning no real payload. The
+  //   per-tool non-vacuity loop in the egress sweep below asserts all three actually matched.
+  //
+  //   WHAT I GREPPED AND WHAT I FOUND. The two modules behind them — creator-skills.ts (1,002
+  //   lines) and genre-reference-guide.ts (491) — contain ZERO occurrences of `fetch(`, `env`,
+  //   `ctx.`, `Credential` or `process.env`; the counts are asserted below rather than described.
+  //   All three `run:` bodies take `_ctx`, so the Studio ops, the project id, the workspace store
+  //   and the env bindings are in scope and never named: there is no network reach, no credential
+  //   reach, no other tenant's row and no store to write to. They are pure functions of their own
+  //   arguments over frozen module-level constants.
+  //
+  //   THE ONE THING THAT DOES LEAVE. `get_genre_references` emits third-party URLs — the pages the
+  //   references were inspected on. They come from packages/corpus/data/genre-references.json,
+  //   imported STATICALLY (so esbuild embeds it; there is no runtime file read) and pinned by
+  //   SHA-256 in the module. That is the same class as `find_mechanic` citing repositories: a fixed
+  //   committed list, not a model-chosen address, and nothing in the worker fetches them.
+  //
+  //   Worth stating because the names sound like retrieval: none of the three retrieves anything.
+  //   `search_creation_skills` ranks an in-memory array; `read_creation_skill` indexes it.
+  search_creation_skills: { query: 'anchor a responsive gameplay HUD', domain: 'ui' },
+  read_creation_skill: { id: 'ui-responsive-hud-anchors' },
+  get_genre_references: { genre: 'horror', aspect: 'lighting' },
 };
+
+//[[ THE REVIEW ABOVE, HELD TO THE CODE. Prose is a promise; these are the facts under it.
+//
+//   Each assertion is the negative form on purpose. It is easy to keep a module pure while adding
+//   one import that is not — so the import lists are pinned exactly, and every name a reach would
+//   have to be spelled with is counted at zero.
+test('A2 the three knowledge tools cannot reach the network, a credential, or another tenant', () => {
+  for (const file of ['creator-skills.ts', 'genre-reference-guide.ts']) {
+    const code = readCode(file);
+    assert.ok(code.length > 3000, `${file} was not read — this test would check nothing`);
+    for (const reach of [/\bfetch\s*\(/, /\benv\b/, /\bctx\b/, /Credential/i, /process\.env/]) {
+      assert.equal(reach.test(code), false, `${file} now names ${reach} — re-review what these tools can reach`);
+    }
+  }
+  // The import list is the only door either module has. Pinned exactly: a new import is a new
+  // source of everything the assertions above just counted at zero.
+  assert.deepEqual(
+    [...readCode('creator-skills.ts').matchAll(/^\s*import .*$/gm)].map((m) => m[0].trim()),
+    [
+      "import { GENRE_KIT_IDS, type GenreKitId } from './genre-kits';",
+      "import { MECHANIC_PATTERNS, type MechanicPattern } from './mechanics';",
+    ],
+    'creator-skills.ts grew an import — the creation-skill catalogue can now reach something other than itself',
+  );
+  assert.deepEqual(
+    [...readCode('genre-reference-guide.ts').matchAll(/^\s*import .*$/gm)].map((m) => m[0].trim()),
+    [
+      "import manifestJson from '../../../packages/corpus/data/genre-references.json';",
+      "import { GENRE_KIT_IDS, type GenreKitId } from './genre-kits';",
+    ],
+    'genre-reference-guide.ts grew an import — the reference guide can now reach something other than the pinned manifest',
+  );
+  // And the tools themselves must keep DISCARDING the context. `_ctx` is what makes the paragraph
+  // above exhaustive: a body that renames it to `ctx` has the project id, the env and the Studio
+  // ops back in hand, and none of the counts above would notice.
+  const tools = readCode('tools.ts');
+  for (const name of ['search_creation_skills', 'read_creation_skill', 'get_genre_references']) {
+    const at = tools.indexOf(`${name}: {`);
+    assert.ok(at > 0, `${name} is no longer registered under that name`);
+    const body = braceBlock(tools, at);
+    assert.ok(body.length > 100, `${name}'s registration was not located — this test would check nothing`);
+    assert.match(body, /run: async \(_ctx, a\)/, `${name} now takes the tool context — re-review its egress`);
+  }
+});
 
 test('A2 every registered tool has an argument fixture — the enumeration cannot silently go stale', () => {
   assert.deepEqual(Object.keys(T.TOOLS).sort(), Object.keys(TOOL_ARGS).sort(), 'a tool was added or removed; add it to TOOL_ARGS and re-review its egress');
@@ -957,6 +1030,16 @@ test('A2 no tool can put a credential, a JWT or a pairing token into tool_end.de
       detailByTool.has(n),
       `${n} produced no detail — its fixture returns early, so the sweep above proved nothing about the channel it opens`,
     );
+  }
+  // THE SAME DISCIPLINE FOR THE THREE KNOWLEDGE TOOLS, and here the early return is not an error
+  // but a POLITE REFUSAL: `noMatch` is `ok: true` with a detail attached, so `detailByTool.has(n)`
+  // cannot tell a catalogue answer from "I have nothing like that". The payload is what has to be
+  // real, because the payload is the egress this sweep exists to scan.
+  for (const n of ['search_creation_skills', 'read_creation_skill', 'get_genre_references']) {
+    const blob = JSON.stringify(detailByTool.get(n) ?? null);
+    assert.ok(blob.length > 200, `${n} returned nothing substantial — its fixture no longer reaches the catalogue`);
+    assert.equal(/"noMatch"\s*:\s*true|"unknownSkillId"/.test(blob), false,
+      `${n} refused its fixture — the sweep above scanned a refusal, not the payload this tool emits`);
   }
   // format_script's detail must be the code_diff panel specifically: that is the branch that
   // WRITES and puts a payload on ctx.uiDetail, which is the widest of the three new egress paths.
@@ -1111,7 +1194,21 @@ test('A2 STATIC CHECK — the pairing token exists in exactly one place and only
 test('A2 STATIC CHECK — run_state replays only the whitelisted RunSnapshot fields', () => {
   const session = read('do/session.ts');
   const snapshot = session.slice(session.indexOf('private async runSnapshot()'), session.indexOf('async webSocketMessage'));
-  const fields = [...snapshot.matchAll(/^\s{6}(\w+):/gm)].map((m) => m[1]);
+  //[[ A CONDITIONALLY SPREAD FIELD IS STILL A FIELD, and the six-space anchor could not see one.
+  //
+  //   `...(agent.productModel ? { productModel: agent.productModel } : {}),` puts the key inside
+  //   braces on the SAME line, so `^\s{6}(\w+):` never matched it. Two fields had already reached
+  //   the browser through that blind spot — `deniedTools`, which has been shipping since the tool
+  //   permissions work, and `productModel`, added by the model-picker branch — and this whitelist
+  //   was green for both. A tripwire that cannot see the change it is named for is not a tripwire.
+  //
+  //   Both spellings are collected now, and both fields are reviewed in the allowlist below. `.`
+  //   does not match a newline, so the second pattern cannot run off the end of its own line.
+  const fields = [
+    ...[...snapshot.matchAll(/^\s{6}(\w+):/gm)].map((m) => m[1]),
+    ...[...snapshot.matchAll(/\.\.\.\(.*?\?\s*\{\s*(\w+):/g)].map((m) => m[1]),
+  ];
+  assert.ok(fields.length >= 12, 'the snapshot fields were not read — this test would check nothing');
   assert.deepEqual(
     new Set(fields),
     new Set([
@@ -1124,9 +1221,47 @@ test('A2 STATIC CHECK — run_state replays only the whitelisted RunSnapshot fie
       // transcript and no model reasoning. Deriving from agent.request is not the
       // same as replaying it, which is why `request` stays forbidden below.
       'intent',
+
+      // `productModel` REVIEWED 2026-09-19, the day the scanner above was taught to see it.
+      //
+      // WHAT IT IS. `ProductModel` is the union `'apple' | 'apple-max'` and nothing else.
+      // `agent.productModel` is written once, at `startRunInner`, from `modelVerdict.model` —
+      // which is `effectiveProductModel(mode, requested)`, a function whose every return is one of
+      // those two literals. The client's `msg.productModel` reaches it only through
+      // `asProductModel`, which RETURNS THE MATCHED LITERAL rather than the caller's string and
+      // returns null for anything else, and a null is refused by name before the run starts.
+      //
+      // WHY THAT IS SAFE. It is the `refused`/`artifact.tool` property again: a value from a fixed
+      // two-word vocabulary cannot carry prompt text, transcript text, another tenant's row or a
+      // name a model chose. The browser is told which of two products it is watching — which it
+      // chose, in a picker, before the run started.
+      'productModel',
+
+      // `deniedTools` REVIEWED 2026-09-19. Same blind spot, older field.
+      //
+      // `deniedTools(base, perms)` in preferences.ts pushes a name ONLY when `base.has(tool)` —
+      // `base` being the run's own registry tool-name set. So every element is a registry name by
+      // construction, never a key the user invented in their preferences and never model output.
+      'deniedTools',
     ]),
     'runSnapshot changed shape — re-review what the reconnect replay hands the browser',
   );
+  //[[ THE TWO REVIEWS ABOVE, HELD TO THE CODE.
+  //
+  //   Each says "this field can only be a value from a fixed vocabulary". Whitelisting the NAME
+  //   once would otherwise let the value's source be swapped underneath it, which is precisely the
+  //   hole the A5 recovery steer shipped with.
+  assert.match(snapshot, /productModel: agent\.productModel\b/,
+    'productModel is no longer the settled model on the run — re-review what now feeds it');
+  assert.match(
+    readCode('do/session.ts'),
+    /function asProductModel\(x: unknown\)[\s\S]{0,240}?return x === 'apple' \|\| x === 'apple-max' \? x : null;/,
+    'asProductModel no longer confines the wire value to the two literals — the browser can be handed a string the client chose',
+  );
+  assert.match(snapshot, /deniedTools: agent\.deniedTools\b/,
+    'deniedTools is no longer the run own denied list — re-review what now feeds it');
+  assert.match(readCode('preferences.ts'), /if \(base\.has\(tool\)\) out\.push\(tool\);/,
+    'deniedTools no longer confines its names to the tool registry — a preference key can now reach the browser');
   // The whole AgentState is NOT handed over: it holds the transcript (`llm`) and the user id.
   assert.equal(/return\s*\{\s*\.\.\.agent/.test(snapshot), false, 'runSnapshot must not spread AgentState — it contains the transcript and the owner id');
   for (const forbidden of ['llm', 'userId', 'seenCalls', 'request']) {
@@ -1254,12 +1389,75 @@ test('A2 STATIC CHECK — resume replays the same snapshot, and a socket is only
   assert.equal(/as CollabRole/.test(resolver), false, 'a cast is not a check');
 
   // (5): a socket that may watch must not thereby be able to build, edit, stop or restore.
-  const messages = session.slice(session.indexOf('async webSocketMessage('), session.indexOf('async webSocketClose('));
+  // Comments stripped: everything below COUNTS occurrences, and the handler's prose says `me`.
+  const code = readCode('do/session.ts');
+  const messages = code.slice(code.indexOf('async webSocketMessage('), code.indexOf('async webSocketClose('));
+  assert.ok(messages.length > 2000, 'webSocketMessage was not found — this test would check nothing');
   for (const action of ['chat', 'build', 'restore_version']) {
     assert.ok(messages.includes(`mayNot('${action}')`), `the socket write paths must ask for '${action}' before acting`);
   }
-  assert.match(messages, /const me = this\.beatOf\(ws\);[\s\S]{0,400}me === null \|\| !can\(me\.role, action\)/,
+
+  //[[ RESTATED 2026-09-19. THE OLD PIN WAS `const me = this.beatOf(ws);` FOLLOWED WITHIN 400
+  //   CHARACTERS BY THE CAPABILITY EXPRESSION, AND BOTH HALVES OF IT MOVED — UPWARDS.
+  //
+  //   What changed: `const me` became `let me`, and forty lines of per-message re-validation were
+  //   inserted between the read and `mayNot`. The socket's grant is now re-read from this object's
+  //   own access cursor on EVERY message, and the connection is closed outright when that state is
+  //   unreadable, when the membership was removed or suspended, or when the grant's deadline has
+  //   passed. Before, a socket accepted at 09:00 kept the role it was accepted with until it
+  //   happened to be swept. That is strictly stricter, and a pin measured in characters had to go
+  //   red for it — which is the failure mode docs/playbook/GUARDS.md is named for.
+  //
+  //   The property never moved and is asserted directly below: a socket with no resolvable
+  //   identity FAILS the capability question rather than skipping it. `let` adds one new question —
+  //   what may `me` become? — and the three assertions after it answer it: there is exactly one
+  //   assignment, it lives inside the `me !== null` branch (so null can never widen into a role),
+  //   and the role it takes comes from `access.event?.role`, which `accessCursorEvent` has already
+  //   put through `asCollabRole`. Nothing on the wire can reach it.
+  assert.match(messages, /const mayNot = \([\s\S]{0,140}?me === null \|\| !can\(me\.role, action\)/,
     'a socket with no resolvable identity must fail the capability question, not skip it');
+  assert.equal((messages.match(/this\.beatOf\(ws\)/g) ?? []).length, 1,
+    'the socket identity must be read exactly once per message — a second read is a second answer');
+
+  const revalidate = braceBlock(messages, messages.indexOf('if (me !== null) {'));
+  assert.ok(revalidate.length > 600, 'the per-message access re-validation was not found — this test would check nothing');
+  assert.match(revalidate, /const access = await this\.effectiveGrantAccess\(me\.userId, bind\.ownerId, me\.grantExpiresAt\)/,
+    'the socket grant must be re-read from this object own access cursor, not from the attachment alone');
+  for (const [guard, why] of [
+    [/if \(!access\.ok\)[\s\S]{0,160}?ws\.close\(1008/, 'an unreadable access state must close the socket, not be treated as permission'],
+    [/access\.event\?\.access === 'removed' \|\| access\.event\?\.access === 'suspended'[\s\S]{0,160}?ws\.close\(1008/, 'a removed or suspended member must be disconnected'],
+    [/expiresMs <= Date\.now\(\)[\s\S]{0,160}?ws\.close\(1008/, 'an expired grant must be disconnected'],
+  ]) {
+    assert.match(revalidate, guard, why);
+  }
+  // WHAT `me` MAY BECOME. Exactly one assignment, inside the branch above, from the cursor.
+  const assignments = [...messages.matchAll(/(?:^|[^.\w])(me = [^=][^\n]*)/g)].map((m) => m[1].trim());
+  assert.deepEqual(
+    assignments,
+    [
+      // the one read, at the top of the handler
+      'me = this.beatOf(ws);',
+      // and the one refresh, inside the branch below
+      'me = { ...me, role: currentRole, grantExpiresAt: access.expiresAt };',
+    ],
+    'the socket identity is assigned somewhere new — a second assignment is a second way to acquire a role',
+  );
+  assert.ok(revalidate.includes(assignments[1]),
+    'the identity is reassigned outside the `me !== null` branch — an unidentified socket can now acquire a role');
+  assert.match(revalidate, /const currentRole = access\.event\?\.role \?\? me\.role;/,
+    'the refreshed role must come from the stored access event, never from the frame');
+  assert.match(readCode('do/session.ts'), /const role = rawRole === 'none' \? null : asCollabRole\(rawRole\);/,
+    'accessCursorEvent no longer puts the stored role through the allowlist — the refresh above can now widen a socket');
+
+  //[[ AND WHAT `resume` HANDS BACK. It is unchanged — `runSnapshot()` and nothing else — but the
+  //   SNAPSHOT grew two fields that reach the browser, `productModel` and `deniedTools`. Both are
+  //   reviewed beside the allowlist in `A2 STATIC CHECK — run_state replays only the whitelisted
+  //   RunSnapshot fields`, which also had to be taught to SEE them: a conditionally spread key was
+  //   invisible to its six-space anchor, so it had been green for a field it never read.
+  assert.equal((messages.match(/case 'resume':/g) ?? []).length, 1, 'there must be exactly one resume handler');
+  assert.match(braceBlock(messages, messages.indexOf('switch (msg.type)')).slice(0),
+    /case 'resume':[\s\S]{0,160}?type: 'run_state', run: await this\.runSnapshot\(\)[\s\S]{0,40}?\n\s*return;/,
+    'resume must answer with runSnapshot() and nothing else');
 });
 
 // ===========================================================================
@@ -1941,13 +2139,58 @@ test('A4 PRE-EXISTING FINDING — admin routes carry no user identity and bypass
    * reading about a named person and acting on them is not enforced by anything, and should not be
    * inferred from this comment: both kinds sit behind one service-wide credential, which is the
    * finding this whole test is named for.
+   *
+   * ------------------------------------------------------------------------------------------
+   * ONE MORE ADDED 2026-09-19, AND IT IS THE STRONGEST WRITE ON THIS LIST.
+   *
+   *   POST /api/admin/grant-credits — puts up to 1,000,000,000 credits on any account the BODY
+   *     names. It closes a real gap (until now the only credit grant in the system was the Stripe
+   *     webhook, so an operator could not make a customer whole after a failed purchase without
+   *     forging a webhook), and it is the first admin route that can hand out the paid resource.
+   *
+   *   Three things make it bounded, and all three are asserted below rather than described:
+   *
+   *     1. THE AUDIT ROW IS FILED BEFORE THE WRITE. `auditAdminAction(c, 'admin.grant-credits',
+   *        target)` precedes the DO fetch, so the attempt is recorded whether or not it lands —
+   *        the same reasoning set-plan's own comment gives. A row filed only on success cannot
+   *        show the half-completed grant an operator is later asked about.
+   *     2. THE IDEMPOTENCY KEY IS NAMESPACED. It reaches QuotaDO as `admin:${eventId}`, never the
+   *        operator's string raw. QuotaDO's /grant-credits claims an event id exactly once, and
+   *        Stripe's ids are `evt_…`; without the prefix an operator could present a real Stripe
+   *        event id and permanently SUPPRESS the legitimate grant for that purchase — a way to
+   *        silently deny a customer something they paid for, using the route meant to help them.
+   *     3. IT CANNOT SUBTRACT. `amount < 1` is refused at the edge and QuotaDO clamps at zero. A
+   *        billing path that can subtract is a billing path that can erase evidence of spend.
+   *
+   *   WHAT IS *NOT* TRUE OF IT, recorded here because a review that only lists comforts is not a
+   *   review: it does NOT validate `userId` before `QUOTA_DO.idFromName(target)`. Any non-empty
+   *   string becomes a Durable Object name and the route creates one — exactly the defect the
+   *   account-lookup review two paragraphs up names as the reason THAT route tests UUID_RE. It is
+   *   the same shape as the pre-existing set-plan, so it is inside this finding's stated blast
+   *   radius rather than a new class of exposure, and it needs the admin key like everything else
+   *   here. It is nonetheless the one thing on this route worth tightening, and it is written down
+   *   rather than left as a silence.
    */
   assert.deepEqual(byBodyUser.sort(), [
     'GET /api/admin/account/:userId',
     'GET /api/admin/billing-reconcile',
+    'POST /api/admin/grant-credits',
     'POST /api/admin/quota-reset',
     'POST /api/admin/set-plan',
   ], 'an admin route that acts on a named user was added or removed — review it');
+
+  // The three bounds named in the grant-credits review, held to the code.
+  const grant = bodies.find((r) => r.path === '/api/admin/grant-credits');
+  assert.ok(grant, 'POST /api/admin/grant-credits is in the inventory but its body could not be located');
+  assert.ok(
+    grant.body.indexOf("auditAdminAction(c, 'admin.grant-credits'") > 0
+    && grant.body.indexOf("auditAdminAction(c, 'admin.grant-credits'") < grant.body.indexOf('QUOTA_DO'),
+    'the credit grant is no longer audited before the write — a grant that fails halfway leaves no record of the attempt',
+  );
+  assert.match(grant.body, /eventId: `admin:\$\{idempotencyKey\}`/,
+    'the operator idempotency key is no longer namespaced — a Stripe event id could be replayed or suppressed through this route');
+  assert.match(grant.body, /amount < 1 \|\| amount > 1_000_000_000/,
+    'the credit grant is no longer bounded to a positive amount — a billing path that can subtract can erase evidence of spend');
 
   // The id validation named above, asserted so the review is not the only thing holding it.
   const accountBody = bodies.find((r) => r.path === '/api/admin/account/:userId');
@@ -2050,8 +2293,27 @@ test('A5 tool output is fenced, not sanitised — an injection payload survives 
 });
 
 test('A5 STATIC CHECK — the non-tool transcript injections are the known, reviewed set', () => {
-  const session = read('do/session.ts');
-  const pushes = [...session.matchAll(/agent\.llm\.push\(\{[\s\S]{0,2600}?\n\s*\}\);/g)].map((m) => m[0]);
+  //[[ THE SCANNER ITSELF WAS WRONG, AND IT HID THE FIFTH INJECTION INSIDE THE FOURTH.
+  //
+  //   It matched `agent.llm.push({ … \n  });` — a terminator that REQUIRES A NEWLINE before the
+  //   closing `});`. A push written on ONE line cannot end such a match, so the scan ran past it
+  //   and swallowed it into whichever earlier push it was reading. That is exactly what happened
+  //   when the missing-artifact steer was added on a single line: it was absorbed into the
+  //   `role: 'assistant'` push above it, and the only visible symptom was the COUNT moving — the
+  //   `dynamic` list was wrong too, silently, and had it not moved the count this would have
+  //   reviewed a blob and called it a push.
+  //
+  //   Braces are the property. `braceBlock` walks each push's own object literal to its own
+  //   closing brace, skipping strings and comments, so one push is one unit however it is spelled.
+  //   Comments are stripped first: this test COUNTS, and the handler's prose quotes its own pushes.
+  const session = readCode('do/session.ts');
+  const pushes = [];
+  for (let at = session.indexOf('agent.llm.push('); at !== -1; at = session.indexOf('agent.llm.push(', at + 1)) {
+    const block = braceBlock(session, at + 'agent.llm.push('.length);
+    assert.ok(block.length > 10, `a transcript push at ${at} could not be read — this test would check less than it claims`);
+    pushes.push(block);
+  }
+  assert.ok(pushes.length >= 8, 'the transcript pushes were not found — this test would check nothing');
   const userPushes = pushes.filter((p) => /role:\s*'user'/.test(p));
   //[[ FOUR, AND THIS TRIPWIRE EARNED ITS PLACE THE DAY THE FOURTH WAS ADDED.
   //
@@ -2069,9 +2331,27 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
   //   the text is returned untouched and `refused` stays null. `refused` is therefore a value from
   //   a FIXED VOCABULARY, which is the property that makes interpolating it safe — and that is what
   //   the assertion below pins, rather than the absence of a `${`.
-  assert.equal(userPushes.length, 4, 'a user-role transcript injection was added or removed — review it for injection risk');
+  //[[ FIVE SINCE 2026-09-19. THE FIFTH IS THE MISSING-ARTIFACT STEER, AND IT IS REVIEWED.
+  //
+  //   WHAT IT IS. When the request was a direct order to make an image or a 3-D model and the run
+  //   is ending without one, session.ts pushes: "The requested artifact has not been created in
+  //   this run. Call ${artifact.tool} now." It interpolates a tool name, which is the exact shape
+  //   the fourth shipped with and which this assertion caught a week ago.
+  //
+  //   WHY THIS ONE IS SAFE, and it is the `rescued.refused` argument again rather than a new one:
+  //   `artifact.tool` is `requestedArtifactTool(request)`, whose every return is one of the two
+  //   STRING LITERALS 'generate_image' and 'generate_model', or null. The request text is read only
+  //   to DECIDE WHICH — it is matched against anchored regexes and the captured groups are tested,
+  //   never returned. No substring of anything the user or the model wrote can come back out of it.
+  //   Nothing model-authored reaches it at all: `agent.request` is the person's own prompt.
+  //
+  //   And it is fenced twice over: the push is guarded by a membership test against the run's own
+  //   tool definitions, so the name is additionally one the registry currently offers. Both facts
+  //   are asserted below, because a whitelisted NAME with a swapped SOURCE is how the fourth
+  //   arrived — as a bug fix.
+  assert.equal(userPushes.length, 5, 'a user-role transcript injection was added or removed — review it for injection risk');
   const dynamic = userPushes.filter((p) => /\$\{/.test(p));
-  assert.equal(dynamic.length, 2, 'exactly two user-role injections should carry interpolated content');
+  assert.equal(dynamic.length, 3, 'exactly three user-role injections should carry interpolated content');
   assert.ok(
     dynamic.some((p) => /critiqueToText\(critique\)/.test(p)),
     'the visual critique hand-back should still be one of the dynamic user-role injections',
@@ -2087,6 +2367,32 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
   const src = read('tool-recovery.ts');
   assert.match(src, /if \(!known\.has\(name\)\) return NOTHING\(raw\);/,
     'tool-recovery no longer confines `refused` to the registry — the model can choose the string session.ts interpolates');
+
+  // THE FIFTH, HELD TO THE CODE THE SAME WAY.
+  const steer = dynamic.find((p) => /artifact\.tool/.test(p));
+  assert.ok(steer, 'the missing-artifact steer is gone, or no longer names the tool it is waiting for');
+  assert.deepEqual(
+    [...steer.matchAll(/\$\{([^}]*)\}/g)].map((m) => m[1].trim()),
+    ['artifact.tool'],
+    'the artifact steer grew a second interpolation — every one of them is a channel into a user-role turn',
+  );
+  // (a) the vocabulary is fixed: every return is a literal, so no substring of the request escapes.
+  const completion = readCode('artifact-completion.ts');
+  const chooser = bodyBlock(completion, completion.indexOf('export function requestedArtifactTool('));
+  assert.ok(chooser.length > 400, 'requestedArtifactTool was not found — this test would check nothing');
+  const returns = [...chooser.matchAll(/return\s+([^;]+);/g)].map((m) => m[1].trim());
+  assert.ok(returns.length >= 4, `requestedArtifactTool returned from ${returns.length} places — the scan missed its body`);
+  assert.deepEqual(
+    [...new Set(returns)].sort(),
+    ["'generate_image'", "'generate_model'", 'null'],
+    'requestedArtifactTool no longer returns a fixed vocabulary — the steer above can now interpolate text the request chose',
+  );
+  // (b) and the name is additionally one the run's own registry offers at that moment.
+  assert.match(
+    session,
+    /const available = toolDefs\([\s\S]{0,160}?\.some\(\(tool\) => tool\.name === artifact\.tool\);/,
+    'the artifact steer no longer checks the name against the run tool definitions before naming it to the model',
+  );
   for (const p of dynamic) {
     assert.equal(/out\.resultForLlm|res\.data|call\.arguments/.test(p), false, 'raw tool output must not be laundered into a user-role message');
   }
@@ -2462,11 +2768,39 @@ test('A8 STATIC CHECK — the plugin token is hashed, TTL-bounded and compared i
   //
   //   So each guarantee is now asserted as its own fact, and the negative ones carry the weight:
   //   it is easy to keep a `timingSafeEqual` call while quietly adding a path around it. ]]
-  assert.match(
-    poll,
-    /if \(!expect \|\| Date\.now\(\) - issuedAt > PLUGIN_TOKEN_TTL_MS\)[\s\S]{0,300}?error: 'token expired'[\s\S]{0,300}?\},?\s*401\s*\)/,
-    'an unregistered or TTL-expired token must be refused with a 401',
+  //[[ RESTATED 2026-09-19, AND FOR THE SECOND TIME IT WAS A DISTANCE THAT MOVED, NOT A GUARANTEE.
+  //
+  //   The pin above read `if (!expect || … > PLUGIN_TOKEN_TTL_MS)` followed WITHIN 300 CHARACTERS
+  //   by `error: 'token expired'` and a 401. The pairing path then learned to drop the cached
+  //   plugin capability report when a pairing lapses — five lines inserted between the condition
+  //   and the refusal — and the refusal slid past 300. Nothing was weakened; a stale capability
+  //   report surviving an expired pairing was a small bug and it is gone. The comment directly
+  //   above says this file already learned this lesson once, from a reformat, and the answer was
+  //   "assert each guarantee as its own fact". A character budget is the same mistake in a
+  //   different costume: it is a distance, not a property.
+  //
+  //   The property is the BLOCK. Whatever grows inside it, `if (…) { … }` still ends at its own
+  //   closing brace, and what must be true is that the block's only way out is a 401 — asserted
+  //   here as the pair of facts "it refuses with 401" and "it returns nothing else at all".
+  const expiryGuard = braceBlock(poll, poll.indexOf('if (!expect || Date.now() - issuedAt > PLUGIN_TOKEN_TTL_MS)'));
+  assert.ok(expiryGuard.length > 80, 'the TTL/unregistered guard was not found — this test would check nothing');
+  assert.match(expiryGuard, /error: 'token expired'[\s\S]{0,300}?\},?\s*401\s*\)/,
+    'an unregistered or TTL-expired token must be refused with a 401');
+  assert.deepEqual(
+    [...expiryGuard.matchAll(/return\s+(?!json\()/g)].map((m) => m[0].trim()),
+    [],
+    'the TTL guard grew a return that is not a refusal — that is a way past the compare below',
   );
+  // AND IT MUST STILL BE A REFUSAL FOR EVERYONE. The new lines read `this.activePluginTokenHash`
+  // and delete a capability key; they must not learn to compare the caller's token, because a
+  // branch taken before the constant-time compare is a branch that answers differently to a
+  // half-right guess.
+  // Strings and comments stripped first: the refusal it returns says the words "token expired",
+  // and a scanner that reads its own refusal text finds the identifier it is looking for every
+  // time. (docs/playbook/GUARDS.md, rule 2 — the better the message, the louder the false find.)
+  const expiryCode = expiryGuard.replace(/'(?:[^'\\]|\\.)*'/g, "''").replace(/\/\/.*$/gm, '');
+  assert.equal(/\btoken\b/.test(expiryCode), false,
+    'the expiry guard now reads the presented token — a pre-compare branch on it is a timing oracle');
   assert.match(poll, /await sha256hex\(token\)/, 'the presented cleartext must be SHA-256 hashed');
   assert.match(
     poll,
@@ -2504,6 +2838,30 @@ test('A8 STATIC CHECK — the plugin token is hashed, TTL-bounded and compared i
     'the token guard must return nothing but a json() refusal — any other return is a path around the compare',
   );
   assert.ok(poll.indexOf('return json({ error') < poll.indexOf('handlePluginPoll'), 'every refusal must precede any work');
+
+  //[[ THE TTL NOW SLIDES, AND THAT IS A CHANGE TO WHAT "TTL-BOUNDED" MEANS. REVIEWED 2026-09-19.
+  //
+  //   `pluginTokenIssuedAt` used to be written once, at pairing, so the 30 days ran from the
+  //   pairing rather than from use and a Studio polling every four seconds was cut off on the same
+  //   day as one never opened again. It now slides forward past the halfway mark. The bound is
+  //   therefore on INACTIVITY, not on absolute age: an actively used pairing does not lapse.
+  //
+  //   What makes that safe is ORDER, and only order. The renewal sits AFTER `timingSafeEqual`
+  //   succeeded, so only a caller who already presented the right token can extend anything. Moved
+  //   above the compare it would resurrect a pairing that had already lapsed — the expiry branch
+  //   would become unreachable, which is the same as having no expiry at all. Both facts are
+  //   asserted: that it happens after the compare, and that it writes nothing but the timestamp.
+  const compareAt = poll.indexOf('timingSafeEqual(');
+  const renewAt = poll.indexOf('PLUGIN_TOKEN_TTL_MS / 2');
+  assert.ok(renewAt > 0, 'the sliding renewal was not found — this test would check nothing');
+  assert.ok(compareAt > 0 && compareAt < renewAt,
+    'the pairing renewal now runs before the token compare — an expired pairing can renew itself and the TTL is unreachable');
+  const renewal = braceBlock(poll, renewAt);
+  assert.deepEqual(
+    [...renewal.matchAll(/this\.ctx\.storage\.(\w+)\(\s*'([^']+)'/g)].map((m) => `${m[1]} ${m[2]}`),
+    ['put pluginTokenIssuedAt'],
+    'the renewal writes something other than the issued-at timestamp — re-review what an ordinary poll can now change',
+  );
 
   const index = read('index.ts');
   const guard = index.slice(index.indexOf("app.post('/api/studio/poll'"), index.indexOf('// ------'.padEnd(0) + "app.get('/api/providers'"));
