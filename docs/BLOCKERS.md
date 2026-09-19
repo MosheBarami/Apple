@@ -536,6 +536,22 @@ on `public.projects` can return a row to a link guest, because a bearer secret
 cannot be looked up under RLS. Commit a72a996 has the full account, including
 why thirty-two green tests could not observe it.
 
+**UPDATE 2026-09-19, later the same day: half of this is now done.**
+
+Migration 0011 was applied to the production database through the Supabase SQL
+editor, with the owner's approval, and verified rather than assumed:
+`project_for_link_grant` exists, `prosecdef` is true, and the roles that may
+execute it are `{anon, service_role}` — NOT `authenticated`, which is the
+property that matters. Item (1) below is closed.
+
+Item (2) is not, and it is the one that should not be done by an agent anyway.
+Writing a credential into a secret store is a protected action here and the
+guard refused it, which is the right answer: installing a secret is the owner's
+act. `infra/provision-outbox-token.mjs` now does both halves in one command —
+it generates the token, prints the SQL carrying only the SHA-256, and pipes the
+token straight into `wrangler secret put` so it never reaches a scrollback, a
+shell history or a transcript. The token is never printed.
+
 **What is blocked, exactly two things, and neither is code:**
 
 1. **Migration `infra/supabase/migrations/0011_link_guest_project_read.sql` has
