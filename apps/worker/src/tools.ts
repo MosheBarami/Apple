@@ -2977,8 +2977,20 @@ export const TOOLS: Record<string, ToolImpl> = {
       name: 'get_genre_references',
       description:
         'Read inspected visual references and authored implementation guidance for a Roblox genre and optional aspect. Returns source URLs, scoped observations, official documentation, coverage gaps and explicit omission counts. Reference-only: these are not reusable assets, training examples or evidence that the generated game has passed visual review. Works without Studio and makes no network requests.',
+      //[[ `genre` IS A FREE STRING, DELIBERATELY, AND IT USED TO BE AN ENUM OF TEN.
+      //
+      //   The catalogue covers ten genres. A customer wanting a fishing game, a pet sim or a
+      //   bedwars clone met a parameter that forbade the word — so the model could not ask, got no
+      //   answer, and therefore had no signal that nobody had ever looked at that kind of game.
+      //   What a model does with no signal is proceed as though it knew.
+      //
+      //   Now the question can be asked and the answer is a fact: not covered, here is what the
+      //   catalogue has, here is a near one ONLY if your own words named it, and here is a sentence
+      //   to say out loud so the customer knows the look is the model's judgement rather than
+      //   something taken from a game that shipped. The enum lives in the description, where it
+      //   guides without forbidding. ]]
       parameters: S({
-        genre: { type: 'string', enum: [...GENRE_KIT_IDS] },
+        genre: { type: 'string', description: `Covered: ${GENRE_KIT_IDS.join(', ')}. Any other genre is allowed and answers with what is NOT known about it.` },
         aspect: { type: 'string', enum: [...GENRE_REFERENCE_GUIDE_ASPECT_IDS] },
       }, ['genre']),
     },

@@ -232,6 +232,21 @@ export interface GenreReferenceGuideNoMatch {
   reason: 'genre_required' | 'unknown_genre' | 'unknown_aspect';
   knownGenres: readonly GenreKitId[];
   knownAspects: readonly GenreReferenceGuideAspectId[];
+  /** The genre that was asked for, when it was not one of ours. */
+  requested?: string;
+  /**
+   * A covered genre whose id appears INSIDE the words the customer used, or null.
+   *
+   * NOT A SIMILARITY JUDGEMENT, and the distinction is the whole reason this field can exist. A
+   * table saying "pet simulator is near simulator" would be somebody's opinion about Roblox genres
+   * dressed as data, and the next agent would ship a horror palette for a fishing game because a
+   * row said they were adjacent. This matches only on the request's OWN wording: "pet simulator"
+   * contains "simulator", so the customer already said it. When nothing matches, this is null and
+   * the honest answer is that the catalogue has nothing.
+   */
+  nearestByWording?: GenreKitId | null;
+  /** What the model must pass on to the customer rather than quietly substituting a genre. */
+  saySoOutLoud?: string;
 }
 
 export type GenreReferenceGuideResult = GenreReferenceGuideSuccess | GenreReferenceGuideNoMatch;
@@ -263,12 +278,70 @@ function knownAspect(value: unknown): value is GenreReferenceGuideAspectId {
   return typeof value === 'string' && ASPECT_IDS.includes(value);
 }
 
-function noMatch(reason: GenreReferenceGuideNoMatch['reason']): GenreReferenceGuideNoMatch {
-  return {
+/**
+ * A covered genre whose id is spelled inside the requested text, or null.
+ *
+ * Underscores are the catalogue's spelling and spaces are a person's, so `anime_battle` has to
+ * match "anime battle". Longest first: "anime battle" must not resolve to nothing because a
+ * shorter id was tested first, and a request naming two would take the more specific one.
+ */
+/**
+ * The requested genre, but only when quoting it back is safe.
+ *
+ * REFLECTING A CALLER'S STRING IS HOW INJECTED TEXT REACHES A MODEL, and this module already had a
+ * test saying so — `<script>unknown_genre</script>` must not come back in the answer. Naming what
+ * was asked for is worth having, so the rule is the strict one: echo the text only when cleaning it
+ * changes NOTHING. A genre a person actually types is letters, digits, spaces and hyphens; anything
+ * else is either not a genre or not from a person, and both get the unquoted sentence instead.
+ *
+ * Not "clean it and echo the cleaning": that would quote mangled attacker text back at the model,
+ * which is the same defect wearing a shorter string.
+ */
+export function safeGenreEcho(requested: string): string | null {
+  if (typeof requested !== 'string' || requested.length === 0 || requested.length > 40) return null;
+  return /^[A-Za-z0-9][A-Za-z0-9 _-]*$/.test(requested) ? requested : null;
+}
+
+export function nearestGenreByWording(requested: string): GenreKitId | null {
+  const text = requested.toLowerCase().replace(/[\s_-]+/g, ' ').trim();
+  if (!text) return null;
+  const byLength = [...GENRE_KIT_IDS].sort((a, b) => b.length - a.length);
+  for (const id of byLength) {
+    if (text.includes(id.replace(/_/g, ' '))) return id;
+  }
+  return null;
+}
+
+function noMatch(reason: GenreReferenceGuideNoMatch['reason'], requested?: string): GenreReferenceGuideNoMatch {
+  const base: GenreReferenceGuideNoMatch = {
     noMatch: true,
     reason,
     knownGenres: GENRE_KIT_IDS,
     knownAspects: GENRE_REFERENCE_GUIDE_ASPECT_IDS,
+  };
+  if (reason !== 'unknown_genre' || typeof requested !== 'string') return base;
+
+  //[[ AN UNCOVERED GENRE IS A FACT TO REPORT, NOT A GAP TO PAPER OVER.
+  //
+  //   The catalogue holds ten genres, every reference visually inspected. A customer asking for an
+  //   eleventh — a fishing game, a pet sim, a bedwars clone — used to reach a parameter whose enum
+  //   forbade the word, so the model could not ask the question at all and had no signal that the
+  //   answer was "nobody has looked at that". What it does with no signal is proceed as if it knew.
+  //
+  //   So: say the genre is not covered, say it in a sentence meant to be passed on, and offer a
+  //   near one ONLY when the customer's own words contain it. Everything the model then builds is
+  //   its own judgement rather than something backed by an inspected reference, and the customer
+  //   is the one who gets to decide whether that is good enough. ]]
+  const nearest = nearestGenreByWording(requested);
+  const echo = safeGenreEcho(requested);
+  const named = echo === null ? 'the genre you asked for' : `"${echo}"`;
+  return {
+    ...base,
+    ...(echo === null ? {} : { requested: echo }),
+    nearestByWording: nearest,
+    saySoOutLoud: nearest
+      ? `There are no inspected visual references for ${named}. The catalogue covers ${nearest}, which appears in the words you used — I can work from that, but it is a different game and the look will not be backed by a reference for yours. Say if you would rather I design it from scratch and describe what I am choosing.`
+      : `There are no inspected visual references for ${named}, and none of the ${GENRE_KIT_IDS.length} genres in the catalogue is named in your request. I can still build it — the look will be my own judgement rather than something taken from a game that shipped, and I will describe what I am choosing as I go.`,
   };
 }
 
@@ -422,7 +495,7 @@ function serializedLength(value: unknown): number {
  */
 export function getGenreReferenceGuide(input: GenreReferenceGuideInput = {}): GenreReferenceGuideResult {
   if (input.genre === undefined) return noMatch('genre_required');
-  if (!knownGenre(input.genre)) return noMatch('unknown_genre');
+  if (!knownGenre(input.genre)) return noMatch('unknown_genre', String(input.genre));
   if (input.aspect !== undefined && !knownAspect(input.aspect)) return noMatch('unknown_aspect');
 
   const genre = input.genre;
