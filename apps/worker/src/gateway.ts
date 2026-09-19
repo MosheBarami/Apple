@@ -79,8 +79,8 @@ export const DEFAULT_MODELS: Record<string, ModelCfg> = {
   // PRODUCT MODEL SPLIT.
   //
   // Product selection is translated in SessionDO: Apple always uses clay; Apple MAX uses
-  // stone/rune. Qwen3 is the measured cheap lane for quick Q&A/small edits. GLM-4.7 Flash is the
-  // final MAX choice: 131k context plus native multi-turn function calling and reasoning.
+  // stone/rune. Qwen3 is the measured cheap lane for quick Q&A/small edits. GLM-5.3 Flash is the
+  // MAX choice: 1.3M context, native multi-turn function calling, reasoning, and vision.
   // Neither is vision-capable, so visual critique deliberately remains on GLM-5.3 Flash.
   // -------------------------------------------------------------------------
 
@@ -89,8 +89,29 @@ export const DEFAULT_MODELS: Record<string, ModelCfg> = {
   // Agent and Super Agent need enough output room for a complete Luau tool call. The global
   // neuron reservation remains the hard spend gate, so these ceilings do not create an unbounded
   // bill; actual usage is settled after the provider responds.
-  stone: { id: '@cf/zai-org/glm-4.7-flash', nativeTools: true, maxTokens: 5600, ctx: 131_072, temperature: 0.25, reasoningEffort: 'low' },
-  rune: { id: '@cf/zai-org/glm-4.7-flash', nativeTools: true, maxTokens: 6500, ctx: 131_072, temperature: 0.25, reasoningEffort: 'low' },
+  //[[ APPLE MAX RUNS ON GLM-5.3 FLASH. Owner decision, 2026-09-19, and the evidence agrees with it.
+  //
+  //   The lane was on glm-4.7-flash, and a fresh-context reviewer found the problem with that:
+  //   `docs/evals/RESULTS.md` has NO glm-4.7 row at all. The only MAX model ever measured on this
+  //   product's eval suite is glm-5.3-flash (`glm-final | stone | 98.9`), and it had been demoted to
+  //   the vision lane — so the mode a customer pays for was the unevaluated one.
+  //
+  //   Read honestly, that is an argument for 5.3 and NOT a claim that 5.3 is 2.1 points better:
+  //   docs/research/hf-specialists.md says the suite is saturated and the spread is inside
+  //   run-to-run variance, and docs/evals/FINDINGS.md says the suite no longer exists in that form.
+  //   What can be said is that one of these two has been measured on this product and the other has
+  //   not, and the paid lane should not be the unmeasured one.
+  //
+  //   It also buys two capabilities: 5.3 Flash is natively multimodal, so the MAX lane and the
+  //   visual critic are now the same model rather than two, and the context window goes from 131k
+  //   to 1.3M. Prompt trimming is governed by MAX_PROMPT_CHARS in do/session.ts, not by `ctx`, so
+  //   the bigger window changes what is POSSIBLE here, not what is sent today.
+  //
+  //   COST: 5.3 Flash is dearer per token than 4.7 Flash and Cloudflare requires a paid plan or
+  //   prepaid AI Gateway credits for it. The daily and monthly neuron caps remain the spend gate;
+  //   this raises the price of a MAX step, not the ceiling on the bill. ]]
+  stone: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: true, maxTokens: 5600, ctx: 1_310_720, temperature: 0.25, reasoningEffort: 'low' },
+  rune: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: true, maxTokens: 6500, ctx: 1_310_720, temperature: 0.25, reasoningEffort: 'low' },
 
   memory: { id: '@cf/qwen/qwen3-30b-a3b-fp8', nativeTools: false, maxTokens: 800, ctx: 32_768, temperature: 0.2 },
 
@@ -111,7 +132,10 @@ const LEGACY_USER_MODEL_IDS = new Set([
   '@cf/openai/gpt-oss-20b',
   '@cf/openai/gpt-oss-120b',
   '@cf/meta/llama-3.2-11b-vision-instruct',
-  '@cf/zai-org/glm-5.3-flash',
+  // '@cf/zai-org/glm-5.3-flash' WAS HERE AND IS NOT ANY MORE. This set exists to stop a stale KV
+  // override dragging users back onto a model the product has moved off. 5.3 Flash is the model the
+  // product has moved ON to, so leaving it here would silently discard a deliberate KV experiment
+  // naming the current production model — a filter that ignores the thing it is meant to protect.
 ]);
 
 function isModelCfg(value: unknown): value is ModelCfg {

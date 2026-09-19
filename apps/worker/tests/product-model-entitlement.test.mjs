@@ -31,6 +31,11 @@ function bundle(entry, name) {
 
 const { SessionDO } = await import(`file://${bundle(join(WORKER, 'src', 'do', 'session.ts'), 'session')}`);
 const shared = await import(`file://${bundle(join(WORKER, '..', '..', 'packages', 'shared', 'src', 'index.ts'), 'shared')}`);
+// The routing table itself, so this file asserts WHICH LANE a product model reaches rather than
+// which model id was current the day it was written. The ids were literals here and went stale the
+// moment Apple MAX moved from glm-4.7-flash to glm-5.3-flash — a test failing because the product
+// changed on purpose reads as the change being wrong.
+const { DEFAULT_MODELS } = await import(`file://${bundle(join(WORKER, 'src', 'gateway.ts'), 'gateway')}`);
 
 function result(rows = [], value = null) {
   return { toArray: () => rows, one: () => value };
@@ -220,11 +225,16 @@ test('free Apple can ride Stone tools while its identity is persisted and return
 
 test('ProductModel, not Plan/Agent autonomy, selects the foundation that reaches Workers AI', async () => {
   const cases = [
-    { plan: 'free', mode: 'clay', productModel: 'apple', expected: '@cf/qwen/qwen3-30b-a3b-fp8' },
-    { plan: 'free', mode: 'stone', productModel: 'apple', expected: '@cf/qwen/qwen3-30b-a3b-fp8' },
-    { plan: 'builder', mode: 'clay', productModel: 'apple-max', expected: '@cf/zai-org/glm-4.7-flash' },
-    { plan: 'builder', mode: 'stone', productModel: 'apple-max', expected: '@cf/zai-org/glm-4.7-flash' },
+    { plan: 'free', mode: 'clay', productModel: 'apple', expected: DEFAULT_MODELS.clay.id },
+    { plan: 'free', mode: 'stone', productModel: 'apple', expected: DEFAULT_MODELS.clay.id },
+    { plan: 'builder', mode: 'clay', productModel: 'apple-max', expected: DEFAULT_MODELS.stone.id },
+    { plan: 'builder', mode: 'stone', productModel: 'apple-max', expected: DEFAULT_MODELS.stone.id },
   ];
+
+  // Reading the table would make this vacuous if the two lanes ever pointed at one model, so say
+  // out loud that they are different before asserting anything about which is which.
+  assert.notEqual(DEFAULT_MODELS.clay.id, DEFAULT_MODELS.stone.id,
+    'the free and MAX lanes resolve to the same model — this test can no longer tell them apart');
 
   for (const c of cases) {
     const h = makeSession({
