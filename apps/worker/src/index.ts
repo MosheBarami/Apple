@@ -298,6 +298,7 @@ import {
   type RateLimitVerdict,
 } from './public-api';
 import type { RenderViewResult, OpResult, StudioOp, QuotaState, RunSnapshot, PairingCodeDto, StudioLinkSummary } from '@golem/shared';
+import { PRODUCT_ORIGIN, LEGACY_PRODUCT_HOST } from '@golem/shared';
 import { canUseProductModel, isPlanId, PRICE_CURRENCY, type ProductModel } from '@golem/shared';
 import { MAX_ATTACHMENT_BYTES, attachmentRefusalMessage, type AttachmentRefusal } from '@golem/shared';
 
@@ -491,6 +492,34 @@ function ipLimited(ip: string, limit = 20, windowMs = 60_000): boolean {
  * and the route on the analytics event are labelled by the same function and cannot drift.
  */
 app.use('*', sentryMiddleware(routeLabel));
+
+//[[ THE OLD NAME STOPS SERVING THE PRODUCT.
+//
+//   golem.moshe-barami111.workers.dev was a COMPLETE SECOND COPY of the product, not a stale one:
+//   /, /app, /pricing, /privacy and /terms all returned 200 with bytes identical to the apple host,
+//   /app served the same JS bundle, robots.txt said `Allow: /`, and nothing redirected — rel=canonical
+//   is a hint to a crawler, not an instruction to a browser. So a bookmark, an old link or a search
+//   result put a person on a hostname carrying the brand this product is supposed to have left, and
+//   kept them there for the whole session, address bar and all.
+//
+//   PAGES REDIRECT; APIs DO NOT. Every shipped client already points at the apple host — the two
+//   Studio plugins and the Luau SDK were checked one by one — so no installed thing breaks. But a
+//   301 on `/api` or `/v1` would turn an authenticated POST into a GET at the new host and lose the
+//   body, so those keep answering where they are. The rule is "stop showing the old name to a
+//   person", not "sever the old name", and those are different promises.
+//
+//   308 rather than 301: a permanent redirect that is also guaranteed to preserve the method, for
+//   the day something non-GET does arrive at a page route.
+//
+//   Derived from PRODUCT_ORIGIN rather than typed, so the destination cannot drift from the one
+//   definition of where this product lives. ]]
+app.use('*', async (c, next) => {
+  const url = new URL(c.req.url);
+  if (url.hostname !== LEGACY_PRODUCT_HOST) return next();
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/v1')) return next();
+  const target = new URL(url.pathname + url.search, PRODUCT_ORIGIN);
+  return c.redirect(target.toString(), 308);
+});
 
 app.use('/api/*', async (c, next) => {
   await next();

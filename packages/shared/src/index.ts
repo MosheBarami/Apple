@@ -1695,6 +1695,25 @@ export const PROTOCOL_VERSION = 1;
  * So this constant names an asset that EXISTS and is NOT DISTRIBUTABLE. Nothing may present it as
  * an install path, and nothing may describe it as "the previous listing" — it is the current one.
  */
+/**
+ * WHERE THIS PRODUCT LIVES. One definition.
+ *
+ * It was a module-local const in asset-library.ts and a literal in Bridge.luau, prompts.ts, the
+ * site and three tests. That was survivable while there was one host. There are two: the worker is
+ * still deployed under its old name at golem.moshe-barami111.workers.dev, and until tonight that
+ * host served a complete, crawlable copy of the product — same bytes, same bundle, no redirect. The
+ * legacy host now 308s its page routes here, and the destination is read from this constant rather
+ * than typed beside the redirect, because a redirect pointing somewhere slightly different from the
+ * canonical origin is a loop waiting to happen.
+ */
+export const PRODUCT_ORIGIN = 'https://apple.moshe-barami111.workers.dev';
+
+/**
+ * The hostname the product used to answer on. Named so a guard can assert it is not serving pages,
+ * rather than everyone agreeing to remember it.
+ */
+export const LEGACY_PRODUCT_HOST = 'golem.moshe-barami111.workers.dev';
+
 export const STUDIO_PLUGIN_ASSET_ID = '107230158271368';
 
 /**

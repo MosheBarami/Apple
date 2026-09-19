@@ -692,7 +692,8 @@ export function validateProvenance(rec: unknown, opts: ValidateOptions = {}): Va
  * Rows already written keep the old URL. That is history and is left alone; this only changes what
  * new rows record.
  */
-const PRODUCT_ORIGIN = 'https://apple.moshe-barami111.workers.dev';
+// Was a literal here. One definition now lives in @golem/shared; see PRODUCT_ORIGIN there.
+import { PRODUCT_ORIGIN } from '@golem/shared';
 
 /**
  * Build the provenance record for something Golem authored itself — procedural geometry written
