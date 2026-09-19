@@ -692,7 +692,20 @@ export class SessionDO extends DurableObject<Env> {
         }
       }
       const lastSeen = (await this.ctx.storage.get<number>('pluginLastSeen')) ?? 0;
-      this.pluginSeenRecently = Date.now() - lastSeen < 8000;
+      //[[ THE LAST HEARTBEAT, NOT A VERDICT ABOUT IT.
+      //
+      //   This line used to read `this.pluginSeenRecently = Date.now() - lastSeen < 8000`, and that
+      //   fixed 8 seconds is the rule `pluginConnected` was CHANGED AWAY FROM — the comment on it
+      //   says why in one sentence: a fixed threshold cannot work once the sleep is adaptive, and
+      //   8s would declare a healthy parked plugin dead 2s into a 10s hold. The fix landed in one
+      //   place. This was the other one, and it is the one the MODEL reads.
+      //
+      //   What the customer saw: the header said "Studio last connected 13 seconds ago", the panel
+      //   beside it said "Studio not connected", and the assistant said it had no way to check —
+      //   three answers to one question on one screen, because two of them came from a rule the
+      //   third had already replaced. Storing the timestamp and asking one function about it is
+      //   what makes a second answer impossible rather than merely unlikely. ]]
+      this.pluginLastSeenMs = lastSeen;
       //[[ A playtest outlives the instance that started it, for the same reason a run does.
       //
       //   `playtestRun` was instance-only, so an eviction mid-playtest lost it — and the guard
@@ -1299,7 +1312,28 @@ export class SessionDO extends DurableObject<Env> {
    */
   private async pluginConnected(): Promise<boolean> {
     const stored = (await this.ctx.storage.get<number>('pluginLastSeen')) ?? 0;
-    const last = Math.max(stored, this.lastSeenWrittenAt);
+    return this.connectedGiven(Math.max(stored, this.lastSeenWrittenAt, this.pluginLastSeenMs));
+  }
+
+  /**
+   * The same question, answered without awaiting storage.
+   *
+   * IT HAS TO BE SYNCHRONOUS because `AgentCtx.studioConnected` is, and that interface decides
+   * which tools exist for a run and what the system prompt tells the model. Making it async would
+   * mean changing the tool registry's signature; keeping a second, simpler rule meant the model was
+   * answering from one clock and the screen from another, which is what actually happened.
+   *
+   * The in-memory heartbeat is at least as fresh as the stored one — it is written on every poll,
+   * while the stored copy is checkpointed every few seconds to avoid write amplification — so the
+   * only case this is blind to is an eviction with no poll since, and the wake path above loads the
+   * stored value precisely for that.
+   */
+  private pluginConnectedNow(): boolean {
+    return this.connectedGiven(Math.max(this.lastSeenWrittenAt, this.pluginLastSeenMs));
+  }
+
+  /** ONE rule, so there cannot be two answers. Both readers above are this function. */
+  private connectedGiven(last: number): boolean {
     if (!last) return false;
     const deadline = this.pollDueBy || last + POLL_WAIT_IDLE_MS + POLL_STALE_GRACE_MS;
     return Date.now() < deadline;
@@ -2151,7 +2185,7 @@ export class SessionDO extends DurableObject<Env> {
       ]);
       this.lastSeenWrittenAt = 0;
       this.pollDueBy = 0;
-      this.pluginSeenRecently = false;
+      this.pluginLastSeenMs = 0;
       this.boundPlace = null;
       this.placeMismatch = null;
       this.broadcast({ type: 'studio_status', connected: false, lastSeenAt: null, queuedOps: this.opQueue.length, place: null, placeMismatch: null });
@@ -4102,7 +4136,10 @@ export class SessionDO extends DurableObject<Env> {
       env: this.env,
       projectId: this.boundProjectId ?? undefined,
       assetSources: this.pinnedPrefs?.asset_sources ?? undefined,
-      studioConnected: () => this.opQueue.length < 100 && this.pluginSeenRecently,
+      // The queue length is backpressure and stays: a hundred ops deep, the honest answer to
+      // "can you build right now" is no. The connection half now comes from the same rule the
+      // header and the status broadcast use.
+      studioConnected: () => this.opQueue.length < 100 && this.pluginConnectedNow(),
       execStudioOp: (op, timeoutMs) => this.execStudioOp(op, timeoutMs, agent),
       createCheckpoint: (label, kind) => this.createCheckpoint(label, kind, {}, agent),
       restoreCheckpoint: (id: string) => this.restoreCheckpoint(id, agent),
@@ -4130,7 +4167,8 @@ export class SessionDO extends DurableObject<Env> {
     };
   }
 
-  private pluginSeenRecently = false;
+  /** The last poll, in memory. Written on every one; the stored copy lags by up to 4s by design. */
+  private pluginLastSeenMs = 0;
   private liveJwt: string | null = null;
 
   // ------------------------------------------------------------------ frames
@@ -4499,7 +4537,7 @@ export class SessionDO extends DurableObject<Env> {
     // the plugin polls every ~0.4-2.5s; persisting the heartbeat every time is pure write
     // amplification. Keep it in memory and only checkpoint it to storage every few seconds.
     const now = Date.now();
-    this.pluginSeenRecently = true;
+    this.pluginLastSeenMs = now;
     if (now - this.lastSeenWrittenAt > 4000) {
       this.lastSeenWrittenAt = now;
       await this.ctx.storage.put('pluginLastSeen', now);

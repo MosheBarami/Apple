@@ -219,11 +219,30 @@ pre { overflow:auto; border:1px solid var(--line); padding:18px; background:var(
 .gx-jump { position:absolute; bottom:calc(100% + 8px); left:50%; transform:translateX(-50%); z-index:15; background:var(--surface); font-size:12px; }
 .gx-row { padding:12px 0; border-bottom:1px solid var(--line); } .gx-empty,.empty-state { padding:48px 24px; text-align:center; } .gx-plain { padding:100px 30px; }
 .page { max-width:1160px; margin:0 auto; padding:110px 36px 70px; } .page-head { display:flex; align-items:start; justify-content:space-between; gap:24px; margin-bottom:36px; } .page-title { font-size:44px; margin-bottom:14px; } .page-desc { color:var(--muted); max-width:650px; }
-.project-grid,.projects-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:20px; } .project-card { border:1px solid var(--line); background:var(--surface); padding:24px; position:relative; } .project-card:hover { border-color:var(--accent); } .project-card a { text-decoration:none; } .project-card h2 { font-size:23px; }
+.project-grid,.projects-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:20px; } .project-card { border:1px solid var(--line); background:var(--surface); padding:24px; position:relative; } .project-card:hover { border-color:var(--accent); }
+/* THE CARD IS THE LINK NOW, and this rule was written when it merely CONTAINED one.
+   `.project-card a` matches a descendant, so the day the whole card became an <a> the rule
+   stopped matching anything and the browser's default underline came back — on every project
+   on the dashboard, which is the first screen a customer sees. It reads exactly like a page
+   whose stylesheet failed to load, and that is what was reported: "the site looks abandoned".
+   `:is(.project-card, .project-card a)` covers both shapes, so neither refactor breaks it. */
+:is(.project-card,.project-card a) { text-decoration:none; } .project-card h2 { font-size:23px; }
 .project-search { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin-block:20px; }
 .project-search input { flex:1 1 200px; min-width:0; max-width:420px; padding:10px 14px; border:1px solid var(--line); border-radius:12px; background:var(--surface); }
 .project-search [role='status'] { color:var(--muted); font-size:12px; }
-.scope-tabs,.tabs,.settings-inline,.settings-pair,.modal-actions { display:flex; gap:12px; flex-wrap:wrap; } .scope-tabs { border-bottom:1px solid var(--line); margin-bottom:24px; } .scope-tab { border:0; border-radius:0; } .scope-tab.is-on { box-shadow:inset 0 -2px var(--accent); } .scope-tab__count { font-size:11px; margin-inline-start:8px; }
+/* A FLEX ROW WITH NO `align-items` STRETCHES EVERY SHORT CHILD TO THE TALLEST ONE, and that is
+   what was deforming the Save button on Settings: measured at 65x107, because the row's height
+   came from the label-plus-input stack beside it and the button had no say. It read as a broken
+   page rather than as a missing declaration, which is what one missing declaration usually
+   reads as. Five classes share this rule and the defect was in all of them — every modal's
+   action row, both tab strips, and six settings rows.
+   `flex-end` rather than `center` for the field rows: the button belongs on the input's
+   baseline, not floating halfway up the label above it. The tab strips and the modal footer
+   hold items of one height, where the two agree. */
+.scope-tabs,.tabs,.settings-inline,.settings-pair,.modal-actions { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; }
+/* Tabs and a modal footer are rows of equal-height controls; centring is what they mean and it
+   survives one of them growing a second line. */
+.scope-tabs,.tabs,.modal-actions { align-items:center; } .scope-tabs { border-bottom:1px solid var(--line); margin-bottom:24px; } .scope-tab { border:0; border-radius:0; } .scope-tab.is-on { box-shadow:inset 0 -2px var(--accent); } .scope-tab__count { font-size:11px; margin-inline-start:8px; }
 .settings-section,.usage-card,.settings-sub { margin-block:28px; padding-block:20px; border-top:1px solid var(--line); } .settings-section h2 { font-size:28px; } .settings-row,.settings-current { display:flex; align-items:center; justify-content:space-between; gap:22px; padding-block:14px; } .settings-grow,.settings-pair > .field { flex:1; } .field { display:grid; gap:8px; margin-block:14px; } .field-label { font-size:13px; font-weight:400; } .field-hint { font-size:12px; } .prefs__check { display:flex; gap:10px; align-items:start; margin-block:10px; } .prefs__set { border:1px solid var(--line); padding:20px; }
 .modal-backdrop,.dialog-backdrop,.cmdk-backdrop { display:grid; place-items:center; padding:20px; } .modal,.dialog,.cmdk { width:min(580px,100%); max-height:85dvh; overflow:auto; background:var(--surface); border:1px solid var(--line); padding:30px; color:var(--ink); box-shadow:0 20px 70px #0003; } .modal-header,.modal-head { display:flex; justify-content:space-between; gap:15px; margin-bottom:20px; } .modal-actions { justify-content:end; margin-top:24px; }
 .cmdk__input { width:100%; } .cmdk__list { max-height:55vh; overflow:auto; padding-block:16px; } .cmdk__section { font:11px var(--font-mono); color:var(--muted); margin-block:15px 8px; } .cmdk__item { display:flex; width:100%; justify-content:space-between; border:0; text-align:start; } .cmdk__item.is-selected { background:var(--surface-2); } .cmdk__why { display:block; font-size:12px; color:var(--faint); } .cmdk__hint,.cmdk__foot { font-size:11px; color:var(--muted); }
