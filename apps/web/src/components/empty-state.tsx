@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { EMPTY_STATES, type EmptyStateName, type EmptyStateSpec, type EmptyTone } from './empty-state-model';
+import './empty-state.css';
 
 /**
  * The renderer for the canonical empty, waiting and failed states.

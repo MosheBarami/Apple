@@ -1,0 +1,95 @@
+/* A FENCED CODE BLOCK — the language it is in, the control that copies it, and the code itself.
+ *
+ * design/system.css already owns the box: `.gx-code`, the `.gx-code__head` row, `.gx-code pre`
+ * and the five `.tok--*` syntax colours. This file is what those left undrawn — the label on the
+ * left of that row, the button on the right, and the <pre>, which until now was drawn entirely by
+ * the app's global `pre` and `code` rules and was wrong in three separate ways because of it.
+ *
+ * WHAT THIS BLOCK IS FOR, AND WHAT THAT COSTS IT. It exists to be read once and then pasted into
+ * Studio, so nothing here is allowed to compete with the code: no tint, no fill, no weight. The
+ * only colour on the whole block is the syntax ramp system.css already measured; the header is two
+ * neutrals separated from the code by a hairline that was already there. A header that announced
+ * itself would be a header the reader has to look past on every reply that contains a script.
+ */
+
+/* THE HEAD IS FLOORED AT ONE HEIGHT, AND BOTH ITEMS CARRY THE SAME FLOOR. `closed` is false while
+   a reply is still streaming, so the copy button is not in the markup yet — it appears the instant
+   the closing fence arrives. If the label were shorter than the button, every code block in a
+   streaming reply would shove its own code down a row at that moment, while the reader was reading
+   it. The same floor holds the row open when LANG_NAME maps the language to '' and the span
+   renders empty — a bare ``` fence, mid-stream, has neither a name nor a button in it. That leaves
+   an empty bar, on purpose: collapsing the row instead would pop the whole header in when the
+   fence closes, which is the jump this rule exists to prevent, forty times worse.
+   `.gx-code__head` is `justify-content:space-between` with no cross-axis alignment of its own, so
+   each item centres its own text rather than this file reaching up and realigning a row it does
+   not own. */
+.gx-code__lang { display:flex; align-items:center; min-height:24px; font-family:var(--font-mono); font-size:11px; letter-spacing:0; color:var(--faint); white-space:nowrap; }
+
+/* COPY. The one control on the block, and the reason the block has a header at all — so it is
+   legible at rest (`--muted`, not `--faint`) and never louder than that. The app's button defaults
+   are wrong here in two specific ways: `padding:9px 14px` with `border-radius:10px` draws a form
+   control inside an 8px-padded strip, and `button:hover { background:var(--surface-2) }` is the
+   exact colour of the surface this button already sits on — the shared hover is INVISIBLE here,
+   which is worse than no hover, because the control looks dead under the pointer. The border stays
+   1px and goes transparent instead of going away, so the hover can bring a hairline back without
+   moving the label by a pixel.
+   The width floor is six characters plus the padding: the label swaps Copy → Copied in place, and
+   with the right edge pinned by the row the whole box would otherwise jump wider under the finger
+   that just pressed it. It buys the tap target the same width.
+   `line-height:1` is what makes the floor above actually hold: at the inherited 1.55 the label's
+   line box plus the padding and the border measures 25.05px, which is OVER the floor, so the
+   button would set the row's height and the label — floored at 24 — would be stretched up to meet
+   it. One pixel, and it moves every line of code in a streaming reply the moment the fence closes.
+   Measured, not assumed; the label is centred by the flex box, not by its leading. */
+.gx-code__copy {
+  display:inline-flex; align-items:center; justify-content:center; min-height:24px; min-width:calc(6ch + 20px);
+  padding:3px 10px; border-color:transparent; border-radius:var(--r-xs); font-size:11px; line-height:1; color:var(--muted);
+  transition:color 140ms var(--ease-out),background 140ms var(--ease-out),border-color 140ms var(--ease-out);
+}
+/* An ink mix rather than a fixed surface: `--ink` is near-white in the dark theme and near-black in
+   the light one, so the same declaration lifts the button off `--surface-2` in one and presses it
+   into the other. A tint that only read on the dark theme would need a correction below; this one
+   inverts with the ramp, which is why there is no light-theme block in this file. */
+.gx-code__copy:hover:not(:disabled) { background:color-mix(in srgb,var(--ink) 8%,transparent); border-color:var(--line); color:var(--ink); }
+.gx-code__copy:focus-visible { color:var(--ink); }
+
+/* THE COPIED STATE IS NOT COLOURED, DELIBERATELY. `Copied` is a confirmation of something the
+   reader just did, not a status they have to act on, and this product spends colour only on the
+   second kind. The word itself is the whole receipt — and it is the only state the markup exposes,
+   since nothing but the label and the aria-label changes when the clipboard write resolves. */
+
+/* THE CODE. Three corrections to rules it inherits, and nothing invented:
+   - the global `pre` pads 18px while the head pads 14px, so the first character of every line sat
+     four pixels to the right of the language label directly above it. One inset, both.
+   - `code { font-size:.87em }` is right for a word of code inside a sentence and wrong for a whole
+     script: it rendered generated Luau at 11.3px, which is the size the reader has to proof-read
+     a function at before trusting it in their game.
+   - a browser's tab stop is 8 characters, which is nobody's editor. Model output is indented with
+     tabs, and at 8 a nested function walks straight off the right-hand edge of the block.
+   `overscroll-behavior-inline:contain` keeps a long line from turning a flick across the code into
+   the browser's back gesture: the chat behind it must not navigate away because one line was wide.
+   No height cap. A long script is long, and silently cropping it would hide the half a reader is
+   about to paste. */
+.gx-code__body { padding:14px; line-height:1.6; tab-size:4; overscroll-behavior-inline:contain; }
+.gx-code__body code { font-size:1em; }
+
+/* --------------------------------------------------------------------- at 375px --- */
+
+/* Nothing in this file is a column, so nothing has to reflow; the one thing that has to change is
+   the target. A 24px-tall, 11px-labelled button is comfortable under a pointer and about half what
+   a thumb needs. The pseudo-element grows the HIT AREA without touching the box, so the header is
+   drawn at the size it is on a laptop and still catches the tap. It covers the head's own padding
+   and the block's border, where there is nothing else to press, and stops 8px down at the hairline
+   rather than reaching into the code: a long-press that was meant to start a selection on the first
+   line must not land on the button instead. */
+@media (max-width:600px) {
+  .gx-code__copy { position:relative; }
+  .gx-code__copy::after { content:''; position:absolute; inset:-10px -10px -8px; }
+}
+
+/* The hover is the only motion in this file. system.css already kills every transition under
+   reduce, with !important; stated here so the sheet is correct on its own terms rather than
+   correct by someone else's blanket rule. */
+@media (prefers-reduced-motion: reduce) {
+  .gx-code__copy { transition:none; }
+}

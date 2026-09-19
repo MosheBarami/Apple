@@ -1,0 +1,69 @@
+/* EARLIER VERSIONS OF THIS MESSAGE — a column of drafts, ending in the one still in force.
+ *
+ * WHAT THIS PANEL IS FOR, AND WHAT THAT COSTS IT. It exists to be read AGAINST something: you
+ * open it to see what you used to say and compare it with what the message says now. The words
+ * are therefore the entire content and everything else is overhead, so this sheet buys nothing
+ * but reading speed. No card, no fill, no shadow, no badge — a 1px `var(--line)` hairline
+ * separates one version from the next and ink level does the rest of the work.
+ *
+ * COLOUR IS RATIONED TO NOTHING HERE, AND THAT IS THE RATION. Nothing in this dialog can be
+ * acted on; the header comment in revisions-dialog.tsx explains at length why there is
+ * deliberately no Restore button. With no action there is no status worth a colour, and the one
+ * coloured thing on the screen — the read failure — is `.danger-copy`, which system.css already
+ * owns. Which version is in force is said with ink instead: superseded drafts sit at `--muted`,
+ * the current text at `--ink`, so the brightest thing in the column is the one still true.
+ *
+ * Consequences of that, stated rather than left to be discovered: this sheet declares no
+ * transition or animation, so there is nothing for `prefers-reduced-motion` to switch off, and
+ * it mixes no tint, so there is no light-theme correction to write. Every value below is a token
+ * that already flips with the ramp under :root[data-theme='light'].
+ */
+
+/* AN <ol> NUMBERS ITSELF, AND THIS LIST ALREADY NUMBERS ITSELF. The markup writes "Version 1",
+   "Version 2", and then "Current" — a marker column would set 1. 2. 3. alongside those and then
+   disagree on the last row, where the fourth item is not version 4 of anything. The UA's 40px
+   marker indent goes with it: there is no marker left to leave room for, and the indent would
+   otherwise push a full-width column of prose off-centre inside a 560px dialog.
+   The list closes its own bottom edge because the item rule below only draws leading hairlines;
+   without this the column stops in mid-air above the Close button. */
+.gx-revs { display:grid; gap:0; list-style:none; margin:0; padding:0; min-width:0; border-block-end:1px solid var(--line); }
+
+/* TWO <p>s PER ROW, AND THAT IS THE DEFECT THIS FILE EXISTS FOR. The stamp and the draft are
+   siblings. Unstyled they keep the user agent's 16px bottom margin, which is wider than the gap
+   this rule puts between one version and the next — so "Version 2" reads as the tail of the
+   draft above it rather than the head of the one below, and a column of five drafts reads as
+   five differently-sized paragraphs. Grid with an explicit gap first, margins off second.
+   Every row carries its own TOP hairline, the first one included, so the column has an edge
+   under the dialog title instead of floating. */
+.gx-revs__item { display:grid; gap:5px; padding-block:14px; border-block-start:1px solid var(--line); min-width:0; }
+.gx-revs__when,.gx-revs__text { margin:0; min-width:0; }
+
+/* THE STAMP. Micro type in the quietest ink the ramp has, because it is a fact ABOUT a draft and
+   the person reading this column is reading the drafts. Tabular figures because it is a column
+   of figures: "Version 9 · 09:41" over "Version 10 · 14:02" wanders at every digit otherwise. */
+.gx-revs__when { font-size:11px; line-height:1.5; color:var(--faint); font-variant-numeric:tabular-nums; }
+
+/* THE DRAFT ITSELF, and `pre-wrap` is the load-bearing declaration in this file. A prompt's line
+   breaks are part of what was typed, and this dialog exists precisely because those words are
+   the one thing in the transaction that cannot be reconstructed from anything else. Collapsing a
+   four-line prompt into a single paragraph would be the panel quietly rewriting the evidence it
+   was opened to show. `anywhere` because a pasted asset id or URL contains no break opportunity
+   and would otherwise widen the modal until the whole column scrolls sideways. */
+.gx-revs__text { font-size:14px; line-height:1.6; letter-spacing:-.01em; color:var(--muted); white-space:pre-wrap; overflow-wrap:anywhere; }
+
+/* THE ANCHOR. The last row is what the message says now, and a column of drafts with nothing to
+   measure against is unreadable — which is why the current text is in the list at all. It is
+   marked by being the brightest thing here rather than by a tint, a fill or a label: superseded
+   text at --muted against text in force at --ink is a difference you notice without going
+   looking for it, and it costs the panel no colour. The stamp lifts half a step with it so the
+   row reads as one thing and not as an ordinary row with an unusually bright paragraph in it. */
+.gx-revs__item.is-current .gx-revs__text { color:var(--ink); }
+.gx-revs__item.is-current .gx-revs__when { color:var(--muted); }
+
+/* AT 375px the dialog is the viewport and the drafts are long. Nothing above is a column to
+   collapse, so what a phone actually needs is more of the text on screen at once: the rhythm
+   tightens and the words do not. Dropping the body from 14px would save a few lines and cost the
+   one thing somebody opened this panel to read. */
+@media (max-width:600px) {
+  .gx-revs__item { padding-block:11px; gap:4px; }
+}

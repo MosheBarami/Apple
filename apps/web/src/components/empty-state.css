@@ -1,0 +1,88 @@
+/* THE CANONICAL EMPTY STATE — the three children design/system.css never reached.
+ *
+ * system.css owns the frame and the type: `.es` is the centred grid with its 42px/24px padding and
+ * its flat 14px rhythm, `.es__title` and `.es__body` set the two sizes, and `.es--creation` /
+ * `--studio` / `--proven` / `--future` / `--failure` put a tone COLOUR on the container. Left
+ * undrawn: the mark, the one action, the help link — and the decision that tone colour forces,
+ * which is where it is allowed to land.
+ *
+ * WHAT THIS PANEL IS FOR, AND WHAT THAT COSTS IT. Someone meets this on a screen that has nothing
+ * on it or has just failed. There are at most five things here and one of them is the way out, so
+ * every rule below buys either the way out being obvious or the reading order being right. Nothing
+ * sets a weight, nothing casts a shadow, one link's colour is the only thing that moves.
+ *
+ * THE TONE LANDS ON THE MARK AND NOWHERE ELSE, and that is a correction rather than a preference.
+ * `.es--failure { color:var(--bad) }` sits on the container and `button { color:inherit }` sits in
+ * the element reset, so a plain `<button className="btn">Try again</button>` inside a failure state
+ * is drawn in failure RED today — at four call sites: dashboard.tsx, roadmap.tsx,
+ * automations-panel.tsx and workspace.tsx. The same button written as `.gx-btn--outline` two files
+ * away sets its own `color:var(--ink)` and is not, so one recovery control is red on one screen and
+ * ink on the next. A button you press to recover is not a status; red says the button is the thing
+ * that failed. `.es__action` and `.es__help` take that inheritance back to a neutral, which leaves
+ * the tone to `.es__art` alone — the one child that is aria-hidden geometry carrying no text and no
+ * control. Both marks that ship today (`SummonIllustration`, `EmptyRoadmapMark`) hard-code their
+ * strokes to `--line` and `--line-strong`, so the tone currently reaches nothing visible. That is
+ * the right outcome and not a gap to fill: an empty shelf is not an alarm and does not earn a
+ * colour. The inheritance is left intact so a mark drawn in `currentColor` would come out in tone.
+ *
+ * NO LIGHT-THEME BLOCK, ON PURPOSE. Every colour below is a bare ramp token — `--ink`, `--muted` —
+ * that the light theme redefines at the root. There is no tint here to correct.
+ */
+
+/* --------------------------------------------------------------------------- the mark --- */
+
+/* Flexed rather than left as the block it is, for two reasons that are both the 14px rhythm.
+   `svg { vertical-align:middle }` in system.css keeps the mark an INLINE box, so a plain <div>
+   around it gets a line box and a strip of leading underneath, and the mark ends up further from
+   its own title than the title is from the body. Blockifying the svg removes the strip. The cap is
+   the second reason: `justify-items:center` gives this div a shrink-to-fit width, so a mark wider
+   than the viewport would push the panel sideways instead of scaling.
+   NO MARGIN HERE, DELIBERATELY. Both marks carry their air inside the viewBox — EmptyRoadmapMark
+   starts at y=8 of 150, SummonIllustration at y=30 of 150 — and a margin would double an inset the
+   drawing already chose. */
+.es__art { display:flex; justify-content:center; max-width:100%; min-width:0; }
+.es__art svg { max-width:100%; height:auto; }
+
+/* ----------------------------------------------------------------------- the way out --- */
+
+/* THE COLOUR COMES BACK FIRST (see the header). `--ink` beats the inherited tone for a bare `.btn`
+   or `.gx-btn`, and loses to `.btn-primary` and `.gx-btn--outline`, which set their own — so all
+   six call sites draw the same control the same way without any of them changing.
+   FLEX BEFORE ANYTHING ELSE, because `action` is a ReactNode: the prop's contract asks for one
+   control and cannot enforce it, and two sibling buttons with no rule between them are the
+   run-together this whole check exists to catch. Wrapping, because a control and its neighbour do
+   not share a line at 375px under a label like "Connect Studio in the conversation".
+   The 8px on top is the one piece of spacing here that is not the rhythm: at a flat 14px the button
+   stands as close to the body as the body does to the title and reads as the paragraph's last
+   line, not as the thing to press. */
+.es__action { display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin-block-start:8px; max-width:100%; min-width:0; color:var(--ink); }
+
+/* -------------------------------------------------------------------- the help link --- */
+
+/* A <p>, so the user agent's block margin has to go: `.es` already owns the space between every
+   child, and 1em on top of its 14px leaves the link adrift at the foot of the panel. `.es__body`
+   in system.css sets `margin:0` for exactly this reason, and this is the same element.
+   COLOUR, AGAIN. The anchor is `color:inherit` from the reset, so with no rule "Troubleshooting"
+   renders in `--bad` and "Getting started" in `--future`: the least urgent thing on the panel was
+   the most coloured thing on it. Muted, one step under the body it follows, and it earns `--ink`
+   only under the pointer — a link that is already the quietest line does not also need to be the
+   one that never responds. */
+.es__help { margin:0; font-size:13px; line-height:1.55; letter-spacing:-.01em; color:var(--muted); }
+.es__help a { transition:color 140ms var(--ease-out); }
+.es__help a:hover { color:var(--ink); }
+
+/* ------------------------------------------------------------------------- at 375px --- */
+
+/* The mark is decoration and it yields. 140px of it plus `.es`'s 42px of top padding is most of a
+   short phone screen spent before the title has been read, and the action underneath is what the
+   person came here for. Height is the constraint that matters — these marks are taller than they
+   are wide — and `height:auto` above keeps the ratio while it shrinks. */
+@media (max-width:600px) {
+  .es__art svg { max-height:112px; }
+}
+
+/* system.css already kills every transition under reduce with !important. Restated so this sheet
+   is correct on its own terms rather than correct by someone else's blanket rule. */
+@media (prefers-reduced-motion: reduce) {
+  .es__help a { transition:none; }
+}

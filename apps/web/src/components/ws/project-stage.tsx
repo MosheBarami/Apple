@@ -15,6 +15,7 @@ import { ConnectStudio } from './connect-studio';
 import { PlaytestCard } from './playtest-card';
 import { StudioView } from './studio-view';
 import { Icon, PATH } from './primitives';
+import './project-stage.css';
 
 interface ProjectStageProps {
   collapsed: boolean;

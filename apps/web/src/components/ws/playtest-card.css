@@ -1,0 +1,111 @@
+/* THE PLAYTEST VIEWPORT — the rules playtest-card.tsx's markup was written expecting and never got.
+ *
+ * design/system.css already owns most of this panel: `.gx-playtest` itself and its head, title,
+ * chip, elapsed, frame, canvas, empty, foot, what, stats, action, count and degraded rules, the
+ * base `.gx-playtest__veil`, and the expanded overlay. This file is only what those left undrawn —
+ * the stage the picture stands on, the two veils that must not look alike, and the one control
+ * that gets the reader out. Nothing here restates a rule that already exists over there.
+ *
+ * WHAT THIS PANEL IS FOR AND WHAT THAT COSTS IT. Read the header of playtest-card.tsx first: these
+ * are periodic stills of computed geometry, not a video feed, and the card may never dress them up
+ * as one. So every rule below spends nothing on presence — no shadow, no glow, no pulse, nothing
+ * above weight 400 — and colour is spent exactly once, on the state where the frames have stopped
+ * and the answer is no longer on this screen.
+ *
+ * THESE RULES DELIBERATELY OUT-SPECIFY system.css, AND THEY HAVE TO. main.tsx imports `./app`
+ * before `./design/system.css`, so every component sheet in the app is evaluated first and
+ * system.css is emitted last. A single-class rule here would lose to the single-class rule it is
+ * meant to correct, silently, at build time. Each override below is therefore written as a
+ * descendant of the element it genuinely lives inside — which is true of the markup — so the
+ * cascade is settled on purpose instead of by emit order.
+ */
+
+/* ------------------------------------------------------------------- the stage --- */
+
+/* THE FIRST FRAME MUST NOT SHOVE THE PAGE DOWN. `.gx-playtest__empty` is 180px tall and the canvas
+   that replaces it is 16/10 — 234px at 375px wide, 375px at 600px — so with no rule here the
+   arrival of the first frame drops the footer, the rest of the thread and whatever the reader was
+   in the middle of reading by a third of a screen. The stage holds the picture's shape from the
+   moment the card appears; the frame then changes the pixels and not the layout. 16/10 because
+   that is the rasteriser's own 160x100, not a taste.
+   A GRID, NOT A BLOCK. The stage has exactly one child and it is a <button> in one branch and a
+   <div> in the other; only a stretched grid item fills a height its parent set rather than the one
+   its own content happened to want.
+   10px, and not a radius token. The child frame is a <button>, and the base button rule rounds it
+   to 10px — --r-sm (8px) or --r-md (14px) here would leave the mat showing as a sliver at each
+   corner, which reads as a rendering fault rather than as a nested box.
+   `--paper-2` for the mat, not a raised surface: it is what the reader looks at while waiting for a
+   picture that will be near-black, so on the dark theme the first frame changes the contents of the
+   box and not the box itself.
+   AND NO `overflow` ANYWHERE IN HERE, ON PURPOSE. The child is a button whose focus ring is drawn
+   4px outside itself; clipping the stage would erase the only thing telling a keyboard user where
+   they are. The frame already clips its own canvas, so there is nothing left to contain. */
+.gx-playtest__stage { display:grid; min-width:0; aspect-ratio:16/10; border-radius:10px; background:var(--paper-2); }
+
+/* Expanded, the card is fixed at inset 5vh/5vw and system.css caps the canvas at 65vh. Holding
+   16/10 as well would make the stage taller than the picture inside it on any wide screen and leave
+   a band of bare mat under the frame. */
+.gx-playtest.is-expanded .gx-playtest__stage { aspect-ratio:auto; }
+
+/* -------------------------------------------------------------------- the veils --- */
+
+/* TWO STATES THAT MUST NOT LOOK ALIKE. Stale means the frames are late. Dead means they have
+   stopped. system.css draws both as the same white-on-black chip in the same corner of the picture,
+   which is precisely the thing playtest-card.tsx's header forbids: a stale frame sitting under a
+   label a reader will take as current. The difference is made structurally — stale stays a caption,
+   dead grows into a bar across the bottom of the picture — because two chips differing only in tint
+   is a distinction nobody notices at 10px.
+   STALE IS THE CHEAPER STATE AND GETS NO COLOUR AT ALL. The header chip already turns `--warn` the
+   moment frames go late; a second warn object on top of the picture would leave nothing in reserve
+   for the state that is actually worse. This is a rounded caption saying how far behind the picture
+   is, and nothing else. `nowrap` because "127s old" broken over two lines inside 5px of padding is
+   unreadable, and the max-width keeps it from ever reaching the opposite edge and reading as a bar
+   it is not. */
+.gx-playtest__frame .gx-playtest__veil--stale { border-radius:var(--r-xs); white-space:nowrap; max-width:calc(100% - 20px); }
+
+/* DEAD SPENDS THE PANEL'S ONE COLOUR. The frames have stopped and the picture underneath is of a
+   moment that has passed, so the caption becomes a bar the full width of the picture carrying
+   `--warn` — the same token the header chip and the degraded banner already use for the same fact,
+   so the card reads as one signal stated three times rather than as three separate warnings.
+   Flush to the bottom and both sides: the frame clips it to its own corners, so the bar ends
+   exactly where the picture ends. The text still starts 12px in, near where the stale caption sat,
+   so the two states are a progression rather than a jump. */
+.gx-playtest__frame .gx-playtest__veil--dead { inset-inline:0; bottom:0; padding:8px 12px; color:var(--warn); }
+
+/* THE LIGHT THEME FLIPS `--warn` AND THIS SCRIM DOES NOT FLIP WITH IT. The veil's background is a
+   fixed near-black in system.css on both themes, which is right — what it darkens is the plugin's
+   own dark render, not the page. But light-theme `--warn` is a dark brown (#775620) and measures
+   about 2.9:1 on that scrim, under the 4.5:1 the contrast guard holds every other text to. Mixed
+   toward `--paper` it lands on a warm tan at roughly 9:1 and still reads as the same warning.
+   Computed against both ramps, not assumed. */
+:root[data-theme='light'] .gx-playtest__frame .gx-playtest__veil--dead { color:color-mix(in srgb,var(--warn) 45%,var(--paper)); }
+
+/* --------------------------------------------------------------- open in studio --- */
+
+/* THE ONLY WAY OUT OF A DEGRADED PLAYTEST. When the bridge has dropped or the frames have stopped,
+   nothing on this card can fix it — the answer is in Studio — so the control has to be reliably
+   present without becoming the loudest thing in a card whose entire point is the picture above it.
+   Quiet: the app's hairline border it already inherits, muted ink, and the footer's own 12px rather
+   than the 16px it would otherwise take from the root.
+   `display:flex`, overriding the `inline-flex` it also carries from `.gx-btn`. As an inline box it
+   lands in an anonymous line at the end of the footer and collects that line's half-leading above
+   and below it — space nobody chose and nobody can tune. Block-level and shrink-wrapped, its
+   margin is its own. */
+.gx-playtest__foot .gx-playtest__open {
+  display:flex; width:fit-content; margin-top:10px; padding:8px 12px; font-size:12px;
+  border-radius:var(--r-sm); color:var(--muted);
+  transition:color 140ms var(--ease-out),border-color 140ms var(--ease-out);
+}
+.gx-playtest__foot .gx-playtest__open:hover { color:var(--ink); border-color:color-mix(in srgb,var(--ink) 26%,var(--line)); }
+
+/* At 375px a shrink-wrapped button is a 130px target adrift in a full-width column. The one control
+   that gets a reader out of a broken playtest is worth the whole width there. */
+@media (max-width:600px) {
+  .gx-playtest__foot .gx-playtest__open { width:100%; }
+}
+
+/* system.css already kills every transition under reduce, with !important. Restated here so this
+   sheet is correct on its own terms rather than correct by someone else's blanket rule. */
+@media (prefers-reduced-motion: reduce) {
+  .gx-playtest__foot .gx-playtest__open { transition:none; }
+}

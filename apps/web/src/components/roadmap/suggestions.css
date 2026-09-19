@@ -1,0 +1,132 @@
+/* SUGGESTED NEXT — three proposals, asked for on purpose, and the reason not to act on one.
+ *
+ * WHAT THIS PANEL IS FOR, AND WHAT THAT COSTS IT. It interrupts a plan the reader is already in
+ * the middle of reading, so it has to be skimmable in one pass and cheap to walk away from.
+ * Everything below buys that: no weight above 400, no shadow, a 1px `var(--line)` hairline doing
+ * all the separating, and exactly one thing on a card allowed to spend colour — the sentence that
+ * says the suggestion cannot be started yet. Hierarchy is size, colour and space.
+ *
+ * design/system.css already owns most of this component: `.rm-suggest`, `__head`, `__title`,
+ * `__sub`, `__grid`, `__pending`, `__error`, `__none`, and `.rm-sg` with `__title`, `__summary`,
+ * `__why`, `__facts` and `__actions`. This file is what those rules left undrawn — Dismiss, the
+ * waiting copy, the placeholder card, the "Waits for" line and the facts row's layout — plus two
+ * corrections to system.css that cannot be made anywhere else without editing a file this
+ * component does not own.
+ *
+ * WHY EVERY OVERRIDE CARRIES TWO CLASSES. main.tsx imports `./app` on line 2 and
+ * `./design/system.css` on line 5, so this sheet lands BEFORE system.css in the bundle and a
+ * one-class rule here loses to a one-class rule there at equal specificity. Two classes wins
+ * wherever source order cannot be trusted.
+ */
+
+/* ------------------------------------------------------------------------- the head --- */
+
+/* THE TITLE, THE LEAD AND DISMISS WERE THREE ITEMS IN ONE FLEX ROW. system.css lays the head out
+   `display:flex; justify-content:space-between`, and the markup hands it an <h2>, a <p> and a
+   <button> — so the lead sentence drew BESIDE the heading it belongs under, wedged between a 28px
+   title and a button, its first line hung off the title's cap height. The lead is not a sibling of
+   the title, it is the second line of it. A grid with explicit placement says so without needing a
+   wrapper element this component does not have. */
+.rm-suggest .rm-suggest__head { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:7px 20px; align-items:start; }
+.rm-suggest .rm-suggest__title { grid-column:1; grid-row:1; margin:0; }
+.rm-suggest .rm-suggest__sub { grid-column:1; grid-row:2; margin:0; max-width:62ch; line-height:1.6; letter-spacing:-.01em; text-wrap:pretty; }
+
+/* DISMISS IS THE LEAST IMPORTANT CONTROL ON THE PANEL and is drawn like it. It spans both text
+   rows so it hangs off the title rather than off the lead, and it sits a step down in colour from
+   everything it stands beside — a control for leaving is not a call to action. `nowrap` because
+   the auto track lets the button keep its own width while the text column takes the squeeze, and
+   a "Dis-miss" broken over two lines is a rendering fault. */
+.rm-suggest .rm-suggest__dismiss { grid-column:2; grid-row:1/3; justify-self:end; white-space:nowrap; color:var(--faint); transition:color .18s var(--ease-out); }
+.rm-suggest .rm-suggest__dismiss:hover:not(:disabled) { color:var(--ink); }
+
+/* ---------------------------------------------------------------------- the waiting --- */
+
+/* A SCAN IN PROGRESS AND A SCAN THAT FAILED DREW IDENTICALLY. system.css gives `.rm-suggest__pending`
+   and `.rm-suggest__error` one shared rule with 2px of `--warn` down the side. Waiting is not a
+   warning — nothing has gone wrong and there is nothing to do about it — and spending the panel's
+   colour on it leaves the state that IS a warning looking exactly like the state that is not. The
+   error keeps the rail. This gives it up for the neutral hairline. */
+.rm-suggest .rm-suggest__pending { border-inline-start:1px solid var(--line); }
+
+/* The sentence and the three placeholders under it are siblings with nothing between them, and
+   the sentence is load-bearing: a bare row of grey bars is indistinguishable from a stalled scan,
+   which is exactly why the copy is in the markup rather than a spinner. */
+.rm-suggest__pending-copy { margin:0 0 16px; max-width:70ch; line-height:1.6; letter-spacing:-.01em; color:var(--muted); text-wrap:pretty; }
+
+/* ----------------------------------------------------------------- the placeholders --- */
+
+/* A PLACEHOLDER IS RECESSED, NOT RAISED — a step DOWN from `.rm-sg`'s `--surface`, so three cards
+   that are not there yet never read as three cards that are. The same step routes/roadmap.css
+   takes for `.rm-card--skeleton`, for the same reason. Two classes because `.rm-sg` over in
+   system.css is one and this sheet loads first. */
+.rm-sg.rm-sg--skeleton { background:var(--paper-2); }
+
+/* `.skeleton-title` has no size of its own anywhere in the app — only `.skeleton`'s 12px floor —
+   so the title bar drew SHORTER than the two body lines beneath it and the card read upside down.
+   Sized against the 23px title and 14px margin it is standing in for. */
+.rm-sg--skeleton .skeleton-title { height:20px; width:64%; margin-bottom:14px; }
+
+/* Breathing, not a sweeping gradient: at this size a moving highlight reads as a rendering fault.
+   The keyframes are named locally rather than borrowed from routes/roadmap.css's `rm-breathe` —
+   a sheet that animates on another sheet's keyframes stops animating the day that sheet moves. */
+.rm-sg--skeleton .skeleton { animation:rm-sg-breathe 1.7s var(--ease-out) infinite alternate; }
+@keyframes rm-sg-breathe { from { opacity:.5; } to { opacity:1; } }
+
+/* ------------------------------------------------------------------------ the facts --- */
+
+/* THREE HEXAGONS AND A WORD, WITH NOTHING BETWEEN THEM. `<ComplexityMark/>` renders three inline
+   svgs and the label follows it directly in the JSX, so `.rm-fact` — which system.css gives a
+   size and a colour and no layout — rendered the mark and its label as one run. milestone-card.css
+   scopes its own copy of this fix to `.rm-card` and says why: so that this panel is left to own
+   its version rather than have one written out from under it. This is that version. */
+.rm-sg .rm-fact { display:inline-flex; align-items:center; gap:7px; }
+.rm-sg .rm-fact .rm-weight { display:inline-flex; align-items:center; gap:2px; }
+/* `.chip` has exactly one rule in the whole app (font-size:11px), so the effort chip inherits
+   --ink and arrives brighter than the fact standing next to it — emphasis landing on the least
+   important word in the row. Colour only; the chip's shape belongs to system.css. */
+.rm-sg .rm-sg__facts .chip { color:var(--muted); }
+
+/* -------------------------------------------------------------- what it is waiting on --- */
+
+/* THE ONE COLOURED THING ON A SUGGESTION CARD. "Waits for Player spawn" is the only sentence here
+   that changes whether you can act on the card — everything above it is description — so it takes
+   the panel's whole colour budget, and takes it as a 1px rail rather than a coloured sentence,
+   which would read as an alarm when nothing has gone wrong. Same rail and same 10px inset as
+   `.rm-detail__verify` on the milestone card: the same kind of fact, drawn the same way on both
+   surfaces, so a reader never has to learn it twice.
+   The top margin is not spacing for its own sake — a <p> keeps no top margin under the global
+   reset, so with no rule at all this line sat flush against the facts row above it. */
+.rm-sg__builds { margin:18px 0 0; padding-inline-start:10px; border-inline-start:1px solid var(--warn); font-size:12px; line-height:1.55; letter-spacing:-.01em; color:var(--muted); text-wrap:pretty; }
+
+/* NOTHING IN THIS PRODUCT IS BOLDER THAN 400, and <strong> is bold until a rule says otherwise —
+   system.css resets the headings and never touches the inline element, so the blocker names drew
+   bold against the one rule the whole design is built on. Ink instead of weight, which is the
+   emphasis the sentence actually wanted. */
+.rm-sg__builds strong { font-weight:400; color:var(--ink); }
+
+/* BOTH THEMES, AND WHY NOTHING FLIPS. Every colour here is a token used neat — `--faint`,
+   `--muted`, `--ink`, `--line`, `--paper-2`, `--warn` — and no rule mixes a tint that could read
+   on one ramp and vanish on the other. `--warn` is a pale straw in the dark theme and a dark brown
+   in the light one; as a 1px rule against `--surface` it is legible either way, which a 6% fill of
+   the same token would not have been. That is reasoning from the ramp, not a rendering. */
+
+/* -------------------------------------------------------------------------- at 375px --- */
+
+/* The head is the only place this file made columns. At 375px Dismiss cannot hold a column of its
+   own without eating the title's line length, so it drops to a row under the lead: still the last
+   thing in the tab order, no longer competing with the heading for width. `justify-self:start`
+   because a 1fr track would otherwise stretch a "Dismiss" button the full width of the panel. */
+@media (max-width:600px) {
+  .rm-suggest .rm-suggest__head { grid-template-columns:minmax(0,1fr); gap:10px; }
+  .rm-suggest .rm-suggest__sub { max-width:none; }
+  .rm-suggest .rm-suggest__dismiss { grid-column:1; grid-row:3; justify-self:start; }
+}
+
+/* system.css already kills every animation and transition under reduce, with !important. Restated
+   here so this sheet is correct on its own terms rather than correct by someone else's blanket
+   rule — and the placeholder keeps a fixed opacity rather than freezing at whichever end of the
+   breath it happened to be on. */
+@media (prefers-reduced-motion: reduce) {
+  .rm-sg--skeleton .skeleton { animation:none; opacity:.75; }
+  .rm-suggest .rm-suggest__dismiss { transition:none; }
+}

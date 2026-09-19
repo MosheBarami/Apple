@@ -1,0 +1,116 @@
+/* THE PROJECT STAGE — the nine names design/system.css never drew.
+ *
+ * WHAT THIS PANEL IS FOR. It is the bounded Studio companion beside a conversation: a header you
+ * collapse it by, and one framed area holding exactly one of three things — a diagnostic render, a
+ * playtest card, or, when neither has arrived, a blueprint that says nothing has. system.css owns
+ * most of it already. What was left undrawn, and is drawn below, is the header's mark and title,
+ * the frame those three surfaces share, and the blueprint drawing itself.
+ *
+ * WHAT THAT COSTS IT: THIS PANEL SPENDS NO COLOUR AT ALL. Every surface it can hold carries its
+ * own status and pays for it out of its own budget — the playtest chip goes --warn when a run has
+ * gone stale, the console count goes --bad. A stage that tinted its own frame, or its empty state,
+ * would stand a second and meaningless signal right next to the real one. Everything here is
+ * --line, --ink at low percentages, --muted and --faint.
+ *
+ * SCOPED ONE LEVEL DEEPER THAN SYSTEM.CSS ON PURPOSE. main.tsx imports './app' before
+ * './design/system.css', so this file is bundled AHEAD of it, and an equal-specificity rule written
+ * here loses a tie it looks like it should win. Every selector carries `.gx-project-stage`, which
+ * is also simply true: none of these names appear anywhere else in the app.
+ *
+ * BOTH THEMES, WITHOUT A CORRECTION. Nothing below is a fixed tint. Every value is either --line or
+ * a percentage of --ink, and both flip with the ramp under :root[data-theme='light'], so the fills
+ * and hairlines step the same direction on either paper. There is deliberately no light-theme
+ * block here — one would be restating the ramp's own job.
+ */
+
+/* ------------------------------------------------------------------- the header --- */
+
+/* A bare <span> around an <svg> is a line box: it carries the font's descender space and drops the
+   icon a pixel or two below the title it is labelling, inside a flex row that is trying to centre
+   both. A grid box has no line box and no descender, so the mark sits where it looks like it
+   should. `flex:none` because the heading beside it is the part allowed to take the width.
+   --muted, not --faint: this identifies the panel, and metadata colour on a panel's own mark makes
+   the header read as a caption. */
+.gx-project-stage .gx-project-stage__mark { flex:none; display:grid; place-items:center; color:var(--muted); }
+/* The component passes `size={16}` and system.css's `button svg { width:17px }` overrules the
+   attribute for every icon inside a button. Restated here so the box and the glyph agree. */
+.gx-project-stage .gx-project-stage__mark svg { width:16px; height:16px; }
+
+/* The title and `.gx-project-stage__summary` are two spans, but `.gx-project-stage__heading` is
+   already a grid in system.css, so they were never going to run together — what the title was
+   missing is a size. Unstyled it inherits the button's 16px and shouts over a 12px summary two
+   pixels below it. 14px against 12px is the step this header wants: the summary changes on every
+   render and the title never does. `min-width:0` so a long summary wraps inside the grid track
+   rather than widening the header and pushing the chevron out of the panel. */
+.gx-project-stage .gx-project-stage__title { min-width:0; font-size:14px; line-height:1.45; letter-spacing:-.01em; color:var(--ink); }
+
+/* -------------------------------------------------------------------- the frame --- */
+
+/* THE ONE AREA, AND THREE SURFACES THAT TAKE TURNS IN IT. `minmax(0,1fr)` is the whole point: both
+   `.gx-stage__canvas` and `.gx-playtest__canvas` are `width:100%`, and inside a default grid or
+   block box a 100%-wide canvas sets the column's min-content width and the 520px panel grows a
+   horizontal scrollbar. A zero-floor track refuses that.
+   `position:relative` is the box `.gx-project-stage__cinema-glow` was written to sit inside;
+   system.css holds that glow at display:none and this file leaves it there — it is not this file's
+   to draw, and a glow is the decoration the panel's brief rules out.
+   WHAT IS DELIBERATELY NOT HERE. No border, background or radius: `.gx-playtest` already carries
+   its own `border-top`, so a framed well would draw two hairlines a few pixels apart at the top of
+   every playtest. And NEVER add a transform, filter or will-change — `.gx-stage.is-expanded` and
+   `.gx-playtest.is-expanded` are `position:fixed`, and any of those three would make this element
+   their containing block and trap the expanded viewport inside a 300px box. */
+.gx-project-stage .gx-project-stage__cinema { position:relative; min-width:0; display:grid; grid-template-columns:minmax(0,1fr); }
+
+/* --------------------------------------------------------------- the blueprint --- */
+
+/* THE ART IS UN-HIDDEN HERE, AND THAT DECLARATION STILL BELONGS TO SYSTEM.CSS.
+   system.css parks `.gx-project-stage__blueprint-art` in a display:none list beside
+   `.gx-project-stage__cinema-glow` — the two decorations nobody had drawn. The four spans inside
+   the art are drawn now, so that half of the hide is stale, and the real fix is to delete this one
+   selector from that list. This file may not edit system.css, so it outranks the hide at two-class
+   specificity instead; delete this declaration the moment system.css stops hiding it.
+   `align-self:start` because `.gx-project-stage__blueprint` is a stretch-aligned column and the
+   title and copy under it are left-set: a centred drawing over left-set text reads as a mistake,
+   not as a composition. Children are sized in percentages of this box so the 375px rule at the
+   bottom of the file has one width and one height to change. */
+.gx-project-stage .gx-project-stage__blueprint-art { display:block; position:relative; align-self:start; width:172px; height:108px; margin:0 0 24px; }
+
+/* TWO PLAN RECTANGLES: the place, and the thing being added to it. They overlap on purpose and
+   neither is opaque, so the hidden edges show through the way they do on a real plan — that
+   crossing is what stops the pair reading as one silhouette. A 4% fill of --ink is a surface step
+   on either paper; a hairline alone disappears at this size. */
+.gx-project-stage .gx-project-stage__blueprint-shape { position:absolute; display:block; border:1px solid var(--line); border-radius:var(--r-xs); }
+/* The place that already exists: filled, sitting on the ground line. */
+.gx-project-stage .gx-project-stage__blueprint-shape--main { inset-block-end:0; inset-inline-start:0; width:65%; height:67%; background:color-mix(in srgb,var(--ink) 4%,transparent); }
+/* The change being proposed on top of it: outline only. Unfilled is the difference between a thing
+   that is there and a thing that is drawn in, and it is the only idea this picture has. */
+.gx-project-stage .gx-project-stage__blueprint-shape--side { inset-block-start:0; inset-inline-start:50%; width:50%; height:52%; }
+
+/* REGISTRATION MARKS, in the two corners the rectangles leave empty. Two crossed 1px lines painted
+   as backgrounds rather than pseudo-elements: one element, one rule, and nothing to keep in sync.
+   26% of --ink puts them above --line (12%) and far below --faint — a tick that registers the
+   drawing must not be brighter than the drawing it registers. */
+.gx-project-stage .gx-project-stage__blueprint-cross {
+  --stage-tick:color-mix(in srgb,var(--ink) 26%,transparent);
+  position:absolute; display:block; width:11px; height:11px;
+  background:linear-gradient(var(--stage-tick),var(--stage-tick)) center/100% 1px no-repeat,
+             linear-gradient(var(--stage-tick),var(--stage-tick)) center/1px 100% no-repeat;
+}
+/* Logical insets, not left/right: in Hebrew the whole drawing mirrors, and a mark pinned to the
+   physical left would land on top of the rectangle it is supposed to sit clear of. */
+.gx-project-stage .gx-project-stage__blueprint-cross--one { inset-block-start:7px; inset-inline-start:5px; }
+.gx-project-stage .gx-project-stage__blueprint-cross--two { inset-block-end:8px; inset-inline-end:6px; }
+
+/* --------------------------------------------------------------------- at 375px --- */
+
+/* The stage stops being a column here and becomes a full-height overlay over the conversation
+   (system.css, `.gx-workbench.is-stage-open .gx-project-stage`). A 250px minimum blueprint plus a
+   108px drawing plus 24px of air is most of a phone screen spent on an empty state, so the drawing
+   gives back 14px of height and the gap under it closes up. Nothing else changes: the art is
+   absolutely positioned inside a fixed box and was never a column that could collapse. */
+@media (max-width:600px) {
+  .gx-project-stage .gx-project-stage__blueprint-art { width:150px; height:94px; margin-bottom:18px; }
+}
+
+/* Nothing in this file transitions or animates — the stage is a place to read evidence, and a
+   moving empty state is movement with no news in it. There is therefore no reduced-motion block to
+   write, and anything added above that does move needs one here.  */

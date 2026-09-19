@@ -9,6 +9,7 @@ import { SHORTCUTS, isTypingTarget, matchesShortcut, shortcutLabel, type Shortcu
 import { SEND_KEY_LABELS, newlineBinding, sendBinding } from '../lib/send-key';
 import { usePrefs } from '../lib/theme';
 import { SEND_KEYS, type SendKey } from '../lib/prefs';
+import './shortcuts-dialog.css';
 
 /**
  * Grouped the way someone looks for them: by when they would reach for one.

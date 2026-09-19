@@ -1,0 +1,71 @@
+/* WHERE APPLE GETS ASSETS — the rules asset-source-dialog.tsx's markup was written expecting.
+ *
+ * design/system.css already owns the scrim, the panel, the title, the lede, the choice row, the
+ * body grid, the name, the `does` sentence, the meta block, the reach line, the remember row, the
+ * actions and the warning. Everything below is what those rules left undrawn: the cost sentence,
+ * the reason a source is unavailable, and what a row looks like once it is.
+ *
+ * WHAT THIS PANEL IS FOR, AND WHAT THAT COSTS IT. It is the one question that decides what Apple
+ * may put in somebody's game, and it is asked once. So every rule here buys reading speed and
+ * nothing else: no weight above 400, no shadow, no fill. The dialog's whole colour budget is
+ * already spent on `.asrc__warn` — the single sentence somebody can act on from here — and
+ * nothing below spends any more of it.
+ *
+ * SPECIFICITY IS DELIBERATE, NOT DECORATION. main.tsx imports './app' before './design/system.css',
+ * so every component sheet, this one included, is injected BEFORE system.css and loses every tie.
+ * Where a rule below has to beat a base rule it carries a second class to win on specificity
+ * rather than on order.
+ *
+ * BOTH THEMES, WITHOUT A CORRECTION. Every colour here is a ramp token the light theme redefines
+ * (--ink, --muted, --faint, --line) and no rule mixes a tint that would land on one theme and
+ * vanish on the other, so there is no `:root[data-theme='light']` block to write. Checked, not
+ * assumed.
+ */
+
+/* ------------------------------------------------------------- what a choice costs --- */
+
+/* COST AND REACH ARE SIBLING SPANS. They stay off one line today only because system.css makes
+   `.asrc__reach` a block — and that is a property on the second span, not a rule about the pair.
+   Delete it and the row reads "Builds use Credits. Some files need a separate import before they
+   can be used.Results distinguish ready-to-use assets from files that still need import." The
+   pair goes in a grid, which is a rule about the pair and neither half can undo it.
+   min-width:0 because these are long sentences in a flex row inside a 375px-wide dialog. */
+.asrc__meta { display:grid; gap:3px; min-width:0; }
+
+/* THE COST IS THE THING THE DIALOG EXISTS TO SAY. "Free assets need no purchase or re-upload.
+   Builds still use Credits; creator licences apply" is what somebody chooses on; the reach line
+   under it is a caveat about whether the choice will work at all. Set at one size and one colour
+   they arrive together and neither gets read. The cost takes a step up and the reach a step down
+   — the ramp doing the work, with no colour spent on either.
+   text-wrap:pretty so a three-line sentence does not end on one orphaned word. */
+.asrc__cost { font-size:12px; line-height:1.6; color:var(--muted); text-wrap:pretty; }
+.asrc__reach { color:var(--faint); }
+
+/* ------------------------------------------------------ a source somebody else turned off --- */
+
+/* WHY THIS BOX IS GREYED OUT. An organisation or an account has switched the source off, and
+   `asset_sources` only ever narrows downwards, so the row cannot be ticked here at any price. A
+   disabled box with no sentence beside it reads as a bug rather than a rule — which is the whole
+   reason this span is rendered.
+   IT IS NOT TINTED. The reader cannot act on it from this dialog; the only thing here that can be
+   acted on is `.asrc__warn`, and that is where the colour goes. A leading hairline instead, so the
+   sentence reads as an annotation hung off the row rather than a fourth fact about the source.
+   The selector carries `.asrc__meta` because the span carries both classes — at one class it
+   would tie with the base rule and, this sheet loading first, lose the colour it is here to set. */
+.asrc__meta.asrc__blocked { color:var(--muted); border-inline-start:1px solid var(--line); padding-inline-start:10px; }
+
+/* THE ROW AROUND IT RECEDES, BUT NOT THE NAME. Which source is off is the first thing somebody
+   needs, so `.asrc__name` stays at full ink; the prose explaining a source that cannot be chosen
+   drops to --faint, which leaves the blocked sentence above the loudest thing left in the row.
+   cursor:not-allowed because `.asrc__choice` sets cursor:pointer on every row, and a pointer over
+   a label that will not toggle is a promise the dialog does not keep. */
+.asrc__choice.is-blocked { cursor:not-allowed; }
+.asrc__choice.is-blocked .asrc__does,.asrc__choice.is-blocked .asrc__cost { color:var(--faint); }
+
+/* WHAT IS DELIBERATELY NOT HERE. `.asrc__choice.is-on` has no rule and is not given one. The
+   native checkbox is already drawn in --accent and is unambiguous at a glance, and a chosen-row
+   fill would put a second, softer answer to the same question on a screen whose job is to make
+   one choice legible. The class stays in the markup as the hook, unused on purpose.
+   The dialog's own padding at 375px is also untouched: `.asrc__choice` and `.asrc` are declared in
+   design/system.css, which this sheet may not edit, and overriding their padding from here would
+   mean a compound selector fighting a stylesheet that is not wrong. */

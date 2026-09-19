@@ -1,0 +1,78 @@
+/* /settings — the rules settings.tsx's markup was written expecting and never got.
+ *
+ * Only one section on this page draws markup that design/system.css does not finish: "Where Apple
+ * gets assets", which reuses asset-source-dialog.tsx's rows on a page where that question is one
+ * entry among twenty rather than the only thing on screen. The dialog is answered once, under
+ * pressure. This list is read while somebody is looking for something else. So every rule below
+ * makes the same markup denser and quieter, and none of them restates a rule system.css wrote.
+ *
+ * WHAT THAT COSTS THE SECTION: no hover fill, no chosen-row tint, no colour from this file at all.
+ * The one coloured thing in the section is the sentence saying an empty list means plain parts,
+ * and that red is `.form-error`'s, set in system.css. A settings page that tinted its rows as well
+ * would have made the warning indistinguishable from the list it warns about.
+ *
+ * SPECIFICITY IS DELIBERATE, NOT DECORATION. main.tsx imports './app' before './design/system.css',
+ * so every component and route sheet — this one included — is injected BEFORE system.css and loses
+ * every tie. `.settings-pair.settings-pair--stack` and `.asrc__choice.asrc__choice--settings`
+ * carry a second class for that reason: at one class each they would be overruled by the very base
+ * rules they exist to override, silently, in the production build only.
+ *
+ * BOTH THEMES: every colour here is a ramp token the light theme redefines, and nothing mixes a
+ * tint that reads on one theme and disappears on the other, so there is no
+ * `:root[data-theme='light']` correction to write.
+ */
+
+/* ------------------------------------------------- where Apple gets assets: the stack --- */
+
+/* SIX CONTROLS IN A WRAPPING FLEX ROW. `.settings-pair` is `display:flex; flex-wrap:wrap`, which
+   is right for the two-field rows it was built for and wrong for this one: three checkbox rows of
+   prose, the "ask me again" toggle, the warning and Save all sized to their own content and
+   wrapping wherever they land — the same defect as two spans with no rule, one size up.
+   `--stack` is the modifier the markup asked for and nobody wrote.
+   A GRID RATHER THAN `flex-direction:column`, because the Save button has to sit at its own width
+   at the start of the row while every choice above it spans the full track, and `justify-self` is
+   the one clean way to say that. flex/min-width because this div is itself an item of
+   `.settings-row`, which is a flex row that would otherwise size it to its longest sentence. */
+.settings-pair.settings-pair--stack { display:grid; grid-template-columns:minmax(0,1fr); gap:0; flex:1 1 auto; min-width:0; }
+
+/* THE GAP IS ZERO ON PURPOSE. The choices are a divided list and the hairline on each row's top
+   edge does the separating; a grid gap would leave every one of those hairlines floating in the
+   middle of its own strip of air. Everything after the list is a different kind of control, so it
+   carries its own margin instead — a uniform gap would have put the same distance between two
+   choices as between the last choice and the button that saves them.
+   The error sentence is pulled down to the page's hint size: `.form-error` inherits the 16px body
+   size, and a red 16px line is the loudest thing in the card by a wide margin, which is not the
+   weight this particular warning deserves. */
+.settings-pair--stack > .asrc__remember { margin-top:18px; }
+.settings-pair--stack > .form-error { margin:14px 0 0; font-size:13px; line-height:1.55; text-wrap:pretty; }
+.settings-pair--stack > .btn { justify-self:start; margin-top:18px; }
+
+/* ------------------------------------------------ where Apple gets assets: one choice --- */
+
+/* THE SETTINGS VARIANT OF A CHOICE ROW. The dialog gives each row 18px of air and a 15px name
+   because it is the only thing on the screen. Here the identical markup is one entry in a long
+   page, so it loses a step of size and a quarter of its padding — that is the whole difference
+   between a settings list and three cards stacked inside a card.
+   min-width:0 on the body so a long `does` sentence cannot push the row past the card at 375px.
+   AND THE EXPLANATION STEPS BACK. In the dialog the name is 15px and the `does` sentence 13px,
+   both at full ink, and the four-point gap plus a modal with nothing else in it carries that. At
+   14px against 13px it does not: the label and its paragraph arrive as one lump of ink and the
+   thing somebody is scanning for — which source this row is — stops reading as a label. So the
+   name keeps the ink and everything under it is muted. Size and colour, not weight; there is no
+   weight above 400 on this page and this rule is the reason none is needed. */
+.asrc__choice.asrc__choice--settings { padding:14px 0; gap:12px; }
+.asrc__choice--settings .asrc__body { gap:5px; min-width:0; }
+.asrc__choice--settings .asrc__name { font-size:14px; }
+.asrc__choice--settings .asrc__does { color:var(--muted); }
+
+/* Optical alignment. The 6px in system.css was measured against the dialog's 15px name; under a
+   14px one it hangs the box visibly below the cap height. */
+.asrc__choice.asrc__choice--settings > input { margin-top:4px; }
+
+/* At 375px the card's own padding has already taken most of the width, and a 12px gutter beside
+   the checkbox leaves a text column a couple of words wide. Both come down. Nothing else changes:
+   the grid above is a single column at every width, so there are no columns here to collapse. */
+@media (max-width:600px) {
+  .asrc__choice.asrc__choice--settings { padding:12px 0; gap:10px; }
+  .settings-pair--stack > .asrc__remember,.settings-pair--stack > .btn { margin-top:16px; }
+}

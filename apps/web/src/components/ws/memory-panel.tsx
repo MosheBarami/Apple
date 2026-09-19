@@ -11,6 +11,7 @@
 // works, rather than concluding the delete button is broken.
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import './memory-panel.css';
 import { Failure } from '../failure';
 import { ApiError, decideSuggestion, fetchMemory, saveMemory } from '../../lib/api';
 import { decisionBody, isAlreadyAnswered, pendingFrom, type SuggestionDecision } from '../../lib/memory-approvals';

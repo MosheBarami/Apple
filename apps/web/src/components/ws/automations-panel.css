@@ -1,0 +1,119 @@
+/* SAVED INSTRUCTIONS — the rules automations-panel.tsx's markup was written expecting and never got.
+ *
+ * design/system.css already owns most of this family: `.au-list`, `.au-runs`, `.au-item`, `.au-run`
+ * and their heads, texts, names, metas, notes and whens, plus `.au-count`, `.au-err`, `.au-run__err`,
+ * `.au-badge`, `.au-editor` and `.au-history`. This file is only what those left undrawn — the
+ * panel's own stack, the gutter a run row never had, the mark that stands in it, the outcome label,
+ * and the one chip that says why "Run now" is dead. Nothing here restates a rule from over there.
+ *
+ * WHAT THIS PANEL IS FOR AND WHAT THAT COSTS IT. Read the header of automations-panel.tsx first:
+ * this is a record of what a saved instruction did and what each run of it spent, and the whole
+ * argument of the component is that a failure to run must never render as a plan to run. So nothing
+ * below spends anything on presence — no shadow, nothing above weight 400 — and colour is spent
+ * exactly twice: once on the dot that says how a run ended, once on the badge that says an
+ * automation is not going to start. Everything else is a warm neutral.
+ *
+ * THESE RULES OUT-SPECIFY system.css WHERE THEY HAVE TO, AND THAT IS DELIBERATE. main.tsx imports
+ * `./app` on line 2 and `./design/system.css` on line 5, so every component sheet in this app is
+ * emitted first and system.css last. A bare `.au-badge--off` would lose its `font-size` to the
+ * `.au-badge` it is meant to correct — silently, at build time, with no error anywhere. The one
+ * override here is written as `.au-badge.au-badge--off`, which is true of the markup, so the
+ * cascade is settled on purpose instead of by emit order.
+ */
+
+/* -------------------------------------------------------------------- the panel --- */
+
+/* `.au` has never had a rule of any kind, and the checker is structurally unable to say so: it only
+   reports names carrying `__` or `--`, so a bare block class can be missing and still look fine.
+   Left alone, the list of automations and the "New automation" button touch, and the two intro <p>s
+   carry the UA's 1em block margins while nothing else on the panel carries any. One grid sets every
+   gap from one place, and `margin:0` stops those UA margins landing on top of the gap and doubling
+   the air above the list. */
+.au { display:grid; gap:14px; min-width:0; }
+.au > p { margin:0; }
+/* A grid item stretches. Without this, "New automation" is a button the width of the whole panel,
+   which reads as the panel's primary surface rather than as the thing you do after the list. */
+.au > .btn { justify-self:start; }
+
+/* ------------------------------------------------------------------- a run row --- */
+
+/* THE ROW HAS TO BE A ROW BEFORE THE MARK CAN MEAN ANYTHING. `.au-run` is an <li> with no display
+   of its own, holding an inline <span> for the mark followed by a `display:grid` <span> for the
+   body — so the mark is pushed onto a line of its own ABOVE the text it is supposed to be marking,
+   and, having no width or height either, it is a blank line. Flex rather than a two-column grid
+   because system.css already puts `flex:1` on `.au-run__body`, which is the author saying what he
+   meant; a grid would leave that declaration inert and the intent buried. */
+.au-run { display:flex; align-items:flex-start; gap:12px; min-width:0; }
+
+/* THE MARK IS THE ONLY COLOURED THING IN THE ROW, AND IT IS NEVER THE ONLY EVIDENCE. Every tone is
+   already said in words by `outcomeLabel` — "Ran", "Did not finish", "Running…" — so the dot buys
+   scanning down twenty-five runs and nothing else. Nobody loses a fact to a colour they cannot see.
+   `margin-block-start`, not `align-items:center` on the row: the dot is centred on the cap height
+   of the 13px label beside it, and must not drift down the row every time a run also has an error
+   line and a daylight-saving note under it. 6px is (a 19.5px line box − a 7px dot) / 2. */
+.au-run__mark {
+  --au-ring:color-mix(in srgb,var(--faint) 60%,transparent);
+  flex:none; width:7px; height:7px; margin-block-start:6px; border-radius:var(--r-pill);
+  border:1px solid var(--au-ring); background:transparent;
+}
+
+/* THREE TONES, AND THE THIRD IS DELIBERATELY NOT A VERDICT. `good` and `bad` are settled endings
+   and get a filled dot. `muted` is "Running…", "Refused" and "Skipped — project was building" —
+   none of them a judgement the reader is being asked to act on — so it keeps the hollow ring the
+   base draws. An unfilled dot reads as "not decided"; a third colour would read as a third kind of
+   ending. `outcomeLabel`'s default branch is muted too, so an outcome string this build has never
+   seen also lands on the ring, which is exactly right: the panel does not know how it went. */
+.au-run__mark--good { border-color:var(--good); background:var(--good); }
+.au-run__mark--bad { border-color:var(--bad); background:var(--bad); }
+.au-run__mark--muted { border-color:var(--au-ring); background:transparent; }
+
+/* THE RING ONLY READ ON ONE THEME, AND I MEASURED IT RATHER THAN ASSUMING IT. `--faint` at 60% is
+   #6e6c69 over the dark paper — 3.55:1, over the 3:1 a non-text object needs. The same 60% on the
+   light theme is #9f9f9f over #fafafa: 2.54:1, under it, and under it on every surface the panel
+   can sit on. 85% clears it everywhere (3.92:1 on the worst of them, `--paper-2` at #f3f3f3).
+   It moves through `--au-ring` rather than through `border-color`, on purpose: a
+   `:root[data-theme='light'] .au-run__mark` rule declaring a border-colour would out-specify the
+   single-class `--good` and `--bad` below it and quietly grey out the two dots that carry the
+   whole point of the column. */
+:root[data-theme='light'] .au-run__mark { --au-ring:color-mix(in srgb,var(--faint) 85%,transparent); }
+
+/* THE OUTCOME, AND THE ROW'S ONE PIECE OF FULL-STRENGTH INK. `.au-run__head` is already a flex row
+   in system.css, so this does not run into the timestamp beside it; what it needed was to stop
+   LOOKING like the timestamp. One step up in size over the 12px muted siblings and a step up in
+   ink is the entire hierarchy — there is no weight above 400 anywhere in this product.
+   `Recorded as "…"` is built from a string the server chose, so it can be long and unbroken.
+   `min-width:0` lets the flex item shrink and `overflow-wrap` breaks it, rather than the label
+   shoving the date it belongs beside off the end of the row. */
+.au-run__what { min-width:0; font-size:13px; line-height:1.5; letter-spacing:-.01em; color:var(--ink); overflow-wrap:anywhere; }
+
+/* --------------------------------------------------------------- paused, and why --- */
+
+/* WHAT THIS CHIP IS ACTUALLY FOR. "Run now" is disabled the moment an automation is paused, and the
+   only explanation attached to it is a `title` nobody on a phone can reach. This badge is that
+   explanation, which is the reason it is allowed a colour at all.
+   THE BOX IS NEUTRAL AND ONLY THE WORD IS WARN. A tinted fill under a tinted hairline under warn
+   text is three spends on one word; a surface step costs nothing and says "chip" just as well.
+   system.css sets 10px, which is the size of a decoration rather than of a reason — 11px is the one
+   property here that has to out-specify it.
+   `justify-self:start` because `.au-item__text` is a grid: without it the chip stretches to the
+   width of the automation's name and stops looking like a chip at all. */
+.au-badge.au-badge--off {
+  justify-self:start; padding:2px 8px; border:1px solid transparent; border-radius:var(--r-pill);
+  background:var(--surface-2); font-size:11px; line-height:1.5; letter-spacing:.01em; color:var(--warn);
+}
+/* ON THE LIGHT THEME THE SURFACE STEP IS NOT A STEP. `--surface-2` is #eeeeee there, against a
+   `--paper` of #fafafa and a `--surface` of #ffffff — four to seven percent, which is not a chip,
+   it is a smudge. The hairline is what carries the box's edge on that theme. It is declared
+   transparent above rather than added here so that turning it on does not move the word by a pixel
+   or change the chip's height between themes. */
+:root[data-theme='light'] .au-badge.au-badge--off { border-color:color-mix(in srgb,var(--warn) 32%,var(--line)); }
+
+/* ---------------------------------------------------------------------- at 375px --- */
+
+/* The one column this file created is the run row's gutter, and 7px of dot plus 12px of gap is 19px
+   out of the 375 the whole panel gets. The dot stays — it is what makes a history of twenty-five
+   runs scannable — and the gap gives back what it can. Nothing else here is a column. */
+@media (max-width:600px) {
+  .au { gap:12px; }
+  .au-run { gap:10px; }
+}

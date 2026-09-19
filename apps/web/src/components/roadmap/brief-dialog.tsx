@@ -15,6 +15,7 @@ import { PRODUCT_MODE_INFO, SPECIALIST_TO_PRODUCT_MODE, type ProductMode } from 
 import { Modal } from '../modal';
 import type { MilestoneBrief } from './model';
 import type { BriefIntent } from './milestone-card';
+import './brief-dialog.css';
 
 interface Props {
   brief: MilestoneBrief;

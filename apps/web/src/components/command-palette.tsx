@@ -23,6 +23,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { groupBySection, rankCommands } from '../lib/command-match';
 import { useCommandRegistry } from '../lib/commands';
 import { SHORTCUTS, matchesShortcut } from '../lib/shortcuts';
+import './command-palette.css';
 
 export function CommandPalette() {
   const { commands, open, setOpen } = useCommandRegistry();

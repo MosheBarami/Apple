@@ -50,6 +50,7 @@ import {
   type AutomationDraft,
   type Refusal,
 } from '../../lib/automations';
+import './automations-panel.css';
 
 /** The reason a request was refused, and the field it belongs on. Null when nothing was refused. */
 type Rejection = Refusal | null;

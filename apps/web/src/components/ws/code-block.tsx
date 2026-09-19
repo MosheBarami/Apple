@@ -12,6 +12,7 @@
 // arrives a second later.
 import { useEffect, useRef, useState } from 'react';
 import { normaliseLanguage, tokenize } from '../../lib/highlight';
+import './code-block.css';
 
 /** How the language reads in the block's header. 'text' names nothing, so it says nothing. */
 const LANG_NAME: Record<string, string> = {

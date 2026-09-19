@@ -1,0 +1,95 @@
+/* The spine's stage row: the node the line hangs from, the body column beside it, and the
+ * disclosure button a finished stage's heading turns into.
+ *
+ * design/system.css owns the shape — `.rm-spine`, `.rm-stage` (the 25px rail / 1fr body grid),
+ * `.rm-stage__rail`, `.rm-stage__line`, `.rm-stage__label`, `.rm-stage__count`,
+ * `.rm-stage__parallel` and `.rm-stage__cards`. What it never wrote were the four pieces that
+ * hold that shape together, so four selectors matched nothing and:
+ *
+ *   - the node span stayed INLINE. As the rail's first flex item it still laid out a line box —
+ *     1.55 x 16px = 24.8px around a 20px mark — so `.rm-stage__line`'s 12px top margin was being
+ *     measured from five pixels of nothing, and the hexagon sat low against its own heading.
+ *   - the body column kept min-width:auto. `minmax(0,1fr)` stops the TRACK growing, not the item
+ *     in it, so one unbreakable token in a milestone title could scroll the page sideways.
+ *   - the landed heading was a bare <button>, which means the element rule near the top of
+ *     system.css was still drawing it: a 10px radius for the focus ring to trace, a grey hover
+ *     slab behind a heading, `button svg { width:17px }` inflating a 12px chevron to 17, and
+ *     line-height 1.55 where every other stage heading sits at 1.25 — six pixels taller than its
+ *     own siblings. Its chevron also had nothing between it and the stage name.
+ *   - `is-open` on that chevron was dead, so the disclosure never turned.
+ *
+ * SCOPED WHERE IT HAS TO BE, AND ONLY THERE. main.tsx imports `App` on line 2 and
+ * `design/system.css` on line 5, so this file lands BEFORE system.css in the bundle and a
+ * one-class rule here loses to a one-class rule there. `.rm-stage__label--toggle` has to outrank
+ * `.rm-stage__label`, and its hover has to outrank `button:hover:not(:disabled)`, so those carry
+ * the extra class. The rest name classes system.css has never heard of and are left alone —
+ * the same division milestone-card.css makes.
+ *
+ * NO MEDIA QUERY, DELIBERATELY. This sheet creates no columns; the only grid on the row is
+ * system.css's, and `min(300px,100%)` already collapses it to one card at 375px. `min-width:0`
+ * on the body IS the narrow-width rule here, and the heading is bounded copy ("Stage 3").
+ * Every colour below is a token, so the light ramp flips underneath it with nothing to correct.
+ */
+
+/* ------------------------------------------------------------------------- node --- */
+
+/* A 20px MARK NEEDS A 20px BOX. flex:none because the rail is a flex column whose other child
+   takes flex:1 and would otherwise squeeze this one. */
+.rm-stage__node { display:flex; flex:none; margin-top:2px; }
+/* Optical and measured, not taste: the h2 beside it is 19px at line-height 1.25, so its first
+   line centres 11.9px down while the node centres at 10px. A landed stage's heading is the 16px
+   button below instead, which centres at 10px on its own and wants no nudge — and `is-landed` is
+   exactly the branch that renders it, since model.ts sets `stage.landed` from the same test
+   `stageReadiness` uses. */
+.rm-stage.is-landed .rm-stage__node { margin-top:0; }
+
+/* ------------------------------------------------------------------------- body --- */
+
+/* The one thing standing between a quoted file path and a horizontal scrollbar on the whole
+   roadmap. The scan writes milestone titles from what it read in the place file, so an
+   unbreakable token is not a hypothetical here. */
+.rm-stage__body { min-width:0; }
+
+/* -------------------------------------------------------------- landed heading --- */
+
+/* A FINISHED STAGE IS A RECEIPT, and this is the only heading on the page that is a button.
+   It sits a rank below the stages that still have work in them — 16px against 19px, --muted
+   against --ink — because the plan is about what is left, and the run of folded receipts at the
+   top of a spine should read quiet and get louder where the work starts. The chevron indents it
+   by a further 21px, which is the same statement made twice and is the reason the indent is not
+   fought: a receipt is subordinate to its own disclosure.
+   The type is restated because a <button> takes line-height from the root (1.55) while
+   `h1,h2,h3` sit at 1.25, and `font-family`/`letter-spacing` never reach it at all.
+   display:flex with a fit-content width rather than inline-flex: an inline-level box would sit in
+   a line box of the body's own leading and gain back the 5px this file just took off the node. */
+.rm-stage .rm-stage__label--toggle { display:flex; align-items:center; width:fit-content; max-width:100%; border-radius:0; background:none; font-family:var(--font-display); font-size:16px; line-height:1.25; letter-spacing:-.025em; color:var(--muted); transition:color .18s var(--ease-out); }
+/* `:not(:disabled)` matches the specificity of the global button fill rather than racing it.
+   Ink is the hover; a grey slab behind a heading is not a hover, it is a mistake. */
+.rm-stage .rm-stage__label--toggle:hover:not(:disabled) { background:none; color:var(--ink); }
+/* Collapsed, there is nothing under this heading — `[hidden]` removes the cards outright — so its
+   20px bottom margin is 20px of rail drawn beside nothing. A grid item does not collapse its
+   children's margins outward, so that really was extra height on the row. */
+.rm-stage:not(.is-open) .rm-stage__label--toggle { margin-bottom:0; }
+
+/* ----------------------------------------------------------------------- chevron --- */
+
+/* THE ONLY THING BETWEEN THE CHEVRON AND THE STAGE NAME. They are adjacent flex items and a
+   disclosure glued to its own label reads as one smudge. The space sits on the chevron rather
+   than as a gap on the button, because a gap would also space `.rm-stage__count` and stack on
+   top of the 12px system.css already gives it. */
+.rm-stage__chev { display:inline-flex; flex:none; margin-inline-end:9px; color:var(--faint); transition:transform .18s var(--ease-out); }
+/* `button svg { width:17px; height:17px }` overrides the width/height ATTRIBUTES that Icon
+   writes, so `<Icon size={12}>` was drawing at 17 — a chevron as tall as the words. */
+.rm-stage__chev svg { width:12px; height:12px; }
+.rm-stage__chev.is-open { transform:rotate(90deg); }
+/* Mirrored, a right-pointing chevron points away from the heading it opens. Restated for the
+   open state because `[dir='rtl'] .rm-stage__chev` and `.rm-stage__chev.is-open` are the same
+   specificity and this file's source order would otherwise decide it. */
+[dir='rtl'] .rm-stage__chev { transform:rotate(180deg); }
+[dir='rtl'] .rm-stage__chev.is-open { transform:rotate(90deg); }
+
+/* system.css kills transitions under reduce with !important. Restated so this sheet is correct
+   on its own terms instead of correct by someone else's blanket rule. */
+@media (prefers-reduced-motion:reduce) {
+  .rm-stage .rm-stage__label--toggle,.rm-stage__chev { transition:none; }
+}

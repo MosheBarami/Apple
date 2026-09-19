@@ -1,0 +1,83 @@
+/* THE COMMAND PALETTE — the three rules the list was already drawn expecting.
+ *
+ * WHAT THIS PANEL IS FOR, AND WHAT THAT COSTS IT. ⌘K is the one surface that reaches every action
+ * in the product, and it is used at speed with the eyes and not the mouse: somebody types two
+ * letters and presses Enter before the list has finished settling. So nothing here may move, tint
+ * or shout. There is not one transition in this file, which is also why there is no
+ * reduced-motion block at the bottom — there is nothing down there to turn off.
+ *
+ * design/system.css already owns `.cmdk-backdrop`, `.cmdk`, `.cmdk__input`, `.cmdk__list`,
+ * `.cmdk__section`, `.cmdk__item`, `.cmdk__item.is-selected`, `.cmdk__why`, `.cmdk__hint` and
+ * `.cmdk__foot`. This file adds the three it never covered, and nothing below restates a rule
+ * that already exists over there.
+ *
+ * THE ROW IS A FLEX CONTAINER WITH TWO CHILDREN AND NO GAP. `.cmdk__item` is
+ * `justify-content:space-between`, which separates the title from its hint only for as long as the
+ * row has slack to spend. At 375px "Contribute anonymised snippets" and its chord meet in the
+ * middle and read as one string. That distance has to be paid for on the title, and it is.
+ *
+ * COLOUR IS RATIONED, AND THIS PANEL SPENDS NONE. Nothing in a palette is status: every row is a
+ * thing you may do, not a thing that has happened to you. The one emphasis here — the characters
+ * the query matched — is a neutral surface step, not a hue.
+ */
+
+/* ------------------------------------------------------------------ nothing matched --- */
+
+/* A <p>, so the user agent's block margins go first. Then the real hazard: the query is
+   interpolated into the sentence — Nothing matches “whatever they just pasted”. — and a
+   sixty-character paste with no spaces in it widens the whole dialog unless the text is allowed to
+   break mid-word. `anywhere` rather than `break-word` deliberately: only `anywhere` also shrinks
+   the min-content width, which is the number the scroller above it actually measures. */
+.cmdk__empty { margin:0; padding-block:14px; font-size:13px; line-height:1.6; letter-spacing:-.01em; color:var(--muted); text-wrap:pretty; overflow-wrap:anywhere; }
+
+/* ----------------------------------------------------------------------- one section --- */
+
+/* THE GROUP IS A GRID SO THAT ITS SPACING STOPS BEING AN ACCIDENT. Left as a plain block it has
+   neither padding nor border, so `.cmdk__section`'s 15px top margin escapes through it and becomes
+   the group's own margin — the air between two sections is then whichever margin happened to win a
+   collapse rather than a number anyone chose, and it changes the moment someone gives this box a
+   border. A grid keeps every margin inside the box it belongs to and hands back a `gap` for the
+   rows, which otherwise sit line-box against line-box with nothing between them.
+   `minmax(0,1fr)` rather than a bare single column: a grid item's automatic minimum is its
+   min-content width, so one long unbroken command title would push the track wider than the 55vh
+   scroller and the entire list would scroll sideways to reach a hint. */
+.cmdk__group { display:grid; grid-template-columns:minmax(0,1fr); gap:2px; min-width:0; }
+
+/* ------------------------------------------------------------------------ the command --- */
+
+/* THE TITLE PAYS FOR THE GAP THE ROW DOES NOT HAVE. `space-between` puts air between the title and
+   its hint only while there is air left to put; once the row is full the two spans touch and
+   "Keyboard shortcuts⌘/" reads as one token. The trailing padding is a floor under that distance
+   rather than a preference about it.
+   `flex:1 1 auto` with `min-width:0` is what lets the title be the thing that gives way. A flex
+   item's default minimum is its min-content width, so without it a long title shoves the hint off
+   the end of the row instead of wrapping under itself. */
+.cmdk__title { flex:1 1 auto; min-width:0; padding-inline-end:16px; font-size:14px; line-height:1.5; letter-spacing:-.01em; overflow-wrap:anywhere; text-wrap:pretty; }
+
+/* THE MATCHED CHARACTERS, AND THE USER AGENT'S YELLOW. <mark> ships with `background:Mark` —
+   canary yellow behind black text — so the moment anybody types, the loudest thing the product
+   draws anywhere is a search highlight inside a #232221 panel. A highlight is not status, and
+   under the rationing rule it gets no colour at all: it is the ink the row is already set in, at
+   15%, composited over whatever is behind it.
+   THE ABSENCE OF A LIGHT-THEME CORRECTION BELOW IS A DECISION, NOT AN OVERSIGHT. 15% of #f4f3f2
+   over the dark panel and 15% of #202020 over the white one are the same size of step, and both
+   still read once `.is-selected` has raised the row to `--surface-2`. A tint would have needed one;
+   a step in the ramp's own ink does not.
+   Initials matches hand back scattered single characters — "cs" marks the C and the S and nothing
+   between them — so the box is padded a hair and pulled back by the same amount, which keeps the
+   letters on their original rhythm and stops a marked "c" from rendering as a 1px sliver. Cloned
+   across a line break because the title above is allowed to wrap. */
+.cmdk__title mark {
+  background:color-mix(in srgb,var(--ink) 15%,transparent); color:inherit; border-radius:2px;
+  padding-inline:1px; margin-inline:-1px; -webkit-box-decoration-break:clone; box-decoration-break:clone;
+}
+
+/* ----------------------------------------------------------------------- at 375px --- */
+
+/* Nothing here is a column, so there is nothing to collapse. The only thing that changes is the
+   arithmetic on the row: 16px held back for the hint is a sixteenth of the usable width at this
+   size, and the title needs it more than the hint needs the distance. */
+@media (max-width:600px) {
+  .cmdk__title { padding-inline-end:10px; }
+  .cmdk__empty { padding-block:12px; }
+}

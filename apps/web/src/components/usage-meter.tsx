@@ -5,6 +5,7 @@
 // QuotaState's own comment warns against — it hides which kind of zero you are looking at, and the
 // two zeroes have different next actions.
 import { meterView, type MeterView } from './usage-meter-model';
+import './usage-meter.css';
 
 const TONE_LABEL: Record<MeterView['tone'], string> = {
   good: 'Usage',

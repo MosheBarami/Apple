@@ -93,7 +93,11 @@ no CDN origin to deploy to.
 long-poll queue for the plugin, the agent run loop), `QuotaDO`, `BudgetDO`, `PairingDO`, `AdminDO`
 (analytics sink), `DiscordDO`.
 
-**Bindings:** `AI` (Workers AI via AI Gateway), `CORPUS` (D1), `KV`, `VEC` (Vectorize).
+**Bindings:** `AI` (Workers AI via AI Gateway), `CORPUS` (D1), `KV`, `VEC` (Vectorize),
+`MEDIA` (R2 — generated images, generated audio and chat attachments, keyed
+`<kind>/<projectId>/<id>` so a project's bytes are one `list({ prefix })` from deletion).
+`MEDIA` is optional: `mediaStore()` answers `null` where it is unbound and the caller keeps
+its KV path, so a deployment from an older config degrades instead of failing its first write.
 
 **Auth and data:** Supabase Postgres with RLS on every table. The worker forwards the caller's own
 JWT to PostgREST, so **RLS is the thing deciding** — not the worker. `infra/supabase/tests/rls-isolation.mjs`

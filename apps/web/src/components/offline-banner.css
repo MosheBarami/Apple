@@ -1,0 +1,105 @@
+/* NOT REACHING US — the one strip in the app that says a request never left.
+ *
+ * WHAT THIS PANEL IS FOR, AND WHAT THAT COSTS IT. It renders only when lib/connectivity.ts has
+ * actually observed a failure, so it is never decoration and never has to compete for attention.
+ * What it costs is a place to stand. `.gx-shell` is a plain block and its only other in-flow child
+ * is `.gx-main`, which is 100dvh tall, wrapping a `.gx-ws` that is also exactly 100dvh. A banner in
+ * normal flow would therefore push the whole workspace down by its own height and send the
+ * composer — the app's primary control — below the fold, on every route, for as long as the wifi
+ * is out. Fixing an outage notice by hiding the text box is not a trade worth making. So it floats.
+ *
+ * IT FLOATS OVER THE MIDDLE OF THE TOPBAR, AND THAT IS THE BILL. `.gx-top` puts the project title
+ * at the inline start and the workspace controls at the inline end and leaves the centre bare, so
+ * a centred card lands in the gap: measured at 1440px it ends 198px clear of the controls. It is
+ * NOT clear of a long title. `.gx-top__title` is allowed 35vw, and a title that uses it runs under
+ * this card — a real cost, paid only while the connection is actually down, and a smaller one than
+ * pushing the composer off the bottom of every screen. On a `.page` route there is no topbar at
+ * all — it opens with 110px of padding — so there it covers nothing.
+ *
+ * ONE TINT, AND IT IS THE DOT. `--warn`, not `--bad`: the body sentence says nothing was sent and
+ * nothing in the project changed, and red over a message whose entire content is "you have not
+ * lost anything" argues with itself. Title, body and next step are ink, muted and faint. Size,
+ * colour and space; no weight; nothing else on the card is coloured at all.
+ *
+ * `.is-offline` AND `.is-unreachable` DELIBERATELY RENDER IDENTICALLY. They differ in whose fault
+ * it probably is, not in what happened to the reader's work, and two tints would claim a
+ * difference in severity that does not exist. The titles connectivity.ts writes — "No connection"
+ * and "Apple is not answering" — already carry the whole difference, in words, which is where a
+ * distinction that fine belongs.
+ *
+ * WHAT IS DELIBERATELY NOT HERE: an entrance animation, and a shadow. This appears at the instant
+ * something failed, so 220ms of it sliding in is 220ms the sentence cannot be read, bought with no
+ * information; and a lifted box is one more thing to parse on a screen where something has just
+ * gone wrong. A hairline does the separating, as it does everywhere else in this product.
+ */
+
+/* --------------------------------------------------------------------- the card --- */
+
+/* 76px is `.studio-dock`'s width in design/system.css. The dock is `position:fixed`, so anything
+   pinned to the viewport's inline start goes under it; starting the strip past it is the only way
+   to be sure this is never half-hidden behind the navigation.
+   `width:fit-content` between two insets shrink-to-fits inside the strip and the auto margins then
+   centre it. A notice three words wide stays a card that way, where a stretched bar would leave
+   one sentence marooned at each end of a 1400px screen with a hole in the middle.
+   680px is not a round number either: the row's max-content width measures 665px, so this is the
+   smallest cap that still lets the title, the answer and the next step share one line. At 660 they
+   did not, and the card became two lines tall for the sake of five pixels — more of the topbar
+   covered, not less. Anything wider than the text needs is title it hides for nothing. */
+.net-banner {
+  position:fixed; z-index:60; inset-block-start:14px; inset-inline:76px 0;
+  width:fit-content; max-width:680px; margin-inline:auto;
+  display:flex; flex-wrap:wrap; align-items:flex-start; gap:6px 14px;
+  padding:11px 16px; border:1px solid var(--line); border-radius:var(--r-sm); background:var(--surface);
+  font-size:13px; line-height:1.5; letter-spacing:-.01em;
+}
+
+/* THE ONE COLOURED THING. The span is empty, so it has no baseline of its own to align on and a
+   baseline rule would hang it off the bottom of the row; 7px of margin is the optical nudge that
+   puts a 6px dot on the centre of a 13px/1.5 first line instead. */
+.net-banner__dot { flex:none; width:6px; height:6px; margin-block-start:7px; border-radius:var(--r-pill); background:var(--warn); }
+
+/* TWO SPANS WITH NO RULE READ AS ONE WORD. `<strong>No connection</strong>` and the body sentence
+   are siblings inside this wrapper; with nothing here they render as "No connectionNothing was
+   sent, so nothing in your project changed." — the exact failure the unstyled-class check exists
+   to catch. This flex row is the fix and it is the first thing the file does.
+   A row and not a stack: the title is three words, the answer belongs beside it rather than under
+   it, and `wrap` lets the body drop to its own line on its own when the strip is too narrow to
+   hold both — which is a decision the width can make, and this rule cannot. */
+.net-banner__text { flex:1 1 210px; display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 9px; min-width:0; }
+
+/* A <strong>, and nothing in this product is bolder than 400. It is the loudest thing on the card
+   by being the only full-strength ink on it. */
+.net-banner__title { font-weight:400; color:var(--ink); }
+
+/* "Did I lose anything" — answered before anything else, and therefore never clipped: it wraps, it
+   balances, and it is not allowed an ellipsis. A truncated reassurance is worse than none. */
+.net-banner__body { min-width:0; color:var(--muted); text-wrap:pretty; }
+
+/* The one action, and it is only a sentence — there is no control here to press, so it is set as
+   the quietest thing on the card. Fenced off with the same 1px hairline the turn footer uses to
+   part its cost from its stamp: a full stop between two grey sentences on one line is a boundary
+   nobody sees. */
+.net-banner__next { flex:none; padding-inline-start:14px; border-inline-start:1px solid var(--line); color:var(--faint); }
+
+/* ON THE LIGHT THEME THE CARD AND THE PAGE UNDER IT ARE TWO WHITES TWO PER CENT APART — `--surface`
+   #ffffff over `--paper` #fafafa — so the hairline is the only thing left saying this floats above
+   something. The dark theme has a real surface step and needs no help. The correction is the
+   border, not a shadow, for the reason in the header. */
+:root[data-theme='light'] .net-banner { border-color:color-mix(in srgb,var(--ink) 20%,var(--line)); }
+
+/* ------------------------------------------------------- at 375px, and why 680 --- */
+
+/* 680px is system.css's own breakpoint and not a round number chosen here. Below it `.studio-dock`
+   stops being a 76px column and becomes a 44px pill at inset-inline-start:12px / top:10px, and by
+   layout.tsx's own note that pill is the ONLY way to open navigation at phone width — covering it
+   takes the rail, the account menu and sign-out with it. 68px clears it with 12px to spare, and a
+   breakpoint picked independently of the thing it is dodging would have been a guess.
+   The card fills what is left of the strip rather than centring in it: at 295px there is no space
+   to centre anything in. The next step gets a line of its own there, where a leading hairline
+   would be pointing at nothing. */
+@media (max-width:680px) {
+  .net-banner { inset-block-start:10px; inset-inline:68px 12px; width:auto; margin-inline:0; padding:10px 12px; gap:5px 10px; font-size:12px; }
+  .net-banner__dot { margin-block-start:6px; }
+  .net-banner__text { flex:1 1 150px; gap:2px 7px; }
+  .net-banner__next { flex:1 1 100%; padding-inline-start:0; border-inline-start:0; }
+}

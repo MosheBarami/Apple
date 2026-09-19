@@ -6,6 +6,7 @@
 // the order the questions arrive in.
 import { Link } from 'react-router-dom';
 import { explainFailure, type Explained } from '../lib/error-taxonomy';
+import './failure.css';
 
 export function Failure({
   error,

@@ -1,0 +1,134 @@
+/* THE BRIEF — the request Apple would be given, read before it is given.
+ *
+ * WHAT THIS PANEL IS FOR, AND WHAT THAT COSTS IT. It exists so that nobody presses Plan or Build
+ * on an instruction they have not read. Reading is therefore the only thing it has to buy:
+ * nothing here sets a weight above 400, nothing casts a shadow, and a 1px `var(--line)` hairline
+ * does all the separating. Hierarchy is size, colour and space.
+ *
+ * WHAT WAS MISSING, AND WHY IT DID NOT LOOK LIKE A BUG. design/system.css owns three of this
+ * panel's classes and only three — `.rm-brief__section`'s hairline and padding, `.rm-brief__list`'s
+ * indent, `.rm-brief__pre`'s wrapping. The other five matched nothing at all: the lead paragraph,
+ * the blocked notice, the three section headings, the touched-parts line and the raw-request
+ * disclosure. They still rendered, because every one of them is a block element and the user
+ * agent's own margins held them apart by accident. Two places the user agent does not help:
+ * `<details>` carries no margin of any kind, so the disclosure sat flush against the sentence
+ * above it; and the lead and the blocked notice are consecutive <p>s separated by one em of
+ * default leading, which says nothing about how those two sentences relate. The <h3>s, meanwhile,
+ * arrived at the app's 22px heading size — three of them, each larger than the list it labels.
+ *
+ * WHERE THE COLOUR GOES. One place: the blocked notice. It is the only thing on this screen that
+ * changes whether the button underneath should be pressed at all. The mode name, the section
+ * headings, the touched parts and the request text are facts, and facts are warm neutrals here.
+ *
+ * SPECIFICITY. main.tsx imports `App` before `design/system.css`, so this file lands FIRST in the
+ * bundle and loses every tie at equal specificity. The five unclaimed classes need only one class
+ * each. The two rules that extend a class system.css already owns set properties that sheet left
+ * unset and never restate one it did, so there is no tie for them to lose.
+ */
+
+/* --------------------------------------------------------------------- the lead --- */
+
+/* The sentence that names the mode, directly under the milestone title in the modal header. It is
+   what has to be read before anything else, so it is the only body text here at 15px; everything
+   below is 12 to 14. The <strong> is the mode name — the word that decides whether this run
+   inspects the place or changes it — and it stays at 400, because the product has exactly one
+   weight and emphasis is a step up the neutral ramp instead. */
+.rm-brief__lead { margin:0 0 20px; font-size:15px; line-height:1.6; letter-spacing:-.01em; color:var(--muted); text-wrap:pretty; }
+.rm-brief__lead strong { font-weight:400; color:var(--ink); }
+
+/* ------------------------------------------------------------ what has not landed --- */
+
+/* THE ONE COLOURED THING HERE, and it earns it: `brief.ready` is false and something this
+   milestone depends on has not landed, so the run this dialog is about to start may have nothing
+   to build on. Drawn the way the roadmap card the user just came from draws the same fact — a 2px
+   `--warn` rule down the leading edge rather than a coloured sentence, which would read as a
+   failure that has already happened instead of a caution about one that has not. Square, because
+   the modal panel and the roadmap cards are square and a rounded inset inside them is a second
+   idiom for no reason. `role="status"` in the markup means it is spoken too; this is for the eye. */
+.rm-brief__blocked {
+  margin:0 0 20px; padding:13px 15px;
+  border-inline-start:2px solid var(--warn);
+  background:color-mix(in srgb,var(--warn) 6%,transparent);
+  font-size:13px; line-height:1.6; letter-spacing:-.01em; color:var(--muted); text-wrap:pretty;
+}
+/* The light theme needs MORE of the tint, not less — the opposite of the usual correction.
+   `--warn` is a pale straw in the dark theme and a dark brown (#775620) in the light one, and 6%
+   of that brown over white works out to rgb(247,245,242): a grey box with a brown edge. 10% gives
+   rgb(241,238,233), which is unmistakably warm. Computed from the token values, not eyeballed —
+   and `--muted` on that new surface measures 6.44:1, so the tint does not spend the 4.5:1 the
+   ramp was chosen to hold. (Dark: 7.19:1 on rgb(47,44,40).) */
+:root[data-theme='light'] .rm-brief__blocked { background:color-mix(in srgb,var(--warn) 10%,transparent); }
+
+/* ------------------------------------------------------------ the three sections --- */
+
+/* "What Apple already knows about this project" / "It would build" / "It is finished when". These
+   label the list under them; they are not titles competing with the milestone name in the header,
+   so each is smaller and quieter than the lines it introduces. Deliberately NOT uppercased with
+   tracking, which is how the app's other small labels are set: those are one or two words, and a
+   nine-word sentence in caps is shouting a question the reader has not asked yet.
+   `font-weight:400` restates a global on purpose. This sheet loads before the one that resets the
+   user agent's bold headings, and an <h3> is the one element in this file that would break the
+   product-wide single-weight rule the moment that line moved. */
+.rm-brief__key { margin:0 0 10px; font-size:12px; font-weight:400; line-height:1.5; letter-spacing:-.005em; color:var(--faint); text-wrap:pretty; }
+
+/* THE LIST UNDER EACH HEADING. system.css sets its indent and stops there, so the items arrived at
+   the inherited 16px in full `--ink` — three bulleted lists louder than the headings explaining
+   what they are, and louder than the lead. This sets only what that sheet left unset; the indent
+   stays where it is owned. Items wrap anywhere because a step can name a file path. */
+.rm-brief__list { margin:0; font-size:14px; line-height:1.65; letter-spacing:-.01em; color:var(--muted); }
+.rm-brief__list li { margin-block:6px; overflow-wrap:anywhere; text-wrap:pretty; }
+/* The bullet is punctuation, not content. At the item's own colour a column of discs reads as a
+   second, denser texture down the left edge of the panel. */
+.rm-brief__list li::marker { color:var(--faint); }
+
+/* --------------------------------------------------------------- what it touches --- */
+
+/* "Touches scripts, models" — one sentence with a <strong> inside it, so it has to stay one run of
+   text. A flex or grid row is the right first move for two siblings that would otherwise collide,
+   and it is the wrong move here: it would make "Touches" and the list of parts separate items and
+   open a gap in the middle of a sentence. The parts carry the emphasis; the verb does not.
+   4px, not 20: the section above already ends in 20px of its own padding, and this only tops it
+   up. When every section is empty and this follows the lead instead, the lead's own 20px wins. */
+.rm-brief__touches { margin:4px 0 0; font-size:12px; line-height:1.6; letter-spacing:-.01em; color:var(--faint); text-wrap:pretty; overflow-wrap:anywhere; }
+.rm-brief__touches strong { font-weight:400; color:var(--muted); }
+
+/* ------------------------------------------------------------- the exact request --- */
+
+/* A <details> has no margin at all, so with no rule this sat flush against the line above it and
+   the summary read as the end of that sentence rather than a control. The hairline above it is the
+   same 1px `--line` the sections divide with: the request is the last block of this panel, not a
+   new kind of thing. */
+.rm-brief__raw { margin:18px 0 0; padding-block-start:16px; border-block-start:1px solid var(--line); font-size:13px; color:var(--muted); }
+/* `width:fit-content` keeps the target on the words. A summary left to fill an 840px wide dialog
+   is a very large invisible thing to be clickable. */
+.rm-brief__raw > summary { width:fit-content; padding-block:3px; cursor:pointer; color:var(--muted); transition:color 140ms var(--ease-out); }
+.rm-brief__raw > summary:hover { color:var(--ink); }
+
+/* THE REQUEST ITSELF, capped. system.css makes it wrap rather than scroll sideways and sets
+   nothing else — no box, no ceiling. Unbounded, a long request pushes "Open the conversation" past
+   the bottom of the dialog the user opened in order to press it. Scoped to the disclosure because
+   that is the only place this <pre> is rendered. One surface step below the modal panel in both
+   themes (`--paper-2` under `--surface`), which is all that has to be true for it to read as
+   quoted rather than composed here. */
+.rm-brief__raw .rm-brief__pre {
+  margin:12px 0 0; padding:14px 15px; max-height:260px; overflow:auto;
+  border:1px solid var(--line); background:var(--paper-2);
+  font-size:12px; line-height:1.65; letter-spacing:0; color:var(--muted);
+}
+
+/* --------------------------------------------------------------------- at 375px --- */
+
+/* The dialog is `wide`, which at this width is the whole viewport, and nothing above is a column.
+   What has to give is padding, and a request well that must not be taller than the phone. */
+@media (max-width:600px) {
+  .rm-brief__lead { font-size:14px; }
+  .rm-brief__blocked { padding:11px 13px; }
+  .rm-brief__list { font-size:13px; }
+  .rm-brief__raw .rm-brief__pre { max-height:190px; padding:11px 12px; }
+}
+
+/* system.css already kills every transition under reduce, with !important. Restated here so this
+   sheet is correct on its own terms rather than correct by someone else's blanket rule. */
+@media (prefers-reduced-motion: reduce) {
+  .rm-brief__raw > summary { transition:none; }
+}

@@ -1,0 +1,86 @@
+/* THE SENTENCE UNDER THE STUDIO PILL — the strip studio-link-note.tsx draws when, and only when,
+ * something about the Studio link is worth a person's attention.
+ *
+ * WHAT THIS STRIP IS FOR, AND WHAT THAT COSTS IT. It is one line of prose standing above the whole
+ * conversation, which is the most looked-at inch of the app. The component already refuses to draw
+ * itself when the link is healthy, for the reason its own header gives: a row that says "everything
+ * is fine" trains people to stop reading the row. The rules below pay that decision through — in
+ * its ordinary state the strip has no frame, no icon, no hue and no weight, and it is a sentence
+ * rather than a banner. Exactly one state spends colour: the place mismatch, where the pill is
+ * green, the link is healthy and nothing will ever build.
+ *
+ * design/system.css already owns `.gx-link-note` itself — 13px, `--muted`, `padding:10px 26px`,
+ * `margin:0` — and nothing below restates any of that. What it left undrawn is everything to do
+ * with the second child. The container is not a flex context, so `<span>` and `<button>` are two
+ * inline boxes, and JSX drops the newline between them: the strip renders
+ * "…switch back or re-pair.Use this place instead", one sentence run into its own control. That is
+ * the defect this file exists to close, so the flex row is the first rule in it.
+ *
+ * WHY TWO OF THESE RULES CARRY AN EXTRA CLASS. main.tsx imports `./app` on line 2 and
+ * `./design/system.css` on line 5, and the workspace route is not lazy — so this sheet is evaluated
+ * BEFORE system.css and loses every tie at equal specificity. `.gx-link-note--warn` setting `color`
+ * against `.gx-link-note { color:var(--muted) }`, and `.gx-link-note__act` setting padding against
+ * `.gx-btn--outline`, would both be rules that parse, match, and do nothing. Written one class
+ * heavier on purpose; the ones that add properties nobody else sets are left alone.
+ */
+
+/* FLEX BEFORE ANYTHING ELSE — see the header; this is the run-together. `baseline` rather than
+   centre because the control belongs on the sentence's first line, not floating beside the middle
+   of a paragraph that has wrapped to two. The row gap is the larger of the two: once the button
+   drops to its own line it must not look glued to the text it followed. */
+.gx-link-note { display:flex; flex-wrap:wrap; align-items:baseline; gap:8px 14px; min-width:0; line-height:1.6; letter-spacing:-.01em; }
+
+/* THE SENTENCE. A 320px basis is the width below which the mismatch line — 120 characters of it —
+   stops being worth setting beside a control, so under that the span takes the row and the button
+   follows on the next one. `anywhere` because the two names in that sentence are user strings
+   quoted straight out of Studio: `MyExtremelyLongPlaceNameWithNoSpaces` is one word to the line
+   breaker and would otherwise push the whole conversation sideways. */
+.gx-link-note__text { flex:1 1 320px; min-width:0; overflow-wrap:anywhere; text-wrap:pretty; }
+
+/* THE ONE COLOURED STATE IN THIS FILE, and it is the state where the rest of the screen is lying:
+   the connection pill is green and no build will ever start. The hue is spent once, as an edge rule
+   and the faint wash that belongs to it, and the sentence itself is raised from `--muted` to `--ink`
+   rather than tinted — a warning set in warning-coloured body text is harder to read than the thing
+   it is warning about. The rebind button deliberately keeps its neutral chrome: it is the way out,
+   not the fault, and a tinted control reads as the part that broke.
+   The mix is over `transparent`, not over `--paper`, so the wash is correct wherever this strip is
+   mounted rather than only over the background it happens to have today.
+   THE 24px IS NOT A SECOND OPINION ABOUT THE GUTTER. Everything here is `box-sizing:border-box`, so
+   a 2px edge eats 2px of system.css's 26px and the sentence would sit two pixels inside the turns
+   below it. 24 + 2 puts it back on the app's gutter. */
+.gx-link-note.gx-link-note--warn {
+  border-inline-start:2px solid var(--warn); padding-inline-start:24px;
+  background:color-mix(in srgb,var(--warn) 6%,transparent); color:var(--ink);
+}
+/* The light theme needs MORE of the tint, not less, which is the opposite of the usual correction
+   and is a measurement somebody in this repo has already paid for: support-dialog.css found that
+   `--warn` is a pale straw in the dark theme and a dark brown in the light one, and that 6% of that
+   brown over near-white measured as a neutral grey box — a warning that had stopped looking warm.
+   Same mix, same problem, so the same answer, with one point more because this wash sits on
+   `--paper` rather than the `--paper-2` that measurement was taken over. */
+:root[data-theme='light'] .gx-link-note.gx-link-note--warn { background:color-mix(in srgb,var(--warn) 9%,transparent); }
+
+/* THE WAY OUT. `.gx-btn--outline` sizes this for a dialog footer — 13px inherited, 9px/14px of
+   padding, a 10px radius — which inside a 10px-tall strip makes a 38px control taller than the row
+   it is explaining and turns one sentence into a toolbar. Brought down a step in every dimension so
+   the strip stays a line of prose with something to press at the end of it. `flex:none` so it never
+   shrinks into a two-line button when the sentence is long, and `nowrap` because "Use this place
+   instead" broken across lines reads as two half-instructions. */
+.gx-link-note .gx-link-note__act { flex:none; padding:5px 11px; font-size:12px; border-radius:var(--r-xs); white-space:nowrap; }
+
+/* --------------------------------------------------------------------------- at 375px --- */
+
+/* 680px, NOT 600, and the breakpoint is borrowed rather than chosen: system.css drops `.gx-thread`
+   from a 26px gutter to a flat 20px at exactly this width, and a strip that kept 26 would hang six
+   pixels inside every turn underneath it. The rest is what a 323px-wide viewport does to the row —
+   the basis above can no longer be met, so the sentence always takes the line and the button always
+   follows it, and the two need a little more air between them than they do side by side. */
+@media (max-width:680px) {
+  /* The class is doubled, and it is not a typo. A media query buys no specificity, so a single
+     `.gx-link-note` here ties with system.css's `padding:10px 26px` and loses on source order to a
+     sheet that is bundled 50KB further down — measured in the built stylesheet, not assumed. The
+     duplicate is the cheapest honest way to say "this one wins" without reaching into system.css. */
+  .gx-link-note.gx-link-note { gap:10px 12px; padding-inline:20px; }
+  .gx-link-note.gx-link-note--warn { padding-inline-start:18px; }
+  .gx-link-note__text { flex-basis:100%; }
+}

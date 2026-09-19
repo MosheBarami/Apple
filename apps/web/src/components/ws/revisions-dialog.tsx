@@ -18,6 +18,7 @@ import type { MessageRevisionDto } from '@golem/shared';
 import { Modal } from '../modal';
 import { fetchMessageRevisions, ApiError } from '../../lib/api';
 import { clockTime } from '../../lib/format';
+import './revisions-dialog.css';
 
 export function RevisionsDialog({
   projectId,

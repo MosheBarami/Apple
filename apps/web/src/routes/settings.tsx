@@ -97,6 +97,12 @@ import {
   normaliseCode,
   type Enrollment,
 } from '../lib/mfa';
+// The asset-sources section below renders asset-source-dialog.tsx's own markup — `.asrc__choice`,
+// `.asrc__cost`, `.asrc__reach` — so it needs that component's sheet as well as this route's. It
+// happens to be loaded anyway today, because workspace.tsx is eager and shares this bundle; naming
+// it here is what keeps the cost line styled if either route is ever made lazy.
+import '../components/asset-source-dialog.css';
+import './settings.css';
 
 /**
  * The account's enrolled factors.

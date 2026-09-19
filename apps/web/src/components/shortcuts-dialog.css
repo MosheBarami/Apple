@@ -1,0 +1,128 @@
+/* KEYBOARD SHORTCUTS — the reference list, and the one binding on it that is a choice.
+ *
+ * WHAT THIS PANEL IS FOR, AND WHAT THAT COSTS IT. It is opened to answer one question — "what does
+ * that key do?" — so the chord is the payload and the sentence beside it is the index. Every rule
+ * below buys scanning speed: nothing sets a font-weight above 400, nothing casts a shadow, and a
+ * 1px `var(--line)` hairline does all the separating. Hierarchy is size, colour and space.
+ *
+ * A <dt> AND A <dd> DO NOT MAKE A ROW BY THEMSELVES. Unstyled, the UA stacks the description under
+ * the term and indents it 40px, so "Open the command palette" and "⌘K" arrive on two lines with
+ * the key hanging off to one side — eight times, in a list whose whole job is to put a name next
+ * to a chord. `.shortcuts__row` is a two-column grid before it is anything else. The send-key
+ * buttons are the same defect in its more familiar form: a <kbd> and a <span> as siblings, which
+ * with no rule read "⌘↵Enter makes a new line" as one run.
+ *
+ * COLOUR IS SPENT ONCE, AND NOT ON A TINT. The only state here a reader must act on is which send
+ * key is currently theirs, and that is drawn as a surface step and a brighter hairline — the same
+ * way `.sup__kind.is-on` draws a chosen row. Nothing on this screen is good, bad or warned about,
+ * so no rule here reaches for `--good`, `--bad` or `--warn`. A help list that tinted four things
+ * would be claiming an urgency it does not have.
+ *
+ * WHAT IS DELIBERATELY NOT HERE: the closing `.field-hint` paragraph. It is a shared class owned by
+ * design/system.css, and the air it needs is bought by the fieldset's bottom margin instead, so
+ * this file never restates a rule that already exists over there.
+ */
+
+/* ----------------------------------------------------------------- the two groups --- */
+
+/* The groups are far enough apart to be read as separate answers to "when would I reach for one?"
+   — 26px, against the 13px inside a group. Closer and the two lists merge into one long table. */
+.shortcuts { display:grid; gap:26px; min-width:0; }
+.shortcuts__group { min-width:0; }
+
+/* A group label is a tab on a drawer, not a headline. system.css sets <h3> to 22px of the display
+   face, which inside a 27px modal title would read as a second title; dropping it to micro caps
+   puts it below the rows it labels in the order things get read, which is where it belongs. The
+   same class sits on the <legend> below, so it is written to work on both elements. */
+.shortcuts__heading {
+  margin:0 0 4px; font-family:inherit; font-size:11px; font-weight:400; line-height:1.4;
+  text-transform:uppercase; letter-spacing:.018em; color:var(--faint);
+}
+
+.shortcuts__list { display:grid; gap:0; margin:0; padding:0; min-width:0; }
+
+/* THE ROW. Two columns, and the chord column is `auto` because it has to survive the non-Apple
+   spelling: "⌘⇧F" is four characters and "Ctrl+Shift+F" is twelve, and the name is the half that
+   can afford to wrap. Baseline alignment, so a two-line name still starts on the cap's line.
+   Every row carries its own top hairline, INCLUDING THE FIRST, which anchors the list under the
+   label above it without introducing a second kind of rule. */
+.shortcuts__row {
+  display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:baseline; gap:4px 16px;
+  padding-block:11px; border-block-start:1px solid var(--line); min-width:0;
+}
+.shortcuts__row > dt { min-width:0; font-size:14px; line-height:1.5; letter-spacing:-.01em; color:var(--ink); text-wrap:pretty; }
+/* The UA's 40px inline indent on <dd> is what pushed the chord out of the row in the first place. */
+.shortcuts__row > dd { margin:0; justify-self:end; min-width:0; }
+
+/* THE CHORD IS THE PAYLOAD, so it is drawn as a key rather than as a footnote. `.gx-kbd` in
+   system.css is 11px of `--faint` with no box — correct where a chord is a hint appended to a
+   label, wrong here, where it is the thing being looked up. Stepping the fill DOWN to `--paper-2`
+   makes the cap read as recessed against the modal's `--surface` in both themes; a step up would
+   be invisible on the light one. Tabular figures and `white-space:nowrap` so "Ctrl+Shift+N" never
+   breaks across two lines mid-chord. */
+.shortcuts__row .gx-kbd,
+.shortcuts__opt .gx-kbd {
+  display:inline-block; padding:3px 8px; border:1px solid var(--line); border-radius:var(--r-xs);
+  background:var(--paper-2); font-size:12px; line-height:1.45; letter-spacing:0; color:var(--ink);
+  font-variant-numeric:tabular-nums; white-space:nowrap;
+}
+
+/* ------------------------------------------------------------- the one real choice --- */
+
+/* A fieldset's own border and inset padding would draw a second box inside the modal for no
+   reason; the hairline above does the separating, and it is the separation that matters — the list
+   above is a statement of fact and this is the one thing on the screen you can change. The bottom
+   margin is what gives the closing `.field-hint` its air, since that class is not ours to touch. */
+.shortcuts__choice {
+  display:grid; gap:10px; margin:26px 0 20px; padding:22px 0 0; border:0;
+  border-block-start:1px solid var(--line); min-width:0;
+}
+/* Belt and braces: in engines that keep the legend out of the grid the heading's own margin spaces
+   it, and in any that make it an item the span keeps it off the first row. `float:none` undoes the
+   UA trick that would otherwise hang it in the (now absent) fieldset border. */
+.shortcuts__choice > legend { grid-column:1/-1; float:none; margin:0; padding:0; }
+
+/* The radiogroup wrapper carries no class of its own, so it is reached through its role — which is
+   also the thing that makes it a group, so the selector cannot drift from the markup. */
+.shortcuts__choice [role='radiogroup'] { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; min-width:0; }
+
+/* THE OPTION. A <kbd> and a <span> as siblings: stacked in a grid first, before any of the
+   decoration below, because inline they read as one word. `justify-items:start` keeps the cap at
+   its own width instead of stretching it across the button, and `text-align:start` undoes the
+   centring a <button> inherits so the two lines share one left edge — in Hebrew, one right edge. */
+.shortcuts__opt {
+  display:grid; gap:7px; justify-items:start; text-align:start; align-content:start; min-width:0;
+  padding:12px 13px; border:1px solid var(--line); border-radius:var(--r-xs);
+  transition:background 140ms var(--ease-out),border-color 140ms var(--ease-out),color 140ms var(--ease-out);
+}
+/* system.css fills a hovered button with `--surface-2`, which is exactly the fill that says
+   "chosen" below — so hover is pulled back to a wash, leaving the surface step to mean one thing. */
+.shortcuts__opt:hover:not(:disabled) { background:color-mix(in srgb,var(--ink) 4%,transparent); border-color:color-mix(in srgb,var(--ink) 16%,var(--line)); }
+/* THE ONLY STATE ON THIS SCREEN, and it is drawn without a tint: `aria-checked` already tells a
+   screen reader which one it is, so this only has to survive a glance at two boxes. */
+.shortcuts__opt.is-on { background:var(--surface-2); border-color:color-mix(in srgb,var(--ink) 26%,var(--line)); }
+.shortcuts__opt.is-on:hover:not(:disabled) { background:var(--surface-2); }
+/* The recessed cap stops being recessed once the row it sits in has itself stepped up, and on the
+   light theme `--paper-2` over `--surface-2` is #f3f3f3 on #eeeeee — a cap that has vanished.
+   `--paper` is the step that still reads under a chosen row in both themes. Rendered, not assumed. */
+.shortcuts__opt.is-on .gx-kbd { background:var(--paper); }
+
+/* The option's own name. Muted until it is the one in force, because two equally-black labels ask
+   the reader to find the difference in the border. */
+.shortcuts__choice-sub { font-size:13px; line-height:1.5; letter-spacing:-.01em; color:var(--muted); min-width:0; overflow-wrap:anywhere; text-wrap:pretty; }
+.shortcuts__opt.is-on .shortcuts__choice-sub { color:var(--ink); }
+
+/* --------------------------------------------------------------------- at 375px --- */
+
+/* The modal is 560px wide and at this width it is the viewport. Only the option pair is a column
+   set, and "Enter makes a new line" in a 145px half-column wraps to three lines. */
+@media (max-width:600px) {
+  .shortcuts { gap:22px; }
+  .shortcuts__choice [role='radiogroup'] { grid-template-columns:minmax(0,1fr); }
+  .shortcuts__choice { margin-block:22px 16px; padding-block-start:18px; }
+  .shortcuts__row { gap:3px 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shortcuts__opt { transition:none; }
+}

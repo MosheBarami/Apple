@@ -1,0 +1,79 @@
+/* WHAT APPLE ASKED TO REMEMBER — the queue the memory panel opens with.
+ *
+ * Under the `review` memory setting the model's proposals stop here and reach memory only when a
+ * person says so. That makes this block the one part of the panel that is WAITING on the reader:
+ * everything below it is a correction they may or may not want to make, this is a question already
+ * asked. Both halves of it — `.mem__pending` and `.mem__item--pending` — had no rule in any
+ * stylesheet, so the queue rendered as a bare span above a paragraph above a list that looked
+ * exactly like the facts already in force. A proposal that is indistinguishable from a fact in use
+ * is the single worst thing this panel can draw, because the whole point of `review` is that the
+ * two are not the same yet.
+ *
+ * WHAT THE SHARED CLASSES ALREADY DO. The rows themselves are `.mem__list`, `.mem__item`,
+ * `.mem__fact`, `.mem__addbtn` and `.mem__drop`, which live in instructions-panel.css because both
+ * panels in this drawer draw with them. Nothing here restates those rules. The selectors below are
+ * scoped under `.mem__pending` to say so, and because workspace.tsx imports this file first — at
+ * equal specificity the other sheet would win every tie.
+ *
+ * ONE TINT, AND THIS BLOCK IS IT. `--info` is spent once, on the container, because "there is a
+ * question here with your name on it" is the only status in this panel a reader must act on.
+ * Everything inside stays a warm neutral. The instructions panel below spends `--warn` on a
+ * different claim — another layer decided this — so the two colours in the drawer carry two
+ * meanings rather than decorating two boxes.
+ */
+
+/* ---------------------------------------------------------------------- the queue --- */
+
+/* Label, caveat and questions are three separate statements. The label is a bare <span> and is
+   saved from running into the paragraph under it only by that paragraph happening to be a block;
+   the grid makes the separation deliberate instead of accidental. Tinted and inset so the block
+   reads as something that arrived and is waiting, not as more of the list further down. */
+.mem__pending { display:grid; gap:6px; margin:0 0 22px; padding:14px 16px; border-radius:var(--r-sm); border:1px solid color-mix(in srgb,var(--info) 30%,var(--line)); background:color-mix(in srgb,var(--info) 6%,var(--paper-2)); }
+/* The caveat is set by system.css as a standalone paragraph, with UA block margins still on it.
+   Inside a grid those margins add to the gap and the block loses its rhythm. */
+.mem__pending .mem__note { margin:0; }
+/* Each row carries its own top hairline, so the first one doubles as the rule that ends the caveat
+   and begins the questions. It wants a little air above it — and only above it, which is why this
+   is a margin on the list rather than a larger gap the grid would also apply under the label. */
+.mem__pending .mem__list { margin-top:4px; }
+
+/* `--info` is a pale blue in the dark theme and a dark navy in the light one, so the same 6% is a
+   faint lift on one and very nearly nothing on the other. The light theme needs MORE of the colour
+   to land in the same place, not less. Modelled on the measured `--warn` correction in
+   support-dialog.css; the ratio is copied from there rather than re-rendered here. */
+:root[data-theme='light'] .mem__pending { border-color:color-mix(in srgb,var(--info) 34%,var(--line)); background:color-mix(in srgb,var(--info) 8%,var(--paper-2)); }
+
+/* ------------------------------------------------------------------ a proposal row --- */
+
+/* A QUESTION IS NOT AN ENTRY. Every other `.mem__item` in this drawer is something already in force
+   with one control on it. These carry two answers, and the row has to read as a sentence followed
+   by a choice rather than as three controls in a line.
+
+   THE PROPOSED TEXT MUST NOT GROW. `.mem__fact.prefs__instruction` is `flex:1 1 180px` so an
+   instruction fills its row — right there, wrong here. The summary proposal is followed by the span
+   "as the summary", and a growing fact strands that qualifier at the far end of the row, hard
+   against the Keep button, where it reads as a label for the button instead of for the text it
+   qualifies. Shrink-to-fit keeps the two together and still wraps, because the shared rule already
+   sets `min-width:0` and `overflow-wrap:anywhere`. */
+.mem__pending .mem__item--pending > .mem__fact { flex:0 1 auto; }
+
+/* KEEP AND DISCARD ARE ONE CHOICE, NOT TWO CONTROLS. instructions-panel.css hangs the auto margin
+   on `.mem__drop` because there it is the only control on the row. Here it is the second half of a
+   pair: leaving the margin where it is opens a gap between the two answers and leaves Discard alone
+   at the end of the line looking like the row's action. Moving it to the first button sends the
+   pair to the end of the line together, still clear of the text. */
+.mem__pending .mem__item--pending > .mem__addbtn { margin-inline-start:auto; }
+.mem__pending .mem__item--pending > .mem__drop { margin-inline-start:0; }
+
+/* ------------------------------------------------------------------------- narrow --- */
+/* 375px: the drawer is the whole screen, so this box is about 323px wide and 16px of tinted gutter
+   on each side is a tenth of every line. Nothing here may scroll sideways. */
+
+@media (max-width:600px) {
+  .mem__pending { padding:12px 13px; }
+  /* Shrink-to-fit has nothing left to earn on a phone — a proposal of any length takes the whole
+     line anyway — and a pair of buttons crushed against the end of a wrapped line is harder to hit
+     than one sitting on its own row. So the text takes its line and the answers take theirs. */
+  .mem__pending .mem__item--pending > .mem__fact { flex-basis:100%; }
+  .mem__pending .mem__item--pending > .mem__addbtn { margin-inline-start:0; }
+}

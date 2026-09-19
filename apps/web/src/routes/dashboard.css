@@ -1,0 +1,149 @@
+/* / — the three pieces of the project shelf that are STATE, and nothing else.
+ *
+ * design/system.css already draws the shelf: `.page`, `.card-grid`, `.project-card` and its parts,
+ * `.scope-tab`, `.project-search`, and the base `.tag-row` / `.tag-chip` / `.tpl__grid` /
+ * `.tpl__label` / `.tpl__blurb`. What it never drew is the state sitting on top of them — which
+ * template card is chosen, which tag is narrowing the grid, and which chip deletes a tag when you
+ * click it. That is the whole of this file, and it restates nothing from over there.
+ *
+ * WHAT WAS ACTUALLY ON SCREEN. A pressed filter chip looked exactly like an unpressed one, so the
+ * dashboard could be hiding fourteen of somebody's fifteen projects with nothing visible saying
+ * which chip did it — `aria-pressed` told a screen reader and told no one else. The template cards
+ * had no card: `.tpl__label` and `.tpl__blurb` are display:block and the radio is not, so each
+ * choice rendered as a dot on a line of its own with two loose lines under it, four times over.
+ *
+ * COLOUR IS SPENT ONCE PER PANEL, ON THE THING THE READER MAY HAVE TO UNDO. On the shelf that is
+ * the pressed filter chip, and it spends no hue at all: inverted ink on paper, the pair
+ * `.btn-primary` already uses. In the Tags dialog it is `--bad`, on the one control whose click
+ * removes something, which is the token `.menu-danger` spends in the card menu for the same
+ * reason. The Summon dialog reports no status and is therefore entirely neutral.
+ *
+ * ORDERING. app.tsx imports this route before main.tsx imports design/system.css, so on a
+ * specificity TIE system.css wins. Every rule below that touches a property system.css already
+ * sets on the same element is written one step more specific — `.tag-chip.tag-chip--own`, never
+ * `.tag-chip--own` — so none of this depends on bundle order.
+ */
+
+/* ------------------------------------------------ summon: the starting point --- */
+
+/* A <fieldset> arrives with a UA border, inset padding, and the one that bites: min-inline-size is
+   min-content, so the group refuses to shrink below its widest card and widens the whole modal
+   past a 375px viewport. `.field` has already made this a grid; the cards are the group, and a
+   second box drawn inside the modal would say nothing the legend does not. */
+.tpl { min-inline-size:0; padding:0; border:0; }
+/* A <legend> is not a grid item in every engine. The margin spaces it where it is taken out of
+   flow; the column span keeps it off the first card's row where it is not. */
+.tpl > legend { grid-column:1/-1; float:none; margin:0 0 2px; padding:0; }
+
+/* "Each of these writes your first request for you" is the sentence that stops four cards being
+   read as four different kinds of project. It is a <p> inside a grid, so its UA bottom margin
+   lands on top of the row gap already spacing it and the note floats nearer the cards than the
+   legend it belongs under. */
+.tpl__note { margin:0; max-width:56ch; line-height:1.55; text-wrap:pretty; }
+
+/* THE CARD IS A GRID BEFORE IT IS ANYTHING ELSE. Its three children — a radio, a label, a blurb —
+   have no wrapper between them and two of the three are display:block, so untouched the control
+   sits alone on the first line with the words stacked beneath it. Two columns: the control in the
+   gutter, both lines of text in one column beside it. */
+.tpl__card {
+  display:grid; grid-template-columns:auto minmax(0,1fr); align-items:start; gap:3px 12px; min-width:0;
+  padding:12px 14px; border:1px solid var(--line); border-radius:var(--r-xs); cursor:pointer;
+  transition:background 140ms var(--ease-out),border-color 140ms var(--ease-out);
+}
+/* Optical alignment: the control sits against the label's cap height, not its line box. */
+.tpl__card > input { grid-row:1; grid-column:1; margin:3px 0 0; }
+/* BOTH TEXT LINES ARE PINNED TO COLUMN 2 EXPLICITLY. Auto-placement would drop the blurb into the
+   one cell a two-column card leaves empty — the one under the radio — and indent it by the whole
+   gutter, which reads as a third column nobody asked for. */
+.tpl__card > .tpl__label { grid-column:2; font-size:14px; line-height:1.45; letter-spacing:-.01em; color:var(--ink); }
+/* system.css spaces the blurb with margin-top:8px, which was right when these were three loose
+   lines and is a doubled gap now that the grid's row gap does that job. */
+.tpl__card > .tpl__blurb { grid-column:2; margin-top:0; line-height:1.55; text-wrap:pretty; }
+
+/* The whole card is the target, not the 13px dot — this gets filled in on a phone as often as not,
+   and the hover is the only thing that says so before you try. */
+.tpl__card:hover { background:color-mix(in srgb,var(--ink) 4%,transparent); }
+/* Keyboard parity: the radio's own focus ring says where you are, the border says which card that
+   is once the ring is inside a list of four. */
+.tpl__card:focus-within { border-color:color-mix(in srgb,var(--ink) 26%,var(--line)); }
+/* Chosen is a surface step and a brighter hairline, and it is written AFTER the hover rule because
+   the two are the same specificity — a chosen card under the pointer has to stay chosen. */
+.tpl__card.is-on { background:var(--surface-2); border-color:color-mix(in srgb,var(--ink) 26%,var(--line)); }
+
+/* --------------------------------------------- tags dialog: the tags you have --- */
+
+/* THE TAG AND ITS × ARE TWO FLEX ITEMS, WHICH IS THE REASON THIS IS A FLEX ROW. The markup is
+   `{tag} <span>×</span>`, and a flex container discards the whitespace-only text node between
+   them: with no gap the glyph touches the word and a tag called "beta" reads as "beta×". The gap
+   separates them, not the space in the JSX, which is not there by the time it is painted. */
+.tag-chip.tag-chip--own {
+  display:inline-flex; align-items:center; gap:7px; padding:5px 9px; color:var(--ink);
+  transition:color 140ms var(--ease-out),border-color 140ms var(--ease-out),background 140ms var(--ease-out);
+}
+/* The × is punctuation, not part of the name somebody typed. One colour step back says so. */
+.tag-chip.tag-chip--own > [aria-hidden='true'] { color:var(--faint); }
+
+/* THE ONE COLOURED THING IN THIS DIALOG. Clicking this chip deletes the tag — there is no second
+   step and no Save — so the hover has to say "this removes", not merely "this is clickable". It
+   also has to say ANYTHING: system.css paints button:hover with --surface-2, which is the colour
+   `.tag-chip` already is, so until this rule the chip answered the pointer by not changing. */
+.tag-chip.tag-chip--own:hover:not(:disabled),
+.tag-chip.tag-chip--own:focus-visible {
+  color:var(--bad);
+  border-color:color-mix(in srgb,var(--bad) 45%,var(--line));
+  background:color-mix(in srgb,var(--bad) 10%,var(--surface-2));
+}
+.tag-chip.tag-chip--own:hover:not(:disabled) > [aria-hidden='true'],
+.tag-chip.tag-chip--own:focus-visible > [aria-hidden='true'] { color:var(--bad); }
+/* --bad is a pale pink ABOVE the surface in the dark theme and a deep red BELOW it in the light
+   one, so one percentage is not one amount of signal: the same 10% that lifts a dark chip is
+   already a heavy wash over #eeeeee. Written as a correction rather than as a single number that
+   is a compromise on both themes. */
+:root[data-theme='light'] .tag-chip.tag-chip--own:hover:not(:disabled),
+:root[data-theme='light'] .tag-chip.tag-chip--own:focus-visible {
+  background:color-mix(in srgb,var(--bad) 8%,var(--surface-2));
+}
+
+/* ------------------------------------------------ the shelf: filter by tag --- */
+
+/* WHAT FOLLOWS THIS ROW CHANGES WITH WHAT THE FILTER FOUND — the search box, a "nothing tagged"
+   note, the grid, or an empty state — and each brings its own top margin, or none. A floor here
+   means the row is never flush against whichever one it turns out to be. */
+.tag-row--filter { margin-block:0 22px; }
+
+.tag-row--filter .tag-chip { transition:background 140ms var(--ease-out),border-color 140ms var(--ease-out),color 140ms var(--ease-out); }
+/* HOVER HERE WAS INVISIBLE RATHER THAN ABSENT, which is worse: `.tag-chip` is painted --surface-2
+   and system.css's button:hover paints --surface-2, so every chip on this row answered the pointer
+   by staying exactly the same. One more step up the ramp is the entire fix. */
+.tag-row--filter .tag-chip:not(.is-on):hover:not(:disabled) { background:var(--surface-3); }
+
+/* THE PRESSED CHIP, WHICH IS WHY THIS FILE EXISTS. This is the control that explains why most of
+   somebody's projects are not on screen, so it is the one thing on the page drawn as a solid
+   block: inverted ink on paper, the pair .btn-primary uses, and no hue spent to do it. */
+.tag-row--filter .tag-chip.is-on { background:var(--ink); border-color:var(--ink); color:var(--paper); }
+/* Clicking the pressed chip CLEARS the filter, so its hover steps back toward the page rather than
+   further forward. Mixing toward --paper keeps that true on both themes; --accent, the obvious
+   choice, is the identical value to --ink in the dark one and the hover would have done nothing. */
+.tag-row--filter .tag-chip.is-on:hover:not(:disabled) {
+  background:color-mix(in srgb,var(--ink) 86%,var(--paper));
+  border-color:color-mix(in srgb,var(--ink) 86%,var(--paper));
+}
+
+/* -------------------------------------------------------------------- narrow --- */
+
+/* The card's gutter is a fixed 12px whether the row is 520px or 335px wide, so at 375px it is the
+   padding that has to give the text column its space back. */
+@media (max-width:600px) {
+  .tpl__card { padding:11px 12px; gap:3px 10px; }
+  .tpl__note { font-size:12px; }
+  .tag-row--filter { margin-block:0 16px; }
+}
+
+/* Every state above is a colour or a surface step, so there is nothing lost by arriving at it
+   instantly. system.css kills transitions under reduce with !important; restated here so this
+   sheet is correct on its own terms rather than by somebody else's blanket rule. */
+@media (prefers-reduced-motion: reduce) {
+  .tpl__card,
+  .tag-chip.tag-chip--own,
+  .tag-row--filter .tag-chip { transition:none; }
+}

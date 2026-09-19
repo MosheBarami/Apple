@@ -31,6 +31,7 @@ import type { PlaytestRun, StudioFrame } from '@golem/shared';
 import { paintFrame } from '../../lib/frame-decode';
 import { playtestView, PLAYTEST_TICK_MS } from '../../lib/playtest-view';
 import { Icon, PATH } from './primitives';
+import './playtest-card.css';
 
 function useFrameCanvas(frame: StudioFrame | undefined) {
   const ref = useRef<HTMLCanvasElement>(null);

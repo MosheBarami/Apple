@@ -39,6 +39,7 @@ import {
   type TimelineInput,
   type TimelineStage,
 } from './thinking-model';
+import './thinking.css';
 
 /* ---------------------------------------------------------- compact view --- */
 

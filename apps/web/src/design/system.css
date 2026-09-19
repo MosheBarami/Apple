@@ -53,6 +53,21 @@ a.gx-sr:focus { z-index:1000; top:10px; inset-inline-start:10px; width:auto; hei
 .btn-primary,.gx-btn--primary { color:var(--paper); background:var(--ink); border-color:var(--ink); }
 .btn-primary:hover,.gx-btn--primary:hover { color:var(--paper); background:var(--accent); }
 .btn,.gx-btn { display:inline-flex; gap:8px; align-items:center; justify-content:center; text-decoration:none; }
+/* THE TWO BUTTON VARIANTS THAT EXISTED ONLY IN THE MARKUP. `--primary` above has had a rule since
+   the beginning; `--outline` and `--ghost` never did, across 29 uses in seven files. On a <button>
+   that was survivable by accident — the element rule near the top of this file already draws a
+   border, a radius and padding, so an outline button looked correct without anyone writing it. On
+   an <a> it was not survivable: the plugin install link in connect-studio and the Roadmap link in
+   the topbar are anchors, and an anchor inherits none of that, so both rendered as bare inline
+   text where a button was intended. A variant has to carry its own chrome rather than borrow the
+   button element's, because half its users are not buttons.
+   `--ghost` had the opposite defect, and it was a false statement rather than an omission: every
+   ghost button drew the full border the element rule gives it, so the borderless variant was
+   indistinguishable from the default one and the word in the class name meant nothing. */
+.gx-btn--outline { border:1px solid var(--line); border-radius:10px; padding:9px 14px; background:transparent; color:var(--ink); }
+.gx-btn--outline:hover:not(:disabled):not([aria-disabled='true']) { background:var(--surface-2); }
+.gx-btn--ghost { border-color:transparent; background:transparent; color:var(--muted); }
+.gx-btn--ghost:hover:not(:disabled) { background:var(--surface-2); color:var(--ink); }
 .gx-icon-btn { display:inline-grid; place-items:center; width:38px; height:38px; padding:8px; border:0; }
 .gx {
   --gx-ground:var(--paper); --gx-rail:var(--surface); --gx-raise:var(--surface); --gx-raise-2:var(--surface-2);
@@ -73,6 +88,16 @@ a.gx-sr:focus { z-index:1000; top:10px; inset-inline-start:10px; width:auto; hei
 .gx-top { display:flex; align-items:center; gap:12px; padding:16px 30px; border-bottom:1px solid var(--line); }
 .gx-top__title { margin:0; font:500 14px var(--font-body); border:0; padding:4px 0; max-width:35vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .gx-top__when { color:var(--faint); font-size:12px; }
+/* THE TOPBAR CONTROL PAIR, whose behaviour was written down in workspace.tsx and implemented
+   nowhere. The comment beside the Roadmap link states that `gx-top__cp` is what gives a topbar
+   button its height and a thumb-sized target, and that `gx-top__cp-label` is what drops the word
+   below 860px so a narrow bar collapses to icons instead of overflowing. Neither selector existed.
+   The bar did not collapse, and the target was whatever the padding happened to leave. A comment
+   describing a rule nobody wrote is worse than no comment at all: it is read as a reason not to
+   check. Both controls already carry an aria-label precisely because of this collapse — a
+   display:none span contributes nothing to an accessible name — so the label may be hidden. */
+.gx-top__cp { min-height:38px; padding-inline:12px; font-size:12px; flex:none; white-space:nowrap; }
+@media (max-width:860px) { .gx-top__cp-label { display:none; } .gx-top__cp { padding-inline:10px; } }
 .studio-workspace-controls { display:flex; align-items:center; gap:24px; margin-inline-start:auto; }
 .studio-preview-toggle,.studio-project-menu > summary { border:0; padding:8px 0; font-size:14px; }
 .studio-preview-toggle span,.studio-project-menu summary span { margin-inline-start:12px; color:var(--accent); }
@@ -250,6 +275,11 @@ pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
 .gx-assumed ul,.gx-open-qs ul { padding-inline-start:18px; color:var(--muted); }
 .gx-stage-row__bullet { display:none; } .gx-act__phase { border-block-start:1px solid var(--line); padding-block:12px; }
 .gx-act__phase-head { display:flex; align-items:center; gap:9px; margin-bottom:8px; flex-wrap:wrap; }
+/* "3 steps failed and were retried" sits in that head beside the phase name and the clock. It is a
+   CAVEAT, not a failure — the phase recovered, which is the whole point of the sentence — so it
+   takes the warn ink and never the bad one, and it is the only coloured thing in the row. At 12px
+   it stays subordinate to the phase name it qualifies. */
+.gx-act__repaired { font-size:12px; color:var(--warn); }
 .gx-act__pip { width:5px; height:5px; background:var(--faint); border-radius:50%; }
 .gx-act__phase.is-active .gx-act__pip { background:var(--accent); box-shadow:0 0 0 3px var(--acc-ember-soft); }
 .gx-act__terminal { border-block-start:1px solid var(--line); margin-block-start:12px; padding-block:12px; font-size:13px; }
@@ -346,6 +376,25 @@ pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
 .es__title { color:var(--ink); font-size:25px; margin:0; } .es__body { color:var(--muted); font-size:14px; max-width:500px; margin:0; }
 .es--creation { color:var(--accent); } .es--studio { color:var(--info); } .es--failure { color:var(--bad); } .es--proven { color:var(--good); } .es--future { color:var(--future); }
 .gx-cp__desc { color:var(--muted); font-size:13px; line-height:1.6; margin-block:8px; }
+/* The extra line an op sometimes carries — what it touched, what it skipped. `.gx-row__main` is
+   already a grid so it does not run into the meta line above it, but with no rule it rendered at
+   full body size in full ink beneath a 12px muted one: the least important thing in the row drawn
+   as the most important. */
+.gx-op__detail { font-size:12px; line-height:1.55; color:var(--faint); overflow-wrap:anywhere; }
+/* THE EDIT WARNING AND THE SENTENCE UNDER IT. Both are <p>s in one box, so nothing ran together —
+   what was missing was any difference between them. The first says what this action costs and
+   keeps the app's ink. The second says what it does NOT cost (anything Apple already built in the
+   place stays as it is), which is the reassurance, so it steps down instead of shouting alongside
+   the warning. The count inside the first is a <strong>: it is picked out with ink rather than
+   weight, because nothing in this product is bolder than 400 and an emphasised number is exactly
+   where that rule gets broken without anyone deciding to. */
+.edit-warn { display:grid; gap:8px; margin-block:16px; padding:13px 15px; border:1px solid color-mix(in srgb,var(--warn) 30%,var(--line)); border-radius:var(--r-sm); background:color-mix(in srgb,var(--warn) 6%,var(--paper-2)); font-size:13px; line-height:1.6; }
+.edit-warn p { margin:0; } .edit-warn strong { font-weight:400; color:var(--ink); }
+.edit-warn__quiet { color:var(--muted); text-wrap:pretty; }
+/* The tint needs MORE of it on the light theme, not less. `--warn` is a pale straw in the dark
+   ramp and a dark brown in the light one, and 6% of a dark brown over #f3f3f3 measures as a plain
+   grey box — a warning drawn as if it were a panel. Rendered both rather than assumed. */
+:root[data-theme='light'] .edit-warn { border-color:color-mix(in srgb,var(--warn) 34%,var(--line)); background:color-mix(in srgb,var(--warn) 8%,var(--paper-2)); }
 /* THE RESTORE RECEIPT. Two children of one <span role="status">: the sentence, and the counts
    line. With no rule they are both inline and the status reads "Checking what came back…12
    objects · 8/8 scripts" — the exact run-together this file's unstyled-class check exists to

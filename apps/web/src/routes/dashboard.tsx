@@ -25,6 +25,7 @@ import { useCommands } from '../lib/commands';
 import { useProvideNewProject } from '../lib/shell';
 import { SHORTCUTS, shortcutLabel } from '../lib/shortcuts';
 import { filterProjects } from '../lib/project-search';
+import './dashboard.css';
 
 /**
  * The project list for one scope.

@@ -11,6 +11,7 @@ import { Icon, PATH } from '../ws/primitives';
 import { ReadinessNode } from './marks';
 import { MilestoneCard, type BriefIntent } from './milestone-card';
 import type { PlacedMilestone, Readiness, RoadmapStage } from './model';
+import './spine.css';
 
 interface Props {
   stages: RoadmapStage[];

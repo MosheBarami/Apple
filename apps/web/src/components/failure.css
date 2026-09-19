@@ -1,0 +1,134 @@
+/* THE FAILURE BLOCK — the one shape every failure in the app is drawn in.
+ *
+ * WHAT THIS PANEL IS FOR, AND WHAT THAT COSTS IT. It is read by somebody who has just been
+ * stopped, in the order failure.tsx renders: what happened, whether anything was lost, what to do,
+ * where the long answer is, what the server actually said. Every rule below buys that reading
+ * order and nothing else — no weight above 400, no shadow, no box. Hierarchy is size, colour and
+ * space, and a 1px `var(--line)` hairline does all the separating.
+ *
+ * IT IS A FRAGMENT, NOT A CARD. It is dropped inside panels that already have their own border and
+ * padding — the API keys panel, the Roblox key panel, the pairing record, four workspace panels —
+ * so giving it a surface of its own would draw a second box inside the first one. It gets a stack
+ * and a leading rule, and it inherits whatever it was dropped into.
+ *
+ * THREE BLOCK SIBLINGS AND A GRID ANYWAY. `.failure__safety`, `.failure__next` and
+ * `.failure__help` are <p>s, so they do not literally run together the way two <span>s would —
+ * but the user agent's 1em bottom margin would space them by the inherited font size, which is
+ * 15px in one panel and 12.5px in another, so the same component would breathe differently in
+ * every surface it appears on. The grid below is the separation, and every child's margin is zero.
+ * The pair that WOULD run together is inside `.failure__next`: the sentence and the button sit in
+ * one <p>, and that <p> is a flex row before it is anything else.
+ *
+ * COLOUR IS SPENT ONCE, ON THE LEADING RULE, AND NEVER ON THE PROSE. The reader already knows this
+ * is a failure — the box exists. What the colour has to carry is the only thing they cannot tell
+ * by looking: whether this is theirs to fix. Three tones, of which exactly one can ever be on
+ * screen, because `is-${kind}` is a single class. Everything else is a warm neutral.
+ *
+ * MOST OF THE APP RENDERS THIS COMPACT, which is why the tone lives on the rule and not on the
+ * title: there is no title in compact mode, and a scheme that tinted one would leave eight of the
+ * eleven call sites with no status colour at all.
+ */
+
+/* THE STACK. `min-width:0` because this lands inside flex and grid parents that would otherwise
+   let the technical detail below push the whole panel wider than its column. */
+.failure {
+  display:grid; gap:7px; min-width:0;
+  border-inline-start:2px solid var(--line); padding-inline-start:12px;
+}
+
+/* WHAT HAPPENED. One step above the body and in the ink colour — that is the entire promotion.
+   Non-compact only; in compact mode this sentence is prefixed onto `.failure__safety` instead,
+   which is why nothing here may be a rule the safety line also needs. */
+.failure__title { margin:0; font-size:14px; line-height:1.45; letter-spacing:-.01em; color:var(--ink); text-wrap:pretty; }
+
+/* DID I LOSE ANYTHING. The question people actually have, so it is the one line that is always
+   drawn and never abbreviated. `text-wrap:pretty` because these sentences end on the word that
+   matters ("Nothing was charged for it.") and a one-word last line throws it away. */
+.failure__safety { margin:0; font-size:13px; line-height:1.6; letter-spacing:-.01em; color:var(--muted); text-wrap:pretty; }
+
+/* WHAT TO DO. A <p> holding a sentence and up to two `.btn btn-sm` controls — "Wait a few seconds
+   first." beside Try again. Inline, those two read as one run of text with a bordered word glued
+   to the end of it, so the row is a flex container BEFORE it is anything else, and the gap is the
+   rule that keeps the sentence and the control apart. Wraps rather than shrinks: at 375px the
+   button drops to its own line instead of squeezing its label to two characters.
+   `margin-top` on top of the grid gap — this row is the one thing here that is pressable, and it
+   is worth a little more air than the sentences have between them. */
+.failure__next { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin:3px 0 0; min-width:0; }
+.failure__next > span { min-width:0; font-size:13px; line-height:1.6; letter-spacing:-.01em; color:var(--muted); text-wrap:pretty; }
+
+/* THE LONG ANSWER, and deliberately quieter than the action above it — a reader who has been given
+   one concrete next step should take it rather than go reading. Underlined by a hairline instead
+   of `text-decoration`, which is how the same secondary link is drawn on a stopped run
+   (`.gx-outcome__help` in ws/turn.css); the two appear on the same screen. */
+.failure__help { margin:0; font-size:12px; line-height:1.5; }
+.failure__help a { color:var(--muted); text-decoration:none; border-bottom:1px solid var(--line); padding-bottom:1px; transition:color .18s var(--ease-out),border-color .18s var(--ease-out); }
+.failure__help a:hover { color:var(--ink); border-bottom-color:var(--ink); }
+
+/* THE SERVER'S OWN WORDS. Shut by default and the quietest thing in the block: it is for the
+   screenshot somebody sends to support, not for the person reading the sentence above it. */
+.failure__detail { margin:1px 0 0; font-size:12px; color:var(--faint); }
+.failure__detail > summary { width:fit-content; padding:3px 0; cursor:pointer; color:var(--faint); transition:color .18s var(--ease-out); }
+.failure__detail > summary:hover { color:var(--muted); }
+
+/* A SERVER MESSAGE HAS NO LINE BREAKS AND NO MAXIMUM LENGTH. `code` is inline by default, so an
+   unbroken 400-character message would run straight out of the panel and give the page a
+   horizontal scrollbar at every width — the failure making the screen worse than the failure.
+   `overflow-wrap:anywhere` breaks it, `pre-wrap` keeps whatever structure it did arrive with, and
+   the height cap stops a stack trace from burying the sentence that said what to do. */
+.failure__detail code {
+  display:block; max-height:180px; overflow:auto; margin-top:6px; padding:9px 11px;
+  border:1px solid var(--line); border-radius:var(--r-xs); background:var(--surface-2);
+  font-family:var(--font-mono); font-size:11.5px; line-height:1.55; color:var(--muted);
+  white-space:pre-wrap; overflow-wrap:anywhere;
+}
+/* THE SURFACE STEP IS NOT SYMMETRIC BETWEEN THE THEMES, and this is the one place it shows. On
+   dark, --surface-2 (#333231) against the panels this sits in is an obvious step up. On light it
+   is #eeeeee against #fafafa/#ffffff — about a percent of luminance, which is no step at all, so
+   on light the border is what separates the block and it has to be darker than the shared
+   hairline to do it. Rendered both, rather than assumed. */
+:root[data-theme='light'] .failure__detail code { border-color:color-mix(in srgb,var(--ink) 14%,var(--line)); }
+
+/* COMPACT — inside a card that already has a heading, where this is a footnote on somebody else's
+   panel rather than the thing on screen. One step down and tighter, and the title is not rendered
+   at all: `.failure__safety` carries it as a prefix, which is why that line is sized here too. */
+.failure.is-compact { gap:5px; padding-inline-start:10px; }
+.failure.is-compact .failure__safety,.failure.is-compact .failure__next > span { font-size:12.5px; }
+.failure.is-compact .failure__next { margin-top:2px; }
+
+/* ---------------------------------------------------- the one thing that is coloured --- */
+
+/* NOT YOURS TO FIX. `ours` and `upstream` are the two kinds where the reader did nothing wrong and
+   there is nothing for them to go and do; `upstream` is also the only one that warns them a
+   request may have half-landed, which is the one case here that can cost money. --bad is spent on
+   those two and on nothing else in this file. */
+.failure.is-ours,.failure.is-upstream { border-inline-start-color:var(--bad); }
+
+/* YOURS TO FIX, AND IT WILL NOT CHANGE UNTIL YOU DO. Sign in again, switch account, add Credits,
+   repair the connected Roblox key, send a smaller file. The sentence says which; the rule says
+   that the answer is not going to improve by waiting. */
+.failure.is-signed_out,.failure.is-not_permitted,.failure.is-missing,.failure.is-out_of_credits,
+.failure.is-not_configured,.failure.is-integration,.failure.is-rejected { border-inline-start-color:var(--warn); }
+
+/* `offline` and `rate_limited` KEEP THE NEUTRAL HAIRLINE ON PURPOSE. Both clear on their own — a
+   connection comes back, a burst subsides — and tinting a wait is how a colour scheme stops
+   meaning anything. They are the reason this file has a neutral state at all. */
+
+/* -------------------------------------------------------------------------- 375px --- */
+
+@media (max-width:600px) {
+  /* The leading rule costs width on the narrowest screen, where the sentences need it more. */
+  .failure { gap:6px; padding-inline-start:10px; }
+  .failure__title { font-size:13.5px; }
+  .failure__safety,.failure__next > span { font-size:12.5px; }
+  /* The action row is already flex-wrap, so the button drops under the sentence rather than
+     shrinking; it only needs the two lines to sit closer than they do on a wide screen. */
+  .failure__next { gap:7px 10px; }
+  /* A phone screen is short. A detail block that fills half of it hides what to do about it. */
+  .failure__detail code { max-height:132px; }
+}
+
+/* system.css already kills every transition under reduce, with !important. Restated so this sheet
+   is correct on its own terms rather than correct by someone else's blanket rule. */
+@media (prefers-reduced-motion: reduce) {
+  .failure__help a,.failure__detail > summary { transition:none; }
+}

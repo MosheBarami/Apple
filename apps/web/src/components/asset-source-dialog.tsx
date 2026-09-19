@@ -24,6 +24,7 @@ import {
   initialSelection,
   unavailableReason,
 } from '../lib/asset-sources';
+import './asset-source-dialog.css';
 
 export interface AssetSourceDialogProps {
   /** The policy as stored. null means nobody has ever answered. */
@@ -104,12 +105,11 @@ export function AssetSourceDialog({ policy, ceiling = null, onSave, onDone, onCa
                     <span className="asrc__reach">{e.reach}</span>
                   </span>
                   {/* A greyed box with no sentence beside it reads as a bug rather than a rule.
-                      It borrows `asrc__meta` for its layout ON PURPOSE: `.asrc__body` is a flex
-                      column, so a span with only a new class would render at full size and make
-                      the disabled row the loudest thing in the dialog — and this file may not add
-                      rules to styles.css. `asrc__meta` already supplies the muted, small,
-                      own-line treatment this needs; `asrc__blocked` rides along as the hook for
-                      anyone who later wants to style it properly. */}
+                      It keeps `asrc__meta` ON PURPOSE: that class already supplies the small,
+                      own-line treatment this needs, and without it a span carrying only a new
+                      class would render at full size and make the disabled row the loudest thing
+                      in the dialog. `asrc__blocked` is what asset-source-dialog.css hangs the
+                      hairline and the colour off. */}
                   {blocked && <span className="asrc__meta asrc__blocked">{blocked}</span>}
                 </span>
               </label>

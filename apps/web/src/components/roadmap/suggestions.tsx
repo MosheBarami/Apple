@@ -12,6 +12,7 @@
 import { COMPLEXITY, ComplexityMark } from './marks';
 import type { BriefIntent } from './milestone-card';
 import { effortLabel, type Milestone } from './model';
+import './suggestions.css';
 
 interface Props {
   /** `idle` renders nothing — the panel only exists once it has been asked. */

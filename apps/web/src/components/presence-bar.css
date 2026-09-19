@@ -1,0 +1,96 @@
+/* WHO ELSE IS IN THIS PROJECT — the faces at the top of the open Project menu.
+ *
+ * WHAT THIS ROW IS FOR, AND WHAT THAT COSTS IT. It answers one question — is anyone else in here,
+ * and is any of them changing the thing I am looking at — for somebody who opened the menu to do
+ * something else entirely. So it is the cheapest row in the panel: one size, one weight, one
+ * colour, and that colour spent only on the person who is building. Everything else is a warm
+ * neutral. A row that tinted viewing, typing and building alike would rank nobody.
+ *
+ * FOUR SPANS IN A ROW, AND THAT IS THE WHOLE PROBLEM. presence-bar.tsx draws one bare <span> per
+ * person with nothing between them. With no rule they stay inline and four people read as one
+ * word — "MBGKAB" — which is the exact failure the unstyled-class check was written for. The flex
+ * row below is the first rule in this file for that reason and no other.
+ *
+ * NOBODY HERE IS CLICKABLE. Every span is aria-hidden, the names are carried on the group's
+ * aria-label, and none of them can take focus. So nothing here gets a cursor, a hover fill or a
+ * focus ring: an affordance for an interaction that does not exist is a lie the pointer tells.
+ * The browser's own tooltip on `title` is the whole of the interaction, and it is free.
+ *
+ * NO MOTION AT ALL. Faces mount and unmount on socket traffic the reader did not cause. A fade on
+ * each arrival would make a quiet room flicker on somebody else's network, so there is nothing
+ * here for prefers-reduced-motion to turn off.
+ */
+
+/* ----------------------------------------------------------------------- the row --- */
+
+/* THE ROW WRAPS BECAUSE THE PANEL CANNOT GROW. `.gx-top__actions` is a fixed 270px column; a row
+   that refuses to wrap does not widen it, it spills past its border and under its shadow.
+   `PRESENCE_VISIBLE` caps the row at four faces and a count, which measures 144px and therefore
+   fits on one line in every panel width this app can produce, down to a 240px viewport. The wrap
+   is insurance against that cap rising, and it was tested by raising it: nine faces in a 208px
+   panel take two lines and still do not cross the border.
+   The hairline is here because a row of people sitting directly above a list of verbs is two
+   different kinds of thing, and the panel's own 4px grid gap does not say so. It is the same 1px
+   `--line` everything else in the app separates with, and it costs nothing when the component
+   renders nothing: presence-bar.tsx returns null rather than an empty row. */
+.gx-presence { display:flex; flex-wrap:wrap; align-items:center; gap:6px; min-width:0; padding-block-end:9px; margin-block-end:2px; border-block-end:1px solid var(--line); }
+
+/* ---------------------------------------------------------------------- one face --- */
+
+/* A DISC, SIZED BY ITS BOX AND NOT BY ITS TEXT. `initialsOf` can return one code point or two, a
+   Latin pair, a Hebrew pair or an emoji, and a chip that grows to fit whichever arrived would make
+   the row jump every time somebody joined. Fixed 26px, centred, and overflow clipped: a rare
+   two-emoji name is cut off rather than allowed to reflow the panel.
+   `flex:none` so the disc never shrinks into an ellipse when the row is full. 400 like everything
+   else in the product — hierarchy here is size, colour and space, never weight. */
+.gx-presence__face {
+  flex:none; display:grid; place-items:center; width:26px; height:26px; overflow:hidden;
+  border:1px solid var(--line); border-radius:var(--r-pill); background:var(--surface-2);
+  font-size:11px; font-weight:400; line-height:1; letter-spacing:.02em; color:var(--muted);
+}
+
+/* THE THREE ACTIVITIES ARE A RAMP, AND ONLY THE TOP OF IT COSTS A COLOUR.
+   `is-viewing` deliberately has no rule: it is the resting state, it is most of the row, and a
+   declaration restating the base is a rule a later reader has to check for a difference that is
+   not there. Do not add one.
+   `is-typing` steps the ink up to `--ink` and stops. Somebody typing will have stopped by the time
+   you have read the row; that is worth being able to see, not worth a hue.
+   `is-building` is the one fact in this panel the reader may have to act on — the project is
+   changing under them while they look at it — so it takes the panel's single tint. */
+.gx-presence__face.is-typing { color:var(--ink); }
+.gx-presence__face.is-building { border-color:color-mix(in srgb,var(--info) 40%,var(--line)); background:color-mix(in srgb,var(--info) 14%,var(--surface-2)); color:var(--info); }
+/* The light theme takes LESS fill, not more — the opposite of the correction most tints need here.
+   `--info` is a pale blue in the dark theme and a dark navy in the light one, so the same 14%
+   darkens the disc towards the initials sitting on it and the pair closes to 4.73:1 — still a pass
+   and still the wrong direction to be heading. Ten percent opens it back to 5.01:1 and leaves the
+   hairline carrying the tint. Both themes were computed against the ramp, not assumed from one. */
+:root[data-theme='light'] .gx-presence__face.is-building { border-color:color-mix(in srgb,var(--info) 46%,var(--line)); background:color-mix(in srgb,var(--info) 10%,var(--surface-2)); }
+
+/* ------------------------------------------------------------ the ones not drawn --- */
+
+/* "+3" — the remainder past the cap, and it is a COUNT, NOT A PERSON. It was drawn first as a
+   hollow disc with the same ring as a face, on the theory that a shared shape keeps the row
+   tidy. Rendered at 3x it was four people and a fifth circle, and the row said five: the ring is
+   what reads as a someone, and nothing else about it mattered. So the ring is gone. It keeps the
+   26px box to hold the row's centre line and nothing else.
+   Mono and tabular because it is a number that changes while you look at it, and proportional
+   digits make a two-digit room twitch as people come and go. No width cap: "+12" is the whole
+   content here, where a clipped initial is only a clipped initial. */
+.gx-presence__more {
+  flex:none; display:grid; place-items:center; height:26px; padding-inline-start:2px;
+  font-family:var(--font-mono); font-size:11px; font-weight:400; line-height:1; letter-spacing:0;
+  color:var(--faint); font-variant-numeric:tabular-nums;
+}
+
+/* ---------------------------------------------------------------------- at 375px --- */
+
+/* The panel holds a flat 270px until 480px, where system.css caps it at `min(270px,100vw - 32px)`
+   and it starts losing width with the viewport. One step smaller from 600px covers both: a phone
+   holding the full 270px, and the narrower column below 480px. Measured at 375px the row ends
+   144px into a 270px panel, and at a 240px viewport 144px into a 208px one — still one line, and
+   still clear of the border. */
+@media (max-width:600px) {
+  .gx-presence { gap:5px; padding-block-end:8px; }
+  .gx-presence__face { width:24px; height:24px; }
+  .gx-presence__more { height:24px; }
+}

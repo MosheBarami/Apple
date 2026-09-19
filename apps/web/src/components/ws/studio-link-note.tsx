@@ -20,6 +20,7 @@
  */
 import { useEffect, useState } from 'react';
 import { linkDetail, type StudioConnection, type StudioLinkFacts } from '../../lib/studio-connection';
+import './studio-link-note.css';
 
 export function StudioLinkNote({
   status,

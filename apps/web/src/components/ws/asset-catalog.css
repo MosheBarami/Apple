@@ -1,3 +1,13 @@
+/* THE ASSET LIBRARY — a search over a catalogue this product did not make, opened so somebody can
+ * name one existing asset in their next message.
+ *
+ * WHAT THAT COSTS IT. Every row here is someone else's file: a name, an author, a licence line, an
+ * id, and a thumbnail fetched from Roblox that may never arrive. None of it is trustworthy enough
+ * to be presented as a recommendation, so this panel is built as a table of facts and spends no
+ * colour anywhere — no tint says "this one is safe", because the panel cannot know that. Hierarchy
+ * is size, colour and space, and nothing in this file sets a weight above 400.
+ */
+
 .apple-catalog-overlay .modal-panel { border-radius:20px; background:var(--paper); width:min(860px,calc(100vw - 32px)); }
 .apple-catalog-overlay .modal-overlay { background:#0009; }
 .apple-catalog { display:grid; grid-template-columns:minmax(0,1fr); min-width:0; gap:16px; }
@@ -6,6 +16,29 @@
 .apple-catalog__search input { min-width:0; flex:1; }
 .apple-catalog__filter { display:flex; gap:8px; align-items:center; font-size:13px; }
 .apple-catalog__filter input { width:auto; }
+/* THE STATUS LINE, and the four different sentences it has to be: the standing invitation, the
+   in-flight "Searching for X", the count, and "No matches". It is `role="status"`, so each of
+   them is also read aloud — which is exactly why none of them gets a tone the words do not have.
+   "No matches for “tree”" is an ordinary outcome, not a fault, and tinting it would teach the
+   reader that an empty search is something they broke. Colour stays off this line in every state;
+   the panel's one alarm is the error <p> below it.
+
+   IT DROPS A SIZE STEP INSTEAD. Two 13px muted paragraphs — the standing intro at the top of the
+   panel and this — are indistinguishable, so after pressing Search the eye lands on the wrong one.
+   12px is the size the per-row facts underneath are set in, and that is what this sentence is: a
+   fact about the rows. `.apple-catalog p` is (0,1,1), so the block has to be named twice to beat
+   it — the same doubling `.apple-catalog__details .apple-catalog__kind` already uses below.
+
+   THE SEARCH TERM IS THE USER'S, UP TO 120 CHARACTERS, interpolated straight into the sentence
+   between curly quotes. A single unbroken 120-character word would run this line past the panel
+   and hang a horizontal scrollbar on the modal, so it is allowed to break mid-word. Tabular
+   figures because the count rewrites itself in place — 9 matches, then 12, then 9 again. */
+.apple-catalog .apple-catalog__status { font-size:12px; line-height:1.55; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; text-wrap:pretty; }
+/* ON THE ERROR PATH THE SENTENCE IS THE EMPTY STRING and the <p> is still rendered. An empty block
+   is 0px tall, but it is still a grid item, so it buys a second 16px gap and drops the results
+   list 16px for no reason anyone can see. Taking it out of the grid is the whole fix. */
+.apple-catalog .apple-catalog__status:empty { display:none; }
+
 .apple-catalog__results { list-style:none; margin:0; padding:0; display:grid; gap:0; }
 .apple-catalog__results li { display:grid; grid-template-columns:120px minmax(0,1fr) auto; align-items:center; gap:20px; padding:20px 0; border-top:1px solid var(--line); }
 .apple-catalog__details { display:grid; flex:1; gap:5px; min-width:0; overflow-wrap:anywhere; }

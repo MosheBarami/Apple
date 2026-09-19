@@ -1,5 +1,6 @@
 // The faces in the topbar. Everything it decides lives in presence-model.ts; this draws the answer.
 import { presenceView, type PresenceRow } from './presence-model';
+import './presence-bar.css';
 
 export function PresenceBar({ present, selfUserId }: { present: readonly unknown[] | undefined; selfUserId: string | null }) {
   const view = presenceView(present, selfUserId);

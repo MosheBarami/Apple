@@ -1,0 +1,107 @@
+/* THE RAIL'S USAGE METER — the half of it design/system.css never drew.
+ *
+ * system.css owns the shared half: `.gx-usage`, `.gx-usage__top`, `.gx-usage__plan`,
+ * `.gx-usage__bar`, `.gx-usage__fill`, `.gx-usage__detail` and `.gx-usage__foot`. Five classes the
+ * component renders had no rule in any stylesheet — the headline, the credits band inside the bar,
+ * the builds hint, the reset time and the next action — so this sheet is exactly those, plus the
+ * two completions the new rules force next door. Nothing here restates a declaration from over
+ * there; where a system.css class appears below it gains a property it never had.
+ *
+ * WHAT THIS PANEL IS FOR, AND WHAT THAT COSTS IT. It answers "how much have I got left" inside a
+ * ~290px rail at 12px, beside a conversation list somebody is actually trying to read. So every
+ * rule buys quietness: nothing above weight 400, no shadow, no card. Hierarchy is size, colour
+ * and space, and that is the whole budget.
+ *
+ * COLOUR IS SPENT ONCE, ON THE ONE STATE WITH A NEXT MOVE. usage-meter-model.ts writes a next
+ * action only in its `bad` branch — nothing left to spend — and `.gx-usage__next` is the only
+ * tinted thing in this file. The warn tone is deliberately left neutral: "running low" still lets
+ * you build, and a panel that colours both the near-zero and the zero has told the reader nothing
+ * about which of the two they are looking at.
+ *
+ * NO MOTION IS ADDED HERE ON PURPOSE. The one thing that changes is the fill's width, which the
+ * component sets inline; animating it would draw a balance travelling through values the account
+ * never held.
+ */
+
+/* ------------------------------------------------------------------- the top row --- */
+
+/* THE HEADLINE AND THE PLAN SHARE A ROW AND DISAGREE ABOUT SIZE. system.css makes `__top` a
+   space-between flex and puts the plan at 10px, but never sized or aligned the headline, so it
+   inherited the panel's 12px and lined up with nothing. Baselines are the only alignment that is
+   right for two type sizes on one line — the default `stretch` hangs a 10px plan off the top of a
+   13px headline and reads as a bug. The plan neither shrinks nor wraps: it is one word, and half
+   of "Builder" says less than no plan name at all. --faint because it is context; full --ink at
+   10px beside a 13px headline makes two equally loud things out of a fact and its footnote. */
+.gx-usage__top { align-items:baseline; }
+.gx-usage__plan { flex:none; white-space:nowrap; color:var(--faint); }
+
+/* The one line read at a glance, so it is the largest thing here and the only one at full --ink.
+   Tabular figures because the number falls as you spend, and proportional digits would twitch the
+   whole headline sideways on every build. `min-width:0` lets a long headline — "This month's
+   allowance is used up" — wrap inside the row rather than shove the plan out of it. */
+.gx-usage__head { flex:1 1 auto; min-width:0; font-size:13px; line-height:1.4; letter-spacing:-.01em; color:var(--ink); font-variant-numeric:tabular-nums; text-wrap:pretty; }
+
+/* ----------------------------------------------------------- the second band --- */
+
+/* TWO BANDS, NOT ONE — AND THE SECOND HAD NO WIDTH, SO IT WAS NOT THERE. `.gx-usage__credits` is a
+   bare <span> inside the flex bar carrying no inline style, which made it a zero-width flex item:
+   the purchased credits that usage-meter-model.ts goes to considerable length to keep separate
+   from the allowance were drawn as nothing at all.
+   The width is FIXED on purpose. The component hands this span no number, and a length computed
+   from a number nobody passed is the exact lie the model refuses everywhere else — a bar drawn at
+   some length is a claim about a figure. This is a marker saying "a second, non-expiring pot sits
+   beside this one", and it says nothing whatever about how full that pot is.
+   `flex:none` so a full allowance compresses the fill instead of erasing the marker, and three
+   pixels of bare track between them so two bands read as two and not as one longer fill. --muted,
+   not a status colour: having bought credits is not a thing anybody needs to act on. */
+.gx-usage__credits { flex:none; width:12px; margin-inline-start:3px; background:var(--muted); }
+
+/* ---------------------------------------------------------------------- the foot --- */
+
+/* THE FOOT IS TWO SPANS THAT ARE USUALLY ONE. `__builds` is withheld below a whole build and
+   `__reset` is null once the reset has passed, so `space-between` is routinely handed a single
+   item — and left it wherever it fell, which meant the reset time jumped from the right edge to
+   the left one the moment the balance dropped under one build. An auto margin pins it to the end
+   in both cases, and it is the logical direction rather than `right` so a Hebrew rail flips it
+   with the text. Tabular and nowrap: "resets in 5h" is short, counts down in place, and must
+   never break across two lines to save four pixels. */
+.gx-usage__reset { flex:none; margin-inline-start:auto; white-space:nowrap; font-variant-numeric:tabular-nums; }
+
+/* "about 3 more builds" is the only figure in this panel somebody can plan around; the reset time
+   beside it is context. One step of colour separates them, still a warm neutral, still no change
+   of weight. `min-width:0` lets it wrap instead of pushing the reset off the row. */
+.gx-usage__builds { min-width:0; color:var(--muted); }
+
+/* --------------------------------------------------------------- the next move --- */
+
+/* THE CONCLUSION, AND THE ONLY COLOURED THING IN THE PANEL.
+   A <p> wearing nothing but the UA's 1em block margins: it stood a full line clear of the foot and
+   pressed against the account row beneath, so it read as a sentence that had come loose rather
+   than the panel's last word. Drawn as a shallow well instead — --paper-2 is a step DOWN from the
+   rail's --surface, so it recesses rather than stacking another card on top of the meter. */
+.gx-usage__next { margin:11px 0 0; padding:9px 11px; border:1px solid var(--line); border-radius:var(--r-xs); background:var(--paper-2); font-size:12px; line-height:1.5; letter-spacing:-.01em; color:var(--ink); text-wrap:pretty; }
+
+/* The tint, and it hangs off the tone rather than the class. Today the model writes a next action
+   only when the account is empty, so the two are the same set — but a warn-tone action added later
+   would arrive untinted, which is the safe direction to be wrong in. Held under a tenth so this
+   stays a surface step and not a red panel, and the text keeps --ink and carries no colour of its
+   own: a remedy printed in red reads as a second fault. */
+.gx-usage.is-bad .gx-usage__next { border-color:color-mix(in srgb,var(--bad) 26%,var(--line)); background:color-mix(in srgb,var(--bad) 7%,var(--paper-2)); }
+
+/* Light wants MORE of it, not less — the opposite of the usual correction. --bad is a pale rose in
+   the dark ramp and a dark red in the light one, and 7% of a dark red over #f3f3f3 lands close
+   enough to neutral that the single alarm on the panel reads as an ordinary grey box. Same
+   correction, for the same reason, that support-dialog.css makes for its --warn notice. */
+:root[data-theme='light'] .gx-usage.is-bad .gx-usage__next { border-color:color-mix(in srgb,var(--bad) 32%,var(--line)); background:color-mix(in srgb,var(--bad) 9%,var(--paper-2)); }
+
+/* -------------------------------------------------------------------- at 375px --- */
+
+/* The rail is width:min(340px,90vw), so this panel is roughly 290px wide at EVERY viewport and the
+   phone case is not a different layout — it is four pixels narrower than the desktop one. The only
+   thing worth handing back is the well's side padding, which is the sole horizontal room this
+   sheet spends that the rail had not already budgeted, and a little of the top row's gap so a long
+   headline reaches its wrap point later. */
+@media (max-width:600px) {
+  .gx-usage__next { padding:9px; }
+  .gx-usage__top { gap:8px; }
+}

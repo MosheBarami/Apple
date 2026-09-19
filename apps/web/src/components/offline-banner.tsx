@@ -10,6 +10,7 @@
 // they did not lose.
 import { useEffect, useState } from 'react';
 import { observedFacts, reachNotice, reachability, subscribeReach, type Reach } from '../lib/connectivity';
+import './offline-banner.css';
 
 function currentReach(): Reach {
   const onLine = typeof navigator === 'undefined' ? undefined : navigator.onLine;
