@@ -206,8 +206,14 @@ test('THE PLUGIN ACTUALLY SENDS THE CODE — the vocabulary is not a table nothi
   const src = readFileSync(join(ROOT, 'apps/apple-plugin/src/Commands.luau'), 'utf8');
   // Read at the refusal sites, not by counting the word: a remedy defined and never attached is
   // exactly the shape of a guard that cannot fail.
-  assert.match(src, /writes require explicit edit consent", started, "edit_consent"/,
+  // Matched as a SHAPE, not as the message's exact wording — the message deliberately changed once
+  // already, to carry the remedy inside the sentence the model quotes verbatim.
+  assert.match(src, /writes require explicit edit consent[^\n]*?, started, "edit_consent"/,
     'the consent refusal no longer carries its remedy code');
+  // And the sentence itself must name the button and deny the fiction, because the model repeats
+  // `error` and demonstrably ignored a separate field.
+  assert.match(src, /not a Roblox Studio setting/, 'the refusal no longer says whose gate it is');
+  assert.match(src, /Enable edits/, 'the refusal no longer names the control that lifts it');
   assert.match(src, /writes require Studio edit mode", started, "leave_test_mode"/,
     'the edit-mode refusal no longer carries its remedy code');
   assert.match(src, /UNSUPPORTED\[name\], started, "none"/,

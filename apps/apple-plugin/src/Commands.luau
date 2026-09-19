@@ -3542,12 +3542,12 @@ function Commands.new(options: any?): any
 		local handler = HANDLERS[name]
 		if name == "undo_waypoint" then
 			if not editMode() then return failureResult(id, "refused", "writes require Studio edit mode", started, "leave_test_mode") end
-			if allowEdits ~= true then return failureResult(id, "refused", "writes require explicit edit consent", started, "edit_consent") end
+			if allowEdits ~= true then return failureResult(id, "refused", "writes require explicit edit consent — this is Apple's own gate, not a Roblox Studio setting: press \"Enable edits…\" then \"Allow edits for this connection\" in the Apple panel in Studio", started, "edit_consent") end
 			return runUndoWaypoint(id, op, started)
 		end
 			if not handler and name ~= "restore" and not DEFERRED_MUTATING[name] then return failureResult(id, "refused", "unknown Studio operation: " .. name, started) end
 		if MUTATING[name] or DEFERRED_MUTATING[name] or CONSENT_ONLY[name] then
-			if allowEdits ~= true then return failureResult(id, "refused", "writes require explicit edit consent", started, "edit_consent") end
+			if allowEdits ~= true then return failureResult(id, "refused", "writes require explicit edit consent — this is Apple's own gate, not a Roblox Studio setting: press \"Enable edits…\" then \"Allow edits for this connection\" in the Apple panel in Studio", started, "edit_consent") end
 			if not editMode() then return failureResult(id, "refused", "writes require Studio edit mode", started, "leave_test_mode") end
 		end
 		if MUTATING[name] or DEFERRED_MUTATING[name] then
