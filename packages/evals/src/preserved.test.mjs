@@ -493,12 +493,27 @@ test('B7 STATIC CHECK — the poll is held open whenever there is nothing to han
   // still have to hold: a running or recently-active project holds the request open (that is what
   // makes op latency near zero), and only a project parked for MINUTES stops holding.
   assert.match(session, /const holdMs = running \? POLL_HOLD_ACTIVE_MS : POLL_HOLD_WARM_MS;/, 'the hold durations moved — re-check them against the liveness window');
-  assert.match(session, /if \(!parked && !this\.opQueue\.length\) \{\s*\n\s*await new Promise<void>\(\(resolve\) => \{/, 'the long poll must still apply whenever the queue is empty and the project is not parked');
+  //[[ PINNED TO `if (!parked && !this.opQueue.length)` — the gate gained a conjunct in front of it.
+  //
+  //   WHAT MOVED: `!accessStopped &&`. A poll arriving for a run whose initiator just lost access
+  //   used to be held open for up to POLL_HOLD_WARM_MS before the plugin was told anything; it now
+  //   returns at once. That is the gate getting STRICTER, which is the direction that does not get
+  //   reverted — so the property, not the spelling: the hold is entered whenever the queue is empty
+  //   and the project is not parked, however many further conjuncts guard it. `&&`-joined only, so
+  //   an `||` that would let a hold happen for some OTHER reason still fails. ]]
+  assert.match(session, /if \((?:!?[\w.]+ && )*!parked && !this\.opQueue\.length\) \{\s*\n\s*await new Promise<void>\(\(resolve\) => \{/, 'the long poll must still apply whenever the queue is empty and the project is not parked');
   assert.match(session, /const parked = !running && idleFor > POLL_IDLE_AFTER_MS;/, 'parking must be derived from measured idleness');
   // The waiter fires the moment an op is queued, which is what makes latency near zero.
   assert.match(session, /this\.pollWaiter = \(\) => \{\s*\n\s*clearTimeout\(t\);/);
   assert.match(session, /await this\.ctx\.storage\.put\(\{ opQueue: this\.opQueue, seq: this\.seq \}\);\s*\n\s*this\.pollWaiter\?\.\(\);/, 'enqueueing an op must wake the held poll');
-  assert.match(session, /const waitMs = running \? 400 : parked \? POLL_WAIT_IDLE_MS : 1000;/, 'the client-side re-poll delay moved');
+  //[[ PINNED TO `running ? 400`, and the variable was renamed to `deliveryRunning`.
+  //
+  //   WHAT MOVED: the run is now re-read from storage AFTER the hold returns, so an access change
+  //   that landed during those seconds decides the answer instead of the stale read from before it.
+  //   `running` is the pre-hold reading and `deliveryRunning` the post-hold one — more information,
+  //   not less. The property is the three branches and their constants; the branch variable only
+  //   has to be named for run liveness. ]]
+  assert.match(session, /const waitMs = \w*[Rr]unning \? 400 : parked \? POLL_WAIT_IDLE_MS : 1000;/, 'the client-side re-poll delay moved');
 });
 
 test('B7 the holds and the idle sleep both stay inside the liveness window', () => {
@@ -794,6 +809,16 @@ test('B9 the provider abstraction did not change which model actually serves a r
 // ---------------------------------------------------------------------------
 const { SessionDO } = await import(`file://${bundle(SRC('do', 'session.ts'), 'session')}`);
 
+/**
+ * The plan the fixture account is on.
+ *
+ * Read from PLAN_IDS rather than typed, so a renamed or withdrawn tier cannot quietly leave this
+ * fixture entitled to nothing — which is exactly the failure that took the twenty-one session
+ * tests below down at once when the MAX gate landed. `free` is the one tier that cannot run MAX.
+ */
+const PAID_PLAN = P.PLAN_IDS.find((id) => id !== 'free');
+assert.ok(PAID_PLAN, 'no paid plan in PLAN_IDS — every session test below would check nothing');
+
 /** The brief from the b4 failure, plus an exclusion and a hedge that must be read correctly. */
 const TAVERN_BRIEF =
   'Build a cosy medieval tavern interior with stone walls, a doorway and windows, a wooden floor, ' +
@@ -823,7 +848,7 @@ function sessionHarness(store = new Map()) {
   store.set('bind', { projectId: 'p1', projectName: 'Preserved Place', ownerId: 'u1' });
   const quota = {
     creditsRemaining: 99, creditsDaily: 100, creditsMonthly: 1000,
-    creditsUsedToday: 1, creditsUsedThisMonth: 1, resetsAtIso: '', plan: 'free',
+    creditsUsedToday: 1, creditsUsedThisMonth: 1, resetsAtIso: '', plan: PAID_PLAN,
   };
   const ctx = {
     storage: {
@@ -849,15 +874,48 @@ function sessionHarness(store = new Map()) {
   const env = {
     // Touching the model binding at all on this path is a failure, not a cost.
     AI: { run: async () => { throw new Error('B10: the intent rows must never call a model'); } },
+    //[[ THE QUOTA OBJECT ANSWERS TWO DIFFERENT QUESTIONS AND THIS STUB ANSWERED ONLY ONE.
+    //
+    //   WAS: every path returned `{ ok: true, state: quota }` — the `/spend` shape — over a fixture
+    //   whose plan was 'free'. WHAT MOVED: startRun now asks `/state` for the account's PLAN before
+    //   it admits a run, because `stone` with no explicit productModel means Apple MAX and MAX is
+    //   paid-only (canUseProductModel). A `/spend` body carries no top-level `plan`, so that read
+    //   answered undefined and every run below was refused `product_model_unavailable` — a refusal
+    //   no test in this file read, so twenty-one of them failed on a missing `agent` instead.
+    //
+    //   The gate got STRICTER, which is the direction that does not get reverted. So the stub now
+    //   answers `/state` the way the real QuotaDO does — a QuotaState with a top-level `plan` — and
+    //   the fixture is the entitled account these tests were always about. ]]
     QUOTA_DO: {
       idFromName: () => ({}),
-      get: () => ({ fetch: async () => new Response(JSON.stringify({ ok: true, state: quota })) }),
+      get: () => ({
+        fetch: async (url) =>
+          new Response(JSON.stringify(String(url).endsWith('/state') ? quota : { ok: true, state: quota })),
+      }),
     },
   };
   return { session: new SessionDO(ctx, env), sent, store, ws, alarms, bind: store.get('bind') };
 }
 
 const intentsIn = (sent) => sent.filter((m) => m.type === 'run_intent');
+
+test('B10 the fixture account is actually admitted — every session test below rests on it', async () => {
+  //[[ THE READ FOUND SOMETHING, ASSERTED SEPARATELY FROM WHAT IS READ FROM IT.
+  //
+  //   When the Apple MAX entitlement gate landed, `startRun` began refusing this fixture before it
+  //   created a run. The refusal was broadcast and no test in this file read it, so twenty-one
+  //   tests failed instead on `agent` being undefined and on broadcasts that were never made, and
+  //   not one of those failures named admission. This test names it. When it is the only red in
+  //   this file, the fixture stopped being entitled to run — fix the fixture, not the twenty-one. ]]
+  const h = sessionHarness();
+  await h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+  assert.deepEqual(
+    h.sent.filter((m) => m.type === 'error').map((m) => m.code),
+    [],
+    'the fixture was refused before a run existed — every assertion below would be testing nothing',
+  );
+  assert.ok(h.store.get('agent'), 'startRun must leave a persisted run behind');
+});
 
 test('B10 run_intent is emitted exactly once per run, and only after msg_start', async () => {
   const h = sessionHarness();
