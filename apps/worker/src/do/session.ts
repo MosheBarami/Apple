@@ -100,7 +100,7 @@ import {
   type RunAccessVerdict,
 } from '../run-access';
 import { placeAdmission, readPlaceReport, servesOps, type PlaceAdmission } from '../studio-place';
-import { WORKER_FAILURES, asFailureKind, replyWithRemedy } from '../op-failure';
+import { WORKER_FAILURES, asFailureKind, replyWithRemedy, replacedFiction } from '../op-failure';
 import { latestSelection, sameSelection, companionOpAccess, sanitizeCompanionOp, companionRefusal } from '../companion';
 import {
   MIN_QUERY,
@@ -3814,7 +3814,26 @@ export class SessionDO extends DurableObject<Env> {
     // THE PRODUCT'S OWN WORDS, ADDED AFTER THE MODEL'S. Not an override, because the model's text
     // usually also contains something true about what it tried; and not a silent replacement,
     // because the user should be able to see both and believe the one that is signed.
+    //
+    // EXCEPT when the model named a Studio settings page that does not exist (w35). Then the reply
+    // IS replaced, because two accounts of one event — one of them a numbered, actionable-looking
+    // fabrication — is worse than one. What was removed is written to the oplog rather than to the
+    // reply: the user needs the truth, not a note about their assistant's imagination, and the next
+    // person debugging this needs to know a replacement happened at all.
+    const fiction = replacedFiction(content, agent.refusalRemedy);
     const withRemedy = replyWithRemedy(content, agent.refusalRemedy);
+    if (fiction) {
+      this.sql.exec(
+        `insert into oplog(op_id, kind, ok, summary, created_at, failure, run_id) values(?,?,?,?,?,?,?)`,
+        `${agent.msgId}-fiction`,
+        'reply_replaced',
+        0,
+        `the reply named "${fiction}", which does not exist in Roblox Studio; replaced with the product's remedy`.slice(0, 200),
+        Date.now(),
+        'refused',
+        agent.msgId,
+      );
+    }
     if (withRemedy !== agent.streamedText) {
       // make sure fallback/step-limit text reaches clients that saw no delta for it. The live
       // socket and the stored row carry the SAME text: a remedy visible only after a reload would

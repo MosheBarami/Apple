@@ -114,11 +114,55 @@ Live, on the deployed product, Studio paired, consent off, same request as every
 The user is now told the truth, in the product's own voice, directly contradicting the fiction above
 it. That is w34's criterion — a refusal names the remedy that exists — and it is met.
 
-**What is NOT fixed, and is opened as its own row:** the model's invented menu is still printed
-above the correction. Two accounts of one event, one of them false, is worse than one; the reason it
-is appended rather than substituted is that the model's text usually also contains something true
-about what it attempted, and deciding that automatically is a different problem. The correction is
-bold, signed and last, which is the best that appending can do.
+**What was NOT fixed at this point** — the model's invented menu was still printed above the
+correction — became w35, and is fixed below.
+
+## w35: the fabrication is now removed, not annotated
+
+Appending the truth under a fabrication was the best that appending could do, and it was not enough.
+A user reading
+
+> Go to `File > Place Settings > Security`. Uncheck "Require explicit edit consent for scripts".
+> **Apple could not change your place… press "Enable edits…" in the Apple panel.**
+
+does not average the two. They go looking for the settings page, because it is the instruction that
+sounds like it was written by someone who checked — numbered, specific, four steps.
+
+`STUDIO_FICTIONS` is now a closed list of the four inventions actually observed on 2026-09-19, each
+carrying the date it was seen and a sentence from the run it appeared in, so every row tests itself.
+When a run hits a refusal the product can explain AND the reply names one of them, the reply is
+REPLACED rather than extended — the same reasoning `incomplete` already uses in `finishRun`: a reply
+that reports something which did not happen is worse than an error, because the user has no reason
+to doubt it.
+
+The trigger needs BOTH halves, and the guard is falsified in both directions:
+
+```
+detection disabled (always append)  ->  "the fabricated settings page survived into the reply"   fail 3
+detection forced (always replace)   ->  "a truthful reply was thrown away"                       fail 2
+```
+
+Speculative patterns are refused by the guard: a row with no observed sample is a filter on the
+model's vocabulary waiting for a legitimate sentence to catch.
+
+Live, on the deployed product, consent off, same request. The whole reply, verbatim:
+
+> **Apple could not change your place, and this is Apple's own limit, not a Roblox Studio setting.**
+> In Studio, open the Apple panel and press "Enable edits…", then "Allow edits for this connection".
+> Consent is per connection and turns off when you disconnect.
+>
+> Nothing in your place was changed, so there is nothing to undo.
+
+Nothing invented survives. What was removed goes to the oplog, not to the reply — the user needs the
+truth, not a note about their assistant's imagination, and the next person debugging this needs to
+know a replacement happened at all:
+
+```
+reply_replaced  ok=0  failure=refused
+  summary: the reply named "Place Settings", which does not exist in Roblox Studio;
+           replaced with the product's remedy
+```
+
 
 ## One worry raised and retired
 

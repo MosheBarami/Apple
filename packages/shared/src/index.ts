@@ -323,6 +323,62 @@ export const REFUSAL_REMEDIES = {
 
 export type RefusalRemedyCode = keyof typeof REFUSAL_REMEDIES;
 
+/**
+ * SETTINGS THE MODEL INVENTS. A closed list, because they are quotable.
+ *
+ * Roblox Studio has no "Project Settings" menu, no "Place Settings > Security" page, no "Allow
+ * Scripted Updates" toggle and no "Require explicit edit consent for scripts" checkbox. The model
+ * produced all four across four consecutive runs on 2026-09-19 while being handed the correct
+ * remedy in the string it was paraphrasing.
+ *
+ * This list is not a filter on the model's vocabulary — it is the trigger for a DIFFERENT decision.
+ * A reply that merely omits the remedy can be corrected by appending one. A reply that actively
+ * sends the user to a settings page that does not exist cannot: the two accounts then contradict
+ * each other and the false one is the specific, actionable-looking one. So when a refusal is
+ * explainable AND the reply contains one of these, the product replaces the reply instead of
+ * appending to it.
+ *
+ * Add a row when a new fiction is observed IN THE WILD, with the date. Do not add speculative ones:
+ * a pattern nobody has seen produced is a false positive waiting for a legitimate sentence.
+ */
+export const STUDIO_FICTIONS: readonly {
+  readonly pattern: RegExp;
+  /** When it was observed in a real reply. A fiction nobody has seen is a false positive waiting. */
+  readonly seen: string;
+  /** A sentence from the run it was seen in, so the row can test itself. */
+  readonly sample: string;
+}[] = Object.freeze([
+  Object.freeze({
+    pattern: /\bProject Settings\b/i,
+    seen: '2026-09-19',
+    sample: 'In Studio, go to File > Project Settings > Security and verify the "Allow Scripted Updates" setting.',
+  }),
+  Object.freeze({
+    pattern: /\bPlace Settings\b/i,
+    seen: '2026-09-19',
+    sample: 'Go to File > Place Settings > Security.',
+  }),
+  Object.freeze({
+    pattern: /\bAllow Scripted Updates\b/i,
+    seen: '2026-09-19',
+    sample: 'Ensure the project allows script-based writes by enabling Allow Scripted Updates.',
+  }),
+  Object.freeze({
+    pattern: /Require explicit edit consent for scripts/i,
+    seen: '2026-09-19',
+    sample: 'Uncheck "Require explicit edit consent for scripts" and save the place.',
+  }),
+]);
+
+/** Which fiction a reply contains, or null. Returns the FIRST match so the reason is quotable. */
+export function studioFictionIn(text: string): string | null {
+  for (const entry of STUDIO_FICTIONS) {
+    const m = entry.pattern.exec(text);
+    if (m) return m[0];
+  }
+  return null;
+}
+
 export function isRefusalRemedyCode(v: unknown): v is RefusalRemedyCode {
   return typeof v === 'string' && Object.prototype.hasOwnProperty.call(REFUSAL_REMEDIES, v);
 }

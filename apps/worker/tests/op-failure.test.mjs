@@ -28,7 +28,7 @@ const out = join(mkdtempSync(join(tmpdir(), 'opfail-')), 'op-failure.mjs');
 execFileSync(join(HERE, '..', 'node_modules', '.bin', 'esbuild'),
   [join(HERE, '..', 'src', 'op-failure.ts'), '--bundle', '--format=esm', '--platform=neutral',
    '--main-fields=main,module', '--outfile=' + out], { stdio: 'pipe' });
-const { retryEligibility, retryHint, remedyHint, replyWithRemedy, mutates, MUTATING_OPS, asFailureKind, WORKER_FAILURES } = await import(out);
+const { retryEligibility, retryHint, remedyHint, replyWithRemedy, replacedFiction, mutates, MUTATING_OPS, asFailureKind, WORKER_FAILURES } = await import(out);
 
 const fail = (failure) => ({ ok: false, failure });
 
@@ -223,7 +223,11 @@ test('THE PLUGIN ACTUALLY SENDS THE CODE — the vocabulary is not a table nothi
 // ------------------------------------------- the sentence the model is no longer trusted to write
 
 test('a run that hit a refusal ends with the PRODUCT saying whose limit it is', () => {
-  const modelText = 'Go to File > Place Settings > Security and uncheck "Require explicit edit consent for scripts".';
+  // NOTE: this used a FABRICATED reply when written for w34 and asserted the model text survived.
+  // w35 changed that on purpose — a reply naming an invented settings page is now replaced, and
+  // that assertion moved to the w35 block below. This case was always about whether the product's
+  // sentence gets added at all, so the sample is now a truthful reply.
+  const modelText = 'I could not create that part — the write was refused.';
   const out = replyWithRemedy(modelText, 'edit_consent');
   // The model's own account is kept — it usually contains something true about what it attempted,
   // and the user should see both and believe the signed one.
@@ -249,4 +253,71 @@ test('the correction cannot be an empty flourish', () => {
     const after = out.split('Roblox Studio setting.**')[1] ?? '';
     assert.ok(after.trim().length > 30, `${code}: the correction adds a heading and no instruction`);
   }
+});
+
+// ------------------------------------------------------ w35: two accounts, one of them false
+
+/**
+ * Appending the truth under a fabrication is not enough. A user reading
+ *
+ *   "Go to File > Place Settings > Security. Uncheck 'Require explicit edit consent for scripts'."
+ *   "Actually this is Apple's own limit; press Enable edits… in the Apple panel."
+ *
+ * does not average them. They go looking for the settings page, because it is the instruction that
+ * sounds like it was written by someone who checked. So a reply containing a named fiction is
+ * REPLACED, not annotated.
+ */
+
+const FICTION = 'I cannot create RemedyProbe4 due to the "explicit edit consent" restriction. Go to File > Place Settings > Security. Uncheck "Require explicit edit consent for scripts".';
+const HONEST = 'I could not create RemedyProbe4 — writes are refused right now.';
+
+test('a reply that invents a Studio settings page is REPLACED, not annotated', () => {
+  const out = replyWithRemedy(FICTION, 'edit_consent');
+  assert.doesNotMatch(out, /Place Settings/i, 'the fabricated settings page survived into the reply');
+  assert.doesNotMatch(out, /Require explicit edit consent for scripts/i);
+  assert.match(out, /Apple's own limit/);
+  assert.match(out, /Enable edits/);
+  // The user still needs to know the state of their place.
+  assert.match(out, /nothing to undo/i);
+});
+
+test('a reply with no fiction keeps the model\'s account and gains the correction', () => {
+  const out = replyWithRemedy(HONEST, 'edit_consent');
+  assert.ok(out.startsWith(HONEST), 'a truthful reply was thrown away');
+  assert.match(out, /Apple's own limit/);
+});
+
+test('the replacement needs BOTH a refusal and a fiction — neither alone', () => {
+  // A fiction with no explainable refusal is not this function's business: it has no remedy to
+  // offer and silently deleting the model's reply would be worse than leaving it.
+  assert.equal(replyWithRemedy(FICTION, undefined), FICTION);
+  assert.equal(replyWithRemedy(FICTION, 'not_a_code'), FICTION);
+  // And a refusal with no fiction appends, per the test above.
+  assert.notEqual(replyWithRemedy(HONEST, 'edit_consent'), HONEST);
+});
+
+test('every fiction carries a real sample, and that sample triggers replacement', async () => {
+  const { STUDIO_FICTIONS, studioFictionIn } = await import('../../../packages/shared/src/index.ts');
+  assert.ok(STUDIO_FICTIONS.length >= 4, 'the fiction list shrank — this guard would be vacuous');
+  for (const entry of STUDIO_FICTIONS) {
+    // A row must carry a sentence from the run it was seen in. A pattern with no observed sample is
+    // a speculative filter on a model's vocabulary, which is a false positive waiting for a
+    // legitimate sentence.
+    assert.ok(entry.seen, `${entry.pattern}: no observation date`);
+    assert.ok(entry.sample && entry.sample.length > 20, `${entry.pattern}: no observed sample`);
+    assert.ok(entry.pattern.test(entry.sample), `${entry.pattern} does not match its own recorded sample`);
+    assert.ok(studioFictionIn(entry.sample), `${entry.pattern}: studioFictionIn misses its own sample`);
+    const out = replyWithRemedy(entry.sample, 'edit_consent');
+    assert.doesNotMatch(out, entry.pattern, `${entry.pattern}: the fabrication survived into the reply`);
+    assert.match(out, /Apple's own limit/, `${entry.pattern}: replaced with nothing useful`);
+  }
+});
+
+test('replacedFiction names what was removed, for the record and not for the reply', () => {
+  assert.equal(replacedFiction(FICTION, 'edit_consent'), 'Place Settings');
+  assert.equal(replacedFiction(HONEST, 'edit_consent'), null);
+  assert.equal(replacedFiction(FICTION, undefined), null);
+  // It must NOT leak into the user-facing text: telling a user "your assistant made something up"
+  // mid-answer is confusing, and the correction already says what is true.
+  assert.doesNotMatch(replyWithRemedy(FICTION, 'edit_consent'), /Place Settings/i);
 });
