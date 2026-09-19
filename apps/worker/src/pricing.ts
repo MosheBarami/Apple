@@ -25,7 +25,14 @@ export interface ModelPrice {
 // is not. If Cloudflare changes a price, update it here — nothing else needs to change.
 export const MODEL_PRICES: Record<string, ModelPrice> = {
   '@cf/zai-org/glm-4.7-flash': { id: '@cf/zai-org/glm-4.7-flash', usdPerMInput: 0.0605, usdPerMOutput: 0.4 },
-  // Internal visual specialist. Cached input is billed at the published discounted rate.
+  // THE PAID PRODUCT LANE as of 2026-09-19, and no longer only the internal visual specialist:
+  // Apple MAX moved here from glm-4.7-flash. Leaving the old description in place would have
+  // been a stale sentence about the one row in this file that customers are billed against.
+  // It is dearer than the row above it — $0.15/M in against $0.0605, $0.50/M out against $0.40,
+  // which is +41% on an uncached 1M-in/1M-out call — and it is the only Workers AI row here
+  // that publishes a cached-input rate, at $0.03/M. A builder lane re-sends a large fixed
+  // system prompt on every turn, so most of its input tokens are cached ones, and the discount
+  // lands where the increase does. `neuronsFor` already applies it; nothing else changes.
   '@cf/zai-org/glm-5.3-flash': { id: '@cf/zai-org/glm-5.3-flash', usdPerMInput: 0.15, usdPerMOutput: 0.5, usdPerMCachedInput: 0.03 },
   '@cf/openai/gpt-oss-120b': { id: '@cf/openai/gpt-oss-120b', usdPerMInput: 0.35, usdPerMOutput: 0.75 },
   '@cf/openai/gpt-oss-20b': { id: '@cf/openai/gpt-oss-20b', usdPerMInput: 0.2, usdPerMOutput: 0.3 },

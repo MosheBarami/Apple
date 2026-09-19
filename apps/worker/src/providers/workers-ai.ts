@@ -26,14 +26,27 @@ import {
   errorMessage,
 } from './types';
 
-/** Product-model routing chosen for Apple on 2026-09-18. */
+/** Product-model routing. Apple chosen 2026-09-18; Apple MAX moved to GLM-5.3 Flash on 2026-09-19. */
 export const APPLE_MODEL_ID = '@cf/qwen/qwen3-30b-a3b-fp8';
-export const APPLE_MAX_MODEL_ID = '@cf/zai-org/glm-4.7-flash';
-/** Visual critique stays on the existing multimodal specialist; both product chat models are text-only. */
+
+/**
+ * THE MAX LANE AND THE VISUAL CRITIC ARE NOW THE SAME MODEL, and that is worth saying rather than
+ * leaving for someone to notice two equal strings.
+ *
+ * The paid lane ran on glm-4.7-flash, which has no row in docs/evals/RESULTS.md — it was never
+ * measured on this product's suite. The only MAX model that was is glm-5.3-flash, and it had been
+ * demoted to vision. So the mode a customer pays for was the unevaluated one, and the owner's call
+ * on 2026-09-19 put it back.
+ *
+ * They remain two LANES, not one: `stone`/`rune` and `vision` keep their own maxTokens, temperature
+ * and tool settings in DEFAULT_MODELS. They merely resolve to the same weights now, which is what
+ * makes the MAX lane multimodal as a side effect.
+ */
+export const APPLE_MAX_MODEL_ID = '@cf/zai-org/glm-5.3-flash';
 export const VISION_MODEL_ID = '@cf/zai-org/glm-5.3-flash';
 
 export const APPLE_CONTEXT_WINDOW = 32_768;
-export const APPLE_MAX_CONTEXT_WINDOW = 131_072;
+export const APPLE_MAX_CONTEXT_WINDOW = 1_310_720;
 export const VISION_CONTEXT_WINDOW = 1_310_720;
 
 /**
@@ -101,18 +114,9 @@ export const WORKERS_AI_MODELS: readonly ProviderModel[] = [
     outputCostPer1M: 0.335,
     unverifiedFields: ['maxOutput'],
   },
-  {
-    id: APPLE_MAX_MODEL_ID,
-    displayName: 'GLM-4.7 Flash',
-    provider: 'workers-ai',
-    supportsTools: true,
-    supportsVision: false,
-    contextWindow: APPLE_MAX_CONTEXT_WINDOW,
-    maxOutput: 6_500,
-    inputCostPer1M: 0.0605,
-    outputCostPer1M: 0.4,
-    unverifiedFields: ['maxOutput'],
-  },
+  // ONE ROW, because APPLE_MAX_MODEL_ID and VISION_MODEL_ID are now the same id. A second row for
+  // the same string would make `modelById()` return whichever came first and quietly hide the other
+  // one's figures — two catalogue entries for one model is a disagreement waiting to be believed.
   {
     id: VISION_MODEL_ID,
     displayName: 'GLM-5.3 Flash',

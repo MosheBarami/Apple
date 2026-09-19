@@ -303,15 +303,22 @@ test('the chosen Apple, Apple MAX and vision catalogue rows carry the verified f
   );
   assert.ok(apple.unverifiedFields.includes('maxOutput'), 'Qwen max output must stay labelled unverified');
 
+  // APPLE MAX AND VISION ARE THE SAME ROW SINCE 2026-09-19, and this test now says so rather than
+  // asserting the same object twice under two names as if it had checked two things.
+  assert.equal(max.id, vision.id, 'the MAX lane and the visual critic resolve to one model');
   assert.deepEqual(
     [max.displayName, max.supportsTools, max.supportsVision, max.contextWindow, max.inputCostPer1M, max.outputCostPer1M],
-    ['GLM-4.7 Flash', true, false, 131_072, 0.0605, 0.4],
+    ['GLM-5.3 Flash', true, true, 1_310_720, 0.15, 0.5],
   );
-  assert.ok(max.unverifiedFields.includes('maxOutput'), 'GLM-4.7 max output must stay labelled unverified');
+  // The MAX lane became MULTIMODAL as a side effect of the move — nobody asked for that, it simply
+  // follows from the weights, and a reader of this file should learn it here rather than from a
+  // support ticket. The lanes stay separate in DEFAULT_MODELS; only the model behind them merged.
+  assert.equal(G.DEFAULT_MODELS.stone.id, G.DEFAULT_MODELS.vision.id);
+  assert.notEqual(G.DEFAULT_MODELS.stone.maxTokens, G.DEFAULT_MODELS.vision.maxTokens);
 
-  assert.equal(vision.displayName, 'GLM-5.3 Flash');
-  assert.equal(vision.supportsVision, true);
-  assert.equal(vision.contextWindow, 1_310_720);
+  // Exactly one catalogue row for that id. Two rows would make `modelById` answer with whichever
+  // came first and hide the other's prices — which is how a billing figure goes wrong silently.
+  assert.equal(P.WORKERS_AI_MODELS.filter((m) => m.id === P.APPLE_MAX_MODEL_ID).length, 1);
 });
 
 test('a stale free-tier KV map cannot restore legacy models for user-facing keys', async () => {
@@ -670,9 +677,26 @@ test('Apple and Apple MAX reservations use the conservative selected-model price
   // Qwen's model page currently prints $0.0509/M input while Cloudflare's pricing table rounds it
   // to $0.051/M. The reservation boundary intentionally uses the larger figure.
   assert.equal(P.neuronsForModelTokens(apple, 1_000_000, 1_000_000), Math.ceil((0.051 + 0.335) / 0.000011));
-  // GLM-4.7 has the opposite rounding disagreement ($0.0605 on its model page, $0.060 on pricing),
-  // so the same fail-closed rule uses $0.0605/M input.
-  assert.equal(P.neuronsForModelTokens(max, 1_000_000, 1_000_000), Math.ceil((0.0605 + 0.4) / 0.000011));
+
+  // THE PAID LANE GOT DEARER ON 2026-09-19 and this is the assertion that noticed. GLM-4.7 cost
+  // $0.0605/$0.40 and reserved 41,864 neurons for 1M in + 1M out; GLM-5.3 costs $0.15/$0.50 and
+  // reserves 59,091 — a 41% increase on the mode customers pay for, and the price of putting the
+  // MAX lane on the only MAX model this product has ever measured.
+  assert.equal(P.neuronsForModelTokens(max, 1_000_000, 1_000_000), Math.ceil((0.15 + 0.5) / 0.000011));
+  assert.equal(P.neuronsForModelTokens(max, 1_000_000, 1_000_000), 59_091);
+  const glm47 = Math.ceil((0.0605 + 0.4) / 0.000011);
+  assert.ok(
+    P.neuronsForModelTokens(max, 1_000_000, 1_000_000) > glm47,
+    'if this ever stops being true the lane moved again and the credit model needs re-checking',
+  );
+
+  // What takes the sting out: GLM-5.3 is the one Workers AI row that publishes a cached-input rate,
+  // and a builder lane re-sends a large fixed prompt every turn. Cached input is $0.03/M against
+  // $0.15 — so the tokens that repeat are billed at a FIFTH of the new headline rate, and below the
+  // old lane's uncached rate. The reservation above stays pessimistic and assumes none of it.
+  const cached = P.neuronsForModelTokens(max, 1_000_000, 0, 1_000_000);
+  assert.equal(cached, Math.ceil(0.03 / 0.000011));
+  assert.ok(cached < P.neuronsForModelTokens(max, 1_000_000, 0, 0), 'the cached discount is not reaching the MAX lane');
 });
 
 test('token-billed providers convert into neurons so the BudgetDO ceiling still applies', () => {

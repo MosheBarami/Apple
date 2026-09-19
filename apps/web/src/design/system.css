@@ -346,6 +346,19 @@ pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
 .es__title { color:var(--ink); font-size:25px; margin:0; } .es__body { color:var(--muted); font-size:14px; max-width:500px; margin:0; }
 .es--creation { color:var(--accent); } .es--studio { color:var(--info); } .es--failure { color:var(--bad); } .es--proven { color:var(--good); } .es--future { color:var(--future); }
 .gx-cp__desc { color:var(--muted); font-size:13px; line-height:1.6; margin-block:8px; }
+/* THE RESTORE RECEIPT. Two children of one <span role="status">: the sentence, and the counts
+   line. With no rule they are both inline and the status reads "Checking what came back…12
+   objects · 8/8 scripts" — the exact run-together this file's unstyled-class check exists to
+   catch. Grid first, everything else after. Colour is rationed to the two tones a reader has to
+   act on: a failure, and a success that came back with a caveat. Working and clean-done stay
+   neutral, because "it is going fine" is the resting state and does not need a colour. */
+.gx-restore { display:grid; gap:4px; margin-block-start:8px; font-size:12px; line-height:1.55; color:var(--muted); }
+.gx-restore.is-bad { color:var(--bad); } .gx-restore.is-caveat { color:var(--warn); }
+/* The counts are quoted back to support and read digit by digit, so they are mono and tabular,
+   and they stay neutral even when the sentence above them is coloured: the numbers are the same
+   numbers whether the restore failed or not, and tinting them red says something untrue about
+   the objects that DID come back. */
+.gx-restore__counts { font:11px var(--font-mono); letter-spacing:0; color:var(--faint); font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
 .gx-user__edited:focus-visible { outline:2px solid var(--accent); outline-offset:4px; }
 .invoice-pill { font-size:11px; padding:3px 7px; border:1px solid currentColor; } .invoice-pill--paid { color:var(--good); } .invoice-pill--due { color:var(--warn); } .invoice-pill--failed { color:var(--bad); } .invoice-pill--neutral { color:var(--muted); }
 .invoice-detail { color:var(--muted); font-size:12px; flex:1; } .credits-compare { color:var(--muted); font-size:13px; margin-block:16px; }
@@ -367,6 +380,16 @@ pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
 .rm-card__summary,.rm-sg__summary,.rm-sg__why { font-size:14px; color:var(--muted); }
 .rm-card__facts,.rm-sg__facts,.rm-card__actions,.rm-sg__actions,.rm-refs { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-top:18px; }
 .rm-fact,.rm-status,.rm-ref,.chip { font-size:11px; } .rm-fact { color:var(--muted); } .rm-status { color:var(--accent); }
+/* THE READINESS NODE, and the one rule that decides what it may say with colour. marks.tsx sets
+   `rm-node rm-node--<readiness>` on stroked geometry drawn entirely in currentColor, and until
+   now no stylesheet defined any of it: all four states inherited the same ink and the modifier
+   was dead. The states are separated along the NEUTRAL RAMP rather than by hue, because hue on
+   this page already means one thing — a milestone's effort — and a second colour language on the
+   same card would make green ambiguous. Shape still carries the state first (tick, solid core,
+   hollow core, dashed outline), so this reads correctly in greyscale, which is the requirement
+   marks.tsx states at the top of the file. */
+.rm-node { color:var(--accent); }
+.rm-node--ready { color:var(--muted); } .rm-node--waiting { color:var(--faint); }
 .rm-ref { padding:3px 7px; background:var(--surface-2); } .rm-card__spacer { flex:1; } .rm-disclose { border:0; padding:4px 0; font-size:12px; }
 .rm-card__waiting,.rm-suggest__pending,.rm-suggest__error { font-size:13px; padding:14px; border-inline-start:2px solid var(--warn); }
 .rm-suggest { margin-block:40px; } .rm-suggest__head { display:flex; align-items:start; gap:20px; justify-content:space-between; margin-bottom:24px; }
