@@ -212,16 +212,37 @@ const SPEC_PASS_MARKER = 'APPLE-TRAJECTORY-CASE-PASS';
  * failing assertion are different facts, and collapsing them would report "this seed's check does
  * not hold" on the strength of never having run it.
  */
-export function runSpecCase(code, binary = 'luau') {
+export function runSpecCase(code, binary = 'luau', compiler = 'luau-compile') {
   const dir = mkdtempSync(join(tmpdir(), 'apple-spec-'));
   try {
     const file = join(dir, 'case.luau');
     writeFileSync(file, `local function case()\n${code}\nend\ncase()\nprint("${SPEC_PASS_MARKER}")\n`);
+
+    // COMPILE FIRST, BECAUSE `luau` EXITS 1 FOR BOTH.
+    //
+    // A syntax error and a failed `assert` are the same exit status, so deciding `passed` from
+    // the status alone announces a case that could not be PARSED as a case that was executed and
+    // found wrong. That is this repo's observation-failure pattern sitting inside the function
+    // whose own comment says `ran` and `passed` are different facts — found by a peer's
+    // broken-Luau mutation, which went red for the right reason and reported the wrong one.
+    //
+    // `luau-compile --null` is the boundary that actually answers it: exit 1 on a syntax error,
+    // exit 0 on code that compiles, whatever its assertions then do.
+    const compile = spawnSync(compiler, ['--null', file], { encoding: 'utf8', timeout: 5000, maxBuffer: 256 * 1024 });
+    if (compile.error) {
+      // No compiler present is not a verdict about the code. Say so rather than falling through
+      // to an execution whose failure we would then have to guess the cause of.
+      return { ran: false, reason: compile.error.code === 'ENOENT' ? `no ${compiler} binary` : compile.error.message };
+    }
+    if (compile.status !== 0) {
+      return { ran: true, compiled: false, passed: false, detail: (String(compile.stderr).trim() || String(compile.stdout).trim() || 'no output').split('\n')[0].slice(0, 200) };
+    }
+
     const run = spawnSync(binary, [file], { encoding: 'utf8', timeout: 5000, maxBuffer: 256 * 1024 });
     if (run.error) return { ran: false, reason: run.error.code === 'ENOENT' ? `no ${binary} binary` : run.error.message };
     if (run.status === null) return { ran: false, reason: 'timed out' };
     const passed = run.status === 0 && String(run.stdout).includes(SPEC_PASS_MARKER);
-    return { ran: true, passed, detail: (String(run.stderr).trim() || String(run.stdout).trim() || 'no output').split('\n')[0].slice(0, 200) };
+    return { ran: true, compiled: true, passed, detail: (String(run.stderr).trim() || String(run.stdout).trim() || 'no output').split('\n')[0].slice(0, 200) };
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -280,6 +301,7 @@ export async function verifyTrajectory(seed, { registry = null, luauBinary = 'lu
         if (!isPlainObject(c) || typeof c.code !== 'string') return;
         const outcome = runSpecCase(c.code, luauBinary);
         if (!outcome.ran) problems.push(`${where}.cases[${i}]: could not be executed (${outcome.reason}) — nothing was checked`);
+        else if (!outcome.compiled) problems.push(`${where}.cases[${i}] ("${c.name}"): does not compile, so its assertions never ran — ${outcome.detail}`);
         else if (!outcome.passed) problems.push(`${where}.cases[${i}] ("${c.name}"): its own assertions fail — ${outcome.detail}`);
       });
     }

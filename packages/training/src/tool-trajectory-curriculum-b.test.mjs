@@ -78,6 +78,11 @@ test('the mutations exercise more than one arm of the validator', async () => {
     if (/expected \w+, got/.test(problem)) return 'wrong type';
     if (/is not in the tool's schema/.test(problem)) return 'undeclared argument';
     if (/does not parse/.test(problem)) return 'broken Luau';
+    // A spec case that cannot be COMPILED is its own arm, and saying so is the point. This test
+    // went red when `runSpecCase` learned to tell a syntax error from a failed assert — the guard
+    // firing because the code got better, which is the tell. The arm was added rather than the
+    // assertion loosened: a reason this classifier cannot name is exactly what it must refuse.
+    if (/does not compile/.test(problem)) return 'spec case that does not compile';
     if (/its own assertions fail/.test(problem)) return 'spec assertion that cannot hold';
     if (/plan validator refused it/.test(problem)) return 'plan the product refuses';
     if (/the trajectory never calls it/.test(problem)) return 'plan promising an uncalled tool';

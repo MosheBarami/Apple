@@ -88,6 +88,25 @@ test('a spec case is executed, not merely parsed', () => {
   assert.deepEqual({ ran: fails.ran, passed: fails.passed }, { ran: true, passed: false });
 });
 
+test('a case that does not COMPILE is not reported as a case whose assertions failed', () => {
+  // `luau` exits 1 for a syntax error and for a failed assert alike, so deciding `passed` from
+  // the exit status announced an unparseable case as one that ran and was found wrong. Caught by
+  // a peer's broken-Luau mutation: it went red for the right reason and named the wrong one.
+  const broken = runSpecCase('local x = (');
+  assert.deepEqual({ ran: broken.ran, compiled: broken.compiled, passed: broken.passed }, { ran: true, compiled: false, passed: false });
+  assert.match(broken.detail, /SyntaxError/);
+
+  const wrong = runSpecCase('assert(1 == 2)');
+  assert.deepEqual({ ran: wrong.ran, compiled: wrong.compiled, passed: wrong.passed }, { ran: true, compiled: true, passed: false });
+  assert.match(wrong.detail, /assertion failed/);
+});
+
+test('a missing compiler is not a verdict about the code', () => {
+  const noCompiler = runSpecCase('assert(true)', 'luau', 'luau-compile-definitely-not-installed');
+  assert.equal(noCompiler.ran, false);
+  assert.equal(noCompiler.passed, undefined);
+});
+
 test('a failure to run a spec case is not reported as a failing spec case', () => {
   const missing = runSpecCase('assert(true)', 'luau-definitely-not-installed');
   assert.equal(missing.ran, false);
