@@ -128,10 +128,27 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <p>
     Different from running out of your own Credits: this is a ceiling on what the whole service will
     spend in a day, and it protects the free tier from a single runaway build. The message says when
-    it resets — midnight UTC, the same instant for everyone. Your Credits are not consumed by a run
-    that stops here, and your project and checkpoints are exactly where you left them. See
+    it resets — midnight UTC, the same instant for everyone. The step that stops here is not
+    charged, because the capacity check happens before the call runs and a call that never ran
+    reports no compute. Credits already spent on the steps that finished stay spent — a run stopped
+    at step twelve has paid for eleven — and the total is on the message. Your project and
+    checkpoints are exactly where you left them. See
     <a href="/docs/credits-and-limits">Credits &amp; limits</a> for the difference between the two.
   </p>
+  {/*
+    THIS PARAGRAPH SAID "Your Credits are not consumed by a run that stops here." They are.
+
+    The claim was scoped to the RUN while the mechanism is per-STEP — the same distinction the
+    "model dropped that step" paragraph above already draws correctly. One Credit is taken at
+    admission before the shared budget is ever consulted, and every completed step settles its own
+    measured usage before the step that hits the ceiling throws. There is no refund route in the
+    quota object to undo any of it, so those Credits stay on the ledger and come back to the
+    customer as the run's own total on the finished message.
+
+    The in-app messages were never wrong about this: they claim only that the project and
+    checkpoints are untouched. The untruth lived on this page alone, which is why nothing in the
+    worker changed to fix it.
+  */}
 
   <div class="callout">
     <p>

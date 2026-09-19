@@ -85,9 +85,23 @@ export const FREE_NEURONS_PER_DAY = 10_000;
  * Billable neurons allowed PER DAY beyond the free allocation, across the entire service.
  * 15,000 × $0.011/1000 × 30.4 days ≈ $5.02/month of AI at the absolute maximum.
  *
- * DELIBERATELY UNCHANGED by the GLM-5.3-flash migration. GLM is cheaper per token than the
- * model it replaced ($0.15/$0.50 vs $0.35/$0.75), so the same ceiling now buys materially more
- * work. The owner's maximum bill does not move; the capacity behind it goes up.
+ * DELIBERATELY UNCHANGED, because this bounds the BILL and not the work. It is NOT unchanged
+ * because inference got cheaper, which is what this comment claimed until 2026-09-20: it justified
+ * the ceiling by naming gpt-oss-120b ($0.35/$0.75) as the model glm-5.3-flash replaced and
+ * concluding the same cap therefore bought more work. That was true of the 2026-08-30 migration
+ * and stopped being true when the paid lane went to glm-4.7-flash and back. The model Apple MAX
+ * actually moved off on 2026-09-19 is the $0.0605/$0.40 row above, so the move was +41% on an
+ * uncached call — a 1M-in/1M-out reservation went 41,864 → 59,091 neurons. Under an unchanged
+ * ceiling that is roughly 29% FEWER reserved MAX steps a day, not more.
+ *
+ * What takes the sting out is the $0.03/M cached-input rate on the glm-5.3-flash row, which
+ * glm-4.7-flash does not publish: a builder lane re-sends a large fixed prefix, session affinity
+ * makes Workers AI bill it as cached, and `neuronsFor` applies the discount at SETTLEMENT. The
+ * reservation never sees it — `estimateNeurons` passes no cached tokens on purpose — so admission
+ * is gated at the pessimistic +41% and the ledger relaxes afterwards.
+ *
+ * So: the owner's maximum bill does not move. The capacity behind it went DOWN. Anyone sizing
+ * plans or asking whether these caps can absorb another paying customer should start from that.
  */
 export const BILLABLE_NEURONS_PER_DAY = 15_000;
 
@@ -101,9 +115,11 @@ export const DAILY_NEURON_CEILING = FREE_NEURONS_PER_DAY + BILLABLE_NEURONS_PER_
 export const MAX_NEURONS_PER_REQUEST = 1_200;
 
 /**
- * Credits are the user-facing unit. Recalibrated for GLM-5.3-flash: a measured Stone build runs
- * far cheaper than on the previous model, so a Credit is worth fewer neurons and the same daily
- * allowance stretches further in real work.
+ * Credits are the user-facing unit. Recalibrated for GLM-5.3-flash when it replaced gpt-oss-120b
+ * on 2026-08-30: a measured Stone build runs far cheaper on it than on gpt-oss-120b, so a Credit
+ * is worth fewer neurons. gpt-oss-120b is NAMED rather than called "the previous model", because
+ * the paid lane has changed models twice since and the phrase silently came to mean glm-4.7-flash
+ * — against which this recalibration is not a saving at all (see BILLABLE_NEURONS_PER_DAY above).
  *
  * MOVED TO @golem/shared and re-exported here. The pricing page explains this number to buyers and
  * this module charges with it; defined in two places they can disagree, and the page had already

@@ -7,6 +7,26 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   description="Developer and debug path: build Apple for Studio from the repo with Rojo and load it as a local plugin. Not the way to install Apple."
   heading="Build the plugin from source"
 >
+  {/*
+    THIS PAGE BUILT THE WRONG PLUGIN, AND THE WRONG ONE IS THE BANNED ONE.
+
+    It said "The plugin lives in apps/plugin" and gave `rojo build apps/plugin/…`. On 2026-09-19
+    `apps/plugin` was declared legacy: its `handlers.run_code` compiles text that arrived over HTTP
+    into a ModuleScript and `require`s it, which is the pattern the Creator Store asset requirements
+    prohibit, and the asset built from that source was removed by Roblox for "Misusing Roblox
+    Systems". The decision reached the CI workflows — plugin-release.yml carries a STALE TARGET
+    banner, ci.yml renamed its artifact `apple-plugin-pr-unverified` — and never reached this page,
+    which is the only build instruction the product publishes to a customer. So the one plugin a
+    reader could obtain by following our own words was the one that executes code it was sent, while
+    the landing page promised "It will not run code it was sent" and /docs/plugin promised the same.
+
+    The CI paragraph went with it. That job still builds `apps/plugin`, so pointing a reader at its
+    artifact hands them the legacy binary under the new name; and the artifact it named,
+    `apple-plugin`, has not existed since ci.yml was renamed. Building locally is now the only
+    instruction here, because it is the only one that yields the plugin this product ships.
+
+    apps/site/tests/build-from-source-target.test.mjs fails if this page names apps/plugin again.
+  */}
   <div class="callout callout--violet">
     <p>
       <strong>This is not how you install Apple.</strong> It is the development and debugging path,
@@ -14,19 +34,31 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
       <a href="/docs/plugin">Install Apple for Studio</a> — the Creator Store is the only supported
       install path, and a hand-built plugin is unsupported, unsigned and updated by nobody but you.
     </p>
+    <p>
+      <strong>Build <code>apps/apple-plugin</code> and nothing else.</strong> There is a second
+      Studio plugin in the repository, <code>apps/plugin</code>. It is the legacy source the removed
+      Creator Store asset was built from, it executes Luau it receives over the wire, and it must not
+      be loaded into a Studio you care about. Its own README says so in its first line.
+    </p>
   </div>
 
   <h2>Build it</h2>
   <p>
-    The plugin lives in <code>apps/plugin</code> and is built with
+    The plugin this product ships lives in <code>apps/apple-plugin</code>. Build it with the
+    repository's own script, which needs Node, <code>python3</code>,
+    <a href="https://luau.org/" rel="noopener noreferrer" target="_blank">luau-analyze</a> and
     <a href="https://rojo.space" rel="noopener noreferrer" target="_blank">Rojo</a> — version
-    <strong>7.7.0</strong>, the version CI pins.
+    <strong>7.7.0</strong>, the version this repository pins.
   </p>
-  <pre><code>rojo build apps/plugin/default.project.json --output apple-plugin.rbxm</code></pre>
+  <pre><code>node apps/apple-plugin/scripts/build.mjs</code></pre>
   <p>
-    Continuous integration runs exactly this in the <strong>Build Studio plugin</strong> job and
-    attaches the result as the <code>apple-plugin</code> artifact, kept for seven days. If you only
-    need a build and not a checkout, take it from there.
+    It parses every source, refuses a <code>require</code> of a module that is not bundled, runs
+    Rojo, and then reads the <em>built</em> artifact back — scanning it for credentials and
+    developer paths, and checking that the capabilities the source claims are actually in the bytes.
+    That last step exists because the legacy build once shipped with a version string and a feature
+    set its own source disagreed with, and every test passed because every test read the
+    <code>.luau</code>. The result is
+    <code>apps/apple-plugin/release/apple-studio.rbxm</code>.
   </p>
 
   <h2>Load it as a local plugin</h2>

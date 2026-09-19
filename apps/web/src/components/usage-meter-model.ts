@@ -38,7 +38,7 @@
 //    plenty". Both are claims this file cannot support. credits-model.ts set this precedent for
 //    the attribution ledger — an empty ledger is never drawn as a clearance — and it is the same
 //    mistake in a different subsystem.
-import { PLAN_LIMITS, PLAN_COPY, CREDITS_PER_BUILD, PRODUCT_MODE_INFO, SPECIALIST_TO_PRODUCT_MODE, isPlanId, type QuotaState } from '@golem/shared';
+import { PLAN_LIMITS, PLAN_COPY, CREDITS_PER_BUILD, PRODUCT_MODE_INFO, SPECIALIST_TO_PRODUCT_MODE, isPlanId, type QuotaState, CREDIT_PURCHASE_LIVE } from '@golem/shared';
 
 export type MeterTone = 'good' | 'warn' | 'bad' | 'unknown' | 'pending';
 
@@ -200,9 +200,18 @@ export function meterView(
     detail = period === 'month'
       ? "This month's allowance is spent and there are no extra credits. The daily limit is not what stopped this."
       : 'The daily allowance is spent and there are no extra credits.';
-    nextAction = period === 'month'
-      ? 'Add credits, or upgrade — the monthly limit does not lift until next month.'
-      : 'Wait for the reset, or add credits.';
+    // THE WORST MOMENT TO SEND SOMEBODY SOMEWHERE THAT DOES NOT EXIST. This said "Add credits, or
+    // upgrade" at the exact instant a customer's allowance ran out — and Credits cannot be bought:
+    // `buildCheckoutRequest` hardcodes `mode: 'subscription'` and no payment-mode path exists.
+    // The pricing page was corrected first and this was missed, which is what a fact with three
+    // copies does. Both now read the one constant.
+    nextAction = CREDIT_PURCHASE_LIVE
+      ? (period === 'month'
+        ? 'Add credits, or upgrade — the monthly limit does not lift until next month.'
+        : 'Wait for the reset, or add credits.')
+      : (period === 'month'
+        ? 'The monthly limit does not lift until next month. Credits cannot be bought yet, so upgrading is the only way to raise it.'
+        : 'It refills at midnight UTC. Credits cannot be bought yet, so waiting is the way through.');
   }
 
   return {

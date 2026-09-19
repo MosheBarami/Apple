@@ -122,6 +122,79 @@ spec("writes need explicit consent and edit mode", function()
     runService.edit = true; c:destroy()
 end)
 
+-- THE STATE A CUSTOMER IS ACTUALLY IN DURING A PLAY TEST, which is both gates shut at once: the
+-- entry point force-clears consent on the way into a test, so allowEdits is false AND edit mode is
+-- false together. Whichever gate answers first is the sentence the user is handed, and one of them
+-- names a button that refuses until the test stops. Pinned behaviourally because the ordering is
+-- invisible to every assertion that only looks at one gate at a time.
+spec("both gates shut at once names the one the user can act on now", function()
+    local playMode = newCommands({ isEdit = function() return false end })
+    local write = { op = "create_instances", items = {{ className = "Part", name = "DuringTest", parent = "game.Workspace" }} }
+    local r = run(playMode, "play-mode", write, false)
+    eq(r.ok, false, "a write during a Studio test must refuse")
+    eq(r.failure, "refused", "play-mode failure kind")
+    eq(r.remedy, "leave_test_mode", "a customer mid-test must be told to stop the test, not to press a button that refuses")
+    has(r.error, "Studio edit mode")
+    -- Consent is still the answer once the test is over, so the second instruction is not lost.
+    local stopped = newCommands({ isEdit = function() return true end })
+    local afterStop = run(stopped, "after-stop", write, false)
+    eq(afterStop.remedy, "edit_consent", "in edit mode without consent the remedy is still the panel")
+    playMode:destroy(); stopped:destroy()
+end)
+
+-- EVERY REMEDY THE PRODUCT HAS WRITTEN DOWN MUST BE ONE A HANDLER CAN ACTUALLY SEND. Three of them
+-- could not: handlers returned three values and the dispatcher bound three, so a refusal raised
+-- inside a handler reached the worker with no remedy at all and the worker printed its "this build
+-- does not report what would resolve this refusal" admission over an answer the product already had.
+spec("handler-level refusals carry the remedy the product wrote for them", function()
+    local c = newCommands()
+
+    -- Roblox refuses to load an asset the signed-in account does not own. The mock has no
+    -- InsertService at all, which is the same shape: LoadAsset did not return a tree.
+    local unowned = run(c, "unowned", { op = "insert_asset", assetId = 578157972, parent = "game.Workspace" }, true)
+    eq(unowned.ok, false); eq(unowned.failure, "refused")
+    eq(unowned.remedy, "take_asset_first", "an asset Roblox would not load must tell the user to take it")
+
+    -- An asset that carries code is refused by name, and the next move is a different asset.
+    services.InsertService = {
+        LoadAsset = function(_, _)
+            local model = Instance.new("Model"); model.Name = "WithCode"
+            local part = Instance.new("Part"); part.Name = "Body"; part.Parent = model
+            local code = Instance.new("Script"); code.Name = "Payload"; code.Parent = part
+            return model
+        end,
+    }
+    local scripted = run(c, "scripted", { op = "insert_asset", assetId = 1234, parent = "game.Workspace" }, true)
+    services.InsertService = nil
+    eq(scripted.ok, false); eq(scripted.failure, "refused")
+    eq(scripted.remedy, "choose_scriptless_asset", "an asset carrying code must point at a different asset")
+
+    -- A write aimed outside the services Apple may touch.
+    local outOfScope = run(c, "scope", { op = "set_props", path = "game.Players.Someone", props = { Name = { t = "string", v = "x" } } }, true)
+    eq(outOfScope.ok, false); eq(outOfScope.failure, "refused")
+    eq(outOfScope.remedy, "choose_allowed_target", "a write outside the allowlist must name where Apple may write")
+    local createOutOfScope = run(c, "scope-create", { op = "create_instances", items = {{ className = "Part", name = "Nope", parent = "game.Players" }} }, true)
+    eq(createOutOfScope.remedy, "choose_allowed_target", "create_instances must carry the same scope remedy")
+
+    -- The DataModel itself is the one write target the path allowlist cannot reject, because "game"
+    -- resolves before any service is named. It is refused further in, by a different sentence, and
+    -- it is the same question — so it answers with the same remedy instead of a silence.
+    local rootProps = run(c, "scope-root", { op = "set_props", path = "game", props = { Name = { t = "string", v = "x" } } }, true)
+    eq(rootProps.remedy, "choose_allowed_target", "set_props on the DataModel must name where Apple may write")
+    local rootParent = run(c, "scope-root-parent", { op = "create_instances", items = {{ className = "Part", name = "Nope", parent = "game" }} }, true)
+    eq(rootParent.remedy, "choose_allowed_target", "the DataModel as a parent must name where Apple may write")
+
+    -- A refused READ keeps no remedy: the sentence names the targets Apple may WRITE to, and
+    -- answering a read with it would be a true sentence about the wrong question. "select" is the
+    -- case that can prove it — it resolves its paths with write=false and it forwards whatever
+    -- remedy came back, so if the scope remedy stopped asking whether this is a write, this line
+    -- goes red instead of a customer being told where they may write when they asked to look.
+    local readOutOfScope = run(c, "scope-read", { op = "select", paths = { "game.Players.Someone" } }, true)
+    eq(readOutOfScope.ok, false); eq(readOutOfScope.failure, "refused")
+    eq(readOutOfScope.remedy, nil, "a refused read must not borrow the write remedy")
+    c:destroy()
+end)
+
 spec("typed creation and set_props commit a recording", function()
     local c = newCommands()
     local made = run(c, "create", { op = "create_instances", items = {{ className = "Part", name = "Typed", parent = "game.Workspace", props = { Anchored = { t = "bool", v = true }, Size = { t = "Vector3", v = { 4, 2, 1 } } }, attributes = { Zone = { t = "string", v = "safe" } }, children = {{ className = "Folder", name = "Nested" }} }} }, true)
@@ -667,13 +740,45 @@ test('mutation-consent guard is live (red-first falsification)', { skip: availab
   // it is that the MUTATING branch contains exactly one consent check and that inverting it makes
   // the executable suite fail. Matched up to the end of the call so a further argument does not
   // retire the guard again, and still asserted UNIQUE so a second consent check cannot hide here.
-  const anchor = /\t\tif MUTATING\[name\] or DEFERRED_MUTATING\[name\] or CONSENT_ONLY\[name\] then\n\t\t\tif allowEdits ~= true then return failureResult\([^\n]*?\) end/;
+  // It died loudly a second time when the edit-mode check moved in front of the consent check, so
+  // the anchor now spans BOTH gates — which is also what lets the order test below aim at it.
+  const anchor = /\t\tif MUTATING\[name\] or DEFERRED_MUTATING\[name\] or CONSENT_ONLY\[name\] then\n\t\t\tif not editMode\(\) then return failureResult\([^\n]*?\) end\n\t\t\tif allowEdits ~= true then return failureResult\([^\n]*?\) end/;
   const found = SOURCE.match(new RegExp(anchor, 'g')) ?? [];
   assert.equal(found.length, 1, 'falsification anchor must occur once');
   const broken = SOURCE.replace(anchor, (m) => m.replace('~= true', '== true'));
   assert.notEqual(broken, SOURCE, 'the mutation did not land — re-aim it before trusting this test');
   const result = runLuau(broken);
   assert.notEqual(result.status, 0, 'the intentionally broken mutation guard stayed green:\n' + result.output);
+
+  // THE ORDER OF THE TWO GATES IS ITSELF THE BEHAVIOUR, and it is invisible to every test that
+  // shuts one gate at a time — with only one gate shut, either order answers the same. So this
+  // falsifies the order directly: put the consent check back in front, which is how the file
+  // shipped, and the play-mode spec must go red. If it stays green the order is not being tested
+  // and the customer is one refactor away from being told to press a button that refuses.
+  const swapped = SOURCE.replace(anchor, (m) => {
+    const lines = m.split('\n');
+    return [lines[0], lines[2], lines[1]].join('\n');
+  });
+  assert.notEqual(swapped, SOURCE, 'the order mutation did not land — re-aim it before trusting this test');
+  const swappedResult = runLuau(swapped);
+  assert.notEqual(swappedResult.status, 0, 'consent-before-edit-mode stayed green:\n' + swappedResult.output);
+});
+
+test('both dispatcher branches bind the handler remedy, not just the one with a test', () => {
+  // WHY THIS IS A SOURCE ASSERTION AND NOT A BEHAVIOURAL ONE, said plainly rather than left to be
+  // inferred: `execute` binds the handler's return in two places — the read/consent-only branch and
+  // the recorded-write branch — and today no READ handler produces a remedy, so nothing can be
+  // executed that would notice the read branch narrowing back to three values. That is exactly the
+  // condition the three unreachable remedies grew in: a slot nobody could observe, discovered only
+  // when a refusal arrived with nothing in it. So the shape is pinned here until a read-side remedy
+  // exists to pin it behaviourally, and the failure message says which branch lost the value.
+  const branches = SOURCE.match(/local result, resultKind, resultMessage(, resultRemedy)? = handler\(self, op\)/g) ?? [];
+  assert.equal(branches.length, 2, 'execute should call the handler in exactly two branches');
+  for (const branch of branches) {
+    assert.match(branch, /resultRemedy/, 'a dispatcher branch stopped binding the handler remedy: ' + branch);
+  }
+  const passed = SOURCE.match(/return result, resultKind, resultMessage, resultRemedy/g) ?? [];
+  assert.equal(passed.length, 2, 'a dispatcher branch bound the remedy and then dropped it on the way out');
 });
 
 test('restore removal stays undoable for ChangeHistory', () => {

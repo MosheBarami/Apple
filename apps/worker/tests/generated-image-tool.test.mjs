@@ -149,3 +149,34 @@ test('a save failure is an unsuccessful tool result with no delivery panel', asy
     db.close();
   }
 });
+
+test('WHAT THE MODEL IS TOLD ABOUT RETENTION MATCHES THE STORE THE TOOL ACTUALLY WRITES TO', () => {
+  // This is a copy test because the copy is the product here. `generate_image`'s result carries no
+  // expiry field, and search_docs indexes Roblox's documentation rather than Apple's, so the tool
+  // DESCRIPTION is the model's only retention fact — and what the model is told is what the
+  // customer is told. It promised an hour, taken from the KV path this tool no longer uses, while
+  // /docs/credits-and-limits promised the customer the opposite. The sweep that made images durable
+  // reached the docs, the web panel and RETENTION, and missed the model-facing half because nothing
+  // greps tool descriptions. This is that grep.
+  //
+  // `toolDefs()` is the denominator on purpose: it is the array handed to the gateway, so a
+  // sentence that passes here is a sentence the model really receives.
+  const defs = TOOLS.toolDefs(true);
+  const byName = new Map(defs.map((d) => [d.name, d]));
+  assert.ok(byName.size > 10, `toolDefs returned ${byName.size} definitions — the parse is wrong`);
+
+  const image = byName.get('generate_image');
+  assert.ok(image, 'generate_image is no longer offered to the model');
+  assert.doesNotMatch(image.description, /hour/i,
+    'generate_image writes to a store with no TTL (saveGeneratedImage → D1 row + R2), so no hour may be promised');
+  assert.match(image.description, /until it is deleted/i,
+    'and it must state the retention it does have, or the model fills the gap from pretraining');
+
+  // THE OTHER HALF, so nobody fixes this with a find-and-replace on "hour". compose_thumbnail goes
+  // through storeImage — KV, with IMAGE_TTL_SECONDS — and its hour is true. Deleting a correct
+  // sentence to satisfy the assertion above would be the same defect pointed the other way.
+  const thumbnail = byName.get('compose_thumbnail');
+  assert.ok(thumbnail, 'compose_thumbnail is no longer offered to the model');
+  assert.match(thumbnail.description, /saved for an hour/i,
+    'compose_thumbnail still writes to KV; its hour is correct and must not be swept away with the false one');
+});

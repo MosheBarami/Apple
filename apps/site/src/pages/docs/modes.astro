@@ -12,9 +12,20 @@ const free = PLAN_LIMITS.free;
   <p>The selector beside the message box chooses a product model, not a planning mode.</p>
   {PRODUCT_MODELS.map(model => <section>
     <h2>{PRODUCT_MODEL_INFO[model].name}</h2>
+    {/*
+      THE STEP CEILING WAS NOWHERE A READER COULD FIND IT BEFORE SIGNING UP.
+      A run on the free Apple lane is clamped to three steps — `maxStepsFor` in the worker takes the
+      minimum of the mode's limit and Clay's — and /pricing sells the allowance in "quality-gated
+      builds", a unit its own FAQ defines as read the tree, edit scripts, create instances, render,
+      critique. That is five steps before the fix. The compute the page counts is genuinely
+      delivered and the build genuinely completes, but it completes across several messages, and the
+      only place that shape was ever stated was a "Step 2 of 3" counter during the run itself.
+      Stated here and on the Free card; apps/site/tests/free-lane-steps.test.mjs reads the worker's
+      own constant and fails when the two disagree.
+    */}
     {model === 'apple'
-      ? <p>Apple is the limited free model. It can answer questions and use building tools when Studio is connected and changes are allowed. It is not a read-only Plan mode. The Free plan includes {free.creditsPerDay} Credits per day, subject to its monthly allowance.</p>
-      : <p>Apple MAX is available to eligible paid subscribers and has a larger working budget for involved requests. Choosing it on a free account shows an availability notice and keeps your draft; it does not switch your model or charge you. See <a href="/app/usage">Usage and plan availability</a>.</p>}
+      ? <p>Apple is the limited free model. It can answer questions and use building tools when Studio is connected and changes are allowed. It is not a read-only Plan mode. The Free plan includes {free.creditsPerDay} Credits per day, subject to its monthly allowance. It works in short bursts: <strong>one request runs at most three steps</strong>, then stops and says so with everything it did saved — send another message and it picks up where it left off. A build that needs more than three steps is not refused; it takes more than one message.</p>
+      : <p>Apple MAX is available to eligible paid subscribers and carries a longer chain of steps in a single request, so an involved build can finish without being handed back to you partway. Choosing it on a free account shows an availability notice and keeps your draft; it does not switch your model or charge you. See <a href="/app/usage">Usage and plan availability</a>.</p>}
   </section>)}
   <h2>Availability</h2>
   <p>Paid checkout is not open in the current preview. Check <a href="/app/usage">Usage and plan availability</a> before expecting access to MAX. Extra purchased Credits do not by themselves grant a paid subscription.</p>
@@ -22,6 +33,13 @@ const free = PLAN_LIMITS.free;
   <p>Model access and edit permission are separate. Neither choice bypasses Studio pairing, change approval, quota, or tool safety checks. Without a connected plugin, a chat response is not a change to your place. {!STUDIO_PLUGIN_STORE_LIVE && <>Public plugin installation is currently unavailable. </>}See <a href="/docs/plugin">installation status</a>.</p>
   <h2>How Credits work</h2>
   <p>There is no guaranteed fixed charge per message. Actual usage and the plan limits determine the charge. See <a href="/docs/credits-and-limits">Credits and limits</a>; review the result in Studio before treating a build as complete.</p>
+  {/*
+    "They currently share a foundation model" was true when it was written and is not true now.
+    The worker's gateway maps Apple to one third-party model and Apple MAX to another; they have
+    been different since MAX moved lanes. The sentence was doing honest work — denying that either
+    is a bespoke Roblox model — so it is corrected rather than deleted, and the test beside this
+    page reads both model ids out of the gateway so the correction cannot go stale the same way.
+  */}
   <h2>Training status</h2>
-  <p>Apple and Apple MAX are separate product choices with different access and working limits. They currently share a foundation model. Custom Roblox training is in development; a completed independently trained frontier model is not available.</p>
+  <p>Apple and Apple MAX are separate product choices with different access and working limits, and they run on different third-party foundation models — neither is a model we trained. Custom Roblox training is in development; a completed independently trained frontier model is not available.</p>
 </DocsLayout>

@@ -1779,6 +1779,27 @@ export const STUDIO_PLUGIN_LIVENESS_PROBE_URL = `https://apis.roblox.com/toolbox
 export const STUDIO_PLUGIN_STORE_LIVE: boolean = false;
 
 /**
+ * Can a customer buy Credits today? No, and three surfaces used to say otherwise.
+ *
+ * `buildCheckoutRequest` hardcodes `mode: 'subscription'`; there is no `mode: 'payment'` anywhere
+ * in the worker or in this package, so no code path exists that could take money for Credits. The
+ * pricing table advertised the feature as included on every plan, and the in-app meter offered
+ * "Add credits" at the exact moment a customer's allowance ran out — the worst possible moment to
+ * be sent somewhere that does not exist.
+ *
+ * ONE FLAG, NOT THREE. The first fix declared it locally in pricing.astro, which corrected the page
+ * and left the constant here saying `true` for every other reader — including the meter. A fact
+ * with one true answer and three copies is the shape this repository keeps finding at the bottom of
+ * its own defects, so it lives here and every surface derives from it.
+ *
+ * Flipping it to true is not enough on its own: a payment-mode checkout has to exist first, and
+ * `credit-purchase-claim.test.mjs` fails if this says true while the worker still has no way to
+ * charge for them.
+ */
+export const CREDIT_PURCHASE_LIVE: boolean = false;
+
+
+/**
  * WHY the store is not live — the fact every "unavailable" surface was missing.
  *
  * `STUDIO_PLUGIN_STORE_LIVE = false` says the install path does not work. It does not say whether
@@ -2206,8 +2227,10 @@ export const PLAN_FEATURES: readonly PlanFeature[] = [
   {
     id: 'credits',
     label: 'Buy extra credits',
-    note: 'Purchased credits never expire and are spent only after the daily allowance.',
-    values: everyPlan(() => true),
+    note: CREDIT_PURCHASE_LIVE
+      ? 'Purchased credits never expire and are spent only after the daily allowance.'
+      : 'Apple cannot sell Credits in this preview — there is no checkout for them on any plan.',
+    values: everyPlan(() => (CREDIT_PURCHASE_LIVE ? true : 'Unavailable')),
   },
   {
     id: 'self-serve',

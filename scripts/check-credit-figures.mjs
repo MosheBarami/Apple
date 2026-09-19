@@ -35,7 +35,7 @@
  *
  * Usage: node scripts/check-credit-figures.mjs
  */
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 
 const root = new URL('..', import.meta.url).pathname;
 const read = (p) => readFileSync(root + p, 'utf8');
@@ -44,6 +44,28 @@ const pricing = read('apps/worker/src/pricing.ts');
 const costModel = read('docs/COST-MODEL.md');
 const page = read('apps/site/src/pages/pricing.astro');
 const meter = read('apps/site/src/components/CreditMeter.astro');
+
+/**
+ * WHETHER THE CALCULATOR IS ON A PAGE AT ALL — asked because the answer was no and this file said
+ * otherwise. Its success line ended "the page and the calculator" unconditionally, and nothing has
+ * imported CreditMeter.astro since the usage explorer was pulled off /pricing (eac3f01): a quarter
+ * of what this guard claimed to have verified was a component no customer can reach. A guard that
+ * names a surface is making a claim about the PRODUCT, not about the file system, and an
+ * unrendered component is not a surface.
+ *
+ * The figures in it are still checked — an orphan that drifts is an orphan nobody can safely
+ * re-import — but they are reported as what they are. Derived, never typed: re-import the component
+ * and the line goes back to claiming it, with no edit here.
+ *
+ * check-deadends.mjs cannot catch this: its candidate set is *.ts/*.tsx/*.mjs/*.js and .astro files
+ * are only ever importers there, so an orphaned .astro component is structurally invisible to it.
+ */
+const astroFiles = (dir) =>
+  readdirSync(root + dir, { recursive: true, withFileTypes: true })
+    .filter((e) => e.isFile() && e.name.endsWith('.astro'))
+    .map((e) => `${e.parentPath}/${e.name}`.slice(root.length));
+const renderers = [...astroFiles('apps/site/src/pages'), ...astroFiles('apps/site/src/layouts')];
+const meterIsRendered = renderers.some((f) => read(f).includes('components/CreditMeter.astro'));
 
 const problems = [];
 /** Modes whose requests-per-free-day is computed by the page rather than typed into it. */
@@ -401,7 +423,22 @@ if (problems.length) {
   process.exit(1);
 }
 
-console.log(`check-credit-figures: ${MODES.length} modes agree — COST-MODEL neurons, the worker's arithmetic, the page and the calculator`);
+console.log(
+  `check-credit-figures: ${MODES.length} modes agree — COST-MODEL neurons, the worker's arithmetic, ` +
+  `the page${meterIsRendered ? ' and the calculator' : ''}`,
+);
+if (!meterIsRendered) {
+  // Not a failure: every SHIPPED surface in that list is still verified, and no figure a customer
+  // plans around is unchecked. It is printed because the alternative — checking the component
+  // silently and counting it in the sentence — is the over-claim this guard exists to prevent
+  // elsewhere, and because the file it names carries retired plan vocabulary ("Pro (waitlist)",
+  // 400/day, 6000/month) that must be fixed before anyone re-imports it.
+  console.log(
+    `  apps/site/src/components/CreditMeter.astro was checked too, and NOTHING RENDERS IT — ` +
+    `no page or layout under apps/site/src imports it, so its figures ship to nobody. ` +
+    `Wire it back or delete it; until then this run verified no calculator.`,
+  );
+}
 console.log(
   `  requests/free day: ${derived} of ${MODES.length} derived from PLAN_LIMITS at build time, ` +
   `${stated} stated and checked against ${freeDay} Credits/day`,

@@ -631,13 +631,22 @@ local function firstService(pathParts: { string }): string?
 	return nil
 end
 
-local function resolvePath(gameRef: any, services: any, path: any, write: boolean?): (any?, string?, string?, string?)
+-- The fifth return is the remedy code for a scope refusal. Attached here because this is where a
+-- customer reaches it: a path naming a service outside the allowlist. The `writableTarget` checks
+-- downstream ask the same question again and mostly cannot fail after this one passed — except for
+-- a path of exactly "game", which resolves to the DataModel and is refused there instead, so those
+-- sites carry the code too rather than answering the same question with a silence.
+-- Handed out only for a write, because that is the only case `choose_allowed_target` describes —
+-- its sentence names the targets Apple may WRITE to, and answering a refused read with it would be
+-- telling the truth about the wrong question.
+local function resolvePath(gameRef: any, services: any, path: any, write: boolean?): (any?, string?, string?, string?, string?)
 	local parts, parseErr = parsePath(path)
 	if not parts then return nil, nil, parseErr, "invalid" end
 	if #parts == 1 then return gameRef, "game" end
+	local scopeRemedy = if write then "choose_allowed_target" else nil
 	local serviceName = firstService(parts)
-	if not serviceName then return nil, nil, "path names a service outside Apple's allowlist", "refused" end
-	if write and not WRITE_SERVICES[serviceName] then return nil, nil, "write target is outside Apple's place scope", "refused" end
+	if not serviceName then return nil, nil, "path names a service outside Apple's allowlist", "refused", scopeRemedy end
+	if write and not WRITE_SERVICES[serviceName] then return nil, nil, "write target is outside Apple's place scope", "refused", scopeRemedy end
 	local current = serviceFrom(gameRef, services, serviceName)
 	if not current then return nil, nil, ("service %s is unavailable"):format(serviceName), "not_found" end
 	local canonical = "game." .. serviceName
@@ -685,9 +694,14 @@ local function classAllowedForParent(parent: any, className: string): boolean
 	return true
 end
 
-local function destinationRefusal(gameRef: any, parent: any, parentPath: string, className: string): string?
-	if parent == gameRef then return "the DataModel itself cannot be used as an instance parent" end
-	if not writableTarget(gameRef, parent) then return "instance parent is outside Apple's place scope" end
+-- The second return is the remedy code, and only the first two branches carry one: those two are
+-- the same "you aimed outside the place Apple may write to" that resolvePath answers, said about an
+-- instance instead of a path. The other two are not — an engine-owned parent and a class that may
+-- not live there are refusals about WHAT, and `choose_allowed_target` would send the user to pick a
+-- different destination for a problem a different destination does not solve.
+local function destinationRefusal(gameRef: any, parent: any, parentPath: string, className: string): (string?, string?)
+	if parent == gameRef then return "the DataModel itself cannot be used as an instance parent", "choose_allowed_target" end
+	if not writableTarget(gameRef, parent) then return "instance parent is outside Apple's place scope", "choose_allowed_target" end
 	local parentClass = classNameOf(parent)
 	if PRESERVE_CLASSES[parentClass] then
 		return ("refusing to parent content into %s because %s is engine-owned"):format(parentPath, parentClass)
@@ -1139,12 +1153,12 @@ local function structuralRefusal(gameRef: any, inst: any, path: string, verb: st
 	return nil
 end
 
-local function resolveTargets(self: any, paths: { string }, write: boolean, structuralVerb: string?): ({ any }?, string?, string?)
+local function resolveTargets(self: any, paths: { string }, write: boolean, structuralVerb: string?): ({ any }?, string?, string?, string?)
 	local targets = {}
 	local seen = {}
 	for _, requested in paths do
-		local inst, canonical, err, pathKind = resolvePath(self.game, self.options.services, requested, write)
-		if not inst then return nil, err, pathKind or "not_found" end
+		local inst, canonical, err, pathKind, pathRemedy = resolvePath(self.game, self.options.services, requested, write)
+		if not inst then return nil, err, pathKind or "not_found", pathRemedy end
 		if seen[inst] then return nil, ("duplicate target: %s"):format(canonical :: string), "invalid" end
 		if structuralVerb then
 			local refused = structuralRefusal(self.game, inst, canonical :: string, structuralVerb)
@@ -1440,7 +1454,7 @@ local function validateCreateSpec(spec: any, depth: number, state: any, nested: 
 	return nil
 end
 
-local function validateCreateItems(options: any, gameRef: any, items: any): (string?, string?)
+local function validateCreateItems(options: any, gameRef: any, items: any): (string?, string?, string?)
 	if type(items) ~= "table" then return "items must be an array", "invalid" end
 	local count = #items
 	if count == 0 then return "items must contain at least one instance", "invalid" end
@@ -1456,11 +1470,11 @@ local function validateCreateItems(options: any, gameRef: any, items: any): (str
 		local specErr, specKind = validateCreateSpec(spec, 0, state, false)
 		if specErr then return specErr, specKind end
 		local parentPath = spec.parent
-		local parent, canonicalParent, parentErr, parentKind = resolvePath(gameRef, options.services, parentPath, true)
-		if not parent then return parentErr, parentKind or "not_found" end
+		local parent, canonicalParent, parentErr, parentKind, parentRemedy = resolvePath(gameRef, options.services, parentPath, true)
+		if not parent then return parentErr, parentKind or "not_found", parentRemedy end
 		local className = spec.className
-		local refused = destinationRefusal(gameRef, parent, canonicalParent :: string, className)
-		if refused then return refused, "refused" end
+		local refused, refusedRemedy = destinationRefusal(gameRef, parent, canonicalParent :: string, className)
+		if refused then return refused, "refused", refusedRemedy end
 		local name = spec.name or className
 		local names = reserved[parent]
 		if not names then names = {}; reserved[parent] = names end
@@ -2218,12 +2232,12 @@ local function handleLogs(self: any, op: any): (any?, string?, string?)
 	return { entries = out, total = #history, nextClock = nextClock }, nil
 end
 
-local function handleSelect(self: any, op: any): (any?, string?, string?)
+local function handleSelect(self: any, op: any): (any?, string?, string?, string?)
 	if not self.selection or type(self.selection.Set) ~= "function" then return nil, "refused", "Selection service is unavailable" end
 	local paths, pathsErr = pathList(op, "paths")
 	if not paths then return nil, "invalid", pathsErr end
-	local targets, targetErr, targetKind = resolveTargets(self, paths, false, nil)
-	if not targets then return nil, targetKind or "not_found", targetErr end
+	local targets, targetErr, targetKind, targetRemedy = resolveTargets(self, paths, false, nil)
+	if not targets then return nil, targetKind or "not_found", targetErr, targetRemedy end
 	local instances = {}
 	local selectedPaths = {}
 	for _, target in targets do
@@ -2303,9 +2317,9 @@ local function handleViewportInfo(self: any): (any?, string?, string?)
 	return info, nil
 end
 
-local function handleCreate(self: any, op: any): (any?, string?, string?)
-	local validationErr, validationKind = validateCreateItems(self.options, self.game, op.items)
-	if validationErr then return nil, validationKind or "invalid", validationErr end
+local function handleCreate(self: any, op: any): (any?, string?, string?, string?)
+	local validationErr, validationKind, validationRemedy = validateCreateItems(self.options, self.game, op.items)
+	if validationErr then return nil, validationKind or "invalid", validationErr, validationRemedy end
 	local state = { created = {} }
 	local paths = {}
 	for _, spec in op.items do
@@ -2349,7 +2363,7 @@ end
 	Every child is checked against `destinationRefusal` before ANY child is parented, so a
 	multi-part asset cannot leave half of itself behind when the second part is refused.
 ]]
-local function handleInsertAsset(self: any, op: any): (any?, string?, string?)
+local function handleInsertAsset(self: any, op: any): (any?, string?, string?, string?)
 	local assetId = op.assetId
 	if type(assetId) ~= "number" or assetId ~= assetId or assetId % 1 ~= 0 or assetId <= 0 or assetId > 9007199254740991 then
 		return nil, "invalid", "assetId must be a positive whole number"
@@ -2357,21 +2371,30 @@ local function handleInsertAsset(self: any, op: any): (any?, string?, string?)
 
 	local parent
 	if op.parent ~= nil then
-		local resolved, _, parentErr, parentKind = resolvePath(self.game, self.options.services, op.parent, true)
-		if not resolved then return nil, parentKind or "not_found", parentErr end
+		local resolved, _, parentErr, parentKind, parentRemedy = resolvePath(self.game, self.options.services, op.parent, true)
+		if not resolved then return nil, parentKind or "not_found", parentErr, parentRemedy end
 		parent = resolved
 	else
 		local okWorkspace, workspaceService = pcall(function() return self.game:GetService("Workspace") end)
 		if not okWorkspace or typeof(workspaceService) ~= "Instance" then return nil, "internal", "Workspace is unavailable" end
 		parent = workspaceService
 	end
-	if not writableTarget(self.game, parent) then return nil, "refused", "insert parent is outside Apple's place scope" end
+	if not writableTarget(self.game, parent) then return nil, "refused", "insert parent is outside Apple's place scope", "choose_allowed_target" end
 
 	local okLoad, loaded = pcall(function()
 		return self.game:GetService("InsertService"):LoadAsset(assetId)
 	end)
 	if not okLoad or typeof(loaded) ~= "Instance" then
-		return nil, "refused", "Roblox would not load asset " .. tostring(assetId) .. ": " .. tostring(loaded)
+		-- WHY ONE REMEDY FOR EVERY WAY THIS CAN FAIL. LoadAsset refuses for several reasons and
+		-- Roblox says which only in prose we do not own, so the code cannot be picked by reading
+		-- the sentence. It is `take_asset_first` because ownership is the only cause the user can
+		-- act on, and because it is the cause in practice: the ownership evidence note dated
+		-- 2026-09-19 measured "User is not authorized" for a library id against an owned-asset
+		-- control that succeeded, and asset-library.ts reports that every live row of the library
+		-- needs taking. The over-promise is narrow and visible — a deleted or moderated asset sends
+		-- the user to a Creator Store page that is not there — and that beats the alternative,
+		-- which is the worker saying it does not know while the product has the answer written down.
+		return nil, "refused", "Roblox would not load asset " .. tostring(assetId) .. ": " .. tostring(loaded), "take_asset_first"
 	end
 
 	local scripts = {}
@@ -2380,7 +2403,9 @@ local function handleInsertAsset(self: any, op: any): (any?, string?, string?)
 	end
 	if #scripts > 0 then
 		destroyInstance(loaded)
-		return nil, "refused", "asset " .. tostring(assetId) .. " carries " .. tostring(#scripts) .. " script(s) and was not inserted; Apple inserts geometry, not code"
+		-- The one refusal in this file where the user's next move is a different asset rather than a
+		-- setting, so it says so instead of leaving the model to guess that the asset was the problem.
+		return nil, "refused", "asset " .. tostring(assetId) .. " carries " .. tostring(#scripts) .. " script(s) and was not inserted; Apple inserts geometry, not code", "choose_scriptless_asset"
 	end
 
 	local children = loaded:GetChildren()
@@ -2391,10 +2416,10 @@ local function handleInsertAsset(self: any, op: any): (any?, string?, string?)
 
 	local parentPath = readablePath(self, parent) or "the insert parent"
 	for _, child in children do
-		local refusal = destinationRefusal(self.game, parent, parentPath, classNameOf(child))
+		local refusal, refusalRemedy = destinationRefusal(self.game, parent, parentPath, classNameOf(child))
 		if refusal then
 			destroyInstance(loaded)
-			return nil, "refused", refusal
+			return nil, "refused", refusal, refusalRemedy
 		end
 	end
 
@@ -2407,21 +2432,21 @@ local function handleInsertAsset(self: any, op: any): (any?, string?, string?)
 	return { assetId = assetId, inserted = inserted, count = #inserted, parent = parentPath }, nil
 end
 
-local function handleSetProps(self: any, op: any): (any?, string?, string?)
-	local inst, canonical, err, pathKind = resolvePath(self.game, self.options.services, op.path, true)
-	if not inst then return nil, pathKind or "not_found", err end
-	if not writableTarget(self.game, inst) then return nil, "refused", "target is outside Apple's place scope" end
+local function handleSetProps(self: any, op: any): (any?, string?, string?, string?)
+	local inst, canonical, err, pathKind, pathRemedy = resolvePath(self.game, self.options.services, op.path, true)
+	if not inst then return nil, pathKind or "not_found", err, pathRemedy end
+	if not writableTarget(self.game, inst) then return nil, "refused", "target is outside Apple's place scope", "choose_allowed_target" end
 	if op.props == nil and op.attributes == nil then return nil, "invalid", "set_props needs props or attributes" end
 	local set, setErr = setProperties(inst, op.props, op.attributes, "set_props")
 	if not set then return nil, "invalid", setErr end
 	return { path = canonical, set = set }, nil
 end
 
-local function handleDelete(self: any, op: any): (any?, string?, string?)
+local function handleDelete(self: any, op: any): (any?, string?, string?, string?)
 	local paths, pathsErr = pathList(op, "paths")
 	if not paths then return nil, "invalid", pathsErr end
-	local targets, targetErr, targetKind = resolveTargets(self, paths, true, "delete")
-	if not targets then return nil, targetKind or "not_found", targetErr end
+	local targets, targetErr, targetKind, targetRemedy = resolveTargets(self, paths, true, "delete")
+	if not targets then return nil, targetKind or "not_found", targetErr, targetRemedy end
 	local overlap = rejectNestedTargets(targets, "delete_instances")
 	if overlap then return nil, "invalid", overlap end
 	local deleted = {}
@@ -2433,7 +2458,7 @@ local function handleDelete(self: any, op: any): (any?, string?, string?)
 	return { deleted = deleted, count = #deleted }, nil
 end
 
-local function handleMove(self: any, op: any): (any?, string?, string?)
+local function handleMove(self: any, op: any): (any?, string?, string?, string?)
 	if type(op.moves) ~= "table" then return nil, "invalid", "moves must be an array" end
 	local count = #op.moves
 	if count == 0 then return nil, "invalid", "moves must contain at least one move" end
@@ -2449,18 +2474,18 @@ local function handleMove(self: any, op: any): (any?, string?, string?)
 	for index = 1, count do
 		local move = op.moves[index]
 		if type(move) ~= "table" then return nil, "invalid", ("moves[%d] must be an object"):format(index) end
-		local source, canonical, sourceErr, sourceKind = resolvePath(self.game, self.options.services, move.path, true)
-		if not source then return nil, sourceKind or "not_found", sourceErr end
+		local source, canonical, sourceErr, sourceKind, sourceRemedy = resolvePath(self.game, self.options.services, move.path, true)
+		if not source then return nil, sourceKind or "not_found", sourceErr, sourceRemedy end
 		if seen[source] then return nil, "invalid", ("duplicate move target: %s"):format(canonical :: string) end
 		local refused = structuralRefusal(self.game, source, canonical :: string, "move")
 		if refused then return nil, "refused", refused end
-		local parent, parentPath, parentErr, parentKind = resolvePath(self.game, self.options.services, move.newParent, true)
-		if not parent then return nil, parentKind or "not_found", parentErr end
+		local parent, parentPath, parentErr, parentKind, parentRemedy = resolvePath(self.game, self.options.services, move.newParent, true)
+		if not parent then return nil, parentKind or "not_found", parentErr, parentRemedy end
 		if parent == source or isDescendantOf(parent, source) then
 			return nil, "invalid", ("move_instances refuses to parent %s inside itself or one of its descendants"):format(canonical :: string)
 		end
-		local parentRefused = destinationRefusal(self.game, parent, parentPath :: string, classNameOf(source))
-		if parentRefused then return nil, "refused", parentRefused end
+		local parentRefused, parentRefusedRemedy = destinationRefusal(self.game, parent, parentPath :: string, classNameOf(source))
+		if parentRefused then return nil, "refused", parentRefused, parentRefusedRemedy end
 		local name = nameOf(source)
 		local byName = namesByParent[parent]
 		if not byName then byName = {}; namesByParent[parent] = byName end
@@ -2488,7 +2513,7 @@ local function handleMove(self: any, op: any): (any?, string?, string?)
 	return { moved = moved, count = #moved }, nil
 end
 
-local function handleTransform(self: any, op: any): (any?, string?, string?)
+local function handleTransform(self: any, op: any): (any?, string?, string?, string?)
 	local paths, pathsErr = pathList(op, "paths")
 	if not paths then return nil, "invalid", pathsErr end
 	local moved = op.move ~= nil
@@ -2516,8 +2541,8 @@ local function handleTransform(self: any, op: any): (any?, string?, string?)
 		scale = op.scale
 	end
 
-	local targets, targetErr, targetKind = resolveTargets(self, paths, true, nil)
-	if not targets then return nil, targetKind or "not_found", targetErr end
+	local targets, targetErr, targetKind, targetRemedy = resolveTargets(self, paths, true, nil)
+	if not targets then return nil, targetKind or "not_found", targetErr, targetRemedy end
 	local overlap = rejectNestedTargets(targets, "transform_instances")
 	if overlap then return nil, "invalid", overlap end
 	if type(CFrame) ~= "table" or type(CFrame.Angles) ~= "function" then return nil, "refused", "CFrame.Angles is unavailable" end
@@ -2559,17 +2584,17 @@ local function handleTransform(self: any, op: any): (any?, string?, string?)
 	return { transformed = #targets, parts = #changes, moved = moved, rotated = rotated, scaled = scaled }, nil
 end
 
-local function handleClone(self: any, op: any): (any?, string?, string?)
+local function handleClone(self: any, op: any): (any?, string?, string?, string?)
 	local paths, pathsErr = pathList(op, "paths")
 	if not paths then return nil, "invalid", pathsErr end
-	local targets, targetErr, targetKind = resolveTargets(self, paths, true, "clone")
-	if not targets then return nil, targetKind or "not_found", targetErr end
+	local targets, targetErr, targetKind, targetRemedy = resolveTargets(self, paths, true, "clone")
+	if not targets then return nil, targetKind or "not_found", targetErr, targetRemedy end
 	local overlap = rejectNestedTargets(targets, "clone_instances")
 	if overlap then return nil, "invalid", overlap end
 	local override = nil
 	if op.parent ~= nil then
-		local parent, _, parentErr, parentKind = resolvePath(self.game, self.options.services, op.parent, true)
-		if not parent then return nil, parentKind or "not_found", parentErr end
+		local parent, _, parentErr, parentKind, parentRemedy = resolvePath(self.game, self.options.services, op.parent, true)
+		if not parent then return nil, parentKind or "not_found", parentErr, parentRemedy end
 		override = parent
 	end
 
@@ -2582,8 +2607,8 @@ local function handleClone(self: any, op: any): (any?, string?, string?)
 		if not parent then return nil, "refused", target.path .. " has no parent for its clone" end
 		if parent == target.inst or isDescendantOf(parent, target.inst) then return nil, "invalid", "clone parent may not be inside the source" end
 		local parentPath = readablePath(self, parent) or "the clone parent"
-		local parentRefused = destinationRefusal(self.game, parent, parentPath, classNameOf(target.inst))
-		if parentRefused then return nil, "refused", parentRefused end
+		local parentRefused, parentRefusedRemedy = destinationRefusal(self.game, parent, parentPath, classNameOf(target.inst))
+		if parentRefused then return nil, "refused", parentRefused, parentRefusedRemedy end
 		local cloneName, nameErr = reserveUniqueName(parent, nameOf(target.inst), reservations)
 		if not cloneName then return nil, "conflict", nameErr end
 		table.insert(plans, { source = target.inst, parent = parent, name = cloneName })
@@ -2610,11 +2635,11 @@ local function handleClone(self: any, op: any): (any?, string?, string?)
 	return { created = created, count = #created }, nil
 end
 
-local function handleGroup(self: any, op: any): (any?, string?, string?)
+local function handleGroup(self: any, op: any): (any?, string?, string?, string?)
 	local paths, pathsErr = pathList(op, "paths")
 	if not paths then return nil, "invalid", pathsErr end
-	local targets, targetErr, targetKind = resolveTargets(self, paths, true, "group")
-	if not targets then return nil, targetKind or "not_found", targetErr end
+	local targets, targetErr, targetKind, targetRemedy = resolveTargets(self, paths, true, "group")
+	if not targets then return nil, targetKind or "not_found", targetErr, targetRemedy end
 	local overlap = rejectNestedTargets(targets, "group_instances")
 	if overlap then return nil, "invalid", overlap end
 	local wanted, nameErr = safeName(op.name or "Model", "group_instances.name")
@@ -2622,8 +2647,8 @@ local function handleGroup(self: any, op: any): (any?, string?, string?)
 	local home = parentOf(targets[1].inst)
 	if not home then return nil, "refused", targets[1].path .. " has no parent" end
 	local homePath = readablePath(self, home) or "the group parent"
-	local homeRefused = destinationRefusal(self.game, home, homePath, "Model")
-	if homeRefused then return nil, "refused", homeRefused end
+	local homeRefused, homeRefusedRemedy = destinationRefusal(self.game, home, homePath, "Model")
+	if homeRefused then return nil, "refused", homeRefused, homeRefusedRemedy end
 	local childNames = {}
 	local fromElsewhere = 0
 	for _, target in targets do
@@ -2650,11 +2675,11 @@ local function handleGroup(self: any, op: any): (any?, string?, string?)
 	return { path = path, grouped = #targets, fromOtherParents = fromElsewhere }, nil
 end
 
-local function handleUngroup(self: any, op: any): (any?, string?, string?)
+local function handleUngroup(self: any, op: any): (any?, string?, string?, string?)
 	local paths, pathsErr = pathList(op, "paths")
 	if not paths then return nil, "invalid", pathsErr end
-	local targets, targetErr, targetKind = resolveTargets(self, paths, true, "ungroup")
-	if not targets then return nil, targetKind or "not_found", targetErr end
+	local targets, targetErr, targetKind, targetRemedy = resolveTargets(self, paths, true, "ungroup")
+	if not targets then return nil, targetKind or "not_found", targetErr, targetRemedy end
 	local overlap = rejectNestedTargets(targets, "ungroup_instances")
 	if overlap then return nil, "invalid", overlap end
 	local plans = {}
@@ -2667,8 +2692,8 @@ local function handleUngroup(self: any, op: any): (any?, string?, string?)
 		local children, childErr = childrenOf(target.inst)
 		if not children then return nil, "internal", childErr end
 		for _, child in children do
-			local parentRefused = destinationRefusal(self.game, parent, parentPath, classNameOf(child))
-			if parentRefused then return nil, "refused", parentRefused end
+			local parentRefused, parentRefusedRemedy = destinationRefusal(self.game, parent, parentPath, classNameOf(child))
+			if parentRefused then return nil, "refused", parentRefused, parentRefusedRemedy end
 		end
 		local names = plannedNames[parent]
 		if not names then names = {}; plannedNames[parent] = names end
@@ -2699,9 +2724,9 @@ local function handleUngroup(self: any, op: any): (any?, string?, string?)
 	return { released = released, removed = removed }, nil
 end
 
-local function handleRename(self: any, op: any): (any?, string?, string?)
-	local inst, canonical, resolveErr, pathKind = resolvePath(self.game, self.options.services, op.path, true)
-	if not inst then return nil, pathKind or "not_found", resolveErr end
+local function handleRename(self: any, op: any): (any?, string?, string?, string?)
+	local inst, canonical, resolveErr, pathKind, pathRemedy = resolvePath(self.game, self.options.services, op.path, true)
+	if not inst then return nil, pathKind or "not_found", resolveErr, pathRemedy end
 	local refused = structuralRefusal(self.game, inst, canonical :: string, "rename")
 	if refused then return nil, "refused", refused end
 	local wanted, nameErr = safeName(op.name, "rename_instance.name")
@@ -2728,12 +2753,12 @@ local function handleRename(self: any, op: any): (any?, string?, string?)
 	return { path = after, was = before, name = wanted }, nil
 end
 
-local function handleSetLocked(self: any, op: any): (any?, string?, string?)
+local function handleSetLocked(self: any, op: any): (any?, string?, string?, string?)
 	if type(op.locked) ~= "boolean" then return nil, "invalid", "locked must be true or false" end
 	local paths, pathsErr = pathList(op, "paths")
 	if not paths then return nil, "invalid", pathsErr end
-	local targets, targetErr, targetKind = resolveTargets(self, paths, true, nil)
-	if not targets then return nil, targetKind or "not_found", targetErr end
+	local targets, targetErr, targetKind, targetRemedy = resolveTargets(self, paths, true, nil)
+	if not targets then return nil, targetKind or "not_found", targetErr, targetRemedy end
 	local parts = {}
 	local seen = {}
 	local skipped = {}
@@ -2756,12 +2781,12 @@ local function handleSetLocked(self: any, op: any): (any?, string?, string?)
 	return { locked = op.locked, parts = #parts, skipped = skipped }, nil
 end
 
-local function handleSetVisible(self: any, op: any): (any?, string?, string?)
+local function handleSetVisible(self: any, op: any): (any?, string?, string?, string?)
 	if type(op.visible) ~= "boolean" then return nil, "invalid", "visible must be true or false" end
 	local paths, pathsErr = pathList(op, "paths")
 	if not paths then return nil, "invalid", pathsErr end
-	local targets, targetErr, targetKind = resolveTargets(self, paths, true, nil)
-	if not targets then return nil, targetKind or "not_found", targetErr end
+	local targets, targetErr, targetKind, targetRemedy = resolveTargets(self, paths, true, nil)
+	if not targets then return nil, targetKind or "not_found", targetErr, targetRemedy end
 	local parts = {}
 	local guiObjects = {}
 	local seen = {}
@@ -2794,7 +2819,7 @@ local function handleSetVisible(self: any, op: any): (any?, string?, string?)
 	return { visible = op.visible, parts = #parts, guiObjects = #guiObjects, skipped = skipped }, nil
 end
 
-local function handleEditScript(self: any, op: any): (any?, string?, string?)
+local function handleEditScript(self: any, op: any): (any?, string?, string?, string?)
 	local canonicalPath, parseErr = parsePath(op.path)
 	if not canonicalPath then return nil, "invalid", parseErr end
 	local hasSource = op.source ~= nil
@@ -2805,21 +2830,22 @@ local function handleEditScript(self: any, op: any): (any?, string?, string?)
 		if sourceErr then return nil, "invalid", sourceErr end
 	end
 	if hasEdits and type(op.edits) ~= "table" then return nil, "invalid", "edits must be an array" end
-	local inst, canonical, resolveErr, pathKind = resolvePath(self.game, self.options.services, op.path, true)
+	local inst, canonical, resolveErr, pathKind, pathRemedy = resolvePath(self.game, self.options.services, op.path, true)
 	local created = false
 	local parent = nil
 	if not inst then
-		if not sourceEditIsCreate(op) then return nil, pathKind or "not_found", resolveErr end
+		if not sourceEditIsCreate(op) then return nil, pathKind or "not_found", resolveErr, pathRemedy end
 		local create = op.create
 		local createClass, classErr = safeText(create.className, 64, "create.className")
 		if not createClass then return nil, "invalid", classErr end
 		if not SCRIPT_CLASSES[createClass] then return nil, "invalid", "edit_script.create class must be Script, LocalScript or ModuleScript" end
 		local parentCanonical
 		local parentKind
-		parent, parentCanonical, resolveErr, parentKind = resolvePath(self.game, self.options.services, create.parent, true)
-		if not parent then return nil, parentKind or "not_found", resolveErr end
-		local parentRefused = destinationRefusal(self.game, parent, parentCanonical :: string, createClass)
-		if parentRefused then return nil, "refused", parentRefused end
+		local parentRemedy
+		parent, parentCanonical, resolveErr, parentKind, parentRemedy = resolvePath(self.game, self.options.services, create.parent, true)
+		if not parent then return nil, parentKind or "not_found", resolveErr, parentRemedy end
+		local parentRefused, parentRefusedRemedy = destinationRefusal(self.game, parent, parentCanonical :: string, createClass)
+		if parentRefused then return nil, "refused", parentRefused, parentRefusedRemedy end
 		if op.baseHash ~= nil then return nil, "invalid", "baseHash is only valid for an existing script" end
 		if #canonicalPath < 3 then return nil, "invalid", "a created script path must include a parent and script name" end
 		local name = canonicalPath[#canonicalPath]
@@ -2827,8 +2853,8 @@ local function handleEditScript(self: any, op: any): (any?, string?, string?)
 		if not validName then return nil, "invalid", nameErr end
 		if validName ~= name then return nil, "invalid", "script path name is not canonical" end
 		local requestedParentPath = pathFromParts(canonicalPath, #canonicalPath - 1)
-		local requestedParent, requestedParentCanonical, requestedParentErr, requestedParentKind = resolvePath(self.game, self.options.services, requestedParentPath, true)
-		if not requestedParent then return nil, requestedParentKind or "not_found", requestedParentErr end
+		local requestedParent, requestedParentCanonical, requestedParentErr, requestedParentKind, requestedParentRemedy = resolvePath(self.game, self.options.services, requestedParentPath, true)
+		if not requestedParent then return nil, requestedParentKind or "not_found", requestedParentErr, requestedParentRemedy end
 		if requestedParent ~= parent then
 			return nil, "conflict", ("script path parent %s does not match create.parent %s"):format(requestedParentCanonical :: string, parentCanonical :: string)
 		end
@@ -2993,10 +3019,10 @@ local function validateProtectedManifest(self: any, root: any, manifest: any): (
 	return paths
 end
 
-local function prepareRestore(self: any, op: any): (any?, string?, string?)
-	local root, canonical, err, pathKind = resolvePath(self.game, self.options.services, op.root, true)
-	if not root then return nil, pathKind or "not_found", err end
-	if root ~= self.game and not writableTarget(self.game, root) then return nil, "refused", "restore root is outside Apple's place scope" end
+local function prepareRestore(self: any, op: any): (any?, string?, string?, string?)
+	local root, canonical, err, pathKind, pathRemedy = resolvePath(self.game, self.options.services, op.root, true)
+	if not root then return nil, pathKind or "not_found", err, pathRemedy end
+	if root ~= self.game and not writableTarget(self.game, root) then return nil, "refused", "restore root is outside Apple's place scope", "choose_allowed_target" end
 	local checkpointId, identityErr = restoreCheckpointIdentity(op.checkpointId, "restore checkpointId")
 	if not checkpointId then return nil, "invalid", identityErr end
 	if type(op.snapshot) ~= "table" or op.snapshot.format ~= "apple-studio-snapshot-v1" then return nil, "invalid", "snapshot format is not recognised" end
@@ -3217,10 +3243,10 @@ local function runGeneration(
 	editMode: () -> boolean,
 	started: number
 ): any
-	local parent, parentCanonical, parentErr, parentKind = resolvePath(self.game, self.options.services, op.parent, true)
-	if not parent then return failureResult(id, parentKind or "not_found", parentErr or "generation destination was not found", started) end
-	local parentRefusal = destinationRefusal(self.game, parent, parentCanonical :: string, "Model")
-	if parentRefusal then return failureResult(id, "refused", parentRefusal, started) end
+	local parent, parentCanonical, parentErr, parentKind, parentRemedy = resolvePath(self.game, self.options.services, op.parent, true)
+	if not parent then return failureResult(id, parentKind or "not_found", parentErr or "generation destination was not found", started, parentRemedy) end
+	local parentRefusal, parentRefusalRemedy = destinationRefusal(self.game, parent, parentCanonical :: string, "Model")
+	if parentRefusal then return failureResult(id, "refused", parentRefusal, started, parentRefusalRemedy) end
 	if self.generation == nil then
 		return failureResult(
 			id,
@@ -3284,10 +3310,10 @@ local function runGeneration(
 		discardGenerated(self.generation, model)
 		return failureResult(id, "conflict", "the generation destination changed while GenerationService was running", started)
 	end
-	local refusalAfterGeneration = destinationRefusal(self.game, parent, parentCanonical :: string, "Model")
+	local refusalAfterGeneration, refusalAfterGenerationRemedy = destinationRefusal(self.game, parent, parentCanonical :: string, "Model")
 	if refusalAfterGeneration then
 		discardGenerated(self.generation, model)
-		return failureResult(id, "refused", refusalAfterGeneration, started)
+		return failureResult(id, "refused", refusalAfterGeneration, started, refusalAfterGenerationRemedy)
 	end
 	local name, nameErr = generatedName(parent, id)
 	if not name then
@@ -3546,9 +3572,17 @@ function Commands.new(options: any?): any
 			return runUndoWaypoint(id, op, started)
 		end
 			if not handler and name ~= "restore" and not DEFERRED_MUTATING[name] then return failureResult(id, "refused", "unknown Studio operation: " .. name, started) end
+		-- EDIT MODE IS ASKED ABOUT FIRST, and the order is the whole point rather than a style
+		-- preference. Both gates are shut while Studio runs a test, because entering one clears
+		-- consent (init.server.luau's keepEditConsentOnlyInEditMode), so whichever gate is checked
+		-- first is the sentence the user is handed. Consent-first handed them "press Enable edits…"
+		-- — a button that refuses while a test runs, and whose refusal is only visible after they
+		-- alt-tab to Studio and click it. Edit-mode-first hands them "stop the test", which works
+		-- now; the consent instruction is then correct on the next attempt. The undo_waypoint branch
+		-- a dozen lines above has always had this order; this is the same fence, said the same way.
 		if MUTATING[name] or DEFERRED_MUTATING[name] or CONSENT_ONLY[name] then
-			if allowEdits ~= true then return failureResult(id, "refused", "writes require explicit edit consent — this is Apple's own gate, not a Roblox Studio setting: press \"Enable edits…\" then \"Allow edits for this connection\" in the Apple panel in Studio", started, "edit_consent") end
 			if not editMode() then return failureResult(id, "refused", "writes require Studio edit mode", started, "leave_test_mode") end
+			if allowEdits ~= true then return failureResult(id, "refused", "writes require explicit edit consent — this is Apple's own gate, not a Roblox Studio setting: press \"Enable edits…\" then \"Allow edits for this connection\" in the Apple panel in Studio", started, "edit_consent") end
 		end
 		if MUTATING[name] or DEFERRED_MUTATING[name] then
 			if self.activeRecording ~= nil then return failureResult(id, "conflict", "another Apple write is already in progress", started) end
@@ -3566,29 +3600,35 @@ function Commands.new(options: any?): any
 				if type(stillCurrent) ~= "function" then return failureResult(id, "refused", "restore requires a live Studio consent fence", started) end
 				local currentOk, current = pcall(stillCurrent)
 				if not currentOk or current ~= true then return failureResult(id, "refused", "the Studio connection or edit consent ended before restore", started) end
-				local plan, restoreKind, restoreMessage = prepareRestore(self, op)
-				if not plan then return failureResult(id, restoreKind or "invalid", restoreMessage or "restore preflight failed", started) end
+				local plan, restoreKind, restoreMessage, restoreRemedy = prepareRestore(self, op)
+				if not plan then return failureResult(id, restoreKind or "invalid", restoreMessage or "restore preflight failed", started, restoreRemedy) end
 				restorePlan = plan
 			end
 
+		-- THE FOURTH VALUE IS THE ONE A HANDLER CAN NO LONGER SAY NOTHING WITH. Handlers used to
+		-- return (data, kind, message) and this call bound exactly three, so a refusal raised
+		-- INSIDE a handler reached the worker with remedy = nil no matter what the handler knew —
+		-- the same shape of loss as Bridge.luau's field allowlist, one layer further in. Luau
+		-- yields nil for a value a handler does not return, so every handler that still answers in
+		-- three values is unchanged; the ones that know the answer can now give it.
 		if not MUTATING[name] then
-			local ok, data, kind, message = pcall(function()
-				local result, resultKind, resultMessage = handler(self, op)
-				return result, resultKind, resultMessage
+			local ok, data, kind, message, remedy = pcall(function()
+				local result, resultKind, resultMessage, resultRemedy = handler(self, op)
+				return result, resultKind, resultMessage, resultRemedy
 			end)
 			if not ok then
 				local failureKind, failureMessage = errorParts(data)
 				return failureResult(id, failureKind, failureMessage, started)
 			end
-			if data == nil then return failureResult(id, kind or "internal", message or "operation failed", started) end
-			if kind then return failureResult(id, kind, message or "operation failed", started) end
+			if data == nil then return failureResult(id, kind or "internal", message or "operation failed", started, remedy) end
+			if kind then return failureResult(id, kind, message or "operation failed", started, remedy) end
 			return { id = id, ok = true, data = data, durationMs = math.max(0, math.floor((nowSeconds() - started) * 1000)) }
 		end
 
 		local recording, beginErr = beginRecording(self.history, self.enum, id, name)
 		if not recording then return failureResult(id, "conflict", beginErr or "could not open an undo recording", started) end
 			self.activeRecording = recording
-			local ok, data, kind, message = pcall(function()
+			local ok, data, kind, message, remedy = pcall(function()
 				if name == "restore" then
 					local result, resultKind, resultMessage = applyRestore(self, restorePlan)
 					if result ~= nil then
@@ -3597,8 +3637,8 @@ function Commands.new(options: any?): any
 					end
 					return result, resultKind, resultMessage
 				end
-				local result, resultKind, resultMessage = handler(self, op)
-			return result, resultKind, resultMessage
+				local result, resultKind, resultMessage, resultRemedy = handler(self, op)
+			return result, resultKind, resultMessage, resultRemedy
 		end)
 		if not ok then
 			local cancelOk = cancelOperation(self.history, self.enum, recording)
@@ -3613,7 +3653,7 @@ function Commands.new(options: any?): any
 			local failureKind = kind or "internal"
 			local failureMessage = message or "operation failed"
 			if not cancelOk then failureMessage ..= " (undo recording cancellation also failed)" end
-			return failureResult(id, failureKind, failureMessage, started)
+			return failureResult(id, failureKind, failureMessage, started, remedy)
 		end
 		local committed, commitErr = finishOperation(self.history, self.enum, recording, name)
 		self.activeRecording = nil

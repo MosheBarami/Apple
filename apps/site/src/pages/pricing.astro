@@ -16,8 +16,7 @@ import {
   PRODUCT_MODES_OFFERED,
   PRODUCT_MODE_INFO,
   MODE_INFO,
-  PRODUCT_MODE_TO_SPECIALIST,
-} from '@golem/shared';
+  PRODUCT_MODE_TO_SPECIALIST, CREDIT_PURCHASE_LIVE as SHARED_CREDIT_PURCHASE_LIVE } from '@golem/shared';
 
 // THE NUMBERS ON THIS PAGE ARE READ, NOT WRITTEN. They used to be typed in prose and in the plan
 // cards, so the marketing site and the thing enforcing the quota could drift apart — and they had:
@@ -58,6 +57,44 @@ const canBuy = (id) => billing.purchasable.includes(id);
 
 const free = PLAN_LIMITS.free;
 const paid = PLAN_IDS.filter((id) => id !== 'free' && PLAN_COPY[id].priceUsdMonthly !== null);
+
+//[[ "BUY EXTRA CREDITS" WAS THE ONE ROW IN THE MATRIX THAT ADVERTISED A CHANNEL RATHER THAN A
+//   CAPABILITY, AND THE CHANNEL DOES NOT EXIST.
+//
+//   PLAN_FEATURES marks `credits` true for all four plans. Three of those column headers carry
+//   "(planned)" while Free's does not — by construction, a few lines below — so the only plan
+//   anybody can be on was the only one told, without caveat, that buying extra Credits is included.
+//   The in-app usage meter then offers "add credits" as the next action at the exact moment the
+//   allowance runs out, which is the exact moment somebody would have paid.
+//
+//   NOTHING IN THE PRODUCT CAN TAKE THAT MONEY, and this is not an environment gap a key would
+//   close. `buildCheckoutRequest` in apps/worker/src/billing.ts hardcodes `mode=subscription`, its
+//   CheckoutEnv declares price ids for Builder and Studio and nothing else, and no `mode=payment`
+//   construction exists anywhere in apps/ or packages/. The webhook branch that reads a `credits`
+//   figure off a completed checkout therefore has no producer in any deployment.
+//
+//   THE OVERRIDE LIVES HERE RATHER THAN IN packages/shared BECAUSE THIS PAGE IS WHAT THE READER
+//   RECEIVES, and because the string branch of the cell renderer below already exists for precisely
+//   this shape — it is how the `plugin` row prints "Public installation unavailable" instead of a
+//   tick. The row is kept and answered rather than deleted: the table's whole premise is that a
+//   capability missing from it is indistinguishable from one nobody mentioned.
+//
+//   apps/site/tests/credit-purchase-claim.test.mjs holds the flag to the worker: it goes red the
+//   moment a credit checkout appears, so this cannot quietly outlive the gap it describes.
+// DERIVED, NOT DECLARED. This was a local `= false` that corrected this page and left the shared
+// constant saying "included on every plan" for every other reader — including the in-app meter,
+// which went on offering "Add credits" at the moment a customer's allowance ran out. One fact, one
+// home: packages/shared/src/index.ts.
+const CREDIT_PURCHASE_LIVE = SHARED_CREDIT_PURCHASE_LIVE;
+const planFeatures = PLAN_FEATURES.map((f) =>
+  f.id === 'credits' && !CREDIT_PURCHASE_LIVE
+    ? {
+        ...f,
+        note: 'Apple cannot sell Credits in this preview — there is no checkout for them on any plan.',
+        values: Object.fromEntries(PLAN_IDS.map((id) => [id, 'Unavailable'])) as Record<string, string>,
+      }
+    : f,
+);
 import Base from '../layouts/Base.astro';
 import FAQ from '../components/FAQ.astro';
 
@@ -144,9 +181,27 @@ const limitFaq = [
         ? `<p><strong>On Free the monthly ceiling is the one that bites.</strong> ${free.creditsPerDay.toLocaleString()} a day against ${free.creditsPerMonth.toLocaleString()} a month is <strong>${fullRateDays('free')} full days</strong>; spend the whole daily allowance every day and there is nothing left for the rest of the month. Whichever limit is lower is the one you actually have, and the workspace shows both.</p>`
         : ''),
   },
+  //[[ NO SENTENCE HERE MAY PROMISE A WARNING BEFORE A RUN STARTS.
+  //
+  //   This answer used to end "a request never silently drains your day — Apple warns before
+  //   starting work it estimates will be expensive." Nothing in the product does that, and nothing
+  //   can: `ServerMsg` in packages/shared has no cost-warning variant, `RunIntent` carries no cost
+  //   field, and a run is admitted on `quotaSpend(owner, 1, …)` (apps/worker/src/do/session.ts)
+  //   whose only refusal is a zero balance. `estimateNeurons` exists but reserves BudgetDO budget
+  //   for the owner's bill; it is never shown to anyone. The worker says the same thing about the
+  //   one control that would have gated an expensive tool — apps/worker/src/preferences.ts
+  //   downgrades the `ask` permission to `deny` because "nothing in this product can interrupt a
+  //   run to ask".
+  //
+  //   The clause was a safety guarantee a reader could rely on when deciding to send one more
+  //   build, and relying on it is how a day's allowance goes into a run that never finishes. It is
+  //   deleted rather than softened: a vaguer promise of the same thing is the same untruth. What
+  //   replaces it is the behaviour that IS implemented, quoted from session.ts's own stop message.
+  //   apps/site/tests/pre-run-cost-warning.test.mjs fails if the promise comes back while the wire
+  //   protocol still has nothing to carry it.
   {
     q: 'Can one request cost more than the price in the table?',
-    a: `<p>Yes, and it is metered transparently. The table quotes what a request starts at; an Agent build settles against the compute it actually used, so a long one costs more. You see the running total live in the workspace, and a request never silently drains your day — Apple warns before starting work it estimates will be expensive.</p>`,
+    a: `<p>Yes, and it is metered transparently. The table quotes what a request starts at; an Agent build settles against the compute it actually used, so a long one costs more. You see the running total live in the workspace while it climbs, and if a run reaches the end of your Credits it stops there and says so — everything it finished by then is saved, and the allowance refills at midnight UTC.</p>`,
   },
   {
     q: 'What is a Credit, underneath?',
@@ -188,6 +243,13 @@ const limitFaq = [
             <li><strong>{free.creditsPerDay.toLocaleString()} Credits</strong> per day · {free.creditsPerMonth.toLocaleString()} a month</li>
             <li>About {buildsPerMonth('free')} quality-gated builds a month</li>
             <li>Apple · limited free access</li>
+            {/* THE ALLOWANCE IS NOT THE ONLY LIMIT ON THE ONLY OFFER ANYBODY CAN TAKE.
+                A build is priced here at about sixteen steps, and a free request stops after three
+                — the worker clamps the free lane to Clay's ceiling whatever mode is chosen. The
+                Credits buy the whole build; one message does not. That was visible only as a
+                "Step 2 of 3" counter after signing up, which is the wrong side of the decision.
+                /docs/modes says the same thing at length; the guard is tests/free-lane-steps. */}
+            <li>Up to 3 steps per request — longer builds continue across messages</li>
             <li>Unlimited projects</li>
             <li>Checkpoints &amp; rollback</li>
             <li>Studio integration · public installation pending</li>
@@ -227,9 +289,17 @@ const limitFaq = [
                 </li>
                 <li>About {buildsPerMonth(id)} quality-gated builds a month</li>
                 <li>Apple MAX access</li>
-                {PLAN_COPY[id].highlights.map((h) => (
-                  <li>{h}</li>
-                ))}
+                {/* The same gap as the `credits` row below, one surface earlier. Builder's
+                    highlights include "Buy credits when you need more", and leaving it beside a
+                    comparison row that now reads "Unavailable" would make the page disagree with
+                    itself in two places a reader can see at once. Filtered rather than reworded:
+                    the bullet is true of the planned tier and false of the product today, and the
+                    flag is what decides which. */}
+                {PLAN_COPY[id].highlights
+                  .filter((h) => CREDIT_PURCHASE_LIVE || !/\bbuy\b.*\bcredits?\b/i.test(h))
+                  .map((h) => (
+                    <li>{h}</li>
+                  ))}
                 <li>{PLAN_SUPPORT[id].channel}</li>
               </ul>
               {canBuy(id) ? (
@@ -297,7 +367,7 @@ const limitFaq = [
           </thead>
           <tbody>
             {
-              PLAN_FEATURES.map((feature) => (
+              planFeatures.map((feature) => (
                 <tr>
                   <th scope="row">
                     {feature.label}

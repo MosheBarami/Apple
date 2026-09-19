@@ -35,6 +35,29 @@ export interface ExportTable {
    * away and leaves it at `rls`) fails rather than quietly changing what the export claims.
    */
   access: 'rls' | 'worker' | 'service_role';
+  /**
+   * THE TABLE HAS A READER AND NO WRITER, so an empty answer from it measures nothing.
+   *
+   * `access` answers "could the caller select from this", and for `messages`, `checkpoints` and
+   * `usage_events` the answer is a truthful yes — 0001_init.sql grants "own messages read", "own
+   * checkpoints read" and "own usage read". What `access` cannot answer is whether anything ever
+   * puts a row there, and nothing does: those three carry a select policy and NO insert policy,
+   * the worker holds `SUPABASE_ANON_KEY` and no service-role credential (see erasure.ts), and the
+   * product writes the transcript and its checkpoints into SESSION_DO and the credit ledger into
+   * QUOTA_DO. The only inserts anywhere in this repository are fixtures under infra/supabase/tests.
+   *
+   * So a select on them returns `[]` for a person with thousands of messages, which is the SAME
+   * SHAPE as `studio_pairings` reaching the same `[]` through the other door — and the export
+   * printed it as `count: 0` beside a table called `messages`, which reads to the one person who
+   * would go looking as "you never had a conversation". A failure to observe must not render as an
+   * observation, and "nothing writes here" is a failure to observe exactly as much as "nothing may
+   * read here" is.
+   *
+   * The value is the `NON_POSTGRES_STORES` name of the store that DOES hold it, so the route the
+   * person is sent to is resolved from the inventory `elsewhere` already publishes rather than
+   * copied beside it, where the two could drift apart and only one of them be right.
+   */
+  recordedElsewhere?: string;
   /** The column that ties a row to one person. */
   ownerColumn: string;
   /** EXACTLY what leaves. An allowlist, never a wildcard. */
@@ -75,6 +98,11 @@ export const USER_EXPORT: readonly ExportTable[] = [
     store: 'postgres',
     table: 'messages',
     access: 'rls',
+    // The conversation is written to SESSION_DO and has never been written here. The columns below
+    // stay declared because the live catalogue is older than the migrations — see the `sparks`
+    // compatibility path in account-export.ts — and a row that a previous version of this product
+    // did leave behind is still this person's, so it is still handed over when one turns up.
+    recordedElsewhere: 'messages',
     ownerColumn: 'owner_id',
     // `tool_trace` is INCLUDED deliberately: a transcript without the tool calls is not the
     // conversation that happened, it is a redacted version of it.
@@ -85,6 +113,8 @@ export const USER_EXPORT: readonly ExportTable[] = [
     store: 'postgres',
     table: 'checkpoints',
     access: 'rls',
+    // The snapshots live beside the transcript in SESSION_DO; this table has no writer either.
+    recordedElsewhere: 'checkpoints',
     ownerColumn: 'owner_id',
     fields: ['id', 'project_id', 'owner_id', 'label', 'kind', 'script_count', 'instance_count', 'size_bytes', 'created_at'],
     excluded: {
@@ -95,6 +125,10 @@ export const USER_EXPORT: readonly ExportTable[] = [
     store: 'postgres',
     table: 'usage_events',
     access: 'rls',
+    // What a person spent is metered in QUOTA_DO's `ledger`, never here. This is the entry it would
+    // hurt most to print as `count: 0`: a customer checking a charge would read an empty spend
+    // history as proof they were billed for nothing.
+    recordedElsewhere: 'ledger',
     ownerColumn: 'owner_id',
     // The token counts and model are INCLUDED: they are what a Credit figure was computed from, and
     // an export that gives the charge without the basis is a number the person cannot check.

@@ -79,7 +79,9 @@ local Bridge = {new=function(config)
   bridgeInstance=b
   return b
 end}
-local Commands = {new=function()
+local commandOptions
+local Commands = {new=function(options)
+  commandOptions=options
   return {execute=function(self,id,op,allow)
     table.insert(editsObserved,allow); return {id=id,ok=true}
   end,destroy=function() commandDestroyed=true end}
@@ -93,6 +95,20 @@ local function byText(value)
   error('Missing control '..value)
 end
 assert(bridgeInstance.claims==0,'must not auto-pair')
+
+-- ONE DEFINITION OF EDIT MODE, HANDED TO THE ENGINE. Given nothing, the command engine falls back
+-- to RunService:IsEdit() alone, and this fixture deliberately keeps IsEdit() true while the Studio
+-- test service leaves edit mode -- so an engine using the fallback would believe it is in edit mode
+-- at the very moment this file is clearing consent because it is not, and would refuse the write by
+-- naming a button that refuses too. These assertions fail if the handoff is ever dropped.
+assert(type(commandOptions)=='table','the engine must be constructed with options, not with nothing')
+assert(type(commandOptions.isEdit)=='function','the engine must be given this entry point definition of edit mode')
+assert(commandOptions.isEdit()==true,'edit mode with a live test service reads true')
+studioTest.EditModeActive=false
+assert(run:IsEdit()==true,'fixture keeps RunService IsEdit true while the test service leaves edit mode')
+assert(commandOptions.isEdit()==false,'the engine gate must see a Studio test the same way the consent fence does')
+studioTest.EditModeActive=true
+
 bridgeConfig.execute('a',{})
 assert(editsObserved[#editsObserved]==false,'starts readonly')
 local box

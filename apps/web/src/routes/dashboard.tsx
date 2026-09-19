@@ -525,9 +525,25 @@ function DeleteProjectModal({ project, onClose }: { project: ProjectRow; onClose
 
   const del = useMutation({
     mutationFn: async () => {
-      // 1) purge the session DO (chat history, checkpoints, plugin binding)…
-      await purgeProject(project.id);
-      // 2) …then remove the registry row (RLS-scoped).
+      //[[ A FAILED PURGE MUST NOT BE FOLLOWED BY DELETING THE ROW THAT POINTS AT WHAT SURVIVED.
+      //
+      //   This awaited the purge and read nothing back. The worker has always answered honestly —
+      //   `ok: res.ok && failed.length === 0`, with `failed` naming every store that refused — and
+      //   the client dropped it, removed the registry row, and told the customer "deleted".
+      //
+      //   The registry row is the ONLY thing that can find that project's data again. Deleting it
+      //   after a partial purge does not leave data behind; it leaves data behind UNREACHABLE, by
+      //   the customer and by a retry, while the product says it is gone. Keeping the row is what
+      //   makes "try again" a real instruction rather than a suggestion. ]]
+      const purge = await purgeProject(project.id);
+      if (!purge.ok) {
+        const survived = purge.failed?.length ? purge.failed.join(', ') : 'some of it';
+        throw new Error(
+          `${survived} could not be deleted, so the project is still listed rather than half-erased. ` +
+          'Nothing was lost and nothing is hidden — try again, and if it keeps failing, use Get help so we can finish it.',
+        );
+      }
+      // Only now: the data is gone, so the row that points at it can go.
       const { error } = await supabase.from('projects').delete().eq('id', project.id);
       if (error) throw new Error(error.message);
     },
@@ -537,7 +553,9 @@ function DeleteProjectModal({ project, onClose }: { project: ProjectRow; onClose
       toast(`"${project.name}" deleted`, 'success');
       onClose();
     },
-    onError: (e: Error) => toast(`Delete failed: ${e.message}`, 'error'),
+    // The message is the sentence above, which already says what happened and what to do; a
+    // prefix of "Delete failed:" in front of it would be the only part a customer reads.
+    onError: (e: Error) => toast(e.message, 'error'),
   });
 
   // Stated rather than assumed: the ladder in lib/confirm-model.ts is what decides the ceremony,

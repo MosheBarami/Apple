@@ -179,7 +179,32 @@ export function remedyHint(result: Pick<OpResult, 'ok' | 'failure' | 'remedy'>):
   );
 }
 
-const REMEDY_HEADING = "**Apple could not change your place, and this is Apple's own limit, not a Roblox Studio setting.**";
+/**
+ * WHOSE LIMIT IT IS — a claim the heading makes in the product's own voice, so it has to be true of
+ * the refusal it is attached to rather than true of most of them.
+ *
+ * The original heading said "this is Apple's own limit" about every remedy, which was correct for
+ * as long as the only remedies that could actually reach a user were Apple's own gates. It stopped
+ * being correct the moment `take_asset_first` became reachable: Roblox refuses to load an asset the
+ * signed-in account does not own, Apple has no say in it, and the remedy's own sentence says so —
+ * so the signed heading and the instruction underneath it would have contradicted each other in one
+ * paragraph, with the bolded half being the false one.
+ *
+ * A SET OF CODES, not a guess from the text. Same reason the remedy is a code: deciding whose limit
+ * it is by reading the sentence would make a reword silently change who the product blames.
+ *
+ * Both headings still end by denying that a Studio setting exists, because that denial is the whole
+ * reason w34 wrote a heading at all — the model invented "File > Place Settings > Security", and a
+ * spelled-out "there is no such setting" is much harder to contradict than a silence.
+ */
+const ROBLOX_IMPOSED: ReadonlySet<RefusalRemedyCode> = new Set<RefusalRemedyCode>(['take_asset_first']);
+
+const APPLE_LIMIT_HEADING = "**Apple could not change your place, and this is Apple's own limit, not a Roblox Studio setting.**";
+const ROBLOX_LIMIT_HEADING = "**Apple could not change your place, and this one is Roblox's rule rather than Apple's — no Roblox Studio setting lifts it.**";
+
+function remedyHeading(remedy: RefusalRemedyCode): string {
+  return ROBLOX_IMPOSED.has(remedy) ? ROBLOX_LIMIT_HEADING : APPLE_LIMIT_HEADING;
+}
 
 /**
  * The reply the USER sees when a run hit a refusal the product can explain.
@@ -211,11 +236,11 @@ export function replyWithRemedy(content: string, remedy: RefusalRemedyCode | und
   const fiction = studioFictionIn(content);
   if (fiction) {
     return (
-      `${REMEDY_HEADING} ${REFUSAL_REMEDIES[remedy]}\n\n` +
+      `${remedyHeading(remedy)} ${REFUSAL_REMEDIES[remedy]}\n\n` +
       'Nothing in your place was changed, so there is nothing to undo.'
     );
   }
-  return `${content}\n\n${REMEDY_HEADING} ${REFUSAL_REMEDIES[remedy]}`;
+  return `${content}\n\n${remedyHeading(remedy)} ${REFUSAL_REMEDIES[remedy]}`;
 }
 
 /** What was removed and why — for the run record, never for the reply itself. */

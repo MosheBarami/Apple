@@ -12,11 +12,15 @@
 //      should be here and is not) is caught by tests/export-inventory.test.mjs against the
 //      migrations, and by infra/supabase/tests/export-completeness.mjs against a real database.
 //
-//   2. A TABLE THAT WAS NOT READ IS NOT AN EMPTY TABLE. `studio_pairings` has no select policy, so
-//      PostgREST answers a user's token with `[]` whatever it holds. Printed as rows, that reads as
-//      "you have no pairings" — an observation nothing made. Such a table reports `unreadable` and
-//      carries NO rows array, and the same is true of a query that errors: `failed`, with the
-//      status, and no rows. The document's own `complete` flag is false whenever either happens.
+//   2. AN EMPTY ARRAY IS NOT AN EMPTY TABLE, and there are three doors to that same `[]`.
+//      `studio_pairings` has no select policy, so PostgREST answers a user's token with `[]`
+//      whatever it holds. A query that errors gives back nothing at all. And `messages`,
+//      `checkpoints` and `usage_events` have a select policy and NO WRITER — the transcript is in
+//      SESSION_DO and the ledger in QUOTA_DO — so they answer `[]` to a person with thousands of
+//      messages. Printed as rows, each of the three reads as "you have none of these", which is an
+//      observation nothing made. They report `unreadable`, `failed` and `not_recorded_here`
+//      respectively, NONE of them carries a rows array or a count anybody could quote back, and the
+//      document's own `complete` flag is false whenever any of them happens.
 //
 //   3. WHAT IS NOT IN THE FILE IS NAMED IN THE FILE. Most of what this product knows about a person
 //      is not in Postgres — the conversation is in a Durable Object, the workspace in KV, the
@@ -54,15 +58,37 @@ export const EXPORT_ROW_CAP = 5000;
 export type TableResult =
   | { status: 'ok'; rows: unknown[]; count: number; truncated: boolean; withheld: Readonly<Record<string, string>> }
   | { status: 'unreadable'; reason: string; withheld: Readonly<Record<string, string>> }
-  | { status: 'failed'; reason: string; httpStatus: number | null; withheld: Readonly<Record<string, string>> };
+  | { status: 'failed'; reason: string; httpStatus: number | null; withheld: Readonly<Record<string, string>> }
+  /**
+   * The table was read, it was empty, and nothing has ever written to it — so the emptiness is a
+   * property of this product's architecture and not a fact about the person. No `rows` and no
+   * `count`, for the reason `unreadable` carries neither: a zero somebody can quote back is the
+   * whole defect. `storedIn`, `holds` and `where` come from the same inventory as `elsewhere`.
+   */
+  | {
+    status: 'not_recorded_here';
+    reason: string;
+    storedIn: string;
+    holds: string;
+    where: string;
+    withheld: Readonly<Record<string, string>>;
+  };
 
 export interface AccountExport {
   format: typeof ACCOUNT_EXPORT_FORMAT;
   exportedAt: string;
   user: { id: string; email: string | null };
-  /** True only when every declared table was actually read. */
+  /** True only when every declared table was read AND this file carries what that table is for. */
   complete: boolean;
-  /** The tables that were not read, by name, so `complete: false` is never a mystery. */
+  /**
+   * The declared tables whose contents are NOT in this file, by name, so `complete: false` is never
+   * a mystery — and so a person scanning one line can see that their conversations are not here.
+   *
+   * Three causes and the entry in `tables` says which: the query failed, the caller may not select
+   * from it at all, or this product records that data in another store entirely. They are listed
+   * together because the question this list answers is "what did I not get", which has one answer
+   * whichever of the three happened, and the reason for the distinction is one lookup away.
+   */
   incomplete: string[];
   tables: Record<string, TableResult>;
   elsewhere: { store: string; binding: string; name: string; holds: string; where: string }[];
@@ -146,6 +172,24 @@ export function storesWithoutAnAnswer(stores: readonly NonPostgresStore[] = NON_
   return stores.filter((s) => s.personal && !(s.name in WHERE_ELSE)).map((s) => s.name);
 }
 
+/**
+ * The store that actually holds what a `recordedElsewhere` table only looks like it holds.
+ *
+ * Resolved from `NON_POSTGRES_STORES` and `WHERE_ELSE` rather than written out beside the spec, so
+ * the route in the empty `messages` entry and the route in the `elsewhere` list are the same string
+ * and cannot come to disagree. Null when the name matches no store, which the caller treats as "say
+ * nothing extra" — inventing a destination for a person's transcript would be worse than the count
+ * this replaces. tests/account-export-stores.test.mjs asserts every pointer in the spec resolves.
+ */
+export function recordedElsewhereAnswer(
+  name: string,
+  stores: readonly NonPostgresStore[] = NON_POSTGRES_STORES,
+): { storedIn: string; holds: string; where: string } | null {
+  const store = stores.find((s) => s.name === name);
+  if (!store) return null;
+  return { storedIn: store.binding, holds: store.holds, where: WHERE_ELSE[name] ?? 'not offered as a download' };
+}
+
 function wordPattern(value: string): RegExp {
   return new RegExp(`\\b${value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
 }
@@ -216,6 +260,32 @@ async function readPostgresTable(env: Env, user: AuthedUser, spec: ExportTable):
       withheld: spec.excluded,
       reason: `the query for ${spec.table} did not succeed, so this file cannot say what it holds`,
     };
+  }
+  // AN EMPTY READ OF A TABLE NOTHING WRITES IS NOT "YOU HAVE NONE OF THESE". `recordedElsewhere` in
+  // user-export.ts names the three: they carry a select policy and no writer, so `[]` is what they
+  // return for a person with thousands of messages. Printed as `count: 0` beside the word
+  // `messages`, that is the observation nothing made — the same defect `unreadable` exists for,
+  // arriving through a reader that worked rather than one that could not run.
+  //
+  // Rows that DO come back are still handed over as `ok`. The live catalogue is older than the
+  // migrations (see the `sparks` retry above), so a row left by a previous version of this product
+  // is possible, and it is this person's; dropping it to make the point would be the worse lie.
+  if (data.length === 0 && spec.recordedElsewhere) {
+    const answer = recordedElsewhereAnswer(spec.recordedElsewhere);
+    if (answer) {
+      return {
+        status: 'not_recorded_here',
+        withheld: spec.excluded,
+        storedIn: answer.storedIn,
+        holds: answer.holds,
+        where: answer.where,
+        reason:
+          `public.${spec.table} can be read and is never written: no code path in this product puts a row `
+          + 'in it, so an empty result is not a count of yours and this file will not print one. What you '
+          + 'are looking for is in the store named in `storedIn`, and this file does not contain it — '
+          + 'fetch it from the route in `where` before you delete anything.',
+      };
+    }
   }
   return { status: 'ok', rows: data, count: data.length, truncated: data.length >= EXPORT_ROW_CAP, withheld: spec.excluded };
 }

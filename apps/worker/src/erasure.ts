@@ -35,6 +35,7 @@ import { ensureProvenanceTables } from './provenance';
 import { ensureWriteTable } from './creator-dashboard';
 import { oncePerIsolate } from './schema-once';
 import { shareGrantPrefix, shareLinkKey, shareLinkProjectPrefix } from './collab-links';
+import { attachmentProjectPrefix } from './attachments';
 import { eraseGeneratedImages } from './generated-images';
 
 /** Typed by the person, in this exact form, before anything is deleted. */
@@ -271,6 +272,16 @@ export async function eraseProjectData(env: Env, projectId: string): Promise<Era
     steps.push(await kvSweep(env, 'workspace trash', `wst:${projectId}:`));
     steps.push(await kvSweep(env, 'generated images', `image:${projectId}:`));
     steps.push(await kvSweep(env, 'generated audio', `audio:${projectId}:`));
+    //[[ THE R2 STEP ABOVE HAS BEEN SAYING "AND ATTACHMENTS" OVER A PREFIX NOBODY WRITES TO.
+    //
+    //   `eraseProjectMedia` sweeps `attachment/<project>/` in R2 and this function reported that as
+    //   "generated images, audio and attachments — erased". No attachment has ever been written
+    //   there: `putAttachment` puts the bytes in KV, and attachments.ts records why. So a file the
+    //   person uploaded survived the deletion they were shown a clean receipt for — the one thing
+    //   the rule at the top of this file forbids. The seven-day KV expiry bounded how long, which
+    //   makes it a false receipt rather than indefinite retention, and a false receipt is the
+    //   failure this file exists to prevent. ]]
+    steps.push(await kvSweep(env, 'chat attachments', attachmentProjectPrefix(projectId)));
     steps.push(await kvSweep(env, 'redeemed share grants', shareGrantPrefix(projectId)));
     steps.push(await eraseShareLinks(env, projectId));
   }

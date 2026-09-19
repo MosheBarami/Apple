@@ -12,7 +12,9 @@
 // surfaced to the reader — a fold whose bytes have aged out says so in the prompt instead of
 // silently dropping the file — and both stop being necessary the day a bucket exists. When one
 // does, `putAttachment`, `readAttachment` and `deleteAttachment` are the three functions to
-// repoint; nothing above them knows which store answered.
+// repoint — and `attachmentProjectPrefix` is the fourth, because a project deletion sweeps by it.
+// Move the bytes without it and the sweep keeps reporting a clean erasure of an empty prefix, which
+// is the defect that shipped once already. Nothing above these four knows which store answered.
 import type { Env } from './env';
 import {
   MAX_ATTACHMENTS_PER_MESSAGE,
@@ -54,7 +56,21 @@ const ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  * socket's binding; a client that hands us an id can only ever address its own project's namespace.
  */
 export function attachmentKvKey(projectId: string, attachmentId: string): string {
-  return `att:${projectId}:${attachmentId}`;
+  return `${attachmentProjectPrefix(projectId)}${attachmentId}`;
+}
+
+/**
+ * Every attachment key belonging to one project — what a deletion has to sweep.
+ *
+ * IT LIVES HERE, BESIDE THE WRITER, BECAUSE THE STORE IS DECLARED MOVABLE AT THE TOP OF THIS FILE.
+ * `erasure.ts` spelled out `ws:`, `image:` and `audio:` as literals and simply had no line for
+ * these, while its R2 step went on reporting "generated images, audio and attachments — erased"
+ * over a bucket prefix no attachment has ever been written to. A prefix exported from the module
+ * that mints the key is the version of that sweep whoever repoints `putAttachment` cannot walk
+ * past: moving the bytes to a bucket breaks this export's callers instead of quietly emptying them.
+ */
+export function attachmentProjectPrefix(projectId: string): string {
+  return `att:${projectId}:`;
 }
 
 /** True for an id this store could have minted. Checked before it is concatenated into a key. */

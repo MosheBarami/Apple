@@ -1,6 +1,12 @@
 // System prompts for Apple's modes. Modes are product surfaces, not models:
 // they set persona, autonomy budget, and verification policy.
 import type { GolemMode } from '@golem/shared';
+// A FACT THE MODEL CANNOT GET ANYWHERE ELSE. search_docs indexes Roblox's public documentation,
+// not Apple's, so nothing in a run tells the model whether its own plugin can be installed today —
+// and asked, it answers from pretraining, which means Toolbox and "Get Plugin". Imported as the
+// constant rather than written as a sentence so the caveat disappears by itself the day the
+// listing comes back, exactly like every install affordance in the UI.
+import { STUDIO_PLUGIN_STORE_LIVE } from '@golem/shared';
 import { worldBuildingBrief } from './worldbuilding.ts';
 
 const IDENTITY = `You are Apple, an AI that builds Roblox experiences with the user — from vague idea to working game.
@@ -341,7 +347,11 @@ export function systemPrompt(opts: {
     : 'Ids come from find_verified_asset (the Creator Store) or from the user.';
   const studio = opts.studioConnected
     ? `Roblox Studio is CONNECTED (place: ${opts.placeName ?? 'unsaved place'}). Use tools to act on the real project.`
-    : `Roblox Studio is NOT connected. You can still discuss, plan, write code for the user to paste, and search docs. Building tools are unavailable; tell the user to open the Apple plugin in Studio and connect (Dashboard → project → "Connect Studio").`;
+    : `Roblox Studio is NOT connected. You can still discuss, plan, write code for the user to paste, and search docs. Building tools are unavailable; tell the user to open the Apple plugin in Studio and connect (Dashboard → project → "Connect Studio").${
+        STUDIO_PLUGIN_STORE_LIVE
+          ? ''
+          : ' Public installation of the plugin is closed right now, so a user who does not already have it cannot get one: never describe a Creator Store, Toolbox or "Get Plugin" install path. Send them to /docs/plugin, which says what is actually available.'
+      }`;
   //[[ MEMORY IS DERIVED FROM UNTRUSTED OUTPUT, so it is capped and fenced like it.
   //
   //   `remember` takes a model-supplied string and this renders it into the SYSTEM prompt,

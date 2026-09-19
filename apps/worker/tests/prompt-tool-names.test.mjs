@@ -22,10 +22,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
+import { STUDIO_PLUGIN_STORE_LIVE } from '@golem/shared';
 import { systemPrompt } from '../src/prompts.ts';
 
 const WORKER = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -129,4 +130,34 @@ test('an unpaired prompt SAYS the building tools are unavailable', () => {
   assert.match(unpaired, /plan|discuss|search docs/i, 'and what the model can still do instead');
   assert.doesNotMatch(paired, /Studio is NOT connected/, 'and a paired session must not be told otherwise');
   assert.ok(unpaired.length > paired.length, 'the unpaired prompt ADDS the notice rather than trimming guidance');
+});
+
+test('AN UNPAIRED PROMPT DOES NOT SEND THE USER AFTER A PLUGIN THEY CANNOT GET', () => {
+  // The prompt tells a disconnected user to open the Apple plugin in Studio. That instruction is
+  // fine for someone who has it and dead for everyone else: public installation is closed
+  // (STUDIO_PLUGIN_STORE_LIVE === false, a moderation removal, not a queue). Every human-written
+  // surface says so — /docs/plugin, /status, the dashboard, the pairing dialog — and the prompt was
+  // the one place it never reached, so the model had no first-party fact to answer "where do I get
+  // it?" with and would answer from pretraining: Creator Store, Toolbox, Get Plugin. What the model
+  // is told becomes what the customer is told, which is why this is a guard and not a comment.
+  //
+  // THE CONDITION IS THE CONSTANT, NOT TODAY'S VALUE. When the appeal succeeds and the flag flips,
+  // the caveat must vanish with it rather than becoming the new stale sentence — so the branch is
+  // asserted both ways round and the source is checked for the import that makes that possible.
+  const unpaired = systemPrompt({ ...BASE, studioConnected: false });
+  const source = readFileSync(join(WORKER, 'src', 'prompts.ts'), 'utf8');
+
+  assert.match(source, /import \{ STUDIO_PLUGIN_STORE_LIVE \} from '@golem\/shared'/,
+    'the availability fact must be imported, so it cannot drift from the UI that shows it');
+
+  if (STUDIO_PLUGIN_STORE_LIVE) {
+    assert.doesNotMatch(unpaired, /installation of the plugin is closed/i,
+      'the store is live again and the prompt still says it is closed');
+    return;
+  }
+  assert.match(unpaired, /installation of the plugin is closed/i,
+    'the model is told to send users after a plugin, and never told they cannot obtain one');
+  assert.match(unpaired, /Creator Store, Toolbox or "Get Plugin"/,
+    'and the install paths it would otherwise invent from pretraining must be named and refused');
+  assert.match(unpaired, /\/docs\/plugin/, 'and it must have somewhere honest to send them instead');
 });

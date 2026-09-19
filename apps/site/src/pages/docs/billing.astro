@@ -58,9 +58,20 @@ import { SUPPORT_EMAIL } from '@golem/shared';
     already paid for</strong> — cancelling on day 3 of a month does not take the allowance away on
     day 3. After that date the account is on Free, with everything still in it.
   </p>
+  {/*
+    "Credits you bought separately" presupposed a purchase a customer cannot make. The behaviour
+    described is real — extra Credits sit in their own balance, survive a subscription ending, and
+    splitSpend takes the day's allowance before touching them — but the only things that can put
+    them there are the Stripe webhook and an admin route, and no code in this repository creates the
+    payment-mode checkout the webhook is waiting for. The presupposition is removed and the gap is
+    said out loud, because a reader planning around "I'll just buy more" needs to know now rather
+    than at the moment their allowance ends.
+  */}
   <p>
-    Credits you bought separately are not a subscription and do not expire with one. They stay on
-    the account, and they are spent only after the day's included allowance is gone.
+    Extra Credits, if an account has any, are separate from a subscription and do not expire with
+    one. They stay on the account, and they are spent only after the day's included allowance is
+    gone. <strong>There is no way to buy them today</strong> — no plan has a credit checkout, and
+    <a href="/pricing">Pricing</a> says the same in its comparison table.
   </p>
 
   <h2 id="not-applied">I paid, and the plan still shows the old one</h2>

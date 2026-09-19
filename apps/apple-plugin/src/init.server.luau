@@ -25,7 +25,14 @@ if not editModeActive() then return end
 
 local Bridge = require(script.Bridge)
 local Commands = require(script.Commands)
-local commands = Commands.new()
+-- ONE DEFINITION OF EDIT MODE, HANDED DOWN — not two kept in step by care. Commands.luau falls
+-- back to RunService:IsEdit() alone when it is given nothing, and IsEdit() stays true in this
+-- DataModel while Studio runs a test (tests/entry-runtime.test.mjs asserts exactly that about the
+-- Studio it models). So the engine's gate would have read "we are in edit mode" at the same moment
+-- this file was force-clearing consent because we are not, and the user would be told to press a
+-- button that refuses. editModeActive() is the definition the consent fence already uses; the
+-- engine gets that one, so a refusal names the thing that is actually shut.
+local commands = Commands.new({ isEdit = editModeActive })
 local allowEdits = false
 local confirmingEdits = false
 local connecting = false

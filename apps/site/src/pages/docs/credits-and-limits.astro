@@ -89,17 +89,38 @@ const sessionShape = modes
     free allowance is a solid daily session — {sessionShape}, or, far more usually, a mix.
   </p>
 
+  {/*
+    TWO SENTENCES WERE REMOVED FROM THIS SECTION, AND BOTH WERE GUARANTEES NOBODY IMPLEMENTS.
+
+    "If Apple estimates a run will be unusually expensive, it says so before starting instead of
+    silently draining your day." There is no pre-run estimate anywhere a customer can see: the wire
+    protocol has no cost-warning message, a run is admitted on a one-Credit spend whose only refusal
+    is a zero balance, and the worker's own preferences.ts downgrades the `ask` tool permission to
+    `deny` because "nothing in this product can interrupt a run to ask". The paragraph above already
+    describes the live running total truthfully and stands on its own; a warning BEFORE the spend is
+    a different promise, and it was not kept.
+
+    "If a request fails on our side — an infrastructure error, not a build that turned out wrong —
+    the Credits come back automatically." Nothing comes back. QuotaDO has no refund route at all —
+    /spend clamps its amount with `Math.max(0, amount)` so a negative cannot be spent, and
+    /grant-credits is "additive only, and never negative" and is reachable only from the Stripe
+    webhook and an admin route. What is true is narrower and is now what this says: a call that
+    failed reports no compute, so it is not charged in the first place. The one Credit taken at the
+    start of the request is not returned, which is why that is said out loud rather than left for a
+    reader to discover on the usage chart.
+  */}
   <h2>How metering works</h2>
   <p>
     Your balance is always visible in the workspace header, and it updates live. One Credit is taken
     when a request starts, and the rest settles against the compute the run actually consumed — so
     the number moves while a long build is working, rather than arriving as a total you could not
-    see coming. If Apple estimates a run will be unusually expensive, it says so before starting
-    instead of silently draining your day.
+    see coming.
   </p>
   <p>
-    If a request fails on our side — an infrastructure error, not a build that turned out wrong —
-    the Credits come back automatically.
+    A step that fails on our side is not charged: Credits are settled from the compute a call
+    actually reported, and a call that returned nothing reports nothing. The one Credit taken when
+    the request started is not given back, and there is no other refund — a run that stops partway
+    keeps whatever the finished steps cost.
   </p>
 
   <h2>The daily reset — and the monthly ceiling behind it</h2>
@@ -134,6 +155,27 @@ const sessionShape = modes
     <li>Everything that does not burn inference keeps working: reading chat history, browsing your project, creating and restoring checkpoints, pairing Studio.</li>
     <li>Nothing is deleted, downgraded or lost. You are just out of energy until the reset.</li>
   </ul>
+
+  {/*
+    THE SHARED CEILING WAS NOWHERE ON THIS PAGE, AND /docs/troubleshooting SENDS READERS HERE FOR IT.
+
+    That page's capacity paragraph ends "See Credits & limits for the difference between the two" —
+    and there was no second limit here to be different from. A customer met the service-wide wall
+    for the first time as an error message, having read the page that was supposed to have told
+    them. Described without a figure on purpose: the ceiling lives in apps/worker/src/pricing.ts and
+    is the owner's to move, and a number copied onto a marketing page is a number free to drift.
+    What does not drift is that the limit exists, is shared, and is not the reader's allowance.
+  */}
+  <h2>The limit that is not yours</h2>
+  <p>
+    Your allowance is not the only ceiling. Apple also caps what the <em>whole service</em> spends
+    on inference in a day, shared by everyone using it, and that cap can be reached while your own
+    balance still has Credits in it. A run stopped by it says so in its own words — “Apple has
+    reached today's shared building capacity” — and it resets at midnight UTC like everything else
+    here. It exists so that one runaway build cannot take the free tier down for the rest of the
+    day. <a href="/docs/troubleshooting">Troubleshooting</a> covers what a run that hits it costs
+    you and what it leaves behind.
+  </p>
 
   <h2>Project files</h2>
   <p>

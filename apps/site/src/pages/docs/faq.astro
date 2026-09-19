@@ -29,16 +29,38 @@ const general = [
     a: `<p>Apple works on the place open in the paired Studio window. In Team Create sessions its edits appear to teammates like any collaborator's edits. One pairing belongs to one Studio window; teammates who want their own Apple chats should use their own accounts and projects.</p>`,
   },
   {
+    // "Credits for unexecuted work on our side are refunded" was not true and could not become
+    // true: the quota object has no refund route, /spend clamps its amount at zero so a negative
+    // cannot be spent, and the only additive route is reachable from the Stripe webhook and an
+    // admin key. Nothing is refunded because nothing needs to be — work that never ran reports no
+    // compute and is never charged. That is the narrower claim, and it is the one that holds.
     q: 'What happens if I close Studio mid-build?',
-    a: `<p>The agent notices it lost its hands and pauses the run with a clear message; Credits for unexecuted work on our side are refunded per the <a href="/docs/credits-and-limits">limits policy</a>. Reopen the place, reconnect, and ask Apple to continue — the plan and history are still in the project.</p>`,
+    a: `<p>The agent notices it lost its hands and pauses the run with a clear message. Work that never ran is never charged — Credits settle against the compute a call actually reported, and a call that did not happen reports nothing. Reopen the place, reconnect, and ask Apple to continue — the plan and history are still in the project.</p>`,
   },
   {
     q: 'Apple made a change I hate. Now what?',
     a: `<p>Three exits, in order of size: press <kbd>Ctrl+Z</kbd> in Studio (each Apple batch is one native undo step); restore the automatic checkpoint taken before the run; or just tell Apple what you hate — it can usually fix a wrong turn faster than a rollback.</p>`,
   },
   {
+    //[[ THIS ANSWER SAID "Not yet", AND THE FEATURE WAS ALREADY IN THE READER'S OWN ACCOUNT.
+    //
+    //   The HTTP API shipped the day after this answer was last edited, and nobody came back to it.
+    //   `GET /v1` answers 401 with "Provide an API key as `Authorization: Bearer gk_live_…`" on the
+    //   live worker — a gated surface, not an absent one — and Settings → Connections → API keys
+    //   mints, lists, rotates and revokes keys behind nothing but a signed-in session: no plan gate,
+    //   no allowlist. So the docs denied a capability the product was handing out, and the reader
+    //   either never found it or found it and stopped believing the manual.
+    //
+    //   NO LINK TO A DOCS PAGE, BECAUSE THERE IS NO DOCS PAGE. The API describes itself at GET /v1
+    //   and GET /v1/openapi.json, both of which need only a valid key, and that is what this points
+    //   at. Inventing an /docs/api href here would trade one false sentence for a dead link.
+    //
+    //   AND NO SDK. The panel in the app names one; `packages/sdk` is `"private": true` and is
+    //   published nowhere, so a customer cannot install what that word promises. Naming it here
+    //   would spread the same defect onto a second surface.
     q: 'Is there an API or a way to script Apple itself?',
-    a: `<p>Not yet. The web workspace and Studio plugin are the two supported surfaces at v0.1. If you have an automation use case, email us — real use cases move the roadmap.</p>`,
+    a: `<p>Yes. There is an HTTP API at <code>/v1</code> on the same host as the app, with scoped keys: chat completions, your projects and their transcripts, starting an agent run, a server-sent event stream of run state, and a Model Context Protocol endpoint for MCP clients.</p>
+      <p>Mint a key under <strong>Settings &rarr; Connections &rarr; API keys</strong> in the app — you see the secret once, and you can rotate or revoke it from the same panel. The surface documents itself: <code>GET /v1</code> lists every route and the scope it needs, and <code>GET /v1/openapi.json</code> is the machine-readable description. Both accept any valid key. There is no separate docs page for it yet, and no published client library — the API is the thing that exists.</p>`,
   },
   {
     q: 'How do I report a bug or ask for a feature?',

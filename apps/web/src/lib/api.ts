@@ -1211,8 +1211,21 @@ export async function downloadExport(
   return { filename, bytes: received, verified };
 }
 
+/**
+ * The purge result, in full, because `ok` is the half that was being thrown away.
+ *
+ * The worker is honest — it returns `ok: res.ok && failed.length === 0` and names every store that
+ * refused — and the caller awaited this and looked at none of it. `failed` is what turns "something
+ * went wrong" into a sentence naming the thing.
+ */
+export interface PurgeResult {
+  ok: boolean;
+  failed?: string[];
+  steps?: { store: string; target: string; status: string; detail?: string }[];
+}
+
 export const purgeProject = (projectId: string) =>
-  request<{ ok: boolean }>(`/api/projects/${encodeURIComponent(projectId)}/purge`, { method: 'POST' });
+  request<PurgeResult>(`/api/projects/${encodeURIComponent(projectId)}/purge`, { method: 'POST' });
 
 // ---------------------------------------------------------------- members and access
 //

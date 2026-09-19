@@ -202,6 +202,33 @@ test('every remedy in the vocabulary is an instruction, and none of them invents
   }
 });
 
+test('EVERY code in the vocabulary is attached to a refusal — not just the ones someone remembered', async () => {
+  // THE GUARD WHOSE ABSENCE COST THREE REMEDIES. The check above ran the other direction: it asked
+  // whether the codes the plugin sends are defined, and three codes that NO refusal carried sailed
+  // through it for weeks. take_asset_first, choose_allowed_target and choose_scriptless_asset were
+  // written, exported, unit-tested through replyWithRemedy, and unreachable — so the customer whose
+  // asset Roblox would not load got the worker's honest "this build does not report what would
+  // resolve this refusal" while the product had the answer written down one file away, and the
+  // anti-fabrication replacement never armed because it keys off a remedy that was never set.
+  //
+  // This asks the question that would have caught it: for each key of the vocabulary, does the
+  // SHIPPED plugin ever attach it? Source text rather than execution, because the alternative is a
+  // Studio, and because the failure being guarded is a code that appears nowhere — which a grep
+  // answers exactly. The cost of adding a code is now one line in Commands.luau, which is the point.
+  const { REFUSAL_REMEDIES } = await import('../../../packages/shared/src/index.ts');
+  const plugin = ['apps/apple-plugin/src/Commands.luau', 'apps/apple-plugin/src/Bridge.luau']
+    .map((relative) => readFileSync(join(ROOT, relative), 'utf8'))
+    .join('\n');
+  for (const code of Object.keys(REFUSAL_REMEDIES)) {
+    assert.match(
+      plugin,
+      new RegExp(`"${code}"`),
+      `${code} is a remedy the product promises and no refusal in the shipped plugin carries it — ` +
+        'either attach it at the refusal it answers or delete the promise',
+    );
+  }
+});
+
 test('THE PLUGIN ACTUALLY SENDS THE CODE — the vocabulary is not a table nothing populates', () => {
   const src = readFileSync(join(ROOT, 'apps/apple-plugin/src/Commands.luau'), 'utf8');
   // Read at the refusal sites, not by counting the word: a remedy defined and never attached is
@@ -248,10 +275,30 @@ test('a run with no refusal is left exactly alone', () => {
 test('the correction cannot be an empty flourish', () => {
   // Falsification: if REFUSAL_REMEDIES[code] were ever blank, this would ship a bold heading with
   // nothing after it — a product-authored sentence that says less than the silence it replaced.
-  for (const code of ['edit_consent', 'leave_test_mode', 'take_asset_first', 'none']) {
+  // Split on the heading's closing `**` rather than on one heading's wording: there are two
+  // headings now, because one of the remedies is Roblox's rule and not Apple's, and pinning this
+  // check to the Apple-voiced spelling would have quietly stopped covering the other one.
+  for (const code of ['edit_consent', 'leave_test_mode', 'take_asset_first', 'choose_allowed_target', 'choose_scriptless_asset', 'none']) {
     const out = replyWithRemedy('x', code);
-    const after = out.split('Roblox Studio setting.**')[1] ?? '';
+    const after = out.split('**').slice(2).join('**');
     assert.ok(after.trim().length > 30, `${code}: the correction adds a heading and no instruction`);
+  }
+});
+
+test('the heading does not blame Apple for a rule Roblox enforces', () => {
+  // The heading is signed by the product, so "this is Apple's own limit" is a claim, not a framing.
+  // `take_asset_first` exists because ROBLOX will not let a plugin load an asset the signed-in
+  // account does not own — Apple has no gate there, and the remedy text says as much. Before this
+  // split the reply would have asserted Apple's limit in bold and then explained Roblox's rule
+  // directly underneath it. Both headings must still deny that a Studio setting exists, which is
+  // the reason the heading was written in the first place.
+  const roblox = replyWithRemedy('x', 'take_asset_first');
+  assert.doesNotMatch(roblox, /Apple's own limit/, 'an ownership refusal is not Apple imposing a limit');
+  assert.match(roblox, /Roblox's rule/);
+  assert.match(roblox, /no Roblox Studio setting lifts it/, 'the fiction denial must survive the split');
+  for (const code of ['edit_consent', 'leave_test_mode', 'choose_allowed_target', 'choose_scriptless_asset', 'none']) {
+    const out = replyWithRemedy('x', code);
+    assert.match(out, /Apple's own limit, not a Roblox Studio setting/, `${code} is Apple's own gate and should still say so`);
   }
 });
 
