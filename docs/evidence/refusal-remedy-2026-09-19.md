@@ -1,4 +1,4 @@
-# A refusal that names no remedy gets one invented — and naming it did not help
+# A refusal that names no remedy gets one invented — and naming it was not enough either
 
 ## The defect
 
@@ -55,8 +55,8 @@ same request:
 > To resolve this, you must manually adjust the security settings in Studio: Go to
 > `File > Place Settings > Security`, uncheck "Require explicit edit consent for scripts"…
 
-So **w34 is not done**, and it is not marked done. Six changes that each look right have not moved
-the observable behaviour.
+At this point w34 was not done and was not marked done: six changes that each looked right had not
+moved the observable behaviour. What follows is why, and what finally did.
 
 ## The instrument existed, and it settles it: the plumbing works, the model ignores it
 
@@ -90,6 +90,36 @@ dialog already gets right ("Studio is connected. Enable edits in the plugin befo
 change your place") — rendered from the op row, beside the reply, whatever the model says. That is
 the next step, and it is a different kind of change from the six above.
 
+## The fix, and it is observed working
+
+If the model will not be told, the sentence stops being the model's to write.
+
+`AgentState` now carries the run's first refusal remedy, recorded in `execStudioOp` from the code
+the plugin sent (the FIRST one wins: a later refusal describes the model's improvisation, not the
+user's request). `finishRun` composes the reply through `replyWithRemedy`, a pure exported function
+in `op-failure.ts` with its own tests, so this sentence is tested rather than asserted about. The
+same text goes to the live socket and to the stored row, because a correction that appears only
+after a reload is the two-accounts-of-one-event bug the outcome model exists to prevent.
+
+Live, on the deployed product, Studio paired, consent off, same request as every attempt above:
+
+> I cannot create `RemedyProbe4` due to the same "explicit edit consent" restriction. This is a
+> **Studio-level security setting**… Go to `File > Place Settings > Security`. Uncheck "Require
+> explicit edit consent for scripts"…
+>
+> **Apple could not change your place, and this is Apple's own limit, not a Roblox Studio setting.**
+> In Studio, open the Apple panel and press "Enable edits…", then "Allow edits for this connection".
+> Consent is per connection and turns off when you disconnect.
+
+The user is now told the truth, in the product's own voice, directly contradicting the fiction above
+it. That is w34's criterion — a refusal names the remedy that exists — and it is met.
+
+**What is NOT fixed, and is opened as its own row:** the model's invented menu is still printed
+above the correction. Two accounts of one event, one of them false, is worse than one; the reason it
+is appended rather than substituted is that the model's text usually also contains something true
+about what it attempted, and deciding that automatically is a different problem. The correction is
+bold, signed and last, which is the best that appending can do.
+
 ## One worry raised and retired
 
 After one restart the panel read **"Access: edits allowed for this connection"** on what looked like
@@ -100,7 +130,9 @@ security-relevant claim that turns out to be a measurement artifact is worth say
 
 ## Not verified
 
-- Whether `fix` reaches the model. See above; the instrument does not exist yet.
+- Whether the model reads `fix` specifically. The oplog proves the `error` STRING reached the
+  worker in full; `fix` is attached beside it in the same result object and was not separately
+  observed, because the oplog stores `summary`, not the whole tool payload.
 - Whether GLM-5.3 Flash can be steered off this at all by prompt. Three prompt-level and
   message-level interventions have not moved it, which is evidence but not proof.
 - Any refusal other than edit consent. `leave_test_mode` and `none` are coded and unit-tested;

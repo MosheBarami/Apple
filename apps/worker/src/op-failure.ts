@@ -26,7 +26,7 @@
  * against somebody's place on the strength of a guess.
  */
 import { REFUSAL_REMEDIES, isRefusalRemedyCode } from '@golem/shared';
-import type { OpFailureKind, OpResult, StudioOp } from '@golem/shared';
+import type { OpFailureKind, OpResult, StudioOp, RefusalRemedyCode } from '@golem/shared';
 
 /**
  * The ops that change the user's place. Mirrors the `MUTATING` table in apps/plugin/src/Ops.luau,
@@ -176,5 +176,25 @@ export function remedyHint(result: Pick<OpResult, 'ok' | 'failure' | 'remedy'>):
     'This build does not report what would resolve this refusal. Say that you do not know how to ' +
     'enable it rather than guessing at a Studio setting; a wrong instruction costs the user more ' +
     'than an honest "I am not sure".'
+  );
+}
+
+/**
+ * The reply the USER sees when a run hit a refusal the product can explain.
+ *
+ * Pure, exported and tested, rather than inline in finishRun, because the sentence is the whole
+ * point of w34 and a source-text assertion is not a test of a sentence.
+ *
+ * It APPENDS rather than replaces. The model's own text usually still contains something true
+ * about what it attempted, and the user should be able to see both accounts and believe the one
+ * that is signed. What it must never do is stay silent: on 2026-09-19 the model was handed the
+ * correct remedy in the string it paraphrases, under a prompt naming and forbidding the exact
+ * fiction, and told the user to uncheck a checkbox that does not exist in Roblox Studio.
+ */
+export function replyWithRemedy(content: string, remedy: RefusalRemedyCode | undefined | null): string {
+  if (!isRefusalRemedyCode(remedy)) return content;
+  return (
+    `${content}\n\n**Apple could not change your place, and this is Apple's own limit, not a ` +
+    `Roblox Studio setting.** ${REFUSAL_REMEDIES[remedy]}`
   );
 }

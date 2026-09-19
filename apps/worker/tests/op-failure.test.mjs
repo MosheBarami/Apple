@@ -28,7 +28,7 @@ const out = join(mkdtempSync(join(tmpdir(), 'opfail-')), 'op-failure.mjs');
 execFileSync(join(HERE, '..', 'node_modules', '.bin', 'esbuild'),
   [join(HERE, '..', 'src', 'op-failure.ts'), '--bundle', '--format=esm', '--platform=neutral',
    '--main-fields=main,module', '--outfile=' + out], { stdio: 'pipe' });
-const { retryEligibility, retryHint, remedyHint, mutates, MUTATING_OPS, asFailureKind, WORKER_FAILURES } = await import(out);
+const { retryEligibility, retryHint, remedyHint, replyWithRemedy, mutates, MUTATING_OPS, asFailureKind, WORKER_FAILURES } = await import(out);
 
 const fail = (failure) => ({ ok: false, failure });
 
@@ -218,4 +218,35 @@ test('THE PLUGIN ACTUALLY SENDS THE CODE — the vocabulary is not a table nothi
     'the edit-mode refusal no longer carries its remedy code');
   assert.match(src, /UNSUPPORTED\[name\], started, "none"/,
     'a deliberately unsupported op no longer says that nothing enables it');
+});
+
+// ------------------------------------------- the sentence the model is no longer trusted to write
+
+test('a run that hit a refusal ends with the PRODUCT saying whose limit it is', () => {
+  const modelText = 'Go to File > Place Settings > Security and uncheck "Require explicit edit consent for scripts".';
+  const out = replyWithRemedy(modelText, 'edit_consent');
+  // The model's own account is kept — it usually contains something true about what it attempted,
+  // and the user should see both and believe the signed one.
+  assert.ok(out.startsWith(modelText), 'the model text was replaced rather than answered');
+  assert.match(out, /Apple's own limit, not a Roblox Studio setting/);
+  assert.match(out, /Enable edits/);
+  assert.match(out, /Allow edits for this connection/);
+});
+
+test('a run with no refusal is left exactly alone', () => {
+  const text = 'Built the platform.';
+  assert.equal(replyWithRemedy(text, undefined), text);
+  assert.equal(replyWithRemedy(text, null), text);
+  // An unknown code is not a remedy. Appending a blank correction would be worse than none.
+  assert.equal(replyWithRemedy(text, 'not_a_code'), text);
+});
+
+test('the correction cannot be an empty flourish', () => {
+  // Falsification: if REFUSAL_REMEDIES[code] were ever blank, this would ship a bold heading with
+  // nothing after it — a product-authored sentence that says less than the silence it replaced.
+  for (const code of ['edit_consent', 'leave_test_mode', 'take_asset_first', 'none']) {
+    const out = replyWithRemedy('x', code);
+    const after = out.split('Roblox Studio setting.**')[1] ?? '';
+    assert.ok(after.trim().length > 30, `${code}: the correction adds a heading and no instruction`);
+  }
 });

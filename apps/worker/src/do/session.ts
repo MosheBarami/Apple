@@ -31,6 +31,7 @@ import type {
   PluginCapabilityReportV1,
 } from '@golem/shared';
 import { canUseProductModel, isRunFailure, MESSAGE_MAX_CHARS, recordsRevision, type AssetSourcePolicy } from '@golem/shared';
+import { isRefusalRemedyCode, type RefusalRemedyCode } from '@golem/shared';
 
 /**
  * The edit history being moved onto the message that replaces an edited one.
@@ -99,7 +100,7 @@ import {
   type RunAccessVerdict,
 } from '../run-access';
 import { placeAdmission, readPlaceReport, servesOps, type PlaceAdmission } from '../studio-place';
-import { WORKER_FAILURES, asFailureKind } from '../op-failure';
+import { WORKER_FAILURES, asFailureKind, replyWithRemedy } from '../op-failure';
 import { latestSelection, sameSelection, companionOpAccess, sanitizeCompanionOp, companionRefusal } from '../companion';
 import {
   MIN_QUERY,
@@ -162,6 +163,23 @@ const pluginCapabilitiesKey = (tokenHash: string): string => `pluginCapabilities
 
 interface AgentState {
   status: 'idle' | 'running' | 'stopping';
+  /**
+   * The remedy code of a Studio refusal this run hit, if any.
+   *
+   * THE REASON THIS IS NOT LEFT TO THE MODEL. On 2026-09-19 the plugin refused a write for want of
+   * edit consent and said so, in full, naming the button that lifts it and denying that it is a
+   * Studio setting — verified in the oplog. The model was handed that sentence, under a system
+   * prompt that names and forbids the exact fiction, and told the user to uncheck "Require explicit
+   * edit consent for scripts" under File > Place Settings > Security, which does not exist. Six
+   * corrections at six layers did not move it.
+   *
+   * So the sentence stops being the model's to write. A refusal with a known remedy is a
+   * deterministic fact, and finishRun appends the product's own words to the reply — the same
+   * treatment `incomplete` already gets, and for the same reason: a reply that sends the user
+   * hunting for a setting that was never there is worse than an error, because they have no reason
+   * to doubt it.
+   */
+  refusalRemedy?: RefusalRemedyCode;
   /** the run's unforgeable fence id; optional so a run persisted by an older deploy still loads */
   fenceId?: string;
   mode: GolemMode;
@@ -3793,16 +3811,23 @@ export class SessionDO extends DurableObject<Env> {
           'there is nothing to undo — ask me again and I will build it.'
         : agent.finalText || (reason === 'stopped' ? 'Stopped.' : 'Done.')
     );
-    if (content !== agent.streamedText) {
-      // make sure fallback/step-limit text reaches clients that saw no delta for it
-      this.broadcast({ type: 'delta', msgId: agent.msgId, text: agent.streamedText ? '\n' + content : content });
+    // THE PRODUCT'S OWN WORDS, ADDED AFTER THE MODEL'S. Not an override, because the model's text
+    // usually also contains something true about what it tried; and not a silent replacement,
+    // because the user should be able to see both and believe the one that is signed.
+    const withRemedy = replyWithRemedy(content, agent.refusalRemedy);
+    if (withRemedy !== agent.streamedText) {
+      // make sure fallback/step-limit text reaches clients that saw no delta for it. The live
+      // socket and the stored row carry the SAME text: a remedy visible only after a reload would
+      // be the two-accounts-of-one-event bug the outcome model was written to end.
+      const delta = agent.streamedText ? withRemedy.slice(agent.streamedText.length) || '\n' + withRemedy : withRemedy;
+      this.broadcast({ type: 'delta', msgId: agent.msgId, text: delta });
     }
     this.sql.exec(
       `insert into messages(id, role, mode, content, tool_trace, created_at) values(?,?,?,?,?,?)`,
       agent.msgId,
       'assistant',
       agent.mode,
-      content,
+      withRemedy,
       JSON.stringify(agent.trace),
       Date.now(),
     );
@@ -4351,6 +4376,11 @@ export class SessionDO extends DurableObject<Env> {
         resolve(r);
       });
     });
+    // The FIRST refusal of the run wins: it is the one the user asked for, and a later refusal of a
+    // recovery attempt describes the model's improvisation rather than their request.
+    if (run && run.refusalRemedy === undefined && !result.ok && result.failure === 'refused' && isRefusalRemedyCode(result.remedy)) {
+      run.refusalRemedy = result.remedy;
+    }
     this.sql.exec(
       `insert into oplog(op_id, kind, ok, summary, created_at, failure, run_id) values(?,?,?,?,?,?,?)`,
       op.id,
