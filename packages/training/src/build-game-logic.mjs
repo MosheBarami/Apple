@@ -10,6 +10,7 @@ import { GAME_LOGIC_CURRICULUM } from './game-logic-curriculum.mjs';
 import { GAME_LOGIC_CURRICULUM_EXTENSION } from './game-logic-curriculum-extension.mjs';
 import { UI_LOGIC_CURRICULUM } from './ui-logic-curriculum.mjs';
 import { CONTRACT_GENERALIZATION_CURRICULUM } from './contract-generalization-curriculum.mjs';
+import { GAME_LOGIC_CURRICULUM_E } from './game-logic-curriculum-e.mjs';
 import { loadEvalGuard, detectContextDependencies } from './audit-dataset.mjs';
 import { assignSplits, shingles } from './build-dataset.mjs';
 import { checkNoAntipattern } from '../../evals/src/roblox-antipatterns.mjs';
@@ -22,6 +23,7 @@ export const ALL_GAME_LOGIC_CURRICULUM = [
   ...GAME_LOGIC_CURRICULUM_EXTENSION,
   ...UI_LOGIC_CURRICULUM,
   ...CONTRACT_GENERALIZATION_CURRICULUM,
+  ...GAME_LOGIC_CURRICULUM_E,
 ];
 
 export function preserveFamilySplits(counts, previousCard, newFamilySplits = {}) {

@@ -6,7 +6,7 @@ import { CONTRACT_GENERALIZATION_CURRICULUM, CONTRACT_GENERALIZATION_SPLITS } fr
 import { GAME_LOGIC_CURRICULUM } from './game-logic-curriculum.mjs';
 import { GAME_LOGIC_CURRICULUM_EXTENSION } from './game-logic-curriculum-extension.mjs';
 import { UI_LOGIC_CURRICULUM } from './ui-logic-curriculum.mjs';
-import { buildGameLogic, verifyExample } from './build-game-logic.mjs';
+import { buildGameLogic, verifyExample, ALL_GAME_LOGIC_CURRICULUM } from './build-game-logic.mjs';
 
 const priorExamples = [...GAME_LOGIC_CURRICULUM, ...GAME_LOGIC_CURRICULUM_EXTENSION, ...UI_LOGIC_CURRICULUM];
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
@@ -26,8 +26,18 @@ test('the bounded extension contains two train and two untouched transfer famili
 test('v4 preserves every reviewed-v3 row and keeps new transfer answers outside train', () => {
   const priorCard = JSON.parse(readFileSync(new URL('../data/game-logic-seeds-v3-reviewed/dataset-card.json', import.meta.url), 'utf8'));
   const current = buildGameLogic({ previousCard: priorCard, newFamilySplits: CONTRACT_GENERALIZATION_SPLITS });
-  assert.equal(current.card.examples, 28);
-  assert.deepEqual(current.card.splitSizes, { train: 20, val: 3, test: 5 });
+  // PRESERVATION, NOT SIZE. These were `examples === 28` and `splitSizes === {20,3,5}` — the
+  // shape of the v4 build on the day it was written. They went red the moment the curriculum
+  // grew, which is what this repository keeps asking it to do; a guard that fires because the
+  // dataset got bigger is measuring the wrong thing. The claim in the test's own name is that
+  // v4's rows are PRESERVED, so that is what is asserted now: nothing the aggregate curriculum
+  // contains is dropped, and the families v4 froze still split exactly 20/3/5 however many
+  // families are added beside them. True at 28, true at 53, true at 500.
+  assert.equal(current.card.examples, ALL_GAME_LOGIC_CURRICULUM.length, 'the build dropped an example');
+  const v4Families = new Set([...Object.keys(priorCard.families), ...Object.keys(CONTRACT_GENERALIZATION_SPLITS)]);
+  const v4Sizes = Object.fromEntries(Object.entries(current.splits).map(
+    ([split, rows]) => [split, rows.filter((row) => v4Families.has(row.meta.family)).length]));
+  assert.deepEqual(v4Sizes, { train: 20, val: 3, test: 5 }, 'v4\'s own rows moved between splits');
   assert.equal(current.card.lineage.previousDigest, priorCard.digest);
   assert.equal(current.card.lineage.preservedFamilies, 24);
   for (const [family, split] of Object.entries(priorCard.families)) assert.equal(current.card.families[family], split, family);
