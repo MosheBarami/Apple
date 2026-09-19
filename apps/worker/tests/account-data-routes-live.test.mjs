@@ -122,8 +122,8 @@ function seedD1() {
   db.raw.exec(`create table if not exists creator_write_log(id integer primary key autoincrement, user_id text not null, at text not null, action text not null, roblox_creator_id text not null, creator_type text not null, target text, ok integer not null, http_status integer, request text, response text)`);
   db.raw.exec(`create table if not exists project_asset_use(project_id text not null, asset_id text not null, first_used_at text not null, last_used_at text not null, uses integer not null default 1, via_live_api integer not null default 0, context text, primary key(project_id, asset_id))`);
   db.raw.exec('CREATE TABLE generated_images(project_id TEXT NOT NULL, image_id TEXT NOT NULL, base64 TEXT NOT NULL, stored_bytes INTEGER NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY(project_id,image_id))');
-  x('INSERT INTO generated_images VALUES (?, ?, ?, ?, ?)', PROJECT, 'image-a', 'pixels', 6, 1);
-  x('INSERT INTO generated_images VALUES (?, ?, ?, ?, ?)', BOBS_PROJECT, 'image-b', 'pixels-b', 8, 1);
+  x('INSERT INTO generated_images (project_id, image_id, base64, stored_bytes, created_at) VALUES (?, ?, ?, ?, ?)', PROJECT, 'image-a', 'pixels', 6, 1);
+  x('INSERT INTO generated_images (project_id, image_id, base64, stored_bytes, created_at) VALUES (?, ?, ?, ?, ?)', BOBS_PROJECT, 'image-b', 'pixels-b', 8, 1);
 
   x(`insert into api_keys values (?,?,?,?,?,?,?,?,?,?,?)`, 'k1', ALICE, 'live', 'ci', 'HASH-OF-THE-KEY', '[]', '[]', 1, null, null, null);
   x(`insert into api_keys values (?,?,?,?,?,?,?,?,?,?,?)`, 'k2', BOB, 'live', 'bobs', 'BOB-HASH', '[]', '[]', 1, null, null, null);

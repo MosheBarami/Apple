@@ -77,7 +77,12 @@ export interface AccountExport {
  * offered as a download" is a real answer and is written as such; an empty string is not.
  */
 const WHERE_ELSE: Readonly<Record<string, string>> = {
-  generated_images: 'GET /api/projects/{projectId}/images/{imageId} — private saved images, linked from each conversation result',
+  generated_images: 'GET /api/projects/{projectId}/images/{imageId} — the index of your private saved images, linked from each conversation result',
+  // The same route answers for both halves, because a person asking for their images wants the
+  // files and not the rows that point at them. Naming the bucket separately is what keeps the
+  // inventory honest about where the bytes are; naming the same route twice is what keeps the
+  // answer useful.
+  'image/<project>/': 'GET /api/projects/{projectId}/images/{imageId} — the image files themselves, served from the same authenticated route',
   generated_image_tombstones: 'not offered as a download — only deleted project IDs remain to prevent late writes from recreating erased images',
   messages: 'GET /api/projects/{projectId}/export — the full transcript, one file per project',
   message_models: 'GET /api/projects/{projectId}/export — model identity travels with the transcript',

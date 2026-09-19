@@ -83,7 +83,7 @@ export const RETENTION_POLICY: readonly RetentionRule[] = [
   { key: 'serviceSpendDays', what: 'service-wide inference spend, with no account attached', window: `${RETENTION.serviceSpendDays} days`, where: 'BudgetDO', personal: false },
   { key: 'checkpointsKept', what: 'snapshots of your place', window: `the newest ${RETENTION.checkpointsKept} per project`, where: 'SessionDO', personal: true },
   { key: 'generatedImageSeconds', what: 'temporary previews and older generated images', window: `${RETENTION.generatedImageSeconds / 3600} hour`, where: 'KV', personal: true },
-  { key: 'generatedImagesKept', what: 'new generated images saved with your project', window: `until project deletion; at most ${RETENTION.generatedImagesKept} per project`, where: 'D1', personal: true },
+  { key: 'generatedImagesKept', what: 'new generated images saved with your project', window: `until project deletion; at most ${RETENTION.generatedImagesKept} per project`, where: 'R2 (the row that indexes it is in D1)', personal: true },
   { key: 'generatedAudioSeconds', what: 'sound the agent generated for you', window: `${RETENTION.generatedAudioSeconds / 3600} hour`, where: 'KV', personal: true },
   { key: 'workspaceTrashDays', what: 'workspace files you deleted, while they are still recoverable', window: `${RETENTION.workspaceTrashDays} days`, where: 'KV', personal: true },
   { key: 'memoryMaxTtlDays', what: 'the longest expiry you may set on anything Apple remembers', window: `${RETENTION.memoryMaxTtlDays} days`, where: 'D1 memory_entries', personal: true },

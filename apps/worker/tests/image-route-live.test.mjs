@@ -102,7 +102,7 @@ test('JPEG output is delivered as JPEG rather than mislabeled PNG', async () => 
 
 test('a durable image is served after 90 days without a cached authorization bypass', async () => {
   const id = '99999999-9999-4999-8999-999999999999';
-  await env.CORPUS.prepare('INSERT INTO generated_images VALUES (?, ?, ?, ?, ?)')
+  await env.CORPUS.prepare('INSERT INTO generated_images (project_id, image_id, base64, stored_bytes, created_at) VALUES (?, ?, ?, ?, ?)')
     .bind(A_PROJECT, id, PNG_B64, PNG_B64.length, Date.now() - 90 * 86400_000).run();
   const res = await app.request(url(A_PROJECT, id), as(ALICE), env);
   assert.equal(res.status, 200);

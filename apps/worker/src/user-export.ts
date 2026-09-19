@@ -232,10 +232,10 @@ export const NOT_EXPORTED_TABLES: Readonly<Record<string, string>> = {
 
 export interface NonPostgresStore {
   /** Which kind of storage, and therefore which binding erases it. */
-  store: 'd1' | 'do' | 'kv' | 'vectorize';
-  /** A D1 or Durable Object SQLite table, a KV key prefix, or a named storage area. */
+  store: 'd1' | 'do' | 'kv' | 'vectorize' | 'r2';
+  /** A D1 or Durable Object SQLite table, a KV key prefix, an R2 key prefix, or a named area. */
   name: string;
-  binding: 'CORPUS' | 'KV' | 'VEC' | 'SESSION_DO' | 'QUOTA_DO' | 'ADMIN_DO' | 'BUDGET_DO' | 'PAIRING_DO' | 'DISCORD_DO';
+  binding: 'CORPUS' | 'KV' | 'VEC' | 'MEDIA' | 'SESSION_DO' | 'QUOTA_DO' | 'ADMIN_DO' | 'BUDGET_DO' | 'PAIRING_DO' | 'DISCORD_DO';
   /** What it holds, in the words you would use to a person asking what you know about them. */
   holds: string;
   /** Whether a row in it can be tied to one identifiable person. */
@@ -321,7 +321,12 @@ export const NON_POSTGRES_STORES: readonly NonPostgresStore[] = [
   { store: 'kv', binding: 'KV', name: 'ws:<project>:', personal: true, holds: 'the files the agent wrote in a project workspace' },
   { store: 'kv', binding: 'KV', name: 'wsv:<project>:', personal: true, holds: 'earlier versions of those files' },
   { store: 'kv', binding: 'KV', name: 'wst:<project>:', personal: true, holds: 'deleted workspace files, until the trash window expires' },
-  { store: 'd1', binding: 'CORPUS', name: 'generated_images', personal: true, holds: 'generated image files until project deletion; download from the authenticated image result' },
+  // THE ROW IS THE INDEX, NOT THE FILE, since the pixels moved to R2. Saying "generated image
+  // files" of a table that now holds a key and a byte count would understate this store to someone
+  // asking what is kept about them and overstate that one — and this list is the answer a person
+  // gets when they ask, so both halves have to be named.
+  { store: 'd1', binding: 'CORPUS', name: 'generated_images', personal: true, holds: 'the index of your saved images — which project, how large, when, and the key to the file' },
+  { store: 'r2', binding: 'MEDIA', name: 'image/<project>/', personal: true, holds: 'the generated image files themselves, until project deletion; download from the authenticated image result' },
   { store: 'd1', binding: 'CORPUS', name: 'generated_image_tombstones', personal: true, holds: 'deleted project IDs retained to fence late image writes; no pixels or account details' },
   { store: 'kv', binding: 'KV', name: 'image:<project>:', personal: true, holds: 'temporary previews and older generated images, for an hour' },
   { store: 'kv', binding: 'KV', name: 'audio:<project>:', personal: true, holds: 'generated audio, for an hour' },

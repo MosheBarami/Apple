@@ -85,7 +85,7 @@ test('storage-full preflight refuses before the paid model or BudgetDO', async (
   try {
     await STORE.ensureGeneratedImageTables(db);
     for (let i = 0; i < STORE.GENERATED_PROJECT_COUNT; i += 1) {
-      db.raw.prepare('INSERT INTO generated_images VALUES (?, ?, ?, ?, ?)')
+      db.raw.prepare('INSERT INTO generated_images (project_id, image_id, base64, stored_bytes, created_at) VALUES (?, ?, ?, ?, ?)')
         .run('project-full', `seed-${i}`, PNG, 1, i);
     }
 

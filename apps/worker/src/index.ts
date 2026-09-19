@@ -981,19 +981,26 @@ app.get('/api/projects/:id/images/:imageId', async (c) => {
 
   const saved = await readGeneratedImage(c.env, ctx.project.id, imageId);
   if (saved.deleted) return c.json({ error: 'not found' }, 404);
-  const { value: base64, metadata } = saved.base64 !== null
-    ? { value: saved.base64, metadata: null }
-    : await c.env.KV.getWithMetadata<ImageMeta>(imageKvKey(ctx.project.id, imageId));
-  // New generated images are durable. Old generated images and temporary previews may expire.
-  //
-  // The body is byte-identical to the one above. It used to carry `reason: 'expired_or_missing'`,
-  // which quietly undid the point of making every failure a 404: the status codes matched and the
-  // BODIES told a prober which of the two cases they had hit.
-  if (!base64) return c.json({ error: 'not found' }, 404);
-
-  let bytes: Uint8Array;
-  try { bytes = Uint8Array.from(atob(base64), (ch) => ch.charCodeAt(0)); }
-  catch { return c.json({ error: 'not found' }, 404); }
+  // The durable read answers in BYTES now, because the pixels come out of R2 as a buffer. Only the
+  // KV fallback still deals in base64, and only because that is what a temporary preview was
+  // written as.
+  let bytes: Uint8Array | null = saved.bytes;
+  let metadata: ImageMeta | null = null;
+  if (!bytes) {
+    const legacy = await c.env.KV.getWithMetadata<ImageMeta>(imageKvKey(ctx.project.id, imageId));
+    metadata = legacy.metadata;
+    // New generated images are durable. Old generated images and temporary previews may expire.
+    //
+    // The body is byte-identical to the one above. It used to carry `reason: 'expired_or_missing'`,
+    // which quietly undid the point of making every failure a 404: the status codes matched and the
+    // BODIES told a prober which of the two cases they had hit.
+    if (!legacy.value) return c.json({ error: 'not found' }, 404);
+    try { bytes = Uint8Array.from(atob(legacy.value), (ch) => ch.charCodeAt(0)); }
+    catch { return c.json({ error: 'not found' }, 404); }
+  }
+  // SNIFFED, NOT TAKEN FROM STORAGE, and that is unchanged by the move. R2 records the content type
+  // it was written with and would hand it straight back, which is precisely the shape of value that
+  // must never reach a response header unchecked. The bytes decide what the bytes are.
   const contentType = imageMimeType(bytes);
   if (!contentType) return c.json({ error: 'not found' }, 404);
   return new Response(bytes, {
@@ -1006,7 +1013,7 @@ app.get('/api/projects/:id/images/:imageId', async (c) => {
       // header at RESPONSE time, so serving the full hour to an image fetched 59 minutes after it
       // was stored cached it for another hour — outliving the object by nearly the whole TTL, which
       // is exactly what the comment here used to claim was impossible.
-      'Cache-Control': saved.base64 !== null ? 'private, no-store' : `private, max-age=${remainingLife(metadata)}`,
+      'Cache-Control': saved.bytes !== null ? 'private, no-store' : `private, max-age=${remainingLife(metadata)}`,
       'Content-Length': String(bytes.byteLength),
       // The bytes are model-generated and served from our origin; nothing should ever execute or
       // embed them as anything but an image.
