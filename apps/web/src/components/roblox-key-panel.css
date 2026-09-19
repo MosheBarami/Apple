@@ -1,0 +1,103 @@
+/* YOUR ROBLOX ACCOUNT — the rules this markup was written expecting.
+ *
+ * Half the panel already had styles in design/system.css: the form, the scope list, the confirm
+ * box. The other half had none at all — the state line, the list of what is granted, the health
+ * verdict, the expiry note and the entire write trail are built from <p>, <ul> and <span>, and
+ * with no rules every span stayed inline, so each timestamp ran into the sentence after it:
+ *
+ *     "2026-09-14Uploaded an image Roblox does not allow this to be undone."
+ *
+ * ONE COLOURED THING AT A TIME. This panel reports on somebody's real Roblox account, so status
+ * colour is meant here — but the five states are mutually exclusive and at most one line carries
+ * colour in any render. The distinction the whole panel turns on is kept in the colours too:
+ * `rejected` is Roblox refusing the key, an answer, and the only --bad in the file; `failed` and
+ * `unknown` are Apple failing to ASK, which is not an answer about anyone's account and is drawn
+ * as a caution. Red for a fetch that fell over would read as a verdict nobody actually got.
+ */
+
+.rk { min-width:0; max-width:720px; }
+
+/* ------------------------------------------------------------------- the five states --- */
+
+.rk__state { margin:0; padding:13px 15px; border:1px solid var(--line); border-inline-start-width:2px; border-radius:var(--r-sm); background:var(--paper-2); font-size:14px; line-height:1.6; letter-spacing:-.01em; color:var(--muted); transition:color .2s var(--ease-out),border-color .2s var(--ease-out); }
+.rk__state.is-connected { color:var(--ink); }
+.rk__state.is-loading { color:var(--faint); }
+.rk__state.is-none { color:var(--muted); }
+.rk__state.is-rejected { border-inline-start-color:var(--bad); color:var(--ink); }
+.rk__state.is-failed { border-inline-start-color:var(--warn); }
+/* The Try-again button only ever follows the failed state line. */
+.rk__state + .btn { margin-top:12px; }
+
+/* --------------------------------------------------------------- what is connected --- */
+
+.rk__connected { display:grid; justify-items:start; gap:15px; min-width:0; margin-block:18px; padding:18px; border:1px solid var(--line); border-radius:var(--r-sm); background:var(--paper-2); }
+.rk__connected > p,.rk__connected > ul,.rk__connected > .rk__trail { width:100%; }
+
+/* AUTHORITY ALREADY HANDED OVER, so it reads as a list of facts with a hairline between them
+   rather than a bulleted aside. This is where somebody decides whether to keep a permission. */
+.rk__granted { list-style:none; margin:0; padding:0; font-size:13px; line-height:1.6; letter-spacing:-.01em; }
+.rk__granted li { padding-block:10px; border-top:1px solid var(--line); overflow-wrap:anywhere; }
+.rk__granted li:first-child { border-top:0; padding-top:0; }
+
+/* ------------------------------------------------------------------ is it still alive --- */
+
+/* A verdict somebody pressed for, stamped with the moment it was true. The dot carries the
+   status and the sentence stays neutral: when a key is rejected the state line above says so in
+   colour already, and one fact coloured twice is emphasis spent on nothing. */
+.rk__health { display:flex; align-items:flex-start; gap:9px; margin:0; font-size:13px; line-height:1.6; letter-spacing:-.01em; color:var(--muted); }
+.rk__health::before { content:''; flex:none; width:6px; height:6px; margin-top:7px; border-radius:var(--r-pill); background:var(--faint); transition:background-color .2s var(--ease-out); }
+.rk__health.is-ok::before { background:var(--good); }
+.rk__health.is-rejected::before { background:var(--bad); }
+.rk__health.is-unknown::before { background:var(--warn); }
+
+/* WHEN IT DIES, SAID BEFORE IT DOES. Quiet while the date is far off; --warn is the only thing
+   that changes when it is close, because that is the only moment the note is actionable. */
+.rk__expiry { margin:0; font-size:12px; line-height:1.6; color:var(--faint); }
+.rk__expiry.is-soon { color:var(--warn); }
+
+/* ----------------------------------------------------- what Apple has done to your account --- */
+
+.rk__trail { min-width:0; }
+/* The trail's own heading, as a micro-label: this is a log, not a second panel, and a 16px bold
+   <h4> would announce it louder than the credential it is a footnote to. */
+.rk__trail .settings-sub { margin-block:18px 10px; padding-block:16px 0; font-size:11px; font-weight:400; text-transform:uppercase; letter-spacing:.018em; color:var(--faint); }
+
+.rk__writes { list-style:none; margin:0; padding:0; }
+/* Date in a column of its own so the eye runs down it. The permanence note wraps under the
+   action rather than trailing it, because it is a different kind of statement. */
+.rk__write { display:grid; grid-template-columns:max-content minmax(0,1fr); align-items:baseline; gap:4px 14px; padding-block:10px; border-top:1px solid var(--line); font-size:13px; line-height:1.6; letter-spacing:-.01em; }
+.rk__write:first-child { border-top:0; }
+.rk__writes .rk__write-when { font-family:var(--font-mono); font-size:11px; font-variant-numeric:tabular-nums; letter-spacing:.018em; color:var(--faint); }
+.rk__write-what { color:var(--ink); overflow-wrap:anywhere; }
+/* THE SENTENCE THE 299 ASSETS ARE ABOUT. Roblox will not delete an uploaded image for anybody,
+   including the person who owns the account, so this row is a permanent consequence and is the
+   one place in the trail that is allowed to be coloured. */
+.rk__write .rk__write-permanent { grid-column:2; font-size:12px; color:var(--warn); }
+/* A write that did not land. The date carries it; colouring the sentence too would make a failed
+   upload shout louder than a permanent one. */
+.rk__write.is-failed .rk__write-when { color:var(--bad); }
+.rk__write.is-failed .rk__write-what { color:var(--muted); }
+
+/* ------------------------------------------- what the shared sheet leaves at another weight --- */
+
+/* These four classes are already styled in design/system.css, which this file must not edit:
+   font-weight 600 on two of them, and radii of 10px, 12px and 14px that are in no token. The
+   product is one weight and one radius family, and half a panel obeying that reads worse than
+   none of it. Scoped under .rk so nothing outside this panel is affected. */
+.rk > .settings-sub,.rk .rk__label,.rk .rk__scope-title { font-weight:400; }
+.rk .rk__input { border-radius:var(--r-xs); }
+.rk .rk__type,.rk .rk__scopes,.rk .rk__confirm { border-radius:var(--r-sm); }
+
+/* ------------------------------------------------------------------------ at 375px --- */
+
+@media (max-width:600px) {
+  .rk__state { padding:11px 12px; font-size:13px; }
+  .rk__connected { padding:14px; gap:13px; }
+  /* One column: a max-content date beside a full sentence leaves the sentence four words wide. */
+  .rk__write { grid-template-columns:minmax(0,1fr); gap:3px; }
+  .rk__write .rk__write-permanent { grid-column:1; }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  .rk__state,.rk__health::before { transition:none; }
+}

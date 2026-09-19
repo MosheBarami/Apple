@@ -40,6 +40,7 @@ import {
 import { supabase } from '../lib/supabase';
 import { Failure } from './failure';
 import { useToast } from './toast';
+import './api-keys-panel.css';
 
 /** What each scope lets a key do, in the words of what will happen. */
 const SCOPE_WORDS: Record<ApiScope, string> = {

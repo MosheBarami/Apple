@@ -1,0 +1,171 @@
+/* /usage — the billing half of the page, which shipped as markup with no rules.
+ *
+ * The Credits half (the ring, the bars, the mode costs) has always been drawn by design/system.css.
+ * Everything below it — the subscription notice, the invoice list and each invoice's lines, the
+ * invoice-details form, the billing history, the proration quote — rendered as unstyled <span>s and
+ * <div>s running into each other. These are the rules those class names were written expecting.
+ *
+ * ORDERING. This sheet is imported from a route that app.tsx pulls in BEFORE main.tsx imports
+ * design/system.css, so on a tie system.css wins. Every rule here that overrides one of its
+ * selectors is written one step more specific (`.invoice-list__rows > .invoice-row`, not
+ * `.invoice-row`) so the result does not depend on bundle order at all.
+ *
+ * ONE WEIGHT. Nothing here is bold, including the <strong> elements the markup contains —
+ * emphasis is a colour step from --muted to --ink, never 600.
+ */
+
+/* ------------------------------------------------------------------ the two cards --- */
+
+/* The page had a class called `usage-grid` and no grid: both cards ran the full 1160px, so a
+   140px ring sat alone on a line of its own. */
+.usage-grid { display:grid; grid-template-columns:minmax(0,330px) minmax(0,1fr); gap:20px; align-items:start; }
+.usage-grid > .card { margin-block:0; min-width:0; }
+.credits-card { display:grid; justify-items:start; }
+/* Purchased credits, beside the allowance. The number is the emphasis; the sentence around it is
+   not, so <strong> becomes a colour and a figure face rather than a weight. */
+.credits-credits { margin:14px 0 6px; font-size:13px; line-height:1.6; letter-spacing:-.005em; color:var(--muted); }
+.credits-credits strong { font-weight:400; color:var(--ink); font-variant-numeric:tabular-nums; }
+.bars-wrap { margin-top:16px; }
+/* The arc is the one thing on the page that moves, and only when the figure it reports changes. */
+.ring-arc { transition:stroke-dasharray 600ms var(--ease-out); }
+
+/* ------------------------------------------------------- what the credits went on --- */
+
+/* system.css lays `.spend-kinds` out as an auto-fit grid, which was written for markup that held
+   the slices directly. It now holds a heading and a list, and that rule put them side by side. */
+.bars-card .spend-kinds { display:block; margin-top:22px; padding:18px 0 0; border-top:1px solid var(--line); }
+/* font-weight is spelled out because an h3 is bold by default in the UA sheet, and nothing on this
+   page is bold. Hierarchy here is 11px uppercase against 13px sentence case. */
+.spend-kinds__head { margin:0 0 14px; font-family:var(--font-body); font-size:11px; font-weight:400; line-height:1.4; letter-spacing:.018em; text-transform:uppercase; color:var(--faint); }
+.spend-kinds__list { list-style:none; margin:0; padding:0; display:grid; gap:14px; }
+/* Name and figure on one line, the share of the thirty days under both. */
+.spend-kind { display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-areas:'name value' 'bar bar'; column-gap:16px; align-items:baseline; }
+.spend-kind__name { grid-area:name; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:13px; letter-spacing:-.01em; color:var(--muted); }
+.spend-kinds__list .spend-kind__value { grid-area:value; font-variant-numeric:tabular-nums; }
+.spend-kinds__list .spend-kind__bar { grid-area:bar; margin:9px 0 0; }
+/* Height and fill repeat what `.spend-kind__bar > span` already sets, deliberately and identically:
+   this class must carry them itself, or a later change to the child selector empties the meter. */
+.spend-kind__fill { display:block; height:100%; min-width:2px; background:var(--ink); transition:width 450ms var(--ease-out); }
+
+/* --------------------------------------------------------------- the subscription --- */
+
+/* Renewal, cancellation, a failed payment. One hairline panel; colour only when it is a warning,
+   because a renewal date tinted blue is a panel with nothing emphasised. */
+.billing-notice { position:relative; display:grid; justify-items:start; gap:7px; margin-block:20px; padding:15px 18px; border:1px solid var(--line); border-radius:var(--r-sm); background:var(--paper-2); }
+.billing-notice::before { content:''; position:absolute; inset-block:12px; inset-inline-start:-1px; width:2px; background:var(--surface-3); }
+.billing-notice--info::before { background:var(--surface-3); }
+.billing-notice--warn::before { background:var(--warn); }
+.billing-notice__head { margin:0; font-size:14px; line-height:1.45; letter-spacing:-.01em; color:var(--ink); }
+.billing-notice--warn .billing-notice__head { color:var(--warn); }
+.billing-notice__detail { margin:0; font-size:13px; line-height:1.6; letter-spacing:-.005em; color:var(--muted); }
+
+/* Returning from Stripe, and returning from the billing portal. */
+.plans-note { margin-block:18px; padding:14px 16px; border:1px solid var(--line); border-radius:var(--r-sm); background:var(--paper-2); font-size:13px; line-height:1.7; letter-spacing:-.005em; color:var(--muted); }
+.plans-note strong { font-weight:400; color:var(--ink); }
+.plans-manage { margin-block:18px; font-size:13px; letter-spacing:-.005em; color:var(--muted); }
+.plans-manage a { color:var(--muted); text-decoration:underline; text-decoration-color:var(--surface-3); text-underline-offset:4px; }
+.plans-manage a:hover { color:var(--ink); text-decoration-color:var(--faint); }
+.plans-section { margin-top:44px; }
+
+/* -------------------------------------------------------------------- the invoices --- */
+
+.invoice-list { margin-block:32px; }
+.invoice-list__rows { list-style:none; margin:0; padding:0; }
+/* system.css makes `.invoice-row` a flex row, from when a row WAS one line. It now holds a head
+   and, once opened, a detail panel underneath it. */
+.invoice-list__rows > .invoice-row { display:block; padding:0; }
+.invoice-row__head { display:flex; align-items:center; flex-wrap:wrap; gap:12px; padding:12px 0; }
+/* Number and date are the target, so the target is the whole of them rather than a word.
+   The caret LEADS the row: at the end of a stretched toggle it sits against the status pill and
+   reads as part of it. */
+.invoice-row__toggle { position:relative; flex:1 1 180px; min-width:0; display:grid; justify-items:start; gap:2px; padding:7px 10px 7px 22px; border:0; border-radius:var(--r-xs); background:transparent; text-align:start; }
+.invoice-row__toggle:hover { background:var(--surface-2); }
+/* Inside the row, not hanging to the left of it: a caret in the page's own gutter puts the
+   invoice number out of line with the heading above it, at every width. */
+.invoice-row__toggle::before { content:''; position:absolute; inset-inline-start:4px; top:calc(50% - 4px); width:6px; height:6px; border-inline-end:1px solid var(--faint); border-block-end:1px solid var(--faint); transform:rotate(-45deg); transition:transform 180ms var(--ease-out); }
+[dir='rtl'] .invoice-row__toggle::before { transform:rotate(135deg); }
+/* Open points down, which is the same rotation in either direction. */
+.invoice-row__toggle[aria-expanded='true']::before,[dir='rtl'] .invoice-row__toggle[aria-expanded='true']::before { transform:rotate(45deg); }
+.invoice-row__number { font:14px/1.4 var(--font-mono); letter-spacing:-.01em; color:var(--ink); overflow-wrap:anywhere; }
+.invoice-row__date { font-size:12px; line-height:1.4; letter-spacing:-.005em; color:var(--faint); }
+.invoice-row__amount { margin-inline-start:auto; font:14px var(--font-mono); font-variant-numeric:tabular-nums; color:var(--ink); }
+.invoice-row__pdf { flex:none; padding:5px 9px; border:1px solid var(--line); border-radius:var(--r-xs); font-size:11px; line-height:1.4; letter-spacing:.018em; text-transform:uppercase; text-decoration:none; color:var(--faint); }
+.invoice-row__pdf:hover { border-color:var(--surface-3); color:var(--ink); }
+/* A draft invoice has no PDF. The markup renders an empty aria-hidden span in its place so the
+   amounts above and below it stay in one column — which only works if it keeps the width. */
+.invoice-row__pdf--none { visibility:hidden; }
+.invoice-row__pdf--none::after { content:'PDF'; }
+
+/* What the invoice was actually made of. A nested surface, one step up from the page. */
+.invoice-row > .invoice-detail { margin:0 0 14px; padding:14px 16px; border:1px solid var(--line); border-radius:var(--r-sm); background:var(--paper-2); }
+.invoice-row > .invoice-detail > .muted { margin:0; font-size:12px; }
+.invoice-detail__lines { list-style:none; margin:0; padding:0; }
+.invoice-detail__line { display:flex; align-items:baseline; gap:12px; padding:8px 0; border-bottom:1px solid var(--line); }
+/* The totals draw their own rule above them; the last line's would sit a few pixels under it. */
+.invoice-detail__lines > .invoice-detail__line:last-child { border-bottom:0; }
+.invoice-detail__desc { min-width:0; overflow-wrap:anywhere; letter-spacing:-.005em; color:var(--muted); }
+.invoice-detail__qty { flex:none; font:11px var(--font-mono); color:var(--faint); }
+.invoice-detail__amount { flex:none; margin-inline-start:auto; font:12px var(--font-mono); font-variant-numeric:tabular-nums; color:var(--ink); }
+.invoice-detail__totals { display:grid; gap:7px; margin:12px 0 0; padding-top:12px; border-top:1px solid var(--line); }
+.invoice-detail__totals > div { display:flex; justify-content:space-between; gap:16px; }
+.invoice-detail__totals dt { letter-spacing:-.005em; color:var(--muted); }
+.invoice-detail__totals dd { margin:0; font-family:var(--font-mono); font-variant-numeric:tabular-nums; color:var(--muted); }
+/* The one row a person is looking for, raised by colour rather than by weight. */
+.invoice-detail__total dt,.invoice-detail__total dd { color:var(--ink); }
+
+/* ------------------------------------------------- the two disclosures underneath --- */
+
+.billing-details,.billing-history { margin-block:20px; border-top:1px solid var(--line); font-size:14px; }
+:is(.billing-details,.billing-history) > summary { padding:16px 2px; cursor:pointer; letter-spacing:-.01em; color:var(--muted); transition:color 160ms var(--ease-out); }
+:is(.billing-details,.billing-history) > summary:hover { color:var(--ink); }
+:is(.billing-details,.billing-history)[open] > summary { color:var(--ink); }
+:is(.billing-details,.billing-history)[open] { padding-bottom:22px; }
+
+.billing-details__intro { margin:0 0 18px; max-width:62ch; font-size:13px; line-height:1.6; letter-spacing:-.005em; }
+.billing-details__form { display:grid; gap:15px; max-width:420px; }
+.billing-details__field { display:grid; gap:6px; }
+.billing-details__label { font-size:11px; line-height:1.4; letter-spacing:.018em; text-transform:uppercase; color:var(--faint); }
+.billing-details__actions { display:flex; align-items:center; gap:12px; margin-top:3px; }
+/* One line, after a save the person asked for — so the tone is worth a colour. */
+.billing-details__note { margin:14px 0 0; font-size:12px; line-height:1.6; letter-spacing:-.005em; }
+.billing-details__note--ok { color:var(--good); }
+.billing-details__note--warn { color:var(--warn); }
+.billing-details__note--pending { color:var(--muted); }
+
+.billing-history__list { list-style:none; margin:0; padding:0; font-size:13px; }
+.billing-history__list > li { padding:11px 2px; border-top:1px solid var(--line); line-height:1.6; letter-spacing:-.005em; color:var(--muted); }
+.billing-history__list > li:first-child { border-top:0; }
+.billing-history__export { margin:14px 0 0; }
+
+/* ------------------------------------------------------------ the proration quote --- */
+
+/* Inside the confirm dialog, under the sentence that says what the change costs. */
+.preview-lines { list-style:none; margin:0; padding:0; font-size:13px; }
+.preview-lines > li { display:flex; align-items:baseline; justify-content:space-between; gap:16px; padding:9px 0; border-top:1px solid var(--line); letter-spacing:-.005em; color:var(--muted); }
+.preview-lines > li:first-child { border-top:0; }
+.preview-lines__amount { flex:none; font:12px var(--font-mono); font-variant-numeric:tabular-nums; white-space:nowrap; color:var(--ink); }
+
+/* ------------------------------------------------------------------------- narrow --- */
+
+@media (max-width:900px) {
+  .usage-grid { grid-template-columns:minmax(0,1fr); }
+}
+/* 375px: the ring card, an invoice row and the form all have to hold at one column. */
+@media (max-width:600px) {
+  .credits-card { justify-items:stretch; }
+  .bars-card .spend-kinds { margin-top:18px; }
+  .invoice-list { margin-block:26px; }
+  .invoice-row__head { gap:10px; padding:14px 0; }
+  .invoice-row__toggle { flex:1 1 100%; }
+  .invoice-row__amount { margin-inline-start:0; }
+  .invoice-row__pdf { margin-inline-start:auto; }
+  .invoice-row > .invoice-detail { padding:12px 13px; }
+  .invoice-detail__line { flex-wrap:wrap; gap:4px 10px; }
+  .invoice-detail__desc { flex:1 1 100%; }
+  .billing-details__form { max-width:none; }
+  .preview-lines > li { flex-wrap:wrap; gap:2px 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ring-arc,.spend-kind__fill,.invoice-row__toggle::before,:is(.billing-details,.billing-history) > summary { transition:none; }
+}

@@ -9,6 +9,7 @@ import { useEffect, useId, useState } from 'react';
 import { Icon, PATH } from '../ws/primitives';
 import { COMPLEXITY, ComplexityMark, READINESS_LABEL, ReadinessNode } from './marks';
 import { creditRangeLabel, effortLabel, type MilestoneRef, type PlacedMilestone } from './model';
+import './milestone-card.css';
 
 /** Which run the user is asking for. Both fetch the same brief. */
 export type BriefIntent = 'plan' | 'build';

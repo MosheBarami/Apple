@@ -1,0 +1,170 @@
+/* GET HELP — the in-app report, and the receipt for one already filed.
+ *
+ * WHAT THIS PANEL IS FOR, AND WHAT THAT COSTS IT. Somebody opens it because something just went
+ * wrong, so every rule here buys reading speed rather than presence: nothing sets a font-weight
+ * above 400, nothing casts a shadow, and a 1px `var(--line)` hairline does all the separating.
+ * Hierarchy is size, colour and space.
+ *
+ * TWO SPANS PER ROW, AND THAT IS THE WHOLE PROBLEM. `.sup__kindlabel`/`.sup__kindhint` and
+ * `.sup__attachlabel`/`.sup__attachhint` are sibling <span>s. With no rule they stay inline and
+ * read "Something is brokenA build failed, a screen is wrong" — the exact failure the unstyled-
+ * class check was written for. Every such pair below is put into a grid, deliberately and first.
+ *
+ * COLOUR IS RATIONED TO STATUS, AND EACH SCREEN SPENDS IT ONCE. The receipt screen colours the
+ * redaction notice and nothing else. The form colours the counter only once it has gone negative.
+ * The history list colours a request that has been answered. Everything else is a warm neutral.
+ *
+ * WHAT IS DELIBERATELY NOT HERE: `.field-label` on the legend and on "What happened?" keeps the
+ * app's shared weight. Only one of the two can be reached from this file, and one heading in a
+ * different weight from the one under it is worse than both being the app's.
+ */
+
+/* ------------------------------------------------------------------ the receipt --- */
+
+.sup__done { margin:0; font-size:15px; line-height:1.6; letter-spacing:-.01em; color:var(--ink); text-wrap:pretty; }
+
+/* The id is quoted back over email, so it is a thing to be read character by character: mono,
+   tabular, and boxed enough that a selection stops at its edges. */
+.sup__id {
+  display:inline-block; padding:1px 7px; border:1px solid var(--line); border-radius:var(--r-xs);
+  background:var(--paper-2); font-size:12px; letter-spacing:0; color:var(--ink); font-variant-numeric:tabular-nums;
+}
+
+/* THE ONE COLOURED THING ON THIS SCREEN. "The report you get back will not match what you typed"
+   is a warning, not a decoration — so it is tinted, and it is the only tint here. Kept under a
+   tenth so the notice stays a surface step rather than a coloured panel. */
+.sup__note {
+  margin:16px 0 0; padding:13px 15px; border-radius:var(--r-sm);
+  border:1px solid color-mix(in srgb,var(--warn) 30%,var(--line));
+  background:color-mix(in srgb,var(--warn) 6%,var(--paper-2));
+  font-size:13px; line-height:1.6; letter-spacing:-.01em; color:var(--muted); text-wrap:pretty;
+}
+/* The tint has to be MORE of it on the light theme, not less — the opposite of the usual
+   correction. `--warn` is a pale straw in the dark theme and a dark brown in the light one, and
+   6% of a dark brown over #f3f3f3 measured as a neutral grey box: the one warning on the screen,
+   drawn as if it were a panel. Rendered both, rather than assumed. */
+:root[data-theme='light'] .sup__note {
+  border-color:color-mix(in srgb,var(--warn) 34%,var(--line));
+  background:color-mix(in srgb,var(--warn) 8%,var(--paper-2));
+}
+
+/* ------------------------------------------------------------- what is this about --- */
+
+/* A fieldset's own border and inset padding would draw a second box inside the modal for no
+   reason; the rows below are the group. */
+.sup__kinds { display:grid; gap:8px; min-width:0; margin:0 0 18px; padding:0; border:0; }
+/* Belt and braces: in engines that keep the legend out of the grid the margin spaces it, in any
+   that make it an item the span keeps it off the first row. */
+.sup__kinds > legend { grid-column:1/-1; float:none; margin:0 0 10px; padding:0; }
+
+/* A whole row is the target, not the 13px dot — this is read on a phone. */
+.sup__kind {
+  display:grid; grid-template-columns:auto minmax(0,1fr); align-items:start; gap:0 12px;
+  padding:12px 14px; border:1px solid var(--line); border-radius:var(--r-xs); cursor:pointer; min-width:0;
+  transition:background 140ms var(--ease-out),border-color 140ms var(--ease-out);
+}
+/* Optical alignment: the control sits against the label's cap height, not its line box. */
+.sup__kind > input { margin:3px 0 0; }
+.sup__kind:hover { background:color-mix(in srgb,var(--ink) 4%,transparent); }
+.sup__kind:focus-within { border-color:color-mix(in srgb,var(--ink) 26%,var(--line)); }
+/* Chosen is a surface step plus a brighter hairline. The native radio already says which one it
+   is; this only has to make the row it belongs to obvious at a glance. */
+.sup__kind.is-on { background:var(--surface-2); border-color:color-mix(in srgb,var(--ink) 26%,var(--line)); }
+
+.sup__kindtext { display:grid; gap:3px; min-width:0; }
+.sup__kindlabel { font-size:14px; line-height:1.45; letter-spacing:-.01em; color:var(--ink); }
+.sup__kindhint { font-size:13px; line-height:1.55; letter-spacing:-.01em; color:var(--muted); text-wrap:pretty; }
+
+/* ------------------------------------------------------------------ what happened --- */
+
+/* The shared input rule fills a field with `--surface`, which is exactly the modal panel it sits
+   on — an invisible box. Stepping DOWN to `--paper-2` makes the well read as recessed in both
+   themes, which is the one thing a seven-row textarea has to do before anything is typed in it. */
+.sup__text {
+  width:100%; min-height:150px; padding:14px; border-radius:var(--r-xs); background:var(--paper-2);
+  font-size:14px; line-height:1.6; letter-spacing:-.01em; color:var(--ink);
+}
+.sup__text::placeholder { color:var(--faint); }
+
+/* ------------------------------------------------------- the consented attachment --- */
+
+.sup__attach {
+  display:grid; gap:10px; margin-block:16px; padding:15px 16px;
+  border:1px solid var(--line); border-radius:var(--r-sm); background:var(--paper-2); min-width:0;
+}
+.sup__attachrow { display:grid; grid-template-columns:auto minmax(0,1fr); align-items:start; gap:0 12px; cursor:pointer; min-width:0; }
+.sup__attachrow > input { width:16px; height:16px; margin:3px 0 0; }
+/* The unclassed <span> wrapping the label and its hint. Without this the two run together. */
+.sup__attachrow > span { display:grid; gap:3px; min-width:0; }
+.sup__attachlabel { font-size:14px; line-height:1.45; letter-spacing:-.01em; color:var(--ink); }
+.sup__attachhint { font-size:13px; line-height:1.55; letter-spacing:-.01em; color:var(--muted); text-wrap:pretty; }
+
+/* Consent means seeing the string, so opening this is quiet and cheap — a hairline above it and
+   the app's own disclosure sizing, not a button. */
+.sup__attachpeek { padding-block-start:10px; border-block-start:1px solid var(--line); font-size:13px; color:var(--muted); }
+.sup__attachpeek > summary { width:fit-content; padding-block:2px; cursor:pointer; }
+
+/* The bundle is lines of plain text that support quotes back, so it wraps rather than scrolls
+   sideways, and it is capped: 1400 characters must not push the Send button off the screen. */
+.sup__attachtext {
+  margin:10px 0 0; padding:12px 14px; max-height:190px; overflow:auto;
+  border:1px solid var(--line); border-radius:var(--r-xs); background:var(--paper);
+  font-size:12px; line-height:1.6; letter-spacing:0; color:var(--muted);
+  white-space:pre-wrap; overflow-wrap:anywhere;
+}
+
+/* ------------------------------------------------------------------- filed from --- */
+
+/* The counter is taken out of flow rather than made a flex item: the sentence beside it is one
+   run of text with <code> inside it, and flex would break that run into separate items mid-word. */
+.sup__meta { position:relative; margin:14px 0 0; padding-inline-end:58px; font-size:12px; line-height:1.6; letter-spacing:-.01em; text-wrap:pretty; }
+.sup__meta code { letter-spacing:0; overflow-wrap:anywhere; }
+.sup__count {
+  position:absolute; inset-block-start:0; inset-inline-end:0;
+  font-family:var(--font-mono); font-size:11px; letter-spacing:0; color:var(--faint); font-variant-numeric:tabular-nums;
+}
+/* Negative is the only state worth a colour: the button is already disabled, and this says by how
+   much. `.form-error` below it carries the sentence, in the same ink. */
+.sup__count.is-over { color:var(--bad); }
+
+/* ------------------------------------------------------------ what you sent before --- */
+
+.sup__mine { margin-block-start:30px; padding-block-start:24px; border-block-start:1px solid var(--line); min-width:0; }
+.sup__minetitle { margin:0 0 6px; font-size:11px; font-weight:400; line-height:1.4; text-transform:uppercase; letter-spacing:.018em; color:var(--faint); }
+.sup__list { list-style:none; margin:0; padding:0; display:grid; gap:0; min-width:0; }
+
+/* Every row carries its own top hairline, including the first, which anchors the list to the label
+   above it without a second kind of rule. The excerpt is what the person is scanning for, so it
+   gets the full width on its own line and the two pieces of metadata share the one above it. */
+.sup__row {
+  display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:baseline; gap:4px 16px;
+  padding-block:13px; border-block-start:1px solid var(--line); min-width:0;
+}
+.sup__rowkind { grid-column:1; grid-row:1; font-size:12px; line-height:1.5; letter-spacing:-.01em; color:var(--faint); min-width:0; overflow-wrap:anywhere; }
+.sup__rowtext { grid-column:1/-1; grid-row:2; font-size:13px; line-height:1.55; letter-spacing:-.01em; color:var(--ink); overflow-wrap:anywhere; text-wrap:pretty; }
+/* `statusLabel` is a sentence — "Waiting on us", "Answered and closed" — so it is set as one.
+   Uppercasing a seven-word status is shouting a fact the reader has not asked about yet. */
+.sup__status { grid-column:2; grid-row:1; justify-self:end; font-size:12px; line-height:1.5; letter-spacing:-.01em; color:var(--faint); white-space:nowrap; }
+/* The list's one colour, and it means exactly one thing: somebody answered this. An open request
+   stays neutral, because "still waiting" is the resting state and not a finding. */
+.sup__status.is-closed { color:var(--good); }
+
+/* --------------------------------------------------------------------- at 375px --- */
+
+/* The modal is `wide`, which at this width is the whole viewport. Nothing here is a column. */
+@media (max-width:600px) {
+  .sup__kinds { margin-bottom:14px; }
+  .sup__kind,.sup__attach { padding:12px; }
+  .sup__text { min-height:132px; padding:12px; }
+  .sup__attachtext { max-height:150px; padding:10px 12px; }
+  .sup__mine { margin-block-start:24px; padding-block-start:20px; }
+  /* One column: the status drops below the excerpt rather than fighting the category for the
+     line. `Answered and closed` next to `I need help with my account` does not fit at 375px. */
+  .sup__row { grid-template-columns:minmax(0,1fr); gap:5px; }
+  .sup__rowkind,.sup__rowtext,.sup__status { grid-column:1; grid-row:auto; justify-self:start; }
+  .sup__status { white-space:normal; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sup__kind { transition:none; }
+}

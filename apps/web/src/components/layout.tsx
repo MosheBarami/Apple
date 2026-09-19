@@ -41,6 +41,7 @@ import { OnboardingTour } from './onboarding-tour';
 import { StudioAtmosphere } from './studio-atmosphere';
 import { ModelMark } from './ws/model-mark';
 import { restartTour, writeProgress } from '../lib/onboarding';
+import './layout.css';
 
 /** How many conversations the rail lists before deferring to "View all chats". */
 const RAIL_LIMIT = 8;

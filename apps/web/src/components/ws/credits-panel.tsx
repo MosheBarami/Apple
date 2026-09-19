@@ -20,6 +20,7 @@ import {
   type AttributionResponse,
   type CreditEntry,
 } from './credits-model';
+import './credits-panel.css';
 
 function Credit({ entry }: { entry: CreditEntry }) {
   return (

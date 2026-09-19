@@ -1,0 +1,80 @@
+/* The shell's own rules.
+ *
+ * design/system.css draws the rail, the dock and the account card. These are the elements INSIDE
+ * them that shipped with markup and no CSS: the wordmark's text, the New chat label, the pinned
+ * mark, the empty-chats line, the checkpoints tile, the account caret and gear, and the dock's
+ * usage link. Nothing here changes a structure — it gives one to spans that had none.
+ *
+ * SCOPED ONE LEVEL DEEPER THAN SYSTEM.CSS ON PURPOSE. main.tsx imports ./app before
+ * ./design/system.css, so this file is bundled AHEAD of it and an equal-specificity rule written
+ * here would silently lose a tie it looks like it should win. Every selector below carries its
+ * container, which also happens to be true: none of these classes appear anywhere else.
+ */
+
+/* ------------------------------------------------------------------ the mark --- */
+
+/* ONE WEIGHT. system.css sets `font:600 25px` on the anchor; the span is what actually renders the
+   word, and this product's type has no bold in it. Tracking tightens as the type grows. */
+.gx-rail .gx-wordmark__text { font-weight:400; letter-spacing:-.02em; }
+
+/* --------------------------------------------------------------- new chat --- */
+
+/* The row is space-between with a shortcut badge at its end. The label takes the middle and
+   truncates there, rather than letting a long translation shove the badge off the rail. */
+.gx-rail .gx-new__label { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:14px; letter-spacing:-.01em; }
+
+/* --------------------------------------------------------- conversations --- */
+
+/* A pinned row is marked, not coloured: the pin is a fact about ORDER, not a status. */
+.gx-rail .gx-conv__pin { flex:none; display:inline-flex; align-items:center; color:var(--faint); }
+/* Without this the row's space-between strands the pin against the far edge, a gap away from the
+   name it is about. Scoped to the sibling so it only applies when a pin is actually there. */
+.gx-rail .gx-conv__pin + .gx-conv__name { flex:1; }
+
+/* The empty state stands in the slot a row would occupy — same padding, same hairline — so the
+   list does not visibly change shape the moment the first chat arrives. */
+.gx-rail .gx-rail__none { margin:0; padding:12px 0; border-bottom:1px solid var(--line); color:var(--muted); font-size:13px; line-height:1.5; letter-spacing:-.01em; }
+
+/* ----------------------------------------------------------- checkpoints --- */
+
+/* A surface step, not a shadow. The catch: `button:hover` in system.css paints the whole row
+   --surface-2, so a --surface-2 tile vanishes into its own hover. It climbs one more step. */
+.gx-rail .gx-card-btn__mark { flex:none; display:grid; place-items:center; width:34px; height:34px; border-radius:var(--r-xs); background:var(--surface-2); color:var(--muted); transition:background-color 160ms var(--ease-out),color 160ms var(--ease-out); }
+.gx-rail .gx-card-btn:hover:not(:disabled) .gx-card-btn__mark { background:var(--surface-3); color:var(--ink); }
+
+/* --------------------------------------------------------------- account --- */
+
+/* The caret is the only thing in the row that may move, and it moves to say the menu is open. */
+.gx-user-card .gx-user-card__caret { flex:none; display:inline-flex; margin-inline-start:auto; color:var(--faint); transition:transform 180ms var(--ease-out); }
+.gx-user-card .gx-user-card__id[aria-expanded='true'] .gx-user-card__caret { transform:rotate(180deg); }
+
+/* Settings duplicates a row of the menu beside it, so it sits a step quieter than the name it
+   stands next to and only takes ground under the pointer. */
+.gx-user-card .gx-user-card__gear { flex:none; border-radius:var(--r-xs); color:var(--faint); text-decoration:none; transition:background-color 160ms var(--ease-out),color 160ms var(--ease-out); }
+.gx-user-card .gx-user-card__gear:hover,.gx-user-card .gx-user-card__gear:focus-visible { background:var(--surface-2); color:var(--ink); }
+
+/* ------------------------------------------------------------------ dock --- */
+
+/* Usage is a utility, not an action: one ink step below New chat and the navigation toggle until
+   it is pointed at. The box, the radius and the hover ground are the dock's generic `> a` rule and
+   are deliberately NOT restated — a second opinion about this link's size is a second bug. */
+.studio-dock .studio-dock__link { color:var(--faint); transition:background-color 160ms var(--ease-out),color 160ms var(--ease-out); }
+.studio-dock .studio-dock__link:hover,.studio-dock .studio-dock__link:focus-visible { color:var(--ink); }
+
+/* ----------------------------------------------------------------- 375px --- */
+
+/* The account row carries a name, an email, an inbox and a gear inside a 337px rail. The gear
+   gives back two pixels each side so the name is what gets them. */
+@media(max-width:400px) {
+  .gx-user-card .gx-user-card__gear { width:34px; height:34px; }
+}
+
+/* system.css already kills every transition under this query with !important, and it loads after
+   this file. Restated anyway: a stylesheet that only behaves because another one is present is a
+   stylesheet nobody can move. */
+@media(prefers-reduced-motion:reduce) {
+  .gx-rail .gx-card-btn__mark,
+  .gx-user-card .gx-user-card__caret,
+  .gx-user-card .gx-user-card__gear,
+  .studio-dock .studio-dock__link { transition:none; }
+}

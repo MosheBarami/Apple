@@ -1,0 +1,101 @@
+/* The milestone card's own rules.
+ *
+ * WHAT WAS MISSING. The detail panel — the rows behind "Detail" — drew with no
+ * stylesheet at all: `rm-detail__row`, `__key`, `__val`, `__list`, `__verify`
+ * matched nothing, so every key ran straight into its own value on one line
+ * ("For the playerPlayers can finally…"). The waiting label, the dependency
+ * dot and the disclosure chevron were the same: markup with no rules.
+ *
+ * WHY EVERY SELECTOR IS SCOPED TO `.rm-card`. main.tsx imports `App` on line 2
+ * and `design/system.css` on line 5, so this file lands BEFORE system.css in
+ * the bundle and a one-class rule here would lose to a one-class rule there at
+ * equal specificity. Two classes wins wherever source order cannot be trusted.
+ * It also keeps `.rm-fact` and `.rm-weight`, which suggestions.tsx and marks.tsx
+ * also render, from being redefined out from under those components.
+ */
+
+/* ------------------------------------------------------------------- head --- */
+
+/* The title column shrinks, the status does not. Without min-width:0 a long
+   milestone title refuses to wrap and shoves the status off the card at 375px. */
+.rm-card__heading { flex:1 1 auto; min-width:0; }
+.rm-card__heading > :last-child { margin-bottom:0; }
+.rm-card .rm-status { display:inline-flex; align-items:center; gap:7px; flex:none; white-space:nowrap; }
+
+/* ------------------------------------------------------------------ facts --- */
+
+/* The complexity mark is three svgs immediately followed by its label, with
+   nothing between them: inline-flex is what puts the gap there. */
+.rm-card .rm-fact { display:inline-flex; align-items:center; gap:7px; }
+.rm-card .rm-fact .rm-weight { display:inline-flex; align-items:center; gap:2px; }
+/* `.chip` is a shared class with one rule in the whole app (font-size:11px), so
+   the effort and credit chips inherit --ink and arrive brighter than the facts
+   they sit in — emphasis on the two least important words in the row. Colour
+   only; the chip's real shape belongs in system.css, which this file cannot set. */
+.rm-card .rm-card__facts .chip { color:var(--muted); }
+
+/* ---------------------------------------------------------------- waiting --- */
+
+/* A <p> has no top margin under the global reset, so the callout would sit flush
+   against the facts row above it. */
+.rm-card .rm-card__waiting { margin-top:18px; }
+.rm-card__waiting-label { display:block; margin-bottom:9px; font-size:11px; text-transform:uppercase; letter-spacing:.018em; color:var(--faint); }
+
+/* ------------------------------------------------------- dependency chips --- */
+
+/* `.rm-refs` carries margin-top:18px for the facts/actions rows it shares a rule
+   with; inside a callout or a detail cell that reads as a dropped line. */
+.rm-card .rm-card__waiting .rm-refs,
+.rm-card .rm-detail__row .rm-refs { margin-top:0; gap:8px; }
+.rm-card .rm-ref { display:inline-flex; align-items:center; gap:6px; border-radius:var(--r-pill); color:var(--muted); }
+/* The chip's own background is already --surface-2, so the shared button hover
+   changed nothing at all on the one control here that jumps you somewhere. */
+.rm-card .rm-ref:hover:not(:disabled) { background:var(--surface-3); color:var(--ink); }
+.rm-ref__dot { width:6px; height:6px; flex:none; border:1px solid currentColor; border-radius:var(--r-pill); }
+/* Landed is the only dependency state given colour. The others stay in the
+   neutral ramp — and either way the chip carries "— landed" / "— not landed
+   yet" for a screen reader, so the dot is never the only thing saying it. */
+.rm-card .rm-ref.is-done .rm-ref__dot { background:var(--good); border-color:var(--good); }
+
+/* --------------------------------------------------------------- disclose --- */
+
+.rm-card .rm-disclose { display:inline-flex; align-items:center; gap:7px; color:var(--muted); }
+/* A borderless text button inheriting the global hover fill draws a grey slab
+   four pixels taller than its own text. Ink is the hover here. */
+.rm-card .rm-disclose:hover:not(:disabled) { background:transparent; color:var(--ink); }
+.rm-disclose__chev { display:inline-flex; color:var(--faint); transition:transform .18s var(--ease-out); }
+.rm-disclose__chev.is-open { transform:rotate(90deg); }
+
+/* ----------------------------------------------------------------- detail --- */
+
+/* A hairline, not a shadow, separates the panel from the actions above it. */
+.rm-card .rm-detail { display:grid; gap:16px; margin-top:18px; padding-top:18px; border-top:1px solid var(--line); }
+.rm-card .rm-detail__row { display:grid; grid-template-columns:116px minmax(0,1fr); gap:6px 18px; align-items:start; }
+.rm-card .rm-detail__key { padding-top:2px; font-size:11px; line-height:1.5; text-transform:uppercase; letter-spacing:.018em; color:var(--faint); }
+.rm-card .rm-detail__val { margin:0; font-size:13px; line-height:1.6; letter-spacing:-.01em; color:var(--muted); }
+
+/* Evidence: what the scan actually saw, quoted under the sentence it produced.
+   Marked with a hairline dash rather than a bullet — the same 1px line the rest
+   of the card separates with, at the size of a list marker. */
+.rm-card .rm-detail__list { display:grid; gap:5px; margin:9px 0 0; padding:0; list-style:none; font-size:12px; line-height:1.55; color:var(--faint); }
+.rm-card .rm-detail__list li { position:relative; padding-inline-start:14px; overflow-wrap:anywhere; }
+.rm-card .rm-detail__list li::before { content:''; position:absolute; inset-inline-start:0; top:.62em; width:5px; height:1px; background:currentColor; opacity:.55; }
+
+/* `verify` is set only when the scan could not tell, and it asks the user to go
+   and look. The warn hairline is the whole of the colour it gets: a rule down
+   the side rather than a coloured sentence, which would read as an alarm. */
+.rm-card .rm-detail__verify { margin:10px 0 0; padding-inline-start:10px; border-inline-start:1px solid var(--warn); font-size:12px; line-height:1.55; color:var(--muted); }
+
+/* ----------------------------------------------------------------- narrow --- */
+
+/* The workspace is used at 375px. A 116px key column plus a value is two
+   columns too many there; the key becomes a label above its own value. */
+@media (max-width:560px) {
+  .rm-card .rm-detail__row { grid-template-columns:minmax(0,1fr); gap:5px; }
+  .rm-card .rm-card__head { gap:12px; }
+  .rm-card .rm-detail__key { padding-top:0; }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  .rm-disclose__chev { transition:none; }
+}

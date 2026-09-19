@@ -18,6 +18,7 @@ import type {
   TestEvidence,
 } from './evidence-model';
 import { EMPTY_COPY, FAULT_COPY, LOADING_COPY } from './evidence-model';
+import './evidence-cards.css';
 
 /* ---------------------------------------------------------------- shells --- */
 

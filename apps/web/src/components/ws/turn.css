@@ -1,0 +1,79 @@
+/* THE TURN — the rules turn.tsx's markup was written expecting.
+ *
+ * design/system.css already owns the shared half of this component: `.gx-turn`, `.gx-turn--user`,
+ * `.gx-user`, `.gx-user__foot`, `.gx-turn__body`, `.gx-stamp`, `.gx-outcome` and
+ * `.gx-outcome__retry`. Everything below is what those rules left undrawn — the agent row, the
+ * footer that carries the settled cost, the outcome sentence and its help link, the Edit reveal,
+ * and the two stamp alignments. Nothing here restates a rule that already exists over there.
+ */
+
+/* THE ASSISTANT'S TURN IS A ROW, NOT A CARD. The 22px mark sits in the gutter and the prose runs
+   beside it on the canvas. system.css keeps `.gx-mark` at display:none today, so the gutter and
+   its gap cost nothing until the mark comes back — a flex row is the one layout that is correct
+   either way, where a two-column grid would leave an empty track behind. */
+.gx-turn--agent { display:flex; align-items:flex-start; gap:14px; }
+.gx-turn--agent > .gx-turn__body { flex:1 1 auto; }
+
+/* THE FOOTER ROW. A <p>, so the UA's block margins have to go. Micro type on the canvas, one step
+   quieter than the reply above it: the time is a fact about the turn, not part of the answer. */
+.gx-turn__foot { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 12px; margin:10px 0 0; font-size:11px; line-height:1.5; color:var(--faint); }
+
+/* THE SETTLED COST, beside the time it was spent. The figure is a <strong> in the markup and stays
+   at 400 — one weight, and the emphasis is carried by colour instead. A 1px hairline separates it
+   from the stamp; a bullet or a slash would be a second idiom for a job the hairline already does.
+   Drawn as a leading border on an inline box rather than a flex pseudo-element: the markup is
+   `<strong>3</strong> Credits`, and a flex container turns that trailing text into its own item, so
+   the gap that spaces the hairline would also push "Credits" off its own number.
+   Tabular figures so a column of turns does not jitter. */
+.gx-turn__cost { font-variant-numeric:tabular-nums; border-inline-start:1px solid var(--line); padding-inline-start:12px; }
+.gx-turn__cost strong { font-weight:400; color:var(--muted); }
+
+/* THE STAMPS. `.gx-stamp` carries margin-top:10px for a stamp standing on its own; inside either
+   foot it is a flex item sharing a baseline with its neighbours, where that margin is simply
+   wrong. `flex-start`/`flex-end` rather than left/right: a Hebrew turn flips, and the stamp
+   belongs on the same side its own text ends. */
+.gx-stamp--start,.gx-stamp--end { flex:none; font-variant-numeric:tabular-nums; }
+.gx-stamp--start { justify-content:flex-start; }
+.gx-stamp--end { justify-content:flex-end; }
+.gx-turn__foot .gx-stamp--start,.gx-user__foot .gx-stamp--end { margin-top:0; }
+
+/* THE OUTCOME SENTENCE, written by outcome-model.ts. Muted by default: a run that merely stopped
+   is not an alarm, and colouring every ending would leave the one that failed indistinguishable.
+   `is-bad` is the only tone that spends --bad. */
+.gx-outcome__text { margin:0; font-size:13px; line-height:1.6; letter-spacing:-.01em; color:var(--muted); }
+.gx-outcome.is-bad .gx-outcome__text { color:var(--bad); }
+
+/* "WHY RUNS STOP" — the second affordance on a failed run, and deliberately quieter than Try
+   again, which is the right first move when the cause was transient. Same hairline, size and
+   padding as `.gx-outcome__retry`, so the link and the button sit on one baseline. */
+.gx-outcome__help { font-size:12px; padding:4px 0; color:var(--muted); text-decoration:none; border-bottom:1px solid var(--line); transition:color .18s var(--ease-out),border-color .18s var(--ease-out); }
+.gx-outcome__help:hover { color:var(--ink); border-bottom-color:var(--ink); }
+
+/* Nothing to explain, so there is no sentence to stand clear of: the row closes up under the
+   reply instead of holding a full block of air for a single control. */
+.gx-outcome--bare { margin-block:8px 0; }
+
+/* EDIT. A repair tool on every one of your own messages competes with the messages themselves, so
+   it is drawn only while the turn is under the pointer or holds focus — `:focus-within` keeps it
+   keyboard-reachable, and it fades rather than appears, so the row never reflows.
+   THE REVEAL IS GATED ON A POINTER EXISTING. At 375px there is nothing to hover with, and a
+   control hidden behind a hover that can never happen is a control that is gone. */
+.gx-user__edit { color:var(--faint); }
+.gx-user__foot .gx-user__edit:hover { color:var(--ink); }
+@media (hover:hover) and (pointer:fine) {
+  .gx-user__edit { opacity:0; pointer-events:none; transition:opacity .18s var(--ease-out); }
+  .gx-turn--user:hover .gx-user__edit,
+  .gx-turn--user:focus-within .gx-user__edit { opacity:1; pointer-events:auto; }
+}
+
+@media (max-width:680px) {
+  .gx-turn--agent { gap:10px; }
+  .gx-turn__foot { gap:4px 10px; }
+  .gx-outcome__text { font-size:12px; }
+}
+
+/* system.css already kills every transition under reduce, with !important. Restated here so this
+   sheet is correct on its own terms rather than correct by someone else's blanket rule. */
+@media (prefers-reduced-motion: reduce) {
+  .gx-outcome__help,.gx-user__edit { transition:none; }
+}

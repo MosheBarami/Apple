@@ -46,6 +46,7 @@ import {
 } from '../../lib/search-filters';
 import { readSearchHistory, rememberSearch, forgetSearch } from '../../lib/search-history';
 import { readViewState, writeViewState } from '../../lib/view-state';
+import './search-panel.css';
 
 const DEBOUNCE_MS = 220;
 

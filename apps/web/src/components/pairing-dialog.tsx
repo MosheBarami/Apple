@@ -35,6 +35,7 @@ import { Modal } from './modal';
 import { Forge } from './loading';
 import { Failure } from './failure';
 import { StatusIcon } from './status-icon';
+import './pairing-dialog.css';
 
 /** One cache entry, read by both halves of this dialog. */
 const recordKey = (projectId: string) => ['studio-link', projectId];

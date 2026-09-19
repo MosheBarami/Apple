@@ -35,6 +35,7 @@ import {
   supportPageOf,
   withAttachment,
 } from './support-model';
+import './support-dialog.css';
 
 export interface SupportDialogProps {
   onClose: () => void;

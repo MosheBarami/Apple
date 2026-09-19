@@ -44,6 +44,7 @@ import { CREATION_INTENTS, creationMessage, maxAccessNotice, type CreationIntent
 import { ModelMark } from './model-mark';
 import { AssetCatalog } from './asset-catalog';
 import { appendCatalogReference } from '../../lib/asset-catalog';
+import './composer.css';
 
 const PLACEHOLDER = 'Ask anything about your project...';
 

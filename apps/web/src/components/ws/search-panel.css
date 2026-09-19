@@ -1,0 +1,240 @@
+/* SEARCHING A PROJECT — the drawer that asks one question and shows what came back.
+ *
+ * A KEYBOARD SURFACE FIRST. Focus never leaves the input: arrows move a roving selection and
+ * Enter opens it (see search-panel.tsx). So the input must never scroll away from the person
+ * typing. The panel therefore fills the drawer body and gives ONLY `.cs__list` a scrollbar —
+ * the bar, the facets and the footer are fixed furniture around a scrolling middle. If the
+ * `height:100%` below ever fails to resolve, every rule degrades to ordinary flow inside the
+ * drawer's own scroll, which is why the list uses `flex:1 1 auto` and not a fixed height.
+ *
+ * ONE WEIGHT, ONE HAIRLINE. Nothing here sets a font-weight. A result's kind, its title and its
+ * snippet are separated by size and by ink (--faint, --ink, --muted), and every division in the
+ * panel is a 1px var(--line). There are no shadows: the filter tray and the search field are a
+ * step DOWN to var(--paper-2), which reads as recessed against the drawer's var(--surface) in
+ * both themes (dark: #171615 under #232221; light: #f3f3f3 under #ffffff).
+ *
+ * COLOUR IS RATIONED TO TWO FACTS. The panel means status in exactly two places, and system.css
+ * already owns both: `.cs__note--bad` (a filter the server refused) and `.cs__note--warn` (a
+ * filter it ignored, or a scan it truncated). Nothing else below is tinted — the selected facet,
+ * the selected row and the match highlight are all surface and ink, because a panel that colours
+ * its selection has nothing left to say when the answer is actually wrong.
+ *
+ * WHY THE HOVER RULES CARRY `:not(:disabled)`. system.css styles every button with
+ * `button:hover:not(:disabled)` at (0,2,1). A plain `.cs__facet:hover` is (0,2,0) and LOSES to
+ * it, so the selected pill would turn grey under the pointer. Each hover below is written to
+ * out-specify that rule rather than to rely on which stylesheet the bundler emits last. The
+ * same reason explains `.cs .cs__bar .cs__input` further down: system.css reaches inputs with
+ * `input:not([type='checkbox']):not([type='radio'])`, also (0,2,1).
+ */
+
+/* ---------------------------------------------------------------------- the panel --- */
+
+/* `height`, not `min-height`. A minimum lets the column grow past the drawer and the list then
+   never has to shrink, so the drawer scrolls, the footer leaves the screen and the input goes
+   with it — measured at 848px of panel inside a 665px body before this was a `height`. The
+   percentage resolves against the body's CONTENT box, so the panel plus the drawer's own 26px
+   padding comes to exactly the body's height and neither box ends up with two scrollbars. */
+.cs {
+  display:flex; flex-direction:column; gap:14px;
+  min-width:0; height:100%;
+  font-size:14px; letter-spacing:-.01em;
+}
+/* The panel is a gap-spaced column, so every paragraph's own margin would double the rhythm. */
+.cs p { margin:0; }
+
+/* ------------------------------------------------------------------------ the bar --- */
+
+.cs__bar { display:flex; align-items:center; gap:8px; flex:none; min-width:0; }
+
+/* (0,3,0): see the note at the top about system.css reaching inputs at (0,2,1). These three
+   controls are the panel's only fields and they share one recessed treatment. */
+.cs .cs__bar .cs__input,
+.cs .cs__filters .cs__select,
+.cs .cs__filters .cs__date {
+  border:1px solid var(--line); border-radius:var(--r-xs);
+  background:var(--paper-2); color:var(--ink);
+}
+.cs .cs__bar .cs__input { width:100%; min-width:0; padding:11px 13px; font-size:14px; letter-spacing:-.01em; }
+.cs .cs__bar .cs__input::placeholder { color:var(--faint); }
+
+.cs__filters-toggle {
+  flex:none; border:1px solid var(--line); border-radius:var(--r-xs);
+  padding:11px 12px; font-size:13px; letter-spacing:-.01em; color:var(--muted);
+  background:transparent; white-space:nowrap;
+}
+.cs__filters-toggle:hover:not(:disabled) { background:var(--surface-2); color:var(--ink); }
+/* Open tray and applied filters are two different things, and the button says both: the tray
+   being open is a surface step, a filter being applied is the dot. */
+.cs__filters-toggle[aria-expanded='true'] { background:var(--surface-2); color:var(--ink); }
+.cs__filters-toggle.is-on { color:var(--ink); border-color:color-mix(in srgb,var(--ink) 26%,var(--line)); }
+
+/* The empty span the button renders when a filter is applied — it carries the aria-label, so it
+   has to occupy space to be worth anything. Sized against the 13px label's centre. */
+.cs__filters-dot {
+  display:inline-block; width:5px; height:5px; margin-inline-start:2px;
+  border-radius:var(--r-pill); background:var(--ink); vertical-align:middle;
+}
+
+/* --------------------------------------------------------------------- the facets --- */
+
+.cs__facets { display:flex; flex-wrap:wrap; gap:6px; flex:none; }
+
+.cs__facet {
+  border:1px solid var(--line); border-radius:var(--r-pill);
+  padding:6px 11px; font-size:12px; letter-spacing:-.005em; color:var(--muted);
+  background:transparent; white-space:nowrap;
+}
+.cs__facet:hover:not(:disabled) { background:var(--surface-2); color:var(--ink); }
+/* Filled, not tinted. It matches the surface tabs in system.css, and it is the one place in the
+   panel where "this is what you chose" has to survive a glance at six pills. */
+.cs__facet.is-on { background:var(--ink); border-color:var(--ink); color:var(--paper); }
+.cs__facet.is-on:hover:not(:disabled) { background:var(--ink); color:var(--paper); }
+
+/* The server computes this with every filter EXCEPT the type filter, so it is a real forecast of
+   what the pill would find. Tabular figures keep the row from reflowing as counts change. */
+.cs__facet-count {
+  margin-inline-start:6px; font-family:var(--font-mono); font-size:11px;
+  font-variant-numeric:tabular-nums; color:var(--faint);
+}
+.cs__facet.is-on .cs__facet-count { color:inherit; opacity:.62; }
+
+/* ------------------------------------------------------------------ the filter tray --- */
+
+.cs__filters {
+  flex:none; display:grid; gap:12px; padding:14px;
+  border:1px solid var(--line); border-radius:var(--r-sm); background:var(--paper-2);
+  animation:cs-tray-in 160ms var(--ease-out) both;
+}
+.cs__filter-row { display:flex; flex-wrap:wrap; align-items:center; gap:8px; min-width:0; }
+
+/* Uppercase micro-label: positive tracking, --faint, and never bold. */
+.cs__filter-label {
+  flex:none; font-size:11px; line-height:1.4; text-transform:uppercase;
+  letter-spacing:.018em; color:var(--faint);
+}
+
+.cs .cs__filters .cs__select { flex:1 1 150px; width:auto; min-width:0; padding:8px 10px; font-size:13px; }
+/* system.css groups `.cs__date` with its hint text at 12px/--muted. A date the user picked is a
+   value, not a hint, so it reads at the field size in the field ink. */
+.cs .cs__filters .cs__date { flex:1 1 130px; width:auto; min-width:0; padding:8px 10px; font-size:13px; }
+
+/* A text button, matching `.gx-outcome__retry` in system.css: the underline is the affordance. */
+.cs__clear {
+  justify-self:start; border:0; border-block-end:1px solid var(--line); border-radius:0;
+  padding:4px 0; font-size:12px; color:var(--muted); background:transparent;
+}
+.cs__clear:hover:not(:disabled) { background:transparent; color:var(--ink); border-block-end-color:currentColor; }
+
+/* ----------------------------------------------------------------- notes and history --- */
+
+/* Colour is deliberately absent here: `.cs__note--bad` and `.cs__note--warn` in system.css set
+   it, and both are (0,1,0). Setting colour at (0,2,0) below would silently swallow them. */
+.cs .cs__note { flex:none; max-width:62ch; font-size:13px; line-height:1.6; letter-spacing:-.01em; text-wrap:pretty; }
+
+/* A button that has to sit inside a sentence — "… could not be read as a filter. Clear filters". */
+.cs__inline-btn {
+  display:inline; border:0; border-radius:0; padding:0; background:transparent;
+  font-size:inherit; color:var(--ink);
+  text-decoration:underline; text-decoration-color:var(--line); text-underline-offset:3px;
+}
+.cs__inline-btn:hover:not(:disabled) { background:transparent; text-decoration-color:currentColor; }
+
+.cs__history { flex:none; display:grid; gap:6px; min-width:0; }
+.cs__history-head {
+  font-size:11px; line-height:1.4; text-transform:uppercase;
+  letter-spacing:.018em; color:var(--faint);
+}
+.cs__history-list { list-style:none; margin:0; padding:0; display:grid; }
+/* The <li> holds the query and its forget button side by side and has no class of its own. */
+.cs__history-list li { display:flex; align-items:center; gap:4px; min-width:0; border-block-start:1px solid var(--line); }
+
+.cs__history-item {
+  flex:1; min-width:0; border:0; border-radius:var(--r-xs); padding:9px 8px;
+  text-align:start; font-size:13px; letter-spacing:-.01em; color:var(--muted); background:transparent;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.cs__history-item:hover:not(:disabled) { background:var(--surface-2); color:var(--ink); }
+
+.cs__history-forget {
+  flex:none; display:grid; place-items:center; width:30px; height:30px;
+  border:0; border-radius:var(--r-xs); padding:0;
+  font-size:15px; line-height:1; color:var(--faint); background:transparent;
+}
+.cs__history-forget:hover:not(:disabled) { background:var(--surface-2); color:var(--ink); }
+
+/* ------------------------------------------------------------------- the results --- */
+
+.cs .cs__count { flex:none; margin:0; font-size:11px; color:var(--faint); font-variant-numeric:tabular-nums; }
+
+/* The one scrolling region. `min-height:0` is what lets it shrink below its content inside the
+   column; without it the flex item refuses and the whole drawer scrolls instead. */
+.cs__list {
+  flex:1 1 auto; min-height:0; display:block;
+  overflow:auto; overscroll-behavior:contain; scrollbar-width:thin;
+}
+
+.cs__hit {
+  position:relative; display:grid; gap:5px;
+  padding:12px 12px 13px; border-block-start:1px solid var(--line);
+  cursor:pointer; scroll-margin-block:10px; min-width:0;
+}
+.cs__hit:hover { background:color-mix(in srgb,var(--ink) 4%,transparent); }
+.cs__hit.is-selected { background:var(--surface-2); }
+/* The rail, not a tint. It marks the roving selection the arrow keys move, which is a position
+   in a list and not a judgement about the row. */
+.cs__hit.is-selected::before {
+  content:''; position:absolute; inset-block:0; inset-inline-start:0; width:2px; background:var(--ink);
+}
+
+.cs__meta { display:block; font-size:11px; line-height:1.45; color:var(--faint); overflow-wrap:anywhere; }
+/* One step up from the rest of the meta line, so "Checkpoint" leads and the rest trails. */
+.cs__kind { color:var(--muted); }
+
+.cs__title {
+  display:block; font-size:13px; line-height:1.45; letter-spacing:-.01em; color:var(--ink);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+
+/* Three lines is enough to judge a hit and short enough that ten hits fit a 375px screen. */
+.cs__snippet {
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; line-clamp:3;
+  overflow:hidden; overflow-wrap:anywhere;
+  font-size:13px; line-height:1.55; letter-spacing:-.01em; color:var(--muted);
+}
+/* The UA default for <mark> is black on yellow, which is the loudest thing on the page and the
+   only raw colour in the panel. The match is marked with ink and a surface step instead. */
+.cs__snippet mark {
+  padding:0 2px; margin:0 -2px; border-radius:var(--r-xs);
+  background:color-mix(in srgb,var(--ink) 14%,transparent); color:var(--ink);
+}
+
+.cs__foot {
+  flex:none; display:flex; flex-wrap:wrap; align-items:center; gap:6px;
+  padding-block-start:10px; border-block-start:1px solid var(--line);
+  font-size:11px; color:var(--faint);
+}
+.cs__foot kbd {
+  display:inline-grid; place-items:center; min-width:20px; height:20px; padding:0 5px;
+  border:1px solid var(--line); border-radius:var(--r-xs);
+  background:var(--paper-2); font-size:11px; line-height:1; color:var(--muted);
+}
+
+/* ----------------------------------------------------------------------- motion --- */
+
+@keyframes cs-tray-in { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
+@media (prefers-reduced-motion: reduce) {
+  .cs__filters { animation:none; }
+}
+
+/* ----------------------------------------------------------------------- narrow --- */
+
+/* 375px: the drawer is the whole viewport and its 26px padding leaves 323px. The result rows
+   give their side padding back to the text, and the meta line is allowed to wrap rather than
+   truncate — "Checkpoint · Someone else · 3d ago" does not survive an ellipsis. */
+@media (max-width:420px) {
+  .cs { gap:12px; }
+  .cs__hit { padding-inline:8px; }
+  .cs__hit.is-selected::before { inset-inline-start:-2px; }
+  .cs .cs__filters .cs__select,
+  .cs .cs__filters .cs__date { flex:1 1 100%; }
+}

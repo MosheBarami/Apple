@@ -1,0 +1,244 @@
+/* THE INBOX, DRAWN.
+ *
+ * notification-inbox.tsx shipped with twenty class names and no stylesheet. With no rules the
+ * whole panel is inline spans inside a menu box: the kind, the project and the count run into one
+ * another on one line, the unread badge sits in the document flow instead of on the bell, and a
+ * row's title, body and timestamp read as a single sentence. Nothing below changes the markup —
+ * these are the rules those names were written expecting.
+ *
+ * SCOPED ONE LEVEL DEEPER THAN SYSTEM.CSS ON PURPOSE. main.tsx imports './app' before
+ * './design/system.css', so this file is bundled AHEAD of it and an equal-specificity rule written
+ * here loses a tie it looks like it should win. Every selector carries `.gx-inbox`, which is also
+ * simply true: none of these classes appear anywhere else in the app.
+ *
+ * ONE WEIGHT. Nothing here sets a font-weight. The hierarchy in a 260px column is size, colour and
+ * space, and a bold row title in a list of row titles emphasises nothing.
+ *
+ * COLOUR IS RATIONED TO ONE FACT: how bad is this. The severity dot is the only coloured thing in
+ * the panel, and only two of its three states take a colour at all — see `__dot`.
+ */
+
+/* The wrapper is also `.gx-pop-wrap` (position:relative, in system.css). It sits in the account
+   row's flex line between the name and the gear, so it must not stretch. */
+.gx-inbox { flex:none; display:inline-flex; }
+
+/* ------------------------------------------------------------------- the bell --- */
+
+/* `.gx-icon-btn` already gives the 38px box and kills the border. This adds the two things the
+   badge needs — something to anchor to — and the muted→ink step every other control in the rail
+   makes on hover. The radius is deliberately NOT restated: the gear sits 8px away and a second
+   opinion about that corner is visible. */
+.gx-inbox .gx-inbox__bell {
+  position:relative; color:var(--muted);
+  transition:color 140ms var(--ease-out),background-color 140ms var(--ease-out);
+}
+.gx-inbox .gx-inbox__bell:hover,
+.gx-inbox .gx-inbox__bell:focus-visible { color:var(--ink); }
+.gx-inbox .gx-inbox__bell[aria-expanded='true'] { color:var(--ink); background:var(--surface-2); }
+
+/* THE COUNT, ON THE BELL — not beside it. badgeText() returns null at zero, so this element only
+   exists when there is something to report, and it is allowed to be the loudest thing in the rail
+   because it is the only one: ink on paper, the same inversion `.btn-primary` uses, rather than a
+   red that would claim every unread build is a problem.
+   The 2px border is a knockout against the surface the rail is painted with, so the chip reads as
+   a separate object rather than smudging into the bell's top-right curve. It follows the button's
+   own hover ground for the same reason. */
+.gx-inbox .gx-inbox__badge {
+  position:absolute; inset-block-start:2px; inset-inline-end:1px;
+  display:grid; place-items:center; min-width:18px; height:18px; padding:0 5px;
+  border:2px solid var(--surface); border-radius:var(--r-pill);
+  background:var(--ink); color:var(--paper);
+  font-size:10px; line-height:1; letter-spacing:.01em; font-variant-numeric:tabular-nums;
+  pointer-events:none;
+}
+.gx-inbox .gx-inbox__bell:hover .gx-inbox__badge,
+.gx-inbox .gx-inbox__bell[aria-expanded='true'] .gx-inbox__badge { border-color:var(--surface-2); }
+
+/* ---------------------------------------------------------------- the panel --- */
+
+/* THE SHARED POPOVER IS ANCHORED THE WRONG WAY FOR THIS TRIGGER, and only this trigger.
+ * `.gx-pop--up` pins `inset-inline-start:0` with `min-width:245px`. The bell sits near the END of
+ * a rail that is `min(340px,90vw)` wide with 24px padding and a 38px gear after it, so at 375px
+ * the menu opens at x=229 and runs to x=474 — a hundred pixels past the screen. Flipped to the end
+ * edge it grows back toward the rail instead, and the width is the same arithmetic in reverse:
+ * the rail, less its end padding (24) + the gear (38) + the gap (8), less 8px of clearance.
+ *
+ * Padding goes to 0 so rows can carry hairlines edge to edge and the head can stick. */
+.gx-inbox .gx-pop {
+  inset-inline-start:auto; inset-inline-end:0;
+  min-width:0; max-width:none; width:min(318px,calc(min(340px,90vw) - 78px));
+  padding:0;
+  max-height:min(62vh,440px); overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin;
+}
+
+/* Stays put while the list moves under it, because "Mark all read" is the one control in here that
+   a long list must not scroll away from. */
+.gx-inbox .gx-inbox__head {
+  position:sticky; inset-block-start:0; z-index:1;
+  display:flex; align-items:center; gap:12px;
+  padding:11px 12px 10px; background:var(--surface);
+  border-block-end:1px solid var(--line);
+}
+
+/* An uppercase micro-label: positive tracking, --faint, never bold. It names the panel; it is not
+   a heading competing with the rows. */
+.gx-inbox .gx-inbox__title {
+  flex:1; min-width:0;
+  font-size:11px; line-height:1.4; text-transform:uppercase; letter-spacing:.018em; color:var(--faint);
+}
+
+/* ---------------------------------------------------------------- the actions --- */
+
+/* Three buttons share this class: the head's "Mark all read", the error paragraph's inline "Try
+   again", and the block "Mark these read" below. The base is the inline one — no box, no radius
+   worth seeing, and system.css's 9px/14px button padding undone so it sits on the label. */
+.gx-inbox .gx-inbox__all {
+  flex:none; border:0; border-radius:var(--r-xs); padding:4px 7px;
+  font-size:12px; line-height:1.4; letter-spacing:-.005em;
+  color:var(--muted); background:transparent;
+  transition:color 140ms var(--ease-out),background-color 140ms var(--ease-out);
+}
+.gx-inbox .gx-inbox__all:hover:not(:disabled),
+.gx-inbox .gx-inbox__all:focus-visible { color:var(--ink); background:var(--surface-2); }
+
+/* The group variant closes the list rather than sitting in it: full width, its own hairline, and
+   centred, so it reads as the end of what is above it and not as a thirteenth row. */
+.gx-inbox .gx-inbox__all--group {
+  display:block; width:100%; border-radius:0;
+  padding:11px 12px; text-align:center;
+  border-block-start:1px solid var(--line);
+}
+
+/* ---------------------------------------------------------------- the messages --- */
+
+/* One element for three different states — failed, loading, empty — and all three are a sentence
+   the person reads once. Nothing here is coloured: a fetch that failed says so in words, and the
+   component already refuses to draw "all caught up" over it. */
+.gx-inbox .gx-inbox__none {
+  margin:0; padding:15px 12px 17px;
+  font-size:13px; line-height:1.55; letter-spacing:-.01em; color:var(--muted); text-wrap:pretty;
+}
+
+/* ------------------------------------------------------------------- the rows --- */
+
+/* A collapsed heading and an expanded row are the same object at two zoom levels, so they get one
+   rule. `align-items:flex-start` because a two-line title must not drag the dot down with it. */
+.gx-inbox .gx-inbox__group,
+.gx-inbox .gx-inbox__row {
+  display:flex; align-items:flex-start; gap:10px;
+  width:100%; min-width:0;
+  border:0; border-block-start:1px solid var(--line); border-radius:0;
+  padding:11px 12px; text-align:start; background:transparent;
+  transition:background-color 140ms var(--ease-out);
+}
+.gx-inbox .gx-inbox__group:hover,
+.gx-inbox .gx-inbox__row:hover { background:color-mix(in srgb,var(--ink) 4%,transparent); }
+
+/* ONE HAIRLINE, NOT TWO. The head already draws the edge, so whatever renders directly under it —
+   a row, a back link or a message — does not draw a second one 1px lower. */
+.gx-inbox .gx-inbox__head + * { border-block-start:0; }
+
+/* THE ONLY COLOUR IN THE PANEL, and only two of the three states take one. severityClass() emits
+   `gx-note--info` for everything ordinary, which is most of an inbox; painting that the --info
+   blue would fill the column with blue-grey and leave the two states that actually want attention
+   indistinguishable from it. Info is neutral. Warn and urgent are not. */
+.gx-inbox .gx-inbox__dot {
+  flex:none; width:6px; height:6px; margin-block-start:6px;
+  border-radius:var(--r-pill); background:var(--faint);
+}
+.gx-inbox .gx-inbox__dot.gx-note--warn { background:var(--warn); }
+.gx-inbox .gx-inbox__dot.gx-note--urgent { background:var(--bad); }
+/* Read is a fact about the row, not about its severity, so it dims the mark rather than recolours
+   it. `.is-unread` is the modifier the component puts on the row itself. */
+.gx-inbox .gx-inbox__row:not(.is-unread) .gx-inbox__dot { opacity:.42; }
+
+/* -------------------------------------------------------- the collapsed heading --- */
+
+.gx-inbox .gx-inbox__gtext { flex:1; min-width:0; display:grid; gap:3px; }
+
+/* Both lines truncate rather than wrap: a heading is a label, and the twelve things behind it are
+   where the detail lives. */
+.gx-inbox .gx-inbox__gkind {
+  font-size:13px; line-height:1.4; letter-spacing:-.01em; color:var(--ink);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.gx-inbox .gx-inbox__gproject {
+  font-size:11px; line-height:1.4; color:var(--faint);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+
+/* "3 new of 12". Tabular figures so a column of these does not jitter as counts change, and
+   `padding-block-start` rather than a baseline guess because the row is top-aligned. */
+.gx-inbox .gx-inbox__gcount {
+  flex:none; padding-block-start:1px;
+  font-size:11px; line-height:1.4; color:var(--faint);
+  font-variant-numeric:tabular-nums; white-space:nowrap;
+}
+
+/* ------------------------------------------------------------------ going back --- */
+
+/* Not a row. It is the panel saying where you are, so it takes the head's micro-label voice one
+   level down the list instead of the row voice. */
+.gx-inbox .gx-inbox__back {
+  display:flex; align-items:center; gap:7px; width:100%;
+  border:0; border-block-start:1px solid var(--line); border-radius:0;
+  padding:9px 12px; text-align:start; background:transparent;
+  font-size:11px; line-height:1.4; text-transform:uppercase; letter-spacing:.018em;
+  color:var(--faint);
+  transition:color 140ms var(--ease-out),background-color 140ms var(--ease-out);
+}
+.gx-inbox .gx-inbox__back:hover,
+.gx-inbox .gx-inbox__back:focus-visible { color:var(--ink); background:var(--surface-2); }
+/* The component passes `size={13}`, and system.css's `button svg { width:17px }` overrules the
+   attribute — so the size is restated here where the rotation lives. A chevron that points down
+   turned a quarter clockwise points back; in RTL, back is the other way. */
+.gx-inbox .gx-inbox__back svg { width:13px; height:13px; transform:rotate(90deg); }
+[dir='rtl'] .gx-inbox .gx-inbox__back svg { transform:rotate(-90deg); }
+
+/* ------------------------------------------------------------ an expanded row --- */
+
+.gx-inbox .gx-inbox__text { flex:1; min-width:0; display:grid; gap:3px; }
+
+/* Two lines, then an ellipsis. A notification title is written to be read at a glance and the row
+   opens the thing itself; four lines of it would push the next row off a 375px screen.
+   UNREAD IS THE INK STEP. It is the only difference between two rows that say the same thing, and
+   it has to survive being read at arm's length — hence a full ink/muted step, not an opacity. */
+.gx-inbox .gx-inbox__rtitle {
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2;
+  overflow:hidden; overflow-wrap:anywhere;
+  font-size:13px; line-height:1.4; letter-spacing:-.01em; color:var(--muted);
+}
+.gx-inbox .gx-inbox__row.is-unread .gx-inbox__rtitle { color:var(--ink); }
+
+.gx-inbox .gx-inbox__body {
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2;
+  overflow:hidden; overflow-wrap:anywhere;
+  font-size:12px; line-height:1.5; letter-spacing:-.005em; color:var(--faint);
+}
+
+.gx-inbox .gx-inbox__meta {
+  display:flex; align-items:center; flex-wrap:wrap; gap:7px; margin-block-start:2px;
+  font-size:11px; line-height:1.4; color:var(--faint); font-variant-numeric:tabular-nums;
+}
+
+/* "×12" — the whole point of coalescing, so it is drawn as an object rather than as more of the
+   timestamp. A hairline outline, one ink step up from the line it sits on, and no colour: twelve
+   of something is a quantity, not a status. The dot beside it already said how bad it is. */
+.gx-inbox .gx-inbox__times {
+  padding:1px 5px; border:1px solid var(--line); border-radius:var(--r-pill);
+  font-family:var(--font-mono); font-size:10px; line-height:1.5; letter-spacing:.01em;
+  color:var(--muted);
+}
+
+/* ------------------------------------------------------------------- motion --- */
+
+/* system.css already kills every transition under this query with !important, and it loads after
+   this file. Restated anyway: a stylesheet that only behaves because another one is present is a
+   stylesheet nobody can move. */
+@media(prefers-reduced-motion:reduce) {
+  .gx-inbox .gx-inbox__bell,
+  .gx-inbox .gx-inbox__all,
+  .gx-inbox .gx-inbox__back,
+  .gx-inbox .gx-inbox__group,
+  .gx-inbox .gx-inbox__row { transition:none; }
+}

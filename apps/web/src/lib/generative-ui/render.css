@@ -1,0 +1,279 @@
+/* Generative UI — the rules this renderer's class names were written expecting.
+ *
+ * render.tsx resolves every colour, size and status token to a CLASS, on the premise
+ * that a stylesheet turns that class back into a visual. Half of that contract was
+ * never written. The test-case list, the checkpoint change list, the usage ring, the
+ * error panel, the metric block, the asset body and EVERY `--modifier` in the file
+ * drew with markup alone: each <span> stayed inline, so "Passed12ms" ran together and
+ * a blocking defect looked exactly like a minor one.
+ *
+ * Three rules hold everywhere below, matching the workspace's design language:
+ *   ONE WEIGHT — nothing here is bold. Hierarchy is size, colour and space.
+ *   ONE HAIRLINE — 1px var(--line) does all separation. No shadow is elevation; a
+ *     raised thing is a surface step.
+ *   RATIONED COLOUR — --good/--bad/--warn appear only where a block MEANS status, and
+ *     on one element per row. A row with three coloured things emphasises nothing.
+ */
+
+/* ---------------------------------------------------------------- document shell --- */
+
+/* The title is the panel's own label, not a heading competing with the blocks under it. */
+.gu-doc-title { margin:0; font-size:11px; text-transform:uppercase; letter-spacing:.018em; color:var(--faint); }
+
+/* ONE WEIGHT. These carry 600 from the shared sheet; inside a generated panel the size
+   step already does the work, and 600 beside 400 body text reads as a different product. */
+.gu-doc :is(h2,h3,h4,.gu-panel-title,.gu-callout-title) { font-weight:400; }
+.gu-doc :is(.gu-panel-title,.gu-callout-title) { letter-spacing:-.012em; }
+/* A trailing <p> inside a panel otherwise pushes 1em of nothing past the panel's padding. */
+.gu-doc .gu-panel > :last-child { margin-bottom:0; }
+
+.gu-fallback { display:grid; gap:8px; padding:18px 20px; background:var(--surface); border:1px solid var(--line); border-radius:var(--r-sm); }
+.gu-fallback-title { margin:0; font-size:14px; letter-spacing:-.01em; }
+.gu-fallback-sub { margin:0; font-size:13px; line-height:1.7; color:var(--muted); }
+
+/* -------------------------------------------------------------------- primitives --- */
+
+/* Three levels, one weight. The scale is the hierarchy; tracking tightens as it grows. */
+.gu-heading { margin:0; line-height:1.3; font-weight:400; }
+.gu-heading--2 { font-size:20px; letter-spacing:-.018em; }
+.gu-heading--3 { font-size:16px; letter-spacing:-.012em; }
+.gu-heading--4 { font-size:13px; letter-spacing:-.01em; color:var(--muted); }
+/* .gu-doc is a 20px grid; a heading belongs to what follows it, so it takes some back. */
+.gu-doc > .gu-heading { margin-bottom:-7px; }
+
+/* An uppercase micro-label: the smallest type in the file, so it gets POSITIVE tracking. */
+.gu-subhead { margin:0 0 10px; font-size:11px; font-weight:400; text-transform:uppercase; letter-spacing:.018em; color:var(--faint); }
+.gu-inline-label { margin-inline-end:8px; font-size:11px; text-transform:uppercase; letter-spacing:.018em; color:var(--faint); }
+
+.gu-list { margin:0; padding-inline-start:20px; font-size:13px; line-height:1.7; }
+.gu-list li + li { margin-top:6px; }
+/* Hard fails are measurements, not opinions — the marker carries that, not the sentence. */
+.gu-list--fail li::marker { color:var(--bad); }
+
+.gu-table-figure { margin:0; }
+.gu-table { width:100%; border-collapse:collapse; font-size:12px; }
+.gu-table th { padding:0 14px 8px 0; text-align:start; font-weight:400; font-size:10px; text-transform:uppercase; letter-spacing:.018em; color:var(--faint); white-space:nowrap; }
+.gu-table td { padding:9px 14px 9px 0; border-top:1px solid var(--line); vertical-align:top; }
+.gu-table :is(th,td):last-child { padding-inline-end:0; }
+
+.gu-link { display:inline-block; margin-top:10px; font-size:12px; color:var(--ink); text-decoration:underline; text-decoration-color:var(--line); }
+.gu-link:hover { text-decoration-color:currentColor; }
+
+/* Chips. The base already draws the outline; these two say how loud it is. */
+.gu-chip--accent { border-color:var(--surface-3); background:var(--surface-2); color:var(--ink); }
+.gu-chip--quiet { border-color:transparent; background:var(--surface-2); color:var(--faint); }
+
+/* The two tones the shared sheet never resolved — a document asking for `info` or
+   `accent` got a class with no rule and rendered as plain body text. */
+.gu-t-info { color:var(--info); }
+.gu-t-accent { color:var(--ink); }
+
+/* Figures line up column-wise, which is the whole reason a metric is set in a table cell. */
+.gu-doc .numeral { font-variant-numeric:tabular-nums; }
+
+/* A two-button tablist: one outline, one hairline between, the selected one a surface step. */
+.gu-seg { display:inline-flex; align-items:stretch; border:1px solid var(--line); border-radius:var(--r-xs); overflow:hidden; }
+.gu-seg button { margin:0; padding:6px 11px; border:0; border-radius:0; font-size:11px; color:var(--muted); background:transparent; transition:color .18s var(--ease-out),background .18s var(--ease-out); }
+.gu-seg button + button { border-inline-start:1px solid var(--line); }
+.gu-seg button[aria-selected='true'] { color:var(--ink); background:var(--surface-2); }
+.gu-seg button:focus-visible { outline-offset:-2px; }
+
+.gu-metric { display:grid; gap:5px; justify-items:start; padding:15px 17px; background:var(--surface); border:1px solid var(--line); border-radius:var(--r-sm); }
+.gu-metric-label { font-size:10px; text-transform:uppercase; letter-spacing:.018em; color:var(--faint); }
+/* The value inherits the block's tone class — it is the one coloured thing here. */
+.gu-metric-value { font-size:26px; line-height:1.15; letter-spacing:-.02em; }
+.gu-metric-unit { margin-inline-start:5px; font-size:13px; letter-spacing:-.01em; color:var(--muted); }
+.gu-metric-delta { font-size:11px; color:var(--muted); }
+
+.gu-kv { display:grid; gap:11px; }
+.gu-kv-list--tight .gu-kv-row { padding-block:6px; }
+/* The last hairline in a list draws a line under nothing. */
+.gu-kv-row:last-child { border-bottom:0; }
+
+/* ------------------------------------------------------------------ media states --- */
+
+.gu-img-loading__alt { max-width:32ch; font-size:12px; line-height:1.5; color:var(--faint); text-align:center; overflow-wrap:anywhere; }
+@media (prefers-reduced-motion:no-preference) {
+  .gu-img-loading__alt { animation:gu-breathe 1.8s ease-in-out infinite; }
+}
+@keyframes gu-breathe { 0%,100% { opacity:.55; } 50% { opacity:1; } }
+
+.gu-thumb-blank { display:block; height:52px; background:var(--surface-2); border-radius:var(--r-xs); }
+.gu-thumb-name { display:block; text-transform:uppercase; letter-spacing:.018em; color:var(--muted); }
+.gu-thumb { transition:border-color .18s var(--ease-out); }
+.gu-thumb.is-active .gu-thumb-name { color:var(--ink); }
+
+/* ---------------------------------------------------------------------- code_diff --- */
+
+.gu-diff-hunk + .gu-diff-hunk { margin-top:14px; padding-top:14px; border-top:1px solid var(--line); }
+/* `del` and `ctx` are the kinds this renderer actually emits (DIFF_LINE_KINDS); the
+   shared sheet tints `--remove`, a class no document can produce, so every removed
+   line drew on the same background as an added one. */
+.gu-diff-line--del { background:color-mix(in srgb,var(--bad) 10%,transparent); }
+.gu-diff-line--del .gu-diff-sigil { color:var(--bad); }
+.gu-diff-line--add .gu-diff-sigil { color:var(--good); }
+.gu-diff-line--ctx { background:transparent; }
+
+/* -------------------------------------------------------- scene_comparison / render --- */
+
+.gu-wipe { display:grid; gap:12px; }
+.gu-wipe-control { display:block; }
+.gu-compare-cell figcaption { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:10px; font-size:12px; color:var(--muted); }
+
+.gu-render-stage { display:grid; gap:0; }
+.gu-render-hint { color:var(--faint); }
+
+/* The dial's states are unknown / pass / mid / low. The shared sheet colours `--fail`,
+   which this file never writes, so a failing score drew in the passing green. */
+.gu-dial--pass .gu-dial-arc { stroke:var(--good); }
+.gu-dial--mid .gu-dial-arc { stroke:var(--warn); }
+.gu-dial--low .gu-dial-arc { stroke:var(--bad); }
+.gu-dial--unknown .gu-dial-value { color:var(--faint); }
+
+/* ----------------------------------------------------------------- visual_critique --- */
+
+.gu-hardfails { display:grid; gap:10px; margin-top:18px; padding:15px 17px; background:var(--paper-2); border:1px solid var(--line); border-radius:var(--r-sm); }
+
+/* Severity in a long list has to be legible before anything is read. One 2px rule per
+   defect, in the one hue that already labels it. Minor keeps the plain hairline. */
+.gu-defect--blocking,.gu-defect--major,.gu-defect--minor { padding-inline-start:14px; border-inline-start:2px solid var(--line); }
+.gu-defect--blocking { border-inline-start-color:var(--bad); }
+.gu-defect--major { border-inline-start-color:var(--warn); }
+
+/* -------------------------------------------------------------- property_inspector --- */
+
+.gu-prop-group + .gu-prop-group { margin-top:20px; }
+.gu-prop-rows { margin:0; padding:0; }
+.gu-prop-value { font:12px var(--font-mono); overflow-wrap:anywhere; }
+/* A changed row reads at full strength; the unchanged ones stay muted around it. That is
+   the whole signal — no highlight, no second colour. */
+.gu-prop-row dt { color:var(--muted); }
+.gu-prop-row.is-changed dt,.gu-prop-row.is-changed .gu-prop-value { color:var(--ink); }
+.gu-prop-row:last-child { border-bottom:0; }
+
+/* -------------------------------------------------------------------- test_report --- */
+
+/* `.gu-tests` is caught by a list-reset in the shared sheet — on a <section class="gu-panel">
+   that zeroes the panel's own padding, so the whole report sat flush against its border. */
+.gu-panel.gu-tests { padding:20px; margin:0; }
+.gu-tests-counts { display:flex; gap:12px; align-items:center; flex-wrap:wrap; font-size:11px; }
+.gu-tests-bar { display:flex; height:3px; margin-block:2px 16px; background:var(--surface-3); border-radius:var(--r-pill); overflow:hidden; }
+.gu-tests-seg { display:block; height:100%; }
+.gu-tests-seg--pass { background:var(--good); }
+.gu-tests-seg--fail { background:var(--bad); }
+
+.gu-case-list { list-style:none; margin:0; padding:0; }
+.gu-case { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:2px 11px; padding-block:10px; border-top:1px solid var(--line); font-size:13px; }
+.gu-case-mark { display:inline-grid; place-items:center; width:12px; height:12px; }
+.gu-case-name { min-width:0; letter-spacing:-.01em; overflow-wrap:anywhere; }
+.gu-case-time { font-size:11px; font-variant-numeric:tabular-nums; color:var(--faint); }
+.gu-case-msg { grid-column:2/-1; margin:5px 0 0; font:12px/1.7 var(--font-mono); color:var(--muted); overflow-wrap:anywhere; }
+.gu-case--pass .gu-case-name { color:var(--ink); }
+.gu-case--fail .gu-case-name { color:var(--ink); }
+/* A skipped case did not happen; it should not read as loudly as one that did. */
+.gu-case--skip .gu-case-name { color:var(--faint); }
+
+/* ------------------------------------------------------------------- asset_picker --- */
+
+.gu-asset-thumb { display:grid; place-items:center; height:96px; margin-bottom:11px; background:var(--paper-2); border-radius:var(--r-xs); overflow:hidden; }
+.gu-asset-img { display:block; width:100%; height:100%; object-fit:cover; }
+.gu-asset-kind { font-size:10px; text-transform:uppercase; letter-spacing:.018em; color:var(--faint); }
+.gu-asset-body { display:grid; gap:7px; justify-items:start; min-width:0; }
+.gu-asset-name { font-size:13px; letter-spacing:-.01em; line-height:1.4; overflow-wrap:anywhere; }
+.gu-asset-meta { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.gu-asset-creator,.gu-asset-note { font-size:11px; line-height:1.5; color:var(--muted); }
+.gu-audio { display:grid; gap:9px; justify-items:start; width:100%; margin-top:2px; }
+
+/* --------------------------------------------------------------------- build_plan --- */
+
+/* The step's status is already spelled out for a screen reader; sighted readers get it
+   from where the eye stops. Done recedes, active is at full strength, blocked is warn. */
+.gu-step--done :is(.gu-step-title,.gu-step-node) { color:var(--muted); }
+.gu-step--done .gu-step-node { border-color:var(--surface-3); }
+.gu-step--active .gu-step-node { border-color:var(--ink); background:var(--surface-2); }
+.gu-step--pending :is(.gu-step-title,.gu-step-node) { color:var(--faint); }
+.gu-step--blocked .gu-step-node { border-color:var(--warn); color:var(--warn); }
+.gu-step-time { font-variant-numeric:tabular-nums; }
+
+/* ---------------------------------------------------------------- error_diagnosis --- */
+
+.gu-error--blocking,.gu-error--major,.gu-error--minor { border-inline-start:2px solid var(--line); }
+.gu-error--blocking { border-inline-start-color:var(--bad); }
+.gu-error--major { border-inline-start-color:var(--warn); }
+.gu-error-msg { margin:0 0 14px; padding:13px 15px; background:var(--paper-2); border:1px solid var(--line); border-radius:var(--r-xs); font:12px/1.7 var(--font-mono); white-space:pre-wrap; overflow-wrap:anywhere; }
+.gu-excerpt-line.is-marked { background:color-mix(in srgb,var(--warn) 13%,transparent); }
+.gu-fixes { margin-top:20px; }
+.gu-fix-list { margin:0; padding-inline-start:20px; font-size:13px; }
+.gu-fix-list li + li { margin-top:11px; }
+.gu-fix-title { display:block; line-height:1.6; }
+/* Both halves are <span>s. Without this the detail runs straight into the title. */
+.gu-fix-detail { display:block; margin-top:4px; }
+
+/* --------------------------------------------------------- checkpoint_comparison --- */
+
+.gu-cp-side { display:grid; gap:8px; justify-items:start; padding:15px; background:var(--paper-2); border:1px solid var(--line); border-radius:var(--r-sm); }
+.gu-cp-side .gu-kv-list { width:100%; margin-top:2px; }
+.gu-cp-label { font-size:14px; letter-spacing:-.01em; }
+.gu-cp-when { font-size:11px; color:var(--faint); }
+.gu-change-list { margin-top:16px; }
+.gu-change { display:grid; grid-template-columns:auto minmax(0,1fr); gap:3px 11px; padding-block:9px; border-top:1px solid var(--line); font-size:12px; }
+.gu-change-mark { font:12px var(--font-mono); color:var(--faint); }
+.gu-change-path { font:12px var(--font-mono); overflow-wrap:anywhere; }
+.gu-change-note { grid-column:2; font-size:11px; line-height:1.5; color:var(--muted); }
+/* The sigil is the status; the path beside it stays neutral so the column still scans. */
+.gu-change--added .gu-change-mark { color:var(--good); }
+.gu-change--removed .gu-change-mark { color:var(--bad); }
+.gu-change--changed .gu-change-mark { color:var(--warn); }
+
+/* ----------------------------------------------------------------------- progress --- */
+
+.gu-progress-label { color:var(--muted); }
+.gu-progress-value { letter-spacing:-.01em; }
+.gu-progress-max { color:var(--faint); }
+/* The block carries a tone class; currentColor is how the meter finally shows it. */
+.gu-progress .gu-meter-fill { background:currentColor; }
+.gu-meter.is-indeterminate .gu-meter-fill { width:34%; }
+@media (prefers-reduced-motion:no-preference) {
+  .gu-meter.is-indeterminate .gu-meter-fill { animation:gu-sweep 1.5s var(--ease-out) infinite; }
+}
+/* Reduced motion still needs to say "running": a static part-width bar, dimmed. */
+@media (prefers-reduced-motion:reduce) {
+  .gu-meter.is-indeterminate .gu-meter-fill { width:100%; opacity:.4; }
+}
+@keyframes gu-sweep { from { transform:translateX(-110%); } to { transform:translateX(320%); } }
+
+/* ------------------------------------------------------------------ usage_summary --- */
+
+.gu-usage-body { display:flex; gap:22px; align-items:center; flex-wrap:wrap; }
+.gu-usage-ring { position:relative; display:grid; place-items:center; width:84px; height:84px; flex:none; }
+.gu-usage-ring svg { position:absolute; inset:0; }
+/* A 1px arc at this diameter is a hairline nobody can read as a quantity. */
+.gu-usage-ring :is(.gu-dial-track,.gu-dial-arc) { stroke-width:2.5; }
+.gu-usage-remaining { font-size:22px; letter-spacing:-.018em; }
+.gu-usage-facts { flex:1 1 200px; min-width:0; }
+.gu-credit-row { display:flex; gap:5px; align-items:flex-end; height:46px; margin-top:18px; padding-top:18px; border-top:1px solid var(--line); }
+/* A week of spend is seven bars, not seven lozenges: capped width keeps a short series
+   reading as a column chart instead of stretching each day into a dash. */
+.gu-credit-bar { flex:1 1 6px; min-width:4px; max-width:14px; background:var(--surface-3); border-radius:var(--r-pill); }
+.gu-credit-bar.is-active { background:var(--ink); }
+
+/* --------------------------------------------------------------------- 375px wide --- */
+
+@media (max-width:560px) {
+  .gu-doc .gu-panel { padding:16px; }
+  .gu-doc :is(.gu-compare-grid,.gu-cp-grid,.gu-render-metrics,.gu-asset-grid) { grid-template-columns:minmax(0,1fr); }
+  .gu-doc .gu-render-metrics { gap:0; }
+  .gu-doc .gu-panel-head { gap:10px; }
+  .gu-heading--2 { font-size:18px; }
+  .gu-metric-value { font-size:22px; }
+  /* The duration cannot hold a column of its own at this width; it moves under the name. */
+  .gu-case { grid-template-columns:auto minmax(0,1fr); }
+  .gu-case-time { grid-column:2; justify-self:start; }
+  .gu-usage-body { gap:16px; }
+  .gu-seg { width:100%; }
+  .gu-seg button { flex:1; }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  .gu-seg button,.gu-thumb { transition:none; }
+}

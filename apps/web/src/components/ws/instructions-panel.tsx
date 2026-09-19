@@ -12,6 +12,7 @@
 // implementation of the rule, and the two would disagree the first time either one changed.
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import './instructions-panel.css';
 import { Failure } from '../failure';
 import {
   ApiError,

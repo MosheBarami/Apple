@@ -1,0 +1,398 @@
+/* API KEYS — the rules the markup in api-keys-panel.tsx was written expecting.
+ *
+ * Nothing here changes what the panel says. It is a credentials list: a row is a key, and the only
+ * things that carry colour are the two facts that can hurt you — a key that is about to stop
+ * working, and one that already has. A healthy row is warm grey from end to end, which is what
+ * makes the unhealthy one findable.
+ *
+ * THREE BLOCKS THAT END IN A BUTTON ROW — the reveal, the confirmation and the form — all place
+ * their prose full-width and let the trailing <button>s sit side by side. There is no wrapper
+ * element around those buttons and there must not be one, so the layout is a grid whose last
+ * column is flexible: `max-content max-content 1fr`. Every non-button child spans 1/-1, the two
+ * buttons auto-place into the first two columns of the next row, and because the third track is
+ * flexible the spanning children contribute nothing to sizing it (css-grid-1 §12.5) — the button
+ * columns stay exactly as wide as the buttons.
+ */
+
+/* ------------------------------------------------------------------ the panel --- */
+
+/* `width:100%` is load-bearing, not a habit: the panel's parent is `.settings-row`, which system.css
+ * makes `display:flex; justify-content:space-between`. A grid container dropped into that is a flex
+ * item with `flex:0 1 auto` and would size to its own max-content — the list and the form would
+ * each settle at a different width. 720px is the measure the whole panel is read at; the settings
+ * card is over 1000px wide and a form box that wide has no left edge for the eye to return to. */
+.ak {
+  display: grid;
+  gap: 16px;
+  width: 100%;
+  max-width: 720px;
+  min-width: 0;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+}
+.ak > * { justify-self: stretch; min-width: 0; }
+/* Buttons sit at their own width. Stretching "Create a key" across the settings column would read
+   as a banner, not a control. */
+.ak > .btn { justify-self: start; }
+/* `.settings-sub` carries the rule that separates this panel from the one above it; its bottom
+   margin would land on top of the grid gap and double the space under the heading. */
+.ak > .settings-sub { margin-bottom: 0; }
+
+.ak__lede {
+  margin: 0;
+  max-width: 62ch;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+/* A state sentence: checking, empty, or a lookup that failed. `is-failed` is amber and not red on
+   purpose — the copy it carries says nothing has changed, and red would contradict it. */
+.ak__state {
+  margin: 0;
+  max-width: 62ch;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.ak__state.is-failed { color: var(--warn); }
+
+/* ----------------------------------------------------------- the secret, once --- */
+
+.ak__reveal {
+  display: grid;
+  grid-template-columns: max-content max-content 1fr;
+  gap: 12px 10px;
+  align-items: center;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+}
+.ak__reveal > * { min-width: 0; }
+.ak__reveal > :not(.btn) { grid-column: 1 / -1; margin: 0; }
+
+.ak__reveal-title {
+  font-size: 15px;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+/* The key. `user-select:all` makes the fallback in the copy handler true: one click selects the
+   whole thing when the clipboard is refused. */
+.ak__secret {
+  display: block;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xs);
+  background: var(--paper-2);
+  font: 13px / 1.6 var(--font-mono);
+  letter-spacing: 0;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  -webkit-user-select: all;
+  user-select: all;
+}
+
+.ak__reveal-note {
+  max-width: 62ch;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+/* -------------------------------------------------------------------- the list --- */
+
+.ak__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+}
+
+.ak__key {
+  display: grid;
+  gap: 6px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+  min-width: 0;
+}
+/* A revoked key stays legible — it is still evidence — but stops competing with the live ones. */
+.ak__key.is-revoked .ak__key-name { color: var(--muted); }
+
+.ak__key-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  min-width: 0;
+}
+
+.ak__key-name {
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+/* Live and test differ in brightness, not in hue. Spending hue here would leave nothing left for
+   the expiry, which is the fact that actually needs finding. */
+.ak__mode,
+.ak__status {
+  flex: none;
+  padding: 3px 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  font: 10px / 1.4 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.018em;
+  color: var(--faint);
+}
+.ak__mode.is-live { color: var(--ink); border-color: var(--surface-3); }
+
+/* The only colour in a row, and it is only drawn when the status is not "active". */
+.ak__status { border-color: color-mix(in srgb, currentcolor 32%, transparent); }
+.ak__status.is-expiring { color: var(--warn); }
+.ak__status.is-expired { color: var(--bad); }
+.ak__status.is-revoked { color: var(--faint); }
+
+.ak__prefix {
+  font: 12px / 1.4 var(--font-mono);
+  letter-spacing: 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+/* What the key may do, then when it dies and when it was last used. Two ranks of grey, because
+   the permissions are read and the dates are scanned. */
+.ak__key-what {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.ak__key-detail {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--faint);
+  overflow-wrap: anywhere;
+}
+
+.ak__key-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+.ak__key-actions .btn {
+  padding: 6px 12px;
+  border-radius: var(--r-xs);
+  font-size: 12px;
+}
+
+/* ------------------------------------------------------------ the confirmation --- */
+
+.ak__confirm {
+  display: grid;
+  grid-template-columns: max-content max-content 1fr;
+  gap: 12px 10px;
+  align-items: center;
+  margin-top: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--paper-2);
+}
+.ak__confirm > * { min-width: 0; }
+.ak__confirm > :not(.btn) {
+  grid-column: 1 / -1;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink);
+}
+.ak__confirm .btn {
+  padding: 7px 13px;
+  border-radius: var(--r-xs);
+  font-size: 12px;
+}
+
+/* Destructive intent, stated in ink rather than in a filled red block: this button revokes a
+   credential, and a shouting button is one that gets clicked to make it stop shouting. */
+.btn--danger {
+  color: var(--bad);
+  border-color: color-mix(in srgb, var(--bad) 34%, transparent);
+  transition: background-color 160ms var(--ease-out), border-color 160ms var(--ease-out);
+}
+.btn--danger:hover:not(:disabled),
+.btn--danger:focus-visible {
+  color: var(--bad);
+  border-color: color-mix(in srgb, var(--bad) 60%, transparent);
+  background: color-mix(in srgb, var(--bad) 11%, transparent);
+}
+
+/* -------------------------------------------------------------------- the form --- */
+
+.ak__form {
+  display: grid;
+  grid-template-columns: max-content max-content 1fr;
+  gap: 12px 10px;
+  align-items: center;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--paper-2);
+}
+.ak__form > * { min-width: 0; }
+.ak__form > :not(.btn) { grid-column: 1 / -1; margin: 0; }
+/* A label belongs to the control under it, so it closes half the gap it was given. */
+.ak__form > .ak__label { margin-bottom: -4px; }
+
+/* Micro-label. Uppercase, positive tracking, faint — the one place in this panel where type goes
+   smaller than 12px. */
+.ak__label {
+  display: block;
+  margin: 0;
+  padding: 0;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 0.018em;
+  color: var(--faint);
+}
+/* As a <legend> it also has to reserve the space under itself: a legend's margins are unreliable
+   across engines, its padding is not. */
+legend.ak__label { padding: 0 0 10px; }
+
+/* THREE CLASSES, ON PURPOSE. system.css styles text inputs through
+ * `input:not([type='checkbox']):not([type='radio'])`, and a `:not()` carries the specificity of its
+ * argument — that selector is (0,2,1), which beats a lone `.ak__input` (0,1,0). Measured, not
+ * assumed: with the single class the field rendered 778px wide because the shared `max-width:100%`
+ * won, and the 4px shared radius won over `--r-xs`. (0,3,0) settles it without an element selector
+ * and without depending on which stylesheet the bundler emits last. */
+.ak .ak__form .ak__input {
+  width: 100%;
+  max-width: 380px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xs);
+  background: var(--surface);
+  font-size: 14px;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  transition: border-color 160ms var(--ease-out);
+}
+.ak .ak__form .ak__input::placeholder { color: var(--faint); }
+.ak .ak__form .ak__input:hover { border-color: var(--surface-3); }
+.ak .ak__form .ak__input[aria-invalid='true'] { border-color: color-mix(in srgb, var(--bad) 45%, var(--line)); }
+
+/* A refusal, and a caution that does not refuse. The panel mints a key with no project happily —
+   that difference is the whole reason these are two classes and two colours. */
+.ak__problem {
+  margin: 0;
+  max-width: 62ch;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--bad);
+}
+.ak__warning {
+  margin: 0;
+  max-width: 62ch;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--warn);
+}
+
+/* ------------------------------------------------------------- the choice sets --- */
+
+.ak__modes,
+.ak__scopes,
+.ak__grants {
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: transparent;
+  min-inline-size: 0;
+}
+/* Prose inside a set — "Loading your projects…", a problem, a caution — sits on the same rhythm as
+   the rows it stands in for. */
+.ak__modes > p,
+.ak__scopes > p,
+.ak__grants > p { padding-top: 10px; }
+
+.ak__radio,
+.ak__scope,
+.ak__grant {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 140ms var(--ease-out);
+}
+.ak__radio:hover,
+.ak__scope:hover,
+.ak__grant:hover,
+.ak__radio:has(:checked),
+.ak__scope:has(:checked),
+.ak__grant:has(:checked) { color: var(--ink); }
+
+.ak__radio > input,
+.ak__scope > input,
+.ak__grant > input {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin: 0;
+}
+
+/* A scope is a sentence plus the identifier a developer will grep for. The sentence is what a
+   person ticks; the identifier is what they match against their own code. */
+.ak__scope {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 2px 10px;
+}
+.ak__scope-title {
+  font-size: 13px;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+.ak__scope-id {
+  justify-self: end;
+  font: 11px / 1.4 var(--font-mono);
+  letter-spacing: 0.018em;
+  color: var(--faint);
+  overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------------------------ 375px wide --- */
+
+@media (max-width: 560px) {
+  .ak { gap: 14px; }
+  .ak__reveal { padding: 15px; }
+  .ak__form { padding: 16px; }
+  .ak__modes,
+  .ak__scopes,
+  .ak__grants { padding: 12px 13px; }
+  /* The identifier drops under the sentence rather than squeezing it to two words a line. */
+  .ak__scope { grid-template-columns: auto minmax(0, 1fr); }
+  .ak__scope-id { grid-column: 2; justify-self: start; }
+  .ak__key-head { gap: 6px 8px; }
+  .ak__key-name { font-size: 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ak .ak__form .ak__input,
+  .ak__radio,
+  .ak__scope,
+  .ak__grant,
+  .btn--danger { transition: none; }
+}

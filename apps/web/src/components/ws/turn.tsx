@@ -23,6 +23,7 @@ import { eventsFromTurn, reduceActivity, type PhaseMark } from './activity-model
 import { buildEvidence } from './evidence-model';
 import { outcomeLine } from './outcome-model';
 import { Thinking } from './thinking';
+import './turn.css';
 
 /** Technical artifacts are opt-in. Automatic scene galleries never enter chat. */
 function ResultDetails({ docs }: { docs: UIDocument[] }) {

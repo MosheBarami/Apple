@@ -34,6 +34,7 @@ import {
 } from '../lib/notification-inbox.ts';
 import { shortRelative } from '../lib/format';
 import { Icon, PATH, Popover } from './ws/primitives';
+import './notification-inbox.css';
 
 /** The cache key. The badge and the list read the SAME one — see the header. */
 export const INBOX_KEY = ['notifications'];

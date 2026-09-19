@@ -1,0 +1,151 @@
+/* The Studio connection dialog: two halves of one question — WHAT IS PAIRED and PAIR SOMETHING.
+   They are drawn as two different kinds of object on purpose. The record is a recessed well of
+   facts you read; the code box is a plate on the modal surface you act on. A reader who cannot
+   tell those apart re-pairs a project that was already paired, which is the failure the component
+   itself is written against.
+
+   ONE WEIGHT. Nothing here is bolded — not the h3, not the <strong> in the install sentence.
+   Hierarchy is size, colour and the 1px var(--line) hairline, which does all the separation; there
+   is no shadow anywhere in this file, because a raised thing is a surface step.
+
+   COLOUR IS RATIONED to the four places this component means status: the head mark, a lapsed
+   expiry, the place-mismatch warning, and the success ring. Everything else is a neutral.
+
+   FOUR SHARED CLASSES. .pairing-code-box, .pairing-code, .pairing-label and .pairing-countdown are
+   also worn by the Discord pairing block in routes/settings.tsx — same idiom, label over code over
+   countdown — so they are left unscoped and both surfaces get them. system.css already sets
+   border/padding/text-align on the first two and is bundled AFTER this sheet (main.tsx imports
+   ./app before ./design/system.css), so anything that could collide is written at two-class
+   specificity rather than hoping for source order. */
+
+.pairing-col { display:grid; gap:22px; min-width:0; }
+
+/* ----------------------------------------------------- the connection record --- */
+
+/* A well, one step down from the modal's var(--surface). "This is a record of a thing that
+   already exists" said with a surface step instead of a heading. */
+.pairing-record { display:grid; gap:14px; min-width:0; padding:18px; border:1px solid var(--line); border-radius:var(--r-sm); background:var(--paper-2); }
+
+/* "We have not asked yet" and "we asked and could not tell" share one shape, and it is the shape
+   of a note — not of the record, which would read as a record of nothing. */
+.pairing-record__unknown { margin:0; padding:14px 16px; border:1px solid var(--line); border-radius:var(--r-sm); background:var(--paper-2); color:var(--faint); font-size:12.5px; line-height:1.55; letter-spacing:-.01em; }
+
+.pairing-record__head { display:flex; align-items:center; gap:10px; min-width:0; }
+.pairing-record__head > svg { flex:none; }
+.pairing-record__ident { flex:1 1 auto; display:grid; gap:2px; min-width:0; }
+.pairing-record__place { margin:0; font-size:15px; line-height:1.4; letter-spacing:-.01em; overflow-wrap:anywhere; }
+.pairing-record__sub { margin:0; font-size:12px; line-height:1.45; color:var(--faint); font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+/* A sentence fragment, not a micro-label — so no uppercase and no tracking, just the quietest ink. */
+.pairing-record__state { flex:none; font-size:11px; line-height:1.4; color:var(--faint); text-align:end; }
+
+/* The 30-day clock. Two facts, two columns, and the labels are true micro-labels: 10px uppercase
+   with positive tracking, which is the only place in this file type goes wider instead of tighter. */
+.pairing-record__facts { margin:0; padding-top:14px; border-top:1px solid var(--line); display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:12px 20px; }
+.pairing-record__facts > div { display:grid; gap:4px; min-width:0; }
+.pairing-record__facts dt { font-size:10px; line-height:1.4; text-transform:uppercase; letter-spacing:.018em; color:var(--faint); }
+.pairing-record__facts dd { margin:0; font-size:12.5px; line-height:1.45; color:var(--muted); font-variant-numeric:tabular-nums; }
+/* Lapsed is a fact about the project, so it gets one of the four colours. */
+.pairing-record__facts dd.is-lapsed { color:var(--bad); }
+
+/* The worker's own sentence, quoted. A warm tint rather than a border colour, so the hairline
+   stays the only thing drawing edges. */
+.pairing-record__mismatch { margin:0; display:flex; align-items:flex-start; gap:8px; padding:10px 12px; border:1px solid var(--line); border-radius:var(--r-xs); background:color-mix(in srgb,var(--warn) 9%,transparent); color:var(--muted); font-size:12.5px; line-height:1.5; letter-spacing:-.01em; }
+.pairing-record__mismatch > svg { flex:none; margin-top:3px; }
+.pairing-record__mismatch > span { min-width:0; overflow-wrap:anywhere; }
+
+/* The last three ops. A ledger: mark, what it was, when — hairline between rows, nothing else. */
+.pairing-record__ops { list-style:none; margin:0; padding:4px 0 0; border-top:1px solid var(--line); display:grid; }
+.pairing-record__ops li { display:grid; grid-template-columns:13px minmax(0,1fr) auto; align-items:center; gap:9px; padding:7px 0; min-width:0; }
+.pairing-record__ops li + li { border-top:1px solid var(--line); }
+.pairing-record__op { font-size:12.5px; line-height:1.4; color:var(--muted); letter-spacing:-.01em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pairing-record__when { font-size:11px; line-height:1.4; color:var(--faint); font-variant-numeric:tabular-nums; white-space:nowrap; }
+
+/* What is waiting, and the way to be rid of it. The count and its control sit on one line so the
+   sentence and the button that answers it are read together. */
+.pairing-record__queue { margin:0; padding-top:14px; border-top:1px solid var(--line); display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; }
+.pairing-record__queue > span { flex:1 1 210px; min-width:0; font-size:12.5px; line-height:1.5; color:var(--muted); letter-spacing:-.01em; }
+.pairing-record__queue > .btn { flex:none; }
+
+.pairing-record__acts { padding-top:14px; border-top:1px solid var(--line); display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+
+/* Revoking takes a sentence and a second click. The sentence is neutral ink; the red button is
+   the only thing here that is coloured, and it is the thing that does the damage. */
+.pairing-record__confirm { display:flex; flex-wrap:wrap; align-items:center; gap:8px; min-width:0; }
+/* Shrink-to-fit, NOT flex:1. Growing the sentence pushes Disconnect away from the words that
+   explain it and drops "Keep it" onto a third line — the confirm reads as three loose fragments
+   instead of one sentence you answer. */
+.pairing-record__confirm > span:first-child { flex:0 1 auto; min-width:0; font-size:12px; line-height:1.45; color:var(--muted); letter-spacing:-.01em; }
+
+/* Container placement only — the failure's own tones belong to components/failure.tsx. */
+.pairing-record > .failure { margin:0; padding-top:14px; border-top:1px solid var(--line); font-size:12.5px; line-height:1.55; }
+.pairing-record > .failure p { margin:0 0 6px; }
+.pairing-record > .failure p:last-child { margin-bottom:0; }
+
+/* --------------------------------------------------------------- paired, done --- */
+
+.pairing-success { display:grid; justify-items:center; gap:12px; padding:26px 20px; border:1px solid var(--line); border-radius:var(--r-sm); text-align:center; }
+.pairing-success h3 { margin:0; font-size:22px; font-weight:400; letter-spacing:-.02em; }
+.pairing-success p { margin:0; max-width:44ch; font-size:13px; line-height:1.6; letter-spacing:-.01em; }
+.pairing-success > .btn { margin-top:4px; min-width:170px; }
+.pairing-success > .btn + .btn { margin-top:0; }
+/* The one ring in the file. A hairline circle and a tinted fill — the surface step and the colour
+   doing together what a glow would have done badly. */
+.pairing-success-icon { display:grid; place-items:center; width:46px; height:46px; border:1px solid var(--line); border-radius:var(--r-pill); background:color-mix(in srgb,var(--good) 12%,transparent); color:var(--good); }
+
+/* -------------------------------------------------------------- the code half --- */
+
+.pairing-code-col { display:grid; gap:16px; min-width:0; }
+
+/* system.css owns border/padding/text-align. These are the properties it does not set, so no
+   collision and source order is irrelevant. */
+.pairing-code-box { border-radius:var(--r-sm); display:grid; justify-items:center; gap:12px; min-width:0; }
+.pairing-code-box > .btn { min-width:170px; }
+.pairing-code-box .form-error { margin:0; font-size:13px; line-height:1.55; letter-spacing:-.01em; }
+
+/* A micro-label: the smallest type in the dialog, so it is the one thing that tracks wider. */
+.pairing-label { display:block; font-size:10px; line-height:1.4; text-transform:uppercase; letter-spacing:.018em; color:var(--faint); }
+/* Two-class specificity: system.css sets `font:40px var(--font-mono)` later in the bundle, and the
+   shorthand would reset anything written here at one class. */
+.pairing-code-box .pairing-code { display:block; line-height:1.1; color:var(--ink); font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.pairing-countdown { display:block; font-size:11px; line-height:1.4; color:var(--faint); font-variant-numeric:tabular-nums; }
+
+.pairing-how { margin:0; font-size:12.5px; line-height:1.6; letter-spacing:-.01em; color:var(--muted); text-align:center; }
+/* ONE WEIGHT: the plugin's name is carried by ink, not by bold. */
+.pairing-how strong { font-weight:400; color:var(--ink); }
+
+.pairing-link { color:var(--ink); text-decoration:none; border-bottom:1px solid var(--line); padding-bottom:1px; transition:border-color 160ms var(--ease-out); }
+.pairing-link:hover { border-bottom-color:var(--ink); }
+
+.pairing-waiting { margin:0; display:flex; align-items:center; justify-content:center; gap:8px; font-size:12.5px; line-height:1.5; letter-spacing:-.01em; }
+.pairing-waiting .pulse-dot { flex:none; width:6px; height:6px; border-radius:var(--r-pill); background:currentColor; opacity:.35; animation:pairing-pulse 1.7s var(--ease-out) infinite; }
+@keyframes pairing-pulse { 0%,100% { opacity:.25; transform:scale(.85); } 50% { opacity:1; transform:scale(1); } }
+
+/* ------------------------------------------------------------------ at 375px --- */
+
+@media (max-width:560px) {
+  .pairing-col { gap:18px; }
+  .pairing-record { padding:14px; gap:12px; }
+  /* The head stops being one line: the mark keeps its column and the status drops under the
+     place name rather than squeezing it to three characters. */
+  .pairing-record__head { display:grid; grid-template-columns:16px minmax(0,1fr); align-items:start; gap:6px 10px; }
+  .pairing-record__head > svg { margin-top:3px; }
+  .pairing-record__state { grid-column:2; text-align:start; }
+  .pairing-record__ops li { grid-template-columns:13px minmax(0,1fr); gap:6px 9px; }
+  .pairing-record__when { grid-column:2; }
+  /* Long labels ("Use the place Studio has open now") get the full width instead of wrapping to
+     three words a line inside a shrink-wrapped button. Every control in the record becomes one
+     full-width row, so the panel reads as a stack instead of a ragged left edge. */
+  .pairing-record__acts { display:grid; }
+  .pairing-record__queue > .btn { width:100%; }
+  .pairing-record__confirm { display:grid; }
+  .pairing-record__confirm > span:first-child { flex:none; }
+  .pairing-success { padding:22px 14px; }
+  .pairing-success > .btn,
+  .pairing-code-box > .btn { min-width:0; width:100%; }
+  .pairing-code-box .pairing-code { font-size:30px; letter-spacing:.12em; }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  .pairing-waiting .pulse-dot { animation:none; opacity:.7; }
+  .pairing-link { transition:none; }
+}

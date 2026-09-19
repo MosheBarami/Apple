@@ -1,0 +1,108 @@
+/* CREDITS AND CLEARANCE — the drawer that answers "what do I owe, and can I publish this?".
+ *
+ * A READING SURFACE. Every rule here is in service of one long read inside a 540px drawer
+ * (the whole viewport at 375px), so the hierarchy is size, colour and space — never weight.
+ * Nothing in this file sets a font-weight above 400.
+ *
+ * COLOUR IS RATIONED TO ONE FACT. The panel states exactly one status — can this ship — and
+ * that fact is drawn twice and nowhere else: the verdict card's edge, and a blocker's name.
+ * The mark inside the verdict is coloured by `.st--{tone}` in system.css from the SAME tone,
+ * which is why no rule below touches its colour: two places deciding the same thing is the
+ * drift credits-model.ts exists to prevent, and it would be no better in CSS.
+ */
+
+.cr { display:grid; gap:22px; min-width:0; font-size:14px; letter-spacing:-.01em; }
+/* The pending branch draws bare `.skeleton` divs; `.skeleton-line` is sized in system.css,
+   the title is not. Scoped, because the title placeholder is this panel's h3, not everyone's. */
+.cr .skeleton-title { height:24px; width:58%; margin-bottom:18px; }
+.cr .gx-mono { font-family:var(--font-mono); }
+.cr .gx-btn { border-radius:var(--r-xs); font-size:13px; }
+
+/* ----------------------------------------------------------------- the verdict --- */
+
+.cr-verdict {
+  display:grid; grid-template-columns:auto minmax(0,1fr); align-items:start; gap:12px;
+  padding:16px 18px; border:1px solid var(--line); border-radius:var(--r-sm); background:var(--paper-2);
+}
+/* Optical alignment: the 18px mark sits against the title's cap height, not its line box. */
+.cr-verdict__mark { display:grid; place-items:center; padding-block-start:3px; }
+.cr-verdict__title { margin:0 0 6px; font-size:18px; font-weight:400; line-height:1.35; letter-spacing:-.015em; color:var(--ink); }
+.cr-verdict__body { margin:0; font-size:13px; line-height:1.6; letter-spacing:-.01em; color:var(--muted); text-wrap:pretty; }
+
+/* THE ONE TINTED THING. `--cr-tone` is set by the modifier and read twice below, so a fifth
+   verdict added to PUBLISH_TONE needs one line here and cannot half-apply. The tint is kept
+   under a tenth so the card stays a surface step, not a coloured panel. */
+.cr-verdict--good { --cr-tone:var(--good); }
+.cr-verdict--bad { --cr-tone:var(--bad); }
+.cr-verdict--warn { --cr-tone:var(--warn); }
+/* Muted is the "nothing recorded yet" verdict — an absence of evidence, so it gets no tint
+   at all. Colouring it would state a finding that credits-model.ts is careful not to make. */
+.cr-verdict--muted { --cr-tone:var(--line); }
+.cr-verdict--good,.cr-verdict--bad,.cr-verdict--warn {
+  border-color:color-mix(in srgb,var(--cr-tone) 32%,var(--line));
+  background:color-mix(in srgb,var(--cr-tone) 6%,var(--paper-2));
+}
+/* The same 6% is louder on a near-white card than on a charcoal one, because the light
+   theme's status inks are dark and saturated where the dark theme's are pale. Measured
+   both, not assumed: this keeps the card a surface step in either theme. */
+:root[data-theme='light'] :is(.cr-verdict--good,.cr-verdict--bad,.cr-verdict--warn) {
+  border-color:color-mix(in srgb,var(--cr-tone) 28%,var(--line));
+  background:color-mix(in srgb,var(--cr-tone) 5%,var(--paper-2));
+}
+
+/* ------------------------------------------------------------------- the groups --- */
+
+/* A hairline and 22px of air on each side of it does all the separation between sections. */
+.cr-group { display:grid; gap:10px; padding-block-start:22px; border-block-start:1px solid var(--line); }
+.cr-group__head { margin:0; font-size:11px; font-weight:400; line-height:1.4; text-transform:uppercase; letter-spacing:.018em; color:var(--faint); }
+.cr-group > .gx-btn { justify-self:start; margin-block-start:2px; }
+
+.cr-note { margin:0; max-width:64ch; font-size:13px; line-height:1.6; color:var(--muted); text-wrap:pretty; }
+
+/* -------------------------------------------------------------- findings & rows --- */
+
+.cr-findings,.cr-entries,.cr-ids { list-style:none; margin:0; padding:0; display:grid; gap:0; min-width:0; }
+
+/* Every row carries its own top hairline, including the first — which anchors the list to
+   the label above it without a second kind of rule. */
+.cr-finding,.cr-entry { display:grid; gap:4px; padding-block:12px; border-block-start:1px solid var(--line); min-width:0; }
+
+.cr-finding__name { font-size:14px; line-height:1.45; letter-spacing:-.01em; color:var(--ink); overflow-wrap:anywhere; }
+.cr-finding__why { font-size:13px; line-height:1.55; color:var(--muted); text-wrap:pretty; }
+/* The remediation is the only actionable sentence in a finding, so it is set apart by a
+   hairline rather than by a colour the panel has already spent. */
+.cr-finding__fix { padding-inline-start:11px; border-inline-start:1px solid var(--line); font-size:13px; line-height:1.55; color:var(--faint); text-wrap:pretty; }
+
+/* The second and last coloured thing on the panel, and it is the same fact as the verdict:
+   this asset is why the project cannot ship commercially. */
+.cr-finding.is-blocker .cr-finding__name { color:var(--bad); }
+
+.cr-entry__line { font-size:13px; line-height:1.55; color:var(--ink); overflow-wrap:anywhere; }
+.cr-entry__links { display:flex; flex-wrap:wrap; gap:6px 14px; font-size:12px; letter-spacing:0; min-width:0; }
+.cr-entry__links a {
+  color:var(--faint); text-decoration:underline; text-decoration-color:var(--line); text-decoration-thickness:1px;
+  overflow-wrap:anywhere; transition:color 140ms var(--ease-out),text-decoration-color 140ms var(--ease-out);
+}
+.cr-entry__links a:hover { color:var(--ink); text-decoration-color:var(--ink); }
+
+/* Raw Roblox asset ids: mono and tabular so a column of numbers reads as a column. */
+.cr-ids > li { padding-block:8px; border-block-start:1px solid var(--line); font-size:12px; line-height:1.5; letter-spacing:0; color:var(--muted); font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+
+/* ------------------------------------------------------------------- the stamp --- */
+
+/* What this report cannot see. Quietest thing on the panel, and the last word on it. */
+.cr-stamp { margin:0; padding-block-start:22px; border-block-start:1px solid var(--line); font-size:12px; line-height:1.6; letter-spacing:0; color:var(--faint); text-wrap:pretty; }
+
+/* ------------------------------------------------------------------- at 375px --- */
+
+@media (max-width:600px) {
+  .cr { gap:18px; }
+  .cr-verdict { padding:14px; gap:10px; }
+  .cr-verdict__title { font-size:17px; }
+  .cr-group,.cr-stamp { padding-block-start:18px; }
+  .cr-note { max-width:none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cr-entry__links a { transition:none; }
+}

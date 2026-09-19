@@ -1,0 +1,134 @@
+/* The instructions panel, drawn.
+ *
+ * Every class below was already in the markup and matched nothing, so the whole panel rendered as
+ * inline spans: "Block: Edit your placeThis rewrites scripts in your game" ran together on one
+ * line, and the layer that answered a setting — the one thing this panel exists to say — read as
+ * part of the value it was qualifying.
+ *
+ * SCOPED UNDER `.mem`. The drawer stacks MemoryPanel and InstructionsPanel, both of which render a
+ * `.mem` block, and several of these classes (mem__list, mem__item, mem__drop, mem__add,
+ * prefs__instruction, prefs__from) are used by both. Styling the shared block is the point: two
+ * adjacent panels drawing the same element two ways is the defect, not the fix.
+ *
+ * ONE WEIGHT, ONE HAIRLINE, ONE RADIUS. Hierarchy here is size, colour and space. The only colour
+ * is --warn, and only on the two lines that say another layer decided this — a block inherited from
+ * the account, and a value overriding a lower scope. Nothing else is tinted, so those two read.
+ */
+
+/* ------------------------------------------------------------------ the block --- */
+
+.mem { display:block; letter-spacing:-.01em; }
+/* The second panel in the drawer is a different subject, not a continuation of the first. */
+.mem + .mem { margin-top:26px; padding-top:26px; border-top:1px solid var(--line); }
+
+/* One weight and one radius inside the drawer. .field-label ships at 600 for the settings page;
+   at this density, next to 12px prose, it reads as shouting. Scoped, so /settings is untouched. */
+.mem .field-label { font-weight:400; }
+.mem .field-label--sub { font-size:12px; color:var(--faint); }
+.mem :is(input,select,textarea) { border-radius:var(--r-xs); }
+.mem :is(button,.btn) { border-radius:var(--r-xs); }
+
+.mem__note--quiet { color:var(--faint); line-height:1.6; }
+.mem__foot { margin-block:18px; }
+
+/* --------------------------------------------------------- which scope you edit --- */
+/* A segmented control, not two buttons: the pair is one choice, and the seam between them is what
+   says so. The selected half is a surface step — no glow, no accent fill. */
+
+.prefs__scopes { display:inline-flex; gap:2px; padding:3px; margin-bottom:18px; border:1px solid var(--line); border-radius:var(--r-sm); background:var(--paper-2); }
+.prefs__scope { flex:1; border:0; border-radius:var(--r-xs); padding:7px 15px; font-size:13px; line-height:1.4; color:var(--muted); background:transparent; white-space:nowrap; transition:color 140ms var(--ease-out),background-color 140ms var(--ease-out); }
+.prefs__scope:hover:not(:disabled) { color:var(--ink); background:var(--surface); }
+.prefs__scope--on,.prefs__scope--on:hover:not(:disabled) { color:var(--ink); background:var(--surface-2); }
+
+/* ---------------------------------------------------------------- the fieldsets --- */
+
+.mem .prefs__set { margin:18px 0; padding:18px; min-width:0; border-radius:var(--r-sm); }
+.mem .prefs__set > legend { padding-inline:0; margin-bottom:4px; }
+.prefs__note { margin:0 0 4px; font-size:12px; line-height:1.6; color:var(--muted); }
+
+/* `changes` and `spends` are two kinds of consequence, and the micro-label is the only thing that
+   separates them. Uppercase and tracked out, because at 10px tight type stops being readable. */
+.prefs__group { display:grid; gap:2px; margin-top:16px; }
+.prefs__group-label { padding-bottom:9px; margin-bottom:4px; border-bottom:1px solid var(--line); font-size:10px; line-height:1.4; letter-spacing:.018em; text-transform:uppercase; color:var(--faint); }
+
+.mem .prefs__check { min-width:0; font-size:13px; line-height:1.5; }
+.mem .prefs__check > input[type='checkbox'] { flex:none; width:15px; height:15px; margin:2px 0 0; }
+.prefs__check--reasoned > span { display:grid; gap:3px; min-width:0; }
+.prefs__check-label { font-size:13px; line-height:1.5; }
+.prefs__check-why { font-size:12px; line-height:1.5; color:var(--faint); overflow-wrap:anywhere; }
+/* THE ONE COLOURED LINE IN THE FIELDSET. A ticked box you cannot clear is indistinguishable from a
+   broken control unless the reason is visible AND looks like a reason. role="status" is only on the
+   inherited-block note — the plain `why` above it stays --faint. */
+.prefs__check-why[role='status'] { color:var(--warn); }
+
+/* ------------------------------------------------------------------- about you --- */
+
+.prefs__profile { display:grid; gap:2px; margin-block:22px; padding-top:20px; border-top:1px solid var(--line); }
+.prefs__profile .mem__note { margin:6px 0 4px; }
+.mem__summary { width:100%; min-height:62px; font-size:13px; line-height:1.6; }
+
+/* ----------------------------------------------------------------- instructions --- */
+
+.mem__facts { display:grid; gap:8px; margin-block:22px; padding-top:20px; border-top:1px solid var(--line); }
+.mem__list { list-style:none; margin:0; padding:0; display:grid; }
+.mem__item { display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 12px; padding:11px 0; border-top:1px solid var(--line); }
+/* .mem__fact is `width:100%` for the inputs it is usually on. On the span it is a paragraph. */
+.mem__fact.prefs__instruction { flex:1 1 180px; width:auto; min-width:0; font-size:13px; line-height:1.55; overflow-wrap:anywhere; }
+.prefs__until { flex:none; padding:2px 9px; border:1px solid var(--line); border-radius:var(--r-pill); font-size:10px; letter-spacing:.018em; text-transform:uppercase; color:var(--faint); white-space:nowrap; }
+/* Quiet until you reach for it. Forgetting is not the panel's headline. The auto margin keeps it
+   against the end of whatever line it lands on — narrow, it wraps under a long instruction, and
+   left-aligned there it reads as a third piece of the sentence rather than the row's control. */
+.mem__drop { flex:none; margin-inline-start:auto; border:0; padding:4px 0; font-size:12px; color:var(--faint); background:transparent; transition:color 140ms var(--ease-out); }
+.mem__drop:hover:not(:disabled) { color:var(--bad); background:transparent; }
+
+.mem__add { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:14px; }
+.mem__add .mem__fact { flex:1 1 190px; width:auto; min-width:0; }
+.prefs__ttl { flex:0 0 78px; width:78px; text-align:center; }
+.mem__addbtn { flex:none; padding:9px 16px; border:1px solid var(--line); font-size:13px; }
+
+/* ------------------------------------------------------- what the run will use --- */
+/* The rows that must never lie. Key, value, the scope that answered, and — on its own line, so it
+   cannot be mistaken for part of the value — what this row overrode. */
+
+.prefs__resolved { display:grid; gap:8px; margin-block:22px; padding-top:20px; border-top:1px solid var(--line); }
+.prefs__row { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 10px; padding:10px 0; border-top:1px solid var(--line); }
+.prefs__key { flex:none; max-width:100%; font-size:11px; color:var(--muted); overflow-wrap:anywhere; }
+.prefs__value { flex:1 1 150px; min-width:0; font-size:13px; line-height:1.55; overflow-wrap:anywhere; }
+.prefs__from { flex:none; font-size:11px; color:var(--faint); font-variant-numeric:tabular-nums; white-space:nowrap; }
+/* Only in the resolved list, where it trails the value. In the audit list it is the timestamp and
+   comes first, and an auto margin there would shove the date away from the row it dates. */
+.prefs__resolved .prefs__from { margin-inline-start:auto; }
+.prefs__over { flex-basis:100%; font-size:11px; letter-spacing:.018em; color:var(--warn); }
+
+/* -------------------------------------------------------------- export, history --- */
+
+/* A <label> wearing .btn gets none of the element rules a <button> gets, so it needs the whole
+   control drawn on it or it sits in the row as bare text between two bordered neighbours. */
+.mem .prefs__import { cursor:pointer; padding:9px 14px; border:1px solid var(--line); font-size:inherit; }
+.mem .prefs__import:hover { background:var(--surface-2); }
+.mem .prefs__import:focus-within { outline:2px solid var(--accent); outline-offset:4px; }
+
+/* A raised step, because history is a different register from the settings above it. */
+.prefs__audit { display:grid; gap:4px; margin-block:18px; padding:14px 16px; border:1px solid var(--line); border-radius:var(--r-sm); background:var(--paper-2); }
+.prefs__audit .mem__list .prefs__row:first-child { border-top:0; padding-top:4px; }
+.prefs__audit .mem__note { margin:10px 0 0; }
+
+/* ---------------------------------------------------------------------- narrow --- */
+/* 375px: the drawer is the whole screen, so the panel is ~323px wide. Nothing here may scroll
+   sideways — the day-length box and the Add button wrap under the instruction instead. */
+
+@media (max-width:480px) {
+  .mem .prefs__set { padding:15px 14px; }
+  .prefs__scopes { display:flex; width:100%; }
+  .prefs__scope { padding:8px 10px; }
+  /* The instruction gets the whole line; the day count and Add share the next one, with Add taking
+     the surplus — a 200px-wide box labelled "days" reads as the important half of the form. */
+  .mem__add .mem__fact { flex-basis:100%; }
+  .prefs__ttl { flex:0 0 96px; width:96px; }
+  .mem__addbtn { flex:1 1 auto; }
+  .prefs__value { flex-basis:100%; }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  .prefs__scope,.mem__drop { transition:none; }
+}

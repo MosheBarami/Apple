@@ -9,6 +9,7 @@
 // the open place, so with no Studio attached there is no plan — and this page
 // says that plainly rather than drawing a generic template that would look
 // exactly like a real one.
+import './roadmap.css';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';

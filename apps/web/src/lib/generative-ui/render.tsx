@@ -43,6 +43,7 @@ import type {
 } from './schema';
 import { validateDocument, type ValidateOptions } from './validate';
 import { StatusIcon, type StatusName } from '../../components/status-icon';
+import './render.css';
 
 // ---------------------------------------------------------------------------
 // Token → class resolution. The ONLY place a token becomes a visual decision.

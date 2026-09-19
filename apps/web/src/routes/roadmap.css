@@ -1,0 +1,77 @@
+/* /projects/:id/roadmap — the rules this route owns.
+ *
+ * The spine, the milestone card, the suggestion panel and the summary's meter are
+ * already dressed in design/system.css. What was left with no rules at all is the
+ * page's own furniture: the head column, the loading state, the sentence the 409
+ * empty state prints, and the two small spans that qualify a larger number
+ * ("· 3 in progress", "· 28 read"). Every one of them is a <span> or a <button>,
+ * so with no rules the qualifier ran into the number it qualifies and the "Now"
+ * jump drew as a bordered 10px-radius button in the middle of a sentence.
+ *
+ * Square corners are deliberate: .rm-card and .rm-contents carry no radius, and a
+ * rounded skeleton that squares off on load is a visible pop.
+ */
+
+/* ------------------------------------------------------------------- the head --- */
+/* .page-head is a flex row with the suggest button on its end. This is the column
+   that holds the crumbs, the title and the lead. min-width:0 lets a long project
+   name in the crumbs wrap instead of squeezing the button off the row. */
+.rm-head__text { flex:1; min-width:0; max-width:680px; }
+.rm-head__text .page-sub { max-width:62ch; margin:0; letter-spacing:-.01em; }
+
+/* ---------------------------------------------------------------- the loading --- */
+/* Same track sizing as .rm-stage__cards, so the placeholders stand where the real
+   cards will. The sentence spans the whole grid — it is about all three. */
+.rm-loading { display:grid; gap:18px; grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr)); }
+.rm-loading__copy { grid-column:1/-1; margin:0; font-size:13px; color:var(--muted); letter-spacing:-.01em; }
+/* A step DOWN from .rm-card's --surface: a placeholder is recessed, not raised. */
+.rm-card.rm-card--skeleton { background:var(--paper-2); }
+.rm-card--skeleton .skeleton-title { height:21px; width:66%; }
+/* Breathing, not a sweeping gradient — at this size a moving highlight reads as a
+   rendering fault. The global reduce rule already kills it; this is the local one. */
+.rm-card--skeleton .skeleton { animation:rm-breathe 1.7s var(--ease-out) infinite alternate; }
+@keyframes rm-breathe { from { opacity:.5; } to { opacity:1; } }
+@media (prefers-reduced-motion:reduce) { .rm-card--skeleton .skeleton { animation:none; opacity:.75; } }
+
+/* ------------------------------------------------------------------ the empty --- */
+/* The worker's own 409 sentence, under the prose that explains it. Mono and --faint
+   because it is the machine's wording quoted verbatim, not the page talking. */
+.rm-empty__detail { margin:0 auto; max-width:500px; font-family:var(--font-mono); font-size:12px; line-height:1.6; letter-spacing:0; color:var(--faint); overflow-wrap:anywhere; }
+
+/* ---------------------------------------------------------------- the summary --- */
+/* "12 of 19 landed · 3 in progress" — one sentence, two ranks. The second half is
+   a qualifier, so it drops a step in colour rather than gaining a weight. */
+.rm-summary__active { color:var(--faint); }
+
+.rm-summary__now { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+/* A jump, not a submit: the global button chrome comes off entirely and the
+   affordance is a hairline underline that firms up on hover. */
+.rm-summary__now-link { padding:0; border:0; border-radius:0; background:none; text-align:start; font-size:15px; letter-spacing:-.01em; color:var(--ink); text-decoration:underline; text-decoration-color:var(--line); text-underline-offset:5px; transition:text-decoration-color .18s var(--ease-out); }
+/* :not(:disabled) matches the global button:hover rule's specificity, so the grey
+   hover fill is beaten whatever order the two sheets land in. */
+.rm-summary__now-link:hover:not(:disabled) { background:none; text-decoration-color:var(--muted); }
+@media (prefers-reduced-motion:reduce) { .rm-summary__now-link { transition:none; } }
+
+/* --------------------------------------------------------------- the contents --- */
+/* Counts are read against each other, so they line up on the digit. */
+.rm-contents__counts dd { letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
+/* "at least 1,204 · 28 read" — how many scripts were opened, riding the count it
+   qualifies. It never wraps away from its own number. */
+.rm-contents__partial { font-size:12px; letter-spacing:0; color:var(--faint); white-space:nowrap; }
+
+/* One micro-label style for the page. Scoped to .rm-page: .eyebrow is shared with
+   the dashboard and this route does not get to decide for it. */
+.rm-page .eyebrow { display:inline-block; font-size:10px; text-transform:uppercase; letter-spacing:.018em; color:var(--faint); }
+/* Scripts / Zones / Currencies / Interface read as a column when their labels do. */
+.rm-contents__line .eyebrow { min-width:78px; }
+
+/* ----------------------------------------------------------------- at 375px --- */
+@media (max-width:680px) {
+  /* .page-head goes display:block at this width, which drops the gap under the
+     lead and puts the suggest button hard against it. */
+  .page-head.rm-head { display:grid; gap:20px; justify-items:start; }
+  .rm-head__text { max-width:none; }
+  .rm-head__text .page-sub { max-width:none; }
+  .rm-contents__line .eyebrow { display:block; min-width:0; }
+  .rm-summary__now-link { font-size:14px; }
+}

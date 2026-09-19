@@ -9,7 +9,8 @@
 .apple-catalog__results { list-style:none; margin:0; padding:0; display:grid; gap:0; }
 .apple-catalog__results li { display:grid; grid-template-columns:120px minmax(0,1fr) auto; align-items:center; gap:20px; padding:20px 0; border-top:1px solid var(--line); }
 .apple-catalog__details { display:grid; flex:1; gap:5px; min-width:0; overflow-wrap:anywhere; }
-.apple-catalog__details strong { font-size:16px; font-weight:600; }
+/* 600 was the last bold left in the app's own stylesheets; size and colour carry this now. */
+.apple-catalog__details strong { font-size:16px; font-weight:400; color:var(--ink); }
 .apple-catalog__details span { font-size:12px; line-height:1.5; }
 .apple-catalog__results button { flex-shrink:0; font-size:12px; }
 .apple-catalog__preview { position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; width:120px; height:136px; flex-shrink:0; border:1px solid var(--line); border-radius:12px; background:color-mix(in srgb,var(--ink) 4%,var(--paper)); color:var(--muted); overflow:hidden; }

@@ -1,0 +1,94 @@
+/* The composer's own rules.
+ *
+ * Ten class names in composer.tsx had no selector anywhere: the staged-file row drew its name,
+ * its progress bar and its two controls as bare inline spans and default 10px-radius buttons, the
+ * @-mention picker had NO rule at all — an unstyled <ul> with browser bullets shoving the tool bar
+ * down the screen — and the model popover could not say which model was in use.
+ *
+ * WHY THE DOUBLED SELECTORS (`.gx-chip.gx-chip--creation`, not `.gx-chip--creation`).
+ * main.tsx imports `./app` on line 2 and `./design/system.css` on line 5, so this file is injected
+ * BEFORE the design system and loses every tie at equal specificity. A modifier that has to beat
+ * its own block — `.gx-chip { border:1px solid transparent }` — must therefore carry both classes.
+ * Where the design system says nothing about a property, a single class is enough and is used.
+ */
+
+/* ------------------------------------------------------------- staged files ---- */
+
+/* The row is one line of text with controls on it. `.gx-attach__row` is `display:flex` with no
+   align-items, so the 12px paperclip sat at the top of a row made twice its height by a Retry
+   button. Adding the one property the design system does not declare, rather than restating it. */
+.gx-attach__row { align-items:center; }
+.gx-attach__name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; letter-spacing:-.01em; }
+
+/* A determinate bar, sized by `inlineSize` from the reducer. The track is a surface step and the
+   fill is ink: progress is not a status, so it gets no colour. */
+.gx-attach__bar { flex:none; inline-size:64px; block-size:3px; border-radius:var(--r-pill); background:var(--surface-3); overflow:hidden; }
+.gx-attach__fill { display:block; block-size:100%; background:var(--ink); border-radius:inherit; transition:inline-size 200ms var(--ease-out); }
+
+/* Retry, and Remove. Small, quiet, and only ink under the pointer — a row that shouts twice about
+   a file the person may not have meant to attach is a row that emphasises nothing. */
+.gx-attach__act { flex:none; border:0; border-radius:var(--r-xs); padding:3px 8px; font-size:11px; letter-spacing:-.01em; color:var(--muted); background:transparent; }
+.gx-attach__act:hover:not(:disabled) { color:var(--ink); background:var(--surface-2); }
+.gx-attach__act.gx-attach__x { display:grid; place-items:center; inline-size:22px; block-size:22px; padding:0; font-size:15px; line-height:1; color:var(--faint); }
+.gx-attach__act.gx-attach__x:hover:not(:disabled) { color:var(--ink); }
+
+/* ------------------------------------------------------------------- chips ---- */
+
+/* The chevron follows the popover it opens. Rotation only — the chip itself must not move, or the
+   whole tool bar reflows every time somebody glances at the model list. */
+.gx-chip__caret { display:inline-flex; color:var(--faint); transition:transform 160ms var(--ease-out); }
+.gx-chip[aria-expanded='true'] .gx-chip__caret { transform:rotate(180deg); }
+
+/* Images and 3D are TOGGLES, and a toggle that looks exactly like a plain button gives no clue it
+   has an off state. A hairline says "this is a switch"; the pressed state is a brighter hairline,
+   not a colour, because neither of these chips reports status. */
+.gx-chip.gx-chip--creation { border-color:var(--line); }
+.gx-chip.gx-chip--creation:hover:not(:disabled) { border-color:var(--surface-3); }
+.gx-chip.gx-chip--creation[aria-pressed='true'] { border-color:var(--ink); }
+/* The " · MAX" suffix is a micro-label, not part of the chip's name. */
+.gx-chip.gx-chip--creation .muted { font-size:10px; letter-spacing:.018em; color:var(--faint); }
+
+/* What is selected in Studio, as a reference token — the one place a pill is the right shape.
+   Blockified so the label can actually ellipsise: the text sits in an anonymous flex item inside
+   `.gx-chip`, and text-overflow never reaches one of those. A Studio path can be long, and an
+   unclamped one pushes Send off the end of the bar at 375px. */
+.gx-chip.gx-chip--selection { display:inline-block; max-inline-size:min(230px,44vw); padding:6px 11px; border-color:var(--line); border-radius:var(--r-pill); font-size:11px; line-height:22px; letter-spacing:-.01em; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.gx-chip.gx-chip--selection > svg { margin-inline-end:6px; }
+.gx-chip.gx-chip--selection:hover:not(:disabled) { color:var(--ink); border-color:var(--surface-3); }
+
+/* --------------------------------------------------------- @ mention picker ---- */
+
+/* Above the composer, never in its flow: the list opens and closes on every keystroke after an
+   '@', and one that took up room would walk the tool bar and the Send button up and down the
+   screen while the person types. `.gx-composer__inner` is the positioned ancestor. */
+.gx-mention { position:absolute; z-index:60; inset-block-end:calc(100% + 8px); inset-inline:12px; max-inline-size:min(460px,100%); max-block-size:min(232px,40vh); overflow-y:auto; overscroll-behavior:contain; margin:0; padding:5px; list-style:none; background:var(--surface); border:1px solid var(--line); border-radius:var(--r-sm); }
+/* Mono, because every one of these is a file path and the columns of a path want to line up. */
+.gx-mention__row { padding:7px 9px; border-radius:var(--r-xs); font:12px/1.5 var(--font-mono); color:var(--muted); cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+/* Driven by the arrow keys as well as the pointer, so it is a surface step and an ink change —
+   both legible without colour, which is what a keyboard-driven listbox needs. */
+.gx-mention__row.is-on { background:var(--surface-2); color:var(--ink); }
+
+/* ------------------------------------------------------------ popover items ---- */
+
+/* A label over a description. `min-width:0` on the text column is what keeps a long template blurb
+   from pushing the popover past the max-width the design system gave it. */
+.gx-pop__item.gx-pop__item--stack { gap:11px; padding:10px 11px; border-radius:var(--r-xs); }
+.gx-pop__item.gx-pop__item--stack .gx-pop__main { flex:1; min-width:0; letter-spacing:-.01em; }
+.gx-pop__item.gx-pop__item--stack .gx-pop__sub { line-height:1.45; letter-spacing:0; }
+/* Which model is in use. A surface step, not a tick and not a colour — the list is two items long
+   and the chip above it already says the name. */
+.gx-pop__item.gx-pop__item--stack[aria-checked='true'] { background:var(--surface-2); }
+
+/* ------------------------------------------------------------------ narrow ---- */
+
+@media (max-width:480px) {
+  /* A filename, an error sentence, Retry and Remove do not fit on one 375px line. Wrapping is the
+     only way the error stays readable instead of being clipped by its own row. */
+  .gx-attach__row { flex-wrap:wrap; }
+  .gx-attach__bar { inline-size:44px; }
+  .gx-mention { inset-inline:8px; max-block-size:min(190px,34vh); }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  .gx-attach__fill,.gx-chip__caret { transition:none; }
+}
