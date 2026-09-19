@@ -304,7 +304,11 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
    * Derived on every render from live socket state, so the connect prompt
    * below cannot linger after Studio attaches or reappear while it is attached.
    */
-  const studioStatus = studioConnection(conn, studio.connected, studio.everConnected);
+  // `lastSeenAt` is the worker's memory of this PROJECT, not this tab's memory of this session:
+  // a plugin that has ever polled leaves it set, and it is what the pairing dialog prints as
+  // "last seen". Passing it here is what stops a paired project being shown the first-time
+  // setup card every time the page is reloaded while Studio happens to be quiet.
+  const studioStatus = studioConnection(conn, studio.connected, studio.everConnected, studio.link.lastSeenAt !== null);
 
   /**
    * Bind this project to whatever place Studio has open now.
@@ -1171,6 +1175,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
           running={running}
           playtest={playtest}
           studioConnected={studio.connected}
+          boundPlaceName={studio.link.place?.placeName ?? null}
         />
         </div>
       </div>

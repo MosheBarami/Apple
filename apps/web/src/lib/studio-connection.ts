@@ -29,17 +29,31 @@ export type StudioConnection = 'connecting' | 'connected' | 'disconnected' | 'no
 /**
  * @param conn            the WebSocket's own state
  * @param studioConnected the worker's most recent word on Studio
- * @param everConnected   whether `studioConnected` has ever been true this session
+ * @param everConnected   whether `studioConnected` has ever been true THIS BROWSER SESSION
+ * @param everPaired      whether the worker says this project has a plugin that has ever polled
  */
 export function studioConnection(
   conn: ConnState,
   studioConnected: boolean,
   everConnected: boolean,
+  everPaired = false,
 ): StudioConnection {
   if (studioConnected) return 'connected';
   // Having seen Studio and lost it is a different fact from never having had
   // it, and the UI says different things about the two.
-  if (everConnected) return 'disconnected';
+  //
+  // `everConnected` STARTS FALSE ON EVERY PAGE LOAD, and that is what put the three-step
+  // first-time setup card — "Studio plugin unavailable / Open the plugin / Pair your project" —
+  // in front of the owner of a project paired four days earlier, with an expiry a month out, whose
+  // Studio simply had a different place open. He read it as the product not knowing he had paired,
+  // which is exactly what it says.
+  //
+  // The worker knew the whole time: the pairing dialog on the same screen prints PAIRED, EXPIRES
+  // and "last seen 11m" from `lastSeenAt`. The browser had the fact and dropped it for this one
+  // decision. `everPaired` is that fact, and it is the same question asked of a longer memory —
+  // "has a plugin ever polled for this project", not "have I personally seen it since this tab
+  // opened".
+  if (everConnected || everPaired) return 'disconnected';
   // No socket yet means no answer yet. Claiming "not connected" here would put
   // a three-step setup card in front of a user who is already set up, for as
   // long as the handshake takes.

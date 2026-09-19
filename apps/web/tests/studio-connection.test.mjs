@@ -117,3 +117,40 @@ test('no in-app install affordance points at the store while it is not distribut
     );
   }
 });
+
+/* ------------------------------------------ a pairing the browser did not personally witness --- */
+
+/**
+ * WHAT THE OWNER SAW, 2026-09-19. A project paired four days earlier, expiry a month out, "last
+ * seen 11m" printed in the pairing dialog on the same screen — and beside it the three-step
+ * first-time setup card: "Studio plugin unavailable / Open the Apple plugin in Studio / Pair your
+ * project". He read it, correctly, as the product not knowing he had paired.
+ *
+ * `everConnected` starts false on every page load. It records what THIS TAB has seen since it
+ * opened, which for a reload is nothing. The worker's memory is longer and was already on screen.
+ */
+
+test('A PAIRED PROJECT IS NOT SHOWN THE FIRST-RUN CARD after a reload', () => {
+  // A fresh tab: everConnected false, because nothing has been witnessed yet. The worker says a
+  // plugin has polled for this project at some point — which is what `lastSeenAt !== null` means.
+  assert.equal(studioConnection('open', false, false, true), 'disconnected',
+    'a project with a pairing was told to go and install the plugin');
+  // And the distinction it exists to preserve still holds: a project that has never paired gets
+  // the setup card, which is the correct thing to show somebody who has never set it up.
+  assert.equal(studioConnection('open', false, false, false), 'not-connected');
+});
+
+test('the pairing memory never overrides a live connection or an unanswered socket', () => {
+  // Connected beats everything: the card must vanish, not become a nicer card.
+  assert.equal(studioConnection('open', true, false, true), 'connected');
+  // And a socket that has not answered yet is still "connecting" — claiming DISCONNECTED during a
+  // handshake would flash "Apple can't reach your place" at somebody whose place is fine.
+  assert.equal(studioConnection('connecting', false, false, false), 'connecting');
+  assert.equal(studioConnection('reconnecting', false, false, false), 'connecting');
+});
+
+test('the parameter defaults to false, so a caller that has not been updated cannot silently change behaviour', () => {
+  // Three arguments is the old shape. It must still mean exactly what it meant.
+  assert.equal(studioConnection('open', false, false), 'not-connected');
+  assert.equal(studioConnection('open', false, true), 'disconnected');
+});

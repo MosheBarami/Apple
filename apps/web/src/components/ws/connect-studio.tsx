@@ -32,9 +32,18 @@ interface ConnectStudioProps {
   status: StudioConnection;
   /** Opens the pairing-code dialog. */
   onPair: () => void;
+  /**
+   * The place this project is bound to, when the worker has told us one.
+   *
+   * IT IS THE WHOLE ANSWER FOR THE COMMONEST CASE. "Apple can't reach your place" is true and
+   * useless; the reader's next question is which place, and the product already knows — the
+   * pairing dialog two clicks away prints it. Naming it turns a shrug into an instruction, and
+   * the instruction is usually "you have the wrong file open in Studio".
+   */
+  placeName?: string | null;
 }
 
-export function ConnectStudio({ status, onPair }: ConnectStudioProps) {
+export function ConnectStudio({ status, onPair, placeName = null }: ConnectStudioProps) {
   // Attached. Say nothing; the workspace is the point, not the setup.
   if (status === 'connected') return null;
 
@@ -61,7 +70,9 @@ export function ConnectStudio({ status, onPair }: ConnectStudioProps) {
       </h2>
       <p className="gx-connect__lede">
         {dropped
-          ? 'Apple can’t reach your place right now. Open the Apple plugin in Studio, or pair again.'
+          ? placeName
+            ? `Apple is paired to ${placeName} and can’t reach it. Open ${placeName} in Studio — if you have a different place open, that is why — or pair again.`
+            : 'Apple can’t reach your place right now. Open the Apple plugin in Studio, or pair again.'
           : STUDIO_PLUGIN_STORE_LIVE
             ? 'Apple makes its changes inside Studio. Three steps, once.'
             : 'Public installation is unavailable. Already have the plugin? Open it in Studio and pair below.'}

@@ -26,6 +26,8 @@ interface ProjectStageProps {
   running: boolean;
   playtest: PlaytestRun | null;
   studioConnected: boolean;
+  /** The bound place's name, for the sentence ConnectStudio shows when Studio has gone quiet. */
+  boundPlaceName?: string | null;
 }
 
 function stageSummary({
@@ -71,6 +73,7 @@ export function ProjectStage({
   running,
   playtest,
   studioConnected,
+  boundPlaceName = null,
 }: ProjectStageProps) {
   const [surface, setSurface] = useState<'render' | 'playtest'>(playtest ? 'playtest' : 'render');
   const summary = stageSummary({ status, frames, playtest });
@@ -110,7 +113,7 @@ export function ProjectStage({
       </header>
 
       <div className="gx-project-stage__body" id="project-stage-content" hidden={collapsed}>
-        <ConnectStudio status={status} onPair={onPair} />
+        <ConnectStudio status={status} onPair={onPair} placeName={boundPlaceName} />
 
         {!showBlueprint && playtest && frames.length > 0 && (
           <div className="gx-project-stage__surfaces" role="tablist" aria-label="Project stage view">
