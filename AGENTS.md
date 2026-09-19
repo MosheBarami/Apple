@@ -110,9 +110,13 @@ skeletons forever. **If a query 400s on a missing column, look here first.**
 **`packages/corpus/data/library/` (429 M)** — the asset library. `index.json` is the manifest:
 
 ```
-total 474,745 assets · 115,803 usable with no upload
-creator_store 102,780 · iconify · game_icons · opengameart · cgbookcase · kenney · creator_store_audio 13,023
-never harvested: poly_haven, sketchfab
+total 510,014 items a user can insert · 215 packs, counted separately as containers
+live-insertable today: 81,648 of 511,208 D1 rows · 429,560 pending_ingest · 0 audio ingested
+creator_store 102,780 rows for 81,311 distinct assets · kenney 215 packs / 56,718 files
+iconify · game_icons · opengameart · cgbookcase · creator_store_audio 13,023 (reachable by nobody)
+never harvested: sketchfab   (poly_haven and ambientcg ARE live in D1)
+superseded: "474,745" added packs to files; "115,803 usable" counted duplicates up to 10x and
+13,023 audio rows ingested nowhere. See scripts/library-canonicalise.mjs.
 ```
 
 Every row carries its licence. That provenance is the product's argument — no rival shows it —

@@ -98,8 +98,16 @@ test('THE MEASURED FACTS — a figure in the prose is the figure in the data', (
   const index = JSON.parse(read('packages/corpus/data/library/index.json'));
   const total = index.total.toLocaleString('en-US');
   assert.ok(s.includes(total), `AGENTS.md does not state the library total; index.json says ${total}`);
-  const usable = index.usableWithoutUploadKnown.toLocaleString('en-US');
-  assert.ok(s.includes(usable), `AGENTS.md does not state the usable-without-upload figure; index.json says ${usable}`);
+  // `usableWithoutUploadKnown` no longer exists. w21 found the figure it held was three facts
+  // added together — it counted Creator Store rows that repeat up to ten times, and 13,023 audio
+  // rows that are ingested nowhere and so are usable by nobody. The canonicaliser replaced it with
+  // a LIVE measurement of the table the product actually inserts from, and kept the old value in
+  // `supersededUsable` with the reason. Reading the key by name is checked first: a schema change
+  // should say which key went missing, not throw a TypeError on `undefined.toLocaleString`.
+  assert.ok(index.liveMeasurement && typeof index.liveMeasurement.active === 'number',
+    'index.json has no liveMeasurement.active — the usable-without-upload figure moved again; read scripts/library-canonicalise.mjs before editing this');
+  const usable = index.liveMeasurement.active.toLocaleString('en-US');
+  assert.ok(s.includes(usable), `AGENTS.md does not state the live-insertable figure; index.json says ${usable}`);
 
   const wrangler = read('apps/worker/wrangler.apple.jsonc');
   const classes = [...new Set([...wrangler.matchAll(/"class_name":\s*"(\w+)"/g)].map((m) => m[1]))];
