@@ -19,6 +19,8 @@ importers:
 
   apps/benchmark/crystal-canyon: {}
 
+  apps/experiences/lumen-isles: {}
+
   apps/plugin: {}
 
   apps/site:

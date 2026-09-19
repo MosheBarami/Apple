@@ -74,26 +74,59 @@ test('a workspace import counts as an import, and the count is what proves it', 
   //      2  `packages/sdk/types/fixtures/{bad,ok}.ts` meaning `packages/sdk/types/index.d.ts` by
   //         `../index` — there was no `.d.ts` candidate.
   //
-  //   THE RESIDUE IS THREE, and all three are legitimate because none of them is an import:
+  //   THE RESIDUE IS NOT AN IMPORT AT ALL, which is the whole of what makes it legitimate:
   //
   //     apps/worker/tests/sandbox-contract.test.mjs -> ./secret.js   and  -> ./other.luau
   //       Hostile sample PROGRAMS, quoted inside that file's case table as the source a scan must
   //       return `node_dynamic_import` and `luau_require` for. Resolving either would mean the
   //       checker had found the escape the test exists to prove is blocked.
   //
-  //       Quoting one of those case lines VERBATIM here made this comment a fourth unresolved
+  //       Quoting one of those case lines VERBATIM here made this comment a further unresolved
   //       specifier — the scanner reads test files too, and a dynamic import inside a `//` line is
-  //       still a match for its regex. The residue was three, the note explaining the residue made
-  //       it four, and the ceiling below caught the note. Describe them; do not re-type them.
+  //       still a match for its regex. Describe them; do not re-type them.
   //     tests/release-check.test.mjs -> ../layouts/Base.astro
   //       A line inside the `PAGE` template literal, the changelog fixture written into a temp
   //       tree. It is Astro source the test GENERATES, not source this repository holds.
   //
-  //   So the bound is a ratio plus an absolute ceiling rather than a slack constant: `< 50` would
-  //   now sit forty-seven above the truth and let any one of the four holes reopen in silence. ]]
+  //   THE ABSOLUTE CEILING WAS `unresolved <= 4` AND IT HAD TO GO, 2026-09-19.
+  //
+  //   It went red at five. The fourth and fifth are two `packages/training/src/*.test.mjs` files
+  //   quoting a Luau `require` of a neighbouring module inside their own case tables — the SAME
+  //   class as the sandbox-contract pair above, arrived at independently by another session.
+  //   Nothing was dropped: the resolver still reports 1,597 edges. (Re-typing those two
+  //   specifiers here to name them took the residue to SEVEN, which is the trap the note above
+  //   describes, sprung by the session rewriting the note. Describe them; do not re-type them.)
+  //
+  //   Bumping 4 to 5 was available and is the wrong fix, because the number is not the property.
+  //   An absolute counts quoted sample programs, and a test suite that grows more hostile samples
+  //   moves it every time — so it becomes a number people bump, which is how `< 50` came to sit
+  //   forty-seven above the truth in the first place.
+  //
+  //   WHAT IS ACTUALLY TRUE: the checker cannot tell a specifier QUOTED AS DATA from one written
+  //   as source without executing the file, and every specifier it cannot tell apart lives in a
+  //   test — a case table or a generated fixture. In PRODUCT source there is no such thing as a
+  //   legitimate unresolved in-repo specifier: it is a resolver hole or a broken import, and both
+  //   must be red at one. So the file the specifier sits in is the property, and it does not move
+  //   when someone writes another sample program.
+  //
+  //   Held against the four measured holes above: the 32 Astro/JSON targets, the 10 `@golem/evals`
+  //   deep paths and the 2 `packages/sdk` fixtures were all in non-test files and each goes red on
+  //   the property alone, at ANY count. The 8 esbuild `stdin` ones were in a test file, so the
+  //   ratio is what has to cover them — and it does, measured 2026-09-19 by forcing `virtualBase`
+  //   to false: the residue goes 5 -> 13 and the share to 0.81%, past the 0.5% ceiling. ]]
   const share = unresolved / (resolved + unresolved);
   assert.ok(share < 0.005, `${(share * 100).toFixed(2)}% of in-repo specifiers unresolved — the graph has a hole; run with --list-unresolved`);
-  assert.ok(unresolved <= 4, `${unresolved} in-repo specifiers unresolved, and only three are by design — run with --list-unresolved to see which class reopened`);
+
+  const listed = run(['--list-unresolved']).out.split('\n')
+    .map((l) => /UNRESOLVED (\S+) {2}-> {2}(\S+)/.exec(l)).filter(Boolean)
+    .map((m) => ({ file: m[1], spec: m[2] }));
+  assert.equal(listed.length, unresolved, `the count says ${unresolved} and the list names ${listed.length}`);
+  assert.ok(listed.length > 0, 'nothing listed — this assertion would check nothing');
+
+  const inProductSource = listed.filter(({ file }) => !/\.test\.|(^|\/)tests?\//.test(file));
+  assert.deepEqual(inProductSource, [],
+    `unresolved specifier(s) in source that is not a test: ${inProductSource.map((u) => `${u.file} -> ${u.spec}`).join(', ')}`
+    + ' — a quoted sample can only be in a test, so this is a resolver hole or a broken import');
 });
 
 test('--list-unresolved names the specifiers the count is counting', () => {

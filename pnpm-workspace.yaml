@@ -1,6 +1,7 @@
 packages:
   - apps/*
   - apps/benchmark/*
+  - apps/experiences/*
   - packages/*
 allowBuilds:
   esbuild: true

@@ -7,6 +7,7 @@
     "test": "node --test tests/*.test.mjs",
     "build": "node scripts/build.mjs",
     "build:engine-proof": "node scripts/build-studio-engine-proof.mjs",
-    "build:generation-proof": "node scripts/build-generation-engine-proof.mjs"
+    "build:generation-proof": "node scripts/build-generation-engine-proof.mjs",
+    "build:restore-proof": "node scripts/build-restore-engine-proof.mjs"
   }
 }

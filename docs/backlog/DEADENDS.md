@@ -367,3 +367,60 @@ Offline envelope validator and redactor, reached only by its tests. Caller-suppl
 outcome assertions are not authenticated here; pattern redaction does not anonymize arbitrary
 free text. It must remain disconnected from production data until trusted consent/export and
 human review are available. Its output is explicitly not training-ready.
+
+---
+
+# Pass 14 — two modules found by the gate after the 507-file merge, dispositioned by the session that ran it
+
+Same convention as the pass-12 and pass-13 notes above: WIRE here is a statement of fact plus the
+intent each module's own header states. Neither is dispositioned DELETE and neither should be on
+this evidence — §6.6 requires a dated owner statement for that, and deleting source to make a
+checker green is a violation rather than a fix. If an author meant something else, the entry is
+wrong and they should correct it.
+
+**The other six entries the gate reported in the same run are not here, because they were not dead
+ends.** All six are CLIs a person runs — five `#!/usr/bin/env node` diagnostics in
+`packages/training/src` with main-module guards and usage lines, and
+`apps/apple-plugin/scripts/build-restore-engine-proof.mjs` — and their packages' manifests did not
+name them, so `DECLARED_ENTRIES` could not see them. That is the same gap this file already records
+under `packages/corpus/src/discover.mjs`: "a gap in the manifest rather than in the code." The
+manifests now name them, which is also how a person finds the command.
+
+## packages/corpus/src/genre-references.mjs — WIRE, pass 14
+
+**Found:** imported only by `packages/corpus/src/genre-references.test.mjs`. 269 lines, 7 exports,
+9 passing tests.
+
+**What it is:** bounded, offline retrieval over the curated genre-reference manifest —
+`queryGenreReferences`, `getGenreReferenceCoverage`, and the two list functions — with the rights
+boundary enforced in code: an external URL is returned as evidence metadata and never fetched.
+
+**Its consumer exists and does not call it.** `apps/worker/src/genre-reference-guide.ts` reaches the
+same corpus by statically importing `packages/corpus/data/genre-references.json` and projecting it
+itself, so the Worker bundle carries a second implementation of this module's job. Both look alive
+to a dead-end checker — one has callers, one has tests — which is the duplicated-implementation
+shape already recorded as `OH-6` at the top of this file, arrived at from the other side.
+
+**Outstanding:** a decision about which projection is canonical, then one caller. Until then the
+nine green tests cover a query surface nothing can reach, and the projection the product actually
+serves is the untested one.
+
+## packages/training/src/diagnosis-contract-cases.mjs — WIRE, pass 14
+
+**Found:** imported only by `packages/training/src/diagnosis-contract-cases.test.mjs`. 90 lines,
+2 exports, 10 passing tests.
+
+**What it is:** probe tables — `originalContractCases` and `supplementalContractCases` — that check
+a candidate against input-type, finite-number and safe-integer domains beyond the frozen
+development checks. Its header states the constraint that makes it worth keeping separate:
+"discovering more defects must not rewrite a historical score."
+
+**It is the fourth of four sibling case modules and the only one with no consumer.**
+`local-pilot-diagnosis-cases.mjs` is read by `saved-pilot-probe-audit.mjs`,
+`pilot-diagnostic-cases.mjs` by `pilot-probe-replay.mjs`, and `local-pilot-diagnostic-cases.mjs` by
+`diagnose-local-pilot.mjs`. This one is read by its own test and nothing else, which is what
+concurrent sessions each writing their own case table looks like from outside.
+
+**Outstanding:** whichever diagnostic runner these probes were written for has to read them, or one
+of the three siblings has to absorb them. Recorded rather than resolved: choosing between four
+overlapping case tables is the authors' call, not this session's.

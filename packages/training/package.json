@@ -10,6 +10,11 @@
     "audit-dataset": "node src/audit-dataset.mjs",
     "build-game-logic": "node src/build-game-logic.mjs",
     "evaluate-game-logic": "node src/evaluate-game-logic.mjs",
-    "score-local-pilot": "node src/score-local-pilot.mjs"
+    "score-local-pilot": "node src/score-local-pilot.mjs",
+    "diagnose-local-pilot": "node src/diagnose-local-pilot.mjs",
+    "pilot-evaluation-gap-audit": "node src/pilot-evaluation-gap-audit.mjs",
+    "pilot-probe-replay": "node src/pilot-probe-replay.mjs",
+    "saved-pilot-probe-audit": "node src/saved-pilot-probe-audit.mjs",
+    "worker2-pilot-evidence-audit": "node src/worker2-pilot-evidence-audit.mjs"
   }
 }

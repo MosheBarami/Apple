@@ -1,0 +1,10 @@
+{
+  "name": "@golem/lumen-isles",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Lumen Isles: the first-party experience built for local visual review. Its Luau runs in Roblox; tests/gameplay.test.mjs runs it in the standalone Luau CLI.",
+  "scripts": {
+    "test": "node --test tests/"
+  }
+}
