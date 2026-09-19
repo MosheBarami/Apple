@@ -11,20 +11,20 @@
         "banner title 'Store!' sits ABOVE the panel body and overhangs it, with a small icon tucked against the word",
         "tab row directly under the banner: pill buttons, the active one filled, inactive ones outlined",
         "gamepass tiles are a 4-across grid of square cards, each with icon, name, and either a price pill or the word OWNED",
-        "owned state replaces the price entirely rather than greying the button — the card still reads as a card",
+        "owned state replaces the price entirely rather than greying the button \u2014 the card still reads as a card",
         "bottom action row is four equal chunky buttons in a single colour (PLAY / BACK / SETTINGS / QUIT)",
         "currency readouts run along the very top as separate pills, each with its own icon"
       ]
     },
     {
       "id": "panel-set-blue-kit",
-      "source": "published Roblox UI kit sheet — Pets, Shop, Settings, Codes, Trade panels plus a side rail",
+      "source": "published Roblox UI kit sheet \u2014 Pets, Shop, Settings, Codes, Trade panels plus a side rail",
       "demonstrates": [
         "one visual language across every panel: same corner radius, same stroke, same header treatment",
         "header is a narrower bar centred on top of the panel, reading as a plaque rather than a title bar",
         "the side rail is a vertical stack of square icon buttons, each labelled underneath in small text",
         "inner content areas are a LIGHTER tint of the panel colour, never white, and inset with visible padding",
-        "item slots are empty rounded squares in that lighter tint — the grid reads even with no content",
+        "item slots are empty rounded squares in that lighter tint \u2014 the grid reads even with no content",
         "destructive and confirming actions are colour-coded (green Accept, red Cancel) and sit at the top of the trade panel, not the bottom"
       ]
     },
@@ -42,7 +42,7 @@
     },
     {
       "id": "inventory-two-pane",
-      "source": "published UI kit thumbnail — Inventory with category rail, item grid and detail pane",
+      "source": "published UI kit thumbnail \u2014 Inventory with category rail, item grid and detail pane",
       "demonstrates": [
         "three-column layout: narrow category list, wide item grid, narrow detail pane",
         "category buttons are stacked pills, the selected one a different hue",
@@ -59,7 +59,7 @@
         "the wheel is segmented in saturated primaries with white dividing lines and a white pointer",
         "each segment carries an icon and a short all-caps label, rotated to the segment",
         "the launcher rail is circular icon buttons with the label directly beneath in small bold text",
-        "circular buttons get the same thick dark stroke as rectangular panels — the stroke is the constant, not the shape"
+        "circular buttons get the same thick dark stroke as rectangular panels \u2014 the stroke is the constant, not the shape"
       ]
     },
     {
@@ -69,7 +69,7 @@
         "small single-purpose modal: banner title, one line of instruction, one text field, one confirm button",
         "the text field is white with a dark stroke and rounded ends, with placeholder text in grey",
         "the confirm button is green, chunky, and noticeably smaller than the field above it",
-        "modal width is roughly a third of the screen — a one-field dialog does not become a full sheet"
+        "modal width is roughly a third of the screen \u2014 a one-field dialog does not become a full sheet"
       ]
     },
     {
@@ -89,7 +89,7 @@
       "demonstrates": [
         "seven-day strip of equal tiles, each with the day label on top, the reward icon centred, the amount beneath",
         "the claimable day is highlighted with a brighter tile and a green Claim! button directly under it",
-        "the banner title is set at a slight angle and overhangs the left edge — the angle is deliberate and is part of the style",
+        "the banner title is set at a slight angle and overhangs the left edge \u2014 the angle is deliberate and is part of the style",
         "a single wide secondary button ('Unlock All Reward') sits under the strip in a quieter colour"
       ]
     },
@@ -97,45 +97,107 @@
       "id": "diamond-shop-tiered",
       "source": "shipped simulator, DIAMONDS shop with a striped awning header",
       "demonstrates": [
-        "header is an awning/canopy graphic rather than a flat bar — the plaque can be illustrative",
+        "header is an awning/canopy graphic rather than a flat bar \u2014 the plaque can be illustrative",
         "the best-value offer is a wide band with a BEST tag, larger art and a bonus line in a contrasting colour",
         "remaining offers are a 2x2 grid of equal tiles, one tagged HOT",
-        "the panel body is a warm parchment tint while the surrounding chrome stays saturated — the sheet is allowed to be a different family from the frame",
+        "the panel body is a warm parchment tint while the surrounding chrome stays saturated \u2014 the sheet is allowed to be a different family from the frame",
         "left and right screen edges carry vertical icon rails, mirrored"
       ]
     },
     {
       "id": "clicker-full-panel-set",
-      "source": "published kit — Stats, Rebirth, Pets, Gem Shop, Trading, Season panels on one sheet",
+      "source": "published kit \u2014 Stats, Rebirth, Pets, Gem Shop, Trading, Season panels on one sheet",
       "demonstrates": [
         "a complete game's panels share one plaque style, one stroke weight and one radius across nine different panels",
         "Stats is a list of label/value rows, each row its own rounded strip with an icon at the left",
         "Rebirth rows pair a progress bar with a cost pill and a button on the same row",
         "Season shows a quest list with a vertical progress track down the right edge",
-        "the bottom-left launcher rail is circular buttons, matching the spin-wheel reference — this rail is a convention, not one game's choice"
+        "the bottom-left launcher rail is circular buttons, matching the spin-wheel reference \u2014 this rail is a convention, not one game's choice"
       ]
     }
   ],
   "rules": {
     "note": "Distilled from the references above. Units are Roblox UI units: px for stroke and radius, unitless for scale. Values are read proportionally from screenshots, not sampled, and are stated as approximations.",
-    "panelStroke": { "thickness": 4, "colorRole": "outline", "approximate": true, "why": "every reference outlines every panel, card and button in the same near-black; it is the single most identifying feature and the simulator theme shipped with stroke 3 applied inconsistently" },
-    "cornerRadius": { "panel": 20, "card": 16, "button": 12, "pill": 999, "why": "large and consistent; a small radius immediately reads as a developer tool" },
-    "header": { "style": "plaque", "overhang": true, "ownStroke": true, "why": "in eight of ten references the title is a separate rounded bar overlapping the panel's top edge, not text inside the panel" },
-    "buttonBevel": { "topLightenPct": 18, "bottomEdgePx": 5, "why": "chunky buttons read as pressable because the top half is lighter and a darker band sits along the bottom" },
-    "textStroke": { "thickness": 2, "colorRole": "outline", "appliesTo": ["title", "buttonLabel", "currency"], "why": "white text over saturated fills is illegible without it, and every reference uses it" },
-    "closeButton": { "shape": "circle", "colorRole": "danger", "position": "top-right", "overhang": true, "why": "a red circle proud of the corner in six references; a square X inside the header reads as a dialog, not a game" },
-    "contentTint": { "rule": "inner areas are a lighter tint of the panel, or a near-white sheet — never the panel colour itself", "why": "flat panels lose their grid; every reference separates frame from content" },
-    "priceDisplay": { "rule": "icon then number inside a pill", "never": "bare text", "why": "unanimous across references" },
-    "ownedState": { "rule": "replace the price pill with the word OWNED", "never": "disable the button and leave the price", "why": "seen in the gamepass grid; keeps the card readable" },
-    "launcherRail": { "shape": "circle", "labelPosition": "beneath", "edge": "left-or-bottom-left", "why": "appears in three independent references, so it is a convention rather than one game's choice" },
-    "grid": { "columns": 4, "tileAspect": 1, "why": "four-across square tiles in five references; the shipped kit used tall 240px cards which is why it reads as a list rather than a shop" }
+    "panelStroke": {
+      "thickness": 4,
+      "colorRole": "outline",
+      "approximate": true,
+      "why": "every reference outlines every panel, card and button in the same near-black; it is the single most identifying feature and the simulator theme shipped with stroke 3 applied inconsistently"
+    },
+    "cornerRadius": {
+      "panel": 20,
+      "card": 16,
+      "button": 12,
+      "pill": 999,
+      "why": "large and consistent; a small radius immediately reads as a developer tool"
+    },
+    "header": {
+      "style": "plaque",
+      "overhang": true,
+      "ownStroke": true,
+      "why": "in eight of ten references the title is a separate rounded bar overlapping the panel's top edge, not text inside the panel"
+    },
+    "buttonBevel": {
+      "topLightenPct": 18,
+      "bottomEdgePx": 5,
+      "why": "chunky buttons read as pressable because the top half is lighter and a darker band sits along the bottom"
+    },
+    "textStroke": {
+      "thickness": 2,
+      "colorRole": "outline",
+      "appliesTo": [
+        "title",
+        "buttonLabel",
+        "currency"
+      ],
+      "why": "white text over saturated fills is illegible without it, and every reference uses it"
+    },
+    "closeButton": {
+      "shape": "circle",
+      "colorRole": "danger",
+      "position": "top-right",
+      "overhang": true,
+      "why": "a red circle proud of the corner in six references; a square X inside the header reads as a dialog, not a game"
+    },
+    "contentTint": {
+      "rule": "inner areas are a lighter tint of the panel, or a near-white sheet \u2014 never the panel colour itself",
+      "why": "flat panels lose their grid; every reference separates frame from content"
+    },
+    "priceDisplay": {
+      "rule": "icon then number inside a pill",
+      "never": "bare text",
+      "why": "unanimous across references"
+    },
+    "ownedState": {
+      "rule": "replace the price pill with the word OWNED",
+      "never": "disable the button and leave the price",
+      "why": "seen in the gamepass grid; keeps the card readable"
+    },
+    "launcherRail": {
+      "shape": "circle",
+      "labelPosition": "beneath",
+      "edge": "left-or-bottom-left",
+      "why": "appears in three independent references, so it is a convention rather than one game's choice"
+    },
+    "grid": {
+      "columns": 4,
+      "tileAspect": 1,
+      "why": "four-across square tiles in five references; the shipped kit used tall 240px cards which is why it reads as a list rather than a shop"
+    }
   },
   "gapsAgainstShippedTheme": [
-    "ui-kit-themes.ts simulator has stroke 3 but the kit does not apply UIStroke to cards or buttons, only panels — observed in Studio 2026-09-19",
-    "no plaque header exists in the kit at all; the title is a TextLabel inside the panel",
-    "buttons are flat fills with no bevel and no bottom edge",
-    "no UIStroke on any text",
-    "close is a rounded rect labelled Close, not a red circle",
-    "cardHeight 240 with a 1-column list, against a 4-column square grid in the references"
-  ]
+    "CLOSED 2026-09-19: no thick dark stroke on cards or buttons \u2014 outline() now defaults to theme.outline at >=2px and button() always strokes at >=3px",
+    "CLOSED 2026-09-19: no stroke on any text \u2014 strokeText() added, thickness SCALED to glyph size after a flat 2px rendered 16px labels as black blobs in Studio",
+    "CLOSED 2026-09-19: flat buttons \u2014 a UIGradient bevel now lightens the top 55% and darkens the bottom edge to 0.82",
+    "OPEN: no plaque header; the title is still a TextLabel inside the panel rather than a bar overhanging its top edge",
+    "OPEN: close is a rounded rect labelled Close, not a red circle proud of the top-right corner",
+    "OPEN: prices render as bare text ('75 coins') rather than an icon-then-number pill",
+    "OPEN: item icons are flat diamonds rather than the gradient tiles every reference uses",
+    "OPEN: cards are tall with large empty regions; the references pack four-across square tiles"
+  ],
+  "renderedAndCompared": {
+    "when": "2026-09-19",
+    "how": "AppleUI installed into a Studio place and played; simulator theme; compared against the references in this file by looking at the result",
+    "note": "The text-stroke defect was invisible in the source and obvious on screen. That is the argument for this loop existing."
+  }
 }

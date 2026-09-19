@@ -68,9 +68,25 @@ function AppleUI.mount(playerGui, options)
     local function round(object, radius)
         make("UICorner", object, { CornerRadius = UDim.new(0, radius or 12) })
     end
+    -- CONSTRUCTION, not colour. Rendering the simulator theme against the reference library showed
+    -- its palette was already right and it still did not read as a Roblox game: the stroke was a
+    -- mid-tone hairline where every shipped reference outlines panel, card and button alike in a
+    -- heavy near-black. See packages/corpus/data/ui-references/simulator.json.
     local function outline(object, thickness, colour)
-        return make("UIStroke", object, { Color = colour or theme.edge,
-            Thickness = thickness or theme.stroke, ApplyStrokeMode = Enum.ApplyStrokeMode.Border })
+        return make("UIStroke", object, { Color = colour or theme.outline,
+            Thickness = thickness or math.max(theme.stroke, 2), ApplyStrokeMode = Enum.ApplyStrokeMode.Border })
+    end
+    -- White text on a saturated fill is unreadable without this, and every reference carries it.
+    --
+    -- THICKNESS SCALES WITH THE GLYPH, and that is not a detail. A flat 2px looked right in the
+    -- code and rendered "Choose" and "Close" as black blobs at 16px — two pixels is a sixth of a
+    -- small glyph's height, so the stroke closed the counters and ate the letterforms. Caught by
+    -- looking at it in Studio, which is the only place it was ever going to be caught.
+    local function strokeText(object, thickness)
+        local size = tonumber(object.TextSize) or 16
+        local scaled = math.clamp(math.floor(size / 14), 1, 3)
+        return make("UIStroke", object, { Color = theme.outline, Thickness = thickness or scaled,
+            ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual, LineJoinMode = Enum.LineJoinMode.Round })
     end
     local function label(parent, name_, value, size, position, dimensions)
         return make("TextLabel", parent, {
@@ -87,8 +103,26 @@ function AppleUI.mount(playerGui, options)
             BorderSizePixel = 0, RichText = false, TextWrapped = true,
             Position = position, Size = dimensions, AutoButtonColor = true, Selectable = true,
         })
-        round(object, math.min(theme.radius, 10))
-        if theme.stroke > 1 then outline(object, theme.stroke) end
+        round(object, math.min(theme.radius, 14))
+        outline(object, math.max(theme.stroke, 3))
+        strokeText(object)
+        -- The bevel is what makes a button read as pressable: a lighter top half, then a darker
+        -- band along the bottom edge. Flat fills read as a web form, which is the note the
+        -- reference library records against six of its ten entries.
+        make("UIGradient", object, {
+            Rotation = 90,
+            Color = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, Color3.new(
+                    math.min(1, object.BackgroundColor3.R + 0.18),
+                    math.min(1, object.BackgroundColor3.G + 0.18),
+                    math.min(1, object.BackgroundColor3.B + 0.18))),
+                ColorSequenceKeypoint.new(0.55, object.BackgroundColor3),
+                ColorSequenceKeypoint.new(1, Color3.new(
+                    object.BackgroundColor3.R * 0.82,
+                    object.BackgroundColor3.G * 0.82,
+                    object.BackgroundColor3.B * 0.82)),
+            }),
+        })
         return object
     end
     local ICONS = { coin = true, gem = true, shield = true, bolt = true, crate = true }
