@@ -768,9 +768,32 @@ export function buildCustomerDetailsRequest(next: BillingDetails, previous: Bill
 }
 
 /** Can this deployment start a checkout at all? The webhook secret alone is not enough. */
+/**
+ * A TEST KEY IN PRODUCTION SELLS THE PRODUCT FOR FREE.
+ *
+ * Stripe's test mode accepts published card numbers — 4242 4242 4242 4242 is in its own
+ * documentation. A production deployment holding an `sk_test_` key and offering checkout will
+ * therefore hand a real visitor a real subscription, and the webhook will grant the plan, for a
+ * payment that never existed. Nobody is charged and everybody who knows one number gets Studio.
+ *
+ * This is not hypothetical: the keys this deployment holds right now are test keys, and enabling
+ * checkout without this guard opened exactly that hole for as long as it took to notice.
+ *
+ * So the environment decides. Outside production a test key is the correct key and is admitted;
+ * in production it is refused, `/api/billing/config` reports `checkout: false`, and the pricing
+ * page says the plans cannot be bought — which is TRUE. A page that tells a visitor they cannot
+ * buy something is a smaller failure than a page that sells it for nothing.
+ */
 export function checkoutConfigured(env: Env): boolean {
   const key = (env as unknown as CheckoutEnv).STRIPE_SECRET_KEY;
-  return billingConfigured(env) && typeof key === 'string' && key.trim().length > 0;
+  if (!billingConfigured(env) || typeof key !== 'string' || key.trim().length === 0) return false;
+  const production = (env as unknown as { ENVIRONMENT?: string }).ENVIRONMENT === 'production';
+  // `/^[a-z]+_test_/` rather than `sk_test_`: Stripe issues restricted keys too, and `rk_test_` is
+  // just as much a test key as `sk_test_` is. Matching the prefix SHAPE catches every kind it
+  // currently mints and every kind it adds later, while an unrecognised LIVE form stays admitted —
+  // refusing what we do not recognise would break a working deployment to guard a hypothesis.
+  if (production && /^[a-z]+_test_/.test(key.trim())) return false;
+  return true;
 }
 
 export type CheckoutRefusal =
