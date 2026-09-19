@@ -20,6 +20,38 @@ import {
 // this page still advertised a waitlist tier at a daily figure no plan grants, under a name that
 // under that name or that number. scripts/check-offer.mjs is what caught it, and reading from
 // PLAN_LIMITS is what stops it recurring.
+//[[ WHETHER A PLAN CAN BE BOUGHT IS ASKED, NOT TYPED.
+//
+//   Every sentence on this page saying "planned tier — not available to purchase yet" was prose.
+//   It is TRUE today — the live Worker holds two secrets, ADMIN_KEY and ROBLOX_API_KEY, and no
+//   Stripe key at all, so checkoutConfigured() is false and `purchasable` comes back empty — but a
+//   hardcoded truth is a lie waiting for the day it changes. The moment Stripe is connected, a page
+//   still saying "planned" costs the owner the sale it was built to make, and nothing anywhere
+//   would fail to tell him.
+//
+//   So the build ASKS. /api/billing/config returns { checkout, purchasable } computed from the
+//   deployment's own environment, and every claim below is derived from the answer.
+//
+//   THE FALLBACK IS THE SAFE CLAIM, NOT THE CONVENIENT ONE. An unreachable probe means "not
+//   purchasable". Claiming a plan is buyable when we could not establish it walks someone into a
+//   checkout that answers 503; claiming it is not buyable when it is costs a sale and is visibly
+//   wrong to the owner within a day. Those two errors are not the same size.
+//
+//   Build-time, not client-side: this is a static page served out of D1, a deploy is the moment the
+//   answer can change, and every deploy re-asks.
+//
+//   `import.meta.env` IS DELIBERATELY NOT USED HERE. It breaks this page's build — esbuild reports
+//   `Expected ")" but found "s"`, because it reads `import` and expects a dynamic import's paren.
+//   Isolated by bisection: the committed page builds, the same code with a template literal builds,
+//   and only the `import.meta.env` form fails. The origin is therefore a constant.
+const BILLING_ORIGIN = 'https://apple.moshe-barami111.workers.dev';
+const billingProbe = await fetch(BILLING_ORIGIN + '/api/billing/config').then((r) => (r.ok ? r.json() : null)).catch(() => null);
+const billing = {
+  checkout: billingProbe?.checkout === true,
+  purchasable: Array.isArray(billingProbe?.purchasable) ? billingProbe.purchasable : [],
+};
+const canBuy = (id) => billing.purchasable.includes(id);
+
 const free = PLAN_LIMITS.free;
 const paid = PLAN_IDS.filter((id) => id !== 'free' && PLAN_COPY[id].priceUsdMonthly !== null);
 import Base from '../layouts/Base.astro';
@@ -114,7 +146,9 @@ const limitFaq = [
   },
   {
     q: 'Can I subscribe now?',
-    a: `<p>Paid checkout is not open in this preview. Builder and Studio are the planned subscription tiers. Your account’s Plans & Credits page shows live purchase availability; no subscription starts without a confirmed checkout.</p>`,
+    a: billing.checkout
+      ? `<p>Yes. Builder and Studio can be bought now, and your account’s Plans &amp; Credits page is where a subscription starts, changes or is cancelled. No subscription starts without a confirmed checkout.</p>`
+      : `<p>Paid checkout is not open yet. Builder and Studio are the planned subscription tiers. Your account’s Plans &amp; Credits page shows live purchase availability; no subscription starts without a confirmed checkout.</p>`,
   },
 ];
 ---
@@ -131,7 +165,9 @@ const limitFaq = [
       <h1 id="pricing-title" class="carved">Start with Apple.</h1>
       <p class="lede lede-wide">
         Apple is the limited free tier. Apple MAX is for paid subscribers.
-        Paid checkout is not open in this preview; the paid plans below describe the planned offering.
+        {billing.checkout
+          ? 'Every paid plan below can be bought now. Cancel from your own account page at any time.'
+          : 'Paid checkout is not open yet; the paid plans below describe the planned offering.'}
       </p>
 
       <div class="plans">
@@ -188,7 +224,11 @@ const limitFaq = [
                 ))}
                 <li>{PLAN_SUPPORT[id].channel}</li>
               </ul>
-              <p class="plan__note">Planned tier — not available to purchase yet.</p>
+              {canBuy(id) ? (
+                <a href={`/app/usage?plan=${id}`} class="btn btn-primary plan__cta">Choose {PLAN_COPY[id].name}</a>
+              ) : (
+                <p class="plan__note">Planned tier — not available to purchase yet.</p>
+              )}
             </article>
           ))
         }
@@ -242,7 +282,7 @@ const limitFaq = [
           <thead>
             <tr>
               <th scope="col">Capability</th>
-              {PLAN_IDS.map((id) => <th scope="col">{PLAN_COPY[id].name}{id !== 'free' ? ' (planned)' : ''}</th>)}
+              {PLAN_IDS.map((id) => <th scope="col">{PLAN_COPY[id].name}{id !== 'free' && !canBuy(id) ? ' (planned)' : ''}</th>)}
             </tr>
           </thead>
           <tbody>
