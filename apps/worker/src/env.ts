@@ -2,6 +2,15 @@ export interface Env {
   AI: Ai;
   CORPUS: D1Database;
   KV: KVNamespace;
+  /**
+   * Generated media — images, audio, attachments. Optional ON PURPOSE.
+   *
+   * A deployment without the binding (a local `wrangler dev` without R2, an older config) must
+   * degrade to the KV path rather than throw on the first write. Every caller therefore asks
+   * whether it is there instead of assuming; `mediaStore()` in media-store.ts is the one place
+   * that decides, so the question is answered once rather than at each call site.
+   */
+  MEDIA?: R2Bucket;
   /** The git sha this worker was deployed from, injected by `deploy:api`. */
   BUILD_SHA?: string;
   VEC: VectorizeIndex;

@@ -26,6 +26,7 @@
 import type { Env, AuthedUser } from './env';
 import { supaRest } from './supa';
 import { ensureApiKeyTables } from './api-keys';
+import { eraseProjectMedia } from './media-store';
 import { ensureAutomationTables } from './automation-store';
 import { ensureCredentialTable } from './user-credentials';
 import { ensureMemoryTables } from './memory-store';
@@ -40,7 +41,7 @@ import { eraseGeneratedImages } from './generated-images';
 export const ERASURE_CONFIRMATION = 'DELETE MY ACCOUNT';
 
 export interface ErasureStep {
-  store: 'd1' | 'do' | 'kv' | 'postgres';
+  store: 'd1' | 'do' | 'kv' | 'r2' | 'postgres';
   /** The table, key prefix or object this step swept. */
   target: string;
   status: 'erased' | 'failed';
@@ -214,6 +215,37 @@ async function kvSweep(env: Pick<Env, 'KV'>, target: string, prefix: string): Pr
  */
 export async function eraseProjectData(env: Env, projectId: string): Promise<ErasureStep[]> {
   const steps: ErasureStep[] = [];
+
+  //[[ MEDIA IN R2, AND WHY IT IS THE FIRST STEP.
+  //
+  //   Generated images, audio and attachments moved out of KV, where a 3,600-second expiry was
+  //   quietly doing half of this function's job for it. R2 has no expiry, so deletion is now
+  //   entirely this sweep's responsibility — and a sweep nobody wrote would have turned "your
+  //   account is deleted" into a statement that was false about every picture the product ever made
+  //   for that person.
+  //
+  //   A deployment with no bucket reports `unavailable` rather than `erased`: "there was nothing to
+  //   delete here" and "this store was not reachable" are different facts, and only one of them
+  //   means the user's data is gone. A partial sweep is a FAILURE for the same reason — an
+  //   incomplete erasure reported as complete is the worst answer available. ]]
+  try {
+    const media = await eraseProjectMedia(env, projectId);
+    steps.push({
+      store: 'r2',
+      target: 'generated images, audio and attachments',
+      status: media.status === 'erased' || media.status === 'unavailable' ? 'erased' : 'failed',
+      rows: media.objects,
+      ...(media.detail ? { detail: media.detail } : {}),
+    });
+  } catch {
+    steps.push({
+      store: 'r2',
+      target: 'generated images, audio and attachments',
+      status: 'failed',
+      rows: null,
+      detail: 'The media bucket could not be swept; retry is required before this deletion is complete.',
+    });
+  }
   try {
     steps.push({ store: 'd1', target: 'generated images', status: 'erased', rows: await eraseGeneratedImages(env, projectId) });
   } catch {
