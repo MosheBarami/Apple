@@ -681,8 +681,18 @@ export function validateProvenance(rec: unknown, opts: ValidateOptions = {}): Va
   return { ok: errors.length === 0, errors, warnings, licenceId };
 }
 
-/** Product origin, matching apps/plugin/src/init.server.luau's DEFAULT_API. */
-const GOLEM_ORIGIN = 'https://golem.moshe-barami111.workers.dev';
+/**
+ * Product origin, stamped into the provenance of anything the product authored itself.
+ *
+ * Moved off the golem host on 2026-09-19. That host still answers, on a STALE build — a fresh-eyes
+ * review found it serving the entire product from an older deployment whose auth behaves
+ * differently — so a provenance row pointing at it named a second, diverging copy of the product
+ * as the origin of our own work.
+ *
+ * Rows already written keep the old URL. That is history and is left alone; this only changes what
+ * new rows record.
+ */
+const PRODUCT_ORIGIN = 'https://apple.moshe-barami111.workers.dev';
 
 /**
  * Build the provenance record for something Golem authored itself — procedural geometry written
@@ -702,9 +712,9 @@ export function originalAsset(args: { id: string; name: string; kind: AssetKind;
     // There is no source page for work nobody else published. Both URL fields carry the product
     // origin — the thing that authored it — rather than a fabricated listing path that would 404
     // the first time someone tried to check the provenance.
-    sourceUrl: GOLEM_ORIGIN,
+    sourceUrl: PRODUCT_ORIGIN,
     licence: 'NONE-PROCEDURAL',
-    licenceUrl: GOLEM_ORIGIN,
+    licenceUrl: PRODUCT_ORIGIN,
     commercialUse: true,
     attributionRequired: false,
     author: 'Apple',

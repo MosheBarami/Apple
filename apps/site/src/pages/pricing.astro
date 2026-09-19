@@ -235,8 +235,10 @@ const limitFaq = [
 
         <p class="plan__note" style="grid-column:1/-1;max-width:62ch">
           One build costs about {CREDITS_PER_BUILD} Credits, so every figure above is also a number of
-          estimated builds. Free limits apply now; paid prices and limits describe the planned
-          offering and may change before checkout opens.
+          estimated builds. Free limits apply now.{' '}
+          {canBuy('builder') || canBuy('studio')
+            ? 'Paid prices and limits are live and may still change.'
+            : 'Paid prices and limits describe the planned offering and may change before checkout opens.'}
         </p>
 
         {/*
@@ -324,9 +326,11 @@ const limitFaq = [
       </div>
 
       <p class="plan__note" style="max-width:62ch">
-        Figures come from the shared plan configuration. Free access is available now; paid
-        tiers and Apple MAX subscriptions are not yet available to purchase. Studio access also requires
-        a connected plugin; public installation is currently unavailable.
+        Figures come from the shared plan configuration. Free access is available now.{' '}
+        {canBuy('builder') || canBuy('studio')
+          ? 'Paid tiers can be purchased below.'
+          : 'Paid tiers and Apple MAX subscriptions are not yet available to purchase.'}{' '}
+        Studio access also requires a connected plugin; public installation is currently unavailable.
       </p>
     </div>
   </section>

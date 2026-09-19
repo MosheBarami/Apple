@@ -1,5 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
+import { PLAN_LIMITS } from '@golem/shared';
+
 ---
 
 <Base
@@ -166,8 +168,21 @@ import Base from '../layouts/Base.astro';
 
           <h3>The deal</h3>
           <ul>
-            <li>Free tier: 60 Credits per day, hard quota, resets daily, no card ever collected.</li>
-            <li>Pro (400 Credits/day, priority queue, extended checkpoints) opens as a waitlist.</li>
+            <li>
+              Free tier: 60 Credits per day, hard quota, resets daily, no card ever collected.
+              <span class="release__since">
+                Since repriced: the free tier is {PLAN_LIMITS.free.creditsPerDay} Credits a day. A reader
+                comparing this page with <a href="/pricing">Pricing</a> was seeing two different numbers
+                for the same thing.
+              </span>
+            </li>
+            <li>
+              Pro (400 Credits/day, priority queue, extended checkpoints) opens as a waitlist.
+              <span class="release__since">
+                Since withdrawn: there is no Pro tier. The paid tiers are Builder and Studio — see
+                <a href="/pricing">Pricing</a>.
+              </span>
+            </li>
             <li>Private projects are never used to train models.</li>
           </ul>
         </li>

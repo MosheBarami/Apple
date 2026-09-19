@@ -26,7 +26,7 @@ import {
 >
   <p>
     Apple builds inside Roblox Studio through a plugin. The plugin is the product's hands: it
-    reads and edits scripts, creates instances, sets properties, runs your game and reads the
+    reads and edits scripts, creates instances, sets properties, reads the
     output — always inside the one place you connect it to, and always wrapped in a Studio undo
     waypoint.
   </p>
@@ -107,13 +107,19 @@ import {
   <ul>
     <li>
       <strong>Can:</strong> read and edit scripts, create, move and delete instances, set
-      properties, snapshot the instance tree, start and stop run mode, read output logs, move the
+      properties, snapshot the instance tree, read output logs, move the
       camera — inside the place you connected, and only while Studio is open with that place.
     </li>
     <li>
       <strong>Cannot:</strong> read files on your computer, act on places you did not connect,
       run while Studio is closed, or publish your game. Publishing stays a human decision made
       with your own Roblox account.
+    </li>
+    <li>
+      <strong>Refuses by name:</strong> it will not start or stop play mode — you run and stop
+      tests yourself — and it will not execute code it was sent, load a remote asset you do not
+      own, or insert an asset carrying a script. Each refusal comes back with its reason rather
+      than failing quietly, and each one costs the assistant tools it would otherwise offer.
     </li>
   </ul>
 
