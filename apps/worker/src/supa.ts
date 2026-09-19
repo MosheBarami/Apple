@@ -11,6 +11,7 @@ import {
   type ShareResource,
 } from './collab';
 import { kvGrantsFor } from './collab-links';
+import { systemRpc, systemRpcConfig } from './system-rpc';
 // One answer to "who is @maya", shared with the roster. See membership.ts.
 import { handleFor } from './membership';
 
@@ -98,6 +99,56 @@ export async function getOwnedProject(env: Env, userJwt: string, projectId: stri
 }
 
 /**
+ * The project row for somebody whose only claim on it is a redeemed share link.
+ *
+ * THE GRANT IS CHECKED BEFORE THE ROW IS FETCHED, and that order is the whole security argument.
+ * `classifyGrant` is the same function that decides an invited member's standing — it applies
+ * revocation, expiry and suspension — so a link that was revoked, expired, suspended, or whose
+ * holder was removed from the project (a removal revokes the grant as it marks it), buys nothing. Only once one of this caller's
+ * own KV grants is live does the worker read the row as itself.
+ *
+ * WHAT IT DOES NOT DO. It does not decide access. It answers the narrower question "does a row
+ * exist that this caller may be shown at all", and hands back to `getProjectAccess`, where
+ * `decideAccess` then applies the scope the link was minted with — a chat link still opens the
+ * chat and nothing else — exactly as it does for a grant that arrived alongside an RLS-visible row.
+ * Nothing about what a grant MEANS is decided here.
+ *
+ * RETURNS NULL FOR EVERY KIND OF NO. No grant, a dead grant, no purpose token configured, a
+ * database without the function, a row that came back the wrong shape: all of them are the 404 the
+ * caller already returns. A deployment that has not run migration 0011 behaves exactly as it did
+ * before this existed, which is what makes the worker safe to ship first.
+ */
+async function projectForLinkGuest(
+  env: Env,
+  user: AuthedUser,
+  projectId: string,
+  nowMs: number,
+): Promise<ProjectRow | null> {
+  const grants = await kvGrantsFor(env, projectId, user.userId);
+  if (grants.length === 0) return null;
+  // `active` is classifyGrant's own verdict for a grant that is not expired, revoked, suspended or
+  // malformed. A member removal is covered without this function knowing the word: the removal
+  // writes `removed_from_project` AND `revoked_at` together (collab-links.ts), and it is the
+  // revocation classifyGrant sees. Asking HERE means a dead link never reaches the privileged read
+  // at all, rather than reaching it and being refused a step later.
+  const live = grants.some((grant) => classifyGrant(grant, nowMs).status === 'active');
+  if (!live) return null;
+
+  const auth = systemRpcConfig(env);
+  if (auth === null) return null;
+  const { ok, data } = await systemRpc<ProjectRow[]>(env, 'project_for_link_grant', {
+    p_token: auth.token,
+    p_consumer: auth.consumer,
+    p_project: projectId,
+  });
+  if (!ok || !Array.isArray(data)) return null;
+  const row = data[0] ?? null;
+  // The function is asked for one project and is trusted to return that one; this is the assertion
+  // rather than the assumption, in the same spirit as getOwnedProject's own second check.
+  return row && row.id === projectId && typeof row.owner_id === 'string' ? row : null;
+}
+
+/**
  * The project, plus what this caller is to it — owner, member, or nothing at all.
  *
  * Two round trips rather than an embedded select, because PostgREST would apply the embed as a
@@ -119,10 +170,31 @@ export async function getProjectAccess(
     supaRest<ProjectRow[]>(env, user.jwt, `/projects?id=eq.${id}&select=${PROJECT_SELECT}&limit=1`),
     readMyMembershipAccessState(env, user, projectId),
   ]);
-  const project = ok && data && data[0] ? data[0] : null;
+  let project = ok && data && data[0] ? data[0] : null;
   if (!project) {
-    // Indistinguishable from "not shared with you" on purpose — see decideAccess.
-    return { project: null, decision: { allowed: false, status: 404, role: null, reason: 'not_a_member' } };
+    // A REDEEMED SHARE LINK MATCHES NO RLS POLICY, and this early return is where every share link
+    // in the product used to die.
+    //
+    // The read above runs under the caller's own JWT, so `public.projects` answers with what its
+    // policies allow: your own projects, and projects you hold a `project_members` row for. The
+    // grant a link produces is in KV — a bearer secret cannot be looked up under RLS — so a link
+    // guest matches neither policy and the row comes back empty. Returning here made the join page
+    // say "You're in", and then 404 on the transcript, the socket, the versions and the
+    // checkpoints. Shared projects, shared chats and shared builds opened nothing for anybody.
+    //
+    // The comment forty lines below already said the two stores were one list and that nothing
+    // downstream cared which a grant came from. It was true of `resolveMembership` and false of the
+    // control flow that never reached it.
+    //
+    // So: ask KV first, and only when it holds a LIVE grant for this caller does the worker fetch
+    // the row as itself, through a token-gated `security definer` function that returns one project
+    // and nothing else. The order is the safety property — the grant is checked before any
+    // privileged read happens, never after.
+    project = await projectForLinkGuest(env, user, projectId, nowMs);
+    if (!project) {
+      // Indistinguishable from "not shared with you" on purpose — see decideAccess.
+      return { project: null, decision: { allowed: false, status: 404, role: null, reason: 'not_a_member' } };
+    }
   }
 
   // Only the caller's OWN grants are fetched. A full member list is a separate, capability-gated

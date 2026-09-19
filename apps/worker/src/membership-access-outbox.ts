@@ -9,6 +9,7 @@
  * member, so a duplicate is harmless and an old removal arriving after a regrant cannot undo it.
  */
 import type { Env } from './env';
+import { systemRpc, systemRpcConfig } from './system-rpc';
 import {
   GRANTABLE_ROLES,
   MEMBERSHIP_ACCESS_CHANGES,
@@ -62,7 +63,6 @@ type OutboxEnv = Pick<Env, 'SUPABASE_URL' | 'SUPABASE_ANON_KEY' | 'SESSION_DO'> 
   Partial<Pick<Env, 'MEMBERSHIP_OUTBOX_TOKEN' | 'MEMBERSHIP_OUTBOX_CONSUMER'>>;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const CONSUMER_RE = /^[a-z0-9][a-z0-9_-]{0,31}$/;
 export const MEMBERSHIP_OUTBOX_BATCH_MAX = 50;
 export const MEMBERSHIP_OUTBOX_BATCH_DEFAULT = 25;
 
@@ -108,37 +108,14 @@ export function membershipAccessEvent(value: unknown): MembershipAccessEvent | n
   return { projectId, userId, version, role, access, expiresAt, ...(attempts === undefined ? {} : { attempts }) };
 }
 
-function config(env: OutboxEnv): { token: string; consumer: string } | null {
-  const token = typeof env.MEMBERSHIP_OUTBOX_TOKEN === 'string' ? env.MEMBERSHIP_OUTBOX_TOKEN.trim() : '';
-  const consumer = typeof env.MEMBERSHIP_OUTBOX_CONSUMER === 'string' ? env.MEMBERSHIP_OUTBOX_CONSUMER.trim() : '';
-  if (token.length < 32 || !CONSUMER_RE.test(consumer)) return null;
-  return { token, consumer };
-}
+// MOVED, NOT COPIED. `system-rpc.ts` now owns the purpose token and the unauthenticated RPC call,
+// because a second caller needed both: `supa.ts` fetches a project row for a redeemed share-link
+// holder through the same token-gated door. Two copies of a credential check is how one of them
+// gets a floor raised and the other does not.
+const config = systemRpcConfig;
 
 export function membershipOutboxConfigured(env: OutboxEnv): boolean {
   return config(env) !== null;
-}
-
-async function systemRpc<T>(
-  env: OutboxEnv,
-  name: string,
-  body: Record<string, unknown>,
-): Promise<{ ok: boolean; status: number; data: T | null }> {
-  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/${name}`, {
-    method: 'POST',
-    headers: {
-      apikey: env.SUPABASE_ANON_KEY,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
-  let data: T | null = null;
-  try {
-    data = (await res.json()) as T;
-  } catch {
-    /* an empty/error body remains null and cannot be mistaken for success */
-  }
-  return { ok: res.ok, status: res.status, data };
 }
 
 async function credentials(env: OutboxEnv): Promise<{ token: string; consumer: string } | null> {

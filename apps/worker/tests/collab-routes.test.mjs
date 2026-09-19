@@ -49,6 +49,10 @@ const MEMBER_ID = '22222222-2222-4222-8222-222222222222';
 const STRANGER_ID = '33333333-3333-4333-8333-333333333333';
 const ADMIN_ID = '44444444-4444-4444-8444-444444444444';
 const PROJECT_ID = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+// The purpose token migration 0009 introduced and 0011 reuses. Long enough to clear the
+// 32-character floor in systemRpcConfig, which exists so a placeholder cannot become a secret.
+const SYSTEM_TOKEN = 'collab-test-system-token-0123456789abcdef';
+const SYSTEM_CONSUMER = 'apple';
 
 const { publicKey, privateKey } = await jose.generateKeyPair('ES256', { extractable: true });
 const jwk = { ...(await jose.exportJWK(publicKey)), kid: 'collab-test', alg: 'ES256', use: 'sig' };
@@ -97,6 +101,17 @@ const kv = new Map();
 /** Every KV key the worker ASKED FOR. A Map's `get` records nothing, so without this an
  *  assertion about "nothing was read under a forged key" cannot fail — see the redeem test. */
 let kvReads = [];
+/**
+ * EVERY CALL TO A `security definer` FUNCTION, so a test can assert that one did NOT happen.
+ *
+ * The interesting property of the link fallback is an ORDER: the worker checks the KV grant
+ * before it asks the database for anything. An assertion on the response status cannot see that
+ * order — a 404 looks identical whether the row was never fetched or was fetched and then
+ * discarded — and only the second of those is a gate.
+ */
+const rpcCalls = [];
+/** Flipped by the test that asks what a deployment with the wrong purpose token does. */
+let brokenSystemToken = false;
 /** The OPTIONS each key was written with. A link that expires must stop occupying the store, and
  *  `expirationTtl` is the only observable difference between a link that will be forgotten and one
  *  that will sit there forever — invisible to an assertion that only looks at the value. */
@@ -149,6 +164,23 @@ async function settle() {
   await Promise.all(waits.splice(0));
 }
 
+/**
+ * The subject of the Bearer token, the way PostgREST would read it.
+ *
+ * No verification: the app has already verified the JWT against the JWKS above by the time any of
+ * these fetches happen, and re-checking a signature here would be testing jose rather than the
+ * product. What matters is that the identity the fake evaluates RLS as is the one the CALLER sent,
+ * not one the fake picked.
+ */
+function callerSub(init) {
+  const auth = init?.headers?.Authorization ?? init?.headers?.authorization;
+  if (typeof auth !== 'string' || !auth.startsWith('Bearer ')) return null;
+  const parts = auth.slice(7).split('.');
+  if (parts.length !== 3) return null;
+  try { return JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8')).sub ?? null; }
+  catch { return null; }
+}
+
 function parseQuery(url) {
   const u = new URL(url);
   const eq = {};
@@ -165,12 +197,51 @@ globalThis.fetch = async (input, init) => {
 
   if (url.includes('/.well-known/jwks.json')) return json(JSON.parse(JWKS_BODY));
 
+  //[[ THIS FAKE IS WHAT LET A BLOCKER SHIP, AND THE REASON IS ONE SENTENCE IT USED TO CARRY.
+  //
+  //   It said: "The REAL filter, honoured: getOwnedProject narrows by owner_id, and a fake that
+  //   ignored it would hand the project row to every caller and quietly prove nothing." That is
+  //   exactly right about getOwnedProject, whose query carries owner_id — and it was silent about
+  //   getProjectAccess, whose query carries only the id. So for that caller the fake did the thing
+  //   its own comment warned against, and thirty-two green tests could not observe it.
+  //
+  //   What they could not observe: `public.projects` has two policies that can return a row, own
+  //   projects and members of project_members, and a redeemed SHARE LINK matches neither, because
+  //   its grant lives in KV. Every link in the product said "You're in" and then 404'd on
+  //   everything. Replacing this branch with the predicate below turns exactly two of the
+  //   thirty-two red — both link tests — and leaves every invited-member test green.
+  //
+  //   So the fake now evaluates RLS the way Postgres would: as the caller named in the JWT, with
+  //   the same two policies, plus the PostgREST filters the query actually carries. A fake that is
+  //   more permissive than the database is not a test double, it is a second product with no
+  //   security model, and every assertion made against it is about that product. ]]
   if (url.includes('/rest/v1/projects')) {
     const eq = parseQuery(url);
-    // The REAL filter, honoured: getOwnedProject narrows by owner_id, and a fake that ignored it
-    // would hand the project row to every caller and quietly prove nothing.
     if (eq.id !== PROJECT_ID) return json([]);
+    // PostgREST filters first: they are the request. RLS is applied after, as the database does.
     if (eq.owner_id !== undefined && eq.owner_id !== PROJECT_ROW.owner_id) return json([]);
+    const sub = callerSub(init);
+    if (sub === null) return json([]);
+    const ownsIt = sub === PROJECT_ROW.owner_id;
+    // 0006_membership_lifecycle.sql:94 — a row in project_members for this caller. The fake's
+    // memberRows IS that table, so a revoked or expired row is handled by whatever wrote it.
+    const isMember = memberRows.some((r) => r.project_id === PROJECT_ID && r.user_id === sub);
+    return json(ownsIt || isMember ? [PROJECT_ROW] : []);
+  }
+
+  //[[ THE WAY A LINK GUEST GETS A ROW AT ALL — migration 0011.
+  //
+  //   A `security definer` function, revoked from `authenticated` and granted to `anon`, which
+  //   checks a purpose token before returning one project. The worker calls it only after it has
+  //   verified a live KV grant itself, so the order here matters as much as the answer: a fake
+  //   that returned the row without checking the token would let a regression in the worker's own
+  //   gate pass unnoticed. ]]
+  if (url.includes('/rest/v1/rpc/project_for_link_grant')) {
+    const body = JSON.parse(init?.body ?? '{}');
+    rpcCalls.push({ name: 'project_for_link_grant', project: body.p_project, after: true });
+    const tokenOk = !brokenSystemToken && body.p_token === SYSTEM_TOKEN && body.p_consumer === SYSTEM_CONSUMER;
+    if (!tokenOk) return json([]);
+    if (body.p_project !== PROJECT_ID) return json([]);
     return json([PROJECT_ROW]);
   }
 
@@ -244,6 +315,8 @@ const env = () => ({
       list_complete: true,
     }),
   },
+  MEMBERSHIP_OUTBOX_TOKEN: SYSTEM_TOKEN,
+  MEMBERSHIP_OUTBOX_CONSUMER: SYSTEM_CONSUMER,
   AI: { run: async () => ({ choices: [{ message: { content: '{}' } }] }) },
   CORPUS: corpus(),
   VEC: { query: async () => ({ matches: [] }), upsert: async () => ({}) },
@@ -611,6 +684,84 @@ test('a share link is minted, redeemed by a stranger, and then revoked', async (
   const late = await call('/api/shared/links/redeem', { method: 'POST', jwt: ADMIN_JWT, body: { token } });
   assert.equal(late.status, 403);
   assert.equal(late.json.error, 'revoked');
+});
+
+/* ---------------------------------------------------- the privileged read, and its gate --- */
+
+/**
+ * WHAT A LINK GUEST'S ACCESS NOW COSTS, and why the order of two checks is the security argument.
+ *
+ * A redeemed link matches no RLS policy — the grant is in KV, and a bearer secret cannot be looked
+ * up under RLS — so `getProjectAccess` fetches the row through a token-gated `security definer`
+ * function instead. That function CANNOT check the grant: Postgres cannot see KV. The worker checks
+ * it, before calling. These tests are about that "before".
+ */
+
+test('A DEAD LINK NEVER REACHES THE PRIVILEGED READ — the grant is checked first, not after', async () => {
+  reset();
+  const minted = await call(`/api/shared/${PROJECT_ID}/links`, { method: 'POST', jwt: OWNER_JWT, body: { scope: 'project', role: 'viewer' } });
+  const token = minted.json.token;
+  assert.equal((await call('/api/shared/links/redeem', { method: 'POST', jwt: STRANGER_JWT, body: { token } })).status, 201);
+  assert.equal((await call(`/api/shared/${PROJECT_ID}`, { jwt: STRANGER_JWT })).status, 200, 'the fixture did not actually grant access');
+
+  // Kill the grant the way a member removal does, in KV, where it lives.
+  const key = [...kv.keys()].find((k) => k.startsWith(`share:grant:${PROJECT_ID}:`) && k.endsWith(STRANGER_ID));
+  assert.ok(key, 'the grant key was not found — this test is asserting against nothing');
+  const grant = JSON.parse(kv.get(key));
+  kv.set(key, JSON.stringify({ ...grant, revoked_at: new Date().toISOString(), removed_from_project: true }));
+
+  // CLEARED HERE, not at the top. The live request above legitimately called the definer function,
+  // and counting from the start of the test would have counted that one — an assertion that fails
+  // for the right reason by accident is not better than one that passes for the wrong one.
+  rpcCalls.length = 0;
+  const after = await call(`/api/shared/${PROJECT_ID}`, { jwt: STRANGER_JWT });
+  assert.equal(after.status, 404, 'a revoked grant still opened the project');
+
+  // AND THE ROW WAS NEVER FETCHED. A gate that refuses after the privileged read has already
+  // happened is not a gate; it is a log entry. `rpcCalls` counts calls to the definer function.
+  assert.equal(rpcCalls.filter((c) => c.name === 'project_for_link_grant').length, 0,
+    'the worker asked the database for the project row on behalf of a revoked grant');
+});
+
+test('an EXPIRED link is refused in the worker, before the database is asked anything', async () => {
+  reset();
+  const minted = await call(`/api/shared/${PROJECT_ID}/links`, { method: 'POST', jwt: OWNER_JWT, body: { scope: 'project', role: 'viewer' } });
+  const token = minted.json.token;
+  await call('/api/shared/links/redeem', { method: 'POST', jwt: STRANGER_JWT, body: { token } });
+  const key = [...kv.keys()].find((k) => k.startsWith(`share:grant:${PROJECT_ID}:`) && k.endsWith(STRANGER_ID));
+  assert.ok(key, 'the grant key was not found — this test is asserting against nothing');
+  const grant = JSON.parse(kv.get(key));
+  kv.set(key, JSON.stringify({ ...grant, expires_at: new Date(Date.now() - 60_000).toISOString() }));
+
+  rpcCalls.length = 0;
+  assert.equal((await call(`/api/shared/${PROJECT_ID}`, { jwt: STRANGER_JWT })).status, 404);
+  assert.equal(rpcCalls.filter((c) => c.name === 'project_for_link_grant').length, 0,
+    'an expired grant reached the privileged read');
+});
+
+test('a stranger with NO grant at all never reaches it either', async () => {
+  reset();
+  rpcCalls.length = 0;
+  assert.equal((await call(`/api/shared/${PROJECT_ID}`, { jwt: STRANGER_JWT })).status, 404);
+  assert.equal(rpcCalls.length, 0, 'the definer function was called for somebody holding nothing');
+});
+
+test('THE DEFINER FUNCTION REFUSES A WRONG TOKEN, so the worker is not its own only gate', async () => {
+  // Belt and braces, and it is the half this repository cannot test any other way: if the purpose
+  // token were wrong or missing in a deployment, the fallback must produce the SAME 404 it produced
+  // before any of this existed rather than an error or, worse, a row.
+  reset();
+  const minted = await call(`/api/shared/${PROJECT_ID}/links`, { method: 'POST', jwt: OWNER_JWT, body: { scope: 'project', role: 'viewer' } });
+  await call('/api/shared/links/redeem', { method: 'POST', jwt: STRANGER_JWT, body: { token: minted.json.token } });
+  assert.equal((await call(`/api/shared/${PROJECT_ID}`, { jwt: STRANGER_JWT })).status, 200, 'the control did not hold');
+
+  brokenSystemToken = true;
+  try {
+    assert.equal((await call(`/api/shared/${PROJECT_ID}`, { jwt: STRANGER_JWT })).status, 404,
+      'a deployment whose purpose token the database does not recognise handed out a project row');
+  } finally {
+    brokenSystemToken = false;
+  }
 });
 
 test('a link cannot be minted with a role a link may not carry', async () => {
