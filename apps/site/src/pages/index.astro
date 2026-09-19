@@ -1,48 +1,261 @@
 ---
 import Landing from '../layouts/Landing.astro';
 import AppleMark from '../components/AppleMark.astro';
-import { PRODUCT_MODELS, PRODUCT_MODEL_INFO } from '@golem/shared';
-import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '../lib/studio-plugin';
+import { PLAN_LIMITS, PRODUCT_MODELS, PRODUCT_MODEL_INFO } from '@golem/shared';
+import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE, STUDIO_PLUGIN_STORE_REFUSAL } from '../lib/studio-plugin';
+
+/*
+ * REBUILT 2026-09-19 AGAINST A MEASURED BAR.
+ *
+ * The owner named tesana.ai. It was opened in Chrome and read with getComputedStyle rather than
+ * admired: the ramp, the type scale, the tracking rule, the radii, the nav treatment and the
+ * section rhythm are in packages/corpus/data/ui-references/web-landing.json, and landing.css
+ * derives from those numbers.
+ *
+ * WHAT WAS DELIBERATELY NOT TAKEN, which is the harder half. Most of the reference's page area is
+ * social proof: a 300,000-builder claim, a live counter ticker, a gallery of user games and a wall
+ * of creator videos. We have none of those things. Reproducing the shells with placeholder numbers
+ * or stock imagery would make this page a lie in exactly the shape the rest of this repository
+ * exists to prevent, so those sections are absent rather than empty.
+ *
+ * What replaces them is the only material we actually have: what the product does, verified. Every
+ * claim below is one this repository has evidence for on 2026-09-19 — the consent gate, the
+ * refusals, the visual critique, the plan limits — and the install line asks the shared constant
+ * rather than asserting anything.
+ */
+
+const free = PLAN_LIMITS.free;
+
+const truths = [
+  { label: 'Scope', title: 'One place, the one you opened', body: 'Apple works in the Studio place you pair it to, and nowhere else. It cannot reach your files or your other games.' },
+  { label: 'Consent', title: 'Edits are off until you allow them', body: 'The plugin opens read-only. Turning writes on takes two deliberate clicks, and disconnecting turns them off again.' },
+  { label: 'Refusals', title: 'It says no, by name', body: 'It will not run code it was sent, drive play mode, or insert an asset carrying a script. Each refusal comes back with its reason.' },
+  { label: 'Undo', title: 'Every change is one waypoint', body: 'Writes are wrapped in Studio’s own undo history, so a run you dislike is a single Ctrl+Z away.' },
+];
+
+// The activity figure is data, not a pasted blob: the refused line is the point of the whole
+// figure and needs its own element to carry colour, and a string with markup spliced into it is
+// how that ends up unparseable.
+const activity = [
+  { text: 'get_tree         game.Workspace           ok' },
+  { text: 'create_instances 4 parts                  refused', refused: true },
+  { text: '  writes require explicit edit consent', refused: true },
+  { text: 'create_instances 4 parts                  ok' },
+  { text: 'edit_script      ServerScriptService.Main ok' },
+  { text: 'render_view      eye · 288×180            ok' },
+  { text: 'inspect_visually score 6/10 · 3 defects   ok' },
+];
+
+const capabilities = [
+  { title: 'Reads before it writes', body: 'It walks your instance tree and scripts first, then proposes the change — and takes a checkpoint before touching anything.', glyph: 'tree' },
+  { title: 'Checks its own work', body: 'It renders the scene from inside Studio and scores the picture against a visual gate, with named defects rather than a verdict.', glyph: 'eye' },
+  { title: 'Builds in Luau, not pseudocode', body: 'Scripts land in your place through Studio’s own editor APIs, and it refuses to write code that loads assets or calls the network.', glyph: 'code' },
+  { title: 'Generates real geometry', body: 'Text-to-3D runs through Roblox’s own generation service, and a descendant scan refuses anything that arrives carrying code.', glyph: 'cube' },
+];
 ---
-<Landing title="Apple — build Roblox games inside Studio" description="A focused AI workspace for Roblox. Describe your idea, work in your own Studio place, and inspect the result before you publish.">
+
+<Landing
+  title="Apple — build Roblox games inside Studio"
+  description="Describe what you want, and Apple builds it in the Roblox Studio place you already have open. It reads before it writes, checks its own work, and edits nothing until you allow it."
+>
   <a href="#main" class="skip-link">Skip to content</a>
+
   <header class="site-header">
-    <a href="/" class="wordmark" aria-label="Apple — home"><AppleMark size={28} /><span>Apple</span></a>
-    <nav aria-label="Primary"><a href="/docs">Docs</a><a href="/pricing">Plans</a><a class="sign-in" href="/app/login">Sign in <span aria-hidden="true">↗</span></a></nav>
+    <div class="shell">
+      <a href="/" class="wordmark" aria-label="Apple — home"><AppleMark size={22} /><span>Apple</span></a>
+      <nav class="site-nav" aria-label="Primary">
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+        <a href="/changelog">Changelog</a>
+        <a href="/status">Status</a>
+      </nav>
+      <a class="pill" href="/app">Open Apple</a>
+    </div>
   </header>
+
   <main id="main">
     <section class="hero" aria-labelledby="hero-title">
       <div class="atmosphere" aria-hidden="true">
         <div class="light-column"></div>
-        <svg viewBox="0 0 1600 800" preserveAspectRatio="none"><g>{Array.from({length: 24}, (_, i) => <path d={`M-100 ${420+i*7} C350 ${190+i*5} 960 ${970-i*5} 1710 ${220+i*9}`} />)}</g></svg>
+        <svg viewBox="0 0 1600 760" preserveAspectRatio="xMidYMin slice">
+          {Array.from({ length: 18 }, (_, i) => (
+            <path d={`M-80 ${330 + i * 22} C 420 ${190 + i * 16}, 1060 ${560 - i * 9}, 1840 ${250 + i * 20}`} />
+          ))}
+          <path class="ridge" d="M-40 620 L220 430 L360 520 L560 350 L760 560 L980 400 L1180 540 L1420 380 L1640 560 L1840 470" />
+          <path class="ridge" d="M-40 700 L260 560 L470 640 L700 500 L930 660 L1180 540 L1420 660 L1700 560 L1840 620" />
+        </svg>
       </div>
-      <div class="hero-content">
-        <div class="hero-signature" aria-hidden="true"><AppleMark size={76} /></div>
-        <p class="eyebrow">Your imagination. Your Studio.</p>
-        <h1 id="hero-title">What will you<br />bring to life?</h1>
-        <p class="hero-description">A conversation for the game in your head.<br />Built with you, inside Roblox Studio.</p>
-        <div class="hero-actions">
-          <a class="primary-button" href="/app">Open your workspace <span aria-hidden="true">↗</span></a>
-          <a class="hero-secondary" href="/app/signup">Create a free account</a>
+
+      <div class="shell hero-inner">
+        <h1 id="hero-title" class="display">Build it in the place you already have open.</h1>
+        <p class="lead">Describe the game you want. Apple builds it inside your own Roblox Studio place, names every step while it happens, and changes nothing until you say so.</p>
+
+        <div class="composer" aria-hidden="true">
+          <div class="composer-field">Ask Apple to build…</div>
+          <div class="composer-bar">
+            <div class="composer-chips">
+              <span class="chip"><span class="chip-dot"></span>Studio connected</span>
+              <span class="chip">Apple</span>
+            </div>
+            <span class="pill">Build</span>
+          </div>
         </div>
-        <p class="availability">{STUDIO_PLUGIN_STORE_LIVE ? <a href={STUDIO_PLUGIN_INSTALL_HREF}>Get the Studio plugin ↗</a> : <>Early preview. Public Studio installation is not available yet. <a href={STUDIO_PLUGIN_INSTALL_HREF}>See status ↗</a></>}</p>
+
+        <div class="hero-actions">
+          <a class="pill" href="/app/signup">Create a free account</a>
+          <a class="pill pill-quiet" href="/docs">Read the docs</a>
+        </div>
+
+        <p class="availability">
+          {STUDIO_PLUGIN_STORE_LIVE ? (
+            <>Free to start, no card. <a href={STUDIO_PLUGIN_INSTALL_HREF}>Get the Studio plugin ↗</a></>
+          ) : (
+            <>
+              Free to start, no card. Chat works now; building inside Studio needs the plugin, and
+              {STUDIO_PLUGIN_STORE_REFUSAL ? ' Roblox has not approved it for distribution.' : ' public installation is not open yet.'}
+              {' '}<a href={STUDIO_PLUGIN_INSTALL_HREF}>See the status ↗</a>
+            </>
+          )}
+        </p>
       </div>
-      <a class="discover" href="#inside">Inside Apple <span aria-hidden="true">↓</span></a>
     </section>
-    <section class="inside section" id="inside" aria-labelledby="inside-title">
-      <div class="section-heading"><p class="eyebrow">Less interface. More imagination.</p><h2 id="inside-title">One conversation.<br />Your whole project.</h2><p>Ask a question, shape a mechanic, or work through a broken script. Keep the conversation in focus and open the details when you need them.</p></div>
-      <div class="principles">
-        <article><span class="step">01</span><h3>Work in context</h3><p>Connect your own Studio place. Apple can inspect its objects and scripts before proposing changes.</p></article>
-        <article><span class="step">02</span><h3>See what happens</h3><p>Compact activity keeps you informed. Code changes and available results stay beside the conversation.</p></article>
-        <article><span class="step">03</span><h3>You keep control</h3><p>Stop a run, inspect the work, and test it in Studio. Publishing is your decision.</p></article>
+
+    <section class="band" id="inside" aria-labelledby="truths-title">
+      <div class="shell">
+        <div class="band-head">
+          <h2 id="truths-title" class="section-title">What it will and will not do</h2>
+          <p class="section-sub">Every line here is a rule in the plugin, not a promise in a brochure.</p>
+        </div>
+        <div class="truths">
+          {truths.map((t) => (
+            <article class="truth">
+              <p class="micro">{t.label}</p>
+              <h3>{t.title}</h3>
+              <p>{t.body}</p>
+            </article>
+          ))}
+        </div>
       </div>
     </section>
-    <section class="models section" id="models" aria-labelledby="models-title">
-      <div class="section-heading"><p class="eyebrow">Choose your collaborator</p><h2 id="models-title">Start with Apple.<br />Go further with <span class="max-name">MAX</span>.</h2></div>
-      <div class="model-grid">{PRODUCT_MODELS.map(model => <article class="model-card"><AppleMark size={38} /><h3>{model === 'apple-max' ? <>Apple <span class="max-name">MAX</span></> : PRODUCT_MODEL_INFO[model].name}</h3><p>{model === 'apple' ? 'The limited free tier. A place to begin, ask questions, and make smaller changes.' : 'The subscription tier for more involved work, with a larger working budget.'}</p><span class="model-access">{model === 'apple' ? 'Free · daily limits' : 'Paid subscribers'}</span></article>)}</div>
-      <p class="model-note">Custom Roblox training is in development. We do not claim a completed proprietary model. <a href="/app/usage">Check plan availability ↗</a></p>
+
+    <section class="band" aria-labelledby="sequence-title">
+      <div class="shell">
+        <div class="band-head">
+          <h2 id="sequence-title" class="section-title">How a run actually goes</h2>
+          <p class="section-sub">Three steps, in order, with the third one being the point.</p>
+        </div>
+        <div class="sequence">
+          <figure class="sequence-figure">
+            <figcaption class="figure-head micro">Studio · activity</figcaption>
+            <div class="activity">
+              {activity.map((line) => <div class={line.refused ? 'activity-line refused' : 'activity-line'}>{line.text}</div>)}
+            </div>
+          </figure>
+          <div class="steps">
+            <article class="step">
+              <h3>Pair one place</h3>
+              <p>A six-character code links Apple to the Studio place you have open. Nothing else in your account is in scope, and the pairing ends when you disconnect.</p>
+            </article>
+            <article class="step">
+              <h3>Say what you want</h3>
+              <p>Plain language. Apple reads the tree, plans the change, and takes a checkpoint before it writes — so the state before the run is always recoverable.</p>
+            </article>
+            <article class="step">
+              <h3>Look at what it did</h3>
+              <p>Every operation is named as it happens, including the ones that were refused. The result is in your place, in Studio, where you can run it.</p>
+            </article>
+          </div>
+        </div>
+      </div>
     </section>
-    <section class="closing section"><AppleMark size={42} /><h2>The next idea is yours.</h2><a class="primary-button" href="/app/signup">Create an account <span aria-hidden="true">↗</span></a></section>
+
+    <section class="band" aria-labelledby="statement-title">
+      <div class="shell" style="text-align:center">
+        <h2 id="statement-title" class="statement">Apple builds inside Roblox Studio — in your place, with your account, under your approval.</h2>
+      </div>
+    </section>
+
+    <section class="band" aria-labelledby="cap-title">
+      <div class="shell">
+        <div class="band-head">
+          <h2 id="cap-title" class="section-title">What it is good at</h2>
+          <p class="section-sub">Four things it does end to end today.</p>
+        </div>
+        <div class="cards">
+          {capabilities.map((c) => (
+            <article class="card">
+              <div class="card-media" aria-hidden="true">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+                  {c.glyph === 'tree' && <><path d="M5 4v14a2 2 0 0 0 2 2h4" /><path d="M5 12h6" /><rect x="13" y="2" width="6" height="5" rx="1" /><rect x="13" y="10" width="6" height="5" rx="1" /><rect x="13" y="17" width="6" height="5" rx="1" /></>}
+                  {c.glyph === 'eye' && <><path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6Z" /><circle cx="12" cy="12" r="2.6" /></>}
+                  {c.glyph === 'code' && <><path d="m9 8-5 4 5 4" /><path d="m15 8 5 4-5 4" /></>}
+                  {c.glyph === 'cube' && <><path d="M12 2.6 20.5 7v10L12 21.4 3.5 17V7Z" /><path d="M3.5 7 12 11.6 20.5 7" /><path d="M12 11.6v9.8" /></>}
+                </svg>
+              </div>
+              <div class="card-body">
+                <h3>{c.title}</h3>
+                <p>{c.body}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="band" id="models" aria-labelledby="plans-title">
+      <div class="shell">
+        <div class="band-head">
+          <h2 id="plans-title" class="section-title">Two ways to work</h2>
+          <p class="section-sub">Apple is free to use today. Paid checkout is not open yet, and the pricing page says so too.</p>
+        </div>
+        <div class="model-grid">
+          {PRODUCT_MODELS.map((model) => (
+            <article class="model-card">
+              <h3>{model === 'apple-max' ? <>Apple <span class="max-name">MAX</span></> : PRODUCT_MODEL_INFO[model].name}</h3>
+              <p>{model === 'apple'
+                ? `The free tier. ${free.creditsPerDay.toLocaleString()} Credits a day, up to ${free.creditsPerMonth.toLocaleString()} a month — you have whichever is lower at the time.`
+                : PRODUCT_MODEL_INFO[model].blurb}</p>
+              <p class="micro">{model === 'apple' ? 'Free · no card' : 'Planned · not purchasable'}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="closing">
+      <div class="shell">
+        <h2 class="statement">Start with one place and one idea.</h2>
+        <a class="pill" href="/app/signup">Create a free account</a>
+      </div>
+    </section>
   </main>
-  <footer><a class="wordmark" href="/"><AppleMark size={22} /> Apple</a><nav aria-label="Footer"><a href="/status">Status</a><a href="/docs">Docs</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a></nav><p>Independent from Roblox Corporation. Review and test generated work before publishing.</p></footer>
+
+  <footer class="site-footer">
+    <div class="shell">
+      <div class="footer-grid">
+        <div class="footer-col">
+          <a class="wordmark" href="/"><AppleMark size={20} /><span>Apple</span></a>
+          <p class="footer-note">Independent from Roblox Corporation. Apple can get things wrong — review and test what it changed before you publish.</p>
+        </div>
+        <div class="footer-col">
+          <h3>Product</h3>
+          <a href="/pricing">Pricing</a>
+          <a href="/changelog">Changelog</a>
+          <a href="/status">Status</a>
+        </div>
+        <div class="footer-col">
+          <h3>Docs</h3>
+          <a href="/docs">Getting started</a>
+          <a href="/docs/plugin">Install the plugin</a>
+          <a href="/docs/credits-and-limits">Credits &amp; limits</a>
+        </div>
+        <div class="footer-col">
+          <h3>Legal</h3>
+          <a href="/terms">Terms</a>
+          <a href="/privacy">Privacy</a>
+          <a href="/docs/privacy-and-data">Your data</a>
+        </div>
+      </div>
+    </div>
+  </footer>
 </Landing>

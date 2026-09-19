@@ -1,86 +1,280 @@
+/*
+ * THE LANDING PAGE'S OWN SYSTEM.
+ *
+ * Rebuilt 2026-09-19 against a measured bar. The owner named tesana.ai; it was opened in Chrome and
+ * read with getComputedStyle rather than looked at, and every number below comes from that reading.
+ * The measurements, the rules derived from them and the things deliberately NOT taken are recorded
+ * in packages/corpus/data/ui-references/web-landing.json.
+ *
+ * The three decisions that matter, and why each is a number rather than a taste:
+ *
+ *   ONE WEIGHT. Every text node on the reference is font-weight 400, including its 96px statement.
+ *   Hierarchy is carried by size, colour and space. Reaching for 600 on a heading is the reflex that
+ *   makes a dark page look like a template, and it is the first thing this file gives up.
+ *
+ *   WARM NEUTRALS. #141312 against #f4f3f2 — red highest, blue lowest, by a point or two at every
+ *   step of the ramp. Imperceptible per colour, unmistakable across a page. The old palette was
+ *   #080808/#f5f5f5, which is the same idea with the warmth taken out.
+ *
+ *   A HAIRLINE, NOT A SHADOW. One 1px rgba(244,243,242,.08) border does all the separation; the
+ *   reference uses effectively no shadows. Elevation is a surface step, not a blur.
+ */
+
 :root {
   color-scheme: dark;
-  --ground: #080808;
-  --surface: #161616;
-  --ink: #f5f5f5;
-  --ink-secondary: #c6c6c6;
-  --muted: #a2a2a2;
-  --line: rgba(255,255,255,.13);
+
+  /* The ramp. Four steps and an inverted one, which is all the reference uses. */
+  --ground: #141312;
+  --raised: #171615;
+  --card: #232221;
+  /* `--surface` is the name every other stylesheet and guard in this repo uses for this step.
+     Two names for one colour is how a palette drifts, so this is the token and --card aliases it. */
+  --surface: #232221;
+  --surface-2: #333231;
+  --control: #333231;
+  --inverted: #f4f3f2;
+
+  --ink: #f4f3f2;
+  --ink-secondary: #dedcda;
+  --muted: #a5a29f;
+  --faint: #8a8783;
+
+  --line: rgba(244, 243, 242, 0.08);
+  --line-strong: rgba(244, 243, 242, 0.18);
+
+  /* One saturated colour, used once — the rule taken from the reference, not its hue. */
+  --live: #4ac26b;
+
+  --shell: 1280px;
+  --gutter: 32px;
+  --nav-h: 60px;
+  --r: 10px;
+  --r-sm: 6px;
+  --r-pill: 999px;
+
+  --ease: cubic-bezier(0.22, 0.68, 0.24, 1);
 }
+
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-body { margin: 0; background: var(--ground); color: var(--ink); font-family: Arial, Helvetica, sans-serif; -webkit-font-smoothing: antialiased; }
-a { color: inherit; text-decoration: none; }
-button, input { font: inherit; }
-a:focus-visible { outline: 2px solid white; outline-offset: 6px; }
-::selection { background: #ddd; color: #080808; }
-.skip-link { position: fixed; z-index: 20; top: -70px; left: 20px; padding: 14px; background: white; color: black; border-radius: 8px; }
-.skip-link:focus { top: 12px; }
-.site-header { position: absolute; z-index: 3; top: 0; width: 100%; height: 88px; padding: 0 5%; display: flex; align-items: center; justify-content: space-between; }
-.wordmark { display: inline-flex; gap: 10px; align-items: center; font-size: 19px; font-weight: 600; }
-nav { display: flex; align-items: center; gap: 32px; font-size: 13px; }
-nav a { color: var(--ink-secondary); transition: color .2s; }
-nav a:hover { color: var(--ink); }
-.sign-in { border: 1px solid var(--line); border-radius: 22px; padding: 10px 17px; }
-.sign-in span { margin-left: 12px; }
-.hero { position: relative; isolation: isolate; min-height: min(100svh,1200px); padding: 132px 24px 100px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-.atmosphere { position: absolute; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
-.light-column { position: absolute; left: 42%; top: -15%; width: 22%; height: 95%; background: radial-gradient(ellipse,rgba(255,255,255,.19),transparent 65%); filter: blur(18px); transform: rotate(-12deg); animation: breathe 11s ease-in-out infinite alternate; }
-.atmosphere svg { position: absolute; bottom: -13%; width: 120%; left: -10%; height: 70%; fill: none; stroke: #a2a2a2; stroke-width: .5; opacity: .25; animation: wave 22s ease-in-out infinite alternate; }
-.hero-content { width: 100%; max-width: 730px; text-align: center; }
-.hero-signature { display: inline-flex; margin-bottom: 26px; filter: drop-shadow(0 0 18px #ffffff55); animation: float 8s ease-in-out infinite; }
-.eyebrow { margin: 0 0 23px; color: var(--muted); font-size: 12px; letter-spacing: .035em; }
-h1 { margin: 0; font-size: clamp(40px,5.6vw,54px); font-weight: 500; line-height: 1.06; letter-spacing: -.045em; }
-.hero-description { margin: 26px 0 36px; color: var(--ink-secondary); font-size: 16px; line-height: 1.7; }
-.hero-actions { display:flex; align-items:center; justify-content:center; gap:24px; margin:32px 0 28px; flex-wrap:wrap; }
-.hero-actions .primary-button { margin:0; }
-.hero-secondary { color:var(--ink-secondary); font-size:13px; text-underline-offset:4px; }
-.hero-secondary:hover { text-decoration:underline; }
-.availability { font-size: 12px; line-height: 1.8; color: var(--muted); }
-.availability a,.model-note a { text-decoration: underline; text-underline-offset: 3px; }
-.discover { position: absolute; bottom: 28px; color: var(--muted); font-size: 11px; }
-.discover span { margin-left: 12px; }
-.section { width: calc(100% - 48px); max-width: 1120px; margin: auto; padding: 112px 0; border-top: 1px solid var(--line); }
-.section-heading { max-width: 620px; margin-bottom: 64px; }
-h2 { font-size: clamp(33px,4vw,53px); font-weight: 500; line-height: 1.12; letter-spacing: -.05em; margin: 0 0 24px; }
-.section-heading>p:last-child:not(.eyebrow) { max-width: 490px; font-size: 15px; line-height: 1.8; color: var(--ink-secondary); }
-.principles { display: grid; grid-template-columns: repeat(3,1fr); gap: 60px; }
-.step { color: var(--muted); font-size: 12px; }
-h3 { font-size: 19px; font-weight: 500; letter-spacing: -.02em; margin: 26px 0 13px; }
-.principles p,.model-card p { font-size: 14px; line-height: 1.85; color: var(--ink-secondary); margin: 0; }
-.models .section-heading { margin: 0 auto 56px; text-align: center; }
-.model-grid { max-width: 850px; margin: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-.model-card { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 38px; }
-.model-card h3 { font-size: 27px; margin-top: 22px; }
-.model-access { display: block; margin-top: 28px; color: var(--muted); font-size: 12px; }
-.max-name { background: linear-gradient(90deg,#ffb1cb,#ffda94,#ceffa7,#94fff0,#aabbff,#f5aaff,#ffb1cb); background-size: 300% 100%; background-clip: text; -webkit-background-clip: text; color: transparent; animation: rainbow 4s linear infinite; }
-.model-note { max-width: 650px; text-align: center; margin: 28px auto 0; color: var(--muted); font-size: 12px; line-height: 1.8; }
-.closing { text-align: center; }
-.closing h2 { margin-top: 30px; }
-.primary-button { display: inline-flex; align-items: center; gap: 32px; margin-top: 12px; padding: 15px 24px; border-radius: 28px; background: #f5f5f5; color: #080808; font-size: 14px; }
-footer { max-width: 1120px; width: calc(100% - 48px); margin: auto; padding: 35px 0; border-top: 1px solid var(--line); display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 30px; }
-footer p { flex-basis: 100%; color: var(--muted); font-size: 11px; line-height: 1.8; margin: 0; }
-@keyframes breathe { to { opacity: .5; transform: rotate(8deg) translateX(-12%); } }
-@keyframes wave { to { transform: translateY(7%) scaleY(.84); opacity: .4; } }
-@keyframes float { 50% { transform: translateY(-5px); } }
-@keyframes rainbow { to { background-position: 300% 50%; } }
-@media (max-width:700px) {
-  .site-header { height: 72px; padding: 0 22px; }
-  nav { gap: 18px; font-size: 12px; }
-  .wordmark { font-size: 17px; }
-  .hero { min-height: 790px; padding: 112px 22px 90px; }
-  .hero-signature { margin-bottom: 22px; }
-  .hero-signature svg { width: 60px; height: 60px; }
-  .hero-description { font-size: 14px; }
-  .section { padding: 72px 0; }
-  .section-heading { margin-bottom: 42px; }
-  .principles { grid-template-columns: 1fr; gap: 35px; }
-  .principles h3 { margin-top: 15px; }
-  .model-grid { grid-template-columns: 1fr; }
-  .model-card { padding: 30px; }
-  footer nav { gap: 21px; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
-@media (prefers-reduced-motion:reduce) {
+
+a { color: inherit; text-decoration: none; }
+button, input { font: inherit; color: inherit; }
+img { display: block; max-width: 100%; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; border-radius: 4px; }
+::selection { background: var(--ink); color: var(--ground); }
+
+.skip-link { position: fixed; z-index: 30; top: -80px; left: 20px; padding: 12px 16px; border-radius: var(--r-sm); background: var(--inverted); color: var(--ground); }
+.skip-link:focus { top: 12px; }
+
+/* ---------------------------------------------------------------- shell */
+
+.shell { width: 100%; max-width: var(--shell); margin: 0 auto; padding: 0 var(--gutter); }
+
+/* THE TYPE SCALE, measured. 56 / 32 / 20 / 16 / 14 / 10, tracking tightening as size grows and
+   turning positive at the micro label. Nothing here is bold. */
+/* 54px, not the reference's 56: scripts/check-copy.mjs caps display type at 3.4rem/54.4px, and a
+   guard that exists to stop a page shouting is not worth weakening for 2 pixels. */
+.display { margin: 0; font-size: clamp(38px, 5vw, 54px); font-weight: 400; line-height: 1.14; letter-spacing: -0.02em; text-wrap: balance; }
+.statement { margin: 0; font-size: clamp(30px, 4.4vw, 50px); font-weight: 400; line-height: 1.16; letter-spacing: -0.02em; text-wrap: balance; }
+.section-title { margin: 0; font-size: clamp(26px, 2.4vw, 32px); font-weight: 400; line-height: 1.32; letter-spacing: -0.013em; }
+.section-sub { margin: 8px 0 0; color: var(--muted); font-size: 14px; line-height: 20px; letter-spacing: -0.01em; }
+.lead { margin: 0; color: var(--ink-secondary); font-size: 16px; line-height: 24px; letter-spacing: -0.01em; }
+.micro { margin: 0; color: var(--faint); font-size: 10px; line-height: 15px; letter-spacing: 0.018em; text-transform: uppercase; }
+
+/* ------------------------------------------------------------------ nav */
+
+.site-header {
+  position: fixed; z-index: 20; top: 0; left: 0; right: 0;
+  height: var(--nav-h);
+  display: flex; align-items: center;
+  border-bottom: 1px solid var(--line);
+  /* The reference's nav is fully transparent with no blur, and that works there because nothing
+     scrolls under it at a readable size. Ours does. A short scrim — no blur, no hard fill — keeps
+     the hairline reading as the separation while stopping body text from showing through the nav.
+     A deliberate departure from the bar, with the reason written down rather than drifted into. */
+  background: linear-gradient(180deg, var(--ground) 0%, var(--ground) 62%, rgba(20, 19, 18, 0) 100%);
+}
+.site-header > .shell { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.wordmark { display: inline-flex; align-items: center; gap: 9px; font-size: 16px; letter-spacing: -0.014em; }
+.site-nav { display: flex; align-items: center; gap: 28px; font-size: 14px; letter-spacing: -0.01em; }
+.site-nav a { color: var(--muted); transition: color 160ms var(--ease); }
+.site-nav a:hover { color: var(--ink); }
+
+.pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 34px; padding: 0 16px;
+  border: 0; border-radius: var(--r-pill);
+  background: var(--inverted); color: var(--ground);
+  font-size: 14px; letter-spacing: -0.01em; white-space: nowrap;
+  transition: opacity 160ms var(--ease);
+}
+.pill:hover { opacity: 0.86; }
+.pill-quiet {
+  background: transparent; color: var(--ink);
+  border: 1px solid var(--line-strong);
+}
+.pill-quiet:hover { background: rgba(244, 243, 242, 0.06); opacity: 1; }
+
+/* ----------------------------------------------------------------- hero */
+
+.hero { position: relative; isolation: isolate; padding: calc(var(--nav-h) + 96px) 0 96px; overflow: hidden; }
+.hero-inner { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.hero .display { max-width: 18ch; }
+.hero .lead { margin-top: 18px; max-width: 46ch; color: var(--muted); text-wrap: pretty; }
+
+/* The backdrop is line-art, drawn here rather than shipped as an image: the reference's hero art is
+   its own and is not ours to reuse, and a gradient blob would be the placeholder this page is
+   trying to stop being. */
+.atmosphere { position: absolute; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+.atmosphere svg { position: absolute; left: 50%; top: 0; width: 1760px; height: 100%; transform: translateX(-50%); fill: none; stroke: var(--ink); stroke-width: 0.5; opacity: 0.16; }
+.atmosphere .ridge { opacity: 0.55; }
+/* The warm column. The reference's hero is lit from behind by a terracotta glow; this is that idea
+   in our own colour, sitting behind the composer so the focal object is the lit thing. */
+.light-column {
+  position: absolute; left: 50%; top: -18%;
+  width: min(760px, 78vw); height: 92%;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at 50% 40%, rgba(217, 149, 118, 0.16), rgba(217, 149, 118, 0.05) 42%, transparent 68%);
+  filter: blur(26px);
+  animation: column-breathe 14s ease-in-out infinite alternate;
+}
+@keyframes column-breathe { from { opacity: 0.72; transform: translateX(-50%) scale(1); } to { opacity: 1; transform: translateX(-50%) scale(1.06); } }
+/* Two moving layers, slowly. The reference's hero is still art, but a hero that never moves reads
+   as a screenshot of a page rather than a page. Both are decorative, both stop under
+   prefers-reduced-motion, and neither is a script. */
+.atmosphere svg { animation: drift 38s ease-in-out infinite alternate; }
+.atmosphere .ridge { animation: settle 26s ease-in-out infinite alternate; }
+@keyframes drift { from { transform: translateX(-50%) translateY(0); } to { transform: translateX(calc(-50% - 26px)) translateY(-14px); } }
+@keyframes settle { from { opacity: 0.4; } to { opacity: 0.68; } }
+.atmosphere::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(20,19,18,0) 30%, var(--ground) 92%); }
+
+/* The focal object is the product's own composer, not a screenshot of it. */
+.composer {
+  width: 100%; max-width: 720px; margin: 40px auto 0;
+  border: 1px solid var(--line); border-radius: var(--r);
+  background: var(--raised);
+  text-align: left;
+  overflow: hidden;
+}
+.composer-field { padding: 20px 20px 28px; color: var(--faint); font-size: 16px; line-height: 24px; }
+.composer-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 12px 12px 16px; border-top: 1px solid var(--line); }
+.composer-chips { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--card); color: var(--muted); font-size: 12px; letter-spacing: -0.01em; white-space: nowrap; }
+.chip-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--live); }
+
+.hero-actions { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 28px; flex-wrap: wrap; }
+.availability { margin-top: 22px; color: var(--faint); font-size: 12px; line-height: 18px; letter-spacing: -0.005em; }
+.availability a { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+
+/* -------------------------------------------------------------- section */
+
+.band { padding: 96px 0; border-top: 1px solid var(--line); }
+.band-head { max-width: 62ch; margin-bottom: 40px; }
+
+/* --------------------------------------------------------------- truths */
+
+.truths { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.truth { padding: 24px; background: var(--ground); }
+.truth h3 { margin: 12px 0 6px; font-size: 16px; font-weight: 400; letter-spacing: -0.012em; line-height: 24px; }
+.truth p { margin: 0; color: var(--muted); font-size: 14px; line-height: 20px; }
+.truth .micro { color: var(--faint); }
+
+/* ------------------------------------------------------------- sequence */
+
+.sequence { display: grid; grid-template-columns: 1.25fr 1fr; gap: 72px; align-items: start; }
+.sequence-figure { position: sticky; top: calc(var(--nav-h) + 40px); border: 1px solid var(--line); border-radius: var(--r); background: var(--raised); overflow: hidden; }
+.sequence-figure .figure-head { padding: 12px 16px; border-bottom: 1px solid var(--line); color: var(--faint); }
+/* One element per line rather than a <pre> with newline expressions spliced into it: the refused
+   line needs its own element to carry colour, and Astro will not parse `{'\n'}` inside a <pre>. */
+.activity { padding: 20px 24px; overflow-x: auto; }
+.activity-line { color: var(--ink-secondary); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; line-height: 26px; white-space: pre; }
+/* The refusal is the point of the whole figure, so it is the only coloured thing on the page. */
+.activity-line.refused { color: #e0a08a; }
+.steps { display: grid; gap: 40px; padding: 8px 0; }
+.step h3 { margin: 0 0 8px; font-size: clamp(24px, 2vw, 30px); font-weight: 400; letter-spacing: -0.014em; line-height: 1.3; }
+.step p { margin: 0; color: var(--muted); font-size: 16px; line-height: 24px; }
+/* The reference dims inactive steps to about a third. Scroll-driven, and it degrades to "all
+   readable" rather than "all invisible" where the feature is unsupported or motion is reduced. */
+.step { opacity: 1; transition: opacity 320ms var(--ease); }
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .step { animation: step-focus linear both; animation-timeline: view(); animation-range: entry 10% cover 46%; }
+  }
+}
+@keyframes step-focus { from { opacity: 0.32; } to { opacity: 1; } }
+
+/* ---------------------------------------------------------- capabilities */
+
+.cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+.card { border: 1px solid var(--line); border-radius: var(--r); background: var(--raised); overflow: hidden; }
+.card-media { aspect-ratio: 4 / 5; display: grid; place-items: center; background: var(--card); color: var(--muted); }
+.card-body { padding: 18px; }
+.card-body h3 { margin: 0 0 6px; font-size: 16px; font-weight: 400; letter-spacing: -0.012em; line-height: 24px; }
+.card-body p { margin: 0; color: var(--muted); font-size: 14px; line-height: 20px; }
+
+/* --------------------------------------------------------------- plans */
+
+.model-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; max-width: 840px; }
+.model-card { display: flex; flex-direction: column; gap: 10px; padding: 24px; border: 1px solid var(--line); border-radius: var(--r); background: var(--raised); }
+.model-card h3 { margin: 0; font-size: 20px; font-weight: 400; letter-spacing: -0.014em; line-height: 30px; }
+.model-card p { margin: 0; color: var(--muted); font-size: 14px; line-height: 20px; }
+.model-card .micro { margin-top: auto; padding-top: 12px; }
+.max-name { color: var(--ink); }
+
+/* -------------------------------------------------------------- closing */
+
+.closing { padding: 128px 0; border-top: 1px solid var(--line); text-align: center; }
+.closing .statement { margin-bottom: 28px; }
+
+/* --------------------------------------------------------------- footer */
+
+.site-footer { padding: 56px 0 64px; border-top: 1px solid var(--line); background: var(--raised); }
+.footer-grid { display: grid; grid-template-columns: 1.4fr repeat(3, 1fr); gap: 32px; }
+.footer-col h3 { margin: 0 0 12px; color: var(--faint); font-size: 14px; font-weight: 400; letter-spacing: -0.01em; }
+.footer-col a { display: block; padding: 5px 0; color: var(--muted); font-size: 14px; transition: color 160ms var(--ease); }
+.footer-col a:hover { color: var(--ink); }
+.footer-note { margin: 40px 0 0; color: var(--faint); font-size: 12px; line-height: 18px; max-width: 70ch; }
+
+/* ------------------------------------------------------------ responsive */
+
+@media (max-width: 1000px) {
+  .truths { grid-template-columns: repeat(2, 1fr); }
+  .cards { grid-template-columns: repeat(2, 1fr); }
+  .sequence { grid-template-columns: 1fr; gap: 40px; }
+  .sequence-figure { position: static; }
+  .footer-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+  :root { --gutter: 16px; }
+  .hero { padding: calc(var(--nav-h) + 56px) 0 64px; }
+  .band { padding: 64px 0; }
+  .closing { padding: 88px 0; }
+  .truths { grid-template-columns: 1fr; }
+  .cards { grid-template-columns: 1fr; }
+  .model-grid { grid-template-columns: 1fr; }
+  .site-nav { display: none; }
+  .composer-bar { flex-wrap: wrap; }
+}
+
+@media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  *,*::before,*::after { animation: none !important; transition: none !important; }
+  /* `animation: none` rather than a near-zero duration. A 0.001ms animation still RUNS — it jumps
+     to its end state — and for a layer whose keyframes end at a different opacity that is a
+     content change, not a stopped animation. None is the only spelling that cannot do that. */
+  *, *::before, *::after { animation: none !important; transition: none !important; }
 }

@@ -1,0 +1,63 @@
+{
+  "genre": "web-landing",
+  "surface": "the public marketing site, apps/site — not a Roblox game genre",
+  "policy": {
+    "externalReferenceUse": "reference_only",
+    "copyPermissionDefault": false,
+    "note": "These are measurements of live public pages, taken to learn a design LANGUAGE — the surface ramp, the type scale, the rhythm. No markup, stylesheet, image, font file, icon or sentence from any of them is copied. What is reproduced is a set of numbers, which are facts about a page rather than its expression."
+  },
+  "references": [
+    {
+      "id": "tesana-ai-landing",
+      "source": "https://tesana.ai/en — measured in Chrome at 1568px on 2026-09-19 with getComputedStyle over the live DOM, plus five scroll captures. Named by the owner as the bar.",
+      "demonstrates": [
+        "A warm near-black page at rgb(20,19,18) with warm off-white text at rgb(244,243,242) — the neutral is warm, not the usual blue-grey, and that is what makes it read as calm rather than cold.",
+        "EVERY text node on the page is font-weight 400, including the 96px statement. Hierarchy is carried entirely by size, colour and space, and the absence of bold is the single most distinctive thing about it.",
+        "Letter-spacing is negative and proportional to size — about -0.02em, tightening as type grows — and turns POSITIVE (+0.018em) on the 10px uppercase micro labels.",
+        "A four-step surface ramp and nothing else: page 20/19/18, raised 23/22/21, card 35/34/33, control 51/50/49, with a single 1px rgb(41,40,39) hairline doing all the separation. Shadows are effectively absent.",
+        "One radius does almost all the work: 10px on 343 elements, 6px on 56, pills reserved for buttons.",
+        "The nav is 60px, fixed and fully transparent — no blur, no fill — separated from the page by the same hairline as everything else.",
+        "The hero's focal object is the product's own input, not a screenshot of it: a large 10px-radius composer sitting on a full-bleed line-art backdrop.",
+        "A 1280px container with 32px gutters, and a 7,165px page that is mostly vertical space."
+      ],
+      "cautions": [
+        "Most of its page area is social proof we do not have: a 300,000-builder claim, a live stats ticker, a games gallery and a wall of creator videos. Reproducing those shells with invented or placeholder numbers is the one thing this repository refuses to do.",
+        "Its wordmark is a light serif against a sans UI. That pairing is theirs; ours has its own mark and must not borrow the gesture wholesale.",
+        "Accent use is a single system green on one pill. Copying the exact hue would be copying a brand decision rather than a design rule; the rule is 'one saturated colour, used once'."
+      ],
+      "licence": { "status": "unverified_reference_only", "copyPermission": false }
+    }
+  ],
+  "rules": [
+    {
+      "rule": "One weight. Set every heading and every paragraph at 400 and let size, colour and space carry hierarchy.",
+      "why": "Measured across every text node on the bar: there is no bold anywhere. Reaching for 600 is the reflex that makes a page look like a template, and it is the first thing to go."
+    },
+    {
+      "rule": "Warm neutrals only. The page, every surface step and the text all sit on the same warm axis; no blue-grey.",
+      "why": "rgb(20,19,18) against rgb(244,243,242) — red highest, blue lowest, by one or two points at every step. It is barely perceptible per colour and unmistakable across a page."
+    },
+    {
+      "rule": "Separate with a 1px hairline, not with a shadow.",
+      "why": "One border colour on the bar and effectively no shadows. Elevation is implied by the surface step, not by a blur."
+    },
+    {
+      "rule": "Tighten tracking as type grows; loosen it below 12px.",
+      "why": "-0.02em at 56px and 96px, -0.01em at body, +0.018em on uppercase micro labels. Uniform tracking is what makes large type look rented."
+    },
+    {
+      "rule": "A section is a 32px title, a 14–16px muted line, and then the thing itself.",
+      "why": "Repeated at every section on the bar without variation. The consistency is the effect."
+    },
+    {
+      "rule": "Never ship a section whose content we cannot fill truthfully.",
+      "why": "Not a rule from the bar — a rule against it. Half its structure is social proof, and an empty or invented version of that is worse than omitting the section."
+    }
+  ],
+  "gapsAgainstShippedTheme": [
+    "apps/site ships a LIGHT theme (--paper #f5f5f5, --ink #080808) in Arial. Every value above is a gap until the tokens change.",
+    "The shipped type scale has no 96px step and no micro-label step.",
+    "Nothing in the shipped site uses a four-step surface ramp; it uses paper/surface pairs.",
+    "Only one reference is measured. Five is the standing minimum, so this file is one opinion with numbers attached and says so."
+  ]
+}

@@ -20,7 +20,10 @@ const MINIMUM = 5;
  * INSIDE pending that has reached five also fails, so the list cannot quietly outlive the gap it
  * describes.
  */
-const PENDING = new Set(['tycoon', 'obby', 'horror', 'racing', 'roleplay', 'survival', 'studio']);
+// 'web-landing' is the public marketing site rather than a Roblox genre, and it is pending for the
+// ordinary reason: tesana.ai is measured and four more are not. It stays here until it has five,
+// and the test below makes sure it cannot stay once it does.
+const PENDING = new Set(['tycoon', 'obby', 'horror', 'racing', 'roleplay', 'survival', 'studio', 'web-landing']);
 
 const genreFiles = () => (existsSync(DIR) ? readdirSync(DIR).filter((f) => f.endsWith('.json')) : []);
 const load = (file) => JSON.parse(readFileSync(join(DIR, file), 'utf8'));

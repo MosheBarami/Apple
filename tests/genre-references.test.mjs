@@ -90,9 +90,18 @@ test('the UI reference library and the genre catalogue do not disagree about a g
   const known = new Set(catalogue.genres.map((g) => g.id));
   const uiDir = join(ROOT, 'packages/corpus/data/ui-references');
   assert.ok(existsSync(uiDir), 'the UI reference library is gone — this check would be vacuous');
-  const orphans = readdirSync(uiDir)
-    .filter((f) => f.endsWith('.json'))
-    .map((f) => f.replace(/\.json$/, ''))
-    .filter((id) => !known.has(id) && id !== 'studio');
+  // NOT EVERY INTERFACE IS A GENRE. 'studio' is the plugin panel and 'web-landing' is the public
+  // marketing site; neither is a Roblox game genre and neither belongs in the taxonomy. They are
+  // listed rather than pattern-matched so that adding a third non-genre surface is a decision
+  // somebody makes on purpose, and each one must actually EXIST — a name left here after its file
+  // is gone would quietly widen the exemption.
+  // 'studio' was exempted here for as long as this test has existed and HAS NO FILE — the old
+  // spelling `id !== 'studio'` could not tell an exemption in use from one left behind, so nobody
+  // found out. It is gone; if a studio.json is ever written, add it back deliberately.
+  const NON_GENRE_SURFACES = new Set(['web-landing']);
+  const files = readdirSync(uiDir).filter((f) => f.endsWith('.json')).map((f) => f.replace(/\.json$/, ''));
+  const stale = [...NON_GENRE_SURFACES].filter((id) => !files.includes(id));
+  assert.deepEqual(stale, [], `exempted surfaces with no file: ${stale.join(', ')}`);
+  const orphans = files.filter((id) => !known.has(id) && !NON_GENRE_SURFACES.has(id));
   assert.deepEqual(orphans, [], `these UI reference genres are not in the genre taxonomy: ${orphans.join(', ')}`);
 });
