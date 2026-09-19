@@ -1569,8 +1569,21 @@ export const PROTOCOL_VERSION = 1;
 // (Development Items -> Configure -> Distribution -> Distribute on Creator Store).
 // ---------------------------------------------------------------------------
 
-/** The Apple Studio plugin's Roblox asset id. The one literal; derive, never retype. */
-export const STUDIO_PLUGIN_ASSET_ID = '132128477945417';
+/**
+ * The Apple Studio plugin's Roblox asset id. The one literal; derive, never retype.
+ *
+ * Republished 2026-09-19 as a NEW asset on a different account. The previous id,
+ * 132128477945417, is `Golem` on Herobrine583522 and its Creator Dashboard carries a standing
+ * refusal — "Not distributed on Creator Store. This asset may be in violation of Roblox Community
+ * Standards... you can appeal" — with the distribution toggle already ON. That is a content
+ * decision, not a missing click, and no id change argues with it; see
+ * docs/evidence/plugin-store-blocked-2026-09-19.md. Three publish attempts from that account also
+ * returned a bare "Submission failed".
+ *
+ * The current id is `Apple Studio`, AssetTypeId 38, creator Shahar474 (5541122967), confirmed
+ * through economy.roblox.com rather than from the publish dialog that reported success.
+ */
+export const STUDIO_PLUGIN_ASSET_ID = '107230158271368';
 
 /**
  * The plugin's canonical Creator Store page. This page loads; whether it offers
@@ -1580,11 +1593,27 @@ export const STUDIO_PLUGIN_ASSET_ID = '132128477945417';
 export const STUDIO_PLUGIN_URL = `https://create.roblox.com/store/asset/${STUDIO_PLUGIN_ASSET_ID}`;
 
 /**
- * The ONLY reliable liveness probe for "is this plugin actually distributable".
- * HTTP 200 means listed, 404 means not listed. Do not substitute
- * `economy.roblox.com` or `develop.roblox.com/v1/plugins` (both return 200 for
- * an unlisted asset) or `assetdelivery` (Moon Animator is fully listed and
- * still returns 401 unauthenticated).
+ * A liveness probe that NO LONGER DISCRIMINATES. Do not gate anything on it.
+ *
+ * This was documented as "the ONLY reliable liveness probe... 200 means listed, 404 means not
+ * listed". Measured against a control on 2026-09-19, that is false:
+ *
+ *   Apple Studio  107230158271368  -> 404
+ *   Rojo          6430081415       -> 404     <- fully listed, installed by thousands
+ *   Golem         132128477945417  -> 404
+ *
+ * A probe that answers 404 for a plugin anyone can install answers 404 for everything, so reading
+ * its 404 as "not listed" reports a failure to observe as an observation — about the one fact the
+ * product's install button depends on. The endpoint presumably now requires authentication or has
+ * moved.
+ *
+ * The store PAGE does not discriminate either: all three return 200 and an identical 9,734-byte
+ * client-rendered shell, so fetching it server-side says nothing about distribution. Likewise
+ * `catalog.roblox.com/v1/catalog/items/{id}/details` returns 404 for all three.
+ *
+ * Until a probe is found that separates a listed plugin from an unlisted one WITH A CONTROL,
+ * distribution is verified by looking at the authenticated Creator Dashboard for the owning
+ * account, and nowhere else.
  */
 export const STUDIO_PLUGIN_LIVENESS_PROBE_URL = `https://apis.roblox.com/toolbox-service/v1/items/details?assetIds=${STUDIO_PLUGIN_ASSET_ID}`;
 
