@@ -38,8 +38,14 @@ Four paths, all tested in Studio, all failing for different reasons:
 MeshPart.MeshId = "rbxassetid://578157972"        -> the current thread cannot write to this property
 AssetService:CreateMeshPartAsync(same)            -> Failed to load mesh asset
 Decal.Texture = "rbxassetid://4969855485"         -> placed, renders blank white
+ContentProvider:PreloadAsync on that same Decal    -> SUCCEEDS, and Texture is still set
 InsertService:LoadAsset(578157972)                -> User is not authorized      <- the real one
 ```
+
+The decal case is the nastiest of the four, because it does not fail. `PreloadAsync` returns
+without error, the `Texture` property keeps its value, and the surface renders blank — a silent
+failure with no error to catch and nothing in the object to inspect. Anything that checked "did
+the assignment stick" would report success. Only looking at the pixels says otherwise.
 
 The first three are about container ids: the library stores Creator Store **container** assets
 (AssetTypeId 40 and 13), while `CreateMeshPartAsync` wants an inner mesh id and `Decal.Texture`
