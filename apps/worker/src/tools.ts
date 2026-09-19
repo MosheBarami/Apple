@@ -4,6 +4,7 @@ import type { Env } from './env';
 import { generatedImageCapacity, saveGeneratedImage } from './generated-images';
 import { rgbBase64ToDataUrl, decodeRgbBase64, encodePng, bytesToBase64 } from './png';
 import { retryHint, remedyHint } from './op-failure';
+import { normaliseItems, normaliseProps } from './studio-props';
 import type { GatewayToolDef, StudioOp, OpResult, CheckpointMeta, RenderViewResult, StudioFrame, AssetSourcePolicy } from '@golem/shared';
 import { RENDER_VIEWS } from '@golem/shared';
 import { searchDocsDetailed } from './rag';
@@ -1576,7 +1577,27 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['create_instances'],
-    run: (ctx, a) => op(ctx, { op: 'create_instances', items: (a.items as never[]) ?? [] }),
+    //[[ THE PROPS ARE READ BEFORE THEY LEAVE, and the reason is in the operation log of the
+    //   owner's own project. The one time this product tried to build in it, `create_instances`
+    //   came back `instance props.Position must be a typed property value` — the model had written
+    //   a bare value where the wire wants {t, v}. This function forwarded it unexamined, so the
+    //   error was produced by the plugin, inside somebody's Studio, after a network round trip,
+    //   and it is a failed build in that project's log where the customer can see it.
+    //
+    //   `normaliseItems` tags what cannot be anything else (a number, a boolean, a string starting
+    //   `Enum.`) and REFUSES what only the class could disambiguate — an array of three is a
+    //   Vector3 for Position and a Color3 for Color, and guessing would put a colour where a
+    //   position goes and call it a success. A refusal here is a tool error the model corrects in
+    //   the same turn: no round trip, no failed op, nothing touched in the place. ]]
+    run: (ctx, a) => {
+      const pass = normaliseItems(a.items);
+      if (pass.refusals.length > 0) {
+        return Promise.resolve({
+          error: `Nothing was created. ${pass.refusals.length === 1 ? 'One property' : `${pass.refusals.length} properties`} could not be read, and the rest were left alone rather than half-building the set: ${pass.refusals.map((r) => r.message).join(' ')}`,
+        });
+      }
+      return op(ctx, { op: 'create_instances', items: (pass.items as never[]) ?? [] });
+    },
   },
   /**
    * SET, AND SAY WHAT IT WAS.
@@ -1616,7 +1637,17 @@ export const TOOLS: Record<string, ToolImpl> = {
           ? (seen as { class?: string; props?: Record<string, unknown>; attributes?: Record<string, unknown> })
           : null;
 
-      const res = await op(ctx, { op: 'set_props', path, props: props as never, attributes: attributes as never });
+      // The same gate as create_instances, for the same reason: `set_properties` writes straight
+      // into the place, so an untagged value here is a failed op in the customer's log too.
+      let sending = props;
+      if (props !== undefined) {
+        const pass = normaliseProps(props);
+        if (pass.refusals.length > 0) {
+          return { error: `Nothing was changed. ${pass.refusals.map((r) => r.message).join(' ')}` };
+        }
+        sending = pass.props;
+      }
+      const res = await op(ctx, { op: 'set_props', path, props: sending as never, attributes: attributes as never });
       if (!res || typeof res !== 'object' || 'error' in (res as Record<string, unknown>)) return res;
 
       const groups = propertyChangeGroups({ props, attributes }, prior, displayTagged);
@@ -3286,11 +3317,23 @@ export const TOOLS: Record<string, ToolImpl> = {
     studioOps: ['inspect_model'],
     run: (ctx, a) => op(ctx, { op: 'inspect_model', path: String(a.path ?? ''), intent: a.intent ? String(a.intent) : undefined }, 45_000),
   },
+  /**
+   * THE RETENTION SENTENCE IN THIS DESCRIPTION IS THE ONLY RETENTION FACT THE MODEL HAS. The tool
+   * result carries no expiry field and search_docs indexes Roblox's documentation, not Apple's, so
+   * whatever this says is what the customer gets told. It said "retrievable for one hour" — the
+   * KV window this tool stopped using in the same commit that moved it to `saveGeneratedImage` —
+   * while /docs/credits-and-limits told the customer images stay until the project is deleted. The
+   * product contradicted itself, and the half talking to the customer was the wrong one.
+   *
+   * Do NOT sweep the word "hour" out of this file. `compose_thumbnail` above says "saved for an
+   * hour" and that one is TRUE: it writes through `storeImage`, which is KV with IMAGE_TTL_SECONDS.
+   * Two tools, two stores, two different honest sentences.
+   */
   generate_image: {
     def: {
       name: 'generate_image',
       description:
-        "Generate an original 2D image — UI icon, decal, tiling texture, thumbnail or concept study. Defaults are outlined, chunky game art. Preserve the user's exact subject and background colors in subject; those override default palettes, including requests for neutral or dark colors. Use structured fields for other style choices. Embedded text and brand marks are refused: use editable TextLabels or official brand assets instead. The flatness heuristic does NOT verify appearance, color or subject fidelity; inspect the image before claiming a match. Results appear under View results with Save image and remain retrievable for one hour. Nothing is uploaded to Roblox or applied to the user's place.",
+        "Generate an original 2D image — UI icon, decal, tiling texture, thumbnail or concept study. Defaults are outlined, chunky game art. Preserve the user's exact subject and background colors in subject; those override default palettes, including requests for neutral or dark colors. Use structured fields for other style choices. Embedded text and brand marks are refused: use editable TextLabels or official brand assets instead. The flatness heuristic does NOT verify appearance, color or subject fidelity; inspect the image before claiming a match. Results appear under View results with Save image and stay with the project until it is deleted. Nothing is uploaded to Roblox or applied to the user's place.",
       parameters: S(
         {
           subject: { type: 'string', description: 'What to draw, as a plain noun phrase. No words to render, no brand names.' },
