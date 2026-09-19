@@ -1,6 +1,6 @@
 {
- "generatedAt": "2026-09-15T21:05:36.567Z",
- "total": 474745,
+ "generatedAt": "2026-09-19T17:31:03.872Z",
+ "total": 510014,
  "freshlyHarvested": 474745,
  "freshSources": [
   "creator_store",
@@ -17,105 +17,76 @@
   "sketchfab"
  ],
  "totalCoversMeasuredSourcesOnly": true,
- "usableWithoutUploadKnown": 115803,
  "usableWithoutUploadUnknownFor": [],
  "perSource": {
   "creator_store": {
-   "fetched": 102780,
-   "kept": 102780,
-   "droppedOnLicence": 0,
-   "byKind": {
-    "foliage": 8610,
-    "ground": 13029,
-    "building": 14552,
-    "character": 207,
-    "vehicle": 6618,
-    "texture": 18035,
-    "prop": 32894,
-    "ui_icon": 7353,
-    "particle": 1482
-   },
-   "byLicence": {
-    "ROBLOX-TOU": 102780
-   }
+   "read": 81311,
+   "items": 81311,
+   "mergedDuplicates": 0,
+   "containers": 0,
+   "dedupedBy": "id"
   },
   "creator_store_audio": {
-   "fetched": 13873,
-   "kept": 13023,
-   "droppedOnLicence": 0,
-   "duplicateIds": 850,
-   "usableWithoutUpload": 13023,
-   "byKind": {
-    "sfx": 13023
-   },
-   "byLicence": {
-    "ROBLOX-TOU": 13023
-   }
+   "read": 13023,
+   "items": 13023,
+   "mergedDuplicates": 0,
+   "containers": 0,
+   "dedupedBy": "id"
   },
   "iconify": {
-   "fetched": 348522,
-   "kept": 348522,
-   "droppedOnLicence": 0,
-   "byKind": {
-    "ui_icon": 348522
-   },
-   "byLicence": {
-    "Apache-2.0": 85078,
-    "MIT": 178561,
-    "CC-BY-4.0": 65169,
-    "ISC": 3212,
-    "BSD-3-Clause": 210,
-    "Unlicense": 430,
-    "CC0-1.0": 11728,
-    "CC-BY-3.0": 4134
-   }
+   "read": 348522,
+   "items": 348522,
+   "mergedDuplicates": 0,
+   "containers": 0,
+   "dedupedBy": "id"
   },
   "game_icons": {
-   "fetched": 4239,
-   "kept": 4239,
-   "droppedOnLicence": 0,
-   "byKind": {
-    "ui_icon": 4239
-   },
-   "byLicence": {
-    "CC-BY-3.0": 4118,
-    "CC0-1.0": 121
-   }
-  },
-  "opengameart": {
-   "fetched": 5400,
-   "kept": 5400,
-   "droppedOnLicence": 0,
-   "byKind": {
-    "ui_icon": 5400
-   },
-   "byLicence": {
-    "CC0-1.0": 5400
-   }
+   "read": 4239,
+   "items": 4239,
+   "mergedDuplicates": 0,
+   "containers": 0,
+   "dedupedBy": "id"
   },
   "cgbookcase": {
-   "fetched": 566,
-   "kept": 566,
-   "droppedOnLicence": 0,
-   "byKind": {
-    "texture": 566
-   },
-   "byLicence": {
-    "CC0-1.0": 566
-   }
+   "read": 566,
+   "items": 566,
+   "mergedDuplicates": 0,
+   "containers": 0,
+   "dedupedBy": "id"
   },
   "kenney": {
-   "fetched": 215,
-   "kept": 215,
-   "droppedOnLicence": 0,
-   "byKind": {
-    "prop": 190,
-    "texture": 7,
-    "ui_icon": 18
-   },
-   "byLicence": {
-    "CC0-1.0": 215
-   }
+   "read": 56718,
+   "items": 56718,
+   "mergedDuplicates": 0,
+   "containers": 215,
+   "dedupedBy": "id"
+  },
+  "opengameart": {
+   "read": 12693,
+   "items": 5635,
+   "mergedDuplicates": 7058,
+   "containers": 0,
+   "dedupedBy": "sourceUrl"
   }
+ },
+ "unit": "one item a user can insert",
+ "containers": 215,
+ "supersededTotal": {
+  "value": 474745,
+  "why": "mixed packs with files and counted Creator Store duplicates; see scripts/library-canonicalise.mjs"
+ },
+ "carryingRobloxIdInHarvest": 94334,
+ "liveMeasurement": {
+  "measuredAt": "2026-09-19",
+  "source": "D1 golem-corpus, asset_library",
+  "rows": 511208,
+  "active": 81648,
+  "pendingIngest": 429560,
+  "audioIngested": 0,
+  "note": "active = carries a robloxAssetId and can be inserted without an upload. Re-measure with: select status, count(*) from asset_library group by status"
+ },
+ "supersededUsable": {
+  "value": 115803,
+  "why": "counted duplicates and 13,023 audio rows that are ingested nowhere; the live insertable figure is liveMeasurement.active"
  }
 }
