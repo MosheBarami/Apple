@@ -186,14 +186,14 @@
     }
   },
   "gapsAgainstShippedTheme": [
-    "CLOSED 2026-09-19: no thick dark stroke on cards or buttons \u2014 outline() now defaults to theme.outline at >=2px and button() always strokes at >=3px",
-    "CLOSED 2026-09-19: no stroke on any text \u2014 strokeText() added, thickness SCALED to glyph size after a flat 2px rendered 16px labels as black blobs in Studio",
-    "CLOSED 2026-09-19: flat buttons \u2014 a UIGradient bevel now lightens the top 55% and darkens the bottom edge to 0.82",
-    "OPEN: no plaque header; the title is still a TextLabel inside the panel rather than a bar overhanging its top edge",
-    "OPEN: close is a rounded rect labelled Close, not a red circle proud of the top-right corner",
+    "CLOSED: no thick dark stroke on cards or buttons \u2014 outline() defaults to theme.outline at >=2px, button() strokes at >=3px",
+    "CLOSED: no stroke on any text \u2014 strokeText(), thickness SCALED to glyph size after a flat 2px rendered 16px labels as black blobs",
+    "CLOSED: flat buttons \u2014 a UIGradient bevel lightens the top 55% and darkens the bottom edge to 0.82",
+    "CLOSED: no plaque header \u2014 the title is now a rounded accent-coloured bar with its own stroke, overhanging the panel's top edge",
+    "CLOSED: close was a rounded rect labelled Close \u2014 now a red circle centred on the top-right corner, proud of the panel",
     "OPEN: prices render as bare text ('75 coins') rather than an icon-then-number pill",
     "OPEN: item icons are flat diamonds rather than the gradient tiles every reference uses",
-    "OPEN: cards are tall with large empty regions; the references pack four-across square tiles"
+    "OPEN: tiles are 2-across and tall; the references pack 4-across squares"
   ],
   "renderedAndCompared": {
     "when": "2026-09-19",

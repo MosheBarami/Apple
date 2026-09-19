@@ -328,9 +328,40 @@ function AppleUI.mount(playerGui, options)
     make("UISizeConstraint", panel, { MaxSize = Vector2.new(theme.layout == "cards" and 740 or 620, 650) })
     outline(panel)
     local scale = make("UIScale", panel, { Scale = 1 })
-    local title = label(panel, "Title", options.title or theme.shopLabel, theme.titleSize, UDim2.fromOffset(24, 18), UDim2.new(1, -120, 0, 44))
-    title.Font = theme.titleFont; title.TextColor3 = theme.panelInk
-    local close = button(panel, "CloseShop", "Close", UDim2.new(1, -88, 0, 18), UDim2.fromOffset(64, 44))
+    -- THE PLAQUE. In eight of the ten references the title is a separate rounded bar OVERLAPPING
+    -- the panel's top edge, with its own stroke — not text sitting inside the panel. That single
+    -- difference is most of what separates a game menu from a settings dialog, and the kit had the
+    -- right palette and the wrong construction. See packages/corpus/data/ui-references.
+    local plaque = make("Frame", panel, {
+        Name = "TitlePlaque", AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.new(0.5, 0, 0, 6), Size = UDim2.fromOffset(0, 52),
+        AutomaticSize = Enum.AutomaticSize.X,
+        BackgroundColor3 = accent, BorderSizePixel = 0, ZIndex = 4,
+    })
+    round(plaque, theme.radius)
+    outline(plaque, math.max(theme.stroke, 3))
+    make("UIPadding", plaque, { PaddingLeft = UDim.new(0, 26), PaddingRight = UDim.new(0, 26) })
+    local title = label(plaque, "Title", options.title or theme.shopLabel, theme.titleSize,
+        UDim2.fromScale(0, 0), UDim2.new(0, 0, 1, 0))
+    title.AutomaticSize = Enum.AutomaticSize.X
+    title.TextXAlignment = Enum.TextXAlignment.Center
+    title.Font = theme.titleFont
+    title.TextColor3 = theme.accentInk
+    title.ZIndex = 5
+    strokeText(title)
+
+    -- THE CLOSE IS A RED CIRCLE PROUD OF THE CORNER, in six references. A rounded rectangle
+    -- labelled "Close" inside the header reads as a dialog; this reads as a game.
+    local close = make("TextButton", panel, {
+        Name = "CloseShop", Text = "X", TextSize = 24, Font = theme.titleFont,
+        TextColor3 = theme.panelInk, BackgroundColor3 = theme.danger,
+        AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(1, -6, 0, 6),
+        Size = UDim2.fromOffset(46, 46), BorderSizePixel = 0,
+        AutoButtonColor = true, Selectable = true, ZIndex = 6,
+    })
+    round(close, 100)
+    outline(close, math.max(theme.stroke, 3))
+    strokeText(close)
     local list = make("ScrollingFrame", panel, {
         Name = "Items", Position = UDim2.fromOffset(20, 82), Size = UDim2.new(1, -40, 1, -160),
         BackgroundTransparency = 1, BorderSizePixel = 0, CanvasSize = UDim2.fromOffset(0, 0),
