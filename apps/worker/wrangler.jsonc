@@ -47,5 +47,17 @@
   // Every minute drains a bounded membership-access batch. This Worker acknowledges only the
   // `golem` delivery row; `apple` has a distinct SessionDO namespace and its own trigger.
   "triggers": { "crons": ["* * * * *", "0 3 * * *"] },
-  "observability": { "enabled": true }
+  //[[ TRACES ON, SAMPLED, BEFORE THE METER STARTS.
+  //
+  //   Logs were already enabled and already billed; nothing read them, because SENTRY_DSN was set on
+  //   the OLD worker and never on this one. Traces are the half that answers "which step of the build
+  //   broke" — the GLM call, the Vectorize lookup, every D1 read, every hop into SessionDO.
+  //
+  //   head_sampling_rate 0.05 is not caution, it is arithmetic. /api/studio/poll long-polls with a
+  //   0.05s floor, so one active build fires dozens of invocations a second and each fans out into
+  //   many spans. Traces are free until 2026-10-01 and then count against the same 20M events/month
+  //   the plan includes, at $0.60 per extra million. Turning them on now, sampled, buys a free
+  //   measurement of the real span volume before the meter starts — which is the only way to choose
+  //   this number rather than guess it. Revisit it with that measurement, not with an opinion. ]]
+  "observability": { "enabled": true, "traces": { "enabled": true, "head_sampling_rate": 0.05 } }
 }

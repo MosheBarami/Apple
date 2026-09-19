@@ -424,3 +424,43 @@ concurrent sessions each writing their own case table looks like from outside.
 **Outstanding:** whichever diagnostic runner these probes were written for has to read them, or one
 of the three siblings has to absorb them. Recorded rather than resolved: choosing between four
 overlapping case tables is the authors' call, not this session's.
+
+---
+
+## `packages/training/src/build-mlx-dataset.mjs` — WIRE
+
+**What it is:** the producer for `mlxdata-apple-v4`. Nothing in the repository wrote `mlxdata/`
+before it: the training pipeline consumed a directory that no committed code produced, so the
+dataset was an artifact of somebody's shell history. This is the script that makes it reproducible.
+
+**Why it is imported by nothing:** it is a CLI. It is invoked by hand at the start of a training
+run, like the other `packages/training/src/*.mjs` entry points, and importing it from a test would
+mean running a dataset build to assert on it.
+
+**Outstanding:** WIRE — it belongs in the training manifest so the run that consumes `mlxdata-*`
+names the script that produced it. Until then the link between dataset and producer is a sentence in
+an evidence file rather than a path a tool can follow.
+
+## `packages/training/src/score-eval.mjs` — WIRE
+
+**What it is:** the scorer for an isolated base-vs-adapter evaluation. It scores by RUNNING the
+model's answer — compiling the Luau, executing the trajectory against the live tool registry — never
+by string similarity, which is the whole reason it exists.
+
+**Why it is imported by nothing:** also a CLI, run once per evaluation against a `runs/eval-*.json`.
+
+**Outstanding:** WIRE — same manifest. A scored run currently records its numbers in an evidence
+document; the scorer that produced them should be reachable from the run file itself.
+
+## `packages/training/src/tool-trajectory-curriculum-b.mjs` — STRUCTURALLY-BLOCKED
+
+**What it is:** the second half of the tool-trajectory seed curriculum, eighteen seeds written by a
+concurrent session beside the twelve in `tool-trajectory-curriculum.mjs`.
+
+**Why it is imported only by its own test:** the dataset builder reads the first curriculum file by
+name. Two curriculum modules with one consumer is what two sessions writing seeds at the same time
+looks like from outside.
+
+**Outstanding:** STRUCTURALLY-BLOCKED — merging the two, or teaching the builder to read both, is a
+decision about whose seed set is canonical. Recorded rather than resolved: that is the authors'
+call, not this session's, and guessing would silently drop eighteen seeds or duplicate twelve.
