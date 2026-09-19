@@ -97,8 +97,13 @@ export const MAX_NEURONS_PER_REQUEST = 1_200;
  * Credits are the user-facing unit. Recalibrated for GLM-5.3-flash: a measured Stone build runs
  * far cheaper than on the previous model, so a Credit is worth fewer neurons and the same daily
  * allowance stretches further in real work.
+ *
+ * MOVED TO @golem/shared and re-exported here. The pricing page explains this number to buyers and
+ * this module charges with it; defined in two places they can disagree, and the page had already
+ * drifted — it quoted the build-blind neuron figure beside the quality-gated price.
  */
-export const NEURONS_PER_CREDIT = 30;
+export { NEURONS_PER_CREDIT, BUILD_NEURONS } from '@golem/shared';
+import { NEURONS_PER_CREDIT as NEURONS_PER_CREDIT_VALUE, BUILD_NEURONS } from '@golem/shared';
 
 // The plan ladder now lives in @golem/shared: the limits are both a server rule and a page of
 // copy, and written down twice they drift — a plan page disagreeing with the ledger that enforces
@@ -111,8 +116,8 @@ export { PLAN_LIMITS, PLAN_IDS, isPlanId, type PlanId } from '@golem/shared';
 export { CREDITS_PER_BUILD } from '@golem/shared';
 
 /** What the shared constant must equal, derived rather than restated. */
-export const CREDITS_PER_BUILD_DERIVED = Math.ceil(2_300 / NEURONS_PER_CREDIT);
+export const CREDITS_PER_BUILD_DERIVED = Math.ceil(BUILD_NEURONS.qualityGated / NEURONS_PER_CREDIT_VALUE);
 
 export function creditsForNeurons(neurons: number): number {
-  return Math.max(1, Math.ceil(neurons / NEURONS_PER_CREDIT));
+  return Math.max(1, Math.ceil(neurons / NEURONS_PER_CREDIT_VALUE));
 }

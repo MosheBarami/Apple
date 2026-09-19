@@ -9,6 +9,8 @@ import {
   buildsPerMonth,
   formatMoney,
   CREDITS_PER_BUILD,
+  NEURONS_PER_CREDIT,
+  BUILD_NEURONS,
   fullRateDays,
   monthlyCeilingBitesFirst,
   PRODUCT_MODES_OFFERED,
@@ -148,7 +150,7 @@ const limitFaq = [
   },
   {
     q: 'What is a Credit, underneath?',
-    a: `<p>A unit of real compute. One Credit is 30 neurons of real compute, and Apple bills from the engine's own reported figure for each call rather than from an estimate. A full Agent build — read the tree, edit scripts, create instances, verify — measured 511 neurons, about $0.0056. That is why the free tier can exist at all.</p>`,
+    a: `<p>A unit of real compute. One Credit is ${NEURONS_PER_CREDIT} neurons, and Apple bills from the engine's own reported figure for each call rather than from an estimate. A <strong>quality-gated</strong> build — read the tree, edit scripts, create instances, then render it and critique the picture — measures about ${BUILD_NEURONS.qualityGated.toLocaleString()} neurons, which is the ${CREDITS_PER_BUILD} Credits the allowances above are counted in. The same build with the critique left out measured ${BUILD_NEURONS.buildBlind}; we price the one that looked at what it made.</p>`,
   },
   {
     q: 'Can I subscribe now?',

@@ -1898,6 +1898,35 @@ export const PLAN_SUPPORT: Record<PlanId, PlanSupport> = {
   },
 };
 
+/**
+ * What a Credit is worth in the engine's own unit.
+ *
+ * Defined here rather than in the worker because the pricing page explains it to buyers and the
+ * worker charges with it, and those two had no shared definition — `apps/worker/src/pricing.ts`
+ * held the number and re-exports it from here now, the same way PLAN_LIMITS and CREDITS_PER_BUILD
+ * already do.
+ */
+export const NEURONS_PER_CREDIT = 30;
+
+/**
+ * The two measured build costs, kept APART, because a page that quotes one while pricing the other
+ * contradicts itself in public.
+ *
+ * `/pricing` said "A full Agent build — read the tree, edit scripts, create instances, verify —
+ * measured 511 neurons" three lines under an allowance priced at 77 Credits, which is 2,310
+ * neurons. Both figures are real and both are in docs/COST-MODEL.md; they are not the same build.
+ * 511 is the BUILD-BLIND path, the one that never looked at what it made. 2,300 is the same build
+ * with the visual critique in it — about sixteen steps at ~145 neurons plus one or two critiques —
+ * and it is the one the allowance is denominated in. Quoting the cheap one beside the expensive
+ * one's price reads as a 4.5x arithmetic error to anyone who divides.
+ */
+export const BUILD_NEURONS = {
+  /** A build including the visual quality gate. This is what a Credit allowance buys. */
+  qualityGated: 2_300,
+  /** The same build with no critique step. Kept for comparison, never for pricing. */
+  buildBlind: 511,
+} as const;
+
 /** Credits in one quality-gated build, from the measured neuron cost. */
 export const CREDITS_PER_BUILD = 77;
 

@@ -1,6 +1,24 @@
 ---
 import LegalLayout from '../layouts/LegalLayout.astro';
-import { PLAN_LIMITS } from '@golem/shared';
+import { PLAN_LIMITS, PLAN_COPY, PLAN_IDS, PRICE_CURRENCY, formatMoney, fullRateDays, monthlyCeilingBitesFirst } from '@golem/shared';
+
+// §7 NAMED A TIER THAT DOES NOT EXIST. It said "The Pro plan exists only as a waitlist", and there
+// is no Pro plan: the published ladder is Builder and Studio, both with prices on /pricing. A terms
+// page is the one surface where naming a product that was withdrawn is worst, because it is the
+// document a dispute is read against.
+//
+// The FACT that section turns on — whether anyone can be charged — is asked, not typed, the same
+// way /pricing asks it. An unreachable probe means "cannot be charged", which is the safe claim
+// here: overstating that payment is impossible costs nothing, while a terms page silently
+// permitting charges it does not describe is the failure worth avoiding.
+const BILLING_ORIGIN = 'https://apple.moshe-barami111.workers.dev';
+const billingProbe = await fetch(BILLING_ORIGIN + '/api/billing/config').then((r) => (r.ok ? r.json() : null)).catch(() => null);
+const checkoutOpen = billingProbe?.checkout === true;
+const purchasable = Array.isArray(billingProbe?.purchasable) ? billingProbe.purchasable : [];
+const paidPlans = PLAN_IDS.filter((id) => id !== 'free' && PLAN_COPY[id].priceUsdMonthly !== null);
+const planPrices = paidPlans
+  .map((id) => `${PLAN_COPY[id].name} at ${formatMoney(PLAN_COPY[id].priceUsdMonthly, PRICE_CURRENCY)} a month`)
+  .join(' and ');
 ---
 
 <LegalLayout
@@ -62,7 +80,9 @@ import { PLAN_LIMITS } from '@golem/shared';
 
   <h2>5. Quotas and fair use</h2>
   <p>
-    The free tier includes a fixed daily Credits quota (currently {PLAN_LIMITS.free.creditsPerDay}). Quotas, rate limits and
+    The free tier includes a daily Credits quota (currently {PLAN_LIMITS.free.creditsPerDay}) <em>and</em> a monthly
+    ceiling ({PLAN_LIMITS.free.creditsPerMonth.toLocaleString()}); you have whichever is lower at the time, which on the free
+    tier is {fullRateDays('free')} days at the full daily rate{monthlyCeilingBitesFirst('free') ? '' : ' or more'}. Quotas, rate limits and
     queueing exist so that the free tier can exist. We may adjust quota numbers with notice in the
     <a href="/changelog">changelog</a>. Attempting to evade quotas, automate accounts, or resell
     access breaks these terms.
@@ -79,12 +99,23 @@ import { PLAN_LIMITS } from '@golem/shared';
   <p>We may suspend accounts that do. Where practical we will warn first.</p>
 
   <h2>7. Payments</h2>
-  <p>
-    Apple v1 collects <strong>no payment</strong>. There are no purchases, no subscriptions and
-    therefore no refunds — there is nothing to refund. The Pro plan exists only as a waitlist;
-    joining it creates no payment obligation. If paid plans launch, they will come with their own
-    clearly published pricing and refund terms before anyone is charged.
-  </p>
+  {checkoutOpen ? (
+    <p>
+      Paid subscriptions are open. The published plans are {planPrices}, and the prices, allowances
+      and billing period on <a href="/pricing">the pricing page</a> are the terms of the sale. A
+      subscription starts only from a checkout you confirm, renews monthly until cancelled, and can
+      be cancelled from your account's Plans &amp; Credits page at any time.
+      {purchasable.length < paidPlans.length ? ' Not every published plan is purchasable right now; the pricing page says which are.' : ''}
+    </p>
+  ) : (
+    <p>
+      Apple collects <strong>no payment</strong> today. Checkout is not open, so there are no
+      purchases, no subscriptions and therefore no refunds — there is nothing to refund. Paid plans
+      are <em>published</em> — {planPrices} — but publishing a price is not an offer to sell, and
+      nothing on this site can charge you while checkout is closed. When it opens, those prices and
+      their refund terms apply, and no subscription will ever start without a checkout you confirm.
+    </p>
+  )}
 
   <h2>8. Changes and termination</h2>
   <p>

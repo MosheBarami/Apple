@@ -8,7 +8,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { safeInternalPath } from '../lib/safe-redirect';
-import { PRODUCT_MODELS, PRODUCT_MODEL_INFO } from '@golem/shared';
+import { PRODUCT_MODELS, PRODUCT_MODEL_INFO, STUDIO_PLUGIN_STORE_LIVE } from '@golem/shared';
 import { ModelMark } from '../components/ws/model-mark';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
@@ -486,7 +486,16 @@ export function SignupPage() {
       ) : (
         <form className="auth-card" onSubmit={onSubmit} noValidate>
           <h2 className="auth-card-title">Summon your apple</h2>
-          <p className="auth-card-sub">Free to start. No card, no Studio setup beyond one plugin.</p>
+          {/* "no Studio setup beyond one plugin" was true about the card and false about the plugin:
+              that one plugin cannot currently be obtained, and every other surface in the product
+              says so. A sign-up page is the worst place to be the single optimistic exception,
+              because it is read by exactly the people who have not learnt otherwise yet. Derived
+              from the same constant the install affordances obey, so it corrects itself. */}
+          <p className="auth-card-sub">
+            {STUDIO_PLUGIN_STORE_LIVE
+              ? 'Free to start. No card, no Studio setup beyond one plugin.'
+              : 'Free to start, no card. Chat works now; building inside Studio needs the plugin, and public installation is not open yet.'}
+          </p>
           <FormError message={error} />
           <label className="field">
             <span className="field-label">Email</span>

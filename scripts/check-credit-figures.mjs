@@ -51,7 +51,14 @@ let derived = 0;
 /** Modes whose stated figure was actually parsed and compared. Not "not derived". */
 let stated = 0;
 
-const perCredit = Number(/NEURONS_PER_CREDIT = (\d+)/.exec(pricing)?.[1]);
+// NEURONS_PER_CREDIT HAS NOW DONE EXACTLY WHAT PLAN_LIMITS DID BELOW: it moved to the shared
+// package, leaving `export { NEURONS_PER_CREDIT } from '@golem/shared'` in pricing.ts, and the
+// regex that read `NEURONS_PER_CREDIT = 30` there stopped matching. The guard said so and exited 1,
+// which is the whole reason it is written to fail loudly on a missing declaration rather than
+// treating an unparsed number as zero — the second time this move has happened and the second time
+// nothing was silently mis-verified. Read it where it is DECLARED, which is the shared package, and
+// the `= (\d+)` shape still refuses a re-export.
+const perCredit = Number(/NEURONS_PER_CREDIT = (\d+)/.exec(read('packages/shared/src/index.ts'))?.[1]);
 
 // PLAN_LIMITS LIVES IN packages/shared AND THE WORKER RE-EXPORTS IT. It used to be
 // declared in pricing.ts, and this line used to read it there. When the repricing moved
@@ -67,8 +74,8 @@ const shared_ = read('packages/shared/src/index.ts');
 const freeDay = Number(/free: \{ creditsPerDay: ([\d_]+)/.exec(shared_)?.[1].replace(/_/g, ''));
 if (!perCredit || !freeDay) {
   console.error(
-    'check-credit-figures: could not read NEURONS_PER_CREDIT (apps/worker/src/pricing.ts) ' +
-    'or PLAN_LIMITS.free.creditsPerDay (packages/shared/src/index.ts). One of them moved; follow it.',
+    'check-credit-figures: could not read NEURONS_PER_CREDIT or PLAN_LIMITS.free.creditsPerDay ' +
+    '(both packages/shared/src/index.ts). One of them moved; follow it.',
   );
   process.exit(1);
 }
