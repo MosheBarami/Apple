@@ -58,6 +58,7 @@ export async function putMedia(
   id: string,
   body: ArrayBuffer | Uint8Array,
   contentType: string,
+  extra?: Readonly<Record<string, string>>,
 ): Promise<StoredMedia | null> {
   const bucket = mediaStore(env);
   if (!bucket) return null;
@@ -67,23 +68,38 @@ export async function putMedia(
     httpMetadata: { contentType },
     // The project id is on the object as well as in the key. The key is what erasure sweeps; this
     // is what makes an object auditable when someone is holding it and not its path.
-    customMetadata: { projectId, kind },
+    //
+    // `extra` is for facts that belong to the object and have nowhere else to live — audio has no
+    // index table, so its duration would otherwise be lost the moment it left the writer. It is
+    // spread FIRST so nothing a caller passes can overwrite the project id or the kind: those two
+    // are the audit trail and are not a caller's to set.
+    customMetadata: { ...extra, projectId, kind },
   });
   return { key, size: bytes.byteLength };
 }
 
-/** Read bytes back, or null for "no bucket" AND for "no such object" — the caller falls back. */
+/**
+ * Read bytes back, or null for "no bucket" AND for "no such object" — the caller falls back.
+ *
+ * `contentType` COMES BACK AS STORED, which means it is a value a writer chose, and a caller that
+ * puts it in a response header is echoing storage at a browser. Every caller here runs it through
+ * its own allowlist first; this function reports what is there rather than deciding what is safe.
+ */
 export async function getMedia(
   env: Pick<Env, 'MEDIA'>,
   kind: MediaKind,
   projectId: string,
   id: string,
-): Promise<{ body: ArrayBuffer; contentType: string | null } | null> {
+): Promise<{ body: ArrayBuffer; contentType: string | null; custom: Record<string, string> } | null> {
   const bucket = mediaStore(env);
   if (!bucket) return null;
   const object = await bucket.get(mediaKey(kind, projectId, id));
   if (!object) return null;
-  return { body: await object.arrayBuffer(), contentType: object.httpMetadata?.contentType ?? null };
+  return {
+    body: await object.arrayBuffer(),
+    contentType: object.httpMetadata?.contentType ?? null,
+    custom: object.customMetadata ?? {},
+  };
 }
 
 /** How many objects one sweep will delete before reporting that it did not finish. */

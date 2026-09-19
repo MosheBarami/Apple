@@ -17,9 +17,51 @@
 //   2. There is no equivalent of the flatness gate. Nothing here judges the audio.
 import type { Env } from './env';
 import { RETENTION } from './retention';
+import { getMedia, mediaStore, putMedia } from './media-store';
 
-/** How long generated audio stays retrievable. Long enough to listen and download, short enough not to accrete. */
+/**
+ * How long generated audio stays retrievable ON THE KV PATH.
+ *
+ * This used to be the whole answer, and it was an hour. A sound the product made for someone was
+ * gone before they came back to it — not because an hour was decided to be the right window, but
+ * because KV needs a TTL to not accrete and an hour was the number chosen for previews. The
+ * retention page published "1 hour" and was telling the truth about a policy nobody had set.
+ *
+ * With a bucket the bytes go to R2, which has no expiry of its own; the account's lifecycle rule
+ * keeps audio for a year, and `AUDIO_R2_WINDOW` is that rule written down here so the retention
+ * page can publish the window the storage actually enforces. This constant survives for the
+ * deployments with no bucket, which still keep their hour.
+ */
 export const AUDIO_TTL_SECONDS = RETENTION.generatedAudioSeconds;
+
+/**
+ * The R2 lifecycle rule on the `audio/` prefix, in days.
+ *
+ * DERIVED, NOT REPEATED. It was written here as a literal 365 first, and `retention.test.mjs`
+ * caught it within the minute: every declared window must be referenced by a file other than the
+ * one that declares it, precisely so a number cannot exist in two places and drift. This is that
+ * reference, and it is in this file because this is where the sound is written and where a reader
+ * would come to ask how long it stays.
+ *
+ * WHAT NO TEST IN THIS REPOSITORY CAN CHECK. Nothing here enforces this window — a lifecycle rule
+ * in the Cloudflare account does, and the worker cannot read it. The number is therefore a claim
+ * about a setting in a dashboard, and if somebody changes that rule this constant becomes wrong
+ * silently. It is written down as a claim rather than left implicit so that the next person knows
+ * which fact is unverified, instead of finding out from a customer whose sound disappeared.
+ */
+export const AUDIO_R2_DAYS = RETENTION.generatedAudioR2Days;
+
+/**
+ * How long a browser may hold a copy of durable audio.
+ *
+ * NOT the object's life. On the KV path the header was bounded by what remained of the TTL, because
+ * a cached copy must never outlive the object it copies. An R2 object lives a year, so that danger
+ * is gone and the bound is doing a different job: keeping a player from replaying a stale copy of
+ * something regenerated under the same id. An hour is enough for seeking and scrubbing, which is
+ * what `no-store` would have cost — the image route can afford `no-store` because nobody seeks
+ * inside a PNG.
+ */
+export const AUDIO_DURABLE_MAX_AGE = 3600;
 
 /**
  * The only media types this worker will hand back, and the extension each one downloads as.
@@ -88,6 +130,19 @@ export async function storeAudio(
   const type = servableAudioType(contentType);
   if (!type) return null;
   const audioId = crypto.randomUUID();
+
+  // R2 WHEN THERE IS ONE, and only then. There is no index table for audio — no row to compensate,
+  // nothing to roll back — so a failed put simply means no audio was stored, which is what the
+  // `null` return already means to every caller.
+  if (mediaStore(env) !== null) {
+    const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
+    // The duration rides on the object because it has nowhere else to live. It is the panel's, not
+    // billing's — that is stated where it is declared and it is still true here.
+    const stored = await putMedia(env, 'audio', projectId, audioId, bytes, type,
+      typeof seconds === 'number' && Number.isFinite(seconds) ? { seconds: String(Number(seconds.toFixed(3))) } : undefined);
+    return stored ? audioId : null;
+  }
+
   await env.KV.put(audioKvKey(projectId, audioId), base64, {
     expirationTtl: AUDIO_TTL_SECONDS,
     metadata: {
@@ -97,4 +152,48 @@ export async function storeAudio(
     } satisfies AudioMeta,
   });
   return audioId;
+}
+
+export interface ServableAudio {
+  bytes: Uint8Array;
+  /** Already through the allowlist. A caller may put this in a header; the stored string may not. */
+  contentType: string;
+  /** Seconds a browser may keep a copy. */
+  maxAge: number;
+  durable: boolean;
+}
+
+/**
+ * The audio, ready to serve, or null for every kind of miss there is.
+ *
+ * ONE FUNCTION FOR BOTH STORES, because the alternative is a route that knows which store an id
+ * came from — and nothing knows that. An id is looked for in R2 first and in KV second, and the
+ * answer to "not in either" is the same `null` the route already renders as a 404.
+ *
+ * THE ALLOWLIST IS APPLIED HERE, on whichever store answered. The stored content type is a value a
+ * writer chose; `audio/wav` and `audio/mpeg` are the only two this worker will name in a header,
+ * and a stored `text/html` on our own origin is a page that runs script. A type outside the list
+ * reads as a miss rather than as a download, because serving it as an octet-stream would confirm
+ * to a prober that the object exists.
+ */
+export async function readAudio(env: Env, projectId: string, audioId: string): Promise<ServableAudio | null> {
+  const object = await getMedia(env, 'audio', projectId, audioId);
+  if (object) {
+    const type = servableAudioType(object.contentType);
+    if (!type) return null;
+    return { bytes: new Uint8Array(object.body), contentType: type, maxAge: AUDIO_DURABLE_MAX_AGE, durable: true };
+  }
+
+  const { value: base64, metadata } = await env.KV.getWithMetadata<AudioMeta>(audioKvKey(projectId, audioId));
+  if (!base64) return null;
+  const type = servableAudioType(metadata?.contentType);
+  if (!type) return null;
+  let bytes: Uint8Array;
+  try { bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0)); }
+  catch { return null; }
+  // THE REMAINING LIFE, not the full TTL: KV anchors expiry at write time and this header is
+  // anchored at response time, so a full hour served to an object with two minutes left caches a
+  // copy that outlives what it is a copy of.
+  const remaining = Math.max(0, (metadata?.expiresAt ?? 0) - Math.floor(Date.now() / 1000));
+  return { bytes, contentType: type, maxAge: Math.min(remaining, AUDIO_TTL_SECONDS), durable: false };
 }

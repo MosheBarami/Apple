@@ -174,3 +174,84 @@ test('audio/mpeg is served as audio/mpeg — the allowlist is not a single hardc
   assert.equal(res.status, 200);
   assert.equal(res.headers.get('Content-Type'), 'audio/mpeg');
 });
+
+/* ------------------------------------------------------------------------- with a bucket ---
+ *
+ * EVERY TEST ABOVE RUNS WITHOUT ONE, so every one of them proves the KV fallback and none of them
+ * proves the path audio actually takes in production. These issue the same real requests through
+ * the same real app, with `env.MEDIA` bound.
+ *
+ * The reason this matters more for audio than it did for images: audio has no index table. There is
+ * no row to notice that a bucket was written and nothing served it — the only thing that would have
+ * reported it is a customer pressing play on silence.
+ */
+
+const R2_CLIP = '99999999-9999-4999-8999-999999999999';
+const R2_HOSTILE = 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa';
+const WAV_BYTES = Uint8Array.from(atob(WAV_B64), (ch) => ch.charCodeAt(0));
+
+const objects = new Map();
+objects.set(`audio/${A_PROJECT}/${R2_CLIP}`, { bytes: WAV_BYTES, contentType: 'audio/wav', custom: { seconds: '1.25' } });
+// The same vector as the KV test above, on the other store. R2 hands back the type it was written
+// with just as willingly as KV does, so the allowlist has to sit in front of BOTH.
+objects.set(`audio/${A_PROJECT}/${R2_HOSTILE}`, { bytes: WAV_BYTES, contentType: 'text/html', custom: {} });
+
+const withBucket = {
+  ...env,
+  MEDIA: {
+    async get(key) {
+      const o = objects.get(key);
+      return o ? { httpMetadata: { contentType: o.contentType }, customMetadata: o.custom, arrayBuffer: async () => o.bytes.buffer } : null;
+    },
+    async put(key, bytes, opts) {
+      objects.set(key, { bytes: Uint8Array.from(bytes), contentType: opts?.httpMetadata?.contentType ?? null, custom: opts?.customMetadata ?? {} });
+    },
+  },
+};
+
+test('DURABLE AUDIO IS SERVED FROM R2 through the same route, with the same bytes', async () => {
+  const res = await app.request(url(A_PROJECT, R2_CLIP), as(ALICE), withBucket);
+  assert.equal(res.status, 200, `expected the audio from R2, got ${res.status}`);
+  assert.equal(res.headers.get('Content-Type'), 'audio/wav');
+  assert.deepEqual([...new Uint8Array(await res.arrayBuffer())], [...WAV_BYTES]);
+  // An hour, and NOT the remaining-life arithmetic: an R2 object does not expire, so the bound is
+  // about staleness rather than about a copy outliving what it copies.
+  assert.equal(res.headers.get('Cache-Control'), 'private, max-age=3600');
+});
+
+test('THE ALLOWLIST SITS IN FRONT OF R2 TOO — a stored text/html is a 404, not an echoed header', async () => {
+  // A SERVABLE TWIN IN KV UNDER THE SAME ID, and it is what makes this test mean anything. Without
+  // it, a route that skipped R2 altogether would 404 here by missing in both stores, and this
+  // assertion would pass while proving nothing about the allowlist. With it, there are only three
+  // outcomes: 404 (R2 answered and the allowlist refused it, which is correct), 200 text/html (the
+  // allowlist was skipped), or 200 audio/wav (R2 was skipped). Only the first is green.
+  store(A_PROJECT, R2_HOSTILE);
+  const res = await app.request(url(A_PROJECT, R2_HOSTILE), as(ALICE), withBucket);
+  assert.equal(res.status, 404,
+    `expected the R2 object to be refused by the allowlist; got ${res.status} ${res.headers.get('Content-Type')}`);
+  assert.deepEqual(await res.json(), { error: 'not found' }, 'the body must not say which kind of miss this was');
+});
+
+test('OWNERSHIP IS STILL THE KEY when the bytes move stores', async () => {
+  // The project is in the R2 key exactly as it was in the KV key, and for the same reason: an id
+  // being hard to guess is not protection. Bob owns a project; he does not own this object.
+  assert.equal((await app.request(url(B_PROJECT, R2_CLIP), as(BOB), withBucket)).status, 404);
+  assert.equal((await app.request(url(A_PROJECT, R2_CLIP), as(BOB), withBucket)).status, 404);
+});
+
+test('a bucket that has no such object falls through to KV rather than 404ing over it', async () => {
+  // CLIP exists only in KV. With a bucket bound, a route that stopped at the first miss would have
+  // made every sound generated before this change unreachable the moment it deployed.
+  //
+  // ITS OWN CLIP, with a life nothing else uses. The obvious version of this test reused CLIP,
+  // whose fixture has exactly 3600 seconds left — the same number the durable branch hard-codes —
+  // so the header it asserts on could not have told the two paths apart. It would have passed
+  // whichever branch answered, which is a test that runs rather than a test that checks.
+  const OLD_CLIP = 'cccccccc-2222-4222-8222-cccccccccccc';
+  store(A_PROJECT, OLD_CLIP, { secondsLeft: 900 });
+  const res = await app.request(url(A_PROJECT, OLD_CLIP), as(ALICE), withBucket);
+  assert.equal(res.status, 200, 'the KV object became unreachable as soon as a bucket existed');
+  assert.deepEqual([...new Uint8Array(await res.arrayBuffer())], [...WAV_BYTES]);
+  const age = Number(/max-age=(\d+)/.exec(res.headers.get('Cache-Control'))[1]);
+  assert.ok(age > 0 && age <= 900, `a KV object must stay bounded by what remains of its life; got ${age}`);
+});

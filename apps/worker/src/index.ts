@@ -98,7 +98,9 @@ import { capabilityTable, providerHealth, selectProvider } from './providers';
 import { imageKvKey, imageMimeType, type ImageMeta } from './imagegen';
 import { readGeneratedImage } from './generated-images';
 import { ATTACHMENT_TTL_SECONDS, deleteAttachment, putAttachment, readAttachment } from './attachments';
-import { audioKvKey, servableAudioType, type AudioMeta } from './audio-store';
+// The route no longer knows which store an id came from, so it no longer needs the key helper,
+// the allowlist or the KV metadata shape. `readAudio` owns all three.
+import { readAudio } from './audio-store';
 import { kvWorkspace } from './webtools';
 import {
   copyWorkspaceFile,
@@ -1145,15 +1147,14 @@ app.get('/api/projects/:id/audio/:audioId', async (c) => {
   // containing `:` could otherwise address a different namespace in the same KV store.
   if (!UUID_RE.test(audioId)) return c.json({ error: 'not found' }, 404);
 
-  const { value: base64, metadata } = await c.env.KV.getWithMetadata<AudioMeta>(audioKvKey(ctx.project.id, audioId));
-  if (!base64) return c.json({ error: 'not found' }, 404);
-
-  const contentType = servableAudioType(metadata?.contentType);
-  // A stored type this worker will not serve is treated as a miss, with the SAME body as every
-  // other miss. Serving it as `application/octet-stream` instead would leak that the object exists.
-  if (!contentType) return c.json({ error: 'not found' }, 404);
-
-  const bytes = Uint8Array.from(atob(base64), (ch) => ch.charCodeAt(0));
+  // ONE LOOKUP FOR BOTH STORES. Audio is in R2 where there is a bucket and in KV where there is
+  // not, and nothing in a URL says which — so the route does not ask. `readAudio` answers null for
+  // every kind of miss there is, including a stored type this worker will not serve: that is
+  // treated as a miss with the SAME body as every other miss, because serving it as an
+  // octet-stream instead would confirm to a prober that the object exists.
+  const audio = await readAudio(c.env, ctx.project.id, audioId);
+  if (!audio) return c.json({ error: 'not found' }, 404);
+  const { bytes, contentType } = audio;
   //[[ A SOUND THE TOOL SAID WAS DOWNLOADABLE, AND WAS NOT.
   //
   //   `generate_sound` tells the model the user can download the result. Nothing served a
@@ -1170,9 +1171,11 @@ app.get('/api/projects/:id/audio/:audioId', async (c) => {
     headers: {
       'Content-Type': contentType,
       'Content-Disposition': `${download ? 'attachment' : 'inline'}; filename="apple-${audioId}.${extension}"`,
-      // PRIVATE, and bounded by the object's REMAINING life rather than the full TTL — the same
-      // reasoning, and the same helper, as the image route.
-      'Cache-Control': `private, max-age=${remainingLife(metadata)}`,
+      // PRIVATE, and bounded — by what remains of the KV object's life on that path, and by an
+      // hour on the durable one. The bound is doing two different jobs for the same reason: a
+      // cached copy must never outlive the object it copies, and on R2 nothing expires, so there
+      // it only keeps a player from replaying a stale copy.
+      'Cache-Control': `private, max-age=${audio.maxAge}`,
       'Content-Length': String(bytes.byteLength),
       // The bytes are generated and served from our origin; nothing should ever execute or embed
       // them as anything but audio.
