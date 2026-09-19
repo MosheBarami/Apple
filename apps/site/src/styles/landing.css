@@ -26,12 +26,13 @@
   /* The ramp. Four steps and an inverted one, which is all the reference uses. */
   --ground: #141312;
   --raised: #171615;
-  --card: #232221;
-  /* `--surface` is the name every other stylesheet and guard in this repo uses for this step.
-     Two names for one colour is how a palette drifts, so this is the token and --card aliases it. */
+  /* `--surface` and `--surface-2` are the names every other stylesheet in this repo uses for these
+     two steps. Two names for one colour is how a palette drifts, so these are the tokens and the
+     older local names alias them rather than the other way round. A third alias, --control, was
+     declared and read by nothing; the unused-token guard caught it and it is gone. */
   --surface: #232221;
   --surface-2: #333231;
-  --control: #333231;
+  --card: var(--surface);
   --inverted: #f4f3f2;
 
   --ink: #f4f3f2;
@@ -127,7 +128,7 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--ink); outline-o
   background: transparent; color: var(--ink);
   border: 1px solid var(--line-strong);
 }
-.pill-quiet:hover { background: rgba(244, 243, 242, 0.06); opacity: 1; }
+.pill-quiet:hover { background: var(--surface-2); opacity: 1; }
 
 /* ----------------------------------------------------------------- hero */
 

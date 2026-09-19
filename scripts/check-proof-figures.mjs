@@ -134,6 +134,42 @@ const RESOLVE = {
 /* ------------------------------------------------------------------ the figures, as written --- */
 
 const page = readFileSync(PAGE, 'utf8');
+//[[ A PAGE WITH NO PROOF ARRAY IS A DIFFERENT QUESTION, NOT A PASS.
+//
+//   The landing page was rebuilt on 2026-09-19 and deliberately dropped its statistics row: the
+//   design it was measured against fills that area with social proof, and this product has none, so
+//   an invented or placeholder version would be exactly the failure this file exists to catch, one
+//   level up.
+//
+//   But "no proof array" must not silently become "nothing to check". The guard this file provides
+//   is not the array — it is that NO NUMBER ON THE PAGE IS UNACCOUNTED FOR. So when the array is
+//   absent, the page has to earn it: every digit in its rendered prose must come from an expression
+//   (PLAN_LIMITS, a derived count) rather than being typed. A literal like "81,648" or "3,017" in
+//   the markup is exactly what used to be wrong, and it fails here whether or not a proof array
+//   exists to hold it.
+//
+//   Numbers inside the frontmatter, in class names, in SVG path data and in aria attributes are not
+//   claims to a reader; only text a visitor can read is. ]]
+if (!page.includes('const proof = [')) {
+  const template = page.slice(page.indexOf('---', page.indexOf('---') + 3) + 3);
+  const prose = template
+    .replace(/<svg[\s\S]*?<\/svg>/g, ' ')
+    .replace(/\{[\s\S]*?\}/g, ' ')          // any expression: derived values are the point
+    .replace(/<[^>]+>/g, ' ')                 // attributes, classes, ids
+    .replace(/&[a-z]+;/g, ' ');
+  const literals = [...prose.matchAll(/\b\d[\d,._]*\b/g)].map((m) => m[0]).filter((n) => n.length > 1);
+  if (literals.length) {
+    console.error('PROOF FIGURES UNACCOUNTED — the landing page has no `const proof = [...]` array, which is\n'
+      + 'allowed, but it prints numbers that are typed rather than derived:\n\n'
+      + literals.map((n) => `  · ${n}`).join('\n')
+      + '\n\nEither derive them from their source, or put them in a proof array with a `from` pointer.');
+    process.exit(1);
+  }
+  console.log('PROOF FIGURES OK — the landing page states no typed numeric claim. '
+    + 'Its only figures come from expressions, so there is nothing here that can drift from its source.');
+  process.exit(0);
+}
+
 const block = page.slice(page.indexOf('const proof = ['), page.indexOf('];', page.indexOf('const proof = [')));
 const written = [...block.matchAll(/\{\s*n:\s*'([\d,]+)'\s*,\s*what:\s*'([^']*)'\s*,\s*from:\s*'([^']+)'\s*\}/g)]
   .map((m) => ({ n: Number(m[1].replace(/,/g, '')), what: m[2], from: m[3] }));

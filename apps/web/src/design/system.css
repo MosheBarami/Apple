@@ -3,9 +3,18 @@
 :root {
   color-scheme:dark;
   --font-body:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif; --font-display:var(--font-body); --font-mono:ui-monospace,SFMono-Regular,monospace;
-  --paper:#080808; --paper-2:#101010; --surface:#171717; --surface-2:#232323; --surface-3:#303030;
-  --ink:#f4f4f4; --muted:#b6b6b6; --faint:#a0a0a0; --line:#ffffff20;
-  --accent:#f0f0f0; --acc-ember:var(--accent); --acc-ember-soft:#ffffff0c; --acc-ember-ink:#111111;
+  /* WARM NEUTRALS, 2026-09-19. The workspace and the marketing site were two different blacks:
+     #080808 here against #141312 there, one cool and one warm, which is visible the moment a user
+     crosses from one to the other. Measured on the reference the owner named (tesana.ai): red
+     highest, blue lowest, by a point or two at every step of the ramp. Imperceptible per colour and
+     unmistakable across a screen. Numbers match apps/site/src/styles/landing.css exactly. */
+  --paper:#141312; --paper-2:#171615; --surface:#232221; --surface-2:#333231; --surface-3:#3d3b3a;
+  /* muted/faint are LIGHTER here than on the marketing site, deliberately. The site's secondary
+     inks sit on the page (#141312); the workspace puts the same roles on raised surfaces up to
+     #3d3b3a, where the site's values measure 4.39:1 and 3.12:1 — under the 4.5:1 the contrast
+     guard requires for normal text. These clear it on every surface in the ramp. */
+  --ink:#f4f3f2; --muted:#bdbab6; --faint:#aaa7a3; --line:#f4f3f21f;
+  --accent:#f4f3f2; --acc-ember:var(--accent); --acc-ember-soft:#f4f3f20f; --acc-ember-ink:#141312;
   --good:#99d4b0; --bad:#f6aaaa; --warn:#e7c991; --info:#a1c6ef; --future:#c5b3ef;
   --syntax-keyword:#e5b9eb; --syntax-string:#b5d9b5; --syntax-number:#ddc18f; --syntax-comment:#a6a6a6; --syntax-function:#a9d9ee;
   --r-lg:20px; --r-md:14px; --r-sm:8px; --r-xs:6px; --r-pill:999px; --ease-out:cubic-bezier(.16,1,.3,1);
