@@ -10,7 +10,21 @@ import {
   STUDIO_PLUGIN_ASSET_ID as ASSET_ID,
   STUDIO_PLUGIN_URL as STORE_URL,
   STUDIO_PLUGIN_STORE_LIVE as storeLive,
+  STUDIO_PLUGIN_STORE_REFUSAL as refusal,
 } from '../../lib/studio-plugin';
+
+// This page used to read "Roblox removed the previous plugin listing (<ASSET_ID>)", which was two
+// wrong things in one sentence. ASSET_ID is the CURRENT listing, not a previous one — the previous
+// one was a different id on a different account and is not named here. And "removed" was written
+// before anyone had seen a removal notice; what had been seen was a dashboard banner saying the
+// asset "may be in violation". It has since become literally true, which is luck, not rigour.
+//
+// So the wording now derives from what Roblox actually says about THIS id on its appeals page,
+// through one shared constant. If the appeal succeeds, `refusal` goes null and this paragraph
+// disappears on its own rather than needing a reader to notice it is stale.
+const decided = refusal
+  ? new Date(refusal.decidedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+  : null;
 
 // `storeLive` — whether the asset is actually distributable — is imported above rather than
 // declared here. It used to be a local `const storeLive = false`, which made this page the only
@@ -45,13 +59,27 @@ import {
       </p>
     ) : (
       <div class="callout">
-        <p>
-          <strong>Public installation is unavailable.</strong> Roblox removed the previous
-          plugin listing (<code>{ASSET_ID}</code>). Its store URL is not a working install path.
-          An independent replacement is being tested locally; it is not published or approved
-          for distribution. The installation instructions below apply only after an approved
-          listing is available. No release date is confirmed.
-        </p>
+        {
+          refusal ? (
+            <p>
+              <strong>Public installation is unavailable, and it is a moderation decision.</strong>{' '}
+              Roblox removed this plugin's Creator Store listing (<code>{ASSET_ID}</code>) on {decided},
+              giving the reason <strong>“{refusal.reason}”</strong>. The store URL is not a working
+              install path, and the “Distribute on Creator Store” setting is locked rather than merely
+              switched off — so this is not a step waiting to be taken.
+              {refusal.appealId ? ' An appeal has been sent and is awaiting a decision.' : ' An appeal has not been sent.'}
+              {' '}The instructions below apply only if and when an approved listing exists. No release
+              date is confirmed, and none can be promised while the decision stands.
+            </p>
+          ) : (
+            <p>
+              <strong>Public installation is unavailable.</strong> The plugin
+              (<code>{ASSET_ID}</code>) is not distributable on the Creator Store today, so its store
+              URL is not a working install path. The instructions below apply only once an approved
+              listing exists. No release date is confirmed.
+            </p>
+          )
+        }
       </div>
     )
   }

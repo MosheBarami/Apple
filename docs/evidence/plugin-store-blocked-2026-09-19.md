@@ -89,3 +89,96 @@ checkbox.
 - Nothing was published. The account gained no new asset from this session; the `Apple Studio` tree
   built in Studio lives in an unsaved place and the save prompt was declined.
 - Whether a compliant re-submission would be accepted is unknown until one is accepted.
+
+---
+
+# Addendum, 22:04 the same evening — it was removed, the reason is named, and the appeal is in
+
+The body above was written about `132128477945417` (`Golem`, Herobrine583522) and reasoned that a
+compliant re-upload might get through. It did not. The republished asset got the same answer, and
+this time Roblox named the rule.
+
+## The current asset, measured
+
+`create.roblox.com/dashboard/creations/store/107230158271368/configure`, signed in as **Shahar474**:
+
+> ⚠️ **Not distributed on Creator Store** — This asset may be in violation of Roblox Community
+> Standards… If you believe this content decision was in error, you can appeal. **[Appeal]**
+
+Read out of the DOM rather than off the pixels, because "the toggle is on" and "the toggle is
+yours to change" are different facts and only one of them was ever checked:
+
+```
+input[aria-label="Distribute on Creator Store"]   checked: true   disabled: TRUE
+input[aria-label="Allow Roblox AI training…"]     checked: true   disabled: false
+```
+
+**Disabled.** The control is not merely already-on; Roblox has taken it away. No re-toggling is
+possible, which retires the last version of "somebody just needs to click it".
+
+`roblox.com/report-appeals` states it plainly, and gives the reason the dashboard withholds:
+
+```
+Plugin removed          ID: 107230158271368      Sep 19, 2026 | 9:26 PM
+Reason: Misusing Roblox Systems
+Asset Name: Apple Studio
+```
+
+So `STUDIO_PLUGIN_ASSET_ID` is not "published and awaiting distribution". It is **removed**, under
+the same rule that took the first one, about seven hours after it was created.
+
+## The liveness probe was written off with the wrong control
+
+`packages/shared` records the toolbox-service probe as one that "NO LONGER DISCRIMINATES", on this
+evidence: `Rojo 6430081415 -> 404`, "fully listed, installed by thousands".
+
+`6430081415` is not Rojo. Asked directly:
+
+```
+economy.roblox.com/v2/assets/6430081415/details
+  -> Name: "POGCHAMP-hoodie"   AssetTypeId: 1   Creator: AhbaNorTh
+```
+
+An image asset, and toolbox-service serves Creator Store items — a 404 there is the correct answer
+for it, not a failure of the probe. Re-measured against two controls that really are listed
+plugins:
+
+| asset | what it is | toolbox-service |
+|---|---|---|
+| 6415005344 | Rojo 7, LPGhatguy | **200** |
+| 4725618216 | Moon Animator 2, xsixx | **200** |
+| 107230158271368 | Apple Studio, Shahar474 | 404 |
+| 132128477945417 | Golem, Herobrine583522 | 404 |
+
+The probe discriminates. The finding it was retired on was a typo in a control, and retiring a
+working instrument is the same error as trusting a broken one — both replace a measurement with a
+belief. `STUDIO_PLUGIN_STORE_LIVE` stays `false`, now for the right reason: the asset is removed.
+
+## The appeal, sent
+
+Authorized by the owner in writing ("יש לך אישור לעשות apeal"). One appeal is allowed per decision,
+so the text was drafted against the source and read back from the textarea before sending.
+
+```
+Appeal ID:  3JYeMPD1jVZIh8wYJV521ooFrHw
+Sent:       Sep 19, 2026 | 10:04 PM
+Window:     appealable until Oct 19, 2026 | 9:26 PM
+Roblox:     "We estimate a decision within 5 business days."
+```
+
+Every claim in it was checked against `apps/apple-plugin/src/Commands.luau` first rather than
+written from memory: `UNSUPPORTED` at 3438-3442 (`run_code`, `run_mode`, `inspect_model`), and
+`sourceDanger` at 877-892, which refuses to WRITE source containing `loadstring`, `getfenv`,
+`setfenv`, `InsertService`, `AssetService`, `LoadAsset`, `GetObjects`, `HttpService`,
+`RequestAsync`, `PostAsync` or `debug.`. The appeal does not mention the other account or the older
+asset: linking two accounts in a moderation record is a cost the owner would pay, not me, and
+nothing in the case needs it.
+
+## Not verified
+
+- Why Roblox flagged it. "Misusing Roblox Systems" is a category, not a finding, and no specific
+  behaviour was cited. The `require`-from-HTTP pattern in the OLD `apps/plugin` remains the leading
+  hypothesis and this build does not contain it.
+- Whether the appeal succeeds. Sent is not granted.
+- Whether `Shahar474` and `NoAmX2` — the names the two signed-in surfaces reported — are the same
+  person's accounts. The dashboard said one and roblox.com said the other for the same asset id.

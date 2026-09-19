@@ -1582,6 +1582,16 @@ export const PROTOCOL_VERSION = 1;
  *
  * The current id is `Apple Studio`, AssetTypeId 38, creator Shahar474 (5541122967), confirmed
  * through economy.roblox.com rather than from the publish dialog that reported success.
+ *
+ * AND IT WAS REMOVED TOO, the same day, about seven hours after it was created. Roblox's appeals
+ * page names the decision where the dashboard only hints at it: "Plugin removed · ID 107230158271368
+ * · Reason: Misusing Roblox Systems · Sep 19, 2026 9:26 PM". The dashboard's "Distribute on Creator
+ * Store" checkbox reads `checked: true, disabled: true` — already on AND taken away, so there is no
+ * toggle left for anyone to flip. An appeal was sent (3JYeMPD1jVZIh8wYJV521ooFrHw, 2026-09-19
+ * 22:04, decision estimated within five business days).
+ *
+ * So this constant names an asset that EXISTS and is NOT DISTRIBUTABLE. Nothing may present it as
+ * an install path, and nothing may describe it as "the previous listing" — it is the current one.
  */
 export const STUDIO_PLUGIN_ASSET_ID = '107230158271368';
 
@@ -1593,27 +1603,34 @@ export const STUDIO_PLUGIN_ASSET_ID = '107230158271368';
 export const STUDIO_PLUGIN_URL = `https://create.roblox.com/store/asset/${STUDIO_PLUGIN_ASSET_ID}`;
 
 /**
- * A liveness probe that NO LONGER DISCRIMINATES. Do not gate anything on it.
+ * A liveness probe that DOES discriminate — 200 means listed, 404 means not.
  *
- * This was documented as "the ONLY reliable liveness probe... 200 means listed, 404 means not
- * listed". Measured against a control on 2026-09-19, that is false:
+ * This comment previously said the opposite, on this evidence: "Rojo 6430081415 -> 404 <- fully
+ * listed, installed by thousands", concluding that a probe answering 404 for everything answers
+ * nothing. The control was wrong. `6430081415` is not Rojo:
  *
- *   Apple Studio  107230158271368  -> 404
- *   Rojo          6430081415       -> 404     <- fully listed, installed by thousands
- *   Golem         132128477945417  -> 404
+ *   economy.roblox.com/v2/assets/6430081415/details
+ *     -> Name "POGCHAMP-hoodie", AssetTypeId 1, creator AhbaNorTh
  *
- * A probe that answers 404 for a plugin anyone can install answers 404 for everything, so reading
- * its 404 as "not listed" reports a failure to observe as an observation — about the one fact the
- * product's install button depends on. The endpoint presumably now requires authentication or has
- * moved.
+ * An image asset. toolbox-service serves Creator Store items, so 404 is the correct answer for it.
+ * Re-measured 2026-09-19 against two controls that really are listed plugins:
  *
- * The store PAGE does not discriminate either: all three return 200 and an identical 9,734-byte
- * client-rendered shell, so fetching it server-side says nothing about distribution. Likewise
- * `catalog.roblox.com/v1/catalog/items/{id}/details` returns 404 for all three.
+ *   Rojo 7           6415005344       -> 200    <- control
+ *   Moon Animator 2  4725618216       -> 200    <- control
+ *   Apple Studio     107230158271368  -> 404
+ *   Golem            132128477945417  -> 404
  *
- * Until a probe is found that separates a listed plugin from an unlisted one WITH A CONTROL,
- * distribution is verified by looking at the authenticated Creator Dashboard for the owning
- * account, and nowhere else.
+ * Retiring a working instrument on a mistyped control is the same error as trusting a broken one:
+ * both put a belief where a measurement was. Two controls, not one, from here on.
+ *
+ * Still true from the earlier pass: the store PAGE does not discriminate — every id returns 200 and
+ * an identical client-rendered shell — and `catalog.roblox.com/v1/catalog/items/{id}/details`
+ * returns 404 for all of them. Neither is a substitute for this probe.
+ *
+ * What the 404 here does NOT tell you is WHY. For our asset the reason is a moderation decision —
+ * roblox.com/report-appeals names it "Plugin removed … Misusing Roblox Systems" — and only the
+ * authenticated Creator Dashboard or the appeals page says so. A probe reports distribution, not
+ * cause. See docs/evidence/plugin-store-blocked-2026-09-19.md.
  */
 export const STUDIO_PLUGIN_LIVENESS_PROBE_URL = `https://apis.roblox.com/toolbox-service/v1/items/details?assetIds=${STUDIO_PLUGIN_ASSET_ID}`;
 
@@ -1629,13 +1646,47 @@ export const STUDIO_PLUGIN_LIVENESS_PROBE_URL = `https://apis.roblox.com/toolbox
  *
  * Re-probe, then flip this one constant — nothing else needs to change:
  *   curl -s -o /dev/null -w '%{http_code}\n' "$STUDIO_PLUGIN_LIVENESS_PROBE_URL"
- * 200 = listed, 404 = not. Last checked 2026-08-31: 404 for this asset, against
- * 200 for a known-listed control (Rojo, 6415005344).
+ * 200 = listed, 404 = not, and ALWAYS beside a control (see the probe above).
+ * Last checked 2026-09-19: 404 for this asset, against 200 for two known-listed
+ * plugins (Rojo 7 6415005344, Moon Animator 2 4725618216). The 404 is currently a
+ * removal under "Misusing Roblox Systems", not a pending listing, so flipping this
+ * waits on the appeal succeeding rather than on a probe changing its mind.
  *
  * Typed `boolean` rather than the literal `false` on purpose: consumers branch
  * on it, and a literal type would make the live branch look unreachable.
  */
 export const STUDIO_PLUGIN_STORE_LIVE: boolean = false;
+
+/**
+ * WHY the store is not live — the fact every "unavailable" surface was missing.
+ *
+ * `STUDIO_PLUGIN_STORE_LIVE = false` says the install path does not work. It does not say whether
+ * that is a step nobody has taken, a queue, or a decision, and for a year of copy the product let
+ * readers assume the first. It is the third. A reader deciding whether to wait deserves the
+ * difference, and so does the next agent, who would otherwise go looking for a checkbox.
+ *
+ * `null` would mean "not refused". A non-null value is a recorded moderation decision, sourced from
+ * roblox.com/report-appeals for this asset id — not from the dashboard banner, which names no rule.
+ */
+export interface StudioPluginStoreRefusal {
+  /** Roblox's own words for the rule, verbatim. */
+  readonly reason: string;
+  /** When Roblox says it reviewed the asset. */
+  readonly decidedAt: string;
+  /** The last day an appeal may be sent for this decision. */
+  readonly appealableUntil: string;
+  /** Roblox's case id for the appeal already sent, or null if none has been. */
+  readonly appealId: string | null;
+  readonly appealedAt: string | null;
+}
+
+export const STUDIO_PLUGIN_STORE_REFUSAL: StudioPluginStoreRefusal | null = {
+  reason: 'Misusing Roblox Systems',
+  decidedAt: '2026-09-19T21:26:00+03:00',
+  appealableUntil: '2026-10-19T21:26:00+03:00',
+  appealId: '3JYeMPD1jVZIh8wYJV521ooFrHw',
+  appealedAt: '2026-09-19T22:04:00+03:00',
+};
 
 /**
  * Where an "install" affordance may actually send someone TODAY.
