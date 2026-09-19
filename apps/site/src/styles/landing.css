@@ -175,7 +175,6 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--ink); outline-o
 .composer-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 12px 12px 16px; border-top: 1px solid var(--line); }
 .composer-chips { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--card); color: var(--muted); font-size: 12px; letter-spacing: -0.01em; white-space: nowrap; }
-.chip-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--live); }
 
 .hero-actions { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 28px; flex-wrap: wrap; }
 .availability { margin-top: 22px; color: var(--faint); font-size: 12px; line-height: 18px; letter-spacing: -0.005em; }
@@ -268,7 +267,34 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--ink); outline-o
   .truths { grid-template-columns: 1fr; }
   .cards { grid-template-columns: 1fr; }
   .model-grid { grid-template-columns: 1fr; }
-  .site-nav { display: none; }
+  /* THE NAVIGATION WAS DELETED ON A PHONE AND NOTHING REPLACED IT.
+     `display: none` with no hamburger, no drawer, nothing — so at 375px the header was a wordmark
+     and one pill, the word "Pricing" existed only in the footer 6,534px down, and a returning
+     customer had no Sign in at any width. On the device most of this product's buyers use, the
+     front door hid the price and the door.
+     A SECOND ROW RATHER THAN A MENU. Five short links fit across 343px on one line at 13px; a
+     hamburger would be a button, a drawer, a focus trap and an escape key for five links that
+     already fit. The row scrolls horizontally only if a translation makes it longer, and it never
+     wraps into a ragged block. */
+  .site-header > .shell { flex-wrap: wrap; row-gap: 10px; }
+  .site-nav {
+    order: 3; width: 100%;
+    gap: 18px; font-size: 13px;
+    overflow-x: auto; scrollbar-width: none;
+    padding-block-end: 2px;
+  }
+  .site-nav::-webkit-scrollbar { display: none; }
+  .site-nav a { white-space: nowrap; }
+  /* The header is two rows now, so everything measured from its height moves with it. */
+  :root { --nav-h: 96px; }
+
+  /* 77% OF EACH CARD WAS AN EMPTY BOX. `aspect-ratio: 4/5` is right in the 4-up desktop grid and
+     absurd once the grid collapses to one column: 343px wide became 429px tall, holding a single
+     40px icon, above 126px of words — four of them, 2,277px, nearly three phone screens of dark
+     rectangle. It reads as a page whose images failed to load. 16/9 keeps the panel as a band
+     rather than a wall. */
+  .card-media { aspect-ratio: 16 / 9; }
+
   .composer-bar { flex-wrap: wrap; }
 }
 

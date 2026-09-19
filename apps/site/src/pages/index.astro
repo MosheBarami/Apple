@@ -68,6 +68,10 @@ const capabilities = [
         <a href="/pricing">Pricing</a>
         <a href="/changelog">Changelog</a>
         <a href="/status">Status</a>
+        {/* SIGN IN WAS NOWHERE ON THIS PAGE, at any width. "Open Apple" does land on the sign-in
+            screen, but nothing said so — a returning customer had to guess. Every other page on
+            this site carries a Sign in; the front door did not. */}
+        <a href="/app/login">Sign in</a>
       </nav>
       <a class="pill" href="/app">Open Apple</a>
     </div>
@@ -93,8 +97,15 @@ const capabilities = [
         <div class="composer" aria-hidden="true">
           <div class="composer-field">Ask Apple to build…</div>
           <div class="composer-bar">
+            {/* THE DOT WAS GREEN AND THE WORD WAS "connected", on a page selling a product whose
+                plugin Roblox has not approved for distribution. A mock is still a claim: the
+                largest, most tappable-looking thing above the fold on a phone told a reader the
+                product was attached to their Studio before they had one. The sub-line two blocks
+                down says the opposite, and a reader believes the picture.
+                "Studio" alone is the same image without the assertion — it shows where the model
+                chip and the connection chip sit, which is the only job this mock has. */}
             <div class="composer-chips">
-              <span class="chip"><span class="chip-dot"></span>Studio connected</span>
+              <span class="chip">Studio</span>
               <span class="chip">Apple</span>
             </div>
             <span class="pill">Build</span>

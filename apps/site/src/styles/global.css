@@ -510,6 +510,33 @@ summary:focus-visible {
   background: var(--surface);
 }
 
+/* THE ROW LABEL STAYS PUT WHILE THE PLANS SCROLL PAST IT.
+   A 620px-minimum table inside an overflow-x box technically "works" at 375px, and on a phone it
+   showed capability names with no values, or values with no capability name, and never both — you
+   scroll right and the thing being described leaves the screen. A reviewer reported the plan
+   comparison as showing labels and zero plan data, which is exactly what half of a scrolled table
+   looks like.
+   Sticky is the whole fix and it needs no markup: the first column is a <th scope="row">, so the
+   browser already knows which cell names the row. A 148px cap keeps two plan columns visible
+   beside it at 375px rather than one and a sliver. */
+.table-scroll table th[scope='row'] {
+  position: sticky;
+  inset-inline-start: 0;
+  z-index: 1;
+  background: var(--surface);
+  max-width: 148px;
+}
+/* A sticky cell sits OVER its neighbour, so the hairline it was relying on for separation is
+   underneath it. This is that hairline, drawn on the cell that now floats. */
+.table-scroll table th[scope='row']::after {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: -1px;
+  width: 1px;
+  background: var(--line);
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -524,9 +551,13 @@ td {
   vertical-align: top;
 }
 
+/* WEIGHT 400, like everything else in this product. `font: 700` here was the last bold declaration
+   on the marketing site, and docs/DESIGN-LOCK.md is explicit: hierarchy is size, colour and space.
+   At 0.68rem with 0.07em tracking and uppercase, the label already reads as a label; the 700 was
+   doing nothing the letter-spacing was not already doing. */
 th {
   color: var(--ink);
-  font: 700 0.68rem var(--font-mono);
+  font: 400 0.68rem var(--font-mono);
   letter-spacing: 0.07em;
   text-transform: uppercase;
 }
