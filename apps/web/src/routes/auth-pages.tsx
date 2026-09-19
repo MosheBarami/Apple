@@ -609,7 +609,12 @@ export function LoginPage() {
           </Link>
         </p>
         <p className="auth-switch">
-          New here? <Link to="/signup">Create an account</Link>
+          {/* THE RETURN PATH GOES WITH THEM, and it did not. `AuthGuard` sends a signed-out visitor
+              here with `state.from` set to wherever they were trying to reach — for an invitee that
+              is `/join?token=…`, the whole invitation. This link dropped it, so somebody who had
+              never used the product before, arriving on a share link and doing the only thing open
+              to them, lost the invitation at the click. */}
+          New here? <Link to="/signup" state={from ? { from } : undefined}>Create an account</Link>
         </p>
         {/* THE THIRD LINK, and it is last on purpose. A reset fixes most of what brings people to
             this page, and offering the human queue first would fill it with requests that /forgot
@@ -627,6 +632,10 @@ export function LoginPage() {
 /* -------------------------------------------------------------------- sign up --- */
 
 export function SignupPage() {
+  // The same `from` the login page reads, for the same reason: an invitee who lands here rather
+  // than on /login must end up back at their invitation, not at an empty project list.
+  const location = useLocation();
+  const from = safeInternalPath((location.state as { from?: string } | null)?.from);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
@@ -661,7 +670,7 @@ export function SignupPage() {
       return;
     }
     if (outcome.kind === 'signed-in') {
-      navigate('/', { replace: true });
+      navigate(from ?? '/', { replace: true });
       return;
     }
     setSentTo(outcome.address);
@@ -751,7 +760,7 @@ export function SignupPage() {
             {busy ? 'Creating account…' : 'Create account'}
           </button>
           <p className="auth-switch">
-            Already have an account? <Link to="/login">Sign in</Link>
+            Already have an account? <Link to="/login" state={from ? { from } : undefined}>Sign in</Link>
           </p>
         </form>
       )}
