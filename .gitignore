@@ -138,6 +138,18 @@ packages/training/mlxdata/
 # dataset that is not itself tracked. It is re-included by name.
 packages/training/data/*
 !packages/training/data/dataset-card.json
+# Same reason, one level down: a built dataset lives in its own directory and carries its own
+# card. The card is the only record of what the data is, what verified it and what it does NOT
+# establish; leaving it inside the ignored directory means the provenance never reaches the
+# repository while the claims built on it do.
+#
+# Three lines rather than one, because git will not re-include a file inside an EXCLUDED
+# DIRECTORY — it never descends into it, so `!.../*/dataset-card.json` on its own silently does
+# nothing. So: let the subdirectories be descended, exclude their contents, then re-include the
+# cards. Verified both ways with `git check-ignore -v`: a card is tracked, a train.jsonl is not.
+!packages/training/data/*/
+packages/training/data/*/*
+!packages/training/data/*/dataset-card.json
 # Same rule, same reason, for the Hugging Face harvest: `scripts/harvest-hf.mjs` writes its
 # REFUSALS to data/hf/REJECTED.json — seven rejected datasets with the measurement that killed each
 # one, and the served-or-not verdict on five Roblox models. That file is the entire evidence for
