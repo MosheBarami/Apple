@@ -14,30 +14,35 @@ Do not mark one done because a value was pasted somewhere.
 
 ```
 $ npx wrangler secret list --config wrangler.apple.jsonc
-[ { "name": "ADMIN_KEY" }, { "name": "ROBLOX_API_KEY" } ]
+[ ADMIN_KEY, ROBLOX_API_KEY, STRIPE_PRICE_BUILDER, STRIPE_PRICE_STUDIO,
+  STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET ]
 ```
 
-No Stripe credential exists on the live Worker, and none is in `.env`. `checkoutConfigured()` is
-therefore false, `/api/billing/config` answers `purchasable: []`, and `POST /api/billing/checkout`
-refuses with 503.
+**The wiring is done and observed working, in TEST MODE.** `/api/billing/config` answers
+`{"checkout": true, "purchasable": ["builder","studio"]}` without a credential, `/pricing` renders
+Choose Builder and Choose Studio, and two real Stripe Checkout Sessions were created at $12.00 and
+$40.00 with payable URLs. See `docs/evidence/payments-live-2026-09-19.md`.
 
-The route is not a stub: it refuses a second subscription on one account, refuses a caller-supplied
-`returnTo` as an open redirect, carries a reactivation path for a lapsed customer, and is covered by
-143 tests. It has simply never been given a key.
+### The blocker is not technical, and it does not have a workaround
 
-### What only you can do
+**The owner is 15.** Stripe — and every comparable card processor — requires the account holder to
+be of legal age to enter a binding contract, and requires a bank account in that person's name.
+There is no configuration, no code path and no agent action that changes this.
 
-1. Create (or sign in to) the Stripe account this product bills through. **An agent must not create
-   a financial account or handle card details** — this step is yours, by rule and not by
-   convenience.
-2. Create two recurring products in Stripe, monthly, in the currency `PRICE_CURRENCY` names:
-   - **Builder** — $12 / month
-   - **Studio** — $40 / month
-   Copy each one's **price id** (`price_…`, not the product id).
-3. Create a webhook endpoint pointing at `https://apple.moshe-barami111.workers.dev/api/billing/webhook`
-   and copy its **signing secret** (`whsec_…`).
-4. Create a Billing Portal configuration and copy its id (`bpc_…`).
-5. Set them as Worker secrets — these prompt for the value and never echo it:
+It must also not be worked around. An account opened on incorrect details does not fail at signup;
+it fails at the moment money starts arriving, and then the money is frozen inside it and the person
+who opened it is the one holding the problem. The cheap-looking shortcut is the expensive one.
+
+So this blocker stays OPEN. It is not "complete", it is not "pending", and the test-mode green does
+not soften it. Two things unblock it, neither of them ours:
+
+1. **An adult holds the account.** A parent, guardian or a registered company is the account
+   holder, in their own name and with their own bank details. They do that step themselves.
+2. **Time.** At 18 the owner can hold it directly.
+
+When either arrives, the remaining work is small and already proven: issue LIVE keys, create a live
+webhook endpoint for the five events `interpretStripeEvent` reads, and replace the six secrets
+below. Nothing else changes, because the test-mode path exercised every line of it.
 
 ```bash
 cd apps/worker
@@ -47,6 +52,24 @@ npx wrangler secret put STRIPE_PRICE_STUDIO          --config wrangler.apple.jso
 npx wrangler secret put STRIPE_WEBHOOK_SECRET        --config wrangler.apple.jsonc
 npx wrangler secret put STRIPE_PORTAL_CONFIGURATION  --config wrangler.apple.jsonc
 ```
+
+Type them into that prompt. Not into a chat window, not into a file — the current keys arrived
+pasted into a transcript, which is why they are test keys and why they should be rotated rather
+than promoted.
+
+### What this changes about the plan
+
+Card payments are no longer the first revenue path; they are the second, and they are waiting on a
+person rather than on work.
+
+**The first is Roblox itself.** This product builds Roblox games, and Roblox lets developers under
+18 earn Robux — selling the plugin on the Creator Store, or selling passes inside a place. It needs
+no card processor and no bank account to start earning, and the audience is already there. The
+distribution work is done: see `docs/PLUGIN-RELEASE.md`, whose remaining steps are Studio and
+Creator Dashboard actions the owner can perform at 15.
+
+Read the Roblox blocker below as the priority one. This section is the one that waits.
+
 
 6. Redeploy the site so the pricing page re-asks:
 
