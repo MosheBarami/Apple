@@ -32,7 +32,8 @@ browser ── WebSocket ──▶ SessionDO ◀── long-poll ── Studio p
 | `apps/worker` | The backend: API, DOs, gateway, RAG, static serving |
 | `apps/web` | App SPA (Vite + React) served at `/app` |
 | `apps/site` | Marketing site (Astro) served at `/` |
-| `apps/plugin` | "Golem for Studio" plugin (Luau + Rojo) |
+| `apps/apple-plugin` | **The Studio plugin that ships** (Luau + Rojo). See `docs/PLUGIN-RELEASE.md` |
+| `apps/plugin` | Legacy Studio plugin — **not the product**, kept as a reference. See `apps/plugin/README.md` |
 | `packages/shared` | Wire protocol + domain types |
 | `packages/corpus` | RAG corpus pipeline (creator-docs, CC-BY-4.0) |
 | `packages/evals` | Roblox-specific model eval harness + tasks |
@@ -48,6 +49,6 @@ the deploy runbook in memory/`infra`:
 pnpm install
 cd apps/worker && pnpm exec wrangler deploy     # API
 node infra/deploy-static.mjs                    # site + app -> D1 static store
-cd apps/plugin && rojo build -o release/apple-plugin.rbxm
+node apps/apple-plugin/scripts/build.mjs        # the Studio plugin; it does NOT publish
 node infra/e2e.mjs                              # production end-to-end test
 ```

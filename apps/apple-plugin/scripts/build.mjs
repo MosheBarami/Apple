@@ -29,4 +29,9 @@ mkdirSync(join(root, 'release'), { recursive: true });
 const artifact = join(root, 'release', 'apple-studio.rbxm');
 execFileSync('rojo', ['build', join(root, 'default.project.json'), '--output', artifact], { stdio: 'inherit' });
 execFileSync('python3', [join(root, '..', '..', 'scripts', 'inspect-plugin-build.py'), artifact], { stdio: 'inherit' });
-console.log('Local preview built and inspected; not installed or published.');
+// The source having a capability and the SHIPPED BYTES having it are two claims, and this
+// repository has already paid for the difference: the legacy artifact reported VERSION 0.1.0 with
+// zero occurrences of GenerateModelAsync while its source was 0.2.0 and had generation, and every
+// test was green because every test read the .luau. This one reads the binary.
+execFileSync('python3', [join(root, 'scripts', 'verify-artifact.py'), artifact], { stdio: 'inherit' });
+console.log('Local preview built, inspected and verified against its own source; not installed or published.');

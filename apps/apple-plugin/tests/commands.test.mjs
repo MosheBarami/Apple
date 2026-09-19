@@ -13,170 +13,14 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { PRELUDE } from './studio-mock.mjs';
+
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SOURCE_PATH = join(HERE, '..', 'src', 'Commands.luau');
 const SOURCE = readFileSync(SOURCE_PATH, 'utf8');
 
-const PRELUDE = String.raw`--!nocheck
-local function typeofMock(v)
-    if type(v) == "table" and rawget(v, "__type") then return v.__type end
-    if type(v) == "table" and rawget(v, "__class") then return "Instance" end
-    return type(v)
-end
-typeof = typeofMock
-local v3mt = {}
-v3mt.__index = v3mt
-v3mt.__add = function(a,b) return setmetatable({__type="Vector3",X=a.X+b.X,Y=a.Y+b.Y,Z=a.Z+b.Z},v3mt) end
-v3mt.__sub = function(a,b) return setmetatable({__type="Vector3",X=a.X-b.X,Y=a.Y-b.Y,Z=a.Z-b.Z},v3mt) end
-v3mt.__mul = function(a,b)
-    if type(a)=="number" then return setmetatable({__type="Vector3",X=a*b.X,Y=a*b.Y,Z=a*b.Z},v3mt) end
-    return setmetatable({__type="Vector3",X=a.X*b,Y=a.Y*b,Z=a.Z*b},v3mt)
-end
-local function v3(x, y, z) return setmetatable({ __type = "Vector3", X = x or 0, Y = y or 0, Z = z or 0 }, v3mt) end
-Vector3 = { new = v3, zero = v3(0,0,0) }
-Vector2 = { new = function(x, y) return { __type = "Vector2", X = x or 0, Y = y or 0 } end }
-NumberRange = { new = function(a, b) return { __type = "NumberRange", Min = a, Max = b or a } end }
-Rect = { new = function(a, b, c, d) return { __type = "Rect", Min = v3(a, b, 0), Max = v3(c, d, 0) } end }
-Color3 = { new = function(r, g, b) return { __type = "Color3", R = r or 0, G = g or 0, B = b or 0 } end }
-UDim = { new = function(s, o) return { __type = "UDim", Scale = s or 0, Offset = o or 0 } end }
-UDim2 = { new = function(xs, xo, ys, yo) return { __type = "UDim2", X = UDim.new(xs, xo), Y = UDim.new(ys, yo) } end }
-BrickColor = { new = function(v) return { __type = "BrickColor", Name = tostring(v) } end }
-CFrame = {}
-local cfmt = {}
-cfmt.__index = cfmt
-local function cf(x,y,z)
-    local value = setmetatable({__type="CFrame",Position=v3(x or 0,y or 0,z or 0)}, cfmt)
-    value._c = {value.Position.X,value.Position.Y,value.Position.Z,1,0,0,0,1,0,0,0,1}
-    return value
-end
-function CFrame.new(...) local a={...}; return cf(a[1] or 0,a[2] or 0,a[3] or 0) end
-function CFrame.Angles(...) return cf(0,0,0) end
-function CFrame.lookAt(origin, target) return cf(origin.X,origin.Y,origin.Z) end
-function cfmt:GetComponents() return table.unpack(self._c) end
-function cfmt:VectorToWorldSpace(value) return value end
-cfmt.__mul = function(a,b) return cf(a.Position.X+b.Position.X,a.Position.Y+b.Position.Y,a.Position.Z+b.Position.Z) end
-cfmt.__add = function(a,b) return cf(a.Position.X+b.X,a.Position.Y+b.Y,a.Position.Z+b.Z) end
-Enum = { FinishRecordingOperation = { Commit = "Commit", Cancel = "Cancel" }, Material = { SmoothPlastic = "Enum.Material.SmoothPlastic" }, Font = { SourceSans = "Enum.Font.SourceSans" } }
+// The shared Roblox-shaped mock. See tests/studio-mock.mjs for why it is not inlined here.
 
-local methods = {}
-local mt = {
-    __index = function(self, key)
-        if key == "Parent" then return rawget(self, "__parent") end
-        if key == "CFrame" then return rawget(self, "__cframe") end
-        if key == "Position" then return rawget(self, "__position") end
-        return methods[key] or rawget(self, key)
-    end,
-    __newindex = function(self, key, value)
-        if key == "Parent" then
-            local old = rawget(self, "__parent")
-            if old and old.__children then for i, child in ipairs(old.__children) do if child == self then table.remove(old.__children, i); break end end end
-            rawset(self, "__parent", value)
-            if value and value.__children then table.insert(value.__children, self) end
-        elseif key == "CFrame" then rawset(self,"__cframe",value); rawset(self,"__position",value.Position)
-        elseif key == "Position" then rawset(self,"__position",value); rawset(self,"__cframe",cf(value.X,value.Y,value.Z))
-        else rawset(self, key, value) end
-    end,
-}
-function methods:IsA(wanted)
-    if wanted == "Instance" or wanted == self.ClassName then return true end
-    if wanted == "LuaSourceContainer" then return self.ClassName == "Script" or self.ClassName == "LocalScript" or self.ClassName == "ModuleScript" end
-    if wanted == "BasePart" then return self.ClassName == "Part" or self.ClassName == "MeshPart" or self.ClassName == "WedgePart" or self.ClassName == "CornerWedgePart" or self.ClassName == "SpawnLocation" end
-    if wanted == "GuiObject" then return self.ClassName == "Frame" or self.ClassName == "TextLabel" or self.ClassName == "TextButton" or self.ClassName == "TextBox" or self.ClassName == "ScrollingFrame" end
-    return false
-end
-function methods:GetChildren() local out={}; for i,child in ipairs(self.__children) do out[i]=child end; return out end
-function methods:GetDescendants()
-    local out={}
-    local function visit(node) for _,child in ipairs(node:GetChildren()) do table.insert(out,child); visit(child) end end
-    visit(self); return out
-end
-function methods:IsDescendantOf(ancestor)
-    local current=self.Parent
-    while current do if current==ancestor then return true end; current=current.Parent end
-    return false
-end
-function methods:FindFirstChild(name) for _, child in ipairs(self.__children) do if child.Name == name then return child end end end
-function methods:Destroy() self.Parent = nil; self.__destroyed = true end
-function methods:SetAttribute(name, value) self.__attributes[name] = value end
-function methods:GetAttribute(name) return self.__attributes[name] end
-function methods:GetAttributes() local out = {}; for k, v in pairs(self.__attributes) do out[k] = v end; return out end
-function methods:Clone()
-    if self.Archivable == false then return nil end
-    local copy = Instance.new(self.ClassName)
-    for k,v in pairs(self) do
-        if k~="__parent" and k~="__cframe" and k~="__position" and k~="__children" and k~="__attributes" and k~="__class" then rawset(copy,k,v) end
-    end
-    if self.CFrame then copy.CFrame=self.CFrame end
-    for k,v in pairs(self.__attributes) do copy.__attributes[k]=v end
-    for _,child in ipairs(self.__children) do local childCopy=child:Clone(); if childCopy then childCopy.Parent=copy end end
-    return copy
-end
-function methods:GetBoundingBox()
-    local parts={}
-    if self:IsA("BasePart") then parts={self} else for _,d in ipairs(self:GetDescendants()) do if d:IsA("BasePart") then table.insert(parts,d) end end end
-    if #parts==0 then error("no parts") end
-    local minX,minY,minZ=math.huge,math.huge,math.huge
-    local maxX,maxY,maxZ=-math.huge,-math.huge,-math.huge
-    for _,part in ipairs(parts) do
-        minX=math.min(minX,part.Position.X-part.Size.X/2); minY=math.min(minY,part.Position.Y-part.Size.Y/2); minZ=math.min(minZ,part.Position.Z-part.Size.Z/2)
-        maxX=math.max(maxX,part.Position.X+part.Size.X/2); maxY=math.max(maxY,part.Position.Y+part.Size.Y/2); maxZ=math.max(maxZ,part.Position.Z+part.Size.Z/2)
-    end
-    local center=v3((minX+maxX)/2,(minY+maxY)/2,(minZ+maxZ)/2)
-    return cf(center.X,center.Y,center.Z),v3(maxX-minX,maxY-minY,maxZ-minZ)
-end
-Instance = {}
-function Instance.new(className)
-    local value=setmetatable({ __class = true, ClassName = className, Name = className, Source = "", Archivable=true, __children = {}, __attributes = {} }, mt)
-    if value:IsA("BasePart") then value.CFrame=cf(0,0,0); value.Size=v3(1,1,1); value.Transparency=0; value.Locked=false end
-    if value:IsA("GuiObject") then value.Visible=true end
-    return value
-end
-local root = setmetatable({ __class = true, ClassName = "DataModel", Name = "game", __children = {} }, mt)
-local services = {}
-local function addService(name) local item = Instance.new(name); item.Name = name; item.Parent = root; services[name] = item end
-for _, name in ipairs({"Workspace","ReplicatedStorage","ServerScriptService","ServerStorage","StarterGui","StarterPack","StarterPlayer","ReplicatedFirst","Lighting","SoundService","Teams","TextChatService","MaterialService"}) do addService(name) end
-function root:GetService(name) if services[name] then return services[name] end; error("missing service " .. name) end
-game = root
-workspace = services.Workspace
-local camera=Instance.new("Camera"); camera.Name="Camera"; camera.CFrame=cf(0,10,20); camera.FieldOfView=70; camera.ViewportSize=v3(1280,720,0); camera.Parent=workspace; workspace.CurrentCamera=camera
-local terrain=Instance.new("Terrain"); terrain.Name="Terrain"; terrain.Parent=workspace
-local starterPlayerScripts=Instance.new("StarterPlayerScripts"); starterPlayerScripts.Name="StarterPlayerScripts"; starterPlayerScripts.Parent=services.StarterPlayer
-local starterCharacterScripts=Instance.new("StarterCharacterScripts"); starterCharacterScripts.Name="StarterCharacterScripts"; starterCharacterScripts.Parent=services.StarterPlayer
-for _, className in ipairs({"ChatWindowConfiguration","ChatInputBarConfiguration","ChannelTabsConfiguration","BubbleChatConfiguration"}) do
-    local config=Instance.new(className); config.Name=className; config.Parent=services.TextChatService; services.TextChatService[className]=config
-end
-
-local editor = {}
-function editor:GetEditorSource(scriptObject) return scriptObject.Source end
-function editor:UpdateSourceAsync(scriptObject, callback) scriptObject.Source = callback(scriptObject.Source) end
-local history = { log = {}, recording = nil, nextId = 0, refuse = false, finishError = false }
-function history:TryBeginRecording(name, displayName) if self.refuse or self.recording then return nil end; self.nextId += 1; self.recording = "r" .. self.nextId; table.insert(self.log, "begin:" .. name); return self.recording end
-function history:FinishRecording(id, operation)
-    if id ~= self.recording then error("wrong recording") end
-    if self.finishError and tostring(operation) == "Commit" then self.finishError = false; error("commit failed") end
-    table.insert(self.log, tostring(operation)); self.recording = nil
-end
-function history:SetWaypoint(name) table.insert(self.log, "waypoint:" .. name) end
-local runService = { edit = true }
-function runService:IsEdit() return self.edit end
-local selection = { values = {} }
-function selection:Get() return self.values end
-function selection:Set(v) self.values = v end
-local logs = { values = {} }
-function logs:GetLogHistory() return self.values end
-services.ScriptEditorService = editor
-services.ChangeHistoryService = history
-services.RunService = runService
-services.Selection = selection
-services.LogService = logs
-require = function() error("generated source must never be loaded by Commands") end
-
-local passed, failed, failures = 0, 0, {}
-local function spec(name, fn) local ok, err = pcall(fn); if ok then passed += 1 else failed += 1; table.insert(failures, name .. ": " .. tostring(err)) end end
-local function eq(a, b, why) if a ~= b then error((why or "value") .. ": expected " .. tostring(b) .. ", got " .. tostring(a), 2) end end
-local function has(text, needle) if not string.find(tostring(text), needle, 1, true) then error("expected " .. tostring(text) .. " to contain " .. needle, 2) end end
-local function report() print(("commands: %d passed%s"):format(passed, if failed > 0 then ", " .. failed .. " FAILED" else "")); for _, e in ipairs(failures) do print(e) end; if failed > 0 then error("command specs failed") end end
-`;
 
 const SPEC = String.raw`
 local function newCommands(options)
@@ -541,6 +385,134 @@ spec("3D generation fails closed when the adapter is unavailable", function()
     eq(generated.ok, false); eq(generated.failure, "refused"); has(generated.error, "GenerationService adapter"); has(generated.error, "no substitute")
     local inspected = run(c, "inspect", { op = "inspect_model", path = "game.Workspace.Mover" }, false)
     eq(inspected.ok, false); has(inspected.error, "quality gate")
+    c:destroy()
+end)
+
+local function fakeRenderer(config)
+    local adapter = { calls = 0, config = config or {} }
+    function adapter.capture(root, subject, view, width, height, env)
+        adapter.calls += 1
+        adapter.lastRoot = root
+        adapter.lastSubject = subject
+        adapter.lastView = view
+        adapter.lastWidth = width
+        adapter.lastHeight = height
+        adapter.lastEnv = env
+        if adapter.config.result then return adapter.config.result end
+        return {
+            subject = subject,
+            boundsSize = { 1, 1, 1 },
+            views = { { name = view, rgbBase64 = "AAAA", meta = { width = width, height = height } } },
+        }
+    end
+    return adapter
+end
+
+spec("render_view is a read: no consent, no recording, and the engine resolves the target", function()
+    -- The visual gate the worker runs (render_view, compose_thumbnail, inspect_visually and the
+    -- automatic critique) all ride this one operation. It reads geometry and returns pixels, so it
+    -- must NOT demand edit consent and must NOT manufacture an undo entry for looking at a place.
+    local renderer = fakeRenderer()
+    local c = newCommands({ render = renderer })
+    local part = Instance.new("Part"); part.Name = "Tower"; part.Parent = services.Workspace
+    -- The DELTA, not the absolute: history.log is shared by every spec in this chunk, and a
+    -- count pinned to zero would only be asserting the order the specs happen to run in.
+    local before = #history.log
+
+    local r = run(c, "r1", { op = "render_view", target = "game.Workspace.Tower", view = "all", width = 120, height = 90 }, false)
+    eq(r.ok, true, "rendering must not require edit consent")
+    eq(history.recording, nil, "a render must not open a ChangeHistory recording")
+    eq(#history.log - before, 0, "a render must leave the undo stack untouched")
+    eq(renderer.calls, 1)
+    eq(renderer.lastRoot, part, "the renderer is handed the instance the engine resolved, not a path")
+    eq(renderer.lastSubject, "game.Workspace.Tower")
+    eq(renderer.lastView, "all")
+    eq(renderer.lastWidth, 120)
+    eq(renderer.lastHeight, 90)
+    eq(renderer.lastEnv.scene, services.Workspace, "the scene is injected; the renderer has no reach of its own")
+    eq(renderer.lastEnv.lighting, services.Lighting, "lighting is judged from configuration, so it travels with the render")
+    c:destroy()
+end)
+
+spec("render_view defaults, validates its arguments and never guesses a view", function()
+    local renderer = fakeRenderer()
+    local c = newCommands({ render = renderer })
+    local r = run(c, "r2", { op = "render_view" }, false)
+    eq(r.ok, true)
+    eq(renderer.lastView, "hero", "an absent view is the establishing shot")
+    eq(renderer.lastSubject, "game.Workspace", "an absent target renders the place")
+    eq(renderer.lastWidth, 288)
+    eq(renderer.lastHeight, 180)
+
+    local bad = run(c, "r3", { op = "render_view", view = "cinematic" }, false)
+    eq(bad.ok, false)
+    eq(bad.failure, "invalid")
+    has(bad.error, "hero, front, side, top, eye or all")
+
+    local huge = run(c, "r4", { op = "render_view", width = 4096 }, false)
+    eq(huge.ok, false)
+    eq(huge.failure, "invalid")
+
+    local missing = run(c, "r5", { op = "render_view", target = "game.Workspace.NothingHere" }, false)
+    eq(missing.ok, false)
+    eq(missing.failure, "not_found")
+
+    local outside = run(c, "r6", { op = "render_view", target = "game.CoreGui.Thing" }, false)
+    eq(outside.ok, false)
+    eq(outside.failure, "refused", "a render may not reach anywhere a read could not")
+    c:destroy()
+end)
+
+spec("an empty frame is a named failure, not a picture of the sky", function()
+    -- The renderer answers "nothing renderable found under ..." as DATA. Returning that as a
+    -- successful capture would hand the critic a blank frame and let a scene that does not exist
+    -- score like one that does.
+    local renderer = fakeRenderer({ result = { error = "nothing renderable found under game.Workspace.Empty" } })
+    local c = newCommands({ render = renderer })
+    local folder = Instance.new("Folder"); folder.Name = "Empty"; folder.Parent = services.Workspace
+    local r = run(c, "r7", { op = "render_view", target = "game.Workspace.Empty" }, false)
+    eq(r.ok, false)
+    eq(r.failure, "not_found")
+    has(r.error, "nothing renderable found")
+    folder.Parent = nil
+    c:destroy()
+end)
+
+spec("a build with no renderer refuses by name and says so in its capability report", function()
+    -- THE POINT OF THE WHOLE MECHANISM. If Render.luau is not in the bundle the plugin must say
+    -- render_view is unsupported at PAIRING, so the worker withholds the three visual tools and
+    -- tells the user the appearance was not verified. Discovering it per call would spend a step
+    -- learning what the pairing already knew.
+    local c = newCommands()
+    local r = run(c, "r8", { op = "render_view" }, false)
+    eq(r.ok, false)
+    eq(r.failure, "refused")
+    has(r.error, "not bundled in this build")
+
+    local function byOp(report, wanted)
+        for _, item in report.operations do if item.op == wanted then return item end end
+        return nil
+    end
+    local report = Commands.capabilities(c)
+    eq(byOp(report, "render_view").status, "unsupported")
+    has(byOp(report, "render_view").reason, "not bundled in this build")
+    eq(byOp(report, "screenshot").status, "unsupported")
+
+    local withRenderer = newCommands({ render = fakeRenderer() })
+    eq(byOp(Commands.capabilities(withRenderer), "render_view").status, "supported")
+    eq(byOp(Commands.capabilities(withRenderer), "screenshot").status, "supported")
+    withRenderer:destroy()
+    c:destroy()
+end)
+
+spec("screenshot is the same code path as a hero render, not a second one", function()
+    local renderer = fakeRenderer()
+    local c = newCommands({ render = renderer })
+    local r = run(c, "r9", { op = "screenshot" }, false)
+    eq(r.ok, true)
+    eq(renderer.lastView, "hero")
+    eq(renderer.lastWidth, 288)
+    eq(renderer.lastHeight, 180)
     c:destroy()
 end)
 

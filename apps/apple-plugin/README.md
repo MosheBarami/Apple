@@ -1,8 +1,16 @@
-# Apple Studio — independent preview
+# Apple Studio — the Studio plugin this product ships
+
+**This is the product.** Decided 2026-09-19: `apps/plugin` is the legacy build and is
+not submitted to anything — `apps/plugin/README.md` says why it stays in the tree, and
+`docs/PLUGIN-RELEASE.md` is the runbook for getting this one onto the Creator Store.
 
 New source and package, separate from `apps/plugin` and the removed Creator Store
 asset. This is not a re-upload or renamed binary. Nothing here changes the existing
 installation or its public asset identifier.
+
+It is still a local preview. Nothing in this repository uploads to Roblox, `STUDIO_PLUGIN_STORE_LIVE`
+is `false`, and the public site says so in its own words. Publishing is a human decision
+and is not automated anywhere — see the runbook.
 
 ## Safety contract
 
@@ -23,8 +31,28 @@ bounded `root = "game"` snapshots, and explicit undo waypoints. Every operation 
 the shared `StudioOp` union has either a handler or a named refusal; none silently
 falls through as an unknown backend command.
 
-`run_code`, remote asset insertion, automatic Run mode, and rendering/screenshots
-remain fail-closed. Bounded checkpoint snapshot restore is implemented behind the
+`run_code`, remote asset insertion and automatic Run mode remain fail-closed.
+**Rendering does not.** `src/Render.luau` is the bounded software rasteriser, ported
+from `apps/plugin/src/Render.luau` — Studio exposes no viewport readback to a plugin
+(ThumbnailGenerator is not a valid service and CaptureService's callback never fires in
+edit mode, both measured against live Studio), so drawing the scene ourselves is the
+only way the agent can look at its own work. It performs no HTTP, loads no asset,
+evaluates no received text and writes nothing to the place: it reads geometry and
+returns base64 RGB. It requires no edit consent and opens no undo recording, and the
+target it renders is resolved by the same allowlisted resolver every other read uses.
+
+The port is held to its original by `tests/render-parity.test.mjs`, which runs
+`apps/plugin/tests/render.spec.luau` and `rasteriser.spec.luau` — unmodified — against
+this copy, and proves it can go red by mutating the measured framing distance. That
+matters because the worker's critic, `apps/worker/src/composition.ts` and
+`packages/evals/src/render-scene.mjs` were all calibrated against those exact pixels.
+
+If the module is ever dropped from the bundle, the capability report says `render_view`
+is unsupported, the worker withholds `render_view`, `compose_thumbnail` and
+`inspect_visually`, and the run ends "Rendered appearance was not verified". A check
+that did not run must never read as a check that passed.
+
+Bounded checkpoint snapshot restore is implemented behind the
 same edit-consent and checkpoint-integrity fences as the command surface; the exact
 restore path was measured in the disposable r4 Studio proof described below. The local preview now has a current
 `GenerationService:GenerateModelAsync` path for `generate_model`. It accepts the
@@ -51,14 +79,19 @@ old plugin implementation. Do not rename live backend bindings or wire literals.
 With the repository's existing Luau and Rojo installations:
 
 ```sh
-node --test apps/apple-plugin/tests/*.test.mjs
+node --test apps/apple-plugin/tests/*.test.mjs   # 37
 node apps/apple-plugin/scripts/build.mjs
 node apps/apple-plugin/scripts/build-studio-engine-proof.mjs
 node apps/apple-plugin/scripts/build-generation-engine-proof.mjs
 ```
 
 Tests execute source under mocked Roblox APIs. They do not prove live Studio
-permissions, undo behavior or Creator Store eligibility. The binary is a local
+permissions, undo behavior or Creator Store eligibility. `build.mjs` ends by reading the
+BUILT artifact rather than the source (`scripts/verify-artifact.py`): the legacy build
+once shipped `VERSION = "0.1.0"` with zero occurrences of `GenerateModelAsync` while its
+source had generation, and every test was green because every test read the `.luau`.
+
+The binary is a local
 preview, not a released replacement. Do not change public install links until a
 new, policy-compliant distribution has actually been accepted and verified.
 

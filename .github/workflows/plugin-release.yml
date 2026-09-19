@@ -1,6 +1,25 @@
 name: Plugin release
 
 # ===========================================================================
+# STALE TARGET — READ BEFORE TAKING THIS WORKFLOW'S ARTIFACT.
+#
+# This job still builds `apps/plugin`, which as of 2026-09-19 is NOT the plugin
+# this product ships. The shipped plugin is `apps/apple-plugin`; the legacy one
+# compiles text received over HTTP into a ModuleScript and requires it
+# (`apps/plugin/src/Ops.luau:521`), which is the pattern the Creator Store asset
+# requirements prohibit and the most likely reason the previous asset was
+# removed. See `apps/plugin/README.md` and `docs/PLUGIN-RELEASE.md`.
+#
+# Retargeting is a real change, not a path substitution: the version step below
+# parses `apps/plugin/src/Version.luau`, and the new plugin declares its identity
+# as PLUGIN_VERSION/PLUGIN_PROTOCOL in `apps/apple-plugin/src/Bridge.luau`. It
+# also needs `apps/apple-plugin/scripts/verify-artifact.py`, which reads the BUILT
+# bytes. Until someone does that and watches this workflow run green, build
+# locally with `node apps/apple-plugin/scripts/build.mjs` and do not publish what
+# comes out of here.
+# ===========================================================================
+
+# ===========================================================================
 # TWO WORKFLOWS SHARE THE WORD "BUILD". THEY ARE NOT THE SAME THING.
 #
 #   DEVELOPMENT (us, this file, and one irreducible human step)

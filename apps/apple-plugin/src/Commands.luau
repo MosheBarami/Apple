@@ -3031,6 +3031,37 @@ local function loadGenerationAdapter(options: any, gameRef: any): (any?, string?
 	return adapter
 end
 
+--[[
+	THE RENDERER IS LOADED THE SAME WAY THE GENERATION ADAPTER IS, AND FOR THE SAME REASON.
+
+	`render_view` is the only operation that returns PIXELS, and the worker's whole visual gate —
+	`render_view`, `compose_thumbnail`, `inspect_visually` and the automatic critique in SessionDO —
+	stands on it. Studio gives a plugin no viewport readback at all (ThumbnailGenerator is not a
+	valid service and CaptureService's callback never fires in edit mode, both measured against live
+	Studio), so a software rasteriser is the only way those pixels exist.
+
+	What matters here is that a build WITHOUT the module says so. If `Render.luau` is missing from
+	the bundle, this returns a named reason, the capability report says `render_view` is
+	unsupported, and the worker withholds all three tools and tells the user the rendered appearance
+	was not verified. The alternative — a handler that fails at execution time — would let the agent
+	spend a step discovering per-call what the pairing could have known once.
+]]
+local function loadRenderAdapter(options: any): (any?, string?)
+	if options.render ~= nil then
+		if type(options.render) ~= "table" or type(options.render.capture) ~= "function" then
+			return nil, "the injected renderer is malformed"
+		end
+		return options.render
+	end
+	local loaded, module = pcall(function()
+		return require(script.Parent.Render)
+	end)
+	if not loaded or type(module) ~= "table" or type(module.capture) ~= "function" then
+		return nil, "the bounded software renderer is not bundled in this build"
+	end
+	return module
+end
+
 local function discardGenerated(adapter: any, model: any)
 	if model == nil then return end
 	if adapter and type(adapter.discard) == "function" then
@@ -3228,8 +3259,69 @@ local function runGeneration(
 	return { id = id, ok = true, data = data, durationMs = math.max(0, math.floor((nowSeconds() - started) * 1000)) }
 end
 
+--[[
+	RENDERING IS A READ. It walks Workspace, projects boxes and returns base64 RGB; it opens no
+	undo recording, touches no property and needs no edit consent, which is why it sits with the
+	other reads rather than in MUTATING.
+
+	The target is resolved by `resolvePath` — the same allowlisted resolver every other read uses —
+	so a render cannot reach anywhere a `get_tree` could not. The renderer itself is handed the
+	resolved Instance and the two services it needs; it has no reach of its own.
+]]
+local RENDER_VIEWS = { hero = true, front = true, side = true, top = true, eye = true, all = true }
+
+local function renderCapture(self: any, op: any, view: string, width: number, height: number): (any?, string?, string?)
+	if not self.render then
+		return nil, "refused", self.renderError or "the bounded software renderer is unavailable"
+	end
+	if not RENDER_VIEWS[view] then
+		return nil, "invalid", ("view must be one of hero, front, side, top, eye or all, not %s"):format(tostring(view))
+	end
+	local w, wErr = safeCount(width, 288, 48, 320, "width")
+	if not w then return nil, "invalid", wErr end
+	local h, hErr = safeCount(height, 180, 32, 240, "height")
+	if not h then return nil, "invalid", hErr end
+
+	local scene = serviceFrom(self.game, self.options.services, "Workspace")
+	if not scene then return nil, "refused", "Workspace is unavailable" end
+	local root: any = scene
+	local subject = "game.Workspace"
+	if op.target ~= nil then
+		local resolved, canonical, err, pathKind = resolvePath(self.game, self.options.services, op.target, false)
+		if not resolved then return nil, pathKind or "not_found", err end
+		root = resolved
+		subject = canonical :: string
+	end
+
+	local lighting = serviceFrom(self.game, self.options.services, "Lighting")
+	local ok, result = pcall(function()
+		return self.render.capture(root, subject, view, w :: number, h :: number, { scene = scene, lighting = lighting })
+	end)
+	if not ok then return nil, "internal", tostring(result) end
+	if type(result) ~= "table" then return nil, "internal", "the renderer returned no result" end
+	-- The renderer reports "nothing renderable found under ..." as data rather than raising. That
+	-- is a real answer about the place, not a fault, and it is returned as a NAMED failure so the
+	-- agent is told the frame is empty instead of being handed a picture of the sky.
+	if type(result.error) == "string" then return nil, "not_found", result.error end
+	return result, nil
+end
+
+local function handleRenderView(self: any, op: any): (any?, string?, string?)
+	local view = if op.view == nil then "hero" else op.view
+	if type(view) ~= "string" then return nil, "invalid", "view must be a string" end
+	return renderCapture(self, op, view, op.width, op.height)
+end
+
+local function handleScreenshot(self: any, op: any): (any?, string?, string?)
+	-- Kept for compatibility with senders older than the multi-view protocol: one hero frame at the
+	-- default size. It is the same code path, not a second one.
+	return renderCapture(self, op, "hero", nil, nil)
+end
+
 local HANDLERS = {
 	ping = function(_, _) return opPing() end,
+	render_view = handleRenderView,
+	screenshot = handleScreenshot,
 	get_tree = handleTree,
 	get_instance = handleInstance,
 	list_scripts = handleListScripts,
@@ -3262,8 +3354,6 @@ local HANDLERS = {
 	local UNSUPPORTED = {
 		run_code = "run_code is intentionally unavailable in this readable plugin: received text is never loaded, required or executed inside Studio",
 	run_mode = "run_mode is not supported by this independent Apple plugin build; start and stop tests in Studio",
-	render_view = "render_view is unavailable because this independent build does not yet contain the bounded software renderer",
-	screenshot = "screenshot is unavailable because Studio plugins have no direct viewport readback and this build has no verified software renderer",
 	insert_asset = "insert_asset is intentionally unavailable in this build; no remote asset loader is exposed through the command bridge",
 	inspect_model = "inspect_model is unavailable in this build because the verified model-quality gate is not present",
 }
@@ -3313,6 +3403,7 @@ function Commands.new(options: any?): any
 		activeGeneration = nil,
 	}
 	self.generation, self.generationError = loadGenerationAdapter(opts, gameRef)
+	self.render, self.renderError = loadRenderAdapter(opts)
 	self.editor = opts.editor or serviceFrom(gameRef, opts.services, "ScriptEditorService")
 	self.history = opts.history or serviceFrom(gameRef, opts.services, "ChangeHistoryService")
 	self.runService = opts.runService or serviceFrom(gameRef, opts.services, "RunService")
@@ -3489,6 +3580,15 @@ function Commands.capabilities(engine: any): any
 			status = "unsupported",
 			reason = capabilityReason(engine and engine.generationError, "GenerationService is unavailable in this Studio session"),
 		}
+	end
+
+	-- Same rule as generate_model: report whether the MODULE is bundled, which is fixed for the
+	-- life of this build, not whether one render happened to succeed. A build with no renderer
+	-- withholds the worker's whole visual gate, and says which operation caused it.
+	if engine == nil or engine.render == nil then
+		local reason = capabilityReason(engine and engine.renderError, "the bounded software renderer is not bundled in this build")
+		byName.render_view = { op = "render_view", status = "unsupported", reason = reason }
+		byName.screenshot = { op = "screenshot", status = "unsupported", reason = reason }
 	end
 
 	-- `execute` checks UNSUPPORTED before every other dispatch path, so an explicit refusal wins if
