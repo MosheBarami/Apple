@@ -1,0 +1,596 @@
+{
+  "schema": "apple-handoff-execution-contracts-v1",
+  "prepared_at": "2026-09-19",
+  "purpose": "83 derived execution contracts; not a replacement for the full 1200-item checklist or a measured completion percentage.",
+  "must_reconcile_with": [
+    "original Claude conversation",
+    "FINISH-THE-PRODUCT.md",
+    "CHECKLIST-V2.md",
+    "FEATURES.json",
+    "GATES.md",
+    "current decisions and evidence"
+  ],
+  "contracts": [
+    {
+      "id": "R01",
+      "title": "הרשמה, אימות וכניסה אמיתיים",
+      "execution_contract": "המסלול מתחיל באתר הציבורי ומסתיים בפרויקט שמיש, לא במסך תודה. בדוק אימייל/סיסמה, אימות אימייל, שליחה חוזרת, קישור שפג, איפוס סיסמה, redirect בטוח, session restoration ו־sign-out. מסלולי recovery חייבים לשמר את היעד המקורי בלי open redirect, וללא גילוי מיותר אם כתובת קיימת. המנגנונים מתועדים במאסטר ובצ'קליסט, אך S07 הוכיח רק session קיים שנפתח מחדש, לא הרשמה חדשה. [S02, S05, S07]\n\nהבדיקה הנדרשת היא עם חשבון QA בשליטת הבעלים ודרך ממשק רגיל: הרשמה, קבלת הודעת אימות בפועל, כניסה, יצירת פרויקט, reload, logout/login וחזרה לפרויקט הנכון. בדוק גם error, offline, קישור משומש ופקיעת session. אל תשלוף או תדפיס סיסמאות קיימות; השתמש במנגנון סודות מתאים. הסוכן רשאי להגדיר OAuth/API לצורך הפרויקט במנדט הנוכחי, אך לא להמציא אישור אימייל או להתחזות לחשבון לקוח.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R02",
+      "title": "חלופות כניסה וקישור זהויות",
+      "execution_contract": "במקורות הרחבים הופיעו passwordless, social sign-in, identity linking/unlinking ו־passkeys. יש להשלים inventory מול הצ'קליסט והחלטות Claude; לא להכריז שכולן כבר קיימות כי Supabase מותקן, ולא להסיר אותן אוטומטית כי גרסה ישנה לא מימשה אותן. בחר מסלולים נתמכים ומוגדרים בחשבונות האמיתיים, החזר משתמש לאותו account/project, ושמור על הגנה מפני קישור זהות של אדם אחר או הסרת אמצעי הכניסה האחרון.\n\nכל כפתור provider שנשלח לייצור צריך להשלים authorize→callback→session→project access, לרבות ביטול הרשאה, שגיאת provider וקישור פג. אם provider דורש review או secret שטרם קיים, הכפתור אינו מושלם. אל תוסיף SSO ארגוני/seat layer כנגד החלטת single-user; בדוק אם פריט enterprise בצ'קליסט נשאר מחויב למרות היעדר tenancy ויישב אותו במפורש, בלי להרחיב את המוצר למערכת ארגונית שאינה מבוקשת.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R03",
+      "title": "MFA, recovery ופעולות רגישות",
+      "execution_contract": "העבר תרחיש TOTP enrollment מלא, challenge, login בדרגת assurance המתאימה, הסרת factor עם reauthentication ושחזור במקרה שאובד authenticator. אם recovery codes או passkeys נשארים scope פעיל, עליהם להיות שימושיים בפועל ולא קודים שניתן ליצור אך אין route שמכבד אותם. self-service recovery הוא תהליך אבטחה, לא טופס קוסמטי. אין לתת service-role access רחב לנתוני כל הלקוחות רק כדי לפתור פעולה צרה של Auth.\n\nבדוק race בין שינוי credential ל־session ישן, reuse של code, clock skew, כשל שליחת recovery, ותהליך שלא מאפשר להסיר את factor האחרון בלי דרך בטוחה להיכנס. פעולות חשבון רגישות צריכות לבקש אימות מתאים מהמשתמש במוצר; אוטונומיה של מפתח אינה מבטלת את gate הזה. אין לסמן “MFA עובד” על בסיס בדיקת pure function בלבד.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R04",
+      "title": "session inventory, הודעות אבטחה ופרופיל",
+      "execution_contract": "מסכי הגדרות צריכים להציג את המידע האמיתי שהמוצר יודע: שם תצוגה, כתובת מאומתת, העדפות, חיבורים, אמצעי אבטחה, אירועים ויכולת יציאה מכל המכשירים. inventory של מכשירים או revocation של session יחיד, אם הם דרישות פעילות, מחייבים מקור סמכות מוגדר. אין להמציא רשימת devices מתוך session יחיד ואין להציג “אין אירועים” כאשר קריאת history נכשלה.\n\nתרחישי הקבלה: שינוי שם נשמר ומופיע בכל shell; שינוי אימייל אינו משנה בעלות על פרויקטים בטעות; הודעת password-changed מגיעה לערוץ המוגדר; mark-read של security history אינו מסמן הודעות run שלא הוצגו; reauth נכשל אינו מאשר פעולה. לאחר כל שינוי, נסה session נוסף וודא שהמצב אינו נתקע בצד לקוח. הימנע מ־profile או billing details שנכנסים אוטומטית לזיכרון המודל.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R05",
+      "title": "onboarding שמוביל לתוצאה",
+      "execution_contract": "הסיור, קישור ההתקנה, prerequisites, pairing והמשימה הראשונה צריכים לפעול כשרשרת. אין לומר “הפלאגין מותקן” כי המשתמש פתח מדריך, ואין לציין “Studio מחובר” על סמך קוד pairing שהוצג. מצב ידוע, unknown, expired ו־disconnected נפרדים. קוד סיור שכבר תוקן משעה את עצמו כש־modal אחר פתוח בלי לסמן את השלב כנקרא; שמור את התיקון. [S03–S05]\n\nלקוח ראשון צריך לדעת מה ניתן לעשות עכשיו, מה העלות/המגבלה האמיתית, ואיך חוזרים אם סגר את המסך. תבנית התחלה היא prompt או recipe בהתאם למימושה, לא sample game אם אין place מוכן. השלם לפחות דוגמה ממשית מהקטלוג הציבורי שהמשתמש יכול לפתוח ולבדוק, בלי mock output או testimonial מומצא.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R06",
+      "title": "מחזור חיים של פרויקט",
+      "execution_contract": "כסה יצירה ריקה, יצירה מתבנית, חיבור ל־place קיים, שינוי שם ותיאור, tags/pinning, חיפוש, archive/restore, duplication, export, delete ו־recovery ככל שהם נשארים scope פעיל. בחלק מהצ'קליסט פריטי tags/pins נותרו מסומנים חסרים אף שה־migrations וה־UI נוספו מאוחר יותר; אל תבנה עמודה שנייה לאותו מושג. המצב הנוכחי חייב להיקרא מ־schema/source/live יחד. [S04–S05]\n\nשינוי שם צריך לעדכן project list, rail, header ו־search בלי לאבד route או draft. duplication חייב להבהיר מה מועתק ומה לא: credentials, pairings, pending runs, usage ו־membership אינם מועתקים סתם. deletion חייב להציג השפעה אמיתית ולפעול באופן שחוזר לכשל ניתוק בלי להודיע שהכול נמחק כאשר רק SessionDO נוקה. existing IDs נשמרים לאורך rebranding והגירות.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R07",
+      "title": "כמה שיחות בפרויקט, revisions וענפים",
+      "execution_contract": "S02 ביקש multiple chats per project, בעוד שמסמכי runtime מאוחרים תיארו conversation=project. אל תתעלם מהסתירה. בדוק אם הבעלים ביטל זאת במפורש בשיחה המקורית. בהיעדר ביטול, הוסף conversation identity נפרדת באופן מדורג: כל history ישן מקבל שיחה ראשית; draft, cursor, pagination, attachments ו־run ownership נקשרים לשיחה; memory/Studio place יכולים להישאר ברמת project לפי החוזה. [S02, S05]\n\nעבודה משתי שיחות באותו place אינה מתירה שתי mutations מתחרות ללא נעילה ותזמון. branching/edit-resend חייבים לשמר מקור, revisions וראיות גם אם המשתמש בוחר נתיב שיחה אחר. “עריכה” לא צריכה למחוק את ההיסטוריה היחידה של מה שכבר קרה בעולם. בדוק deep link לשיחה, שיחה חדשה בזמן run, חזרה להיסטוריה ישנה ו־stale socket משיחה שנעזבה. תן ללקוח דרך להבין איזה run שייך לאיזו שיחה ולמה.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R08",
+      "title": "שיתוף לפי פרויקט ולא tenancy חדש",
+      "execution_contract": "כסה invitations, role selection, expiry, pause/reactivate, revoke, guest links, pending/accepted states, audit ו־impact preview לפי הדרישות שנותרו פעילות. הסמכות היא server/RLS, לא רשימה שנטענה בעבר בדפדפן. role downgrade במהלך run, לינק שפג, הזמנה משומשת וסוכן רקע חייבים לכבד אותה סמכות. [S04–S05]\n\nבדוק owner, editor, viewer וזר בשתי תצורות פרויקט נפרדות. אין owner דרך role field של membership אם ownership מוגדרת בעמודת owner. קישור ספציפי למשאב אינו הופך אוטומטית לגישה לכל הפרויקט. יש לשמר את ההבחנה בין “משאב לא קיים/לא נגיש לזר” לבין “משתף מוכר חסר יכולת”. כפתור הזמנה שנראה יפה אך אינו מוסר invite לאדם או מאפשר redeem אינו מסלול הזמנה מלא.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R09",
+      "title": "ניווט, layouts ומצב שחלון חוזר אליו",
+      "execution_contract": "ה־shell צריך להישאר יציב בשינוי route, בגודל צר ובכשל רכיב. back/forward, deep links, command palette, project context, dialogs, drawers, settings ו־usage אינם מנותקים זה מזה. מסך כשל של route משאיר דרך ניווט פעילה ולא מפיל את כל האפליקציה. אין אזור לחיץ חסר label או שכבה שקופה החוסמת composer.\n\nמצב drawer/sidebar שנשמר חייב להיות נקרא דרך validator של גרסה נוכחית; בחירה ישנה של תצוגה שכבר נמחקה לא תיצור מסך ריק. בדוק refresh בתוך deep link, route לא מוכר, היעדר פרויקטים, מאות פרויקטים, שם ארוך בעברית ושילוב טקסט באנגלית. keyboard order נבחן דרך הפעלה אמיתית, לא רק regex שמחפש aria-label.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R10",
+      "title": "חיפוש ומשאבים ניתנים לגילוי",
+      "execution_contract": "חיפוש צריך לחבר שיחות, הודעות, קבצים, artifacts, checkpoints, assets ומידע פרויקט שניתן לגשת אליו. כאשר פריט דורש global search across projects, אל תסתפק ב־filter מקומי של שמונה recents. טווח תאריכים, tags, type, author, relevance, snippets ו־saved views, אם כלולים ב־scope, צריכים להיות תואמים לנתוני הסריקה ולהרשאות. אין להציג ספירה מלאה כאשר backend סרק רק חלון.\n\nבדוק תוצאה שמפנה למשאב שכבר שונה או נמחק, query איטית שנעקפה על ידי חדשה, תו עברי/emoji, pagination עם timestamps זהים, ו־permission change באמצע חיפוש. תוצאת חיפוש אינה סמכות לגישה; פתיחת target מאמתת מחדש. אין אפקט צד של כתיבה או inference רק כדי להציג shortlist של קטלוג, אלא אם חוזה המוצר אומר זאת במפורש ומודד עלות.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R11",
+      "title": "טקסט, drafts, mentions ו־IME",
+      "execution_contract": "הקומפוזר שומר draft לפי project/conversation לפני שהמשתמש מאבד ניווט. Send מנקה draft וקבצים רק אחרי שההודעה התקבלה בגבול שהחוזה מגדיר; send שהוחזר false אינו הצלחה. @file ו־Studio selection reference חייבים להוסיף הקשר מדויק בלי להחליף את כל הטיוטה. גבול אורך מדווח לפני חיתוך; אין truncated prompt שמוצג כאילו נשלח במלואו. [S02, S05]\n\nבדוק composition events במקלדות IME, Enter מול Shift+Enter והעדפת send key, paste רגיל מול paste קובץ, עברית/אנגלית/מספרים, caret באמצע טקסט, double click Send, route switch בזמן upload ו־browser reload. תווית dir=auto אינה לבדה בדיקת bidi; בדוק סימני פיסוק וקוד בתוך משפט בעברית. תמוך ב־overflow refusal בלי מחיקת תוכן.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R12",
+      "title": "קובצי פרויקט וקבצים מצורפים",
+      "execution_contract": "הבדל בין project file store לבין attachments שנשלחים להודעה, והסבר אותו ללקוח בלי בלבול עם קובצי ה־Roblox place. Text file limit, MIME, extension ו־binary sniffing צריכים להגיע ממקור סמכות אחיד. הוסף התקדמות upload רק כאשר נמדדים bytes או שלבי שרת אמיתיים. cancellation חייב לטפל גם ב־late successful upload ולמחוק orphan מתאים לפי owner/project המקורי. [S05, S07]\n\nבדוק upload, occupied confirmation, rename/move/copy, folders, versions/revert, preview truncation, download single/archive, trash/undelete, expired trash והפסקת רשת בכל נקודת commit. Files91/91 הוא בסיס regression טוב, אך בדיקות הפעלת כפתורים, download MIME, content hash אחרי reload והקישור לקונטקסט המודל עדיין נדרשות בגרסה המוגשת.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R13",
+      "title": "תמונות נכנסות וראייה",
+      "execution_contract": "תמיכה בתמונה פירושה upload מאובטח, object private, preview, שיוך להודעה ומסלול vision שבאמת מקבל אותה. אין להציג תמונה בקומפוזר ולשלוח למודל רק את שם הקובץ. אם reference conditioning של generator אינו נתמך, על המוצר לומר זאת ולא להציג שהצבע/הצורה נשמרו כתוצאה מקריאת התמונה. routes וחילופי ספק צריכים לשמר context/cost/consent.\n\nבדוק תמונה תקינה, extension מזויף, קובץ גדול, malformed encoding, URL חיצוני זדוני, retry, removal לפני send ושינוי conversation. ראיות צריכות להראות שהתוצר מתייחס לפרט מתוך התמונה ולא רק להנחיית הטקסט. אל תשתמש בצילום של מודל לדמות מסך Studio אמיתי.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R14",
+      "title": "דיבור נכנס",
+      "execution_contract": "Voice input אינו כפתור mic disabled בגרסה הסופית. עליו לכלול הרשאת מיקרופון, recording state ברור, stop/cancel, זמן/מגבלת קובץ, transcription אמיתי, תיקון לפני שליחה ותרגום אופציונלי ומפורש. עברית ואנגלית נדרשות לפי S02; אין להחליף תמיד עברית באנגלית בלי בחירה. silence, permission denied, device missing ו־provider failure מקבלים תוצאה ניתנת לשחזור. [S02]\n\nבדוק הקלטה בדפדפן נתמך, תמלול של שמות Roblox ומונחי Luau, הסכמה לשימוש באודיו ושמירת/מחיקת האובייקט. cancellation לא שולחת משפט חלקי. אין הכפלת חיוב כשאותה הקלטה נשלחת מחדש אחרי disconnect, ואין טענה של transcription אם הופעלה רק אנימציית waveform.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R15",
+      "title": "קול יוצא וקול ממשק",
+      "execution_contract": "TTS, כאשר מופעל, קורא תוכן שימושי דרך ספק אמיתי, עם play/pause/stop, interruption ו־mute. אין autoplay ארוך בכל תשובת build. סיום קולי של run מתרחש רק אחרי terminal outcome נכון; stopped או partial אינם נשמעים כהצלחה. קול המותג צריך להיות מקורי/מורשה ולא asset שנלקח ממתחרה. [S02]\n\nבדוק הפסקה באמצע, מעבר route, שני players לא מתחרים, reload של artifact נשמר, MIME/extension נכון ו־permission failure של playback. הפרד בין אודיו שמנגנים באתר לבין Sound שאושר וניתן להשמעה בחוויית Roblox.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R16",
+      "title": "תשובות, streaming, קוד ומקורות",
+      "execution_contract": "תשובה צריכה להופיע בהדרגה כאשר provider תומך בכך, אך אין לייצר streaming מזויף של טקסט שכבר נכשל. סמן finish reason אמיתי, continuation/truncation, partial results, tool failures ו־provider outage. markdown עובר sanitization; קוד נשאר LTR, מועתק בדיוק ומוצג עם filename/context ברורים. citation אינו קישור דקורטיבי: הוא קשור לידע שנשלף ולגרסה המתאימה. [S02, S05]\n\nשמור scroll כשהקורא חזר למעלה, והצע חזרה לקצה החי בלי למשוך אותו לכל delta. פרטי thinking/evidence סגורים כברירת מחדל, לא raw private reasoning. בדוק code fence שטרם נסגר, reply ארוך, טבלה רחבה, citation unavailable, XSS בתוצאת tool ו־reply שהסתיים ב־length. אין לפענח tool call מתוך prose באופן העוקף capability/permissions.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R17",
+      "title": "חוזה Apple/MAX וסמכות הזכאות",
+      "execution_contract": "מקור אמת לזכאות הוא subscription state סמכותי בצד השרת. admin, email, owner status או יתרת מיליארד Credits אינם מנוי. חסר/לא תקין `productModel` אינו bypass. free Apple במצב Agent משתמש במודל Apple ובכלים שמותרים לו; MAX ב־Plan שומר foundation של MAX בלי פתיחת write tools. [S05]\n\nהרץ matrix של כל productModel × autonomy × entitlement × connection/capabilities, כולל invalid/omitted values. בדוק route של chat, edit/resend, retry, queued request, resumed run, public API ו־automation; לא רק picker. UI צריך להציג למה אפשרות לא זמינה, אך launch דורש מסלול רכישה אמיתי במקום unavailable קבוע. model IDs, aliases ו־actual provider attribution צריכים להגיע משכבת serving, לא מטקסט שהדפדפן המציא.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R18",
+      "title": "בחירת frontier מבוססת עבודה",
+      "execution_contract": "בחר מודלים לפי תוצאות Apple בפועל: שימוש מדויק בכלים, תכנון multi-file, Luau, מרחב, הבנת תמונה, תיקון מתוך errors, שמירת הקשר, הוראות בעברית והימנעות מטענות completion לא נכונות. השווה foundations זמינים באמת במועד העבודה ותיעד מזהה מדויק/גרסה, structured tool support, context, output limits, streaming, concurrency, latency, privacy וזכות לשימוש מסחרי. אין במסמך זה דירוג עדכני של כל המודלים בשוק. [S02; דרישת בעלים חדשה]\n\nבדיקה קצרה על קוד טהור אינה מספיקה למודל בנייה. דרוש benchmark של trajectories עם request→context→tools→Studio→tests→visual critique→repair. מדוד הצלחה per task, לא per assertion שקל לפצל לאלף נקודות. כל truncation, unsupported tool, engine error או היעדר output נשארים במכנה. בחר מודל חזק ואמין לתפקיד ולא קיר של שמות שנראה מרשים.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R19",
+      "title": "routing, fallback ויכולת לפי modality",
+      "execution_contract": "primary, fallback ו־specialist צריכים להיות קטנים, מפורשים וניתנים לבדיקה. אין צורך בעשרות adapters לא בשימוש. fallback שונה במודל/יכולת/מחיר חייב להופיע בתוצאה או ברישום המתאים; משימת vision אינה יורדת ל־text-only בשקט. timeouts, rate limits, connection failure, content refusal ו־tool-call parse failure אינם כולם “unknown error”. [S02]\n\nבדוק bounded retries רק כאשר outcome ידוע ובטוח, reservation release לפני inference שלא התחיל, settlement כאשר provider ביצע למרות timeout, והגנה מפני duplicate invoke. continuation משתמש באותו חוזה run/scope; לא מחדש entire task כדי להחליף provider. בידוד קריאות בדיקות אינו הופך שימוש פרטי ב־Claude Max או session שנלכד ב־HAR לזכות serving לציבור.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R20",
+      "title": "context יעיל ולא סריקה חוזרת",
+      "execution_contract": "greeting ושאלה כללית לא חייבים לפתוח project tree. תיקון script נבחר צריך targeted read עם base hash ותלויות רלוונטיות; בנייה רחבה דורשת summary, slots ומפה עדכנית. cache invalidation אחרי rename/delete/restore הוא חלק מהנכונות, לא אופטימיזציה אופציונלית. אל תכניס את כל corpus ל־SYSTEM prompt ואל תשחזר בכל סיבוב אותם ציטוטים. [S02]\n\nמדוד repeated tree reads, bytes/tokens שנקראו, tool round trips, context truncation והצלחה תחת budget מצומצם. בצע אופטימיזציה מול baseline task זהה. אם ה־prompt נחתך, הצג מה נפל ובאילו השלכות, ולא תשובה בטוחה כאילו הכול נשמר. user instructions ו־untrusted retrieved output מקבלים גבולות נפרדים.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R21",
+      "title": "שימוש, קיבולת וכלכלה אחרי ביטול התקרה",
+      "execution_contract": "תקציב הפיתוח החדש אינו מכסה על unit economics חלשה של המוצר. מדוד cost per verified completion כולל model, embedding, rerank, vision, image/3D/audio, storage, retries ו־idle compute. הצג תרחישי עומס סבירים עם הנחות מפורשות, והשווה primary/fallback/specialist. אין להבטיח free/unlimited creation לציבור מתוך יתרת בעלים חריגה. [S02; דרישת בעלים חדשה]\n\nהמשך להשתמש ב־ledger, reservations, per-run bounds, runaway detection ומנגנון עצירת משאבים. הסר את cap הישן מן המדיניות הנוכחית רק אחרי התאמת החשבון והכלים, לא באמצעות מחיקת guard בכל route. אל תחליף cap20 ב־cap אחר שלא התבקש; החלטות הקצאה פנימיות נרשמות כאמצעי תפעולי עם עלות מוערכת/בפועל. הקם budget alerts ותור עם backpressure כדי שמשתמש אחד או agent loop לא ישביתו את כולם.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R22",
+      "title": "זיכרון פרויקט עם מקור ומצב",
+      "execution_contract": "זיכרון יודע להבדיל בין רעיון, בקשה, הנחה, יישום חלקי, שינוי שבוצע ותוצאה שנבדקה. greeting מאוחר לא סוגר build כושל. fact על object שהשתנה/נמחק/שוחזר צריך invalidation או version association. משתמש יכול לצפות, לערוך, למחוק ולכבות memory; review mode צריך ממשק אישור/דחייה עובד. [S02, S05]\n\nבדוק preference precedence, expiration בזמן read, source attribution, duplicate facts, proposed facts ו־sensitive content. אין להפוך prompt injection במסמך פרויקט להוראת SYSTEM. אין לאמן מודל אוטומטית על memory שהמשתמש רצה רק לשמור לפרויקט. נתוני billing/credentials אינם memory למודל.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R23",
+      "title": "מפת מכניקות ו־project understanding",
+      "execution_contract": "המאסטר המקורי דרש mechanics map ולא רק roadmap שנוצר מטקסט. קשר object/script/system למשימות, תלויות, מצב verification ותוצאות. nodes צריכים להצביע על הראיות והמקורות הנכונים; מנגנון שהוזכר בשיחה אך לא הותקן לא מסומן implemented. שינויים במפה צריכים להיות בעלי סמנטיקה ברורה: שינוי התוכנית אינו ביצוע mutation בעולם. [S02]\n\nבדוק import של place קיים, rename/move של script, failed install, checkpoint restore, שתי שיחות באותו project ומידע outdated. map ריקה אמיתית שונה מ־scan failure. suggestions נובעות מן המצב והבקשה, לא מהרחבה אוטומטית של דלת לבית או של shop למשחק חדש.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R24",
+      "title": "corpus, ingestion ו־retrieval",
+      "execution_contract": "מלאי מקורות לפני הורדות: Creator docs/API definitions, Luau docs/source, ארכיונים מקומיים קיימים, APIs של Studio וכלי plugin נתמכים, examples/recipes מאומתים ומקורות חיצוניים מותרים. לכל chunk תעד source URL/repository, revision, license, retrieval date, extraction method ו־symbol relationships. סעיף security context או deprecation אינו נמחק כדי להקטין tokens. [S02–S05]\n\nה־retrieval צריך exact symbol לצד semantic search, עם ranking שנבדק על שאלות אמיתיות ו־freshness. מדוד recall/usefulness, ציטוט מקור שגוי, silent empty corpus ו־stale deleted sources. ingestion לא מסיים ב־“הועלו N chunks”; ודא manifest, sample queries דרך route פעיל ושלמות indexed data. אל תכפיל ארכיונים או לדרוס index פעיל עם corpus ריק כי נתיב input השתנה.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R25",
+      "title": "ספריית skills ו־genre references",
+      "execution_contract": "217 skills מתועדים הם 65 foundation, 72 mechanic ו־80 genre; pointers של guidance אינם prefab מוכח. references מתועדים כוללים low-poly maps, HUD/shop/inventory, materials, lighting ו־interaction; אין זכות copy או training רק משום שתמונה זמינה ציבורית. runtime tool חייב להחזיר preconditions, steps, verification, failure modes, rights ומצב coverage תחת cap, ולומר מה נשמט. [S04–S05]\n\nבדוק `search_creation_skills`, `read_creation_skill`, `get_genre_kit` וה־genre reference guide מתוך run אמיתי: tool פעיל בכל mode רלוונטי, finite output, unknown filter rejection, no fabricated source ו־no visual-pass claim. הרחב לז'אנר שלא מכוסה כשהמשימה דורשת זאת; עשרה IDs אינם מכסת מוצר. מאגר “מאות” צריך להועיל לפתרון משימות, לא להיות אותה הנחיה משוכפלת בשם חדש.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R26",
+      "title": "state machine אמיתי",
+      "execution_contract": "request, run, step, tool invocation, message, conversation, project ו־scene revision אינם אותו identifier. החוזה צריך להבהיר accepted/preparing/running/waiting/paused/cancelling/completed/partial/failed/cancelled, בהתאם למה שממומש בפועל. state transitions נשמרים לפני שפעולה בלתי הפיכה יוצאת, ו־terminal state אינו מתחלף על ידי result מאוחר. [S02, S05]\n\nבדוק crash בין reservation ל־invoke, בין Studio delivery ל־result, בין result ל־persistence ובין persistence ל־broadcast. timestamp משותף אינו tiebreaker מספק ל־history. pending op שנשלח כבר לא נחשב שלא בוצע בגלל שה־waiter אבד. כשאי אפשר לדעת, המוצר מסמן uncertainty ומבצע reconcile לפני retry של mutation.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R27",
+      "title": "תור בקשות ושיחות בזמן build",
+      "execution_contract": "לקוח צריך לכתוב request הבא בזמן ריצה, לערוך/להסיר/לסדר תור ולראות למה הוא ממתין. queue נפרדת מ־draft ונשמרת לפי project/conversation; אין autosend של טיוטה אחרי reload בלי שהיה queue intent. פעולות על אותו place מתוזמנות ללא כתיבה מתחרה, גם משיחות שונות. [S02]\n\npaused reasons כוללים connection, permission, quota, review, model unavailable ו־conflict; reason צריך להתעדכן מהסמכות ולא להישאר stale. בדוק שתי לשוניות, reorder בזמן enqueue, disconnect לפני admission, repeated enqueue עם אותו id ו־cancel של פריט שטרם רץ. הסר stale context או בדוק מחדש לפני run חדש במקום ליישם target paths ישנים.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R28",
+      "title": "אישור פעולה והרשאות כלים",
+      "execution_contract": "standing allow/ask/deny, approval חד־פעמי, role authorization ו־plugin capability הם שכבות נפרדות. ask אינו allow. אם עדיין אין waiting-for-user state, אין לבצע פעולה שהוגדרה ask; interim refusal אמתית עדיפה על עקיפת הסכמה, אך מסלול אישור פעיל שנותר scope חייב להיות מושלם עד release. [S02, S05]\n\nהצג target מדויק, שינוי צפוי, מחיר/טווח כשידוע, השפעה הרסנית ודרך חזרה. approval קשור ל־run/step/tool/args hash ולגרסת target; שינוי plan/args מבטל אישור ישן. בדוק reuse, expiry, consent withdrawal, late click ו־different project. אישור בעלים למפתח אינו מכניס grant קבוע ללקוחות או לפלאגין שלהם.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R29",
+      "title": "ביטול בטוח ומצב stopping אמיתי",
+      "execution_contract": "Click Stop אינו server acknowledgement. במצב המתועד הלקוח שלח stop והמתין לתוצאה terminal; אין להציג “הביטול התקבל” כאילו התקבל אם אין wire event כזה. השלם בקשת stop שנשמרת במפתח שאינו נדרס ב־tail write, ack נכון, ביטול queued ops, fenced late provider/artifact results ו־settlement של עבודה שבוצעה. [S05]\n\nבדוק stop לפני run, בזמן provider call, בזמן פעולה שכבר נמסרה ל־Studio, בזמן upload, generation ובזמן reconnect. לא כל API יכול לבטל חישוב מרוחק שכבר התחיל; במקרה כזה המוצר מפסיק שימוש/הצבה בתוצר לפי האפשרי, מסמן מצב ועלות בפועל ומנקה late artifact בטוח. אין להבטיח שהעולם הוחזר לאחור אם רק התור נוקה.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R30",
+      "title": "resume, retry ו־failure recovery",
+      "execution_contract": "שחזר partial outcome לפני ניסיון נוסף. דלת שחלקיה קיימים אינה נבנית שוב בשם חדש רק משום שהתגובה HTTP נכשלה. resumed run מקבל scene/pairing/capability/permission version עדכני ומוודא שהלקוח עדיין זכאי. current history merge חייב לשמור live terminal metadata ולא להחיות row ישן אחרי rest hydration. [S02, S05]\n\nבדוק socket disconnect וחזרה, browser refresh, Worker eviction, expired token, Studio restart, project switch ושני reconnects בסדר הפוך. retry של read שונה מ־retry של purchase/edit. deny/revoke לא נעלמים כי המשתמש קיבל grant חדש לאחר שה־run הישן כבר נפסל. מידע שנשמר חלקית מוצג חלקית, לא נעלם ולא משווק כשלם.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R31",
+      "title": "build, הפצה ציבורית והתקנה",
+      "execution_contract": "`apps/apple-plugin` הוא המימוש העצמאי שנבחר, לא binary ישן עם label חדש. כל קוד שהפלאגין מריץ קריא וגלוי; אין hidden loaders, remote require או הרצת קוד שרירותי ב־plugin context כדי לעקוף מגבלות. התקנה מקומית, build מוצלח ו־Creator Store approval הם שלושה מצבים שונים. ה־asset הישן `132128477945417` הוסר עם סיבת moderation מתועדת; לא מפיצים אותו מחדש במסווה. [S03–S05]\n\nלקראת שחרור נדרש מסלול הפצה מורשה שמפתח רגיל יכול להשתמש בו, עם package identity/hash, הוראות פשוטות, תאימות, update/removal וחוזה permissions. יש לבדוק הורדה/התקנה בפועל מהמסלול הציבורי, לא רק להעתיק קובץ פנימי למחשב המפתח. מקור פרטי יכול להישאר פרטי; public product אינו אוטומטית public repository.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R32",
+      "title": "pairing, place identity והסכמה לעריכה",
+      "execution_contract": "pairing code קצר־חיים וחד־פעמי, project/place שמוצגים בשני הצדדים, superseded-token fencing, disconnect ו־expiry, והסכמה דו־שלבית לכל connection לעריכות. החיבור מזהה unsaved place כלא מזוהה מספיק ולא כמקום אחר בוודאות. הודעת “מחובר” מבוססת heartbeat/handshake, ו־edit permission אינה חוזרת אוטומטית אחרי Test→Stop. [S05]\n\nבדוק token ישן שעדיין poll בזמן pair חדש, שני Studio instances, wrong place, expired code, reused code, native HTTP permission prompt ו־disconnect מתוך UI. candidate lifecycle fix שנחסם להתקנה נשאר candidate; אין להעביר את pass שלו ל־installed build. תן תהליך recovery ברור בלי לגרום ללקוח לשתף token בצ'אט.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R33",
+      "title": "capabilities והפעלה בטוחה",
+      "execution_contract": "ה־plugin מדווח abilities בפורמט מתוחם ולא אמין. SessionDO שומר אותן לאותו pairing/restart, מנקה בחיבור חדש ומגן מפני report מאוחר של token הישן. effective allowed set מחושב אחרי mode והרשאות המשתמש ומשמש tool definitions, recovered tool calls, direct calls, auto inspection ו־recovery. רק שמות שה־Worker מכיר נכנסים ל־SYSTEM note. [S05]\n\nבדוק plugin ללא screenshots, ללא run_luau, עם schema malformed ועם capability שהוסרה. tool שהתבקש אך אינו נתמך חייב לייצר כשל מפורש ומוגבל, לא להיעלם ולא להשאיר completion ירוק. מסלול generate/inspect אינו רשאי לטעון render/visual pass אם אין אפשרות לכידת ראיה מתאימה.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R34",
+      "title": "typed operations, conflicts, Undo ו־restore",
+      "execution_contract": "validate input לפי allowlist של classes/properties/data types, finite numbers, byte/node/depth caps, paths ו־source ingress. create/move/delete/transform צריכים להיות atomic ככל שהחוזה מבטיח ולהחזיר partial fields כאשר לא. Script writes משתמשים ב־baseHash וב־ScriptEditor transaction; שינוי מחוץ למוצר אינו נדרס בשקט. mutation ללא ChangeHistory recording שנדרש על פי החוזה לא רצה “בכל זאת”. [S05]\n\nrestore r4 הוא ראיה native חיובית חשובה, עם detachment ולא Destroy. שמור exact captured engine comparisons, roots protected/skipped, actual counts, script/source fidelity, Undo/Redo/Cancel ו־rollback failure. בדוק source_file דרך אותה שרשרת validation: גרסה חיובית מדויקת, project-scoped KV, בלי latest fallback ובלי inline/source_file ambiguity.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R35",
+      "title": "media ו־viewport אמיתיים",
+      "execution_contract": "המאסטר דרש Studio viewing path שימושי. תמונת viewport אמיתית, browser preview של model ו־software raster diagnostic אינם אותו מוצר. הגדר provenance בשדה, timestamp, runId, projectId ו־scene revision כשנדרש. stale/disconnected/incomplete נתפסים מתוך ראיות התעבורה, לא heartbeat בלבד. [S02, S05]\n\nחפש רק יכולות capture נתמכות וקלות התקנה; companion מורשה ומצומצם עשוי להידרש אם אין native capture מתאים, אך לא כנתיב לעקיפת חסימה ספציפית. אל תקליט שולחן עבודה אישי לא קשור. בדוק authorization למדיה, retention, compression, frame drops, backpressure ו־switch place. screen recording אמיתי של playtest עדיף על mock יפה, גם כשהוא חושף ליקויים שיש לתקן.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R36",
+      "title": "playtest ו־verification",
+      "execution_contract": "הרץ בדיקה של start→actual mode→runtime logs→assertions→evidence→stop→teardown, עם finally ו־recovery. read של button label אינו הוכחה שה־engine נכנס למצב משחק. היעדר error אינו הוכחה שמכניקה עובדת; דרושים inputs ותנאי pass שקשורים לבקשה. [S02, S05]\n\nבדוק שחקן שנכנס/עזב, respawn, server/client separation, multiplayer authority, script compile/runtime errors, warnings, event cleanup, test timeout ו־stop request במהלך test. cases שלא רצו נשארים missing/failed/unverified ולא נעלמים מן הדוח. קבץ תוצאות per run, וקשר screenshot/log/assertion לאותה גרסת place שנבדקה.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R37",
+      "title": "בנייה מרחבית שאינה אוסף קוביות",
+      "execution_contract": "כלי עולם צריכים להיות בעלי units/pivots/bounds/anchors, transforms מקומיים/עולמיים, attachment points, collision groups ו־ownership. שלב גיאומטריה מתוכננת, נכסים מורשים ו־procedural recipes לפי הבקשה; “low-poly” אינו היתר לפרופורציות גרועות, terrain פגום או חזרתיות גלויה. [S02, S04–S05]\n\nבדוק composition בגובה שחקן, line of sight, מסלולי תנועה, spawn בטוח, אזורים נגישים, landings, collision, scale ומצלמה. world detail אינו צריך להיתלות ב־4K textures. אל תשנה תוכן משתמש שאינו חלק מן המשימה כדי לייצר תמונת demo יפה. ה־manifest של output צריך לאפשר targeted follow-up ולא לבנות שוב את כל העולם.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R38",
+      "title": "תרחיש הדלת המחייב",
+      "execution_contract": "בחר reference place, בנה דלת יפה עם frame/panel/pivot/handle, אינטראקציה אמיתית, opening/closing ו־collision בשני המצבים. אחר כך “הרחב”, “הפוך כיוון פתיחה”, “הפוך לדלת מתכת נגררת” ו־“בטל את השינוי”. כל revision נוגע באותו artifact ושומר תוכן לא קשור. [S02]\n\nהרץ וריאציות holdout במקום התאמת prompt יחיד. בדוק spam interaction, שני שחקנים, respawn, lock state, close בזמן player collision, interruption אחרי יצירת חלק מהאובייקטים, reissue של אותו request ו־restore. מדוד first useful update, model time, round trips, retries ועלות לתוצאה עובדת. יעד “בתוך עשרות שניות” הוא שאיפה מן המקור שצריך לכייל במערכת, לא benchmark שכבר הושג.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R39",
+      "title": "Luau, multi-file edits וארכיטקטורת משחק",
+      "execution_contract": "כסה script discovery/read/create/edit, syntax/type/static analysis לפי capabilities אמיתיות, dependency graph, client/server container, remotes, tests, diff, revisions ו־rollback. analyzer heuristic אינו Luau typechecker מלא; תן לו שם נכון. טיפול ב־unknown class/property או deprecated API נשען על docs/trusted API dump עדכניים. [S02–S05]\n\nהפק קוד עם server authority, argument validation, replay/distance guards, bounded loops, cleanup וחסינות לקריאות client זדוניות. אל תייצר remoteEvent שמשנה Currency לפי amount מהלקוח. ב־multi-file edit שמור ordering ותלויות כך שלא נוצרת ביניים גרסה שמוחקת state או שוברת startup. ודא מודולים מותקנים באמת, לא רק מוזכרים בסיכום.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R40",
+      "title": "שמירת נתוני משחק ו־prefab consumers",
+      "execution_contract": "Profile, Currency, Receipts, RemoteGuard ומערכות gameplay צריכים להיבדק ביחד במקום בו הם משולבים. no-save-after-failed-load, current-entry identity, stored-lock ownership, retries, release/commit overlap, cross-server handover, purchase receipt atomicity ו־removed-player cleanup הם invariants לשימור. Local Studio session-only אינו durable production DataStore. [S05, S07]\n\nבדוק failure בכל await, missing lock, same-server reload, foreign-server takeover/release, exhausted retry, double release ו־new session שמסיים לפני callback ישן. בקבלה אמיתית תזדקק לסביבת Roblox מורשית עם persistence נתמך, תוך הפרדת test data מנתוני משתמשים אמיתיים. אל תעלה proof לאותו data namespace של משחק לקוחות.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R41",
+      "title": "מערכת UI ל־Roblox לפי ז'אנר",
+      "execution_contract": "HUD, shops, inventory, quests/objectives, notifications, menus/settings/loading/success/error צריכים להתאים לסגנון וללולאת המשחק. 11 theme profiles או 217 skills אינם 11 חוויות UI שנבדקו. בדוק sizing, SafeInsets, scale, hierarchy, typography, contrast, iconography, selected/focused/disabled/owned/locked states, controller paths ו־touch. [S04–S05]\n\nshop צריך מידע ובחירות אמיתיים, לא panel ענק עם שטח ריק. objective progress לא ידוע נשאר unknown, ולא “0%” שהומצא. notification queue וה־timers מתנהגים לפי state (למשל pause בחנות), cleanup מנתק connections/tweens, ו־respawn לא יוצר UI כפול. הראשי בודק פיקסלים ב־Studio בכל composition מהותי; recoloring אינו redesign.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R42",
+      "title": "Lumen Isles כחוויית יצירה משמעותית",
+      "execution_contract": "שמר את חוויית Lumen במקום לבנות עוד demo גנרי. מקור מתועד כולל Harbour Meadow, Orchard, Tideglass, Cloudrest/Lighthouse, shards, beacons ו־lighthouse completion; World/Client הם source של הראשי. מקור כזה עשיר יותר מבסיס ריק, אך current r2 לא נבנה/נבדק בגלל חסימה. sky-only screenshot האחרון אינו קבלת המשחק. [S05]\n\nלאחר פתרון לגיטימי של גבול הביצוע, בדוק start/menu, navigation, collection, quest feedback, save disclosure, return/teleport, death/respawn, journal/settings, reduced motion, completion, narrow layout ו־controller. חשוב במיוחד לבדוק calls אמיתיים סביב Vector2 atlas operations, ZIndex, variant precedence ו־source/byte caps. חשד source אינו באג מאומת; יש לשחזר. אל תשתמש בצילומי r1 כהוכחה לתיקון r2.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R43",
+      "title": "מעבר מתבנית לבקשה חדשה",
+      "execution_contract": "סוכן טוב צריך ליצור וריאציה שלא נכתבה ב־golden recipe, להבין constraints ולתקן עולם קיים. לאחר התרחישים הידועים, תן למבקר משימות חדשות בגודל סביר: למשל layout אחר, interaction שונה, שילוב inventory/quest או ז'אנר לא מכוסה. המסלול חייב להשתמש בתיעוד ובכלים, לא בהעתקת code fixture קשיח שמזהה מחרוזת prompt. [S02; דרישת איכות הבעלים]\n\nתוצאות נבדקות per task בהיבטי משחקיות, follow-up, authority, persistence, visual composition ו־honesty. הבחירה באיזה ז'אנרים לבדוק היא כיסוי מייצג ומתועד, לא הבטחה לבדוק כל משחק אפשרי. פערים בז'אנרים הנתמכים במוצר נשארים בטווח העבודה ואינם מוסתרים מאחורי screenshot יחיד מוצלח.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R44",
+      "title": "קטלוג assets שימושי ומבוסס מידע",
+      "execution_contract": "חיפוש אמיתי מחזיר shortlist מדורג עם thumbnail כאשר יש, source/creator/license, type, identifier, dimensions/rig/triangles כשנמדדו, מחיר/מגבלה כשידועים וסטטוס שימוש. “Roblox ID recorded” אינו “בטוח להכנסה”. חיפוש avatar catalog אינו בהכרח Creator Store. backend preview helper המתועד הוא opt-in, bounded ובלי העברת credentials ל־upstream; שמור את הגבולות. [S02–S05]\n\nבדוק search→details→preview→reference→insertion באותה משימת משתמש. חיפוש lexical בקטלוג לא מחייב model call, ודפדפן אינו מתחיל build כאשר המשתמש רק מוסיף reference ל־draft. pending/blocked/unavailable/failed image נפרדים. רוחב 320px, שם ארוך, טעינה איטית, stale response לאחר filter change, ו־source link זדוני נכללים בקבלה. מספר assets בבסיס הנתונים אינו מדד איכות, זכויות או insertability.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R45",
+      "title": "זכויות, הורדה, import והצבה אמיתית",
+      "execution_contract": "לכל asset צריך מקור והיתר המתאימים לפעולה המבוקשת: צפייה, הורדה, שימוש מסחרי, שינוי, training, redistribution והכנסה לחוויית Roblox הם דברים שונים. קבצים ציבוריים ותמונות השראה אינם הופכים לנתוני אימון או לנכסים מורשים. אם המחיר אינו אפס, על ה־flow להבדיל בין הרשאה עסקית כללית של המפתח לבין בחירת לקוח במוצר. [S02–S05]\n\nבדוק script stripping/inspection לפי חוזה, asset missing/private/moderated, formats unsupported, pivot/scale/material fidelity ושיוך provenance לפרויקט לאחר הצלחה בלבד. endpoint שהחזיר thumbnail200 אינו insertion proof. קישור download שעלה לתוקף אינו בדיקת bytes; קרא את החומר, בדוק MIME/encoding והוכח תוצאה ב־Studio. לא מפרסמים/מעלים דרך חשבון אחר כדי לעקוף restriction.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R46",
+      "title": "תמונות שנוצרות באמת",
+      "execution_contract": "generate image חייב להחזיר artifact של ספק אמיתי, לשמור model/provider/prompt provenance במינימום הדרוש, להציג/download בפורמט נכון ולשרוד refresh/reconnect. image completion guard לא מאפשר למודל לומר “יצרתי” בלי תוצר. בקשת צבע מפורשת לא נדרסת על ידי defaults אסתטיים, והיסטוריית שיחה אינה מאבדת התמונה אחרי reload. [S03, S05]\n\nבדוק JPEG שנשמר/יורד כ־JPEG, PNG כ־PNG, content-type mismatch, failed provider, artifact byte cap, delete בזמן callback מאוחר, capacity race ו־retention. התמונות ההיסטוריות שפגו לפני שיפור האחסון אינן ניתנות “לשחזור” באמצעות המצאת output דומה. כל וריאציה חדשה מקבלת identity ו־provenance חדשים.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R47",
+      "title": "generation jobs אמיתיים ל־3D",
+      "execution_contract": "המסלול הנדרש הוא prompt/reference/settings→job admitted→provider/engine running→actual geometry→QC→preview→save/variant→download→Studio insertion. הקשר של Cube/GenerationService צריך להיות נכון: engine method אינו הוכחה ל־REST endpoint לאתר, קוד open אינו זכות hosting לכל weights, והיכולת להפיק mesh אינה ריגינג/animation. בדוק את התיעוד והרישיון של ה־artifact המדויק בזמן הביצוע. [S02]\n\nאפשר להשתמש בנתיב נתמך של Roblox או בספק מסחרי מתאים כאשר הוא עונה לצורך; provenance לא יכול לקרוא לכל output “Cube”. אם הבקשה היא במפורש Cube, fallback אחר אינו סוגר את רכיב Cube. אם נדרש Studio מחובר, האתר צריך להציג ולנהל זאת במפורש, לא להתחזות לשירות ענן זמין ללא חיבור. אין להחליף generation service בגיאומטריה פרוצדורלית בלי גילוי.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R48",
+      "title": "איכות geometry, preview ו־export",
+      "execution_contract": "ה־preview מציג bytes אמיתיים של output עם orbit/zoom/framing/light/scale ומטא־דאטה שנמדדה. בדוק bounds, units, pivot, materials, normals, topology, collision representation, geometry budget, LOD כאשר נדרש ושימור הצורה בין GLB/OBJ/Roblox. wireframe, turntable ואנימציה של מצלמה אינם בדיקת rig או אנימציית object. [S02, S04]\n\nQC צריך להבדיל בין structural pass לבין aesthetic pass. mesh ריק, שטוח, בקנה מידה שגוי או עם חלקים בלתי מחוברים לא מגיע כ־ready. סטטיסטיקה חסרה נשארת לא נמדדה. save/reopen ו־insertion מחדש לא אמורים לייצר שינוי בקנה מידה או הפניה ל־session-scoped object שכבר אינו קיים. source/source_file byte caps צריכים להספיק לדרך העברה מתוכננת ולא להיפתר בהדבקת partial script.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R49",
+      "title": "אנימציות ו־rig compatibility",
+      "execution_contract": "חיפוש/preview/install של animations צריך להתאים ל־R6/R15 או rig מוכח אחר, לבדוק הרשאות חוויה ולהציג מקור. אין להבטיח custom creature retargeting ללא מסלול עובד. הנפשת static mesh באמצעות turntable אינה animation generation. נכס שנראה ב־browser preview לא בהכרח יכול לנגן ב־experience של הלקוח. [S02]\n\nבדוק loading Animator, replication, loop/speed/priority, interruption, respawn, removed object, wrong rig והעדר הרשאה. אם קיים generator או editor אנימציה במוצר הסופי, חבר אותו עד לתוצאה שמישה ולא רק JSON של keyframes. בצע לפחות תרחיש חיפוש והתקנה אמיתיים לצד תיקון של animation קיימת.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R50",
+      "title": "game audio מקצה לקצה",
+      "execution_contract": "כסה חיפוש צליל מורשה, preview, generation כאשר נתמך, הגדרת duration/loop/volume/spatial behavior, שמירת קובץ ו־provenance, import/upload מורשה וקישור לאובייקט במשחק. הצליל של הדלת צריך להישמע בזמן interaction אמיתי, לא רק בדפדפן. [S02]\n\nבדוק decode/MIME/extension, silence, clipping, loop seams, provider error, expired artifact, moderation/ownership ב־Roblox ואי־כפילות listeners. קוד DSP שנבדק אינו בהכרח quality pass של התוצאה לאוזן; השמע ובדוק. orphan test process היסטורי אינו סיבה להרוג תהליכי Node אחרים או “לתקן” מחדש מודול שכבר עבר בדיקה.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R51",
+      "title": "אחסון artifacts ועקביות שיחה",
+      "execution_contract": "הודעה, tool trace, artifact object, metadata ו־usage צריכים להישאר עקביים גם אחרי eviction או כשל write באמצע. קיים גבול byte/storage אמיתי עם refusal ברור; אין לשמור רק URL קצר־חיים ולקרוא לזה project persistence. session-scoped generation output צריך מסלול persistence נתמך לפני הבטחת save. [S02, S05]\n\nבדוק שמירה→reload→מכשיר/לשונית שנייה→download→delete→late callback. tombstone מונע resurrection לאחר מחיקה; capacity race אינו מאפשר חציית מגבלה בלתי נראית. transcripts ישנים ללא metadata חדשים אינם מקבלים success/cost/model מומצאים. כל artifact גלוי יכול להיפתח על ידי המשתמש המורשה ורק הוא/שותף בעל גישה מתאימה.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R52",
+      "title": "checkpoint/restore בגבול הלקוח",
+      "execution_contract": "קיים create/list/name/restore לפני ואחרי שינויים משמעותיים, עם compression/chunks/caps/retention ושיוך scene/version. השחזור מציג target, השפעה, progress אמיתי ותוצאת fidelity. unsupported protected roots, skipped classes/scripts ו־partial failure אינם נבלעים ב־restored:true. restore מחויב לאותו place ולא נותן ל־checkpoint מפרויקט אחר להיכנס. [S05]\n\nהבדיקה דורשת שינוי ידוע, snapshot, mutation נוסף, restore, בדיקת actual hierarchy/source/properties, Undo/Redo/Cancel ושחזור אחרי interruption. root detachment מה־r4 נשמר. source change בתחום serializer/commands פוסל את היכולת לייחס לו אוטומטית proof ישן. snapshot API unit test אינו “משתמש שיחזר משחק” עד שהזרימה באפליקציה וב־plugin הוכחה.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R53",
+      "title": "exports עם שלמות, הרשאות ופרטיות",
+      "execution_contract": "ייצוא שיחה, project files archive, artifacts, שימוש ונתוני חשבון כולל בדיוק את השדות המותרים והמתועדים. Export של billing לא מדליף מזהים/נתונים של אחר, ו־CSV אינו מאפשר formula injection. סדר, encoding, MIME, filename, byte count/truncation והיקף הזמן צריכים להיות ברורים. [S03–S05]\n\nבדוק export גדול, unicode filenames, interrupted download, tenant boundary ו־missing upstream object. אם הייצוא חלקי, הצג partial with reason ולא ZIP “מלא” בלי קבצים. בדיקות completeness של סכמת שדות מגנות על כיסוי, אבל דרושה גם בדיקת artifact שנפתח בפועל. אין לחשוף raw secrets בקובץ תמיכה או במיפוי account export.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R54",
+      "title": "מחיקה והתפשטות לכל stores",
+      "execution_contract": "הקשר בין project deletion, account deletion, artifact deletion, backup retention ו־auth deletion צריך להיות מפורש. מחיקה אינה “הוסתרה כרטיסייה”. נקה או תעד כל primary/derived store: Supabase, DOs, KV files/versions/trash, generated images/audio, memory, notifications, search/vector indexes, credentials, pending jobs ו־billing history שחייב להישמר לפי כללי הספק/הדין. אין הבטחה למחוק היסטוריית תשלומים בניגוד לחובת שמירה. [S02, S05]\n\nהפעולה ניתנת לחזרה בצורה בטוחה; כשל באמצע משאיר progress/retry בלי להחיות נתונים. חשבון שנמחק אינו יכול לקבל artifact מה־callback המאוחר של model. תעד residue אמיתי ומשך retention מאומת; אל תפרסם “30 יום לכל הגיבויים” אם מערכות שונות אינן מתנהגות כך. שלמות מחיקה בייצור נבדקת ב־fixture בעלים, לא בלקוחות אמיתיים.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R55",
+      "title": "חשבון מסחרי ומסלול checkout מוגדר",
+      "execution_contract": "היעד החדש הוא תשלומים עובדים, לא לינק Stripe שלא נבדק. בדוק account readiness, test/live mode, product/price IDs, currency, tax configuration, portal configuration, webhook endpoint/secrets, return URLs ושמות מוצר Apple. אלה פעולות מורשות במסגרת הפרויקט ככל שהסביבה מאפשרת, אך שדות זהות/עסק/מס או הצהרות לבנק חייבים להיות אמיתיים ולא להיגזר מהשערה של הסוכן. תנאי גיל/אזור/חשבון מאומתים בזמן ההפעלה.\n\nבשלב test mode העבר checkout→payment→signed webhook→authority→entitlement→UI→portal→cancel/recovery. לאחריו בצע release live מבוקר כשחשבון הספק מוכן ודרך התשלום חוקית. אין לרכוש לעצמך שוב ושוב כדי לייצר “הכנסה ראשונה”, אין duplicate subscription ואין bypass של MAX לצורך QA. הסוכן יכול להביא את המוצר למצב שמסוגל לקבל הכנסה; אינו יכול להבטיח שמישהו יקנה או לקרוא לתשלום מדומה רווח.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R56",
+      "title": "סמכות billing, replay וסדר אירועים",
+      "execution_contract": "במקור המאוחר כבר נבנה מסלול canonical Apple authority עם replica של Golem. יש בו serialization, user pinning, monotonic sequence, authority replay ואישור mutation מדויק לפני החזרת webhook200. שמור אותו והעבר אותו בשלמותו בהגירת השם/namespace. אי אפשר להניח shared dedup ב־KV פותר אירועים בשתי DO namespaces; הוא עלול למנוע את העדכון הדרוש לשנייה. [S05]\n\nבדוק raw signature verification לפני parsing, timestamp tolerance, same event replay, different event out-of-order, duplicate delivery, lost replica acknowledgement, error body שגוי, wrong user/amount, cancellation event arriving late ו־resubscribe. webhook200 מתקבל רק לאחר שהחוזה המוגדר הושלם או לאחר no-op חוקי ומאומת. fixture חתום ב־HMAC אינו actual Stripe lifecycle; צריך את שניהם.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R57",
+      "title": "ledger, reservations ו־settlement",
+      "execution_contract": "Credits אינם tokens ואינם דולר provider. קיים conversion מוסבר, allowance reset, purchased/granted balance, per-run reservations, held/settled/released amounts ו־append-only audit. המיליארד Credits שהוענקו לבעלים הם grant היסטורי חד־פעמי, לא אישור grant נוסף ולא זכאות MAX. אל תמחק אותו בזמן cleanup וגם אל תפרסם אותו כיתרון ללקוחות. [S05]\n\nבדוק concurrent requests משני projects, reserve→reject→release, partial tool spend, provider timeout לאחר עבודה, failure pricing, canceled run, replay של settle ו־negative/double balance. אינדיקציית usage על המסך משקפת ledger אמיתי, לא מספר model-reported בלתי מאומת. reconciliation משווה provider records/charges למנגנון המוצר ומציגה unmeasured/incomplete כאשר אין invoice/usage מלאים.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R58",
+      "title": "מנוי לאורך כל מחזור החיים",
+      "execution_contract": "כסה creation, active, needs-action, past-due, payment failure, cancellation at period end, reversal, expiry, resubscribe, upgrade/downgrade, pending change, proration ו־refund לפי היכולות המחויבות. entitlement מחושב מסמכות עכשווית, לא נשמר פעם אחת לנצח. free fallback צריך להתרחש בזמן expiry גם בלי webhook נוסף, וריצות שכבר קיבלו הרשאה צריכות מדיניות מוגדרת. [S05]\n\nהצג לפני רכישה מחיר, מטבע, מחזור חיוב, מגבלות ודרך ביטול. הצג אחרי redirect את מצב השרת; query param `success` אינו הוכחת payment. בדוק roundtrip ל־portal, delayed webhook, same customer existing subscription, שינוי model entitlement בזמן tab פתוחה ו־duplicate checkout. מחיר היסטורי $12/$40 אינו בהכרח החלטה מסחרית עדכנית; בדוק מה התחייב הבעלים ומה מוגדר עכשיו לפני פרסום.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R59",
+      "title": "חשבוניות, קבלות, החזר ותמיכה בתשלום",
+      "execution_contract": "Invoice list/details/download, billing address/contact/business name/tax references, receipts, billing history export, refunds ו־payment method/expiration דורשים integration ממשית. Stripe IDs שנשמרים per-user אינם authorization בפני עצמם. גישה למסמך בודקת התאמה ללקוח המאומת; URL לספק עובר allowlist מתאים. [S02, S05]\n\nבדוק invoice של חשבון אחר, מצב draft, rejected payment, async payment, failed invoice fetch ו־unattributed event. בקשת refund אינה refund שבוצע; ההבדל מוצג. נתוני “רווח” נפרדים מהכנסה ברוטו, דמי ספק, עלויות inference והחזרים. דשבורד הכנסה חדש אינו צריך להראות סכום חיובי לפני שיש אירועי אמת.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R60",
+      "title": "tenant isolation בלי קיצורי דרך",
+      "execution_contract": "JWT subject והקשר project מוכחים בכל route, WebSocket, DO, artifact, export, callback ו־background job. Supabase RLS היא שכבת הגנה אמיתית, לא middleware ידני שמוחלף ב־service role כאשר קשה לבדוק. tests עם JWT אמיתי ו־SQLite/PG fixtures הם חיוניים, ולצדם נדרשת בדיקה בנתיב הדיפלוימנט היעד. [S05]\n\nבנה negative matrix: משתמש זר, viewer, editor, revoked, suspended, expired, changed owner, project spoof, conversation spoof, pairing old token, artifact guessed ID, approval replay ו־webhook attribution mismatch. אל תייצר endpoint admin נוח רק כדי להעביר acceptance. כל access exception מדווח ומתועד ולא נחשף דרך UI configuration.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R61",
+      "title": "revocation/outbox/expiry",
+      "execution_contract": "מיגרציה0009 וה־outbox נועדו לפתור פער שבו DB revoke הצליח אבל הודעת best-effort ל־SessionDO אבדה וה־run המשיך. המסלול כולל atomic intent, versioned lifecycle state, consumer tokens נפרדים, retry/ack ו־fencing ב־socket/run/queue. expiration extension/shortening הן שינויים אמיתיים, לא רק revoke boolean. [S04–S05]\n\nreadiness4/4 וה־pending queue0 אינם הוכחת live revocation. בדוק queue שנוצר, נמסר לצרכנים, נכשל ונמסר שוב, ושמשתמש פתוח מאבד build authority בזמן אמת. regrant אינו מחייה run שכבר נפסל. שמור migrations/tokens שכבר קיימים; אין regenerate “כי לא מצאתי תיקייה משוערת”. בהגירה ל־Apple-only עדכן consumer topology בלי לאבד delivery שלא הושלם.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R62",
+      "title": "סודות, מידע רגיש ואירועי ניטור",
+      "execution_contract": "טוקנים, cookies, API keys, auth headers, raw prompts, customer transcripts ו־HAR credentials אינם חומר ל־Git, דוח, build ציבורי, analytics או reviewer ללא צורך. config presence ניתן לבדוק בלי להדפיס ערך. secret exposure בעבר מחייב בירור rotation/revocation, לא העתקת הסוד כדי “להוכיח שהוא קיים”. [S02–S05, S08]\n\nSentry reporter המתועד משתמש בשדות מצומצמים וב־redaction; אין להוסיף session replay או fetch/body instrumentation בלי מדיניות/הסכמה מתאימה. גם stack/error string יכול להכיל מידע רגיש, לכן נדרשת sanitation במקור וביציאה. בדוק malicious content במסמכים, keys שמופיעים ב־exception ו־URL עם query secrets. אין להשתמש בחסימת payload inspection כדי לטעון שוודאי אין leakage.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R63",
+      "title": "abuse, prompt injection וסביבת tools",
+      "execution_contract": "המודל אינו trusted principal. tool arguments, retrieved documents, asset descriptions, scripts, memory imports ו־HTML הם input לא אמין. permission narrowing חייב להתרחש גם בעת execution, לא רק בעת יצירת tool schema. רשת עוברת מדיניות host/redirect/size/deadline; אין גישה ל־local/private endpoints של משתמש או של מתחרה על סמך קישור שנשלף. [S02, S05]\n\nבדוק schema pollution, code injection, SSRF, malicious markdown, uploaded script, model recovered call ו־oversized tool response. ניטור abuse אינו excuse לאסוף יותר מידע אישי מן הדרוש. rate limiting, concurrency/backpressure ו־provider safety צריכים למנוע מוצר שאפשר להפיל בפרומפט אחד. אין arbitrary plugin execution כדרך כללית לפתור מגבלת APIs.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R64",
+      "title": "פרטיות, הסכמה ומדיניות מסחרית",
+      "execution_contract": "המסכים והמסמכים מסבירים מה נשמר, למה, מי מעבד, כמה זמן ואיך מייצאים/מוחקים. training opt-in הוא נפרד מהסכמה לשימוש במוצר וניתן לביטול; מידע שנלקח לפני התוקף הנכון לא מתווסף לנתוני אימון. מטרות debugging, analytics, personalized memory ו־training אינן הרשאה אחת. [S02, S05]\n\nלקראת השקה ודא שהתנאים, הפרטיות, כללי minors, ספקי המשנה, תמיכה והחזר משקפים את השירות והדרישות החלות באמת בזמן ההשקה. מסמך זה אינו קביעה משפטית על השוק או החשבון. אין להמציא שם חברה, מספר מס, גיל, כתובת עסק או אישור KYC כדי לסיים. עלויות חדשות מאושרות לביצוע הפרויקט, אבל הצהרות משפטיות/זהות דורשות בסיס אמיתי.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R65",
+      "title": "שפה חזותית עקבית, לא redesign מחדש בכל סיבוב",
+      "execution_contract": "יישם token system אחיד לצבע, typography, spacing, elevation, motion ו־states במקום חמש שכבות סותרות. לא מדובר בהחזרת כל קובצי CSS הישנים; הסגנונות הפעילים ומחיקות העבר נשמרים. אמץ naming ברור לרכיבי button/input/modal/table/badge/error/empty בלי לבנות framework נוסף שאין בו צורך. [S03–S05]\n\nבדוק את כל המצבים, לא רק hero screenshot: signed out, onboarding, empty project, long chat, running tools, generating media, failed write, offline, readonly, expired session, paid state ו־cancelled subscription. שלוט בדגש כך שהתוכן מרכזי; אין rainbow על Apple, אין mascot, אין banner wall. ארטיפקט אמיתי יכול להופיע כשהוא שימושי ולא כדקורציה קבועה.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R66",
+      "title": "נגישות ו־keyboard במערכת אמיתית",
+      "execution_contract": "בדוק dialogs/menus/tablists, focus-visible, accessible names, status announcements, contrast, scrolling regions, touch targets, zoom ו־screen reader. modal true אינו מספיק אם תוכן הרקע ממשיך להיקרא או לקבל focus. התאמות a11y המבוססות על source assertions מגנות מפני drift אך אינן ראיית שימוש מספקת. [S02, S05, S07]\n\nהעבר signup→project→composer→model selector→Files→checkpoint→billing בלי עכבר. בדוק opener שנעלם, nested modal, browser file picker, no focusable targets ו־live updates תוך כדי כתיבה. בצע לפחות בדיקת assistive technology בפלטפורמה זמינה ותעד במדויק מה נבדק; אל תטען Windows/NVDA או physical touch כאשר השתמשת רק ב־emulation על Mac.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R67",
+      "title": "עברית, RTL, קוד ותרגום",
+      "execution_contract": "S02 דורש עברית ואנגלית טבעיות, והצ'קליסט הרחב כולל ממשק עברי מלא. צריך להפריד locale formatting, response language, input direction ו־UI translation. בחירה he-IL שמחליפה מספרים ותאריכים אינה ממשק עברי. ספריית תרגומים, keys יציבים, fallback ובדיקת completeness נדרשים אם היכולת נשארה scope פעיל. [S02; קטעי הצ'קליסט בשיחה]\n\nבדוק הודעת משתמש בעברית עם קוד באנגלית, citations, parentheses, amounts, timestamps, filenames, mixed titles ומספרי גרסאות. code/pre/kbd נשארים LTR ומבודדים. וודא logical CSS, כיווני chevrons כשצריך, positioning של menus ומצב צר. אין לתרגם API identifiers או שמות קבצים כדי “להשלים” תרגום.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R68",
+      "title": "responsive, טעינה וביצועים",
+      "execution_contract": "האתר שימושי גם ללא Studio במכשיר הנוכחי: צפייה, שיחה, היסטוריה, review, artifacts וחשבונות. desktop/narrow/landscape/high zoom/reduced motion נבדקים בפועל או כאמולציה מסומנת. קיים budgets לבאנדל, images/media, memory, render frequency ו־latency. אזהרת main chunk>500KB בבנייה האחרונה לא טופלה; אין לכבות אותה ולהכריז שעברה בדיקת performance. [S07]\n\nמדוד cold load/warm navigation, lazy chunks, cache headers, hydration/render work, long chats, large Files list ו־stream update frequency. ב־slow/offline network אין layout shift שמוחק טיוטה או overlay שמסתיר errors. infinite scroll חייב לתמוך focus ו־history identity. אופטימיזציה נבחנת מול תוצאת משתמש ולא רק gzip size; אין להוריד verification כדי להקטין latency.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R69",
+      "title": "נתוני אימון עם זכויות ומבנה משימה",
+      "execution_contract": "אסוף first-party trajectories של build/repair/recovery עם context מספיק, tool args/results, source versions ו־Studio evidence. פצל לפי experience/mechanic family לפני יצירת rows כדי שמשימות אחיות לא יזלגו ל־test. בדוק duplicates, corrupted examples, secret leakage, author/license/consent ו־context-dependent answer שאינו ניתן ללמידה עצמאית. [S02–S05]\n\nהנתונים צריכים לכסות spatial, Luau, UI, client/server, failures, multistep tools, cancellation, unknown capability ועברית/אנגלית. teacher-generated examples מותרים רק במסגרת תנאי הספק והזכויות, ובכפוף לאימות של התוצאה. שמור refs/evidence בנפרד מ־text input כדי שאימון לא יחשוף מפתחות או נתוני לקוחות. אל תכניס תיקון של holdout שנחשף באבחון ל־train כדי להעלות ציון.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R70",
+      "title": "ביצוע אימון וקבצים נטענים",
+      "execution_contract": "בחר base עם serving path תואם לפני job גדול. בדוק hardware/accelerator/memory אמיתיים; 32GB system RAM אינה GPU VRAM. הוצאות hosting/training מותרות לפי החלטת התקציב החדשה, אך יש למדוד expected duration/cost, לשמור progress ולהפסיק idle/unproductive runs. אין צורך לקנות HF Pro אם מסלול אחר נתמך; אין גם איסור היסטורי מוחלט על הוצאה נחוצה רק כי פעם התקציב היה אפס. [S02, S04; החלטה חדשה]\n\nשמור model revision, tokenizer/chat template, dataset manifest/hash, seed, config, steps, logs, loss/validation, resource usage, adapter/checkpoint bytes ו־reload receipt. completed training אינו completed model product. artifacts היסטוריים שנכשלו נשארים frozen; אל תדרוס אותם או תשנה labels כדי להציג התקדמות.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R71",
+      "title": "evaluation שאינה מכוונת לציון",
+      "execution_contract": "השווה base, base+RAG, trained ו־trained+RAG בתנאים דומים; זמן, tokens, retry policy, tools, exact tasks ותנאי engine מתועדים. metric צריך לכלול syntax/contract correctness, tool validity, safe behavior, actual game runtime, aesthetics, repair success, latency ועלות. label של frontier או lower loss אינם איכות. [S02–S05]\n\nהיסטורית, 16/64-step adapters קיבלו0/2 ו־v4 קיבל1/5 גם לפני וגם אחרי; replay5/5 מצביע על reproducibility של outputs, לא על correctness. ה־88-task harness שהוכן כולל mostly syntax/antipatterns ולא מספיק tool trajectories; אל תשתמש בו לבד לקידום creator model. cases עם missing/length/error/ungradable נשארים גלויים ובמכנה המתאים.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R72",
+      "title": "קידום specialization והפעלה במוצר",
+      "execution_contract": "טעינה מקומית אינה hosted serving. הוכח conversion, compatible base/adapter/rank/model_type לפי התיעוד בזמן העבודה, test invocation אמיתי, actual model attribution, latency/cost, fallback ו־rollback. התמחות יכולה לפעול כ־Luau repair specialist או common mechanic builder אם זה המקום שבו היא מועילה, לצד model חזק לתכנון רחב. [S02, S04–S05]\n\nהקבלה היא בקשת לקוח רגילה במוצר שמגיעה למומחה ומשפרת תוצאה measured holdout וב־Studio, בלי לפגוע ב־permissions או ב־completion honesty. אל תייצר שתי תוויות מסחריות לאותן משקולות ותציגן כאימון שונה. אם ההשוואה אינה מצדיקה promotion, המשך בעבודה על נתונים/אימון/הנדסה; אל תכריז שדרישת האימון הסתיימה רק כי ה־API הכללי חזק.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R73",
+      "title": "משימות אוטונומיות של לקוחות",
+      "execution_contract": "ממש manual/scheduled/event triggers ככל שהם scope פעיל, עם mission מוגדר, owner/project/conversation, budget, permissions, timezone, overlap policy, retry policy, disable/resume ו־audit. כפתור “automation” אינו מוצר אם dispatcher אינו קורא את store. scheduled intent צריך להתקבל פעם אחת לפי fire key ולכבד latest access ו־Studio state. [S02–S05]\n\nבדוק DST gaps/folds, missed runs, retry cap, queued overlap, cancellation, owner access revoked, transfer, expired token ו־provider outage. אל תפעיל משימות חדשה שוב ושוב כדי “להמשיך לעד”. לקוח מסיים mission כשהיעד הושג או עוצר כשאין פעולה מורשית בטוחה; no fixed blind loop. cost guards של לקוחות נשארים גם כאשר בעל המוצר ביטל את תקציב הפיתוח שלו.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R74",
+      "title": "inbox והודעות תפעוליות שימושיות",
+      "execution_contract": "אירועים צריכים להגיע לערוץ אמיתי: in-app, email/push/Discord לפי מה שהוגדר ונכלל במוצר. unread count, groups, read controls, preferences, quiet hours ו־deep links נשענים על אותם records. notify emit בלי UI delivery אינו feature מלא. הודעות billing/security חיוניות אינן נעלמות בגלל אותה העדפה שמכבה המלצות. [S02, S05]\n\nבדוק dedupe, delayed delivery, mark-read only visible IDs, partial list, wrong-project links, opt-out, timezone והודעה שנשלחה לאחר delete. run failure או generation unavailable אינם “completed” בנוסח notification. אם email/push עדיין לא נבנו והם scope פעיל, הם פתוחים; לא מספיק להציג UNBUILT_CHANNELS בקוד.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R75",
+      "title": "public API, SDK ו־CLI",
+      "execution_contract": "פרסם חוזה resource model עקבי עם product/conversation/run/artifact, authentication, scopes, idempotency, pagination, deterministic ordering, errors, streaming ו־versioning. existing SDK שמדבר `/api` עם JWT אישי אינו בהכרח public API client מתאים. OpenAPI צריך schemas, דוגמאות ניתנות להרצה ו־compatibility policy, לא רק רשימת paths. [S02; קטעי הצ'קליסט]\n\nבדוק client JS/TS/Python/Luau/CLI לפי scope שנשאר, עם install/version/help/examples, timeout/retry/pagination/streaming וסוד שמגיע ממקום בטוח. אין להשאיר שמות `@golem` במוצר הפעיל לאחר הגירה. compatibility של clients ישנים דורשת חלון מעבר ותיעוד, לא endpoint פומבי בעל הרשאות רחבות. פרסום חבילה אינו public Git repository.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R76",
+      "title": "webhooks ואינטגרציות חיצוניות",
+      "execution_contract": "אם outbound webhooks נשארים scope, השלם registration, ownership/URL verification, event types/version, signatures/rotation, retry/backoff, timeouts, delivery history, test event, manual replay, pause/resume ו־secret-redacted logs. ה־Stripe webhook הנכנס אינו הוכחה שיש outbound delivery. [קטעי הצ'קליסט; S02]\n\nכל destination עובר network policy ו־redirect checks, וכל delivery בודק access גם בזמן ביצוע. מזהה event נשמר ב־redelivery כדי שצרכן יוכל לזהות כפילות. אין logs עם signing secret, bearer או response body פרטי. integration catalog צריך להציג רק connectors עם חיבור עובד, account identity ו־permission scopes ברורים; OAuth callback, refresh/revoke ו־expiry נבדקים עבור כל provider פעיל.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R77",
+      "title": "observability ואירועים ניתנים לטיפול",
+      "execution_contract": "חבר correlation IDs בין request/run/tool/artifact/billing בלי לחשוף סודות. metrics מבדילים error rate, failed/partial builds, latency, disconnects, queue depth, provider cost ו־customer-impact. Sentry current-route getter נכלל ב־build החדש, אך transport200 ישן אינו stored-route validation ואינו alert delivery. [S05, S07]\n\nהוכח controlled error במקור המורשה, ingestion, release/environment attribution, actionable stack/source maps לפי היכולת, alert recipient ו־runbook. אין צורך ב־session replay של לקוחות כדי להשיג observability. בדוק sampling/rate caps ו־alert storms. public status page צריך להבחין degraded/unavailable/unknown, לא להצהיר “operational” רק כי rootHTML החזיר200.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R78",
+      "title": "admin ותפעול ללא סמכות יתר",
+      "execution_contract": "למפעיל צריך להיות מידע אמיתי על בריאות, usage, model/provider availability, billing reconciliation, queues, failed jobs, abuse ו־support cases. admin controls צריכים role/reauth/audit/idempotency/confirmation מתאים, ולא לאפשר grant credit או impersonation בטעות. setup שמאפשר בדיקה ל־owner אינו מסלול לקוח. [S05]\n\nבדוק admin-route access denial, read failure לעומת no data, malformed config, partial pagination, retry של פעולה שהצליחה ו־secret redaction. פקודות שמשנות models, prices או kill switch חייבות לשמור diff ו־rollback. אל תטען “אין תקרה” כדי לכבות kill switch למוצר ציבורי ללא תכנון ברור.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R79",
+      "title": "backups, recovery ו־consistency",
+      "execution_contract": "גבה את המידע שבאמת קיים בכל store, ולא רק את schema. קבע RPO/RTO מעשיים ומדוד drill, גישה מוגבלת, encryption במקום הנחוץ, retention ו־deletion documentation. snapshot משחק אינו backup של subscriptions; D1 time recovery אינו backup אוטומטי של KV. אין להניח יכולות של ספק מתיאור היסטורי בלי בדיקת החשבון הנוכחי. [S05; קטעי הצ'קליסט]\n\nבדוק שחזור שיחה+artifacts+checkpoints+ledger+outbox+permissions לכדי מצב עקבי, כולל pending runs שאסור להריץ מחדש. drills נעשים בסביבה מורשית על fixtures, לא על לקוח אמיתי. שחזור version של שיחה אינו משחזר סצנה אלא אם יש קשר תפעולי שנבדק; רשומת “restore” אינה תחליף לפעולה ב־Studio.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R80",
+      "title": "CI, release ו־artifact identity",
+      "execution_contract": "רשום dependencies/lockfile/toolchain, build inputs, scoped changes, security gates, model-free CI, migrations compatibility ו־rollback. stamp של dirtyHEAD אינו unique identity. source aggregate, actual bundle hash, Worker version, public plugin hash ו־generated experience hash צריכים להיות קשורים לאותו release manifest. [S05, S07]\n\nסדר ההפצה: בדיקות→config/schema prerequisites→build freeze→artifact verification→authorized deploy→served bytes→actual flows→independent review. hashed assets לפני HTML, MIME נכון ו־canonical route verification שומרים מפני stale shadow keys. אל תשתמש ב־bare deploy route כמעקף לחסימה או לבדיקה שלא הושלמה. release גדול מצדיק final suite רלוונטי; מספר tests אינו denominator של ready.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R81",
+      "title": "תמיכה, תיקון תקלות ומסמכי לקוח",
+      "execution_contract": "לקוח שאינו יודע מה קרה צריך מסלול יציאה: status, troubleshooting, reconnect, recovery, source/artifact status, contact ותמיכה בתשלום. כתובת תמיכה צריכה להיות אמיתית ומחוברת; אין hello@brand-domain שאינו שלנו. support report מאפשר log מצומצם ומושחר בלי transcript/secret by default. [S02–S05]\n\nהשלם docs ל־install/update/uninstall, projects/chats, model/permissions, artifacts/retention, checkpoints, billing/refunds, API ו־known limits. השווה כל screenshot ותיאור למוצר החי אחרי rebrand. מדריך שלא ניתן לעקוב אחריו מאפס הוא feature bug. הודעת חסימה מתארת next action אמיתי, לא “פנה לתמיכה” כשהתמיכה אינה מופעלת.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R82",
+      "title": "אתר ציבורי, אמון ויכולת מכירה",
+      "execution_contract": "Landing, pricing, examples, docs, FAQ, changelog, status, contact, legal/privacy ו־auth entry points צריכים להיות גמורים וקשורים. הדוגמאות מייצגות output אמיתי שהמוצר יכול לייצר; אין מספר משתמשים, המלצות או דירוגי benchmark מומצאים. copy מבדיל מפתח יחיד עם שיתוף פרויקט ממוצר teams/seats שאינו קיים. [S02, S05]\n\nבדוק public anonymous user, mobile, crawlers metadata/canonical/social cards, broken links, no paid entitlement leakage ו־CTA שעובר ל־flow שמיש. אין גרסה רשמית שבה install חסום, כל generative controls coming soon או checkout לא מוגדר בעוד hero מבטיח הכול. מכירה ראשונה דורשת מוצר, מסלול תשלום ותנאי שימוש עובדים; מסמך handoff אינו הוכחת ביקוש או רווח.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    },
+    {
+      "id": "R83",
+      "title": "אפס placeholders ואפס “done” מדומה",
+      "execution_contract": "סרוק את כל המשטחים הפעילים עבור `TODO`, `FIXME`, `placeholder`, `coming soon`, `not available yet`, mock flags, dummy IDs, sample amounts, fake success, dead button handlers, unused “implemented” stores ו־unserved dist. זו סריקה לאיתור חשדות, לא הוראה למחוק מחרוזות בכל מקום. HTML placeholder תקין של שדה קלט, test fixture ומסמך היסטורי אינם בהכרח פגם; סווג לפי תפקיד. [דרישת הבעלים החדשה]\n\nלכל UI action יש פעולה אמיתית, loading, success/failure, permission story וראיית integration. ליכולת שלא הושלמה אין “הסתרה” שמעלה מוכנות. אם external block נשאר, מדווחים product not ready ולא מסמנים כל השאר100% בתור תחליף. אין fake test, fake account, fake invoice, fake game screenshot או scripted reviewer praise.",
+      "verification_status": "not_reassessed_for_current_repository",
+      "completion_claim": false
+    }
+  ]
+}
