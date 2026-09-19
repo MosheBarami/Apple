@@ -26,8 +26,18 @@
      MEASURED, not chosen by eye: #8fd3ab is 6.40:1 at worst across every surface in the ramp, so
      it is readable as text and not only as decoration. The fill is dark enough (2.60:1 against the
      page) to read as a raised object rather than a glow, and carries --ink at 6.43:1. */
-  --accent:#8fd3ab; --accent-fill:#166534; --accent-on-fill:#f4f3f2;
-  --accent-soft:#8fd3ab14; --accent-line:#8fd3ab38;
+  /* MEASURED OFF THE REFERENCE ITSELF, 2026-09-20, with getComputedStyle over its live DOM. Its
+     primary action reports `oklab(0.765 -0.169466 0.0510906)` — #00d492 in sRGB — and the thing
+     that matters more than the hue is the TREATMENT: the button is not a solid block. It is that
+     colour at 10% alpha behind the same colour at 90% as text, 10px radius, 36px tall, 14px. A
+     tinted pill, not a filled one.
+     Our first pass used a solid dark-green fill, which is the ordinary SaaS primary button and is
+     exactly what the owner rejected. The tint is what makes the green read as light rather than as
+     paint.
+     Contrast measured across the whole ramp: 9.57 / 9.32 / 8.19 / 6.60 / 5.75 — it clears 4.5:1 as
+     TEXT on every surface this product has, which is what lets a tinted button work at all. */
+  --accent:#00d492; --accent-fill:#00d4921a; --accent-on-fill:#00d492e6;
+  --accent-soft:#00d4921a; --accent-line:#00d49240;
   --acc-ember:var(--accent); --acc-ember-soft:var(--accent-soft); --acc-ember-ink:#141312;
   --good:#99d4b0; --bad:#f6aaaa; --warn:#e7c991; --info:#a1c6ef; --future:#c5b3ef;
   --syntax-keyword:#e5b9eb; --syntax-string:#b5d9b5; --syntax-number:#ddc18f; --syntax-comment:#a6a6a6; --syntax-function:#a9d9ee;
@@ -90,11 +100,13 @@ a.gx-sr:focus { z-index:1000; top:10px; inset-inline-start:10px; width:auto; hei
    It was `background: var(--ink)` — a white button, which is what a product looks like when it has
    no colour of its own. The fill is dark enough against the page (2.6:1) to read as a raised object
    rather than a glow, and carries --ink at 6.4:1. See docs/DESIGN-LOCK.md. */
-.btn-primary,.gx-btn--primary { color:var(--accent-on-fill); background:var(--accent-fill); border-color:var(--accent-fill); }
-.btn-primary:hover:not(:disabled),.gx-btn--primary:hover:not(:disabled) { color:var(--accent-on-fill); background:color-mix(in srgb,var(--accent-fill) 88%,var(--ink)); border-color:color-mix(in srgb,var(--accent-fill) 88%,var(--ink)); }
+.btn-primary,.gx-btn--primary { color:var(--accent-on-fill); background:var(--accent-fill); border-color:transparent; border-radius:var(--r-md); min-height:36px; padding:0 12px; font-size:14px; }
+/* Hover deepens the TINT rather than darkening a fill — the object is a piece of coloured light on
+   the surface, so more of it is the only response that keeps it the same object. */
+.btn-primary:hover:not(:disabled),.gx-btn--primary:hover:not(:disabled) { color:var(--accent); background:color-mix(in srgb,var(--accent) 18%,transparent); border-color:transparent; }
 /* PRESSED IS A STATE, not a missing one. Without it a button that is doing something looks
    identical to one that has not been touched, which is how a person clicks twice. */
-.btn-primary:active:not(:disabled),.gx-btn--primary:active:not(:disabled) { background:color-mix(in srgb,var(--accent-fill) 80%,var(--acc-ember-ink)); }
+.btn-primary:active:not(:disabled),.gx-btn--primary:active:not(:disabled) { background:color-mix(in srgb,var(--accent) 26%,transparent); }
 .btn,.gx-btn { display:inline-flex; gap:8px; align-items:center; justify-content:center; text-decoration:none; }
 /* THE TWO BUTTON VARIANTS THAT EXISTED ONLY IN THE MARKUP. `--primary` above has had a rule since
    the beginning; `--outline` and `--ghost` never did, across 29 uses in seven files. On a <button>
@@ -321,6 +333,11 @@ pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
 .modal-wide { width:min(840px,100%); } .modal-title { font-size:27px; margin:0; } .modal-head { align-items:center; } .modal-body { min-width:0; } .icon-btn { border:0; padding:6px 10px; font-size:22px; }
 .btn-ghost,.btn-quiet { background:transparent; } .btn-sm { padding:6px 10px; font-size:12px; }
 .btn-primary:focus-visible,.gx-btn--primary:focus-visible { color:var(--accent-on-fill); background:var(--accent-fill); }
+/* The light theme cannot use a 10% tint of a bright green on white — it disappears. Same hue, taken
+   to a depth that reads on paper. #00754f was the first guess and it measured 4.23:1 at worst,
+   UNDER the 4.5 this product requires, so it was darkened until it cleared rather than kept because
+   it looked right: #006644 measures 5.18:1 against the lightest surface in the ramp. */
+:root[data-theme='light'] { --accent:#006644; --accent-fill:#0066441a; --accent-on-fill:#006644; --accent-soft:#00664414; --accent-line:#00664440; }
 .card,.admin-panel { padding:22px; border:1px solid var(--line); margin-block:20px; }
 .rail-head,.admin-actions,.admin-form-row,.switch-row,.admin-tools-check { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
 .model-tag { font:11px var(--font-mono); padding:4px 7px; border:1px solid var(--line); }
