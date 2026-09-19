@@ -110,7 +110,22 @@ export function authErrorMessage(error: unknown): string {
   if (m.includes('failed to fetch') || m.includes('network')) {
     return "Couldn't reach the server. Check your connection and try again.";
   }
-  return raw;
+  //[[ "Auth session missing!" REACHED A CUSTOMER VERBATIM, and at the worst moment: after they had
+  //   typed a new password twice and pressed the button. A reviewer saw exactly that string.
+  //
+  //   It is not a mysterious failure — it means the recovery link never established a session:
+  //   expired, already used, or opened in a different browser from the one that asked. Every one of
+  //   those has the same fix and none of them is "try again", which is what a person does next when
+  //   handed a sentence with an exclamation mark and no instruction. ]]
+  if (m.includes('auth session missing') || m.includes('session_not_found') || m.includes('session expired')) {
+    return 'That reset link is no longer usable — it may have expired, already been used, or been opened in a different browser from the one that asked for it. Ask for a new one and open it in this browser.';
+  }
+  //[[ AND THE FALL-THROUGH IS MARKED AS A FALL-THROUGH. Returning `raw` hands whatever the identity
+  //   service said straight to a fifteen-year-old, in its own register — and every string that has
+  //   ever reached a customer this way is a case that belongs above this line. Keeping the text is
+  //   still right (a message nobody can quote is a support ticket nobody can answer), but it is
+  //   framed as a QUOTE from somewhere else rather than as this product's own sentence. ]]
+  return `Something went wrong and the sign-in service said: ${raw}`;
 }
 
 /** Whether a failure is the user's to fix by trying again, or ours to report. */

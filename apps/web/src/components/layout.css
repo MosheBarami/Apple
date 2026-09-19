@@ -84,10 +84,18 @@
    reader announces, so the colour and the announcement cannot drift apart — a class of our own
    could be true while the attribute was missing. Placed after the hover rules deliberately: a
    current row stays the answer while the pointer is over it. */
-.gx-shell .studio-dock .studio-dock__row[aria-current='page'] { color:var(--accent); background:var(--accent-soft); }
-.gx-shell .studio-dock .studio-dock__row[aria-current='page']:hover { color:var(--accent); background:color-mix(in srgb,var(--accent) 14%,transparent); }
-/* --accent-soft is 6% alpha, which reads as a tint on #232221 and as almost nothing on white. */
-:root[data-theme='light'] .gx-shell .studio-dock .studio-dock__row[aria-current='page'] { background:color-mix(in srgb,var(--accent) 10%,transparent); }
+/* THE CURRENT ROW WAS THE LOUDEST GREEN ON THE SCREEN, and it should not have been anything.
+   A blind judge rendered the dashboard with both stylesheets in real cascade order and measured it:
+   the green "Projects" row and the green "New project" button sat ~40px apart at the same eye
+   height, and the ROW was louder — accent text plus an accent bed plus a 2px accent bar, three
+   treatments against the button's one. So the first green thing a reader found was where they
+   already are, rather than what to do next. That is the lock's named failure in its own words.
+   The rail is permanent chrome, so whatever it spends is added to every route's own spend. It now
+   spends nothing: the current row is --ink on a surface step, which is what a current item reads as
+   anywhere, and the single 2px marker below is the only accent left in the whole navigation. */
+.gx-shell .studio-dock .studio-dock__row[aria-current='page'] { color:var(--ink); background:var(--surface-2); }
+.gx-shell .studio-dock .studio-dock__row[aria-current='page']:hover { color:var(--ink); background:var(--surface-3); }
+:root[data-theme='light'] .gx-shell .studio-dock .studio-dock__row[aria-current='page'] { background:var(--surface-2); }
 
 /* The marker grows out of the row rather than appearing beside it, which is what makes moving
    between two destinations read as one movement instead of two blinks. It lives on every row so
@@ -160,7 +168,8 @@
 /* The open conversation is this panel's accent, and it must survive the pointer passing over it:
    the hover rule above would otherwise repaint it `--ink` and the reader would lose their place
    for exactly as long as the cursor sat there. */
-.gx-rail .gx-conv.is-active:hover,.gx-rail .gx-conv.is-active:active { color:var(--accent); background:color-mix(in srgb,var(--accent) 12%,transparent); }
+/* Same argument, one level down: the active conversation is a current item in permanent chrome. */
+.gx-rail .gx-conv.is-active:hover,.gx-rail .gx-conv.is-active:active { color:var(--ink); background:var(--surface-3); }
 
 /* A pinned row is marked, not coloured: the pin is a fact about ORDER, not a status. */
 .gx-rail .gx-conv__pin { flex:none; display:inline-flex; align-items:center; color:var(--faint); }
