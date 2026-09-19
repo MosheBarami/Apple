@@ -4,7 +4,16 @@
  * `.gx-user`, `.gx-user__foot`, `.gx-turn__body`, `.gx-stamp`, `.gx-outcome` and
  * `.gx-outcome__retry`. Everything below is what those rules left undrawn — the agent row, the
  * footer that carries the settled cost, the outcome sentence and its help link, the Edit reveal,
- * and the two stamp alignments. Nothing here restates a rule that already exists over there.
+ * and the two stamp alignments.
+ *
+ * IT ALSO NOW CORRECTS THREE THINGS IN THAT SHARED HALF, and they are corrections rather than
+ * restatements. `.gx-msg-in` is on every turn in the file and had no rule ANYWHERE — an entrance
+ * that was named and never written, so a reply materialised in one frame where the rest of the
+ * product fades in. `.gx-user`'s surface was `linear-gradient(135deg,#ffffff10,#ffffff05)`: two raw
+ * hexes and a cool white wash over a ramp measured warm, on the element a customer scrolls back
+ * through to find their own words. And `.gx-turn`'s 30px rhythm is off the 4px scale the lock runs
+ * the whole product on. Each is written at one class more than the rule it replaces, because
+ * main.tsx loads this file BEFORE the design system and it loses every tie at equal specificity.
  */
 
 /* THE ASSISTANT'S TURN IS A ROW, NOT A CARD. The 22px mark sits in the gutter and the prose runs
@@ -13,6 +22,36 @@
    either way, where a two-column grid would leave an empty track behind. */
 .gx-turn--agent { display:flex; align-items:flex-start; gap:14px; }
 .gx-turn--agent > .gx-turn__body { flex:1 1 auto; }
+
+/* A CONVERSATION IS A COLUMN AND ITS RHYTHM IS ITS ONLY STRUCTURE — there are no cards here to do
+   the separating. 30px is not a step on the 4px scale DESIGN-LOCK runs the product on; 32 is, and
+   it is the step above the 24px that already separates the parts INSIDE a turn, which is what makes
+   the gap between two turns read as larger than the gaps within one. */
+.gx-turn.gx-turn--user,.gx-turn.gx-turn--agent { margin-block-end:32px; }
+
+/* THE USER'S OWN WORDS, ON THE SURFACE THE SYSTEM KEEPS FOR A CARD. What was here was a white
+   gradient at 6% and 2%, which on the warm ramp reads faintly blue and, at that alpha, barely reads
+   at all — the message you are scrolling back to find was the least visible thing on the screen.
+   --surface is the token for exactly this: a raised block of content with a hairline round it. */
+.gx-turn--user .gx-user { background:var(--surface); border-color:var(--line); letter-spacing:-.01em; }
+/* --surface is #ffffff in the light ramp, so the bubble and the page separate on the hairline
+   rather than on the fill. system.css's own light rule for this element is a 2% black wash, which
+   is the same defect the other way up: a card drawn so faintly it is not one. */
+:root[data-theme='light'] .gx-turn--user .gx-user { background:var(--surface); border-color:var(--line); }
+
+/* THE REPLY READS FOR PARAGRAPHS AT A TIME, which is what `text-wrap:pretty` is for: it is the one
+   line that stops a paragraph ending on a single orphaned word, and DESIGN-LOCK asks for it on
+   anything a customer reads. Scoped to the turn because `.gx-prose` is shared with surfaces whose
+   content is not prose. */
+.gx-turn--agent .gx-prose p { text-wrap:pretty; }
+
+/* A TURN ARRIVES, it does not appear. --t-slow is the lock's duration for something entering the
+   page for the first time and --ease-out its curve; 8px, because the list is already at the bottom
+   of the scroll and a larger throw reads as the whole conversation jumping. `both` holds the
+   opening frame so the first painted frame is the faded one rather than a flash of the finished
+   turn. Turned off, not slowed, at the foot of this file. */
+.gx-msg-in { animation:gx-turn-arrive var(--t-slow) var(--ease-out) both; }
+@keyframes gx-turn-arrive { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
 
 /* THE FOOTER ROW. A <p>, so the UA's block margins have to go. Micro type on the canvas, one step
    quieter than the reply above it: the time is a fact about the turn, not part of the answer. */
@@ -39,15 +78,28 @@
 
 /* THE OUTCOME SENTENCE, written by outcome-model.ts. Muted by default: a run that merely stopped
    is not an alarm, and colouring every ending would leave the one that failed indistinguishable.
-   `is-bad` is the only tone that spends --bad. */
-.gx-outcome__text { margin:0; font-size:13px; line-height:1.6; letter-spacing:-.01em; color:var(--muted); }
+   `is-bad` is the only tone that spends --bad. `text-wrap:pretty` for the same reason the reply
+   above it has it — this is the sentence a person reads when something has gone wrong, and it is
+   the worst place in the product for a one-word last line. */
+.gx-outcome__text { margin:0; font-size:13px; line-height:1.6; letter-spacing:-.01em; color:var(--muted); text-wrap:pretty; }
 .gx-outcome.is-bad .gx-outcome__text { color:var(--bad); }
+
+/* TRY AGAIN / REGENERATE — an underlined text control, and the global `button:hover` was drawing a
+   --surface-2 box round it because nothing here said otherwise: a 4px-padded grey rectangle
+   appearing under a sentence, which reads as a rendering fault rather than a hover. The hairline
+   and the ink are what move, and the press step is a step DOWN from the hover so the two are
+   distinguishable at a glance rather than by memory. */
+.gx-outcome .gx-outcome__retry { color:var(--muted); transition:color var(--t-fast) var(--ease-out),border-color var(--t-fast) var(--ease-out); }
+.gx-outcome .gx-outcome__retry:hover:not(:disabled) { color:var(--ink); background:transparent; border-bottom-color:var(--ink); }
+.gx-outcome .gx-outcome__retry:active:not(:disabled) { color:var(--muted); background:transparent; border-bottom-color:var(--muted); }
+.gx-outcome .gx-outcome__retry:disabled { color:var(--faint); border-bottom-color:var(--line); }
 
 /* "WHY RUNS STOP" — the second affordance on a failed run, and deliberately quieter than Try
    again, which is the right first move when the cause was transient. Same hairline, size and
    padding as `.gx-outcome__retry`, so the link and the button sit on one baseline. */
-.gx-outcome__help { font-size:12px; padding:4px 0; color:var(--muted); text-decoration:none; border-bottom:1px solid var(--line); transition:color .18s var(--ease-out),border-color .18s var(--ease-out); }
+.gx-outcome__help { font-size:12px; padding:4px 0; color:var(--muted); text-decoration:none; border-bottom:1px solid var(--line); transition:color var(--t-fast) var(--ease-out),border-color var(--t-fast) var(--ease-out); }
 .gx-outcome__help:hover { color:var(--ink); border-bottom-color:var(--ink); }
+.gx-outcome__help:active { color:var(--muted); border-bottom-color:var(--muted); }
 
 /* Nothing to explain, so there is no sentence to stand clear of: the row closes up under the
    reply instead of holding a full block of air for a single control. */
@@ -60,11 +112,21 @@
    control hidden behind a hover that can never happen is a control that is gone. */
 .gx-user__edit { color:var(--faint); }
 .gx-user__foot .gx-user__edit:hover { color:var(--ink); }
+.gx-user__foot .gx-user__edit:active { color:var(--muted); }
 @media (hover:hover) and (pointer:fine) {
-  .gx-user__edit { opacity:0; pointer-events:none; transition:opacity .18s var(--ease-out); }
+  .gx-user__edit { opacity:0; pointer-events:none; transition:opacity var(--t-fast) var(--ease-out); }
   .gx-turn--user:hover .gx-user__edit,
   .gx-turn--user:focus-within .gx-user__edit { opacity:1; pointer-events:auto; }
 }
+
+/* "EDITED" IS A FACT, NOT A TOOL, and it inherited --ink — so a message you once corrected shouted
+   about it in the same colour as the message itself, beside an Edit control that is deliberately
+   invisible until you reach for it. Metadata ink, and enough padding that the global button hover
+   lands as a target rather than as a 3px box round four words. */
+.gx-user__foot .gx-user__edit,.gx-user__foot .gx-user__edited { padding:3px 7px; border-radius:var(--r-xs); }
+.gx-user__foot .gx-user__edited { color:var(--faint); }
+.gx-user__foot .gx-user__edited:hover { color:var(--muted); }
+.gx-user__foot .gx-user__edited:active { background:var(--surface-3); }
 
 @media (max-width:680px) {
   .gx-turn--agent { gap:10px; }
@@ -73,7 +135,9 @@
 }
 
 /* system.css already kills every transition under reduce, with !important. Restated here so this
-   sheet is correct on its own terms rather than correct by someone else's blanket rule. */
+   sheet is correct on its own terms rather than correct by someone else's blanket rule — and the
+   arrival added above brings its own opt-out in the same edit, which is DESIGN-LOCK's fifth rule. */
 @media (prefers-reduced-motion: reduce) {
-  .gx-outcome__help,.gx-user__edit { transition:none; }
+  .gx-outcome__help,.gx-user__edit,.gx-outcome .gx-outcome__retry { transition:none; }
+  .gx-msg-in { animation:none; }
 }

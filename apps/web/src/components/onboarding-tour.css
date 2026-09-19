@@ -1,7 +1,7 @@
 /* The tour owns its styles. Removing an old global sheet must not put the card
    back in document flow behind the fixed workspace dock. Keep modals above it. */
-.tour-ring { position:fixed; z-index:70; pointer-events:none; border:1px solid var(--ink); border-radius:18px; opacity:.6; }
-.tour-card { position:fixed; z-index:75; box-sizing:border-box; width:min(300px,calc(100vw - 24px)); max-height:calc(100dvh - 24px); overflow-y:auto; overscroll-behavior:contain; padding:18px; border:1px solid var(--line); border-radius:16px; background:var(--paper); color:var(--ink); box-shadow:0 12px 40px #0006; font-size:14px; line-height:1.5; }
+.tour-ring { position:fixed; z-index:70; pointer-events:none; border:1px solid var(--ink); border-radius:var(--r-lg); opacity:.6; }
+.tour-card { position:fixed; z-index:75; box-sizing:border-box; width:min(300px,calc(100vw - 24px)); max-height:calc(100dvh - 24px); overflow-y:auto; overscroll-behavior:contain; padding:18px; border:1px solid var(--line); border-radius:var(--r-lg); background:var(--paper); color:var(--ink); box-shadow:0 12px 40px #0006; font-size:14px; line-height:1.5; }
 .tour-card:focus-visible { outline:2px solid var(--ink); outline-offset:3px; }
 .tour-card .tour-step { margin:0 0 8px; color:var(--muted); font-size:12px; }
 .tour-card .tour-title { margin:0 0 8px; font-size:18px; line-height:1.3; }

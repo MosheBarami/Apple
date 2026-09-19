@@ -40,7 +40,7 @@
    AND NO `overflow` ANYWHERE IN HERE, ON PURPOSE. The child is a button whose focus ring is drawn
    4px outside itself; clipping the stage would erase the only thing telling a keyboard user where
    they are. The frame already clips its own canvas, so there is nothing left to contain. */
-.gx-playtest__stage { display:grid; min-width:0; aspect-ratio:16/10; border-radius:10px; background:var(--paper-2); }
+.gx-playtest__stage { display:grid; min-width:0; aspect-ratio:16/10; border-radius:var(--r-md); background:var(--paper-2); }
 
 /* Expanded, the card is fixed at inset 5vh/5vw and system.css caps the canvas at 65vh. Holding
    16/10 as well would make the stage taller than the picture inside it on any wide screen and leave

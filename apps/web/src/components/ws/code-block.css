@@ -27,7 +27,7 @@
 
 /* COPY. The one control on the block, and the reason the block has a header at all — so it is
    legible at rest (`--muted`, not `--faint`) and never louder than that. The app's button defaults
-   are wrong here in two specific ways: `padding:9px 14px` with `border-radius:10px` draws a form
+   are wrong here in two specific ways: `padding:9px 14px` with `border-radius:var(--r-md)` draws a form
    control inside an 8px-padded strip, and `button:hover { background:var(--surface-2) }` is the
    exact colour of the surface this button already sits on — the shared hover is INVISIBLE here,
    which is worse than no hover, because the control looks dead under the pointer. The border stays

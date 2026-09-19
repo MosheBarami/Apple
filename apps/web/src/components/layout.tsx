@@ -1,11 +1,18 @@
-// App shell: a calm 320px rail and one main area.
+// App shell: a permanent navigation rail and one main area.
 //
-// The rail holds the mark, a way to start something new, the conversations you
-// already have, checkpoints, and you. Usage, Settings, Docs, Admin and the
-// theme switch used to sit here as permanent navigation; they now live in the
-// account menu at the foot of the rail. None of that functionality was removed,
-// only re-homed, because a product where every subsystem gets a permanent nav
-// row reads as a dashboard rather than a tool.
+// TWO SURFACES, AND THEY ARE NOT THE SAME THING. `.studio-dock` is the rail
+// that is on screen on every route: brand, the grouped destinations, the
+// account at the foot. `.gx-rail` is a modal drawer it opens, and the drawer
+// is the list of conversations — an inventory, not navigation, which is why it
+// is summoned rather than resident.
+//
+// The drawer holds the mark, a way to start something new, the conversations
+// you already have, checkpoints, and you. Usage, Settings, Docs, Admin and the
+// theme switch used to sit there as permanent navigation; they now live in the
+// account menu at the foot of the drawer, and the two the customer reaches for
+// daily — Usage and Settings — also have a labelled row in the rail. None of
+// that functionality was removed, only re-homed, because a product where every
+// subsystem gets a permanent nav row reads as a dashboard rather than a tool.
 //
 // Checkpoints appears twice by design — a card here and a button in the
 // conversation header — but the drawer itself belongs to the workspace route,
@@ -295,7 +302,10 @@ function Rail({ name, email, isAdmin, quota, quotaPending, quotaFailed, width, o
         </button>
       </div>
 
-      <Link to="/" className="gx-new" title="New chat" data-tour="new-chat">
+      {/* The tour's `new-chat` anchor used to live here and now sits on the rail's New chat row
+          instead. It could never fire from inside this drawer: the tour suspends itself while any
+          `aria-modal` dialog is open, and this drawer is one. */}
+      <Link to="/" className="gx-new" title="New chat">
         <Icon d={PATH.compose} size={16} />
         <span className="gx-new__label">New chat</span>
         <kbd className="gx-kbd" dir="ltr" aria-hidden="true">
@@ -340,8 +350,31 @@ function Rail({ name, email, isAdmin, quota, quotaPending, quotaFailed, width, o
           </ul>
         )}
 
+        {/* FOUR OUTCOMES, NOT TWO. This list had a success state and an empty state and nothing
+            else, so a request still in flight and a request that failed both rendered as the same
+            thing: a heading with nothing under it, which is indistinguishable from an account with
+            no chats. The skeleton says "not yet"; the alert says "not at all" and offers the one
+            action that can change it. */}
+        {projects.isPending && (
+          <div className="gx-rail__loading" aria-busy="true">
+            <span className="gx-rail__skeleton" />
+            <span className="gx-rail__skeleton" />
+            <span className="gx-rail__skeleton" />
+            <span className="gx-sr">Loading your chats.</span>
+          </div>
+        )}
+
+        {projects.isError && (
+          <div className="gx-rail__failed" role="alert">
+            <p className="gx-rail__failed-text">Your chats did not load.</p>
+            <button type="button" className="gx-btn gx-btn--outline gx-rail__retry" onClick={() => void projects.refetch()}>
+              Try again
+            </button>
+          </div>
+        )}
+
         {projects.isSuccess && chats.length === 0 && (
-          <p className="gx-rail__none">Nothing here yet. Start a chat and it will show up in this list.</p>
+          <p className="gx-rail__none">No chats yet — describe a game and Apple will build it.</p>
         )}
 
         <Link to="/" className="gx-viewall">
@@ -516,6 +549,10 @@ function Shell() {
 
   const email = session?.user.email ?? me.data?.email ?? (MOCK_MODE ? 'builder@example.com' : '');
   const name = me.data?.profile?.display_name ?? null;
+  // Who the rail's account row says you are: the profile name if there is one, otherwise the
+  // address. Never a placeholder — an avatar reading "?" beside "Settings" is honest about a
+  // profile that has not loaded, and a fabricated initial is not.
+  const who = name ?? email;
 
   return (
     <div
@@ -549,28 +586,93 @@ function Shell() {
       <main id="main-content" className="gx-main">
         <StudioAtmosphere />
         {/* THE ONLY WAY BACK TO THE RAIL ON A PHONE, SO IT CANNOT BELONG TO ONE ROUTE.
-            Below 861px the rail is off-canvas and only `.is-open` returns it. This button used
+            Below 681px the rail is off-canvas and only `.is-open` returns it. This button used
             to live in the workspace topbar, which meant the dashboard, usage, settings, roadmap
             and admin had no rail at phone width — and therefore no account menu and no way to
             sign out. Nothing about those screens looked broken, which is why it lasted.
             It is `position: fixed` rather than a row of its own: a shell-owned header bar would
             stack a second bar above the workspace topbar, and this way the workspace looks
-            exactly as it did while every other route gains the control. */}
+            exactly as it did while every other route gains the control.
+
+            EVERY ROW CARRIES A WORD AS WELL AS A GLYPH. Five unlabelled icons in a strip is how a
+            product looks unfinished however good the icons are: nothing but a tooltip says where
+            any of them go, and a tooltip is not navigation. The rows are grouped, the current
+            destination is the one thing on the screen wearing the accent, and the account is
+            pinned at the foot. Below 1000px the words are dropped and the rail is icons again —
+            every row keeps an `aria-label` equal to its visible word precisely so the accessible
+            name survives that collapse, which is a defect this product has already shipped once.
+
+            `aria-current` rather than a class of our own: <NavLink> sets it, assistive technology
+            reads it, and the accent is drawn from the same fact the screen reader announces, so
+            the two cannot drift apart. `end` on Projects because a bare `to="/"` matches every
+            route under it and would mark Projects current from inside a conversation. */}
         <nav className="studio-dock" aria-label="Workspace navigation">
-          <Link to="/" className="studio-dock__brand" aria-label="Apple — projects"><ModelMark variant="apple" /></Link>
-          <button type="button" aria-label="New chat" title="New chat" onClick={() => { if (location.pathname !== '/') navigate('/'); newProject(); }}><Icon d={PATH.compose} /></button>
-          <button
-          type="button"
-          className="studio-navigation"
-          onClick={openRail}
-          aria-label="Open navigation"
-          aria-expanded={railOpen}
-          title="Conversations"
-        >
-          <Icon d={PATH.menu} />
-        </button>
-          <Link to="/usage" className="studio-dock__link" aria-label="Usage and Credits" title="Usage and Credits"><Icon d={PATH.gauge} /></Link>
-          <Link to="/settings" className="studio-dock__account" aria-label="Settings" title="Settings"><Icon d={PATH.settings} /></Link>
+          <Link to="/" className="studio-dock__brand" aria-label="Apple — projects">
+            <ModelMark variant="apple" />
+            <span className="studio-dock__wordmark">Apple</span>
+          </Link>
+
+          <div className="studio-dock__nav">
+            <div className="studio-dock__group" role="group" aria-label="Build">
+              {/* aria-hidden because the group already carries this word as its accessible name;
+                  announcing it twice is the cost of a heading nobody asked for. */}
+              <p className="studio-dock__group-label" aria-hidden="true">Build</p>
+
+              {/* The tour's first step points here. It used to point at the New chat link inside
+                  the conversations drawer, which the tour suspends itself for — so the step could
+                  never be shown and never be completed. This row is on screen on every route. */}
+              <button
+                type="button"
+                className="studio-dock__row"
+                aria-label="New chat"
+                title="New chat"
+                data-tour="new-chat"
+                onClick={() => { if (location.pathname !== '/') navigate('/'); newProject(); }}
+              >
+                <Icon d={PATH.compose} size={17} />
+                <span className="studio-dock__label">New chat</span>
+                <kbd className="studio-dock__kbd" dir="ltr" aria-hidden="true">{shortcutLabel(SHORTCUTS.newProject)}</kbd>
+              </button>
+
+              <NavLink to="/" end className="studio-dock__row" aria-label="Projects" title="Projects">
+                <Icon d={PATH.projects} size={17} />
+                <span className="studio-dock__label">Projects</span>
+              </NavLink>
+
+              <button
+                type="button"
+                className="studio-navigation"
+                onClick={openRail}
+                aria-label="Open navigation"
+                aria-expanded={railOpen}
+                title="Conversations"
+              >
+                <Icon d={PATH.menu} size={17} />
+                <span className="studio-dock__label">Conversations</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="studio-dock__foot" role="group" aria-label="Account">
+            <p className="studio-dock__group-label" aria-hidden="true">Account</p>
+
+            <NavLink to="/usage" className="studio-dock__row" aria-label="Usage and Credits" title="Usage and Credits">
+              <Icon d={PATH.gauge} size={17} />
+              <span className="studio-dock__label">Usage and Credits</span>
+            </NavLink>
+
+            {/* The signed-in address sits under the word rather than replacing it: the row's
+                accessible name is "Settings" and its visible label has to say the same thing, so
+                who-you-are is the second line rather than the first. Nothing is invented to fill
+                it — with no profile name and no address the line is simply absent. */}
+            <NavLink to="/settings" className="studio-dock__row studio-dock__account" aria-label="Settings" title="Settings">
+              <span className="studio-dock__avatar" aria-hidden="true">{(who[0] ?? '?').toUpperCase()}</span>
+              <span className="studio-dock__stack">
+                <span className="studio-dock__label">Settings</span>
+                {who && <span className="studio-dock__who">{who}</span>}
+              </span>
+            </NavLink>
+          </div>
         </nav>
         {/* A ROUTE THAT THROWS IS A PANE THAT FAILED, NOT AN APPLICATION THAT DIED.
             The root boundary in app.tsx sits outside the router, so a crash anywhere took the

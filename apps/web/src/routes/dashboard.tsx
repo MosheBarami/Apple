@@ -1,5 +1,18 @@
 // / — the project shelf: create, open, delete.
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+// `KeyboardEvent` and `PointerEvent` are ALIASED rather than imported under their own names.
+// ProjectMenu below types a real DOM listener as `(e: KeyboardEvent)`; importing React's synthetic
+// one at module scope shadows the global and turns that correct line into an error about a type it
+// never mentioned. An alias keeps both meanings available and says which is which at every use.
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Failure } from '../components/failure';
@@ -765,15 +778,69 @@ export function DashboardPage() {
     }
   };
 
+  //[[ THE ACCENT IS SPENT ONCE PER SCREEN, AND AN EMPTY SHELF IS WHERE IT HAS TO MOVE.
+  //
+  //   Two `.btn-primary`s rendered on the very first screen a new customer ever sees: "New project"
+  //   in the head and "Summon a project" in the empty state, both filled with --accent-fill, each
+  //   one claiming to be the answer. On an empty shelf the empty state's action IS the answer —
+  //   it stands beside the sentence that explains it — so the head's button steps back to the
+  //   neutral chrome for exactly that case, and takes the fill back the moment there is a grid. ]]
+  const shelfIsEmpty = projects.isSuccess && projects.data.length === 0 && scope === 'active' && !tagFilter;
+
+  //[[ A TABLIST THAT ONLY ANSWERS THE MOUSE IS HALF A CONTROL.
+  //
+  //   `role="tablist"` is a promise about the keyboard: arrows move between tabs, Tab moves past
+  //   the strip. Both tabs were reachable with Tab and neither answered an arrow, which is the
+  //   shape a screen-reader user is told to expect and does not get. Roving tabindex + arrows is
+  //   the whole contract, and focus has to follow the selection or the ring is left on a tab that
+  //   is no longer current. ]]
+  const tabRefs = useRef<Record<ProjectScope, HTMLButtonElement | null>>({ active: null, archived: null });
+  const onTabKey = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    const next: ProjectScope | null =
+      e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'End' ? 'archived'
+      : e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'Home' ? 'active'
+      : null;
+    if (!next) return;
+    e.preventDefault();
+    setScope(next);
+    tabRefs.current[next]?.focus();
+  };
+
+  //[[ THE HOVER IS ATTACHED TO THE CURSOR, NOT MERELY TO THE CARD.
+  //
+  //   A card that answers the pointer with one flat step says "clickable" and nothing more, and a
+  //   shelf is twenty of them, so the step reads as the grid flickering as the hand crosses it.
+  //   These two names position the soft highlight in dashboard.css at the point the pointer is
+  //   actually at, so the lit card is the one under the hand and the light travels with it.
+  //
+  //   Written straight onto the element rather than through state: this fires on every pointer
+  //   move over every card, and a setState per frame would re-render the whole grid to paint a
+  //   gradient. `.project-card::before` is the only reader, and it is display:none under
+  //   prefers-reduced-motion — where these writes land on a box that paints nothing. ]]
+  const trackPointer = (e: ReactPointerEvent<HTMLElement>) => {
+    const box = e.currentTarget.getBoundingClientRect();
+    e.currentTarget.style.setProperty('--card-x', `${e.clientX - box.left}px`);
+    e.currentTarget.style.setProperty('--card-y', `${e.clientY - box.top}px`);
+  };
+
   return (
-    <div className="page">
+    <div className="page shelf">
       <div className="page-head">
-        <div>
+        <div className="shelf__intro">
           <h1 className="page-title">Projects</h1>
           <p className="page-sub">Each project is one Roblox experience Apple builds with you.</p>
         </div>
-        <button type="button" className="btn btn-primary" onClick={() => setShowCreate(true)}>
-          <span aria-hidden="true">+</span> New project
+        <button
+          type="button"
+          className={`btn shelf__new${shelfIsEmpty ? '' : ' btn-primary'}`}
+          onClick={() => setShowCreate(true)}
+        >
+          {/* Drawn rather than typed. A text "+" sits on the baseline beside a word whose cap
+              height it does not share, so the button reads as slightly broken at every size. */}
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" aria-hidden="true">
+            <path d="M8 3.5v9M3.5 8h9" />
+          </svg>
+          New project
         </button>
       </div>
 
@@ -781,11 +848,15 @@ export function DashboardPage() {
           always empty is chrome; one that appears when it has contents is an answer to "where did
           that project go?". */}
       {(archived.data?.length ?? 0) > 0 && (
-        <div className="scope-tabs" role="tablist" aria-label="Project scope">
+        <div className="scope-tabs shelf__tabs" role="tablist" aria-label="Project scope" onKeyDown={onTabKey}>
           <button
             type="button"
             role="tab"
             aria-selected={scope === 'active'}
+            tabIndex={scope === 'active' ? 0 : -1}
+            ref={(el) => {
+              tabRefs.current.active = el;
+            }}
             className={`scope-tab${scope === 'active' ? ' is-on' : ''}`}
             onClick={() => setScope('active')}
           >
@@ -795,6 +866,10 @@ export function DashboardPage() {
             type="button"
             role="tab"
             aria-selected={scope === 'archived'}
+            tabIndex={scope === 'archived' ? 0 : -1}
+            ref={(el) => {
+              tabRefs.current.archived = el;
+            }}
             className={`scope-tab${scope === 'archived' ? ' is-on' : ''}`}
             onClick={() => setScope('archived')}
           >
@@ -829,23 +904,44 @@ export function DashboardPage() {
       )}
 
       {((projects.data?.length ?? 0) > 0 || search.length > 0) && (
-        <div className="project-search">
-          <input type="search" aria-label="Search projects" placeholder="Search this list…"
-            value={search} maxLength={120} onChange={event => setSearch(event.target.value)} />
-          {search.length > 0 && <button type="button" className="btn btn-quiet" onClick={() => setSearch('')}>Clear search</button>}
+        <div className="project-search shelf__search">
+          {/* THE CLEAR SITS INSIDE THE FIELD IT CLEARS. It was a separate outline button beside the
+              input, which is a second control the eye has to find and which appears and disappears,
+              reflowing the row under the pointer. Inside, it is where every search field on every
+              platform puts it, and the row stops changing width when you type. The glyph carries an
+              aria-label because the × alone names nothing. */}
+          <span className="shelf__field">
+            <svg className="shelf__field-mark" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true">
+              <circle cx="7" cy="7" r="4.4" />
+              <path d="m10.4 10.4 3.1 3.1" strokeLinecap="round" />
+            </svg>
+            <input className="shelf__field-input" type="search" aria-label="Search projects" placeholder="Search this list…"
+              value={search} maxLength={120} onChange={event => setSearch(event.target.value)} />
+            {search.length > 0 && (
+              <button type="button" className="shelf__field-clear" aria-label="Clear search" title="Clear search" onClick={() => setSearch('')}>
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" aria-hidden="true">
+                  <path d="m4.6 4.6 6.8 6.8M11.4 4.6l-6.8 6.8" />
+                </svg>
+              </button>
+            )}
+          </span>
           {search.trim() && projects.isSuccess && (
-            <span role="status">{visibleProjects.length} of {projects.data.length} loaded projects</span>
+            <span role="status" className="shelf__count">{visibleProjects.length} of {projects.data.length} in this list</span>
           )}
         </div>
       )}
 
       {projects.isPending && (
         <div className="card-grid" aria-busy="true" aria-label="Loading projects">
+          {/* The placeholder is the CARD's shape, not three loose bars: a name, two lines of what
+              it is, and the metadata strip on the floor. A skeleton that does not predict what
+              lands on top of it makes the grid jump when the answer arrives. */}
           {[0, 1, 2].map((i) => (
-            <div key={i} className="project-card skeleton-card">
+            <div key={i} className="project-card project-card--ghost">
               <div className="skeleton skeleton-title" />
               <div className="skeleton skeleton-line" />
               <div className="skeleton skeleton-line short" />
+              <div className="skeleton project-card__ghost-meta" />
             </div>
           ))}
         </div>
@@ -867,7 +963,7 @@ export function DashboardPage() {
           "Summon a project" here answers a question nobody asked. In practice the tab is hidden
           when it is empty, so this is the race where the last archived project was just restored. */}
       {projects.isSuccess && projects.data.length === 0 && scope === 'archived' && (
-        <p className="page-note">Nothing archived. Archived projects keep everything — restore one any time.</p>
+        <p className="page-note">Nothing archived. Archiving keeps a project whole and takes it off this shelf; restore one from here any time.</p>
       )}
 
       {/* A FILTER THAT MATCHES NOTHING IS NOT AN EMPTY ACCOUNT.
@@ -887,7 +983,7 @@ export function DashboardPage() {
         <EmptyState
           state="noProjects"
           illustration={<SummonIllustration />}
-          detail={<p className="es__body">Describe the game you want — an obby, a tycoon, a story world — and Apple starts carving.</p>}
+          detail={<p className="es__body">Name a project, then describe the game you want — an obby, a tycoon, a story world. Apple writes the scripts and builds it in your Roblox place.</p>}
           action={
             <button type="button" className="btn btn-primary" onClick={() => setShowCreate(true)}>
               Summon a project
@@ -896,14 +992,30 @@ export function DashboardPage() {
         />
       )}
 
+      {/* THE WAY OUT IS IN THE MESSAGE, on the same argument as the tag note above it: a sentence
+          that names a control the reader has to go and find is a sentence that leaves them stuck.
+          The clear inside the field does the same job, and it is above this note rather than in it. */}
       {projects.isSuccess && projects.data.length > 0 && visibleProjects.length === 0 && (
-        <p className="page-note">No projects match “{search.trim()}” in this list. Clear the search or change scope.</p>
+        <p className="page-note">
+          No project here matches “{search.trim()}”.{' '}
+          <button type="button" className="btn btn-quiet" onClick={() => setSearch('')}>
+            Clear search
+          </button>
+        </p>
       )}
 
       {projects.isSuccess && visibleProjects.length > 0 && (
         <div className="card-grid">
-          {visibleProjects.map((p) => (
-            <Link key={p.id} to={`/projects/${p.id}`} className="project-card">
+          {/* `--card-i` staggers the arrival in dashboard.css. Capped there, not here: the index is
+              the truth and a shelf of forty must not take two seconds to finish appearing. */}
+          {visibleProjects.map((p, i) => (
+            <Link
+              key={p.id}
+              to={`/projects/${p.id}`}
+              className="project-card"
+              style={{ '--card-i': i } as CSSProperties}
+              onPointerMove={trackPointer}
+            >
               <div className="project-card-top">
                 {/* The pin is drawn on the card, not only in the menu. Without it the top card is
                     simply somewhere the user did not put it, and the only way to find out why is
@@ -936,11 +1048,17 @@ export function DashboardPage() {
                     : 'Open this conversation to continue.'}
               </p>
               <div className="project-card-meta">
-                {p.place_name ? (
-                  <span className="pill pill-quiet">{p.place_name}</span>
-                ) : (
-                  <span className="pill pill-quiet">No saved place name</span>
-                )}
+                {/* THE PLACE IS A FACT, NOT A LABEL. Drawn as a chip it sat in the same shape as the
+                    user's own tags beside it, so "No saved place name" — the ABSENCE of a fact —
+                    read as a tag somebody had applied. Faint text under a small glyph says which
+                    of the two kinds of thing it is without a second colour. */}
+                <span className={`project-card-place${p.place_name ? '' : ' is-absent'}`}>
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden="true">
+                    <path d="M8 14.2s4.6-4 4.6-7.4a4.6 4.6 0 1 0-9.2 0C3.4 10.2 8 14.2 8 14.2Z" />
+                    <circle cx="8" cy="6.7" r="1.7" />
+                  </svg>
+                  {p.place_name ?? 'No place name yet'}
+                </span>
                 {/* Drawn as text, not as buttons: the whole card is a link to the project, and a
                     control inside a link either swallows the navigation or fires alongside it.
                     Filtering by a tag is what the chip row above the grid is for. */}
@@ -949,7 +1067,10 @@ export function DashboardPage() {
                     {t}
                   </span>
                 ))}
-                <span style={{ marginLeft: 'auto' }}>updated {relativeTime(p.updated_at)}</span>
+                {/* `marginLeft` was an inline physical margin — it pushed the stamp to the RIGHT of
+                    an Arabic or Hebrew shelf, where the end of the row is on the left. A class with
+                    a logical margin follows `dir`, and the rule lives with the rest of the card. */}
+                <span className="project-card-when">updated {relativeTime(p.updated_at)}</span>
               </div>
             </Link>
           ))}

@@ -12,6 +12,7 @@ import { OPERATION_STEPS, type OperationKind } from '../lib/tool-meta';
 import { useReducedMotion } from '../lib/theme';
 import { RunePulse } from './glyphs';
 import { StatusIcon } from './status-icon';
+import './loading.css';
 
 const HEADLINE: Record<OperationKind, string> = {
   building: 'Apple is building',
@@ -51,7 +52,10 @@ export function Forge({ kind, label, compact, cadenceMs = 1500 }: ForgeProps) {
   }, [kind, cadenceMs, reduced, compact, steps.length]);
 
   return (
-    <div className="forge" role="status" aria-live="polite">
+    // `is-compact` is carried as a class rather than left implicit in "no step list". The compact
+    // wait is the only one that ships today, and a panel holding three short things cannot have
+    // been sized by the same padding as one holding seven.
+    <div className={`forge${compact ? ' is-compact' : ''}`} role="status" aria-live="polite">
       <span className="forge-mark" aria-hidden="true">
         <RunePulse size={24} />
       </span>
@@ -63,10 +67,18 @@ export function Forge({ kind, label, compact, cadenceMs = 1500 }: ForgeProps) {
               key={step}
               className={`forge-step${i < index ? ' is-done' : ''}${i === index ? ' is-active' : ''}`}
             >
+              {/* THE MARK IS ON THE STEP IN FLIGHT, not on the ones behind it, and that is a
+                  correction. A finished step used to carry `<StatusIcon status="success">`, whose
+                  tone is --good — a second green on a panel whose progress bar already spends the
+                  accent, for a state nobody has to act on. The step that is HAPPENING is the one
+                  worth marking, `pending` is the only status in the canonical set that animates,
+                  and its tone is muted, so the sequence reads without spending a colour.
+                  The box is left EMPTY for every other step on purpose: loading.css draws the
+                  filled dot and the hollow ring off `:empty`, so the state is described once. */}
               <span className="forge-step-mark">
-                {i < index ? <StatusIcon status="success" size={12} /> : null}
+                {i === index ? <StatusIcon status="pending" size={12} /> : null}
               </span>
-              {step}
+              <span className="forge-step-name">{step}</span>
             </li>
           ))}
         </ol>
@@ -79,11 +91,23 @@ export function Forge({ kind, label, compact, cadenceMs = 1500 }: ForgeProps) {
   );
 }
 
-/** The smallest possible wait indicator, for inline use. */
+/**
+ * The smallest possible wait indicator, for inline use.
+ *
+ * IT USED TO BE INVISIBLE. The span's only child was screen-reader text, so the workspace's
+ * "Opening your project…" screen — the one a customer sees between clicking a project and seeing
+ * it — rendered as an empty page. The mark comes from the shared status vocabulary so that the one
+ * spinning thing in the product spins the same way everywhere, and `label`, when a caller gives
+ * one, is now SHOWN rather than only announced: the caller had already written the sentence, and a
+ * 14px mark alone on a full page says less than it does.
+ */
 export function Spinner({ label }: { label?: string }) {
   return (
-    <span className="rune-spinner" role="status" aria-label={label ?? 'Loading'}>
-      <span className="visually-hidden">{label ?? 'Loading'}</span>
+    <span className="rune-spinner" role="status">
+      <StatusIcon status="pending" size={14} />
+      {label
+        ? <span className="rune-spinner__label">{label}</span>
+        : <span className="visually-hidden">Loading</span>}
     </span>
   );
 }

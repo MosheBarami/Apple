@@ -8,27 +8,48 @@
    Hierarchy is size, colour and the 1px var(--line) hairline, which does all the separation; there
    is no shadow anywhere in this file, because a raised thing is a surface step.
 
-   COLOUR IS RATIONED to the four places this component means status: the head mark, a lapsed
-   expiry, the place-mismatch warning, and the success ring. Everything else is a neutral.
+   COLOUR IS RATIONED. The accent is spent once, on the one primary action the dialog ever offers
+   ("Start building" when the pairing has landed, "Generate a new code" when one has lapsed). The
+   status ramp is spent on facts a reader must act on and nothing else: a lapsed expiry, the
+   place-mismatch warning, and the success mark. The success ring lost its green FILL for exactly
+   this reason — a tinted plate behind a green tick, on the same panel as a green button, is the
+   "two green things and neither is the answer" that docs/DESIGN-LOCK.md names. The mark keeps the
+   status colour because the shape is the status; the plate behind it is a surface step.
 
    FOUR SHARED CLASSES. .pairing-code-box, .pairing-code, .pairing-label and .pairing-countdown are
    also worn by the Discord pairing block in routes/settings.tsx — same idiom, label over code over
    countdown — so they are left unscoped and both surfaces get them. system.css already sets
    border/padding/text-align on the first two and is bundled AFTER this sheet (main.tsx imports
    ./app before ./design/system.css), so anything that could collide is written at two-class
-   specificity rather than hoping for source order. */
+   specificity rather than hoping for source order.
+
+   RADIUS. Every corner here is --r-md or --r-xs. This file used to reach for --r-sm, which is a
+   10px alias of --r-md left over from an older ramp: the same pixels under a fifth name the design
+   lock does not list, which is how a sixth gets added later. */
 
 .pairing-col { display:grid; gap:22px; min-width:0; }
+
+/* PRESSED IS A STATE, and a dialog whose controls only have rest and hover feels unanswered on the
+   click that matters. Excluded: the primary and the danger button, which declare their own pressed
+   colour in system.css and would otherwise be overruled by this higher-specificity neutral. */
+.pairing-col .btn { transition:background var(--t-fast) var(--ease-out),border-color var(--t-fast) var(--ease-out),color var(--t-fast) var(--ease-out); }
+.pairing-col .btn:not(.btn-primary):not(.btn-danger):active:not(:disabled) { background:var(--surface-3); }
 
 /* ----------------------------------------------------- the connection record --- */
 
 /* A well, one step down from the modal's var(--surface). "This is a record of a thing that
    already exists" said with a surface step instead of a heading. */
-.pairing-record { display:grid; gap:14px; min-width:0; padding:18px; border:1px solid var(--line); border-radius:var(--r-sm); background:var(--paper-2); }
+.pairing-record { display:grid; gap:14px; min-width:0; padding:18px; border:1px solid var(--line); border-radius:var(--r-md); background:var(--paper-2); }
 
-/* "We have not asked yet" and "we asked and could not tell" share one shape, and it is the shape
-   of a note — not of the record, which would read as a record of nothing. */
-.pairing-record__unknown { margin:0; padding:14px 16px; border:1px solid var(--line); border-radius:var(--r-sm); background:var(--paper-2); color:var(--faint); font-size:12.5px; line-height:1.55; letter-spacing:-.01em; }
+/* "WE HAVE NOT ASKED YET" AND "WE ASKED AND COULD NOT TELL" SHARE A SHAPE AND NOT A LAYOUT. Both
+   are notes rather than records — a record of nothing would read as a fact about the project,
+   which is the defect pairing-dialog.tsx is written against — but only one of them is still
+   moving, and only one of them can be retried. So: a row with a breathing dot while we wait, and a
+   stacked note with the way to ask again when we could not tell. */
+.pairing-record__unknown { margin:0; padding:14px 16px; border:1px solid var(--line); border-radius:var(--r-md); background:var(--paper-2); color:var(--faint); font-size:12.5px; line-height:1.55; letter-spacing:-.01em; }
+.pairing-record__unknown--waiting { display:flex; align-items:center; gap:9px; }
+.pairing-record__unknown--failed { display:grid; justify-items:start; gap:12px; }
+.pairing-record__unknown-text { margin:0; text-wrap:pretty; }
 
 .pairing-record__head { display:flex; align-items:center; gap:10px; min-width:0; }
 .pairing-record__head > svg { flex:none; }
@@ -44,7 +65,7 @@
 .pairing-record__facts > div { display:grid; gap:4px; min-width:0; }
 .pairing-record__facts dt { font-size:10px; line-height:1.4; text-transform:uppercase; letter-spacing:.018em; color:var(--faint); }
 .pairing-record__facts dd { margin:0; font-size:12.5px; line-height:1.45; color:var(--muted); font-variant-numeric:tabular-nums; }
-/* Lapsed is a fact about the project, so it gets one of the four colours. */
+/* Lapsed is a fact about the project, so it gets one of the status colours. */
 .pairing-record__facts dd.is-lapsed { color:var(--bad); }
 
 /* The worker's own sentence, quoted. A warm tint rather than a border colour, so the hairline
@@ -83,41 +104,64 @@
 
 /* --------------------------------------------------------------- paired, done --- */
 
-.pairing-success { display:grid; justify-items:center; gap:12px; padding:26px 20px; border:1px solid var(--line); border-radius:var(--r-sm); text-align:center; }
+.pairing-success { display:grid; justify-items:center; gap:12px; padding:26px 20px; border:1px solid var(--line); border-radius:var(--r-md); text-align:center; }
 .pairing-success h3 { margin:0; font-size:22px; font-weight:400; letter-spacing:-.02em; }
-.pairing-success p { margin:0; max-width:44ch; font-size:13px; line-height:1.6; letter-spacing:-.01em; }
+.pairing-success p { margin:0; max-width:44ch; font-size:13px; line-height:1.6; letter-spacing:-.01em; text-wrap:pretty; }
 .pairing-success > .btn { margin-top:4px; min-width:170px; }
 .pairing-success > .btn + .btn { margin-top:0; }
-/* The one ring in the file. A hairline circle and a tinted fill — the surface step and the colour
-   doing together what a glow would have done badly. */
-.pairing-success-icon { display:grid; place-items:center; width:46px; height:46px; border:1px solid var(--line); border-radius:var(--r-pill); background:color-mix(in srgb,var(--good) 12%,transparent); color:var(--good); }
+/* The one ring in the file, and it is a surface step rather than a tint. See the header: the
+   green fill this plate used to carry put a second green object on the same panel as the primary
+   button, and the tick alone already carries the status. */
+.pairing-success-icon { display:grid; place-items:center; width:46px; height:46px; border:1px solid var(--line); border-radius:var(--r-pill); background:var(--paper-2); color:var(--good); }
 
 /* -------------------------------------------------------------- the code half --- */
 
 .pairing-code-col { display:grid; gap:16px; min-width:0; }
 
 /* system.css owns border/padding/text-align. These are the properties it does not set, so no
-   collision and source order is irrelevant. */
-.pairing-code-box { border-radius:var(--r-sm); display:grid; justify-items:center; gap:12px; min-width:0; }
+   collision and source order is irrelevant. The --paper-2 ground is the design lock's own word for
+   what a recessed plate is: the code is read off this box the way a value is read out of an input,
+   and a box drawn at the same level as the modal around it is not read as a plate at all. */
+.pairing-code-box { border-radius:var(--r-md); background:var(--paper-2); display:grid; justify-items:center; gap:12px; min-width:0; }
 .pairing-code-box > .btn { min-width:170px; }
 .pairing-code-box .form-error { margin:0; font-size:13px; line-height:1.55; letter-spacing:-.01em; }
 
 /* A micro-label: the smallest type in the dialog, so it is the one thing that tracks wider. */
 .pairing-label { display:block; font-size:10px; line-height:1.4; text-transform:uppercase; letter-spacing:.018em; color:var(--faint); }
 /* Two-class specificity: system.css sets `font:40px var(--font-mono)` later in the bundle, and the
-   shorthand would reset anything written here at one class. */
-.pairing-code-box .pairing-code { display:block; line-height:1.1; color:var(--ink); font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+   shorthand would reset anything written here at one class.
+   THE ARRIVAL IS THE ONE PIECE OF MOTION THE DIALOG EARNS. A pairing code is the only thing on
+   this surface that was not there a moment ago and is worth looking at; --t-slow is the design
+   lock's duration for something entering the page for the first time. `both` so the first frame is
+   the from-state rather than a flash of the finished code. */
+.pairing-code-box .pairing-code { display:block; line-height:1.1; color:var(--ink); font-variant-numeric:tabular-nums; overflow-wrap:anywhere; animation:pairing-code-arrive var(--t-slow) var(--ease-out) both; }
+@keyframes pairing-code-arrive { from { opacity:0; transform:translateY(7px); } to { opacity:1; transform:none; } }
 .pairing-countdown { display:block; font-size:11px; line-height:1.4; color:var(--faint); font-variant-numeric:tabular-nums; }
 
-.pairing-how { margin:0; font-size:12.5px; line-height:1.6; letter-spacing:-.01em; color:var(--muted); text-align:center; }
+/* THE CODE IS TYPED INTO ANOTHER APPLICATION. Copying it is the only help the browser can give, so
+   the control sits under the code rather than beside it — a button on the same line competes with
+   the 40px figure it is about. The label IS the state: "Copy code" becomes "Copied" for two
+   seconds and goes back. No colour change, because a green confirmation here would be the second
+   green on a panel whose accent is already spent. */
+.pairing-copy { font-variant-numeric:tabular-nums; }
+.pairing-copy__failed { margin:0; max-width:40ch; font-size:12px; line-height:1.5; letter-spacing:-.01em; color:var(--muted); text-wrap:pretty; }
+
+.pairing-how { margin:0; font-size:12.5px; line-height:1.6; letter-spacing:-.01em; color:var(--muted); text-align:center; text-wrap:pretty; }
 /* ONE WEIGHT: the plugin's name is carried by ink, not by bold. */
 .pairing-how strong { font-weight:400; color:var(--ink); }
 
-.pairing-link { color:var(--ink); text-decoration:none; border-bottom:1px solid var(--line); padding-bottom:1px; transition:border-color 160ms var(--ease-out); }
+.pairing-link { color:var(--ink); text-decoration:none; border-bottom:1px solid var(--line); padding-bottom:1px; transition:border-color var(--t-fast) var(--ease-out); }
 .pairing-link:hover { border-bottom-color:var(--ink); }
+/* Pressed, and distinct from hover: the underline goes quiet for the length of the click, which is
+   the only thing a text link has to give. */
+.pairing-link:active { border-bottom-color:var(--muted); }
 
 .pairing-waiting { margin:0; display:flex; align-items:center; justify-content:center; gap:8px; font-size:12.5px; line-height:1.5; letter-spacing:-.01em; }
-.pairing-waiting .pulse-dot { flex:none; width:6px; height:6px; border-radius:var(--r-pill); background:currentColor; opacity:.35; animation:pairing-pulse 1.7s var(--ease-out) infinite; }
+/* One dot, two callers: the wait for Studio to claim a code, and the wait for the connection
+   record to answer. They mean the same thing — something is outstanding — and a second definition
+   is how two identical waits end up breathing at different rates. */
+.pairing-waiting .pulse-dot,
+.pairing-record__unknown .pulse-dot { flex:none; width:6px; height:6px; border-radius:var(--r-pill); background:currentColor; opacity:.35; animation:pairing-pulse 1.7s var(--ease-out) infinite; }
 @keyframes pairing-pulse { 0%,100% { opacity:.25; transform:scale(.85); } 50% { opacity:1; transform:scale(1); } }
 
 /* ------------------------------------------------------------------ at 375px --- */
@@ -139,13 +183,27 @@
   .pairing-record__queue > .btn { width:100%; }
   .pairing-record__confirm { display:grid; }
   .pairing-record__confirm > span:first-child { flex:none; }
+  /* The retry sits under its own sentence and takes the width, for the same reason. */
+  .pairing-record__unknown--failed > .btn { width:100%; }
   .pairing-success { padding:22px 14px; }
   .pairing-success > .btn,
   .pairing-code-box > .btn { min-width:0; width:100%; }
+  /* 40px of mono at .18em overflows a 375px screen at six characters. 30px at .12em is the same
+     plate, measured to fit rather than clipped. */
   .pairing-code-box .pairing-code { font-size:30px; letter-spacing:.12em; }
 }
 
+/* ------------------------------------------------------------- reduced motion --- */
+
+/* OFF, NOT SLOWED. Three things move in this file — the code's arrival, the two waiting dots, and
+   the control transitions — and every one of them is a nicety over something already said in
+   words. A cancelled animation stops filling, so `animation:none` is on its own enough to undo the
+   `both` above; the two resets beside it are restated so that reading this block does not require
+   knowing that. */
 @media (prefers-reduced-motion:reduce) {
-  .pairing-waiting .pulse-dot { animation:none; opacity:.7; }
-  .pairing-link { transition:none; }
+  .pairing-code-box .pairing-code { animation:none; opacity:1; transform:none; }
+  .pairing-waiting .pulse-dot,
+  .pairing-record__unknown .pulse-dot { animation:none; opacity:.7; }
+  .pairing-link,
+  .pairing-col .btn { transition:none; }
 }

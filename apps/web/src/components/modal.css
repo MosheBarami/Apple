@@ -1,0 +1,189 @@
+/* EVERY DIALOG IN THIS PRODUCT, DRAWN ONCE — the sheet modal.tsx and command-palette.tsx share.
+ *
+ * WHAT WAS WRONG, AND WHY IT IS THE MOST VISIBLE KIND OF WRONG. A product has exactly one class of
+ * object allowed to float over its own content, and this app drew it four different ways. Three
+ * backdrops: `#15211b66` with a 5px blur on the modal, `#17201b55` with no blur on the palette,
+ * `#14221b77` on the asset-source dialog — three greens-of-black at three alphas. Three shadows:
+ * `0 24px 100px`, `0 20px 70px`, `0 12px 40px`, and not one of them was `--shadow-modal`, which is
+ * declared in the token set and was spent by nothing. Two entrances: the modal rose 20px over
+ * 220ms, the palette simply appeared. A dialog that arrives differently from the one before it is
+ * the clearest signal a reader gets that a product was assembled rather than designed — and unlike
+ * most such signals it costs nothing to remove, because the only thing needed is agreeing on one.
+ *
+ * SO: one backdrop, one entrance, one shadow, one radius, one close, and the two overlays that
+ * remain outside this file are named in the report rather than quietly left different.
+ *
+ * WHY THE SELECTORS CARRY THEIR CLASS TWICE. main.tsx imports './app' before './design/system.css',
+ * so every component sheet — this one included — is injected BEFORE the base sheet and loses every
+ * specificity tie. A rule here that has to beat a base rule repeats its own class rather than
+ * hoping for source order. Where system.css sets nothing, one class is used and one is enough.
+ *
+ * THE BLUR IS THE ONE PLACE THIS SHEET SPENDS GLASS, AND IT IS DELIBERATE. DESIGN-LOCK reserves
+ * glass for the composer and the top bar because everywhere else it is cost without meaning. A
+ * scrim is the case the sentence is describing rather than an exception to it: it is the only
+ * surface in the product whose entire job is to sit over moving content and take it out of play.
+ * Both scrims already blurred before this file existed; what they did not do was agree.
+ *
+ * COLOUR. Nothing below is tinted. A dialog is a container, never a status: what is urgent about
+ * it is written inside it by the caller, which is where the screen's one accent is spent.
+ */
+
+/* ------------------------------------------------------------------- the backdrop --- */
+
+/* ONE VEIL, DERIVED FROM THE RAMP RATHER THAN PICKED. `--paper` at 72% is the page itself turned
+   up until the content behind it stops competing; the three hand-mixed greens it replaces were
+   each a hue nothing else in the product uses. The blur is what makes the dim read as depth
+   instead of as a grey sheet, and it degrades to the veil alone where it is unsupported. */
+.modal-overlay.modal-overlay,
+.cmdk-backdrop.cmdk-backdrop {
+  position:fixed; inset:0; display:grid; justify-items:center; padding:24px;
+  background:color-mix(in srgb,var(--paper) 72%,transparent);
+  backdrop-filter:blur(10px) saturate(112%); -webkit-backdrop-filter:blur(10px) saturate(112%);
+  animation:overlay-veil var(--t-base) var(--ease-out) both;
+}
+/* THE LIGHT THEME NEEDS THE OPPOSITE INK, NOT LESS OF THE SAME. `--paper` is #fafafa there, so the
+   rule above would wash a white page with more white and the dialog would float on nothing. The
+   veil is the light theme's own `--ink` instead, kept low enough that the page stays legible as
+   context. Rendered in both, not assumed. */
+:root[data-theme='light'] .modal-overlay.modal-overlay,
+:root[data-theme='light'] .cmdk-backdrop.cmdk-backdrop { background:color-mix(in srgb,var(--ink) 26%,transparent); }
+
+/* WHERE EACH ONE SITS, AND WHY THE TWO NUMBERS DIFFER. The palette used to be `z-index:70` against
+   the modal's 100, and ⌘K is a document-level chord that fires whether or not a dialog is open —
+   so opening the palette over any modal put it BEHIND that modal's scrim, invisible, holding the
+   focus and swallowing every keystroke. It now sits above every dialog and below `.toast-stack`
+   (150), because a toast reports something that has already happened and must still be readable.
+   Vertical placement is the other half: a modal is centred because it is the whole of what you are
+   doing, and the palette is not — its list grows downward as you type, and a centred list slides
+   under the cursor on every keystroke. */
+.modal-overlay.modal-overlay { z-index:110; align-items:center; }
+.cmdk-backdrop.cmdk-backdrop { z-index:120; align-items:start; padding-block-start:min(13vh,104px); }
+
+/* ---------------------------------------------------------------------- the panel --- */
+
+/* THE ONE SHADOW ANYTHING IN THIS PRODUCT IS ALLOWED TO CAST, spent here and in `.cmdk` and
+   nowhere else in this file's reach. `--r-lg` because a dialog is a full-bleed panel and the base
+   sheet gave it no radius at all — square corners inside a 10px product.
+   THE PADDING MOVED OFF THE PANEL AND ONTO ITS PARTS, which is what makes the head stay put: the
+   panel used to be a single `overflow:auto` box, so a long dialog scrolled its own title and its
+   own close button off the top and left the reader inside a sheet of text with no visible way out.
+   Two grid rows — a head that cannot move and a body that scrolls — cost one declaration. */
+.modal-panel.modal-panel {
+  width:min(560px,100%); max-height:calc(100dvh - 48px);
+  display:grid; grid-template-rows:auto minmax(0,1fr); padding:0; overflow:hidden;
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg);
+  box-shadow:var(--shadow-modal);
+  animation:overlay-rise var(--t-base) var(--ease-out) both;
+}
+.modal-panel.modal-wide { width:min(840px,100%); }
+
+/* ----------------------------------------------------------------------- the head --- */
+
+/* The hairline is the separation, as it is everywhere else; the fill is the panel's own, so the
+   head reads as part of the sheet rather than as a bar bolted to it. `center` rather than
+   `flex-start` because the close is a 38px square against a single line of title in every dialog
+   this product has, and a two-line title still centres acceptably against it. */
+.modal-panel .modal-head {
+  display:flex; align-items:center; justify-content:space-between; gap:16px;
+  margin:0; padding:18px 20px 18px 24px; border-block-end:1px solid var(--line); background:var(--surface);
+}
+/* 24px, matching `.gx-drawer__title`: a drawer and a dialog are the same kind of object and were
+   set four points apart. It was 27px, which inside a 560px sheet reads as a page title and leaves
+   no room above a 22px <h3> in the body beneath it. Hierarchy is size and space, so the gap has to
+   exist in both directions. */
+.modal-panel .modal-title {
+  margin:0; min-width:0; font-size:24px; font-weight:400; line-height:1.25; letter-spacing:-.025em;
+  color:var(--ink); text-wrap:pretty;
+}
+
+/* THE ONE CLOSE AFFORDANCE. It was the character `×` set at 22px in a box of whatever padding
+   happened to be left — a multiplication sign standing in for an icon, at a target size no thumb
+   can find. It is now the same 38px `.gx-icon-btn` carrying the same `close` path as the rail's
+   own close button, so the gesture is learned once. The rest is the five states: muted at rest so
+   it does not compete with the title, ink on hover, a distinct step under the finger, and the
+   shared 48%/not-allowed while the dialog is locked mid-mutation — with the reason in a `title`,
+   because a control that refuses without saying why is read as broken. */
+.modal-close { color:var(--muted); transition:color var(--t-fast) var(--ease-out),background var(--t-fast) var(--ease-out); }
+.modal-close:hover:not(:disabled) { color:var(--ink); background:var(--surface-2); }
+.modal-close:active:not(:disabled) { color:var(--ink); background:var(--surface-3); }
+
+/* ----------------------------------------------------------------------- the body --- */
+
+/* `overscroll-behavior` so reaching the end of a long dialog does not start scrolling the page
+   behind it — the one thing a backdrop cannot say. The padding is also what keeps a focus ring at
+   its 4px offset from being clipped by this scroller's own edge. */
+.modal-panel .modal-body {
+  min-width:0; padding:22px 24px 24px; overflow:auto; overscroll-behavior:contain; scrollbar-width:thin;
+}
+
+/* NOTHING IN THIS PRODUCT IS BOLDER THAN 400, AND <strong> IS WHERE THAT GETS BROKEN WITHOUT
+   ANYBODY DECIDING TO. The confirm dialog asks somebody to type a project's name back and sets
+   that name in `<strong className="mono">`; `.mono` gives it the mono face and nothing else, so
+   the user agent drew it at 700 — the heaviest type anywhere in the app, on the one screen whose
+   entire job is to be read slowly. Emphasis in this product is ink, not weight, and this is the
+   one line that makes that true for every dialog rather than for the ones somebody remembered. */
+.modal-body strong { font-weight:400; color:var(--ink); }
+
+/* THE FIELDS INSIDE A DIALOG, brought onto the system the panel around them is built from. The
+   base sheet's field rule predates the radius tokens and draws every input in this product at a
+   literal 4px, which against a 16px panel reads as a control borrowed from a different kit; it
+   also fills them with `--surface`, the same colour as the panel they sit on, so the one thing on
+   the screen you can type into is the only thing with no edge of its own. `--paper-2` is what the
+   ramp calls a well, and a field is the example it gives. */
+.modal-body input:not([type='checkbox']):not([type='radio']),
+.modal-body select,
+.modal-body textarea { border-radius:var(--r-md); background:var(--paper-2); }
+
+/* THE SENTENCE A CONFIRMATION IS ASKING SOMEBODY TO READ — the one rule in this file that belongs
+   to ./confirm-dialog.tsx, which is the shared dialog's other half and has no sheet of its own.
+   It was `.danger-copy`, so the explanation was set in `--bad` beside a `--bad` button: two things
+   on one screen claiming the same urgency, which is how a reader learns that red means nothing in
+   particular. The sentence is what the dialog exists to have read, so it takes the reading ink and
+   the colour is left for the action. */
+.confirm-copy { margin:0 0 4px; font-size:14px; line-height:1.65; letter-spacing:-.01em; color:var(--ink); text-wrap:pretty; overflow-wrap:anywhere; }
+
+/* THE FOOTER ROW, which every dialog in the product already draws and none of them separated. A
+   hairline above it says the reading is over and what is left is the decision; without it the
+   buttons sit in the same block as the sentence that explains them. */
+.modal-body .modal-actions { margin-top:24px; padding-block-start:18px; border-block-start:1px solid var(--line); }
+
+/* ------------------------------------------------------------------- the entrance --- */
+
+/* ONE ENTRANCE FOR EVERY OVERLAY. `--t-base` is the token for a panel opening, `--ease-out` the
+   curve for something arriving; the rise is small enough that the dialog appears to settle rather
+   than to fly, and `both` holds the first frame so nothing flashes at full opacity before the
+   animation starts. The veil fades on the same clock, because a panel that rises over a backdrop
+   that was already there reads as two events. */
+@keyframes overlay-veil { from { opacity:0; } to { opacity:1; } }
+@keyframes overlay-rise { from { opacity:0; transform:translate3d(0,10px,0) scale(.985); } to { opacity:1; transform:none; } }
+
+/* -------------------------------------------------------------------- at 375px --- */
+
+/* 16px is the product's gutter; the base sheet dropped this to 12px below 680px, which is a
+   narrower margin than anything else on any screen. The panel's height allowance follows the
+   padding, or a full-height dialog loses 16px off the bottom. */
+@media (max-width:600px) {
+  .modal-overlay.modal-overlay,
+  .cmdk-backdrop.cmdk-backdrop { padding:16px; }
+  .cmdk-backdrop.cmdk-backdrop { padding-block-start:8vh; }
+  .modal-panel.modal-panel { max-height:calc(100dvh - 32px); border-radius:var(--r-md); }
+  .modal-panel .modal-head { padding:14px 12px 14px 18px; }
+  .modal-panel .modal-title { font-size:20px; }
+  .modal-panel .modal-body { padding:18px; }
+  /* Two buttons at 375px inside a 24px-padded sheet get ~140px each, which wraps "Delete project
+     permanently" to three lines inside its own box. Stacked they keep DOM order, so the cancel is
+     read first and the committing action sits nearest the thumb. */
+  .modal-body .modal-actions { flex-direction:column; align-items:stretch; margin-top:20px; }
+}
+
+/* --------------------------------------------------------------- reduced motion --- */
+
+/* system.css already kills every animation under `reduce` with `!important`. Restated here so this
+   sheet carries its own opt-out and cannot be lifted into a context that lacks the base one: the
+   rule that adds the motion is three groups up, and it is this file's job to turn it off. */
+@media (prefers-reduced-motion: reduce) {
+  .modal-overlay.modal-overlay,
+  .cmdk-backdrop.cmdk-backdrop,
+  .modal-panel.modal-panel { animation:none; }
+  .modal-close { transition:none; }
+}

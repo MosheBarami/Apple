@@ -44,7 +44,11 @@ import { CREATION_INTENTS, creationMessage, maxAccessNotice, type CreationIntent
 import { ModelMark } from './model-mark';
 import './composer.css';
 
-const PLACEHOLDER = 'Ask anything about your project...';
+// WHAT THIS BOX IS FOR, IN THE WORDS OF THE JOB. "Ask anything about your project…" is the line
+// every chat product ships with, and it describes a question-answering service: this one builds,
+// changes and fixes a Roblox place, which is the whole of what a person is here to ask for. The
+// three verbs are the three things the worker can actually be told to do.
+const PLACEHOLDER = 'Describe what to build, change or fix in your place';
 
 /**
  * The starting points the picker offers.
@@ -516,7 +520,7 @@ export function Composer({
     // person's, the uploads are still theirs, and the only thing that failed is the delivery.
     const message = creationMessage(creation, value, MESSAGE_MAX_CHARS);
     if (!message) {
-      onNotice?.('This description is too long with the creation instructions. Shorten it slightly and try again.');
+      onNotice?.('This description is too long once the creation instructions are added. Shorten it and send again.');
       return;
     }
     if (!onSend(message, readyAttachments(staged))) return;
@@ -659,8 +663,11 @@ export function Composer({
 
         {showCount && (
           /* Polite, never assertive: a character count that interrupted a screen reader mid-word
-             would be a worse problem than the one it is warning about. */
-          <p className="gx-composer__count" aria-live="polite">
+             would be a worse problem than the one it is warning about.
+             `is-full` HAS HAD A RULE IN system.css SINCE THE BEGINNING and nothing ever set it, so
+             the counter read the same at 400 characters left as at none — the one moment it has
+             something to report is the one moment it said nothing. */
+          <p className={`gx-composer__count${text.length >= MESSAGE_MAX_CHARS ? ' is-full' : ''}`} aria-live="polite">
             {MESSAGE_MAX_CHARS - text.length} characters left
           </p>
         )}
@@ -689,6 +696,17 @@ export function Composer({
                       aria-valuemax={100}
                     >
                       <span className="gx-attach__fill" style={{ inlineSize: `${pct}%` }} />
+                    </span>
+                  )}
+                  {/* THE SUCCESS STATE, which was the one phase with no picture. A row that had
+                      landed looked exactly like a row that had stalled at 100% — same name, same
+                      ×, no bar on either — so the only way to know a file was actually on the
+                      message was to send it. The tick is drawn for the eye; the word beside it is
+                      what a screen reader gets, since `aria-live` is not on this list. */}
+                  {row.phase === 'ready' && (
+                    <span className="gx-attach__ok">
+                      <Icon d="M4.5 12.5l4.5 4.5L19.5 7" size={12} />
+                      <span className="gx-sr">Attached</span>
                     </span>
                   )}
                   {row.phase === 'failed' && <span className="gx-attach__error">{row.error}</span>}
@@ -866,14 +884,16 @@ export function Composer({
               type="button"
               className="gx-icon-btn"
               disabled
-              title="Voice input isn’t supported yet"
+              title="Voice input is not supported yet"
               aria-label="Voice input — not supported yet"
             >
               <Icon d={PATH.mic} size={16} />
             </button>
 
             {running ? (
-              <button type="button" className="gx-send is-stop" onClick={onStop} disabled={disabled} aria-label="Stop this run">
+              // The title as well as the label: a pointer user gets no accessible name, and this
+              // is the one control on the bar whose consequence is not obvious from its glyph.
+              <button type="button" className="gx-send is-stop" onClick={onStop} disabled={disabled} title="Stop this run" aria-label="Stop this run">
                 <Icon d={PATH.stop} size={13} />
               </button>
             ) : (
@@ -893,8 +913,15 @@ export function Composer({
 
       {modelUnavailable && <p className="gx-creation-note" role="status">Apple MAX requires a subscription. Choose Apple to continue free. Your draft is kept.</p>}
       {creation !== 'build' && <p className="gx-creation-note" role="status">{creationUnavailable ? 'Studio disconnected. Reconnect using Studio above, or switch to Images or chat. Your draft is kept.' : CREATION_INTENTS[creation].note}</p>}
+      {/* TWO FACTS, AND THEY WERE RUNNING INTO EACH OTHER. JSX collapses the line break into a
+          single space, so this line rendered "⇧↵ for a new line Apple can get things wrong" — one
+          sentence with a keyboard shortcut welded onto the front of it. The separator is the same
+          middot `sendHint` already uses between its own two halves, so the strip reads as a list of
+          facts about this box rather than as prose. */}
       <p className="gx-composer__note">
-        {sendHint(prefs.sendKey)} Apple can get things wrong. Check what it changed before you publish.
+        {sendHint(prefs.sendKey)}
+        {' · '}
+        Apple can get things wrong. Check what it changed before you publish.
       </p>
     </div>
   );

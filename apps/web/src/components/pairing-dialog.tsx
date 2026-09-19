@@ -83,8 +83,19 @@ function ConnectionRecord({ projectId }: { projectId: string }) {
   // A FAILURE TO OBSERVE IS NOT AN OBSERVATION. This route is owner-only, so a collaborator is
   // answered 404 — and 404, a timeout and a 500 must all read as "we could not tell", never as
   // "nothing is paired", which is a claim about the project that nobody has established.
-  if (record.isError) return <p className="pairing-record__unknown" role="status">We couldn&rsquo;t read this project&rsquo;s connection record. That is not the same as nothing being paired &mdash; nothing here has changed.</p>;
-  if (record.isPending) return <p className="pairing-record__unknown" role="status">Checking what this project is paired to&hellip;</p>;
+  // THE ADMISSION OF FAILURE STAYS ON THE GUARD'S OWN LINE. tests/studio-diagnostics.test.mjs reads
+  // the first line after `isError` and requires the words "could not" / "couldn't" to be in it —
+  // the gate that stops this branch quietly becoming "nothing is paired" again. Wrapping the JSX
+  // onto a second line would read better and would defeat that check, so it stays where it is.
+  if (record.isError) return <div className="pairing-record__unknown pairing-record__unknown--failed" role="status"><p className="pairing-record__unknown-text">We couldn&rsquo;t read this project&rsquo;s connection record. That is not the same as nothing being paired &mdash; nothing here has changed.</p>
+    {/* A FAILED READ NEEDS A SECOND ATTEMPT, not just an apology. Until now the only way to re-ask
+        was to close the dialog and open it again, which a reader takes as the product telling them
+        there is nothing here to see. */}
+    <button type="button" className="btn btn-sm" onClick={() => void record.refetch()} disabled={record.isFetching}>
+      {record.isFetching ? 'Checking…' : 'Try again'}
+    </button>
+  </div>;
+  if (record.isPending) return <p className="pairing-record__unknown pairing-record__unknown--waiting" role="status"><span className="pulse-dot" aria-hidden="true" />Checking what this project is paired to&hellip;</p>;
 
   const link = record.data.link;
   // `paired` is the worker's own field. Deriving this from a falsy payload would collapse it with
@@ -210,6 +221,11 @@ export function PairingDialog({ projectId, studioConnected, onClose }: PairingDi
   const [state, setState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [remaining, setRemaining] = useState<string | null>(null);
+  //[[ THE CODE IS TYPED INTO ANOTHER APPLICATION, so offering to put it on the clipboard is the
+  //   whole of the help this dialog can give. Three states rather than two: `navigator.clipboard`
+  //   is absent outside a secure context and can be refused by permission policy, and a copy
+  //   button that silently does nothing teaches a reader that the controls here are decorative. ]]
+  const [copied, setCopied] = useState<'idle' | 'done' | 'failed'>('idle');
   const record = useStudioRecord(projectId);
   const mintGenerationRef = useRef(0);
   const attemptRef = useRef<(PairingAttemptBaseline & { projectId: string; generation: number }) | null>(null);
@@ -223,6 +239,7 @@ export function PairingDialog({ projectId, studioConnected, onClose }: PairingDi
     setState('idle');
     setErrorMsg('');
     setRemaining(null);
+    setCopied('idle');
     return () => {
       mintGenerationRef.current += 1;
     };
@@ -242,6 +259,9 @@ export function PairingDialog({ projectId, studioConnected, onClose }: PairingDi
     setState('loading');
     setPairing(null);
     setErrorMsg('');
+    // A new code is a different code: "Copied" left standing over it would be a claim about the
+    // clipboard that stopped being true the moment the old one was replaced.
+    setCopied('idle');
     createPairingCode(projectId)
       .then((dto) => {
         if (mintGenerationRef.current !== generation || attemptRef.current?.projectId !== projectId) return;
@@ -268,6 +288,25 @@ export function PairingDialog({ projectId, studioConnected, onClose }: PairingDi
     if (record.isPending || paired || state !== 'idle') return;
     mint();
   }, [record.isPending, paired, state, mint]);
+
+  // The confirmation is a moment, not a mode. Two seconds is long enough to be read and short
+  // enough that it cannot still be on screen when the reader looks back.
+  useEffect(() => {
+    if (copied !== 'done') return;
+    const t = window.setTimeout(() => setCopied('idle'), 2200);
+    return () => window.clearTimeout(t);
+  }, [copied]);
+
+  const copyCode = useCallback(() => {
+    const code = pairing?.code;
+    if (!code) return;
+    const clip = navigator.clipboard;
+    if (!clip?.writeText) {
+      setCopied('failed');
+      return;
+    }
+    void clip.writeText(code).then(() => setCopied('done')).catch(() => setCopied('failed'));
+  }, [pairing]);
 
   useEffect(() => {
     if (!pairing) {
@@ -340,7 +379,7 @@ export function PairingDialog({ projectId, studioConnected, onClose }: PairingDi
               <StatusIcon status="success" size={22} />
             </span>
             <h3>Studio connected</h3>
-            <p className="muted">Studio is connected. Enable edits in the plugin before asking Apple to change your place.</p>
+            <p className="muted">Enable edits in the plugin before asking Apple to change your place.</p>
             <button type="button" className="btn btn-primary" onClick={onClose}>
               Start building
             </button>
@@ -366,7 +405,7 @@ export function PairingDialog({ projectId, studioConnected, onClose }: PairingDi
             )}
             {(state === 'loading' || (state === 'idle' && !paired)) && (
               <div className="pairing-code-box" aria-busy="true">
-                <Forge kind="connecting" label="Carving a code" compact />
+                <Forge kind="connecting" label="Creating a pairing code" compact />
               </div>
             )}
             {state === 'error' && (
@@ -395,6 +434,14 @@ export function PairingDialog({ projectId, studioConnected, onClose }: PairingDi
                     <span className="pairing-countdown" role="timer">
                       expires in {remaining}
                     </span>
+                    <button type="button" className="pairing-copy btn btn-sm" onClick={copyCode}>
+                      {copied === 'done' ? 'Copied' : 'Copy code'}
+                    </button>
+                    {copied === 'failed' && (
+                      <p className="pairing-copy__failed" role="alert">
+                        Your browser blocked the clipboard. Select the code above and copy it.
+                      </p>
+                    )}
                   </>
                 )}
               </div>

@@ -1,29 +1,166 @@
-/* The shell's own rules.
+/* The shell's own rules: the permanent navigation rail, and the drawer it opens.
  *
- * design/system.css draws the rail, the dock and the account card. These are the elements INSIDE
- * them that shipped with markup and no CSS: the wordmark's text, the New chat label, the pinned
- * mark, the empty-chats line, the checkpoints tile, the account caret and gear, and the dock's
- * usage link. Nothing here changes a structure — it gives one to spans that had none.
+ * design/system.css draws the skeletons of both. This file is what makes the rail a NAVIGATION
+ * rather than a strip of glyphs — the groups, the words, the current-item accent, the account at
+ * the foot — and it gives a structure to the spans inside the drawer that shipped with markup and
+ * no CSS.
  *
- * SCOPED ONE LEVEL DEEPER THAN SYSTEM.CSS ON PURPOSE. main.tsx imports ./app before
- * ./design/system.css, so this file is bundled AHEAD of it and an equal-specificity rule written
- * here would silently lose a tie it looks like it should win. Every selector below carries its
- * container, which also happens to be true: none of these classes appear anywhere else.
+ * SCOPED ONE LEVEL DEEPER THAN SYSTEM.CSS ON PURPOSE, AND THIS IS LOAD-BEARING. main.tsx imports
+ * ./app before ./design/system.css, so this file is bundled AHEAD of it and an equal-specificity
+ * rule written here silently loses a tie it looks like it should win. Every selector below carries
+ * at least one container more than the system rule it is answering. Where system.css already
+ * writes two classes (`.studio-dock .studio-dock__account`) or a theme prefix
+ * (`:root[data-theme='light'] .studio-dock`), the answer here carries three or four. The
+ * containers are true as well as convenient: none of these classes appear outside the shell.
+ *
+ * Tokens only, one weight, one radius set, the accent spent once. See docs/DESIGN-LOCK.md.
  */
 
-/* ------------------------------------------------------------------ the mark --- */
+/* ---------------------------------------------------------------- geometry --- */
+
+/* ONE NUMBER DECIDES THE PAGE. system.css hard-codes 76px in three places — the dock's width, the
+   main column's margin, the atmosphere's inset — and a rail that changes width has to move all
+   three together or the page gains a gap it cannot explain. The token is the single source, and
+   the two breakpoints below are the only places it moves. */
+.gx-shell { --gx-dock-w:248px; }
+.gx-shell .gx-main { width:calc(100% - var(--gx-dock-w)); margin-inline-start:var(--gx-dock-w); }
+.gx-shell .studio-atmosphere { inset-inline:var(--gx-dock-w) 0; }
+
+/* ------------------------------------------------------------------- rail --- */
+
+/* A PANEL, NOT GLASS. system.css painted this with `linear-gradient(140deg,#151515a6,#080808db)`
+   over an 18px blur: raw hex in a declaration, a second black that does not exist in the ramp, and
+   glass on a surface the lock reserves for the composer and the top bar. A surface step and a
+   hairline do the separating here as they do everywhere else — and the step is a token, so the
+   light theme gets the rail for free instead of a second hard-coded colour.
+   `align-items:stretch` and `gap:0` undo the centred icon strip: rows own their own height and
+   their own spacing now, and a flex gap applied over the top of that puts air between a group
+   label and the rows it labels. */
+.gx-shell .studio-dock { width:var(--gx-dock-w); align-items:stretch; gap:0; padding:18px 12px 14px; background:var(--surface); backdrop-filter:none; animation:dock-arrive var(--t-slow) var(--ease-out) both; }
+/* system.css repaints the rail under the light theme with a hard-coded `#f0f0f0d9`, at a higher
+   specificity than the rule above and from a later file. Answered rather than argued with. */
+:root[data-theme='light'] .gx-shell .studio-dock { background:var(--surface); }
+
+/* THE MARK IS IDENTITY, NOT A NAV ITEM. It links home like the Projects row does, but it never
+   wears the accent: two green things on one screen means neither is the answer, and the row is the
+   one that answers "where am I". Its own hover is a surface step, same as every other control. */
+.gx-shell .studio-dock .studio-dock__brand { display:flex; align-items:center; gap:10px; width:auto; height:auto; padding:8px 10px; margin-bottom:16px; border-radius:var(--r-md); color:var(--ink); text-decoration:none; transition:background-color var(--t-fast) var(--ease-out); }
+.gx-shell .studio-dock .studio-dock__brand:hover { background:var(--surface-2); }
+.gx-shell .studio-dock .studio-dock__brand:active { background:var(--surface-3); }
+.gx-shell .studio-dock .studio-dock__brand .model-signature { width:24px; height:24px; }
+.gx-shell .studio-dock__wordmark { font-size:15px; letter-spacing:-.01em; color:var(--ink); white-space:nowrap; }
+
+/* The rows scroll and the account does not, so a short viewport loses conversations before it
+   loses the way out. The inline padding is the focus ring's clearance: `outline-offset:4px` plus a
+   2px ring needs 6px outside the row, and a scroll container clips at its padding box. The equal
+   negative margin gives the pixels back, so the rows still measure the full width of the rail. */
+.gx-shell .studio-dock__nav { flex:1; min-height:0; overflow-y:auto; padding-inline:6px; margin-inline:-6px; scrollbar-width:thin; }
+
+/* THE ONE PLACE IN THIS PRODUCT WHERE LETTER-SPACING IS POSITIVE. At 10px uppercase the tight
+   tracking the rest of the type uses closes the counters up and the word becomes a smudge.
+   `aria-hidden` in the markup, because the group already carries this word as its accessible
+   name — the eye needs it repeated, a screen reader does not. */
+.gx-shell .studio-dock__group-label { margin:0 0 6px; padding-inline:10px; font-size:10px; line-height:1.4; letter-spacing:.018em; text-transform:uppercase; color:var(--faint); }
+
+/* A ROW IS AN ICON, A WORD, AND WHATEVER TRAILS IT. `min-height` rather than a fixed height: the
+   account row carries two lines and must be allowed to grow, and a row that clips its own second
+   line is worse than a rail that is one row taller. Colour is `--muted` at rest so that the single
+   accented row is visibly the answer and not merely a different shade of the same emphasis. */
+.gx-shell .studio-dock .studio-dock__row,
+.gx-shell .studio-dock .studio-navigation { position:relative; display:flex; align-items:center; gap:10px; width:100%; min-height:38px; padding:8px 10px; border:0; border-radius:var(--r-md); background:transparent; color:var(--muted); font-size:14px; letter-spacing:-.01em; text-align:start; text-decoration:none; transition:background-color var(--t-fast) var(--ease-out),color var(--t-fast) var(--ease-out); }
+.gx-shell .studio-dock :is(.studio-dock__row,.studio-navigation) > svg { flex:none; width:17px; height:17px; }
+/* Hover and press are a surface step and nothing else. A row that grows, moves or changes weight
+   under the cursor makes the whole rail twitch as the pointer crosses it. */
+.gx-shell .studio-dock :is(.studio-dock__row,.studio-navigation):hover { background:var(--surface-2); color:var(--ink); }
+.gx-shell .studio-dock :is(.studio-dock__row,.studio-navigation):active { background:var(--surface-3); color:var(--ink); }
+/* The rail has no row that can be disabled today. Declared anyway, because the global
+   `button:disabled` rule only dims — it does not stop the hover ground above from lighting up
+   under a control that cannot be used, which reads as an invitation. */
+.gx-shell .studio-dock :is(.studio-dock__row,.studio-navigation):disabled { color:var(--faint); }
+.gx-shell .studio-dock :is(.studio-dock__row,.studio-navigation):disabled:hover { background:transparent; color:var(--faint); }
+
+/* THE CURRENT ROW IS WHERE THIS SCREEN SPENDS ITS ACCENT, and it is spent on one row because only
+   one <NavLink> can be current. Drawn from `aria-current`, which React Router sets and a screen
+   reader announces, so the colour and the announcement cannot drift apart — a class of our own
+   could be true while the attribute was missing. Placed after the hover rules deliberately: a
+   current row stays the answer while the pointer is over it. */
+.gx-shell .studio-dock .studio-dock__row[aria-current='page'] { color:var(--accent); background:var(--accent-soft); }
+.gx-shell .studio-dock .studio-dock__row[aria-current='page']:hover { color:var(--accent); background:color-mix(in srgb,var(--accent) 14%,transparent); }
+/* --accent-soft is 6% alpha, which reads as a tint on #232221 and as almost nothing on white. */
+:root[data-theme='light'] .gx-shell .studio-dock .studio-dock__row[aria-current='page'] { background:color-mix(in srgb,var(--accent) 10%,transparent); }
+
+/* The marker grows out of the row rather than appearing beside it, which is what makes moving
+   between two destinations read as one movement instead of two blinks. It lives on every row so
+   there is something to animate FROM; at rest it has no height and therefore no presence. */
+.gx-shell .studio-dock .studio-dock__row::before { content:''; position:absolute; inset-block:9px; inset-inline-start:0; width:2px; border-radius:var(--r-pill); background:var(--accent); transform:scaleY(0); transition:transform var(--t-base) var(--ease-out); }
+.gx-shell .studio-dock .studio-dock__row[aria-current='page']::before { transform:scaleY(1); }
+
+/* The drawer is open: the control that opened it holds its ground so the reader can see what the
+   panel in front of them came out of. Not the accent — an open panel is a state, not a place. */
+.gx-shell .studio-dock .studio-navigation[aria-expanded='true'] { background:var(--surface-2); color:var(--ink); }
+
+/* The word takes the middle and truncates there, rather than letting a long translation shove the
+   shortcut badge off the rail or force the row to wrap. */
+.gx-shell .studio-dock__label { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+/* A shortcut nobody can see is one nobody uses. Quiet enough that it does not compete with the
+   word it belongs to, and `letter-spacing:0` because the glyphs are already symbols. */
+.gx-shell .studio-dock__kbd { flex:none; font:11px var(--font-mono); letter-spacing:0; color:var(--faint); }
+
+/* ---------------------------------------------------------- rail account --- */
+
+/* Pinned by `margin-top:auto` rather than by being last in the source, so a short viewport
+   scrolls the destinations above and never the way to your own account. */
+.gx-shell .studio-dock__foot { margin-top:auto; padding-top:14px; border-top:1px solid var(--line); display:grid; gap:2px; }
+/* system.css gives this row `margin-top:auto`, a two-stop white gradient and an inset box-shadow —
+   raw hex, and a shadow on something that does not float. The foot owns the pinning now, and
+   separation here is the hairline above. */
+.gx-shell .studio-dock .studio-dock__account { margin-top:0; background:transparent; box-shadow:none; min-height:44px; }
+.gx-shell .studio-dock .studio-dock__account:hover { background:var(--surface-2); }
+.gx-shell .studio-dock__avatar { flex:none; display:grid; place-items:center; width:24px; height:24px; border-radius:var(--r-xs); background:var(--surface-2); color:var(--muted); font-size:11px; letter-spacing:0; }
+.gx-shell .studio-dock__stack { flex:1; min-width:0; display:grid; }
+.gx-shell .studio-dock__stack > * { min-width:0; }
+/* Metadata, so `--faint`: it says which account this is, and it is never the thing you came to
+   read. It truncates rather than wrapping — an address is recognised from its start. */
+.gx-shell .studio-dock__who { font-size:10px; line-height:1.4; color:var(--faint); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+
+/* ----------------------------------------------------- drawer: the mark --- */
 
 /* ONE WEIGHT. system.css sets `font:600 25px` on the anchor; the span is what actually renders the
    word, and this product's type has no bold in it. Tracking tightens as the type grows. */
 .gx-rail .gx-wordmark__text { font-weight:400; letter-spacing:-.02em; }
 
-/* --------------------------------------------------------------- new chat --- */
+/* ------------------------------------------------------ drawer: new chat --- */
 
 /* The row is space-between with a shortcut badge at its end. The label takes the middle and
    truncates there, rather than letting a long translation shove the badge off the rail. */
 .gx-rail .gx-new__label { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:14px; letter-spacing:-.01em; }
+/* It had no hover and no press treatment at all: a link that does not answer the cursor reads as a
+   heading, which is what a row set between two hairlines already looks like. The 8-and-back-8 is
+   the drawer's shared gutter, explained under conversations below — it is what keeps this label on
+   the same text edge as the chat titles underneath it. */
+.gx-rail .gx-new { padding-inline:8px; margin-inline:-8px; border-radius:var(--r-md); color:var(--ink); transition:background-color var(--t-fast) var(--ease-out); }
+.gx-rail .gx-new:hover { background:var(--surface-2); }
+.gx-rail .gx-new:active { background:var(--surface-3); }
 
-/* --------------------------------------------------------- conversations --- */
+/* -------------------------------------------------- drawer: conversations --- */
+
+/* ONE TEXT EDGE DOWN THE WHOLE DRAWER, and the arithmetic that keeps it there. Every row wants a
+   hover bed a little wider than its own text, and the naive way to get one — inner padding — walks
+   the text inward and leaves the conversation titles eight pixels to the right of the New chat
+   above them, which reads as a list that belongs to a different panel.
+   So each row pads 8 and pulls back 8: the bed and the hairline widen, the text does not move. The
+   scroll container pulls back 14 and pads 14 for the same reason, and the 6px difference between
+   the two is exactly what a focused row needs — `outline-offset:4px` plus a 2px ring — because an
+   overflow container clips at its padding box and would otherwise slice the ring in half. */
+.gx-rail .gx-rail__scroll { padding-inline:14px; margin-inline:-14px; }
+.gx-rail .gx-rail__label { font-size:10px; line-height:1.4; letter-spacing:.018em; text-transform:uppercase; color:var(--faint); }
+.gx-rail .gx-conv { padding-inline:8px; margin-inline:-8px; border-radius:var(--r-md); color:var(--muted); transition:background-color var(--t-fast) var(--ease-out),color var(--t-fast) var(--ease-out); }
+.gx-rail .gx-conv:hover { background:var(--surface-2); color:var(--ink); }
+.gx-rail .gx-conv:active { background:var(--surface-3); color:var(--ink); }
+/* The open conversation is this panel's accent, and it must survive the pointer passing over it:
+   the hover rule above would otherwise repaint it `--ink` and the reader would lose their place
+   for exactly as long as the cursor sat there. */
+.gx-rail .gx-conv.is-active:hover,.gx-rail .gx-conv.is-active:active { color:var(--accent); background:color-mix(in srgb,var(--accent) 12%,transparent); }
 
 /* A pinned row is marked, not coloured: the pin is a fact about ORDER, not a status. */
 .gx-rail .gx-conv__pin { flex:none; display:inline-flex; align-items:center; color:var(--faint); }
@@ -31,50 +168,140 @@
    name it is about. Scoped to the sibling so it only applies when a pin is actually there. */
 .gx-rail .gx-conv__pin + .gx-conv__name { flex:1; }
 
+.gx-rail .gx-viewall { padding:9px 8px; margin-inline:-8px; border-radius:var(--r-md); color:var(--muted); transition:background-color var(--t-fast) var(--ease-out),color var(--t-fast) var(--ease-out); }
+.gx-rail .gx-viewall:hover { background:var(--surface-2); color:var(--ink); }
+.gx-rail .gx-viewall:active { background:var(--surface-3); color:var(--ink); }
+
+/* ------------------------------------------- drawer: the other three states --- */
+
+/* THIS LIST HAD ONE STATE AND NEEDED FOUR. In flight, failed and empty all rendered as a heading
+   with nothing under it, which is indistinguishable from an account that has no chats — so the
+   product's answer to "did it work" was the same picture in all three cases.
+   The skeleton stands in the slot three rows would occupy, at the row's own height and gutter, so
+   the list does not visibly change shape the moment the real ones arrive. */
+.gx-rail .gx-rail__loading { display:grid; gap:9px; padding:12px 8px; margin-inline:-8px; }
+.gx-rail .gx-rail__skeleton { display:block; height:11px; border-radius:var(--r-xs); background:var(--surface-2); animation:rail-skeleton 1.4s var(--ease-in-out) infinite; }
+.gx-rail .gx-rail__skeleton:nth-child(2) { width:82%; animation-delay:.12s; }
+.gx-rail .gx-rail__skeleton:nth-child(3) { width:64%; animation-delay:.24s; }
+/* A failure says what happened and offers the one thing that can change it. `--bad` is spent on
+   the sentence rather than on the button, because tinting both would make the retry look like the
+   dangerous option rather than the way out. */
+.gx-rail .gx-rail__failed { padding:12px 8px; margin-inline:-8px; border-bottom:1px solid var(--line); }
+.gx-rail .gx-rail__failed-text { margin:0 0 10px; color:var(--bad); font-size:13px; line-height:1.5; letter-spacing:-.01em; }
+.gx-rail .gx-rail__retry { padding:7px 12px; font-size:12px; }
 /* The empty state stands in the slot a row would occupy — same padding, same hairline — so the
    list does not visibly change shape the moment the first chat arrives. */
-.gx-rail .gx-rail__none { margin:0; padding:12px 0; border-bottom:1px solid var(--line); color:var(--muted); font-size:13px; line-height:1.5; letter-spacing:-.01em; }
+.gx-rail .gx-rail__none { margin:0 -8px; padding:12px 8px; border-bottom:1px solid var(--line); color:var(--muted); font-size:13px; line-height:1.5; letter-spacing:-.01em; }
 
-/* ----------------------------------------------------------- checkpoints --- */
+/* ------------------------------------------------------ drawer: checkpoints --- */
 
 /* A surface step, not a shadow. The catch: `button:hover` in system.css paints the whole row
    --surface-2, so a --surface-2 tile vanishes into its own hover. It climbs one more step. */
-.gx-rail .gx-card-btn__mark { flex:none; display:grid; place-items:center; width:34px; height:34px; border-radius:var(--r-xs); background:var(--surface-2); color:var(--muted); transition:background-color 160ms var(--ease-out),color 160ms var(--ease-out); }
+.gx-rail .gx-card-btn__mark { flex:none; display:grid; place-items:center; width:34px; height:34px; border-radius:var(--r-xs); background:var(--surface-2); color:var(--muted); transition:background-color var(--t-fast) var(--ease-out),color var(--t-fast) var(--ease-out); }
 .gx-rail .gx-card-btn:hover:not(:disabled) .gx-card-btn__mark { background:var(--surface-3); color:var(--ink); }
+/* Checkpoints is inert with no conversation open, and the tile must look inert too. The global
+   `:disabled` rule dims the row; without this the mark still brightens under the cursor, which is
+   a control telling the reader it will respond when it will not. The reason is in its `title`. */
+.gx-rail .gx-card-btn:disabled .gx-card-btn__mark { color:var(--faint); }
 
-/* --------------------------------------------------------------- account --- */
+/* -------------------------------------------------------- drawer: account --- */
 
 /* The caret is the only thing in the row that may move, and it moves to say the menu is open. */
-.gx-user-card .gx-user-card__caret { flex:none; display:inline-flex; margin-inline-start:auto; color:var(--faint); transition:transform 180ms var(--ease-out); }
+.gx-user-card .gx-user-card__caret { flex:none; display:inline-flex; margin-inline-start:auto; color:var(--faint); transition:transform var(--t-base) var(--ease-out); }
 .gx-user-card .gx-user-card__id[aria-expanded='true'] .gx-user-card__caret { transform:rotate(180deg); }
 
 /* Settings duplicates a row of the menu beside it, so it sits a step quieter than the name it
    stands next to and only takes ground under the pointer. */
-.gx-user-card .gx-user-card__gear { flex:none; border-radius:var(--r-xs); color:var(--faint); text-decoration:none; transition:background-color 160ms var(--ease-out),color 160ms var(--ease-out); }
+.gx-user-card .gx-user-card__gear { flex:none; border-radius:var(--r-xs); color:var(--faint); text-decoration:none; transition:background-color var(--t-fast) var(--ease-out),color var(--t-fast) var(--ease-out); }
 .gx-user-card .gx-user-card__gear:hover,.gx-user-card .gx-user-card__gear:focus-visible { background:var(--surface-2); color:var(--ink); }
+.gx-user-card .gx-user-card__gear:active { background:var(--surface-3); color:var(--ink); }
 
-/* ------------------------------------------------------------------ dock --- */
+/* ------------------------------------------------------------------ 1000px --- */
 
-/* Usage is a utility, not an action: one ink step below New chat and the navigation toggle until
-   it is pointed at. The box, the radius and the hover ground are the dock's generic `> a` rule and
-   are deliberately NOT restated — a second opinion about this link's size is a second bug. */
-.studio-dock .studio-dock__link { color:var(--faint); transition:background-color 160ms var(--ease-out),color 160ms var(--ease-out); }
-.studio-dock .studio-dock__link:hover,.studio-dock .studio-dock__link:focus-visible { color:var(--ink); }
+/* THE WORDS GO WHEN THEY STOP FITTING, AND NOT BEFORE. 1000px is where system.css already folds
+   the workspace stage over the conversation; introducing a third breakpoint for the rail would
+   mean the page reflows twice on the way down for two unrelated reasons.
+   Every row keeps its `aria-label`, which is the whole reason the labels may be hidden at all: the
+   accessible name is on the element, not in the span, so a screen reader reads the same rail at
+   every width. `title` is what a pointer user gets back. */
+@media(max-width:1000px) {
+  .gx-shell { --gx-dock-w:76px; }
+  .gx-shell .studio-dock { padding-inline:10px; }
+  /* Every selector in both breakpoint blocks carries `.studio-dock` even where the class alone
+     would match, so that a `display` here can never lose to a three-class base rule above it — a
+     media query adds no specificity, and a rule that is later but lighter simply does not apply.
+     That is exactly how the mark stayed on screen inside a 44px button on a phone. */
+  .gx-shell .studio-dock .studio-dock__wordmark,
+  .gx-shell .studio-dock .studio-dock__group-label,
+  .gx-shell .studio-dock .studio-dock__kbd,
+  .gx-shell .studio-dock .studio-dock__stack,
+  .gx-shell .studio-dock .studio-dock__label { display:none; }
+  .gx-shell .studio-dock .studio-dock__brand,
+  .gx-shell .studio-dock .studio-dock__row,
+  .gx-shell .studio-dock .studio-navigation { justify-content:center; padding-inline:0; gap:0; }
+  .gx-shell .studio-dock .studio-dock__row,
+  .gx-shell .studio-dock .studio-navigation { min-height:42px; }
+  .gx-shell .studio-dock .studio-dock__brand { margin-bottom:12px; }
+  .gx-shell .studio-dock__foot { gap:4px; }
+}
 
-/* ----------------------------------------------------------------- 375px --- */
+/* ------------------------------------------------------------------- 680px --- */
 
-/* The account row carries a name, an email, an inbox and a gear inside a 337px rail. The gear
-   gives back two pixels each side so the name is what gets them. */
+/* THE RAIL BECOMES ONE BUTTON, and this block exists because the markup changed underneath the
+   rule that used to do it. system.css collapses the rail with `.studio-dock > button` and
+   `.studio-dock > .studio-navigation` — direct-child selectors, written when every control was a
+   direct child. The rows live inside groups now, so those selectors match nothing and the rail
+   would render at full height across a phone screen with the page under it.
+   `display:contents` on the wrappers rather than a re-parenting: the toggle becomes the dock's own
+   flex child for layout purposes, and the group's `role`/`aria-label` go with the box, which is
+   correct — there is no group left to name when only one control is on screen. */
+@media(max-width:680px) {
+  .gx-shell { --gx-dock-w:0px; }
+  .gx-shell .studio-dock { width:44px; height:44px; padding:0; border-inline-end:0; background:transparent; animation:none; }
+  .gx-shell .studio-dock .studio-dock__nav,
+  .gx-shell .studio-dock .studio-dock__group { display:contents; }
+  .gx-shell .studio-dock .studio-dock__brand,
+  .gx-shell .studio-dock .studio-dock__foot,
+  .gx-shell .studio-dock .studio-dock__group-label,
+  .gx-shell .studio-dock .studio-dock__row { display:none; }
+  .gx-shell .studio-dock .studio-navigation { display:grid; place-items:center; width:44px; height:44px; min-height:0; padding:0; border:1px solid var(--line); border-radius:var(--r-md); background:var(--surface); color:var(--ink); }
+  .gx-shell .studio-dock .studio-navigation:hover { background:var(--surface-2); }
+  :root[data-theme='light'] .gx-shell .studio-dock { background:transparent; }
+}
+
+/* -------------------------------------------------------------------- 375px --- */
+
+/* The drawer is 90vw here and the account row inside it carries a name, an address, an inbox and a
+   gear. The gear gives back two pixels each side so the name is what gets them. */
 @media(max-width:400px) {
   .gx-user-card .gx-user-card__gear { width:34px; height:34px; }
 }
 
-/* system.css already kills every transition under this query with !important, and it loads after
-   this file. Restated anyway: a stylesheet that only behaves because another one is present is a
-   stylesheet nobody can move. */
+/* ------------------------------------------------------------------- motion --- */
+
+/* The rail arrives once, on the first paint of the session, and never again — it is mounted for
+   the life of the shell. Opacity only: a slide would have to know which way `dir` points, and a
+   decoration that needs a direction is a decoration that will be wrong in Hebrew. */
+@keyframes dock-arrive { from { opacity:0; } to { opacity:1; } }
+/* A pulse rather than a sweep: a travelling highlight needs a gradient, and a gradient here would
+   be a colour that is not in the ramp. */
+@keyframes rail-skeleton { 0%,100% { opacity:1; } 50% { opacity:.45; } }
+
+/* system.css already kills every animation and transition under this query with !important, and it
+   loads after this file. Restated anyway, in the same edit that added the motion: a stylesheet that
+   only behaves because another one is present is a stylesheet nobody can move. Off, not slowed —
+   the current row's marker still renders at full height, it simply stops growing into it. */
 @media(prefers-reduced-motion:reduce) {
+  .gx-shell .studio-dock,
+  .gx-shell .studio-dock .studio-dock__brand,
+  .gx-shell .studio-dock .studio-dock__row,
+  .gx-shell .studio-dock .studio-dock__row::before,
+  .gx-shell .studio-dock .studio-navigation,
+  .gx-rail .gx-new,
+  .gx-rail .gx-conv,
+  .gx-rail .gx-viewall,
+  .gx-rail .gx-rail__skeleton,
   .gx-rail .gx-card-btn__mark,
   .gx-user-card .gx-user-card__caret,
-  .gx-user-card .gx-user-card__gear,
-  .studio-dock .studio-dock__link { transition:none; }
+  .gx-user-card .gx-user-card__gear { animation:none; transition:none; }
 }

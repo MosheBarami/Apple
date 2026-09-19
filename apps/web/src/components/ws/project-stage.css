@@ -1,29 +1,55 @@
-/* THE PROJECT STAGE — the nine names design/system.css never drew.
+/* THE PROJECT STAGE, AND THE CONNECTION PANEL INSIDE IT.
  *
  * WHAT THIS PANEL IS FOR. It is the bounded Studio companion beside a conversation: a header you
- * collapse it by, and one framed area holding exactly one of three things — a diagnostic render, a
- * playtest card, or, when neither has arrived, a blueprint that says nothing has. system.css owns
- * most of it already. What was left undrawn, and is drawn below, is the header's mark and title,
- * the frame those three surfaces share, and the blueprint drawing itself.
+ * collapse it by, the connection panel, and one framed area holding exactly one of three things —
+ * a diagnostic render, a playtest card, or, when neither has arrived, a blueprint that says which
+ * kind of nothing this is. system.css owns the outer box; what is drawn below is the header's
+ * mark, title, live pip and chevron, the surface tabs, the frame those surfaces share, the
+ * blueprint, and the whole of components/ws/connect-studio.tsx.
  *
- * WHAT THAT COSTS IT: THIS PANEL SPENDS NO COLOUR AT ALL. Every surface it can hold carries its
- * own status and pays for it out of its own budget — the playtest chip goes --warn when a run has
- * gone stale, the console count goes --bad. A stage that tinted its own frame, or its empty state,
- * would stand a second and meaningless signal right next to the real one. Everything here is
- * --line, --ink at low percentages, --muted and --faint.
+ * WHY CONNECT-STUDIO'S RULES LIVE HERE. That component has no stylesheet of its own and is
+ * rendered from exactly one place — `<ConnectStudio>` inside ProjectStage below. Its nine names
+ * are drawn in system.css at one-class specificity, which this agent may not edit, so the
+ * corrections are written here at two classes and scoped to the only tree they can ever match. If
+ * ConnectStudio is ever mounted somewhere else, this file moves with it.
+ *
+ * THE ACCENT, SPENT EXACTLY ONCE. docs/DESIGN-LOCK.md allows one green thing per screen. Here it
+ * is the header pip when Studio is attached, OR the single primary action in the connection panel
+ * when it is not — never both, because ConnectStudio renders nothing at all while connected. Every
+ * other value in this file is --line, --muted, --faint, or a percentage of --ink. The surfaces
+ * this panel holds carry their own status (the playtest chip goes --warn when a run is stale, the
+ * console count goes --bad); a stage that tinted its own frame would stand a second and meaningless
+ * signal beside the real one.
  *
  * SCOPED ONE LEVEL DEEPER THAN SYSTEM.CSS ON PURPOSE. main.tsx imports './app' before
  * './design/system.css', so this file is bundled AHEAD of it, and an equal-specificity rule written
- * here loses a tie it looks like it should win. Every selector carries `.gx-project-stage`, which
- * is also simply true: none of these names appear anywhere else in the app.
+ * here loses a tie it looks like it should win. Every selector carries `.gx-project-stage`.
  *
- * BOTH THEMES, WITHOUT A CORRECTION. Nothing below is a fixed tint. Every value is either --line or
- * a percentage of --ink, and both flip with the ramp under :root[data-theme='light'], so the fills
- * and hairlines step the same direction on either paper. There is deliberately no light-theme
- * block here — one would be restating the ramp's own job.
+ * BOTH THEMES, WITHOUT A CORRECTION. Nothing below is a fixed tint. Every value is a token or a
+ * color-mix of tokens, and all of them flip with the ramp under :root[data-theme='light'], so the
+ * fills and hairlines step the same direction on either paper. There is deliberately no
+ * light-theme block — one would be restating the ramp's own job.
  */
 
 /* ------------------------------------------------------------------- the header --- */
+
+/* THE HEADER IS A CONTROL, and a control with no hover or press state reads as a caption that
+   happens to move the page. It is sticky over a scrolling panel, so the hover has to be an opaque
+   surface step rather than a tint: a translucent hover would show the renders sliding under it.
+
+   AND THE CONTROL IS INSET, WHICH IS NOT COSMETIC. system.css draws this button full-bleed —
+   `width:100%`, no radius, 18px of padding — flush against all three edges of a panel that is
+   `overflow:auto`. Tab to it and the system's focus ring, 2px at 4px offset, is clipped on the top
+   and both sides: a keyboard user gets one green line under the header where a ring should be.
+   Rule 6 forbids restyling that ring per component, and rightly, so the ROOM is made instead. 8px
+   of head padding against 6px of ring, and the button's own padding comes down by the same amount
+   so the header keeps its height and the mark stays on the 20px column the body below it uses.
+   The hover plate gains a radius as a consequence, which is the better reading anyway: a rounded
+   object you press, rather than a band across the top of the panel. */
+.gx-project-stage .gx-project-stage__head { padding:8px; }
+.gx-project-stage .gx-project-stage__toggle { padding:11px 12px; border-radius:var(--r-md); transition:background var(--t-fast) var(--ease-out); }
+.gx-project-stage .gx-project-stage__toggle:hover { background:var(--surface); }
+.gx-project-stage .gx-project-stage__toggle:active { background:var(--surface-2); }
 
 /* A bare <span> around an <svg> is a line box: it carries the font's descender space and drops the
    icon a pixel or two below the title it is labelling, inside a flex row that is trying to centre
@@ -36,13 +62,53 @@
    attribute for every icon inside a button. Restated here so the box and the glyph agree. */
 .gx-project-stage .gx-project-stage__mark svg { width:16px; height:16px; }
 
-/* The title and `.gx-project-stage__summary` are two spans, but `.gx-project-stage__heading` is
-   already a grid in system.css, so they were never going to run together — what the title was
-   missing is a size. Unstyled it inherits the button's 16px and shouts over a 12px summary two
-   pixels below it. 14px against 12px is the step this header wants: the summary changes on every
-   render and the title never does. `min-width:0` so a long summary wraps inside the grid track
-   rather than widening the header and pushing the chevron out of the panel. */
+/* `min-width:0` on the heading as well as the title: the heading is the flex child that can grow,
+   and a flex child's automatic minimum size is its content, so without this a long playtest
+   summary widens the header and pushes the chevron out of the panel instead of ellipsing. */
+.gx-project-stage .gx-project-stage__heading { flex:1; min-width:0; }
+/* The title and the summary are two rows of one grid, so they were never going to run together —
+   what the title was missing is a size. Unstyled it inherits the button's 16px and shouts over a
+   12px summary two pixels below it. 14px against 12px is the step this header wants: the summary
+   changes on every render and the title never does. */
 .gx-project-stage .gx-project-stage__title { min-width:0; font-size:14px; line-height:1.45; letter-spacing:-.01em; color:var(--ink); }
+
+/* The summary line became a row the moment it gained a pip. `gap:7px` rather than 8 so the 12px
+   pip box, which carries 3px of its own halo, optically matches the 8px steps elsewhere. */
+.gx-project-stage .gx-project-stage__summary { display:flex; align-items:center; gap:7px; min-width:0; }
+.gx-project-stage .gx-project-stage__summary-text { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* THE LIVE INDICATOR, AND THE ONLY GREEN THING THIS PANEL MAY EVER DRAW.
+   Three states, separated by SHAPE before colour so the header still reads in greyscale: a hollow
+   ring is nothing attached, a filled core is Studio attached, and the same hollow ring breathing is
+   the handshake. The halo is a second box rather than a box-shadow — the design lock reserves
+   shadows for menus and modals, and a ring drawn as a shadow is the way that rule gets broken by
+   accident. */
+.gx-project-stage .gx-project-stage__pip { flex:none; display:grid; place-items:center; width:12px; height:12px; border-radius:var(--r-pill); background:transparent; }
+.gx-project-stage .gx-project-stage__pip::before { content:''; display:block; width:7px; height:7px; border:1px solid var(--faint); border-radius:var(--r-pill); }
+.gx-project-stage[data-connection='live'] .gx-project-stage__pip { background:color-mix(in srgb,var(--accent) 16%,transparent); }
+.gx-project-stage[data-connection='live'] .gx-project-stage__pip::before { border-color:var(--accent); background:var(--accent); }
+.gx-project-stage[data-connection='checking'] .gx-project-stage__pip::before { animation:stage-pip-breathe 1.8s var(--ease-in-out) infinite; }
+@keyframes stage-pip-breathe { 0%,100% { opacity:.35; } 50% { opacity:1; } }
+
+/* The chevron is bound to `aria-expanded` rather than to a class, so the glyph and the accessible
+   state cannot disagree: whichever way the panel is later allowed to render while shut, the arrow
+   already points the right way. --t-base because a reader is watching the panel move, not the
+   cursor. */
+.gx-project-stage .gx-project-stage__chevron { transition:transform var(--t-base) var(--ease-in-out); }
+.gx-project-stage .gx-project-stage__toggle[aria-expanded='true'] .gx-project-stage__chevron { transform:rotate(180deg); }
+
+/* -------------------------------------------------------------- the two surfaces --- */
+
+/* A SEGMENTED CONTROL, NOT A WHITE BUTTON. system.css fills the chosen tab with `var(--ink)` — a
+   white plate, which is the largest, brightest object on the panel and points at a switch rather
+   than at the evidence the switch reveals. The chosen tab is now one surface step up inside a
+   hairline track, which is how every other chosen row in this product is drawn.
+   `width:fit-content` so the track wraps the two tabs instead of ruling a line across the panel. */
+.gx-project-stage .gx-project-stage__surfaces { display:inline-flex; width:fit-content; max-width:100%; gap:2px; margin:0 0 18px; padding:3px; border:1px solid var(--line); border-radius:var(--r-md); }
+.gx-project-stage .gx-project-stage__surfaces > button { flex:none; border:0; border-radius:var(--r-xs); padding:6px 14px; min-height:32px; font-size:12px; letter-spacing:-.01em; color:var(--muted); background:transparent; transition:background var(--t-fast) var(--ease-out),color var(--t-fast) var(--ease-out); }
+.gx-project-stage .gx-project-stage__surfaces > button:hover { color:var(--ink); background:var(--surface); }
+.gx-project-stage .gx-project-stage__surfaces > button:active { background:var(--surface-3); }
+.gx-project-stage .gx-project-stage__surfaces > button[aria-selected='true'] { color:var(--ink); background:var(--surface-2); }
 
 /* -------------------------------------------------------------------- the frame --- */
 
@@ -59,36 +125,61 @@
    `.gx-playtest.is-expanded` are `position:fixed`, and any of those three would make this element
    their containing block and trap the expanded viewport inside a 300px box. */
 .gx-project-stage .gx-project-stage__cinema { position:relative; min-width:0; display:grid; grid-template-columns:minmax(0,1fr); }
+/* FOCUS IS NOT RESTYLED ANYWHERE IN THIS FILE, AND IT WAS RENDERED RATHER THAN ASSUMED. The two
+   surface tabs and the frame — which becomes a tabpanel while the tabs exist — both sit inside the
+   body's 20px padding, so the system's 2px ring at 4px offset has 6px to draw into and is clipped
+   by neither the track around the tabs nor the panel's own `overflow:auto`. The header button was
+   the one that failed this check; see the inset at the top of the file. */
 
 /* --------------------------------------------------------------- the blueprint --- */
 
 /* THE ART IS UN-HIDDEN HERE, AND THAT DECLARATION STILL BELONGS TO SYSTEM.CSS.
    system.css parks `.gx-project-stage__blueprint-art` in a display:none list beside
-   `.gx-project-stage__cinema-glow` — the two decorations nobody had drawn. The four spans inside
-   the art are drawn now, so that half of the hide is stale, and the real fix is to delete this one
-   selector from that list. This file may not edit system.css, so it outranks the hide at two-class
+   `.gx-project-stage__cinema-glow` — the two decorations nobody had drawn. The spans inside the art
+   are drawn now, so that half of the hide is stale, and the real fix is to delete this one selector
+   from that list. This file may not edit system.css, so it outranks the hide at two-class
    specificity instead; delete this declaration the moment system.css stops hiding it.
    `align-self:start` because `.gx-project-stage__blueprint` is a stretch-aligned column and the
    title and copy under it are left-set: a centred drawing over left-set text reads as a mistake,
    not as a composition. Children are sized in percentages of this box so the 375px rule at the
    bottom of the file has one width and one height to change. */
-.gx-project-stage .gx-project-stage__blueprint-art { display:block; position:relative; align-self:start; width:172px; height:108px; margin:0 0 24px; }
+.gx-project-stage .gx-project-stage__blueprint-art { display:block; position:relative; align-self:start; width:172px; height:108px; margin:0 0 26px; }
 
-/* TWO PLAN RECTANGLES: the place, and the thing being added to it. They overlap on purpose and
-   neither is opaque, so the hidden edges show through the way they do on a real plan — that
-   crossing is what stops the pair reading as one silhouette. A 4% fill of --ink is a surface step
-   on either paper; a hairline alone disappears at this size. */
+/* THE GROUND, WHICH IS WHERE THE STUDIO DNA IS ALLOWED TO BE. A 12px lattice is the one shape
+   every Roblox builder already has in their eye — the baseplate seen from directly above — and it
+   is geometry rather than branding, which is the only kind of borrowing this product does.
+   It is a masked pseudo-element rather than a background on the art box itself: masking the box
+   would fade the rectangles drawn on top of it as well, and those carry the idea. The fade is
+   radial and anchored at the bottom-left corner the filled block stands in — a linear fade leaves
+   three hard edges, and three hard edges is a sheet of graph paper rather than a floor. */
+.gx-project-stage .gx-project-stage__blueprint-art::before {
+  content:''; position:absolute; inset:0; --stage-grid:color-mix(in srgb,var(--ink) 8%,transparent);
+  background-image:repeating-linear-gradient(to right,var(--stage-grid) 0 1px,transparent 1px 12px),
+                   repeating-linear-gradient(to bottom,var(--stage-grid) 0 1px,transparent 1px 12px);
+  /* The hexes here are ALPHA STOPS, not colour: a mask reads only the alpha channel, so #000 and
+     #0009 mean "keep all of it" and "keep most of it". system.css writes its own mesh mask the
+     same way. Nothing on screen takes a value from them. */
+  mask-image:radial-gradient(128% 118% at 22% 96%,#000 28%,#0009 60%,transparent 92%);
+}
+
+/* TWO PLAN RECTANGLES: the place, and the thing being added to it. One is OPAQUE and one is not,
+   and that is the whole of the idea. The opaque one hides the lattice, so it reads as an object
+   standing on the ground; the outlined one lets the lattice through, so it reads as a thing drawn
+   in rather than a thing there. A translucent fill for the first says neither, which is what it
+   used to say. They overlap, and the crossing is what stops the pair reading as one silhouette. */
 .gx-project-stage .gx-project-stage__blueprint-shape { position:absolute; display:block; border:1px solid var(--line); border-radius:var(--r-xs); }
-/* The place that already exists: filled, sitting on the ground line. */
-.gx-project-stage .gx-project-stage__blueprint-shape--main { inset-block-end:0; inset-inline-start:0; width:65%; height:67%; background:color-mix(in srgb,var(--ink) 4%,transparent); }
-/* The change being proposed on top of it: outline only. Unfilled is the difference between a thing
-   that is there and a thing that is drawn in, and it is the only idea this picture has. */
-.gx-project-stage .gx-project-stage__blueprint-shape--side { inset-block-start:0; inset-inline-start:50%; width:50%; height:52%; }
+/* The place that already exists: one surface step off the panel's own ground, sitting on the floor. */
+.gx-project-stage .gx-project-stage__blueprint-shape--main { inset-block-end:0; inset-inline-start:0; width:65%; height:67%; background:var(--surface); }
+/* The change being proposed on top of it: outline only, and one step brighter than the hairline so
+   it reads as the drawn-in thing rather than as more of the plan. Unfilled is the difference
+   between a thing that is there and a thing that is proposed, and it is the only idea this picture
+   has. */
+.gx-project-stage .gx-project-stage__blueprint-shape--side { inset-block-start:0; inset-inline-start:50%; width:50%; height:52%; border-color:color-mix(in srgb,var(--ink) 22%,transparent); }
 
 /* REGISTRATION MARKS, in the two corners the rectangles leave empty. Two crossed 1px lines painted
    as backgrounds rather than pseudo-elements: one element, one rule, and nothing to keep in sync.
-   26% of --ink puts them above --line (12%) and far below --faint — a tick that registers the
-   drawing must not be brighter than the drawing it registers. */
+   26% of --ink puts them above --line and far below --faint — a tick that registers the drawing
+   must not be brighter than the drawing it registers. */
 .gx-project-stage .gx-project-stage__blueprint-cross {
   --stage-tick:color-mix(in srgb,var(--ink) 26%,transparent);
   position:absolute; display:block; width:11px; height:11px;
@@ -100,17 +191,101 @@
 .gx-project-stage .gx-project-stage__blueprint-cross--one { inset-block-start:7px; inset-inline-start:5px; }
 .gx-project-stage .gx-project-stage__blueprint-cross--two { inset-block-end:8px; inset-inline-end:6px; }
 
+/* THE LOADING STATE IS A STATE, not the empty one with different words. Apple is in the place and
+   the first render is seconds out; a still drawing says the opposite. One pass of light across the
+   plan, at 12% of --ink — enough to register as motion in peripheral vision and too quiet to
+   compete with anything that then arrives. Nothing else on the panel moves. */
+.gx-project-stage .gx-project-stage__blueprint--working .gx-project-stage__blueprint-art::after {
+  content:''; position:absolute; inset:0;
+  background-image:linear-gradient(90deg,transparent 36%,color-mix(in srgb,var(--ink) 12%,transparent) 50%,transparent 64%);
+  background-size:220% 100%; background-repeat:no-repeat;
+  animation:stage-scan 2.8s var(--ease-in-out) infinite;
+}
+/* Swept with `background-position` rather than a translated band, so the distance is a proportion
+   of the drawing instead of a pixel count that the 375px rule below would have to restate — and a
+   restated travel is exactly the kind of duplicate that goes stale when one of the two changes. */
+@keyframes stage-scan { from { background-position:100% 0; } to { background-position:0 0; } }
+
+/* The title is a <p>, not a heading, and system.css sets it at 24px — display size for a sentence
+   in a 340px column, which is why the empty state read as a banner. 17px against 13px is the same
+   step the header uses. The copy wraps at 34ch because a measure this short is the one place
+   `text-wrap:pretty` earns its keep: it stops the last line falling to a single word. */
+.gx-project-stage .gx-project-stage__blueprint { padding-block:34px 30px; }
+.gx-project-stage .gx-project-stage__blueprint-title { margin:0 0 8px; font-size:17px; line-height:1.35; letter-spacing:-.02em; color:var(--ink); }
+.gx-project-stage .gx-project-stage__blueprint-copy { margin:0; max-width:34ch; font-size:13px; line-height:1.6; letter-spacing:-.01em; color:var(--muted); text-wrap:pretty; }
+
+/* ------------------------------------------------------- the connection panel --- */
+
+/* A CARD ON A WELL. The stage body is --paper-2 and this is the one object in it you act on, so it
+   steps up to --surface behind a hairline. That step is the whole of its separation: the design
+   lock reserves shadows for things that float, and this is bolted to the top of the panel.
+   `:not(.gx-connect--quiet)` because the handshake state wears BOTH class names, and it is
+   deliberately not a card — a bordered box with one sentence in it reads as an empty input, and
+   this one is on screen for the length of a socket handshake. */
+.gx-project-stage .gx-connect:not(.gx-connect--quiet) { padding:18px; margin:0 0 20px; border:1px solid var(--line); border-radius:var(--r-md); background:var(--surface); }
+.gx-project-stage .gx-connect__title { margin:0 0 6px; font-size:15px; line-height:1.4; letter-spacing:-.015em; color:var(--ink); }
+/* `text-wrap:pretty` because this paragraph names a place the customer chose, and place names are
+   long: the unbalanced last line is what makes a two-sentence explanation look like an error. */
+.gx-project-stage .gx-connect__lede { margin:0; padding-bottom:6px; font-size:13px; line-height:1.6; letter-spacing:-.01em; color:var(--muted); text-wrap:pretty; }
+
+/* THE STEPS WERE A FORM AND ARE NOW A SEQUENCE. They were flex rows with a bare digit in front,
+   which is what a two-column settings page looks like; a numbered node on a hairline-separated row
+   is what an instruction reads as. The hairline between rows is this product's only separator, so
+   nothing new is introduced — the rail some setup flows draw would have been a second one. */
+.gx-project-stage .gx-connect__steps { margin-top:6px; gap:0; }
+/* A GRID AT EVERY WIDTH, not flex that falls apart at one. The stage column is `minmax(340px,38%)`
+   — at 340px a label like "Open the Apple plugin in Studio" wraps, the action falls to a second
+   line and lands under the NUMBER instead of under the words it answers, and the list reads as a
+   ragged left edge. A two-column grid puts every part of a step in the same column whatever the
+   wrap, and an action set under its own instruction is what a setup sequence looks like anyway. */
+.gx-project-stage .gx-connect__step { display:grid; grid-template-columns:22px minmax(0,1fr); align-items:center; gap:9px 12px; padding-block:12px; border-top:1px solid var(--line); }
+/* The counter is system.css's; only its box changes. Tabular figures so 1, 2 and 3 sit on one
+   optical centre inside a circle that is the same circle every time. */
+.gx-project-stage .gx-connect__step::before { display:grid; place-items:center; width:22px; height:22px; flex:none; border:1px solid var(--line); border-radius:var(--r-pill); font:11px/1 var(--font-mono); font-variant-numeric:tabular-nums; color:var(--faint); }
+.gx-project-stage .gx-connect__what { grid-column:2; min-width:0; font-size:13px; line-height:1.5; letter-spacing:-.01em; color:var(--ink); text-wrap:pretty; }
+.gx-project-stage .gx-connect__step > .gx-btn { grid-column:2; justify-self:start; min-height:34px; transition:background var(--t-fast) var(--ease-out),border-color var(--t-fast) var(--ease-out); }
+/* THE ONE PRIMARY ACTION ON THIS PANEL, and the only place the accent is spent while Studio is
+   detached. `.gx-connect__step > .gx-btn` in system.css sets `border:1px solid var(--line)` at two
+   classes and would otherwise draw a --line edge around a filled green button — a primary action
+   wearing a secondary button's outline. */
+.gx-project-stage .gx-connect__step > .gx-btn--primary { border-color:var(--accent-fill); }
+.gx-project-stage .gx-connect__step > .gx-btn--primary:hover { border-color:color-mix(in srgb,var(--accent-fill) 88%,var(--ink)); }
+
+/* THE HANDSHAKE, WHICH IS NOT A CARD. We do not yet know whether this person is paired, so the
+   panel that would tell them what to do has nothing to say: one line, one breathing dot, and no
+   chrome that would have to be taken away a second later. The dot is `.gx-dot`, which system.css
+   holds at `display:none` for the topbar pill — three classes to bring it back here only. */
+.gx-project-stage .gx-connect--quiet { display:flex; align-items:center; gap:10px; padding:14px 2px; margin:0 0 16px; font-size:13px; line-height:1.5; letter-spacing:-.01em; color:var(--muted); }
+.gx-project-stage .gx-connect--quiet .gx-dot { display:block; flex:none; width:6px; height:6px; border-radius:var(--r-pill); background:var(--faint); animation:stage-pip-breathe 1.8s var(--ease-in-out) infinite; }
+
 /* --------------------------------------------------------------------- at 375px --- */
 
 /* The stage stops being a column here and becomes a full-height overlay over the conversation
    (system.css, `.gx-workbench.is-stage-open .gx-project-stage`). A 250px minimum blueprint plus a
-   108px drawing plus 24px of air is most of a phone screen spent on an empty state, so the drawing
-   gives back 14px of height and the gap under it closes up. Nothing else changes: the art is
-   absolutely positioned inside a fixed box and was never a column that could collapse. */
+   108px drawing plus 26px of air is most of a phone screen spent on an empty state, so the drawing
+   gives back 14px of height and the gap under it closes up.
+   The steps need nothing here: they are a two-column grid at every width already, for the same
+   reason this breakpoint would have given them one. */
 @media (max-width:600px) {
   .gx-project-stage .gx-project-stage__blueprint-art { width:150px; height:94px; margin-bottom:18px; }
+  .gx-project-stage .gx-connect:not(.gx-connect--quiet) { padding:14px; }
+  .gx-project-stage .gx-connect__step > .gx-btn { justify-self:stretch; }
 }
 
-/* Nothing in this file transitions or animates — the stage is a place to read evidence, and a
-   moving empty state is movement with no news in it. There is therefore no reduced-motion block to
-   write, and anything added above that does move needs one here.  */
+/* ------------------------------------------------------------- reduced motion --- */
+
+/* OFF, NOT SLOWED. Everything in this file that moves is a nicety over something already written
+   in words, so every one of them can simply stop: the pip's breath, the quiet line's dot, the light
+   crossing the blueprint while Apple works, the chevron's rotation, and the colour transitions on
+   the header, the tabs and the connect buttons. The sweep is HIDDEN rather than stopped — a halted
+   one leaves a static band of light parked across the drawing, which is a mark that means nothing
+   and that a reader will try to interpret. */
+@media (prefers-reduced-motion:reduce) {
+  .gx-project-stage .gx-project-stage__pip::before,
+  .gx-project-stage .gx-connect--quiet .gx-dot { animation:none; opacity:1; }
+  .gx-project-stage .gx-project-stage__blueprint--working .gx-project-stage__blueprint-art::after { display:none; }
+  .gx-project-stage .gx-project-stage__toggle,
+  .gx-project-stage .gx-project-stage__chevron,
+  .gx-project-stage .gx-project-stage__surfaces > button,
+  .gx-project-stage .gx-connect__step > .gx-btn { transition:none; }
+}

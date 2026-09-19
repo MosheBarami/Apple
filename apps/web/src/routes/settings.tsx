@@ -12,7 +12,7 @@
 //     ending every session go through ReauthDialog; resetting settings goes through BOTH that and
 //     the existing typed-confirmation ladder. See lib/auth-flows.ts for why those are two different
 //     questions.
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { PairingCodeDto } from '@golem/shared';
@@ -56,7 +56,7 @@ import {
   type SensitiveAction,
 } from '../lib/auth-flows';
 import { fullStamp, formatNumber, relativeTime } from '../lib/format.ts';
-import { matchSettings } from '../lib/settings-search.ts';
+import { SETTING_FIELDS, matchSettings } from '../lib/settings-search.ts';
 import {
   DELETE_ACCOUNT_PHRASE,
   deleteAccount,
@@ -204,25 +204,36 @@ function DiscordCard({ userId }: { userId: string }) {
   return (
     <>
       <h3 className="settings-sub">Discord</h3>
-      {!connected && <p className="muted" role="status">{link.isPending ? 'Checking connection…' : link.isError ? 'Connection status unavailable.' : code && remaining ? 'Code pending — not connected yet.' : 'Not connected.'}</p>}
+      {/* Four situations, four sentences, and each carries its own tone: a request in flight is
+          neutral with a working dot, a request that never answered is a caution (nothing about
+          the connection has changed, so red would say something untrue), and the two settled
+          answers are plain. */}
+      {!connected && (
+        <p
+          className={`settings-note${link.isPending ? ' settings-note-busy' : link.isError ? ' settings-note-warn' : ''}`}
+          role="status"
+        >
+          {link.isPending ? 'Checking connection…' : link.isError ? 'Connection status unavailable. Reload the page to check again.' : code && remaining ? 'Code pending — not connected yet.' : 'Not connected.'}
+        </p>
+      )}
       {link.isError && <Failure error={link.error} onRetry={() => void link.refetch()} compact />}
 
       {connected ? (
         <>
-          <p>
+          <p className="settings-note">
             A Discord account is connected to <strong>{connected.projectName}</strong>. It can start builds there and
             see this account&rsquo;s Credits.
           </p>
           <button type="button" className="btn" onClick={() => disconnect.mutate()} disabled={disconnect.isPending}>
             {disconnect.isPending ? 'Disconnecting…' : 'Disconnect Discord'}
           </button>
-          <p className="muted">
+          <p className="settings-note">
             Disconnecting takes effect immediately. The same thing happens if you run <code>/unlink</code> in Discord.
           </p>
         </>
       ) : (
         <>
-          <p>
+          <p className="settings-note">
             Connect one Discord account to one project, then use <code>/build</code>, <code>/status</code> and{' '}
             <code>/credits</code> there. <strong>The connected Discord account spends this account&rsquo;s Credits</strong>,
             so only connect your own.
@@ -249,11 +260,24 @@ function DiscordCard({ userId }: { userId: string }) {
               className="btn"
               onClick={() => mint.mutate()}
               disabled={!projectId || mint.isPending || link.isPending || link.isError}
+              // A disabled control says why it is disabled, rather than leaving somebody clicking
+              // a dead button and concluding the product is broken.
+              title={
+                link.isPending
+                  ? 'Checking the connection first'
+                  : link.isError
+                    ? 'The connection status could not be read'
+                    : !projectId
+                      ? 'Choose a project first'
+                      : undefined
+              }
             >
               {mint.isPending ? 'Making a code…' : 'Get a code'}
             </button>
           </div>
-          {projects.data?.length === 0 && <p className="muted">Make a project first — a Discord link always points at one.</p>}
+          {projects.data?.length === 0 && (
+            <p className="settings-note">Make a project first — a Discord link always points at one.</p>
+          )}
           {code && (
             <div className="pairing-code-box">
               <span className="pairing-label">Type this in Discord</span>
@@ -291,7 +315,20 @@ function Section({ title, visible, children, danger }: { title: string; visible:
   );
 }
 
-/** A three-way choice, as radios. Used by appearance, motion and the clock. */
+/**
+ * A three-way choice, as radios. Used by appearance, motion and the clock.
+ *
+ * THE KEYBOARD HALF WAS MISSING, and a radiogroup is the one widget where that is a correctness
+ * problem rather than a convenience one. Three buttons each in the tab order is not what
+ * `role="radiogroup"` promises: assistive technology announces "1 of 3" and then the arrow keys,
+ * which is what a person is told to press, did nothing. So the group is one tab stop — only the
+ * chosen segment is tabbable — and the arrows move the answer.
+ *
+ * FOCUS FOLLOWS THE SELECTION, which is why the ref is here at all. React re-renders with the
+ * tabindex on the newly chosen button, but the browser leaves focus on the old one; the next arrow
+ * key would then travel out of the group entirely. Moving it by hand is the only way the second
+ * press lands where the first one left off.
+ */
 function Choice<T extends string>({
   label,
   value,
@@ -307,23 +344,45 @@ function Choice<T extends string>({
   names: Readonly<Record<string, string>>;
   hint?: ReactNode;
 }) {
+  const group = useRef<HTMLDivElement>(null);
+
+  const step = (delta: number) => {
+    const at = options.indexOf(value);
+    // A value that is not one of the options is a bug elsewhere; wrapping from -1 would silently
+    // paper over it by picking an arbitrary answer for somebody.
+    if (at < 0) return;
+    const next = (at + delta + options.length) % options.length;
+    onChange(options[next]!);
+    group.current?.querySelectorAll<HTMLButtonElement>('.theme-btn')[next]?.focus();
+  };
+
   return (
     <>
-      <div className="theme-toggle" role="radiogroup" aria-label={label}>
+      <div className="theme-toggle" role="radiogroup" aria-label={label} ref={group}>
         {options.map((option) => (
           <button
             key={option}
             type="button"
             role="radio"
             aria-checked={value === option}
+            tabIndex={value === option ? 0 : -1}
             className={`theme-btn${value === option ? ' theme-btn-active' : ''}`}
             onClick={() => onChange(option)}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                e.preventDefault();
+                step(1);
+              } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                step(-1);
+              }
+            }}
           >
             {names[option] ?? option}
           </button>
         ))}
       </div>
-      {hint && <p className="muted">{hint}</p>}
+      {hint && <p className="settings-note">{hint}</p>}
     </>
   );
 }
@@ -460,15 +519,22 @@ function AssetSourceSettings({
   if (!stored.data || stored.isError) {
     return (
       <Section title="Where Apple gets assets" visible>
-        <p className="muted" role="status">{stored.isError ? 'Could not load asset sources. Your saved choices have not changed.' : 'Loading asset sources…'}</p>
-        {stored.isError && <button type="button" className="btn" onClick={() => { void stored.refetch(); }}>Retry</button>}
+        {/* A caution and not a refusal. The sentence says nothing stored has changed, and red
+            beside that copy would contradict it — the same call api-keys-panel.css writes down
+            for its own failed lookup. */}
+        <p className={stored.isError ? 'settings-note settings-note-warn' : 'settings-note settings-note-busy'} role="status">
+          {stored.isError
+            ? 'Could not load asset sources. Your saved choices have not changed.'
+            : 'Loading asset sources…'}
+        </p>
+        {stored.isError && <button type="button" className="btn" onClick={() => { void stored.refetch(); }}>Try again</button>}
       </Section>
     );
   }
 
   return (
     <Section title="Where Apple gets assets" visible>
-      <p className="muted">{summarise(policy).line}</p>
+      <p className="settings-note">{summarise(policy).line}</p>
 
       <Row id="asset-sources" visible={shows('asset-sources')}>
         <div className="settings-pair settings-pair--stack">
@@ -499,7 +565,13 @@ function AssetSourceSettings({
             </p>
           )}
 
-          <button type="button" className="btn" disabled={save.isPending || !dirty} onClick={() => save.mutate()}>
+          <button
+            type="button"
+            className="btn"
+            disabled={save.isPending || !dirty}
+            title={!save.isPending && !dirty ? 'Nothing has changed yet' : undefined}
+            onClick={() => save.mutate()}
+          >
             {save.isPending ? 'Saving…' : 'Save asset sources'}
           </button>
         </div>
@@ -589,14 +661,15 @@ function NotificationSettings({
       {/* A FAILED READ IS NOT "NOTHING IS SET". Rendering the defaults over a fetch that never
           answered would show quiet hours as off to somebody who has them on. */}
       {stored.isError && (
-        <p className="muted" role="alert">
-          Could not read your notification settings, so nothing below is showing what is actually stored.
+        <p className="settings-note settings-note-warn" role="alert">
+          Could not read your notification settings, so nothing below is showing what is actually stored. Reload the
+          page to read them again.
         </p>
       )}
 
       <Row id="notify-quiet-hours" visible={shows('notify-quiet-hours')}>
         <h3 className="settings-sub">Quiet hours</h3>
-        <p className="muted">
+        <p className="settings-note">
           Nothing arrives inside this window except a billing or security alert, which are never held. Leave both
           empty for no quiet hours.
         </p>
@@ -623,7 +696,7 @@ function NotificationSettings({
           </label>
         </div>
         {window.problem && (
-          <p className="muted" role="alert">
+          <p className="settings-note settings-note-warn" role="alert">
             {window.problem === 'half_window'
               ? 'A quiet window needs both a start and an end.'
               : rejectSentence('notify_delivery:quiet_hours', window.problem)}
@@ -714,7 +787,7 @@ function NotificationSettings({
       </Row>
 
       {rejected.length > 0 && (
-        <ul className="muted" role="alert">
+        <ul className="muted settings-note-warn" role="alert">
           {rejected.map((r) => (
             <li key={`${r.key}:${r.reason}`}>{rejectSentence(r.key, r.reason)}</li>
           ))}
@@ -725,6 +798,19 @@ function NotificationSettings({
         type="button"
         className="btn"
         disabled={!dirty || save.isPending || window.problem !== null || stored.isPending}
+        // Four ways to be disabled and four different things to do about it. Without this the
+        // button is dead for a reason nobody on the page states.
+        title={
+          save.isPending
+            ? undefined
+            : stored.isPending
+              ? 'Still reading your settings'
+              : window.problem !== null
+                ? 'Fix the quiet window first'
+                : !dirty
+                  ? 'Nothing has changed yet'
+                  : undefined
+        }
         onClick={() => save.mutate()}
       >
         {save.isPending ? 'Saving…' : 'Save notification settings'}
@@ -825,13 +911,13 @@ function TwoStepPanel({ onRemove }: { onRemove: (factorId: string) => void }) {
   return (
     <>
       <h3 className="settings-sub">Two-step verification</h3>
-      <p className="muted">
+      <p className="settings-note">
         A six-digit code from an app on your phone, asked for after your password. It is what keeps a stolen or guessed
         password from being enough on its own.
       </p>
 
       {state.state === 'loading' && (
-        <p className="muted" role="status">
+        <p className="settings-note settings-note-busy" role="status">
           Checking this account…
         </p>
       )}
@@ -843,7 +929,9 @@ function TwoStepPanel({ onRemove }: { onRemove: (factorId: string) => void }) {
           <Failure error={new Error(state.message)} onRetry={() => void factors.refetch()} compact />
           {/* The branch one step away says "it is off" and offers to set it up. Someone who has seen
               that screen before will fill this gap in themselves unless it is said. */}
-          <p className="muted">This does not mean it is off. We could not find out either way.</p>
+          <p className="settings-note settings-note-warn">
+            This does not mean it is off. We could not find out either way.
+          </p>
         </>
       )}
 
@@ -871,7 +959,7 @@ function TwoStepPanel({ onRemove }: { onRemove: (factorId: string) => void }) {
               </li>
             ))}
           </ul>
-          <p className="field-hint">
+          <p className="settings-note">
             Losing the phone this is on means losing the way in — there is no backup code in this product yet, so keep
             the account&rsquo;s email reachable.
           </p>
@@ -897,10 +985,10 @@ function TwoStepPanel({ onRemove }: { onRemove: (factorId: string) => void }) {
             // unscannable on the dark theme this product defaults to.
             <img className="mfa-qr" src={pending.qrCode} alt="" width={168} height={168} />
           ) : (
-            <p className="muted">Your app can take the key below instead of a scan.</p>
+            <p className="settings-note">Your app can take the key below instead of a scan.</p>
           )}
           {pending.secret && (
-            <p className="field-hint">
+            <p className="settings-note">
               Or enter this key by hand: <code>{pending.secret}</code>
             </p>
           )}
@@ -985,14 +1073,14 @@ function SecurityHistory() {
   return (
     <>
       <h3 className="settings-sub">Account history</h3>
-      <p className="muted">
+      <p className="settings-note">
         Things that happened to the account itself rather than to your projects — keys created or revoked, people added
         or removed, your password changed. Worth a look on a day nothing seems wrong, so that the day something does you
         already know what this normally says.
       </p>
 
       {state.state === 'loading' && (
-        <p className="muted" role="status">
+        <p className="settings-note settings-note-busy" role="status">
           Reading your account history…
         </p>
       )}
@@ -1004,14 +1092,24 @@ function SecurityHistory() {
           <Failure error={new Error(state.message)} onRetry={() => void history.refetch()} compact />
           {/* Said out loud, because the empty state sitting one branch away says the opposite and a
               reader who has seen that one before will otherwise fill in the gap themselves. */}
-          <p className="muted">This is not the same as a quiet account. We could not read the history at all.</p>
+          <p className="settings-note settings-note-warn">
+            This is not the same as a quiet account. We could not read the history at all.
+          </p>
         </>
       )}
 
+      {/* AN EMPTY LOG IS NOT "NO RESULTS". The second line is what makes the first one readable:
+          without it, a person who came here because something felt wrong is told nothing, and has
+          no way to tell an empty record from a record that does not cover what they are worried
+          about. */}
       {state.state === 'empty' && (
-        <p className="muted" role="status">
-          Nothing has been recorded on this account yet.
-        </p>
+        <div className="settings-empty" role="status">
+          <p className="settings-empty-title">Nothing has been recorded on this account yet.</p>
+          <p className="settings-empty-body">
+            Keys created or revoked, people added or removed and password changes appear here as they happen. A quiet
+            history is the expected state.
+          </p>
+        </div>
       )}
 
       {state.state === 'items' && (
@@ -1221,9 +1319,17 @@ export function SettingsPage() {
     onError: (e: Error) => toast(authErrorMessage(e), 'error'),
   });
 
-  const passwordFault =
-    newPassword === '' ? null : (passwordProblem(newPassword, { email: session?.user.email }) ??
-      (newPassword !== confirmPassword && confirmPassword !== '' ? 'The two passwords do not match.' : null));
+  /*
+   * TWO FAULTS, NOT ONE — because two fields are being judged and only one of them is wrong.
+   *
+   * The single expression this replaces produced the identical sentence; what it could not do is
+   * say WHICH box to go back to. `aria-invalid` is per-field, so the parts are named separately
+   * here and recombined for the sentence, and the recombination is the original expression
+   * unchanged: a password that is empty is neither too short nor mismatched.
+   */
+  const passwordTooWeak = newPassword === '' ? null : passwordProblem(newPassword, { email: session?.user.email });
+  const passwordsDiffer = newPassword !== '' && confirmPassword !== '' && newPassword !== confirmPassword;
+  const passwordFault = passwordTooWeak ?? (passwordsDiffer ? 'The two passwords do not match.' : null);
 
   /* --- everything else ---------------------------------------------------- */
 
@@ -1406,7 +1512,7 @@ export function SettingsPage() {
         </div>
       </div>
 
-      <div className="card settings-card">
+      <div className="card settings-card settings-search">
         <label className="field" htmlFor="settings-search">
           <span className="gx-sr">Search settings</span>
           <input
@@ -1419,15 +1525,20 @@ export function SettingsPage() {
             autoComplete="off"
           />
         </label>
-        {query.trim() !== '' && matches.size === 0 && (
-          <p className="muted" role="status">
-            Nothing here matches “{query.trim()}”.
+        {/* BOTH ANSWERS, not only the bad one. A filtered page with no count looks like a page
+            that has lost its sections; a "nothing matches" with no next move leaves somebody
+            guessing at the vocabulary. */}
+        {query.trim() !== '' && (
+          <p className="settings-note" role="status">
+            {matches.size === 0
+              ? `Nothing matches “${query.trim()}”. Try a word from the setting itself, like “theme”, “password”, “time zone” or “delete”.`
+              : `Showing ${matches.size} of ${SETTING_FIELDS.length} settings. Clear the box to see them all.`}
           </p>
         )}
       </div>
 
       {profile.isError && (
-        <div className="card">
+        <div className="card settings-card">
           <Failure error={profile.error} onRetry={() => void profile.refetch()} compact />
         </div>
       )}
@@ -1449,7 +1560,12 @@ export function SettingsPage() {
                 disabled={profile.isPending}
               />
             </label>
-            <button type="submit" className="btn" disabled={saveName.isPending || profile.isPending}>
+            <button
+              type="submit"
+              className="btn"
+              disabled={saveName.isPending || profile.isPending}
+              title={!saveName.isPending && profile.isPending ? 'Still reading your profile' : undefined}
+            >
               {saveName.isPending ? 'Saving…' : 'Save'}
             </button>
           </form>
@@ -1471,7 +1587,7 @@ export function SettingsPage() {
             {verification === 'unverified' && <span className="pill pill-warn">Not confirmed</span>}
           </p>
           {verification === 'unverified' && (
-            <p className="muted">
+            <p className="settings-note settings-note-warn">
               This address has not been confirmed yet.{' '}
               <button
                 type="button"
@@ -1484,7 +1600,7 @@ export function SettingsPage() {
             </p>
           )}
           {emailSentTo ? (
-            <p className="muted" role="status">
+            <p className="settings-note" role="status">
               A confirmation link is on its way to <strong>{emailSentTo}</strong>. The address on your account does not
               change until that link is opened, so if this was not you, doing nothing is enough — and it is worth
               changing your password, because someone who could reach this page could reach the rest of the account.
@@ -1508,7 +1624,12 @@ export function SettingsPage() {
                   placeholder="you@example.com"
                 />
               </label>
-              <button type="submit" className="btn" disabled={!newEmail.trim() || changeEmail.isPending}>
+              <button
+                type="submit"
+                className="btn"
+                disabled={!newEmail.trim() || changeEmail.isPending}
+                title={!changeEmail.isPending && !newEmail.trim() ? 'Type the new address first' : undefined}
+              >
                 {changeEmail.isPending ? 'Sending…' : 'Change'}
               </button>
             </form>
@@ -1533,6 +1654,7 @@ export function SettingsPage() {
                 autoComplete="new-password"
                 minLength={PASSWORD_MIN}
                 value={newPassword}
+                aria-invalid={passwordTooWeak !== null || undefined}
                 onChange={(e) => setNewPassword(e.target.value)}
               />
             </label>
@@ -1543,6 +1665,7 @@ export function SettingsPage() {
                 name="confirmPassword"
                 autoComplete="new-password"
                 value={confirmPassword}
+                aria-invalid={passwordsDiffer || undefined}
                 onChange={(e) => setConfirmPassword(e.target.value)}
               />
             </label>
@@ -1556,6 +1679,13 @@ export function SettingsPage() {
               className="btn"
               disabled={
                 changePassword.isPending || !newPassword || newPassword !== confirmPassword || passwordFault !== null
+              }
+              title={
+                changePassword.isPending
+                  ? undefined
+                  : !newPassword
+                    ? 'Enter a new password first'
+                    : passwordFault ?? (newPassword !== confirmPassword ? 'Type the new password again to confirm' : undefined)
               }
             >
               {changePassword.isPending ? 'Saving…' : 'Change password'}
@@ -1574,7 +1704,7 @@ export function SettingsPage() {
 
         <Row id="sign-out-everywhere" visible={shows('sign-out-everywhere')}>
           <h3 className="settings-sub">Sign out everywhere</h3>
-          <p className="muted">
+          <p className="settings-note">
             Ends every session on every device, including this one. Reach for this if you have lost a machine or seen
             something you do not recognise. Signing out from the account menu only affects this browser.
           </p>
@@ -1657,7 +1787,7 @@ export function SettingsPage() {
               ))}
             </select>
           </label>
-          <p className="muted">
+          <p className="settings-note">
             Dates and numbers throughout Apple. Right now: <strong>{formatNumber(1234.5)}</strong> and{' '}
             <strong>{fullStamp(Date.now())}</strong>.
           </p>
@@ -1695,16 +1825,17 @@ export function SettingsPage() {
               ))}
             </select>
           </label>
-          <p className="muted">Every timestamp in Apple is shown in this zone, and says which zone it is.</p>
+          <p className="settings-note">Every timestamp in Apple is shown in this zone, and says which zone it is.</p>
         </Row>
       </Section>
 
 
       <Section title="Privacy" visible={sectionShows('training-opt-in', 'analytics-opt-out', 'download-my-data')}>
         <Row id="training-opt-in" visible={shows('training-opt-in')}>
-          <p>
-            <strong>Your projects are private. Training contribution is off by default.</strong>
-          </p>
+          {/* The claim this row is really about, in ink and at the sub-heading's size. It was a
+              <strong> inside a body paragraph, which under a design where nothing is bolder than
+              400 is a sentence indistinguishable from the one under it. */}
+          <p className="settings-lead">Your projects are private. Training contribution is off by default.</p>
           <label className="switch-row">
             <input
               type="checkbox"
@@ -1727,7 +1858,7 @@ export function SettingsPage() {
             does not keep is the drift this product has already had once. */}
         <Row id="analytics-opt-out" visible={shows('analytics-opt-out')}>
           <h3 className="settings-sub">Analytics</h3>
-          <p className="muted">
+          <p className="settings-note">
             Apple records which requests were made and how long they took, so a broken feature can be told from a slow
             one. That record carries your account id for 30 days unless you turn it off here. The requests are still
             counted either way — an opt-out removes your name from the row, not the row.
@@ -1749,15 +1880,16 @@ export function SettingsPage() {
           {/* A FAILED READ IS NOT "OFF". Rendering an unchecked box over a fetch that never
               answered would show somebody their opt-out had been forgotten. */}
           {storedPrefs.isError && (
-            <p className="muted" role="alert">
-              This setting could not be read just now, so the switch above may not show what is stored.
+            <p className="settings-note settings-note-warn" role="alert">
+              This setting could not be read just now, so the switch above may not show what is stored. Reload the page
+              before changing it.
             </p>
           )}
         </Row>
 
         <Row id="download-my-data" visible={shows('download-my-data')}>
           <h3 className="settings-sub">Download my data</h3>
-          <p className="muted">
+          <p className="settings-note">
             One file with everything Apple holds about you in its database — your profile, your projects, every message,
             your checkpoints, what you have spent, and the keys you have issued. It also names what it does NOT contain
             and where to get that instead, so the file is honest about being one part of the answer.
@@ -1771,35 +1903,46 @@ export function SettingsPage() {
       <Section title="Danger zone" visible={sectionShows('reset-settings', 'delete-account')} danger>
         <Row id="reset-settings" visible={shows('reset-settings')}>
           <h3 className="settings-sub">Reset settings</h3>
-          <p className="muted">
+          <p className="settings-note">
             Puts appearance, motion, region, clock, time zone and workspace preferences back to their defaults on this
             device. Your projects, your display name and your privacy choice are not touched.
           </p>
-          <button type="button" className="btn" onClick={() => guard('reset-settings')} disabled={isDefaultPrefs(prefs)}>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => guard('reset-settings')}
+            disabled={isDefaultPrefs(prefs)}
+            title={isDefaultPrefs(prefs) ? 'Nothing has been changed from the defaults' : undefined}
+          >
             {isDefaultPrefs(prefs)
               ? 'Everything is already default'
               : `Reset ${changed.length} setting${changed.length === 1 ? '' : 's'}`}
           </button>
         </Row>
-        <p className="muted">
-          Deleting a project removes its chat history, checkpoints and Studio pairing forever. The delete action lives
-          in each <Link to="/">project card&rsquo;s menu</Link> — it asks you to type the project&rsquo;s name to
-          confirm.
-        </p>
 
         <Row id="delete-account" visible={shows('delete-account')}>
           <h3 className="settings-sub">Delete my account</h3>
-          <p className="muted">
+          <p className="settings-note">
             Deletes your projects, conversations, checkpoints, workspace files, memory, notifications, automations, API
             keys and your stored Roblox key from every store Apple can reach. It cannot be undone.
           </p>
-          <p className="muted">
+          <p className="settings-note">
             It does not remove your sign-in. That needs an operator, and the receipt afterwards names it along with
             everything else that survives and why — rather than telling you the account is gone while you can still log
             in to it.
           </p>
+          {/* MOVED INSIDE THE ROW. It used to sit between two <Row>s, which meant it was the one
+              piece of prose on the page the search box could not hide: filtering to "delete
+              account" left a paragraph about project deletion standing over an empty section. It
+              also answers the question a person reading this row is most likely to have next —
+              whether one project can go instead of everything. */}
+          <p className="settings-note">
+            To remove one project instead, the delete action lives in each{' '}
+            <Link to="/">project card&rsquo;s menu</Link>. It asks you to type the project&rsquo;s name, and it removes
+            that project&rsquo;s chat history, checkpoints and Studio pairing forever.
+          </p>
           {deletion.data?.requested && !receipt && (
-            <p className="muted" role="status">
+            <p className="settings-note settings-note-warn" role="status">
               Already requested {relativeTime(deletion.data.requestedAt ?? '')} — {deletion.data.stepsDone} stores cleared
               {deletion.data.stepsFailed > 0 ? `, ${deletion.data.stepsFailed} could not be` : ''}.
             </p>
@@ -1817,10 +1960,10 @@ export function SettingsPage() {
               stores were actually cleared; a sentence composed here would be this page claiming
               something nothing measured. */}
           {receipt && (
-            <div role="status">
+            <div className="settings-receipt" role="status">
               <p>{receipt.summary}</p>
               <h4 className="settings-sub">What is left, and why</h4>
-              <ul className="muted">
+              <ul>
                 {receipt.residue.map((r) => (
                   <li key={r.target}>
                     <strong>{r.target}</strong> — {r.why}

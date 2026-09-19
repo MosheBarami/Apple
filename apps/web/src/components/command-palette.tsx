@@ -23,6 +23,12 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { groupBySection, rankCommands } from '../lib/command-match';
 import { useCommandRegistry } from '../lib/commands';
 import { SHORTCUTS, matchesShortcut } from '../lib/shortcuts';
+import { useOverlayScrollLock } from './modal';
+// The palette is a dialog, and it was the one dialog drawn as if it were not: no shadow token, no
+// entrance, a backdrop two shades and a whole z-index away from every other overlay. ./modal.css is
+// the sheet that decides how an overlay arrives and where it sits, and this imports it for the same
+// reason ./modal.tsx does. Imported FIRST so the palette's own rules below it win any tie.
+import './modal.css';
 import './command-palette.css';
 
 export function CommandPalette() {
@@ -30,8 +36,11 @@ export function CommandPalette() {
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const restoreTo = useRef<HTMLElement | null>(null);
+
+  useOverlayScrollLock(open);
 
   const ranked = useMemo(() => rankCommands(commands, query), [commands, query]);
   const groups = useMemo(() => groupBySection(ranked), [ranked]);
@@ -63,6 +72,26 @@ export function CommandPalette() {
   }, [open]);
 
   useEffect(() => setSelected(0), [query]);
+
+  // ESCAPE FROM ANYWHERE THE PALETTE CAN BE, not only from the field.
+  //
+  // The handler below is on the input, which is the only focusable thing in here — so on the day
+  // focus was anywhere else (the browser restoring it after a tab switch, an extension, a stray
+  // programmatic focus) Escape did nothing and a keyboard-only user had no way out of a surface
+  // built for keyboard-only users. Guarded on where the focus actually is, so a dialog stacked
+  // underneath the palette keeps its own Escape rather than losing it to this listener.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      const focused = document.activeElement;
+      if (focused && focused !== document.body && !panelRef.current?.contains(focused)) return;
+      e.preventDefault();
+      setOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, setOpen]);
 
   // Clamp rather than let the selection dangle past the end when the list shrinks under it.
   const index = Math.min(selected, Math.max(0, ranked.length - 1));
@@ -103,6 +132,11 @@ export function CommandPalette() {
     } else if (e.key === 'End') {
       e.preventDefault();
       setSelected(Math.max(0, ranked.length - 1));
+    } else if (e.key === 'Tab') {
+      // The trap, and it is one line because there is one focusable element in here. The rows are
+      // <div role="option">s addressed through aria-activedescendant, so the only place Tab could
+      // go is out — past a dialog that claims aria-modal="true", into the page it is covering.
+      e.preventDefault();
     }
   };
 
@@ -118,7 +152,7 @@ export function CommandPalette() {
         if (e.target === e.currentTarget) setOpen(false);
       }}
     >
-      <div className="cmdk" role="dialog" aria-modal="true" aria-label="Command palette">
+      <div ref={panelRef} className="cmdk" role="dialog" aria-modal="true" aria-label="Command palette">
         <input
           ref={inputRef}
           className="cmdk__input"
@@ -136,11 +170,14 @@ export function CommandPalette() {
         />
 
         <div className="cmdk__list" id="cmdk-list" role="listbox" ref={listRef}>
+          {/* An empty state says what to do next or it is not one. "No commands here yet." named
+              the condition and stopped; "Nothing matches “xyz”." left the reader to guess whether
+              the action exists at all. Both now end in the move that gets them out of it. */}
           {ranked.length === 0 && (
             <p className="cmdk__empty">
               {commands.length === 0
-                ? 'No commands here yet.'
-                : `Nothing matches “${query.trim()}”.`}
+                ? 'No commands here yet — they come from the screen you are on.'
+                : `Nothing matches “${query.trim()}”. Try fewer letters, or the action’s first word.`}
             </p>
           )}
 

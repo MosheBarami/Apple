@@ -68,8 +68,40 @@
    only under the pointer — a link that is already the quietest line does not also need to be the
    one that never responds. */
 .es__help { margin:0; font-size:13px; line-height:1.55; letter-spacing:-.01em; color:var(--muted); }
-.es__help a { transition:color 140ms var(--ease-out); }
-.es__help a:hover { color:var(--ink); }
+/* DRAWN LIKE THE OTHER SECONDARY LINK IN THIS FAMILY, and that is not tidiness — the two appear
+   TOGETHER. `<EmptyState detail={<Failure compact />}>` is the dashboard's, the credits panel's and
+   the automations panel's failed-load state, so `.failure__help` ("Troubleshooting") and
+   `.es__help` ("Troubleshooting") land one above the other, and until now one was a user-agent
+   underline and the other a hairline rule. Same rule, same hover, same duration: `--t-fast`,
+   because it is attached to the cursor. */
+.es__help a { text-decoration:none; border-bottom:1px solid var(--line); padding-bottom:1px; transition:color var(--t-fast) var(--ease-out),border-color var(--t-fast) var(--ease-out); }
+.es__help a:hover { color:var(--ink); border-bottom-color:var(--ink); }
+
+/* ------------------------------------------------------------------ the two sentences --- */
+
+/* THE TYPOGRAPHIC HALF system.css sets sizes for and stops at. `.es__title` and `.es__body` get
+   their colour, size and zeroed margin there; neither gets tracking, and neither gets
+   `text-wrap:pretty` — which docs/DESIGN-LOCK.md asks for on any paragraph a customer reads, and
+   which matters most precisely here. "Summon your first project" and "Apple stopped before it was
+   done" are short enough that a greedy break strands the last word on a line of its own, in the
+   centre of a panel, where it reads as a fragment. Properties only, no redeclaration: system.css
+   is injected after this sheet (main.tsx imports ./app before ./design/system.css), so anything
+   restated here would lose the tie and quietly do nothing.
+   Tracking is the scale in the design lock — about -.02em at title size, -.01em at body. */
+.es__title { letter-spacing:-.02em; text-wrap:pretty; }
+.es__body { line-height:1.55; letter-spacing:-.01em; text-wrap:pretty; }
+
+/* --------------------------------------------------------- a failure inside an empty --- */
+
+/* THREE SURFACES PASS A `<Failure>` AS THE DETAIL — the dashboard, the credits panel and the
+   automations panel — and `.es` is `text-align:center`. A failure block is a left rule with a
+   stack of sentences beside it, so centring it hung the text off a hairline it no longer lined up
+   with, and the technical-detail <code> underneath centred a server message. Nothing says "two
+   components that were never seen together" like one of them being drawn sideways by the other.
+   Start-aligned, and capped at the same 500px `.es__body` uses so the two kinds of detail occupy
+   the same column. `width:min()` rather than `justify-self:stretch` because the panel stays
+   centred; only what is inside it aligns left. */
+.es > .failure { width:min(500px,100%); text-align:start; }
 
 /* ------------------------------------------------------------------------- at 375px --- */
 

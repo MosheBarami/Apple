@@ -1,0 +1,150 @@
+/* THE WAIT — and the first thing to record is that it had no stylesheet at all.
+ *
+ * `loading.tsx` draws with eight class names — `forge`, `forge-mark`, `forge-label`, `forge-steps`,
+ * `forge-step`, `forge-step-mark`, `forge-bar`, `rune-spinner` — and a grep for each of them across
+ * every sheet in apps/web returned ZERO. None of them is written `foo__bar`, so
+ * scripts/check-unstyled-classes.mjs never looked at them: its matcher requires a `__` or a `--` in
+ * the name, and a single-hyphen family falls straight through the gap. The check reported CLASSES
+ * OK on the morning this file was written.
+ *
+ * WHAT THAT LOOKED LIKE ON A SCREEN. `<Spinner>` is a <span> whose only child is visually-hidden
+ * text, so the workspace's "Opening your project…" state rendered a blank page with 100px of
+ * padding: somebody waiting on their own project saw nothing whatsoever and concluded the app was
+ * broken. The step list rendered as a user-agent <ol> — decimal numbering and 40px of indent —
+ * inside a centred panel. The progress bar is an empty <span> inside an empty <span>: no height, no
+ * fill, invisible. And the completed-step tick appeared into a zero-width box, so every step that
+ * finished shoved its own label sideways: a loading state that moved its own layout while you
+ * watched it, which is the one thing a loading state must never do.
+ *
+ * IT IS THE SAME OBJECT AS THE EMPTY STATE. `.es` in design/system.css is a centred grid at
+ * 42px/24px on a flat 14px rhythm — a mark, one line, one thing to do. A wait is that same shape
+ * with the "one thing" replaced by the sequence, so the frame below is `.es`'s frame to the pixel.
+ * Empty, loading, error and success are the four screens a customer meets when nothing is
+ * happening, and they should not be four different layouts.
+ *
+ * THE ACCENT IS SPENT ONCE HERE, ON THE BAR. docs/DESIGN-LOCK.md allows it on a live indicator, and
+ * the bar is the only thing on this panel claiming the work is still alive. Everything else — the
+ * mark, every step, every step dot — is drawn on the neutral ramp. A completed step is deliberately
+ * NOT marked in --good: a second green beside the bar would make neither of them the answer, and a
+ * step that has finished is not a status anybody has to act on.
+ *
+ * NO LIGHT-THEME BLOCK. Every colour below is a bare ramp token the light theme redefines at the
+ * root, so there is no tint here to correct.
+ */
+
+/* ------------------------------------------------------------------------- the frame --- */
+
+/* `.es`'s geometry, repeated rather than shared, because the two components are imported
+   independently and a wait must not depend on an empty state's sheet having been loaded first.
+   `min-width:0` because this lands inside flex and grid parents — the pairing box, a workspace
+   panel — that would otherwise let a long step name push the container wider than its column. */
+.forge { display:grid; justify-items:center; gap:14px; padding:42px 24px; text-align:center; min-width:0; }
+
+/* COMPACT IS THE ONLY MODE THAT SHIPS TODAY — both call sites (the pairing dialog, the session
+   splash) pass it — so it is sized as a first-class state and not as a squeezed version of one.
+   It drops the step list, which leaves a mark, a sentence and the bar; 42px of padding around
+   three short things reads as a panel that failed to load its content. */
+.forge.is-compact { gap:12px; padding:24px 20px; }
+
+/* The mark is an inline <svg> by the reset in system.css, so a plain <span> around it gets a line
+   box and a strip of leading underneath — the mark ends up further from its own headline than the
+   headline is from the steps. Flexing the wrapper removes the strip and keeps the 14px rhythm
+   honest. Muted, because the bar is where this panel's one colour goes. */
+.forge-mark { display:flex; color:var(--muted); }
+.forge-mark svg { display:block; }
+
+/* WHAT IS HAPPENING, in one line. Ink, 16px, and no larger: `.es__title` is 25px because an empty
+   state is a dead end that has to restate where you are, and a wait is not — it is a caption on
+   something already in motion. `text-wrap:pretty` because these end on the word that carries them
+   ("Apple is looking at your scene") and a one-word last line throws that away. */
+.forge-label { margin:0; font-size:16px; line-height:1.4; letter-spacing:-.015em; color:var(--ink); text-wrap:pretty; }
+
+/* ------------------------------------------------------------------------- the steps --- */
+
+/* CENTRED AS A BLOCK, LEFT-ALIGNED INSIDE IT. Four step names centred individually make a ragged
+   diamond and the dots stop lining up, which is the detail that makes a list read as a sequence
+   rather than as four sentences. `width:fit-content` inside `.forge`'s `justify-items:center`
+   centres the block; `text-align:start` undoes the inherited centring within it.
+   The list reset is not cosmetic: with no rule this rendered as a numbered <ol> with 40px of
+   user-agent indent, so the panel had two numbering systems and one of them was the browser's. */
+.forge-steps { list-style:none; margin:0; padding:0; display:grid; gap:9px; width:fit-content; max-width:100%; text-align:start; }
+
+/* A FIXED MARK COLUMN, AND THIS IS THE LAYOUT-SHIFT FIX. `.forge-step-mark` is empty until the step
+   is the active one, at which point a 12px <svg> appears inside it. With no width the box was 0px
+   wide and every label jumped 12px to the right the moment its step started — the wait rearranging
+   itself under the reader. The column is declared once, at the width the mark will be, so nothing
+   moves when the mark arrives or leaves.
+   Hierarchy is ink, not colour: a step that has not started is --faint, one that has finished is
+   --muted, the one in flight is --ink. Three steps on the neutral ramp, no hue anywhere. */
+.forge-step { display:grid; grid-template-columns:14px minmax(0,1fr); align-items:center; gap:10px; min-width:0; font-size:13px; line-height:1.5; letter-spacing:-.01em; color:var(--faint); transition:color var(--t-base) var(--ease-in-out); }
+.forge-step.is-done { color:var(--muted); }
+.forge-step.is-active { color:var(--ink); }
+.forge-step-name { min-width:0; overflow-wrap:anywhere; }
+
+/* `:empty` IS THE STATE TEST, deliberately, rather than a second class on the element. The mark
+   holds the spinning <svg> only while the step is active; the dot below is what the box should
+   draw when it holds nothing, and `:empty` says exactly that without loading.tsx having to
+   describe the same fact twice. A filled dot for a step that is behind us, a hairline ring for one
+   that has not started — shape carries the state, so this reads correctly in greyscale. */
+.forge-step-mark { display:grid; place-items:center; width:14px; height:14px; }
+.forge-step-mark:empty::before { content:''; width:6px; height:6px; border-radius:50%; border:1px solid var(--line); }
+.forge-step.is-done .forge-step-mark:empty::before { background:var(--muted); border-color:var(--muted); }
+
+/* --------------------------------------------------------------------------- the bar --- */
+
+/* THE ONE THING ON THIS PANEL THAT SAYS THE WORK IS STILL ALIVE, and the one place the accent is
+   spent. It matters most in compact mode, where there is no step list: without it a splash is a
+   static hexagon over a static sentence, which is indistinguishable from a screen that has hung.
+   NO RADIUS: the track is 2px tall, so a radius token would round nothing and only add a value to
+   a scale docs/DESIGN-LOCK.md keeps at four. */
+.forge-bar { display:block; width:min(220px,100%); height:2px; margin-block-start:4px; overflow:hidden; background:var(--line); }
+.forge-bar > span { display:block; width:38%; height:100%; background:var(--accent); animation:forge-sweep 1700ms var(--ease-in-out) infinite; }
+/* -100% parks the segment just off the left edge; 263% is (100-38)/38 of its own width plus that
+   same 100%, which lands it just off the right one. Both ends are outside the track, so the sweep
+   has no visible start or stop. */
+@keyframes forge-sweep { from { transform:translate3d(-100%,0,0); } to { transform:translate3d(263%,0,0); } }
+
+/* ----------------------------------------------------------------------- the spinner --- */
+
+/* THE SMALLEST WAIT, and until now the invisible one — a <span> containing nothing but
+   screen-reader text. The mark comes from the canonical status vocabulary (`pending`, the only
+   status that animates, tone `muted`) rather than from a ring drawn here, so the one spinning
+   thing in the product spins the same way everywhere and inherits the reduced-motion escape that
+   `.st--spin` already carries in system.css.
+   The label is rendered VISIBLY when a caller gives one. The workspace's full-page "Opening your
+   project…" is the only call site, and a 14px mark alone in a 100px-padded page says less than the
+   sentence the caller had already written. With no label there is nothing to show and the span
+   stays a bare mark with its accessible name in screen-reader text. */
+.rune-spinner { display:inline-flex; align-items:center; gap:10px; min-width:0; color:var(--muted); font-size:14px; line-height:1.5; letter-spacing:-.01em; }
+.rune-spinner__label { min-width:0; text-wrap:pretty; overflow-wrap:anywhere; }
+
+/* ---------------------------------------------------------------------- the splash --- */
+
+/* `.auth-splash` IS DRAWN BY lib/auth.tsx AND HAS NO RULE ANYWHERE. It is the wrapper around the
+   very first screen of the product — the one shown while the session is restored — and with no
+   rule it is a bare <div>, so the splash rendered flush to the top-left corner of a white-on-black
+   page. Its only child is this component, which is why the rule lives here; if the sign-in surface
+   grows its own sheet this belongs there instead, and it is small enough that moving it costs
+   nothing. Nothing but the frame is set, so it cannot fight whatever that sheet decides. */
+.auth-splash { min-height:100dvh; display:grid; place-items:center; padding:24px; background:var(--paper); }
+
+/* -------------------------------------------------------------------------- at 375px --- */
+
+/* The frame yields its padding before the sentences yield their size: at 375px the 24px inline
+   padding plus the panel's own gutter is most of the width spent on nothing. */
+@media (max-width:600px) {
+  .forge { gap:12px; padding:34px 16px; }
+  .forge.is-compact { padding:20px 16px; }
+  .forge-label { font-size:15px; }
+  .forge-step { font-size:12.5px; gap:9px; }
+  .forge-bar { width:min(180px,100%); }
+}
+
+/* OFF, NOT SLOWED. system.css kills every animation under reduce with !important, so the sweep and
+   the step fade stop on their own — but an INDETERMINATE bar that has stopped moving is a bar
+   claiming a position it does not have, which is worse than no bar. It becomes a full-width
+   hairline in the accent's 22% tint: present, calm, and making no claim about progress. */
+@media (prefers-reduced-motion: reduce) {
+  .forge-step { transition:none; }
+  .forge-bar > span { animation:none; width:100%; background:var(--accent-line); }
+}

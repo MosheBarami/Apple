@@ -1,26 +1,396 @@
 /* /settings — the rules settings.tsx's markup was written expecting and never got.
  *
- * Only one section on this page draws markup that design/system.css does not finish: "Where Apple
- * gets assets", which reuses asset-source-dialog.tsx's rows on a page where that question is one
- * entry among twenty rather than the only thing on screen. The dialog is answered once, under
- * pressure. This list is read while somebody is looking for something else. So every rule below
- * makes the same markup denser and quieter, and none of them restates a rule system.css wrote.
+ * THIRTEEN CLASSES ON THIS PAGE HAD NO RULE ANYWHERE IN THE TREE. Measured, not guessed: every
+ * className in settings.tsx, matched against all 39 stylesheets. `theme-toggle`, `theme-btn`,
+ * `theme-btn-active`, `sec-log`, `sec-event`, `sec-event-new`, `sec-event-title`, `sec-when`,
+ * `mfa-qr`, `pill-good`, `pill-warn`, `settings-card`, `danger-card` and `page-narrow` matched
+ * nothing. scripts/check-unstyled-classes.mjs did not catch them because it only examines BEM-ish
+ * names (`foo__bar`), and every one of these is hyphenated — the same defect that check exists for,
+ * hiding in the half of the naming convention it cannot see.
  *
- * WHAT THAT COSTS THE SECTION: no hover fill, no chosen-row tint, no colour from this file at all.
- * The one coloured thing in the section is the sentence saying an empty list means plain parts,
- * and that red is `.form-error`'s, set in system.css. A settings page that tinted its rows as well
- * would have made the warning indistinguishable from the list it warns about.
+ * THREE OF THEM WERE FUNCTIONAL, not cosmetic:
+ *
+ *   * `theme-btn-active` is the ONLY thing that says which theme, which motion setting and which
+ *     clock are chosen. With no rule all three segments rendered identically, so the page asked
+ *     three questions and showed none of the answers. `aria-checked` was correct throughout, which
+ *     means a screen reader could read the setting a sighted user could not.
+ *   * `mfa-qr` carries a comment in settings.tsx — "White ground on purpose: the provider's QR is
+ *     black on transparent, which is unscannable on the dark theme this product defaults to." The
+ *     white ground was never written. Two-step verification could not be set up by scanning.
+ *   * `pill-good` and `pill-warn` are the difference between "Verified" and "Not confirmed" on the
+ *     email row. Both fell back to `.pill`'s grey chip, so the badge that exists to distinguish
+ *     them distinguished nothing.
+ *
+ * AND ONE LAYOUT RULE WAS ACTIVELY WRONG. system.css makes `.settings-row` a flex row with
+ * `justify-content:space-between`, which is right for a name-and-control pair and catastrophic for
+ * what this page actually puts in one: a heading, two paragraphs and a form, laid out as four
+ * columns strung across an 1100px card. That is what "a form generator ran over it" was.
+ *
+ * WHAT THIS FILE IS ALLOWED TO DO. system.css is the lead's. Everything here is scoped under
+ * `.settings-card` or `.page-narrow` so that a shared class — `.settings-sub`, `.pill`, `.field`,
+ * `.btn` — gets this page's version of itself and every other page keeps its own. The two panels
+ * that live on this page and own their own sheets (`.ak`, `.rk`) are deliberately NOT reached: no
+ * selector here descends into them, and the one thing they do inherit is the card's 14px reading
+ * size, which both already declare over where they mean something else.
  *
  * SPECIFICITY IS DELIBERATE, NOT DECORATION. main.tsx imports './app' before './design/system.css',
  * so every component and route sheet — this one included — is injected BEFORE system.css and loses
- * every tie. `.settings-pair.settings-pair--stack` and `.asrc__choice.asrc__choice--settings`
- * carry a second class for that reason: at one class each they would be overruled by the very base
- * rules they exist to override, silently, in the production build only.
+ * every tie. A rule here that merely equals the one it means to replace works in dev and fails in
+ * the production build, silently. `.card.settings-card` rather than `.settings-card`, and
+ * `.settings-card .settings-row` rather than `.settings-row`, are that and nothing else.
  *
- * BOTH THEMES: every colour here is a ramp token the light theme redefines, and nothing mixes a
- * tint that reads on one theme and disappears on the other, so there is no
- * `:root[data-theme='light']` correction to write.
+ * THE ACCENT IS NOT SPENT ON THIS PAGE, and that is a decision rather than an omission. There is no
+ * primary action here — twenty settings, each with its own Save — so there is nothing for one
+ * green to mean. It appears in the focus ring and nowhere else, which is the one spend
+ * docs/DESIGN-LOCK.md names that a page this long can afford. The single status colour a panel may
+ * carry goes to the fact somebody has to act on: `--warn` on an unconfirmed address, `--bad` in the
+ * danger zone. "Verified" and "Protected" are the resting state and stay grey, because a green
+ * badge beside a green focus ring is two greens and neither is the answer.
+ *
+ * BOTH THEMES. Two tints invert on the light ramp and are corrected where they are set: the
+ * segmented control's chosen segment (`--surface-2` is DARKER than the `--paper-2` track on light,
+ * so the raised chip becomes `--surface`), and nothing else. Every other colour here is a ramp
+ * token the light theme redefines in the same direction.
  */
+
+/* ------------------------------------------------------------------ the column --- */
+
+/* `.page` is 1160px because it was built for the dashboard's card grid. A form column that wide
+   puts a 1000px text input under a 13px label, and the eye has no left edge to come back to. The
+   class the markup asked for and nobody wrote. */
+.page.page-narrow { max-width:880px; }
+.page-narrow .page-head { margin-bottom:26px; }
+.page-narrow .page-title { margin:0 0 8px; font-size:clamp(30px,6vw,40px); line-height:1.15; letter-spacing:-.03em; }
+.page-narrow .page-sub { margin:0; font-size:13px; line-height:1.55; overflow-wrap:anywhere; }
+
+/* ----------------------------------------------------------------- the section --- */
+
+/* THE CARD, AND THE ONE DECLARATION THAT GIVES THE PAGE A TYPE SCALE. `font-size` on the card is
+   load-bearing rather than tidy: system.css sets `button,input,select,textarea { font:inherit }`,
+   so one size here settles prose, every control and every button that does not ask for its own.
+   16px body copy in a settings card reads as a document; 14px reads as a panel, which is what this
+   is. `.ak` and `.rk` already declare 14px and their own smaller steps, so they are unmoved.
+   `--r-lg` matches `.project-card` and `.gu-panel` — the two other big content panels in the
+   product — rather than inventing a third size for a third kind of box. */
+.card.settings-card { margin-block:18px; padding:26px 28px; border:1px solid var(--line); border-radius:var(--r-lg); background:var(--surface); font-size:14px; letter-spacing:-.01em; }
+
+/* Hierarchy from size, colour and space — nothing on this page is bolder than 400, so the section
+   name has to be separated from the sub-heading under it by 7px of size and a hairline, not weight.
+   The h2 element rule is 30px, which at nine repeats down a page shouts over the page title. */
+.settings-card > h2 { margin:0 0 15px; font-size:22px; line-height:1.3; letter-spacing:-.02em; color:var(--ink); }
+.settings-card > p { margin:0 0 14px; max-width:68ch; line-height:1.6; text-wrap:pretty; }
+
+/* `<strong>` APPEARS ELEVEN TIMES ON THIS PAGE AND EVERY ONE OF THEM RENDERED AT 700. system.css
+   resets the weight on h1–h6 and on two named classes, and never on the element itself, so the
+   browser default stood — against a design whose first rule is that nothing is bolder than 400.
+   The emphasis still has to work, so it moves where the rest of this product puts it: the sentence
+   around it is muted and the picked-out part keeps the ink. Same device as `.edit-warn strong`. */
+.settings-card strong { font-weight:400; color:var(--ink); }
+
+/* Inline code — `/unlink`, an authenticator secret — set in the ramp's well so it reads as a thing
+   to be typed rather than a word in italics. `:not([class])` because `.ak__secret` is a <code> with
+   its own padding and this rule is one specificity step above it. */
+.settings-card code:not([class]) { padding:1px 4px; border-radius:var(--r-xs); background:var(--paper-2); color:var(--ink); letter-spacing:0; }
+
+/* THE ROW, WHICH WAS A FOUR-COLUMN FLEX STRIP. A settings row holds a heading, prose and a control
+   stacked in reading order; `space-between` spread them sideways. A grid also gives the row a
+   single vertical rhythm, so the margins its children brought from the element sheet can go —
+   which is the next rule. The hairline is the only separation between rows: a surface step would
+   make twenty boxes inside one box. */
+/* THE EXPLICIT SINGLE COLUMN IS NOT DECORATION, and this cost a render to find. Switching the row
+   to a grid leaves `justify-content:space-between` behind from the flex rule, and on a grid that
+   property stops an `auto` track from taking the free space: the Profile form sized to its own
+   content at 255px inside a 750px row, so the Save button wrapped under a quarter-width input and
+   the page looked exactly as broken as before, one layout mode further on. `minmax(0,1fr)` fills
+   the row whatever the inherited alignment says, and the `minmax` floor is what lets a long
+   unbroken string shrink instead of pushing the card wider than the page. */
+.settings-card .settings-row { display:grid; grid-template-columns:minmax(0,1fr); justify-content:normal; align-items:start; gap:12px; padding-block:18px; border-top:1px solid var(--line); }
+.settings-card > .settings-row > :is(p,h3,h4,ul,ol,fieldset,form,div) { margin:0; min-width:0; }
+.settings-card > .settings-row > p { max-width:68ch; line-height:1.6; text-wrap:pretty; }
+
+/* The sub-heading. `.settings-sub` in system.css carries a top hairline and 28px of margin, which
+   was the separation BEFORE the row had one — two rules drawing the same line, 28px apart.
+   `> .settings-sub` reaches the page's own headings and never `.ak`'s or `.rk__trail`'s, which are
+   nested a level deeper inside panels that size them on purpose. */
+.settings-card .settings-row > .settings-sub,
+.settings-card .settings-receipt > .settings-sub { margin:0; padding:0; border:0; font-size:15px; line-height:1.4; letter-spacing:-.015em; color:var(--ink); }
+
+/* One row on this page has no heading because its first sentence IS the heading — the privacy
+   claim the whole row exists to make. It takes the sub-heading's step so the page has one rank for
+   "the thing this row is about" rather than two that happen to look alike. */
+.settings-card .settings-lead { margin:0; max-width:62ch; font-size:15px; line-height:1.5; letter-spacing:-.015em; color:var(--ink); text-wrap:pretty; }
+
+/* `.settings-current` is a <p> holding an address and its badge. system.css gives it
+   `justify-content:space-between`, which pushed the badge to the far edge of the card, eight
+   hundred pixels from the thing it qualifies. */
+.settings-card .settings-current { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-start; gap:8px 10px; margin:0; padding:0; font-size:15px; letter-spacing:-.015em; }
+.settings-card .settings-current strong { min-width:0; font-weight:400; overflow-wrap:anywhere; }
+
+/* ------------------------------------------------------------------ the search --- */
+
+/* The one field on the page that is not a setting. It is bigger than the rest because it is what
+   the page is navigated with, and it keeps 16px at every width: iOS zooms the viewport on focus
+   for anything under 16px, and a search box that moves the page under your thumb is the one field
+   where that is unsurvivable. */
+.card.settings-card.settings-search { padding:18px 20px; }
+.settings-search .field { gap:0; }
+.settings-card.settings-search input[type='search'] { font-size:16px; padding:13px 15px; }
+.settings-search .settings-note { margin-top:11px; }
+
+/* ------------------------------------------------------------------- the field --- */
+
+/* ONE SHAPE FOR EVERY FIELD ON THE PAGE, and it is a WELL rather than a raised box: the card is
+   `--surface`, so an input drawn on `--surface` too is a box with a hairline round it and no
+   depth. `--paper-2` is the ramp's step for anything recessed and reads as somewhere to type in
+   both themes. The 4px radius in system.css is not one of the four radius tokens; the auth form
+   already corrects it locally the same way, so this is the second instance of a system.css defect
+   rather than a local preference — reported rather than fixed here, because that file is the
+   lead's.
+   `:is(...)` carries the specificity of its most specific argument, so this lands at (0,3,1) and
+   beats system.css's (0,2,1) whichever sheet the bundler emits last. */
+.settings-card :is(input:not([type='checkbox']):not([type='radio']),select,textarea) { width:100%; max-width:100%; padding:11px 13px; border:1px solid var(--line); border-radius:var(--r-md); background-color:var(--paper-2); color:var(--ink); font-size:14px; letter-spacing:-.01em; transition:border-color var(--t-fast) var(--ease-out),background-color var(--t-fast) var(--ease-out); }
+.settings-card :is(input,select,textarea)::placeholder { color:var(--faint); }
+/* Hover and focus are the same step, because a field has one "you are here" and reaching it with a
+   mouse or a tab key is not a different fact. The ring itself is never drawn here — rule 6 of
+   docs/DESIGN-LOCK.md says it is 2px of accent at 4px offset everywhere, and a component that
+   restyles it is a component keyboard users get a different product on. */
+.settings-card :is(input:not([type='checkbox']):not([type='radio']),select,textarea):hover:not(:disabled) { border-color:var(--surface-3); }
+/* `background-color` AND NEVER THE `background` SHORTHAND ON A FIELD. The shorthand resets
+   background-image, and the select's caret two rules down is a background-image: written as
+   `background:` these rules silently erased the only thing marking a select as a select, at a
+   specificity the caret rule could not answer. Found by looking at it. */
+.settings-card :is(input:not([type='checkbox']):not([type='radio']),select,textarea):focus { border-color:var(--surface-3); background-color:var(--surface); }
+/* system.css gives `button:disabled` its opacity and cursor and never gave an input either, so a
+   field that was still loading looked exactly like one waiting for you to type. */
+.settings-card :is(input,select,textarea):disabled { opacity:.48; cursor:not-allowed; }
+/* A refusal the field itself carries, so the red sentence under it is not the only signal. */
+.settings-card :is(input,select,textarea)[aria-invalid='true'] { border-color:color-mix(in srgb,var(--bad) 48%,var(--line)); }
+/* The global focus rule in system.css names button, a, input, textarea and summary — and not
+   select. Eight of this page's controls are selects, and every one of them was invisible to a
+   keyboard. Same declaration, not a restyle. */
+.settings-card select:focus-visible { outline:2px solid var(--accent); outline-offset:4px; }
+
+/* EVERY SELECT ON THIS PAGE RENDERED AS A WHITE BOX ON THE BLACK ONE. Rendered, not reasoned: a
+   <select> without `appearance:none` keeps the engine's own control chrome and ignores an author
+   background entirely, so the eight selects here — the Discord project, the digest, the hour, the
+   two time zones, the region — were the brightest objects on a page whose whole direction is
+   near-black. `color-scheme:dark` fixes the date and time inputs beside them and does nothing for
+   this one, which is why it looked deliberate and was not.
+   THE CARET IS DRAWN FROM TOKENS. Two half-filled squares make the chevron, so there is no data-URI
+   with a hex colour in it and no icon import; `var(--muted)` is the only colour named, and the two
+   background positions are mirrored for RTL because `background-position` has no logical form. */
+.settings-card select { appearance:none; -webkit-appearance:none; padding-inline-end:34px; background-color:var(--paper-2); background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%); background-position:right 18px center,right 13px center; background-size:5px 5px; background-repeat:no-repeat; }
+[dir='rtl'] .settings-card select { background-position:left 13px center,left 18px center; }
+
+/* THE MEASURE OF A FIELD, which is not the measure of the card. An 800px-wide password box under an
+   11px label has no left edge for the eye to return to and reads as a page that has lost its
+   layout — the same reason the column above is 880px and not 1160px. The search box is the one
+   exception: it is what the page is navigated with rather than a setting. */
+.settings-card .field { max-width:420px; }
+.settings-card.settings-search .field { max-width:none; }
+
+/* The label is a micro-label: 11px, uppercase, positive tracking, faint — the one place the type
+   scale turns tracking positive, exactly as the lock specifies, and the same shape `.ak__label`
+   already uses on this page. The hint stays sentence case because several are set INLINE inside a
+   span and a block rule would break the sentence they finish. */
+.settings-card .field { display:grid; gap:7px; margin:0; min-width:0; }
+.settings-card .field-label { font-size:11px; line-height:1.4; font-weight:400; text-transform:uppercase; letter-spacing:.018em; color:var(--faint); }
+.settings-card .field-hint { font-size:12px; line-height:1.55; color:var(--muted); }
+.settings-card .form-error { margin:0; font-size:13px; line-height:1.55; color:var(--bad); text-wrap:pretty; }
+
+/* A form that is not one of the two inline rows is a stack, on the row's own rhythm. */
+.settings-card .settings-row > form:not(.settings-inline) { display:grid; grid-template-columns:minmax(0,1fr); gap:14px; }
+.settings-card .settings-row > form:not(.settings-inline) > :is(p,label,div) { margin:0; min-width:0; }
+
+/* THE INLINE ROW — a labelled field with its button on the input's baseline. `align-items:flex-end`
+   in system.css is what puts it there, and `.field`'s own 14px block margin was quietly cancelling
+   it: the button sat fourteen pixels above the input it submits, in every inline form on the page.
+   Zeroing the margin (above) is the fix; the flex basis is what stops the field collapsing to its
+   content when the button is wide. */
+.settings-card .settings-inline { gap:12px; }
+/* A row with no field in it is a row of buttons, and `flex-end` is the wrong answer there: it hangs
+   an underlined tertiary control off the BOTTOM of the bordered one beside it, so "Cancel" sat a
+   few pixels below "Turn it on" and read as a footnote rather than as its pair. Where there is a
+   field the baseline is still the input's, which is what `flex-end` is for. */
+.settings-card .settings-inline:not(:has(.field)) { align-items:center; }
+.settings-card .settings-grow { flex:1 1 220px; min-width:0; max-width:420px; }
+.settings-card .settings-pair > .field { flex:1 1 180px; min-width:0; }
+
+/* ----------------------------------------------------------------- the buttons --- */
+
+/* The page's own buttons, which is why this is a list of positions rather than `.settings-card
+   .btn`: `.ak__key-actions .btn` and the roblox panel's buttons are sized by their own sheets at
+   the same specificity, and a tie between two route sheets is settled by whichever the bundler
+   emitted last. Nothing here matches inside those panels.
+   `justify-self:start` because the row is a grid and a grid item stretches: without it "Delete my
+   account" is an 800px banner. */
+.settings-card > .btn,
+.settings-card > .settings-row > .btn,
+.settings-card > .settings-row > :is(p,form,.settings-inline,.settings-pair,.sec-log) .btn { justify-self:start; border-radius:var(--r-md); transition:background-color var(--t-fast) var(--ease-out),border-color var(--t-fast) var(--ease-out),color var(--t-fast) var(--ease-out); }
+/* Pressed is a state, and system.css declares it only for the primary button — which this page
+   does not have. Without it a Save that is saving looks identical to one nobody has touched. */
+.settings-card .settings-row .btn:not(.btn-ghost):hover:not(:disabled),
+.settings-card > .btn:not(.btn-ghost):hover:not(:disabled) { background:var(--surface-2); border-color:var(--surface-3); }
+.settings-card .settings-row .btn:not(.btn-ghost):active:not(:disabled),
+.settings-card > .btn:not(.btn-ghost):active:not(:disabled) { background:var(--surface-3); }
+/* THE TERTIARY ACTION, AND WHY IT IS UNDERLINED RATHER THAN BORDERLESS. `.btn-ghost` as system.css
+   leaves it is muted text with a transparent border, which inside a sentence — "This address has
+   not been confirmed yet. Send the link again" — is indistinguishable from the sentence. It also
+   sat ten pixels right of everything above it, because it kept the button element's padding while
+   showing nothing that padding belonged to. An underline is this product's existing tertiary
+   idiom (`.gx-outcome__retry`), it is unambiguously a control, and with the inline padding gone it
+   lines up with the prose it follows.
+   The generic button hover above excludes ghosts explicitly rather than relying on which rule this
+   file happens to write second. */
+.settings-card .btn-ghost { border:0; border-bottom:1px solid var(--line); border-radius:0; padding:3px 0; background:transparent; color:var(--muted); }
+.settings-card .btn-ghost:hover:not(:disabled) { background:transparent; border-bottom-color:var(--ink); color:var(--ink); }
+.settings-card .btn-ghost:active:not(:disabled) { background:transparent; color:var(--ink); }
+
+/* THE PAIRING CODE IS A GUEST HERE. pairing-dialog.css owns these four classes and sizes the code
+   at 40px because in that dialog it is the only thing on screen. On this page it is one entry among
+   twenty and at 40px it was the largest object in the card, louder than the page title. Same
+   argument, and the same remedy, as `.asrc__choice--settings` further down: the shared markup keeps
+   its shape and loses a step of size. Three classes so it beats `.pairing-code-box .pairing-code`
+   outright rather than by whichever sheet the bundler emits last. */
+.settings-card .pairing-code-box .pairing-code { font-size:28px; letter-spacing:.12em; }
+
+/* ------------------------------------------------------- the segmented control --- */
+
+/* APPEARANCE, MOTION AND THE CLOCK — three questions whose answers were not on the screen.
+   A track at `--paper-2` with the chosen segment stepped up to `--surface-2`: the ramp doing the
+   work, which is what the lock means by hierarchy from colour rather than hue. It is NOT the
+   accent, and the reason is that there are three of these groups on one page — three green chips
+   would mean the accent marks "a choice" here and "the one action" everywhere else.
+   `--r-xs` inside `--r-md` is not a third radius: 10px minus the 4px track padding is 6px, which
+   is the concentric value and happens to be the token. */
+.settings-card .theme-toggle { display:flex; flex-wrap:wrap; gap:4px; width:fit-content; max-width:100%; padding:4px; border:1px solid var(--line); border-radius:var(--r-md); background:var(--paper-2); }
+.settings-card .theme-toggle > .theme-btn { flex:1 1 auto; min-width:0; padding:8px 15px; border:1px solid transparent; border-radius:var(--r-xs); background:transparent; font-size:13px; letter-spacing:-.01em; line-height:1.4; color:var(--muted); white-space:nowrap; transition:background-color var(--t-fast) var(--ease-out),color var(--t-fast) var(--ease-out),border-color var(--t-fast) var(--ease-out); }
+.settings-card .theme-toggle > .theme-btn:hover:not(.theme-btn-active) { background:color-mix(in srgb,var(--surface-2) 55%,transparent); color:var(--ink); }
+.settings-card .theme-toggle > .theme-btn:active { background:var(--surface-2); }
+.settings-card .theme-toggle > .theme-btn-active { background:var(--surface-2); border-color:var(--surface-3); color:var(--ink); }
+/* THE ONE TINT THAT INVERTS. On the light ramp `--surface-2` (#eee) is DARKER than the `--paper-2`
+   track (#f3f3f3), so the chosen segment read as a dent instead of a raised chip and the control
+   said the opposite of what it says on dark. Rendered both, rather than assumed. */
+:root[data-theme='light'] .settings-card .theme-toggle > .theme-btn-active { background:var(--surface); border-color:var(--surface-3); }
+:root[data-theme='light'] .settings-card .theme-toggle > .theme-btn:hover:not(.theme-btn-active) { background:color-mix(in srgb,var(--surface) 65%,transparent); }
+
+/* ------------------------------------------------------------ the checkbox rows --- */
+
+/* Three markups for one idea — a box, a sentence, and a reason under it. They get one shape so the
+   page does not look like three products: the label is the target, the ink lifts to `--ink` when
+   the row is hovered or ticked, and a locked row says so by going faint under a not-allowed
+   cursor rather than by vanishing. */
+.settings-card :is(.switch-row,.prefs__check,.asrc__remember) { display:flex; flex-wrap:nowrap; align-items:flex-start; gap:10px; margin:0; min-width:0; line-height:1.55; color:var(--muted); cursor:pointer; transition:color var(--t-fast) var(--ease-out); }
+/* `nowrap` AND `min-width:0` ARE THE ROW, not tidying. `.switch-row` inherits `flex-wrap:wrap`, and
+   the sentence beside the box is one flex item whose basis is its own max-content — about 480px for
+   the training line. At 375px it did not fit on the line with the checkbox, so it wrapped BELOW it
+   and the control ended up floating alone above its own label. Seen at 375px, not deduced. */
+.settings-card :is(.switch-row,.prefs__check,.asrc__remember) > span { min-width:0; overflow-wrap:anywhere; }
+.settings-card :is(.switch-row,.prefs__check,.asrc__remember):hover,
+.settings-card :is(.switch-row,.prefs__check,.asrc__remember):has(:checked) { color:var(--ink); }
+.settings-card :is(.switch-row,.prefs__check,.asrc__remember):has(:disabled) { color:var(--faint); cursor:not-allowed; }
+.settings-card :is(.switch-row,.prefs__check,.asrc__remember) > input { flex:none; width:15px; height:15px; margin:3px 0 0; }
+.settings-card .switch-row { font-size:14px; }
+.settings-card :is(.prefs__check,.asrc__remember) { font-size:13px; }
+
+/* The fieldset is a well holding a divided list, so the rows separate themselves and the box does
+   not need a gap as well. The legend is `.gx-sr`, which is why the first LABEL and not the first
+   child is the one without a rule above it. */
+.settings-card .prefs__set { margin:0; padding:2px 16px; border:1px solid var(--line); border-radius:var(--r-md); background:var(--paper-2); min-inline-size:0; }
+.settings-card .prefs__check { padding-block:11px; border-top:1px solid var(--line); }
+.settings-card .prefs__check:first-of-type { border-top:0; }
+
+/* -------------------------------------------------------------------- the pills --- */
+
+/* A status tag, not a chip: 10px uppercase on a hairline, which is the micro-label the lock gives
+   positive tracking to and the same one `.ak__mode` already wears on this page.
+   `pill-good` CARRIES NO COLOUR. "Verified" and "Protected" are the resting state; the reader has
+   nothing to do about them, and `--good` is two steps from `--accent` on the same hue, so a green
+   badge sitting above a green focus ring makes both mean "notice me". The one that has to be found
+   is the one that needs an action, and it is the only coloured thing in its panel. */
+.settings-card .pill { display:inline-flex; flex:none; align-items:center; padding:3px 9px; border:1px solid var(--line); border-radius:var(--r-pill); background:transparent; font:10px/1.4 var(--font-mono); text-transform:uppercase; letter-spacing:.018em; color:var(--faint); }
+.settings-card .pill-good { color:var(--muted); }
+.settings-card .pill-warn { color:var(--warn); border-color:color-mix(in srgb,var(--warn) 42%,transparent); }
+
+/* -------------------------------------------------------------------- the logs --- */
+
+/* THE ACCOUNT HISTORY AND THE ENROLLED FACTORS — one <ul> markup, two panels, no rules at all, so
+   both rendered as a bulleted list indented forty pixels inside a card. A security log with disc
+   bullets is what a page looks like when its stylesheet did not load, and that is what was
+   reported about this product once already.
+   A grid rather than a flex row because the factor rows carry a trailing Remove button that has to
+   sit beside a two-line stack, and the history rows carry none — one shape has to hold both. */
+.settings-card .sec-log { list-style:none; margin:0; padding:0; border-top:1px solid var(--line); }
+.settings-card .sec-event { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:3px 16px; padding-block:14px; border-bottom:1px solid var(--line); }
+.settings-card .sec-event > p { grid-column:1; margin:0; min-width:0; overflow-wrap:anywhere; }
+.settings-card .sec-event > .btn { grid-column:2; grid-row:1 / -1; align-self:center; justify-self:end; }
+.settings-card .sec-event-title { display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-size:14px; line-height:1.5; letter-spacing:-.01em; color:var(--muted); }
+/* Read and unread differ in ink, not in a second rail beside the New badge: two marks for one fact
+   is how a page ends up with a colour language nobody can state. */
+.settings-card .sec-event-new .sec-event-title { color:var(--ink); }
+.settings-card .sec-event > p.muted { font-size:13px; line-height:1.6; }
+.settings-card .sec-when { font-size:12px; line-height:1.5; color:var(--faint); font-variant-numeric:tabular-nums; }
+
+/* --------------------------------------------------------------------- the QR --- */
+
+/* THE WHITE GROUND settings.tsx's comment promised and no stylesheet supplied. The provider's
+   image is black on TRANSPARENT; on the dark theme this product defaults to, it was black on
+   #232221 and no phone camera could read it — two-step verification could be started and never
+   finished.
+   `--accent-on-fill` is the ground rather than a raw #fff because rule 1 admits no hex in a
+   declaration, and it is the only token in the ramp that is near-white in BOTH themes: it is the
+   ink that has to sit on `--accent-fill`, which is a dark green on either side, so it cannot
+   become dark without the primary button becoming unreadable first. */
+.settings-card .mfa-qr { display:block; width:168px; height:168px; max-width:100%; padding:10px; border:1px solid var(--line); border-radius:var(--r-md); background:var(--accent-on-fill); }
+
+/* ------------------------------------------------------ the page's state lines --- */
+
+/* WHAT HAPPENED, AND WHAT TO DO ABOUT IT. Every surface on this page that loads now says which of
+   the four it is in the same shape, so "still asking" cannot be mistaken for "the answer is none"
+   — the defect this repository has already had four times in four subsystems.
+   Colour is rationed to the two a reader must act on. Busy and empty stay neutral, because waiting
+   is the resting state and does not need a colour to be understood. */
+.settings-card .settings-note { display:block; margin:0; max-width:68ch; font-size:13px; line-height:1.6; color:var(--muted); text-wrap:pretty; }
+.settings-card .settings-note-bad { color:var(--bad); }
+.settings-card .settings-note-warn { color:var(--warn); }
+/* The dot is the same one the pairing dialog uses for the same meaning — a request in flight —
+   rather than a second way of saying it. It opts out of its own animation below. */
+.settings-card .settings-note-busy::before { content:''; display:inline-block; width:6px; height:6px; margin-inline-end:9px; border-radius:var(--r-pill); background:currentColor; opacity:.4; vertical-align:middle; animation:settings-breath 1.7s var(--ease-in-out) infinite; }
+@keyframes settings-breath { 0%,100% { opacity:.25; transform:scale(.8); } 50% { opacity:.9; transform:scale(1); } }
+
+/* An empty state is a sentence saying what would be here and how it gets here. "No results" is not
+   one, which is why both of this page's empties carry two lines rather than one. */
+.settings-card .settings-empty { display:grid; grid-template-columns:minmax(0,1fr); gap:6px; margin:0; padding:20px 0 6px; }
+.settings-card .settings-empty-title { margin:0; font-size:14px; line-height:1.5; letter-spacing:-.01em; color:var(--ink); }
+.settings-card .settings-empty-body { margin:0; max-width:62ch; font-size:13px; line-height:1.6; color:var(--muted); text-wrap:pretty; }
+
+/* THE DELETION RECEIPT, rendered as the server wrote it. Its summary is the only sentence on the
+   page that reports something irreversible that has already happened, so it gets the ink and the
+   list of what survived steps back under it. */
+.settings-card .settings-receipt { display:grid; grid-template-columns:minmax(0,1fr); gap:12px; margin:0; padding:16px 18px; border:1px solid var(--line); border-radius:var(--r-md); background:var(--paper-2); }
+.settings-card .settings-receipt > p { margin:0; max-width:62ch; line-height:1.6; color:var(--ink); text-wrap:pretty; }
+/* The list is muted so the store name inside each line keeps the ink, which is the only emphasis
+   this product has now that nothing is bolder than 400. */
+.settings-card .settings-receipt ul { display:grid; gap:8px; margin:0; padding-inline-start:18px; font-size:13px; line-height:1.6; color:var(--muted); }
+
+/* Rejections come back as a list of sentences; without a rule they were a bulleted block at body
+   size directly under the Save button that caused them. */
+.settings-card > ul.muted { display:grid; gap:7px; margin:0 0 4px; padding-inline-start:18px; font-size:13px; line-height:1.6; }
+
+/* -------------------------------------------------------------- the danger zone --- */
+
+/* ONE COLOUR ON THIS PANEL AND IT IS `--bad`. The border states which zone this is before the
+   heading is read; the destructive controls carry the same hue at full strength; and the
+   confirmation each of them opens (ConfirmDialog, tone 'danger' by default) draws the same button.
+   Nothing else on the panel is tinted — a danger zone that also had a green badge and an amber
+   note would have taught the reader that red is decoration.
+   Drawn in ink rather than as a filled red block on purpose: a shouting button is one people click
+   to make it stop shouting. The mixes are the ones `.btn--danger` already uses in
+   api-keys-panel.css, so the two destructive controls on this page are one control. */
+.card.settings-card.danger-card { border-color:color-mix(in srgb,var(--bad) 30%,var(--line)); }
+.settings-card .btn-danger { border-color:color-mix(in srgb,var(--bad) 34%,transparent); background:transparent; color:var(--bad); }
+.settings-card .settings-row .btn-danger:hover:not(:disabled) { border-color:color-mix(in srgb,var(--bad) 60%,transparent); background:color-mix(in srgb,var(--bad) 11%,transparent); color:var(--bad); }
+.settings-card .settings-row .btn-danger:active:not(:disabled) { background:color-mix(in srgb,var(--bad) 18%,transparent); }
 
 /* ------------------------------------------------- where Apple gets assets: the stack --- */
 
@@ -32,7 +402,8 @@
    A GRID RATHER THAN `flex-direction:column`, because the Save button has to sit at its own width
    at the start of the row while every choice above it spans the full track, and `justify-self` is
    the one clean way to say that. flex/min-width because this div is itself an item of
-   `.settings-row`, which is a flex row that would otherwise size it to its longest sentence. */
+   `.settings-row` — which this file has since made a grid, where the same declarations are what
+   stop it sizing to its longest sentence. */
 .settings-pair.settings-pair--stack { display:grid; grid-template-columns:minmax(0,1fr); gap:0; flex:1 1 auto; min-width:0; }
 
 /* THE GAP IS ZERO ON PURPOSE. The choices are a divided list and the hairline on each row's top
@@ -40,9 +411,9 @@
    middle of its own strip of air. Everything after the list is a different kind of control, so it
    carries its own margin instead — a uniform gap would have put the same distance between two
    choices as between the last choice and the button that saves them.
-   The error sentence is pulled down to the page's hint size: `.form-error` inherits the 16px body
-   size, and a red 16px line is the loudest thing in the card by a wide margin, which is not the
-   weight this particular warning deserves. */
+   The error sentence is pulled down to the page's hint size: `.form-error` would otherwise inherit
+   the card size, and a red line at full body size is the loudest thing in the card by a wide
+   margin, which is not the weight this particular warning deserves. */
 .settings-pair--stack > .asrc__remember { margin-top:18px; }
 .settings-pair--stack > .form-error { margin:14px 0 0; font-size:13px; line-height:1.55; text-wrap:pretty; }
 .settings-pair--stack > .btn { justify-self:start; margin-top:18px; }
@@ -60,19 +431,63 @@
    thing somebody is scanning for — which source this row is — stops reading as a label. So the
    name keeps the ink and everything under it is muted. Size and colour, not weight; there is no
    weight above 400 on this page and this rule is the reason none is needed. */
-.asrc__choice.asrc__choice--settings { padding:14px 0; gap:12px; }
+.asrc__choice.asrc__choice--settings { padding:14px 0; gap:12px; cursor:pointer; }
 .asrc__choice--settings .asrc__body { gap:5px; min-width:0; }
-.asrc__choice--settings .asrc__name { font-size:14px; }
+.asrc__choice--settings .asrc__name { font-size:14px; transition:color var(--t-fast) var(--ease-out); }
 .asrc__choice--settings .asrc__does { color:var(--muted); }
+/* Hover and chosen are the same lift the other checkbox rows get, so the three lists on this page
+   answer a pointer the same way. A row whose box is disabled while a save is in flight says so. */
+.asrc__choice--settings:hover .asrc__name,
+.asrc__choice--settings:has(:checked) .asrc__name { color:var(--ink); }
+.asrc__choice--settings:has(:disabled) { cursor:not-allowed; }
 
 /* Optical alignment. The 6px in system.css was measured against the dialog's 15px name; under a
    14px one it hangs the box visibly below the cap height. */
 .asrc__choice.asrc__choice--settings > input { margin-top:4px; }
 
-/* At 375px the card's own padding has already taken most of the width, and a 12px gutter beside
-   the checkbox leaves a text column a couple of words wide. Both come down. Nothing else changes:
-   the grid above is a single column at every width, so there are no columns here to collapse. */
+/* ------------------------------------------------------------------- at 375px --- */
+
+/* A field row STACKS rather than squeezes: below this width an inline label-and-button row leaves
+   the input about four characters wide, and a three-way segmented control wraps to three ragged
+   lines of different widths. Both become one full-width column.
+   16px on the text fields is not a type decision. iOS zooms the viewport on focus for any input
+   under 16px, and a settings page where every field jolts the layout is unusable on the device
+   most of these customers are holding. */
 @media (max-width:600px) {
+  .page.page-narrow { padding-inline:16px; }
+  .card.settings-card { margin-block:14px; padding:20px 16px; border-radius:var(--r-md); }
+  .card.settings-card.settings-search { padding:16px; }
+  .settings-card > h2 { font-size:20px; margin-bottom:13px; }
+  .settings-card .settings-row { padding-block:16px; gap:11px; }
+  .settings-card :is(input:not([type='checkbox']):not([type='radio']),select,textarea) { font-size:16px; }
+  /* The label and its button stop sharing a baseline they no longer have room for. */
+  .settings-card .settings-inline { display:grid; grid-template-columns:minmax(0,1fr); align-items:stretch; gap:12px; }
+  .settings-card .settings-inline > .btn { justify-self:start; }
+  .settings-card .settings-pair { display:grid; grid-template-columns:minmax(0,1fr); align-items:stretch; gap:12px; }
+  .settings-card .theme-toggle { display:grid; grid-template-columns:minmax(0,1fr); width:100%; }
+  .settings-card .theme-toggle > .theme-btn { width:100%; text-align:start; white-space:normal; }
+  /* The Remove button drops under the factor it removes instead of pinching the name beside it. */
+  .settings-card .sec-event { grid-template-columns:minmax(0,1fr); }
+  .settings-card .sec-event > .btn { grid-column:1; grid-row:auto; justify-self:start; margin-top:8px; }
+  .settings-card .mfa-qr { width:148px; height:148px; }
+  .settings-card .prefs__set { padding-inline:13px; }
   .asrc__choice.asrc__choice--settings { padding:12px 0; gap:10px; }
   .settings-pair--stack > .asrc__remember,.settings-pair--stack > .btn { margin-top:16px; }
+}
+
+/* ------------------------------------------------------------- reduced motion --- */
+
+/* OFF, NOT REDUCED. Every transition and the one animation this file adds, named individually
+   rather than left to the global sweep in system.css, so that a rule added here later without its
+   opt-out is a visible omission in this block rather than something that silently works until the
+   global rule is scoped. */
+@media (prefers-reduced-motion:reduce) {
+  .settings-card :is(input:not([type='checkbox']):not([type='radio']),select,textarea),
+  .settings-card > .btn,
+  .settings-card > .settings-row > .btn,
+  .settings-card > .settings-row > :is(p,form,.settings-inline,.settings-pair,.sec-log) .btn,
+  .settings-card .theme-toggle > .theme-btn,
+  .settings-card :is(.switch-row,.prefs__check,.asrc__remember),
+  .asrc__choice--settings .asrc__name { transition:none; }
+  .settings-card .settings-note-busy::before { animation:none; opacity:.7; }
 }

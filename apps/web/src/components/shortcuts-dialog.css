@@ -102,6 +102,12 @@
    screen reader which one it is, so this only has to survive a glance at two boxes. */
 .shortcuts__opt.is-on { background:var(--surface-2); border-color:color-mix(in srgb,var(--ink) 26%,var(--line)); }
 .shortcuts__opt.is-on:hover:not(:disabled) { background:var(--surface-2); }
+/* PRESSED, WHICH THIS PAIR DID NOT HAVE. Pressing the option that is already in force produced no
+   acknowledgement of any kind, and pressing the other one changed a list two inches away — so the
+   only feedback for touching either button was something happening somewhere else. One step
+   further up the ramp than "chosen", so a press is visible without being mistaken for the state it
+   is about to produce. */
+.shortcuts__opt:active:not(:disabled) { background:var(--surface-3); border-color:color-mix(in srgb,var(--ink) 26%,var(--line)); }
 /* The recessed cap stops being recessed once the row it sits in has itself stepped up, and on the
    light theme `--paper-2` over `--surface-2` is #f3f3f3 on #eeeeee — a cap that has vanished.
    `--paper` is the step that still reads under a chosen row in both themes. Rendered, not assumed. */

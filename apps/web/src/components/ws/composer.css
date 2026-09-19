@@ -1,50 +1,150 @@
-/* The composer's own rules.
+/* The composer's own rules — the hero object of this product.
  *
- * Ten class names in composer.tsx had no selector anywhere: the staged-file row drew its name,
+ * Two jobs, and the second one is new.
+ *
+ * ONE. Ten class names in composer.tsx had no selector anywhere: the staged-file row drew its name,
  * its progress bar and its two controls as bare inline spans and default 10px-radius buttons, the
  * @-mention picker had NO rule at all — an unstyled <ul> with browser bullets shoving the tool bar
  * down the screen — and the model popover could not say which model was in use.
+ *
+ * TWO, 2026-09-20. The panel itself was off the locked system, on the one surface a customer looks
+ * at for an hour. `.gx-composer__inner` in design/system.css carried NINE raw hexes, a 24px radius
+ * this product does not own, and a drop shadow on something that is neither a menu nor a modal;
+ * `#151515c9` is a COOL grey poured over a ramp measured warm against the reference. `.gx-send` —
+ * the one primary action on the screen — was a grey gradient (`#8b8b8b` to `#343434`) that turned
+ * WHITE on hover, while the Images toggle beside it went ACCENT GREEN when pressed, so the product
+ * spent its one colour on a switch and none of it on the button the whole thing exists to press.
+ * See docs/DESIGN-LOCK.md, rules 1, 3 and 4.
  *
  * WHY THE DOUBLED SELECTORS (`.gx-chip.gx-chip--creation`, not `.gx-chip--creation`).
  * main.tsx imports `./app` on line 2 and `./design/system.css` on line 5, so this file is injected
  * BEFORE the design system and loses every tie at equal specificity. A modifier that has to beat
  * its own block — `.gx-chip { border:1px solid transparent }` — must therefore carry both classes.
  * Where the design system says nothing about a property, a single class is enough and is used.
+ *
+ * WHY THE PANEL'S COLOURS ARE CUSTOM PROPERTIES ON `.gx-composer` RATHER THAN DECLARATIONS ON
+ * `.gx-composer__inner`. That same load order means every state — focus, disabled, drop — and the
+ * light-theme correction would each have to out-specify system.css's own rule for the panel, which
+ * is a ladder that grows a rung per state and breaks the day somebody adds a sixth. The wrapper is
+ * a surface system.css never colours, so the states set variables there where nothing competes, and
+ * exactly two rules read them: the panel, and the light re-statement of it. ORDER MATTERS IN THAT
+ * BLOCK: the light values tie with the state values on specificity, so the light row is declared
+ * first and every state below it therefore wins in both themes.
  */
 
-/* ------------------------------------------------------------- staged files ---- */
+/* ------------------------------------------------------------------ the panel ---- */
 
-/* The row is one line of text with controls on it. `.gx-attach__row` is `display:flex` with no
-   align-items, so the 12px paperclip sat at the top of a row made twice its height by a Retry
-   button. Adding the one property the design system does not declare, rather than restating it. */
-.gx-attach__row { align-items:center; }
-.gx-attach__name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; letter-spacing:-.01em; }
+/* THE GLASS, AS FOUR VALUES RATHER THAN A WALL OF HEX. --cp-rim is the lit top edge, --cp-rim-side
+   the leading one, --cp-line the other two, --cp-glass the fill, --cp-ground the ellipse below.
+   Everything in this section is one of those five changing. */
+.gx-composer { position:relative; --cp-line:var(--line); --cp-rim:color-mix(in srgb,var(--ink) 26%,transparent); --cp-rim-side:color-mix(in srgb,var(--ink) 15%,transparent); --cp-glass:linear-gradient(180deg,color-mix(in srgb,var(--ink) 8%,transparent),color-mix(in srgb,var(--ink) 3%,transparent) 45%,color-mix(in srgb,var(--ink) 5%,transparent)),color-mix(in srgb,var(--surface) 74%,transparent); --cp-ground:color-mix(in srgb,var(--ink) 11%,transparent); }
+/* THE LIGHT RAMP INVERTS THE LIGHTING, which is the correction DESIGN-LOCK's eighth rule asks for.
+   --cp-rim above is --ink held at low alpha: on the dark ground that is a white highlight, and on
+   the light one it is a grey smudge across the top of a white panel. --surface is #ffffff in this
+   theme, so it is the token that means "the light" here. The fill needs far less ink for the same
+   reason — 8% of near-black over white is a grey box, not glass — and the ground, which is a bloom
+   in the dark, becomes a true contact shadow and wants slightly more of it. */
+:root[data-theme='light'] .gx-composer { --cp-rim:color-mix(in srgb,var(--surface) 92%,transparent); --cp-rim-side:color-mix(in srgb,var(--surface) 80%,transparent); --cp-glass:linear-gradient(180deg,color-mix(in srgb,var(--surface) 97%,transparent),color-mix(in srgb,var(--surface) 90%,transparent)); --cp-ground:color-mix(in srgb,var(--ink) 13%,transparent); }
 
-/* A determinate bar, sized by `inlineSize` from the reducer. The track is a surface step and the
-   fill is ink: progress is not a status, so it gets no colour. */
-.gx-attach__bar { flex:none; inline-size:64px; block-size:3px; border-radius:var(--r-pill); background:var(--surface-3); overflow:hidden; }
-.gx-attach__fill { display:block; block-size:100%; background:var(--ink); border-radius:inherit; transition:inline-size 200ms var(--ease-out); }
+/* THE COMPOSER IS AN OBJECT SITTING ON THE PAGE, NOT A BOX DRAWN ON IT — the one thing DESIGN-LOCK
+   keeps from the light reference it otherwise rejected. The ground is what supplies it: an ellipse
+   of ink, blurred, peeking out from under the panel's lower edge. It is NOT a box-shadow, so the
+   rule that only menus and modals may cast is untouched, and because it is mixed from --ink it
+   inverts by itself. No z-index on either it or the form: both are positioned, so tree order
+   already paints the form on top, and a z-index here would only build a stacking context that the
+   mention picker then has to climb out of. */
+.gx-composer::before { content:''; position:absolute; inset-inline:13%; inset-block-end:11px; block-size:42px; background:radial-gradient(50% 50% at 50% 50%,var(--cp-ground),transparent 70%); filter:blur(16px); pointer-events:none; }
 
-/* Retry, and Remove. Small, quiet, and only ink under the pointer — a row that shouts twice about
-   a file the person may not have meant to attach is a row that emphasises nothing. */
-.gx-attach__act { flex:none; border:0; border-radius:var(--r-xs); padding:3px 8px; font-size:11px; letter-spacing:-.01em; color:var(--muted); background:transparent; }
-.gx-attach__act:hover:not(:disabled) { color:var(--ink); background:var(--surface-2); }
-.gx-attach__act.gx-attach__x { display:grid; place-items:center; inline-size:22px; block-size:22px; padding:0; font-size:15px; line-height:1; color:var(--faint); }
-.gx-attach__act.gx-attach__x:hover:not(:disabled) { color:var(--ink); }
+/* --r-lg is the radius DESIGN-LOCK reserves for a full-bleed panel and the only step above the 10px
+   default this product owns; 24px was a sixth radius invented for one element. The fill is --surface
+   held translucent so the blur behind it has something to do, graded lighter at the top because the
+   reference's glass is lit from above. The shadow is gone: separation here is the hairline, the
+   surface step and the ground, which is the whole of the lock's depth vocabulary. */
+.gx-composer .gx-composer__inner { border:1px solid var(--cp-line); border-top-color:var(--cp-rim); border-inline-start-color:var(--cp-rim-side); border-radius:var(--r-lg); background:var(--cp-glass); box-shadow:none; backdrop-filter:blur(26px); transition:border-color var(--t-base) var(--ease-in-out),background var(--t-base) var(--ease-in-out); }
+/* The same declarations again, one class deeper, because system.css's light override for this panel
+   is three classes deep: `#fffffff0` behind a `#0003` rim with a drop shadow cast by something that
+   is not a menu. It reads the same variables, so every state below still reaches it. */
+:root[data-theme='light'] .gx-composer .gx-composer__inner { border-color:var(--cp-line); border-top-color:var(--cp-rim); border-inline-start-color:var(--cp-rim-side); background:var(--cp-glass); box-shadow:none; }
 
-/* ------------------------------------------------------------------- chips ---- */
+/* TYPING IS A STATE AND IT SHOWS ON THE OBJECT, not as a ring around the textarea — system.css sets
+   `outline:0` on that element and this is the indicator standing in its place, on the surface the
+   person is actually looking at. --accent-line is the under-8% tint DESIGN-LOCK sets aside for
+   exactly this: it reads as the product's own colour without SPENDING the accent, which on this
+   screen belongs to Send and to nothing else. What it replaces was a white rim and a white glow. */
+.gx-composer:has(.gx-composer__inner:focus-within) { --cp-line:color-mix(in srgb,var(--accent) 30%,transparent); --cp-rim:color-mix(in srgb,var(--accent) 58%,transparent); --cp-rim-side:color-mix(in srgb,var(--accent) 38%,transparent); }
+
+/* A DROP TARGET THAT MOVED EVERY CONTROL IN THE PANEL BY A PIXEL. The drop state was `border:2px`
+   against a 1px rest, so each time a file crossed the box the chips, the tool row and Send all
+   stepped inward and back out again. Same dash, same accent, one pixel — the fill is what reads at
+   arm's length anyway. `border-width`/`border-style` rather than the shorthand, so the colour keeps
+   arriving through the variable and the light theme needs no second copy of this rule. */
+.gx-composer:has(.gx-composer__inner.is-dropping) { --cp-line:var(--accent); --cp-rim:var(--accent); --cp-rim-side:var(--accent); --cp-glass:color-mix(in srgb,var(--accent) 8%,var(--surface)); }
+.gx-composer .gx-composer__inner.is-dropping { border-width:1px; border-style:dashed; border-color:var(--cp-line); background:var(--cp-glass); }
+
+/* A COMPOSER THAT CANNOT BE TYPED IN MUST NOT LOOK LIKE ONE THAT CAN. `disabled` reached the
+   textarea and stopped there, so the glass, the lit rim and the ground all went on advertising a
+   live control to somebody who could not use it. Glass is for a surface over moving content; an
+   inert one is a well, which is what --paper-2 is for, and the ground goes out because nothing is
+   floating any more. */
+.gx-composer:has(textarea:disabled) { --cp-line:var(--line); --cp-rim:var(--line); --cp-rim-side:var(--line); --cp-glass:var(--paper-2); --cp-ground:transparent; }
+.gx-composer:has(textarea:disabled) .gx-composer__inner { backdrop-filter:none; }
+.gx-composer .gx-composer__inner textarea:disabled { cursor:not-allowed; color:var(--faint); }
+
+/* ------------------------------------------------------------------- the text ---- */
+
+/* The sentence a customer writes is the largest text on this screen and had no tracking of its own.
+   DESIGN-LOCK puts body tracking at about -.01em, and the root's 1.55 is tight for a box people
+   write paragraphs into. `opacity:1` on the placeholder because Firefox dims it by default, which
+   would put --faint underneath itself and take the hint below the contrast floor. */
+.gx-composer .gx-composer__inner textarea { line-height:1.6; letter-spacing:-.01em; scrollbar-width:thin; }
+.gx-composer .gx-composer__inner textarea::placeholder { opacity:1; letter-spacing:-.01em; }
+
+/* -------------------------------------------------------------------- the bar ---- */
+
+/* ONE ROW OF CONTROLS, and `min-width:0` is what keeps it one: a flex item will not shrink below its
+   content without it, so a long Studio path or a long model name pushed Send past the panel's edge
+   instead of ellipsising. The row-gap is what the wrap at narrow widths lands on — two deliberate
+   lines rather than two lines that collide. */
+.gx-composer__inner .gx-composer__bar { min-width:0; row-gap:8px; }
+
+/* ------------------------------------------------------------------- the chips ---- */
+
+/* SECONDARY, AND THEY HAVE TO LOOK IT. A chip is a switch or a menu button standing beside the one
+   primary action: muted ink at rest, the product's ink under the pointer, a surface step when it is
+   pressed, and never a size change — a bar that resizes under the cursor is a bar that moves the
+   Send button out from under a click already on its way. */
+.gx-composer__bar .gx-chip { color:var(--muted); letter-spacing:-.01em; transition:color var(--t-fast) var(--ease-out),background var(--t-fast) var(--ease-out),border-color var(--t-fast) var(--ease-out); }
+.gx-composer__bar .gx-chip:hover:not(:disabled) { color:var(--ink); background:var(--surface-2); }
+.gx-composer__bar .gx-chip:active:not(:disabled) { background:var(--surface-3); }
+.gx-composer__bar .gx-chip:disabled { color:var(--faint); }
+/* THE CHIP STAYS LIT WHILE ITS OWN MENU IS OPEN. Without it the model popover belonged to nothing:
+   the trigger looked untouched and a menu floated over the thread with no visible owner. */
+.gx-composer__bar .gx-chip[aria-expanded='true'] { color:var(--ink); background:var(--surface-2); }
+/* THE MODEL MARK BELONGS TO THE CHIP IT SITS IN, not to the accent. `.model-signature` is
+   `color:var(--accent)` in the design system and the MAX variant keeps it, so a subscriber typing a
+   message saw a green glyph at one end of the tool row and a green Send button at the other — the
+   fourth rule broken by a brand mark rather than by a decision. currentColor makes the mark part of
+   the chip: muted at rest, ink under the pointer, one object. The variant is still distinguishable
+   without it, by its extra stroke and by the wordmark beside it. */
+.gx-composer__bar .model-signature { color:currentColor; }
 
 /* The chevron follows the popover it opens. Rotation only — the chip itself must not move, or the
    whole tool bar reflows every time somebody glances at the model list. */
-.gx-chip__caret { display:inline-flex; color:var(--faint); transition:transform 160ms var(--ease-out); }
+.gx-chip__caret { display:inline-flex; color:var(--faint); transition:transform var(--t-fast) var(--ease-out); }
 .gx-chip[aria-expanded='true'] .gx-chip__caret { transform:rotate(180deg); }
 
 /* Images and 3D are TOGGLES, and a toggle that looks exactly like a plain button gives no clue it
-   has an off state. A hairline says "this is a switch"; the pressed state is a brighter hairline,
-   not a colour, because neither of these chips reports status. */
+   has an off state. A hairline says "this is a switch".
+   THE PRESSED STATE IS THE DEFECT THIS SURFACE WAS JUDGED ON. `.gx-chip[aria-pressed='true']` in
+   the design system paints a pressed chip --accent on --accent-soft, so turning Images on put a
+   SECOND green thing on a screen whose Send button is the one primary action — and DESIGN-LOCK's
+   fourth rule is that two green things means neither is the answer. A toggle reports its own
+   position, not a status: ink and a surface step say "on" without spending the colour. */
 .gx-chip.gx-chip--creation { border-color:var(--line); }
 .gx-chip.gx-chip--creation:hover:not(:disabled) { border-color:var(--surface-3); }
-.gx-chip.gx-chip--creation[aria-pressed='true'] { border-color:var(--ink); }
+.gx-chip.gx-chip--creation[aria-pressed='true'] { color:var(--ink); background:var(--surface-2); border-color:var(--surface-3); }
+.gx-chip.gx-chip--creation[aria-pressed='true']:hover:not(:disabled) { background:var(--surface-3); border-color:var(--faint); }
+.gx-chip.gx-chip--creation[aria-pressed='true']:active:not(:disabled) { background:var(--surface-2); }
 /* The " · MAX" suffix is a micro-label, not part of the chip's name. */
 .gx-chip.gx-chip--creation .muted { font-size:10px; letter-spacing:.018em; color:var(--faint); }
 
@@ -55,40 +155,155 @@
 .gx-chip.gx-chip--selection { display:inline-block; max-inline-size:min(230px,44vw); padding:6px 11px; border-color:var(--line); border-radius:var(--r-pill); font-size:11px; line-height:22px; letter-spacing:-.01em; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .gx-chip.gx-chip--selection > svg { margin-inline-end:6px; }
 .gx-chip.gx-chip--selection:hover:not(:disabled) { color:var(--ink); border-color:var(--surface-3); }
+.gx-chip.gx-chip--selection:active:not(:disabled) { background:var(--surface-3); }
+
+/* ------------------------------------------------------------------ the tools ---- */
+
+/* The paperclip and the microphone are the quietest things in the row. system.css zeroes their
+   border, so the only thing left that can say "this is a target" is the surface stepping under the
+   pointer — and nothing set one, which left two controls with no hover of their own sitting beside
+   a button that has four states. */
+.gx-composer .gx-composer__tools > button:not(.gx-send) { color:var(--muted); transition:color var(--t-fast) var(--ease-out),background var(--t-fast) var(--ease-out); }
+.gx-composer .gx-composer__tools > button:not(.gx-send):hover:not(:disabled) { color:var(--ink); background:var(--surface-2); }
+.gx-composer .gx-composer__tools > button:not(.gx-send):active:not(:disabled) { background:var(--surface-3); }
+.gx-composer .gx-composer__tools > button:not(.gx-send):disabled { color:var(--faint); }
+
+/* THE ONE PRIMARY ACTION ON THIS SCREEN. It was a grey gradient behind a white rim that turned WHITE
+   on hover: a product with no colour of its own, on the single control the whole thing exists to
+   press. It now carries the same fill, the same hover mix and the same press mix as `.btn-primary`
+   in system.css, because it is the same object, and two recipes for one object is how two objects
+   are born. */
+.gx-composer__tools .gx-send { border:1px solid var(--accent-fill); background:var(--accent-fill); color:var(--accent-on-fill); box-shadow:none; transition:background var(--t-fast) var(--ease-out),border-color var(--t-fast) var(--ease-out); }
+.gx-composer__tools .gx-send:hover:not(:disabled) { color:var(--accent-on-fill); background:color-mix(in srgb,var(--accent-fill) 88%,var(--ink)); border-color:color-mix(in srgb,var(--accent-fill) 88%,var(--ink)); }
+.gx-composer__tools .gx-send:active:not(:disabled) { background:color-mix(in srgb,var(--accent-fill) 80%,var(--acc-ember-ink)); border-color:color-mix(in srgb,var(--accent-fill) 80%,var(--acc-ember-ink)); }
+/* DISABLED IS THE COMMONEST STATE THIS BUTTON IS IN — an empty box is the resting state of a chat,
+   and a staged upload or an unavailable model holds it there too. A dimmed green still reads as
+   "press me"; a hairline on a surface step does not, and the title beside it says which of the four
+   reasons this one is. */
+.gx-composer__tools .gx-send:disabled { background:var(--surface-2); border-color:var(--line); color:var(--faint); }
+
+/* STOP IS NOT THE PRIMARY ACTION, it is the way out of one, and while a run is in flight the accent
+   is already spent on the live indicator inside the Thinking card above. Filling this green would
+   put two of them on the screen at the one moment a reader most needs to know which is which. */
+.gx-composer__tools .gx-send.is-stop { background:var(--surface-2); border-color:var(--surface-3); color:var(--ink); }
+.gx-composer__tools .gx-send.is-stop:hover:not(:disabled) { color:var(--ink); background:var(--surface-3); border-color:var(--faint); }
+.gx-composer__tools .gx-send.is-stop:active:not(:disabled) { background:var(--surface-2); border-color:var(--surface-3); }
+
+/* ------------------------------------------------------------- staged files ---- */
+
+/* The rows ride WITH the message, so they are drawn in the well colour the design system keeps for
+   recessed things rather than left as bare text floating on the glass. --r-xs because a row is
+   smaller than a chip, which is the only thing that step exists for.
+   `.gx-attach__row` is `display:flex` with no align-items, so the 12px paperclip sat at the top of
+   a row made twice its height by a Retry button. */
+.gx-composer__inner .gx-attach { display:grid; gap:4px; padding:4px 12px 6px; }
+.gx-composer__inner .gx-attach__row { align-items:center; gap:9px; padding:7px 10px; border-radius:var(--r-xs); background:var(--paper-2); }
+.gx-attach__name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; letter-spacing:-.01em; }
+
+/* A determinate bar, sized by `inlineSize` from the reducer. The track is a surface step and the
+   fill is ink: progress is not a status, so it gets no colour. */
+.gx-attach__bar { flex:none; inline-size:64px; block-size:3px; border-radius:var(--r-pill); background:var(--surface-3); overflow:hidden; }
+.gx-attach__fill { display:block; block-size:100%; background:var(--ink); border-radius:inherit; transition:inline-size var(--t-base) var(--ease-out); }
+
+/* THE THREE PHASES, AND THE ONE THAT HAD NO PICTURE. `uploading` had a bar and `failed` had a
+   sentence; `ready` — the one a person is actually waiting for — looked exactly like the moment
+   before it, so a landed file and a stalled one were the same row. The tick is --faint and not
+   --good on purpose: a file that arrived is not a status anybody must act on, and --good is within
+   a shade of the accent, which belongs to Send. A failure tints its own row instead, because that
+   one IS a thing to act on and one sentence is easy to lose in a list of four. */
+.gx-attach__ok { display:inline-flex; flex:none; color:var(--faint); }
+.gx-composer__inner .gx-attach__row.is-failed { background:color-mix(in srgb,var(--bad) 9%,var(--paper-2)); }
+
+/* Retry, and Remove. Small, quiet, and only ink under the pointer — a row that shouts twice about
+   a file the person may not have meant to attach is a row that emphasises nothing. */
+.gx-attach__act { flex:none; border:0; border-radius:var(--r-xs); padding:3px 8px; font-size:11px; letter-spacing:-.01em; color:var(--muted); background:transparent; transition:color var(--t-fast) var(--ease-out),background var(--t-fast) var(--ease-out); }
+.gx-attach__act:hover:not(:disabled) { color:var(--ink); background:var(--surface-2); }
+.gx-attach__act:active:not(:disabled) { background:var(--surface-3); }
+.gx-attach__act.gx-attach__x { display:grid; place-items:center; inline-size:22px; block-size:22px; padding:0; font-size:15px; line-height:1; color:var(--faint); }
+.gx-attach__act.gx-attach__x:hover:not(:disabled) { color:var(--ink); }
 
 /* --------------------------------------------------------- @ mention picker ---- */
 
 /* Above the composer, never in its flow: the list opens and closes on every keystroke after an
    '@', and one that took up room would walk the tool bar and the Send button up and down the
-   screen while the person types. `.gx-composer__inner` is the positioned ancestor. */
-.gx-mention { position:absolute; z-index:60; inset-block-end:calc(100% + 8px); inset-inline:12px; max-inline-size:min(460px,100%); max-block-size:min(232px,40vh); overflow-y:auto; overscroll-behavior:contain; margin:0; padding:5px; list-style:none; background:var(--surface); border:1px solid var(--line); border-radius:var(--r-sm); }
+   screen while the person types. `.gx-composer__inner` is the positioned ancestor.
+   It casts, and it is allowed to: DESIGN-LOCK gives --shadow-pop to a menu floating over content,
+   and this one floats over a thread of prose with a translucent panel between them, where a
+   hairline alone leaves the rows and the conversation reading as one column of text. */
+.gx-mention { position:absolute; z-index:60; inset-block-end:calc(100% + 8px); inset-inline:12px; max-inline-size:min(460px,100%); max-block-size:min(232px,40vh); overflow-y:auto; overscroll-behavior:contain; margin:0; padding:5px; list-style:none; background:var(--surface); border:1px solid var(--line); border-radius:var(--r-md); box-shadow:var(--shadow-pop); }
 /* Mono, because every one of these is a file path and the columns of a path want to line up. */
 .gx-mention__row { padding:7px 9px; border-radius:var(--r-xs); font:12px/1.5 var(--font-mono); color:var(--muted); cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 /* Driven by the arrow keys as well as the pointer, so it is a surface step and an ink change —
-   both legible without colour, which is what a keyboard-driven listbox needs. */
+   both legible without colour, which is what a keyboard-driven listbox needs. The pressed step is
+   separate because the row commits on mousedown: without it the list closes with no acknowledgement
+   that anything was hit. */
 .gx-mention__row.is-on { background:var(--surface-2); color:var(--ink); }
+.gx-mention__row:active { background:var(--surface-3); color:var(--ink); }
 
 /* ------------------------------------------------------------ popover items ---- */
 
 /* A label over a description. `min-width:0` on the text column is what keeps a long template blurb
    from pushing the popover past the max-width the design system gave it. */
-.gx-pop__item.gx-pop__item--stack { gap:11px; padding:10px 11px; border-radius:var(--r-xs); }
+.gx-pop__item.gx-pop__item--stack { gap:11px; padding:10px 11px; border-radius:var(--r-xs); transition:background var(--t-fast) var(--ease-out); }
 .gx-pop__item.gx-pop__item--stack .gx-pop__main { flex:1; min-width:0; letter-spacing:-.01em; }
 .gx-pop__item.gx-pop__item--stack .gx-pop__sub { line-height:1.45; letter-spacing:0; }
-/* Which model is in use. A surface step, not a tick and not a colour — the list is two items long
-   and the chip above it already says the name. */
-.gx-pop__item.gx-pop__item--stack[aria-checked='true'] { background:var(--surface-2); }
+.gx-pop__item.gx-pop__item--stack:hover:not(:disabled) { background:var(--surface-2); }
+.gx-pop__item.gx-pop__item--stack:active:not(:disabled) { background:var(--surface-3); }
+/* WHICH MODEL IS IN USE, and why it is no longer only a surface step. The checked row was
+   `background:var(--surface-2)` and so is a hovered row, so running the pointer down the list moved
+   the current model with it — the one fact this menu exists to report, unreadable for exactly as
+   long as somebody is reading it. The bar is ink rather than accent: this is a marker, not an
+   action, and the leading padding is cut by the bar's width so no text shifts when it appears. */
+.gx-pop__item.gx-pop__item--stack[aria-checked='true'] { background:var(--surface-2); border-inline-start:2px solid var(--ink); padding-inline-start:9px; }
 
-/* ------------------------------------------------------------------ narrow ---- */
+/* -------------------------------------------------------- notes and counts ---- */
+
+/* THE COUNTER HAD NO INK OF ITS OWN, so it inherited --ink and the least important number on the
+   screen was drawn in the loudest colour in the ramp, beside a textarea whose whole job is to be
+   read. Two steps and only two: quiet while there is room, --bad when there is none, which is the
+   one state a person has to act on. `is-full` is applied in composer.tsx as of this edit; the rule
+   for it has sat in system.css since the beginning with nothing ever setting the class. */
+.gx-composer .gx-composer__count { color:var(--faint); letter-spacing:0; font-variant-numeric:tabular-nums; }
+/* 10px, and DESIGN-LOCK turns tracking POSITIVE below 11px: negative tracking at that size closes
+   the counters and the line stops being readable at a glance, which is the only way this line is
+   ever read. */
+.gx-composer .gx-composer__note { letter-spacing:.018em; text-wrap:pretty; }
+.gx-composer .gx-creation-note { letter-spacing:-.01em; text-wrap:pretty; }
+
+/* ------------------------------------------------------------------- narrow ---- */
+
+@media (max-width:680px) {
+  /* DESIGN-LOCK's seventh rule is a 16px gutter at 375px, and system.css puts this panel on 12px —
+     narrower than the thread of prose directly above it, so the composer hung 8px proud of the
+     conversation on the screen where the difference is most visible. The element qualifier is what
+     beats it: this file loses every tie at equal specificity, and `.gx-ws:has(.start-sheet)` guards
+     a second copy of the same declaration for the empty workspace. */
+  div.gx-composer,.gx-ws:has(.start-sheet) div.gx-composer { padding-inline:16px; }
+}
 
 @media (max-width:480px) {
   /* A filename, an error sentence, Retry and Remove do not fit on one 375px line. Wrapping is the
-     only way the error stays readable instead of being clipped by its own row. */
-  .gx-attach__row { flex-wrap:wrap; }
+     only way the error stays readable instead of being clipped by its own row — but wrapping ALONE
+     left the sentence sharing line one with the name, and since the name is the flexible item it
+     collapsed to "p…" while the error ran full width. The one thing that row has to tell you is
+     WHICH file failed. `order` pushes the sentence to its own line without touching the markup, so
+     the name keeps the first line with the two controls and nothing is clipped. */
+  .gx-composer__inner .gx-attach__row { flex-wrap:wrap; }
+  .gx-composer__inner .gx-attach__row .gx-attach__error { order:1; flex:1 0 100%; }
   .gx-attach__bar { inline-size:44px; }
   .gx-mention { inset-inline:8px; max-block-size:min(190px,34vh); }
+  /* The bar wraps to two lines here whatever is done to it — six controls do not fit in 343px. What
+     it must not do is grow to the height of two full-size rows, so the chips give up 2px of their
+     own and the tools stay flush to the end of whichever line they land on. */
+  .gx-composer__bar .gx-chip { min-height:34px; }
+  .gx-composer .gx-composer__tools { justify-content:flex-end; }
 }
 
+/* Every transition this file adds, off — not slowed — exactly as DESIGN-LOCK's fifth rule requires.
+   system.css also kills them globally with !important; restated here so this sheet is correct on
+   its own terms rather than correct by somebody else's blanket rule. */
 @media (prefers-reduced-motion:reduce) {
-  .gx-attach__fill,.gx-chip__caret { transition:none; }
+  .gx-attach__fill,.gx-chip__caret,.gx-composer__bar .gx-chip,.gx-composer .gx-composer__inner,
+  .gx-composer .gx-composer__tools > button:not(.gx-send),.gx-composer__tools .gx-send,
+  .gx-attach__act,.gx-pop__item.gx-pop__item--stack { transition:none; }
 }

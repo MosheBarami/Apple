@@ -75,13 +75,13 @@ export function ConnectStudio({ status, onPair, placeName = null }: ConnectStudi
             : 'Apple can’t reach your place right now. Open the Apple plugin in Studio, or pair again.'
           : STUDIO_PLUGIN_STORE_LIVE
             ? 'Apple makes its changes inside Studio. Three steps, once.'
-            : 'Public installation is unavailable. Already have the plugin? Open it in Studio and pair below.'}
+            : 'The Studio plugin is not distributed publicly yet. If you already have it, open it in Studio and pair below.'}
       </p>
 
       <ol className="gx-connect__steps">
         {!dropped && (
           <li className="gx-connect__step">
-            <span className="gx-connect__what">{STUDIO_PLUGIN_STORE_LIVE ? 'Install Apple for Studio' : 'Studio plugin unavailable'}</span>
+            <span className="gx-connect__what">{STUDIO_PLUGIN_STORE_LIVE ? 'Install Apple for Studio' : 'Studio plugin not yet distributed'}</span>
             <a
               className="gx-btn gx-btn--outline"
               href={STUDIO_PLUGIN_INSTALL_HREF}
@@ -98,7 +98,12 @@ export function ConnectStudio({ status, onPair, placeName = null }: ConnectStudi
         </li>
         <li className="gx-connect__step">
           <span className="gx-connect__what">Pair your project</span>
-          <button type="button" className="gx-btn gx-btn--outline" onClick={onPair}>
+          {/* THE ONE PRIMARY ACTION ON THIS PANEL. Every other control here is secondary — the
+              install link leaves the product, and the middle step has no control at all — so this
+              is where docs/DESIGN-LOCK.md's single accent per screen is spent while Studio is
+              detached. It cannot collide with the stage's live pip: that pip is only green once
+              `status === 'connected'`, and this whole component returns null at that point. */}
+          <button type="button" className="gx-btn gx-btn--primary" onClick={onPair}>
             Enter pairing code
           </button>
         </li>

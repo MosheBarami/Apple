@@ -1,0 +1,145 @@
+/* THE TOAST STACK — the transient half of the four states, and the only one that arrives on top of
+ * whatever the customer was already doing.
+ *
+ * WHAT EXISTED. design/system.css draws `.toast-stack`, `.toast`, `.toast-close`, `.toast-action`
+ * and `.toast-error`. `.toast-dot`, `.toast-msg`, `.toast-count` and two of the three kinds —
+ * `toast-info` and `toast-success` — had no rule anywhere, and none of them is spelled `foo__bar`,
+ * so scripts/check-unstyled-classes.mjs never looked: its matcher needs a `__` or a `--` in the
+ * name. The dot was a bare <span> with no box, so it drew nothing at all, and every toast carried
+ * an invisible first child and a 15px gap where its status mark was meant to be.
+ *
+ * SPECIFICITY RATHER THAN ORDER, and this is the one thing to know before editing this file.
+ * main.tsx imports `./app` BEFORE `./design/system.css`, so every component sheet is injected
+ * first and the locked sheet is injected last: a rule here that restates a property system.css
+ * already sets would silently lose the tie. Everything below is therefore scoped — under
+ * `.toast-stack`, or under `body` for the stack itself — so it outranks rather than out-orders.
+ * A bare `.toast { … }` in this file would do nothing, which is a worse failure than an error.
+ *
+ * IT MUST NOT COVER THE COMPOSER. The stack sat at `bottom:24px; right:24px` and the workspace
+ * composer is centred at up to 940px, so on any viewport narrower than about 2000px the two
+ * overlap — measured at 1280px, the toast lands across the send button and the whole tool bar. A
+ * confirmation that blocks the thing you were typing into is worse than no confirmation. The stack
+ * lifts clear of the composer on any screen that has one; see the group near the bottom.
+ *
+ * COLOUR IS SPENT ONCE PER ROW, ON THE DOT, AND NEVER ON THE ACCENT. A toast lands over a screen
+ * that has already spent its accent — the send button, the current nav item — so an accent Undo
+ * would be the second green on that screen and neither would be the answer. The action is a
+ * neutral control that brightens under the pointer. The kind is carried by a 7px dot and by
+ * nothing else: `.toast-error`'s 3px leading stripe is taken back below, because a stripe plus a
+ * dot is one fact stated twice and the stripe is the more generic of the two.
+ */
+
+/* --------------------------------------------------------------------------- the stack --- */
+
+/* `body` qualifies these only to outrank system.css (see the header). What actually changes:
+   the width, and the gutter it leaves at 375px. `max-width:min(480px,90vw)` at a 24px inset put
+   the left edge 14px from the screen on a 375px phone — under the 16px gutter the design lock
+   requires — and 480px is wider than any sentence in this product needs.
+   POINTER-EVENTS ARE OFF ON THE CONTAINER and back on for the rows. The stack is a full-width
+   fixed box for as long as anything is in it, and the gaps between rows were swallowing clicks
+   aimed at whatever sits behind them. */
+body .toast-stack { inset-block-end:24px; inset-inline:auto 24px; width:min(400px,calc(100vw - 32px)); max-width:none; gap:8px; pointer-events:none; }
+
+/* ----------------------------------------------------------------------------- the row --- */
+
+/* A ROW IS A THING THAT FLOATS, which is the one case docs/DESIGN-LOCK.md allows a shadow in
+   besides a modal — so it takes `--shadow-pop` rather than the hand-rolled `0 8px 25px #0004` the
+   base rule carries. `align-items:flex-start` so the dot and the dismiss control stay on the first
+   line of a message that runs to three.
+   The arrival is 200ms and vertical only: a fixed box that slides sideways drags the eye away from
+   the screen the person is still reading, and a scale would resample the text mid-transition. */
+.toast-stack .toast { pointer-events:auto; align-items:flex-start; gap:12px; padding:12px 12px 12px 15px; box-shadow:var(--shadow-pop); font-size:13px; line-height:1.55; letter-spacing:-.01em; animation:toast-arrive var(--t-base) var(--ease-out); }
+@keyframes toast-arrive { from { opacity:0; transform:translate3d(0,10px,0); } to { opacity:1; transform:none; } }
+
+/* THE STRIPE COMES OFF. `.toast-error` draws a 3px `--bad` edge; with the dot below drawn as well,
+   the same row said "this failed" twice, in the two loudest ways available, on a card the size of
+   a sentence. The dot is the quieter of the two and matches `.gx-act__pip`, which is how a state
+   is marked everywhere else in this product. */
+.toast-stack .toast-error { border-inline-start:1px solid var(--line); }
+
+/* THE ONE COLOURED THING. 6px of top margin lands it on the cap height of the first line rather
+   than on its box, which is where a reader looks. `info` is deliberately neutral: "Saved" is not a
+   status anybody has to act on, and tinting it would leave the ramp with no resting value. */
+.toast-stack .toast-dot { flex:none; width:7px; height:7px; margin-block-start:6px; border-radius:50%; background:var(--muted); }
+.toast-stack .toast-success .toast-dot { background:var(--good); }
+.toast-stack .toast-error .toast-dot { background:var(--bad); }
+
+/* ------------------------------------------------------------------------- the message --- */
+
+/* THE MESSAGE AND ITS ACTION WRAP AGAINST EACH OTHER, not against the dismiss control. Flexed and
+   wrapping so "Project archived" and its Undo sit on one line when they fit and stack when they do
+   not — at 375px with a long sentence the button drops underneath and the × stays in the corner,
+   which is where a hand already expects it. */
+.toast-stack .toast-body { flex:1; min-width:0; display:flex; flex-wrap:wrap; align-items:center; gap:6px 12px; }
+.toast-stack .toast-msg { min-width:0; color:var(--ink); text-wrap:pretty; overflow-wrap:anywhere; }
+
+/* "×4" IS A COUNT, NOT PART OF THE SENTENCE. Mono and tabular so a row that ticks 2→3→4 in place
+   does not reflow the words in front of it, faint so it stays subordinate to them, and
+   `letter-spacing:0` because the message's negative tracking closes a mono glyph up too far. */
+.toast-stack .toast-count { font:11px var(--font-mono); letter-spacing:0; color:var(--faint); font-variant-numeric:tabular-nums; }
+
+/* ------------------------------------------------------------------------ the controls --- */
+
+/* THE OFFER. `--r-pill` is reserved for buttons and chips, and this is a button; the hairline and
+   the neutral ink keep it from competing with whatever the screen behind it has already made
+   primary. Pressed is a distinct step up the ramp from hover, because an Undo is the one control
+   in this product where a second click lands on nothing and the person needs to know the first one
+   registered. */
+.toast-stack .toast-action { flex:none; padding:4px 12px; border:1px solid var(--line); border-radius:var(--r-pill); background:transparent; color:var(--muted); font-size:12px; line-height:1.5; letter-spacing:-.005em; transition:color var(--t-fast) var(--ease-out),background-color var(--t-fast) var(--ease-out),border-color var(--t-fast) var(--ease-out); }
+.toast-stack .toast-action:hover { color:var(--ink); background:var(--surface-2); border-color:color-mix(in srgb,var(--ink) 16%,var(--line)); }
+.toast-stack .toast-action:active { background:var(--surface-3); }
+
+/* THE WAY OUT, and it is on every row without exception — a toast a person cannot close is furniture.
+   A square thumb target rather than the 3px of padding the base rule gives it: 26px is the smallest
+   thing worth aiming at, and the negative margin pulls it back so the box grows into the card's
+   padding instead of pushing the message inwards.
+   `button svg` in system.css sets 17px, which is larger than the 13px mark this button holds; the
+   two-class scope takes it back without touching the shared rule. */
+.toast-stack .toast-close { flex:none; display:grid; place-items:center; width:26px; height:26px; margin:-3px -3px 0 0; padding:0; border-radius:var(--r-xs); color:var(--faint); background:transparent; transition:color var(--t-fast) var(--ease-out),background-color var(--t-fast) var(--ease-out); }
+.toast-stack .toast-close svg { width:13px; height:13px; }
+.toast-stack .toast-close:hover { color:var(--ink); background:var(--surface-2); }
+.toast-stack .toast-close:active { background:var(--surface-3); }
+
+/* ------------------------------------------------------- clearing the composer --- */
+
+/* THE LIFT, and the numbers are measured off design/system.css rather than guessed.
+   Conversation mode: 12px of top padding + a 64px textarea + a 57px tool bar + 2px of border +
+   27px for the note under it + 26px of bottom padding ≈ 188px. The start sheet's textarea is
+   100px and its bottom padding 34px, which takes the same stack to ≈ 232px. Each rule clears its
+   own case with about 12px to spare.
+   `:has()` on the body rather than a class on the stack, because the stack is a portal at the root
+   of the tree and knows nothing about the page it is floating over.
+   WHAT THIS DOES NOT COVER, stated rather than left to be discovered: the composer's textarea
+   grows to 220px as somebody types, and a draft that long reaches back up behind the stack. The
+   rows still cannot be clicked through to (pointer-events, above) so the composer stays usable,
+   and the honest fix is a `--composer-h` custom property published by ws/composer.css — a file
+   this change does not own. */
+body:has(.gx-composer) .toast-stack { inset-block-end:200px; }
+body:has(.start-sheet) .toast-stack { inset-block-end:244px; }
+
+/* -------------------------------------------------------------------------- at 375px --- */
+
+/* Full width between two 16px gutters. A 400px card floated at a 24px inset on a 375px screen is
+   the horizontal scrollbar the design lock's seventh rule exists to prevent. The composer is
+   shorter here — 10px + 85px + 52px + 2px + 24px + 18px ≈ 191px — and the start sheet does not
+   change it, so one lift covers both. */
+@media (max-width:680px) {
+  body .toast-stack { inset-block-end:16px; inset-inline:16px; width:auto; }
+  body:has(.gx-composer) .toast-stack,body:has(.start-sheet) .toast-stack { inset-block-end:204px; }
+  .toast-stack .toast { padding:11px 11px 11px 14px; gap:10px; }
+}
+
+/* ----------------------------------------------------------------------- both themes --- */
+
+/* `--surface` is #ffffff on a #fafafa page: about a percent of luminance, which is no step at all,
+   so on light the card's edge is the only thing separating it from the screen behind it and the
+   shared hairline is too faint to do it. Rendered both, rather than assumed — the same correction
+   failure.css makes for the same reason. */
+:root[data-theme='light'] .toast-stack .toast { border-color:color-mix(in srgb,var(--ink) 12%,var(--line)); }
+
+/* OFF, NOT SLOWED. system.css kills these with !important already; restated so this sheet is
+   correct on its own terms rather than correct by someone else's blanket rule. */
+@media (prefers-reduced-motion: reduce) {
+  .toast-stack .toast { animation:none; }
+  .toast-stack .toast-action,.toast-stack .toast-close { transition:none; }
+}

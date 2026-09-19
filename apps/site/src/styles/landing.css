@@ -44,7 +44,6 @@
   --line-strong: rgba(244, 243, 242, 0.18);
 
   /* One saturated colour, used once — the rule taken from the reference, not its hue. */
-  --live: #4ac26b;
 
   --shell: 1280px;
   --gutter: 32px;

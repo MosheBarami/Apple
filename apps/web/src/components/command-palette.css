@@ -1,25 +1,83 @@
-/* THE COMMAND PALETTE — the three rules the list was already drawn expecting.
+/* THE COMMAND PALETTE — the surface a power user sees more often than any other screen.
  *
- * WHAT THIS PANEL IS FOR, AND WHAT THAT COSTS IT. ⌘K is the one surface that reaches every action
- * in the product, and it is used at speed with the eyes and not the mouse: somebody types two
- * letters and presses Enter before the list has finished settling. So nothing here may move, tint
- * or shout. There is not one transition in this file, which is also why there is no
- * reduced-motion block at the bottom — there is nothing down there to turn off.
+ * WHAT THIS PANEL IS FOR, AND WHAT THAT COSTS IT. ⌘K reaches every action in the product and it is
+ * used at speed with the eyes and not the mouse: somebody types two letters and presses Enter
+ * before the list has finished settling. So nothing in the LIST may move. There is exactly one
+ * animation in this file — the entrance the panel shares with every other dialog — and its
+ * reduced-motion opt-out is at the bottom. The rows have no transition at all, deliberately:
+ * arrowing down a long list with a 120ms fade on the highlight leaves a comet tail behind the
+ * selection, and the thing the reader is chasing is the one thing that is never quite where it is.
  *
- * design/system.css already owns `.cmdk-backdrop`, `.cmdk`, `.cmdk__input`, `.cmdk__list`,
- * `.cmdk__section`, `.cmdk__item`, `.cmdk__item.is-selected`, `.cmdk__why`, `.cmdk__hint` and
- * `.cmdk__foot`. This file adds the three it never covered, and nothing below restates a rule
- * that already exists over there.
+ * WHERE THE CHROME COMES FROM. design/system.css owns the base declarations for `.cmdk-backdrop`,
+ * `.cmdk`, `.cmdk__input`, `.cmdk__list`, `.cmdk__section`, `.cmdk__item`, `.cmdk__item.is-selected`,
+ * `.cmdk__why`, `.cmdk__hint` and `.cmdk__foot`. ./modal.css owns the backdrop, the stacking order
+ * and the entrance, because those belong to every overlay rather than to this one. This file owns
+ * what is left: the panel's own shape and every state a row can be in.
  *
- * THE ROW IS A FLEX CONTAINER WITH TWO CHILDREN AND NO GAP. `.cmdk__item` is
- * `justify-content:space-between`, which separates the title from its hint only for as long as the
- * row has slack to spend. At 375px "Contribute anonymised snippets" and its chord meet in the
- * middle and read as one string. That distance has to be paid for on the title, and it is.
+ * SPECIFICITY IS DELIBERATE, NOT DECORATION. main.tsx imports './app' before './design/system.css',
+ * so this sheet is injected BEFORE the base one and loses every tie. A rule that has to beat a base
+ * rule carries a second class. `.cmdk__input` needs a THIRD, because the base rule it is fighting
+ * is `input:not([type='checkbox']):not([type='radio'])` — two `:not()`s take the specificity of
+ * their arguments, so that selector scores higher than any single class.
  *
- * COLOUR IS RATIONED, AND THIS PANEL SPENDS NONE. Nothing in a palette is status: every row is a
- * thing you may do, not a thing that has happened to you. The one emphasis here — the characters
- * the query matched — is a neutral surface step, not a hue.
+ * THE ONE ACCENT, AND THE ONE PLACE IT IS ARGUABLY TWO. The current row takes the accent: it is
+ * what Enter will run, which is the definition of "the current item" the lock reserves the colour
+ * for. The query field also carries the standard focus ring, because it is focused the instant the
+ * palette opens and rule 6 does not permit removing a focus ring anywhere. They are the only two
+ * green things here, and they are kept unambiguous by size rather than by hue: the ring is a closed
+ * rectangle around where you are typing, the row's accent is a 2px rail and a tint under a tenth.
+ * If one of the two has to go it is a decision for the lead and it is named in the report.
  */
+
+/* ---------------------------------------------------------------------- the panel --- */
+
+/* THE 30px PADDING THE BASE SHEET GIVES EVERY DIALOG IS WRONG FOR THIS ONE, and it is the reason
+   the palette never looked like a palette: the field, the list and the legend all floated in the
+   middle of a box with no edges to align to. Three rows instead — a field that cannot move, a list
+   that scrolls, a legend that cannot move — so the only thing that ever travels is the thing the
+   reader is looking at.
+   The height is the backdrop's own arithmetic: the veil holds it 13vh from the top and 24px from
+   the bottom, so anything taller than what is left would be cut off rather than scrolled.
+   `overflow:visible` is load-bearing. The field is inset far enough for its focus ring, but the
+   ring sits 4px OUTSIDE the field and a clipping panel would slice it — and a focus ring that is
+   present in the stylesheet and invisible on screen is worse than none, because nobody looks for
+   it twice. Nothing else reaches the panel's edge; the legend below carries the bottom corners. */
+.cmdk.cmdk {
+  width:min(620px,100%); max-height:min(560px,calc(100dvh - min(13vh,104px) - 24px));
+  display:grid; grid-template-rows:auto minmax(0,1fr) auto; padding:0; overflow:visible;
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg);
+  box-shadow:var(--shadow-modal);
+  animation:overlay-rise var(--t-base) var(--ease-out) both;
+}
+
+/* ---------------------------------------------------------------------- the query --- */
+
+/* A WELL, WHICH IS WHAT THE RAMP SAYS AN INPUT IS. It was the app's generic field — a 4px-radius
+   box on `--surface`, the same fill as the panel around it, so the one thing on this screen you
+   can type into was drawn as part of its own container. `--paper-2` is the recessed step and
+   `--r-md` the product's radius; the margin is what gives the focus ring its 4px of air on three
+   sides instead of hanging it over the panel's edge.
+   16px, not 14: this is the only text anyone enters here and it is entered fast. */
+/* The width is arithmetic rather than `auto` on purpose: an <input> carries an intrinsic width from
+   its `size` attribute, so `auto` inside a grid track is one of the few places a form control may
+   decline to stretch. `100% - 28px` is the track minus the two 14px margins, and it cannot. */
+.cmdk .cmdk__input.cmdk__input {
+  width:calc(100% - 28px); margin:14px 14px 12px; padding:11px 13px;
+  border:1px solid var(--line); border-radius:var(--r-md); background:var(--paper-2);
+  font-size:16px; line-height:1.4; letter-spacing:-.01em; color:var(--ink);
+}
+.cmdk .cmdk__input::placeholder { color:var(--faint); }
+
+/* ----------------------------------------------------------------------- the list --- */
+
+/* The scroller. `max-height` moves to the panel — two competing height caps meant the list stopped
+   at 55vh inside a panel that was allowed to be 85dvh tall, so a long list left dead space under
+   itself. `overscroll-behavior` so reaching the last command does not start scrolling the page
+   behind the backdrop, and the 8px inset is what the rows' own rounded highlight sits inside. */
+.cmdk .cmdk__list {
+  max-height:none; overflow:auto; overscroll-behavior:contain; scrollbar-width:thin;
+  padding:0 8px 8px; min-width:0;
+}
 
 /* ------------------------------------------------------------------ nothing matched --- */
 
@@ -28,22 +86,78 @@
    sixty-character paste with no spaces in it widens the whole dialog unless the text is allowed to
    break mid-word. `anywhere` rather than `break-word` deliberately: only `anywhere` also shrinks
    the min-content width, which is the number the scroller above it actually measures. */
-.cmdk__empty { margin:0; padding-block:14px; font-size:13px; line-height:1.6; letter-spacing:-.01em; color:var(--muted); text-wrap:pretty; overflow-wrap:anywhere; }
+.cmdk__empty { margin:0; padding:16px 12px 20px; font-size:13px; line-height:1.6; letter-spacing:-.01em; color:var(--muted); text-wrap:pretty; overflow-wrap:anywhere; }
 
 /* ----------------------------------------------------------------------- one section --- */
 
 /* THE GROUP IS A GRID SO THAT ITS SPACING STOPS BEING AN ACCIDENT. Left as a plain block it has
-   neither padding nor border, so `.cmdk__section`'s 15px top margin escapes through it and becomes
-   the group's own margin — the air between two sections is then whichever margin happened to win a
+   neither padding nor border, so `.cmdk__section`'s top margin escapes through it and becomes the
+   group's own margin — the air between two sections is then whichever margin happened to win a
    collapse rather than a number anyone chose, and it changes the moment someone gives this box a
    border. A grid keeps every margin inside the box it belongs to and hands back a `gap` for the
    rows, which otherwise sit line-box against line-box with nothing between them.
    `minmax(0,1fr)` rather than a bare single column: a grid item's automatic minimum is its
-   min-content width, so one long unbroken command title would push the track wider than the 55vh
+   min-content width, so one long unbroken command title would push the track wider than the
    scroller and the entire list would scroll sideways to reach a hint. */
 .cmdk__group { display:grid; grid-template-columns:minmax(0,1fr); gap:2px; min-width:0; }
 
+/* A SECTION LABEL IS A TAB ON A DRAWER, NOT A HEADLINE — the same micro-label the shortcuts dialog
+   uses, so the two overlays a keyboard user lives in are set in one voice. It was 11px of the MONO
+   face, which is the product's idiom for a value you read digit by digit; a section name is a word.
+   `.018em` is the lock's positive tracking for small caps, and `--faint` puts it under the rows it
+   labels in the order things get read, which is where a label belongs. */
+.cmdk .cmdk__section {
+  margin:16px 10px 6px; font:11px/1.4 var(--font-body);
+  text-transform:uppercase; letter-spacing:.018em; color:var(--faint);
+}
+/* The first group sits directly under the field's own bottom margin and does not need a second. */
+.cmdk .cmdk__group:first-child .cmdk__section { margin-top:2px; }
+
 /* ------------------------------------------------------------------------ the command --- */
+
+/* THE ROW HAD NO PADDING AT ALL. `.cmdk__item` is a <div>, so it inherits none of the box the base
+   sheet gives a <button>, and `.is-selected`'s fill was therefore painted hard against the text on
+   all four sides — a highlight with no inset, in a list whose only job is to show you which line
+   is live. The height floor is a touch target; the radius is the product's small one, because a
+   row is smaller than a chip.
+   `position:relative` is here for the rail below and nothing else. */
+.cmdk .cmdk__item {
+  position:relative; align-items:center; gap:12px; min-height:38px; padding:8px 12px;
+  border-radius:var(--r-xs); color:var(--muted); background:transparent; cursor:pointer;
+}
+
+/* HOVER IS NOT REDUNDANT EVEN THOUGH THE POINTER SETS THE SELECTION. `onMouseMove` promotes a row
+   to selected, but a pointer that is already resting where the list re-renders under it sends no
+   move — so without this the row under the cursor reads as dead until the mouse twitches. Kept as
+   a wash rather than a surface step, because the step is what "selected" means one rule down. */
+.cmdk .cmdk__item:hover { color:var(--ink); background:color-mix(in srgb,var(--ink) 5%,transparent); }
+
+/* THE CURRENT ROW, which is the one thing on this screen that Enter acts on — so it is where the
+   accent is spent. It was a bare `--surface-2` fill: correct as a surface step, and silent about
+   the fact that this row is the answer. The rail carries the colour and the fill stays a tint
+   under a tenth, so the row reads as raised-and-current rather than as a green bar. */
+.cmdk .cmdk__item.is-selected { color:var(--ink); background:color-mix(in srgb,var(--accent) 9%,var(--surface-2)); }
+.cmdk .cmdk__item.is-selected::before {
+  content:''; position:absolute; inset-block:7px; inset-inline-start:0; width:2px;
+  border-radius:var(--r-pill); background:var(--accent);
+}
+/* Pressed. A row commits on mousedown and vanishes immediately, so this is one frame — but a
+   control with no pressed state is a control that looks identical whether or not it heard you,
+   and one frame of acknowledgement is the difference between clicking once and clicking twice. */
+.cmdk .cmdk__item:active { background:color-mix(in srgb,var(--accent) 16%,var(--surface-2)); }
+
+/* UNAVAILABLE. The palette lists a command it cannot run rather than hiding it, because a command
+   that vanishes teaches the reader it does not exist — but nothing in the base sheet drew the
+   difference, so a dead row and a live one were the same row with an extra sentence on it. The ink
+   steps down to the metadata tone, the cursor refuses, and the accent is withheld even when the
+   selection is on it: an unavailable row is never the answer, and a rail that says otherwise is
+   the accent lying. `.is-off` never disables the WHOLE row's readability — the reason has to stay
+   legible, since it is the only reason the row is on screen. */
+.cmdk .cmdk__item.is-off { color:var(--faint); cursor:not-allowed; }
+.cmdk .cmdk__item.is-off:hover { color:var(--faint); background:transparent; }
+.cmdk .cmdk__item.is-off.is-selected { color:var(--muted); background:var(--surface-2); }
+.cmdk .cmdk__item.is-off.is-selected::before { background:var(--faint); }
+.cmdk .cmdk__item.is-off:active { background:var(--surface-2); }
 
 /* THE TITLE PAYS FOR THE GAP THE ROW DOES NOT HAVE. `space-between` puts air between the title and
    its hint only while there is air left to put; once the row is full the two spans touch and
@@ -61,23 +175,84 @@
    15%, composited over whatever is behind it.
    THE ABSENCE OF A LIGHT-THEME CORRECTION BELOW IS A DECISION, NOT AN OVERSIGHT. 15% of #f4f3f2
    over the dark panel and 15% of #202020 over the white one are the same size of step, and both
-   still read once `.is-selected` has raised the row to `--surface-2`. A tint would have needed one;
-   a step in the ramp's own ink does not.
+   still read once `.is-selected` has raised the row. A tint would have needed one; a step in the
+   ramp's own ink does not.
    Initials matches hand back scattered single characters — "cs" marks the C and the S and nothing
    between them — so the box is padded a hair and pulled back by the same amount, which keeps the
    letters on their original rhythm and stops a marked "c" from rendering as a 1px sliver. Cloned
-   across a line break because the title above is allowed to wrap. */
+   across a line break because the title above is allowed to wrap.
+   NO RADIUS, which is a correction rather than an omission: this rule carried a literal 2px, and
+   2px is not one of the four values this product has. The two candidates are both wrong — 6px
+   rounds a single marked character into a lozenge, and none at all is what a text selection looks
+   like everywhere else — so it takes the one that is not an invented number. */
 .cmdk__title mark {
-  background:color-mix(in srgb,var(--ink) 15%,transparent); color:inherit; border-radius:2px;
+  background:color-mix(in srgb,var(--ink) 15%,transparent); color:inherit;
   padding-inline:1px; margin-inline:-1px; -webkit-box-decoration-break:clone; box-decoration-break:clone;
 }
 
+/* WHY A ROW IS UNAVAILABLE, in the column the chord would otherwise occupy. `flex:0 1 auto` with a
+   cap so a two-clause reason cannot squeeze the title it belongs to down to three characters, and
+   end-aligned because it shares an edge with every chord above and below it. */
+.cmdk .cmdk__why { flex:0 1 auto; max-width:48%; min-width:0; text-align:end; font-size:12px; line-height:1.45; color:var(--faint); text-wrap:pretty; overflow-wrap:anywhere; }
+
+/* THE CHORD IS DRAWN AS A KEY, from the same box the shortcuts dialog draws — same border, same
+   recessed fill, same tabular figures. Two overlays that both answer "what does this key do?" were
+   answering it two different ways: a bare string here, a bordered cap there. It sits one step
+   below that one in size and ink, and that difference is the point: over there the chord is what
+   the reader came to look up, here it is a footnote on a row whose title is the payload.
+   Stepping the fill DOWN to `--paper-2` makes the cap read as recessed against the panel in both
+   themes; a step up would be invisible on the light one. `nowrap` so "Ctrl+Shift+N" never breaks
+   across two lines mid-chord. */
+.cmdk .cmdk__hint {
+  flex:none; display:inline-block; padding:3px 8px; border:1px solid var(--line); border-radius:var(--r-xs);
+  background:var(--paper-2); font-size:11px; line-height:1.45; letter-spacing:0; color:var(--faint);
+  font-variant-numeric:tabular-nums; white-space:nowrap;
+}
+/* The recessed cap stops being recessed once the row it sits in has itself stepped up, and on the
+   light theme `--paper-2` over a raised row is #f3f3f3 on a near-identical grey — a cap that has
+   vanished. `--paper` is the step that still reads under a current row in both themes. */
+.cmdk .cmdk__item.is-selected .cmdk__hint { background:var(--paper); color:var(--muted); }
+
+/* ---------------------------------------------------------------------- the legend --- */
+
+/* THE THREE HINTS WERE ONE STRING. They are sibling <span>s with only a JSX newline between them,
+   which collapses to nothing — so the legend rendered "↑↓ move↵ runesc close" at the foot of the
+   product's most-used surface. A flex row with a gap is the fix, and it is a rule about the pair
+   rather than a property on one of them.
+   The well and the hairline say this strip is not part of the list; the bottom corners are carried
+   here because the panel above deliberately does not clip. */
+.cmdk .cmdk__foot {
+  display:flex; align-items:center; gap:18px; flex-wrap:wrap; padding:9px 14px;
+  border-block-start:1px solid var(--line); background:var(--paper-2);
+  border-end-start-radius:var(--r-lg); border-end-end-radius:var(--r-lg);
+  font-size:11px; line-height:1.5; letter-spacing:-.005em; color:var(--faint);
+}
+.cmdk__foot > span { display:inline-flex; align-items:center; gap:5px; min-width:0; }
+/* A legend key is a footnote, not the payload — so it keeps the cap's shape at the smallest step
+   the ramp has, and no border, which would make four boxes out of a one-line sentence. */
+.cmdk__foot kbd { padding:1px 5px; border-radius:var(--r-xs); background:var(--surface-2); color:var(--muted); font-size:11px; letter-spacing:0; }
+
 /* ----------------------------------------------------------------------- at 375px --- */
 
-/* Nothing here is a column, so there is nothing to collapse. The only thing that changes is the
-   arithmetic on the row: 16px held back for the hint is a sixteenth of the usable width at this
-   size, and the title needs it more than the hint needs the distance. */
+/* Nothing here is a column, so there is nothing to collapse. What changes is the arithmetic: the
+   panel sits higher because a phone's keyboard takes the bottom half of the screen, and the 16px
+   held back for the hint is a sixteenth of the usable width at this size — the title needs it more
+   than the hint needs the distance. */
 @media (max-width:600px) {
+  .cmdk.cmdk { max-height:min(560px,calc(100dvh - 8vh - 16px)); border-radius:var(--r-md); }
+  .cmdk .cmdk__input.cmdk__input { width:calc(100% - 24px); margin:12px 12px 10px; }
+  .cmdk .cmdk__list { padding:0 6px 6px; }
+  .cmdk .cmdk__foot { gap:12px; padding:8px 12px; border-end-start-radius:var(--r-md); border-end-end-radius:var(--r-md); }
   .cmdk__title { padding-inline-end:10px; }
-  .cmdk__empty { padding-block:12px; }
+  .cmdk .cmdk__why { max-width:55%; }
+  .cmdk__empty { padding:14px 10px 18px; }
+}
+
+/* --------------------------------------------------------------- reduced motion --- */
+
+/* The entrance is the only motion this file adds, and this is its opt-out. Written here rather
+   than left to system.css's global `!important` sweep so the rule and its escape hatch live in one
+   file and neither can be moved without the other. */
+@media (prefers-reduced-motion: reduce) {
+  .cmdk.cmdk { animation:none; }
 }

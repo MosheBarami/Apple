@@ -216,6 +216,18 @@ export function Turn({
      cannot drift into two different behaviours. The quota suppression is unchanged: that run did
      not fail, the account ran out, and a button that walks back into the same wall reads as a
      broken product rather than an empty balance. */
+  /* A TURN THAT PRODUCED NOTHING, AND WHY IT NEEDS A SENTENCE RATHER THAN A BLANK.
+     An assistant turn with no text, no tools and no outcome code renders a Thinking card with
+     nothing in it and then a timestamp — which reads as a reply that failed to paint, so the
+     first thing a person does is reload the page and lose their place. outcome-model.ts cannot
+     speak for this case: it is driven by `stopReason`, and a run that simply came back empty
+     carries an ordinary one.
+
+     ALL FOUR CONDITIONS, because each one is a turn that is NOT empty and must not be labelled
+     as one: `streaming` is a reply still arriving, `tools` is work whose results are in View
+     results, `content` is the reply itself, and `outcome` already has its own sentence below. */
+  const silent = !item.content && !item.streaming && item.tools.length === 0 && !outcome;
+
   const retryControl =
     onRetry && item.stopReason !== 'quota' ? (
       <button
@@ -289,6 +301,14 @@ export function Turn({
                 Why runs stop
               </a>
             )}
+          </div>
+        ) : silent ? (
+          // The same row the outcome uses, so an empty turn and a stopped one are one shape rather
+          // than two. The sentence says what happened and what to do next, and it names neither a
+          // cause nor a button label — the control beside it already carries its own word.
+          <div className="gx-outcome">
+            <p className="gx-outcome__text">Apple ended this turn without a reply. Run that prompt again, or rephrase it and send.</p>
+            {retryControl}
           </div>
         ) : (
           // Same row, no sentence: there is nothing to explain about a run that worked. It is the

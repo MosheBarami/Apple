@@ -56,18 +56,38 @@
 .failure__next { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin:3px 0 0; min-width:0; }
 .failure__next > span { min-width:0; font-size:13px; line-height:1.6; letter-spacing:-.01em; color:var(--muted); text-wrap:pretty; }
 
+/* THE TWO CONTROLS IN THAT ROW ARE NOT THE SAME ELEMENT, AND ONLY ONE OF THEM WAS BEING DRAWN.
+   "Try again" is a <button>, so the element rule in system.css hands it a border, a radius, padding
+   and a hover for free. `e.next` with an `e.href` is a router <Link> — an <a> — and an anchor
+   inherits none of that: `.btn` sets `display:inline-flex` and `text-decoration:none` and stops
+   there. So "Sign in again.", "Check the connection in Settings → Connections.", "Go back to your
+   projects." and "See what is left and when it renews." — the four failures in
+   lib/error-taxonomy.ts that carry a destination, which is to say the four where there is
+   something concrete to go and do — rendered as bare undecorated text with the underline turned
+   off. The one actionable sentence on the panel looked less pressable than the prose above it.
+   This is the same defect system.css records for `.gx-btn--outline`, in the same shape: a variant
+   has to carry its own chrome, because half its users are not buttons.
+   Padding and size are `.btn-sm`'s own values on purpose — the point is that the anchor and the
+   button come out identical, not that the pair gets a new size. `flex:none` so neither shrinks its
+   label to two characters when the sentence beside it is long; the row wraps instead. */
+.failure__next > .btn { flex:none; border:1px solid var(--line); border-radius:var(--r-md); padding:6px 10px; background:transparent; color:var(--ink); font-size:12px; line-height:1.5; letter-spacing:-.005em; transition:color var(--t-fast) var(--ease-out),background-color var(--t-fast) var(--ease-out),border-color var(--t-fast) var(--ease-out); }
+.failure__next > .btn:hover { background:var(--surface-2); border-color:color-mix(in srgb,var(--ink) 16%,var(--line)); }
+/* PRESSED IS A STATE. Without it a retry that is already in flight looks identical to one that has
+   not been touched, which is how somebody retries a failing request four times. */
+.failure__next > .btn:active { background:var(--surface-3); }
+
 /* THE LONG ANSWER, and deliberately quieter than the action above it — a reader who has been given
    one concrete next step should take it rather than go reading. Underlined by a hairline instead
    of `text-decoration`, which is how the same secondary link is drawn on a stopped run
    (`.gx-outcome__help` in ws/turn.css); the two appear on the same screen. */
 .failure__help { margin:0; font-size:12px; line-height:1.5; }
-.failure__help a { color:var(--muted); text-decoration:none; border-bottom:1px solid var(--line); padding-bottom:1px; transition:color .18s var(--ease-out),border-color .18s var(--ease-out); }
+.failure__help a { color:var(--muted); text-decoration:none; border-bottom:1px solid var(--line); padding-bottom:1px; transition:color var(--t-fast) var(--ease-out),border-color var(--t-fast) var(--ease-out); }
 .failure__help a:hover { color:var(--ink); border-bottom-color:var(--ink); }
 
 /* THE SERVER'S OWN WORDS. Shut by default and the quietest thing in the block: it is for the
    screenshot somebody sends to support, not for the person reading the sentence above it. */
 .failure__detail { margin:1px 0 0; font-size:12px; color:var(--faint); }
-.failure__detail > summary { width:fit-content; padding:3px 0; cursor:pointer; color:var(--faint); transition:color .18s var(--ease-out); }
+.failure__detail > summary { width:fit-content; padding:3px 0; cursor:pointer; color:var(--faint); transition:color var(--t-fast) var(--ease-out); }
 .failure__detail > summary:hover { color:var(--muted); }
 
 /* A SERVER MESSAGE HAS NO LINE BREAKS AND NO MAXIMUM LENGTH. `code` is inline by default, so an
@@ -130,5 +150,5 @@
 /* system.css already kills every transition under reduce, with !important. Restated so this sheet
    is correct on its own terms rather than correct by someone else's blanket rule. */
 @media (prefers-reduced-motion: reduce) {
-  .failure__help a,.failure__detail > summary { transition:none; }
+  .failure__next > .btn,.failure__help a,.failure__detail > summary { transition:none; }
 }

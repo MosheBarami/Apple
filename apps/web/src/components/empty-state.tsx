@@ -18,6 +18,24 @@ const TONE_CLASS: Record<EmptyTone, string> = {
   failure: 'es--failure',
 };
 
+/**
+ * THE OVERRIDE ARRIVES AS A BARE STRING ABOUT AS OFTEN AS IT ARRIVES AS A NODE, and a bare string
+ * dropped into this grid is a text node with no rule on it: `workspace.tsx` passes
+ * `project.error.message` straight in, and it rendered at the inherited 16px in full `--ink`,
+ * directly under a title, while every canonical body on every other screen is 14px `--muted`. The
+ * most alarming sentence in the product was the one nobody had styled.
+ *
+ * An EMPTY string is treated as absent rather than wrapped, because a server that failed without
+ * saying anything should fall back to the canonical sentence instead of drawing an empty paragraph
+ * where the explanation was meant to be.
+ */
+function detailBody(detail: ReactNode): ReactNode {
+  if (detail === undefined || detail === null) return null;
+  if (typeof detail === 'string') return detail.trim() ? <p className="es__body">{detail}</p> : null;
+  if (typeof detail === 'number') return <p className="es__body">{detail}</p>;
+  return detail;
+}
+
 export interface EmptyStateProps {
   state: EmptyStateName;
   /** Overrides the canonical body when a surface knows something more specific —
@@ -46,7 +64,7 @@ export function EmptyState({ state, detail, action, illustration }: EmptyStatePr
     >
       {illustration ? <div className="es__art" aria-hidden="true">{illustration}</div> : null}
       <h2 className="es__title">{spec.title}</h2>
-      {detail ?? (spec.body ? <p className="es__body">{spec.body}</p> : null)}
+      {detailBody(detail) ?? (spec.body ? <p className="es__body">{spec.body}</p> : null)}
       {action ? <div className="es__action">{action}</div> : null}
       {/* A real anchor in a new tab, for the reason failure.tsx gives: /docs belongs to the Astro
           site, and a router Link to it lands on not-found. */}

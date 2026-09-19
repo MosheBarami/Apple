@@ -62,7 +62,13 @@ export function ConfirmDialog({
     // Locked while the mutation is in flight: a dialog that vanishes mid-delete leaves the user
     // with no idea whether it happened.
     <Modal title={title} onClose={onClose} locked={busy}>
-      <p className="danger-copy">{children}</p>
+      {/* THIS PARAGRAPH WAS SET IN `--bad`, ON BOTH TONES.
+          On a delete it made the whole explanation red beside a red button — two things claiming
+          the same urgency, which is how a reader learns that red means nothing in particular. On
+          `tone='primary'`, a dialog whose only job is to make somebody READ a prorated figure
+          before they commit to it, it was simply a lie told in colour. The sentence is the thing
+          being read, so it takes the reading ink; the screen's one warning is the button. */}
+      <p className="confirm-copy">{children}</p>
       {details}
 
       {ceremony === 'typed' && (
@@ -76,9 +82,22 @@ export function ConfirmDialog({
             name="confirmSubject"
             id="confirm-subject"
             placeholder={subject}
+            aria-describedby="confirm-subject-hint"
             autoComplete="off"
+            spellCheck={false}
+            // Not editable mid-mutation: the dialog is locked, and a field that still takes
+            // keystrokes says the opposite.
+            disabled={busy}
             autoFocus
           />
+          {/* The rule, stated once and never changing. `confirmMatches` trims but does not fold
+              case, and somebody who cannot see why the button stays dead will try the same string
+              in lower case three times before giving up on their own delete. A hint that flipped
+              to an error on every keystroke would say the same thing more loudly and less often
+              usefully — the button going live is the feedback. */}
+          <span className="field-hint" id="confirm-subject-hint">
+            Capitals and spacing have to match.
+          </span>
         </label>
       )}
 
@@ -86,10 +105,16 @@ export function ConfirmDialog({
         <button type="button" className="btn" onClick={onClose} disabled={busy}>
           Cancel
         </button>
+        {/* A DISABLED CONTROL SAYS WHY IT IS DISABLED. Without the title this button is grey for
+            two entirely different reasons — the name has not been typed yet, and the mutation is
+            already running — and a reader cannot tell which, so it reads as broken rather than as
+            waiting. `aria-busy` is the same sentence for a screen reader. */}
         <button
           type="button"
           className={tone === 'primary' ? 'btn btn-primary' : 'btn btn-danger'}
           disabled={!ready || busy}
+          aria-busy={busy || undefined}
+          title={busy ? 'Working — this finishes on its own' : ready ? undefined : 'Type the name above to confirm'}
           onClick={onConfirm}
         >
           {busy ? (busyLabel ?? confirmLabel) : confirmLabel}
