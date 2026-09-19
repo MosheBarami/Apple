@@ -45,6 +45,9 @@ const {
   CREATOR_SKILL_REFERENCES,
   CREATOR_SKILL_CATALOG_DISCLOSURE,
   CREATOR_SKILL_TRUNCATION_REASONS,
+  MIN_READ_CHARS,
+  MIN_SEARCH_CHARS,
+  skillBacking,
   getGenreSkillProfile,
   readCreatorSkill,
   searchCreatorSkills,
@@ -155,7 +158,12 @@ test('implementation pointers distinguish reviewed source from non-executable me
   }
   assert.ok(reviewed > 0, 'the test never exercised reviewed prefabs');
   assert.ok(guidanceOnly > 0, 'the test never exercised guidance-only mechanics');
-  assert.deepEqual(CREATOR_SKILL_CATALOG_DISCLOSURE, {
+  assert.match(CREATOR_SKILL_CATALOG_DISCLOSURE.implementationBacking, /status "none"/,
+    'the disclosure no longer explains what an unbacked skill means');
+  assert.ok(CREATOR_SKILL_CATALOG_DISCLOSURE.implementationBacking.length < 120,
+    'the disclosure rides on every search payload; a long one eats the result budget and returns nothing');
+  assert.deepEqual({ ...CREATOR_SKILL_CATALOG_DISCLOSURE, implementationBacking: undefined }, {
+    implementationBacking: undefined,
     content: 'authored_guidance',
     containsExecutableCode: false,
     trainingData: false,
@@ -187,16 +195,24 @@ test('search ranks exact ids and titles first, filters correctly, and never retu
 });
 
 test('search and read obey their output budgets', () => {
-  const tightSearch = searchCreatorSkills({ query: 'server authoritative gameplay security', limit: 99, maxChars: 700 });
-  assert.ok(JSON.stringify(tightSearch).length <= 700, 'search exceeded its minimum output budget');
+  const tightSearch = searchCreatorSkills({ query: 'server authoritative gameplay security', limit: 99, maxChars: MIN_SEARCH_CHARS });
+  assert.ok(JSON.stringify(tightSearch).length <= MIN_SEARCH_CHARS, 'search exceeded its minimum output budget');
   assert.ok(tightSearch.results.length <= 5);
+  // A floor that returns NOTHING is not a floor. The minimum budget must still buy one result, or
+  // the guard passes while the tool reports "73 matches, 0 returned".
+  assert.ok(tightSearch.results.length >= 1, 'the minimum search budget returns no result at all');
 
   for (const skill of CREATOR_SKILLS) {
     const normal = readCreatorSkill(skill.id, 2800);
     assert.ok(JSON.stringify(normal).length <= 2800, `${skill.id} exceeded the maximum read budget`);
     assert.equal(normal.skill.id, skill.id);
-    const tight = readCreatorSkill(skill.id, 1400);
-    assert.ok(JSON.stringify(tight).length <= 1400, `${skill.id} exceeded the minimum read budget`);
+    // The CONSTANT, not a literal: the floor is whatever the smallest complete payload costs, and
+    // pinning 1400 here meant a payload that legitimately grew had to be shrunk to match a number
+    // in a test rather than the test following the shape.
+    const tight = readCreatorSkill(skill.id, MIN_READ_CHARS);
+    assert.ok(JSON.stringify(tight).length <= MIN_READ_CHARS, `${skill.id} exceeded the minimum read budget`);
+    assert.ok(tight.skill.implementation && typeof tight.skill.implementation.status === 'string',
+      `${skill.id} lost its implementation status while compacting — an omission is not a status`);
     assert.equal(tight.skill.id, skill.id);
     for (const field of ['preconditions', 'steps', 'verification', 'failureModes', 'qualityCriteria', 'references']) {
       assert.ok(tight.skill[field].length > 0, `${skill.id} lost ${field} while compacting`);
@@ -236,9 +252,9 @@ test('search/read budget clamps and unknown cases keep a finite truncation contr
   ]);
   const reasons = new Set(CREATOR_SKILL_TRUNCATION_REASONS);
 
-  const minSearch = searchCreatorSkills({ query: 'hud', limit: 5, maxChars: 700 });
+  const minSearch = searchCreatorSkills({ query: 'hud', limit: 5, maxChars: MIN_SEARCH_CHARS });
   const zeroSearch = searchCreatorSkills({ query: 'hud', limit: 5, maxChars: 0 });
-  assert.ok(JSON.stringify(minSearch).length <= 700);
+  assert.ok(JSON.stringify(minSearch).length <= MIN_SEARCH_CHARS);
   assert.deepEqual(zeroSearch, minSearch, 'zero search budget must clamp to the documented minimum');
 
   const maxSearch = searchCreatorSkills({ query: 'hud', limit: 5, maxChars: 2600 });
@@ -250,7 +266,7 @@ test('search/read budget clamps and unknown cases keep a finite truncation contr
   assert.equal('truncationReason' in maxSearch, false);
 
   for (const skill of CREATOR_SKILLS) {
-    const minRead = readCreatorSkill(skill.id, 1400);
+    const minRead = readCreatorSkill(skill.id, MIN_READ_CHARS);
     const zeroRead = readCreatorSkill(skill.id, 0);
     const maxRead = readCreatorSkill(skill.id, 2800);
     const hugeRead = readCreatorSkill(skill.id, 999999);
@@ -320,4 +336,67 @@ test('every genre profile points at real skills and states the low-poly and visu
     assert.equal(profile.studioVisualPass, 'required_after_build');
   }
   assert.equal(getGenreSkillProfile('unknown'), null);
+});
+
+// ---------------------------------------- an omission is not a status (w32)
+
+/**
+ * `...(skill.implementation ? {…} : {})` — the shape every retrieval surface in creator-skills.ts
+ * used — returns a skill with the key ABSENT when nothing implements it. Measured: 145 of the 217
+ * skills. A caller holding one of those cannot tell "nothing implements this" from "that field was
+ * left out of this payload", and only the first is something it can act on.
+ *
+ * The catalogue-level disclosure says the content is authored guidance, but a disclosure one level
+ * up is not what a caller holding one skill is looking at.
+ */
+
+const backingOf = (payload) => payload?.implementation;
+
+test('EVERY skill states its backing, including the 145 that have none', () => {
+  const absent = [];
+  for (const skill of CREATOR_SKILLS) {
+    const read = readCreatorSkill(skill.id, 2800);
+    const b = backingOf(read.skill);
+    if (!b || typeof b.status !== 'string') absent.push(skill.id);
+    else if (!['none', 'declared'].includes(b.status)) absent.push(`${skill.id}: status ${b.status}`);
+  }
+  assert.deepEqual(absent, [], `these skills return no backing status:\n${absent.slice(0, 10).join('\n')}`);
+
+  // And the split is real in both directions, or this check is passing vacuously.
+  const statuses = CREATOR_SKILLS.map((s) => skillBacking(s).status);
+  assert.ok(statuses.filter((v) => v === 'none').length > 0, 'no unbacked skill exists — this guard would be vacuous');
+  assert.ok(statuses.filter((v) => v === 'declared').length > 0, 'no backed skill exists — this guard would be vacuous');
+});
+
+test('search hits carry the status too — the cheapest payload is where it would be dropped first', () => {
+  const hits = searchCreatorSkills({ query: 'server authoritative gameplay security', limit: 5 });
+  assert.ok(hits.results.length > 0, 'the query matched nothing — this guard would be vacuous');
+  for (const hit of hits.results) {
+    assert.ok(hit.implementation && typeof hit.implementation.status === 'string', `${hit.id} hit omits its backing status`);
+  }
+});
+
+test('the guard fails on the shape that shipped', () => {
+  // The exact conditional-spread that produced the omission, applied to a skill with no backing.
+  const unbacked = CREATOR_SKILLS.find((s) => !s.implementation);
+  assert.ok(unbacked, 'every skill is backed now — rewrite this falsification, do not delete it');
+  const asItWas = { id: unbacked.id, ...(unbacked.implementation ? { implementation: unbacked.implementation } : {}) };
+  assert.equal(backingOf(asItWas), undefined, 'the mutation did not reproduce the omission');
+  assert.throws(() => {
+    const b = backingOf(asItWas);
+    assert.ok(b && typeof b.status === 'string', 'omitted');
+  });
+});
+
+test('a declared backing still says whether anything executable was verified', () => {
+  // "declared" and "verified" are different claims: a mechanic_pattern is guidance with a pointer,
+  // a reviewed_prefab has been run. Collapsing them would make the status worth less than nothing.
+  const declared = CREATOR_SKILLS.filter((s) => s.implementation).map((s) => skillBacking(s));
+  assert.ok(declared.length > 0);
+  for (const b of declared) {
+    assert.equal(b.status, 'declared');
+    assert.equal(typeof b.executableVerified, 'boolean');
+  }
+  assert.ok(declared.some((b) => b.executableVerified === true), 'nothing is verified — the distinction is unexercised');
+  assert.ok(declared.some((b) => b.executableVerified === false), 'nothing is unverified — the distinction is unexercised');
 });

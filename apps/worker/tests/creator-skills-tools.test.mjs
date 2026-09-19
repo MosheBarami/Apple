@@ -31,6 +31,12 @@ function bundle(source, name) {
 
 const T = await import(pathToFileURL(bundle('tools.ts', 'tools')).href);
 const R = await import(pathToFileURL(bundle('router.ts', 'router')).href);
+// The budgets come from the catalogue rather than being typed here. They were 700 and 1400 in five
+// places across two files, and when the payload grew by a field that must always be present, every
+// one of those literals became a test asserting the old shape — which reads as the change being
+// wrong rather than the number being stale.
+const C = await import(pathToFileURL(bundle('creator-skills.ts', 'creator-skills')).href);
+const { MIN_SEARCH_CHARS, MIN_READ_CHARS } = C;
 rmSync(temp, { recursive: true, force: true });
 
 const TOOL_NAMES = ['search_creation_skills', 'read_creation_skill'];
@@ -50,18 +56,18 @@ test('the registered search and read handlers preserve ranking, bounds and unkno
     query: 'server hit validation',
     genre: 'fps_arena',
     limit: 99,
-    max_chars: 700,
+    max_chars: MIN_SEARCH_CHARS,
   });
-  assert.ok(JSON.stringify(search).length <= 700);
+  assert.ok(JSON.stringify(search).length <= MIN_SEARCH_CHARS);
   assert.ok(search.results.length <= 5);
   assert.equal(search.results[0].id, 'genre-fps-arena-server-hit-validation');
   assert.ok(search.results.every((result) => result.genres.includes('fps_arena')));
 
   const read = await T.TOOLS.read_creation_skill.run({}, {
     id: search.results[0].id,
-    max_chars: 1400,
+    max_chars: MIN_READ_CHARS,
   });
-  assert.ok(JSON.stringify(read).length <= 1400);
+  assert.ok(JSON.stringify(read).length <= MIN_READ_CHARS);
   assert.equal(read.skill.id, search.results[0].id);
   assert.equal(read.skill.guidanceStatus, 'authored_guidance');
   assert.equal(read.skill.containsExecutableCode, false);
@@ -72,7 +78,7 @@ test('the registered search and read handlers preserve ranking, bounds and unkno
 
   const unknown = await T.TOOLS.read_creation_skill.run({}, {
     id: 'valid-but-unknown-skill',
-    max_chars: 1400,
+    max_chars: MIN_READ_CHARS,
   });
   assert.equal(unknown.noMatch, true);
   assert.equal(unknown.reason, 'unknown_skill_id');
@@ -82,7 +88,7 @@ test('the registered search tool reports character-budget omission honestly', as
   const search = await T.TOOLS.search_creation_skills.run({}, {
     query: 'hud',
     limit: 5,
-    max_chars: 700,
+    max_chars: MIN_SEARCH_CHARS,
   });
   assert.equal(search.totalMatches, 3);
   assert.equal(search.returned, search.results.length);
@@ -90,7 +96,7 @@ test('the registered search tool reports character-budget omission honestly', as
   assert.ok(search.returned < search.totalMatches);
   assert.equal(search.truncated, true);
   assert.equal(search.truncationReason, 'character_budget');
-  assert.ok(JSON.stringify(search).length <= 700);
+  assert.ok(JSON.stringify(search).length <= MIN_SEARCH_CHARS);
 });
 
 test('runTool treats injection-shaped search text as data and keeps the result bounded', async () => {
@@ -99,10 +105,10 @@ test('runTool treats injection-shaped search text as data and keeps the result b
   const result = await T.runTool(ctx, 'search_creation_skills', JSON.stringify({
     query: payload,
     limit: 5,
-    max_chars: 700,
+    max_chars: MIN_SEARCH_CHARS,
   }));
   assert.equal(result.ok, true);
-  assert.ok(result.resultForLlm.length <= 700);
+  assert.ok(result.resultForLlm.length <= MIN_SEARCH_CHARS);
   assert.ok(!result.resultForLlm.includes('<script>'));
   assert.ok(!result.resultForLlm.includes('reveal secrets'));
   assert.ok(result.detail && typeof result.detail === 'object', 'bounded structured data should reach the UI detail path');

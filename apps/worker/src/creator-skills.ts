@@ -52,6 +52,49 @@ export interface CreatorSkillImplementation {
   note: string;
 }
 
+/**
+ * WHETHER ANYTHING EXECUTABLE STANDS BEHIND A SKILL — said out loud, including when nothing does.
+ *
+ * Every retrieval surface in this file used to spell it `...(skill.implementation ? {…} : {})`, so
+ * a skill with no backing came back with the key simply ABSENT. Measured today: that is all 217 of
+ * them. A reader — and the model is the reader — cannot tell "this is guidance nobody has executed"
+ * from "that field was left out of this payload", and those are different facts about the same
+ * skill. The catalogue-level disclosure says `content: 'authored_guidance'`, but a disclosure one
+ * level up is not what a caller holding one skill is looking at.
+ *
+ * So the key is always present. `status: 'none'` is a claim the catalogue makes and can be wrong
+ * about; an omission is not a claim at all, and cannot be checked.
+ */
+export type CreatorSkillBacking =
+  | { status: 'none'; note: string }
+  | { status: 'declared'; kind: CreatorSkillImplementation['kind']; id: string; executableVerified: boolean; note: string };
+
+// SHORT ON PURPOSE. The first draft of this sentence was three lines, and the read-budget guard
+// caught it immediately: one skill's minimum-budget payload no longer fitted. The long form belongs
+// in the catalogue disclosure, which is sent once; this is the per-skill fact, which is sent 217
+// times. A statement that does not fit gets dropped, and a dropped statement is the omission this
+// whole change exists to remove.
+const NO_BACKING_NOTE = 'No tool or prefab is declared to implement this; follow the steps yourself.';
+
+export function skillBacking(skill: Pick<CreatorSkill, 'implementation'>): CreatorSkillBacking {
+  const impl = skill.implementation;
+  if (!impl) return { status: 'none', note: NO_BACKING_NOTE };
+  return {
+    status: 'declared',
+    kind: impl.kind,
+    id: impl.id,
+    executableVerified: impl.executableVerified,
+    note: impl.note,
+  };
+}
+
+/** The compact form, for payloads that are already fighting a character budget. */
+export function skillBackingBrief(skill: Pick<CreatorSkill, 'implementation'>): { status: 'none' } | { status: 'declared'; kind: string; id: string; executableVerified: boolean } {
+  const impl = skill.implementation;
+  if (!impl) return { status: 'none' };
+  return { status: 'declared', kind: impl.kind, id: impl.id, executableVerified: impl.executableVerified };
+}
+
 export interface CreatorSkill {
   id: string;
   title: string;
@@ -73,6 +116,20 @@ export interface CreatorSkill {
 
 export const CREATOR_SKILL_CATALOG_DISCLOSURE = Object.freeze({
   content: 'authored_guidance' as const,
+  /**
+   * SHORT, BECAUSE THIS DISCLOSURE RIDES ON EVERY SEARCH PAYLOAD.
+   *
+   * The first draft of this line was 312 characters of careful explanation, and it consumed the
+   * entire 700-character minimum search budget: `totalMatches: 73, returned: 0`. A search that
+   * finds seventy-three skills and returns none of them, in order to explain itself at length, is
+   * a worse answer than the omission this whole change was fixing. The same mistake the per-skill
+   * note made, one level up, half an hour later.
+   *
+   * The long form lives in the doc comment on CreatorSkillBacking, which costs nothing to send.
+   * What ships is the fact a caller needs: the status is always there, and "none" is a claim rather
+   * than a gap. Measured: 78 characters, and search returns results again.
+   */
+  implementationBacking: 'Each skill states its backing; status "none" means nothing implements it.' as const,
   containsExecutableCode: false as const,
   trainingData: false as const,
   officialDocsAreReferenceOnly: true as const,
@@ -701,10 +758,23 @@ const VALID_SKILL_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const MAX_QUERY_CHARS = 240;
 const MAX_QUERY_TOKENS = 16;
 const DEFAULT_SEARCH_CHARS = 2200;
-const MIN_SEARCH_CHARS = 700;
+// RAISED FROM 700 WITH THE READ FLOOR, AND FOR THE SAME REASON. Every hit now carries its backing
+// status, and the payload's disclosure says what that status means, so the smallest payload that
+// still returns ONE result costs more than it did. Measured: at 700 this query reports
+// `totalMatches: 73, returned: 0` — seventy-three matches and nothing to show for them. At 740 it
+// returns the top hit in 711 characters. 800 leaves headroom for a longer title or genre list
+// without another round of this.
+export const MIN_SEARCH_CHARS = 800;
 const MAX_SEARCH_CHARS = 2600;
 const DEFAULT_READ_CHARS = 2700;
-const MIN_READ_CHARS = 1400;
+// RAISED FROM 1400 WHEN `implementation` BECAME MANDATORY. The floor is the size of the smallest
+// payload that still says everything a skill must say, and a fact that used to be OMITTED for 145
+// of 217 skills now has to fit. The alternative was to let the shrink drop the key under pressure,
+// which would reinstate the omission silently and only for the longest skills — the worst possible
+// distribution for a fact a caller is relying on. Exported so the budget test asserts the invariant
+// "at the minimum budget, nothing is lost" rather than a literal that has to be edited in two
+// places whenever the payload changes shape.
+export const MIN_READ_CHARS = 1500;
 const MAX_READ_CHARS = 2800;
 
 export const CREATOR_SKILL_TRUNCATION_REASONS = [
@@ -779,7 +849,7 @@ function searchHit(skill: CreatorSkill, score: number) {
     genres: skill.genreApplicability,
     summary: skill.summary,
     score,
-    ...(skill.implementation ? { implementation: { kind: skill.implementation.kind, id: skill.implementation.id } } : {}),
+    implementation: skillBackingBrief(skill),
   };
 }
 
@@ -906,7 +976,7 @@ function publicSkill(skill: CreatorSkill) {
     guidanceStatus: skill.guidanceStatus,
     containsExecutableCode: skill.containsExecutableCode,
     studioVisualPass: skill.studioVisualPass,
-    ...(skill.implementation ? { implementation: { ...skill.implementation } } : {}),
+    implementation: skillBacking(skill),
   };
 }
 
@@ -921,6 +991,15 @@ function readPayload(skill: unknown, truncated: boolean): Record<string, unknown
 function fitReadPayload(skill: CreatorSkill, budget: number): Record<string, unknown> {
   const value = publicSkill(skill);
   let truncated = false;
+  // THE NOTE MAY GO; THE STATUS MAY NOT. Under pressure this drops the sentence explaining the
+  // backing and keeps the machine-readable status, because a shrink that removed the key entirely
+  // would put back exactly the omission this field was added to end — silently, and only for the
+  // skills whose payloads are longest. Tried first, before any content is cut, since one sentence
+  // of prose is cheaper to lose than a verification step.
+  if (JSON.stringify(readPayload(value, truncated)).length > budget) {
+    value.implementation = skillBackingBrief(skill) as typeof value.implementation;
+    truncated = true;
+  }
   const removable: { list: unknown[]; minimum: number }[] = [
     { list: value.qualityCriteria, minimum: 2 },
     { list: value.preconditions, minimum: 2 },
@@ -977,7 +1056,7 @@ function fitReadPayload(skill: CreatorSkill, budget: number): Record<string, unk
       guidanceStatus: skill.guidanceStatus,
       containsExecutableCode: false,
       studioVisualPass: skill.studioVisualPass,
-      ...(skill.implementation ? { implementation: { kind: skill.implementation.kind, id: skill.implementation.id, executableVerified: skill.implementation.executableVerified } } : {}),
+      implementation: skillBackingBrief(skill),
     }, true);
 }
 
