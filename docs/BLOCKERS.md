@@ -4,7 +4,7 @@ Mission §AG: when blocked by a human-only action, record the exact blocker and
 continue every independent workstream. This file is that record. Each entry states
 what is blocked, what proves it, and what continued anyway.
 
-Last verified: **2026-09-01**.
+Last verified: **2026-09-19**.
 
 ---
 
@@ -515,6 +515,54 @@ built page.
 **This is a vocabulary change to public documentation**, so it is recorded here rather
 than only in a commit. It aligns the docs with §15.3 and with the product; it does not
 change any behaviour, price or URL.
+
+---
+
+## HUMAN-ONLY — every share link in the product is dead until two things are done in accounts I cannot reach
+
+**Status:** the code is finished and committed; production is not fixed.
+
+**What a customer sees today.** An owner mints a share link and sends it. The
+recipient opens it, the page says "You're in. You joined as editor", and every
+request that page then makes returns 404 — the transcript, the socket, the
+versions, the checkpoints, the project page itself. All three link products the
+UI advertises (shared projects, shared chats, shared builds) open nothing for
+anybody. The only sharing that works is inviting somebody by raw Supabase user
+id.
+
+**Why.** `getProjectAccess` reads the project row under the caller's own JWT and
+returns before it consults the KV grants a redeemed link produces. No RLS policy
+on `public.projects` can return a row to a link guest, because a bearer secret
+cannot be looked up under RLS. Commit a72a996 has the full account, including
+why thirty-two green tests could not observe it.
+
+**What is blocked, exactly two things, and neither is code:**
+
+1. **Migration `infra/supabase/migrations/0011_link_guest_project_read.sql` has
+   not been applied.** Applying it needs a Postgres connection string.
+   `infra/supabase/migrate.mjs` refuses to guess one and has no fallback to
+   `DATABASE_URL`, deliberately — a program that applies DDL may not guess which
+   database it is applying it to. Run:
+   `node infra/supabase/migrate.mjs --apply --url postgres://… --yes`
+
+2. **`MEMBERSHIP_OUTBOX_TOKEN` is not set on the deployed worker, and its sha256
+   is not in the database.** `wrangler secret list --name apple` returns seven
+   secrets on 2026-09-19 and this is not among them. 0009 states the migration
+   creates no secret values: deployment writes the Worker secret and the row in
+   `public.membership_outbox_secret` together, so setting one without the other
+   achieves nothing. Both halves need the same two credentials as (1).
+
+**A second thing that follows from (2), and was not known before today:** the
+membership access outbox has therefore never drained in production either.
+`membershipOutboxConfigured` answers false without the token, so the lifecycle
+overlay 0009 built has been inert since it shipped.
+
+**What continued anyway.** The worker is safe to deploy in this state and has
+been: `systemRpcConfig` answers null without the token, the fallback returns
+null, and a link guest gets exactly the 404 they got before. Nothing regressed;
+the fix simply does not switch on. The test suite now observes the defect —
+the PostgREST fake evaluates RLS as the caller rather than handing the row to
+whoever asks — so the day the migration lands, the suite is what says so.
 
 ---
 
