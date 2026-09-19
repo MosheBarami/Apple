@@ -573,7 +573,19 @@ app.use('/api/*', async (c, next) => {
  * leaving this line in place would turn the endpoint into an open subscription dispenser, which is
  * why billing-route.test.mjs asserts both halves together.
  */
-const AUTH_EXEMPT = ['/api/health', '/api/studio/claim', '/api/studio/poll', '/api/waitlist', '/api/billing/webhook', '/api/discord/interactions', '/api/recovery-request'];
+// PUBLIC BY NECESSITY, and each one is public for a stated reason rather than by omission.
+//
+// `/api/billing/config` was added last and is the one worth explaining. It answers "can this
+// deployment sell anything, and which plans" — the question the PUBLIC pricing page has to answer
+// for a visitor who has not signed up, which is every prospective customer there is. Behind the
+// JWT gate it returned 401 to exactly the people it exists for, and the pricing page, which asks
+// the server rather than hard-coding the answer, read that 401 as "nothing is purchasable". A
+// failure to observe rendering as an observation, in the one place where being wrong costs a sale.
+//
+// It is safe to expose because of what it does NOT return: `billingConfigFor` yields a boolean and
+// a list of plan ids, plus the charge currency. No key, no price id, no customer, no account. The
+// same facts are already printed on the page it feeds.
+const AUTH_EXEMPT = ['/api/health', '/api/studio/claim', '/api/studio/poll', '/api/waitlist', '/api/billing/webhook', '/api/discord/interactions', '/api/recovery-request', '/api/billing/config'];
 app.use('/api/*', async (c, next) => {
   const path = new URL(c.req.url).pathname;
   if (AUTH_EXEMPT.includes(path) || path.startsWith('/api/admin/')) return next();

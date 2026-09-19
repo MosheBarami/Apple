@@ -1855,12 +1855,27 @@ test('A4 /api/providers is NOT an admin route and IS behind user auth', async ()
   //     write that did not happen as a 503 rather than a calm confirmation; and it is rate-limited
   //     at index.ts:4421 to 10 per IP, without which it is an open write endpoint.
   //
-  // ADDING A LINE HERE IS THE REVIEW. The two entries above were added by other lanes and this
+  //   /api/billing/config — answers "can this deployment sell anything, and which plans". The
+  //     PUBLIC pricing page has to answer that for a visitor who has not signed up, which is every
+  //     prospective customer there is; behind the gate it returned 401 to exactly the people it
+  //     exists for. The pricing page asks the server rather than hard-coding the answer, so it read
+  //     that 401 as "nothing is purchasable" — a failure to observe rendering as an observation, in
+  //     the one place where being wrong costs a sale.
+  //
+  //     It does not authenticate some other way, and does not need to, because of what it cannot
+  //     return: `billingConfigFor` yields a boolean, a list of plan ids, and the charge currency.
+  //     No key, no price id, no customer, no account, no per-user state — it never reads the
+  //     request. The facts it returns are already printed on the page it feeds. Asserted below, so
+  //     the exemption cannot outlive that shape: if this handler ever starts reading a user or
+  //     returning a secret, the test that guards it fails.
+  //
+  // ADDING A LINE HERE IS THE REVIEW. The three entries above were added by other lanes and this
   // assertion is what forced them to be read rather than noticed later — which is the entire
   // reason it compares the whole list instead of checking that the old five are still present.
   assert.deepEqual(
     exempt.sort(),
     [
+      '/api/billing/config',
       '/api/billing/webhook',
       '/api/discord/interactions',
       '/api/health',
@@ -1871,6 +1886,15 @@ test('A4 /api/providers is NOT an admin route and IS behind user auth', async ()
     ],
     'the unauthenticated route list changed — every entry needs its own review',
   );
+  // The exemption above rests on this handler being incapable of leaking anything, so that is
+  // checked rather than described: it must not read the authenticated user, and it must answer
+  // from `billingConfigFor(c.env)` — a boolean and a list of plan ids — rather than from a secret.
+  const configRoute = src.slice(src.indexOf("app.get('/api/billing/config'"), src.indexOf("app.get('/api/providers'"));
+  assert.ok(configRoute.length > 0, 'the /api/billing/config route moved; this review no longer reads it');
+  assert.match(configRoute, /billingConfigFor\(c\.env\)/, '/api/billing/config must answer from billingConfigFor and nothing else');
+  assert.equal(/c\.get\('user'\)/.test(configRoute), false, 'a route exempt from auth must not read an authenticated user');
+  assert.equal(/STRIPE_SECRET_KEY|STRIPE_PRICE_|STRIPE_WEBHOOK_SECRET/.test(configRoute), false, 'a public route must not name a billing secret');
+
   const webhook = src.slice(src.indexOf("app.post('/api/billing/webhook'"), src.indexOf("app.get('/api/providers'"));
   assert.match(webhook, /verifyStripeSignature\(/, 'the billing webhook is exempt from JWT auth ONLY because it verifies a signature');
   assert.match(webhook, /if \(!secret\) return c\.json\(\{ error: 'billing not configured' \}, 503\)/, 'and refuses outright when it cannot verify');
