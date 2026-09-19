@@ -28,6 +28,15 @@ packages/corpus/raw/*
 # It is not reproducible either: it was built by reading 653 repositories' file trees live, and
 # a repository that is renamed, deleted or rewritten next year will not read the same way.
 !packages/corpus/data/mechanic-library.json
+# ...and the UI REFERENCE LIBRARY, which is the same kind of thing again: a record of what shipped
+# Roblox interfaces actually look like, and the construction rules read off them. It is not
+# re-derivable — the observations were made by looking at screenshots of games that will change,
+# and the point of the library is that a design can be argued with reference by reference instead
+# of being an agent's taste. Untracked, it would be one machine's scratch notes.
+#
+# A directory, so the negation has to re-include the DIRECTORY itself: `data/*` ignores the entry,
+# and git never descends into an excluded directory. Same trap as the dataset cards further down.
+!packages/corpus/data/ui-references/
 # Authored, inspected reference metadata is required by the Worker runtime import and is not
 # reproducible harvested media. Keep the manifest available in a fresh checkout.
 !packages/corpus/data/genre-references.json
