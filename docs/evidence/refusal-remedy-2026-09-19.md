@@ -1,4 +1,4 @@
-# A refusal that names no remedy gets one invented — four fixes in, still true
+# A refusal that names no remedy gets one invented — and naming it did not help
 
 ## The defect
 
@@ -58,24 +58,37 @@ same request:
 So **w34 is not done**, and it is not marked done. Six changes that each look right have not moved
 the observable behaviour.
 
-## Why I could not tell which of the six failed
+## The instrument existed, and it settles it: the plumbing works, the model ignores it
 
-The decisive question is whether the model receives `fix` and the new `error` text at all, and I
-could not answer it from outside the worker:
+I wrote, above, that the missing thing was an instrument. It was already there and I had not found
+it: `/api/projects/:id/studio/diagnostics` serves the session's oplog, and `apps/web/src/lib/api.ts`
+notes that nothing in the app had ever called it. Called with the owner's own session token, newest
+first:
 
-- `/api/projects/:id/messages` returns `toolTrace: null` and contains neither `retry` nor `remedy`,
-  so it does not carry tool results.
-- `/api/projects/:id/export?format=json` does not contain the new refusal sentence either — but it
-  does not contain the OLD one as raw tool output either, so its absence proves nothing about the
-  wire. That is an inconclusive probe and is recorded as one rather than as a finding.
-- `/api/admin/*` refuses the local `ADMIN_KEY` in production (403, and 403 for a deliberately wrong
-  key — the control says the endpoint is reachable and the key is simply not it).
+```
+create_instances  ok=0  failure=refused
+  summary: "writes require explicit edit consent — this is Apple's own gate, not a Roblox
+            Studio setting: press \"Enable edits…\" then \"Allow edits for this connection\"
+            in the Apple panel in Studio"
+create_instances  ok=0  failure=refused
+  summary: "writes require explicit edit consent"          <- the three earlier runs
+```
 
-**The missing thing is an instrument, not another fix.** Next step, named: a way to read back the
-exact `error`, `failure`, `remedy` and `fix` of a refused op for one's own session — an authenticated
-`?ops=1` on the messages endpoint, or a per-op row the project stage already half-renders as
-`✗ writes require explicit edit consent`. Without it, every further attempt here is a guess with a
-three-minute Studio restart attached.
+So the new sentence reached the worker, in full, on the run whose reply still said:
+
+> Go to `File > Place Settings > Security`. Uncheck "Require explicit edit consent for scripts".
+
+**The plumbing works and the model overrides it.** It was handed the correct remedy, in the string
+it paraphrases, under a system prompt that names that exact fiction and forbids it, and it produced
+the fiction anyway. Six changes, all correct, none sufficient — because the last hop is a model that
+will not be told.
+
+That narrows w34 from "one of six things is broken" to one thing, and it changes what the fix has to
+be: **this answer must stop being the model's to write.** A refusal with a known remedy is a
+deterministic fact and belongs on a product-authored surface — the same sentence the connection
+dialog already gets right ("Studio is connected. Enable edits in the plugin before asking Apple to
+change your place") — rendered from the op row, beside the reply, whatever the model says. That is
+the next step, and it is a different kind of change from the six above.
 
 ## One worry raised and retired
 
