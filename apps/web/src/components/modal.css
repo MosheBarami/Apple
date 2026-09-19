@@ -75,6 +75,13 @@
   box-shadow:var(--shadow-modal);
   animation:overlay-rise var(--t-base) var(--ease-out) both;
 }
+/* THE SHEET ITSELF TAKES FOCUS, and until now it painted Chrome's default light-blue 1px ring —
+   the only non-token hue anywhere on this surface, drawn around the biggest object on the screen.
+   `modal.tsx` focuses `.modal-panel` (tabIndex -1) on every open where no child claims it, so this
+   is what a keyboard user sees FIRST on most dialogs in the product. Doubled class so it beats the
+   element-level focus rule without !important. */
+.modal-panel.modal-panel:focus-visible { outline:2px solid var(--accent); outline-offset:4px; }
+
 .modal-panel.modal-wide { width:min(840px,100%); }
 
 /* ----------------------------------------------------------------------- the head --- */

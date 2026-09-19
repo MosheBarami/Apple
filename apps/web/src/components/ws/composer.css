@@ -307,3 +307,13 @@
   .gx-composer .gx-composer__tools > button:not(.gx-send),.gx-composer__tools .gx-send,
   .gx-attach__act,.gx-pop__item.gx-pop__item--stack { transition:none; }
 }
+
+/* THE FOCUS STATE WAS COMPUTED AND THEN THROWN AWAY.
+   `.gx-composer:has(.gx-composer__inner:focus-within)` sets --cp-line/--cp-rim to the accent, and
+   the rule that READS them tied on specificity with system.css's later
+   `.gx-composer__inner:focus-within` — so the panel kept the generic white rim and the accent never
+   painted. Measured focused in the dark theme: border-top-color came back rgba(255,255,255,0.57).
+   One extra class is the whole fix; a tie is decided by source order, and system.css comes after. */
+.gx-composer .gx-composer__inner:focus-within {
+  border-color:var(--cp-line); border-top-color:var(--cp-rim); border-inline-start-color:var(--cp-rim-side);
+}

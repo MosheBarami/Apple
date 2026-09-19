@@ -59,12 +59,19 @@
    whole response. */
 .shelf__tabs .scope-tab:hover:not(:disabled) { background:transparent; color:var(--ink); }
 .shelf__tabs .scope-tab:active { color:var(--ink); }
-.shelf__tabs .scope-tab.is-on { color:var(--accent); }
+/* ONE GREEN THING, AND IT IS THE BAR. The current tab used to spend the accent three ways at once
+   — the label's ink, this 2px bar, and the count beside it — on a screen that already spends it on
+   the "New project" button and again on the current row in the permanent rail. Four accents is not
+   an emphasis, it is a colour scheme. The bar is the one that says "you are here" without help, so
+   the label returns to --ink, which is what a current item reads as when something else marks it. */
+.shelf__tabs .scope-tab.is-on { color:var(--ink); }
 .shelf__tabs .scope-tab.is-on::after { transform:scaleX(1); }
 /* The count qualifies the word beside it, so it steps down rather than sitting at tab size. Tabular
    because it changes as projects are archived and a proportional 1 makes the strip twitch. */
 .shelf__tabs .scope-tab__count { font-size:11px; letter-spacing:.018em; color:var(--faint); font-variant-numeric:tabular-nums; }
-.shelf__tabs .scope-tab.is-on .scope-tab__count { color:var(--accent); }
+/* The count stays --faint on the current tab too: it qualifies the word, and a qualifier that
+   changes colour with its subject is a second thing to look at. */
+.shelf__tabs .scope-tab.is-on .scope-tab__count { color:var(--muted); }
 
 /* ----------------------------------------------------------------- the search --- */
 
@@ -455,7 +462,11 @@
   .shelf .card-menu > .icon-btn,
   .shelf__tabs .scope-tab,
   .shelf__tabs .scope-tab::after,
-  .shelf .shelf__field-input,
+  /* THREE CLASSES, because the rule it must beat has three. `.shelf .shelf__field-input` was two
+     and lost the tie, so this field kept animating under prefers-reduced-motion while every other
+     opt-out in the file worked — a reduced-motion block that is right thirteen times and wrong once
+     is the hardest kind to notice. */
+  .shelf .shelf__field .shelf__field-input,
   .shelf__field-mark,
   .shelf__field-clear,
   .shelf .page-foot-links a,
