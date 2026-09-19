@@ -42,8 +42,6 @@ import {
 import { usePrefs } from '../../lib/theme';
 import { CREATION_INTENTS, creationMessage, maxAccessNotice, type CreationIntent } from '../../lib/creation-intent';
 import { ModelMark } from './model-mark';
-import { AssetCatalog } from './asset-catalog';
-import { appendCatalogReference } from '../../lib/asset-catalog';
 import './composer.css';
 
 const PLACEHOLDER = 'Ask anything about your project...';
@@ -125,7 +123,6 @@ export function Composer({
   const [text, setText] = useState(() => (draftKey ? readDraft(draftKey) : ''));
   const [modeOpen, setModeOpen] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
-  const [catalogOpen, setCatalogOpen] = useState(false);
   const [creation, setCreation] = useState<CreationIntent>('build');
   const box = useRef<HTMLTextAreaElement>(null);
   const lastKey = useRef(draftKey);
@@ -588,13 +585,6 @@ export function Composer({
 
   return (
     <div className="gx-composer">
-      {catalogOpen && <AssetCatalog onClose={() => setCatalogOpen(false)} onChoose={asset => {
-        // Append without replacing selected draft text; an asset reference must never erase it.
-        const next = appendCatalogReference(text, asset, MESSAGE_MAX_CHARS);
-        if (next === null) return false;
-        applyInsertion({ text: next, caret: next.length });
-        return true;
-      }} />}
       <form
         className={`gx-composer__inner${dropping ? ' is-dropping' : ''}`}
         onSubmit={submit}
@@ -785,9 +775,13 @@ export function Composer({
           <button type="button" className="gx-chip gx-chip--creation" aria-pressed={creation === 'model'} disabled={running || !studioConnected} title={!studioConnected ? '3D requires connected Roblox Studio and Apple MAX' : maxAvailable ? 'Generate a 3D model in connected Studio' : maxUpgradeAvailable === false ? '3D requires Apple MAX; paid subscriptions are not available yet' : '3D requires Apple MAX — check availability'} onClick={() => chooseCreation('model')}>
             <Icon d="M12 2l9 5v10l-9 5-9-5V7z M3 7l9 5 9-5 M12 12v10" size={14} /> 3D{!maxAvailable && <span className="muted"> · MAX</span>}
           </button>
-          <button type="button" className="gx-chip" disabled={disabled || running} onClick={() => setCatalogOpen(true)} aria-haspopup="dialog">
-            <Icon d={PATH.surface} size={14} /> Assets
-          </button>
+          {/* THE ASSET BROWSER IS GONE, on the owner's instruction of 2026-09-19, and what it means
+              is a change of who does the looking. The customer describes what the place needs and
+              Apple finds it; they do not shop in a catalogue. A library the customer browses is a
+              database with a product around it, and the rows in ours repeat, carry licences of
+              different shapes, and include kinds nothing can place — which is a thing to hand an
+              agent that can check, not a thing to hand a fifteen-year-old with a search box.
+              The agent's own path to the library is untouched; only this door is closed. */}
           {selectionLabel && (
             <button
               type="button"

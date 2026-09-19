@@ -464,3 +464,25 @@ looks like from outside.
 **Outstanding:** STRUCTURALLY-BLOCKED — merging the two, or teaching the builder to read both, is a
 decision about whose seed set is canonical. Recorded rather than resolved: that is the authors'
 call, not this session's, and guessing would silently drop eighteen seeds or duplicate twelve.
+
+## `apps/web/src/components/ws/asset-catalog.tsx` — DELETE, and it has been
+
+**What it was:** the dialog behind the composer's "Assets" chip. It listed the curated library,
+filtered by kind, previewed each row and appended a reference into the draft message.
+
+**Why it went:** the owner's instruction on 2026-09-19 — the asset library is not something the
+customer searches. That is a change of who does the looking, not a feature being dropped for want
+of time: the customer describes what the place needs and Apple finds it. A library the customer
+browses is a database with a product around it, and the rows in this one repeat across sources,
+carry licences of several shapes, and include kinds nothing can place. That is a thing to hand an
+agent that can check each row before using it, not a search box.
+
+**What did NOT go, and this is the part worth being precise about:** `src/lib/asset-catalog.ts`
+stays and is still live — `lib/api.ts` imports `CatalogAsset` from it, and both
+`asset-catalog.test.mjs` and `asset-catalog-preview.test.mjs` test it. The validation those tests
+cover is not about the dialog: `catalogPreviewUrl` refuses a preview URL that is not a Roblox CDN
+image, which is a guard on data the worker hands back, wherever it is eventually shown. The agent's
+own path to the library is untouched; only the customer's door is closed.
+
+**If it comes back:** it is one file in git history, and this entry is where to find out why it was
+not there.
