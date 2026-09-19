@@ -5,7 +5,7 @@
 // account. Sign in instead." — which turned the sign-up form into a free membership lookup for
 // anyone with a list of addresses. A message table inside a component is a message table nothing
 // can test, so the table moved out and the screens below only render what the model decided.
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { safeInternalPath } from '../lib/safe-redirect';
 import { PRODUCT_MODELS, PRODUCT_MODEL_INFO, STUDIO_PLUGIN_STORE_LIVE } from '@golem/shared';
@@ -29,6 +29,83 @@ import {
   signInOutcome,
   signupOutcome,
 } from '../lib/auth-flows';
+import './auth.css';
+
+/* ----------------------------------------------------------------- the three marks --- */
+
+/**
+ * The only iconography on this surface, and there are three of it.
+ *
+ * They are drawn here rather than imported from components/glyphs because they are not product
+ * marks — they are the punctuation on a status card, and the alternative they replace was the
+ * literal character `✉` set at whatever size the card inherited, which renders as a different
+ * shape and a different weight in every font a customer's machine happens to resolve. A stroked
+ * path at `currentColor` is the same object everywhere and inherits the one colour its container
+ * is allowed to spend.
+ */
+function MailMark() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+      <rect x="3" y="5.5" width="18" height="13" rx="2" stroke="currentColor" strokeWidth="1.4" />
+      <path d="m3.6 7 7.3 5.4a2 2 0 0 0 2.2 0L20.4 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function AlertMark() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+      <circle cx="12" cy="12" r="8.6" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M12 7.6v5.2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <circle cx="12" cy="16.2" r=".95" fill="currentColor" />
+    </svg>
+  );
+}
+
+function DoneMark() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+      <circle cx="12" cy="12" r="8.6" stroke="currentColor" strokeWidth="1.4" />
+      <path d="m8.4 12.3 2.6 2.6 4.8-5.2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/**
+ * The disc a status card opens with.
+ *
+ * `alert` is the ONLY variant that takes a colour, and the reason is arithmetic rather than taste:
+ * `--good` (#99d4b0) and `--accent` (#8fd3ab) are three points apart, so a green tick above the
+ * green primary button is two green things on one screen — the exact defect docs/DESIGN-LOCK.md
+ * rule 4 names. Success reads from the headline and from the single accented action beneath it.
+ */
+function CardMark({ kind }: { kind: 'mail' | 'alert' | 'done' }) {
+  return (
+    <span className={`auth-card__mark auth-card__mark--${kind}`} aria-hidden="true">
+      {kind === 'mail' ? <MailMark /> : kind === 'alert' ? <AlertMark /> : <DoneMark />}
+    </span>
+  );
+}
+
+/* ------------------------------------------------------------------ the ambience --- */
+
+/**
+ * The lit ground the card sits on, as one aria-hidden element.
+ *
+ * NOT GLASS. The lock reserves backdrop-filter for the composer and the top bar — surfaces that sit
+ * over content that is actually moving — so the depth here is made of light and a hairline instead:
+ * a slow beam, and an isometric plane drawn in the hairline token that says "this builds in a 3D
+ * editor" once and then gets out of the way. Both are decoration with no semantics, which is why
+ * they are spans in a hidden container rather than anything a reader can reach.
+ */
+function AuthAtmosphere() {
+  return (
+    <div className="auth__atmosphere" aria-hidden="true">
+      <span className="auth__aura" />
+      <span className="auth__grid" />
+    </div>
+  );
+}
 
 /**
  * What the signed-out hero lists, which is NOT every mode the product has.
@@ -85,11 +162,20 @@ function AuthHero() {
           writes the scripts and places the parts. Every step is named while it happens, and you can
           stop it mid-run.
         </p>
+        {/* THE NAME IS NO LONGER `<strong>`. system.css resets font-weight on h1–h6 and on nothing
+            else, so the user agent's bold survived here — on the one screen whose design brief
+            opens with "nothing is bolder than 400". The row is a grid now rather than a sentence
+            with a dash in it, so the name and what it costs occupy their own lines. */}
         <ul className="auth-hero-points">
           {MODELS.map((m) => (
             <li key={m}>
               <ModelMark variant={m === 'apple' ? 'apple' : 'max'} />
-              <strong>{m === 'apple-max' ? <>Apple <span className="apple-max-name">MAX</span></> : PRODUCT_MODEL_INFO[m].name}</strong> — {m === 'apple' ? 'Limited free access.' : 'For paid subscribers.'}
+              <span className="auth-hero-points__name">
+                {m === 'apple-max' ? <>Apple <span className="apple-max-name">MAX</span></> : PRODUCT_MODEL_INFO[m].name}
+              </span>
+              <span className="auth-hero-points__note">
+                {m === 'apple' ? 'Limited free access.' : 'For paid subscribers.'}
+              </span>
             </li>
           ))}
         </ul>
@@ -102,6 +188,7 @@ function AuthHero() {
 function AuthShell({ children }: { children: ReactNode }) {
   return (
     <div className="auth-page">
+      <AuthAtmosphere />
       <ThemeCorner />
       <AuthHero />
       <div className="auth-form-col">
@@ -142,17 +229,25 @@ function CheckEmailCard({
 }) {
   return (
     <div className="auth-card" role="status">
-      <div className="auth-mail-icon" aria-hidden="true">
-        ✉
-      </div>
+      <CardMark kind="mail" />
       <h2 className="auth-card-title">{title}</h2>
+      {/* The address is the one word in this sentence a reader checks against what they typed, so it
+          is set in the mono face rather than in `<strong>` — which is a weight this product does
+          not have, and which the element rule in system.css never reset. */}
       <p className="auth-card-sub">
-        {CHECK_EMAIL_LINE} We used <strong>{address}</strong>.
+        {CHECK_EMAIL_LINE} We used <span className="mono">{address}</span>.
       </p>
       {children}
       {onResend && (
         <>
-          <button type="button" className="btn btn-block" onClick={onResend} disabled={resending || resent}>
+          <button
+            type="button"
+            className="btn btn-block"
+            onClick={onResend}
+            disabled={resending || resent}
+            data-busy={resending ? 'true' : undefined}
+            title={resent ? 'Already sent once — a second copy will not arrive any sooner' : undefined}
+          >
             {resending ? 'Sending…' : resent ? 'Sent — check again in a minute' : 'Send it again'}
           </button>
           {/* Said out loud rather than discovered: the second link invalidates the first, and
@@ -187,12 +282,97 @@ function CheckEmailCard({
   );
 }
 
+/**
+ * The one place a failure is reported on these screens.
+ *
+ * IT WAS A RED SENTENCE IN A COLUMN OF GREY ONES — 13px `--bad` between the subtitle and the first
+ * label, which is the same size and the same position as more instructions. A person who mistypes
+ * a password reads the card again looking for what changed. It is a panel now: the status token as
+ * a hairline and an 8% tint, with a mark, so the thing that appeared is visibly a thing that
+ * appeared. `role="alert"` was already right and stays.
+ */
 function FormError({ message }: { message: string | null }) {
   if (!message) return null;
   return (
-    <p className="form-error" role="alert">
-      {message}
+    <p className="form-error auth-card__error" role="alert">
+      <AlertMark />
+      <span>{message}</span>
     </p>
+  );
+}
+
+/**
+ * A password field with a way to see what you typed.
+ *
+ * WHY IT IS WORTH A COMPONENT. Every password on this surface is typed blind, and three of the five
+ * screens ask for one that must be typed correctly the first time — a sign-up, and a reset that
+ * asks twice. On a phone, with a soft keyboard that has already swallowed half the screen, a
+ * mistyped character is invisible and the only feedback is a failure a minute later. The control is
+ * a real button rather than an icon: it is announced, it is 34px tall, and `aria-pressed` says
+ * which way it is currently set.
+ *
+ * The id is generated rather than hard-coded because ResetPasswordPage renders two of these on one
+ * screen, and two labels pointing at the same id is a label pointing at the wrong field.
+ */
+function PasswordField({
+  label,
+  name,
+  autoComplete,
+  value,
+  onChange,
+  hint,
+  invalid,
+  autoFocus,
+  minLength,
+}: {
+  label: string;
+  name: string;
+  autoComplete: 'current-password' | 'new-password';
+  value: string;
+  onChange: (v: string) => void;
+  hint?: string;
+  invalid?: boolean;
+  autoFocus?: boolean;
+  minLength?: number;
+}) {
+  const id = useId();
+  const [shown, setShown] = useState(false);
+  return (
+    <div className="field">
+      <label className="field-label" htmlFor={id}>
+        {label}
+      </label>
+      <div className="field__wrap">
+        <input
+          id={id}
+          type={shown ? 'text' : 'password'}
+          name={name}
+          autoComplete={autoComplete}
+          required
+          autoFocus={autoFocus}
+          minLength={minLength}
+          aria-invalid={invalid ? 'true' : undefined}
+          aria-describedby={hint ? `${id}-hint` : undefined}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+        <button
+          type="button"
+          className="field__reveal"
+          onClick={() => setShown((s) => !s)}
+          aria-pressed={shown}
+          aria-controls={id}
+          aria-label={shown ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
+        >
+          {shown ? 'Hide' : 'Show'}
+        </button>
+      </div>
+      {hint && (
+        <p className="field-hint" id={`${id}-hint`}>
+          {hint}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -221,6 +401,10 @@ export function LoginPage() {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Whether the CODE is what was rejected, as opposed to the network or the account. The panel at
+  // the top of the card says what went wrong; this is what puts the mark on the field the reader
+  // has to change, and it is a separate fact because not every failure on that screen is the code's.
+  const [codeBad, setCodeBad] = useState(false);
 
   // Validated, not trusted: the catch-all route sits INSIDE AuthGuard, so this
   // path may have been chosen by whoever sent the link. See lib/safe-redirect.
@@ -263,10 +447,12 @@ export function LoginPage() {
     if (busy) return;
     const problem = codeProblem(code);
     if (problem) {
+      setCodeBad(true);
       setError(problem);
       return;
     }
     setError(null);
+    setCodeBad(false);
     setBusy(true);
     const { data, error: listErr } = await supabase.auth.mfa.listFactors();
     const factor = listErr ? undefined : verifiedTotpFactors(data)[0];
@@ -281,6 +467,7 @@ export function LoginPage() {
     });
     setBusy(false);
     if (verifyErr) {
+      setCodeBad(true);
       setError(authErrorMessage(verifyErr));
       setCode('');
       return;
@@ -292,6 +479,7 @@ export function LoginPage() {
     return (
       <AuthShell>
         <div className="auth-card" role="alert">
+          <CardMark kind="alert" />
           <h2 className="auth-card-title">We could not finish signing you in</h2>
           <p className="auth-card-sub">{stepOwed.message}</p>
           {/* An exit, not a dead end: the half-made session is dropped so the password form comes
@@ -299,6 +487,9 @@ export function LoginPage() {
           <button type="button" className="btn btn-primary btn-block" onClick={() => void signOut()}>
             Start again
           </button>
+          <p className="auth-switch">
+            If it happens again, <Link to="/recovery">tell us what you saw</Link> and a person will look at it.
+          </p>
         </div>
       </AuthShell>
     );
@@ -320,12 +511,24 @@ export function LoginPage() {
               autoFocus
               maxLength={12}
               required
+              aria-invalid={codeBad ? 'true' : undefined}
               value={code}
-              onChange={(e) => setCode(e.target.value)}
+              onChange={(e) => {
+                // The mark comes off the field the moment it is being corrected. Leaving it on
+                // while somebody retypes marks the input they are fixing as the one that is wrong.
+                if (codeBad) setCodeBad(false);
+                setCode(e.target.value);
+              }}
               placeholder="123456"
             />
           </label>
-          <button type="submit" className="btn btn-primary btn-block" disabled={busy || !code.trim()}>
+          <button
+            type="submit"
+            className="btn btn-primary btn-block"
+            disabled={busy || !code.trim()}
+            data-busy={busy ? 'true' : undefined}
+            title={!code.trim() ? 'Enter the code from your authenticator app first' : undefined}
+          >
             {busy ? 'Checking…' : 'Sign in'}
           </button>
           <p className="auth-switch">
@@ -359,34 +562,43 @@ export function LoginPage() {
   return (
     <AuthShell>
       <form className="auth-card" onSubmit={onSubmit} noValidate>
+        {/* "Sign in to keep building" was a mood. This says which two things the form wants, which
+            is the difference between a person who has two addresses guessing and a person who
+            knows. */}
         <h2 className="auth-card-title">Welcome back</h2>
-        <p className="auth-card-sub">Sign in to keep building.</p>
+        <p className="auth-card-sub">Use the address and password you signed up with.</p>
         <FormError message={error} />
         <label className="field">
           <span className="field-label">Email</span>
+          {/* Focused on arrival. This route exists to take one pair of values and nothing else, so
+              the caret starting anywhere but here costs every keyboard user a Tab and every screen
+              reader user a hunt. */}
           <input
             type="email"
             name="email"
             autoComplete="email"
             required
+            autoFocus
+            inputMode="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
           />
         </label>
-        <label className="field">
-          <span className="field-label">Password</span>
-          <input
-            type="password"
-            name="password"
-            autoComplete="current-password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-          />
-        </label>
-        <button type="submit" className="btn btn-primary btn-block" disabled={busy || !email.trim() || !password}>
+        <PasswordField
+          label="Password"
+          name="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={setPassword}
+        />
+        <button
+          type="submit"
+          className="btn btn-primary btn-block"
+          disabled={busy || !email.trim() || !password}
+          data-busy={busy ? 'true' : undefined}
+          title={!email.trim() || !password ? 'Fill in both fields first' : undefined}
+        >
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
         <p className="auth-switch">
@@ -485,7 +697,11 @@ export function SignupPage() {
         </CheckEmailCard>
       ) : (
         <form className="auth-card" onSubmit={onSubmit} noValidate>
-          <h2 className="auth-card-title">Summon your apple</h2>
+          {/* "Summon your apple" was the product's own vocabulary used where the product is not yet
+              known. `Summon` is what this product calls starting a project — the dialog on the
+              dashboard is named for it — and on the screen BEFORE the account exists it reads as a
+              flourish rather than as an instruction. The heading on a form says what the form does. */}
+          <h2 className="auth-card-title">Create your account</h2>
           {/* "no Studio setup beyond one plugin" was true about the card and false about the plugin:
               that one plugin cannot currently be obtained, and every other surface in the product
               says so. A sign-up page is the worst place to be the single optimistic exception,
@@ -504,25 +720,34 @@ export function SignupPage() {
               name="email"
               autoComplete="email"
               required
+              autoFocus
+              inputMode="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
             />
           </label>
-          <label className="field">
-            <span className="field-label">Password</span>
-            <input
-              type="password"
-              name="password"
-              autoComplete="new-password"
-              required
-              minLength={PASSWORD_MIN}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder={`At least ${PASSWORD_MIN} characters`}
-            />
-          </label>
-          <button type="submit" className="btn btn-primary btn-block" disabled={busy || !email.trim() || !password}>
+          {/* THE REQUIREMENT MOVES OUT OF THE PLACEHOLDER. "At least 8 characters" was the
+              placeholder, which means it was on screen exactly until the moment somebody started
+              typing and disappeared for the whole time it was relevant. It is a hint now, it is
+              wired to the field with aria-describedby, and it survives the first keystroke. */}
+          <PasswordField
+            label="Password"
+            name="password"
+            autoComplete="new-password"
+            minLength={PASSWORD_MIN}
+            value={password}
+            invalid={Boolean(error) && passwordProblem(password, { email }) !== null}
+            hint={`At least ${PASSWORD_MIN} characters. Use one you have not used on another site.`}
+            onChange={setPassword}
+          />
+          <button
+            type="submit"
+            className="btn btn-primary btn-block"
+            disabled={busy || !email.trim() || !password}
+            data-busy={busy ? 'true' : undefined}
+            title={!email.trim() || !password ? 'Fill in both fields first' : undefined}
+          >
             {busy ? 'Creating account…' : 'Create account'}
           </button>
           <p className="auth-switch">
@@ -586,7 +811,13 @@ export function ForgotPasswordPage() {
               placeholder="you@example.com"
             />
           </label>
-          <button type="submit" className="btn btn-primary btn-block" disabled={busy || !email.trim()}>
+          <button
+            type="submit"
+            className="btn btn-primary btn-block"
+            disabled={busy || !email.trim()}
+            data-busy={busy ? 'true' : undefined}
+            title={!email.trim() ? 'Enter the address you signed up with first' : undefined}
+          >
             {busy ? 'Sending…' : 'Send the link'}
           </button>
           <p className="auth-switch">
@@ -609,6 +840,16 @@ export function ForgotPasswordPage() {
  * bounce the person holding a valid reset link, leaving them signed in with the password they came
  * here to change and no screen to change it on.
  */
+/**
+ * The mismatch sentence, as a constant rather than a literal in two places.
+ *
+ * It is compared against below to decide which FIELD to mark, and a message that is matched has to
+ * be a name rather than a string somebody can retype slightly differently in one of the two spots.
+ * It also tells the person what to do — "do not match" alone leaves a reader who cannot see either
+ * value guessing which of the two boxes to fix.
+ */
+const PASSWORDS_DIFFER = 'The two passwords do not match — retype the second one.';
+
 export function ResetPasswordPage() {
   const navigate = useNavigate();
   // Read ONCE, on mount. supabase-js strips the fragment after it consumes the token, so a later
@@ -647,7 +888,7 @@ export function ResetPasswordPage() {
       return;
     }
     if (password !== confirm) {
-      setError('The two passwords do not match.');
+      setError(PASSWORDS_DIFFER);
       return;
     }
     setBusy(true);
@@ -672,6 +913,9 @@ export function ResetPasswordPage() {
     return (
       <AuthShell>
         <div className="auth-card" role="status">
+          {/* Neutral, not green. `--good` and `--accent` are three points apart, and the button
+              below is already spending the accent — see CardMark. */}
+          <CardMark kind="done" />
           <h2 className="auth-card-title">Password changed</h2>
           <p className="auth-card-sub">
             You are signed in on this device. Any other device using the old password will have to sign in again.
@@ -684,11 +928,31 @@ export function ResetPasswordPage() {
     );
   }
 
+  //[[ THE LOADING STATE THIS SCREEN NEVER HAD, and it was not a cosmetic omission.
+  //
+  //   `hasSession` starts null and the branch below only fires on `false`, so between mount and the
+  //   first answer from getSession() a visitor with no readable token was shown the WORKING FORM —
+  //   two password fields and a submit that cannot possibly succeed. They type, they submit, and
+  //   the failure arrives afterwards. A fact that has not been read yet is not a fact that is
+  //   false; until the session answers, the honest screen is this one.
+  if (!link.ok && hasSession === null) {
+    return (
+      <AuthShell>
+        <div className="auth-card" role="status" aria-busy="true">
+          <CardMark kind="mail" />
+          <h2 className="auth-card-title">Checking your link</h2>
+          <p className="auth-card-sub">This takes a second. Keep the tab open.</p>
+        </div>
+      </AuthShell>
+    );
+  }
+
   // Arrived with no link and no session: there is nothing to reset here.
   if (!link.ok && hasSession === false) {
     return (
       <AuthShell>
         <div className="auth-card">
+          <CardMark kind="alert" />
           <h2 className="auth-card-title">Nothing to reset</h2>
           <p className="auth-card-sub">
             This page is where a password-reset link lands. Ask for one and we will send it.
@@ -696,6 +960,9 @@ export function ResetPasswordPage() {
           <Link to="/forgot" className="btn btn-primary btn-block">
             Send me a link
           </Link>
+          <p className="auth-switch">
+            <Link to="/login">Back to sign in</Link>
+          </p>
         </div>
       </AuthShell>
     );
@@ -705,33 +972,36 @@ export function ResetPasswordPage() {
     <AuthShell>
       <form className="auth-card" onSubmit={submit} noValidate>
         <h2 className="auth-card-title">Choose a new password</h2>
-        <p className="auth-card-sub">At least {PASSWORD_MIN} characters. Make it one you have not used elsewhere.</p>
+        <p className="auth-card-sub">This replaces the old one everywhere you are signed in.</p>
         <FormError message={error} />
-        <label className="field">
-          <span className="field-label">New password</span>
-          <input
-            type="password"
-            name="password"
-            autoComplete="new-password"
-            required
-            autoFocus
-            minLength={PASSWORD_MIN}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </label>
-        <label className="field">
-          <span className="field-label">New password again</span>
-          <input
-            type="password"
-            name="passwordConfirm"
-            autoComplete="new-password"
-            required
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-          />
-        </label>
-        <button type="submit" className="btn btn-primary btn-block" disabled={busy || !password || !confirm}>
+        <PasswordField
+          label="New password"
+          name="password"
+          autoComplete="new-password"
+          autoFocus
+          minLength={PASSWORD_MIN}
+          value={password}
+          hint={`At least ${PASSWORD_MIN} characters. Use one you have not used on another site.`}
+          onChange={setPassword}
+        />
+        {/* ONLY THE SECOND FIELD IS MARKED, because only the second field is the one to change. A
+            mismatch tells you nothing about which of the two is wrong, and the message says to
+            retype this one — so marking both would contradict the sentence above it. */}
+        <PasswordField
+          label="New password again"
+          name="passwordConfirm"
+          autoComplete="new-password"
+          value={confirm}
+          invalid={error === PASSWORDS_DIFFER}
+          onChange={setConfirm}
+        />
+        <button
+          type="submit"
+          className="btn btn-primary btn-block"
+          disabled={busy || !password || !confirm}
+          data-busy={busy ? 'true' : undefined}
+          title={!password || !confirm ? 'Type the new password in both fields first' : undefined}
+        >
           {busy ? 'Saving…' : 'Set the new password'}
         </button>
       </form>
@@ -763,6 +1033,10 @@ function ExpiredLinkCard({
   const where = what === 'reset' ? '/forgot' : '/signup';
   return (
     <div className="auth-card" role="status">
+      {/* The one place on this surface a status token is spent, and it is spent on the card whose
+          whole subject is something the reader has to act on. The action beneath it is still the
+          accent, so the card carries one red thing and one green thing rather than two of either. */}
+      <CardMark kind="alert" />
       <h2 className="auth-card-title">{expired ? 'That link has expired' : 'That link did not work'}</h2>
       <p className="auth-card-sub">
         {expired
@@ -798,16 +1072,39 @@ export function ConfirmEmailPage() {
   const [address, setAddress] = useState('');
 
   const failed = link.failure !== undefined;
+  //[[ "ADDRESS CONFIRMED" WAS PRINTED FOR A TOKEN NOBODY CHECKED.
+  //
+  //   This page had two states — the link declared a failure, or it did not — and the second one
+  //   rendered "Address confirmed. Your address is verified." So /app/confirm with a made-up token,
+  //   a truncated link, or nothing in the URL at all told the reader their address was verified.
+  //   A reviewer typed a token they invented and the product congratulated them.
+  //
+  //   There are THREE states, and the missing one is the honest one. A confirmation is established
+  //   by a SESSION: Supabase parses the link, exchanges it, and a session is what that produces.
+  //   No failure and no session does not mean success, it means this page cannot tell — which is
+  //   exactly what somebody whose mail client cut the link in half has hit.
+  //
+  //   `checking` starts true so nothing is claimed while we are still asking. Rendering the success
+  //   card for one frame and then correcting it is the same lie told faster. ]]
+  const [confirmed, setConfirmed] = useState<'checking' | 'yes' | 'unknown'>('checking');
 
   useEffect(() => {
     if (failed) return;
     let cancelled = false;
     supabase.auth.getSession().then(({ data }) => {
-      if (!cancelled && data.session) {
+      if (cancelled) return;
+      if (data.session) {
         // Confirmed AND signed in. Nothing to decide, so do not make them press a button that
         // means "yes, I would like the thing I already asked for".
+        setConfirmed('yes');
         navigate('/', { replace: true });
+        return;
       }
+      setConfirmed('unknown');
+    }, () => {
+      // A session lookup that THREW is not a confirmation either. Falling through to the success
+      // card on an error is how the original defect would come back wearing a different shape.
+      if (!cancelled) setConfirmed('unknown');
     });
     return () => {
       cancelled = true;
@@ -833,6 +1130,7 @@ export function ConfirmEmailPage() {
           <CheckEmailCard title="On its way" address={address.trim()} />
         ) : (
           <div className="auth-card">
+            <CardMark kind="alert" />
             <h2 className="auth-card-title">
               {link.failure === 'expired' ? 'That link has expired' : 'That link did not work'}
             </h2>
@@ -848,6 +1146,8 @@ export function ConfirmEmailPage() {
                 type="email"
                 name="email"
                 autoComplete="email"
+                autoFocus
+                inputMode="email"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 placeholder="you@example.com"
@@ -858,6 +1158,65 @@ export function ConfirmEmailPage() {
               className="btn btn-primary btn-block"
               onClick={sendAnother}
               disabled={!address.trim() || resend !== 'idle'}
+              data-busy={resend === 'sending' ? 'true' : undefined}
+              title={!address.trim() ? 'Enter the address you signed up with first' : undefined}
+            >
+              {resend === 'sending' ? 'Sending…' : 'Send a new confirmation link'}
+            </button>
+            <p className="auth-switch">
+              <Link to="/login">Back to sign in</Link>
+            </p>
+          </div>
+        )}
+      </AuthShell>
+    );
+  }
+
+  if (confirmed === 'checking') {
+    return (
+      <AuthShell>
+        <div className="auth-card" role="status">
+          <h2 className="auth-card-title">Checking that link…</h2>
+          <p className="auth-card-sub">One moment.</p>
+        </div>
+      </AuthShell>
+    );
+  }
+
+  if (confirmed === 'unknown') {
+    // NOT a failure card: nothing said the link was bad. It says what is true — this page could not
+    // establish anything — and offers the one action that resolves it either way.
+    return (
+      <AuthShell>
+        {resend === 'sent' ? (
+          <CheckEmailCard title="On its way" address={address.trim()} />
+        ) : (
+          <div className="auth-card">
+            <CardMark kind="alert" />
+            <h2 className="auth-card-title">We could not tell whether that worked</h2>
+            <p className="auth-card-sub">
+              Nothing in that link confirmed an address — it may have been cut short by your mail client, or
+              already used. If you have already confirmed, just sign in. Otherwise we can send another.
+            </p>
+            <label className="field">
+              <span className="field-label">Email</span>
+              <input
+                type="email"
+                name="email"
+                autoComplete="email"
+                inputMode="email"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="you@example.com"
+              />
+            </label>
+            <button
+              type="button"
+              className="btn btn-primary btn-block"
+              onClick={sendAnother}
+              disabled={!address.trim() || resend !== 'idle'}
+              data-busy={resend === 'sending' ? 'true' : undefined}
+              title={!address.trim() ? 'Enter the address you signed up with first' : undefined}
             >
               {resend === 'sending' ? 'Sending…' : 'Send a new confirmation link'}
             </button>
@@ -873,8 +1232,11 @@ export function ConfirmEmailPage() {
   return (
     <AuthShell>
       <div className="auth-card" role="status">
+        <CardMark kind="done" />
         <h2 className="auth-card-title">Address confirmed</h2>
-        <p className="auth-card-sub">That is everything. Sign in and your apple is waiting.</p>
+        {/* "Sign in and your apple is waiting" was a flourish where a fact belongs: it tells a
+            first-time visitor nothing about what the next screen wants. */}
+        <p className="auth-card-sub">Your address is verified. Sign in with the password you chose.</p>
         <Link to="/login" className="btn btn-primary btn-block">
           Go to sign in
         </Link>
@@ -927,9 +1289,7 @@ export function RecoveryRequestPage() {
     return (
       <AuthShell>
         <div className="auth-card" role="status">
-          <div className="auth-mail-icon" aria-hidden="true">
-            ✉
-          </div>
+          <CardMark kind="done" />
           <h2 className="auth-card-title">That is with us</h2>
           <p className="auth-card-sub">{outcome.message}</p>
           {/* Said plainly, because the alternative is somebody filing the same plea six times and
@@ -973,6 +1333,7 @@ export function RecoveryRequestPage() {
             autoComplete="email"
             required
             autoFocus
+            inputMode="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
@@ -988,8 +1349,18 @@ export function RecoveryRequestPage() {
             onChange={(e) => setNote(e.target.value)}
             placeholder="I set up two-step verification and my phone was replaced."
           />
+          {/* The note is optional and the form never said so, so a person with nothing to add sat
+              in front of a box wondering whether it was the thing blocking them. It is not: the
+              address alone is enough to file, and `canSubmitRecovery` only ever reads the address. */}
+          <p className="field-hint">Optional, and it helps. Say what you tried and what happened.</p>
         </label>
-        <button type="submit" className="btn btn-primary btn-block" disabled={busy || !canSubmitRecovery(email)}>
+        <button
+          type="submit"
+          className="btn btn-primary btn-block"
+          disabled={busy || !canSubmitRecovery(email)}
+          data-busy={busy ? 'true' : undefined}
+          title={!canSubmitRecovery(email) ? 'Enter the address on the account first' : undefined}
+        >
           {busy ? 'Sending…' : 'Ask for help'}
         </button>
         <p className="auth-switch">

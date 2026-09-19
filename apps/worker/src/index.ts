@@ -515,6 +515,33 @@ app.use('*', sentryMiddleware(routeLabel));
 //
 //   Derived from PRODUCT_ORIGIN rather than typed, so the destination cannot drift from the one
 //   definition of where this product lives. ]]
+//[[ PLAINTEXT HTTP SERVED THE WHOLE PRODUCT, WITH NO REDIRECT AND NO HSTS.
+//
+//   `curl -o /dev/null -w '%{http_code}' http://apple.moshe-barami111.workers.dev/` answered 200.
+//   Not a redirect — the page. The same origin carries the app shell, the Supabase session in
+//   localStorage, and the API-key-authenticated /v1 API, so a request made on a café network went
+//   out readable, key and all, and nothing in the response ever told a browser not to try again.
+//
+//   TWO HALVES, AND ONE OF THEM IS NOT OPTIONAL. The redirect closes the request in front of us.
+//   Strict-Transport-Security closes every request AFTER it: without it a browser that has only
+//   ever been redirected will still try http:// first next time, which is the request an attacker
+//   wants. A year, with subdomains, and preload is deliberately NOT asserted — preload is a
+//   one-way door on a hostname this product may not keep.
+//
+//   308 rather than 301: the method and body must survive, or a POST to /v1 turns into a GET and
+//   the caller is told the endpoint does not exist rather than that it used the wrong scheme. ]]
+app.use('*', async (c, next) => {
+  const url = new URL(c.req.url);
+  if (url.protocol === 'http:') {
+    url.protocol = 'https:';
+    return c.redirect(url.toString(), 308);
+  }
+  await next();
+  // Set on the way out, on every response this worker makes — a header only on the pages is a
+  // header the API does not have, and the API is the half carrying a key.
+  c.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+});
+
 app.use('*', async (c, next) => {
   const url = new URL(c.req.url);
   if (url.hostname !== LEGACY_PRODUCT_HOST) return next();
