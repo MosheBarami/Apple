@@ -283,7 +283,24 @@ export function looksLikeDescription(doc) {
   const letters = doc.replace(/[^A-Za-z]/g, '');
   if (letters.length > 0 && (doc.replace(/[^A-Z]/g, '').length / letters.length) > 0.6) return false;
   // Commented-out code rather than prose.
-  if (/[;{}]\s*$/.test(doc) || /\b(local|end|then|elseif)\b.*\b(local|end|then)\b/.test(doc)) return false;
+  //
+  // `then` IS AN ENGLISH WORD. The previous rule fired on any document containing two of
+  // local/end/then/elseif anywhere, and rejected this, which is ordinary prose:
+  //
+  //   "...ordered by rarity from legendary down to common, then by name ascending, then by id"
+  //
+  // Two `then`s, no code. The fix is to require the keywords in a CODE-SHAPED arrangement rather
+  // than merely present — an assignment, an `if ... then`, a function header, or a clause ending
+  // — because that is the property "this is commented-out code" actually has.
+  //
+  // MY FIRST TIGHTENING WAS ALSO WRONG, and the harvested set is what caught it. Matching
+  // `function` followed by any letter rejected "This function returns the player name", and a
+  // trailing `end` rejected "Sets the value at the end" — so the old dataset's usable rows fell
+  // from 395 to 358 and I nearly recorded that as extra rigour. It was two false positives on
+  // ordinary English. `function` now requires a parenthesis and the bare trailing `end` clause is
+  // gone; the assignment and `if ... then` shapes carry the signal.
+  if (/[;{}]\s*$/.test(doc)) return false;
+  if (/\blocal\s+[A-Za-z_]\w*\s*=|\bif\b[^.!?]*\bthen\b|\bfunction\s*[A-Za-z_][\w.:]*\s*\(|\bfunction\s*\(/.test(doc)) return false;
   // Needs some prose: at least one lowercase word of 3+ chars that is not a bare identifier.
   if (!/(^|\s)[a-z]{3,}(\s|$)/.test(doc)) return false;
   // Needs a verb-ish or descriptive opener somewhere in the first clause.

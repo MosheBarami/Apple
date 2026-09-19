@@ -147,9 +147,25 @@ export function readSplit(file, split = '<split>') {
 }
 
 /** Load every split. Missing one is a measurement failure rather than a clean zero. */
+/**
+ * The same split under two names. `mlx-lm` reads `valid.jsonl`; this repository has always
+ * written `val.jsonl`. Accepting both is not laxity — the alternative was emitting the validation
+ * rows twice under two filenames, and two copies of a split are two things that can drift apart.
+ * A directory containing BOTH is refused rather than silently preferred, because which one the
+ * trainer actually read would then be unanswerable.
+ */
+const SPLIT_FILENAMES = { train: ['train'], val: ['val', 'valid'], test: ['test'] };
+
 export function loadDataset(dataDir = DEFAULT_DATA_DIR, { splits = DATASET_SPLITS } = {}) {
   const out = {};
-  for (const split of splits) out[split] = readSplit(join(dataDir, `${split}.jsonl`), split);
+  for (const split of splits) {
+    const candidates = (SPLIT_FILENAMES[split] ?? [split]).map((name) => join(dataDir, `${name}.jsonl`));
+    const present = candidates.filter((path) => existsSync(path));
+    if (present.length > 1) {
+      throw new Error(`${split}: ${present.join(' and ')} both exist; which one trained the model is unanswerable`);
+    }
+    out[split] = readSplit(present[0] ?? candidates[0], split);
+  }
   return out;
 }
 
@@ -159,7 +175,7 @@ export function loadDataset(dataDir = DEFAULT_DATA_DIR, { splits = DATASET_SPLIT
  * `code` and `instruction` are null when their fields cannot be safely extracted; callers can
  * still collect the row's other provenance issues rather than stopping at the first bad example.
  */
-export function extractPair(row, where = '<row>') {
+export function extractPair(row, where = '<row>', { requireSuffix = true } = {}) {
   const errors = [];
   const messages = row?.messages;
   let system = null;
@@ -179,7 +195,7 @@ export function extractPair(row, where = '<row>') {
     if (typeof system !== 'string' || !system.trim()) errors.push(issue('system_empty', `${where}: system content is empty`));
     if (typeof user !== 'string' || !user.trim()) {
       errors.push(issue('instruction_empty', `${where}: user instruction is empty`));
-    } else if (!user.endsWith(INSTRUCTION_SUFFIX)) {
+    } else if (requireSuffix && !user.endsWith(INSTRUCTION_SUFFIX)) {
       errors.push(issue('instruction_suffix', `${where}: user instruction does not end with the builder suffix`));
     } else {
       instruction = user.slice(0, -INSTRUCTION_SUFFIX.length).trim();
@@ -310,12 +326,40 @@ export function buildLicenseIndex({ manifestPath = DEFAULT_MANIFEST, rawDir = DE
   }
 }
 
+/** Origins that mean "this repository wrote it", as the game-logic builder already stamps. */
+const FIRST_PARTY_ORIGINS = new Set(['first-party-authored', 'first-party-authored-synthetic']);
+
+/**
+ * A first-party row proves its provenance differently, because there is nothing upstream to pin.
+ *
+ * Demanding an SPDX identifier and a 40-hex commit from a row we authored ourselves is not a
+ * strict check, it is an inapplicable one: there is no upstream repository, so the only way to
+ * satisfy it would be to invent an origin. The requirements invert — such a row must name its
+ * rights and must NOT claim a licence or a commit it does not have, because a fabricated
+ * provenance is worse than a missing one.
+ */
+function firstPartyProvenanceIssues(meta, where) {
+  const out = [];
+  if (typeof meta.rights !== 'string' || !meta.rights.trim()) out.push(issue('rights_missing', `${where}: a first-party row must state its rights`));
+  if (typeof meta.family !== 'string' || !meta.family.trim()) out.push(issue('family_missing', `${where}: meta.family is required`));
+  for (const claimed of ['spdx', 'sha', 'source']) {
+    if (meta[claimed] !== undefined) {
+      out.push(issue('false_provenance', `${where}: origin is ${meta.origin} but the row also carries meta.${claimed}; it cannot be both authored here and pinned upstream`));
+    }
+  }
+  if (meta.capturedFromStudio === true) {
+    out.push(issue('false_provenance', `${where}: claims capture from Studio while declaring a first-party authored origin`));
+  }
+  return out;
+}
+
 function provenanceIssues(row, where, license) {
   const out = [];
   const meta = row?.meta;
   if (!meta || typeof meta !== 'object' || Array.isArray(meta)) {
     return [issue('provenance_shape', `${where}: meta must be an object` )];
   }
+  if (FIRST_PARTY_ORIGINS.has(meta.origin)) return firstPartyProvenanceIssues(meta, where);
   if (typeof meta.source !== 'string' || !meta.source.trim()) out.push(issue('source_missing', `${where}: meta.source is required`));
   if (typeof meta.spdx !== 'string' || !meta.spdx.trim()) out.push(issue('spdx_missing', `${where}: meta.spdx is required`));
   else if (!TRAINING_OK_SPDX.has(meta.spdx)) out.push(issue('spdx_not_allowed', `${where}: ${meta.spdx} is not admitted for training`));
@@ -341,6 +385,44 @@ function provenanceIssues(row, where, license) {
   if (typeof meta.sha === 'string' && current.sha && meta.sha !== current.sha) {
     out.push(issue('pin_regression', `${where}: row pin ${meta.sha} differs from current manifest ${current.sha}`));
   }
+  return out;
+}
+
+/**
+ * What a well-formed tool-trajectory row must be, as against what a code row must be.
+ *
+ * The rules are the ones that can actually be broken here: a transcript that never calls a tool,
+ * a call whose arguments are not the JSON string every chat template expects, and a run that
+ * ends on neither a call nor an answer.
+ */
+function trajectoryShapeIssues(row, where) {
+  const out = [];
+  const messages = row?.messages;
+  if (!Array.isArray(messages) || messages.length < 2) {
+    return [issue('message_shape', `${where}: a trajectory needs at least a request and a call`)];
+  }
+  if (messages[0]?.role !== 'system' || typeof messages[0]?.content !== 'string' || !messages[0].content.trim()) {
+    out.push(issue('system_empty', `${where}: trajectory rows must open with a non-empty system turn`));
+  }
+  if (!messages.some((m) => m?.role === 'user' && typeof m?.content === 'string' && m.content.trim())) {
+    out.push(issue('instruction_empty', `${where}: no user request in the transcript`));
+  }
+  const calls = messages.flatMap((m) => (Array.isArray(m?.tool_calls) ? m.tool_calls : []));
+  if (!calls.length) out.push(issue('no_tool_call', `${where}: a trajectory row with no tool call teaches nothing about tools`));
+  for (const call of calls) {
+    const args = call?.function?.arguments;
+    if (typeof call?.function?.name !== 'string' || !call.function.name.trim()) {
+      out.push(issue('tool_call_shape', `${where}: a tool call has no name`));
+    }
+    if (typeof args !== 'string') {
+      out.push(issue('tool_call_shape', `${where}: tool call arguments must be a JSON string, got ${typeof args}`));
+    } else {
+      try { JSON.parse(args); } catch { out.push(issue('tool_call_shape', `${where}: tool call arguments are not valid JSON`)); }
+    }
+  }
+  const last = messages.at(-1);
+  const ends = last?.role === 'assistant' && (Array.isArray(last?.tool_calls) ? last.tool_calls.length > 0 : Boolean(String(last?.content ?? '').trim()));
+  if (!ends) out.push(issue('response_empty', `${where}: the transcript does not end on an assistant call or answer`));
   return out;
 }
 
@@ -416,7 +498,31 @@ export function auditRows(splitRows, {
       const line = entry?.line ?? i + 1;
       const where = `${split}:${line}`;
       const rowErrors = [];
-      const pair = extractPair(row, where);
+      // A TRAJECTORY IS NOT A MALFORMED CODE ROW. `extractPair` enforces exactly
+      // system,user,assistant with the builder's instruction suffix and a fenced Luau answer —
+      // the shape of a harvested completion row. A tool trajectory is deliberately none of those:
+      // its assistant turns carry `tool_calls` with empty content and the transcript is as long
+      // as the run. Judged by the code-row rules it reports `message_shape` and `response_empty`
+      // on every row, and the resulting NOT_READY verdict would be a fact about the RULER, not
+      // about the data. Each kind is now measured by the rules that apply to it.
+      // THE SUFFIX IS A HARVEST ARTEFACT, AND REQUIRING IT EVERYWHERE PROPAGATES IT.
+      //
+      // `INSTRUCTION_SUFFIX` exists because a harvested row's instruction was SYNTHESISED around
+      // somebody else's code; the suffix is the marker of where the invented part begins. A
+      // first-party prompt is not synthesised — "Write a standalone Luau module returning
+      // purchase(balance, price, owned)..." IS the instruction, and appending "Write the Luau
+      // implementation." to it adds nothing but a constant.
+      //
+      // Not a neutral constant, either. The apple-v3 probe against the served adapter answered a
+      // Luau request with an empty function body followed by the words "Write the corre" — it had
+      // learned to reproduce the scaffolding that ends every row of its training set rather than
+      // to write Luau. Requiring the suffix on first-party rows would rebuild the thing that was
+      // observed doing harm. So it is required of harvested rows, whose builder contracts to
+      // emit it, and not of rows this repository authored.
+      const firstParty = FIRST_PARTY_ORIGINS.has(row?.meta?.origin);
+      const pair = isTrajectory(row)
+        ? { instruction: null, code: null, errors: trajectoryShapeIssues(row, where) }
+        : extractPair(row, where, { requireSuffix: !firstParty });
       rowErrors.push(...pair.errors);
       rowErrors.push(...provenanceIssues(row, where, licenseIndex));
 
