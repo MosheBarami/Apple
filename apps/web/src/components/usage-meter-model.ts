@@ -38,7 +38,7 @@
 //    plenty". Both are claims this file cannot support. credits-model.ts set this precedent for
 //    the attribution ledger — an empty ledger is never drawn as a clearance — and it is the same
 //    mistake in a different subsystem.
-import { PLAN_LIMITS, PLAN_COPY, CREDITS_PER_BUILD, PRODUCT_MODE_INFO, isPlanId, type QuotaState } from '@golem/shared';
+import { PLAN_LIMITS, PLAN_COPY, CREDITS_PER_BUILD, PRODUCT_MODE_INFO, SPECIALIST_TO_PRODUCT_MODE, isPlanId, type QuotaState } from '@golem/shared';
 
 export type MeterTone = 'good' | 'warn' | 'bad' | 'unknown' | 'pending';
 
@@ -193,13 +193,13 @@ export function meterView(
     // the user does next is blocked.
     tone = 'warn';
     headline = period === 'month' ? "This month's allowance is used up" : "Today's allowance is used up";
-    detail = `Running on ${formatNumber(credits)} purchased credit${credits === 1 ? '' : 's'}, which do not expire.`;
+    detail = `Running on ${formatNumber(credits)} extra credit${credits === 1 ? '' : 's'}, which do not expire.`;
   } else {
     tone = 'bad';
     headline = 'No Credits left';
     detail = period === 'month'
-      ? "This month's allowance is spent and there are no purchased credits. The daily limit is not what stopped this."
-      : 'The daily allowance is spent and there are no purchased credits.';
+      ? "This month's allowance is spent and there are no extra credits. The daily limit is not what stopped this."
+      : 'The daily allowance is spent and there are no extra credits.';
     nextAction = period === 'month'
       ? 'Add credits, or upgrade — the monthly limit does not lift until next month.'
       : 'Wait for the reset, or add credits.';
@@ -288,8 +288,17 @@ export interface SpendSlice {
  * named here, and dropping it would stop the parts summing to the whole silently, in the direction
  * that flatters us.
  */
+function ledgerMode(kind: string): string | undefined {
+  const raw = /^(?:chat|usage)_(.+)$/.exec(kind)?.[1];
+  // Old settlements store internal specialist names. Normalize to the existing public
+  // activity, not Apple/MAX: those historical rows do not prove which product model ran.
+  return raw && Object.prototype.hasOwnProperty.call(SPECIALIST_TO_PRODUCT_MODE, raw)
+    ? SPECIALIST_TO_PRODUCT_MODE[raw as keyof typeof SPECIALIST_TO_PRODUCT_MODE]
+    : raw;
+}
+
 export function usageKindLabel(kind: string): string {
-  const mode = /^(?:chat|usage)_(.+)$/.exec(kind)?.[1];
+  const mode = ledgerMode(kind);
   if (mode === 'plan' || mode === 'agent' || mode === 'super') return PRODUCT_MODE_INFO[mode].name;
   if (kind.startsWith('api_')) return 'API';
   if (kind === 'docs_search') return 'Search';
@@ -300,7 +309,7 @@ export function usageKindLabel(kind: string): string {
 
 /** The bucket a kind falls in. Two instalments of one run share it; everything else is itself. */
 function bucketKey(kind: string): string {
-  const mode = /^(?:chat|usage)_(.+)$/.exec(kind)?.[1];
+  const mode = ledgerMode(kind);
   if (mode) return `mode:${mode}`;
   if (kind.startsWith('api_')) return 'api';
   return `kind:${kind}`;

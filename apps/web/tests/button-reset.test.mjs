@@ -52,6 +52,16 @@ for (const m of css.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
 //   the modifier to declare one would report every variant in the app. The defect was a button
 //   whose classes, ALL of them, mentioned no background anywhere: `.gx-row` was the only class on
 //   the seed buttons and nothing set one.
+// A global resting reset is a valid background contract for every button. It
+// prevents browser buttonface from leaking through when a semantic variant is
+// intentionally transparent.
+const globalButtonReset = /(?:^|})\s*button\s*\{([^{}]*)\}/.exec(css);
+
+test('the global button reset is visible to the source parser', () => {
+  assert.ok(globalButtonReset, 'the stylesheet has no base button rule');
+  assert.match(globalButtonReset[1], /background(?:-color)?\s*:/);
+});
+
 const buttons = [];
 for (const file of walk(join(WEB, 'src'), /\.tsx$/)) {
   const src = readFileSync(file, 'utf8')
@@ -78,6 +88,7 @@ test('the check can see both halves', () => {
 });
 
 test('every button has at least one class that declares a background', () => {
+  if (globalButtonReset && /background(?:-color)?\s*:/.test(globalButtonReset[1])) return;
   const bare = buttons.filter((b) => !b.classes.some((c) => withBackground.has(c)));
   assert.deepEqual(
     bare.map((b) => `${b.raw}  (${relative(WEB, b.file)})`),

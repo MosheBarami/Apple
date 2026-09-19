@@ -290,7 +290,7 @@ function opsReachableFrom(source, seen = new Set()) {
   return ops;
 }
 
-test('not one exposed tool can reach a Studio op that writes', () => {
+test('every exposed tool is either a read-only Studio reader or an explicitly reviewed offline static reader', () => {
   assert.ok(TOOL_BOUNDS.length >= 30, 'the tools.ts scrape broke');
   assert.ok(HELPER_BODIES.has('dumpScripts'), 'the helper scrape broke — it must find dumpScripts');
 
@@ -298,13 +298,31 @@ test('not one exposed tool can reach a Studio op that writes', () => {
     if (!M.MCP_TOOL_NAMES.includes(name)) continue;
     const end = i + 1 < TOOL_BOUNDS.length ? TOOL_BOUNDS[i + 1][1] : TOOLS_SRC.length;
     const ops = [...opsReachableFrom(TOOLS_SRC.slice(start, end))];
-    assert.ok(ops.length > 0, `${name} is exposed but reaches no Studio op — is it still the tool this list thinks it is?`);
+    if (ops.length === 0) {
+      assert.ok(M.MCP_OFFLINE_STATIC_TOOLS.includes(name), `${name} is exposed without a Studio op but was never reviewed as offline-static`);
+      assert.equal(T.TOOLS[name].studio, false, `${name} is classified offline-static but the registry says it needs Studio`);
+      continue;
+    }
+    assert.equal(M.MCP_OFFLINE_STATIC_TOOLS.includes(name), false, `${name} is classified offline-static but can issue Studio ops`);
     for (const op of ops) {
       assert.ok(
         M.MCP_READ_ONLY_STUDIO_OPS.includes(op),
         `${name} is on the MCP surface but can issue the op '${op}', which is not on the read-only list`,
       );
     }
+  }
+});
+
+test('the three bounded offline guidance tools are explicitly on MCP and remain non-Studio', () => {
+  assert.deepEqual([...M.MCP_OFFLINE_STATIC_TOOLS], [
+    'search_creation_skills',
+    'read_creation_skill',
+    'get_genre_references',
+  ]);
+  for (const name of M.MCP_OFFLINE_STATIC_TOOLS) {
+    assert.ok(M.MCP_TOOL_NAMES.includes(name), `${name} was reviewed as safe but is not published`);
+    assert.equal(T.TOOLS[name].studio, false, `${name} unexpectedly became Studio-backed`);
+    assert.equal(T.TOOLS[name].studioOps, undefined, `${name} unexpectedly gained Studio operations`);
   }
 });
 
@@ -476,6 +494,36 @@ test('tools/call reaches the granted project and returns what the session return
   assert.equal(res.json.result.content[0].type, 'text');
   assert.match(res.json.result.content[0].text, /Workspace/);
   assert.deepEqual(sessionsAddressed(b), [PROJECT_ID], 'the call addressed a session other than the granted project');
+});
+
+test('offline guidance MCP calls keep the project authorization anchor and strip project_id before the registry tool', async () => {
+  const seen = [];
+  const b = makeEnv({
+    session: async ({ path, body }) => {
+      if (path === '/mcp-tool') {
+        seen.push(body);
+        return { ok: true, summary: `✓ ${body.tool}`, resultForLlm: '{"ok":true}' };
+      }
+      return { ok: true };
+    },
+  });
+  const key = await seedKey(b);
+  const calls = [
+    ['search_creation_skills', { query: 'responsive HUD' }],
+    ['read_creation_skill', { id: 'ui-responsive-hud-anchors' }],
+    ['get_genre_references', { genre: 'horror', aspect: 'lighting' }],
+  ];
+  for (const [name, args] of calls) {
+    const res = await rpc(
+      { jsonrpc: '2.0', id: name, method: 'tools/call', params: { name, arguments: { project_id: PROJECT_ID, ...args }, _meta: META() } },
+      { env: b.env, key },
+    );
+    assert.equal(res.status, 200, `${name} was not served`);
+    assert.equal(res.json.result.isError, false, `${name} returned a tool error`);
+  }
+  assert.deepEqual(seen.map((call) => call.tool), calls.map(([name]) => name));
+  for (const call of seen) assert.equal(Object.hasOwn(call.args, 'project_id'), false, 'project_id leaked into registry tool arguments');
+  assert.deepEqual(sessionsAddressed(b), [PROJECT_ID, PROJECT_ID, PROJECT_ID]);
 });
 
 test('a tool that failed comes back as isError, never as a successful empty result', async () => {

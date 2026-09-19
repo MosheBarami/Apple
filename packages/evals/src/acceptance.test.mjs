@@ -38,8 +38,8 @@ for (const s of SCENARIOS) {
     // A skip is still a test: its stated reason is asserted, so the day the reason stops being
     // true the suite says so instead of carrying a stale excuse forever.
     test(`ACCEPTANCE ${s.n} · SKIPPED · ${s.name}`, async () => {
-      if (s.guardSkipReason) await s.guardSkipReason();
-      assert.ok(true);
+      assert.equal(typeof s.guardSkipReason, 'function', 'a skipped scenario must verify its stated reason');
+      await s.guardSkipReason();
     });
     continue;
   }

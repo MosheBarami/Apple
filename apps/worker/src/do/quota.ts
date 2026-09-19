@@ -4,7 +4,16 @@ import { DurableObject } from 'cloudflare:workers';
 import type { Env } from '../env';
 import type { QuotaState } from '@golem/shared';
 import { isPlanId, type PlanId } from '../pricing';
-import { NO_BILLING_DETAILS, readBillingDetails, type BillingDetails, type Subscription } from '../billing';
+import { entitlementFor, NO_BILLING_DETAILS, readBillingDetails, type BillingDetails, type Subscription } from '../billing';
+import {
+  BillingAuthorityError,
+  billingSourceEventId,
+  isBillingMutation,
+  localQuotaRequestForBillingMutation,
+  resolveBillingAuthorityMutation,
+  sequenceBillingMutation,
+  type BillingMutation,
+} from '../billing-origin-authority';
 import { dayKey, monthKey, monthTotalComplete, prevMonthKey, quotaState, splitSpend } from '../quota-math';
 import { RETENTION, days } from '../retention';
 
@@ -18,6 +27,12 @@ export const LEDGER_RETENTION_DAYS = RETENTION.quotaLedgerDays;
 /** Rows one `/ledger` read may return, and the ceiling on what a caller may ask for. */
 const LEDGER_DEFAULT_LIMIT = 200;
 const LEDGER_MAX_LIMIT = 500;
+
+const BILLING_AUTHORITY_SEQUENCE_KEY = 'billingAuthoritySequence';
+const BILLING_AUTHORITY_USER_KEY = 'billingAuthorityUserId';
+const BILLING_AUTHORITY_SUBSCRIPTION_SEQUENCE_KEY = 'billingAuthoritySubscriptionSequence';
+const BILLING_REPLICA_USER_KEY = 'billingReplicaUserId';
+const BILLING_REPLICA_SUBSCRIPTION_SEQUENCE_KEY = 'billingReplicaSubscriptionSequence';
 
 /** One line of this account's billing history, as the product reads it back. */
 interface BillingChange {
@@ -39,6 +54,8 @@ interface BillingChange {
 
 export class QuotaDO extends DurableObject<Env> {
   private sql = this.ctx.storage.sql;
+  /** Serialises billing authority/replica work across external awaits inside one per-user DO. */
+  private billingSerialTail: Promise<void> = Promise.resolve();
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -51,7 +68,13 @@ export class QuotaDO extends DurableObject<Env> {
         id integer primary key autoincrement, at integer not null, kind text not null,
         from_plan text, to_plan text, status text, event_id text);
         create table if not exists applied_events(event_id text primary key, at integer not null);
-        create table if not exists month_totals(month text primary key, credits integer not null);`);
+        create table if not exists month_totals(month text primary key, credits integer not null);
+        create table if not exists billing_authority_replays(
+          source_event_id text primary key,
+          authority_sequence integer not null,
+          mutation_json text not null,
+          at integer not null);
+        create index if not exists billing_authority_replays_at on billing_authority_replays(at);`);
       // billing_events gained a column after rows already existed in every deployed DO, and
       // `create table if not exists` does not add one to a table that is already there. SQLite has
       // no `add column if not exists`, so the alter is attempted on every start and throws
@@ -98,6 +121,188 @@ export class QuotaDO extends DurableObject<Env> {
    */
   private async billingDetails(): Promise<BillingDetails> {
     return (await this.ctx.storage.get<BillingDetails>('billingDetails')) ?? NO_BILLING_DETAILS;
+  }
+
+  private serialBilling<T>(operation: () => Promise<T>): Promise<T> {
+    const result = this.billingSerialTail.then(operation, operation);
+    this.billingSerialTail = result.then(() => undefined, () => undefined);
+    return result;
+  }
+
+  private billingFailure(error: unknown): Response {
+    if (error instanceof BillingAuthorityError) {
+      return Response.json({ ok: false, error: error.code }, { status: error.status });
+    }
+    return Response.json({ ok: false, error: 'billing_authority_failed' }, { status: 503 });
+  }
+
+  private async pinBillingUser(key: string, userId: string): Promise<void> {
+    const pinned = await this.ctx.storage.get<string>(key);
+    if (pinned !== undefined && pinned !== userId) {
+      throw new BillingAuthorityError('billing_user_mismatch', 409, 'Billing mutation belongs to a different account');
+    }
+    if (pinned === undefined) await this.ctx.storage.put(key, userId);
+  }
+
+  private async nextBillingAuthoritySequence(): Promise<number> {
+    const raw = await this.ctx.storage.get<number>(BILLING_AUTHORITY_SEQUENCE_KEY);
+    const current = raw === undefined ? 0 : raw;
+    if (!Number.isSafeInteger(current) || current < 0 || current >= Number.MAX_SAFE_INTEGER) {
+      throw new BillingAuthorityError('billing_authority_sequence_invalid', 503, 'Billing authority sequence is invalid');
+    }
+    const next = current + 1;
+    await this.ctx.storage.put(BILLING_AUTHORITY_SEQUENCE_KEY, next);
+    return next;
+  }
+
+  private authorityReplay(sourceEventId: string): BillingMutation | null {
+    const rows = this.sql
+      .exec(
+        'select authority_sequence, mutation_json from billing_authority_replays where source_event_id = ?',
+        sourceEventId,
+      )
+      .toArray() as Record<string, unknown>[];
+    if (rows.length === 0) return null;
+    const row = rows[0]!;
+    let mutation: unknown;
+    try {
+      mutation = JSON.parse(String(row['mutation_json']));
+    } catch {
+      throw new BillingAuthorityError('billing_authority_replay_invalid', 503, 'Stored billing replay is invalid');
+    }
+    if (
+      !isBillingMutation(mutation)
+      || mutation.sourceEventId !== sourceEventId
+      || mutation.authoritySequence !== Number(row['authority_sequence'])
+    ) {
+      throw new BillingAuthorityError('billing_authority_replay_invalid', 503, 'Stored billing replay is invalid');
+    }
+    return mutation;
+  }
+
+  private storeAuthorityReplay(mutation: BillingMutation): void {
+    this.sql.exec(
+      'insert into billing_authority_replays(source_event_id, authority_sequence, mutation_json, at) values(?,?,?,?)',
+      mutation.sourceEventId,
+      mutation.authoritySequence,
+      JSON.stringify(mutation),
+      Date.now(),
+    );
+    this.sql.exec(
+      'delete from billing_authority_replays where at < ?',
+      Date.now() - days(RETENTION.quotaLedgerDays),
+    );
+  }
+
+  private async applyLocalBillingMutation(mutation: BillingMutation): Promise<{ replayed: boolean }> {
+    const request = localQuotaRequestForBillingMutation(mutation);
+    let response: Response;
+    try {
+      response = await this.fetch(new Request(request.url, request.init));
+    } catch {
+      throw new BillingAuthorityError('billing_local_apply_failed', 503, 'Billing mutation was not applied locally');
+    }
+    if (!response.ok) {
+      throw new BillingAuthorityError('billing_local_apply_failed', 503, 'Billing mutation was not applied locally');
+    }
+    const body = await response.json().catch(() => null) as Record<string, unknown> | null;
+    if (!body || body['ok'] !== true) {
+      throw new BillingAuthorityError('billing_local_apply_failed', 503, 'Billing mutation was not applied locally');
+    }
+    return { replayed: body['replayed'] === true };
+  }
+
+  /**
+   * Sequence fences only replaceable subscription state. Credits are additive facts: a credit
+   * mutation arriving after a higher subscription sequence still has to be applied exactly once.
+   */
+  private async applySequencedBillingMutation(
+    mutation: BillingMutation,
+    role: 'authority' | 'replica',
+  ): Promise<{ replayed: boolean; stale: boolean; authoritySequence: number }> {
+    const userKey = role === 'authority' ? BILLING_AUTHORITY_USER_KEY : BILLING_REPLICA_USER_KEY;
+    await this.pinBillingUser(userKey, mutation.userId);
+
+    if (mutation.kind === 'subscription') {
+      const sequenceKey = role === 'authority'
+        ? BILLING_AUTHORITY_SUBSCRIPTION_SEQUENCE_KEY
+        : BILLING_REPLICA_SUBSCRIPTION_SEQUENCE_KEY;
+      const raw = await this.ctx.storage.get<number>(sequenceKey);
+      const last = raw === undefined ? 0 : raw;
+      if (!Number.isSafeInteger(last) || last < 0) {
+        throw new BillingAuthorityError('billing_replica_sequence_invalid', 503, 'Stored billing sequence is invalid');
+      }
+      if (mutation.authoritySequence < last) {
+        return { replayed: true, stale: true, authoritySequence: last };
+      }
+      if (mutation.authoritySequence === last) {
+        return { replayed: true, stale: false, authoritySequence: last };
+      }
+
+      const local = await this.applyLocalBillingMutation(mutation);
+      await this.ctx.storage.put(sequenceKey, mutation.authoritySequence);
+      return { replayed: local.replayed, stale: false, authoritySequence: mutation.authoritySequence };
+    }
+
+    const local = await this.applyLocalBillingMutation(mutation);
+    return { replayed: local.replayed, stale: false, authoritySequence: mutation.authoritySequence };
+  }
+
+  private async handleBillingAuthority(event: unknown): Promise<Response> {
+    const sourceEventId = billingSourceEventId(event);
+    if (sourceEventId) {
+      const replay = this.authorityReplay(sourceEventId);
+      if (replay) {
+        await this.applySequencedBillingMutation(replay, 'authority');
+        return Response.json({ ok: true, replayed: true, mutation: replay });
+      }
+    }
+
+    const resolved = await resolveBillingAuthorityMutation(event, this.env);
+    if (!resolved) return Response.json({ ok: true, replayed: false, mutation: null });
+
+    if (resolved.kind === 'subscription') {
+      const stored = await this.subscription();
+      const storedId = stored?.subscriptionId ?? null;
+      const resolvedId = resolved.subscription.subscriptionId;
+      if (stored && storedId && resolvedId && storedId !== resolvedId) {
+        const storedEntitlement = entitlementFor(stored, Math.floor(Date.now() / 1000));
+        // A different subscription may become current only after the one we already know has
+        // stopped entitling and the replacement actually entitles. This permits an ordinary
+        // re-subscription after cancellation/expiry, while a late event for an older subscription
+        // cannot demote or replace the newer active record merely because that old subscription's
+        // own Stripe GET is current and correctly says it is canceled.
+        if (storedEntitlement !== 'free' || resolved.plan === 'free') {
+          throw new BillingAuthorityError(
+            'billing_subscription_superseded',
+            409,
+            'Billing event belongs to a subscription that is not current for this account',
+          );
+        }
+      }
+    }
+
+    await this.pinBillingUser(BILLING_AUTHORITY_USER_KEY, resolved.userId);
+    const authoritySequence = await this.nextBillingAuthoritySequence();
+    const mutation = sequenceBillingMutation(resolved, authoritySequence);
+    this.storeAuthorityReplay(mutation);
+
+    // The replay record exists before local apply. A retry after partial failure reuses this exact
+    // mutation and sequence instead of resolving a different Stripe state.
+    await this.applySequencedBillingMutation(mutation, 'authority');
+    return Response.json({ ok: true, replayed: false, mutation });
+  }
+
+  private async handleBillingReplica(value: unknown): Promise<Response> {
+    const body = typeof value === 'object' && value !== null && !Array.isArray(value)
+      ? value as Record<string, unknown>
+      : null;
+    const mutation = body?.['mutation'];
+    if (!isBillingMutation(mutation)) {
+      return Response.json({ ok: false, error: 'billing_mutation_invalid' }, { status: 400 });
+    }
+    const applied = await this.applySequencedBillingMutation(mutation, 'replica');
+    return Response.json({ ok: true, ...applied });
   }
 
   /**
@@ -158,6 +363,42 @@ export class QuotaDO extends DurableObject<Env> {
     const url = new URL(req.url);
     if (url.pathname === '/state') {
       return Response.json(await this.state());
+    }
+    if (url.pathname === '/billing-authority' && req.method === 'POST') {
+      let body: unknown;
+      try {
+        body = await req.json();
+      } catch {
+        return Response.json({ ok: false, error: 'billing_authority_invalid_json' }, { status: 400 });
+      }
+      const record = typeof body === 'object' && body !== null && !Array.isArray(body)
+        ? body as Record<string, unknown>
+        : null;
+      if (!record || !Object.hasOwn(record, 'event')) {
+        return Response.json({ ok: false, error: 'billing_authority_event_missing' }, { status: 400 });
+      }
+      return this.serialBilling(async () => {
+        try {
+          return await this.handleBillingAuthority(record['event']);
+        } catch (error) {
+          return this.billingFailure(error);
+        }
+      });
+    }
+    if (url.pathname === '/billing-replica' && req.method === 'POST') {
+      let body: unknown;
+      try {
+        body = await req.json();
+      } catch {
+        return Response.json({ ok: false, error: 'billing_replica_invalid_json' }, { status: 400 });
+      }
+      return this.serialBilling(async () => {
+        try {
+          return await this.handleBillingReplica(body);
+        } catch (error) {
+          return this.billingFailure(error);
+        }
+      });
     }
     if (url.pathname === '/spend' && req.method === 'POST') {
       const { credits, kind } = (await req.json()) as { credits: number; kind: string };

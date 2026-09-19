@@ -1,6 +1,15 @@
 // Minimal PostgREST client. Always called with the USER's verified JWT so RLS applies.
 import type { Env, AuthedUser } from './env';
-import { classifyGrant, decideAccess, resolveMembership, type AccessDecision, type CollabAction, type Membership, type ShareResource } from './collab';
+import {
+  classifyGrant,
+  decideAccess,
+  resolveMembership,
+  type AccessDecision,
+  type CollabAction,
+  type Membership,
+  type MembershipAccessStateRow,
+  type ShareResource,
+} from './collab';
 import { kvGrantsFor } from './collab-links';
 // One answer to "who is @maya", shared with the roster. See membership.ts.
 import { handleFor } from './membership';
@@ -106,7 +115,10 @@ export async function getProjectAccess(
   resource?: ShareResource,
 ): Promise<{ project: ProjectRow; membership: Membership } | { project: null; decision: AccessDecision }> {
   const id = encodeURIComponent(projectId);
-  const { ok, data } = await supaRest<ProjectRow[]>(env, user.jwt, `/projects?id=eq.${id}&select=${PROJECT_SELECT}&limit=1`);
+  const [{ ok, data }, accessState] = await Promise.all([
+    supaRest<ProjectRow[]>(env, user.jwt, `/projects?id=eq.${id}&select=${PROJECT_SELECT}&limit=1`),
+    readMyMembershipAccessState(env, user, projectId),
+  ]);
   const project = ok && data && data[0] ? data[0] : null;
   if (!project) {
     // Indistinguishable from "not shared with you" on purpose — see decideAccess.
@@ -121,11 +133,34 @@ export async function getProjectAccess(
   // Postgres. `resolveMembership` takes rows and does not care which store they came from, so
   // neither does anything downstream of it.
   const grants = [...(await listMyGrants(env, user, projectId)), ...(await kvGrantsFor(env, projectId, user.userId))];
-  const decision = decideAccess({ userId: user.userId, ownerId: project.owner_id, grants, nowMs, action, resource });
+  const decision = decideAccess({ userId: user.userId, ownerId: project.owner_id, grants, accessState, nowMs, action, resource });
   if (!decision.allowed) return { project: null, decision };
-  const membership = resolveMembership({ userId: user.userId, ownerId: project.owner_id, grants, nowMs, resource });
+  const membership = resolveMembership({ userId: user.userId, ownerId: project.owner_id, grants, accessState, nowMs, resource });
   if (membership === null) return { project: null, decision: { ...decision, allowed: false, status: 404, reason: 'not_a_member' } };
   return { project, membership };
+}
+
+/**
+ * Latest durable membership lifecycle state for this caller.
+ *
+ * No row is a normal pre-event state and is represented by `undefined`. A FAILED query is a
+ * present malformed row so `collab.ts` closes the door; treating an outage as no overlay would let
+ * the exact outage that hid a revocation restore the underlying grant.
+ */
+async function readMyMembershipAccessState(
+  env: Env,
+  user: AuthedUser,
+  projectId: string,
+): Promise<MembershipAccessStateRow | undefined> {
+  const { ok, data } = await supaRest<MembershipAccessStateRow[]>(
+    env,
+    user.jwt,
+    `/membership_access_state?project_id=eq.${encodeURIComponent(projectId)}&user_id=eq.${encodeURIComponent(user.userId)}&select=user_id,version,role,access,expires_at&limit=1`,
+  );
+  if (!ok || !Array.isArray(data)) {
+    return { user_id: user.userId, version: null, role: null, access: 'unreadable' };
+  }
+  return data[0];
 }
 
 export interface MemberRow {

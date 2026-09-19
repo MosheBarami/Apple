@@ -62,20 +62,22 @@ export function ConnectStudio({ status, onPair }: ConnectStudioProps) {
       <p className="gx-connect__lede">
         {dropped
           ? 'Apple can’t reach your place right now. Open the Apple plugin in Studio, or pair again.'
-          : 'Apple makes its changes inside Studio. Three steps, once.'}
+          : STUDIO_PLUGIN_STORE_LIVE
+            ? 'Apple makes its changes inside Studio. Three steps, once.'
+            : 'Public installation is unavailable. Already have the plugin? Open it in Studio and pair below.'}
       </p>
 
       <ol className="gx-connect__steps">
         {!dropped && (
           <li className="gx-connect__step">
-            <span className="gx-connect__what">Install Apple for Studio</span>
+            <span className="gx-connect__what">{STUDIO_PLUGIN_STORE_LIVE ? 'Install Apple for Studio' : 'Studio plugin unavailable'}</span>
             <a
               className="gx-btn gx-btn--outline"
               href={STUDIO_PLUGIN_INSTALL_HREF}
               target={STUDIO_PLUGIN_STORE_LIVE ? '_blank' : undefined}
               rel={STUDIO_PLUGIN_STORE_LIVE ? 'noopener noreferrer' : undefined}
             >
-              Install
+              {STUDIO_PLUGIN_STORE_LIVE ? 'Install' : 'See status'}
               {STUDIO_PLUGIN_STORE_LIVE && <Icon d={PATH.arrowUpRight} size={13} />}
             </a>
           </li>

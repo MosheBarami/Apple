@@ -15,8 +15,10 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const SESSION = readFileSync(join(HERE, '..', 'src', 'do', 'session.ts'), 'utf8');
-const PLUGIN = readFileSync(join(HERE, '..', '..', 'plugin', 'src', 'init.server.luau'), 'utf8');
+const SESSION = readFileSync(join(HERE, '..', 'src', 'do', 'session.ts'), 'utf8')
+  .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const PLUGIN = readFileSync(join(HERE, '..', '..', 'plugin', 'src', 'init.server.luau'), 'utf8')
+  .replace(/--\[\[[\s\S]*?\]\]/g, '').replace(/^\s*--.*$/gm, '');
 
 /** Read a `const NAME = 12_345;` numeric constant out of the source. */
 function constant(name) {
@@ -27,8 +29,20 @@ function constant(name) {
 
 test('the poll stops holding requests open once a project is parked', () => {
   assert.match(SESSION, /const parked = !running && idleFor > POLL_IDLE_AFTER_MS;/, 'parked must be derived from real idleness, not assumed');
-  // The hold is skipped when parked. Without this the DO stays resident through every idle minute.
-  assert.match(SESSION, /if \(!parked && !this\.opQueue\.length\)/, 'a parked poll must not hold the request open');
+  // The hold is skipped when parked OR after the access fence has stopped a run. Without the
+  // second guard, a revoked run can keep a long poll open while its queue is being purged.
+  const matches = [...SESSION.matchAll(/if \(([^\n]+)\)\s*\{\s*await new Promise<void>\(\(resolve\)/g)];
+  assert.equal(matches.length, 1, 'identify the actual long-poll hold branch');
+  const condition = matches[0][1].replace('this.opQueue.length', 'opCount');
+  const assertPolicy = (expression) => {
+    const holds = new Function('accessStopped', 'parked', 'opCount', `return Boolean(${expression});`);
+    for (const accessStopped of [false, true]) for (const parked of [false, true]) for (const opCount of [0, 1]) {
+      assert.equal(holds(accessStopped, parked, opCount), !accessStopped && !parked && opCount === 0);
+    }
+  };
+  assertPolicy(condition);
+  assert.equal(condition.split('!accessStopped').length - 1, 1);
+  assert.throws(() => assertPolicy(condition.replace('!accessStopped', 'true')));
 });
 
 test('idle pacing is inside what the deployed plugin will actually honour', () => {
@@ -69,7 +83,7 @@ test('holding is preserved exactly where it earns its cost', () => {
 test('activity un-parks the connection', () => {
   // If `lastActivity` is never updated the project looks permanently idle and every op pays the
   // idle latency, which would make this change a regression rather than a saving.
-  assert.match(SESSION, /this\.opQueue\.push\(op\);\s*\n[^\n]*\n[^\n]*\n\s*this\.lastActivity = Date\.now\(\);/, 'queueing an op is activity');
+  assert.match(SESSION, /this\.opQueue\.push\(op\);\s*this\.lastActivity = Date\.now\(\);/, 'queueing an op is activity');
   assert.match(SESSION, /agent\.lastStepAt = Date\.now\(\);\s*\n\s*this\.lastActivity = agent\.lastStepAt;/, 'a run step is activity');
 });
 

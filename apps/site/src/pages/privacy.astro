@@ -18,8 +18,9 @@ import LegalLayout from '../layouts/LegalLayout.astro';
     <p>
       <strong>The short version:</strong> we store your account email, your projects, your chat
       history and your checkpoints — because the product cannot work without them. We never sell
-      your data, we never use your project content to train AI models, you can download everything
-      we hold about you from your account settings, and you can delete it from the same page.
+      your data and never use your project content to train AI models. Settings provides data
+      export and deletion tools, with exclusions and separate downloads explained below. Deleting
+      account data does not automatically remove your sign-in identity, usage ledger or support messages.
     </p>
   </div>
 
@@ -28,7 +29,7 @@ import LegalLayout from '../layouts/LegalLayout.astro';
     <li><strong>Account data.</strong> Your email address and a hashed password, used to sign you in and to contact you about your account. That's the entire signup form.</li>
     <li><strong>Projects.</strong> Project names, descriptions, and metadata about the Roblox place you connect (place name and id, as reported by the Studio plugin).</li>
     <li><strong>Chat history.</strong> The messages you exchange with Apple, including attachments you add, and the record of tool actions Apple took (which scripts it edited, which instances it created). This is what lets a project remember its own past.</li>
-    <li><strong>Checkpoints.</strong> Compressed snapshots of the parts of your place Apple works on, so you can roll back changes. Checkpoints exist for your benefit and are only readable by you.</li>
+    <li><strong>Checkpoints.</strong> Compressed snapshots of the parts of your place Apple works on, so you can roll back changes. Apple processes them to provide rollback; authorized operators can access production systems for debugging under access controls.</li>
     <li><strong>Usage data.</strong> A ledger of your Credits usage (which mode, when, how many), used to enforce daily quotas fairly and to keep the free tier viable. We also keep coarse, aggregated counters (e.g. total requests per day service-wide) that contain no content.</li>
     <li><strong>A request log.</strong> Which API route was called, when, how long it took and whether it failed — so a broken feature can be told from a slow one. Routes are recorded as routes, never as the raw path, so a project id is never in the log. Each entry carries your account id for 30 days unless you switch that off in Settings → Privacy, in which case the request is still counted with nobody's name on it.</li>
     <li><strong>Billing identifiers.</strong> If you subscribe or buy Credits, Stripe handles the payment and we keep the subscription state and invoice references it sends back. We never see or store your card.</li>
@@ -77,7 +78,9 @@ import LegalLayout from '../layouts/LegalLayout.astro';
     <li><strong>Notifications</strong> — 30 days once read, 90 days if never read.</li>
     <li><strong>Automation run history</strong> — 90 days, so "what did this cost me last month" is still answerable.</li>
     <li><strong>Your Credits ledger</strong> — 35 days of daily detail, plus monthly totals.</li>
-    <li><strong>Generated images and sound</strong> — one hour in cache; what you keep, you keep in your place.</li>
+    <li><strong>New generated images</strong> — saved privately with the project until deletion. Existing expired images cannot be recovered.</li>
+    <li><strong>Temporary image previews and generated sound</strong> — one hour in cache. A running preview can remain cached for up to an hour after deletion, but deleted-project images cannot be opened through Apple.</li>
+    <li><strong>Deleted-image protection</strong> — a deleted project identifier, without images or account details, remains to prevent late-running generation from recreating erased images.</li>
     <li><strong>Deleted workspace files</strong> — 30 days in the trash, recoverable until then.</li>
   </ul>
   <p>
@@ -87,11 +90,11 @@ import LegalLayout from '../layouts/LegalLayout.astro';
 
   <h2>Taking your data with you</h2>
   <p>
-    Settings → Privacy → <strong>Download my data</strong> gives you one file with everything we
-    hold about you in our database: your profile, your projects, every message, your checkpoints,
-    what you have spent, and the API keys you have issued. It also names the things it does not
-    contain and where to get those instead, so the file is honest about being one part of the
-    answer rather than quietly incomplete.
+    Settings → Privacy → <strong>Download my data</strong> exports available account database
+    records and API-key metadata, not secret keys. It is not a complete archive of every store.
+    The file reports unreadable, failed or capped tables and lists separate routes for project
+    transcripts, checkpoints, memory, workspace files, images and usage. Review those omissions
+    before deleting anything.
   </p>
 
   <h2>Deleting your data</h2>

@@ -18,7 +18,15 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { diffSchema, judgeApply, parseMigrationName, planMigrations, schemaFromSql } from '../scripts/lib/migration-rules.mjs';
-import { adoptMigrations, applyMigrations, sha256, snapshotSchema } from '../scripts/lib/migration-runner.mjs';
+import {
+  LEDGER_DDL,
+  LEDGER_TABLE,
+  adoptMigrations,
+  applyMigrations,
+  readLedger,
+  sha256,
+  snapshotSchema,
+} from '../scripts/lib/migration-runner.mjs';
 
 const execFile = promisify(execFileCb);
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -39,7 +47,7 @@ function fakeDb({ failOn = null, ledger = [], columns = '', rls = '' } = {}) {
     if (sql.includes('from public.schema_migrations')) {
       return [...rows.values()].map((r) => `${r.name}|${r.sha256}|2026-01-01T00:00:00Z`).join('\n');
     }
-    if (sql.startsWith('begin;')) {
+    if (sql.startsWith('begin;') && sql.includes(`insert into ${LEDGER_TABLE}`)) {
       const m = /values \('([^']+)', '([^']+)'/.exec(sql);
       if (m === null) throw new Error('a transaction with no ledger row in it');
       if (failOn === m[1]) throw new Error(`syntax error at or near "oops" while applying ${m[1]}`);
@@ -159,7 +167,7 @@ test('every pending migration runs in its own transaction, with its ledger row i
   assert.equal(r.verdict.ok, true, r.verdict.problems.join('; '));
   assert.deepEqual(r.ran, FILES.map((f) => f.name));
 
-  const applied = db.statements.filter((s) => s.startsWith('begin;'));
+  const applied = db.statements.filter((s) => s.startsWith('begin;') && s.includes(`insert into ${LEDGER_TABLE}`));
   assert.equal(applied.length, 3);
   for (const [i, sql] of applied.entries()) {
     assert.match(sql, /^begin;/);
@@ -167,6 +175,22 @@ test('every pending migration runs in its own transaction, with its ledger row i
     assert.equal(sql.includes(FILES[i].sql), true, 'the migration body and its ledger row are one transaction');
     assert.equal(sql.includes(sha256(FILES[i].sql)), true, 'the checksum recorded is the checksum of what ran');
   }
+});
+
+test('the ledger DDL seals an existing or new table from Data API roles', async () => {
+  const code = LEDGER_DDL.replace(/--[^\n]*/g, ' ');
+  assert.match(code, /^begin;/, 'creation and hardening must be atomic');
+  assert.match(code, /alter table public\.schema_migrations enable row level security;/i);
+  assert.match(code, /revoke all privileges on table public\.schema_migrations from public;/i);
+  for (const role of ['anon', 'authenticated']) {
+    assert.match(code, new RegExp(`to_regrole\\('${role}'\\) is not null`, 'i'), `${role} must be handled on Supabase and tolerated elsewhere`);
+    assert.match(code, new RegExp(`revoke all privileges on table public\\.schema_migrations from ${role}`, 'i'));
+  }
+  assert.match(code, /commit;$/, 'the sealed ledger transaction must commit as one unit');
+
+  const db = fakeDb();
+  assert.deepEqual(await readLedger(db.exec), []);
+  assert.equal(db.statements[0], LEDGER_DDL, 'readLedger must run the hardening DDL, not a create-only copy');
 });
 
 test('a migration the database rejects STOPS the run — later files are never attempted', async () => {
@@ -188,7 +212,11 @@ test('a plan with problems applies NOTHING — the refusal comes before the firs
   assert.equal(r.applied, 0);
   assert.equal(r.verdict.ok, false);
   assert.match(r.verdict.problems.join('\n'), /has been edited since it was applied/);
-  assert.equal(db.statements.some((s) => s.startsWith('begin;')), false, 'not one migration may run against a plan that refused');
+  assert.equal(
+    db.statements.some((s) => s.startsWith('begin;') && s.includes(`insert into ${LEDGER_TABLE}`)),
+    false,
+    'not one migration may run against a plan that refused',
+  );
 });
 
 test('a second run applies nothing because the ledger says so, and the ledger is what it wrote', async () => {
@@ -203,7 +231,11 @@ test('a dry run plans and writes nothing', async () => {
   const db = fakeDb();
   const r = await applyMigrations({ files: FILES, exec: db.exec, dryRun: true });
   assert.equal(r.plan.pending.length, 3);
-  assert.equal(db.statements.some((s) => s.startsWith('begin;')), false);
+  assert.equal(
+    db.statements.some((s) => s.startsWith('begin;') && s.includes(`insert into ${LEDGER_TABLE}`)),
+    false,
+    'the ledger may be sealed, but no migration transaction may run',
+  );
 });
 
 test('adopting records a migration as applied WITHOUT running it, and refuses a name it does not have', async () => {

@@ -277,17 +277,18 @@ export function RobloxKeyPanel() {
       )}
 
       {state !== 'failed' && state !== 'loading' && (
-      <form className="rk__form" onSubmit={submit}>
+      <form className="rk__form" onSubmit={submit} autoComplete="off">
         <label className="rk__label" htmlFor="rk-key">
           Open Cloud API key
         </label>
         <input
           id="rk-key"
+          name="robloxOpenCloudKey"
           type="password"
           className="rk__input"
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
-          autoComplete="off"
+          autoComplete="new-password"
           spellCheck={false}
           placeholder={credential ? 'Paste a new key to replace the current one' : 'Paste your key'}
           aria-invalid={problemFor('apiKey') ? true : undefined}
@@ -304,8 +305,12 @@ export function RobloxKeyPanel() {
         </label>
         <input
           id="rk-id"
+          name="robloxCreatorId"
           type="text"
           inputMode="numeric"
+          autoComplete="off"
+          pattern="[0-9]+"
+          spellCheck={false}
           className="rk__input"
           value={creatorId}
           onChange={(e) => setCreatorId(e.target.value)}
@@ -364,7 +369,7 @@ export function RobloxKeyPanel() {
                       already connected with one: the grant would still be live and the panel
                       would have stopped mentioning it. */}
                   {!e.implemented && <span className="rk__unused"> · not used yet</span>}
-                </span>
+                </span>{' '}
                 <span className="rk__scope-does">{e.does}</span>
                 {!e.implemented && (
                   <span className="rk__scope-does">

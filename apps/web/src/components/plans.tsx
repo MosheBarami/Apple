@@ -40,6 +40,7 @@ export function PlanLadder({
   onChoose,
   busyPlan,
   availability = 'unavailable',
+  purchasable = [],
   currency = PRICE_CURRENCY,
 }: {
   current: PlanId;
@@ -47,6 +48,8 @@ export function PlanLadder({
   onChoose?: (plan: PlanId) => void;
   busyPlan?: PlanId | null;
   availability?: PlanAvailability;
+  /** Authoritative per-tier availability; omission fails closed. Free remains cancellable. */
+  purchasable?: readonly PlanId[];
   /**
    * What these prices are quoted in, as reported by the server rather than assumed by the page.
    * Defaults to the declared currency so the marketing surfaces need not pass it.
@@ -69,6 +72,7 @@ export function PlanLadder({
         // price by design, and the branch below is the one that says so in words.
         const price = copy.priceUsdMonthly;
         const priced = price !== null;
+        const canChoose = id === 'free' || purchasable.includes(id);
 
         return (
           <section key={id} className={`plan${isCurrent ? ' is-current' : ''}`} aria-labelledby={`plan-${id}`}>
@@ -160,7 +164,7 @@ export function PlanLadder({
                 </span>
               ) : availability === 'unknown' ? (
                 <span className="plan__soon">Couldn&rsquo;t check whether this can be bought</span>
-              ) : availability === 'ready' && onChoose ? (
+              ) : availability === 'ready' && onChoose && canChoose ? (
                 <button
                   type="button"
                   className={`btn${direction === 'up' ? ' btn-primary' : ''}`}

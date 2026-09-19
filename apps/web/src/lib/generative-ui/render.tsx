@@ -11,8 +11,8 @@
  *   3. Colour, size and status are chosen from closed enums and resolved to a
  *      CSS class here. A raw colour or CSS value never reaches the DOM.
  */
-import { useEffect, useId, useMemo, useState } from 'react';
-import { downloadProjectAudio, fetchAudioObjectUrl, fetchImageObjectUrl, parseAudioPath, parseImagePath } from '../api';
+import { useCallback, useEffect, useId, useMemo, useState } from 'react';
+import { downloadProjectAudio, downloadProjectImage, fetchAudioObjectUrl, fetchImageObjectUrl, parseAudioPath, parseImagePath } from '../api';
 import { explainFailure } from '../error-taxonomy';
 import type {
   AssetPickerBlock,
@@ -131,12 +131,21 @@ function Bytes({ value }: { value: number }) {
  * The alt text is shown rather than discarded — it describes what the picture was, which is the
  * only thing still true about it.
  */
-function SafeImage({ image, className }: { image: ImageRef; className?: string }) {
+type ImageLoadState = 'loading' | 'ready' | 'failed';
+
+function SafeImage({ image, className, onAvailabilityChange }: {
+  image: ImageRef; className?: string;
+  onAvailabilityChange?: (src: string, state: ImageLoadState) => void;
+}) {
   const internal = parseImagePath(image.src);
   // Anything not one of our own image paths renders directly — there is nothing to authenticate to.
   const [state, setState] = useState<'loading' | 'ready' | 'failed'>(internal ? 'loading' : 'ready');
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [failure, setFailure] = useState<unknown>(null);
+
+  useEffect(() => {
+    onAvailabilityChange?.(image.src, state);
+  }, [image.src, state, onAvailabilityChange]);
 
   useEffect(() => {
     if (!internal) return;
@@ -177,7 +186,7 @@ function SafeImage({ image, className }: { image: ImageRef; className?: string }
   }
 
   if (state === 'failed') {
-    // WHY IT FAILED DECIDES WHAT TO SAY. A 404 really is expiry. A 401 is a session that timed out,
+    // WHY IT FAILED DECIDES WHAT TO SAY. A 404 is missing/expired/deleted. A 401 is a session that timed out,
     // and telling that user their image expired sends them looking for the wrong problem — the
     // image is fine and they need to sign in. explainFailure already draws that line.
     const e = explainFailure(failure);
@@ -186,7 +195,7 @@ function SafeImage({ image, className }: { image: ImageRef; className?: string }
         <span className="gu-img-gone__alt">{image.alt}</span>
         <span className="gu-img-gone__why">
           {e.kind === 'missing'
-            ? 'No longer available — generated images are kept for an hour.'
+            ? 'This image is unavailable. Older temporary previews may have expired.'
             : `${e.title}. ${e.safety}`}
         </span>
       </span>
@@ -843,7 +852,40 @@ function SafeAudio({ projectId, audioId, label }: { projectId: string; audioId: 
   );
 }
 
+function SaveImage({ projectId, imageId, availability }: { projectId: string; imageId: string; availability: ImageLoadState }) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [unavailable, setUnavailable] = useState(false);
+  if (availability === 'failed' || unavailable) return <span className="gu-image-save__note" role="status">Download unavailable.</span>;
+  return <div className="gu-image-save">
+    <button type="button" disabled={saving || availability !== 'ready'} onClick={() => {
+      if (availability !== 'ready') return;
+      setSaving(true);
+      setError(null);
+      void downloadProjectImage(projectId, imageId).catch((failure: unknown) => {
+        const reason = explainFailure(failure);
+        if (reason.kind === 'missing') setUnavailable(true);
+        setError(reason.kind === 'missing' ? 'This image is no longer available.' : reason.title);
+      }).finally(() => setSaving(false));
+    }}>{saving ? 'Saving…' : 'Save image'}</button>
+    <span className="gu-image-save__note">{availability === 'loading' ? 'Loading image…' : 'Download a copy to keep outside this project.'}</span>
+    {error && <span role="alert">{error}</span>}
+  </div>;
+}
+
 function AssetPickerView({ block }: { block: AssetPickerBlock }) {
+  const [imageStates, setImageStates] = useState<Record<string, ImageLoadState>>({});
+  const recordImageState = useCallback((src: string, state: ImageLoadState) => {
+    setImageStates(previous => previous[src] === state ? previous : { ...previous, [src]: state });
+  }, []);
+  const single = block.assets.length === 1 ? block.assets[0] : undefined;
+  const generated = single?.kind === 'image' && single.thumbnail ? parseImagePath(single.thumbnail.src) : null;
+  if (single?.thumbnail && generated) {
+    return <figure className="gu-generated-image" aria-label="Generated image">
+      <SafeImage key={single.thumbnail.src} image={single.thumbnail} className="gu-generated-image__pixels" onAvailabilityChange={recordImageState} />
+      <figcaption><SaveImage key={generated.imageId} projectId={generated.projectId} imageId={generated.imageId} availability={imageStates[single.thumbnail.src] ?? 'loading'} /></figcaption>
+    </figure>;
+  }
   return (
     <section className="gu-panel gu-assets">
       <header className="gu-panel-head">
@@ -855,7 +897,7 @@ function AssetPickerView({ block }: { block: AssetPickerBlock }) {
           <li key={asset.id} className="gu-asset">
             <div className="gu-asset-thumb">
               {asset.thumbnail ? (
-                <SafeImage image={asset.thumbnail} className="gu-asset-img" />
+                <SafeImage key={asset.thumbnail.src} image={asset.thumbnail} className="gu-asset-img" onAvailabilityChange={recordImageState} />
               ) : (
                 <span className="gu-asset-kind">{asset.kind}</span>
               )}
@@ -870,6 +912,10 @@ function AssetPickerView({ block }: { block: AssetPickerBlock }) {
               </span>
               {asset.creator && <span className="gu-asset-creator">by {asset.creator}</span>}
               {asset.note && <span className="gu-asset-note">{asset.note}</span>}
+              {(() => {
+                const image = asset.kind === 'image' && asset.thumbnail ? parseImagePath(asset.thumbnail.src) : null;
+                return image ? <SaveImage key={image.imageId} projectId={image.projectId} imageId={image.imageId} availability={imageStates[asset.thumbnail!.src] ?? 'loading'} /> : null;
+              })()}
               {/* One of ours gets a player; anything else stays the link it was, because an asset
                   link may legitimately point at a catalogue page this app cannot fetch. */}
               {(() => {

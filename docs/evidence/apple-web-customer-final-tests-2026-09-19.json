@@ -1,0 +1,10 @@
+{
+  "observedAt": "2026-09-18T21:43:32.198184+00:00",
+  "command": "cd apps/web && node --test --test-concurrency=2",
+  "sourceAndTestsBefore": "0cf701a9d0e423f31a3e3171006a19ea01bae873482a4b66f7349283779c924e",
+  "sourceAndTestsAfter": "0cf701a9d0e423f31a3e3171006a19ea01bae873482a4b66f7349283779c924e",
+  "unchanged": true,
+  "exitCode": 0,
+  "timedOut": false,
+  "logSha256": "56659b36e72c4dd35dd86bace5f3f87304ac00722bccb1ecd2f41066fbb2a91b"
+}

@@ -158,9 +158,12 @@ test('the draft is restored on the FIRST render, not in an effect', () => {
 
 test('switching projects swaps the draft', () => {
   // Without this the composer keeps the previous project's text — the exact failure the
-  // per-project key exists to prevent.
+  // per-project key exists to prevent. The same value moves the caret too, so a shorter restored
+  // draft cannot inherit project A's stale selection offset.
   assert.match(COMPOSER, /if \(draftKey === lastKey\.current\) return;/);
-  assert.match(COMPOSER, /setText\(draftKey \? readDraft\(draftKey\) : ''\)/);
+  assert.match(COMPOSER, /const next = draftKey \? readDraft\(draftKey\) : '';/);
+  assert.match(COMPOSER, /setText\(next\);/);
+  assert.match(COMPOSER, /setCaret\(next\.length\);/);
 });
 
 test('writes are debounced rather than one per keystroke', () => {

@@ -77,29 +77,8 @@ function RenderCard({ evidence }: { evidence: RenderEvidence }) {
   const title = evidence.subject ? `Render · ${evidence.subject}` : 'Render';
   if (evidence.state !== 'ready') return <Placeholder evidence={evidence} title={title} />;
 
-  const shown = evidence.views.filter((v) => v.src);
   return (
     <Frame kind="render" title={title} state="ready">
-      <div className="gx-ev__shots">
-        {shown.map((view) => (
-          <figure key={view.name} className="gx-ev__shot">
-            <img
-              src={view.src}
-              alt={view.alt ?? `${view.name} view of ${evidence.subject}`}
-              loading="lazy"
-              decoding="async"
-              draggable={false}
-            />
-            {/* Coverage is a measured fraction of the frame covered by geometry,
-                not a progress figure. It is the one percentage this card is
-                allowed, and the title says which it is. */}
-            <figcaption title={view.coverage !== undefined ? 'Fraction of the frame covered by geometry' : undefined}>
-              {view.name}
-              {view.coverage !== undefined && <span> · {Math.round(view.coverage * 100)}%</span>}
-            </figcaption>
-          </figure>
-        ))}
-      </div>
       {/* The honest caption, same wording as StudioView. Do not shorten it. */}
       <span className="gx-ev__note">Diagnostic render — geometry only, not a viewport</span>
     </Frame>

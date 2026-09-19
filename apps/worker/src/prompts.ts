@@ -15,6 +15,15 @@ Ground yourself in the live project: inspect before you edit, verify after you b
 When the docs tool returns API details, trust them over your memory.
 
 How you build things (a built thing is judged on how it LOOKS, not on whether it exists):
+- For genre-specific visual work, consult get_genre_references for the requested genre and aspect.
+  Use its scoped observations and source URLs to choose the HUD, map layout and low-poly asset style.
+  Reference inspection is not permission to copy assets and is not a visual pass for your own build.
+  Follow the user's art direction over a kit; report missing reference coverage rather than invent it.
+- Use search_creation_skills and read_creation_skill for relevant construction and verification steps.
+  Install AppleUI with an explicit matching theme when its components fit the requested interface.
+  Prefer readable low-poly silhouettes and coherent materials; do not depend on 4K textures for polish.
+  Verify actual rendered UI and gameplay states after changes. Passing code tests does not finish a
+  prototype-looking interface or map; keep the visual verdict unverified when no real view is available.
 - Build geometry from primitives you create yourself: Parts (Block/Ball/Cylinder/Wedge), grouped
   into Models, decorated with Material/Color/lights/ParticleEmitters — and make it properly.
   Real part budgets: set dressing 3-8 parts, a good prop 8-20, a hero prop the player walks up to
@@ -94,6 +103,12 @@ Answering style (this model thinks before it replies — keep that thinking shor
   what you are about to do is a second, worse copy of it.
 - Never restate the user's request back to them. Never write "Let me..." or "I will now...".
 - Your visible reply is a report of what you DID, not a description of what you intend to do.
+- Act on the latest user request. Earlier unfinished or refused requests are context, not a
+  standing instruction to execute them during an unrelated greeting or question. Resume earlier
+  work only when the user asks to continue it.
+- Default final reply: one or two short sentences stating the result and any essential limitation.
+  No recap of tool calls, decorative headings, unsolicited galleries, or long checklists.
+  Give detail only when the user asks for it. Never omit a failure or a required user decision.
 - When you call a tool, say nothing else in that turn; the user already sees the tool activity.
 
 Working efficiently (this is about TOOL CALLS, never about how much you build):
@@ -294,6 +309,8 @@ export function systemPrompt(opts: {
    * that omits it, so the burden of proof is on the library existing.
    */
   assetLibraryAvailable?: boolean;
+  /** Worker-authored capability note only. Never pass plugin-authored refusal text here. */
+  studioCapabilityNote?: string | null;
   /**
    * The user's own settings, profile and project/team instructions, already layered and already
    * fenced by `preferencesPrompt`. Optional and empty by default: a deployment with no scoped
@@ -343,6 +360,7 @@ export function systemPrompt(opts: {
     opts.sceneKind ? BRIEF_START + worldBuildingBrief(opts.sceneKind) + BRIEF_END : '',
     opts.uiBrief ? UI_BRIEF_START + '\n' + opts.uiBrief + UI_BRIEF_END : '',
     `Project: "${opts.projectName}". ${studio}`,
+    opts.studioCapabilityNote ?? '',
     memory,
     opts.personalisation ?? '',
     `Today: ${new Date().toISOString().slice(0, 10)}.`,

@@ -7,6 +7,10 @@ export interface Env {
   VEC: VectorizeIndex;
   SESSION_DO: DurableObjectNamespace;
   QUOTA_DO: DurableObjectNamespace;
+  /** Explicit deployment identity; a request host must never choose the billing authority. */
+  BILLING_WORKER_NAME?: 'apple' | 'golem';
+  /** Apple-only external binding to golem's existing QuotaDO namespace during migration. */
+  LEGACY_QUOTA_DO?: DurableObjectNamespace;
   PAIRING_DO: DurableObjectNamespace;
   ADMIN_DO: DurableObjectNamespace;
   BUDGET_DO: DurableObjectNamespace;
@@ -14,6 +18,18 @@ export interface Env {
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
   ENVIRONMENT: string;
+  /**
+   * Purpose-scoped secret used only to claim and acknowledge membership-access outbox rows. The
+   * raw value is a Worker secret; Supabase stores its SHA-256 digest (migration 0009). Without it,
+   * membership mutations still enqueue atomically and the immediate local push still runs, but a
+   * scheduled consumer refuses to claim anything rather than reading the queue anonymously.
+   */
+  MEMBERSHIP_OUTBOX_TOKEN?: string;
+  /**
+   * Durable Object namespace this deployment owns (`golem` or `apple`). Both deployments share
+   * Supabase and therefore need distinct acknowledgements for the same access event.
+   */
+  MEMBERSHIP_OUTBOX_CONSUMER?: string;
   /**
    * Where uncaught errors are reported. `https://<publicKey>@<host>/<projectId>`, from
    * Sentry → Settings → Projects → <project> → Client Keys (DSN).
@@ -51,9 +67,9 @@ export interface Env {
    */
   STRIPE_WEBHOOK_SECRET?: string;
   /**
-   * Stripe secret API key, used ONLY to open a hosted Checkout or Billing Portal session on the
-   * user's behalf. It never grants a plan: entitlement is recomputed from the subscription events
-   * that arrive at the webhook, so a redirect back from Stripe cannot be forged into an upgrade.
+   * Stripe secret API key for billing requests and the authority's current-subscription read.
+   * It never grants a plan by itself: a signed event initiates authority reconciliation, so a
+   * redirect back from Stripe cannot be forged into an upgrade.
    * Absent everywhere until billing is switched on, and the routes refuse rather than degrade.
    */
   STRIPE_SECRET_KEY?: string;

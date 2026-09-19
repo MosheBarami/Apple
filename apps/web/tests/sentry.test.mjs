@@ -192,6 +192,36 @@ test('the route is labelled, so a project id never becomes a transaction name', 
   h.client.uninstall();
 });
 
+test('the browser dependency reads the current SPA route when the error is captured', async () => {
+  const sent = [];
+  const win = Object.assign(fakeWindow(), {
+    location: { origin: 'https://app.example', pathname: `/projects/${PROJECT_ID}/files` },
+  });
+  const previousWindow = globalThis.window;
+  globalThis.window = win;
+  try {
+    const client = S.installSentry(
+      { dsn: DSN, release: 'cafe123', environment: 'production' },
+      {
+        now: () => 1_770_000_000_000,
+        eventId: () => 'a'.repeat(32),
+        send: async (url, init) => { sent.push({ url, init }); return { ok: true, status: 200 }; },
+      },
+    );
+
+    win.location.pathname = '/settings/security';
+    await client.captureException(new Error('boom'));
+
+    const event = JSON.parse(sent[0].init.body.trim().split('\n')[2]);
+    assert.equal(event.transaction, '/settings/security', 'the report kept the route from install time');
+    assert.equal(event.request.url, 'https://app.example/settings/security');
+    client.uninstall();
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
 test('no JWT, no email and no prompt text reach the wire', async () => {
   const h = harness();
   // The realistic shape: the API client puts the response body into the error it throws.

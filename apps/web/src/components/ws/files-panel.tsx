@@ -17,7 +17,7 @@
  *   next to the picker rather than discovered as a refusal, which is the part that was missing: a
  *   picker that silently accepts a subset would promise a feature the deployment does not have.
  */
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   downloadProjectArchive,
@@ -52,6 +52,7 @@ import {
 } from './files-model';
 
 export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit: boolean }) {
+  const picker = useRef<HTMLInputElement>(null);
   const [prefix, setPrefix] = useState('');
   const [open, setOpen] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -78,20 +79,32 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
     retry: false,
   });
 
+  const selection = useRef({ open, file, history });
+  selection.current = { open, file, history };
+
   const refresh = useCallback(async () => {
-    await listing.refetch();
-    await file.refetch();
-    await history.refetch();
-  }, [listing, file, history]);
+    // Query refetch resolves an error result by default; callers need a rejected refresh to
+    // distinguish a saved change from a refreshed view of it.
+    await listing.refetch({ throwOnError: true });
+    // The user can close/select a file while listing yields. The observers follow the NEW key,
+    // so checking the old render's `open` could still request path=null despite the enabled flag.
+    const current = selection.current;
+    if (current.open !== null) {
+      const results = await Promise.allSettled([
+        current.file.refetch({ throwOnError: true }),
+        current.history.refetch({ throwOnError: true }),
+      ]);
+      for (const result of results) if (result.status === 'rejected') throw result.reason;
+    }
+  }, [listing]);
 
   /**
    * Every action goes through here, so a refusal is reported the same way whichever button sent it.
    *
    * `said` may be a FUNCTION of the result rather than a fixed sentence, because some of these
    * operations decide something the caller did not ask for and the user has to be told what it was:
-   * a copy with no destination gets a free name chosen by the server. Returns the result on success
-   * and null on refusal, so a caller that needs to follow the file — reopening it at its new path —
-   * can.
+   * a copy with no destination gets a free name chosen by the server. A successful path change is
+   * followed here, BEFORE refresh: the previous query observers still refer to the retired path.
    */
   const act = useCallback(
     async (
@@ -100,18 +113,57 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
     ): Promise<Record<string, unknown> | null> => {
       setBusy(true);
       setNotice(null);
-      const res = await fileOp(projectId, body);
-      setBusy(false);
-      if (!res.ok) {
-        setNotice(refusalCopy(res.code, res.error));
-        // The list is refreshed on failure too: the commonest refusal is "that file is not there
-        // any more", and leaving the stale row on screen invites the same click again.
-        void listing.refetch();
+      let confirmed = false;
+      let refusal: string | null = null;
+      try {
+        const res = await fileOp(projectId, body);
+        if (!res.ok) {
+          refusal = refusalCopy(res.code, res.error);
+          setNotice(refusal);
+          // A stale row should not invite the same refused operation again.
+          await listing.refetch({ throwOnError: true });
+          return null;
+        }
+        confirmed = true;
+        setNotice(typeof said === 'function' ? said(res.result) : said);
+
+        const folder = body.op === 'move_folder' || body.op === 'delete_folder';
+        const removed = body.op === 'delete' || body.op === 'delete_folder';
+        const moved = body.op === 'rename' || body.op === 'move' || body.op === 'move_folder';
+        if (removed || moved) {
+          const from = folder ? body.path.replace(/\/+$/, '') : body.path;
+          const destination = typeof res.result.to === 'string' ? res.result.to : body.to;
+          const to = folder ? destination?.replace(/\/+$/, '') : destination;
+          const affected = (path: string) => path === from || (folder && path.startsWith(`${from}/`));
+
+          // Functional updates preserve navigation that happened while the request was in flight.
+          // A newly selected file must not be replaced/closed by an older operation's completion.
+          setOpen((current) => current !== null && affected(current)
+            ? removed ? null : to !== undefined ? to + current.slice(from.length) : current
+            : current);
+          if (folder) {
+            setPrefix((current) => affected(current)
+              ? removed ? parentPrefix(from) : to !== undefined ? to + current.slice(from.length) : current
+              : current);
+          }
+          // The next render's query key fetches the new path. Calling the OLD observers here
+          // fetched deleted/renamed content and history, producing real 404s after successful writes.
+          await listing.refetch({ throwOnError: true });
+        } else {
+          await refresh();
+        }
+        return res.result;
+      } catch {
+        // An interrupted transport is not proof the write failed. Do not invite a duplicate write.
+        setNotice(refusal !== null
+          ? `${refusal} Files could not be refreshed. Refresh files before trying again.`
+          : confirmed
+            ? 'The change was saved, but refreshed files could not be loaded. Refresh files to check the result.'
+            : 'The change could not be confirmed. Refresh files before trying again.');
         return null;
+      } finally {
+        setBusy(false);
       }
-      setNotice(typeof said === 'function' ? said(res.result) : said);
-      await refresh();
-      return res.result;
     },
     [projectId, listing, refresh],
   );
@@ -143,39 +195,44 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
         return;
       }
       setBusy(true);
-      let text: string;
+      let confirmed = false;
       try {
-        text = await picked.text();
+        let text: string;
+        try {
+          text = await picked.text();
+        } catch {
+          setNotice('That file could not be read.');
+          return;
+        }
+        if (looksBinary(text)) {
+          // Caught here because an allowed extension does not establish that the bytes are text.
+          setNotice('That file is not text. Only text files can be added here.');
+          return;
+        }
+        let res = await uploadProjectFile(projectId, plan.path, text);
+        if (!res.ok && res.code === 'occupied' && window.confirm(replaceConfirm(plan.path))) {
+          res = await uploadProjectFile(projectId, plan.path, text, { overwrite: true });
+        }
+        if (!res.ok) {
+          setNotice(refusalCopy(res.code, res.error));
+          return;
+        }
+        confirmed = true;
+        // Keep the adjusted name visible rather than making the user guess where the file went.
+        setNotice(
+          plan.renamed
+            ? `Added as ${plan.path} — the name was adjusted to fit the workspace.`
+            : `Added ${plan.path}`,
+        );
+        await refresh();
       } catch {
+        // An interrupted transport is not proof that the server did not save the file.
+        setNotice(confirmed
+          ? 'The file was saved, but refreshed files could not be loaded. Refresh files to check the result.'
+          : 'The upload could not be confirmed. Refresh files before trying again.');
+      } finally {
         setBusy(false);
-        setNotice('That file could not be read.');
-        return;
       }
-      if (looksBinary(text)) {
-        setBusy(false);
-        // Caught here because the name cannot catch it: a .txt full of binary decodes to
-        // replacement characters, and sending it would store a file that opens as nonsense.
-        setNotice('That file is not text. Only text files can be added here.');
-        return;
-      }
-      let res = await uploadProjectFile(projectId, plan.path, text);
-      if (!res.ok && res.code === 'occupied' && window.confirm(replaceConfirm(plan.path))) {
-        res = await uploadProjectFile(projectId, plan.path, text, { overwrite: true });
-      }
-      setBusy(false);
-      if (!res.ok) {
-        setNotice(refusalCopy(res.code, res.error));
-        return;
-      }
-      // The name is read back, because it may not be the one they picked: a name off a disk can
-      // contain characters the store refuses, and a file saved under a quietly different name is a
-      // file the user cannot find again.
-      setNotice(
-        plan.renamed
-          ? `Added as ${plan.path} — the name was adjusted to fit the workspace.`
-          : `Added ${plan.path}`,
-      );
-      await refresh();
     },
     [projectId, refresh],
   );
@@ -190,7 +247,12 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
   }
 
   if (listing.isError) {
-    return <Failure error={listing.error} onRetry={() => void listing.refetch()} />;
+    return (
+      <div>
+        {notice && <p className="gx-pop__note" role="status">{notice}</p>}
+        <Failure error={listing.error} onRetry={() => void listing.refetch()} />
+      </div>
+    );
   }
 
   const data = listing.data;
@@ -201,11 +263,21 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
 
   return (
     <div className="gx-files">
-      <p className="gx-row__meta" style={{ marginBottom: '0.7rem' }}>
-        {summary.lines.join(' · ')}
+      <p className="gx-row__meta gx-files__summary">{summary.lines.join(' · ')}</p>
+      <div className="gx-files__toolbar">
+        <button
+          type="button"
+          className="gx-btn gx-btn--ghost"
+          aria-label="Refresh files"
+          disabled={busy || listing.isFetching || file.isFetching || history.isFetching}
+          onClick={() => {
+            setNotice(null);
+            void refresh().catch(() => setNotice('Files could not be refreshed. Check your connection and refresh again.'));
+          }}
+        >
+          {listing.isFetching || file.isFetching || history.isFetching ? 'Refreshing…' : 'Refresh'}
+        </button>
         {data.fileCount > 0 && (
-          <>
-            {' · '}
             <button
               type="button"
               className="gx-btn gx-btn--ghost"
@@ -221,15 +293,21 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
             >
               Download all
             </button>
-          </>
         )}
-      </p>
+      </div>
 
       {canEdit && (
-        <p style={{ margin: '0 0 0.7rem' }}>
-          <label className="gx-btn gx-btn--outline" style={{ cursor: busy ? 'progress' : 'pointer' }}>
+        <div className="gx-files__upload">
+          <button
+            type="button"
+            className="gx-btn gx-btn--outline"
+            disabled={busy}
+            onClick={() => picker.current?.click()}
+          >
             Add a file
+          </button>
             <input
+              ref={picker}
               type="file"
               // The ACCEPT list is the server's own, carried in the listing, so it cannot drift from
               // what the write will allow. It is a hint the OS may ignore, which is why uploadCheck
@@ -245,12 +323,11 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
                 if (picked) void addFile(picked, data.limits, prefix);
               }}
             />
-          </label>{' '}
           <span className="gx-row__meta">
             Text only — {data.limits.extensions.join(' ')}, up to {formatFileBytes(data.limits.maxFileBytes)}
             {prefix ? `, into ${prefix}` : ''}
           </span>
-        </p>
+        </div>
       )}
 
       {notice && (
@@ -329,11 +406,7 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
                     if (!to || to === row.path) return;
                     void act({ op: 'move_folder', path: row.path, to }, (result) =>
                       `Moved ${result.moved ?? ''} file${result.moved === 1 ? '' : 's'} to ${to}`.replace('  ', ' '),
-                    ).then((result) => {
-                      // Follow the folder. Staying on a prefix that no longer exists shows an empty
-                      // folder and reads as "the move lost them".
-                      if (result && prefix === row.path) setPrefix(String(result.to ?? ''));
-                    });
+                    );
                   }}
                 >
                   Rename
@@ -401,9 +474,7 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
                     // picker, which makes this sentence the only place that capability exists.
                     const to = window.prompt('New path for this file — include a folder to move it', open);
                     if (!to || to === open) return;
-                    void act({ op: 'rename', path: open, to }, `Renamed to ${to}`).then((result) => {
-                      if (result) setOpen(to);
-                    });
+                    void act({ op: 'rename', path: open, to }, `Renamed to ${to}`);
                   }}
                 >
                   Rename
@@ -430,9 +501,7 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
                   disabled={busy}
                   onClick={() => {
                     if (!window.confirm(deleteConfirm(open, data.trashRetentionDays))) return;
-                    void act({ op: 'delete', path: open }, 'Moved to the trash').then((result) => {
-                      if (result) setOpen(null);
-                    });
+                    void act({ op: 'delete', path: open }, 'Moved to the trash');
                   }}
                 >
                   Delete

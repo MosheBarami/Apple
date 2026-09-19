@@ -40,6 +40,8 @@ interface PopoverProps {
 export function Popover({ open, onClose, placement = 'up', label, children }: PopoverProps) {
   const ref = useRef<HTMLDivElement>(null);
   const opener = useRef<Element | null>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!open) return;
@@ -47,11 +49,11 @@ export function Popover({ open, onClose, placement = 'up', label, children }: Po
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation();
-        onClose();
+        onCloseRef.current();
       }
     };
     const onDown = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+      if (ref.current && !ref.current.contains(e.target as Node)) onCloseRef.current();
     };
     document.addEventListener('keydown', onKey);
     // `capture` so a click on the trigger itself does not reopen after closing.
@@ -61,7 +63,7 @@ export function Popover({ open, onClose, placement = 'up', label, children }: Po
       document.removeEventListener('mousedown', onDown, true);
       if (opener.current instanceof HTMLElement) opener.current.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
   return (
@@ -93,22 +95,39 @@ interface DrawerProps {
 export function Drawer({ open, onClose, title, children }: DrawerProps) {
   const panel = useRef<HTMLDivElement>(null);
   const opener = useRef<Element | null>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!open) return;
     opener.current = document.activeElement;
     panel.current?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') onCloseRef.current();
       if (e.key !== 'Tab' || !panel.current) return;
       // Keep Tab inside the panel while it is modal.
-      const focusable = panel.current.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), input, textarea, [tabindex]:not([tabindex="-1"])',
-      );
-      if (!focusable.length) return;
+      const focusable = Array.from(panel.current.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      )).filter(node => {
+        // A selector union can re-admit a disabled button through [tabindex]. :disabled also
+        // covers fieldset descendants; a layout box alone does not establish visibility.
+        if (node.tabIndex < 0 || node.matches(':disabled,[aria-disabled="true"]')
+          || node.closest('[inert],[hidden]') || node.getClientRects().length === 0) return false;
+        const visibility = getComputedStyle(node).visibility;
+        return visibility !== 'hidden' && visibility !== 'collapse';
+      });
+      if (!focusable.length) {
+        e.preventDefault();
+        panel.current.focus();
+        return;
+      }
       const first = focusable[0]!;
       const last = focusable[focusable.length - 1]!;
-      if (e.shiftKey && document.activeElement === first) {
+      // Recover from initial panel focus, a removed/disabled target, or focus already outside.
+      if (!focusable.includes(document.activeElement as HTMLElement)) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+      } else if (e.shiftKey && document.activeElement === first) {
         e.preventDefault();
         last.focus();
       } else if (!e.shiftKey && document.activeElement === last) {
@@ -121,7 +140,7 @@ export function Drawer({ open, onClose, title, children }: DrawerProps) {
       document.removeEventListener('keydown', onKey);
       if (opener.current instanceof HTMLElement) opener.current.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
   return (

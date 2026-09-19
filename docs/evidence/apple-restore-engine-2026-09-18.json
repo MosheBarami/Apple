@@ -1,0 +1,68 @@
+{
+  "ok": false,
+  "checks": [
+    {
+      "ok": true,
+      "observed": {
+        "protectedContainers": {
+          "StarterCharacterScripts": true,
+          "StarterPlayerScripts": true
+        },
+        "exact": true
+      },
+      "name": "starter_player_protected_containers_are_snapshot_coverage",
+      "durationMs": 1
+    },
+    {
+      "ok": true,
+      "observed": {
+        "coverage": "incomplete",
+        "protectedCount": 2,
+        "skipped": {
+          "ChatWindowConfiguration": 1,
+          "ChatInputBarConfiguration": 1,
+          "ChannelTabsConfiguration": 1,
+          "BubbleChatConfiguration": 1
+        },
+        "restorable": false
+      },
+      "name": "whole_place_snapshot_never_claims_terrain_camera_completeness",
+      "durationMs": 24
+    },
+    {
+      "ok": false,
+      "error": "Undo did not restore the pre-restore root attribute",
+      "name": "restore_commit_single_recording_undo_redo",
+      "durationMs": 581
+    },
+    {
+      "ok": false,
+      "error": "tampered source hash was not refused",
+      "name": "tampered_source_hash_refuses_before_recording",
+      "durationMs": 95
+    },
+    {
+      "ok": false,
+      "error": "FinishRecording(Cancel) did not restore the pre-restore part",
+      "name": "mid_restore_failure_cancels_and_rolls_back",
+      "durationMs": 34
+    },
+    {
+      "ok": false,
+      "error": "commit fixture is missing",
+      "name": "checkpoint_identity_and_consent_refuse_before_mutation",
+      "durationMs": 0
+    },
+    {
+      "ok": true,
+      "observed": {
+        "clean": true
+      },
+      "name": "fixture_cleanup",
+      "durationMs": 0
+    }
+  ],
+  "placeId": 0,
+  "schema": 1,
+  "engineObserved": true
+}

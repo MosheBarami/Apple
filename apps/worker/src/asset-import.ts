@@ -21,6 +21,7 @@
 // decides whether a human changes a setting or retries forever.
 import type { Env } from './env';
 import type { AssetProvenance } from './asset-library';
+import { openGameArtDownloadContentType, validateOpenGameArtDownloadUrl } from './asset-library';
 import { ingestAssets } from './asset-ingest';
 import { uploadTypeFor, uploadAsset, pollOperation, archiveAsset, type UploadEnv, type UploadResult } from './roblox-upload';
 import { useRobloxCredential } from './user-credentials';
@@ -58,8 +59,21 @@ export interface ResolvedDownload {
   entrySlug?: string;
 }
 
-export async function resolveDownload(rec: Pick<AssetProvenance, 'id' | 'source' | 'kind' | 'name' | 'sourceUrl'>):
+export async function resolveDownload(rec: Pick<AssetProvenance, 'id' | 'source' | 'kind' | 'name' | 'sourceUrl' | 'downloadUrl'>):
   Promise<ResolvedDownload | { error: string }> {
+  if (rec.downloadUrl !== null && rec.downloadUrl !== undefined) {
+    if (rec.source !== 'opengameart') {
+      return { error: 'downloadUrl is only supported for opengameart expanded-file rows' };
+    }
+    const reason = validateOpenGameArtDownloadUrl(rec.downloadUrl);
+    if (reason) return { error: `refusing OpenGameArt download URL: ${reason}` };
+    const contentType = openGameArtDownloadContentType(rec.downloadUrl);
+    // Keep this defensive branch even though the validator checks the same extension. The
+    // resolver is called on rows read from D1 as well as fresh ingest input; if those two ever
+    // drift, an unknown extension must remain a refusal rather than becoming a guessed image.
+    if (!contentType) return { error: 'refusing OpenGameArt download URL: unsupported image extension' };
+    return { url: rec.downloadUrl, contentType };
+  }
   if (rec.source === 'poly_haven') {
     // id shape: poly_haven/<type>/<slug>. The slug is not the Poly Haven key — the key uses
     // underscores and the harvest slugified it — so the files API is asked by the ORIGINAL key,
@@ -268,7 +282,28 @@ export async function importAsset(env: ImportEnv, rec: AssetProvenance, userId?:
   const resolved = await resolveDownload(rec);
   if ('error' in resolved) return { id: rec.id, ok: false, error: resolved.error };
 
-  const file = await fetch(resolved.url);
+  const directOpenGameArt = rec.source === 'opengameart' && rec.downloadUrl !== null && rec.downloadUrl !== undefined;
+  let file: Response;
+  try {
+    // Direct catalogue URLs are data controlled by the ingest boundary. An OpenGameArt response
+    // that redirects to another host (including a private address) is not the file we admitted,
+    // so fail closed instead of letting fetch follow it. Fixed resolver URLs retain their existing
+    // behaviour; they are not sourced from the expanded row's free-form file metadata.
+    file = directOpenGameArt
+      ? await fetch(resolved.url, { redirect: 'error' })
+      : await fetch(resolved.url);
+  } catch (e) {
+    if (directOpenGameArt) {
+      return { id: rec.id, ok: false, error: `download failed without following redirects: ${String((e as Error)?.message ?? e).slice(0, 200)}` };
+    }
+    throw e;
+  }
+  if (directOpenGameArt && file.redirected) {
+    return { id: rec.id, ok: false, error: 'download failed: OpenGameArt returned a redirect, which is refused for safety' };
+  }
+  if (directOpenGameArt && file.url && validateOpenGameArtDownloadUrl(file.url)) {
+    return { id: rec.id, ok: false, error: 'download failed: response URL is not a trusted OpenGameArt file' };
+  }
   if (!file.ok) return { id: rec.id, ok: false, error: `download answered ${file.status}: ${resolved.url}` };
   let bytes = await file.arrayBuffer();
   if (bytes.byteLength === 0) return { id: rec.id, ok: false, error: 'the download was empty' };
@@ -391,6 +426,17 @@ interface SelectOpts {
   onlyPending: boolean;
 }
 
+const ASSET_SELECT_COLUMNS = `id, name, kind, source, source_url, download_url, licence, licence_url, commercial_use,
+            attribution_required, author, retrieved_at, imported_at, modifications,
+            roblox_asset_id, triangles, texture_resolution, bounds_studs, tags, sha256`;
+const LEGACY_ASSET_SELECT_COLUMNS = `id, name, kind, source, source_url, licence, licence_url, commercial_use,
+            attribution_required, author, retrieved_at, imported_at, modifications,
+            roblox_asset_id, triangles, texture_resolution, bounds_studs, tags, sha256`;
+
+function missingDownloadUrlColumn(error: unknown): boolean {
+  return /(?:no such column|column .* does not exist).*download_url/i.test(String((error as Error)?.message ?? error));
+}
+
 async function selectAssets(env: Pick<ImportEnv, 'CORPUS'>, o: SelectOpts): Promise<AssetProvenance[]> {
   const { limit, source, idPrefix, after, exactId, onlyPending } = o;
   // The prefix exists because the id namespace IS the taxonomy: `poly_haven/textures/…` are the
@@ -419,12 +465,23 @@ async function selectAssets(env: Pick<ImportEnv, 'CORPUS'>, o: SelectOpts): Prom
   if (after) binds.push(after);
   binds.push(limit);
   const where = clauses;
-  const rows = await env.CORPUS.prepare(
-    `select id, name, kind, source, source_url, licence, licence_url, commercial_use,
-            attribution_required, author, retrieved_at, imported_at, modifications,
-            roblox_asset_id, triangles, texture_resolution, bounds_studs, tags, sha256
-     from asset_library where 1=1 ${where} order by id limit ?`,
-  ).bind(...binds).all<Record<string, unknown>>();
+  let rows: { results: Record<string, unknown>[] };
+  try {
+    rows = await env.CORPUS.prepare(
+      `select ${ASSET_SELECT_COLUMNS}
+       from asset_library where 1=1 ${where} order by id limit ?`,
+    ).bind(...binds).all<Record<string, unknown>>();
+  } catch (error) {
+    // A deployment that predates the download_url column must keep serving existing import rows,
+    // but it must not turn an expanded OpenGameArt row into a successful import by guessing a URL.
+    // The legacy projection maps the absent field to null; OGA then returns its explicit pack/migration
+    // refusal below. Any other D1 error is rethrown so a broken database cannot look like an empty queue.
+    if (!missingDownloadUrlColumn(error)) throw error;
+    rows = await env.CORPUS.prepare(
+      `select ${LEGACY_ASSET_SELECT_COLUMNS}
+       from asset_library where 1=1 ${where} order by id limit ?`,
+    ).bind(...binds).all<Record<string, unknown>>();
+  }
 
   return rows.results.map((r) => {
     const parse = <T>(v: unknown, fallback: T): T => {
@@ -437,6 +494,9 @@ async function selectAssets(env: Pick<ImportEnv, 'CORPUS'>, o: SelectOpts): Prom
       kind: r.kind as AssetProvenance['kind'],
       source: r.source as AssetProvenance['source'],
       sourceUrl: String(r.source_url),
+      downloadUrl: Object.prototype.hasOwnProperty.call(r, 'download_url')
+        ? (r.download_url as string | null) ?? null
+        : null,
       licence: String(r.licence),
       licenceUrl: String(r.licence_url),
       commercialUse: !!r.commercial_use,

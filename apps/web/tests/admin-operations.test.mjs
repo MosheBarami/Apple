@@ -38,7 +38,7 @@ const code = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, 
 const ADMIN = read('src', 'routes', 'admin.tsx');
 const ADMIN_CODE = code(ADMIN);
 const API = read('src', 'lib', 'api.ts');
-const CSS = [read('src', 'styles.css'), read('src', 'styles', 'global.css')].join('\n');
+const CSS = [read('src', 'design/system.css'), read('src', 'design', 'system.css')].join('\n');
 
 // Bundled rather than imported directly: admin-actions.ts imports ./confirm-model without an
 // extension, which the app's bundler resolves and Node's type-stripping loader does not. esbuild

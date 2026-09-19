@@ -11,7 +11,7 @@
 // read is a handle that can break the app, and the user cannot tell that they did it.
 
 /** Matches `--gx-rail-w` in styles/workspace.css. rail-width.test.mjs holds the two together. */
-export const RAIL_DEFAULT = 320;
+export const RAIL_DEFAULT = 240;
 export const RAIL_MIN = 240;
 export const RAIL_MAX = 460;
 

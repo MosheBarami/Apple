@@ -1,31 +1,4 @@
 ---
-/**
- * The root route's layout, and only the root route's.
- *
- * Deliberately does NOT extend Base.astro: Base pulls in global.css (1.1k
- * lines), the custom cursor, the full nav and the footer, none of which the
- * one-viewport landing uses. Keeping this separate is what makes the landing's
- * payload small, so resist the urge to "tidy up" by merging them.
- *
- * Fonts: TWO families now, not three. Rubik carries display and body — its rounded terminals
- * rhyme with the stud cylinders behind the type — and Geist Mono stays for metadata only:
- * timestamps, Credit counts, step numerals, file names.
- *
- * ARCHIVO IS GONE, and with it the `wdth,wght` axis PAIR, which is where almost all of the weight
- * was. Measured from the live Google Fonts latin subsets: Archivo 90,096 + Figtree 20,184 +
- * Geist Mono 23,108 = 133,388 B in three files; Rubik 35,324 + Geist Mono 23,108 = 58,432 B in
- * two. That is 74,956 B and one round trip less, and nothing on the page asks for a width axis
- * any more — landing.css deletes `--stretch` rather than leaving a `font-stretch` pointing at a
- * family that cannot honour it.
- *
- * Both are variable fonts and both are requested in ONE stylesheet link, so this is one round
- * trip rather than two. `display=swap` on each: the landing renders in a fallback rather than
- * holding a blank first frame, which matters more here than on any other route because this
- * page IS the first frame.
- *
- * Superseded: the single-family Inter treatment, and the "one viewport, no scroll" constraint this
- * layout was built around. See docs/DECISIONS.md ADR-020.
- */
 import '../styles/landing.css';
 
 interface Props {
@@ -36,11 +9,6 @@ interface Props {
 const { title, description } = Astro.props;
 const site = Astro.site ?? new URL('https://appleworks.pages.dev');
 const canonical = new URL(Astro.url.pathname, site);
-// A PNG, not the SVG this was. Facebook, X, LinkedIn and Slack all document PNG/JPEG/GIF/WEBP
-// for og:image and none of them list SVG, so the old tag most likely produced no preview image at
-// all — a failure with no symptom anywhere inside this repository. Generated from
-// apps/site/brand/og.html by scripts/make-brand-assets.mjs; `pnpm brand:check` fails the build if
-// the committed PNG has drifted from its source.
 const ogImage = new URL('/og.png', site);
 ---
 
@@ -53,9 +21,6 @@ const ogImage = new URL('/og.png', site);
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    {/* The icon set is generated from favicon.svg by scripts/make-brand-assets.mjs, so
-        every size is the same drawing. The 1.2 MB of PNGs that used to sit in
-        public/brand/ showed a different mark entirely and were linked from nothing. */}
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
     <link rel="sitemap" href="/sitemap-index.xml" />
@@ -69,27 +34,12 @@ const ogImage = new URL('/og.png', site);
     <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="Apple — an AI that writes Luau and places parts inside Roblox Studio." />
+    <meta property="og:image:alt" content="Apple — a creative AI chat for Roblox Studio." />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
-
-    {/* THIS SURFACE IS NO LONGER DARK-COMMITTED, so one colour is no longer the honest
-        answer. The landing is light-first with a full dark theme behind
-        prefers-color-scheme, and a single dark `theme-color` would paint a phone's browser
-        chrome charcoal above a pale-blue page. A pair, matching the two grounds
-        landing.css declares. */}
-    <meta name="theme-color" content="#edf1f7" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#0e1727" media="(prefers-color-scheme: dark)" />
-    <meta name="color-scheme" content="light dark" />
-
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300..800&family=Inter:wght@300..700&family=Geist+Mono:wght@100..900&display=swap"
-    />
+    <meta name="theme-color" content="#080808" />
   </head>
   <body>
     <slot />

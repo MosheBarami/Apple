@@ -1,0 +1,404 @@
+{
+  "provenance": {
+    "measuredAt": "2026-09-19T13:31:10.108Z",
+    "commit": "6d7a5bec3a741de9cbe97459bcc82e760bd3e089",
+    "commitSubject": "AGENTS.md — the map, measured rather than remembered, and held to its sources",
+    "treeDirty": true
+  },
+  "brief": {
+    "file": "docs/backlog/CHECKLIST-V2.md",
+    "section": "60. END-TO-END RELEASE ACCEPTANCE",
+    "itemCount": 20
+  },
+  "acceptance": {
+    "tally": {
+      "total": 20,
+      "pass": 19,
+      "fail": 0,
+      "skip": 1
+    },
+    "scenarios": [
+      {
+        "n": 1,
+        "name": "New user completes registration and enters a usable workspace",
+        "verdict": "pass",
+        "reason": null,
+        "checks": "the signup form calls supabase.auth.signUp with a confirmation redirect, and every route that redirect and its recovery paths land on is declared in the router",
+        "notChecked": "that a confirmation mail actually arrives at a real inbox — that needs the deployed origin and a third-party mailbox, neither of which exists offline"
+      },
+      {
+        "n": 2,
+        "name": "Invited member joins the intended organization with correct access",
+        "verdict": "skip",
+        "reason": "organizations are not planned: the owner dispositioned three-level tenancy as not-built on 2026-09-15 (docs/design/TENANCY.md); the schema is flat (profiles -> projects) and no organizations table exists, so there is no organization to join. The equivalent capability the owner did build is per-project sharing, checked by scenario 15.",
+        "checks": null,
+        "notChecked": null
+      },
+      {
+        "n": 3,
+        "name": "Returning user resumes the correct project and conversation",
+        "verdict": "pass",
+        "reason": null,
+        "checks": "the transcript route serves the owner their own project and answers a caller the row is invisible to with 404, addressing exactly one session Durable Object and only from the canonical row id",
+        "notChecked": "that a browser reload replays an in-flight run — the replay lives in the session Durable Object, which needs the Cloudflare runtime"
+      },
+      {
+        "n": 4,
+        "name": "User installs the Studio plugin and pairs the intended place",
+        "verdict": "pass",
+        "reason": null,
+        "checks": "place admission binds an unbound project, matches the same place, refuses a different one, and says \"unverified\" rather than guessing for an unsaved place — and the install link does not claim a Creator Store listing while the store flag says there is none",
+        "notChecked": "the install itself: STUDIO_PLUGIN_STORE_LIVE is false, so nobody can install this plugin from the Store, and that half of the item is unbuilt rather than untested"
+      },
+      {
+        "n": 5,
+        "name": "User sees accurate connection and capability status",
+        "verdict": "pass",
+        "reason": null,
+        "checks": "the client derives exactly four connection states from wire signals and has no \"installed\" state to invent, and its role/action mirror is identical to the worker allowlists it mirrors",
+        "notChecked": "that the rendered chrome actually shows the state it derived — that is a DOM assertion and lives in apps/web/tests"
+      },
+      {
+        "n": 6,
+        "name": "User submits a request with relevant project context",
+        "verdict": "pass",
+        "reason": null,
+        "checks": "the system prompt the run is built from carries the project name, the place the plugin reported, the connection state, and the memory summary and facts — and omits the memory when there is none rather than printing an empty heading",
+        "notChecked": "that the prompt reaches the provider unchanged — the send lives in the session Durable Object and needs the Cloudflare runtime"
+      },
+      {
+        "n": 7,
+        "name": "Agent presents an actionable plan with visible cost expectations",
+        "verdict": "pass",
+        "reason": null,
+        "checks": "a build request is restated into a checklist and open questions with no model call, and the credit cost of a run is derived from one arithmetic rather than quoted from a constant",
+        "notChecked": "that the plan is rendered beside the cost in one surface — the intent broadcast and the credit balance are produced by the worker and assembled by the client"
+      },
+      {
+        "n": 8,
+        "name": "User approves the exact operations that require consent",
+        "verdict": "pass",
+        "reason": null,
+        "checks": "a tool the user set to ask or deny is removed from the toolset the run may call, an allowed one is kept, and the run reports exactly which capability was withheld — and only ones it actually had",
+        "notChecked": "an in-run approval prompt for an irreversible Studio mutation: consent here is a standing setting, not a per-operation dialog, and the brief asks for both"
+      },
+      {
+        "n": 9,
+        "name": "Approved operations execute against the intended Studio session",
+        "verdict": "pass",
+        "reason": null,
+        "checks": "no tool that changes a place is offered while Studio is not connected, the executor refuses one anyway if it is called, and a place that does not match the binding is not served",
+        "notChecked": "that the operation reaches the paired Studio and lands — that needs a live plugin on a real place"
+      },
+      {
+        "n": 10,
+        "name": "Studio changes produce persisted and inspectable results",
+        "verdict": "pass",
+        "reason": null,
+        "checks": "a checkpoint is taken automatically before a builder run, and the checkpoint list is reachable by the owner and invisible to a caller the project row is invisible to",
+        "notChecked": "that generated geometry survives a save and publish round trip in Roblox Studio, and that a checkpoint can be taken at all with no plugin connected — createCheckpoint refuses without one"
+      },
+      {
+        "n": 11,
+        "name": "Verification reports distinguish passed, failed, and unverified outcomes",
+        "verdict": "pass",
+        "reason": null,
+        "checks": "a critique that could not be read is reported as unknown and never as a failure, a failed one says so, and a spec case that never reported is named as missing rather than counted as a pass",
+        "notChecked": "that a user ever reaches a verification — every checker requires a Studio connection"
+      },
+      {
+        "n": 12,
+        "name": "User can inspect supporting evidence and operation history",
+        "verdict": "pass",
+        "reason": null,
+        "checks": "the operation history route is reachable by the owner and closed to everyone else, and the partition that builds it keeps this run’s operations separate from earlier ones instead of merging them",
+        "notChecked": "that the evidence cards render the four kinds and four states — a DOM assertion, held in apps/web/tests/evidence-model.test.mjs"
+      },
+      {
+        "n": 13,
+        "name": "User can reverse changes and verify restored state",
+        "verdict": "pass",
+        "reason": null,
+        "checks": "a restore that skipped something is reported as a caveat rather than as a success, the fidelity line names what did not come back, and the restore route is owner-scoped",
+        "notChecked": "that Terrain and Camera actually return in Roblox Studio — that needs a live place"
+      },
+      {
+        "n": 14,
+        "name": "Interrupted runs recover without duplicate writes or duplicate charges",
+        "verdict": "pass",
+        "reason": null,
+        "checks": "the run guard is established before the first await, so two starts racing for the same session produce exactly one run — and the guard reopens once the run settles",
+        "notChecked": "that a dropped socket replays the transcript rather than re-running it — the replay lives in the session Durable Object"
+      },
+      {
+        "n": 15,
+        "name": "Collaborators receive only the access granted to them",
+        "verdict": "pass",
+        "reason": null,
+        "checks": "the role matrix refuses a viewer the actions of an editor and an editor the actions of an admin, an unreadable role is refused rather than defaulted, a share link cannot carry more than editor, and the shared route is closed to a caller with no grant",
+        "notChecked": "that the members panel is mounted anywhere a user can reach — the enforcement is proven, the surface is the brief’s open half"
+      },
+      {
+        "n": 16,
+        "name": "Plan limits are enforced consistently across UI, API, and background jobs",
+        "verdict": "pass",
+        "reason": null,
+        "checks": "one limits table serves the worker and the client, the quota arithmetic reads it rather than a number of its own, the tighter of the daily and monthly limits is the one that bites, and a spend takes the renewable allowance before the balance the user paid for",
+        "notChecked": "that a background automation charges the same ledger — the automation run path needs the Durable Object runtime"
+      },
+      {
+        "n": 17,
+        "name": "Purchases update entitlements and credit balances accurately",
+        "verdict": "pass",
+        "reason": null,
+        "checks": "entitlement is recomputed from the subscription’s status and period rather than trusted from the event, an expired period falls back to free, and a second checkout is refused while one is already active",
+        "notChecked": "that a real Stripe test-mode webhook grants entitlement — every billing route is gated on billingConfigured() (apps/worker/src/billing.ts) and this repository holds no Stripe credential, so the grant itself has never been exercised here"
+      },
+      {
+        "n": 18,
+        "name": "Cancellation, downgrade, and payment failure produce documented behavior",
+        "verdict": "pass",
+        "reason": null,
+        "checks": "every dunning kind the worker can raise has user-facing copy, a failure is deduplicated on the invoice so three Stripe retries are one notice, and an unrecognised event produces nothing rather than a guess",
+        "notChecked": "that the notice reaches a user — the webhook that raises it is gated on billingConfigured(), which no credential in this repository satisfies"
+      },
+      {
+        "n": 19,
+        "name": "Data export and deletion complete across primary and derived storage",
+        "verdict": "pass",
+        "reason": null,
+        "checks": "the export route is owner-scoped, deletion requires the typed confirmation, and the receipt names the residue deletion does NOT remove instead of claiming a completeness it does not have",
+        "notChecked": "that every derived store is actually swept on the deployed origin — the sweep runs against live KV and D1"
+      },
+      {
+        "n": 20,
+        "name": "Production incidents are detected, communicated, and recoverable",
+        "verdict": "pass",
+        "reason": null,
+        "checks": "every notification kind the product can raise has a spec to render it, the channels that do not exist are named as unbuilt rather than silently dropped, a scheduled handler exists and is wired to a cron trigger, and the static rollback reads back what it wrote",
+        "notChecked": "that an incident on the deployed origin is actually noticed — detection here is a daily cron, not a monitor with an alert path"
+      }
+    ]
+  },
+  "completion": {
+    "overall": {
+      "done": 413,
+      "partial": 511,
+      "notFound": 203,
+      "notPlanned": 73,
+      "other": 0,
+      "total": 1200,
+      "counted": 1127,
+      "weightedPct": 59.3167701863354
+    },
+    "headerClaim": {
+      "done": 413,
+      "partial": 511,
+      "notFound": 203,
+      "notPlanned": 73,
+      "weightedPct": 59.3
+    }
+  },
+  "analytics": {
+    "tally": {
+      "total": 20,
+      "measured": 3,
+      "notMeasured": 17,
+      "nameDrift": 0
+    },
+    "measures": [
+      {
+        "item": 1,
+        "name": "Defined analytics event catalog",
+        "briefName": "Defined analytics event catalog",
+        "nameMatchesBrief": true,
+        "state": "measured",
+        "value": 5,
+        "unit": "event kinds (request, model_call, error, build, audit)",
+        "how": "counted from EVENT_KINDS in apps/worker/src/analytics.ts. Every one is an infrastructure event; none is a product event.",
+        "counted": [
+          "request",
+          "model_call",
+          "error",
+          "build",
+          "audit"
+        ]
+      },
+      {
+        "item": 2,
+        "name": "Event schema validation",
+        "briefName": "Event schema validation",
+        "nameMatchesBrief": true,
+        "state": "not-measured",
+        "because": "there is no event schema to validate against. apps/worker/src/analytics.ts reads each field defensively (readNumber, readCount, readTimestamp, readText, readEnum) and refuses an unreadable one, which is field-level defence, not an event checked against a declared shape — and a count of defended fields is not a measure of schema conformance",
+        "note": null
+      },
+      {
+        "item": 3,
+        "name": "Registration funnel",
+        "briefName": "Registration funnel",
+        "nameMatchesBrief": true,
+        "state": "not-measured",
+        "because": "the event catalog holds only request, model_call, error, build, audit (apps/worker/src/analytics.ts) — no signup, onboarding, pairing, conversion or retention event is emitted anywhere in the tree, so there is nothing to count. Registration happens in Supabase Auth, which the worker never sees, and no production datastore is reachable from this repository: Supabase, D1 and the Durable Object SQL all live behind credentials this report does not have and must not use",
+        "note": null
+      },
+      {
+        "item": 4,
+        "name": "Email verification funnel",
+        "briefName": "Email verification funnel",
+        "nameMatchesBrief": true,
+        "state": "not-measured",
+        "because": "the event catalog holds only request, model_call, error, build, audit (apps/worker/src/analytics.ts) — no signup, onboarding, pairing, conversion or retention event is emitted anywhere in the tree, so there is nothing to count. Confirmation is a Supabase redirect to /confirm; nothing records the click, and no production datastore is reachable from this repository: Supabase, D1 and the Durable Object SQL all live behind credentials this report does not have and must not use",
+        "note": null
+      },
+      {
+        "item": 5,
+        "name": "Onboarding completion funnel",
+        "briefName": "Onboarding completion funnel",
+        "nameMatchesBrief": true,
+        "state": "not-measured",
+        "because": "the event catalog holds only request, model_call, error, build, audit (apps/worker/src/analytics.ts) — no signup, onboarding, pairing, conversion or retention event is emitted anywhere in the tree, so there is nothing to count. Onboarding state lives in the browser (apps/web/src/lib/onboarding.ts) and is never sent anywhere",
+        "note": null
+      },
+      {
+        "item": 6,
+        "name": "Studio pairing conversion",
+        "briefName": "Studio pairing conversion",
+        "nameMatchesBrief": true,
+        "state": "not-measured",
+        "because": "the event catalog holds only request, model_call, error, build, audit (apps/worker/src/analytics.ts) — no signup, onboarding, pairing, conversion or retention event is emitted anywhere in the tree, so there is nothing to count. Pairing is a Durable Object handshake that emits no analytics event, and no production datastore is reachable from this repository: Supabase, D1 and the Durable Object SQL all live behind credentials this report does not have and must not use",
+        "note": null
+      },
+      {
+        "item": 7,
+        "name": "First successful run activation",
+        "briefName": "First successful run activation",
+        "nameMatchesBrief": true,
+        "state": "not-measured",
+        "because": "the event catalog holds only request, model_call, error, build, audit (apps/worker/src/analytics.ts) — no signup, onboarding, pairing, conversion or retention event is emitted anywhere in the tree, so there is nothing to count. A run writes a model_call event with no per-user first-run marker, and no production datastore is reachable from this repository: Supabase, D1 and the Durable Object SQL all live behind credentials this report does not have and must not use",
+        "note": null
+      },
+      {
+        "item": 8,
+        "name": "First verified change activation",
+        "briefName": "First verified change activation",
+        "nameMatchesBrief": true,
+        "state": "not-measured",
+        "because": "the event catalog holds only request, model_call, error, build, audit (apps/worker/src/analytics.ts) — no signup, onboarding, pairing, conversion or retention event is emitted anywhere in the tree, so there is nothing to count. Verification runs only with a Studio connection and records no event at all",
+        "note": null
+      },
+      {
+        "item": 9,
+        "name": "Trial conversion",
+        "briefName": "Trial conversion",
+        "nameMatchesBrief": true,
+        "state": "not-measured",
+        "because": "there is no trial to convert from: PLAN_LIMITS declares free, builder, studio, enterprise and none of them is time-limited (packages/shared/src/index.ts) — the free plan is permanent, so a trial-conversion rate is a measure of something this product does not have",
+        "note": null
+      },
+      {
+        "item": 10,
+        "name": "Paid conversion",
+        "briefName": "Paid conversion",
+        "nameMatchesBrief": true,
+        "state": "not-measured",
+        "because": "the event catalog holds only request, model_call, error, build, audit (apps/worker/src/analytics.ts) — no signup, onboarding, pairing, conversion or retention event is emitted anywhere in the tree, so there is nothing to count. Checkout and the Stripe webhook exist in the tree and are gated on billingConfigured() (apps/worker/src/billing.ts), which with no Stripe credential present answers false; whether the deployed origin has one is not something this report probed, and no production datastore is reachable from this repository: Supabase, D1 and the Durable Object SQL all live behind credentials this report does not have and must not use",
+        "note": null
+      },
+      {
+        "item": 11,
+        "name": "Subscription retention",
+        "briefName": "Subscription retention",
+        "nameMatchesBrief": true,
+        "state": "not-measured",
+        "because": "retention needs a subscription table read over time, and no production datastore is reachable from this repository: Supabase, D1 and the Durable Object SQL all live behind credentials this report does not have and must not use. Whether any subscription exists is not something this report can see",
+        "note": null
+      },
+      {
+        "item": 12,
+        "name": "Subscription cancellation reasons",
+        "briefName": "Subscription cancellation reasons",
+        "nameMatchesBrief": true,
+        "state": "not-measured",
+        "because": "no cancellation reason is ever collected: the product has no cancellation survey, and the Stripe events the worker interprets (payment_failed, action_required, payment_recovered, checkout_expired) carry a status, not a reason",
+        "note": null
+      },
+      {
+        "item": 13,
+        "name": "Cohort retention analysis",
+        "briefName": "Cohort retention analysis",
+        "nameMatchesBrief": true,
+        "state": "not-measured",
+        "because": "the event catalog holds only request, model_call, error, build, audit (apps/worker/src/analytics.ts) — no signup, onboarding, pairing, conversion or retention event is emitted anywhere in the tree, so there is nothing to count, and a cohort needs a signup date the worker never sees, and no production datastore is reachable from this repository: Supabase, D1 and the Durable Object SQL all live behind credentials this report does not have and must not use",
+        "note": null
+      },
+      {
+        "item": 14,
+        "name": "Feature adoption",
+        "briefName": "Feature adoption",
+        "nameMatchesBrief": true,
+        "state": "not-measured",
+        "because": "the event catalog holds only request, model_call, error, build, audit (apps/worker/src/analytics.ts) — no signup, onboarding, pairing, conversion or retention event is emitted anywhere in the tree, so there is nothing to count. Tool calls are recorded per run, not per feature per user, and no production datastore is reachable from this repository: Supabase, D1 and the Durable Object SQL all live behind credentials this report does not have and must not use",
+        "note": null
+      },
+      {
+        "item": 15,
+        "name": "Collaboration adoption",
+        "briefName": "Collaboration adoption",
+        "nameMatchesBrief": true,
+        "state": "not-measured",
+        "because": "the event catalog holds only request, model_call, error, build, audit (apps/worker/src/analytics.ts) — no signup, onboarding, pairing, conversion or retention event is emitted anywhere in the tree, so there is nothing to count. Membership rows exist in Postgres and are readable only with a credential this report does not have",
+        "note": null
+      },
+      {
+        "item": 16,
+        "name": "Run success trends",
+        "briefName": "Run success trends",
+        "nameMatchesBrief": true,
+        "state": "not-measured",
+        "because": "the event catalog holds only request, model_call, error, build, audit (apps/worker/src/analytics.ts) — no signup, onboarding, pairing, conversion or retention event is emitted anywhere in the tree, so there is nothing to count. A production run emits a model_call event with cost and latency and no success verdict, and no production datastore is reachable from this repository: Supabase, D1 and the Durable Object SQL all live behind credentials this report does not have and must not use",
+        "note": "the nearest thing this repository can compute is the eval harness’s own success rate over packages/evals/results (`node src/score.mjs scorecard latest`). That is models against fixed tasks, not users against the product, and the two must not be quoted as each other."
+      },
+      {
+        "item": 17,
+        "name": "Verification success trends",
+        "briefName": "Verification success trends",
+        "nameMatchesBrief": true,
+        "state": "not-measured",
+        "because": "no verification outcome is recorded anywhere: no event kind names a verification (request, model_call, error, build, audit), and every tool that could produce one needs a Studio connection — 35 of 59 tools are marked studio:true and are withheld without one, and no production datastore is reachable from this repository: Supabase, D1 and the Durable Object SQL all live behind credentials this report does not have and must not use",
+        "note": null
+      },
+      {
+        "item": 18,
+        "name": "Cost per successful run",
+        "briefName": "Cost per successful run",
+        "nameMatchesBrief": true,
+        "state": "not-measured",
+        "because": "the observed cost needs per-run spend rows joined to a success verdict, and neither exists: the event catalog holds only request, model_call, error, build, audit (apps/worker/src/analytics.ts) — no signup, onboarding, pairing, conversion or retention event is emitted anywhere in the tree, so there is nothing to count, and no production datastore is reachable from this repository: Supabase, D1 and the Durable Object SQL all live behind credentials this report does not have and must not use",
+        "note": "from the model, not from users: a quality-gated build is priced at 77 Credits (2310 neurons, about $0.0254) by apps/worker/src/pricing.ts. That is what the arithmetic charges, not what a run has cost."
+      },
+      {
+        "item": 19,
+        "name": "Permission-aware internal analytics access",
+        "briefName": "Permission-aware internal analytics access",
+        "nameMatchesBrief": true,
+        "state": "measured",
+        "value": 1,
+        "unit": "of 1 analytics read routes closed to callers without the admin key (with key 200, wrong key 403, no key 403)",
+        "how": "measured by driving the real Hono app from apps/worker/src/index.ts. It is a guard on a shared key, not per-person permission: there is one level of internal access, not a matrix.",
+        "counted": null
+      },
+      {
+        "item": 20,
+        "name": "Analytics data quality monitoring",
+        "briefName": "Analytics data quality monitoring",
+        "nameMatchesBrief": true,
+        "state": "measured",
+        "value": 1,
+        "unit": "of 1 — every analytics metric reports {value, samples, unreadable, why}, so an unreadable batch is visible as a count rather than folded into an average",
+        "how": "read from apps/worker/src/analytics.ts by constructing a metric with unreadable samples. There is no alerting on it: nothing watches the unreadable count and nothing pages anybody.",
+        "counted": null
+      }
+    ]
+  }
+}

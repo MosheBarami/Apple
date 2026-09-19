@@ -1,5 +1,6 @@
 ---
 import DocsLayout from '../../layouts/DocsLayout.astro';
+import { STUDIO_PLUGIN_STORE_LIVE } from '../../lib/studio-plugin';
 ---
 
 <DocsLayout
@@ -7,14 +8,17 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   description="Pair the Apple Studio plugin with one Apple project using a short-lived code, and understand what the connection covers and how long it lasts."
   heading="Connect a project"
 >
+  {!STUDIO_PLUGIN_STORE_LIVE && <div class="callout">
+    <p><strong>Public plugin installation is currently unavailable.</strong> These steps are for people who already have a working Apple plugin. New customers can use chat, but cannot build inside Studio yet. See <a href="/docs/plugin">plugin availability</a>; there is no confirmed release date.</p>
+  </div>}
   <p>
     Connecting links the Apple panel in <em>this</em> Studio window to <em>one</em> Apple project.
     Until you do it, the plugin is inert: the panel reads <strong>Not connected</strong> and Apple
     cannot see or change anything.
   </p>
   <p>
-    The link is made with a short-lived code, so you never copy a token and nothing sensitive ever
-    sits on your clipboard.
+    The link uses a short-lived pairing code instead of your password. Treat the code as a
+    temporary credential: enter it only in your own Apple plugin and do not share it.
   </p>
 
   <h2>Connecting</h2>

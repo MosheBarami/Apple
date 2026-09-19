@@ -8,7 +8,8 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { safeInternalPath } from '../lib/safe-redirect';
-import { PRODUCT_MODES_OFFERED, PRODUCT_MODE_INFO } from '@golem/shared';
+import { PRODUCT_MODELS, PRODUCT_MODEL_INFO } from '@golem/shared';
+import { ModelMark } from '../components/ws/model-mark';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { codeProblem, normaliseCode, secondStep, verifiedTotpFactors } from '../lib/mfa';
@@ -41,7 +42,7 @@ import {
  */
 // The modes a person may CHOOSE. PRODUCT_MODES is every mode the system can produce —
 // pricing one nobody can start is how "Super Agent" survived being removed from the composer.
-const MODES = PRODUCT_MODES_OFFERED;
+const MODELS = PRODUCT_MODELS;
 
 function ThemeCorner() {
   const { theme, setTheme } = useTheme();
@@ -85,10 +86,10 @@ function AuthHero() {
           stop it mid-run.
         </p>
         <ul className="auth-hero-points">
-          {MODES.map((m) => (
+          {MODELS.map((m) => (
             <li key={m}>
-              <span className={`mode-dot mode-dot-${m}`} aria-hidden="true" />
-              <strong>{PRODUCT_MODE_INFO[m].name}</strong> — {PRODUCT_MODE_INFO[m].blurb}
+              <ModelMark variant={m === 'apple' ? 'apple' : 'max'} />
+              <strong>{m === 'apple-max' ? <>Apple <span className="apple-max-name">MAX</span></> : PRODUCT_MODEL_INFO[m].name}</strong> — {m === 'apple' ? 'Limited free access.' : 'For paid subscribers.'}
             </li>
           ))}
         </ul>

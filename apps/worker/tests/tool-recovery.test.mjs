@@ -56,6 +56,36 @@ const REAL = JSON.stringify(
   1,
 );
 
+function assertRecoveryWiring(session) {
+  assert.match(session, /import \{ recoverToolCall \} from '\.\.\/tool-recovery'/, 'the loop must import it');
+
+  const registryBindings = new Set(
+    [...session.matchAll(/const\s+([A-Za-z_$][\w$]*)\s*=\s*new Set\(toolNames\(\)\);/g)].map((m) => m[1]),
+  );
+  assert.ok(registryBindings.size > 0, 'the run loop must materialise the real tool registry');
+  const recovered = /recoverToolCall\(\s*res\.text\s*,\s*allowed\s*,\s*([A-Za-z_$][\w$]*)\s*\)/.exec(session);
+  assert.ok(recovered, 'recovery must be called with model text, the run toolset, and a registry binding');
+  assert.ok(
+    registryBindings.has(recovered[1]),
+    `recovery registry argument "${recovered[1]}" is not derived from toolNames()`,
+  );
+  const call = recovered.index;
+
+  // `res.text` becomes the visible reply here. Recovery has to happen first or the payload is
+  // already on its way to the browser.
+  const assign = session.indexOf('agent.finalText = res.text;');
+  assert.notEqual(assign, -1, 'the assignment this guards moved — re-locate it before trusting this check');
+  assert.ok(call < assign, 'recovery runs AFTER the text is published — the payload reaches the user anyway');
+
+  const delta = session.indexOf("type: 'delta', msgId: agent.msgId");
+  assert.notEqual(delta, -1, 'the delta broadcast moved — re-locate it');
+  assert.ok(call < delta, 'recovery runs after the text is broadcast');
+
+  const guard = session.slice(Math.max(0, call - 400), call);
+  assert.match(guard, /if \(!res\.toolCalls\.length && res\.text\)/,
+    'recovery must only run when the model made NO call — reinterpreting a real one is a different and worse bug');
+}
+
 //[[ THE WIRING, NOT JUST THE FUNCTION. Everything above tests `recoverToolCall` in isolation, and
 //   a perfect pure function that nothing calls at the right moment fixes nothing. The run loop has
 //   to consult it BEFORE it reads `res.text`, because the whole defect was the payload being
@@ -67,34 +97,21 @@ const REAL = JSON.stringify(
 //   its own: a source assertion is weaker than a behavioural one and should say so. ]]
 test('STATIC CHECK — the run loop consults recovery before it reads the model text', () => {
   const session = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
-  assert.match(session, /import \{ recoverToolCall \} from '\.\.\/tool-recovery'/, 'the loop must import it');
+  assertRecoveryWiring(session);
 
-  //[[ PINNED TO THE PROPERTY, NOT THE ARITY — and it cost a round to learn that here too. This
-  //   read `recoverToolCall(res.text, allowed)` verbatim, and went red the moment the call gained a
-  //   third argument that makes it STRICTER: the registry, so a name the model invented can never be
-  //   interpolated into the transcript. A guard that fails when its subject gets safer is the shape
-  //   this repository keeps finding, and I wrote another one. ]]
-  const call = session.search(/recoverToolCall\(\s*res\.text\s*,\s*allowed\b/);
-  assert.notEqual(call, -1, 'recovery must be called with the model text and the run OWN toolset');
-  const args = session.slice(call, session.indexOf(')', call) + 1);
-  assert.match(args, /toolNames\(\)/,
-    'recovery must be given the registry, or `refused` can carry a name the model chose and session.ts interpolates it');
-
-  // `res.text` becomes the visible reply here. Recovery has to happen first or the payload is
-  // already on its way to the browser.
-  const assign = session.indexOf('agent.finalText = res.text;');
-  assert.notEqual(assign, -1, 'the assignment this guards moved — re-locate it before trusting this check');
-  assert.ok(call < assign, 'recovery runs AFTER the text is published — the payload reaches the user anyway');
-
-  // And the broadcast, which is the half the user actually sees.
-  const delta = session.indexOf("type: 'delta', msgId: agent.msgId");
-  assert.notEqual(delta, -1, 'the delta broadcast moved — re-locate it');
-  assert.ok(call < delta, 'recovery runs after the text is broadcast');
-
-  // Only when the model made no call of its own: a real tool call must never be second-guessed.
-  const guard = session.slice(Math.max(0, call - 400), call);
-  assert.match(guard, /if \(!res\.toolCalls\.length && res\.text\)/,
-    'recovery must only run when the model made NO call — reinterpreting a real one is a different and worse bug');
+  // Falsification: `allowed` is the run's narrowed permission set, not the registry. Passing it as
+  // the third argument would let an invented name bypass the fixed-vocabulary check that protects
+  // the transcript interpolation below.
+  const weakened = session.replace(
+    'recoverToolCall(res.text, allowed, knownTools)',
+    'recoverToolCall(res.text, allowed, allowed)',
+  );
+  assert.notEqual(weakened, session, 'CONTROL: the synthetic registry bypass must actually be planted');
+  assert.throws(
+    () => assertRecoveryWiring(weakened),
+    /not derived from toolNames\(\)/,
+    'the static guard must fail if recovery stops using the real registry',
+  );
 });
 
 test('THE BOUNDARY — every recoverable tool is inert in the real registry', () => {

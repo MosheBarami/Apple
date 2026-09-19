@@ -81,6 +81,9 @@ const shortDate = (iso: string) =>
                   {/* The workaround is ON the page. A list of titles linking elsewhere would be a
                       worse version of the email address that was already here. */}
                   <p class="known__fix"><strong>What to do:</strong> {issue.workaround}</p>
+                  {issue.links?.length && <ul aria-label={`Help for ${issue.title}`}>
+                    {issue.links.map(link => <li><a href={link.href}>{link.label}</a></li>)}
+                  </ul>}
                 </li>
               ))}
             </ul>
@@ -428,7 +431,7 @@ const shortDate = (iso: string) =>
         if (elapsed > SLOW_MS) {
           setState('degraded', 'Degraded', `The API answered in ${(elapsed / 1000).toFixed(1)}s — slower than usual. Builds may lag.`);
         } else {
-          setState('ok', 'All systems operational', `The API answered in ${elapsed}ms. Build away.`);
+          setState('ok', 'API operational', `The API answered in ${elapsed}ms. This does not verify Studio, builds, or billing; see known issues below.`);
         }
       } else {
         setState('degraded', 'Degraded', `The API responded with an unexpected status (${res.status}). Some features may not work.`);

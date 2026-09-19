@@ -1,0 +1,33 @@
+{
+  "name": "Apple Generation Engine Proof",
+  "tree": {
+    "$className": "DataModel",
+    "Workspace": {
+      "$className": "Workspace",
+      "AppleGenerationEngineProofMarker": {
+        "$className": "Folder",
+        "$attributes": {
+          "AppleGenerationEngineProof": true
+        }
+      },
+      "AppleGenerationProofDestination": {
+        "$className": "Folder",
+        "$attributes": {
+          "AppleGenerationProofDestination": true
+        }
+      }
+    },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "AppleCommandsUnderGenerationProof": {
+        "$path": "../src/Commands.luau"
+      },
+      "AppleGenerationServiceAdapter": {
+        "$path": "../src/GenerationService.luau"
+      },
+      "AppleGenerationEngineProof": {
+        "$path": "AppleGenerationEngineProof.luau"
+      }
+    }
+  }
+}

@@ -1,1234 +1,598 @@
-/* ==========================================================================
-   APPLE — design system.
-
-   Visual concept: "The Workshop".
-   Apple is a thing that MAKES things, so the site is built out of the same
-   materials it works in: quarried stone, fired clay, a lit workbench and a
-   technical drawing sheet. Everything reads as CARVED — hairline seams,
-   engraved rules, letterpress edges, dimension ticks in the margins — rather
-   than as glass floating on a gradient. The accent is molten: it is the only
-   thing in the palette that emits light, and it moves with the mode you pick.
-
-   Two full themes (quarry daylight / night quarry). Warm neutrals throughout;
-   no cool "SaaS blue" anywhere. Colour is spent, never sprayed.
-   ========================================================================== */
-
-/* --------------------------------------------------------------------------
-   1. Tokens
-   -------------------------------------------------------------------------- */
+/* Neutral public-site foundation; explicit light preference remains supported. */
 
 :root {
-  /* --- type -------------------------------------------------------------
-     THE SAME THREE FAMILIES AS THE LANDING. These were Fraunces (a serif),
-     Inter and JetBrains Mono — and this stylesheet dresses SEVENTEEN of the
-     site's eighteen pages, so the redesign that landed on the landing left
-     every other route in the previous identity. One click from an Archivo
-     headline in 118% condensed caps, /docs rendered its own title in a
-     Scotch-Roman serif.
-
-     That was not a competing design decision left standing on purpose.
-     docs/DESIGN-SPEC.md §0 has said "the earlier Fraunces treatment is
-     superseded" since before this change, and tests/e2e/landing.spec.ts fails
-     if the landing's h1 family so much as contains "fraunces". The supersession
-     was recorded and applied to one file.
-
-     Fallbacks matter more here than on the landing. Archivo's width axis is
-     load-bearing, and no system face has one, so the fallback is a CONDENSED
-     stack rather than a neutral one — an unstyled frame in the right shape
-     beats one in the wrong shape. See ADR-020. */
-  --font-display: 'Inter Tight', ui-sans-serif, system-ui, -apple-system,
-    BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-  --font-body: 'Inter', ui-sans-serif, system-ui, -apple-system,
-    BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', SFMono-Regular,
-    'Cascadia Code', Menlo, Consolas, monospace;
-
-  /* Kept at 100%: the new display face has no width axis, and a stretch applied to a face
-     that cannot honour it is a synthetic distortion rather than a setting. */
-  --stretch: 100%;
-
-  /* --- geometry --------------------------------------------------------- */
-  --content: 1200px;
-  --gutter: clamp(1.25rem, 4vw, 3rem);
-  --r-lg: 18px;
-  --r-md: 12px;
-  --r-sm: 8px;
+  color-scheme: light;
+  --paper: #f5f5f5;
+  --paper-2: #eeeeee;
+  --surface: #ffffff;
+  --surface-2: #e8e8e8;
+  --ink: #080808;
+  --ink-2: #343434;
+  --muted: #585858;
+  --faint: #656565;
+  --text: var(--ink);
+  --bg: var(--paper);
+  --accent: #292929;
+  --accent-soft: rgba(0, 0, 0, 0.06);
+  --accent-ink: #ffffff;
+  --accent-on: #ffffff;
+  --acc-ember: #292929;
+  --acc-ember-soft: rgba(0, 0, 0, 0.06);
+  --acc-ember-ink: #ffffff;
+  --acc-clay: #292929;
+  --acc-clay-soft: rgba(0, 0, 0, 0.06);
+  --acc-clay-ink: #ffffff;
+  --acc-stone: #292929;
+  --acc-stone-soft: rgba(0, 0, 0, 0.06);
+  --acc-stone-ink: #ffffff;
+  --acc-rune: #292929;
+  --acc-rune-soft: rgba(0, 0, 0, 0.06);
+  --acc-rune-ink: #ffffff;
+  --good: #27634c;
+  --success: #27634c;
+  --warn: #9a641c;
+  --amber: #9a641c;
+  --bad: #b33d32;
+  --danger: #b33d32;
+  --line: rgba(23, 32, 27, 0.14);
+  --line-strong: rgba(23, 32, 27, 0.32);
+  --hairline: rgba(23, 32, 27, 0.08);
+  --seam: var(--accent);
+  --lift-1: 4px 5px 0 rgba(23, 32, 27, 0.11);
+  --lift-2: 7px 8px 0 rgba(23, 32, 27, 0.14);
+  --lift-3: 10px 11px 0 rgba(23, 32, 27, 0.18);
+  --inset: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  --raised: var(--surface);
+  --font-display: Arial, Helvetica, sans-serif;
+  --font-body: Arial, Helvetica, sans-serif;
+  --font-sans: var(--font-body);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --content: 1240px;
+  --gutter: clamp(1.2rem, 4vw, 3.5rem);
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-card: 6px;
+  --r-ctl: 3px;
   --r-pill: 999px;
-
-  /* --- motion ----------------------------------------------------------- */
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out: cubic-bezier(0.22, 0.68, 0.24, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   --dur-fast: 140ms;
-  --dur: 260ms;
-  --dur-slow: 620ms;
-
-  /* --- semantic accents (mode-driven; overridden per theme below) -------- */
-  --accent: var(--acc-ember);
-  --accent-soft: var(--acc-ember-soft);
-  --accent-ink: var(--acc-ember-ink);
-}
-
-/* ---- LIGHT: "daylight" — Apple's palette on a pale ground ---------------
-   The mark is dark-native, so light mode darkens the brand blues rather than
-   reusing them. #0080F0 is only 3.0:1 on white and fails body text there;
-   #0060C4 clears it.
-
-   (Cited apple-brand.css until that file was deleted. It was 101 lines no
-   stylesheet imported, whose header claimed "canonical source; apps/web imports
-   the same values" — nothing did, and its only consumers were two comments
-   including this one. The measurement it recorded was taken from a 3D render
-   that is itself cancelled.) */
-:root,
-:root[data-theme='light'] {
-  color-scheme: light;
-
-  --paper: #fafafa;
-  --paper-2: #f2f2f4;
-  --surface: #ffffff;
-  --surface-2: #f5f5f7;
-  --ink: #0a0a0b;
-  --ink-2: #4a4a5233;
-  --muted: #4a4a52;
-  --faint: #5f5f69;
-  --line: rgba(10, 10, 11, 0.10);
-  --line-strong: rgba(10, 10, 11, 0.22);
-  --hairline: rgba(10, 10, 11, 0.06);
-
-  --lift-1: 0 1px 2px rgba(10, 10, 11, 0.05), 0 2px 8px rgba(10, 10, 11, 0.05);
-  --lift-2: 0 2px 4px rgba(10, 10, 11, 0.06), 0 10px 28px rgba(10, 10, 11, 0.08);
-  --lift-3: 0 4px 10px rgba(10, 10, 11, 0.08), 0 26px 60px rgba(10, 10, 11, 0.12);
-  --inset: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 -1px 0 rgba(10, 10, 11, 0.05);
-
-  /*
-   * THE ACCENT IS NOT A HUE ANY MORE. It was the mark's azure, and before that the Golem ember,
-   * and the product now commits to black, minimal and cinematic: one near-white light source, no
-   * brand colour competing with it. A primary control is a white pill on black, which is the whole
-   * of the accent's job; anything that must MEAN something — an error, a spend, a success — uses
-   * the semantic colours below, which are the only hues left and now carry all of the signal.
-   *
-   * On light the same idea inverts: near-black on near-white.
-   */
-  --acc-ember: #14141a;
-  --acc-ember-soft: rgba(20, 20, 26, 0.08);
-  --acc-ember-ink: #fafafa;
-
-  --acc-clay: #0b7fa8;
-  --acc-clay-soft: rgba(11, 127, 168, 0.1);
-  --acc-clay-ink: #f2fbff;
-
-  --acc-stone: #0060c4;
-  --acc-stone-soft: rgba(0, 96, 196, 0.1);
-  --acc-stone-ink: #f4f9ff;
-
-  --acc-rune: #5b2bd4;
-  --acc-rune-soft: rgba(91, 43, 212, 0.1);
-  --acc-rune-ink: #f7f4ff;
-
-  --good: #14714c;
-  --warn: #8a5a00;
-  --bad: #b02a3a;
-
-  --grain-opacity: 0.03;
+  --dur: 280ms;
+  --dur-slow: 720ms;
+  --reveal-delay: 0ms;
+  --grain-opacity: 0;
   --grain-blend: multiply;
-  --vignette: rgba(11, 13, 20, 0.05);
-
-  --gl-key: #eaf2ff;
-  --gl-fill: #c9d6ea;
-  --gl-body: #aab6cc;
-  --gl-ground: #dde3ef;
-  --gl-plinth: #d6dded;
+  --vignette: transparent;
+  --gl-key: var(--accent);
+  --gl-fill: var(--surface-2);
+  --gl-body: var(--ink-2);
+  --gl-ground: var(--paper-2);
+  --gl-plinth: var(--surface-2);
+  --clay: var(--accent);
+  --stone: var(--accent);
+  --rune: var(--accent);
+  --mode: var(--accent);
+  --stretch: 100%;
+  --tight: 0.96;
+  --pad: 1rem;
+  --inset: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  --stack-gap: 1rem;
 }
 
-/* ---- DARK: the mark's native ground ------------------------------------
-   Contrast against --paper is computed, not estimated: ink 17.5:1, muted 7.9:1,
-   faint 4.7:1, azure 5.1:1. Violet reaches only 3.96:1 and is therefore a UI
-   colour, never body copy — apps/web/tests/contrast.test.mjs holds these to the
-   4.5:1 floor on every surface, which is what keeps the figures above honest
-   rather than decorative.
-
-   These values are the source of truth now; the file this used to defer to is
-   gone, and packages/design/src/tokens.mjs is where a checker reads the
-   vocabulary from. */
-:root[data-theme='dark'] {
-  color-scheme: dark;
-
-  --paper: #08080a;
-  --paper-2: #0c0c0f;
-  --surface: #131317;
-  --surface-2: #1b1b21;
-  --ink: #f4f4f6;
-  --ink-2: #a3a3ad33;
-  --muted: #a3a3ad;
-  --faint: #8a8a95;
-  --line: rgba(255, 255, 255, 0.08);
-  --line-strong: rgba(255, 255, 255, 0.17);
-  --hairline: rgba(255, 255, 255, 0.05);
-
-  --lift-1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.4);
-  --lift-2: 0 2px 4px rgba(0, 0, 0, 0.55), 0 10px 28px rgba(0, 0, 0, 0.45);
-  --lift-3: 0 4px 10px rgba(0, 0, 0, 0.6), 0 26px 60px rgba(0, 0, 0, 0.55);
-  --inset: inset 0 1px 0 rgba(255, 255, 255, 0.06), inset 0 -1px 0 rgba(0, 0, 0, 0.5);
-
-  /* The mark's hue sweep, in the order the eye travels it. */
-  --acc-ember: #ededf2; /* the light itself — see the note above the dark block */
-  --acc-ember-soft: rgba(237, 237, 242, 0.10);
-  --acc-ember-ink: #08080a;
-
-  --acc-clay: #00e5ff; /* cyan — the credit */
-  --acc-clay-soft: rgba(0, 229, 255, 0.14);
-  --acc-clay-ink: #001a1f;
-
-  --acc-stone: #2b5bf0;
-  --acc-stone-soft: rgba(43, 91, 240, 0.14);
-  --acc-stone-ink: #eaf0ff;
-
-  --acc-rune: #7b4df0; /* violet — UI and large text only */
-  --acc-rune-soft: rgba(123, 77, 240, 0.14);
-  --acc-rune-ink: #f3efff;
-
-  --good: #34d399;
-  --warn: #fbbf24;
-  --bad: #fb7185;
-
-  --grain-opacity: 0.05;
-  --grain-blend: overlay;
-  --vignette: rgba(0, 0, 0, 0.5);
-
-  --gl-key: #dff0ff;
-  --gl-fill: #2b5bf0;
-  --gl-body: #151826;
-  --gl-ground: #0b0d16;
-  --gl-plinth: #0e1018;
-}
-
-/* system preference when the visitor has not chosen */
 @media (prefers-color-scheme: dark) {
-  /* THE SYSTEM-DARK MIRROR. Kept token-for-token in step with the [data-theme='dark'] block
-     above, because most viewers never set a theme explicitly and land here instead. When this
-     drifted, explicit-dark users saw Apple's palette and system-dark users saw Golem's — the
-     classic "colour defined only inside one block" bug, and the contrast suite catches it by
-     asserting the two dark declarations of --faint are identical. */
   :root:not([data-theme='light']) {
     color-scheme: dark;
-
-    --paper: #08080a;
-    --paper-2: #0c0c0f;
-    --surface: #131317;
-    --surface-2: #1b1b21;
-    --ink: #f4f4f6;
-    --muted: #a3a3ad;
-    --faint: #8a8a95; /* kept in step with the [data-theme] block above */
-    --line: rgba(255, 255, 255, 0.08);
-    --line-strong: rgba(255, 255, 255, 0.17);
-    --hairline: rgba(255, 255, 255, 0.05);
-
-    --lift-1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.4);
-    --lift-2: 0 2px 4px rgba(0, 0, 0, 0.55), 0 10px 28px rgba(0, 0, 0, 0.45);
-    --lift-3: 0 4px 10px rgba(0, 0, 0, 0.6), 0 26px 60px rgba(0, 0, 0, 0.55);
-    --inset: inset 0 1px 0 rgba(255, 255, 255, 0.06), inset 0 -1px 0 rgba(0, 0, 0, 0.5);
-
-    --acc-ember: #ededf2;
-    --acc-ember-soft: rgba(237, 237, 242, 0.10);
-    --acc-ember-ink: #08080a;
-    --acc-clay: #00e5ff;
-    --acc-clay-soft: rgba(0, 229, 255, 0.14);
-    --acc-clay-ink: #001a1f;
-    --acc-stone: #2b5bf0;
-    --acc-stone-soft: rgba(43, 91, 240, 0.14);
-    --acc-stone-ink: #eaf0ff;
-    --acc-rune: #7b4df0;
-    --acc-rune-soft: rgba(123, 77, 240, 0.14);
-    --acc-rune-ink: #f3efff;
-
-    --good: #34d399;
-    --warn: #fbbf24;
-    --bad: #fb7185;
-
-    --grain-opacity: 0.05;
-    --grain-blend: overlay;
-    --vignette: rgba(0, 0, 0, 0.5);
-
-    --gl-key: #dff0ff;
-    --gl-fill: #2b5bf0;
-    --gl-body: #151826;
-    --gl-ground: #0b0d16;
-    --gl-plinth: #0e1018;
+    --paper: #080808;
+    --paper-2: #101010;
+    --surface: #141414;
+    --surface-2: #202020;
+    --ink: #f5f5f5;
+    --ink-2: #dedede;
+    --muted: #bcbcbc;
+    --faint: #a2a2a2;
+    --text: var(--ink);
+    --bg: var(--paper);
+    --accent: #eeeeee;
+    --accent-soft: rgba(255, 255, 255, 0.08);
+    --accent-ink: #080808;
+    --accent-on: #080808;
+    --acc-ember: #eeeeee;
+    --acc-ember-soft: rgba(255, 255, 255, 0.08);
+    --acc-ember-ink: #080808;
+    --acc-clay: #eeeeee;
+    --acc-clay-soft: rgba(255, 255, 255, 0.08);
+    --acc-clay-ink: #080808;
+    --acc-stone: #eeeeee;
+    --acc-stone-soft: rgba(255, 255, 255, 0.08);
+    --acc-stone-ink: #080808;
+    --acc-rune: #eeeeee;
+    --acc-rune-soft: rgba(255, 255, 255, 0.08);
+    --acc-rune-ink: #080808;
+    --good: #9cc8a8;
+    --success: #9cc8a8;
+    --warn: #ffc66d;
+    --amber: #ffc66d;
+    --bad: #ff8e7e;
+    --danger: #ff8e7e;
+    --line: rgba(244, 241, 234, 0.15);
+    --line-strong: rgba(244, 241, 234, 0.32);
+    --hairline: rgba(244, 241, 234, 0.08);
+    --lift-1: 4px 5px 0 rgba(0, 0, 0, 0.22);
+    --lift-2: 7px 8px 0 rgba(0, 0, 0, 0.28);
+    --lift-3: 10px 11px 0 rgba(0, 0, 0, 0.36);
+    --inset: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    --raised: var(--surface);
+    --gl-key: var(--accent);
+    --gl-fill: var(--surface-2);
+    --gl-body: var(--ink-2);
+    --gl-ground: var(--paper-2);
+    --gl-plinth: var(--surface-2);
   }
 }
 
-/* mode scopes — set the dynamic accent for a subtree */
-.is-clay {
-  --accent: var(--acc-clay);
-  --accent-soft: var(--acc-clay-soft);
-  --accent-ink: var(--acc-clay-ink);
-}
-.is-stone {
-  --accent: var(--acc-stone);
-  --accent-soft: var(--acc-stone-soft);
-  --accent-ink: var(--acc-stone-ink);
-}
-.is-rune {
-  --accent: var(--acc-rune);
-  --accent-soft: var(--acc-rune-soft);
-  --accent-ink: var(--acc-rune-ink);
-}
-/* THE RECOMMENDED PLAN, in the accent this site has rather than in a borrowed hue.
-   A brighter edge and a lifted surface: the card is the one being pointed at, and pointing is what
-   a brighter edge does. Nothing here changes `--accent`, so the CTA inside it is the same button
-   the free plan has — the emphasis is on the card, not on a second kind of button. */
-.is-featured {
-  border-color: var(--line-strong, var(--line));
-  box-shadow: var(--lift-2, none);
-}
-
-.is-ember {
-  --accent: var(--acc-ember);
-  --accent-soft: var(--acc-ember-soft);
-  --accent-ink: var(--acc-ember-ink);
-}
-
-/* legacy aliases so any page not yet migrated keeps rendering */
-:root {
-  --bg: var(--paper);
-  --raised: var(--surface-2);
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --paper: #080808;
+  --paper-2: #101010;
+  --surface: #141414;
+  --surface-2: #202020;
+  --ink: #f5f5f5;
+  --ink-2: #dedede;
+  --muted: #bcbcbc;
+  --faint: #a2a2a2;
   --text: var(--ink);
-  --amber: var(--accent);
-  --violet: var(--acc-rune);
-  --clay: var(--acc-clay);
-  --stone: var(--acc-stone);
-  --rune: var(--acc-rune);
-  --success: var(--good);
-  --danger: var(--bad);
-  --r-card: var(--r-lg);
-  --r-ctl: var(--r-sm);
+  --bg: var(--paper);
+  --accent: #eeeeee;
+  --accent-soft: rgba(255, 255, 255, 0.08);
+  --accent-ink: #080808;
+  --accent-on: #080808;
+  --acc-ember: #eeeeee;
+  --acc-ember-soft: rgba(255, 255, 255, 0.08);
+  --acc-ember-ink: #080808;
+  --acc-clay: #eeeeee;
+  --acc-clay-soft: rgba(255, 255, 255, 0.08);
+  --acc-clay-ink: #080808;
+  --acc-stone: #eeeeee;
+  --acc-stone-soft: rgba(255, 255, 255, 0.08);
+  --acc-stone-ink: #080808;
+  --acc-rune: #eeeeee;
+  --acc-rune-soft: rgba(255, 255, 255, 0.08);
+  --acc-rune-ink: #080808;
+  --good: #9cc8a8;
+  --success: #9cc8a8;
+  --warn: #ffc66d;
+  --amber: #ffc66d;
+  --bad: #ff8e7e;
+  --danger: #ff8e7e;
+  --line: rgba(244, 241, 234, 0.15);
+  --line-strong: rgba(244, 241, 234, 0.32);
+  --hairline: rgba(244, 241, 234, 0.08);
+  --lift-1: 4px 5px 0 rgba(0, 0, 0, 0.22);
+  --lift-2: 7px 8px 0 rgba(0, 0, 0, 0.28);
+  --lift-3: 10px 11px 0 rgba(0, 0, 0, 0.36);
+  --inset: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --raised: var(--surface);
+  --gl-key: var(--accent);
+  --gl-fill: var(--surface-2);
+  --gl-body: var(--ink-2);
+  --gl-ground: var(--paper-2);
+  --gl-plinth: var(--surface-2);
 }
 
-/* --------------------------------------------------------------------------
-   2. Reset & base
-   -------------------------------------------------------------------------- */
-
-*,
-*::before,
-*::after {
+* {
   box-sizing: border-box;
 }
 
-/*[[ THE WHOLE INTERFACE, ONE SIZE DOWN. Owner's call, 2026-09-16: "the whole size of the site
- *   should be smaller — all the text and the parts."
- *
- *   ONE NUMBER, not two hundred edits. Every size and every gap in this stylesheet is in `rem`, so
- *   the root font-size is the single scale factor for the entire interface — type, padding, gaps,
- *   radii and icon boxes all move together and every proportion the design was drawn with is
- *   preserved. Editing the type scale alone would have shrunk the words inside boxes that stayed
- *   the same size, which reads as a mistake rather than as a smaller design.
- *
- *   80%, not the literal half he asked for. 16px -> 8px would put body text at 8px and the small
- *   print at 5px, which is not a smaller product, it is an unreadable one. 12.8px base is a real,
- *   visible step down — about a fifth off every dimension on the page — and it is the largest one
- *   that keeps the smallest labels above the size a person can read at arm's length.
- *
- *   TO TUNE IT, change this one percentage. Nothing else needs to move. If it should go further,
- *   75% is the next honest stop and 70% is the floor: below that the 0.62rem mono captions land
- *   under 9px.
- *
- *   `-webkit-text-size-adjust: 100%` stays. It stops iOS inflating text after a rotation, which
- *   would undo this on exactly the devices where the reduction matters most. ]]*/
 html {
-  font-size: 80%;
-  -webkit-text-size-adjust: 100%;
+  min-width: 320px;
   scroll-behavior: smooth;
-  scroll-padding-top: 6rem;
   background: var(--paper);
 }
 
 body {
+  min-width: 320px;
   margin: 0;
-  min-height: 100svh;
+  overflow-x: hidden;
   background: var(--paper);
   color: var(--ink);
   font-family: var(--font-body);
-  font-size: 1rem;
-  line-height: 1.62;
-  font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  overflow-x: clip;
-  transition: background-color var(--dur) var(--ease-out),
-    color var(--dur) var(--ease-out);
-}
-
-img,
-svg,
-video,
-canvas {
-  max-width: 100%;
-  display: block;
-}
-
-img,
-video {
-  height: auto;
-}
-
-/* --------------------------------------------------------------------------
-   3. Typography — condensed
-   -------------------------------------------------------------------------- */
-
-h1,
-h2,
-h3,
-h4,
-.display {
-  font-family: var(--font-display);
-  /* WAS `font-variation-settings: var(--display-vf)` with 'SOFT' 0, 'WONK' 0,
-     'opsz' 120 — three axes that belong to Fraunces and do not exist on
-     Archivo. An unknown axis is ignored rather than rejected, so leaving it
-     would have been dead declaration nobody could see, and the token it read
-     is gone. The axis that matters now is width, set the ordinary way so it
-     also reaches a static fallback that happens to have one. */
-  /*[[ SENTENCE CASE, AND ONE SIZE SMALLER, so the rest of the site reads as the landing page's
-   *   site. This was `text-transform: uppercase` at weight 800, and /pricing opened with
-   *   "FREE TO BUILD. HONESTLY." across two lines of 64px capitals while the landing page's own
-   *   headline three clicks away is sentence case at 48px. Two typographic voices on one domain is
-   *   two products, and the owner asked for neither the shouting nor the disagreement.
-   *
-   *   Capitals are also what made the heading sizes read as enormous: at the same font-size, an
-   *   all-caps line has no descenders and no x-height variation, so it occupies its full box and
-   *   looks a size larger than the same words in sentence case. Lowering the case is most of the
-   *   fix; the h1/h2 clamps below are trimmed to finish it. ]]*/
-  font-stretch: var(--stretch);
-  font-weight: 700;
-  line-height: 1.05;
-  letter-spacing: -0.022em;
-  color: var(--ink);
-  margin: 0 0 0.45em;
-  text-wrap: balance;
-  font-variant-numeric: lining-nums tabular-nums;
-  font-feature-settings: 'onum' 0, 'lnum' 1, 'tnum' 1;
-}
-
-/* 3.05rem is the landing page's own h1 cap — the same number, so the two are literally the same
-   size rather than approximately so. */
-h1 {
-  font-size: clamp(2.05rem, 4.4vw, 3.05rem);
-  letter-spacing: -0.026em;
-}
-
-h2 {
-  font-size: clamp(1.6rem, 2.8vw, 2.2rem);
-}
-
-h3 {
-  font-size: clamp(1.2rem, 2vw, 1.5rem);
-  letter-spacing: -0.014em;
-  line-height: 1.2;
-}
-
-h4 {
-  font-size: 1.05rem;
-  letter-spacing: -0.01em;
-}
-
-/* the signature: a headline that looks cut into the surface */
-.carved {
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55), 0 -1px 0 rgba(23, 21, 18, 0.1);
-}
-
-:root[data-theme='dark'] .carved {
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6), 0 -1px 0 rgba(255, 255, 255, 0.07);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .carved {
-    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6), 0 -1px 0 rgba(255, 255, 255, 0.07);
-  }
-}
-
-p {
-  margin: 0 0 1.05em;
-}
-
-a {
-  color: var(--accent);
-  text-decoration: none;
-  text-underline-offset: 0.22em;
-  text-decoration-thickness: from-font;
-  transition: color var(--dur-fast) var(--ease-out),
-    opacity var(--dur-fast) var(--ease-out);
-}
-
-a:hover {
-  text-decoration: underline;
-}
-
-strong,
-b {
-  font-weight: 650;
-  color: var(--ink);
-}
-
-code,
-pre,
-kbd,
-samp {
-  font-family: var(--font-mono);
-  font-size: 0.86em;
-  font-variant-ligatures: none;
-}
-
-code {
-  background: var(--surface-2);
-  border: 1px solid var(--hairline);
-  border-radius: 5px;
-  padding: 0.12em 0.4em;
-}
-
-kbd {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-bottom-width: 2px;
-  border-radius: 6px;
-  padding: 0.12em 0.42em;
-  font-size: 0.82em;
-  color: var(--ink);
-}
-
-pre {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
-  padding: 1rem 1.15rem;
-  overflow-x: auto;
-  line-height: 1.62;
-  box-shadow: var(--inset);
-}
-
-pre code {
-  background: none;
-  border: 0;
-  padding: 0;
-  white-space: pre;
+  font-size: 16px;
+  line-height: 1.55;
+  text-rendering: optimizeLegibility;
 }
 
 ::selection {
   background: var(--accent);
-  color: var(--accent-ink);
+  color: var(--accent-on);
 }
 
-:focus-visible {
+a {
+  color: inherit;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+summary:focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 3px;
-  border-radius: 4px;
+  outline-offset: 4px;
 }
 
-/* Display numerals.
-   THE REASON CHANGED; THE RULE DID NOT. This read "Fraunces has no
-   lining-figure feature, so its digits descend below the baseline" — true of
-   Fraunces and irrelevant now, since the display face is Archivo and its
-   figures are lining. What still holds is that a big readout should not be
-   uppercased: display type here is `text-transform: uppercase`, which does
-   nothing to digits but does mangle any unit or suffix beside them. So a
-   number that IS the component stays in the body face, and says so for a
-   reason that is currently true. */
-.numeral {
-  font-family: var(--font-body);
-  font-weight: 620;
-  text-transform: none;
-  letter-spacing: -0.035em;
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: 'tnum' 1;
-  font-variation-settings: normal;
+.skip-link {
+  position: fixed;
+  z-index: 1000;
+  top: 0.7rem;
+  left: 0.7rem;
+  padding: 0.55rem 0.75rem;
+  transform: translateY(-150%);
+  background: var(--ink);
+  color: var(--paper);
+  font: 700 0.75rem var(--font-mono);
+  text-decoration: none;
 }
 
-/* --------------------------------------------------------------------------
-   4. Layout primitives
-   -------------------------------------------------------------------------- */
+.skip-link:focus {
+  transform: translateY(0);
+}
 
 .wrap {
   width: min(var(--content), calc(100% - var(--gutter) * 2));
   margin-inline: auto;
 }
 
-.wrap-narrow {
-  width: min(760px, calc(100% - var(--gutter) * 2));
-  margin-inline: auto;
+.wrap-narrow-ish {
+  max-width: 900px;
 }
 
 .section {
-  padding-block: clamp(4.5rem, 10vw, 9rem);
-  position: relative;
+  padding: clamp(3.5rem, 8vw, 7rem) 0;
+  border-bottom: 1px solid var(--line);
 }
 
-.section--tight {
-  padding-block: clamp(3rem, 6vw, 5rem);
+.section:last-of-type {
+  border-bottom: 0;
 }
 
-/* The first section on a page already has the nav above it — a full section's
-   worth of top padding there just reads as an empty screen. */
-main > .section:first-child {
-  padding-top: clamp(2rem, 4vw, 3.25rem);
-}
-
-/* engraved rule between sections */
-.rule {
-  height: 1px;
-  border: 0;
-  margin: 0;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--line) 12%,
-    var(--line) 88%,
-    transparent
-  );
-}
-
-/* section header block */
 .eyebrow {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  font-weight: 500;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--accent);
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.7rem;
-  margin: 0 0 1.15rem;
-}
-
-.eyebrow::before {
-  content: '';
-  width: 26px;
-  height: 1px;
-  background: currentColor;
-  opacity: 0.5;
-  flex: none;
+  gap: 0.6rem;
+  margin: 0 0 0.85rem;
+  color: var(--accent);
+  font: 700 0.68rem/1.2 var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .lede {
-  color: var(--muted);
-  font-size: clamp(1.05rem, 1.5vw, 1.22rem);
-  line-height: 1.6;
-  max-width: 46ch;
-  text-wrap: pretty;
+  max-width: 62ch;
+  margin: 1.1rem 0 0;
+  color: var(--ink-2);
+  font-size: 1rem;
+  line-height: 1.7;
 }
 
 .lede-wide {
-  max-width: 62ch;
+  max-width: 70ch;
 }
 
-/* technical-drawing side rails — desktop only, purely decorative */
-.sheet-rails {
-  position: absolute;
-  inset-block: 0;
-  inset-inline: 0;
-  pointer-events: none;
-  display: none;
+.carved {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: clamp(2.25rem, 6vw, 3.4rem);
+  font-weight: 500;
+  letter-spacing: -0.055em;
+  line-height: 0.96;
+  text-wrap: balance;
 }
 
-@media (min-width: 1400px) {
-  .sheet-rails {
-    display: block;
-  }
-
-  .sheet-rails::before,
-  .sheet-rails::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 1px;
-    background: repeating-linear-gradient(
-      180deg,
-      var(--hairline) 0 10px,
-      transparent 10px 22px
-    );
-  }
-
-  .sheet-rails::before {
-    left: max(1.5rem, calc(50% - var(--content) / 2 - 3.5rem));
-  }
-
-  .sheet-rails::after {
-    right: max(1.5rem, calc(50% - var(--content) / 2 - 3.5rem));
-  }
+.mono {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
-/* --------------------------------------------------------------------------
-   5. Surfaces — quarried slabs, not glass
-   -------------------------------------------------------------------------- */
-
-.slab {
-  background: linear-gradient(
-    170deg,
-    var(--surface) 0%,
-    var(--surface-2) 100%
-  );
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  box-shadow: var(--lift-1), var(--inset);
-  position: relative;
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
 }
-
-.slab--lift {
-  box-shadow: var(--lift-2), var(--inset);
-}
-
-.slab--pad {
-  padding: clamp(1.35rem, 2.5vw, 1.9rem);
-}
-
-/* a hairline "chisel seam" across the top edge, in the live accent */
-.slab--seam::before {
-  content: '';
-  position: absolute;
-  top: -1px;
-  left: 14%;
-  right: 14%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--accent), transparent);
-  opacity: 0.85;
-  border-radius: 1px;
-}
-
-/* legacy alias */
-.card {
-  background: linear-gradient(170deg, var(--surface), var(--surface-2));
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  box-shadow: var(--lift-1), var(--inset);
-  padding: clamp(1.35rem, 2.5vw, 1.9rem);
-  position: relative;
-}
-
-.card--seam::before {
-  content: '';
-  position: absolute;
-  top: -1px;
-  left: 14%;
-  right: 14%;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--seam, var(--accent)),
-    transparent
-  );
-  opacity: 0.85;
-}
-
-/* --------------------------------------------------------------------------
-   6. Controls
-   -------------------------------------------------------------------------- */
 
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.55rem;
-  font-family: var(--font-body);
-  font-weight: 570;
-  font-size: 0.95rem;
-  letter-spacing: -0.005em;
-  line-height: 1.2;
+  min-height: 2.75rem;
+  padding: 0.68rem 1.05rem;
+  border: 1px solid var(--ink);
   border-radius: var(--r-sm);
-  padding: 0.78rem 1.35rem;
-  border: 1px solid transparent;
-  cursor: pointer;
+  background: transparent;
+  color: var(--ink);
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1;
   text-decoration: none;
-  white-space: nowrap;
-  position: relative;
-  isolation: isolate;
-  transition: transform var(--dur-fast) var(--ease-out),
-    box-shadow var(--dur) var(--ease-out),
-    background-color var(--dur) var(--ease-out),
-    border-color var(--dur) var(--ease-out), color var(--dur) var(--ease-out);
+  transition: background-color var(--dur) var(--ease-out), color var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out), transform var(--dur) var(--ease-out);
 }
 
 .btn:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--ink);
   text-decoration: none;
-}
-
-.btn:active {
-  transform: translateY(1px);
-}
-
-.btn:disabled,
-.btn[aria-disabled='true'] {
-  cursor: progress;
-  opacity: 0.62;
-  transform: none;
-}
-
-.btn:disabled::after {
-  opacity: 0 !important;
+  transform: translateY(-2px);
 }
 
 .btn-primary {
+  border-color: var(--accent);
   background: var(--accent);
-  color: var(--accent-ink);
-  box-shadow: var(--lift-1), inset 0 1px 0 rgba(255, 255, 255, 0.28);
-}
-
-.btn-primary::after {
-  /* molten edge that lights up on hover */
-  content: '';
-  position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  z-index: -1;
-  opacity: 0;
-  background: var(--accent);
-  filter: blur(11px);
-  transition: opacity var(--dur) var(--ease-out);
+  color: var(--accent-on);
 }
 
 .btn-primary:hover {
-  color: var(--accent-ink);
-  transform: translateY(-1px);
-}
-
-.btn-primary:hover::after {
-  opacity: 0.5;
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--paper);
 }
 
 .btn-ghost {
-  background: var(--surface);
-  border-color: var(--line-strong);
-  color: var(--ink);
-  box-shadow: var(--lift-1);
-}
-
-.btn-ghost:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-  transform: translateY(-1px);
-}
-
-.btn-quiet {
   background: transparent;
-  border-color: transparent;
-  color: var(--muted);
-  padding-inline: 0.6rem;
-}
-
-.btn-quiet:hover {
-  color: var(--ink);
-  background: var(--surface-2);
 }
 
 .btn-lg {
-  font-size: 1.02rem;
-  padding: 0.95rem 1.7rem;
+  min-height: 3.15rem;
+  padding-inline: 1.25rem;
 }
 
-.btn-sm {
-  font-size: 0.85rem;
-  padding: 0.5rem 0.9rem;
-}
-
-/* segmented control — used by mode pickers and tabs */
-.segmented {
-  display: inline-flex;
-  max-width: 100%;
-  overflow-x: auto;
-  scrollbar-width: none;
-  gap: 2px;
-  padding: 3px;
-  background: var(--paper-2);
-  border: 1px solid var(--line);
+.card,
+.slab {
+  border: 1px solid var(--line-strong);
   border-radius: var(--r-sm);
-  box-shadow: var(--inset);
-}
-
-.segmented button {
-  appearance: none;
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  font: inherit;
-  font-size: 0.88rem;
-  font-weight: 550;
-  padding: 0.44rem 0.9rem;
-  border-radius: 6px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: color var(--dur-fast) var(--ease-out),
-    background-color var(--dur-fast) var(--ease-out);
-}
-
-.segmented button:hover {
-  color: var(--ink);
-}
-
-.segmented button[aria-selected='true'],
-.segmented button[aria-pressed='true'] {
   background: var(--surface);
-  color: var(--ink);
   box-shadow: var(--lift-1);
 }
 
-/* mono chip / tag */
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-family: var(--font-mono);
-  font-size: 0.71rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--muted);
-  background: var(--surface-2);
-  border: 1px solid var(--hairline);
-  border-radius: var(--r-pill);
-  padding: 0.24rem 0.62rem;
-  white-space: nowrap;
+.slab--seam,
+.card--seam {
+  border-top: 2px solid var(--seam, var(--accent));
 }
 
-.chip--accent {
+.slab--lift {
+  box-shadow: var(--lift-2);
+}
+
+.slab--pad {
+  padding: clamp(1.2rem, 3vw, 2rem);
+}
+
+.sheet-rails {
+  display: none;
+}
+
+/* Shared document prose */
+.prose {
+  max-width: 70ch;
+  color: var(--ink-2);
+}
+
+.prose h2,
+.prose h3,
+.prose h4 {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+}
+
+.prose h2 {
+  margin: 2.75rem 0 0.9rem;
+  padding-top: 1.4rem;
+  border-top: 1px solid var(--line);
+  font-size: 1.8rem;
+}
+
+.prose h3 {
+  margin: 1.9rem 0 0.65rem;
+  font-size: 1.25rem;
+}
+
+.prose p,
+.prose li {
+  color: var(--ink-2);
+  font-size: 0.98rem;
+  line-height: 1.72;
+}
+
+.prose strong {
+  color: var(--ink);
+}
+
+.prose a {
   color: var(--accent);
-  background: var(--accent-soft);
-  border-color: transparent;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
 }
 
-/* --------------------------------------------------------------------------
-   7. Tables
-   -------------------------------------------------------------------------- */
+.prose a:hover {
+  color: var(--ink);
+}
+
+.prose ul,
+.prose ol {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0.8rem 0 1.4rem;
+  padding-left: 1.35rem;
+}
+
+.prose li::marker {
+  color: var(--accent);
+}
+
+.prose code,
+.prose kbd,
+.prose pre {
+  font-family: var(--font-mono);
+}
+
+.prose code,
+.prose kbd {
+  padding: 0.1rem 0.28rem;
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: 0.78em;
+}
+
+.prose pre {
+  overflow-x: auto;
+  margin: 1.2rem 0;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 0.78rem;
+  line-height: 1.6;
+}
+
+.prose blockquote {
+  margin: 1.35rem 0;
+  padding: 0.5rem 1rem;
+  border-left: 2px solid var(--accent);
+  color: var(--ink);
+}
+
+.callout {
+  margin: 1.5rem 0;
+  padding: 1rem 1.2rem;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  background: var(--surface);
+  box-shadow: var(--lift-1);
+}
+
+.callout p {
+  margin: 0;
+  color: var(--ink);
+}
+
+.callout--violet {
+  border-left-color: var(--accent);
+}
 
 .table-scroll {
   overflow-x: auto;
+  margin-top: 1.6rem;
   border: 1px solid var(--line);
-  border-radius: var(--r-md);
   background: var(--surface);
-  box-shadow: var(--lift-1);
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.94rem;
-  min-width: 460px;
+  min-width: 620px;
 }
 
 th,
 td {
-  text-align: start;
-  padding: 0.82rem 1.1rem;
-  border-bottom: 1px solid var(--hairline);
+  padding: 0.8rem 0.9rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
 }
 
 th {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  letter-spacing: 0.14em;
+  color: var(--ink);
+  font: 700 0.68rem var(--font-mono);
+  letter-spacing: 0.07em;
   text-transform: uppercase;
-  color: var(--faint);
-  background: var(--surface-2);
-  font-weight: 500;
+}
+
+td {
+  color: var(--ink-2);
+  font-size: 0.88rem;
 }
 
 tr:last-child td {
   border-bottom: 0;
 }
 
-/* --------------------------------------------------------------------------
-   8. Atmosphere — grain + vignette. Cheap, fixed, non-interactive.
-   -------------------------------------------------------------------------- */
+.tx {
+  display: block;
+  margin-top: 0.18rem;
+  color: var(--muted);
+  font-size: 0.78em;
+}
 
+.num {
+  color: var(--ink);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+/* Base layout's old atmospheric overlay is intentionally absent. Keep these selectors inert for
+   stale embeds so a fragment can never place an unlabelled page-sized layer over its copy. */
+.vignette,
 .grain {
-  position: fixed;
-  inset: 0;
-  z-index: 9998;
-  pointer-events: none;
-  opacity: var(--grain-opacity);
-  mix-blend-mode: var(--grain-blend);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size: 160px 160px;
+  display: none;
 }
 
-.vignette {
-  position: fixed;
-  inset: 0;
-  z-index: 9997;
-  pointer-events: none;
-  background: radial-gradient(
-    ellipse 120% 90% at 50% 45%,
-    transparent 45%,
-    var(--vignette) 100%
-  );
+/* Scroll reveals used by the docs, changelog and pricing routes. The final frame is visible when
+   scripting is unavailable; only the enhancement starts slightly lower. */
+.no-js [data-reveal],
+.no-js .kinetic {
+  opacity: 1;
+  transform: none;
 }
 
-/* --------------------------------------------------------------------------
-   9. Reveals — scroll as a direction tool
-   -------------------------------------------------------------------------- */
-
-[data-reveal] {
+html:not(.no-js) [data-reveal],
+html:not(.no-js) .kinetic {
   opacity: 0;
-  transform: translate3d(0, 22px, 0);
-  transition: opacity 760ms var(--ease-out), transform 760ms var(--ease-out);
+  transform: translateY(12px);
+  transition: opacity var(--dur-slow) var(--ease-out), transform var(--dur-slow) var(--ease-out);
   transition-delay: var(--reveal-delay, 0ms);
 }
 
-[data-reveal='left'] {
-  transform: translate3d(-24px, 0, 0);
-}
-
-[data-reveal='scale'] {
-  transform: scale(0.965);
-}
-
-[data-reveal].is-in {
+html:not(.no-js) [data-reveal].is-in,
+html:not(.no-js) .kinetic.is-in {
   opacity: 1;
   transform: none;
 }
-
-html.no-js [data-reveal] {
-  opacity: 1;
-  transform: none;
-}
-
-/* kinetic headline: words rise out of the stone, one after another */
-.kinetic > span {
-  display: inline-block;
-  overflow: hidden;
-  vertical-align: bottom;
-  padding-bottom: 0.06em;
-  margin-bottom: -0.06em;
-}
-
-.kinetic > span > span {
-  display: inline-block;
-  transform: translateY(105%);
-  transition: transform 900ms var(--ease-out);
-  transition-delay: calc(var(--i, 0) * 65ms);
-}
-
-.kinetic.is-in > span > span {
-  transform: none;
-}
-
-html.no-js .kinetic > span > span {
-  transform: none;
-}
-
-/* --------------------------------------------------------------------------
-   10. Utility
-   -------------------------------------------------------------------------- */
-
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border: 0;
-}
-
-.skip-link {
-  position: fixed;
-  inset-inline-start: 1rem;
-  top: -5rem;
-  z-index: 10001;
-  background: var(--accent);
-  color: var(--accent-ink);
-  font-weight: 600;
-  padding: 0.65rem 1.1rem;
-  border-radius: var(--r-sm);
-  transition: top var(--dur) var(--ease-out);
-}
-
-.skip-link:focus-visible {
-  top: 1rem;
-  text-decoration: none;
-}
-
-.mono {
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
-  letter-spacing: 0.02em;
-  color: var(--faint);
-}
-
-.muted {
-  color: var(--muted);
-}
-
-.stack > * + * {
-  margin-top: var(--stack-gap, 1rem);
-}
-
-/* legacy mode helpers */
-.mode-clay {
-  --mode: var(--acc-clay);
-}
-.mode-stone {
-  --mode: var(--acc-stone);
-}
-.mode-rune {
-  --mode: var(--acc-rune);
-}
-
-/* --------------------------------------------------------------------------
-   11. Custom cursor (desktop, fine pointer only)
-   -------------------------------------------------------------------------- */
-
-.cursor {
-  position: fixed;
-  top: 0;
-  inset-inline-start: 0;
-  z-index: 10000;
-  pointer-events: none;
-  display: none;
-  will-change: transform;
-  /* stays invisible until the first real pointer move, otherwise the ring
-     parks at the origin and shows as an arc in the page's top-left corner */
-  opacity: 0;
-}
-
-.cursor.is-awake {
-  opacity: 1;
-}
-
-.cursor__ring {
-  position: absolute;
-  width: 30px;
-  height: 30px;
-  margin: -15px 0 0 -15px;
-  border: 1px solid var(--accent);
-  border-radius: 50%;
-  opacity: 0.85;
-  transition: width var(--dur) var(--ease-out),
-    height var(--dur) var(--ease-out), margin var(--dur) var(--ease-out),
-    border-radius var(--dur) var(--ease-out), opacity var(--dur) var(--ease-out),
-    background-color var(--dur) var(--ease-out);
-}
-
-.cursor__dot {
-  position: absolute;
-  width: 4px;
-  height: 4px;
-  margin: -2px 0 0 -2px;
-  border-radius: 50%;
-  background: var(--accent);
-}
-
-.cursor__label {
-  position: absolute;
-  inset-inline-start: 22px;
-  top: 12px;
-  font-family: var(--font-mono);
-  font-size: 0.63rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--accent-ink);
-  background: var(--accent);
-  padding: 0.18rem 0.45rem;
-  border-radius: 4px;
-  white-space: nowrap;
-  opacity: 0;
-  transform: translateY(3px);
-  transition: opacity var(--dur-fast) var(--ease-out),
-    transform var(--dur-fast) var(--ease-out);
-}
-
-/* contextual states */
-.cursor[data-state='link'] .cursor__ring {
-  width: 46px;
-  height: 46px;
-  margin: -23px 0 0 -23px;
-  background: var(--accent-soft);
-}
-
-.cursor[data-state='drag'] .cursor__ring {
-  width: 44px;
-  height: 44px;
-  margin: -22px 0 0 -22px;
-  border-radius: 8px;
-  transform: rotate(45deg);
-}
-
-.cursor[data-state='text'] .cursor__ring {
-  width: 2px;
-  height: 26px;
-  margin: -13px 0 0 -1px;
-  border-radius: 0;
-  background: var(--accent);
-}
-
-.cursor[data-state='text'] .cursor__dot {
-  opacity: 0;
-}
-
-.cursor[data-label] .cursor__label {
-  opacity: 1;
-  transform: none;
-}
-
-html.has-cursor,
-html.has-cursor a,
-html.has-cursor button,
-html.has-cursor summary,
-html.has-cursor [role='button'],
-html.has-cursor input[type='range'],
-html.has-cursor label {
-  cursor: none;
-}
-
-html.has-cursor .cursor {
-  display: block;
-}
-
-/* --------------------------------------------------------------------------
-   12. Reduced motion — non-negotiable
-   -------------------------------------------------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
   }
 
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
+  .btn,
+  html:not(.no-js) [data-reveal],
+  html:not(.no-js) .kinetic {
+    transition-duration: 1ms;
   }
 
-  [data-reveal],
-  .kinetic > span > span {
-    opacity: 1 !important;
-    transform: none !important;
-  }
-
-  .cursor {
-    display: none !important;
-  }
-
-  html.has-cursor,
-  html.has-cursor a,
-  html.has-cursor button,
-  html.has-cursor summary,
-  html.has-cursor [role='button'],
-  html.has-cursor label {
-    cursor: auto;
+  html:not(.no-js) [data-reveal],
+  html:not(.no-js) .kinetic {
+    opacity: 1;
+    transform: none;
   }
 }
 
-/* coarse pointers never get the custom cursor */
-@media (pointer: coarse), (hover: none) {
-  .cursor {
-    display: none !important;
+@media (max-width: 820px) {
+  .section {
+    padding-block: 3rem 5rem;
   }
 
-  html.has-cursor,
-  html.has-cursor a,
-  html.has-cursor button {
-    cursor: auto;
+  .wrap {
+    width: min(var(--content), calc(100% - 2.4rem));
   }
 }

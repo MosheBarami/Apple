@@ -60,10 +60,20 @@ test('every choice states what it COSTS, not just what it is', () => {
     assert.ok(e.title && e.title.length > 3, `${e.choice}: needs a name`);
     assert.ok(e.does && e.does.length > 30, `${e.choice}: must say what happens`);
     assert.ok(e.costs && e.costs.length > 10, `${e.choice}: must state the cost`);
-    assert.ok(e.reach && /\d|Unlimited/.test(e.reach), `${e.choice}: reach must be a figure, not an impression`);
+    assert.ok(e.reach && e.reach.length > 25, `${e.choice}: explain availability and limits`);
   }
   const scratch = A.explainSource('from_scratch');
   assert.match(scratch.costs, /[Cc]redits/, 'the paid one must say it is paid');
+});
+
+test('source descriptions distinguish catalog entries from usable assets without frozen counts', () => {
+  const library = A.explainSource('apple_library');
+  assert.match(library.reach, /import/i, 'a catalog match is not automatically insertable');
+  assert.match(library.costs, /[Cc]redits/, 'a free licence does not make the build free');
+  assert.doesNotMatch(library.does, /already.*checked/i, 'harvested metadata is not an asset-quality review');
+  for (const e of A.SOURCE_EXPLANATIONS) {
+    assert.doesNotMatch(e.reach, /\d[\d,]* assets|Unlimited/i, 'static copy cannot prove live inventory or unlimited service');
+  }
 });
 
 test('an unrecognised choice never reaches the worker', () => {

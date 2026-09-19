@@ -2,7 +2,6 @@
 import '../styles/global.css';
 import Nav from '../components/Nav.astro';
 import Footer from '../components/Footer.astro';
-import Cursor from '../components/Cursor.astro';
 
 interface Props {
   title: string;
@@ -23,7 +22,7 @@ const ogImage = new URL('/og.png', site);
 ---
 
 <!doctype html>
-<html lang="en" class="no-js">
+<html lang="en" class="no-js" data-theme="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -52,15 +51,7 @@ const ogImage = new URL('/og.png', site);
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
-    <meta name="theme-color" content="#f2efe8" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#100e0c" media="(prefers-color-scheme: dark)" />
-
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300..800&family=Inter:wght@300..700&family=Geist+Mono:wght@100..900&display=swap"
-    />
+    <meta name="theme-color" content="#080808" />
 
     <script is:inline>
       // Runs before first paint: no flash of the wrong theme, and reveals can
@@ -87,10 +78,6 @@ const ogImage = new URL('/og.png', site);
     </main>
 
     {!bare && <Footer />}
-
-    <div class="vignette" aria-hidden="true"></div>
-    <div class="grain" aria-hidden="true"></div>
-    <Cursor />
 
     <script>
       // ---------------------------------------------------------------

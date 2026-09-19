@@ -352,3 +352,18 @@ one was left behind.
 
 Recorded here rather than removed quietly, per the rule at the head of `scripts/check-deadends.mjs`:
 the disposition for a module that should not exist is DELETE with a dated statement.
+
+## apps/worker/src/training-trajectory.ts — STRUCTURALLY-BLOCKED, 2026-09-18
+
+Pure bounded trajectory ledger, reached only by its six tests. It does not authenticate consent,
+collect live sessions, persist records, or create training-ready data. Connecting it requires an
+append-only consent-event source, owner/project/run-bound verification and a trusted exporter with
+independent outcome evidence. Current mutable opt-in flags are not historical consent proof.
+No customer data collection or paid training has started.
+
+## packages/training/src/consent-staging.mjs — STRUCTURALLY-BLOCKED, 2026-09-18
+
+Offline envelope validator and redactor, reached only by its tests. Caller-supplied consent and
+outcome assertions are not authenticated here; pattern redaction does not anonymize arbitrary
+free text. It must remain disconnected from production data until trusted consent/export and
+human review are available. Its output is explicitly not training-ready.

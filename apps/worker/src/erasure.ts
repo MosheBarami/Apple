@@ -34,6 +34,7 @@ import { ensureProvenanceTables } from './provenance';
 import { ensureWriteTable } from './creator-dashboard';
 import { oncePerIsolate } from './schema-once';
 import { shareGrantPrefix, shareLinkKey, shareLinkProjectPrefix } from './collab-links';
+import { eraseGeneratedImages } from './generated-images';
 
 /** Typed by the person, in this exact form, before anything is deleted. */
 export const ERASURE_CONFIRMATION = 'DELETE MY ACCOUNT';
@@ -75,6 +76,14 @@ export interface ErasureReceipt {
  * exists, and the line should move to the deletion rather than be quietly reworded.
  */
 export const ACCOUNT_RESIDUE: readonly Residue[] = [
+  {
+    store: 'kv', target: 'in-flight temporary image previews',
+    why: 'A preview already running can finish after the cache sweep and remain for up to one hour. The deleted-project fence prevents image retrieval through Apple.',
+  },
+  {
+    store: 'd1', target: 'generated_image_tombstones — deleted project identifiers',
+    why: 'Only deleted project IDs are retained, without images or account details, to prevent an in-flight generation from recreating deleted images.',
+  },
   {
     store: 'postgres',
     target: 'auth.users — your sign-in identity',
@@ -205,6 +214,11 @@ async function kvSweep(env: Pick<Env, 'KV'>, target: string, prefix: string): Pr
  */
 export async function eraseProjectData(env: Env, projectId: string): Promise<ErasureStep[]> {
   const steps: ErasureStep[] = [];
+  try {
+    steps.push({ store: 'd1', target: 'generated images', status: 'erased', rows: await eraseGeneratedImages(env, projectId) });
+  } catch {
+    steps.push({ store: 'd1', target: 'generated images', status: 'failed', rows: null, detail: 'Image storage could not be cleared; retry is required.' });
+  }
   await Promise.all([
     ensureMemoryTables(env).catch(() => {}),
     ensureNotificationTables(env).catch(() => {}),

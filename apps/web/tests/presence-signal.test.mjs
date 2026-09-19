@@ -146,7 +146,19 @@ test('THE SERVER STOPS SAYING "is building" WHEN THE RUN ENDS', () => {
   // worker source because it is the one place the claim is withdrawn.
   const session = read(ROOT, 'apps', 'worker', 'src', 'do', 'session.ts');
   assert.match(session, /private clearBuildingBeats\(\)/, 'the worker must have a way to withdraw the claim');
-  const finish = session.slice(session.indexOf('private async finishRun('));
-  assert.ok(finish.length > 0, 'finishRun must still exist');
-  assert.match(finish.slice(0, 1500), /this\.clearBuildingBeats\(\)/, 'finishRun must withdraw it');
+  const start = session.indexOf('private async finishRun(');
+  assert.ok(start >= 0, 'finishRun must still exist');
+  const brace = session.indexOf('{', start);
+  assert.ok(brace > start, 'finishRun must still have a method body');
+  let depth = 0;
+  let end = -1;
+  for (let i = brace; i < session.length; i += 1) {
+    if (session[i] === '{') depth += 1;
+    else if (session[i] === '}') {
+      depth -= 1;
+      if (depth === 0) { end = i + 1; break; }
+    }
+  }
+  assert.ok(end > brace, 'finishRun body could not be structurally bounded');
+  assert.match(session.slice(start, end), /this\.clearBuildingBeats\(\)/, 'finishRun must withdraw it');
 });

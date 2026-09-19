@@ -8,7 +8,8 @@
 // for content whose structure genuinely benefits — a render, a diff, a critique
 // — and those come from the typed component registry, never from free-form
 // model output.
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import type { UIDocument } from '../../lib/generative-ui/schema';
 import { Markdown } from '../../lib/markdown';
 import { extractUIFence, parseDocument } from '../../lib/generative-ui';
 import { GenerativeUI } from '../../lib/generative-ui/render';
@@ -22,6 +23,20 @@ import { eventsFromTurn, reduceActivity, type PhaseMark } from './activity-model
 import { buildEvidence } from './evidence-model';
 import { outcomeLine } from './outcome-model';
 import { Thinking } from './thinking';
+
+/** Technical artifacts are opt-in. Automatic scene galleries never enter chat. */
+function ResultDetails({ docs }: { docs: UIDocument[] }) {
+  const [open, setOpen] = useState(false);
+  const compactDocs = docs.map((doc) => ({
+    ...doc,
+    blocks: doc.blocks.filter((block) => block.type !== 'render_review' && block.type !== 'scene_comparison'),
+  })).filter((doc) => doc.blocks.length > 0);
+  if (compactDocs.length === 0) return null;
+  return <details className="gx-result-details" onToggle={(event) => setOpen(event.currentTarget.open)}>
+    <summary>View results</summary>
+    {open && compactDocs.map((doc, index) => <GenerativeUI key={index} doc={doc} />)}
+  </details>;
+}
 
 function Stamp({ at, align }: { at: number; align: 'start' | 'end' }) {
   const label = clockTime(at);
@@ -245,11 +260,7 @@ export function Turn({
           </div>
         )}
 
-        {fenceDoc && <GenerativeUI doc={fenceDoc} />}
-
-        {panels.map((panel) => (
-          <GenerativeUI key={panel.id} doc={panel.doc} />
-        ))}
+        <ResultDetails docs={[...(fenceDoc ? [fenceDoc] : []), ...panels.map((panel) => panel.doc)]} />
 
         {outcome ? (
           <div className={`gx-outcome${outcome.tone === 'bad' ? ' is-bad' : ''}`}>

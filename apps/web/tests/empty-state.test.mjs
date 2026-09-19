@@ -68,7 +68,7 @@ test('tone never contradicts the meaning of its state', () => {
 });
 
 test('every tone has a stylesheet rule, so none renders unstyled', () => {
-  const css = readFileSync(join(WEB, 'src', 'styles', 'workspace.css'), 'utf8');
+  const css = readFileSync(join(WEB, 'src', 'design', 'system.css'), 'utf8');
   for (const spec of Object.values(EMPTY_STATES)) {
     assert.ok(css.includes(`.es--${spec.tone}`), `.es--${spec.tone} has no rule`);
   }
@@ -113,22 +113,22 @@ test('the only hand-written block states are the two that have no canonical form
     + '<EmptyState>. If it genuinely does not, add it here with the reason.');
 });
 
-// --- the Studio pill's two labels ---------------------------------------------
-// Not an empty state, but it lives or dies by the same rule: exactly one of a pair is
-// shown, and the CSS is what decides. If the breakpoint rule is deleted the markup
-// still renders — both labels at once — and nothing else would notice.
+// --- the Studio place label ----------------------------------------------------
+// Not an empty state, but it lives in the Project details menu. The full place name is
+// useful evidence about the paired Studio document, so it should remain valid at every
+// width; a narrow-viewport label swap only recreates the old truncated-header problem.
 
-test('the Studio pill has both labels, and CSS shows exactly one', () => {
+test('the Studio place label stays full inside the Project menu', () => {
   const tsx = readFileSync(join(WEB, 'src', 'routes', 'workspace.tsx'), 'utf8');
-  assert.match(tsx, /gx-pill__place/, 'the place-name label is gone');
-  assert.match(tsx, /gx-pill__short/, 'the short label is gone');
+  const menu = /<details className="studio-project-menu">[\s\S]*?<\/details>/.exec(tsx);
+  assert.ok(menu, 'the Project details menu is gone');
+  assert.match(menu[0], /gx-pill__place/, 'the full Studio place label must live in Project details');
+  assert.match(menu[0], /title=\{studio\.state\?\.placeName[\s\S]*?Connected to Studio/);
 
-  const css = readFileSync(join(WEB, 'src', 'styles', 'workspace.css'), 'utf8');
-  // Default: short hidden, place shown.
-  assert.match(css, /\.gx-pill__short\s*\{\s*display:\s*none/, 'the short label is not hidden by default');
-  // Narrow: the swap. Both halves must be present or the pill shows two labels.
-  const narrow = /@media \(max-width: 860px\) \{[^}]*\.gx-pill__place\s*\{\s*display:\s*none[^}]*\}[^@]*?\.gx-pill__short\s*\{\s*display:\s*inline/s;
-  assert.match(css, narrow,
-    'the narrow-viewport swap is missing: at 860px the place name and the project title '
-    + 'are both truncated to the same unreadable prefix, so the topbar says the same name twice');
+  const css = readFileSync(join(WEB, 'src', 'design', 'system.css'), 'utf8');
+  // The full Studio place label remains valid at every width. There is no second
+  // narrow-viewport label swap, and introducing one would recreate the old header.
+  assert.match(css, /\.gx-pill__place[^{}]*\{[^{}]*overflow:\s*hidden/);
+  assert.doesNotMatch(css, /@media[^{}]*\{[^{}]*\.gx-pill__place[^{}]*display:\s*none/);
+  assert.doesNotMatch(css, /@media[^{}]*\{[^{}]*\.gx-pill__short[^{}]*display:\s*inline/);
 });

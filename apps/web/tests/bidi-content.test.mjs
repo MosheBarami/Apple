@@ -37,8 +37,8 @@ const cssCode = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '');
 const jsxCode = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 const SHEETS = {
-  'styles.css': cssCode(read('styles.css')),
-  'workspace.css': cssCode(read('styles', 'workspace.css')),
+  'design/system.css': cssCode(read('design/system.css')),
+  'workspace.css': cssCode(read('design', 'system.css')),
 };
 
 // --------------------------------------------------------------------------------- code is LTR

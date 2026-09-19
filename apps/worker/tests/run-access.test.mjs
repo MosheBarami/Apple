@@ -21,11 +21,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  ACCESS_CHANGE_VERSION_KEY,
   ACCESS_REVOKED_KEY,
   REVOCATION_REASONS,
+  acceptAccessChangeVersion,
   markAccessRevoked,
   accessRevokedFor,
+  canonicalGrantExpiry,
   clearAccessRevoked,
+  currentAccessExpiry,
   runMustStop,
 } from '../src/run-access.ts';
 
@@ -115,6 +119,78 @@ test('reinstatement lifts the mark, and lifting a mark that is not there says so
   assert.equal(await clearAccessRevoked(s, ''), false);
 });
 
+test('access-change versions carry the current expiry and reject stale or conflicting equality', async () => {
+  const s = fakeStorage();
+  const firstExpiry = new Date(NOW + 60_000).toISOString();
+  const laterExpiry = new Date(NOW + 120_000).toISOString();
+
+  const first = await acceptAccessChangeVersion(s, MEMBER, 1, firstExpiry, 'clear:editor');
+  assert.deepEqual(
+    { accepted: first.accepted, reason: first.reason, expiresAt: first.expiresAt },
+    { accepted: true, reason: 'new', expiresAt: firstExpiry },
+  );
+  assert.deepEqual(await currentAccessExpiry(s, MEMBER), {
+    status: 'known',
+    version: 1,
+    expiresAt: firstExpiry,
+  });
+  assert.equal(s.writes.at(-1), ACCESS_CHANGE_VERSION_KEY);
+
+  const same = await acceptAccessChangeVersion(s, MEMBER, 1, firstExpiry, 'clear:editor');
+  assert.equal(same.accepted, true);
+  assert.equal(same.reason, 'duplicate');
+
+  const differentExpiry = await acceptAccessChangeVersion(s, MEMBER, 1, laterExpiry, 'clear:editor');
+  assert.equal(differentExpiry.accepted, false);
+  assert.equal(differentExpiry.reason, 'conflict');
+  const differentEvent = await acceptAccessChangeVersion(s, MEMBER, 1, firstExpiry, 'removed:none');
+  assert.equal(differentEvent.accepted, false, 'one sequence cannot be replayed as a different lifecycle event');
+  assert.equal(differentEvent.reason, 'conflict');
+
+  const next = await acceptAccessChangeVersion(s, MEMBER, 2, laterExpiry, 'clear:editor');
+  assert.equal(next.accepted, true);
+  assert.equal(next.reason, 'new');
+  const stale = await acceptAccessChangeVersion(s, MEMBER, 1, firstExpiry, 'clear:editor');
+  assert.equal(stale.accepted, false);
+  assert.equal(stale.reason, 'stale');
+  assert.equal((await currentAccessExpiry(s, MEMBER)).expiresAt, laterExpiry);
+});
+
+test('versioned events require an explicit readable expiry and event fingerprint', async () => {
+  const s = fakeStorage();
+  for (const [expiry, event] of [
+    [undefined, 'clear:editor'],
+    ['not-a-date', 'clear:editor'],
+    [new Date(NOW).toISOString(), ''],
+    [new Date(NOW).toISOString(), undefined],
+  ]) {
+    const verdict = await acceptAccessChangeVersion(s, MEMBER, 1, expiry, event);
+    assert.equal(verdict.accepted, false);
+    assert.equal(verdict.reason, 'invalid');
+  }
+  assert.equal(await canonicalGrantExpiry(null), null);
+  assert.equal(canonicalGrantExpiry(NOW), new Date(NOW).toISOString());
+  assert.equal(canonicalGrantExpiry('not-a-date'), undefined);
+});
+
+test('the numeric rollout cursor is readable and an equal full event upgrades it', async () => {
+  const expiry = new Date(NOW + 60_000).toISOString();
+  const s = fakeStorage({ [ACCESS_CHANGE_VERSION_KEY]: { [MEMBER]: 4 } });
+  assert.deepEqual(await currentAccessExpiry(s, MEMBER), {
+    status: 'legacy',
+    version: 4,
+    expiresAt: undefined,
+  });
+  const upgraded = await acceptAccessChangeVersion(s, MEMBER, 4, expiry, 'clear:editor');
+  assert.equal(upgraded.accepted, true);
+  assert.equal(upgraded.reason, 'duplicate');
+  assert.deepEqual(await currentAccessExpiry(s, MEMBER), {
+    status: 'known',
+    version: 4,
+    expiresAt: expiry,
+  });
+});
+
 // ============================================================ the decision
 
 test('A REVOKED MEMBER STOPS THE RUN THEY STARTED', () => {
@@ -137,6 +213,13 @@ test('a SUSPENSION stops it too, and says something different', () => {
   for (const reason of REVOCATION_REASONS) {
     assert.equal(runMustStop(run(), mark({ reason }), NOW).stop, true, `${reason} must stop the run`);
   }
+});
+
+test('a DEMOTION stops the run, and says build access was lost', () => {
+  const v = runMustStop(run(), mark({ reason: 'demoted' }), NOW);
+  assert.equal(v.stop, true);
+  assert.equal(v.why, 'membership_demoted');
+  assert.match(v.message, /build access/i);
 });
 
 test('THE OWNER IS NEVER STOPPED, even by a mark naming them', () => {

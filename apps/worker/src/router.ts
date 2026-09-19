@@ -65,6 +65,9 @@ const PLAN_TOOLS = [
   'review_scripts',
   'find_symbol',
   'search_docs',
+  'search_creation_skills',
+  'read_creation_skill',
+  'get_genre_references',
   'remember',
   // The READ-ONLY web tools. Each one reads something outside the user's project — a page, a
   // search, a repository, an image, the project's own scratch files — and none of them can reach
@@ -86,9 +89,22 @@ const PLAN_TOOLS = [
   'workspace_read',
 ];
 
+/**
+ * Worker-side capabilities that remain useful without a live Studio bridge.
+ *
+ * `generate_image` is deliberately separate from the Studio toolset: it creates a preview in
+ * Apple's project-scoped storage and never edits the place. Stone and Rune should therefore be
+ * able to answer an image request while Studio is disconnected, while Clay and unknown modes
+ * keep their read-only contract. Do not add a Studio-backed generator here — an offline mode must
+ * never suggest a call that can only end in a connection refusal.
+ */
+const OFFLINE_TOOLS = ['search_docs', 'search_creation_skills', 'read_creation_skill', 'get_genre_references', 'remember'];
+const OFFLINE_IMAGE_TOOLS = [...OFFLINE_TOOLS, 'generate_image'];
+
 export function toolsForMode(mode: GolemMode, studioConnected: boolean, allNames: string[]): Set<string> {
   if (!studioConnected) {
-    return new Set(allNames.filter((n) => n === 'search_docs' || n === 'remember'));
+    const allowed = mode === 'stone' || mode === 'rune' ? OFFLINE_IMAGE_TOOLS : OFFLINE_TOOLS;
+    return new Set(allNames.filter((n) => allowed.includes(n)));
   }
   switch (mode) {
     case 'clay':

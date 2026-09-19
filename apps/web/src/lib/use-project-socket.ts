@@ -10,6 +10,7 @@ import type {
   StudioFrame,
   PlaytestRun,
   GolemMode,
+  ProductModel,
   QuotaState,
   RunIntent,
   ServerMsg,
@@ -41,6 +42,7 @@ import {
 } from './mock';
 import { getAccessToken, supabase } from './supabase';
 import { NO_LINK_FACTS, linkFactsFrom, type StudioLinkFacts } from './studio-connection';
+import { chatItemFromMessageDto, createProjectRequestFence, mergeHistoryWithLive } from './project-socket-state';
 
 export interface ToolEvent {
   toolId: string;
@@ -73,6 +75,7 @@ export interface ChatItem {
   id: string;
   role: 'user' | 'assistant' | 'system';
   mode: GolemMode | null;
+  productModel?: ProductModel;
   content: string;
   tools: ToolEvent[];
   streaming: boolean;
@@ -101,26 +104,26 @@ export interface ChatItem {
   /**
    * Tools this run was NOT given, because a tool permission removed them — from `tools_denied`.
    *
-   * Absent until the worker sends one, which is the whole contract: no message means nothing was
-   * withheld, and a conversation loaded from history is correctly silent rather than claiming a
-   * check it never made.
+   * Absent until the worker sends/persists one. New terminal transcript rows carry the bounded list
+   * through reload; legacy rows still omit it, which remains "unknown" rather than an invented
+   * empty check.
    */
   deniedTools?: string[];
   /**
    * What this run cost, settled, from `msg_end`.
    *
    * It lives on the MESSAGE rather than on `AgentStatus` because `msg_end` clears the status in
-   * the same breath — a cost kept there would be correct for one frame and then gone. Undefined
-   * for a conversation loaded from history and for a worker too old to send it, which renders as
-   * no cost line rather than a zero.
+   * the same breath — a cost kept there would be correct for one frame and then gone. New terminal
+   * rows persist it for reload; a legacy row that never recorded it stays undefined rather than
+   * being rendered as zero.
    */
   creditsSpent?: number;
   /**
    * What this run's prompt cost against its ceiling, and what the trim dropped — from the
    * `context_budget` message.
    *
-   * UNDEFINED UNTIL THE WORKER SENDS ONE, which is the whole contract: a conversation loaded from
-   * history and a worker too old to send it show no budget rather than a confident zero, and
+   * UNDEFINED UNTIL THE WORKER SENDS ONE. New terminal rows persist this bounded measurement for
+   * reload; a worker/row too old to have recorded it shows no budget rather than a confident zero.
    * `dropped` being absent means nothing was dropped rather than "we did not look".
    */
   context?: {
@@ -237,7 +240,7 @@ export interface ProjectSocket {
    * that never received the frame.
    */
   restoreStatus: RestoreStatus | null;
-  sendChat: (text: string, mode: GolemMode, attachments?: ChatAttachment[]) => boolean;
+  sendChat: (text: string, mode: GolemMode, attachments?: ChatAttachment[], productModel?: ProductModel) => boolean;
   /**
    * "I am still here, and this is what I am doing."
    *
@@ -248,7 +251,7 @@ export interface ProjectSocket {
    */
   signalPresence: (activity: 'viewing' | 'typing' | 'building') => boolean;
   /** Replace an earlier prompt and re-run from it. Everything after it is discarded. */
-  editAndResend: (messageId: string, text: string, mode: GolemMode) => boolean;
+  editAndResend: (messageId: string, text: string, mode: GolemMode, productModel?: ProductModel) => boolean;
   stop: () => void;
   /** @param description what the snapshot contains or why it was taken. Optional — see ClientMsg. */
   createCheckpoint: (label: string, description?: string) => void;
@@ -266,6 +269,7 @@ const MAX_FRAMES = 8;
 
 /** Fixture conversation for mock mode — never reachable in a production build. */
 function mockHistory(): ChatItem[] {
+  if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('empty') === '1') return [];
   const base: ChatItem[] = mockMessages.map((m) => ({
     id: m.id,
     role: m.role,
@@ -281,6 +285,7 @@ function mockHistory(): ChatItem[] {
       startObserved: false,
       durationMs: t.durationMs,
       done: true,
+      detail: t.detail,
     })),
     streaming: false,
     createdAt: new Date(m.createdAt).getTime(),
@@ -365,6 +370,7 @@ export function useProjectSocket(
   const [checkpointsState, setCheckpointsState] = useState<'loading' | 'ready' | 'error'>('loading');
 
   const wsRef = useRef<WebSocket | null>(null);
+  const wsProjectRef = useRef<string | null>(null);
   const attemptsRef = useRef(0);
   const closedRef = useRef(false);
   const reconnectTimer = useRef<number | null>(null);
@@ -373,6 +379,12 @@ export function useProjectSocket(
   errorCbRef.current = onServerError;
   const noticeCbRef = useRef(onNotice);
   noticeCbRef.current = onNotice;
+  // Selected during render, not in an effect. If a caller changes projectId without remounting the
+  // hook, every outstanding A ticket becomes stale before B can paint or start another request.
+  const requestFenceRef = useRef(createProjectRequestFence(projectId));
+  requestFenceRef.current.select(projectId);
+  const historyAbortRef = useRef<AbortController | null>(null);
+  const checkpointsAbortRef = useRef<AbortController | null>(null);
 
   // ---------------------------------------------------------------- history
   const loadHistory = useCallback(() => {
@@ -385,37 +397,28 @@ export function useProjectSocket(
       setLogs(mockLogs);
       return;
     }
+    const ticket = requestFenceRef.current.begin('history');
+    historyAbortRef.current?.abort();
+    const controller = new AbortController();
+    historyAbortRef.current = controller;
     setHistoryState('loading');
-    fetchMessages(projectId)
+    fetchMessages(projectId, 100, controller.signal)
       .then((res) => {
-        const items: ChatItem[] = res.messages.map((m) => ({
-          id: m.id,
-          role: m.role,
-          mode: m.mode,
-          content: m.content,
-          tools: (m.toolTrace ?? []).map((t, i) => ({
-            toolId: `${m.id}-t${i}`,
-            tool: t.tool,
-            summary: t.summary,
-            ok: t.ok,
-            // See mockHistory: a reloaded conversation has no per-tool clock.
-            startedAt: 0,
-            startObserved: false,
-            durationMs: t.durationMs,
-            done: true,
-          })),
-          streaming: false,
-          createdAt: new Date(m.createdAt).getTime(),
-          revisions: m.revisions,
-        }));
-        setMessages((live) => {
-          // keep any items that arrived over the socket while history loaded
-          const known = new Set(items.map((i) => i.id));
-          return [...items, ...live.filter((l) => !known.has(l.id))];
-        });
+        if (!requestFenceRef.current.accepts(ticket)) return;
+        const items: ChatItem[] = res.messages.map(chatItemFromMessageDto);
+        // Merge duplicate ids rather than blindly replacing them: prompt-derived intent is live-only,
+        // and a read that began mid-stream can still arrive with content older than the visible wire.
+        setMessages((live) => mergeHistoryWithLive(items, live));
         setHistoryState('ready');
       })
-      .catch(() => setHistoryState('error'));
+      .catch((error: unknown) => {
+        if (!requestFenceRef.current.accepts(ticket)) return;
+        if (error instanceof Error && error.name === 'AbortError') return;
+        setHistoryState('error');
+      })
+      .finally(() => {
+        if (historyAbortRef.current === controller) historyAbortRef.current = null;
+      });
   }, [projectId]);
 
   const loadCheckpoints = useCallback(() => {
@@ -431,13 +434,25 @@ export function useProjectSocket(
       setPlaytest(pt.run);
       return;
     }
+    const ticket = requestFenceRef.current.begin('checkpoints');
+    checkpointsAbortRef.current?.abort();
+    const controller = new AbortController();
+    checkpointsAbortRef.current = controller;
     setCheckpointsState('loading');
-    fetchCheckpoints(projectId)
+    fetchCheckpoints(projectId, controller.signal)
       .then((res) => {
+        if (!requestFenceRef.current.accepts(ticket)) return;
         setCheckpoints(res.checkpoints);
         setCheckpointsState('ready');
       })
-      .catch(() => setCheckpointsState('error'));
+      .catch((error: unknown) => {
+        if (!requestFenceRef.current.accepts(ticket)) return;
+        if (error instanceof Error && error.name === 'AbortError') return;
+        setCheckpointsState('error');
+      })
+      .finally(() => {
+        if (checkpointsAbortRef.current === controller) checkpointsAbortRef.current = null;
+      });
   }, [projectId]);
 
   useEffect(() => {
@@ -445,17 +460,25 @@ export function useProjectSocket(
     loadCheckpoints();
   }, [loadHistory, loadCheckpoints]);
 
+  useEffect(
+    () => () => {
+      historyAbortRef.current?.abort();
+      checkpointsAbortRef.current?.abort();
+    },
+    [],
+  );
+
   // ---------------------------------------------------------------- ws plumbing
   const sendRaw = useCallback((msg: ClientMsg): boolean => {
     const ws = wsRef.current;
-    if (!ws || ws.readyState !== WebSocket.OPEN) return false;
+    if (!ws || wsProjectRef.current !== projectId || ws.readyState !== WebSocket.OPEN) return false;
     try {
       ws.send(JSON.stringify(msg));
       return true;
     } catch {
       return false;
     }
-  }, []);
+  }, [projectId]);
 
   const handleServerMsg = useCallback((msg: ServerMsg) => {
     switch (msg.type) {
@@ -506,7 +529,7 @@ export function useProjectSocket(
             // `run_intent` may have created the shell first; fill in the mode
             // it did not know, and keep the intent it did.
             const next = [...list];
-            next[existing] = { ...list[existing]!, mode: msg.mode, streaming: true };
+            next[existing] = { ...list[existing]!, mode: msg.mode, productModel: msg.productModel, streaming: true };
             return next;
           }
           return [
@@ -515,6 +538,7 @@ export function useProjectSocket(
               id: msg.msgId,
               role: 'assistant',
               mode: msg.mode,
+              productModel: msg.productModel,
               content: '',
               tools: [],
               streaming: true,
@@ -709,6 +733,7 @@ export function useProjectSocket(
             id: run.msgId,
             role: 'assistant',
             mode: run.mode,
+            productModel: run.productModel,
             content: run.text,
             tools: run.tools.map((t) => ({
               toolId: t.toolId,
@@ -853,6 +878,8 @@ export function useProjectSocket(
 
   const connect = useCallback(async () => {
     if (MOCK_MODE || closedRef.current) return;
+    const socketProjectId = projectId;
+    if (!requestFenceRef.current.isSelected(socketProjectId)) return;
     // Refresh the Supabase session before (re)connecting; getSession auto-refreshes
     // an expired token, and an explicit refresh keeps long-lived tabs healthy.
     let token = await getAccessToken();
@@ -860,7 +887,7 @@ export function useProjectSocket(
       const { data } = await supabase.auth.refreshSession();
       token = data.session?.access_token ?? null;
     }
-    if (closedRef.current) return;
+    if (closedRef.current || !requestFenceRef.current.isSelected(socketProjectId)) return;
     if (!token) {
       setConn('offline');
       return;
@@ -882,13 +909,19 @@ export function useProjectSocket(
     try {
       ws = new WebSocket(url, ['golem.v1', `golem.jwt.${token}`]);
     } catch {
+      if (!requestFenceRef.current.isSelected(socketProjectId)) return;
       setConn('offline');
       return;
     }
+    if (!requestFenceRef.current.isSelected(socketProjectId)) {
+      try { ws.close(1000, 'project changed'); } catch { /* already closed */ }
+      return;
+    }
     wsRef.current = ws;
+    wsProjectRef.current = socketProjectId;
 
     ws.onopen = () => {
-      if (wsRef.current !== ws) return;
+      if (wsRef.current !== ws || !requestFenceRef.current.isSelected(socketProjectId)) return;
       attemptsRef.current = 0;
       setConn('open');
       if (pingTimer.current) window.clearInterval(pingTimer.current);
@@ -900,7 +933,7 @@ export function useProjectSocket(
     };
 
     ws.onmessage = (ev) => {
-      if (wsRef.current !== ws) return;
+      if (wsRef.current !== ws || !requestFenceRef.current.isSelected(socketProjectId)) return;
       let msg: ServerMsg;
       try {
         msg = JSON.parse(typeof ev.data === 'string' ? ev.data : '') as ServerMsg;
@@ -911,8 +944,9 @@ export function useProjectSocket(
     };
 
     ws.onclose = () => {
-      if (wsRef.current !== ws) return;
+      if (wsRef.current !== ws || !requestFenceRef.current.isSelected(socketProjectId)) return;
       wsRef.current = null;
+      wsProjectRef.current = null;
       if (pingTimer.current) {
         window.clearInterval(pingTimer.current);
         pingTimer.current = null;
@@ -964,6 +998,7 @@ export function useProjectSocket(
       if (pingTimer.current) window.clearInterval(pingTimer.current);
       const ws = wsRef.current;
       wsRef.current = null;
+      wsProjectRef.current = null;
       try {
         ws?.close(1000, 'leaving workspace');
       } catch {
@@ -985,8 +1020,8 @@ export function useProjectSocket(
    * message id that has already gone, finds nothing, and changes nothing.
    */
   const editAndResend = useCallback(
-    (messageId: string, text: string, mode: GolemMode): boolean => {
-      const ok = sendRaw({ type: 'edit_resend', messageId, text, mode });
+    (messageId: string, text: string, mode: GolemMode, productModel?: ProductModel): boolean => {
+      const ok = sendRaw({ type: 'edit_resend', messageId, text, mode, ...(productModel ? { productModel } : {}) });
       if (ok) {
         setRunning(true);
         setMessages((list) => {
@@ -1002,7 +1037,7 @@ export function useProjectSocket(
             edited && recordsRevision(edited.content, text) ? (carried ?? 0) + 1 : carried;
           return [
             ...kept,
-            { id: localId(), role: 'user', mode, content: text, tools: [], streaming: false, createdAt: Date.now(), revisions },
+            { id: localId(), role: 'user', mode, productModel, content: text, tools: [], streaming: false, createdAt: Date.now(), revisions },
           ];
         });
       }
@@ -1012,11 +1047,11 @@ export function useProjectSocket(
   );
 
   const sendChat = useCallback(
-    (text: string, mode: GolemMode, attachments: ChatAttachment[] = []): boolean => {
+    (text: string, mode: GolemMode, attachments: ChatAttachment[] = [], productModel?: ProductModel): boolean => {
       // The field has been on this frame since the protocol was written and nothing ever set it.
       // Omitted entirely when there are none, so a message with no files is byte-identical on the
       // wire to every message this product has ever sent.
-      const ok = sendRaw({ type: 'chat', text, mode, ...(attachments.length ? { attachments } : {}) });
+      const ok = sendRaw({ type: 'chat', text, mode, ...(productModel ? { productModel } : {}), ...(attachments.length ? { attachments } : {}) });
       if (ok) {
         setRunning(true);
         setMessages((list) => [
@@ -1025,6 +1060,7 @@ export function useProjectSocket(
             id: localId(),
             role: 'user',
             mode,
+            productModel,
             content: text,
             tools: [],
             streaming: false,

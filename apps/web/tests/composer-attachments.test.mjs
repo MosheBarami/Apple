@@ -47,7 +47,7 @@ const COMPOSER = src('components', 'ws', 'composer.tsx');
 const WORKSPACE = src('routes', 'workspace.tsx');
 const SOCKET = src('lib', 'use-project-socket.ts');
 const API = src('lib', 'api.ts');
-const CSS = readFileSync(join(WEB, 'src', 'styles', 'workspace.css'), 'utf8');
+const CSS = readFileSync(join(WEB, 'src', 'design', 'system.css'), 'utf8');
 
 /** Source with comments removed, so a negative assertion cannot be tripped by prose. */
 const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
@@ -159,8 +159,9 @@ test('the message carries the attachments all the way to the socket frame', () =
   // written and nothing ever set it.
   assert.match(CODE, /readyAttachments\(/);
   assert.match(COMPOSER, /onSend: \(text: string, attachments: ChatAttachment\[\]\) => boolean/);
-  assert.match(WORKSPACE, /sendChat\(text, PRODUCT_MODE_TO_SPECIALIST\[mode\], attachments\)/);
-  assert.match(SOCKET, /type: 'chat', text, mode, [\s\S]{0,60}attachments/);
+  // Extra model metadata must not invalidate the attachment boundary.
+  assert.match(WORKSPACE, /sendChat\(text, PRODUCT_MODE_TO_SPECIALIST\[mode\], attachments(?:,\s*\w+)?\)/);
+  assert.match(SOCKET, /sendRaw\(\{ type: 'chat'[^\n]+attachments/);
 });
 
 test('a refused send leaves the staged files exactly where they were', () => {

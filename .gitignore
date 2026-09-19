@@ -28,6 +28,9 @@ packages/corpus/raw/*
 # It is not reproducible either: it was built by reading 653 repositories' file trees live, and
 # a repository that is renamed, deleted or rewritten next year will not read the same way.
 !packages/corpus/data/mechanic-library.json
+# Authored, inspected reference metadata is required by the Worker runtime import and is not
+# reproducible harvested media. Keep the manifest available in a fresh checkout.
+!packages/corpus/data/genre-references.json
 # The harvest artefacts, and the split between them is about REPRODUCIBILITY, not size.
 #
 # Tracked: the sources that are scraped or that publish no versioned index. cgbookcase reads a

@@ -13,15 +13,43 @@ const WORKER = join(dirname(fileURLToPath(import.meta.url)), '..');
 const tools = readFileSync(join(WORKER, 'src', 'tools.ts'), 'utf8');
 const session = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
 
+/** One top-level tool registry entry, ending at its own two-space-indented closing brace. */
+function toolEntry(src, name) {
+  const start = src.indexOf(`  ${name}: {`);
+  assert.notEqual(start, -1, `${name} registry entry moved or was renamed`);
+  const end = src.indexOf('\n  },\n', start);
+  assert.notEqual(end, -1, `${name} registry entry has no top-level terminator`);
+  return src.slice(start, end + '\n  },'.length);
+}
+
+function assertChooseAssetPolicyWiring(body) {
+  assert.match(body, /run: async \(ctx, a\) => \{/, 'choose_asset_source must keep the caller context');
+  const policy = body.indexOf('allowedSources(ctx.assetSources)');
+  const filter = body.indexOf('chosen.filter((c) => allowed.includes(c.source))');
+  assert.ok(policy !== -1, 'choose_asset_source must read the caller asset-source policy');
+  assert.ok(filter !== -1, 'choose_asset_source must filter recommendations through the allowed set');
+  assert.ok(policy < filter, 'policy must be resolved before recommendations are filtered');
+  assert.match(body, /sourceRefusal\(ctx\.assetSources,/, 'the refusal must describe the same caller policy');
+}
+
 test('AgentCtx carries the policy, so a tool reads a value rather than querying per call', () => {
   const iface = tools.slice(tools.indexOf('export interface AgentCtx'), tools.indexOf('}', tools.indexOf('export interface AgentCtx')));
   assert.match(iface, /assetSources\?: AssetSourcePolicy/);
 });
 
 test('choose_asset_source NARROWS its list to what the policy allows', () => {
-  const body = tools.slice(tools.indexOf('  choose_asset_source: {'), tools.indexOf('  search_asset_library: {'));
-  assert.match(body, /allowedSources\(/, 'it must consult the policy');
-  assert.equal(/run: async \(_ctx/.test(body), false, 'it must stop discarding its context');
+  const body = toolEntry(tools, 'choose_asset_source');
+  assertChooseAssetPolicyWiring(body);
+
+  // Falsification: replacing the caller's policy with an unscoped/default input must make this
+  // guard fail even though the rest of the tool entry (including unrelated registry tools) is intact.
+  const weakened = body.replace('allowedSources(ctx.assetSources)', 'allowedSources(undefined)');
+  assert.notEqual(weakened, body, 'CONTROL: the synthetic policy bypass must actually be planted');
+  assert.throws(
+    () => assertChooseAssetPolicyWiring(weakened),
+    /caller asset-source policy/,
+    'the guard must fail when choose_asset_source stops consulting the caller policy',
+  );
 });
 
 test('SEARCHING A FORBIDDEN LIBRARY IS REFUSED BEFORE THE QUERY RUNS', () => {

@@ -24,7 +24,7 @@
  * degrading to trusting the body.
  */
 import type { Env } from './env';
-import { isPlanId, type PlanId } from './pricing';
+import { isPlanId, PLAN_IDS, type PlanId } from './pricing';
 
 /** How long a signed webhook payload stays acceptable. Stripe's own default. */
 const SIGNATURE_TOLERANCE_SECONDS = 300;
@@ -393,8 +393,8 @@ export function interpretStripeEvent(event: unknown, env?: Env): BillingOutcome 
 
 /** Is billing configured at all? Everything here is inert without the secret. */
 export function billingConfigured(env: Env): boolean {
-  return typeof (env as unknown as { STRIPE_WEBHOOK_SECRET?: string }).STRIPE_WEBHOOK_SECRET === 'string'
-    && ((env as unknown as { STRIPE_WEBHOOK_SECRET?: string }).STRIPE_WEBHOOK_SECRET ?? '').length > 0;
+  const secret = (env as unknown as { STRIPE_WEBHOOK_SECRET?: string }).STRIPE_WEBHOOK_SECRET;
+  return typeof secret === 'string' && secret.trim().length > 0;
 }
 
 // --- the upgrade and downgrade path (w14) --------------------------------------------------------
@@ -429,6 +429,30 @@ export function priceIdFor(env: Env, plan: PlanId): string | null {
   if (plan === 'builder') return e.STRIPE_PRICE_BUILDER?.trim() || null;
   if (plan === 'studio') return e.STRIPE_PRICE_STUDIO?.trim() || null;
   return null;
+}
+
+/**
+ * The read-only offer advertised by this deployment.
+ *
+ * `checkout` is the GLOBAL Stripe plumbing state: the worker has both the API key needed to open a
+ * hosted session and the webhook secret needed to apply the subscription event. It is deliberately
+ * not a promise that every priced tier is available. `purchasable` is the per-plan answer and only
+ * includes a plan when that global plumbing is present AND its own non-empty price id is present.
+ * Keeping the two answers separate lets an operator bring one tier online without making the other
+ * tier look sellable, while also preventing price ids left in a partial environment from leaking as
+ * an offer when checkout itself cannot safely run.
+ */
+export interface BillingConfig {
+  checkout: boolean;
+  purchasable: PlanId[];
+}
+
+export function billingConfigFor(env: Env): BillingConfig {
+  const checkout = checkoutConfigured(env);
+  return {
+    checkout,
+    purchasable: checkout ? PLAN_IDS.filter((plan) => priceIdFor(env, plan) !== null) : [],
+  };
 }
 
 /**
@@ -745,8 +769,8 @@ export function buildCustomerDetailsRequest(next: BillingDetails, previous: Bill
 
 /** Can this deployment start a checkout at all? The webhook secret alone is not enough. */
 export function checkoutConfigured(env: Env): boolean {
-  const key = (env as unknown as CheckoutEnv).STRIPE_SECRET_KEY ?? '';
-  return billingConfigured(env) && key.length > 0;
+  const key = (env as unknown as CheckoutEnv).STRIPE_SECRET_KEY;
+  return billingConfigured(env) && typeof key === 'string' && key.trim().length > 0;
 }
 
 export type CheckoutRefusal =

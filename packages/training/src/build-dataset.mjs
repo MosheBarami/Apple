@@ -45,10 +45,10 @@ const MANIFEST = join(RAW, 'manifest.json');
 const EVAL_TASKS = join(REPO_ROOT, 'packages', 'evals', 'tasks');
 
 /** SPDX ids we accept for TRAINING. Anything else is retrieval-only. */
-const TRAINING_OK_SPDX = new Set(['MIT', 'Apache-2.0', 'BSD-3-Clause', 'BSD-2-Clause', '0BSD', 'Unlicense']);
+export const TRAINING_OK_SPDX = new Set(['MIT', 'Apache-2.0', 'BSD-3-Clause', 'BSD-2-Clause', '0BSD', 'Unlicense']);
 
 /** Excluded by id regardless of SPDX — the registry marks these training: forbidden. */
-const TRAINING_FORBIDDEN_URLS = [/github\.com\/Roblox\/creator-docs/i];
+export const TRAINING_FORBIDDEN_URLS = [/github\.com\/Roblox\/creator-docs/i];
 
 const args = process.argv.slice(2);
 const argOf = (flag, dflt) => {
@@ -274,6 +274,11 @@ export function looksLikeDescription(doc) {
   // Section banners and annotation fragments.
   if (/^(only when|see |todo|fixme|hack|note:|-+$|=+$|@\w+)/i.test(doc)) return false;
   if (/^-->/.test(doc)) return false;
+  // C/Flow/JS comment remnants are not Luau prose. This matters for vendored React sources, where
+  // `cleanComment()` used to preserve `//`, `/**`, `*`, and licence-header tags verbatim and pair
+  // them with an otherwise valid function body. A generated row with that prompt is not usable
+  // instruction/response data, even though its response parses.
+  if (/^(?:\/\/|\/\*|\*)|@(?:param|return|internal|flow)\b|\b(?:copyright|source code is licensed|license file|source tree)\b/i.test(doc)) return false;
   // Mostly-uppercase text is a banner, not prose.
   const letters = doc.replace(/[^A-Za-z]/g, '');
   if (letters.length > 0 && (doc.replace(/[^A-Z]/g, '').length / letters.length) > 0.6) return false;

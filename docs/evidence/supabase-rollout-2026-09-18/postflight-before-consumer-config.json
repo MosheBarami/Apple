@@ -1,0 +1,268 @@
+{
+  "configured_consumers": [],
+  "data_api_privileges": [
+    {
+      "privilege": "SELECT",
+      "role": "authenticated",
+      "table": "checkpoints"
+    },
+    {
+      "privilege": "INSERT",
+      "role": "authenticated",
+      "table": "feedback"
+    },
+    {
+      "privilege": "SELECT",
+      "role": "authenticated",
+      "table": "feedback"
+    },
+    {
+      "privilege": "SELECT",
+      "role": "authenticated",
+      "table": "membership_access_state"
+    },
+    {
+      "privilege": "INSERT",
+      "role": "authenticated",
+      "table": "membership_events"
+    },
+    {
+      "privilege": "SELECT",
+      "role": "authenticated",
+      "table": "membership_events"
+    },
+    {
+      "privilege": "SELECT",
+      "role": "authenticated",
+      "table": "messages"
+    },
+    {
+      "privilege": "SELECT",
+      "role": "authenticated",
+      "table": "profiles"
+    },
+    {
+      "privilege": "UPDATE",
+      "role": "authenticated",
+      "table": "profiles"
+    },
+    {
+      "privilege": "INSERT",
+      "role": "authenticated",
+      "table": "project_members"
+    },
+    {
+      "privilege": "SELECT",
+      "role": "authenticated",
+      "table": "project_members"
+    },
+    {
+      "privilege": "UPDATE",
+      "role": "authenticated",
+      "table": "project_members"
+    },
+    {
+      "privilege": "DELETE",
+      "role": "authenticated",
+      "table": "projects"
+    },
+    {
+      "privilege": "INSERT",
+      "role": "authenticated",
+      "table": "projects"
+    },
+    {
+      "privilege": "SELECT",
+      "role": "authenticated",
+      "table": "projects"
+    },
+    {
+      "privilege": "UPDATE",
+      "role": "authenticated",
+      "table": "projects"
+    },
+    {
+      "privilege": "SELECT",
+      "role": "authenticated",
+      "table": "usage_events"
+    },
+    {
+      "privilege": "INSERT",
+      "role": "authenticated",
+      "table": "waitlist"
+    },
+    {
+      "privilege": "SELECT",
+      "role": "authenticated",
+      "table": "waitlist"
+    }
+  ],
+  "functions": [
+    {
+      "anonExecute": false,
+      "authenticatedExecute": false,
+      "name": "force_project_id",
+      "settings": [
+        "search_path=\"\""
+      ],
+      "sourceHash": "2bf0ef484a7be7adccd42d413b336f67"
+    },
+    {
+      "anonExecute": false,
+      "authenticatedExecute": false,
+      "name": "handle_new_user",
+      "settings": [
+        "search_path=\"\""
+      ],
+      "sourceHash": "797d4477e111f949bda310d1c6e27bb6"
+    },
+    {
+      "anonExecute": false,
+      "authenticatedExecute": true,
+      "name": "project_role",
+      "settings": [
+        "search_path=\"\""
+      ],
+      "sourceHash": "16f79b0985263f11f13d57e95037dcc2"
+    },
+    {
+      "anonExecute": false,
+      "authenticatedExecute": false,
+      "name": "protect_profile_fields",
+      "settings": [
+        "search_path=\"\""
+      ],
+      "sourceHash": "9d8b438015db2e40820a12aa7597bbaa"
+    }
+  ],
+  "migrations": [
+    {
+      "name": "0001_init.sql",
+      "sha256": "8f995af09676f1f8141fe68b206aec7adcbddf901ccc3c5e8f049bf0d3856230"
+    },
+    {
+      "name": "0002_waitlist_policy.sql",
+      "sha256": "efbc94539510918ce02aeea3a988742243f477a408eebba853f44add3abc3991"
+    },
+    {
+      "name": "0003_security_hardening.sql",
+      "sha256": "c710b084b3673504dcf168b2c63939bc64c089f48fab800b4024ec8b4060b671"
+    },
+    {
+      "name": "0004_project_archive.sql",
+      "sha256": "428a5774a72c5eea5183cf1d9b2cdd0eb08716b775165be26e42517fbcd10763"
+    },
+    {
+      "name": "0005_collaboration.sql",
+      "sha256": "c4f1fdcbe540426a78a60b4dc3be33fb01057777ed80ce5d8ca1f521eed50366"
+    },
+    {
+      "name": "0006_membership_lifecycle.sql",
+      "sha256": "d369975cfbc038bee82d125aff9f7cb22aae2b17a5110a428c075503aef2182d"
+    },
+    {
+      "name": "0007_project_pinning.sql",
+      "sha256": "63236036927b1edf8bbf86774a5634c238118e7574b4423f68441b5adfe2a331"
+    },
+    {
+      "name": "0008_project_tags.sql",
+      "sha256": "1d164203532c35faf999eb9b4f1aea58c6e1d4c1ed1457542d5e72a14c93351f"
+    },
+    {
+      "name": "0009_membership_access_outbox.sql",
+      "sha256": "cf7d6e8e199e642fef47a9f394ab166f7b6e108f297860674e69db91daf4a6aa"
+    },
+    {
+      "name": "0010_schema_hardening.sql",
+      "sha256": "cf033d4df2b0c4b5d70f1fda6faa8a2d20060f35f7aa594cc13c62ed30cedb43"
+    }
+  ],
+  "outbox_consumers": [
+    {
+      "consumer": "apple",
+      "enabled": true
+    },
+    {
+      "consumer": "golem",
+      "enabled": true
+    }
+  ],
+  "pending_delivery_count": 0,
+  "tables": [
+    {
+      "name": "checkpoints",
+      "rls": true
+    },
+    {
+      "name": "feedback",
+      "rls": true
+    },
+    {
+      "name": "membership_access_outbox",
+      "rls": true
+    },
+    {
+      "name": "membership_access_state",
+      "rls": true
+    },
+    {
+      "name": "membership_events",
+      "rls": true
+    },
+    {
+      "name": "membership_outbox_consumers",
+      "rls": true
+    },
+    {
+      "name": "membership_outbox_secret",
+      "rls": true
+    },
+    {
+      "name": "messages",
+      "rls": true
+    },
+    {
+      "name": "profiles",
+      "rls": true
+    },
+    {
+      "name": "project_members",
+      "rls": true
+    },
+    {
+      "name": "projects",
+      "rls": true
+    },
+    {
+      "name": "schema_migrations",
+      "rls": true
+    },
+    {
+      "name": "studio_pairings",
+      "rls": true
+    },
+    {
+      "name": "usage_events",
+      "rls": true
+    },
+    {
+      "name": "waitlist",
+      "rls": true
+    }
+  ],
+  "usage_columns": [
+    {
+      "default": "0",
+      "name": "credits",
+      "nullable": "NO",
+      "type": "integer"
+    },
+    {
+      "default": "0",
+      "name": "sparks",
+      "nullable": "NO",
+      "type": "integer"
+    }
+  ],
+  "usage_mismatches": 0
+}

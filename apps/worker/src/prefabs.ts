@@ -20,6 +20,8 @@
 // one gets one file with no dependencies, which is the only shape that survives being dropped into
 // a project the agent did not write.
 
+import { APPLE_UI_SOURCE } from './ui-kit';
+
 export interface Prefab {
   id: string;
   /** The name the ModuleScript takes, matching the table the source returns and the api strings. */
@@ -83,6 +85,7 @@ local DEFAULTS = {
 }
 
 local cache = {}
+local releaseInFlight = {}
 
 local function keyFor(userId)
 	return "u_" .. tostring(userId)
@@ -113,9 +116,13 @@ end
 --- Load a player's profile and take the session lock. Yields.
 --- Returns the data table, or nil when the read failed — and nil MUST disable saving.
 function Profile.load(player)
+	local userId = player.UserId
+	if releaseInFlight[userId] ~= nil then
+		return nil
+	end
 	local serverId = SERVER_ID
 	local ok, data = attempt(function()
-		return STORE:UpdateAsync(keyFor(player.UserId), function(stored)
+		return STORE:UpdateAsync(keyFor(userId), function(stored)
 			local now = os.time()
 			if stored ~= nil and stored.lock ~= nil then
 				local heldBy = stored.lock.serverId
@@ -139,37 +146,45 @@ function Profile.load(player)
 		-- somewhere else. A later change that caches a failed load for any reason would reintroduce
 		-- the account-wiping write with nothing left to stop it. A nil value keeps get() returning
 		-- nil, and the flag does the refusing.
-		cache[player.UserId] = { value = nil, canSave = false }
+		cache[userId] = { value = nil, canSave = false }
 		return nil
 	end
 
-	cache[player.UserId] = { value = data.value, canSave = true }
+	cache[userId] = { value = data.value, canSave = true }
 	return data.value
 end
 
 --- Save and release. Safe to call twice. Yields.
 function Profile.release(player)
-	local entry = cache[player.UserId]
-	cache[player.UserId] = nil
+	local userId = player.UserId
+	local entry = cache[userId]
+	cache[userId] = nil
 	if entry == nil or not entry.canSave then
 		-- The load failed, so there is nothing trustworthy to write. This is the rule.
 		return false
 	end
+	releaseInFlight[userId] = entry
 	local ok, written = attempt(function()
-		return STORE:UpdateAsync(keyFor(player.UserId), function(stored)
+		return STORE:UpdateAsync(keyFor(userId), function(stored)
 			-- THE LOCK IS CHECKED ON THE WAY OUT TOO. Taking it at load is not enough: if this
 			-- server stalled long enough for the lock to go stale, another one has legitimately
 			-- taken this player over and is writing their live session. Writing ours on top would
 			-- replace a real session with a snapshot from before the handover, and clearing the
 			-- lock would leave a live session unprotected on top of that.
-			if stored ~= nil and stored.lock ~= nil and stored.lock.serverId ~= SERVER_ID then
-				return nil
-			end
+				-- An absent lock may mean the replacement server already finished and released.
+				-- Only positive ownership permits this older snapshot to be saved.
+				local lock = stored and stored.lock or nil
+				if lock == nil or lock.serverId ~= SERVER_ID then
+					return nil
+				end
 			return { value = entry.value, lock = nil }
 		end)
 	end)
+	if releaseInFlight[userId] == entry then
+		releaseInFlight[userId] = nil
+	end
 	if ok and written == nil then
-		warn("[Profile] another server holds " .. keyFor(player.UserId) .. " — did not save over it")
+			warn("[Profile] no longer owns " .. keyFor(userId) .. " — did not save over it")
 		return false
 	end
 	return ok
@@ -201,8 +216,11 @@ function Profile.commit(player, data)
 	end
 	local ok, written = attempt(function()
 		return STORE:UpdateAsync(keyFor(player.UserId), function(stored)
+			if cache[player.UserId] ~= entry or not entry.canSave then
+				return nil
+			end
 			local lock = stored and stored.lock or nil
-			if lock ~= nil and lock.serverId ~= SERVER_ID then
+			if lock == nil or lock.serverId ~= SERVER_ID then
 				-- Not ours any more. Refusing is the only safe answer: the caller checks the
 				-- return, and for a purchase a false means the receipt is not consumed.
 				return nil
@@ -1762,6 +1780,26 @@ return DailyReward
 `;
 
 export const PREFABS: Record<string, Prefab> = {
+  ui_kit: {
+    id: 'ui_kit',
+    moduleName: 'AppleUI',
+    summary: 'Genre-aware client HUD, responsive card/row shop, scrolling objectives and bounded timed notifications. Ten explicit game presentation profiles plus a neutral profile; resize-aware grids, procedural item glyphs, optional descriptions/badges and server-reported owned state. Safe-area layout, touch/gamepad buttons, pending/error feedback and cleanup. Presentation only: authoritative data and purchases belong on the server; inspect actual engine pixels separately.',
+    prevents: [
+      'client UI granting purchases or changing the authoritative balance instead of waiting for the server',
+      'double activation while a request is pending, stale callbacks after destruction and duplicate screens',
+      'rebuilding a list before validating its replacement or leaving input connections alive after cleanup',
+      'unbounded notification queues, invalid objective progress, fabricated completion and broken UTF-8 labels',
+    ],
+    defaultParent: 'game.ReplicatedStorage',
+    className: 'ModuleScript',
+    api: [
+      'AppleUI.mount(playerGui, { name = "AppleUI", theme = "simulator", title = "Upgrades", balance = "—", balanceLabel = "COINS", showShop = true, reducedMotion = false, onRequest = function(itemId) -- return serverConfirmedBoolean, message end }) -> ui; CLIENT ONLY. theme accepts studio, simulator, tycoon, obby, horror, racing, roleplay, tower_defense, fps_arena, anime_battle, survival; unknown themes are refused. Optional accent must be Color3. Set showShop=false for a HUD without a shop; server validates item, price, balance and request rate. A selected theme is not a verified visual result.',
+      'AppleUI.mount(...) returns ui:setItems({{id="speed", name="Trail boots", description="Move through the course", price="100 Coins", icon="bolt", badge="Tier 1", owned=false, disabled=false}}), ui:setBalance(serverConfirmedDisplay), ui:setStatus(text), ui:open(), ui:close(), ui:destroy(); icons are optional procedural coin/gem/shield/bolt/crate glyphs, not asset previews. owned=true must come from observed server state; acknowledgement alone never infers ownership. Never update balance or claim a grant before server acknowledgement.',
+      'AppleUI.mount(...) returns ui:setObjectives({{id="lap", title="Finish the course", current=2, target=5, completed=false}}), replacing at most 8 objectives atomically; omit current/target for unknown progress, set completed only from authoritative state, and use {} to hide. No quest or reward logic is installed.',
+      'AppleUI.mount(...) returns ui:notify(message, "info" | "success" | "error", seconds=5) -> boolean; 2–12 seconds, at most 5 queued, false when full or destroyed. Success is only for observed server confirmation. Notices pause while the shop is open; ui:clearNotifications() clears them. Neither API sends remotes or grants anything.',
+    ],
+    source: APPLE_UI_SOURCE,
+  },
   daily_reward: {
     id: 'daily_reward',
     needs: ['profile_store', 'currency'],

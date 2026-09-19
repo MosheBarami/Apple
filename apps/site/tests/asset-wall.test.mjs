@@ -1,103 +1,78 @@
-// The library wall says where every asset came from — or it does not ship.
-//
-// THE CLAIM THE SECTION MAKES: "each one arrives carrying its pack, its author and its licence, so
-// a credit line can be written without anybody reconstructing it later." That sentence is a
-// promise about EVERY card, and a wall with one anonymous tile breaks it silently — the tile looks
-// like the others and nobody counts.
-//
-// It also states a number in its own heading. A heading that says "24 of them below" over
-// twenty-three cards is the shape this repository keeps finding: a figure that agreed with the data
-// on the day it was typed.
+// The asset library remains a licensed dataset, but the redesigned landing does not pretend to
+// be an asset catalogue. Keep the provenance checks here while guarding that the root route does
+// not grow a fabricated banner or static result wall again.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, existsSync } from 'node:fs';
-import { createRequire } from 'node:module';
-const require = createRequire(import.meta.url);
-import { join, dirname } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const SITE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const wall = JSON.parse(readFileSync(join(SITE, 'src', 'data', 'asset-wall.json'), 'utf8'));
 const PAGE = readFileSync(join(SITE, 'src', 'pages', 'index.astro'), 'utf8');
+const CSS = readFileSync(join(SITE, 'src', 'styles', 'landing.css'), 'utf8');
 
-test('the wall is not empty, and an empty one is a failure rather than a quiet page', () => {
-  // scripts/pick-asset-wall.mjs refuses to write a file when every source fails, so an empty
-  // wall here means something else emptied it — and a section whose grid renders nothing reads as
-  // a library with nothing in it.
-  assert.ok(wall.assets.length >= 12, `only ${wall.assets.length} assets — the wall has been emptied`);
+test('the licensed asset dataset still exists even though the landing no longer renders it', () => {
+  // The library is still used by the product and its licensing evidence must not disappear just
+  // because the root route changed shape. An empty dataset would make every provenance loop below
+  // vacuous, so fail loudly before checking any row.
+  assert.ok(Array.isArray(wall.assets) && wall.assets.length >= 12,
+    `only ${wall.assets?.length ?? 0} assets — the licensing dataset is empty or malformed`);
 });
 
-test('every card carries a pack, an author and a licence', () => {
-  //[[ THE PROVENANCE IS THE FEATURE. CC-BY obliges a credit by NAME — game-icons.net is 4,239
-  //   icons by dozens of people, and crediting the site would discharge nothing. A row without an
-  //   author is a row whose obligation cannot be met, and it must not be on a page that claims
-  //   every one can. ]]
-  for (const a of wall.assets) {
+test('every retained asset carries reachable provenance', () => {
+  // CC-BY needs an author, and a credit is useful only when the source and licence can be reached.
+  // This remains a dataset contract; it makes no claim that these images appear on the landing.
+  for (const asset of wall.assets) {
     for (const field of ['pack', 'author', 'licence', 'licenceUrl', 'source', 'img', 'name']) {
-      assert.ok(typeof a[field] === 'string' && a[field].trim(), `${a.id} has no ${field}`);
+      assert.ok(typeof asset[field] === 'string' && asset[field].trim(),
+        `${asset.id} has no ${field}`);
     }
-    assert.match(a.licenceUrl, /^https:\/\//, `${a.id}: the licence must be reachable, not asserted`);
+    assert.match(asset.licenceUrl, /^https:\/\//,
+      `${asset.id}: licenceUrl must be an HTTPS source, not an assertion`);
+    assert.match(asset.source, /^https:\/\//,
+      `${asset.id}: source must remain an HTTPS provenance link`);
+    assert.match(asset.remote ?? '', /^https:\/\//,
+      `${asset.id}: remote must retain the original asset location`);
   }
 });
 
-test('the pictures are OURS, not hot-linked', () => {
-  //[[ THE FAILURE THIS IS WRITTEN FROM. The first version pointed every card at the pack's own CDN.
-  //   Every URL answered 200 to curl and NOT ONE rendered: 24 cards in the DOM, 24 <img> elements,
-  //   `loaded: 0`. A cross-origin image is at the mercy of the other site's referrer policy, its
-  //   hotlink protection and its CORS headers, and none of that is visible from a shell — so
-  //   verifying the bytes exist on their server said nothing about whether a browser would draw
-  //   them on ours.
-  //
-  //   `remote` keeps the provenance, `img` is what the page loads, and conflating the two is how a
-  //   local copy quietly becomes a hot-link again. ]]
-  const { existsSync } = require('node:fs');
-  for (const a of wall.assets) {
-    assert.match(a.img, /^\/assets\/wall\//, `${a.id} loads from ${a.img} — that is somebody else's server`);
-    assert.ok(existsSync(join(SITE, 'public', a.img)), `${a.id}: ${a.img} is not on disk`);
-    assert.match(a.remote ?? '', /^https:\/\//, `${a.id} must still record where the picture came from`);
+test('local asset previews remain local and license-compatible', () => {
+  for (const asset of wall.assets) {
+    assert.match(asset.img, /^\/assets\/wall\//,
+      `${asset.id} points at ${asset.img}, which is not a bundled preview`);
+    assert.ok(existsSync(join(SITE, 'public', asset.img)),
+      `${asset.id}: bundled preview ${asset.img} is missing`);
+    assert.doesNotMatch(asset.licence, /share.?alike|-SA\b|NonCommercial|-NC\b/i,
+      `${asset.id} carries ${asset.licence}, which cannot be discharged in a customer's game`);
   }
 });
 
-test('no licence that cannot be discharged inside a customer’s game', () => {
-  // Share-alike would oblige the customer's whole place; non-commercial forbids the product's
-  // entire purpose. Neither can be satisfied by a credit line, so neither may appear here.
-  for (const a of wall.assets) {
-    assert.doesNotMatch(a.licence, /share.?alike|-SA\b|NonCommercial|-NC\b/i,
-      `${a.id} carries ${a.licence}, which a customer's Roblox place cannot satisfy`);
-  }
-});
-
-test('the wall draws on more than one pack', () => {
-  // Three packs is the claim the section makes. Twenty-four icons from one source would be a wall
-  // that says nothing about the breadth of the library, and it is what a round-robin bug produces.
-  const packs = new Set(wall.assets.map((a) => a.pack));
+test('the dataset retains breadth across independent packs', () => {
+  const packs = new Set(wall.assets.map((asset) => asset.pack));
   assert.ok(packs.size >= 3, `only ${packs.size} pack(s): ${[...packs].join(', ')}`);
 });
 
-test('the count in the heading is the count that renders', () => {
-  // The section prints `{assetWall.count}` and maps `assetWall.assets`. If those two ever come from
-  // different places, the page states a number about a list it is not showing.
-  assert.equal(wall.count, wall.assets.length, 'the recorded count disagrees with the rows');
-  assert.match(PAGE, /\{assetWall\.count\}/, 'the heading must read the count, never a literal');
-  assert.match(PAGE, /assetWall\.assets\.map/, 'the grid must render the same array the count came from');
+test('the landing has no asset banner, image wall, or remote image dependency', () => {
+  // The new root is a conversation invitation, not a gallery. These are structural tripwires for
+  // the old wall/banner returning under a new sentence: a landing image, a wall data import, a
+  // wall class, or a remote image URL would all present an asset result the route did not produce.
+  assert.doesNotMatch(PAGE, /asset[-_]?wall|assetWall|ap[-_]wall|wall__card/i,
+    'index.astro still wires the removed asset wall into the landing');
+  assert.doesNotMatch(PAGE, /<(?:img|picture|source)\b/i,
+    'index.astro contains an image banner/gallery element; the redesigned root has no banner');
+  assert.doesNotMatch(PAGE, /https?:\/\//i,
+    'index.astro contains a remote URL; the landing must not depend on a remote image/banner');
+  assert.doesNotMatch(CSS, /(?:asset[-_]?wall|ap[-_]wall|wall__|background-image\s*:\s*url\()/i,
+    'landing.css still paints the removed asset/banner wall');
 });
 
-test('the pictures are sized in the markup', () => {
-  // Without width/height every card is zero-height until its image arrives and the whole section
-  // reflows under someone who is reading it.
-  const wallBlock = PAGE.slice(PAGE.indexOf('class="ap-wall"'), PAGE.indexOf('</section>', PAGE.indexOf('class="ap-wall"')));
-  //[[ AND THE SIZE MUST BE THE PICTURE'S OWN, NOT A CONSTANT.
-  //
-  //   It was width="256" height="256" on every card, because that is what the CDN query string
-  //   asked for. The files that came back are 193x255, 512x512, 137x256 and seven other shapes.
-  //   An attribute whose entire job is to reserve the right box was reserving the wrong one — a
-  //   guess dressed as a measurement, doing the opposite of what it is for.
-  assert.match(wallBlock, /width=\{a\.w\}/, 'the width must come from the file, not a literal');
-  assert.match(wallBlock, /height=\{a\.h\}/, 'the height must come from the file, not a literal');
-  for (const a of wall.assets) {
-    assert.ok(Number.isInteger(a.w) && a.w > 0, `${a.id} has no real width`);
-    assert.ok(Number.isInteger(a.h) && a.h > 0, `${a.id} has no real height`);
-  }
-  assert.match(wallBlock, /loading="lazy"/, '24 off-screen images must not be fetched eagerly');
-  assert.match(wallBlock, /alt=""/, 'the name is in the card text; an alt repeating it is noise to a screen reader');
+test('the landing derives visible model choices from the shared list, not a stale asset count', () => {
+  const modelImport = /import\s*\{[^}]*\bPRODUCT_MODELS\b[^}]*\}\s*from\s*['"]@golem\/shared['"]/;
+  assert.match(PAGE, modelImport,
+    'the landing no longer reads the shared product model list');
+  assert.match(PAGE, /PRODUCT_MODELS\.map\s*\(/,
+    'model cards are not derived from PRODUCT_MODELS');
+  assert.doesNotMatch(PAGE, /\{assetWall\.(?:count|assets)\}/,
+    'index.astro contains a stale library count with no rendered source of truth');
 });

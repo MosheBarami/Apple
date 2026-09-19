@@ -1,0 +1,51 @@
+{
+  "checkedAt": "2026-09-18T21:43:55.464Z",
+  "release": "6d7a5be-dirty.c90705a2a880",
+  "browserMonitoringConfigured": true,
+  "sourceBefore": "c90705a2a8801990ae0b40d9ff83f0300fa8ee1c9e044956b517b5de913788e0",
+  "sourceAfter": "c90705a2a8801990ae0b40d9ff83f0300fa8ee1c9e044956b517b5de913788e0",
+  "buildExitCode": 0,
+  "deployed": false,
+  "artifacts": [
+    {
+      "path": "apps/web/dist/assets/admin-DkwdBecp.js",
+      "bytes": 21870,
+      "sha256": "23db188058bc53a68ce7db5a33fd6f322e2da6f04ec1b2fd08b74764aacb2e31"
+    },
+    {
+      "path": "apps/web/dist/assets/index-155RQ2jz.js",
+      "bytes": 583219,
+      "sha256": "3a76e1be73076355ab21f94395e16e856a0ab3810d77dba01d2368dc189b3f49"
+    },
+    {
+      "path": "apps/web/dist/assets/index-CIlUvRCI.css",
+      "bytes": 62033,
+      "sha256": "8d7237a328ea243bd6d7490a7d4f3faeb6c1cb55dd7a3ddecc9c7b19929b52fa"
+    },
+    {
+      "path": "apps/web/dist/assets/markdown-0Pr9SZxJ.js",
+      "bytes": 65370,
+      "sha256": "a339f16f9cb095ea96875ddcdd43b83ea95acfd6556058fa9d1c1b38bc96a152"
+    },
+    {
+      "path": "apps/web/dist/assets/react-CbGl50uX.js",
+      "bytes": 206368,
+      "sha256": "145aaa68bf4d33528a703f786f2a31a3e97458e55ce9642ddd88360b1eaf8b81"
+    },
+    {
+      "path": "apps/web/dist/assets/supabase-CyI6DAKv.js",
+      "bytes": 220436,
+      "sha256": "dc9f86b4e2192723b8dfd24562fb3e61ac0354f3e014ffb8d78ab5ff6ef0d1fc"
+    },
+    {
+      "path": "apps/web/dist/assets/ui-lab-CjKbekWC.js",
+      "bytes": 13835,
+      "sha256": "cd0a12e53ecf9b9365d0295a40163dcb55bc214ec4937440d235e1c720117a8a"
+    },
+    {
+      "path": "apps/web/dist/index.html",
+      "bytes": 1797,
+      "sha256": "36cd05e90f9fd5cadbc549466718f2912abe63d9045c289b7d56634bd932d5e2"
+    }
+  ]
+}

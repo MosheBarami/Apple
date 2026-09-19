@@ -38,6 +38,27 @@ function route(src, signature) {
   return src.slice(start, next === -1 ? src.length : next);
 }
 
+function assertToolPermissionNarrowing(src) {
+  const modeBases = new Set(
+    [...src.matchAll(/const\s+([A-Za-z_$][\w$]*)\s*=\s*toolsForMode\(\s*(?:mode|agent\.mode)\s*,\s*studioConnected\s*,\s*toolNames\(\)\s*\);/g)]
+      .map((m) => m[1]),
+  );
+  assert.ok(modeBases.size > 0, 'no mode-derived toolset was found');
+
+  const permissionBases = [...src.matchAll(/applyToolPermissions\(\s*([A-Za-z_$][\w$]*)\s*,/g)].map((m) => m[1]);
+  assert.ok(permissionBases.length > 0, 'the run loop no longer applies tool permissions at all');
+  for (const name of permissionBases) {
+    assert.ok(modeBases.has(name), `applyToolPermissions base "${name}" is not derived from toolsForMode`);
+  }
+
+  // Prompt capability notes and executable tool definitions must both be downstream of the same
+  // mode -> user-permission narrowing, with plugin capabilities narrowing again afterwards.
+  assert.match(src, /const promptCapabilityFilter = this\.pluginToolFilter\(promptUserTools\);/);
+  assert.match(src, /const offeredCapabilityFilter = this\.pluginToolFilter\(userAllowed\);/);
+  assert.match(src, /tools:\s*toolDefs\(studioConnected, offeredAllowed,/);
+  assert.match(src, /const allowed = new Set\(\[\.\.\.offeredAllowed\]\.filter\(\(name\) => capabilityFilter\.allowed\.has\(name\)\)\);/);
+}
+
 const SCOPED_ROUTES = [
   "app.get('/api/memory/:scope/:scopeId'",
   "app.put('/api/memory/:scope/:scopeId/entries/:key'",
@@ -181,16 +202,21 @@ test('tool permissions NARROW the mode toolset, they do not replace it', () => {
   //   PROPERTY instead of the spelling: every first argument applyToolPermissions is ever given in
   //   this file must be a binding that came from toolsForMode. That is strictly stronger, because
   //   the old regex only ever looked at the ONE call it found first. ]]
-  const bases = [...SESSION.matchAll(/applyToolPermissions\(\s*([A-Za-z_$][\w$]*)\s*,/g)].map((m) => m[1]);
-  assert.ok(bases.length > 0, 'the run loop no longer applies tool permissions at all');
-  for (const name of bases) {
-    const decl = new RegExp(`const ${name} = toolsForMode\\(agent\\.mode, studioConnected, toolNames\\(\\)\\);`);
-    assert.match(SESSION, decl, `applyToolPermissions was handed "${name}", which is not the mode's own toolset`);
-  }
-  // And the narrowed set is what the step actually uses — a second binding nobody reads would
-  // satisfy everything above while the run was assembled from the unnarrowed one.
-  assert.match(SESSION, /const allowed = applyToolPermissions\(/);
-  assert.match(SESSION, /toolDefs\(studioConnected, allowed/);
+  assertToolPermissionNarrowing(SESSION);
+
+  // Falsification: a prompt path that starts from every registered tool instead of toolsForMode
+  // would let a preference bypass the mode boundary. The guard must reject that dataflow even if
+  // applyToolPermissions itself is still present.
+  const weakened = SESSION.replace(
+    /const promptBaseTools = toolsForMode\([^;]+;/,
+    'const promptBaseTools = new Set(toolNames());',
+  );
+  assert.notEqual(weakened, SESSION, 'CONTROL: the synthetic mode bypass must actually be planted');
+  assert.throws(
+    () => assertToolPermissionNarrowing(weakened),
+    /not derived from toolsForMode/,
+    'the guard must fail when user preferences replace the mode toolset instead of narrowing it',
+  );
 });
 
 test('the permissions are pinned to the run, so a mid-build edit cannot change what a run may do', () => {

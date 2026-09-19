@@ -64,7 +64,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <ul>
     <li><strong>You.</strong></li>
     <li><strong>Apple's systems</strong>, mechanically, to serve your requests.</li>
-    <li><strong>Nobody else.</strong> No data sales, no ad networks, no cross-site tracking. Operators can access production systems for debugging under access controls, and treat content as radioactive.</li>
+    <li><strong>Authorized operators</strong> can access production systems for debugging under access controls. No data sales, no ad networks, no cross-site tracking.</li>
   </ul>
 
   <h2>How long things stay</h2>
@@ -74,18 +74,21 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     <li><strong>Notifications:</strong> 30 days once read, 90 if never read.</li>
     <li><strong>Automation runs:</strong> 90 days.</li>
     <li><strong>Credits ledger:</strong> 35 days of daily detail, plus monthly totals.</li>
-    <li><strong>Generated images and sound:</strong> one hour in cache.</li>
+    <li><strong>New generated images:</strong> saved privately with the project until you delete it. Download a copy from the image result. Existing expired images cannot be recovered.</li>
+    <li><strong>Temporary image previews and generated sound:</strong> one hour in cache.</li>
+    <li><strong>Deletion during a running preview:</strong> an in-flight temporary image can remain in cache for up to an hour, but deleted-project images cannot be opened through Apple.</li>
+    <li><strong>Deleted-image protection:</strong> a deleted project identifier is retained without its images or account details, to stop late-running generation from recreating erased images.</li>
     <li><strong>Deleted workspace files:</strong> 30 days in the trash.</li>
   </ul>
   <p>A nightly sweep is what enforces the ones with a date on them, not a promise that somebody will remember.</p>
 
   <h2>Taking it with you</h2>
   <p>
-    Settings → Privacy → <strong>Download my data</strong> hands you one file: your profile,
-    projects, every message, checkpoints, spend and issued API keys. It also lists what it does not
-    contain and the route that serves each of those — your per-project transcript, your memory
-    scopes, your workspace archive — because a file that quietly stopped at the database would be
-    the smallest true part of the answer.
+    Settings → Privacy → <strong>Download my data</strong> exports available account database
+    records and API-key metadata, not secret keys. It is not a complete archive of every store.
+    The file reports unreadable, failed or capped tables and lists separate routes for your
+    project transcripts, checkpoints, memory, workspace files, images and usage. Check those
+    omissions before deleting anything.
   </p>
 
   <h2>Deleting things</h2>

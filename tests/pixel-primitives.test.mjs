@@ -13,16 +13,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SHARED = 'packages/design/src/pixels.mjs';
 
-const tracked = execFileSync('git', ['ls-files', '*.ts', '*.tsx', '*.mjs', '*.js'], {
+// Inspect the current checkout, including new source and excluding removed design files.
+const tracked = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '--', '*.ts', '*.tsx', '*.mjs', '*.js'], {
   cwd: ROOT, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024,
-}).split('\n').filter(Boolean);
+}).split('\n').filter(rel => rel && existsSync(join(ROOT, rel)));
+assert.ok(tracked.length > 50, 'source inventory must not silently become empty');
 
 /**
  * IMPLEMENTATION sites — an `export function`/`export const`, never an import, re-export or call.
@@ -36,7 +38,7 @@ function definitionsOf(name) {
   const decl = new RegExp(`^\\s*(?:export\\s+)?(?:function|const|let)\\s+${name}\\b`, 'm');
   return tracked.filter((rel) => {
     if (rel === 'tests/pixel-primitives.test.mjs' || rel.endsWith('.d.ts')) return false;
-    const src = readFileSync(join(ROOT, rel), 'utf8');
+    const src = readFileSync(join(ROOT, rel), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
     return decl.test(src);
   });
 }

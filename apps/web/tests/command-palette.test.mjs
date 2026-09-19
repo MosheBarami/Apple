@@ -100,7 +100,10 @@ function parseCommands(block, file) {
       })(),
       section: /\bsection:\s*'([^']+)'/.exec(body)?.[1] ?? null,
       hasEnabled: /\benabled:/.test(body),
-      hasWhy: /\bwhy:\s*'[^']+'/.test(body),
+      // Like title, `why` may be contextual. Workspace Stop says "Nothing is running" while idle
+      // and the access-layer reason while a viewer/commenter is looking at an active run. Requiring
+      // a quoted literal would reject the useful dynamic explanation and reward a less truthful one.
+      hasWhy: /\bwhy\s*:/.test(body),
       run: /\brun:\s*([\s\S]*)$/.exec(body)?.[1] ?? '',
     });
   }
@@ -201,7 +204,7 @@ test('every signed-in route is a child of the shell, so every one of them has th
   // failures around the form.
   assert.deepEqual(
     outside.sort(),
-    ['/confirm', '/forgot', '/login', '/recovery', '/reset', '/signup'],
+    ['/confirm', '/forgot', '/login', '/recovery', '/reset', '/signup', '/studio-preview'],
     `these routes are outside the shell and therefore have no command palette: ${outside.join(', ')}`,
   );
   // And the signed-in surfaces really are in there, so the assertion above cannot pass by the

@@ -78,7 +78,8 @@ export function PlaytestCard({ run, frames, onOpenStudio, studioConnected }: Pla
 
   if (!view.visible) return null;
 
-  const degraded = view.freshness === 'stale' || view.freshness === 'dead' || !studioConnected;
+  const terminal = run?.phase === 'finished' || run?.phase === 'failed';
+  const degraded = !terminal && (view.freshness === 'stale' || view.freshness === 'dead' || !studioConnected);
 
   return (
     <section
@@ -129,6 +130,8 @@ export function PlaytestCard({ run, frames, onOpenStudio, studioConnected }: Pla
           <div className="gx-playtest__empty">
             {run?.phase === 'failed' ? (
               <p>{view.error ?? 'The playtest did not run.'}</p>
+            ) : terminal ? (
+              <p>No frame is available for this completed playtest. Inspect the result in Studio.</p>
             ) : (
               <p>Waiting for the first frame from Studio…</p>
             )}
@@ -138,12 +141,18 @@ export function PlaytestCard({ run, frames, onOpenStudio, studioConnected }: Pla
 
       <footer className="gx-playtest__foot">
         {/* The honest label. Do not shorten this to "Live view" or "Gameplay". */}
-        <span className="gx-playtest__what">
+        {view.frame && <span className="gx-playtest__what">
           Rasterised geometry from Studio — not a viewport capture. No characters, particles or lighting effects.
-        </span>
+        </span>}
+
+        {view.consoleErrors > 0 && (
+          <p className="gx-playtest__degraded" role="status">
+            Check the Output panel in Roblox Studio for error details before publishing.
+          </p>
+        )}
 
         <span className="gx-playtest__stats">
-          <span className="gx-playtest__action">{view.action}</span>
+          {!terminal && <span className="gx-playtest__action">{view.action}</span>}
           <span
             className={`gx-playtest__count${view.consoleErrors > 0 ? ' is-error' : ''}`}
             title="Errors in the Studio console during this playtest"

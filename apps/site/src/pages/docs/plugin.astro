@@ -46,18 +46,17 @@ import {
     ) : (
       <div class="callout">
         <p>
-          <strong>Not available yet.</strong> The Apple plugin asset exists on Roblox
-          (<code>{ASSET_ID}</code>) but has not been distributed on the Creator Store yet. The
-          store page at <code>{STORE_URL}</code> loads, but it will not offer the plugin for
-          install, so the steps below will not work yet. We would rather say that plainly than
-          sell you a broken link. When it goes live this page becomes a working install guide
-          with no other changes.
+          <strong>Public installation is unavailable.</strong> Roblox removed the previous
+          plugin listing (<code>{ASSET_ID}</code>). Its store URL is not a working install path.
+          An independent replacement is being tested locally; it is not published or approved
+          for distribution. The installation instructions below apply only after an approved
+          listing is available. No release date is confirmed.
         </p>
       </div>
     )
   }
 
-  <h2>Installing</h2>
+  <h2>{storeLive ? 'Installing' : 'After public installation opens'}</h2>
   <p>
     Roblox splits plugin installation into two halves, and the second half happens inside Studio.
     A web page cannot install a plugin into Studio — there is no one-click hand-off, no matter

@@ -20,7 +20,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
-const css = readFileSync(join(WEB, 'src', 'styles.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ');
+const css = readFileSync(join(WEB, 'src', 'design/system.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ');
 
 /** Rules keyed by selector, with the background and colour token each declares. */
 const rules = [];

@@ -36,7 +36,7 @@ const strip = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$
 const PANEL = read('src', 'components', 'ws', 'automations-panel.tsx');
 const WS = read('src', 'routes', 'workspace.tsx');
 const API = read('src', 'lib', 'api.ts');
-const CSS = read('src', 'styles', 'workspace.css');
+const CSS = read('src', 'design', 'system.css');
 const PANEL_CODE = strip(PANEL);
 const WS_CODE = strip(WS);
 

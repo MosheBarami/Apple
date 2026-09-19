@@ -23,13 +23,34 @@ export const LEDGER_TABLE = 'public.schema_migrations';
  * `applied_at` and `by` are recorded because "which migrations have run" is an incident question,
  * and the answer is worth having with a time and an author attached. The checksum is the load
  * bearing column: it is what makes an edit to an already-applied file detectable at all.
+ *
+ * Supabase grants newly-created public tables to its Data API roles through default privileges.
+ * The ledger is operational metadata, not an application table: no browser/session caller needs to
+ * read or mutate it. Creating it and sealing it are therefore one transaction, and every later
+ * status/apply/adopt invocation repairs an older ledger that was created before this hardening.
+ * RLS has no policies on purpose. The direct privileged migration connection remains the owner and
+ * can maintain the ledger; PUBLIC, anon and authenticated have neither grants nor an RLS path.
  */
-export const LEDGER_DDL = `create table if not exists ${LEDGER_TABLE} (
+export const LEDGER_DDL = `begin;
+create table if not exists ${LEDGER_TABLE} (
   name text primary key,
   sha256 text not null,
   applied_at timestamptz not null default now(),
   applied_by text
-);`;
+);
+alter table ${LEDGER_TABLE} enable row level security;
+revoke all privileges on table ${LEDGER_TABLE} from public;
+do $ledger_roles$
+begin
+  if pg_catalog.to_regrole('anon') is not null then
+    execute 'revoke all privileges on table ${LEDGER_TABLE} from anon';
+  end if;
+  if pg_catalog.to_regrole('authenticated') is not null then
+    execute 'revoke all privileges on table ${LEDGER_TABLE} from authenticated';
+  end if;
+end
+$ledger_roles$;
+commit;`;
 
 export const sha256 = (text) => createHash('sha256').update(text).digest('hex');
 

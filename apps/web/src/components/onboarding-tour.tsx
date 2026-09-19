@@ -7,7 +7,9 @@
 // explaining a button that is not on screen is worse than no tour: it is the product confidently
 // describing something that is not there.
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { isTypingTarget } from '../lib/shortcuts';
+import './onboarding-tour.css';
 import {
   TOUR_STEPS,
   dismissTour,
@@ -30,10 +32,16 @@ function scanAnchors(): string[] {
 
 const same = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((x, i) => x === b[i]);
 
+// The tour is portalled out of #root, so root.inert cannot hide it when a modal
+// opens. Suspend it without marking any step seen; the modal owns focus and Escape.
+const modalIsOpen = () => typeof document !== 'undefined'
+  && document.querySelector('.modal-overlay, [role="dialog"][aria-modal="true"]') !== null;
+
 export function OnboardingTour({ done }: { done: Record<string, unknown> }) {
   const [progress, setProgress] = useState<TourProgress>(readProgress);
   const [anchors, setAnchors] = useState<string[]>(scanAnchors);
   const [box, setBox] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
+  const [modalOpen, setModalOpen] = useState(modalIsOpen);
 
   const step = nextTourStep(progress, { anchors, done });
   const anchor = step?.anchor ?? null;
@@ -44,6 +52,14 @@ export function OnboardingTour({ done }: { done: Record<string, unknown> }) {
   // stops only when there is genuinely nothing left, because an interval behind a finished tour is
   // a cost every user pays for the rest of their account's life.
   const over = progress.dismissed || TOUR_STEPS.every((s) => progress.seen.includes(s.id));
+  useEffect(() => {
+    if (over) return;
+    const syncModal = () => setModalOpen(modalIsOpen());
+    syncModal();
+    const observer = new MutationObserver(syncModal);
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-modal'] });
+    return () => observer.disconnect();
+  }, [over]);
   useEffect(() => {
     if (over) return;
     const scan = () => setAnchors((prev) => {
@@ -112,7 +128,7 @@ export function OnboardingTour({ done }: { done: Record<string, unknown> }) {
     if (!step) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
-      if (document.querySelector('.modal-overlay')) return;
+      if (modalIsOpen()) return;
       skip();
     };
     document.addEventListener('keydown', onKey);
@@ -131,11 +147,12 @@ export function OnboardingTour({ done }: { done: Record<string, unknown> }) {
   const cardRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!step) return;
+    if (modalIsOpen()) return;
     if (isTypingTarget(document.activeElement)) return;
     cardRef.current?.focus();
   }, [step?.id]);
 
-  if (!step || !box) return null;
+  if (!step || !box || modalOpen) return null;
 
   const index = TOUR_STEPS.findIndex((s) => s.id === step.id);
   const last = index === TOUR_STEPS.length - 1;
@@ -146,10 +163,10 @@ export function OnboardingTour({ done }: { done: Record<string, unknown> }) {
   const below = box.top + box.height + GAP;
   const viewportH = typeof window === 'undefined' ? 800 : window.innerHeight;
   const viewportW = typeof window === 'undefined' ? 1200 : window.innerWidth;
-  const flip = below + 180 > viewportH;
+  const flip = below + 220 > viewportH && box.top > 240;
   const left = Math.max(GAP, Math.min(box.left, viewportW - CARD - GAP));
 
-  return (
+  return createPortal(
     <>
       <div
         className="tour-ring"
@@ -167,7 +184,7 @@ export function OnboardingTour({ done }: { done: Record<string, unknown> }) {
         // people dismiss.
         aria-modal={false}
         tabIndex={-1}
-        style={flip ? { bottom: viewportH - box.top + GAP, left } : { top: below, left }}
+        style={flip ? { bottom: Math.max(GAP, viewportH - box.top + GAP), left } : { top: Math.max(GAP, Math.min(below, viewportH - 232)), left }}
       >
         <p className="tour-step">
           Step {index + 1} of {TOUR_STEPS.length}
@@ -187,6 +204,6 @@ export function OnboardingTour({ done }: { done: Record<string, unknown> }) {
           </button>
         </div>
       </div>
-    </>
+    </>, document.body
   );
 }

@@ -857,6 +857,49 @@ test('a live key returns an OpenAI-shaped completion with usage and rate-limit h
   assert.ok(bundle.trace.calls.some((c) => c.ns === 'QUOTA_DO' && c.path === '/spend'), 'a live call did not spend Credits');
 });
 
+test('Apple MAX is refused for a free account before quota spend or provider work', async () => {
+  const bundle = makeEnv();
+  const key = await seedKey(bundle, { scopes: ['chat:write'] });
+  const r = await call('/v1/chat/completions', {
+    method: 'POST', key: key.key, env: bundle.env,
+    body: { model: 'apple-max', messages: [{ role: 'user', content: 'build a tower' }] },
+  });
+  assert.equal(r.status, 403);
+  assert.equal(r.json.error.code, 'model_not_entitled');
+  assert.equal(bundle.trace.ai.length, 0, 'an unentitled MAX request reached the provider');
+  assert.equal(bundle.trace.calls.some((c) => c.ns === 'QUOTA_DO' && c.path === '/spend'), false, 'MAX was charged before entitlement');
+  assert.equal(bundle.trace.calls.some((c) => c.ns === 'BUDGET_DO'), false, 'MAX reserved budget before entitlement');
+});
+
+test('a paid account may use Apple MAX while the request remains model-labelled', async () => {
+  const seen = [];
+  const bundle = makeEnv({
+    quota: async ({ path }) => (path === '/state' ? { ...QUOTA_STATE, plan: 'builder' } : { ok: true, state: { ...QUOTA_STATE, plan: 'builder' } }),
+    session: async ({ path, body }) => {
+      if (path === '/agent-run') seen.push(body);
+      return { ok: true, started: true };
+    },
+  });
+  const key = await seedKey(bundle, { scopes: ['runs:write'], projects: GRANTED });
+  const r = await call(`/v1/projects/${PROJECT_ID}/runs`, {
+    method: 'POST', key: key.key, env: bundle.env,
+    body: { input: 'build a tower', mode: 'agent', productModel: 'apple-max' },
+  });
+  assert.equal(r.status, 202, r.text.slice(0, 300));
+  assert.equal(r.json.productModel, 'apple-max');
+  assert.deepEqual(seen, [{ text: 'build a tower', mode: 'stone', productModel: 'apple-max' }]);
+});
+
+test('the public parser maps each public model to its independent product selector', () => {
+  const apple = P.parseChatCompletionRequest({ model: 'apple-chat', messages: [{ role: 'user', content: 'hi' }] });
+  const max = P.parseChatCompletionRequest({ model: 'apple-max', messages: [{ role: 'user', content: 'hi' }] });
+  assert.equal(apple.ok, true);
+  assert.equal(max.ok, true);
+  assert.equal(apple.value.productModel, 'apple');
+  assert.equal(max.value.productModel, 'apple-max');
+  assert.equal(P.parseChatCompletionRequest({ model: 'apple-plan', messages: [{ role: 'user', content: 'hi' }] }).value.productModel, undefined);
+});
+
 test('a run that ends in a tool call is an error, not an empty completion', async () => {
   // The central discipline: a call that did not produce an answer must not come back looking like
   // an answer. Without the finish-reason guard this is a 200 with content "" and finish_reason

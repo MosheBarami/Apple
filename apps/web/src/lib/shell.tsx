@@ -49,11 +49,11 @@ export interface Shell {
 const ShellContext = createContext<Shell | null>(null);
 
 function readCollapsed(): boolean {
-  if (typeof window === 'undefined') return false;
+  if (typeof window === 'undefined') return true;
   try {
-    return window.localStorage.getItem(COLLAPSE_KEY) === '1';
+    return window.localStorage.getItem(COLLAPSE_KEY) !== '0';
   } catch {
-    return false;
+    return true;
   }
 }
 

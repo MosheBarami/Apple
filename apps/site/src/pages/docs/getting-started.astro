@@ -1,13 +1,14 @@
 ---
-import { PLAN_LIMITS, PRODUCT_MODES_OFFERED, PRODUCT_MODE_INFO } from '@golem/shared';
+import { PLAN_LIMITS, PRODUCT_MODELS, PRODUCT_MODEL_INFO } from '@golem/shared';
 import DocsLayout from '../../layouts/DocsLayout.astro';
+import { STUDIO_PLUGIN_STORE_LIVE } from '../../lib/studio-plugin';
 
 // "when to use Plan, Agent or Super Agent" — the third is in PRODUCT_MODES, which is every mode
 // the system can produce, and not in PRODUCT_MODES_OFFERED, which is what a person may pick. The
 // free allowance beside it was equally stale: it read 60 Credits against a free tier repriced to
 // PLAN_LIMITS.free.creditsPerDay. Both are read now, so neither can be left behind again.
 const modeNames = new Intl.ListFormat('en', { type: 'disjunction' }).format(
-  PRODUCT_MODES_OFFERED.map((m) => PRODUCT_MODE_INFO[m].name),
+  PRODUCT_MODELS.map((m) => PRODUCT_MODEL_INFO[m].name),
 );
 const free = PLAN_LIMITS.free;
 ---
@@ -18,15 +19,16 @@ const free = PLAN_LIMITS.free;
   heading="Getting started"
 >
   <p>
-    This guide takes you from nothing to your first Apple-built feature. Budget five minutes, plus
-    however long Studio takes to open on your machine.
+    Create your workspace, start a conversation, and check Studio availability before building.
   </p>
+
+  {!STUDIO_PLUGIN_STORE_LIVE && <div class="callout"><p><strong>Public Studio installation is unavailable.</strong> Steps 1–2 work now. Continue to the Studio steps only if you already have a working plugin. New users can chat, but must wait for an approved public plugin before Apple can change their place. <a href="/docs/plugin">See installation status</a>.</p></div>}
 
   <h2>1. Create an account</h2>
   <p>
     Go to <a href="/app">the app</a> and sign up with an email address and a password. That is the
     whole form — no card, no phone number. You start with your full daily allowance of
-    <strong>60 Credits</strong> immediately.
+    <strong>{free.creditsPerDay} Credits</strong> immediately.
   </p>
 
   <h2>2. Create a project</h2>
@@ -41,12 +43,9 @@ const free = PLAN_LIMITS.free;
     project — the per-project memory works much better that way.
   </p>
 
-  <h2>3. Install the Studio plugin</h2>
+  <h2>3. {STUDIO_PLUGIN_STORE_LIVE ? 'Install the Studio plugin' : 'Check Studio availability'}</h2>
   <p>
-    Apple changes your place through the <strong>Apple for Studio</strong> plugin, installed from
-    the Roblox Creator Store. Acquiring it on the web adds it to your inventory; the install itself
-    happens inside Studio's Toolbox. Full steps — and the current availability of the plugin — are
-    on <a href="/docs/plugin">Install the plugin</a>.
+    {STUDIO_PLUGIN_STORE_LIVE ? <>Apple changes your place through the <strong>Apple for Studio</strong> plugin. Follow <a href="/docs/plugin">the Creator Store installation steps</a> before continuing.</> : <>There is no working public Creator Store installation path right now. If you do not already have the plugin, stop here and use the chat workspace. Check <a href="/docs/plugin">plugin status</a> for availability; the remaining steps describe connecting an existing working installation.</>}
   </p>
 
   <h2>4. Connect it to your project</h2>
@@ -65,16 +64,15 @@ const free = PLAN_LIMITS.free;
   </p>
 
   <h2>5. Ask for your first build</h2>
-  <p>Pick a mode (start with <strong>Agent</strong> for a real build) and describe what you want:</p>
+  <p>Choose <strong>Apple</strong> for limited free use, or <strong>Apple MAX</strong> with an eligible paid subscription, and describe what you want:</p>
   <ul>
     <li>“make a lobby with a spinning obby door”</li>
     <li>“add a coin leaderboard that saves between sessions”</li>
     <li>“the kill brick in Workspace.Stage2 doesn't kill — fix it”</li>
   </ul>
   <p>
-    Watch the chat: Apple shows every tool action as a chip — reading your tree, editing scripts,
-    running your game. When it finishes, the changes are already in your open place. Press Play and
-    try them.
+    Watch the compact activity line and open details when needed. A chat response alone is not
+    proof that your place changed: check the reported result, then test it in Studio.
   </p>
 
   <h2>6. Iterate like you mean it</h2>
@@ -94,7 +92,7 @@ const free = PLAN_LIMITS.free;
 
   <h2>Where next</h2>
   <ul>
-    <li><a href="/docs/modes">Modes</a> — when to use {modeNames}.</li>
+    <li><a href="/docs/modes">Models</a> — when to use {modeNames}.</li>
     <li><a href="/docs/credits-and-limits">Credits &amp; limits</a> — how far {free.creditsPerDay} Credits goes.</li>
     <li><a href="/docs/updating">Updating the plugin</a> — Roblox will not do it for you.</li>
     <li><a href="/docs/troubleshooting">Troubleshooting</a> — when the panel says something you didn't expect.</li>

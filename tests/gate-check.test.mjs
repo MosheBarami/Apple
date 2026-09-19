@@ -18,7 +18,7 @@ import assert from 'node:assert/strict';
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { once } from 'node:events';
-import { appendFileSync, chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -543,7 +543,7 @@ test('output-bytes is NOT normalised, so a truncated run stays visible', () => {
   assert.match(r, new RegExp(`output-bytes=${Buffer.byteLength('measured\n')}`));
 });
 
-test('no tracked source file contains a raw control byte', () => {
+test('no current source file contains a raw control byte', () => {
   // A file with a NUL in it is BINARY to grep, to `file(1)`, and to every source-walking checker in
   // this repository: `grep -c e` over such a file prints nothing at all and exits 1, which a naive
   // check reads as "no matches" rather than "I could not look".
@@ -553,9 +553,9 @@ test('no tracked source file contains a raw control byte', () => {
   // (`\0`, two characters) rather than the raw byte: identical at runtime, and the file stays text.
   // DELETING the NUL from safe-redirect.test.mjs would destroy a security test, so a future pass
   // must escape, never strip.
-  const tracked = spawnSync('git', ['ls-files', '*.ts', '*.tsx', '*.mjs', '*.js', '*.luau', '*.astro', '*.py'], {
+  const tracked = spawnSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '--', '*.ts', '*.tsx', '*.mjs', '*.js', '*.luau', '*.astro', '*.py'], {
     cwd: ROOT, encoding: 'utf8',
-  }).stdout.split('\n').filter(Boolean);
+  }).stdout.split('\n').filter(rel => rel && existsSync(join(ROOT, rel)));
   assert.ok(tracked.length > 300, `expected a real denominator, got ${tracked.length} files`);
 
   const offenders = [];

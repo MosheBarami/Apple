@@ -34,7 +34,6 @@ import {
 } from '../components/roadmap/model';
 import { RoadmapSpine } from '../components/roadmap/spine';
 import { SuggestionPanel } from '../components/roadmap/suggestions';
-import '../components/roadmap/roadmap.css';
 
 async function fetchProject(id: string): Promise<ProjectRow | null> {
   if (MOCK_MODE) return mockProjects.find((p) => p.id === id) ?? mockProjects[0] ?? null;

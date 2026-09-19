@@ -1,7 +1,7 @@
 // The Thinking card — the centrepiece of the conversation.
 //
-// A bordered card with an amber creditle, the word "Thinking" and a chevron;
-// inside, a vertical timeline of ring bullets joined by a hairline:
+// A compact black-glass card with a luminous ring, the current phase and a
+// chevron; inside, the event-backed detail timeline remains available:
 // Intent → Plan → Actions → Validation.
 //
 // READ `thinking-model.ts` BEFORE CHANGING ANYTHING HERE. Every row this
@@ -17,22 +17,121 @@
 // the same real events into ordered, timed phases with a terminal state and
 // hangs each step's typed evidence on it. `buildTimeline` still decides whether
 // that stage exists at all, so the honesty tests keep gating the whole timeline.
-import { useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 import type { RunIntent } from '@golem/shared';
 import type { AgentStatus, ToolEvent } from '../../lib/use-project-socket';
+import { readSoundEnabled, writeSoundEnabled } from '../../lib/prefs';
+import { useReducedMotion } from '../../lib/theme';
+import { interfaceSound } from '../../lib/interface-sound';
 import { deniedNote } from '../../lib/tool-permissions';
 import { Activity, ActivityTerminal } from './activity';
-import type { ActivityRun } from './activity-model';
+import type { ActivityRun, ActivityStep } from './activity-model';
 import type { Evidence } from './evidence-model';
 import { Icon, PATH } from './primitives';
+import { ModelMark } from './model-mark';
 import {
   buildTimeline,
   headerHint,
+  labelForTool,
+  PHASE_LABEL,
   type GateRow,
   type PlannedStep,
   type TimelineInput,
   type TimelineStage,
 } from './thinking-model';
+
+/* ---------------------------------------------------------- compact view --- */
+
+/** The small, always-visible slice of the event log. No status counter or prediction enters here. */
+export interface CompactActivity {
+  current: ActivityStep | null;
+  recent: ActivityStep[];
+}
+
+/**
+ * Keep the run card useful at a glance without turning it into a progress meter:
+ * the one active step, plus the two latest other steps that the reducer can
+ * substantiate. Upcoming steps deliberately do not appear in this preview.
+ */
+export function compactActivity(run: ActivityRun): CompactActivity {
+  const steps = run.phases.flatMap((phase) => phase.steps);
+  let currentIndex = -1;
+  for (let index = steps.length - 1; index >= 0; index -= 1) {
+    if (steps[index]?.state === 'active') {
+      currentIndex = index;
+      break;
+    }
+  }
+  const current = currentIndex === -1 ? null : steps[currentIndex]!;
+  const recent = steps.filter((_, index) => index !== currentIndex).slice(-2);
+  return { current, recent };
+}
+
+/** The canonical activity table stays the source of completed wording. These small
+ * verb changes make only the one currently running row read as an action. */
+const PRESENT_VERBS: readonly [RegExp, string][] = [
+  [/^Read\b/, 'Reading'],
+  [/^Inspected\b/, 'Inspecting'],
+  [/^Listed\b/, 'Listing'],
+  [/^Searched\b/, 'Searching'],
+  [/^Reviewed\b/, 'Reviewing'],
+  [/^Looked up\b/, 'Looking up'],
+  [/^Formatted\b/, 'Formatting'],
+  [/^Chose\b/, 'Choosing'],
+  [/^Picked\b/, 'Choosing'],
+  [/^Generated\b/, 'Generating'],
+  [/^Made\b/, 'Making'],
+  [/^Spoke\b/, 'Speaking'],
+  [/^Created\b/, 'Creating'],
+  [/^Inserted\b/, 'Inserting'],
+  [/^Ran\b/, 'Running'],
+  [/^Set\b/, 'Setting'],
+  [/^Routed\b/, 'Routing'],
+  [/^Deleted instances\b/, 'Removing instances'],
+  [/^Edited\b/, 'Editing'],
+  [/^Rendered\b/, 'Rendering'],
+  [/^Framed\b/, 'Framing'],
+  [/^Checked\b/, 'Checking'],
+  [/^Moved\b/, 'Moving'],
+  [/^Added\b/, 'Adding'],
+  [/^Audited\b/, 'Auditing'],
+  [/^Selected\b/, 'Selecting'],
+  [/^Installed\b/, 'Installing'],
+  [/^Removed\b/, 'Removing'],
+  [/^Saved\b/, 'Saving'],
+  [/^Noted\b/, 'Noting'],
+  [/^Planned\b/, 'Planning'],
+  [/^Fetched\b/, 'Fetching'],
+  [/^Captured\b/, 'Capturing'],
+  [/^Wrote\b/, 'Writing'],
+];
+
+function presentTense(label: string): string {
+  for (const [pattern, replacement] of PRESENT_VERBS) {
+    if (pattern.test(label)) return label.replace(pattern, replacement);
+  }
+  return label;
+}
+
+function presentActionLabel(step: ActivityStep): string {
+  if (step.tool) return presentTense(labelForTool(step.tool));
+  if (step.phase) return PHASE_LABEL[step.phase] ?? step.label;
+  return step.label;
+}
+
+function usePageHidden(): boolean {
+  const [hidden, setHidden] = useState(() => typeof document !== 'undefined' && document.hidden === true);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const onVisibility = () => setHidden(document.hidden === true);
+    onVisibility();
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, []);
+
+  return hidden;
+}
 
 /* --------------------------------------------------------------- stages --- */
 
@@ -148,32 +247,92 @@ export function Thinking({
   evidence: Map<string, Evidence>;
 }) {
   const [open, setOpen] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(readSoundEnabled);
+  const detailsId = useId();
+  const reducedMotion = useReducedMotion();
+  const pageHidden = usePageHidden();
 
   const input: TimelineInput = { intent, tools, plannedSteps, gates, status, streaming };
   const stages = buildTimeline(input);
-  if (stages.length === 0) return null;
+  const compact = compactActivity(activity);
+  // A terminal event is enough to draw the card. It is a real answer about the
+  // run, even when the run produced no stages of its own.
+  const isLive = streaming && !activity.terminal;
+  const title = activity.terminal?.note ?? (isLive && compact.current ? presentActionLabel(compact.current) : (isLive && status ? (PHASE_LABEL[status.phase] ?? status.phase) : 'Activity'));
+  const hint = activity.terminal
+    ? (open ? 'Hide details' : 'View details')
+    : isLive
+      ? (compact.current ? presentActionLabel(compact.current) : 'Working')
+      : headerHint(input, open);
 
-  const hint = headerHint(input, open);
+  useEffect(() => {
+    // Applying the preference is intentionally silent: this must not create or
+    // resume an AudioContext while a history turn is being painted.
+    interfaceSound.setEnabled(soundEnabled);
+  }, [soundEnabled]);
+
+  const toggleSound = useCallback(() => {
+    const next = !soundEnabled;
+    setSoundEnabled(next);
+    writeSoundEnabled(next);
+    // Keep the module state in step with the trusted click before trying to
+    // unlock. The effect below mirrors this too, but runs after the gesture.
+    interfaceSound.setEnabled(next);
+    if (next) {
+      // This is the only card path allowed to unlock audio, and it runs from
+      // the button's trusted click/tap gesture. A replay never invokes it.
+      void interfaceSound.unlock();
+    } else {
+      interfaceSound.stop();
+    }
+  }, [soundEnabled]);
+
+  const cardClasses = [
+    'gx-think',
+    'gx-think--redesign',
+    isLive ? 'is-live' : '',
+    activity.terminal ? 'is-terminal' : '',
+    reducedMotion ? 'is-reduced' : '',
+    pageHidden ? 'is-page-hidden' : '',
+  ].filter(Boolean).join(' ');
+
+  // Keep all hooks above this guard. A terminal-only card is real, while a
+  // turn with no observed stage or terminal remains absent from the DOM.
+  if (stages.length === 0 && !activity.terminal) return null;
 
   return (
-    <div className={`gx-think${streaming ? ' is-live' : ''}`}>
-      <button
-        type="button"
-        className="gx-think__head"
-        aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
-      >
-        <span className="gx-think__credit" aria-hidden="true">
-          <Icon d={PATH.creditle} size={15} />
-        </span>
-        <span className="gx-think__word">Thinking</span>
-        <span className="gx-think__hint">{hint}</span>
-        <span className="gx-think__chev" aria-hidden="true">
-          <Icon d={PATH.chevronDown} size={14} />
-        </span>
-      </button>
+    <div className={cardClasses} data-terminal={activity.terminal?.kind ?? undefined}>
+      <div className="gx-think__head">
+        <button
+          type="button"
+          className="gx-think__toggle"
+          aria-expanded={open}
+          aria-controls={detailsId}
+          onClick={() => setOpen((v) => !v)}
+        >
+          <ModelMark live={isLive && !reducedMotion && !pageHidden} />
+          <span className="gx-think__word">{title}</span>
+          <span className="gx-think__chev" aria-hidden="true">
+            <Icon d={PATH.chevronDown} size={14} />
+          </span>
+        </button>
+        {open && <button
+          type="button"
+          className={`gx-think__sound${soundEnabled ? ' is-on' : ' is-muted'}`}
+          aria-pressed={soundEnabled}
+          aria-label={soundEnabled ? 'Mute interface sounds' : 'Enable interface sounds'}
+          title={soundEnabled ? 'Mute interface sounds' : 'Enable interface sounds'}
+          onClick={toggleSound}
+        >
+          <span aria-hidden="true">{soundEnabled ? '◖))' : '◖×'}</span>
+        </button>}
+      </div>
 
-      <div className={`gx-think__body${open ? ' is-open' : ''}`}>
+      <div
+        className={`gx-think__body${open ? ' is-open' : ''}`}
+        id={detailsId}
+        aria-hidden={!open}
+      >
         <div className="gx-think__inner">
           <ol className="gx-timeline">
             {stages.map((stage) => (

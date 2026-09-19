@@ -137,6 +137,44 @@ test('the declared-entry exclusion is derived, not hard-coded', () => {
 
 /* --------------------------------------------------- what it MUST report --- */
 
+test('the graph includes untracked source and excludes deleted or ignored files', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'deadends-working-tree-'));
+  try {
+    mkdirSync(join(dir, 'apps/web/src/lib'), { recursive: true });
+    const source = (name, body) => writeFileSync(join(dir, 'apps/web/src/lib', name), body);
+    source('removed.ts', 'export const removed = 1;\n');
+    source('reached.ts', 'export const used = 1;\n');
+    writeFileSync(join(dir, '.gitignore'), 'ignored.ts\n');
+    assert.equal(spawnSync('git', ['init', '-q'], { cwd: dir }).status, 0);
+    assert.equal(spawnSync('git', ['add', '--', '.gitignore', 'apps/web/src/lib/removed.ts', 'apps/web/src/lib/reached.ts'], { cwd: dir }).status, 0);
+    rmSync(join(dir, 'apps/web/src/lib/removed.ts'));
+    // Assemble fixture imports so the real-tree regex does not treat them as real edges.
+    const importLine = (target) => `${['im', 'port'].join('')} { used } from './${target}';\n`;
+    source('fresh.ts', 'export const used = 2;\n');
+    source('fresh-entry.ts', importLine('fresh') + importLine('reached') + 'export const entry = 1;\n');
+    source('ignored.ts', 'export const ignored = 1;\n');
+    const invoke = (checker) => spawnSync('node', [checker, '--root', dir], { encoding: 'utf8', timeout: 30_000 });
+    const result = invoke(CHECKER);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /GRAPH 2 import edge\(s\) resolved, 0 in-repo/);
+    assert.match(result.stdout, /fresh-entry\.ts/);
+    assert.doesNotMatch(result.stdout, /(?:removed|reached|ignored|fresh)\.ts/);
+
+    // Falsify the inventory mechanism, without changing the shared checkout.
+    const original = readFileSync(CHECKER, 'utf8');
+    const needle = "'--cached', '--others', '--exclude-standard'";
+    assert.equal(original.split(needle).length - 1, 1);
+    const broken = join(dir, 'checker.cjs.mjs');
+    writeFileSync(broken, original.replace(needle, "'--cached', '--exclude-standard'"));
+    const control = invoke(broken);
+    assert.equal(control.status, 0, control.stderr);
+    assert.match(control.stdout, /reached\.ts/, 'omitting untracked importers must reopen the false dead end');
+    assert.doesNotMatch(control.stdout, /GRAPH 2 import edge\(s\) resolved/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+  }
+});
+
 test('it finds a module nothing imports', () => {
   // PLANTED INTO A CLONE, not borrowed from the repository and not written into it.
   //

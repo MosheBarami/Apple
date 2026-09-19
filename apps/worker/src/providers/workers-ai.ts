@@ -26,14 +26,15 @@ import {
   errorMessage,
 } from './types';
 
-/**
- * RETAINED FOR PRICING AND HISTORY, NOT IN USE. GLM-5.3-flash was the single production model and
- * was the best one available: 1M context, tools and vision together, cheapest per token. It is on
- * Cloudflare's paid-billing-required list and returns HTTP 403 / error 5035 on the Workers Free
- * plan, so it cannot serve a product that must cost nothing recurring. Kept in the catalogue
- * because its price row still needs to resolve for any historical usage record.
- */
-export const GLM_MODEL_ID = '@cf/zai-org/glm-5.3-flash';
+/** Product-model routing chosen for Apple on 2026-09-18. */
+export const APPLE_MODEL_ID = '@cf/qwen/qwen3-30b-a3b-fp8';
+export const APPLE_MAX_MODEL_ID = '@cf/zai-org/glm-4.7-flash';
+/** Visual critique stays on the existing multimodal specialist; both product chat models are text-only. */
+export const VISION_MODEL_ID = '@cf/zai-org/glm-5.3-flash';
+
+export const APPLE_CONTEXT_WINDOW = 32_768;
+export const APPLE_MAX_CONTEXT_WINDOW = 131_072;
+export const VISION_CONTEXT_WINDOW = 1_310_720;
 
 /**
  * The catalogue must list every id DEFAULT_MODELS can point at. `modelById()` returns undefined for
@@ -42,7 +43,7 @@ export const GLM_MODEL_ID = '@cf/zai-org/glm-5.3-flash';
  * product no longer runs. Catalogue and gateway.ts DEFAULT_MODELS move together.
  *
  * Context windows and capability flags below are from Cloudflare's model catalogue, checked
- * 2026-09-14. Costs mirror MODEL_PRICES in pricing.ts — if one moves, move both.
+ * 2026-09-18. Costs mirror MODEL_PRICES in pricing.ts — if one moves, move both.
  */
 export const WORKERS_AI_MODELS: readonly ProviderModel[] = [
   {
@@ -89,12 +90,36 @@ export const WORKERS_AI_MODELS: readonly ProviderModel[] = [
     unverifiedFields: [],
   },
   {
-    id: GLM_MODEL_ID,
-    displayName: 'GLM-5.3 Flash (paid plan only)',
+    id: APPLE_MODEL_ID,
+    displayName: 'Qwen3 30B A3B FP8',
+    provider: 'workers-ai',
+    supportsTools: true,
+    supportsVision: false,
+    contextWindow: APPLE_CONTEXT_WINDOW,
+    maxOutput: 2_000,
+    inputCostPer1M: 0.0509,
+    outputCostPer1M: 0.335,
+    unverifiedFields: ['maxOutput'],
+  },
+  {
+    id: APPLE_MAX_MODEL_ID,
+    displayName: 'GLM-4.7 Flash',
+    provider: 'workers-ai',
+    supportsTools: true,
+    supportsVision: false,
+    contextWindow: APPLE_MAX_CONTEXT_WINDOW,
+    maxOutput: 6_500,
+    inputCostPer1M: 0.0605,
+    outputCostPer1M: 0.4,
+    unverifiedFields: ['maxOutput'],
+  },
+  {
+    id: VISION_MODEL_ID,
+    displayName: 'GLM-5.3 Flash',
     provider: 'workers-ai',
     supportsTools: true,
     supportsVision: true,
-    contextWindow: 1_048_576,
+    contextWindow: VISION_CONTEXT_WINDOW,
     maxOutput: 6_500,
     inputCostPer1M: 0.15,
     outputCostPer1M: 0.5,
@@ -218,7 +243,7 @@ export const workersAiAdapter: ProviderAdapter = {
       available: bound,
       reason: bound ? null : 'binding_missing',
       detail: bound
-        ? 'Cloudflare Workers AI binding is present — GLM-5.3 Flash is live.'
+        ? 'Cloudflare Workers AI binding is present — Apple and Apple MAX use Workers AI product routes.'
         : 'The `AI` Workers AI binding is not present on this environment.',
       unsupportedModelKeys: [],
     };
@@ -255,7 +280,11 @@ export const workersAiAdapter: ProviderAdapter = {
         function: { name: t.name, description: t.description, parameters: t.parameters },
       }));
     }
-    if (req.reasoningEffort) payload.reasoning = { effort: req.reasoningEffort };
+    // Cloudflare documents reasoning_effort for GLM-4.7/5.3. Qwen3 is reasoning-capable but its
+    // binding schema does not document an effort knob, so do not send it an invented field.
+    if (req.reasoningEffort && /^@cf\/zai-org\/glm-/.test(req.modelId)) {
+      payload.reasoning_effort = req.reasoningEffort;
+    }
     if (req.jsonSchema) payload.response_format = { type: 'json_schema', json_schema: req.jsonSchema };
 
     const promptChars =

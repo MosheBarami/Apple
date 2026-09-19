@@ -33,6 +33,8 @@
 
 /** The revocation marks, by user id. Its own key — see the header. */
 export const ACCESS_REVOKED_KEY = 'accessRevoked';
+/** Greatest durable membership event accepted for each user. Separate from the revocation marks. */
+export const ACCESS_CHANGE_VERSION_KEY = 'accessChangeVersions';
 
 /** The slice of Durable Object storage this needs, narrow enough for a Map to satisfy. */
 export interface RunAccessStorage {
@@ -41,7 +43,7 @@ export interface RunAccessStorage {
   delete(key: string): Promise<boolean>;
 }
 
-export const REVOCATION_REASONS = ['removed', 'suspended'] as const;
+export const REVOCATION_REASONS = ['removed', 'suspended', 'demoted'] as const;
 export type RevocationReason = (typeof REVOCATION_REASONS)[number];
 
 export interface RevocationMark {
@@ -51,6 +53,185 @@ export interface RevocationMark {
 }
 
 type MarkTable = Record<string, RevocationMark>;
+interface AccessChangeCursor {
+  version: number;
+  /**
+   * Current authoritative grant deadline. `null` means permanent; `undefined` is accepted only
+   * while reading a numeric cursor written by the first rollout revision, before expiry joined the
+   * event. New versioned events always write this field.
+   */
+  expiresAt?: string | null;
+  /** Immutable role/access fingerprint for equal-version replay validation. */
+  event?: string;
+}
+type VersionTable = Record<string, AccessChangeCursor>;
+
+export type CurrentAccessExpiry =
+  | { status: 'none'; version: null; expiresAt: undefined }
+  | { status: 'legacy'; version: number; expiresAt: undefined }
+  | { status: 'known'; version: number; expiresAt: string | null }
+  | { status: 'corrupt'; version: null; expiresAt: undefined };
+
+export type CurrentAccessCursor =
+  | { status: 'none'; version: null; expiresAt: undefined; event: undefined }
+  | { status: 'legacy'; version: number; expiresAt: undefined; event: string | undefined }
+  | { status: 'known'; version: number; expiresAt: string | null; event: string | undefined }
+  | { status: 'corrupt'; version: null; expiresAt: undefined; event: undefined };
+
+export interface AccessChangeVersionVerdict {
+  accepted: boolean;
+  /** True when this request carried an outbox sequence; false for a rollout-era direct push. */
+  versioned: boolean;
+  reason: 'new' | 'duplicate' | 'legacy' | 'stale' | 'invalid' | 'conflict' | 'corrupt_storage';
+  previous: number | null;
+  /** Canonical current deadline accepted with this event. Undefined exists only on legacy pushes. */
+  expiresAt: string | null | undefined;
+}
+
+function cleanUserId(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value : null;
+}
+
+/** Canonicalise a trusted deadline. Undefined means missing/unreadable; null means permanent. */
+export function canonicalGrantExpiry(value: unknown): string | null | undefined {
+  if (value === null) return null;
+  const at =
+    typeof value === 'number'
+      ? (Number.isFinite(value) ? value : NaN)
+      : typeof value === 'string' && value.trim().length > 0
+        ? Date.parse(value)
+        : NaN;
+  return Number.isFinite(at) ? new Date(at).toISOString() : undefined;
+}
+
+function cursor(value: unknown): AccessChangeCursor | null {
+  // Compatibility with the first outbox rollout, which persisted only the sequence number.
+  if (typeof value === 'number' && Number.isSafeInteger(value) && value > 0) return { version: value };
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const row = value as Record<string, unknown>;
+  if (typeof row.version !== 'number' || !Number.isSafeInteger(row.version) || row.version <= 0) return null;
+  if (!Object.prototype.hasOwnProperty.call(row, 'expiresAt')) return { version: row.version };
+  const expiresAt = canonicalGrantExpiry(row.expiresAt);
+  if (expiresAt === undefined) return null;
+  const event = Object.prototype.hasOwnProperty.call(row, 'event')
+    ? (typeof row.event === 'string' && row.event.length > 0 && row.event.length <= 128 ? row.event : null)
+    : undefined;
+  if (event === null) return null;
+  return { version: row.version, expiresAt, ...(event === undefined ? {} : { event }) };
+}
+
+async function readVersionTable(storage: RunAccessStorage): Promise<{ table: VersionTable; corrupt: boolean }> {
+  const raw = await storage.get<unknown>(ACCESS_CHANGE_VERSION_KEY);
+  if (raw === undefined) return { table: {}, corrupt: false };
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { table: {}, corrupt: true };
+  const table: VersionTable = {};
+  for (const [userId, value] of Object.entries(raw as Record<string, unknown>)) {
+    const parsed = cursor(value);
+    if (cleanUserId(userId) === null || parsed === null) {
+      return { table: {}, corrupt: true };
+    }
+    table[userId] = parsed;
+  }
+  return { table, corrupt: false };
+}
+
+/** Read the latest complete access cursor without consulting the concurrently-written run blob. */
+export async function currentAccessCursor(storage: RunAccessStorage, userId: unknown): Promise<CurrentAccessCursor> {
+  const user = cleanUserId(userId);
+  if (user === null) return { status: 'corrupt', version: null, expiresAt: undefined, event: undefined };
+  const read = await readVersionTable(storage);
+  if (read.corrupt) return { status: 'corrupt', version: null, expiresAt: undefined, event: undefined };
+  const current = read.table[user];
+  if (current === undefined) return { status: 'none', version: null, expiresAt: undefined, event: undefined };
+  if (current.expiresAt === undefined) {
+    return { status: 'legacy', version: current.version, expiresAt: undefined, event: current.event };
+  }
+  return { status: 'known', version: current.version, expiresAt: current.expiresAt, event: current.event };
+}
+
+/** Read only the deadline view used by callers that do not interpret the event fingerprint. */
+export async function currentAccessExpiry(storage: RunAccessStorage, userId: unknown): Promise<CurrentAccessExpiry> {
+  const current = await currentAccessCursor(storage, userId);
+  if (current.status === 'none') return { status: 'none', version: null, expiresAt: undefined };
+  if (current.status === 'legacy') return { status: 'legacy', version: current.version, expiresAt: undefined };
+  if (current.status === 'known') return { status: 'known', version: current.version, expiresAt: current.expiresAt };
+  return { status: 'corrupt', version: null, expiresAt: undefined };
+}
+
+/**
+ * Admit one access-change signal in monotonic order.
+ *
+ * The SQL outbox is at-least-once and two Worker revisions can race during rollout, so transport
+ * order is deliberately irrelevant. Once a versioned event has been seen, an unversioned direct
+ * push from an older Worker is refused as stale; otherwise that old shape remains accepted during
+ * the migration window. The caller serialises this read/write with blockConcurrencyWhile.
+ */
+export async function acceptAccessChangeVersion(
+  storage: RunAccessStorage,
+  userId: unknown,
+  version: unknown,
+  expiresAt?: unknown,
+  event?: unknown,
+): Promise<AccessChangeVersionVerdict> {
+  const user = cleanUserId(userId);
+  const versioned = version !== undefined && version !== null;
+  if (user === null) return { accepted: false, versioned, reason: 'invalid', previous: null, expiresAt: undefined };
+  const read = await readVersionTable(storage);
+  if (read.corrupt) return { accepted: false, versioned, reason: 'corrupt_storage', previous: null, expiresAt: undefined };
+  const previousCursor = read.table[user] ?? null;
+  const previous = previousCursor?.version ?? null;
+
+  if (version === undefined || version === null) {
+    const legacyExpiry = expiresAt === undefined ? undefined : canonicalGrantExpiry(expiresAt);
+    if (expiresAt !== undefined && legacyExpiry === undefined) {
+      return { accepted: false, versioned: false, reason: 'invalid', previous, expiresAt: undefined };
+    }
+    return previous === null
+      ? { accepted: true, versioned: false, reason: 'legacy', previous, expiresAt: legacyExpiry }
+      : { accepted: false, versioned: false, reason: 'stale', previous, expiresAt: previousCursor?.expiresAt };
+  }
+  if (typeof version !== 'number' || !Number.isSafeInteger(version) || version <= 0) {
+    return { accepted: false, versioned: true, reason: 'invalid', previous, expiresAt: undefined };
+  }
+  // A versioned event is a complete current-state snapshot. Missing/unreadable expiry cannot be
+  // interpreted as permanent, because that would let a damaged payload remove an existing limit.
+  const canonicalExpiry = canonicalGrantExpiry(expiresAt);
+  const canonicalEvent = typeof event === 'string' && event.length > 0 && event.length <= 128 ? event : null;
+  if (canonicalExpiry === undefined || canonicalEvent === null) {
+    return { accepted: false, versioned: true, reason: 'invalid', previous, expiresAt: undefined };
+  }
+  if (previous !== null && version < previous) {
+    return { accepted: false, versioned: true, reason: 'stale', previous, expiresAt: previousCursor?.expiresAt };
+  }
+  // Re-apply the SAME version. The version is persisted before socket/storage side effects below
+  // the caller, so a Durable Object crash in that narrow window is recovered by an at-least-once
+  // duplicate. Every access-change effect is idempotent; silently skipping equality would turn a
+  // persisted sequence into a false acknowledgement over a run that may still be alive.
+  if (previous === version) {
+    // Upgrade the one rollout shape that stored only a number. Every later equal-version delivery
+    // must be byte-for-byte the same immutable event; a different expiry is corruption, not a new
+    // update allowed to bypass the sequence.
+    if (previousCursor?.expiresAt === undefined) {
+      read.table[user] = { version, expiresAt: canonicalExpiry, event: canonicalEvent };
+      await storage.put(ACCESS_CHANGE_VERSION_KEY, read.table);
+      return { accepted: true, versioned: true, reason: 'duplicate', previous, expiresAt: canonicalExpiry };
+    }
+    if (
+      previousCursor.expiresAt !== canonicalExpiry
+      || (previousCursor.event !== undefined && previousCursor.event !== canonicalEvent)
+    ) {
+      return { accepted: false, versioned: true, reason: 'conflict', previous, expiresAt: previousCursor.expiresAt };
+    }
+    if (previousCursor.event === undefined) {
+      read.table[user] = { ...previousCursor, event: canonicalEvent };
+      await storage.put(ACCESS_CHANGE_VERSION_KEY, read.table);
+    }
+    return { accepted: true, versioned: true, reason: 'duplicate', previous, expiresAt: canonicalExpiry };
+  }
+  read.table[user] = { version, expiresAt: canonicalExpiry, event: canonicalEvent };
+  await storage.put(ACCESS_CHANGE_VERSION_KEY, read.table);
+  return { accepted: true, versioned: true, reason: 'new', previous, expiresAt: canonicalExpiry };
+}
 
 function asMark(value: unknown): RevocationMark | null {
   if (!value || typeof value !== 'object') return null;
@@ -119,7 +300,7 @@ export interface RunIdentity {
   initiatorExpiresAt?: unknown;
 }
 
-export type RunStopReason = 'membership_revoked' | 'membership_suspended' | 'grant_expired';
+export type RunStopReason = 'membership_revoked' | 'membership_suspended' | 'membership_demoted' | 'grant_expired';
 
 export interface RunAccessVerdict {
   stop: boolean;
@@ -163,19 +344,28 @@ export function runMustStop(run: RunIdentity, mark: RevocationMark | null, nowMs
     return KEEP('not_this_run', clock);
   }
   if (against !== null) {
-    return against.reason === 'suspended'
-      ? {
-          stop: true,
-          why: 'membership_suspended',
-          message: 'This build stopped: the member who started it has been suspended from the project.',
-          expiryEvaluated: clock,
-        }
-      : {
-          stop: true,
-          why: 'membership_revoked',
-          message: 'This build stopped: the member who started it was removed from the project.',
-          expiryEvaluated: clock,
-        };
+    if (against.reason === 'suspended') {
+      return {
+        stop: true,
+        why: 'membership_suspended',
+        message: 'This build stopped: the member who started it has been suspended from the project.',
+        expiryEvaluated: clock,
+      };
+    }
+    if (against.reason === 'demoted') {
+      return {
+        stop: true,
+        why: 'membership_demoted',
+        message: 'This build stopped: the member who started it no longer has build access to the project.',
+        expiryEvaluated: clock,
+      };
+    }
+    return {
+      stop: true,
+      why: 'membership_revoked',
+      message: 'This build stopped: the member who started it was removed from the project.',
+      expiryEvaluated: clock,
+    };
   }
 
   // The expiry nobody pushes. A grant that simply ran out mid-run produces no request and

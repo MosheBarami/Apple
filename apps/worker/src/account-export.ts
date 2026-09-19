@@ -77,7 +77,10 @@ export interface AccountExport {
  * offered as a download" is a real answer and is written as such; an empty string is not.
  */
 const WHERE_ELSE: Readonly<Record<string, string>> = {
+  generated_images: 'GET /api/projects/{projectId}/images/{imageId} — private saved images, linked from each conversation result',
+  generated_image_tombstones: 'not offered as a download — only deleted project IDs remain to prevent late writes from recreating erased images',
   messages: 'GET /api/projects/{projectId}/export — the full transcript, one file per project',
+  message_models: 'GET /api/projects/{projectId}/export — model identity travels with the transcript',
   message_revisions: 'GET /api/projects/{projectId}/export — earlier versions travel with the transcript',
   checkpoints: 'GET /api/projects/{projectId}/checkpoints, and the snapshot itself through a restore',
   checkpoint_chunks: 'the bytes behind GET /api/projects/{projectId}/checkpoints',
@@ -97,6 +100,8 @@ const WHERE_ELSE: Readonly<Record<string, string>> = {
   month_totals: 'GET /api/me/usage',
   billing_events: 'GET /api/billing/history',
   applied_events: 'not offered as a download — it holds only which Stripe events were already applied',
+  billing_authority_replays:
+    'not offered as a separate download — this is bounded service-internal replay state for recent normalized billing decisions. Your current subscription and billing change history are available at GET /api/billing/history; this cache does not contain raw Stripe payloads or credentials',
   events: 'not offered as a download — the request log is operational, and it carries no actor id at all once analytics are switched off',
   collab_comments: 'GET /api/shared/{projectId}/comments',
   collab_mentions: 'GET /api/notifications — a mention reaches you as an inbox row',
@@ -135,6 +140,37 @@ export function storesWithoutAnAnswer(stores: readonly NonPostgresStore[] = NON_
   return stores.filter((s) => s.personal && !(s.name in WHERE_ELSE)).map((s) => s.name);
 }
 
+function wordPattern(value: string): RegExp {
+  return new RegExp(`\\b${value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+}
+
+/**
+ * Whether PostgREST specifically rejected one selected column as missing.
+ *
+ * This is deliberately narrower than "a 4xx". A JWT failure, an RLS refusal, a malformed query,
+ * or an unavailable database must stay a failed export; retrying any of those with a different
+ * projection would turn an auth/outage signal into a guessed success. The two accepted codes are
+ * PostgreSQL's undefined-column error and PostgREST's schema-cache equivalent, and both must name
+ * the table and column that this compatibility path is allowed to replace.
+ */
+export function isMissingPostgrestColumn(error: unknown, table: string, column: string): boolean {
+  if (!error || typeof error !== 'object' || Array.isArray(error)) return false;
+  const body = error as { code?: unknown; message?: unknown; details?: unknown };
+  const code = typeof body.code === 'string' ? body.code : '';
+  if (code !== '42703' && code !== 'PGRST204') return false;
+  const message = [body.message, body.details]
+    .filter((part): part is string => typeof part === 'string')
+    .join(' ');
+  if (!wordPattern(table).test(message) || !wordPattern(column).test(message)) return false;
+  if (code === '42703') return /\bdoes not exist\b/i.test(message);
+  return /\bcould not find\b[\s\S]*\bcolumn\b[\s\S]*\bschema cache\b/i.test(message);
+}
+
+function postgresPath(spec: ExportTable, userId: string, fields: readonly string[]): string {
+  return `/${spec.table}?${spec.ownerColumn}=eq.${encodeURIComponent(userId)}`
+    + `&select=${encodeURIComponent(fields.join(','))}&limit=${EXPORT_ROW_CAP}`;
+}
+
 async function readPostgresTable(env: Env, user: AuthedUser, spec: ExportTable): Promise<TableResult> {
   if (spec.access === 'service_role') {
     return {
@@ -146,10 +182,27 @@ async function readPostgresTable(env: Env, user: AuthedUser, spec: ExportTable):
         'would be a claim nothing measured, so this export declines to make it.',
     };
   }
-  const path =
-    `/${spec.table}?${spec.ownerColumn}=eq.${encodeURIComponent(user.userId)}` +
-    `&select=${encodeURIComponent(spec.fields.join(','))}&limit=${EXPORT_ROW_CAP}`;
-  const { ok, status, data } = await supaRest<Record<string, unknown>[]>(env, user.jwt, path);
+  const path = postgresPath(spec, user.userId, spec.fields);
+  const first = await supaRest<Record<string, unknown>[]>(env, user.jwt, path);
+  let { ok, status, data } = first;
+
+  // The live catalogue has an older usage_events shape (`sparks`) while the current migration
+  // and public contract call that value `credits`. Retry exactly that one missing-column failure,
+  // with the same user JWT and owner filter, then translate the legacy key at the export boundary.
+  // No other table, error code, or error message is eligible for a compatibility retry.
+  if (
+    spec.table === 'usage_events'
+    && spec.fields.includes('credits')
+    && !ok
+    && status === 400
+    && isMissingPostgrestColumn(data, spec.table, 'credits')
+  ) {
+    const legacyFields = spec.fields.map((field) => field === 'credits' ? 'credits:sparks' : field);
+    const legacy = await supaRest<Record<string, unknown>[]>(env, user.jwt, postgresPath(spec, user.userId, legacyFields));
+    ok = legacy.ok;
+    status = legacy.status;
+    data = legacy.data;
+  }
   if (!ok || !Array.isArray(data)) {
     return {
       status: 'failed',

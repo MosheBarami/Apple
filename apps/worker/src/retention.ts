@@ -36,8 +36,10 @@ export const RETENTION = {
   serviceSpendDays: 62,
   /** Checkpoints kept per project: the newest this many, enforced at write time. */
   checkpointsKept: 25,
-  /** A generated image in KV. */
+  /** A temporary preview or legacy generated image in KV. */
   generatedImageSeconds: 3600,
+  /** Durable generated images per project; retained until that project is deleted. */
+  generatedImagesKept: 64,
   /** Generated audio in KV. */
   generatedAudioSeconds: 3600,
   /** A deleted workspace file stays recoverable this long. */
@@ -80,7 +82,8 @@ export const RETENTION_POLICY: readonly RetentionRule[] = [
   { key: 'quotaLedgerDays', what: 'your per-day credit spend', window: `${RETENTION.quotaLedgerDays} days`, where: 'QuotaDO', personal: true },
   { key: 'serviceSpendDays', what: 'service-wide inference spend, with no account attached', window: `${RETENTION.serviceSpendDays} days`, where: 'BudgetDO', personal: false },
   { key: 'checkpointsKept', what: 'snapshots of your place', window: `the newest ${RETENTION.checkpointsKept} per project`, where: 'SessionDO', personal: true },
-  { key: 'generatedImageSeconds', what: 'images the agent generated for you', window: `${RETENTION.generatedImageSeconds / 3600} hour`, where: 'KV', personal: true },
+  { key: 'generatedImageSeconds', what: 'temporary previews and older generated images', window: `${RETENTION.generatedImageSeconds / 3600} hour`, where: 'KV', personal: true },
+  { key: 'generatedImagesKept', what: 'new generated images saved with your project', window: `until project deletion; at most ${RETENTION.generatedImagesKept} per project`, where: 'D1', personal: true },
   { key: 'generatedAudioSeconds', what: 'sound the agent generated for you', window: `${RETENTION.generatedAudioSeconds / 3600} hour`, where: 'KV', personal: true },
   { key: 'workspaceTrashDays', what: 'workspace files you deleted, while they are still recoverable', window: `${RETENTION.workspaceTrashDays} days`, where: 'KV', personal: true },
   { key: 'memoryMaxTtlDays', what: 'the longest expiry you may set on anything Apple remembers', window: `${RETENTION.memoryMaxTtlDays} days`, where: 'D1 memory_entries', personal: true },

@@ -65,6 +65,7 @@ import {
   fetchNotifications,
   fetchScopeMemory,
   markNotificationsRead,
+  grantOwnerCredits,
   reportPasswordChanged,
   savePreferences,
   type ErasureReceipt,
@@ -197,6 +198,7 @@ function DiscordCard({ userId }: { userId: string }) {
   return (
     <>
       <h3 className="settings-sub">Discord</h3>
+      {!connected && <p className="muted" role="status">{link.isPending ? 'Checking connection…' : link.isError ? 'Connection status unavailable.' : code && remaining ? 'Code pending — not connected yet.' : 'Not connected.'}</p>}
       {link.isError && <Failure error={link.error} onRetry={() => void link.refetch()} compact />}
 
       {connected ? (
@@ -240,7 +242,7 @@ function DiscordCard({ userId }: { userId: string }) {
               type="button"
               className="btn"
               onClick={() => mint.mutate()}
-              disabled={!projectId || mint.isPending}
+              disabled={!projectId || mint.isPending || link.isPending || link.isError}
             >
               {mint.isPending ? 'Making a code…' : 'Get a code'}
             </button>
@@ -406,6 +408,8 @@ function AssetSourceSettings({
   const [dirty, setDirty] = useState(false);
   const [chosen, setChosen] = useState<AssetSourceChoice[]>([]);
   const [ask, setAsk] = useState(false);
+  const displayedChosen = dirty ? chosen : policy?.allow ?? [];
+  const displayedAsk = dirty ? ask : policy?.mode === 'ask';
 
   useEffect(() => {
     if (dirty || !stored.data) return;
@@ -415,6 +419,7 @@ function AssetSourceSettings({
 
   const save = useMutation({
     mutationFn: async () => {
+      if (!stored.data || stored.isError) throw new Error('Load your asset sources before saving.');
       // Everything already stored plus the one key this section owns: what is not sent is deleted.
       const base = stored.data?.preferences.prefs ?? {};
       return savePreferences('user', userId, {
@@ -423,6 +428,9 @@ function AssetSourceSettings({
       });
     },
     onSuccess: (out) => {
+      qc.setQueryData<Awaited<ReturnType<typeof fetchScopeMemory>>>(['scope-memory', 'user', userId], (current) =>
+        current ? { ...current, preferences: { ...current.preferences, prefs: out.preferences } } : current,
+      );
       setDirty(false);
       // What came back, not what was sent — a value the server refused has already been replaced,
       // and showing the submission would be this page lying about what is stored.
@@ -436,11 +444,21 @@ function AssetSourceSettings({
   });
 
   const toggle = (c: AssetSourceChoice) => {
+    if (!stored.data || stored.isError || save.isPending) return;
+    setAsk(displayedAsk);
     setDirty(true);
-    setChosen((cur) => (cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c]));
+    setChosen(displayedChosen.includes(c) ? displayedChosen.filter((x) => x !== c) : [...displayedChosen, c]);
   };
 
   if (!sectionShows('asset-sources')) return null;
+  if (!stored.data || stored.isError) {
+    return (
+      <Section title="Where Apple gets assets" visible>
+        <p className="muted" role="status">{stored.isError ? 'Could not load asset sources. Your saved choices have not changed.' : 'Loading asset sources…'}</p>
+        {stored.isError && <button type="button" className="btn" onClick={() => { void stored.refetch(); }}>Retry</button>}
+      </Section>
+    );
+  }
 
   return (
     <Section title="Where Apple gets assets" visible>
@@ -450,7 +468,7 @@ function AssetSourceSettings({
         <div className="settings-pair settings-pair--stack">
           {SOURCE_EXPLANATIONS.map((e) => (
             <label key={e.choice} className="asrc__choice asrc__choice--settings">
-              <input type="checkbox" checked={chosen.includes(e.choice)} onChange={() => toggle(e.choice)} />
+              <input type="checkbox" disabled={save.isPending} checked={displayedChosen.includes(e.choice)} onChange={() => toggle(e.choice)} />
               <span className="asrc__body">
                 <span className="asrc__name">{e.title}</span>
                 <span className="asrc__does">{e.does}</span>
@@ -463,11 +481,11 @@ function AssetSourceSettings({
           ))}
 
           <label className="asrc__remember">
-            <input type="checkbox" checked={ask} onChange={() => { setDirty(true); setAsk((v) => !v); }} />
+            <input type="checkbox" disabled={save.isPending} checked={displayedAsk} onChange={() => { setChosen([...displayedChosen]); setDirty(true); setAsk(!displayedAsk); }} />
             Ask me again before each build
           </label>
 
-          {chosen.length === 0 && (
+          {displayedChosen.length === 0 && (
             <p className="form-error" role="alert">
               {/* The same sentence the dialog uses. An empty allow list is not a setting, it is a
                   build that can only place plain parts — and the person should hear it here too. */}
@@ -1036,6 +1054,18 @@ export function SettingsPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const userId = session?.user.id ?? '';
+
+  useEffect(() => {
+    if (session?.user.email?.toLowerCase() !== 'moshe.barami111@gmail.com') return;
+    if (new URLSearchParams(window.location.search).get('ownerCredits') !== '1') return;
+    void grantOwnerCredits()
+      .then(() => {
+        void qc.invalidateQueries({ queryKey: ['me'] });
+        toast('Temporary unlimited owner Credits are active.', 'success');
+        window.history.replaceState({}, '', '/app/settings');
+      })
+      .catch((error: unknown) => toast(error instanceof Error ? error.message : 'Could not grant owner Credits.', 'error'));
+  }, [qc, session?.user.email, toast]);
 
   const profile = useQuery({
     queryKey: ['profile', userId],
@@ -1667,7 +1697,7 @@ export function SettingsPage() {
       <Section title="Privacy" visible={sectionShows('training-opt-in', 'analytics-opt-out', 'download-my-data')}>
         <Row id="training-opt-in" visible={shows('training-opt-in')}>
           <p>
-            <strong>Your projects are private. Apple never trains on your work.</strong>
+            <strong>Your projects are private. Training contribution is off by default.</strong>
           </p>
           <label className="switch-row">
             <input

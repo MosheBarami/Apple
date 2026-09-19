@@ -1,0 +1,77 @@
+{
+  "projectRef": "npqvyijsvzkuwddyhtpm",
+  "generatedAt": "2026-09-18T15:17:41.878Z",
+  "prerequisite": "Confirm live baseline columns/indexes/functions and the recorded sparks/credits drift before adoption.",
+  "migrations": [
+    {
+      "name": "0001_init.sql",
+      "sha256": "8f995af09676f1f8141fe68b206aec7adcbddf901ccc3c5e8f049bf0d3856230"
+    },
+    {
+      "name": "0002_waitlist_policy.sql",
+      "sha256": "efbc94539510918ce02aeea3a988742243f477a408eebba853f44add3abc3991"
+    },
+    {
+      "name": "0003_security_hardening.sql",
+      "sha256": "c710b084b3673504dcf168b2c63939bc64c089f48fab800b4024ec8b4060b671"
+    },
+    {
+      "name": "0004_project_archive.sql",
+      "sha256": "428a5774a72c5eea5183cf1d9b2cdd0eb08716b775165be26e42517fbcd10763"
+    },
+    {
+      "name": "0005_collaboration.sql",
+      "sha256": "c4f1fdcbe540426a78a60b4dc3be33fb01057777ed80ce5d8ca1f521eed50366"
+    },
+    {
+      "name": "0006_membership_lifecycle.sql",
+      "sha256": "d369975cfbc038bee82d125aff9f7cb22aae2b17a5110a428c075503aef2182d"
+    },
+    {
+      "name": "0007_project_pinning.sql",
+      "sha256": "63236036927b1edf8bbf86774a5634c238118e7574b4423f68441b5adfe2a331"
+    },
+    {
+      "name": "0008_project_tags.sql",
+      "sha256": "1d164203532c35faf999eb9b4f1aea58c6e1d4c1ed1457542d5e72a14c93351f"
+    },
+    {
+      "name": "0009_membership_access_outbox.sql",
+      "sha256": "cf7d6e8e199e642fef47a9f394ab166f7b6e108f297860674e69db91daf4a6aa"
+    },
+    {
+      "name": "0010_schema_hardening.sql",
+      "sha256": "cf033d4df2b0c4b5d70f1fda6faa8a2d20060f35f7aa594cc13c62ed30cedb43"
+    }
+  ],
+  "batches": [
+    {
+      "name": "00-secure-ledger.sql",
+      "purpose": "Create or repair only the private operational migration ledger",
+      "marker": "APPLE_SQL_00_secure_ledger_sql",
+      "bytes": 1181,
+      "sha256": "f41fd29e111b46167e168c357ad04e9e0dd350f7cbbb1af446af22b4262e7d9a"
+    },
+    {
+      "name": "01-adopt-existing-baseline.sql",
+      "purpose": "Record the inspected 0001–0008 baseline; does not replay their DDL",
+      "marker": "APPLE_SQL_01_adopt_existing_baseline_sql",
+      "bytes": 1757,
+      "sha256": "9594002e7f9caefad2a3c365ead0586c58c6966fd8b0672f523415919f688371"
+    },
+    {
+      "name": "0009-apply.sql",
+      "purpose": "Apply exact reviewed 0009_membership_access_outbox.sql and record its checksum atomically",
+      "marker": "APPLE_SQL_0009_apply_sql",
+      "bytes": 19248,
+      "sha256": "557960390ba9967d846608088e3cc72b678565bea8658c34337c1816619720f4"
+    },
+    {
+      "name": "0010-apply.sql",
+      "purpose": "Apply exact reviewed 0010_schema_hardening.sql and record its checksum atomically",
+      "marker": "APPLE_SQL_0010_apply_sql",
+      "bytes": 12483,
+      "sha256": "ab832050662ce2c2124a44f55d2fe583b7a2c689b174d2a6a3b183434a47737a"
+    }
+  ]
+}

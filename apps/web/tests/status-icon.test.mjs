@@ -45,7 +45,7 @@ test('tone never contradicts the meaning', () => {
 });
 
 test('every tone has a stylesheet rule, so none renders in the inherited colour', () => {
-  const css = readFileSync(join(SRC, 'styles', 'workspace.css'), 'utf8');
+  const css = readFileSync(join(SRC, 'design', 'system.css'), 'utf8');
   for (const spec of Object.values(STATUS)) {
     assert.ok(css.includes(`.st--${spec.tone}`), `.st--${spec.tone} has no rule`);
   }
@@ -131,7 +131,7 @@ test('exactly one mark animates, and it is the one that means work is happening'
   assert.deepEqual(spinning, ['pending']);
 
   // And the animation must actually exist, with a reduced-motion escape.
-  const css = readFileSync(join(WEB, 'src/styles/workspace.css'), 'utf8');
+  const css = readFileSync(join(WEB, 'src/design/system.css'), 'utf8');
   assert.match(css, /\.st--spin \{[^}]*animation:/, '.st--spin must animate');
   assert.match(
     css,

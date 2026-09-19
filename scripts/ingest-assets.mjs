@@ -10,6 +10,8 @@
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { toIngestRecord } from './lib/asset-ingest-record.mjs';
+import { assetIngestBatches } from './lib/asset-ingest-batches.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const arg = (n, d) => { const i = process.argv.indexOf(n); return i > 0 ? process.argv[i + 1] : d; };
@@ -42,20 +44,22 @@ for (const f of FILES) {
   if (!existsSync(f)) continue;
   const part = JSON.parse(readFileSync(f, 'utf8'));
   if (part.failed === true) { console.error(`skipping ${f}: the harvest recorded a failure`); continue; }
+  // Only the expanded OGA artefact has one row per loose file. Other harvesters' `_download`
+  // values are resolver hints (and the ordinary OGA harvest points at a pack's first file), so
+  // carrying them would silently change what a row means.
+  const expandedOpenGameArt = f.endsWith('opengameart-expanded.json');
   for (const a of part.assets ?? []) {
     // An id collision would silently overwrite one source's provenance with another's, and the
     // whole point of these rows is that each one says where it came from.
     if (seenIds.has(a.id)) { duplicates++; continue; }
     seenIds.add(a.id);
-    doc.assets.push(a);
+    doc.assets.push(toIngestRecord(a, { expandedOpenGameArt }));
   }
 }
 if (duplicates) console.error(`${duplicates} duplicate ids skipped across sources`);
-// The harvest carries two underscore-prefixed fields for the later binary fetch. They are not part
-// of AssetProvenance and the server would not store them, so they are dropped at the boundary
-// rather than being sent and silently ignored.
-// The underscore-prefixed fields are harvest bookkeeping, not provenance: the server would not
-// store them, so they are dropped at the boundary rather than sent and silently ignored.
+// The remaining underscore-prefixed fields are harvest bookkeeping, not provenance. The one
+// trusted per-file URL was promoted to `downloadUrl` above; all other internal fields are dropped
+// rather than sent and silently ignored.
 //[[ THE HARVESTS ALREADY ON DISK CARRY THE http SPELLING, AND RE-HARVESTING IS NOT THE FIX.
 //
 //   `validateProvenance` requires https and is right to. Kenney's licence.txt writes the CC0 deed
@@ -74,7 +78,7 @@ const httpsLicence = (rec) =>
     : rec;
 
 const assets = doc.assets.slice(0, LIMIT)
-  .map(({ _download, _publishedAt, _licenceId, assetCount, ...rec }) => rec)
+  .map(({ _publishedAt, _licenceId, assetCount, ...rec }) => rec)
   .map(httpsLicence);
 console.error(`${assets.length} assets -> ${BASE}`);
 
@@ -96,8 +100,7 @@ console.error(`${assets.length} assets -> ${BASE}`);
 //   a Roblox id is not a seed, and the stricter validation applies to it. ]]
 const ready = assets.filter((a) => a.robloxAssetId);
 const pending = assets.filter((a) => !a.robloxAssetId);
-console.error(`${ready.length} already usable (active) · ${pending.length} catalogue-only (pending_ingest)`);
-if (DRY) { console.error('--dry: nothing sent'); process.exit(0); }
+console.error(`${ready.length} carry a Roblox asset id (active) · ${pending.length} catalogue-only (pending_ingest)`);
 
 let written = 0;
 const rejected = [];
@@ -119,6 +122,13 @@ const scrapeFirst = process.argv.includes('--scrape-first');
 const readyQ = ready.map((a, i) => ({ a, seed: false, status: 'active', k: i }));
 const pendingQ = pending.map((a, i) => ({ a, seed: true, status: 'pending_ingest', k: i }));
 const queue = scrapeFirst ? [...readyQ, ...pendingQ] : [...pendingQ, ...readyQ];
+if (DRY) {
+  let planned = 0, batches = 0;
+  for (const batch of assetIngestBatches(queue, BATCH)) { planned += batch.assets.length; batches++; }
+  if (planned !== queue.length) throw new Error(`Batch plan lost rows: ${planned}/${queue.length}`);
+  console.error(`--dry: ${planned} rows in ${batches} lifecycle-separated batches; nothing sent or validated remotely`);
+  process.exit(0);
+}
 
 //[[ AND IT PACES ITSELF, BECAUSE IT SHARES D1 WITH THE WEBSITE.
 //
@@ -127,12 +137,8 @@ const queue = scrapeFirst ? [...readyQ, ...pendingQ] : [...pendingQ, ...readyQ];
 //   site deploy could not write a single byte — a background data job taking down the product.
 //   A pause between batches costs minutes and buys a database that still answers everything else.
 const PACE_MS = Number(arg('--pace', '400'));
-for (let i = 0; i < queue.length; i += BATCH) {
-  const group = queue.slice(i, i + BATCH);
-  // A batch never mixes the two: they are validated differently and stored differently.
-  const seed = group[0].seed;
-  const status = group[0].status;
-  const slice = group.filter((g) => g.seed === seed).map((g) => g.a);
+for (const { from: i, seed, status, assets: slice } of assetIngestBatches(queue, BATCH)) {
+  // Advance by rows actually included: filtering a fixed-size mixed group silently lost rows.
   let res, body;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {

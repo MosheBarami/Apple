@@ -1,0 +1,62 @@
+{
+  "checkedAt": "2026-09-18T20:41:06.993Z",
+  "release": "6d7a5be-dirty.f981d7946ccd",
+  "buildExitCode": 0,
+  "browserMonitoringConfigured": true,
+  "deployed": false,
+  "sourceMapsPublished": false,
+  "checks": {
+    "runtimeClient": true,
+    "envelope": true,
+    "unhandledRejection": true,
+    "release": true
+  },
+  "artifacts": [
+    {
+      "path": "apps/web/dist/assets/admin-BvfgTs2u.js",
+      "bytes": 21870,
+      "sha256": "15ea3095ff1023c05e820cd9f08be8e8b24fdcab941e98256ce5c98010852490"
+    },
+    {
+      "path": "apps/web/dist/assets/index-CIlUvRCI.css",
+      "bytes": 62033,
+      "sha256": "8d7237a328ea243bd6d7490a7d4f3faeb6c1cb55dd7a3ddecc9c7b19929b52fa"
+    },
+    {
+      "path": "apps/web/dist/assets/index-cnsoear0.js",
+      "bytes": 577512,
+      "sha256": "03b65bbee48f1960e7faf5d0813d9848f85b8b567ec4e6aa337bdd82d034d68b"
+    },
+    {
+      "path": "apps/web/dist/assets/markdown-0Pr9SZxJ.js",
+      "bytes": 65370,
+      "sha256": "a339f16f9cb095ea96875ddcdd43b83ea95acfd6556058fa9d1c1b38bc96a152"
+    },
+    {
+      "path": "apps/web/dist/assets/react-CbGl50uX.js",
+      "bytes": 206368,
+      "sha256": "145aaa68bf4d33528a703f786f2a31a3e97458e55ce9642ddd88360b1eaf8b81"
+    },
+    {
+      "path": "apps/web/dist/assets/supabase-CyI6DAKv.js",
+      "bytes": 220436,
+      "sha256": "dc9f86b4e2192723b8dfd24562fb3e61ac0354f3e014ffb8d78ab5ff6ef0d1fc"
+    },
+    {
+      "path": "apps/web/dist/assets/ui-lab-BuxTo26C.js",
+      "bytes": 13835,
+      "sha256": "4fe31f01a46e728c8168f690b3151f0523f445ac2db49a796691b8fe022919e1"
+    },
+    {
+      "path": "apps/web/dist/index.html",
+      "bytes": 1797,
+      "sha256": "9d44db8f911b41ec8dc5d911c110747977cf661d5939a5a080486058b9f298b2"
+    }
+  ],
+  "aggregate": "268fcda5b6c354925d9139c878f85c013fcef7fa34f8610be8eda034b8d30fc2",
+  "limitations": [
+    "Browser project receipt and alerts are not verified.",
+    "The existing large JavaScript chunk warning remains.",
+    "The build command invoked pnpm build, whose output included an automatic already-up-to-date workspace check; no explicit pnpm install was requested."
+  ]
+}

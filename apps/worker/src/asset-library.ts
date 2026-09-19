@@ -57,6 +57,63 @@ export const ASSET_SOURCE_SITES = [
 export type AssetSourceSite = (typeof ASSET_SOURCE_SITES)[number];
 
 /**
+ * The only direct-file host currently admitted for expanded OpenGameArt rows.
+ *
+ * The URL is harvest metadata, not a resolver input. Keep the allow-list exact: accepting a
+ * sibling host, an IP literal, or a URL with credentials would turn the admin ingest into an SSRF
+ * primitive. Redirects are rejected by the importer as well, so the host checked here remains the
+ * host that serves the bytes.
+ */
+export const OPENGAMEART_DOWNLOAD_HOST = 'opengameart.org';
+const OPENGAMEART_DOWNLOAD_TYPES: Readonly<Record<string, string>> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  bmp: 'image/bmp',
+  tga: 'image/tga',
+};
+
+/** Return the Roblox upload content type implied by an admitted OpenGameArt file URL. */
+export function openGameArtDownloadContentType(value: string): string | null {
+  try {
+    const ext = new URL(value).pathname.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1] ?? '';
+    return OPENGAMEART_DOWNLOAD_TYPES[ext] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Validate a direct OpenGameArt file URL without doing I/O.
+ *
+ * `null` means admitted. A sentence is returned for every refusal so an ingest can account for a
+ * bad row instead of silently dropping the URL and later treating the expanded row as a pack.
+ */
+export function validateOpenGameArtDownloadUrl(value: unknown): string | null {
+  if (typeof value !== 'string' || value.trim() === '') return 'downloadUrl must be a non-empty URL';
+  if (value.length > 2048) return 'downloadUrl is too long';
+  if (/\s/.test(value)) return 'downloadUrl must not contain whitespace';
+
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    return 'downloadUrl must be an absolute URL';
+  }
+  if (parsed.protocol !== 'https:') return 'downloadUrl must use https';
+  if (parsed.hostname !== OPENGAMEART_DOWNLOAD_HOST) {
+    return `downloadUrl host must be exactly ${OPENGAMEART_DOWNLOAD_HOST}`;
+  }
+  if (parsed.username || parsed.password) return 'downloadUrl must not contain URL credentials';
+  if (parsed.port) return 'downloadUrl must use the default https port';
+  if (parsed.hash) return 'downloadUrl must not contain a fragment';
+  if (!openGameArtDownloadContentType(value)) {
+    return 'downloadUrl path must end in a Roblox-supported image extension (.png, .jpg, .jpeg, .bmp, or .tga)';
+  }
+  return null;
+}
+
+/**
  * Who owns the thing. Manifest §42 turns on this distinction and nothing else: third-party
  * material may be *used* under its licence but must never be presented as Golem's own work.
  *
@@ -291,6 +348,12 @@ export interface AssetProvenance {
   source: AssetSourceSite;
   /** The exact page the asset was obtained from. */
   sourceUrl: string;
+  /**
+   * Direct file URL for an expanded OpenGameArt row; null/absent for pack rows and other sources.
+   * It is stored separately from sourceUrl because the latter is the human-facing licence page,
+   * and is validated against the exact OpenGameArt host before any fetch is attempted.
+   */
+  downloadUrl?: string | null;
   /** Licence name **verbatim as printed on the source page**. Never normalised, never inferred. */
   licence: string;
   /** The page the licence string above was read from. */
@@ -438,6 +501,13 @@ export function validateProvenance(rec: unknown, opts: ValidateOptions = {}): Va
   for (const field of ['sourceUrl', 'licenceUrl'] as const) {
     const v = r[field];
     if (typeof v !== 'string' || !/^https:\/\/[^\s]+$/.test(v)) errors.push(`${field} must be an https URL`);
+  }
+  if (r.downloadUrl !== null && r.downloadUrl !== undefined) {
+    if (r.source !== 'opengameart') {
+      errors.push('downloadUrl is only permitted for opengameart expanded-file rows');
+    }
+    const reason = validateOpenGameArtDownloadUrl(r.downloadUrl);
+    if (reason) errors.push(reason);
   }
   if (typeof r.author !== 'string' || !r.author.trim()) errors.push('author is required — "unknown" is not acceptable provenance');
 
@@ -748,16 +818,17 @@ export function resetAssetSchemaCache(): void {
 
 async function createAssetTables(env: Pick<Env, 'CORPUS'>): Promise<void> {
   await env.CORPUS.exec(
-    `create table if not exists asset_library(id text primary key, name text not null, kind text not null, source text not null, source_url text not null, licence text not null, licence_url text not null, commercial_use integer not null, attribution_required integer not null, author text not null, retrieved_at text not null, imported_at text, modifications text, roblox_asset_id integer, triangles integer, texture_resolution integer, bounds_studs text, tags text not null, sha256 text, generation text, status text not null default 'pending_ingest', health_ok integer not null default 1, last_health_check text, created_at text not null, updated_at text not null)`,
+    `create table if not exists asset_library(id text primary key, name text not null, kind text not null, source text not null, source_url text not null, download_url text, licence text not null, licence_url text not null, commercial_use integer not null, attribution_required integer not null, author text not null, retrieved_at text not null, imported_at text, modifications text, roblox_asset_id integer, triangles integer, texture_resolution integer, bounds_studs text, tags text not null, sha256 text, generation text, status text not null default 'pending_ingest', health_ok integer not null default 1, last_health_check text, created_at text not null, updated_at text not null)`,
   );
-  // Deployed databases predate these two columns, and `create table if not exists` will not add
-  // them. D1 has no `add column if not exists`, so the failure is caught: on an already-migrated
-  // database it is a duplicate-column error and nothing else, and swallowing it is the whole point.
-  for (const col of ['imported_at text', 'modifications text', 'generation text']) {
+  // Deployed databases predate these compatibility columns, and `create table if not exists` will
+  // not add them. D1 has no `add column if not exists`; only SQLite's duplicate-column response is
+  // expected here. A CPU, permission or I/O failure must escape rather than masquerade as a
+  // migrated schema.
+  for (const col of ['imported_at text', 'modifications text', 'generation text', 'download_url text']) {
     try {
       await env.CORPUS.exec(`alter table asset_library add column ${col}`);
-    } catch {
-      // already present
+    } catch (error) {
+      if (!/(?:duplicate column name|column .* already exists)/i.test(String((error as Error)?.message ?? error))) throw error;
     }
   }
   // A Roblox asset id may appear at most once. Partial index so many pending rows can share NULL.
@@ -785,6 +856,7 @@ export const COLUMNS = [
   'kind',
   'source',
   'source_url',
+  'download_url',
   'licence',
   'licence_url',
   'commercial_use',
@@ -821,6 +893,7 @@ export function bindValues(rec: AssetProvenance, status: AssetStatus, now: strin
     rec.kind,
     rec.source,
     rec.sourceUrl,
+    rec.downloadUrl ?? null,
     rec.licence,
     rec.licenceUrl,
     rec.commercialUse ? 1 : 0,
@@ -859,10 +932,25 @@ export async function upsertAssets(env: Pick<Env, 'CORPUS'>, records: AssetProve
   const now = new Date().toISOString();
   const good: AssetProvenance[] = [];
   const rejected: { id: string; errors: string[] }[] = [];
+  const seenIds = new Set<string>();
   for (const rec of records) {
     const v = validateProvenance(rec, opts);
-    if (v.ok) good.push(rec);
-    else rejected.push({ id: typeof rec?.id === 'string' ? rec.id : '(no id)', errors: v.errors });
+    const id = typeof rec?.id === 'string' ? rec.id : '(no id)';
+    if (!v.ok) {
+      rejected.push({ id, errors: v.errors });
+      continue;
+    }
+    // The main table's primary key would collapse an in-batch duplicate, but the FTS mirror is a
+    // separate table and would retain both rows. That makes one canonical asset consume multiple
+    // search slots and makes `written` overstate how many distinct records entered the library.
+    // Keep the first record (the same first-wins rule as scripts/ingest-assets.mjs) and account for
+    // every later duplicate explicitly instead of silently dropping it.
+    if (seenIds.has(rec.id)) {
+      rejected.push({ id, errors: ['duplicate id in ingest batch; only the first record was accepted'] });
+      continue;
+    }
+    seenIds.add(rec.id);
+    good.push(rec);
   }
   const status: AssetStatus = opts.status ?? (opts.seed ? 'pending_ingest' : 'active');
   const per = rowsPerStatement();
@@ -1036,6 +1124,10 @@ export interface AssetHit {
   id: string;
   name: string;
   kind: AssetKind;
+  /** Human-facing catalogue URL; this is provenance, not permission or a safety verdict. */
+  sourceUrl: string;
+  /** Recorded creator/author from the catalogue row; never inferred from an asset id. */
+  author: string;
   robloxAssetId: number | null;
   triangles: number | null;
   boundsStuds: [number, number, number] | null;
@@ -1071,6 +1163,11 @@ export interface AssetSearchOptions {
   insertableOnly?: boolean;
   /** Drop hits scoring below this. See assetQuality — 0..1. */
   minQuality?: number;
+  /**
+   * Use only D1 FTS5. Catalogue browsing is deliberately lexical: it must not invoke embeddings,
+   * Workers AI, or Vectorize, and therefore carries no inference cost or external model dependency.
+   */
+  lexicalOnly?: boolean;
   k?: number;
 }
 
@@ -1083,6 +1180,8 @@ interface Row {
   id: string;
   name: string;
   kind: string;
+  source_url: string;
+  author: string;
   roblox_asset_id: number | null;
   triangles: number | null;
   bounds_studs: string | null;
@@ -1117,6 +1216,8 @@ function toHit(r: Row, score: number): AssetHit {
     id: r.id,
     name: r.name,
     kind: r.kind as AssetKind,
+    sourceUrl: r.source_url,
+    author: r.author,
     robloxAssetId: r.roblox_asset_id,
     triangles: r.triangles,
     boundsStuds: bounds,
@@ -1132,7 +1233,7 @@ function toHit(r: Row, score: number): AssetHit {
   };
 }
 
-const SELECT_COLS = `id, name, kind, roblox_asset_id, triangles, bounds_studs, tags, licence, attribution_required, source, status`;
+const SELECT_COLS = `id, name, kind, source_url, author, roblox_asset_id, triangles, bounds_studs, tags, licence, attribution_required, source, status`;
 
 /**
  * Hybrid retrieval over the library: Vectorize (semantic) + D1 FTS5 (keyword), merged with
@@ -1182,6 +1283,16 @@ export function resetAssetLibraryAvailability(): void {
 
 export async function searchAssetLibrary(env: LibraryEnv, query: string, opts: AssetSearchOptions = {}): Promise<AssetHit[]> {
   const k = opts.k ?? 8;
+  if (opts.lexicalOnly) {
+    // This branch is used by the catalogue UI. Keep it before vecSearch so a browse can never
+    // accidentally pay for an embedding or reach Vectorize as a side effect of rendering results.
+    const hits = await ftsSearch(env, query, k, opts);
+    return hits
+      .map((hit) => ({ ...hit, score: hit.score * rerankMultiplier(hit, opts) }))
+      .filter((hit) => keep(hit, opts))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, k);
+  }
   const [vecHits, ftsHits] = await Promise.all([
     vecSearch(env, query, 16, opts).catch(() => [] as AssetHit[]),
     ftsSearch(env, query, 16, opts).catch(() => [] as AssetHit[]),

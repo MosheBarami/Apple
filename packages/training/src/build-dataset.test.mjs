@@ -123,6 +123,20 @@ test('too short and too long are both rejected', () => {
   assert.equal(looksLikeDescription('word '.repeat(200)), false, 'over the ceiling');
 });
 
+test('C/Flow comment remnants and licence headers are not training instructions', () => {
+  // These were real rows in the 404-row artefact: the extractor stripped Luau `--` markers but
+  // left vendored React's `//`, `/**`, `*`, and `@param` prose behind. The response may parse, but
+  // a model cannot act on a source header as a user request.
+  for (const doc of [
+    '// This returns the highest priority pending lanes regardless of whether they are suspended.',
+    '/** Ensure that every element is passed in a static location. */',
+    '* Copyright (c) Facebook, Inc. and its affiliates. * @flow',
+    'Returns a value. @param value the value to return.',
+  ]) {
+    assert.equal(looksLikeDescription(doc), false, doc);
+  }
+});
+
 // ------------------------------------------------------------------- splits ---
 // THE BUG: hashing repo ids into percentage buckets produced train=216 / val=1 / test=5, because
 // example counts across repos are wildly uneven. A one-example validation split cannot detect

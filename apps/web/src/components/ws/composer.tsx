@@ -1,31 +1,16 @@
-// The composer: the message box, the mode chip and send.
-//
-// ONE user-facing axis, not two. The reference renders a chip on the left of
-// the bar that names a model; this product deliberately has no such control.
-// Which foundation model answers is an implementation detail of the routing
-// layer — it changes with availability, cost and task, and a user who pinned a
-// named backend would be choosing a thing we reserve the right to move. The
-// user sees "Golem". So the only choice offered here is how much autonomy and
-// budget a request gets:
-//
-//   Plan        inspects, reasons and proposes — no project edits by default
-//   Agent       the normal bounded builder
-//   Super Agent long-horizon autonomous work
-//
-// Those three are the *product* modes. Internally each maps to a named
-// specialist on the wire (see PRODUCT_MODE_TO_SPECIALIST in @golem/shared);
-// that mapping happens where the chat message is built, not here, so the
-// protocol, the stored sessions and budget accounting are untouched by this
-// vocabulary. Nothing in this file may name a provider or a model id.
+// One model picker: Apple for limited free use, Apple MAX for subscribers.
+// Model identity is independent of the legacy autonomy/specialist wire fields.
+// The server owns entitlements; this surface prevents avoidable rejected sends.
 import { useEffect, useReducer, useRef, useState, type ClipboardEvent, type DragEvent, type FormEvent, type KeyboardEvent } from 'react';
 import {
   ATTACHMENT_ACCEPT,
   MESSAGE_MAX_CHARS,
   MESSAGE_WARN_CHARS,
-  PRODUCT_MODES_OFFERED,
-  PRODUCT_MODE_INFO,
+  PRODUCT_MODELS,
+  PRODUCT_MODEL_INFO,
+  canUseProductModel,
   type ChatAttachment,
-  type ProductMode,
+  type ProductModel,
   type StudioEventSelection,
 } from '@golem/shared';
 import { Icon, PATH, Popover } from './primitives';
@@ -55,29 +40,10 @@ import {
   type SentActivity,
 } from '../../lib/presence-signal';
 import { usePrefs } from '../../lib/theme';
-
-/**
- * The swatch each mode carries. These are the existing charcoal-stone
- * accents — sand, slate, violet — so Super Agent reads as the heaviest option
- * by weight of colour rather than by shouting. Order comes from PRODUCT_MODES
- * so the menu can never disagree with the shared vocabulary.
- */
-/*
- * The real accent tokens, not literals. These were hardcoded mid-tones with a
- * comment claiming they were "the existing charcoal-stone accents" — they were
- * not: none of the three appears anywhere else in the repo. Being literals they
- * also could not flip with the theme, so the same three colours were painted on
- * both the light and the dark surface.
- *
- * The variables keep their internal --acc-clay/stone/rune names because that is
- * what styles.css defines; the mapping from product mode to specialist accent
- * lives here, at the one place a mode becomes a colour.
- */
-const TONE: Record<ProductMode, string> = {
-  plan: 'var(--acc-clay)',
-  agent: 'var(--acc-stone)',
-  super: 'var(--acc-rune)',
-};
+import { CREATION_INTENTS, creationMessage, maxAccessNotice, type CreationIntent } from '../../lib/creation-intent';
+import { ModelMark } from './model-mark';
+import { AssetCatalog } from './asset-catalog';
+import { appendCatalogReference } from '../../lib/asset-catalog';
 
 const PLACEHOLDER = 'Ask anything about your project...';
 
@@ -100,9 +66,13 @@ interface Props {
   onSend: (text: string, attachments: ChatAttachment[]) => boolean;
   onStop: () => void;
   running: boolean;
+  studioConnected?: boolean;
   disabled?: boolean;
-  mode: ProductMode;
-  onModeChange: (m: ProductMode) => void;
+  productModel: ProductModel;
+  modelPlan?: string;
+  onModelChange: (model: ProductModel) => void;
+  onUpgrade?: () => void;
+  maxUpgradeAvailable?: boolean | null;
   seed?: string;
   placeholder?: string;
   /** The project this draft belongs to. Empty means "do not persist" — draft.ts no-ops on it. */
@@ -134,9 +104,13 @@ export function Composer({
   onSend,
   onStop,
   running,
+  studioConnected = false,
   disabled,
-  mode,
-  onModeChange,
+  productModel,
+  modelPlan,
+  onModelChange,
+  onUpgrade,
+  maxUpgradeAvailable = null,
   seed,
   placeholder,
   draftKey = '',
@@ -150,6 +124,8 @@ export function Composer({
   const [text, setText] = useState(() => (draftKey ? readDraft(draftKey) : ''));
   const [modeOpen, setModeOpen] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [catalogOpen, setCatalogOpen] = useState(false);
+  const [creation, setCreation] = useState<CreationIntent>('build');
   const box = useRef<HTMLTextAreaElement>(null);
   const lastKey = useRef(draftKey);
   const { prefs } = usePrefs();
@@ -236,7 +212,10 @@ export function Composer({
   useEffect(() => {
     if (draftKey === lastKey.current) return;
     lastKey.current = draftKey;
-    setText(draftKey ? readDraft(draftKey) : '');
+    const next = draftKey ? readDraft(draftKey) : '';
+    setText(next);
+    setCaret(next.length);
+    setCreation('build');
   }, [draftKey]);
 
   // Debounced, because a write per keystroke is a synchronous localStorage call per keystroke in
@@ -269,31 +248,50 @@ export function Composer({
   //               instead of merely hiding it. A cancel that only hides the row leaves the bytes
   //               going up and an orphan in the store. ]]
   const [staged, dispatch] = useReducer(stageReducer, []);
+  const stagedRef = useRef(staged);
+  stagedRef.current = staged;
   const files = useRef(new Map<string, File>());
-  const aborts = useRef(new Map<string, AbortController>());
+  const owners = useRef(new Map<string, string>());
+  const aborts = useRef(new Map<string, { controller: AbortController; projectId: string }>());
+  const activeProject = useRef(projectId ?? '');
+  activeProject.current = projectId ?? '';
+  const disposed = useRef(false);
   const [dropping, setDropping] = useState(false);
   const picker = useRef<HTMLInputElement>(null);
 
   /** Where a refusal goes. The caller's toast when there is one, the row's own line otherwise. */
   const notice = (message: string) => onNotice?.(message);
 
-  const beginUpload = (rowId: string, file: File) => {
-    if (!projectId) return;
+  const beginUpload = (rowId: string, file: File, ownerProjectId: string) => {
+    if (!ownerProjectId) return;
     const controller = new AbortController();
-    aborts.current.set(rowId, controller);
-    void uploadAttachment(projectId, file, {
+    aborts.current.set(rowId, { controller, projectId: ownerProjectId });
+    void uploadAttachment(ownerProjectId, file, {
       signal: controller.signal,
-      onProgress: (sent) => dispatch({ type: 'progress', id: rowId, sent }),
+      onProgress: (sent) => {
+        if (disposed.current || activeProject.current !== ownerProjectId || owners.current.get(rowId) !== ownerProjectId) return;
+        dispatch({ type: 'progress', id: rowId, sent });
+      },
     })
       .then((attachment) => {
-        aborts.current.delete(rowId);
+        const pending = aborts.current.get(rowId);
+        if (pending?.controller === controller) aborts.current.delete(rowId);
+        // An abort can race a completed HTTP response. Once the composer left this project or the
+        // row was removed, that successful upload is an orphan and must be deleted from the project
+        // it ACTUALLY belongs to — never from whichever project is open now.
+        if (disposed.current || activeProject.current !== ownerProjectId || owners.current.get(rowId) !== ownerProjectId) {
+          void dropAttachment(ownerProjectId, attachment.attachmentId);
+          return;
+        }
         dispatch({ type: 'ready', id: rowId, attachment });
       })
       .catch((err: unknown) => {
-        aborts.current.delete(rowId);
+        const pending = aborts.current.get(rowId);
+        if (pending?.controller === controller) aborts.current.delete(rowId);
         // A CANCEL IS NOT A FAILURE. The row is already gone — the person removed it — and putting
         // an error where it was would ask them to react to their own decision.
         if (err instanceof UploadAborted) return;
+        if (disposed.current || activeProject.current !== ownerProjectId || owners.current.get(rowId) !== ownerProjectId) return;
         const failure = attachmentFailure(err);
         dispatch({ type: 'failed', id: rowId, message: failure.message, retryable: failure.retryable });
       });
@@ -316,27 +314,31 @@ export function Composer({
     for (const file of admitted as File[]) {
       const rowId = `a${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
       files.current.set(rowId, file);
+      owners.current.set(rowId, projectId);
       dispatch({ type: 'stage', id: rowId, name: file.name, size: file.size });
-      beginUpload(rowId, file);
+      beginUpload(rowId, file, projectId);
     }
   };
 
   const removeRow = (rowId: string) => {
     // Abort first, then forget: aborting after the row is gone still races the upload's own
     // resolution, and this ordering is what makes the `UploadAborted` branch above reachable.
-    aborts.current.get(rowId)?.abort();
+    aborts.current.get(rowId)?.controller.abort();
     aborts.current.delete(rowId);
     const landed = staged.find((r) => r.id === rowId)?.attachment;
-    if (landed && projectId) void dropAttachment(projectId, landed.attachmentId);
+    const ownerProjectId = owners.current.get(rowId);
+    if (landed && ownerProjectId) void dropAttachment(ownerProjectId, landed.attachmentId);
+    owners.current.delete(rowId);
     files.current.delete(rowId);
     dispatch({ type: 'remove', id: rowId });
   };
 
   const retryRow = (rowId: string) => {
     const file = files.current.get(rowId);
-    if (!file) return;
+    const ownerProjectId = owners.current.get(rowId);
+    if (!file || !ownerProjectId || ownerProjectId !== activeProject.current) return;
     dispatch({ type: 'retry', id: rowId });
-    beginUpload(rowId, file);
+    beginUpload(rowId, file, ownerProjectId);
   };
 
   /**
@@ -399,6 +401,45 @@ export function Composer({
   const [paths, setPaths] = useState<string[] | null>(null);
   const asked = useRef('');
 
+  const cleanupProjectUploads = (ownerProjectId: string) => {
+    if (!ownerProjectId) return;
+    for (const [rowId, pending] of [...aborts.current]) {
+      if (pending.projectId !== ownerProjectId) continue;
+      pending.controller.abort();
+      aborts.current.delete(rowId);
+    }
+    for (const row of stagedRef.current) {
+      if (owners.current.get(row.id) !== ownerProjectId) continue;
+      if (row.attachment) void dropAttachment(ownerProjectId, row.attachment.attachmentId);
+      owners.current.delete(row.id);
+      files.current.delete(row.id);
+    }
+  };
+
+  const lastProject = useRef(projectId ?? '');
+  useEffect(() => {
+    const nextProject = projectId ?? '';
+    const previousProject = lastProject.current;
+    if (nextProject === previousProject) return;
+    lastProject.current = nextProject;
+    cleanupProjectUploads(previousProject);
+    dispatch({ type: 'clear' });
+    setPaths(null);
+    asked.current = '';
+    setMentionOff(false);
+    setMentionPick(0);
+    setCaret((draftKey ? readDraft(draftKey) : '').length);
+    setDropping(false);
+  }, [projectId, draftKey]);
+
+  useEffect(
+    () => () => {
+      disposed.current = true;
+      for (const ownerProjectId of new Set(owners.current.values())) cleanupProjectUploads(ownerProjectId);
+    },
+    [],
+  );
+
   const token = projectId && !mentionOff ? mentionQuery(text, caret) : null;
   const mentionHits = token && paths ? matchMentions(paths, token.query) : [];
 
@@ -407,12 +448,17 @@ export function Composer({
     // request behind every workspace open for a feature most messages never reach for.
     if (!token || !projectId || asked.current === projectId) return;
     asked.current = projectId;
-    void fetchProjectFiles(projectId)
-      .then((res) => setPaths(res.files.map((f) => f.path)))
+    const requestedProjectId = projectId;
+    void fetchProjectFiles(requestedProjectId)
+      .then((res) => {
+        if (disposed.current || activeProject.current !== requestedProjectId || asked.current !== requestedProjectId) return;
+        setPaths(res.files.map((f) => f.path));
+      })
       // A listing that did not arrive leaves the picker closed and the '@' as an ordinary
       // character. It must never become an empty picker, which reads as "this project has no
       // files" — an answer nobody computed.
       .catch(() => {
+        if (disposed.current || activeProject.current !== requestedProjectId || asked.current !== requestedProjectId) return;
         asked.current = '';
         setPaths(null);
       });
@@ -437,11 +483,32 @@ export function Composer({
   const trackCaret = () => setCaret(box.current?.selectionStart ?? 0);
 
   const blocked = blockingReason(staged);
+  const creationUnavailable = creation === 'model' && !studioConnected;
+  const modelUnavailable = !canUseProductModel(productModel, modelPlan);
+  const maxAvailable = canUseProductModel('apple-max', modelPlan);
+  const requestMaxAccess = () => {
+    if (maxUpgradeAvailable === true) onUpgrade?.();
+    else onNotice?.(maxAccessNotice(maxUpgradeAvailable));
+  };
+  const chooseCreation = (next: CreationIntent) => {
+    if (!maxAvailable) { requestMaxAccess(); return; }
+    setCreation(creation === next ? 'build' : next);
+    onModelChange('apple-max');
+    box.current?.focus();
+  };
 
   const submit = (e?: FormEvent) => {
     e?.preventDefault();
     const value = text.trim();
     if (!value || running || disabled) return;
+    if (modelUnavailable) {
+      onNotice?.('Apple MAX requires a paid subscription. Choose Apple to continue free. Your draft is kept.');
+      return;
+    }
+    if (creationUnavailable) {
+      onNotice?.('Connect Roblox Studio before generating a 3D model. Your draft is kept.');
+      return;
+    }
     // A file the person can still see on their screen has not been sent. Blocking here rather than
     // dropping it is the difference between "wait a moment" and a message that quietly arrived
     // without the log it was about.
@@ -449,7 +516,15 @@ export function Composer({
     // THE REFUSAL SHORT-CIRCUITS BEFORE ANYTHING IS THROWN AWAY. A send the socket refused must
     // leave the box, the draft and the staged files exactly as they were: the words are still the
     // person's, the uploads are still theirs, and the only thing that failed is the delivery.
-    if (!onSend(value, readyAttachments(staged))) return;
+    const message = creationMessage(creation, value, MESSAGE_MAX_CHARS);
+    if (!message) {
+      onNotice?.('This description is too long with the creation instructions. Shorten it slightly and try again.');
+      return;
+    }
+    if (!onSend(message, readyAttachments(staged))) return;
+    // These files are no longer unsent composer state. Their attachment ids now belong to the sent
+    // message, so a later project switch/unmount must not clean them up as orphans.
+    for (const row of staged) owners.current.delete(row.id);
     files.current.clear();
     aborts.current.clear();
     dispatch({ type: 'clear' });
@@ -508,10 +583,17 @@ export function Composer({
   };
 
   const showCount = text.length >= MESSAGE_WARN_CHARS;
-  const activeMode = PRODUCT_MODE_INFO[mode];
+  const activeModel = PRODUCT_MODEL_INFO[productModel];
 
   return (
     <div className="gx-composer">
+      {catalogOpen && <AssetCatalog onClose={() => setCatalogOpen(false)} onChoose={asset => {
+        // Append without replacing selected draft text; an asset reference must never erase it.
+        const next = appendCatalogReference(text, asset, MESSAGE_MAX_CHARS);
+        if (next === null) return false;
+        applyInsertion({ text: next, caret: next.length });
+        return true;
+      }} />}
       <form
         className={`gx-composer__inner${dropping ? ' is-dropping' : ''}`}
         onSubmit={submit}
@@ -525,6 +607,7 @@ export function Composer({
         <textarea
           id="gx-composer-input"
           ref={box}
+          dir="auto"
           value={text}
           onPaste={onPaste}
           // maxLength alone is not enough: browsers disagree about whether an over-long PASTE is
@@ -550,7 +633,7 @@ export function Composer({
           aria-activedescendant={mentionHits.length ? `gx-mention-${mentionPick}` : undefined}
           rows={1}
           maxLength={MESSAGE_MAX_CHARS}
-          placeholder={placeholder ?? PLACEHOLDER}
+          placeholder={creation === 'build' ? (placeholder ?? PLACEHOLDER) : CREATION_INTENTS[creation].placeholder}
           disabled={disabled}
           data-tour="composer"
         />
@@ -655,35 +738,38 @@ export function Composer({
               className="gx-chip"
               aria-haspopup="menu"
               aria-expanded={modeOpen}
-              aria-label={`Mode: ${activeMode.name}`}
+              aria-label={`Model: ${activeModel.name}`}
               onClick={() => setModeOpen((v) => !v)}
             >
-              <span className="gx-chip__swatch" style={{ background: TONE[mode] }} aria-hidden="true" />
-              {activeMode.name}
+              <ModelMark variant={productModel === 'apple' ? 'apple' : 'max'} />
+              <span>{productModel === 'apple-max' ? <>Apple <span className="apple-max-name">MAX</span></> : activeModel.name}</span>
               <span className="gx-chip__caret" aria-hidden="true">
                 <Icon d={PATH.chevronDown} size={11} />
               </span>
             </button>
-            <Popover open={modeOpen} onClose={() => setModeOpen(false)} label="Mode">
-              {PRODUCT_MODES_OFFERED.map((id) => {
-                const info = PRODUCT_MODE_INFO[id];
+            <Popover open={modeOpen} onClose={() => setModeOpen(false)} label="Model">
+              {PRODUCT_MODELS.map((id) => {
+                const info = PRODUCT_MODEL_INFO[id];
+                const available = canUseProductModel(id, modelPlan);
                 return (
                   <button
                     key={id}
                     type="button"
                     role="menuitemradio"
-                    aria-checked={id === mode}
+                    aria-checked={id === productModel}
                     className="gx-pop__item gx-pop__item--stack"
                     onClick={() => {
-                      onModeChange(id);
+                      if (!available) { setModeOpen(false); requestMaxAccess(); return; }
+                      onModelChange(id);
+                      if (id !== 'apple-max') setCreation('build');
                       setModeOpen(false);
                     }}
                   >
-                    <span className="gx-chip__swatch" style={{ background: TONE[id] }} aria-hidden="true" />
+                    <ModelMark variant={id === 'apple' ? 'apple' : 'max'} />
                     <span className="gx-pop__main">
-                      {info.name}
+                      <span>{id === 'apple-max' ? <>Apple <span className="apple-max-name">MAX</span></> : info.name}</span>
                       <span className="gx-pop__sub">
-                        {info.blurb} Typically {info.typicalCredits} Credits.
+                        {id === 'apple' ? 'Free · limited daily usage' : available ? 'Subscribers · extended capabilities' : maxUpgradeAvailable === false ? 'Subscribers · not available yet' : 'Subscribers · check availability'}
                       </span>
                     </span>
                   </button>
@@ -692,6 +778,15 @@ export function Composer({
             </Popover>
           </div>
 
+          <button type="button" className="gx-chip gx-chip--creation" aria-pressed={creation === 'image'} disabled={running} title={maxAvailable ? 'Generate an image with Apple MAX' : maxUpgradeAvailable === false ? 'Images require Apple MAX; paid subscriptions are not available yet' : 'Images require Apple MAX — check availability'} onClick={() => chooseCreation('image')}>
+            <Icon d="M3 3h18v18H3z M3 16l5-5 4 4 4-6 5 7 M8 7h.01" size={14} /> Images{!maxAvailable && <span className="muted"> · MAX</span>}
+          </button>
+          <button type="button" className="gx-chip gx-chip--creation" aria-pressed={creation === 'model'} disabled={running || !studioConnected} title={!studioConnected ? '3D requires connected Roblox Studio and Apple MAX' : maxAvailable ? 'Generate a 3D model in connected Studio' : maxUpgradeAvailable === false ? '3D requires Apple MAX; paid subscriptions are not available yet' : '3D requires Apple MAX — check availability'} onClick={() => chooseCreation('model')}>
+            <Icon d="M12 2l9 5v10l-9 5-9-5V7z M3 7l9 5 9-5 M12 12v10" size={14} /> 3D{!maxAvailable && <span className="muted"> · MAX</span>}
+          </button>
+          <button type="button" className="gx-chip" disabled={disabled || running} onClick={() => setCatalogOpen(true)} aria-haspopup="dialog">
+            <Icon d={PATH.surface} size={14} /> Assets
+          </button>
           {selectionLabel && (
             <button
               type="button"
@@ -783,15 +878,15 @@ export function Composer({
             </button>
 
             {running ? (
-              <button type="button" className="gx-send is-stop" onClick={onStop} aria-label="Stop this run">
+              <button type="button" className="gx-send is-stop" onClick={onStop} disabled={disabled} aria-label="Stop this run">
                 <Icon d={PATH.stop} size={13} />
               </button>
             ) : (
               <button
                 type="submit"
                 className="gx-send"
-                disabled={!text.trim() || disabled || blocked !== null}
-                title={blocked ?? undefined}
+                disabled={!text.trim() || disabled || blocked !== null || creationUnavailable || modelUnavailable}
+                title={creationUnavailable ? 'Connect Roblox Studio to generate this 3D model' : (blocked ?? undefined)}
                 aria-label="Send"
               >
                 <Icon d={PATH.send} size={16} />
@@ -801,6 +896,8 @@ export function Composer({
         </div>
       </form>
 
+      {modelUnavailable && <p className="gx-creation-note" role="status">Apple MAX requires a subscription. Choose Apple to continue free. Your draft is kept.</p>}
+      {creation !== 'build' && <p className="gx-creation-note" role="status">{creationUnavailable ? 'Studio disconnected. Reconnect using Studio above, or switch to Images or chat. Your draft is kept.' : CREATION_INTENTS[creation].note}</p>}
       <p className="gx-composer__note">
         {sendHint(prefs.sendKey)} Apple can get things wrong. Check what it changed before you publish.
       </p>

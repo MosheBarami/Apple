@@ -337,8 +337,6 @@ export const AVOID_LIST: readonly string[] = [
   'photographic render',
   'PBR materials, metallic or roughness maps, specular highlights',
   'thin or hairline strokes',
-  'desaturated, muted or pastel colour',
-  'dark, moody or low-key lighting',
   'gradients used to fake depth',
   'soft shadows, blur, glassmorphism, glow, fog',
   'realistic architecture, photoreal foliage, fine surface texture, noise',
@@ -377,11 +375,13 @@ export function composeArtDirection(req: ImageRequest, spec: ImageModelSpec = FL
 
   const clauses = [
     `${TARGET_FRAMING[req.target]}: ${screened.cleaned}`,
+    'requested subject and background colours have priority over palette defaults; preserve them exactly, including neutral, dark or muted colours',
     outline,
     lowPoly,
     'chunky rounded forms with generous corner radii, thick and physical, nothing delicate',
-    'bright fully saturated high-key colour throughout, no muted or neutral palette',
-    palette.length ? `colour: ${palette.join('; ')}` : 'colour: a small number of pure saturated hues',
+    palette.length
+      ? `when colours are not specified in the subject, use these palette defaults: ${palette.join('; ')}`
+      : 'when colours are not specified in the subject, use a small number of clear saturated hues',
     lighting,
     camera,
     background,
@@ -684,6 +684,16 @@ export const IMAGE_TTL_SECONDS = RETENTION.generatedImageSeconds;
 /** What is stored beside the pixels: the unix second at which KV drops them. */
 export interface ImageMeta {
   expiresAt: number;
+}
+
+/** Only raster signatures we actually deliver; never infer MIME from a model label. */
+export function imageMimeType(bytes: Uint8Array): string | null {
+  const starts = (prefix: number[]) => prefix.every((value, index) => bytes[index] === value);
+  if (starts([137, 80, 78, 71, 13, 10, 26, 10])) return 'image/png';
+  if (starts([255, 216, 255])) return 'image/jpeg';
+  if (starts([82, 73, 70, 70]) && bytes.length >= 12 && String.fromCharCode(...bytes.subarray(8, 12)) === 'WEBP') return 'image/webp';
+  if (bytes.length >= 6 && /^(GIF87a|GIF89a)$/.test(String.fromCharCode(...bytes.subarray(0, 6)))) return 'image/gif';
+  return null;
 }
 
 /**

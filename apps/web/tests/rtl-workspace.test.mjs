@@ -17,9 +17,7 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SHEETS = {
-  'styles.css': readFileSync(join(HERE, '..', 'src', 'styles.css'), 'utf8'),
-  'workspace.css': readFileSync(join(HERE, '..', 'src', 'styles', 'workspace.css'), 'utf8'),
-  'roadmap.css': readFileSync(join(HERE, '..', 'src', 'components', 'roadmap', 'roadmap.css'), 'utf8'),
+  'design/system.css': readFileSync(join(HERE, '..', 'src', 'design', 'system.css'), 'utf8'),
 };
 
 /** Strip comments so a rule quoted in prose does not count as a declaration. */
@@ -46,17 +44,28 @@ test('no physical text-flow property survives in any workspace stylesheet', () =
 test('the logical replacements are actually present, so the rules were converted not deleted', () => {
   // A sheet with no padding at all would pass the check above vacuously.
   const all = Object.values(SHEETS).map(code).join('\n');
-  for (const prop of ['padding-inline-start', 'padding-inline-end', 'margin-inline-start', 'border-inline-start', 'text-align: start']) {
+  // The current sheet uses `padding-inline` for symmetric horizontal padding, so it
+  // does not need a separate inline-end declaration. These are the directional
+  // properties the workspace actually uses (including both border and margin sides).
+  for (const prop of ['padding-inline', 'padding-inline-start', 'margin-inline-start', 'margin-inline-end', 'border-inline-start', 'border-inline-end', 'inset-inline-end']) {
     assert.ok(all.includes(prop), `expected ${prop} somewhere — the conversion should have produced it`);
   }
+  assert.match(all, /text-align:\s*start/, 'expected logical text alignment somewhere — the conversion should have produced it');
 });
 
 test('every surviving physical inset is symmetric, centring, or off-screen', () => {
   // `left:`/`right:` are NOT banned outright: a symmetric pair already mirrors, `left: 50%` with a
   // translate is centring, and `left: -9999px` is the visually-hidden trick. Converting those would
-  // be churn that reads as progress. Anything ELSE that is single-sided must be logical.
+  // be churn that reads as progress. The atmosphere beam/mesh are direction-neutral decoration, and
+  // the before/after wipe labels are intentionally anchored to the visual comparison sides. Anything
+  // ELSE that is single-sided must be logical.
   for (const [name, css] of Object.entries(SHEETS)) {
-    const body = code(css);
+    // Strip the explicitly visual-only rules before looking at declaration blocks. The
+    // block matcher intentionally has no selector context, so filtering the source first
+    // avoids accidentally exempting an unrelated future `left: 12px` rule.
+    const body = code(css)
+      .replace(/\.studio-atmosphere__(beam|mesh)\s*\{[^{}]*\}/g, '')
+      .replace(/\.gu-wipe-tag--[lr]\s*\{[^{}]*\}/g, '');
     for (const block of body.match(/\{[^{}]*\}/g) ?? []) {
       const l = /(?:^|;|\{)\s*left\s*:\s*([^;}]+)/.exec(block);
       const r = /(?:^|;|\{)\s*right\s*:\s*([^;}]+)/.exec(block);

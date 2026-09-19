@@ -62,6 +62,10 @@ const BILLING_OUT = join(TMP, 'billing.mjs');
 execFileSync(ESBUILD, [join(WORKER, 'src', 'billing.ts'), '--bundle', '--format=esm', '--target=es2022',
   `--outfile=${BILLING_OUT}`], { stdio: 'pipe', cwd: WORKER });
 const READ_DETAILS = (await import(`file://${BILLING_OUT}`)).readBillingDetails;
+const AUTHORITY_OUT = join(TMP, 'billing-authority.mjs');
+execFileSync(ESBUILD, [join(WORKER, 'src', 'billing-origin-authority.ts'), '--bundle', '--format=esm', '--target=es2022',
+  `--outfile=${AUTHORITY_OUT}`], { stdio: 'pipe', cwd: WORKER });
+const AUTHORITY = await import(`file://${AUTHORITY_OUT}`);
 
 /** What the user's QuotaDO answers for /billing. Set per test. */
 let doBilling = { plan: 'free', customerId: null, subscription: null, events: [] };
@@ -114,7 +118,7 @@ globalThis.fetch = async (input, init) => {
   return json([]);
 };
 
-function quotaNamespace() {
+function quotaNamespace(namespace = 'apple') {
   return {
     idFromName: (n) => ({ toString: () => n }),
     idFromString: (n) => ({ toString: () => n }),
@@ -126,7 +130,20 @@ function quotaNamespace() {
         const u = new URL(typeof url === 'string' ? url : url.url);
         let body = null;
         try { body = init?.body ? JSON.parse(init.body) : null; } catch { body = init?.body ?? null; }
-        doCalls.push({ path: u.pathname, body, id: id?.toString() ?? null });
+        doCalls.push({ path: u.pathname, body, id: id?.toString() ?? null, namespace });
+        // These existing route fixtures supply a current provider object equal to the event.
+        // billing-webhook-authority.test.mjs separately drives real QuotaDO/SQLite stores and a
+        // DIFFERENT current provider state, partial delivery, retries, and loss after commit.
+        if (u.pathname === '/billing-authority') {
+          const resolved = await AUTHORITY.resolveBillingAuthorityMutation(body.event, env(),
+            async () => Response.json(body.event.data.object));
+          return Response.json({ ok: true, replayed: false,
+            mutation: resolved ? AUTHORITY.sequenceBillingMutation(resolved, 1) : null });
+        }
+        if (u.pathname === '/billing-replica') {
+          return Response.json({ ok: true, replayed: false, stale: false,
+            authoritySequence: body.mutation.authoritySequence });
+        }
         // The real DO carries the invoice fields on this read, so the checkout can use the billing
         // contact without a second round trip. The fake must too, or the join is never exercised.
         if (u.pathname === '/billing') return new Response(JSON.stringify({ ...doBilling, details: doDetails }), { status: 200 });
@@ -162,10 +179,11 @@ function quotaNamespace() {
   };
 }
 
-const env = () => ({
+const env = (overrides = {}) => ({
   SUPABASE_URL,
   SUPABASE_ANON_KEY: 'anon-test',
   ENVIRONMENT: 'test',
+  BILLING_WORKER_NAME: 'apple',
   STRIPE_WEBHOOK_SECRET: 'whsec_x',
   STRIPE_SECRET_KEY: 'sk_test_x',
   STRIPE_PRICE_BUILDER: 'price_builder_1',
@@ -189,18 +207,20 @@ const env = () => ({
   VEC: { query: async () => ({ matches: [] }), upsert: async () => ({}) },
   SESSION_DO: quotaNamespace(),
   QUOTA_DO: quotaNamespace(),
+  LEGACY_QUOTA_DO: quotaNamespace('golem'),
   PAIRING_DO: quotaNamespace(),
   ADMIN_DO: quotaNamespace(),
   BUDGET_DO: quotaNamespace(),
+  ...overrides,
 });
 
-async function call(path, { method = 'GET', jwt = JWT, body, headers = {} } = {}) {
+async function call(path, { method = 'GET', jwt = JWT, body, headers = {}, environment = {} } = {}) {
   const h = { ...headers };
   if (jwt) h.Authorization = `Bearer ${jwt}`;
   if (body !== undefined) h['Content-Type'] = 'application/json';
   const res = await APP.fetch(
     new Request(`https://golem.test${path}`, { method, headers: h, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }),
-    env(),
+    env(environment),
   );
   const text = await res.text();
   let parsed = null;
@@ -455,12 +475,15 @@ test('THE WEBHOOK FORWARDS THE EVENT ID AND THE WHOLE SUBSCRIPTION', async () =>
                       cancel_at_period_end: true, metadata: { userId: USER_ID, plan: 'builder' } } },
   });
   assert.equal(r.status, 200, JSON.stringify(r.json));
-  const setPlan = doCalls.find((c) => c.path === '/set-plan');
-  assert.ok(setPlan, 'the plan must still be applied');
-  assert.equal(setPlan.body.eventId, 'evt_route_1');
-  assert.equal(setPlan.body.plan, 'builder', 'entitlement is still recomputed, and now it is the tier bought');
-  assert.equal(setPlan.body.subscription.cancelAtPeriodEnd, true, 'the cancellation reaches the store');
-  assert.equal(setPlan.body.subscription.currentPeriodEnd, LATER);
+  const authority = doCalls.find((c) => c.path === '/billing-authority');
+  assert.equal(authority.body.event.id, 'evt_route_1');
+  const delivery = doCalls.find((c) => c.path === '/billing-replica');
+  assert.ok(delivery, 'the applied plan must also reach the legacy namespace');
+  assert.equal(delivery.namespace, 'golem');
+  assert.equal(delivery.body.mutation.eventId, 'evt_route_1');
+  assert.equal(delivery.body.mutation.plan, 'builder', 'entitlement is still recomputed from the tier bought');
+  assert.equal(delivery.body.mutation.subscription.cancelAtPeriodEnd, true, 'the cancellation reaches the store');
+  assert.equal(delivery.body.mutation.subscription.currentPeriodEnd, LATER);
 });
 
 test('the credits webhook forwards its event id too', async () => {
@@ -470,10 +493,10 @@ test('the credits webhook forwards its event id too', async () => {
     type: 'checkout.session.completed',
     data: { object: { payment_status: 'paid', metadata: { userId: USER_ID, credits: '500' } } },
   });
-  const grant = doCalls.find((c) => c.path === '/grant-credits');
+  const grant = doCalls.find((c) => c.path === '/billing-replica');
   assert.ok(grant, 'credits must still be granted');
-  assert.equal(grant.body.credits, 500);
-  assert.equal(grant.body.eventId, 'evt_route_2', 'without this a redelivery credits the account twice');
+  assert.equal(grant.body.mutation.credits, 500);
+  assert.equal(grant.body.mutation.eventId, 'evt_route_2', 'without this a redelivery credits the account twice');
 });
 
 test('A PORTAL UPGRADE GRANTS THE TIER IT CHARGES FOR, over the real webhook route', async () => {
@@ -491,10 +514,10 @@ test('A PORTAL UPGRADE GRANTS THE TIER IT CHARGES FOR, over the real webhook rou
                       metadata: { userId: USER_ID, plan: 'builder' } } },
   });
   assert.equal(r.status, 200, JSON.stringify(r.json));
-  const setPlan = doCalls.find((c) => c.path === '/set-plan');
-  assert.ok(setPlan, 'the plan must still be applied');
-  assert.equal(setPlan.body.plan, 'studio', 'the ENFORCED tier is the one Stripe is billing');
-  assert.equal(setPlan.body.subscription.plan, 'studio', 'and the stored record agrees with it');
+  const delivery = doCalls.find((c) => c.path === '/billing-replica');
+  assert.ok(delivery, 'the plan must still be applied');
+  assert.equal(delivery.body.mutation.plan, 'studio', 'the ENFORCED tier is the one Stripe is billing');
+  assert.equal(delivery.body.mutation.subscription.plan, 'studio', 'and the stored record agrees with it');
 });
 
 test('a webhook with no price item still grants what the metadata says', async () => {
@@ -507,7 +530,7 @@ test('a webhook with no price item still grants what the metadata says', async (
     data: { object: { id: 'sub_2', customer: 'cus_1', status: 'active', current_period_end: LATER,
                       cancel_at_period_end: false, metadata: { userId: USER_ID, plan: 'studio' } } },
   });
-  assert.equal(doCalls.find((c) => c.path === '/set-plan').body.plan, 'studio');
+  assert.equal(doCalls.find((c) => c.path === '/billing-replica').body.mutation.plan, 'studio');
 });
 
 // ------------------------------------------------------- the checkout nobody came back from
@@ -533,6 +556,8 @@ test('AN EXPIRED CHECKOUT TELLS THE PERSON AND TOUCHES NOTHING THEY OWN', async 
   // Entitlement is the half that must NOT move: an expiry means nothing happened.
   assert.equal(doCalls.find((c) => c.path === '/set-plan'), undefined, 'no plan may be applied');
   assert.equal(doCalls.find((c) => c.path === '/grant-credits'), undefined, 'and no credits');
+  assert.equal(doCalls.find((c) => c.path === '/billing-authority' || c.path === '/billing-replica'), undefined,
+    'an intentional no-op never enters either billing mutation path');
 
   // And the half that must: a row the person can actually find.
   const insert = d1Calls.find((c) => /insert into notifications/i.test(c.sql));
@@ -579,6 +604,31 @@ test('THE CONFIG ROUTE NAMES THE CURRENCY, so the ladder is not guessing', async
   assert.match(String(r.json.currency), /^[A-Z]{3}$/, `an ISO 4217 code, saw ${r.json.currency}`);
   assert.equal(r.json.checkout, true, 'and it still says whether anything can be bought');
   assert.deepEqual(r.json.purchasable, ['builder', 'studio'], 'and which tiers');
+});
+
+test('THE CONFIG ROUTE HIDES PRICES when the global Stripe plumbing is incomplete', async () => {
+  reset();
+  const r = await call('/api/billing/config', {
+    environment: {
+      STRIPE_WEBHOOK_SECRET: '   ',
+      STRIPE_SECRET_KEY: '   ',
+      STRIPE_PRICE_BUILDER: 'price_builder_1',
+      STRIPE_PRICE_STUDIO: 'price_studio_1',
+    },
+  });
+  assert.equal(r.status, 200, r.text);
+  assert.equal(r.json.checkout, false, 'the global state still explains why no checkout can open');
+  assert.deepEqual(r.json.purchasable, [], 'price ids alone are not a usable offer');
+});
+
+test('THE CONFIG ROUTE REPORTS PER-PLAN READINESS for a partial price setup', async () => {
+  reset();
+  const r = await call('/api/billing/config', {
+    environment: { STRIPE_PRICE_STUDIO: '   ' },
+  });
+  assert.equal(r.status, 200, r.text);
+  assert.equal(r.json.checkout, true, 'the configured Stripe plumbing can still serve Builder');
+  assert.deepEqual(r.json.purchasable, ['builder'], 'Studio must not inherit readiness from checkout');
 });
 
 test('THE PORTAL ROUTE SENDS THE PINNED CONFIGURATION, not the dashboard default', async () => {

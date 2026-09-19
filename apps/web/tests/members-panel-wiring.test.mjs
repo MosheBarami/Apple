@@ -42,7 +42,7 @@ const PANEL = read('src', 'components', 'ws', 'members-panel.tsx');
 const PANEL_CODE = code(PANEL);
 const WS = code(read('src', 'routes', 'workspace.tsx'));
 const API = read('src', 'lib', 'api.ts');
-const CSS = [read('src', 'styles.css'), read('src', 'styles', 'global.css'), read('src', 'styles', 'workspace.css')].join('\n');
+const CSS = [read('src', 'design/system.css'), read('src', 'design', 'system.css'), read('src', 'design', 'system.css')].join('\n');
 
 // ------------------------------------------------------------------ it is mounted ---
 

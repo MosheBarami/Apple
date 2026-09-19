@@ -78,6 +78,7 @@ const PROJECT_ROW = { id: PROJECT_ID, owner_id: OWNER_ID, name: 'Shared Place', 
 
 let memberRows = [];
 let eventRows = [];
+let accessVersions = new Map();
 /** Tables PostgREST should fail for, so "the write worked" can be told from "we said it did". */
 let failTable = new Set();
 const kv = new Map();
@@ -110,6 +111,23 @@ globalThis.fetch = async (input, init) => {
   const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'content-type': 'application/json' } });
 
   if (url.includes('/.well-known/jwks.json')) return json({ keys: [jwk] });
+
+  if (url.includes('/rest/v1/rpc/record_link_membership_access_change')) {
+    const body = JSON.parse(init?.body ?? '{}');
+    const key = `${body.p_project}:${body.p_user}`;
+    const version = (accessVersions.get(key) ?? 0) + 1;
+    accessVersions.set(key, version);
+    return json([
+      {
+        project_id: body.p_project,
+        user_id: body.p_user,
+        version,
+        role: body.p_access === 'removed' || body.p_access === 'suspended' ? null : body.p_role,
+        access: body.p_access,
+        expires_at: body.p_expires_at ?? null,
+      },
+    ]);
+  }
 
   if (url.includes('/rest/v1/projects')) {
     const { eq } = parseQuery(url);
@@ -266,6 +284,7 @@ async function call(path, { method = 'GET', jwt, body, headers = {} } = {}) {
 function reset({ members = [] } = {}) {
   memberRows = members.map((m) => ({ project_id: PROJECT_ID, ...MEMBER_DEFAULTS, ...m }));
   eventRows = [];
+  accessVersions = new Map();
   failTable = new Set();
   kv.clear();
   kvListFails = false;

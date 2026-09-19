@@ -130,6 +130,25 @@ test('a finished playtest never presents its last frame as the current state', (
   assert.ok(!/live/i.test(v.label));
 });
 
+test('a finished record with historical deliveries but no available frame says evidence is unavailable', () => {
+  const v = playtestView(run({ phase: 'finished', action: 'Finished', framesDelivered: 3 }), [], T0 + 8000);
+  assert.match(v.label, /frame unavailable/i);
+  assert.doesNotMatch(v.label, /last frame captured|waiting/i);
+  assert.equal(v.action, v.label, 'the footer must not contradict the evidence status');
+});
+
+test('finished runs with console errors cannot present an unqualified finished status', () => {
+  const v = playtestView(run({ phase: 'finished', action: 'Finished', consoleErrors: 2 }), [frame()], T0 + 8000);
+  assert.match(v.label, /2 console errors/i);
+  assert.equal(v.action, v.label);
+});
+
+test('finished runs with warnings surface them without calling the game verified', () => {
+  const v = playtestView(run({ phase: 'finished', consoleWarnings: 1 }), [frame()], T0 + 8000);
+  assert.match(v.label, /1 console warning/i);
+  assert.doesNotMatch(v.label, /passed|verified|success/i);
+});
+
 // ------------------------------------------------- property 2: stale is shown AND marked
 
 test('a stale frame is still handed to the card — it is not hidden', () => {

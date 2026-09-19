@@ -1,0 +1,14 @@
+{
+  "startedAt": "2026-09-18T20:24:20.586800+00:00",
+  "artifact": "apps/apple-plugin/release/apple-restore-engine-proof-r4.rbxl",
+  "artifactSha256": "cc20a9cbfdb1bc6158a981cb3d7771b95c231d24e3381eb36f4cd89641caf355",
+  "runnerSha256": "2e2e6e4d0206954a7a3a2b055877f716b2d49a0930d5d1411377bba03dfcf2d1",
+  "processExitCode": 0,
+  "report": "docs/evidence/apple-restore-engine-r4-2026-09-18.json",
+  "reportSha256": "2aaf31328517451ebaa1c9d2aa55cd246ea27f6d5326655767a833c00e2b04a2",
+  "scriptOutputSha256": "f918532689b59b700d47ea0e5ac33b3ad53afd1100ec15bbe8dfe373b2f925d6",
+  "startupLogSha256": "7f67c3917db70aff005560309dfda009b48a7e6775388892787ead736e795aec",
+  "runCount": 1,
+  "published": false,
+  "acceptance": "The actual report ok field, not process exit or a source-text marker"
+}

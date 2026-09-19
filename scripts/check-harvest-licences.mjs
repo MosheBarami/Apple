@@ -17,6 +17,7 @@
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { toIngestRecord } from './lib/asset-ingest-record.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATA = join(ROOT, 'packages', 'corpus', 'data');
@@ -78,14 +79,15 @@ for (const f of FILES) {
   // A harvest that recorded its own failure is not evidence about anything and is skipped by the
   // ingest too — counting its rows here would make this check disagree with the thing it predicts.
   if (part.failed === true) continue;
+  const expandedOpenGameArt = f.endsWith('opengameart-expanded.json');
   for (const a of part.assets ?? []) {
     total++;
     const src = typeof a.source === 'string' ? a.source : '(no source)';
     if (!bySource.has(src)) bySource.set(src, { n: 0, fails: new Map() });
     const s = bySource.get(src);
     s.n++;
-    const { _download, _publishedAt, _licenceId, assetCount, ...raw } = a;
-    let rec = raw;
+    const { _publishedAt, _licenceId, assetCount, ...harvestRecord } = a;
+    let rec = toIngestRecord(harvestRecord, { expandedOpenGameArt });
     if (typeof rec.licenceUrl === 'string' && HTTPS_SAME_DOC.test(rec.licenceUrl)) {
       rec = { ...rec, licenceUrl: rec.licenceUrl.replace(/^http:/, 'https:') };
       rescued++;

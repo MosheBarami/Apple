@@ -29,7 +29,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const CSS = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), '../src/styles/workspace.css'),
+  join(dirname(fileURLToPath(import.meta.url)), '../src/design/system.css'),
   'utf8',
 );
 
@@ -39,6 +39,20 @@ function ruleFor(selector) {
   assert.notEqual(i, -1, `no rule mentions ${selector}`);
   const open = CSS.indexOf('{', i);
   return CSS.slice(open + 1, CSS.indexOf('}', open));
+}
+
+function blockBody(at) {
+  const open = CSS.indexOf('{', at);
+  assert.notEqual(open, -1, 'responsive block has no opening brace');
+  let depth = 0;
+  for (let i = open; i < CSS.length; i += 1) {
+    if (CSS[i] === '{') depth += 1;
+    else if (CSS[i] === '}') {
+      depth -= 1;
+      if (depth === 0) return CSS.slice(open + 1, i);
+    }
+  }
+  throw new Error('responsive block has unbalanced braces');
 }
 
 test('the Studio pill is never shrunk below its own content', () => {
@@ -59,21 +73,17 @@ test('an icon inside a button never shrinks', () => {
   }
 });
 
-test('the phone topbar takes two rows rather than crushing the project name', () => {
-  // At 390px, with every icon at its true size the row fits — but only by squeezing the
-  // title to 20px, "F…", and the rail is collapsed on a phone so that title is the only
-  // thing saying which project you are in. Nothing is hidden; the actions take a line.
-  // The union of EVERY 560px block, because there are two of them and slicing from the
-  // first `@media (max-width: 560px)` to the next `@media` found the one that does not
-  // contain these rules — the first version of this test failed on a file that was
-  // correct.
-  let scoped = '';
-  for (let i = CSS.indexOf('@media (max-width: 560px)'); i !== -1; i = CSS.indexOf('@media (max-width: 560px)', i + 1)) {
-    const rest = CSS.slice(i + 1);
-    const next = rest.indexOf('\n@media');
-    scoped += next === -1 ? rest : rest.slice(0, next);
-  }
-  assert.ok(scoped.length > 0, 'no 560px media block found; the check would be vacuous');
-  assert.match(scoped, /\.gx-top\s*\{[^}]*flex-wrap:\s*wrap/s);
-  assert.match(scoped, /\.gx-top__actions\s*\{[^}]*flex-basis:\s*100%/s);
+test('the phone shell keeps navigation reachable and reserves the opener space', () => {
+  // The shell now owns a narrow dock. At phone width the dock becomes a single menu control,
+  // while the main column returns to the viewport and the topbar reserves the control's 72px
+  // leading space. This is the load-bearing contract; a particular number of topbar rows is not.
+  const at = CSS.indexOf('@media(max-width:680px)');
+  assert.notEqual(at, -1, 'no 680px responsive shell block found');
+  const phone = blockBody(at);
+  assert.match(phone, /\.gx-main\s*\{[^}]*width:\s*100%[^}]*margin-inline-start:\s*0/);
+  assert.match(phone, /\.studio-dock\s*\{[^}]*width:\s*44px/);
+  assert.match(phone, /\.studio-dock\s*>\s*button,\.studio-dock\s*>\s*a\s*\{[^}]*display:\s*none/);
+  assert.match(phone, /\.studio-dock\s*>\s*\.studio-navigation\s*\{[^}]*display:\s*grid/);
+  assert.match(phone, /\.gx-ws\s*\{[^}]*grid-template-rows:\s*64px/);
+  assert.match(phone, /\.gx-top\s*\{[^}]*padding:\s*12px\s+18px\s+12px\s+72px/);
 });

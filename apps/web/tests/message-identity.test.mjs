@@ -107,12 +107,12 @@ test('an empty or missing server id changes nothing', () => {
 test('the server names the user row on the message it already sends', () => {
   // Not a new ServerMsg: msg_start is broadcast exactly once per run, after the user row is
   // inserted, and already carries the run's other id.
-  assert.match(SESSION, /type: 'msg_start', msgId, role: 'assistant', mode, userMsgId/);
+  assert.match(SESSION, /type: 'msg_start', msgId, role: 'assistant', mode,[^}\n]*\buserMsgId/);
 });
 
 test('the field is optional on the wire, because the worker and the app deploy separately', () => {
   // A web build that requires it would be describing a worker that may not be live yet.
-  assert.match(SHARED, /\{ type: 'msg_start'; msgId: string; role: 'assistant'; mode: GolemMode; userMsgId\?: string \}/);
+  assert.match(SHARED, /\{ type: 'msg_start';[^}\n]*\buserMsgId\?: string\s*[;}]/);
 });
 
 test('the client adopts it, and mints its local ids from the one module that defines them', () => {

@@ -1,193 +1,27 @@
 ---
-import {
-  MODE_INFO,
-  PLAN_LIMITS,
-  PRODUCT_MODES_OFFERED,
-  PRODUCT_MODE_INFO,
-  PRODUCT_MODE_TO_SPECIALIST,
-  type ProductMode,
-} from '@golem/shared';
+import { PRODUCT_MODELS, PRODUCT_MODEL_INFO, PLAN_LIMITS } from '@golem/shared';
 import DocsLayout from '../../layouts/DocsLayout.astro';
-
-/*
- * THE MODES ON THIS PAGE ARE READ OUT OF THE PRODUCT, NOT TYPED BESIDE IT.
- *
- * This page taught three modes. The third, Super Agent, is in PRODUCT_MODES — every mode the
- * SYSTEM can produce — and not in PRODUCT_MODES_OFFERED, the modes a PERSON may choose. It had a
- * heading, a price, three worked examples and a line in the rule of thumb telling the reader when
- * to reach for it, and it appears in no picker anywhere in the product. Every surface a person
- * chooses from already read the offered list; documentation is a surface a person chooses from,
- * because it is where they decide what to pick before they ever open the picker.
- *
- * So the sections below are GENERATED from PRODUCT_MODES_OFFERED. Withdraw a mode and its section
- * leaves with it; offer one and the build fails until somebody writes its section. The prices come
- * through PRODUCT_MODE_TO_SPECIALIST into MODE_INFO — the path /pricing takes — so the two pages
- * cannot quote different numbers at the same reader.
- *
- * tests/withdrawn-modes.test.mjs is the guard that keeps it true: no built page may name a mode
- * outside PRODUCT_MODES_OFFERED, with /changelog exempted because history is not documentation.
- */
+import { STUDIO_PLUGIN_STORE_LIVE } from '../../lib/studio-plugin';
 const free = PLAN_LIMITS.free;
-
-/** 'no' for 0 so a sentence never reads "0 apples"; beyond the table, the digits will do. */
-const COUNT_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six'] as const;
-const spelled = (n: number): string => COUNT_WORDS[n] ?? String(n);
-
-/**
- * The entry price in Credits.
- *
- * `typicalCredits` is a measured range ("4-18"), so a section quotes what a request STARTS at and
- * the paragraph under it explains the rest — the same division /pricing makes. Never invented
- * here: a second copy of a price is a price free to drift from the one that charges people.
- */
-function entryCredits(m: ProductMode): number {
-  const published = MODE_INFO[PRODUCT_MODE_TO_SPECIALIST[m]].typicalCredits;
-  const n = Number(String(published).split('-')[0]);
-  if (!Number.isFinite(n) || n <= 0) {
-    throw new Error(`modes.astro: "${published}" does not start with a Credit count`);
-  }
-  return n;
-}
-
-/**
- * The editorial copy, KEYED BY MODE rather than written out in order.
- *
- * A list renders whatever it holds. A key is only reachable through PRODUCT_MODES_OFFERED, so a
- * withdrawn mode's paragraphs can sit here doing nothing, and an offered mode that nobody has
- * written about stops the build below instead of quietly going missing from its own manual.
- */
-type ModeCopy = {
-  /** What it is, in the reader's terms. */
-  lede: string;
-  /** Three or four things a person would actually type. */
-  examples: string[];
-  /** What happens after you send it — the part people are surprised by. */
-  after: string;
-  /** The left-hand side of the rule of thumb: what you are holding when you want this mode. */
-  reachFor: string;
-  /** Its place in the rhythm: "{name} to {verb}". */
-  verb: string;
-};
-
-const COPY: Partial<Record<ProductMode, ModeCopy>> = {
-  plan: {
-    lede:
-      'Plan is conversational and quick. It reads the parts of your project that matter to your question and answers in seconds — it proposes, and it changes nothing. This is enforced rather than promised: the only tools a Plan request is handed are reading tools, so it cannot edit a script or touch an instance even if you ask it to.',
-    examples: [
-      '“What does this script do?” / “Why is this deprecated?”',
-      '“Where does the coin logic live, and what would you change to make coins survive a death?”',
-      'Roblox API questions, answered with your actual project as context.',
-    ],
-    after:
-      'Because it cannot break anything, Plan is the mode to be careless in. It is also the cheapest way to <em>design</em> a big build before handing the design to a bigger apple — an hour of asking is worth more than a build that went the wrong way confidently.',
-    reachFor: 'a question, or a design you want before you commit to it',
-    verb: 'think',
-  },
-  agent: {
-    lede:
-      'Agent is the builder, and the mode you will spend most of your time in. It reads your project tree, edits scripts across it, creates and wires instances, runs the game in Studio to see whether what it built actually works, and repairs what it broke — then it tells you what it did.',
-    examples: [
-      '“Add a shop that sells speed boosts for coins.”',
-      '“Make a checkpoint system for the obby.”',
-      '“Something is clearing coins on death — find it, fix it, and prove it with a run.”',
-      'Refactors that touch several scripts at once.',
-    ],
-    after:
-      'A request runs until the work is done or until it genuinely needs you, and the cost climbs visibly while it runs rather than arriving as a surprise at the end. You can stop a run at any moment: the steps already applied stay applied, and stay undoable in one keystroke.',
-    reachFor: 'a feature, a refactor, or an outcome you want proven working',
-    verb: 'build',
-  },
-};
-
-const sections = PRODUCT_MODES_OFFERED.map((m) => {
-  const copy = COPY[m];
-  if (!copy) {
-    throw new Error(
-      `modes.astro: "${m}" is offered to people and this page has no section for it. ` +
-        `Write one: a mode whose own manual does not mention it is how a withdrawn mode survived being removed here before.`,
-    );
-  }
-  const credits = entryCredits(m);
-  return {
-    ...copy,
-    name: PRODUCT_MODE_INFO[m].name,
-    // PRODUCT_MODE_INFO, not MODE_INFO: the blurb under the heading should be the sentence the
-    // picker shows the person choosing, not the internal specialist's older description of itself.
-    blurb: PRODUCT_MODE_INFO[m].blurb,
-    credits,
-    perFreeDay: Math.floor(free.creditsPerDay / credits),
-  };
-});
-
-const names = new Intl.ListFormat('en', { type: 'conjunction' }).format(sections.map((s) => s.name));
-const first = sections[0]!;
 ---
-
 <DocsLayout
-  title="Modes — Apple Docs"
-  description={`${names}: what each Apple mode does, what it costs in Credits, and how to choose the right one for the job.`}
-  heading="Modes"
+  title="Apple and Apple MAX — Apple Docs"
+  description="Choose Apple for limited free use or Apple MAX with an eligible paid subscription. Model choice is separate from permission to change your Studio place."
+  heading="Apple and Apple MAX"
 >
-  <p>
-    Every message you send wakes one of {spelled(sections.length)} apples. They differ in how much
-    autonomy they take and how much work they do per request — and therefore in what they cost. The
-    craft of using Apple well is mostly picking the smallest apple that can carry the job.
-  </p>
-
-  {
-    sections.map((s) => (
-      <Fragment>
-        <h2>
-          {s.name} — {s.credits} credits
-        </h2>
-        <p>
-          <em>{s.blurb}</em>
-        </p>
-        <p>{s.lede}</p>
-        <ul>
-          {s.examples.map((e) => (
-            <li set:html={e} />
-          ))}
-        </ul>
-        <p set:html={s.after} />
-        <p>
-          At {s.credits} credits a request, the free plan's {free.creditsPerDay} Credits a day is
-          about {s.perFreeDay} {s.name} requests.
-        </p>
-      </Fragment>
-    ))
-  }
-
-  <div class="callout callout--violet">
-    <p>
-      <strong>Rule of thumb:</strong>{' '}
-      {sections.map((s) => `${s.reachFor} → ${s.name}`).join('; ')}. When unsure, start one size
-      smaller; escalating costs you nothing but the retry.
-    </p>
-  </div>
-
-  <h2>Switching modes</h2>
-  <p>
-    The mode picker sits next to the message box, and every message can use a different mode. The
-    common rhythm is {sections.map((s) => `${s.name} to ${s.verb}`).join(', then ')}, then back to{' '}
-    {first.name} to ask “what did you just do?”. All modes share the same project memory, so nothing
-    is lost between switches.
-  </p>
-
-  <h2>Costs at a glance</h2>
-  <ul>
-    {
-      sections.map((s) => (
-        <li>
-          <strong>{s.name}</strong> — from {s.credits} credits a request, about {s.perFreeDay} a day
-          on the free plan
-        </li>
-      ))
-    }
-  </ul>
-  <p>
-    Those are starting prices rather than ceilings: a request settles against the compute it
-    actually used, so a short one lands on its figure and a long build climbs past it. See{' '}
-    <a href="/docs/credits-and-limits">Credits &amp; limits</a> for how the daily quota works.
-  </p>
+  <p>The selector beside the message box chooses a product model, not a planning mode.</p>
+  {PRODUCT_MODELS.map(model => <section>
+    <h2>{PRODUCT_MODEL_INFO[model].name}</h2>
+    {model === 'apple'
+      ? <p>Apple is the limited free model. It can answer questions and use building tools when Studio is connected and changes are allowed. It is not a read-only Plan mode. The Free plan includes {free.creditsPerDay} Credits per day, subject to its monthly allowance.</p>
+      : <p>Apple MAX is available to eligible paid subscribers and has a larger working budget for involved requests. Choosing it on a free account shows an availability notice and keeps your draft; it does not switch your model or charge you. See <a href="/app/usage">Usage and plan availability</a>.</p>}
+  </section>)}
+  <h2>Availability</h2>
+  <p>Paid checkout is not open in the current preview. Check <a href="/app/usage">Usage and plan availability</a> before expecting access to MAX. Extra purchased Credits do not by themselves grant a paid subscription.</p>
+  <h2>What changes in Studio</h2>
+  <p>Model access and edit permission are separate. Neither choice bypasses Studio pairing, change approval, quota, or tool safety checks. Without a connected plugin, a chat response is not a change to your place. {!STUDIO_PLUGIN_STORE_LIVE && <>Public plugin installation is currently unavailable. </>}See <a href="/docs/plugin">installation status</a>.</p>
+  <h2>How Credits work</h2>
+  <p>There is no guaranteed fixed charge per message. Actual usage and the plan limits determine the charge. See <a href="/docs/credits-and-limits">Credits and limits</a>; review the result in Studio before treating a build as complete.</p>
+  <h2>Training status</h2>
+  <p>Apple and Apple MAX are separate product choices with different access and working limits. They currently share a foundation model. Custom Roblox training is in development; a completed independently trained frontier model is not available.</p>
 </DocsLayout>

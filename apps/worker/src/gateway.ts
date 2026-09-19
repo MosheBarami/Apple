@@ -60,16 +60,9 @@ export class BudgetError extends Error {
 
 export const DEFAULT_MODELS: Record<string, ModelCfg> = {
   // ---------------------------------------------------------------------------
-  // GLM-5.3 Flash is the production model for every user-facing path: reasoning,
-  // Luau authoring, Studio agent work, debugging, tool use and vision.
-  //
-  // reasoning effort is 'low' on purpose and it is the single most important setting here.
-  // MEASURED on the same debugging prompt (2026-08-30):
-  //   default  -> 249 output tokens, 11.69 neurons, answer produced
-  //   'low'    ->  24 output tokens,  1.46 neurons, answer produced   <-- 8x cheaper
-  //   'medium' -> 600 output tokens, 28.13 neurons, budget consumed by reasoning, NO answer
-  // Higher effort makes the model think past its own token budget and return nothing, so 'low'
-  // is both the cheap option and the correct one.
+  // The adaptive reasoning policy still chooses effort per step. Only GLM routes receive an
+  // explicit reasoning_effort because Cloudflare documents that control for GLM-4.7/5.3;
+  // Qwen3 uses its documented default reasoning behaviour.
   // ---------------------------------------------------------------------------
   // maxTokens here is the absolute per-call CEILING. The adaptive reasoning policy sets the
   // actual budget per step (see reasoning.ts); these are 1.25x the base budgets so a high-effort
@@ -83,69 +76,87 @@ export const DEFAULT_MODELS: Record<string, ModelCfg> = {
   // neuron caps, not by this number, and settlement is on ACTUAL usage, so a short step still
   // costs a short step.
   // -------------------------------------------------------------------------
-  // WHY THIS IS NO LONGER ONE MODEL.
+  // PRODUCT MODEL SPLIT.
   //
-  // Every mode used to resolve to `@cf/zai-org/glm-5.3-flash`, which was the right call while it
-  // was available: 1M context, native tools AND vision in one model, and the cheapest per token.
-  // It is on Cloudflare's paid-billing-required list, and on the Workers Free plan every call to
-  // it returns HTTP 403 / error 5035. A product that must cost nothing recurring cannot be built
-  // on a model that cannot run without a paid plan, so it had to go.
-  //
-  // Nothing free-eligible replaces it one-for-one, because NO free-eligible model does tools AND
-  // vision. The single model necessarily becomes three, and the context window drops 1,048,576 ->
-  // 128,000. That 8x cut is the real cost of this move and it lands on scene context, not on
-  // conversation: targeted retrieval was already required at 1M, it is simply no longer optional.
-  //
-  // Model choice is the repo's own measurement (docs/evals/FINDINGS.md, 56 Roblox tasks), not
-  // vendor copy:
-  //   gpt-oss-120b   97.6 overall, 100.0 on api-knowledge and ui-implementation
-  //   qwen3-30b-a3b  88.2 overall, and 67.9 api-knowledge / 66.7 ui-implementation
-  // qwen3-30b is three times cheaper per input token and would buy more builds per free day, and
-  // it is still NOT used for authoring — the same findings record that routing a post-inspection
-  // step to it made it "read the project tree and declare the task finished instead of building
-  // it". A model with a measured tendency to report work it did not do is disqualified here
-  // specifically, because false completion is the single failure this product exists to prevent.
-  // Its 32.8K context rules it out for build steps regardless.
+  // Product selection is translated in SessionDO: Apple always uses clay; Apple MAX uses
+  // stone/rune. Qwen3 is the measured cheap lane for quick Q&A/small edits. GLM-4.7 Flash is the
+  // final MAX choice: 131k context plus native multi-turn function calling and reasoning.
+  // Neither is vision-capable, so visual critique deliberately remains on GLM-5.3 Flash.
   // -------------------------------------------------------------------------
 
-  // Plan mode: read-only inspection and explanation. gpt-oss-20b is the cheap tier, and clay
-  // cannot mutate anything (see router.ts), so the ceiling on a wrong answer here is a bad
-  // suggestion rather than a bad edit.
-  clay: { id: '@cf/openai/gpt-oss-20b', nativeTools: true, maxTokens: 2000, ctx: 128000, temperature: 0.3, reasoningEffort: 'low' },
+  clay: { id: '@cf/qwen/qwen3-30b-a3b-fp8', nativeTools: true, maxTokens: 2000, ctx: 32_768, temperature: 0.3 },
 
-  // Agent and Super Agent author Luau and build UI — exactly the two dimensions where the
-  // measured gap between the models is real (100.0 vs 67.9 / 66.7). They stay on the flagship.
-  stone: { id: '@cf/openai/gpt-oss-120b', nativeTools: true, maxTokens: 5600, ctx: 128000, temperature: 0.25, reasoningEffort: 'low' },
-  rune: { id: '@cf/openai/gpt-oss-120b', nativeTools: true, maxTokens: 6500, ctx: 128000, temperature: 0.25, reasoningEffort: 'low' },
+  // Agent and Super Agent need enough output room for a complete Luau tool call. The global
+  // neuron reservation remains the hard spend gate, so these ceilings do not create an unbounded
+  // bill; actual usage is settled after the provider responds.
+  stone: { id: '@cf/zai-org/glm-4.7-flash', nativeTools: true, maxTokens: 5600, ctx: 131_072, temperature: 0.25, reasoningEffort: 'low' },
+  rune: { id: '@cf/zai-org/glm-4.7-flash', nativeTools: true, maxTokens: 6500, ctx: 131_072, temperature: 0.25, reasoningEffort: 'low' },
 
-  // Housekeeping: summarisation and memory maintenance, no tools, short outputs.
-  memory: { id: '@cf/openai/gpt-oss-20b', nativeTools: false, maxTokens: 800, ctx: 128000, temperature: 0.2, reasoningEffort: 'low' },
+  memory: { id: '@cf/qwen/qwen3-30b-a3b-fp8', nativeTools: false, maxTokens: 800, ctx: 32_768, temperature: 0.2 },
 
-  // VISION IS NOW A DIFFERENT MODEL, AND THAT IS NOT COSMETIC. The critic in vision.ts sends real
-  // pixels as image_url data URLs and is instructed to judge only what it can see; if this entry
-  // points at a text-only model the critique silently stops being visual while still returning a
-  // confident score — which is precisely the "green check over a failed build" failure mode.
-  // llama-3.2-11b-vision-instruct is the only free-eligible model here that accepts image input.
-  // It does NOT support native tool calling, which is fine: this entry already ran with
-  // nativeTools: false, because the critique returns structured JSON rather than calling tools.
-  // 4,000 output tokens is sized for the 20-dimension scored critique, which arrived truncated
-  // at 2,000.
-  vision: { id: '@cf/meta/llama-3.2-11b-vision-instruct', nativeTools: false, maxTokens: 4000, ctx: 128000, temperature: 0.3, reasoningEffort: 'low' },
+  // The visual critic sends real image_url data URLs and must remain on a multimodal model.
+  vision: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: false, maxTokens: 4000, ctx: 1_310_720, temperature: 0.3, reasoningEffort: 'low' },
 };
 
 let modelCache: { at: number; models: Record<string, ModelCfg> } | null = null;
+
+/**
+ * The production KV override was written by the temporary free-tier migration and still exists
+ * on the live account. Leaving it authoritative would make changing DEFAULT_MODELS a no-op: the
+ * worker would deploy the new product split and then immediately replace it with a stale prior
+ * production map from `config:models`. Only these known old ids are ignored, so an operator can still
+ * opt a custom model key into a deliberate experiment without silently changing user routing.
+ */
+const LEGACY_USER_MODEL_IDS = new Set([
+  '@cf/openai/gpt-oss-20b',
+  '@cf/openai/gpt-oss-120b',
+  '@cf/meta/llama-3.2-11b-vision-instruct',
+  '@cf/zai-org/glm-5.3-flash',
+]);
+
+function isModelCfg(value: unknown): value is ModelCfg {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const cfg = value as Partial<ModelCfg>;
+  return (
+    typeof cfg.id === 'string' && cfg.id.length > 0 &&
+    typeof cfg.nativeTools === 'boolean' &&
+    typeof cfg.maxTokens === 'number' && Number.isFinite(cfg.maxTokens) && cfg.maxTokens > 0 &&
+    typeof cfg.ctx === 'number' && Number.isFinite(cfg.ctx) && cfg.ctx > 0 &&
+    typeof cfg.temperature === 'number' && Number.isFinite(cfg.temperature) &&
+    (cfg.reasoningEffort === undefined || cfg.reasoningEffort === 'low' || cfg.reasoningEffort === 'medium' || cfg.reasoningEffort === 'high')
+  );
+}
+
+function configuredModels(value: unknown): Record<string, ModelCfg> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const out: Record<string, ModelCfg> = {};
+  for (const [key, cfg] of Object.entries(value as Record<string, unknown>)) {
+    if (!isModelCfg(cfg)) continue;
+    // This is a migration guard, not a general provider policy. Custom keys remain available for
+    // admin experiments; only the five user-facing keys are protected from the stale production
+    // map, which is the path that would otherwise reintroduce GPT-OSS after this deploy.
+    if (Object.prototype.hasOwnProperty.call(DEFAULT_MODELS, key) && LEGACY_USER_MODEL_IDS.has(cfg.id)) continue;
+    out[key] = cfg;
+  }
+  return out;
+}
 
 export async function getModels(env: Env): Promise<Record<string, ModelCfg>> {
   if (modelCache && Date.now() - modelCache.at < 60_000) return modelCache.models;
   let models = { ...DEFAULT_MODELS };
   try {
     const raw = await env.KV.get('config:models');
-    if (raw) models = { ...models, ...(JSON.parse(raw) as Record<string, ModelCfg>) };
+    if (raw) models = { ...models, ...configuredModels(JSON.parse(raw)) };
   } catch {
     /* keep defaults */
   }
   modelCache = { at: Date.now(), models };
   return models;
+}
+
+/** Test seam: model configuration is cached for a minute in production. */
+export function resetModelCache(): void {
+  modelCache = null;
 }
 
 // ---------------------------------------------------------------------------
@@ -434,7 +445,12 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
     neurons: actual,
     provider: adapter.id,
     model: cfg.id,
-    finishReason: toolCalls.length ? 'tool_calls' : 'stop',
+    // The adapter is the provider-format boundary and already normalises `length`, `stop`, and
+    // provider errors. Replacing those values with `stop` made an output-budget truncation look like
+    // a complete answer to every caller, including the eval harness. A surviving native/prompted
+    // tool call takes precedence. A provider `tool_calls` marker with no retained structured call is
+    // not compatible with GatewayResponse and keeps the established `stop` fallback.
+    finishReason: toolCalls.length ? 'tool_calls' : decoded.finishReason === 'tool_calls' ? 'stop' : decoded.finishReason,
   };
 }
 

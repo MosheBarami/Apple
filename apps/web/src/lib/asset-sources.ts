@@ -23,7 +23,7 @@ export interface SourceExplanation {
   does: string;
   /** The cost of choosing it, stated. Empty when there genuinely is none. */
   costs: string;
-  /** How many library rows this choice can reach, so the scale is not a guess. */
+  /** Availability and limits; local catalog counts do not prove live insertability. */
   reach: string;
 }
 
@@ -31,25 +31,23 @@ export const SOURCE_EXPLANATIONS: readonly SourceExplanation[] = [
   {
     choice: 'apple_library',
     title: 'The Apple library',
-    does: 'Apple picks from assets it has already gathered and checked — props, textures, buildings, characters, icons.',
-    costs: 'Nothing. These are found and licensed in advance.',
-    // The real count, not a round impression. A figure somebody can check is worth more than
-    // one that sounds impressive, and this one moves — it is the library's own total.
-    reach: '510,979 assets, every one with its licence recorded.',
+    does: 'Apple searches its catalog of props, textures, models and icons with recorded sources and licences.',
+    costs: 'Builds use Credits. Some files need a separate import before they can be used.',
+    reach: 'Results distinguish ready-to-use assets from files that still need import.',
   },
   {
     choice: 'creator_store',
     title: 'The Roblox Creator Store',
     does: 'Apple searches the free Creator Store and references what it finds directly in your place.',
-    costs: 'Nothing to buy, and nothing uploaded — but the work is other creators’ and stays credited to them.',
-    reach: '81,311 free assets that need no upload to anybody’s account.',
+    costs: 'Free assets need no purchase or re-upload. Builds still use Credits; creator licences apply.',
+    reach: 'Availability depends on Roblox permissions and the selected asset.',
   },
   {
     choice: 'from_scratch',
     title: 'Make it from scratch',
     does: 'Apple builds the geometry in your place out of parts, so nothing comes from anywhere else.',
     costs: 'Credits and time on every asset, and simple shapes rather than detailed models.',
-    reach: 'Unlimited, and the only option that owes nobody a credit.',
+    reach: 'No external assets; limited by your Credits and what Studio can build.',
   },
 ];
 

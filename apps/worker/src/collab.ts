@@ -274,6 +274,26 @@ export interface Membership {
   scope: ShareScope;
   /** The chat or build a scoped grant opens, or null for a project-wide one. */
   resourceId: string | null;
+  /** Trusted grant deadline, when the effective grant carries one. Owners have none. */
+  expiresAtMs?: number;
+}
+
+/**
+ * The durable lifecycle overlay written with every membership-access outbox event. It never grants
+ * access by itself; it can deny a grant or cap the strongest live grant at the administrator's
+ * latest chosen role. Kept here beside the grant resolver so the HTTP door and SQL migration share
+ * one explicit vocabulary.
+ */
+export const MEMBERSHIP_ACCESS_CHANGES = ['clear', 'demoted', 'removed', 'suspended'] as const;
+export type MembershipAccessChange = (typeof MEMBERSHIP_ACCESS_CHANGES)[number];
+
+export interface MembershipAccessStateRow {
+  user_id?: unknown;
+  version?: unknown;
+  role?: unknown;
+  access?: unknown;
+  /** Current authoritative deadline, or null for a permanent grant. */
+  expires_at?: unknown;
 }
 
 /**
@@ -296,9 +316,44 @@ export interface AccessInput {
   ownerId: unknown;
   /** Rows for THIS project. Rows for other users are ignored rather than trusted. */
   grants?: readonly unknown[];
+  /**
+   * Latest lifecycle overlay for this user. `undefined` means no event has ever been written;
+   * PRESENT BUT MALFORMED closes the door because it means the authority could not be read safely.
+   */
+  accessState?: unknown;
   nowMs: number;
   /** What the caller is reaching for. Omitted means project-wide; see ShareResource. */
   resource?: ShareResource;
+}
+
+type AccessOverlay =
+  | { kind: 'none' }
+  | { kind: 'deny' }
+  | { kind: 'active'; role: CollabRole; expiresAtMs: number | null }
+  | { kind: 'malformed' };
+
+function accessOverlay(value: unknown, userId: string, nowMs: number): AccessOverlay {
+  if (value === undefined || value === null) return { kind: 'none' };
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return { kind: 'malformed' };
+  const row = value as MembershipAccessStateRow;
+  if (nonEmptyId(row.user_id) !== userId) return { kind: 'malformed' };
+  if (typeof row.version !== 'number' || !Number.isSafeInteger(row.version) || row.version <= 0) return { kind: 'malformed' };
+  const access = typeof row.access === 'string' && (MEMBERSHIP_ACCESS_CHANGES as readonly string[]).includes(row.access)
+    ? (row.access as MembershipAccessChange)
+    : null;
+  if (access === null) return { kind: 'malformed' };
+  if (access === 'removed' || access === 'suspended') return { kind: 'deny' };
+  const role = typeof row.role === 'string' && GRANTABLE_SET.has(row.role) ? (row.role as CollabRole) : null;
+  if (role === null) return { kind: 'malformed' };
+  let expiresAtMs: number | null = null;
+  if (row.expires_at !== null) {
+    // A lifecycle row always carries this column. Missing/unreadable is not "permanent", because
+    // that would turn a failed authority read into an unbounded grant.
+    expiresAtMs = instantMs(row.expires_at);
+    if (expiresAtMs === null) return { kind: 'malformed' };
+    if (expiresAtMs <= nowMs) return { kind: 'deny' };
+  }
+  return { kind: 'active', role, expiresAtMs };
 }
 
 /** Does this grant reach what the route named? A project grant reaches everything on its project. */
@@ -331,6 +386,21 @@ function pickGrant(input: AccessInput): { best: NormalisedGrant | null; scopedOu
     }
     if (best === null || roleRank(grant.role) > roleRank(best.role)) best = grant;
   }
+  const overlay = accessOverlay(input.accessState, userId, input.nowMs);
+  // PRESENT BUT UNREADABLE IS DENIED. A failed state query must not be indistinguishable from a
+  // user who has never had an outbox event, because the former may be the only durable revocation.
+  if (overlay.kind === 'malformed' || overlay.kind === 'deny') return { best: null, scopedOut: false };
+  if (overlay.kind === 'active' && best !== null) {
+    // The state can only NARROW. A stale/corrupt row claiming a stronger role cannot turn a viewer
+    // grant into an editor grant. Expiry follows the same rule: an earlier authoritative deadline
+    // wins, while a later one only takes effect when the underlying grant was extended too.
+    const role = roleRank(overlay.role) < roleRank(best.role) ? overlay.role : best.role;
+    const expiresAtMs =
+      overlay.expiresAtMs !== null && (best.expiresAtMs === null || overlay.expiresAtMs < best.expiresAtMs)
+        ? overlay.expiresAtMs
+        : best.expiresAtMs;
+    best = { ...best, role, expiresAtMs };
+  }
   return { best, scopedOut };
 }
 
@@ -351,7 +421,16 @@ export function resolveMembership(input: AccessInput): Membership | null {
   }
 
   const { best } = pickGrant(input);
-  return best === null ? null : { userId, role: best.role, via: 'grant', scope: best.scope, resourceId: best.resourceId };
+  return best === null
+    ? null
+    : {
+        userId,
+        role: best.role,
+        via: 'grant',
+        scope: best.scope,
+        resourceId: best.resourceId,
+        ...(best.expiresAtMs === null ? {} : { expiresAtMs: best.expiresAtMs }),
+      };
 }
 
 /**

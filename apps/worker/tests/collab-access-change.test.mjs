@@ -45,8 +45,15 @@ const MEMBER = 'u-member';
 const OTHER = 'u-other';
 
 /** One attached client socket, with the attachment production gives it. */
-function socket(userId, role) {
-  let attachment = { userId, role, connectionId: `c-${userId}`, activity: 'viewing', lastSeenMs: Date.now() };
+function socket(userId, role, grantExpiresAt = undefined) {
+  let attachment = {
+    userId,
+    role,
+    connectionId: `c-${userId}`,
+    activity: 'viewing',
+    lastSeenMs: Date.now(),
+    ...(grantExpiresAt === undefined ? {} : { grantExpiresAt }),
+  };
   const sent = [];
   const closes = [];
   return {
@@ -55,6 +62,11 @@ function socket(userId, role) {
     closes,
     get role() {
       return attachment?.role ?? null;
+    },
+    get expiry() {
+      return Object.prototype.hasOwnProperty.call(attachment ?? {}, 'grantExpiresAt')
+        ? attachment.grantExpiresAt
+        : undefined;
     },
     ws: {
       readyState: 1,
@@ -68,8 +80,20 @@ function socket(userId, role) {
   };
 }
 
-function session(sockets) {
+function session(sockets, options = {}) {
   const store = new Map([['bind', { projectId: 'p1', projectName: 'Proj', ownerId: OWNER }]]);
+  let aiCalls = 0;
+  let aiStartedResolve;
+  const aiStarted = new Promise((resolve) => {
+    aiStartedResolve = resolve;
+  });
+  let releaseModel = () => {};
+  let alarmAt = null;
+  const modelGate = options.deferModel
+    ? new Promise((resolve) => {
+        releaseModel = resolve;
+      })
+    : null;
   const ctx = {
     storage: {
       async get(k) {
@@ -85,9 +109,11 @@ function session(sockets) {
       async list() {
         return new Map();
       },
-      setAlarm() {},
+      setAlarm(value) {
+        alarmAt = Number(value);
+      },
       getAlarm() {
-        return null;
+        return alarmAt;
       },
       sql: { exec: () => ({ toArray: () => [], one: () => null }) },
     },
@@ -97,7 +123,16 @@ function session(sockets) {
   };
   const doStub = (body) => ({ idFromName: () => 'id', get: () => ({ fetch: async () => Response.json(body) }) });
   const env = {
-    AI: { run: async () => ({ response: 'ok' }) },
+    AI: {
+      run: async () => {
+        aiCalls += 1;
+        aiStartedResolve();
+        if (modelGate) await modelGate;
+        return options.toolCall
+          ? { response: '', tool_calls: [{ id: 'tc-1', name: options.toolCall.name, arguments: JSON.stringify(options.toolCall.args ?? {}) }] }
+          : { response: 'ok' };
+      },
+    },
     QUOTA_DO: doStub({ ok: true, allowed: true, remaining: 100, credits: 100, plan: 'free' }),
     BUDGET_DO: doStub({ ok: true, reserved: 10, state: { killed: false } }),
     ADMIN_DO: doStub({ ok: true }),
@@ -105,6 +140,16 @@ function session(sockets) {
   const s = new SessionDO(ctx, env);
   return {
     store,
+    doInstance: s,
+    aiCalls: () => aiCalls,
+    alarmAt: () => alarmAt,
+    async fireAlarm() {
+      // Cloudflare consumes the scheduled alarm before invoking the handler.
+      alarmAt = null;
+      return s.alarm();
+    },
+    waitForAI: () => aiStarted,
+    releaseModel: () => releaseModel(),
     async accessChanged(body) {
       const res = await s.fetch(new Request('https://do/collab/access-changed', { method: 'POST', body: JSON.stringify(body) }));
       return { status: res.status, json: await res.json() };
@@ -120,6 +165,10 @@ function session(sockets) {
   };
 }
 
+function queuedOp(runId, id = `op-${runId}`) {
+  return { id, seq: 1, runId, studioOp: { op: 'set_props', path: 'game', props: {} } };
+}
+
 // =============================================================================================
 
 test('CONTROL: an editor on an open socket can start a run', async () => {
@@ -130,6 +179,130 @@ test('CONTROL: an editor on an open socket can start a run', async () => {
   const { agent, errors } = await s.chat(editor);
   assert.ok(agent, 'the editor must be able to build before anything is changed');
   assert.deepEqual(errors, []);
+});
+
+test('REVOCATION STOPS THE DURABLE RUN AND PURGES QUEUED OPS before an alarm can call the model', async () => {
+  const editor = socket(MEMBER, 'editor');
+  const s = session([editor]);
+  const { agent } = await s.chat(editor);
+  assert.ok(agent?.initiatedBy === MEMBER, 'the run records the verified initiator separately from owner billing');
+  assert.equal(agent.userId, OWNER, 'owner billing identity remains independent of the initiator');
+
+  const queued = [queuedOp(agent.msgId)];
+  s.doInstance.opQueue = queued;
+  s.store.set('opQueue', queued);
+  const beforeAi = s.aiCalls();
+  const applied = await s.accessChanged({ userId: MEMBER, role: null, access: 'removed' });
+  assert.equal(applied.status, 200);
+  assert.equal(s.doInstance.opQueue.length, 0, 'revocation removes work that has not reached Studio');
+  assert.equal(s.store.get('opQueue').length, 0);
+
+  await s.doInstance.alarm();
+  assert.equal(s.store.get('agent').status, 'idle', 'the next alarm ends the revoked run');
+  assert.equal(s.aiCalls(), beforeAi, 'the revoked run cannot spend another model step');
+  assert.match(s.store.get('agent').finalText, /removed from the project/i);
+});
+
+test('A REGRANT DOES NOT RESUME AN INVALIDATED RUN, and its queue/poll fences stay closed', async () => {
+  const editor = socket(MEMBER, 'editor');
+  const s = session([editor]);
+  const { agent } = await s.chat(editor);
+  const first = [queuedOp(agent.msgId, 'before-regrant')];
+  s.doInstance.opQueue = first;
+  s.store.set('opQueue', first);
+
+  await s.accessChanged({ userId: MEMBER, role: null, access: 'removed' });
+  // Regrant arrives while the old run is still stored as live: the mark must remain until it is
+  // idle, rather than making the next alarm believe the run is valid again.
+  await s.accessChanged({ userId: MEMBER, role: 'editor', access: 'clear' });
+  assert.ok(s.store.get('accessRevoked')?.[MEMBER], 'the active run keeps its invalidation fence');
+
+  // Simulate a stale writer that appended after the removal handler purged its first queue view.
+  const late = [queuedOp(agent.msgId, 'after-regrant')];
+  s.doInstance.opQueue = late;
+  s.store.set('opQueue', late);
+  s.doInstance.pluginConnected = async () => true;
+  const opResult = await s.doInstance.execStudioOp({ op: 'set_props', path: 'game', props: {} }, 10, agent);
+  assert.equal(opResult.ok, false);
+  assert.equal(opResult.failure, 'transport');
+  assert.equal(s.doInstance.opQueue.length, 0, 'a revoked run cannot enqueue a fresh Studio op');
+
+  const poll = await s.doInstance.handlePluginPoll({ state: {} }, { version: null, protocol: null });
+  assert.deepEqual((await poll.json()).ops, [], 'a poll racing the revocation receives no queued ops');
+  await s.doInstance.alarm();
+  assert.equal(s.store.get('agent').status, 'idle');
+  assert.equal(s.store.get('accessRevoked')?.[MEMBER], undefined, 'the deferred clear applies only after the run ends');
+});
+
+test('ACCESS CHANGE DURING MODEL AWAIT stays fenced through regrant before the await returns', async () => {
+  const editor = socket(MEMBER, 'editor');
+  const s = session([editor]);
+  await s.chat(editor);
+  const stored = s.store.get('agent');
+  s.doInstance.opQueue = [];
+  s.store.set('opQueue', []);
+  let releaseStep;
+  const stepGate = new Promise((resolve) => {
+    releaseStep = resolve;
+  });
+  // Keep the real SessionDO alarm, access-change handler, op fence and finishRun. Only the model
+  // await is deterministic here, so the test can land a membership event in that exact window.
+  s.doInstance.runStep = async function (agent) {
+    await stepGate;
+    const result = await this.execStudioOp({ op: 'set_props', path: 'game', props: {} }, 10, agent);
+    if (!result.ok) {
+      agent.finalText = result.error;
+      await this.finishRun(agent, 'stopped');
+    }
+  };
+  s.doInstance.pluginConnected = async () => true;
+  const alarm = s.doInstance.alarm();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  await s.accessChanged({ userId: MEMBER, role: null, access: 'removed' });
+  await s.accessChanged({ userId: MEMBER, role: 'editor', access: 'clear' });
+  assert.ok(s.store.get('accessRevoked')?.[MEMBER], 'regrant cannot clear a fence while the old model call is live');
+  releaseStep();
+  await alarm;
+
+  assert.equal(s.store.get('agent').status, 'idle');
+  assert.equal(s.store.get('opQueue').length, 0, 'the tool call after the await never reaches Studio');
+  assert.equal(s.store.get('accessRevoked')?.[MEMBER], undefined, 'the deferred regrant clears only after the old run finishes');
+  assert.ok(editor.sent.some((m) => m.type === 'msg_end' && m.stopReason === 'stopped'));
+  assert.equal(stored.initiatedBy, MEMBER);
+});
+
+test('SUSPENSION has its own stop reason and regrant is deferred until idle', async () => {
+  const editor = socket(MEMBER, 'editor');
+  const s = session([editor]);
+  const { agent } = await s.chat(editor);
+  await s.accessChanged({ userId: MEMBER, role: null, access: 'suspended' });
+  await s.accessChanged({ userId: MEMBER, role: 'editor', access: 'clear' });
+  assert.ok(s.store.get('accessRevoked')?.[MEMBER]);
+  await s.doInstance.alarm();
+  assert.equal(s.store.get('agent').status, 'idle');
+  assert.match(s.store.get('agent').finalText, /suspended from the project/i);
+  assert.equal(s.store.get('accessRevoked')?.[MEMBER], undefined);
+  assert.equal(agent.userId, OWNER);
+});
+
+test('OWNER runs and legacy runs without an initiator are not stopped by a member fence', async () => {
+  const owner = socket(OWNER, 'owner');
+  const s = session([owner]);
+  const { agent } = await s.chat(owner);
+  s.store.set('accessRevoked', { [OWNER]: { userId: OWNER, reason: 'removed', at: Date.now() } });
+  let stepped = 0;
+  s.doInstance.runStep = async () => { stepped += 1; };
+  await s.doInstance.alarm();
+  assert.equal(stepped, 1, 'a membership fence cannot stop the owner');
+  assert.equal(s.store.get('agent').status, 'running');
+
+  const legacy = { ...agent };
+  delete legacy.initiatedBy;
+  s.store.set('agent', legacy);
+  s.store.set('accessRevoked', { [MEMBER]: { userId: MEMBER, reason: 'removed', at: Date.now() } });
+  await s.doInstance.alarm();
+  assert.equal(stepped, 2, 'an old run with no recorded initiator is left running rather than guessed at');
 });
 
 test('A DEMOTION REACHES THE SOCKET: the next chat frame is refused by the role it now holds', async () => {
@@ -206,4 +379,106 @@ test('a push naming nobody is refused, and a push naming somebody absent says so
   const absent = await s.accessChanged({ userId: 'u-nobody', role: null });
   assert.deepEqual(absent.json, { matched: 0, closed: 0, demoted: 0 });
   assert.equal(member.role, 'editor');
+});
+
+test('A SHORTER VERSIONED EXPIRY closes the live socket and stops the active run at the new boundary', { concurrency: false }, async (t) => {
+  const realNow = Date.now;
+  let now = Date.parse('2026-09-18T14:00:00.000Z');
+  Date.now = () => now;
+  t.after(() => { Date.now = realNow; });
+
+  const originalExpiry = new Date(now + 60_000).toISOString();
+  const shortened = new Date(now + 10_000).toISOString();
+  const editor = socket(MEMBER, 'editor', originalExpiry);
+  const s = session([editor]);
+  const { agent } = await s.chat(editor);
+  assert.equal(agent.initiatorExpiresAt, originalExpiry, 'the run starts with the verified ingress deadline');
+
+  const changed = await s.accessChanged({
+    userId: MEMBER,
+    role: 'editor',
+    access: 'clear',
+    version: 1,
+    expiresAt: shortened,
+  });
+  assert.equal(changed.status, 200);
+  assert.equal(editor.expiry, shortened, 'the hibernation attachment carries the new deadline');
+  assert.ok(
+    s.alarmAt() <= Date.parse(shortened),
+    'the active run alarm remains earlier than the shortened access deadline',
+  );
+  assert.deepEqual(editor.closes, [], 'a future shortening does not close early');
+
+  let stepped = 0;
+  s.doInstance.runStep = async () => { stepped += 1; };
+  now = Date.parse(shortened);
+  await s.fireAlarm();
+  assert.deepEqual(editor.closes, [{ code: 1008, reason: 'access expired' }]);
+  assert.equal(stepped, 0, 'the expired run cannot take another model step');
+  assert.equal(s.store.get('agent').status, 'idle');
+  assert.match(s.store.get('agent').finalText, /access.*expired/i);
+});
+
+test('AN EXPIRY EXTENSION DURING AN ALARM STEP overrides the stale run snapshot before work resumes', { concurrency: false }, async (t) => {
+  const realNow = Date.now;
+  let now = Date.parse('2026-09-18T15:00:00.000Z');
+  Date.now = () => now;
+  t.after(() => { Date.now = realNow; });
+
+  const oldExpiry = new Date(now + 10_000).toISOString();
+  const extended = new Date(now + 120_000).toISOString();
+  const editor = socket(MEMBER, 'editor', oldExpiry);
+  const s = session([editor]);
+  await s.chat(editor);
+  const storedBefore = s.store.get('agent');
+  assert.equal(storedBefore.initiatorExpiresAt, oldExpiry);
+
+  let entered;
+  const enteredStep = new Promise((resolve) => { entered = resolve; });
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  let verdict;
+  s.doInstance.runStep = async function (agent) {
+    entered();
+    await gate;
+    verdict = await this.runAccessVerdict(agent);
+  };
+
+  const alarm = s.fireAlarm();
+  await enteredStep;
+  const changed = await s.accessChanged({
+    userId: MEMBER,
+    role: 'editor',
+    access: 'clear',
+    version: 1,
+    expiresAt: extended,
+  });
+  assert.equal(changed.status, 200);
+  now = Date.parse(oldExpiry) + 1;
+  release();
+  await alarm;
+
+  assert.equal(verdict.stop, false, 'the cursor beats the stale agent.initiatorExpiresAt after await');
+  assert.equal(verdict.why, 'ok');
+  assert.equal(editor.expiry, extended);
+  assert.deepEqual(editor.closes, []);
+});
+
+test('VERSIONED REGRANT WITH A LONGER EXPIRY cannot revive the run invalidated by the preceding revoke', async () => {
+  const initial = new Date(Date.now() + 60_000).toISOString();
+  const extended = new Date(Date.now() + 3_600_000).toISOString();
+  const editor = socket(MEMBER, 'editor', initial);
+  const s = session([editor]);
+  const { agent } = await s.chat(editor);
+
+  await s.accessChanged({ userId: MEMBER, role: null, access: 'removed', version: 1, expiresAt: initial });
+  await s.accessChanged({ userId: MEMBER, role: 'editor', access: 'clear', version: 2, expiresAt: extended });
+  assert.ok(s.store.get('accessRevoked')?.[MEMBER], 'the old run keeps the terminal fence through regrant');
+  assert.equal(editor.expiry, extended, 'the regrant applies to the connection/future runs');
+
+  await s.doInstance.alarm();
+  assert.equal(s.store.get('agent').status, 'idle');
+  assert.match(s.store.get('agent').finalText, /removed from the project/i);
+  assert.equal(s.store.get('accessRevoked')?.[MEMBER], undefined, 'the regrant clears only after the old run is idle');
+  assert.equal(agent.msgId, s.store.get('agent').msgId);
 });

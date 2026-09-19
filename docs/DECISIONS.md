@@ -567,3 +567,65 @@ must cite this ADR by id; `success-metrics.test.mjs` refuses one that does not.
 
 This raises the reported percentage, and the honest reading of that is: the figure stops describing
 work nobody plans to do. The count of items actually built does not move.
+
+## ADR-022 — Product model is not autonomy; zero new spend
+
+Owner clarification, 2026-09-18: **Apple is a separate, limited free model; Apple MAX
+is for paid subscribers. Apple is not Plan mode.** This supersedes the earlier
+decision to represent the two names solely as autonomy modes.
+
+New requests carry an independent `productModel` selector. The existing
+`clay/stone/rune` wire fields and stored historical runs retain their meanings.
+The normal free-model conversation may use the builder's typed tool policy;
+choosing the cheaper model must not silently force read-only planning. Paid
+entitlement is enforced by the server, not by a browser label, account email,
+administrator badge, or the amount of purchased Credits. Omitted or invalid
+fields must not become a path around entitlement enforcement.
+
+Implementation and actual model capability are separate release gates. A
+different route, token allowance, name, or prompt does not establish distinct
+trained weights or superior Roblox performance. No custom Apple MAX training
+claim is valid until saved weights and an isolated baseline comparison exist.
+
+The owner subsequently revoked the earlier $20 training allowance: **zero new
+spend**, including new subscriptions, paid GPU jobs and paid API experiments.
+Local validation and feasible local training remain within scope. The current
+404-row corpus audit fails product-SFT readiness and must not be described as a
+completed Apple agent-training dataset.
+
+**Budget update, later 2026-09-18.** The owner explicitly re-authorized **up to $20
+in total for training and serving**, including a provider other than Hugging Face.
+This supersedes the zero-spend paragraph above, not the dataset/evaluation gates.
+It is not a recurring monthly allowance. No GPU job has been started under it;
+Hugging Face Pro purchasing remains blocked for the owner's debit-card situation.
+
+**Eligibility correction, 2026-09-18.** Current official HF Jobs pricing documentation
+states that any account with a positive credit balance can run Jobs; Pro is not required.
+The signed-in account's billing UI confirms $10/$20 one-time credit options and explicitly
+names Jobs. Balance remains $0 and no purchase or automatic recharge was submitted.
+This supersedes the earlier assumption that absence of Pro blocks Jobs. Dataset readiness,
+repository-write authorization and the $20 total ceiling remain separate unmet prerequisites.
+Source: https://huggingface.co/docs/hub/jobs-pricing (read 2026-09-18).
+
+## ADR-023 — Bounded generated images belong to the project, not a one-hour cache
+
+2026-09-18. Customer review round20 found that paid image outputs disappeared after an hour.
+Store NEW `generate_image` results in the existing private D1 binding, under the project ID.
+This is a deliberately small product store, not an unbounded media/CDN architecture and not a
+new R2 subscription: at most 1 MiB decoded per image,64 images/16 MiB encoded per project,
+4096 images/128 MiB encoded globally. Constants in `generated-image-limits.ts` are authoritative.
+Base64 payloads stay under D1's current2MB row/value limit. Larger media requires another design.
+
+Preflight refuses before a paid model call when conservative capacity is unavailable. The payload
+INSERT repeats quota checks atomically; no separate counter or orphaned object. If a race fills
+capacity, saving fails honestly without a success panel or automatic paid retry. Old images are
+never evicted to admit new ones. Existing expired KV results cannot be recovered.
+
+Project/account erasure first records a project-ID-only tombstone, then deletes its rows. Tombstones
+block late inserts AND legacy KV fallback, including failed purge/late preview scenarios. The
+temporary preview writers still use one-hour KV: late bytes can remain until TTL, but the image
+route refuses deleted projects. Residue is disclosed. New durable responses are authenticated,
+project-reader scoped and `private, no-store`; content type is detected from allowed raster bytes.
+No Roblox upload, public sharing, new provider call or new binding is introduced by this decision.
+
+Official constraint verified: https://developers.cloudflare.com/d1/platform/limits/

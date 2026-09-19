@@ -40,7 +40,7 @@ test('the description is rendered on the row', () => {
 test('the class it renders with actually has styles', () => {
   // The members panel shipped with no styles because it had no call site; an unstyled block reads
   // as a broken page rather than as a description.
-  const css = readFileSync(join(WEB, 'src', 'styles', 'workspace.css'), 'utf8');
+  const css = readFileSync(join(WEB, 'src', 'design', 'system.css'), 'utf8');
   assert.match(css, /\.gx-cp__desc \{/);
   assert.match(css, /\.gx-cp__note \{/);
 });

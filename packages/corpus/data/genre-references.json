@@ -1,0 +1,4930 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-18",
+  "taxonomySource": "apps/worker/src/genre-kits.ts#GENRE_KIT_IDS",
+  "policy": {
+    "purpose": "genre_visual_reference_and_official_implementation_retrieval",
+    "externalReferenceUse": "reference_only",
+    "copyPermissionDefault": false,
+    "externalUrlHandling": "metadata_only",
+    "defaultQueryResults": 8,
+    "maxQueryResults": 20,
+    "inspectionStatuses": [
+      "visual_inspected",
+      "page_inspected",
+      "uninspected"
+    ],
+    "licenceStatuses": [
+      "unverified_reference_only"
+    ]
+  },
+  "aspects": [
+    {
+      "id": "ui_hud",
+      "name": "UI and HUD",
+      "description": "Persistent gameplay information, menus, responsive layout, and visual hierarchy."
+    },
+    {
+      "id": "shop",
+      "name": "Shop",
+      "description": "Product discovery, purchase timing, item cards, and monetization surfaces."
+    },
+    {
+      "id": "inventory",
+      "name": "Inventory",
+      "description": "Item, tool, character, vehicle, pet, or loadout organization and selection."
+    },
+    {
+      "id": "map_composition",
+      "name": "Map composition",
+      "description": "Macro layout, routes, landmarks, encounter spaces, and navigation."
+    },
+    {
+      "id": "low_poly_props",
+      "name": "Low-poly props",
+      "description": "Readable geometry, modular prop families, silhouettes, and collision-aware forms."
+    },
+    {
+      "id": "materials",
+      "name": "Materials",
+      "description": "Surface grouping, value and roughness contrast, palette discipline, and texture restraint."
+    },
+    {
+      "id": "lighting",
+      "name": "Lighting",
+      "description": "Global and local lighting, atmosphere, post-processing, visibility, and mood."
+    },
+    {
+      "id": "interaction",
+      "name": "Interaction",
+      "description": "Input, prompts, placement, state feedback, and the flow between world and UI."
+    }
+  ],
+  "genres": [
+    {
+      "id": "horror",
+      "name": "Horror",
+      "description": "Tension, obscured information, readable danger, and controlled contrast."
+    },
+    {
+      "id": "obby",
+      "name": "Obby",
+      "description": "Movement challenges with clear route, checkpoint, hazard, and landing communication."
+    },
+    {
+      "id": "tycoon",
+      "name": "Tycoon",
+      "description": "Visible progression, expansion zones, production loops, and purchase clarity."
+    },
+    {
+      "id": "simulator",
+      "name": "Simulator",
+      "description": "Repeatable collection loops, dense progression UI, and landmark-driven hubs."
+    },
+    {
+      "id": "racing",
+      "name": "Racing",
+      "description": "Fast route reading, compact telemetry, vehicles, garages, and track landmarks."
+    },
+    {
+      "id": "roleplay",
+      "name": "Roleplay",
+      "description": "Navigable social worlds, customization, jobs, homes, and civic landmarks."
+    },
+    {
+      "id": "tower_defense",
+      "name": "Tower defense",
+      "description": "Lane readability, placement space, tower roles, waves, and pre-round loadouts."
+    },
+    {
+      "id": "fps_arena",
+      "name": "FPS arena",
+      "description": "Combat lanes, cover, loadouts, target visibility, and low-latency HUD feedback."
+    },
+    {
+      "id": "anime_battle",
+      "name": "Anime battle",
+      "description": "Ability-heavy combat, character collections, stylized arenas, and strong telegraphs."
+    },
+    {
+      "id": "survival",
+      "name": "Survival",
+      "description": "Resource gathering, crafting, environmental navigation, equipment, and threat visibility."
+    }
+  ],
+  "externalReferences": [
+    {
+      "id": "horror-feedback-map-ring-layout",
+      "genreIds": [
+        "horror"
+      ],
+      "aspects": [
+        "map_composition",
+        "low_poly_props",
+        "lighting",
+        "interaction"
+      ],
+      "title": "Feedback on Horror Map",
+      "url": "https://devforum.roblox.com/t/feedback-on-horror-map/1733278",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "Vothern",
+        "publishedAt": "2022-03-26",
+        "updatedAt": "2022-03-27"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 1733278
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 1,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 1 representative image from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "horror"
+          ],
+          "aspect": "map_composition",
+          "text": "A raised central island inside a circular perimeter creates one dominant landmark, a readable loop, and controlled approach angles."
+        },
+        {
+          "genreIds": [
+            "horror"
+          ],
+          "aspect": "low_poly_props",
+          "text": "Large blocky walls, sparse trees, and broad platforms remain legible from the overhead view without relying on detailed textures."
+        },
+        {
+          "genreIds": [
+            "horror"
+          ],
+          "aspect": "interaction",
+          "text": "Hazards placed along the lower ring shape movement around the center instead of scattering danger evenly across the whole map."
+        },
+        {
+          "genreIds": [
+            "horror"
+          ],
+          "aspect": "lighting",
+          "text": "The bright neutral presentation demonstrates that clear geometry alone does not create horror; mood needs deliberate local contrast and occlusion."
+        }
+      ],
+      "cautions": [
+        "Use this source for spatial readability and low-poly massing, not as the target lighting treatment."
+      ],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "horror-mansion-future-lighting",
+      "genreIds": [
+        "horror"
+      ],
+      "aspects": [
+        "map_composition",
+        "materials",
+        "lighting",
+        "interaction"
+      ],
+      "title": "Horror Mansion Showcase (Future Lighting)",
+      "url": "https://devforum.roblox.com/t/horror-mansion-showcase-future-lighting/1300078",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "GunsBullets",
+        "publishedAt": "2021-06-19"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 1300078
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 4,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 4 representative images from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "horror"
+          ],
+          "aspect": "map_composition",
+          "text": "A symmetrical foyer, upper galleries, repeated arches, and a central stair make the mansion understandable even when most of the frame is dark."
+        },
+        {
+          "genreIds": [
+            "horror"
+          ],
+          "aspect": "lighting",
+          "text": "Small warm light pools sit against large dark wood surfaces, preserving silhouettes while leaving peripheral spaces uncertain."
+        },
+        {
+          "genreIds": [
+            "horror"
+          ],
+          "aspect": "materials",
+          "text": "A narrow family of dark timber, pale stone, patterned floor, and restrained metal accents gives the scene cohesion without high texture variety."
+        },
+        {
+          "genreIds": [
+            "horror"
+          ],
+          "aspect": "interaction",
+          "text": "Bright doors, stair landings, and the courtyard fountain act as navigation targets within the otherwise low-key lighting."
+        }
+      ],
+      "cautions": [],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "horror-cinematic-devlog-process",
+      "genreIds": [
+        "horror"
+      ],
+      "aspects": [
+        "ui_hud",
+        "map_composition",
+        "lighting",
+        "interaction"
+      ],
+      "title": "Devlog #1: Making a cinematic horror game",
+      "url": "https://devforum.roblox.com/t/devlog-1-making-a-cinematic-horror-game/2646883",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "varenst",
+        "publishedAt": "2023-10-14"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 2646883
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 8,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 8 representative images from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "horror"
+          ],
+          "aspect": "map_composition",
+          "text": "The creator moves from a visual mood board to corridor greyboxes before detail, keeping route scale and sightline decisions separate from decoration."
+        },
+        {
+          "genreIds": [
+            "horror"
+          ],
+          "aspect": "lighting",
+          "text": "A single fluorescent pool at a corridor bend creates a forward target while the adjacent hallway remains unreadable enough to sustain tension."
+        },
+        {
+          "genreIds": [
+            "horror"
+          ],
+          "aspect": "interaction",
+          "text": "Separate lobby and game-loop flowcharts expose branches, returns, and ownership of each state before implementation."
+        },
+        {
+          "genreIds": [
+            "horror"
+          ],
+          "aspect": "ui_hud",
+          "text": "The menu is kept to a narrow edge column over a dark environment, leaving the central image available for mood and threat framing."
+        }
+      ],
+      "cautions": [
+        "This is a process reference containing blockouts and planning diagrams, not a finished visual asset pack."
+      ],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "horror-monster-silhouette-study",
+      "genreIds": [
+        "horror"
+      ],
+      "aspects": [
+        "low_poly_props",
+        "materials",
+        "lighting",
+        "interaction"
+      ],
+      "title": "[UPDATE] I like to make scary monsters. How can I make them more horrific and nightmare fueling without a drop of blood?",
+      "url": "https://devforum.roblox.com/t/update-i-like-to-make-scary-monsters-how-can-i-make-them-more-horrific-and-nightmare-fueling-without-a-drop-of-blood/632924",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "CRAZYDIAMONDDOO",
+        "publishedAt": "2020-06-19",
+        "updatedAt": "2020-08-01"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 632924
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 4,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 4 representative images from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "horror"
+          ],
+          "aspect": "low_poly_props",
+          "text": "Asymmetric limbs, enlarged joints, and one dominant body gesture make each creature identifiable before surface detail is visible."
+        },
+        {
+          "genreIds": [
+            "horror"
+          ],
+          "aspect": "lighting",
+          "text": "Showing only part of a creature against a dark corridor preserves the silhouette and lets the player infer more than the scene reveals."
+        },
+        {
+          "genreIds": [
+            "horror"
+          ],
+          "aspect": "materials",
+          "text": "Dark value grouping with a few pale or reflective features focuses attention without requiring dense texture maps."
+        },
+        {
+          "genreIds": [
+            "horror"
+          ],
+          "aspect": "interaction",
+          "text": "Long limbs and low body profiles imply different clearance, reach, and chase-space requirements, so creature shape should inform level dimensions."
+        }
+      ],
+      "cautions": [],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "obby-poison-valley-low-poly",
+      "genreIds": [
+        "obby"
+      ],
+      "aspects": [
+        "map_composition",
+        "low_poly_props",
+        "materials",
+        "lighting",
+        "interaction"
+      ],
+      "title": "[Low-Poly] Obby: Poison valley",
+      "url": "https://devforum.roblox.com/t/low-poly-obby-poison-valley/488251",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "Rikk_YT",
+        "publishedAt": "2020-03-19"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 488251
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 4,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 4 representative images from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "obby"
+          ],
+          "aspect": "map_composition",
+          "text": "The route advances through large, separated obstacle clusters so the next landing and the overall direction remain readable at speed."
+        },
+        {
+          "genreIds": [
+            "obby"
+          ],
+          "aspect": "low_poly_props",
+          "text": "Simple extrusions, cylinders, wedges, and repeated hazard modules create visual variety without dense meshes or texture dependence."
+        },
+        {
+          "genreIds": [
+            "obby"
+          ],
+          "aspect": "materials",
+          "text": "Flat cyan, magenta, and dark neutral regions separate safe surfaces, hazards, and background structure through value and hue."
+        },
+        {
+          "genreIds": [
+            "obby"
+          ],
+          "aspect": "lighting",
+          "text": "Small bright fixtures and emissive-looking accents punctuate the route while the broad scene lighting stays restrained."
+        },
+        {
+          "genreIds": [
+            "obby"
+          ],
+          "aspect": "interaction",
+          "text": "Color and silhouette carry hazard communication before the player reaches each obstacle, reducing surprise deaths caused by ambiguous geometry."
+        }
+      ],
+      "cautions": [],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "obby-stage-selector-system",
+      "genreIds": [
+        "obby"
+      ],
+      "aspects": [
+        "ui_hud",
+        "shop",
+        "interaction"
+      ],
+      "title": "Techy's Obby System - All your obby needs in one! [Includes Stage Selector]",
+      "url": "https://devforum.roblox.com/t/techys-obby-system-all-your-obby-needs-in-one-includes-stage-selector/785271",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "0Techy",
+        "publishedAt": "2020-09-24",
+        "updatedAt": "2021-01-09"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 785271
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 3,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 3 representative images from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "obby"
+          ],
+          "aspect": "ui_hud",
+          "text": "The current stage number occupies the visual center while previous, next, help, spectator, lobby, and checkpoint actions sit in predictable groups around it."
+        },
+        {
+          "genreIds": [
+            "obby"
+          ],
+          "aspect": "interaction",
+          "text": "Persistent access to lobby, spectate, and last checkpoint reduces the cost of recovering from a mistake or changing activity."
+        },
+        {
+          "genreIds": [
+            "obby"
+          ],
+          "aspect": "shop",
+          "text": "The skip-stage action is visually separated from ordinary stage navigation, helping the paid shortcut read as a distinct decision."
+        }
+      ],
+      "cautions": [
+        "The visual skin is dated; retain the control hierarchy and state clarity rather than copying the styling."
+      ],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "obby-realistic-forest-route",
+      "genreIds": [
+        "obby"
+      ],
+      "aspects": [
+        "ui_hud",
+        "map_composition",
+        "materials",
+        "lighting"
+      ],
+      "title": "Realistic Obby Testing and Feedback",
+      "url": "https://devforum.roblox.com/t/realistic-obby-testing-and-feedback/1524246",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "Its_TylerM",
+        "publishedAt": "2021-10-25"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 1524246
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 2,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 2 representative images from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "obby"
+          ],
+          "aspect": "map_composition",
+          "text": "A continuous wood-and-stone path threads through trees and clearings, turning a natural environment into an obstacle route without losing direction."
+        },
+        {
+          "genreIds": [
+            "obby"
+          ],
+          "aspect": "lighting",
+          "text": "Warm sun patches and brighter clearings reveal upcoming landing areas against a darker forest floor."
+        },
+        {
+          "genreIds": [
+            "obby"
+          ],
+          "aspect": "materials",
+          "text": "Wood, stone, grass, and foliage stay within a restrained natural palette while the traversable route receives stronger value contrast."
+        },
+        {
+          "genreIds": [
+            "obby"
+          ],
+          "aspect": "ui_hud",
+          "text": "The scene leaves the center almost free of interface, allowing platform edges and depth cues to remain the primary information."
+        }
+      ],
+      "cautions": [],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "tycoon-ultraw-creator-spotlight",
+      "genreIds": [
+        "tycoon"
+      ],
+      "aspects": [
+        "map_composition",
+        "low_poly_props",
+        "materials",
+        "interaction"
+      ],
+      "title": "Creator Spotlight: How Ultraw’s Love for Food Became a Trending Tycoon",
+      "url": "https://devforum.roblox.com/t/creator-spotlight-how-ultraw%E2%80%99s-love-for-food-became-a-trending-tycoon/3840933",
+      "origin": {
+        "type": "official_roblox_editorial",
+        "publisher": "Roblox Developer Forum",
+        "author": "frecklesnspectacles",
+        "publishedAt": "2025-07-25"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 3840933
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 4,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 4 representative images from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "tycoon"
+          ],
+          "aspect": "map_composition",
+          "text": "The featured tycoons grow from compact rectangular lots into recognizable destinations such as restaurants, piers, and themed estates."
+        },
+        {
+          "genreIds": [
+            "tycoon"
+          ],
+          "aspect": "low_poly_props",
+          "text": "Buildings, counters, seating, signs, and landscaping use clear modular forms that can be repeated while each destination keeps a distinct silhouette."
+        },
+        {
+          "genreIds": [
+            "tycoon"
+          ],
+          "aspect": "interaction",
+          "text": "Visible construction stages and destination changes make progression readable in the world instead of only through a number in the HUD."
+        },
+        {
+          "genreIds": [
+            "tycoon"
+          ],
+          "aspect": "materials",
+          "text": "Bright walls and ground planes use a limited family of pastel surfaces, keeping purchasable objects easy to distinguish from the lot."
+        }
+      ],
+      "cautions": [],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "tycoon-radial-city-map-assets",
+      "genreIds": [
+        "tycoon"
+      ],
+      "aspects": [
+        "map_composition",
+        "low_poly_props",
+        "materials",
+        "interaction"
+      ],
+      "title": "Tycoon Map and Assets",
+      "url": "https://devforum.roblox.com/t/tycoon-map-and-assets/2188535",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "goalmwo",
+        "publishedAt": "2023-02-19",
+        "updatedAt": "2024-06-28"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 2188535
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 4,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 4 representative images from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "tycoon"
+          ],
+          "aspect": "map_composition",
+          "text": "A central park and pond form an orientation hub, with paths radiating toward an outer ring of city blocks and expansion space."
+        },
+        {
+          "genreIds": [
+            "tycoon"
+          ],
+          "aspect": "low_poly_props",
+          "text": "A small vocabulary of trees, lamps, benches, rocks, and simplified buildings produces a coherent city without bespoke detail on every object."
+        },
+        {
+          "genreIds": [
+            "tycoon"
+          ],
+          "aspect": "materials",
+          "text": "Broad flat colors and restrained highlights keep the map bright while preserving clear edges between water, grass, pavement, and structures."
+        },
+        {
+          "genreIds": [
+            "tycoon"
+          ],
+          "aspect": "interaction",
+          "text": "The central hub gives returning players a stable reference point while outer districts can hold separate production or purchase loops."
+        }
+      ],
+      "cautions": [],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "tycoon-low-poly-medieval-map",
+      "genreIds": [
+        "tycoon"
+      ],
+      "aspects": [
+        "map_composition",
+        "low_poly_props",
+        "materials",
+        "lighting"
+      ],
+      "title": "Thoughts on LowPoly Medieval tycoon map",
+      "url": "https://devforum.roblox.com/t/thoughts-on-lowpoly-medieval-tycoon-map/424915",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "LuciferVonhart",
+        "publishedAt": "2020-01-04"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 424915
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 4,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 4 representative images from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "tycoon"
+          ],
+          "aspect": "map_composition",
+          "text": "Parallel roads and production lanes lead toward taller castle and industrial landmarks, making the growth direction visible from most lots."
+        },
+        {
+          "genreIds": [
+            "tycoon"
+          ],
+          "aspect": "low_poly_props",
+          "text": "Chunky roofs, towers, walls, trees, and machinery share a low-detail silhouette language that remains readable from a high camera."
+        },
+        {
+          "genreIds": [
+            "tycoon"
+          ],
+          "aspect": "lighting",
+          "text": "Warm late-day light unifies many flat-colored props and gives purchased structures a clear rim against the ground."
+        },
+        {
+          "genreIds": [
+            "tycoon"
+          ],
+          "aspect": "materials",
+          "text": "Muted earth surfaces are interrupted by a few stronger reds, yellows, and greens, reserving saturation for important structures."
+        }
+      ],
+      "cautions": [],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "simulator-cartoony-ui-navigation",
+      "genreIds": [
+        "simulator"
+      ],
+      "aspects": [
+        "ui_hud",
+        "shop",
+        "inventory",
+        "interaction"
+      ],
+      "title": "Feedback on Cartoony Simulator UI!",
+      "url": "https://devforum.roblox.com/t/feedback-on-cartoony-simulator-ui/748589",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "SoaringKeyy",
+        "publishedAt": "2020-08-30",
+        "updatedAt": "2020-12-31"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 748589
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 1,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 1 representative image from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "simulator"
+          ],
+          "aspect": "ui_hud",
+          "text": "A persistent side stack exposes shop, pets, codes, and rebirth while currency counters remain visible beside the play area."
+        },
+        {
+          "genreIds": [
+            "simulator"
+          ],
+          "aspect": "inventory",
+          "text": "Empty pet and item slots are shown before acquisition, making capacity and collection structure understandable without opening another screen."
+        },
+        {
+          "genreIds": [
+            "simulator"
+          ],
+          "aspect": "interaction",
+          "text": "Icon-plus-label buttons make the primary loops recognizable even when a player has not learned the icon set."
+        },
+        {
+          "genreIds": [
+            "simulator"
+          ],
+          "aspect": "shop",
+          "text": "The shop entry is given the same persistent weight as pets and progression, avoiding a hidden monetization route."
+        }
+      ],
+      "cautions": [
+        "The screen is dense; use its grouping pattern while reducing the number of simultaneous panels and badges."
+      ],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "simulator-shop-modal-tabs",
+      "genreIds": [
+        "simulator"
+      ],
+      "aspects": [
+        "ui_hud",
+        "shop",
+        "materials",
+        "interaction"
+      ],
+      "title": "Feedback on my Simulator UI Part 2?",
+      "url": "https://devforum.roblox.com/t/feedback-on-my-simulator-ui-part-2/1562998",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "Jumpathy",
+        "publishedAt": "2021-11-24"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 1562998
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 1,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 1 representative image from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "simulator"
+          ],
+          "aspect": "shop",
+          "text": "Passes, coins, and boosts are separated into three top-level tabs so repeatable and permanent offers do not compete in one undifferentiated grid."
+        },
+        {
+          "genreIds": [
+            "simulator"
+          ],
+          "aspect": "ui_hud",
+          "text": "A centered modal, strong title bar, and fixed close control create a single obvious interaction layer over the game."
+        },
+        {
+          "genreIds": [
+            "simulator"
+          ],
+          "aspect": "interaction",
+          "text": "Each product card presents image, name, price, and one consistent purchase area, keeping the decision path short."
+        },
+        {
+          "genreIds": [
+            "simulator"
+          ],
+          "aspect": "materials",
+          "text": "A small blue, gold, and green interface palette assigns color by function rather than decorating every element differently."
+        }
+      ],
+      "cautions": [],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "simulator-complete-ui-system",
+      "genreIds": [
+        "simulator"
+      ],
+      "aspects": [
+        "ui_hud",
+        "shop",
+        "inventory",
+        "interaction"
+      ],
+      "title": "Feedback on my Simulator UI",
+      "url": "https://devforum.roblox.com/t/feedback-on-my-simulator-ui/1005789",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "vdw0",
+        "publishedAt": "2021-01-25"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 1005789
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 3,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 3 representative images from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "simulator"
+          ],
+          "aspect": "ui_hud",
+          "text": "Settings, tutorials, currencies, pets, and trade screens reuse the same rounded frame, title bar, close control, and blue surface hierarchy."
+        },
+        {
+          "genreIds": [
+            "simulator"
+          ],
+          "aspect": "inventory",
+          "text": "Collection grids sit beside selected-item details instead of placing every stat inside the tile itself."
+        },
+        {
+          "genreIds": [
+            "simulator"
+          ],
+          "aspect": "interaction",
+          "text": "Trade requests expose accept, decline, offer contents, and final status as separate visible states rather than changing one ambiguous button."
+        },
+        {
+          "genreIds": [
+            "simulator"
+          ],
+          "aspect": "shop",
+          "text": "Currency cards keep the item image and amount prominent while secondary explanatory text remains compact."
+        }
+      ],
+      "cautions": [
+        "The system shows useful state consistency but is visually crowded; prioritize the hierarchy and state model over the total control count."
+      ],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "simulator-landmark-hub-map",
+      "genreIds": [
+        "simulator"
+      ],
+      "aspects": [
+        "map_composition",
+        "low_poly_props",
+        "materials",
+        "interaction"
+      ],
+      "title": "Tried to make a simulator map",
+      "url": "https://devforum.roblox.com/t/tried-to-make-a-simulator-map/850158",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "81001",
+        "publishedAt": "2020-11-01"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 850158
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 4,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 4 representative images from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "simulator"
+          ],
+          "aspect": "map_composition",
+          "text": "A central tower anchors a spoke-like hub whose paths lead to shop, portals, bank, daily reward, and distant progression areas."
+        },
+        {
+          "genreIds": [
+            "simulator"
+          ],
+          "aspect": "interaction",
+          "text": "Portals are grouped as a destination family while bank, sell, and reward loops occupy separate landmarks, reducing accidental route overlap."
+        },
+        {
+          "genreIds": [
+            "simulator"
+          ],
+          "aspect": "low_poly_props",
+          "text": "Repeated cliffs, trees, fences, lamps, and storefront modules establish scale without requiring unique assets in every zone."
+        },
+        {
+          "genreIds": [
+            "simulator"
+          ],
+          "aspect": "materials",
+          "text": "Sand paths, green terrain, dark cliffs, and saturated portal colors create functional layers that remain distinct at a distant camera."
+        }
+      ],
+      "cautions": [],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "simulator-low-poly-moon-hub",
+      "genreIds": [
+        "simulator"
+      ],
+      "aspects": [
+        "map_composition",
+        "low_poly_props",
+        "materials",
+        "interaction"
+      ],
+      "title": "Low poly moon simulator map, Feedback?",
+      "url": "https://devforum.roblox.com/t/low-poly-moon-simulator-map-feedback/1040598",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "Zelt3q",
+        "publishedAt": "2021-02-11"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 1040598
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 4,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 4 representative images from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "simulator"
+          ],
+          "aspect": "map_composition",
+          "text": "The moon hub uses a circular basin and a central platform so every surrounding activity is visible from spawn."
+        },
+        {
+          "genreIds": [
+            "simulator"
+          ],
+          "aspect": "low_poly_props",
+          "text": "Angular rock clusters, antennas, vehicles, and orange-white structures share one faceted construction language."
+        },
+        {
+          "genreIds": [
+            "simulator"
+          ],
+          "aspect": "materials",
+          "text": "A mostly gray terrain palette lets orange structural accents identify machines and destinations without large signs."
+        },
+        {
+          "genreIds": [
+            "simulator"
+          ],
+          "aspect": "interaction",
+          "text": "Radial spacing leaves clear approach zones around each machine and reduces crowding at the center."
+        }
+      ],
+      "cautions": [],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "simulator-forest-fountain-hub",
+      "genreIds": [
+        "simulator"
+      ],
+      "aspects": [
+        "map_composition",
+        "low_poly_props",
+        "lighting",
+        "interaction"
+      ],
+      "title": "Hows my simulator map?",
+      "url": "https://devforum.roblox.com/t/hows-my-simulator-map/988944",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "Roros_World",
+        "publishedAt": "2021-01-17"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 988944
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 4,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 4 representative images from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "simulator"
+          ],
+          "aspect": "map_composition",
+          "text": "A fountain marks the spawn center, with sell and shop buildings placed on opposite edges and paths opening into layered forest zones."
+        },
+        {
+          "genreIds": [
+            "simulator"
+          ],
+          "aspect": "low_poly_props",
+          "text": "Conical trees, stepped cliffs, simple storefronts, and repeated rocks provide depth while preserving a consistent low-poly scale."
+        },
+        {
+          "genreIds": [
+            "simulator"
+          ],
+          "aspect": "interaction",
+          "text": "Large storefront labels face the spawn area, allowing players to identify the core loop before moving."
+        },
+        {
+          "genreIds": [
+            "simulator"
+          ],
+          "aspect": "lighting",
+          "text": "Bright sky and even daylight keep signage and terrain boundaries readable, while tree shadows add depth without hiding routes."
+        }
+      ],
+      "cautions": [],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "racing-midnight-tokyo-creator-feature",
+      "genreIds": [
+        "racing"
+      ],
+      "aspects": [
+        "ui_hud",
+        "map_composition",
+        "lighting",
+        "interaction"
+      ],
+      "title": "Behind The Games: Midnight Racing: Tokyo, Dress to Impress, and Michael’s Zombies",
+      "url": "https://devforum.roblox.com/t/behind-the-games-midnight-racing-tokyo-dress-to-impress-and-michael%E2%80%99s-zombies/3131289",
+      "sourceScope": "Midnight Racing: Tokyo section",
+      "origin": {
+        "type": "official_roblox_editorial",
+        "publisher": "Roblox Developer Forum",
+        "author": "frecklesnspectacles",
+        "publishedAt": "2024-08-23"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 3131289
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 4,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 4 representative images from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "racing"
+          ],
+          "aspect": "ui_hud",
+          "text": "The driving view keeps telemetry near the lower corners and leaves the road center open for braking points and traffic."
+        },
+        {
+          "genreIds": [
+            "racing"
+          ],
+          "aspect": "map_composition",
+          "text": "Strong lane markings, curb edges, building walls, and long road corridors make city routes readable at speed."
+        },
+        {
+          "genreIds": [
+            "racing"
+          ],
+          "aspect": "lighting",
+          "text": "Streetlights, headlights, and saturated vehicle highlights separate moving cars from the dark road surface."
+        },
+        {
+          "genreIds": [
+            "racing"
+          ],
+          "aspect": "interaction",
+          "text": "Challenge completion is shown after the driving action in a dedicated reward panel instead of interrupting the route."
+        }
+      ],
+      "cautions": [],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "racing-horizon-highway-demo",
+      "genreIds": [
+        "racing"
+      ],
+      "aspects": [
+        "ui_hud",
+        "map_composition",
+        "lighting",
+        "interaction"
+      ],
+      "title": "Horizon Highway the demo (WIP)",
+      "url": "https://devforum.roblox.com/t/horizon-highway-the-demo-wip/1627000",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "Ben3657",
+        "publishedAt": "2022-01-14",
+        "updatedAt": "2022-01-16"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 1627000
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 3,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 3 representative images from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "racing"
+          ],
+          "aspect": "ui_hud",
+          "text": "Lap and position occupy upper corners, event performance sits at the lower left, and speed stays at the lower right so each metric has a stable home."
+        },
+        {
+          "genreIds": [
+            "racing"
+          ],
+          "aspect": "map_composition",
+          "text": "Multi-lane roads, traffic, tunnels, and dense building walls create a continuous corridor with recognizable changes in pace."
+        },
+        {
+          "genreIds": [
+            "racing"
+          ],
+          "aspect": "lighting",
+          "text": "Headlights and brake lights provide immediate vehicle separation in dark sections while warmer city blocks signal busier spaces."
+        },
+        {
+          "genreIds": [
+            "racing"
+          ],
+          "aspect": "interaction",
+          "text": "Performance and medal feedback remain visible during an event, linking current driving quality to the reward target."
+        }
+      ],
+      "cautions": [
+        "The ornamental HUD frames compete with the road; preserve metric placement while simplifying decoration."
+      ],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "racing-redline-overdrive-devlog",
+      "genreIds": [
+        "racing"
+      ],
+      "aspects": [
+        "inventory",
+        "map_composition",
+        "low_poly_props",
+        "interaction"
+      ],
+      "title": "Redline: Overdrive Devlog #1",
+      "url": "https://devforum.roblox.com/t/redline-overdrive-devlog-1/1501202",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "Ben3657",
+        "publishedAt": "2021-10-09",
+        "updatedAt": "2021-10-14"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 1501202
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 4,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 4 representative images from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "racing"
+          ],
+          "aspect": "inventory",
+          "text": "Vehicle lines are staged in ordered rows with starter, unlock, and traffic roles labeled directly in the world during development."
+        },
+        {
+          "genreIds": [
+            "racing"
+          ],
+          "aspect": "interaction",
+          "text": "Explicit class and progression labels make vehicle availability testable before a polished garage interface exists."
+        },
+        {
+          "genreIds": [
+            "racing"
+          ],
+          "aspect": "map_composition",
+          "text": "The night scene uses a compact skyline and clustered cars to test scale and visual separation before full route dressing."
+        },
+        {
+          "genreIds": [
+            "racing"
+          ],
+          "aspect": "low_poly_props",
+          "text": "Early vehicle families share proportions and readable color variation, supporting rapid comparison across a roster."
+        }
+      ],
+      "cautions": [
+        "This is an early development reference; use it for roster staging and progression planning rather than final presentation quality."
+      ],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "roleplay-coastal-city-showcase",
+      "genreIds": [
+        "roleplay"
+      ],
+      "aspects": [
+        "map_composition",
+        "low_poly_props",
+        "lighting",
+        "interaction"
+      ],
+      "title": "Feedback on a showcase/role-play city map I made",
+      "url": "https://devforum.roblox.com/t/feedback-on-a-showcaserole-play-city-map-i-made/818496",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "aryoseno11",
+        "publishedAt": "2020-10-13"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 818496
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 3,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 3 representative images from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "roleplay"
+          ],
+          "aspect": "map_composition",
+          "text": "A waterfront, skyline cluster, apartment district, and broad roads create large civic landmarks that divide the city into memorable zones."
+        },
+        {
+          "genreIds": [
+            "roleplay"
+          ],
+          "aspect": "interaction",
+          "text": "Distinct districts give social activities and jobs physical destinations instead of placing every role in one central plaza."
+        },
+        {
+          "genreIds": [
+            "roleplay"
+          ],
+          "aspect": "low_poly_props",
+          "text": "Repeated towers, street trees, and apartment blocks create city scale while leaving individual landmark buildings recognizable."
+        },
+        {
+          "genreIds": [
+            "roleplay"
+          ],
+          "aspect": "lighting",
+          "text": "Bright daytime lighting and clear water reflections support long-distance navigation across a social map."
+        }
+      ],
+      "cautions": [],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "roleplay-army-campus-map",
+      "genreIds": [
+        "roleplay"
+      ],
+      "aspects": [
+        "map_composition",
+        "low_poly_props",
+        "materials",
+        "interaction"
+      ],
+      "title": "[Army Roleplay Map] Developer Log No.1",
+      "url": "https://devforum.roblox.com/t/army-roleplay-map-developer-log-no1/2040314",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "so_fx",
+        "publishedAt": "2022-11-01"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 2040314
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 4,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 4 representative images from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "roleplay"
+          ],
+          "aspect": "map_composition",
+          "text": "An entry monument, landscaped roundabout, axial road, and headquarters frontage establish a formal arrival sequence."
+        },
+        {
+          "genreIds": [
+            "roleplay"
+          ],
+          "aspect": "materials",
+          "text": "Concrete, grass, brick, dark metal, and planted beds distinguish civic, circulation, and landscape zones without visual noise."
+        },
+        {
+          "genreIds": [
+            "roleplay"
+          ],
+          "aspect": "low_poly_props",
+          "text": "Benches, trees, flags, signs, and barriers repeat as a restrained campus kit around larger institutional forms."
+        },
+        {
+          "genreIds": [
+            "roleplay"
+          ],
+          "aspect": "interaction",
+          "text": "The roundabout and central monument create an obvious gathering point before players disperse to specialized facilities."
+        }
+      ],
+      "cautions": [],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "multi-genre-ui-portfolio-chenami",
+      "genreIds": [
+        "simulator",
+        "roleplay",
+        "anime_battle"
+      ],
+      "aspects": [
+        "ui_hud",
+        "shop",
+        "inventory",
+        "interaction"
+      ],
+      "title": "Chenami : User Interface Portfolio (UI/UX)",
+      "url": "https://devforum.roblox.com/t/chenami-user-interface-portfolio-uiux/455344",
+      "sourceScope": "Resort Life, RoVille, LankyBox Simulator, Anime Universe, Anime Simulator, Anime Quest, and related shop sections",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "chenami",
+        "publishedAt": "2020-02-11",
+        "updatedAt": "2025-08-08"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 455344
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 16,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 16 representative images from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "roleplay"
+          ],
+          "aspect": "inventory",
+          "text": "Resort Life and RoVille split customization, inventory, pets, vehicles, homes, and marketplace content into focused panels with a persistent side rail."
+        },
+        {
+          "genreIds": [
+            "roleplay"
+          ],
+          "aspect": "shop",
+          "text": "RoVille marketplace cards pair a scene thumbnail with category and ownership information while keeping the world visible behind the modal."
+        },
+        {
+          "genreIds": [
+            "roleplay"
+          ],
+          "aspect": "ui_hud",
+          "text": "Small always-available social and build controls sit at the edges, while large task panels appear only when needed."
+        },
+        {
+          "genreIds": [
+            "simulator"
+          ],
+          "aspect": "inventory",
+          "text": "Simulator pet and trade screens use uniform card grids, a selected-item pane, and explicit offer state instead of packing all data into each tile."
+        },
+        {
+          "genreIds": [
+            "simulator"
+          ],
+          "aspect": "shop",
+          "text": "LankyBox Simulator uses large paper-like cards and clear currency counters to make purchasing readable against a colorful world."
+        },
+        {
+          "genreIds": [
+            "anime_battle"
+          ],
+          "aspect": "ui_hud",
+          "text": "Anime interfaces keep health and currency persistent while character, quest, achievement, and reward panels occupy a centered modal layer."
+        },
+        {
+          "genreIds": [
+            "anime_battle"
+          ],
+          "aspect": "inventory",
+          "text": "Character and skill collections use portrait cards, rarity or role accents, and a separate detail or action region."
+        },
+        {
+          "genreIds": [
+            "anime_battle"
+          ],
+          "aspect": "shop",
+          "text": "Anime Universe and Anime Quest separate buy, upgrade, and reward states through different panel structures instead of recoloring one generic popup."
+        },
+        {
+          "genreIds": [
+            "anime_battle",
+            "simulator",
+            "roleplay"
+          ],
+          "aspect": "interaction",
+          "text": "Selected, locked, ready, claimed, and request states are communicated with both labels and color, reducing reliance on color alone."
+        }
+      ],
+      "cautions": [
+        "The page spans several projects and years; reuse the information architecture and state patterns, not any one project skin."
+      ],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "tower-defense-belonatural-creator-spotlight",
+      "genreIds": [
+        "tower_defense"
+      ],
+      "aspects": [
+        "map_composition",
+        "low_poly_props",
+        "lighting",
+        "interaction"
+      ],
+      "title": "Creator Spotlight: BelowNatural’s Journey Building Paradoxum Games",
+      "url": "https://devforum.roblox.com/t/creator-spotlight-belownatural%E2%80%99s-journey-building-paradoxum-games/3027035",
+      "origin": {
+        "type": "official_roblox_editorial",
+        "publisher": "Roblox Developer Forum",
+        "author": "Bluff_006",
+        "publishedAt": "2024-06-17"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 3027035
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 4,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 4 representative images from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "tower_defense"
+          ],
+          "aspect": "map_composition",
+          "text": "Enemies, towers, defenders, and the route remain separable in wide combat shots even when several effects fire at once."
+        },
+        {
+          "genreIds": [
+            "tower_defense"
+          ],
+          "aspect": "low_poly_props",
+          "text": "Tower and enemy roles use distinct silhouettes and scale, allowing the player to identify function before reading text."
+        },
+        {
+          "genreIds": [
+            "tower_defense"
+          ],
+          "aspect": "lighting",
+          "text": "Bright combat effects are localized around attacks while terrain and path values stay stable enough for lane tracking."
+        },
+        {
+          "genreIds": [
+            "tower_defense"
+          ],
+          "aspect": "interaction",
+          "text": "Placement and attack feedback concentrate around the relevant lane, keeping cause and effect spatially connected."
+        }
+      ],
+      "cautions": [],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "tower-defense-map-and-card-ui",
+      "genreIds": [
+        "tower_defense"
+      ],
+      "aspects": [
+        "ui_hud",
+        "shop",
+        "inventory",
+        "interaction"
+      ],
+      "title": "A Tower Defense Game",
+      "url": "https://devforum.roblox.com/t/a-tower-defense-game/1425825",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "TurboGoStu",
+        "publishedAt": "2021-08-20",
+        "updatedAt": "2021-12-24"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 1425825
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 3,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 3 representative images from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "tower_defense"
+          ],
+          "aspect": "ui_hud",
+          "text": "Hexagonal map cards show preview, lock or cost state, and selection around one large central stage title."
+        },
+        {
+          "genreIds": [
+            "tower_defense"
+          ],
+          "aspect": "inventory",
+          "text": "Tower cards keep portrait, level, role information, and rarity framing in a consistent footprint suitable for deck selection."
+        },
+        {
+          "genreIds": [
+            "tower_defense"
+          ],
+          "aspect": "shop",
+          "text": "Locked maps and towers communicate their cost beside the item instead of routing the player to an unrelated purchase screen."
+        },
+        {
+          "genreIds": [
+            "tower_defense"
+          ],
+          "aspect": "interaction",
+          "text": "The visible flow from stage selection to mode information to tower roster supports a clear pre-round sequence."
+        }
+      ],
+      "cautions": [],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "tower-defense-snow-castle-map",
+      "genreIds": [
+        "tower_defense"
+      ],
+      "aspects": [
+        "map_composition",
+        "low_poly_props",
+        "materials",
+        "lighting"
+      ],
+      "title": "Tower Defense Map - Upcoming Game",
+      "url": "https://devforum.roblox.com/t/tower-defense-map-upcoming-game/2641709",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "RagnarokConstruct",
+        "publishedAt": "2023-10-11"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 2641709
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 2,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 2 representative images from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "tower_defense"
+          ],
+          "aspect": "map_composition",
+          "text": "A winding lane crosses a snowy basin beneath a dominant castle, giving the player a long view of route direction and final objective."
+        },
+        {
+          "genreIds": [
+            "tower_defense"
+          ],
+          "aspect": "materials",
+          "text": "Cool snow, gray stone, and muted blue atmosphere create one coherent field while darker paths and structures retain gameplay contrast."
+        },
+        {
+          "genreIds": [
+            "tower_defense"
+          ],
+          "aspect": "low_poly_props",
+          "text": "Repeated rocks, walls, towers, and bridge pieces form the defensive setting without competing with tower placement silhouettes."
+        },
+        {
+          "genreIds": [
+            "tower_defense"
+          ],
+          "aspect": "lighting",
+          "text": "Soft blue distance haze separates near placement space from the castle backdrop without obscuring the route."
+        }
+      ],
+      "cautions": [],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "tower-defense-tropical-path-map",
+      "genreIds": [
+        "tower_defense"
+      ],
+      "aspects": [
+        "ui_hud",
+        "map_composition",
+        "low_poly_props",
+        "interaction"
+      ],
+      "title": "Tower Defense Map Feedback",
+      "url": "https://devforum.roblox.com/t/tower-defense-map-feedback/3568468",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "coderluau",
+        "publishedAt": "2025-03-24"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 3568468
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 3,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 3 representative images from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "tower_defense"
+          ],
+          "aspect": "map_composition",
+          "text": "The route is readable from an elevated overview because pale paths loop between terraces and remain distinct from green grass and red cliffs."
+        },
+        {
+          "genreIds": [
+            "tower_defense"
+          ],
+          "aspect": "ui_hud",
+          "text": "Base health and wave number occupy a compact top-center strip, leaving the whole lower screen available for placement."
+        },
+        {
+          "genreIds": [
+            "tower_defense"
+          ],
+          "aspect": "low_poly_props",
+          "text": "A small set of palms, cliffs, rocks, and walls establishes the biome while keeping the lane unobstructed."
+        },
+        {
+          "genreIds": [
+            "tower_defense"
+          ],
+          "aspect": "interaction",
+          "text": "Broad empty margins around bends create visible placement opportunities and reduce accidental overlap with the enemy route."
+        }
+      ],
+      "cautions": [
+        "The path layout is a useful readability reference; the flat lighting and sparse dressing need further polish for a finished scene."
+      ],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "fps-prototype-feedback-hud",
+      "genreIds": [
+        "fps_arena"
+      ],
+      "aspects": [
+        "ui_hud",
+        "map_composition",
+        "low_poly_props",
+        "interaction"
+      ],
+      "title": "What Do You Think Of My FPS Game?",
+      "url": "https://devforum.roblox.com/t/what-do-you-think-of-my-fps-game/1537443",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "icecatz",
+        "publishedAt": "2021-11-06"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 1537443
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 4,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 4 representative images from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "fps_arena"
+          ],
+          "aspect": "ui_hud",
+          "text": "A small reticle, lower-corner ammo and status values, and a centered killstreak readout keep immediate combat information close to expected screen regions."
+        },
+        {
+          "genreIds": [
+            "fps_arena"
+          ],
+          "aspect": "interaction",
+          "text": "A red hit marker and short-lived streak feedback acknowledge successful shots without opening a modal."
+        },
+        {
+          "genreIds": [
+            "fps_arena"
+          ],
+          "aspect": "map_composition",
+          "text": "Low walls, crates, narrow connectors, and open lanes establish simple cover choices that remain visible from first person."
+        },
+        {
+          "genreIds": [
+            "fps_arena"
+          ],
+          "aspect": "low_poly_props",
+          "text": "Blocky cover and simple weapon silhouettes make the prototype testable before art detail is added."
+        }
+      ],
+      "cautions": [
+        "This is an older prototype; use it for HUD placement and feedback timing rather than final visual quality."
+      ],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "fps-operation-strife-loadout-devlog",
+      "genreIds": [
+        "fps_arena"
+      ],
+      "aspects": [
+        "ui_hud",
+        "inventory",
+        "map_composition",
+        "interaction"
+      ],
+      "title": "FPS Game Devlog | #28 - A Fresh Start",
+      "url": "https://devforum.roblox.com/t/fps-game-devlog-28-a-fresh-start/1274373",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "iceking_gfx",
+        "publishedAt": "2021-06-05"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 1274373
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 4,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 4 representative images from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "fps_arena"
+          ],
+          "aspect": "inventory",
+          "text": "Primary and secondary weapon silhouettes sit in a dedicated loadout view with the selected weapon name and customization state."
+        },
+        {
+          "genreIds": [
+            "fps_arena"
+          ],
+          "aspect": "ui_hud",
+          "text": "The first-person HUD limits persistent information to weapon, ammunition, and a small center reticle."
+        },
+        {
+          "genreIds": [
+            "fps_arena"
+          ],
+          "aspect": "interaction",
+          "text": "Deploy, weapon loadout, and gameplay are presented as separate modes, preventing menu controls from competing with combat input."
+        },
+        {
+          "genreIds": [
+            "fps_arena"
+          ],
+          "aspect": "map_composition",
+          "text": "A plain graybox arena makes target contrast, weapon scale, and cover height measurable before environmental dressing."
+        }
+      ],
+      "cautions": [],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "fps-three-lane-greybox-map",
+      "genreIds": [
+        "fps_arena"
+      ],
+      "aspects": [
+        "ui_hud",
+        "map_composition",
+        "materials",
+        "interaction"
+      ],
+      "title": "FPS Game Devlog | #26 - Gun Game, Map Update and more",
+      "url": "https://devforum.roblox.com/t/fps-game-devlog-26-gun-game-map-update-and-more/1185888",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "iceking_gfx",
+        "publishedAt": "2021-04-24"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 1185888
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 4,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 4 representative images from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "fps_arena"
+          ],
+          "aspect": "map_composition",
+          "text": "Cover blocks, roof access, narrow connectors, and longer sightlines form multiple combat distances within a compact three-lane blockout."
+        },
+        {
+          "genreIds": [
+            "fps_arena"
+          ],
+          "aspect": "ui_hud",
+          "text": "Health, ammunition, minimap, and weapon label occupy four stable edge zones while the center remains clear for aim."
+        },
+        {
+          "genreIds": [
+            "fps_arena"
+          ],
+          "aspect": "materials",
+          "text": "Placeholder colors and checker surfaces separate floors, walls, cover, and vertical routes before final material work."
+        },
+        {
+          "genreIds": [
+            "fps_arena"
+          ],
+          "aspect": "interaction",
+          "text": "Smoke and cover placement interrupt sightlines at specific choke points instead of reducing visibility everywhere."
+        }
+      ],
+      "cautions": [],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "fps-map-vote-rank-and-urban-map",
+      "genreIds": [
+        "fps_arena"
+      ],
+      "aspects": [
+        "ui_hud",
+        "inventory",
+        "map_composition",
+        "interaction"
+      ],
+      "title": "FPS Game Devlog | #27 - Rank Unlock Guns, new round system, new map voting system, inspect animations, new guns, and more!",
+      "url": "https://devforum.roblox.com/t/fps-game-devlog-27-rank-unlock-guns-new-round-system-new-map-voting-system-inspect-animations-new-guns-and-more/1214995",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "iceking_gfx",
+        "publishedAt": "2021-05-09"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 1214995
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 4,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 4 representative images from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "fps_arena"
+          ],
+          "aspect": "ui_hud",
+          "text": "A compact map-voting panel combines thumbnails, names, and live vote counts while preserving the underlying lobby view."
+        },
+        {
+          "genreIds": [
+            "fps_arena"
+          ],
+          "aspect": "inventory",
+          "text": "Weapon labels and loadout state remain consistent between deploy screens and gameplay HUD."
+        },
+        {
+          "genreIds": [
+            "fps_arena"
+          ],
+          "aspect": "map_composition",
+          "text": "The urban map uses street corridors, glass towers, rooflines, and alley-scale connectors to create clear vertical landmarks."
+        },
+        {
+          "genreIds": [
+            "fps_arena"
+          ],
+          "aspect": "interaction",
+          "text": "Rank unlock, map choice, and deploy state are resolved before the round, keeping combat free from progression dialogs."
+        }
+      ],
+      "cautions": [],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "anime-battle-cliff-village-world",
+      "genreIds": [
+        "anime_battle"
+      ],
+      "aspects": [
+        "map_composition",
+        "low_poly_props",
+        "materials",
+        "lighting"
+      ],
+      "title": "[DevLog - Update 2] The Abyss : Scripting takes a lot of time",
+      "url": "https://devforum.roblox.com/t/devlog-update-2-the-abyss-scripting-takes-a-lot-of-time/893890",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "Lord_Monever",
+        "publishedAt": "2020-11-28",
+        "updatedAt": "2020-12-07"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 893890
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 4,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 4 representative images from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "anime_battle"
+          ],
+          "aspect": "map_composition",
+          "text": "Timber buildings cluster along cliff edges and slopes, with ramps and gaps creating layered approach routes through the village."
+        },
+        {
+          "genreIds": [
+            "anime_battle"
+          ],
+          "aspect": "lighting",
+          "text": "Blue atmospheric fog lowers distant contrast while nearby buildings retain stronger silhouettes for traversal."
+        },
+        {
+          "genreIds": [
+            "anime_battle"
+          ],
+          "aspect": "materials",
+          "text": "Dark timber frames, pale walls, grass, and stone repeat across the settlement, giving many modular buildings one visual family."
+        },
+        {
+          "genreIds": [
+            "anime_battle"
+          ],
+          "aspect": "low_poly_props",
+          "text": "Roofs, beams, stairs, and houses use simplified forms that read as a stylized village without detailed texture work."
+        }
+      ],
+      "cautions": [],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "anime-battle-lore-menu-and-hud",
+      "genreIds": [
+        "anime_battle"
+      ],
+      "aspects": [
+        "ui_hud",
+        "shop",
+        "materials",
+        "interaction"
+      ],
+      "title": "Feedback on some Icons, UIs and Logos I've made",
+      "url": "https://devforum.roblox.com/t/feedback-on-some-icons-uis-and-logos-ive-made/1203043",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "RxnClash",
+        "publishedAt": "2021-05-04"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 1203043
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 4,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 4 representative images from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "anime_battle"
+          ],
+          "aspect": "ui_hud",
+          "text": "Lore or loading cards use one emblem, one title, and a short centered body, while the gameplay HUD keeps health and stamina near the lower edge."
+        },
+        {
+          "genreIds": [
+            "anime_battle"
+          ],
+          "aspect": "interaction",
+          "text": "The world is blurred under menus so the player keeps spatial context while focus moves to the interface."
+        },
+        {
+          "genreIds": [
+            "anime_battle"
+          ],
+          "aspect": "shop",
+          "text": "The main menu presents only play, options, and character actions at the first level instead of exposing every system at once."
+        },
+        {
+          "genreIds": [
+            "anime_battle"
+          ],
+          "aspect": "materials",
+          "text": "Dark translucent surfaces, pale text, and small red or gold accents support the dramatic theme without filling the panel with illustration."
+        }
+      ],
+      "cautions": [],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "survival-boundless-ui-world-lighting",
+      "genreIds": [
+        "survival"
+      ],
+      "aspects": [
+        "ui_hud",
+        "inventory",
+        "map_composition",
+        "materials",
+        "lighting"
+      ],
+      "title": "The biggest upcoming open world survival game of 2021",
+      "url": "https://devforum.roblox.com/t/the-biggest-upcoming-open-world-survival-game-of-2021/969921",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "OG_Netflix",
+        "publishedAt": "2021-01-08",
+        "updatedAt": "2021-04-15"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 969921
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 12,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 12 representative images from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "survival"
+          ],
+          "aspect": "inventory",
+          "text": "Equipment silhouettes occupy a left body region, item slots form a right grid, and hotbar and status meters stay along the bottom."
+        },
+        {
+          "genreIds": [
+            "survival"
+          ],
+          "aspect": "map_composition",
+          "text": "A distant mountain, water edge, forest openings, and isolated structures create long-range navigation anchors across a large world."
+        },
+        {
+          "genreIds": [
+            "survival"
+          ],
+          "aspect": "lighting",
+          "text": "Sunrise, mist, and clearer daylight versions show how the same terrain can communicate time and weather while retaining the mountain silhouette."
+        },
+        {
+          "genreIds": [
+            "survival"
+          ],
+          "aspect": "ui_hud",
+          "text": "Main menu, inventory, gameplay, and settings use translucent overlays that preserve the world as context instead of replacing it with a separate screen."
+        },
+        {
+          "genreIds": [
+            "survival"
+          ],
+          "aspect": "materials",
+          "text": "Wood, metal, rock, foliage, and water are separated by roughness and value, allowing resource categories to read at a distance."
+        }
+      ],
+      "cautions": [
+        "The visual fidelity is above the requested low-poly target; transfer the layout, landmark, lighting, and information hierarchy rather than asset density."
+      ],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "survival-diegetic-3d-main-menu",
+      "genreIds": [
+        "survival"
+      ],
+      "aspects": [
+        "ui_hud",
+        "materials",
+        "lighting",
+        "interaction"
+      ],
+      "title": "3D Main Menu Feedback",
+      "url": "https://devforum.roblox.com/t/3d-main-menu-feedback/2018681",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "TopHatRBLX",
+        "publishedAt": "2022-10-11"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 2018681
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 1,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 1 representative image from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "survival"
+          ],
+          "aspect": "ui_hud",
+          "text": "A vertical left menu sits over a staged room and character, turning the main menu into part of the game world."
+        },
+        {
+          "genreIds": [
+            "survival"
+          ],
+          "aspect": "interaction",
+          "text": "One large play control and a single highlighted row give a clear first action before market, customization, statistics, or utilities."
+        },
+        {
+          "genreIds": [
+            "survival"
+          ],
+          "aspect": "lighting",
+          "text": "Warm local interior lights separate the character and work area from the darker edges behind the navigation."
+        },
+        {
+          "genreIds": [
+            "survival"
+          ],
+          "aspect": "materials",
+          "text": "Wood, cloth, metal, and muted wall surfaces build atmosphere through broad material groups rather than dense ornament."
+        }
+      ],
+      "cautions": [],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "survival-crafting-and-hotbar-ui",
+      "genreIds": [
+        "survival"
+      ],
+      "aspects": [
+        "ui_hud",
+        "inventory",
+        "low_poly_props",
+        "interaction"
+      ],
+      "title": "New Survival Game",
+      "url": "https://devforum.roblox.com/t/new-survival-game/3029230",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "Ace_Max01",
+        "publishedAt": "2024-06-19",
+        "updatedAt": "2024-07-04"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 3029230
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 2,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 2 representative images from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "survival"
+          ],
+          "aspect": "inventory",
+          "text": "Resources and workbench recipes share one panel with quantities, requirements, and craft actions aligned in rows."
+        },
+        {
+          "genreIds": [
+            "survival"
+          ],
+          "aspect": "ui_hud",
+          "text": "A hotbar remains visible along the bottom while crafting occurs, keeping the active equipment model connected to the inventory screen."
+        },
+        {
+          "genreIds": [
+            "survival"
+          ],
+          "aspect": "interaction",
+          "text": "Craft actions sit beside each recipe and the world remains visible, supporting quick creation without losing situational awareness."
+        },
+        {
+          "genreIds": [
+            "survival"
+          ],
+          "aspect": "low_poly_props",
+          "text": "Conical trees, simple rocks, and broad terrain planes create a readable gathering environment with a small asset vocabulary."
+        }
+      ],
+      "cautions": [],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "survival-rpg-valley-and-village",
+      "genreIds": [
+        "survival"
+      ],
+      "aspects": [
+        "map_composition",
+        "low_poly_props",
+        "lighting",
+        "interaction"
+      ],
+      "title": "Creating my unique weapon-style RPG game within 2.5 years progress. This is what I got",
+      "url": "https://devforum.roblox.com/t/creating-my-unique-weapon-style-rpg-game-within-25-years-progress-this-is-what-i-got/1099499",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "Gabe163",
+        "publishedAt": "2021-03-12"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 1099499
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 4,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 4 representative images from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "survival"
+          ],
+          "aspect": "map_composition",
+          "text": "A village, river basin, surrounding cliffs, and distant mountains divide the world into nested landmarks visible from elevated views."
+        },
+        {
+          "genreIds": [
+            "survival"
+          ],
+          "aspect": "low_poly_props",
+          "text": "Cabins, conical trees, rocks, signs, and bridges repeat as a modular settlement and wilderness kit."
+        },
+        {
+          "genreIds": [
+            "survival"
+          ],
+          "aspect": "interaction",
+          "text": "A named village sign establishes arrival and gives players a navigational reference before they enter the settlement."
+        },
+        {
+          "genreIds": [
+            "survival"
+          ],
+          "aspect": "lighting",
+          "text": "Warm daylight and strong terrain values keep routes readable across a broad valley without relying on high-resolution surface detail."
+        }
+      ],
+      "cautions": [
+        "The source also contains broader RPG material; the curated observations are limited to survival-world composition and navigation."
+      ],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "horror-main-menu-shop-entry",
+      "genreIds": [
+        "horror"
+      ],
+      "aspects": [
+        "shop"
+      ],
+      "title": "Feedback on Main Menu for upcoming horror game",
+      "url": "https://devforum.roblox.com/t/feedback-on-main-menu-for-upcoming-horror-game/2400908",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "Carl_Weezer13",
+        "publishedAt": "2023-06-01"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 2400908
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 1,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 1 representative image from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "horror"
+          ],
+          "aspect": "shop",
+          "text": "A single Shop entry sits in the same narrow left-side stack as Play and Credits, making monetization discoverable without taking over the horror artwork."
+        },
+        {
+          "genreIds": [
+            "horror"
+          ],
+          "aspect": "shop",
+          "text": "The shop entry uses the same sparse bright text and restrained chrome as the rest of the menu, so commerce does not introduce a visually louder style than the horror framing."
+        },
+        {
+          "genreIds": [
+            "horror"
+          ],
+          "aspect": "shop",
+          "text": "Keeping Shop as a top-level menu destination makes it predictable to find while leaving the center of the frame available for dark atmosphere and threat imagery."
+        }
+      ],
+      "cautions": [
+        "The inspected visual proves shop discoverability in a horror menu, not the layout or quality of the shop catalogue itself."
+      ],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "obby-glider-inventory-ui",
+      "genreIds": [
+        "obby"
+      ],
+      "aspects": [
+        "inventory"
+      ],
+      "title": "Feedback on GUI for my glider obby?",
+      "url": "https://devforum.roblox.com/t/feedback-on-gui-for-my-glider-obby/3542439",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "2octos",
+        "publishedAt": "2025-03-09"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 3542439
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 1,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 1 representative image from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "obby"
+          ],
+          "aspect": "inventory",
+          "text": "The inventory is separated below the shop into its own labeled band with circular item slots, so owned gliders read as a collection rather than as more products."
+        },
+        {
+          "genreIds": [
+            "obby"
+          ],
+          "aspect": "inventory",
+          "text": "The item slots use a repeated compact shape and consistent spacing, allowing a glider collection to expand without turning the obby overlay into a dense text list."
+        },
+        {
+          "genreIds": [
+            "obby"
+          ],
+          "aspect": "inventory",
+          "text": "The collection panel leaves the obstacle course visible around the interface, helping a player reorient to the route immediately after closing the inventory."
+        }
+      ],
+      "cautions": [
+        "The creator explicitly describes this interface as work in progress and says the inventory is nowhere near done; use the separation pattern, not its polish, as the reference."
+      ],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "tycoon-kit-store-ui",
+      "genreIds": [
+        "tycoon"
+      ],
+      "aspects": [
+        "shop"
+      ],
+      "title": "Tycoon Kit UI Showcase",
+      "url": "https://devforum.roblox.com/t/tycoon-kit-ui-showcase/3273680",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "ShotgunRound",
+        "publishedAt": "2024-11-25"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 3273680
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 2,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 2 representative images from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "tycoon"
+          ],
+          "aspect": "shop",
+          "text": "A category heading and repeated offer cards expose each gamepass benefit beside a single visible Robux price, making the purchase decision scannable before selection."
+        },
+        {
+          "genreIds": [
+            "tycoon"
+          ],
+          "aspect": "shop",
+          "text": "Each offer reserves one large green price button in the same card position, so the primary purchase target stays predictable across different tycoon products."
+        },
+        {
+          "genreIds": [
+            "tycoon"
+          ],
+          "aspect": "shop",
+          "text": "Bold headers, thick outlines, and one repeated rounded-card grammar make a dense monetization surface readable without relying on detailed texture art."
+        }
+      ],
+      "cautions": [
+        "Use the information hierarchy and repeated card grammar as reference; do not copy the source cosmetics, prices, icons, or product lineup."
+      ],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "tycoon-sandbox-hud-inventory",
+      "genreIds": [
+        "tycoon"
+      ],
+      "aspects": [
+        "ui_hud",
+        "inventory"
+      ],
+      "title": "Feedback for a sandbox tycoon HUD",
+      "url": "https://devforum.roblox.com/t/feedback-for-a-sandbox-tycoon-hud/801982",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "novaseer",
+        "publishedAt": "2020-10-02"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 801982
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 1,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 1 representative image from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "tycoon"
+          ],
+          "aspect": "ui_hud",
+          "text": "Compact currency and resource counters stay docked along the top while a larger management window occupies the center, separating persistent economy state from temporary tools."
+        },
+        {
+          "genreIds": [
+            "tycoon"
+          ],
+          "aspect": "inventory",
+          "text": "The inventory gives most of its area to a bounded item grid and keeps secondary controls in a narrow side region, allowing collection capacity to grow without mixing items into the currency HUD."
+        },
+        {
+          "genreIds": [
+            "tycoon"
+          ],
+          "aspect": "ui_hud",
+          "text": "The bright management panel is visually distinct from the world while the top economy counters remain visible, preserving cost and affordability context during building or inventory work."
+        }
+      ],
+      "cautions": [
+        "The source is explicitly desktop-oriented and discusses 720p and 1080p layouts; do not treat its proportions as a cross-device target."
+      ],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "racing-garage-shop-navigation",
+      "genreIds": [
+        "racing"
+      ],
+      "aspects": [
+        "shop"
+      ],
+      "title": "How to fix THIS racing gui?",
+      "url": "https://devforum.roblox.com/t/how-to-fix-this-racing-gui/2844419",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "KrimsonWoIf",
+        "publishedAt": "2024-02-19",
+        "updatedAt": "2024-02-19"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 2844419
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 1,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 1 representative image from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "racing"
+          ],
+          "aspect": "shop",
+          "text": "Shop is a top-level destination beside Play and Garage, so buying vehicles remains one predictable step away from the screen where players inspect and modify cars."
+        },
+        {
+          "genreIds": [
+            "racing"
+          ],
+          "aspect": "shop",
+          "text": "The shop entry stays in the same compact top navigation as the garage instead of becoming a separate visual language, keeping the vehicle economy connected to car management."
+        },
+        {
+          "genreIds": [
+            "racing"
+          ],
+          "aspect": "shop",
+          "text": "A large selected car remains the visual focus beneath the Shop and Garage navigation, preserving vehicle identity as the context for acquisition and upgrade decisions."
+        }
+      ],
+      "cautions": [
+        "The inspected screen is the garage and exposes the Shop entry, not a full dealership catalogue; use it for racing shop discoverability and garage-to-shop flow."
+      ],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "racing-livery-material-grouping",
+      "genreIds": [
+        "racing"
+      ],
+      "aspects": [
+        "materials"
+      ],
+      "title": "Racing livery feedback",
+      "url": "https://devforum.roblox.com/t/racing-livery-feedback/4571443",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "The_AceCrafter",
+        "publishedAt": "2026-04-12"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 4571443
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 1,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 1 representative image from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "racing"
+          ],
+          "aspect": "materials",
+          "text": "A broad dark glossy body acts as the base material while a few bright yellow livery blocks create high-speed recognition without covering every panel."
+        },
+        {
+          "genreIds": [
+            "racing"
+          ],
+          "aspect": "materials",
+          "text": "The livery follows large body panels and leaves glass, tires, trim, and wheel regions dark, preserving readable material boundaries across the vehicle silhouette."
+        },
+        {
+          "genreIds": [
+            "racing"
+          ],
+          "aspect": "materials",
+          "text": "Restrained two-tone value grouping keeps highlights and panel breaks visible against neutral road surfaces, so the car remains distinct at a distance."
+        }
+      ],
+      "cautions": [
+        "Use the material-value grouping and livery placement as reference only; the vehicle design and graphic treatment remain the creator’s work."
+      ],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "fps-freefire-shop-lobby",
+      "genreIds": [
+        "fps_arena"
+      ],
+      "aspects": [
+        "shop"
+      ],
+      "title": "Feedback on my in-development FPS game, Freefire!",
+      "url": "https://devforum.roblox.com/t/feedback-on-my-in-development-fps-game-freefire/1933730",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "bostnm",
+        "publishedAt": "2022-08-22"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 1933730
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 1,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 1 representative image from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "fps_arena"
+          ],
+          "aspect": "shop",
+          "text": "Shop is presented as one large lobby action directly beneath Play, giving cosmetic acquisition the same immediate discoverability as entering the next FPS round."
+        },
+        {
+          "genreIds": [
+            "fps_arena"
+          ],
+          "aspect": "shop",
+          "text": "The shop entry uses the same high-contrast button shape as the surrounding match and customization actions, so commerce does not require a separate navigation grammar."
+        },
+        {
+          "genreIds": [
+            "fps_arena"
+          ],
+          "aspect": "shop",
+          "text": "Keeping the shop entry at the lobby edge leaves the avatar and arena visible, preserving the combat-game context while players decide whether to browse cosmetics."
+        }
+      ],
+      "cautions": [
+        "The authored observations use the inspected lobby visual for shop entry and navigation; they do not claim the catalogue layout or monetization model is proven."
+      ],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "fps-low-poly-container-lighting",
+      "genreIds": [
+        "fps_arena"
+      ],
+      "aspects": [
+        "lighting"
+      ],
+      "title": "I need some feedback on my low-poly fps map!",
+      "url": "https://devforum.roblox.com/t/i-need-some-feedback-on-my-low-poly-fps-map/610085",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "Gamingidu",
+        "publishedAt": "2020-06-04"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 610085
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 1,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 1 representative image from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "fps_arena"
+          ],
+          "aspect": "lighting",
+          "text": "Bright sky fill and a strong directional sun separate colored container faces and elevated routes while long shadows add depth without obscuring the main outdoor lanes."
+        },
+        {
+          "genreIds": [
+            "fps_arena"
+          ],
+          "aspect": "lighting",
+          "text": "Large simple prop faces receive broad, readable light gradients, which keeps cover edges visible at combat distance without depending on high-resolution textures."
+        },
+        {
+          "genreIds": [
+            "fps_arena"
+          ],
+          "aspect": "lighting",
+          "text": "The neutral ground and bright exterior exposure let saturated cover pieces act as landmarks, so lighting supports both target visibility and fast arena orientation."
+        }
+      ],
+      "cautions": [
+        "Feedback on the page notes that some enclosed areas can become too dark; use the inspected exterior contrast as the reference and validate interior visibility separately."
+      ],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    },
+    {
+      "id": "survival-disaster-shop-ui",
+      "genreIds": [
+        "survival"
+      ],
+      "aspects": [
+        "shop"
+      ],
+      "title": "Survive The Disasters Ultra",
+      "url": "https://devforum.roblox.com/t/survive-the-disasters-ultra/1001124",
+      "origin": {
+        "type": "original_creator_post",
+        "publisher": "Roblox Developer Forum",
+        "author": "Wintremourn",
+        "publishedAt": "2021-01-23"
+      },
+      "verification": {
+        "status": "live_topic_json_verified",
+        "checkedAt": "2026-09-18",
+        "topicId": 1001124
+      },
+      "inspection": {
+        "status": "visual_inspected",
+        "inspectedAt": "2026-09-18",
+        "inspectedMediaCount": 1,
+        "method": "first_post_text_and_representative_images",
+        "evidence": "Reviewed the first post and 1 representative image from the source page; only observations and the source URL are retained."
+      },
+      "observations": [
+        {
+          "genreIds": [
+            "survival"
+          ],
+          "aspect": "shop",
+          "text": "A vertical item rail keeps multiple survival tools visible while the selected item receives a much larger name and description area, supporting quick scanning between hazards."
+        },
+        {
+          "genreIds": [
+            "survival"
+          ],
+          "aspect": "shop",
+          "text": "The selected tool exposes its progression or rank state inside the shop, connecting purchase decisions to longer-term item improvement rather than treating every item as a one-off buy."
+        },
+        {
+          "genreIds": [
+            "survival"
+          ],
+          "aspect": "shop",
+          "text": "A fixed Close action and narrow item list keep the shop visually bounded, which suits a disaster loop where players may need to return to the world quickly before the next threat."
+        }
+      ],
+      "cautions": [
+        "The interface is an older, intentionally simple example; use its survival-shop information grouping and quick-exit flow rather than its visual styling."
+      ],
+      "referenceUse": "reference_only",
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false,
+        "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+      }
+    }
+  ],
+  "officialDocuments": [
+    {
+      "id": "api-proximityprompt",
+      "title": "ProximityPrompt (Class)",
+      "url": "https://create.roblox.com/docs/reference/engine/classes/ProximityPrompt",
+      "kind": "api",
+      "origin": {
+        "publisher": "Roblox Creator Hub",
+        "publicationDate": null,
+        "dateStatus": "not_available_in_local_corpus"
+      },
+      "corpus": {
+        "path": "packages/corpus/data/chunks.jsonl",
+        "docSlug": "api-proximityprompt",
+        "chunkIds": [
+          "api-proximityprompt-1",
+          "api-proximityprompt-2"
+        ],
+        "chunkCount": 2
+      }
+    },
+    {
+      "id": "docs-art-modeling-surface-appearance",
+      "title": "PBR textures",
+      "url": "https://create.roblox.com/docs/art/modeling/surface-appearance",
+      "kind": "guide",
+      "origin": {
+        "publisher": "Roblox Creator Hub",
+        "publicationDate": null,
+        "dateStatus": "not_available_in_local_corpus"
+      },
+      "corpus": {
+        "path": "packages/corpus/data/chunks.jsonl",
+        "docSlug": "docs-art-modeling-surface-appearance",
+        "chunkIds": [
+          "g-3800326f-1",
+          "g-3800326f-2",
+          "g-3800326f-3",
+          "g-3800326f-4",
+          "g-3800326f-5",
+          "g-3800326f-6",
+          "g-3800326f-7",
+          "g-3800326f-8",
+          "g-3800326f-9",
+          "g-3800326f-10",
+          "g-3800326f-11",
+          "g-3800326f-12",
+          "g-3800326f-13",
+          "g-3800326f-14",
+          "g-3800326f-15"
+        ],
+        "chunkCount": 15
+      }
+    },
+    {
+      "id": "docs-environment-atmosphere",
+      "title": "Atmospheric effects",
+      "url": "https://create.roblox.com/docs/environment/atmosphere",
+      "kind": "guide",
+      "origin": {
+        "publisher": "Roblox Creator Hub",
+        "publicationDate": null,
+        "dateStatus": "not_available_in_local_corpus"
+      },
+      "corpus": {
+        "path": "packages/corpus/data/chunks.jsonl",
+        "docSlug": "docs-environment-atmosphere",
+        "chunkIds": [
+          "g-4685c508-1",
+          "g-4685c508-2"
+        ],
+        "chunkCount": 2
+      }
+    },
+    {
+      "id": "docs-environment-lighting",
+      "title": "Global lighting",
+      "url": "https://create.roblox.com/docs/environment/lighting",
+      "kind": "guide",
+      "origin": {
+        "publisher": "Roblox Creator Hub",
+        "publicationDate": null,
+        "dateStatus": "not_available_in_local_corpus"
+      },
+      "corpus": {
+        "path": "packages/corpus/data/chunks.jsonl",
+        "docSlug": "docs-environment-lighting",
+        "chunkIds": [
+          "g-a09ac1a9-1",
+          "g-a09ac1a9-2",
+          "g-a09ac1a9-3",
+          "g-a09ac1a9-4"
+        ],
+        "chunkCount": 4
+      }
+    },
+    {
+      "id": "docs-environment-post-processing-effects",
+      "title": "Post-processing effects",
+      "url": "https://create.roblox.com/docs/environment/post-processing-effects",
+      "kind": "guide",
+      "origin": {
+        "publisher": "Roblox Creator Hub",
+        "publicationDate": null,
+        "dateStatus": "not_available_in_local_corpus"
+      },
+      "corpus": {
+        "path": "packages/corpus/data/chunks.jsonl",
+        "docSlug": "docs-environment-post-processing-effects",
+        "chunkIds": [
+          "g-828f1364-1",
+          "g-828f1364-2",
+          "g-828f1364-3",
+          "g-828f1364-4"
+        ],
+        "chunkCount": 4
+      }
+    },
+    {
+      "id": "docs-input-input-action-system",
+      "title": "Input Action System",
+      "url": "https://create.roblox.com/docs/input/input-action-system",
+      "kind": "guide",
+      "origin": {
+        "publisher": "Roblox Creator Hub",
+        "publicationDate": null,
+        "dateStatus": "not_available_in_local_corpus"
+      },
+      "corpus": {
+        "path": "packages/corpus/data/chunks.jsonl",
+        "docSlug": "docs-input-input-action-system",
+        "chunkIds": [
+          "g-811acfc1-1",
+          "g-811acfc1-2",
+          "g-811acfc1-3",
+          "g-811acfc1-4",
+          "g-811acfc1-5",
+          "g-811acfc1-6",
+          "g-811acfc1-7",
+          "g-811acfc1-8",
+          "g-811acfc1-9",
+          "g-811acfc1-10",
+          "g-811acfc1-11",
+          "g-811acfc1-12",
+          "g-811acfc1-13",
+          "g-811acfc1-14",
+          "g-811acfc1-15",
+          "g-811acfc1-16",
+          "g-811acfc1-17",
+          "g-811acfc1-18",
+          "g-811acfc1-19",
+          "g-811acfc1-20",
+          "g-811acfc1-21",
+          "g-811acfc1-22",
+          "g-811acfc1-23",
+          "g-811acfc1-24",
+          "g-811acfc1-25",
+          "g-811acfc1-26",
+          "g-811acfc1-27"
+        ],
+        "chunkCount": 27
+      }
+    },
+    {
+      "id": "docs-parts",
+      "title": "Parts",
+      "url": "https://create.roblox.com/docs/parts",
+      "kind": "guide",
+      "origin": {
+        "publisher": "Roblox Creator Hub",
+        "publicationDate": null,
+        "dateStatus": "not_available_in_local_corpus"
+      },
+      "corpus": {
+        "path": "packages/corpus/data/chunks.jsonl",
+        "docSlug": "docs-parts",
+        "chunkIds": [
+          "g-aa75ccbc-1",
+          "g-aa75ccbc-2",
+          "g-aa75ccbc-3",
+          "g-aa75ccbc-4",
+          "g-aa75ccbc-5",
+          "g-aa75ccbc-6",
+          "g-aa75ccbc-7",
+          "g-aa75ccbc-8",
+          "g-aa75ccbc-9"
+        ],
+        "chunkCount": 9
+      }
+    },
+    {
+      "id": "docs-parts-materials",
+      "title": "Materials",
+      "url": "https://create.roblox.com/docs/parts/materials",
+      "kind": "guide",
+      "origin": {
+        "publisher": "Roblox Creator Hub",
+        "publicationDate": null,
+        "dateStatus": "not_available_in_local_corpus"
+      },
+      "corpus": {
+        "path": "packages/corpus/data/chunks.jsonl",
+        "docSlug": "docs-parts-materials",
+        "chunkIds": [
+          "g-6e148555-1",
+          "g-6e148555-2",
+          "g-6e148555-3",
+          "g-6e148555-4",
+          "g-6e148555-5",
+          "g-6e148555-6",
+          "g-6e148555-7",
+          "g-6e148555-8",
+          "g-6e148555-9",
+          "g-6e148555-10",
+          "g-6e148555-11",
+          "g-6e148555-12",
+          "g-6e148555-13",
+          "g-6e148555-14",
+          "g-6e148555-15",
+          "g-6e148555-16",
+          "g-6e148555-17",
+          "g-6e148555-18",
+          "g-6e148555-19",
+          "g-6e148555-20",
+          "g-6e148555-21",
+          "g-6e148555-22",
+          "g-6e148555-23",
+          "g-6e148555-24",
+          "g-6e148555-25",
+          "g-6e148555-26"
+        ],
+        "chunkCount": 26
+      }
+    },
+    {
+      "id": "docs-parts-meshes",
+      "title": "Meshes",
+      "url": "https://create.roblox.com/docs/parts/meshes",
+      "kind": "guide",
+      "origin": {
+        "publisher": "Roblox Creator Hub",
+        "publicationDate": null,
+        "dateStatus": "not_available_in_local_corpus"
+      },
+      "corpus": {
+        "path": "packages/corpus/data/chunks.jsonl",
+        "docSlug": "docs-parts-meshes",
+        "chunkIds": [
+          "g-ce3a9b5f-1",
+          "g-ce3a9b5f-2",
+          "g-ce3a9b5f-3",
+          "g-ce3a9b5f-4",
+          "g-ce3a9b5f-5",
+          "g-ce3a9b5f-6",
+          "g-ce3a9b5f-7",
+          "g-ce3a9b5f-8"
+        ],
+        "chunkCount": 8
+      }
+    },
+    {
+      "id": "docs-players-tools",
+      "title": "In-game tools",
+      "url": "https://create.roblox.com/docs/players/tools",
+      "kind": "guide",
+      "origin": {
+        "publisher": "Roblox Creator Hub",
+        "publicationDate": null,
+        "dateStatus": "not_available_in_local_corpus"
+      },
+      "corpus": {
+        "path": "packages/corpus/data/chunks.jsonl",
+        "docSlug": "docs-players-tools",
+        "chunkIds": [
+          "g-49730ad1-1",
+          "g-49730ad1-2",
+          "g-49730ad1-3",
+          "g-49730ad1-4",
+          "g-49730ad1-5",
+          "g-49730ad1-6",
+          "g-49730ad1-7",
+          "g-49730ad1-8",
+          "g-49730ad1-9"
+        ],
+        "chunkCount": 9
+      }
+    },
+    {
+      "id": "docs-production-game-design-contextual-purchases",
+      "title": "Contextual purchases",
+      "url": "https://create.roblox.com/docs/production/game-design/contextual-purchases",
+      "kind": "guide",
+      "origin": {
+        "publisher": "Roblox Creator Hub",
+        "publicationDate": null,
+        "dateStatus": "not_available_in_local_corpus"
+      },
+      "corpus": {
+        "path": "packages/corpus/data/chunks.jsonl",
+        "docSlug": "docs-production-game-design-contextual-purchases",
+        "chunkIds": [
+          "g-e7b0cae4-1",
+          "g-e7b0cae4-2",
+          "g-e7b0cae4-3",
+          "g-e7b0cae4-4",
+          "g-e7b0cae4-5",
+          "g-e7b0cae4-6"
+        ],
+        "chunkCount": 6
+      }
+    },
+    {
+      "id": "docs-production-monetization-developer-products",
+      "title": "Developer Products",
+      "url": "https://create.roblox.com/docs/production/monetization/developer-products",
+      "kind": "guide",
+      "origin": {
+        "publisher": "Roblox Creator Hub",
+        "publicationDate": null,
+        "dateStatus": "not_available_in_local_corpus"
+      },
+      "corpus": {
+        "path": "packages/corpus/data/chunks.jsonl",
+        "docSlug": "docs-production-monetization-developer-products",
+        "chunkIds": [
+          "g-d65dde5c-1",
+          "g-d65dde5c-2",
+          "g-d65dde5c-3",
+          "g-d65dde5c-4",
+          "g-d65dde5c-5",
+          "g-d65dde5c-6",
+          "g-d65dde5c-7",
+          "g-d65dde5c-8",
+          "g-d65dde5c-9",
+          "g-d65dde5c-10",
+          "g-d65dde5c-11",
+          "g-d65dde5c-12",
+          "g-d65dde5c-13",
+          "g-d65dde5c-14",
+          "g-d65dde5c-15"
+        ],
+        "chunkCount": 15
+      }
+    },
+    {
+      "id": "docs-production-monetization-passes",
+      "title": "Passes",
+      "url": "https://create.roblox.com/docs/production/monetization/passes",
+      "kind": "guide",
+      "origin": {
+        "publisher": "Roblox Creator Hub",
+        "publicationDate": null,
+        "dateStatus": "not_available_in_local_corpus"
+      },
+      "corpus": {
+        "path": "packages/corpus/data/chunks.jsonl",
+        "docSlug": "docs-production-monetization-passes",
+        "chunkIds": [
+          "g-01afedae-1",
+          "g-01afedae-2",
+          "g-01afedae-3",
+          "g-01afedae-4",
+          "g-01afedae-5",
+          "g-01afedae-6",
+          "g-01afedae-7",
+          "g-01afedae-8",
+          "g-01afedae-9",
+          "g-01afedae-10",
+          "g-01afedae-11",
+          "g-01afedae-12"
+        ],
+        "chunkCount": 12
+      }
+    },
+    {
+      "id": "docs-production-monetization-shop",
+      "title": "Shop",
+      "url": "https://create.roblox.com/docs/production/monetization/shop",
+      "kind": "guide",
+      "origin": {
+        "publisher": "Roblox Creator Hub",
+        "publicationDate": null,
+        "dateStatus": "not_available_in_local_corpus"
+      },
+      "corpus": {
+        "path": "packages/corpus/data/chunks.jsonl",
+        "docSlug": "docs-production-monetization-shop",
+        "chunkIds": [
+          "g-3b60a786-1",
+          "g-3b60a786-2",
+          "g-3b60a786-3",
+          "g-3b60a786-4"
+        ],
+        "chunkCount": 4
+      }
+    },
+    {
+      "id": "docs-production-publishing-adaptive-design",
+      "title": "Adaptive design guidelines",
+      "url": "https://create.roblox.com/docs/production/publishing/adaptive-design",
+      "kind": "guide",
+      "origin": {
+        "publisher": "Roblox Creator Hub",
+        "publicationDate": null,
+        "dateStatus": "not_available_in_local_corpus"
+      },
+      "corpus": {
+        "path": "packages/corpus/data/chunks.jsonl",
+        "docSlug": "docs-production-publishing-adaptive-design",
+        "chunkIds": [
+          "g-cee0af5c-1",
+          "g-cee0af5c-2",
+          "g-cee0af5c-3",
+          "g-cee0af5c-4",
+          "g-cee0af5c-5",
+          "g-cee0af5c-6"
+        ],
+        "chunkCount": 6
+      }
+    },
+    {
+      "id": "docs-tutorials-curriculums-core-building-greybox-a-playable-area",
+      "title": "Greybox a playable area",
+      "url": "https://create.roblox.com/docs/tutorials/curriculums/core/building/greybox-a-playable-area",
+      "kind": "guide",
+      "origin": {
+        "publisher": "Roblox Creator Hub",
+        "publicationDate": null,
+        "dateStatus": "not_available_in_local_corpus"
+      },
+      "corpus": {
+        "path": "packages/corpus/data/chunks.jsonl",
+        "docSlug": "docs-tutorials-curriculums-core-building-greybox-a-playable-area",
+        "chunkIds": [
+          "g-7231e66c-1",
+          "g-7231e66c-2",
+          "g-7231e66c-3",
+          "g-7231e66c-4",
+          "g-7231e66c-5",
+          "g-7231e66c-6",
+          "g-7231e66c-7",
+          "g-7231e66c-8",
+          "g-7231e66c-9",
+          "g-7231e66c-10"
+        ],
+        "chunkCount": 10
+      }
+    },
+    {
+      "id": "docs-tutorials-curriculums-environmental-art-construct-your-world",
+      "title": "Construct your world",
+      "url": "https://create.roblox.com/docs/tutorials/curriculums/environmental-art/construct-your-world",
+      "kind": "guide",
+      "origin": {
+        "publisher": "Roblox Creator Hub",
+        "publicationDate": null,
+        "dateStatus": "not_available_in_local_corpus"
+      },
+      "corpus": {
+        "path": "packages/corpus/data/chunks.jsonl",
+        "docSlug": "docs-tutorials-curriculums-environmental-art-construct-your-world",
+        "chunkIds": [
+          "g-6e303100-1",
+          "g-6e303100-2",
+          "g-6e303100-3",
+          "g-6e303100-4",
+          "g-6e303100-5",
+          "g-6e303100-6",
+          "g-6e303100-7",
+          "g-6e303100-8",
+          "g-6e303100-9",
+          "g-6e303100-10",
+          "g-6e303100-11",
+          "g-6e303100-12",
+          "g-6e303100-13",
+          "g-6e303100-14",
+          "g-6e303100-15",
+          "g-6e303100-16",
+          "g-6e303100-17",
+          "g-6e303100-18",
+          "g-6e303100-19",
+          "g-6e303100-20",
+          "g-6e303100-21",
+          "g-6e303100-22",
+          "g-6e303100-23",
+          "g-6e303100-24",
+          "g-6e303100-25",
+          "g-6e303100-26",
+          "g-6e303100-27",
+          "g-6e303100-28",
+          "g-6e303100-29",
+          "g-6e303100-30",
+          "g-6e303100-31",
+          "g-6e303100-32",
+          "g-6e303100-33",
+          "g-6e303100-34",
+          "g-6e303100-35",
+          "g-6e303100-36",
+          "g-6e303100-37",
+          "g-6e303100-38",
+          "g-6e303100-39",
+          "g-6e303100-40",
+          "g-6e303100-41",
+          "g-6e303100-42",
+          "g-6e303100-43",
+          "g-6e303100-44",
+          "g-6e303100-45",
+          "g-6e303100-46",
+          "g-6e303100-47",
+          "g-6e303100-48",
+          "g-6e303100-49",
+          "g-6e303100-50",
+          "g-6e303100-51",
+          "g-6e303100-52",
+          "g-6e303100-53",
+          "g-6e303100-54",
+          "g-6e303100-55",
+          "g-6e303100-56",
+          "g-6e303100-57",
+          "g-6e303100-58",
+          "g-6e303100-59",
+          "g-6e303100-60",
+          "g-6e303100-61",
+          "g-6e303100-62",
+          "g-6e303100-63",
+          "g-6e303100-64",
+          "g-6e303100-65",
+          "g-6e303100-66",
+          "g-6e303100-67",
+          "g-6e303100-68",
+          "g-6e303100-69",
+          "g-6e303100-70",
+          "g-6e303100-71",
+          "g-6e303100-72",
+          "g-6e303100-73",
+          "g-6e303100-74",
+          "g-6e303100-75",
+          "g-6e303100-76",
+          "g-6e303100-77",
+          "g-6e303100-78"
+        ],
+        "chunkCount": 78
+      }
+    },
+    {
+      "id": "docs-tutorials-curriculums-environmental-art-greybox-your-environment",
+      "title": "Greybox your environment",
+      "url": "https://create.roblox.com/docs/tutorials/curriculums/environmental-art/greybox-your-environment",
+      "kind": "guide",
+      "origin": {
+        "publisher": "Roblox Creator Hub",
+        "publicationDate": null,
+        "dateStatus": "not_available_in_local_corpus"
+      },
+      "corpus": {
+        "path": "packages/corpus/data/chunks.jsonl",
+        "docSlug": "docs-tutorials-curriculums-environmental-art-greybox-your-environment",
+        "chunkIds": [
+          "g-e1090dc7-1",
+          "g-e1090dc7-2",
+          "g-e1090dc7-3",
+          "g-e1090dc7-4",
+          "g-e1090dc7-5",
+          "g-e1090dc7-6",
+          "g-e1090dc7-7",
+          "g-e1090dc7-8",
+          "g-e1090dc7-9",
+          "g-e1090dc7-10",
+          "g-e1090dc7-11",
+          "g-e1090dc7-12",
+          "g-e1090dc7-13",
+          "g-e1090dc7-14",
+          "g-e1090dc7-15",
+          "g-e1090dc7-16",
+          "g-e1090dc7-17",
+          "g-e1090dc7-18",
+          "g-e1090dc7-19",
+          "g-e1090dc7-20",
+          "g-e1090dc7-21",
+          "g-e1090dc7-22",
+          "g-e1090dc7-23",
+          "g-e1090dc7-24",
+          "g-e1090dc7-25",
+          "g-e1090dc7-26",
+          "g-e1090dc7-27"
+        ],
+        "chunkCount": 27
+      }
+    },
+    {
+      "id": "docs-tutorials-use-case-tutorials-lighting-create-flickering-lights",
+      "title": "Create flickering lights",
+      "url": "https://create.roblox.com/docs/tutorials/use-case-tutorials/lighting/create-flickering-lights",
+      "kind": "guide",
+      "origin": {
+        "publisher": "Roblox Creator Hub",
+        "publicationDate": null,
+        "dateStatus": "not_available_in_local_corpus"
+      },
+      "corpus": {
+        "path": "packages/corpus/data/chunks.jsonl",
+        "docSlug": "docs-tutorials-use-case-tutorials-lighting-create-flickering-lights",
+        "chunkIds": [
+          "g-d96e2d11-1",
+          "g-d96e2d11-2",
+          "g-d96e2d11-3",
+          "g-d96e2d11-4",
+          "g-d96e2d11-5",
+          "g-d96e2d11-6",
+          "g-d96e2d11-7",
+          "g-d96e2d11-8"
+        ],
+        "chunkCount": 8
+      }
+    },
+    {
+      "id": "docs-tutorials-use-case-tutorials-lighting-enhance-indoor-environments",
+      "title": "Enhance indoor environments with realistic lighting",
+      "url": "https://create.roblox.com/docs/tutorials/use-case-tutorials/lighting/enhance-indoor-environments",
+      "kind": "guide",
+      "origin": {
+        "publisher": "Roblox Creator Hub",
+        "publicationDate": null,
+        "dateStatus": "not_available_in_local_corpus"
+      },
+      "corpus": {
+        "path": "packages/corpus/data/chunks.jsonl",
+        "docSlug": "docs-tutorials-use-case-tutorials-lighting-enhance-indoor-environments",
+        "chunkIds": [
+          "g-297c80b1-1",
+          "g-297c80b1-2",
+          "g-297c80b1-3",
+          "g-297c80b1-4",
+          "g-297c80b1-5",
+          "g-297c80b1-6",
+          "g-297c80b1-7",
+          "g-297c80b1-8",
+          "g-297c80b1-9",
+          "g-297c80b1-10",
+          "g-297c80b1-11",
+          "g-297c80b1-12",
+          "g-297c80b1-13",
+          "g-297c80b1-14",
+          "g-297c80b1-15",
+          "g-297c80b1-16",
+          "g-297c80b1-17",
+          "g-297c80b1-18",
+          "g-297c80b1-19",
+          "g-297c80b1-20",
+          "g-297c80b1-21",
+          "g-297c80b1-22",
+          "g-297c80b1-23",
+          "g-297c80b1-24",
+          "g-297c80b1-25",
+          "g-297c80b1-26",
+          "g-297c80b1-27",
+          "g-297c80b1-28"
+        ],
+        "chunkCount": 28
+      }
+    },
+    {
+      "id": "docs-tutorials-use-case-tutorials-lighting-enhance-outdoor-environments",
+      "title": "Enhance outdoor environments with realistic lighting",
+      "url": "https://create.roblox.com/docs/tutorials/use-case-tutorials/lighting/enhance-outdoor-environments",
+      "kind": "guide",
+      "origin": {
+        "publisher": "Roblox Creator Hub",
+        "publicationDate": null,
+        "dateStatus": "not_available_in_local_corpus"
+      },
+      "corpus": {
+        "path": "packages/corpus/data/chunks.jsonl",
+        "docSlug": "docs-tutorials-use-case-tutorials-lighting-enhance-outdoor-environments",
+        "chunkIds": [
+          "g-c46b1736-1",
+          "g-c46b1736-2",
+          "g-c46b1736-3",
+          "g-c46b1736-4",
+          "g-c46b1736-5",
+          "g-c46b1736-6",
+          "g-c46b1736-7",
+          "g-c46b1736-8",
+          "g-c46b1736-9",
+          "g-c46b1736-10",
+          "g-c46b1736-11",
+          "g-c46b1736-12",
+          "g-c46b1736-13",
+          "g-c46b1736-14",
+          "g-c46b1736-15"
+        ],
+        "chunkCount": 15
+      }
+    },
+    {
+      "id": "docs-tutorials-use-case-tutorials-modeling-assemble-modular-environments",
+      "title": "Assemble modular environments",
+      "url": "https://create.roblox.com/docs/tutorials/use-case-tutorials/modeling/assemble-modular-environments",
+      "kind": "guide",
+      "origin": {
+        "publisher": "Roblox Creator Hub",
+        "publicationDate": null,
+        "dateStatus": "not_available_in_local_corpus"
+      },
+      "corpus": {
+        "path": "packages/corpus/data/chunks.jsonl",
+        "docSlug": "docs-tutorials-use-case-tutorials-modeling-assemble-modular-environments",
+        "chunkIds": [
+          "g-420445b6-1",
+          "g-420445b6-2",
+          "g-420445b6-3",
+          "g-420445b6-4",
+          "g-420445b6-5",
+          "g-420445b6-6",
+          "g-420445b6-7",
+          "g-420445b6-8",
+          "g-420445b6-9",
+          "g-420445b6-10",
+          "g-420445b6-11",
+          "g-420445b6-12"
+        ],
+        "chunkCount": 12
+      }
+    },
+    {
+      "id": "docs-tutorials-use-case-tutorials-ui-create-hud-meters",
+      "title": "Create HUD meters",
+      "url": "https://create.roblox.com/docs/tutorials/use-case-tutorials/ui/create-hud-meters",
+      "kind": "guide",
+      "origin": {
+        "publisher": "Roblox Creator Hub",
+        "publicationDate": null,
+        "dateStatus": "not_available_in_local_corpus"
+      },
+      "corpus": {
+        "path": "packages/corpus/data/chunks.jsonl",
+        "docSlug": "docs-tutorials-use-case-tutorials-ui-create-hud-meters",
+        "chunkIds": [
+          "g-3de3bfae-1",
+          "g-3de3bfae-2",
+          "g-3de3bfae-3",
+          "g-3de3bfae-4",
+          "g-3de3bfae-5",
+          "g-3de3bfae-6",
+          "g-3de3bfae-7",
+          "g-3de3bfae-8",
+          "g-3de3bfae-9",
+          "g-3de3bfae-10",
+          "g-3de3bfae-11",
+          "g-3de3bfae-12",
+          "g-3de3bfae-13",
+          "g-3de3bfae-14",
+          "g-3de3bfae-15",
+          "g-3de3bfae-16",
+          "g-3de3bfae-17",
+          "g-3de3bfae-18",
+          "g-3de3bfae-19",
+          "g-3de3bfae-20",
+          "g-3de3bfae-21",
+          "g-3de3bfae-22",
+          "g-3de3bfae-23"
+        ],
+        "chunkCount": 23
+      }
+    },
+    {
+      "id": "docs-ui-grid-table-layouts",
+      "title": "Grid and table layouts",
+      "url": "https://create.roblox.com/docs/ui/grid-table-layouts",
+      "kind": "guide",
+      "origin": {
+        "publisher": "Roblox Creator Hub",
+        "publicationDate": null,
+        "dateStatus": "not_available_in_local_corpus"
+      },
+      "corpus": {
+        "path": "packages/corpus/data/chunks.jsonl",
+        "docSlug": "docs-ui-grid-table-layouts",
+        "chunkIds": [
+          "g-b2122e22-1",
+          "g-b2122e22-2",
+          "g-b2122e22-3",
+          "g-b2122e22-4"
+        ],
+        "chunkCount": 4
+      }
+    },
+    {
+      "id": "docs-workspace-raycasting",
+      "title": "Raycasting",
+      "url": "https://create.roblox.com/docs/workspace/raycasting",
+      "kind": "guide",
+      "origin": {
+        "publisher": "Roblox Creator Hub",
+        "publicationDate": null,
+        "dateStatus": "not_available_in_local_corpus"
+      },
+      "corpus": {
+        "path": "packages/corpus/data/chunks.jsonl",
+        "docSlug": "docs-workspace-raycasting",
+        "chunkIds": [
+          "g-0aae1037-1",
+          "g-0aae1037-2",
+          "g-0aae1037-3",
+          "g-0aae1037-4",
+          "g-0aae1037-5"
+        ],
+        "chunkCount": 5
+      }
+    }
+  ],
+  "implementationLinks": [
+    {
+      "id": "impl-horror-ui-hud",
+      "genreId": "horror",
+      "aspect": "ui_hud",
+      "documentId": "docs-tutorials-use-case-tutorials-ui-create-hud-meters",
+      "rationale": "Horror still needs health, stamina, light, or objective state, but the HUD must preserve the threat area and survive small screens.",
+      "rules": [
+        "Keep survival meters on device-safe edges and verify them with Studio Device Emulator so notches and Roblox controls do not cover critical state.",
+        "Animate the fill or color of a compact meter instead of opening a large warning panel that blocks the player view during danger."
+      ]
+    },
+    {
+      "id": "impl-horror-shop",
+      "genreId": "horror",
+      "aspect": "shop",
+      "documentId": "docs-production-game-design-contextual-purchases",
+      "rationale": "The official contextual-purchase guidance distinguishes pre-play and in-play moments, which is essential when a purchase could break tension.",
+      "rules": [
+        "Place consumables or run upgrades in a lobby or pre-run shop before the chase begins, where the player can compare choices without losing control.",
+        "Allow enough uninterrupted time for the full purchase flow; do not trigger an offer while the player must flee, hide, or complete a timed interaction."
+      ]
+    },
+    {
+      "id": "impl-horror-inventory",
+      "genreId": "horror",
+      "aspect": "inventory",
+      "documentId": "docs-players-tools",
+      "rationale": "Flashlights, keys, cameras, and defensive items map naturally to Roblox Tool behavior and inventory metadata.",
+      "rules": [
+        "Give each usable item a clear TextureId and ToolTip so the hotbar communicates function even when the environment is dark.",
+        "Weld multi-part physical tools into one unit and keep equipped parts unanchored so a flashlight or key cannot pin the character in place."
+      ]
+    },
+    {
+      "id": "impl-horror-map-composition",
+      "genreId": "horror",
+      "aspect": "map_composition",
+      "documentId": "docs-tutorials-curriculums-environmental-art-greybox-your-environment",
+      "rationale": "Greyboxing exposes traversal, scale, sightline, and vantage defects before horror atmosphere makes them harder to diagnose.",
+      "rules": [
+        "Block the pursuit loop, hiding spaces, dead ends, and return routes with simple shapes before building detailed rooms.",
+        "Playtest every long sightline and elevated position so the monster cannot see or reach the player through an unintended unfair angle."
+      ]
+    },
+    {
+      "id": "impl-horror-low-poly-props",
+      "genreId": "horror",
+      "aspect": "low_poly_props",
+      "documentId": "docs-parts-meshes",
+      "rationale": "MeshParts support strong silhouettes and reusable props while still requiring deliberate collision and scale choices.",
+      "rules": [
+        "Design doors, cabinets, lamps, and creature-adjacent props around one readable silhouette before adding surface detail.",
+        "Choose collision behavior that follows the playable outline; invisible snags around dark props are read as broken movement, not tension."
+      ]
+    },
+    {
+      "id": "impl-horror-materials",
+      "genreId": "horror",
+      "aspect": "materials",
+      "documentId": "docs-art-modeling-surface-appearance",
+      "rationale": "SurfaceAppearance separates color, normal, roughness, metalness, and emissive response, allowing controlled material contrast without changing geometry.",
+      "rules": [
+        "Use roughness and value differences to separate damp floor, worn wood, painted metal, and interactable objects under low light.",
+        "Reserve emissive or very smooth surfaces for cues such as exit signs, powered devices, or wet traces instead of coating every prop with equal shine."
+      ]
+    },
+    {
+      "id": "impl-horror-lighting",
+      "genreId": "horror",
+      "aspect": "lighting",
+      "documentId": "docs-tutorials-use-case-tutorials-lighting-create-flickering-lights",
+      "rationale": "The official flickering-light workflow provides a bounded brightness sequence and loop duration that can support environmental storytelling.",
+      "rules": [
+        "Give each flickering source an authored brightness sequence and loop duration rather than randomizing every frame.",
+        "Use flicker on selected route or danger cues and offset nearby loops so a whole room does not pulse in mechanical synchrony."
+      ]
+    },
+    {
+      "id": "impl-horror-interaction",
+      "genreId": "horror",
+      "aspect": "interaction",
+      "documentId": "api-proximityprompt",
+      "rationale": "ProximityPrompt exposes action text, object text, input bindings, hold duration, and exclusivity for world interactions.",
+      "rules": [
+        "Name both the action and object, such as “Unlock” and “Basement Door,” so the prompt remains understandable when the prop is partly obscured.",
+        "Use hold duration for consequential actions and prompt exclusivity to stop several nearby doors or pickups from displaying at once."
+      ]
+    },
+    {
+      "id": "impl-obby-ui-hud",
+      "genreId": "obby",
+      "aspect": "ui_hud",
+      "documentId": "docs-production-publishing-adaptive-design",
+      "rationale": "Obby controls and checkpoint state must stay readable across touch, gamepad, keyboard, orientation, and changing screen size.",
+      "rules": [
+        "Use responsive layout and dynamic sizing so stage, timer, and checkpoint controls do not crowd the landing area on a phone.",
+        "Change input hints with the active device and keep touch targets large enough to hit while the player is moving."
+      ]
+    },
+    {
+      "id": "impl-obby-shop",
+      "genreId": "obby",
+      "aspect": "shop",
+      "documentId": "docs-production-game-design-contextual-purchases",
+      "rationale": "Checkpoint and intermission moments are safer purchase contexts than an active jump sequence.",
+      "rules": [
+        "Offer skips, checkpoints, or temporary boosts after a failure or at a checkpoint, when the player has stopped moving.",
+        "Keep purchase timing outside precision jumps and leave enough time for the complete Roblox purchase flow before restarting the attempt."
+      ]
+    },
+    {
+      "id": "impl-obby-inventory",
+      "genreId": "obby",
+      "aspect": "inventory",
+      "documentId": "docs-players-tools",
+      "rationale": "Temporary movement powers and route tools can use the standard Tool inventory contract.",
+      "rules": [
+        "Give grapples, coils, or checkpoint tools distinct icons and tooltips so players can select them without testing each slot.",
+        "Keep physical tool parts welded and unanchored, and test the equipped silhouette so it does not hide the next landing."
+      ]
+    },
+    {
+      "id": "impl-obby-map-composition",
+      "genreId": "obby",
+      "aspect": "map_composition",
+      "documentId": "docs-tutorials-curriculums-core-building-greybox-a-playable-area",
+      "rationale": "A playable-area greybox lets the team measure jump spacing, character scale, route order, and recovery before art polish.",
+      "rules": [
+        "Test every jump with the intended movement settings and camera distance before decorating platforms.",
+        "Use placeholder color or material groups to mark safe route, damage surface, checkpoint, and out-of-bounds space during playtests."
+      ]
+    },
+    {
+      "id": "impl-obby-low-poly-props",
+      "genreId": "obby",
+      "aspect": "low_poly_props",
+      "documentId": "docs-parts",
+      "rationale": "Roblox Parts provide a small set of primitive forms that are well suited to readable obstacle construction.",
+      "rules": [
+        "Build obstacle families from a consistent unit size so widths, gaps, and landing depths can be compared and tuned.",
+        "Anchor static obstacle parts and keep decorative additions outside the collision silhouette of the intended landing surface."
+      ]
+    },
+    {
+      "id": "impl-obby-materials",
+      "genreId": "obby",
+      "aspect": "materials",
+      "documentId": "docs-parts-materials",
+      "rationale": "Material and color can communicate route function without relying on high-resolution textures.",
+      "rules": [
+        "Assign clearly separated material or color families to safe surfaces, hazards, moving platforms, and checkpoints.",
+        "Check the route in motion and at distance; a decorative variant is unsuitable if it weakens the edge of a landing or hazard."
+      ]
+    },
+    {
+      "id": "impl-obby-lighting",
+      "genreId": "obby",
+      "aspect": "lighting",
+      "documentId": "docs-tutorials-use-case-tutorials-lighting-enhance-outdoor-environments",
+      "rationale": "Outdoor lighting guidance covers global light, local sources, atmosphere, and reflections while preserving a readable environment.",
+      "rules": [
+        "Choose sun angle and ambient values that keep platform tops and edges separated from the background throughout the route.",
+        "Use local lights or emissive accents on checkpoints and goals, while keeping bloom and glare low enough to preserve landing precision."
+      ]
+    },
+    {
+      "id": "impl-obby-interaction",
+      "genreId": "obby",
+      "aspect": "interaction",
+      "documentId": "docs-input-input-action-system",
+      "rationale": "The Input Action System supports cross-platform actions and separate contexts for gameplay and menu navigation.",
+      "rules": [
+        "Bind jump, dash, restart, and checkpoint actions across touch, keyboard, and gamepad through named actions instead of device-specific branches.",
+        "Disable movement actions while stage selection or settings are open by switching from the play context to a navigation context."
+      ]
+    },
+    {
+      "id": "impl-tycoon-ui-hud",
+      "genreId": "tycoon",
+      "aspect": "ui_hud",
+      "documentId": "docs-ui-grid-table-layouts",
+      "rationale": "Uniform grids and tables suit purchase buttons, production lists, resource rows, and upgrade catalogs.",
+      "rules": [
+        "Use a uniform grid for build or upgrade cards so cost, output, and state occupy the same location on every tile.",
+        "Use a table layout for production rows where names, rates, storage, and actions must align for comparison."
+      ]
+    },
+    {
+      "id": "impl-tycoon-shop",
+      "genreId": "tycoon",
+      "aspect": "shop",
+      "documentId": "docs-production-monetization-shop",
+      "rationale": "Roblox Shop organizes passes and eligible developer products into managed categories and supports Studio preview.",
+      "rules": [
+        "Group tycoon offers by function, such as production, storage, speed, or cosmetics, rather than mixing every price tier in one page.",
+        "Preview the configured Shop in Studio and keep the in-world store naming consistent with the categories players see in the Roblox surface."
+      ]
+    },
+    {
+      "id": "impl-tycoon-inventory",
+      "genreId": "tycoon",
+      "aspect": "inventory",
+      "documentId": "docs-ui-grid-table-layouts",
+      "rationale": "A structured grid can present machines, workers, recipes, vehicles, or collected resources with stable sorting.",
+      "rules": [
+        "Give every inventory tile the same footprint and move detailed production statistics into a selected-item pane.",
+        "Use LayoutOrder or an explicit sort so owned, available, and locked items do not rearrange unpredictably after each purchase."
+      ]
+    },
+    {
+      "id": "impl-tycoon-map-composition",
+      "genreId": "tycoon",
+      "aspect": "map_composition",
+      "documentId": "docs-tutorials-curriculums-environmental-art-construct-your-world",
+      "rationale": "The environment curriculum builds a world from modular assets after composition and asset-library planning.",
+      "rules": [
+        "Reserve the full footprint of future production lines and expansion plots during greybox instead of forcing them into leftover space.",
+        "Place one stable hub or landmark where players can reorient as the lot becomes denser with purchased structures."
+      ]
+    },
+    {
+      "id": "impl-tycoon-low-poly-props",
+      "genreId": "tycoon",
+      "aspect": "low_poly_props",
+      "documentId": "docs-tutorials-use-case-tutorials-modeling-assemble-modular-environments",
+      "rationale": "Modular environment assembly supports reusable wall, floor, roof, trim, and prop pieces that still form varied structures.",
+      "rules": [
+        "Build machines and buildings from snap-compatible modules with shared pivots so each upgrade tier can replace or extend the previous form.",
+        "Create variation by combining modules, rotations, signs, and small props rather than making every tycoon purchase a new mesh family."
+      ]
+    },
+    {
+      "id": "impl-tycoon-materials",
+      "genreId": "tycoon",
+      "aspect": "materials",
+      "documentId": "docs-parts-materials",
+      "rationale": "Material and color families can encode production state, upgrade tier, and circulation without additional geometry.",
+      "rules": [
+        "Use one base material family for the lot and stronger accents for active machines, purchase pads, and output destinations.",
+        "Keep upgrade tiers related through shared material roles; changing every color and surface at once makes progression look like a different game."
+      ]
+    },
+    {
+      "id": "impl-tycoon-lighting",
+      "genreId": "tycoon",
+      "aspect": "lighting",
+      "documentId": "docs-environment-lighting",
+      "rationale": "Global lighting exposes ambient hue, outdoor ambient, brightness, exposure, shadow, and environment controls.",
+      "rules": [
+        "Choose a global time and ambient palette that keeps purchase pads, conveyors, and resource drops readable across the whole lot.",
+        "Use shadow and brightness to separate active structures from empty expansion space without making unbuilt plots look broken or unfinished."
+      ]
+    },
+    {
+      "id": "impl-tycoon-interaction",
+      "genreId": "tycoon",
+      "aspect": "interaction",
+      "documentId": "api-proximityprompt",
+      "rationale": "World prompts can label purchase pads, machines, collectors, and upgrade stations across keyboard, gamepad, and touch.",
+      "rules": [
+        "Use specific action and object text, such as “Upgrade” and “Ore Processor,” instead of a repeated generic “Buy” prompt.",
+        "Use a hold duration for expensive or irreversible purchases and prompt exclusivity where several machines sit close together."
+      ]
+    },
+    {
+      "id": "impl-simulator-ui-hud",
+      "genreId": "simulator",
+      "aspect": "ui_hud",
+      "documentId": "docs-ui-grid-table-layouts",
+      "rationale": "Simulator interfaces repeatedly present currencies, pets, boosts, worlds, quests, and rewards in comparable card sets.",
+      "rules": [
+        "Use uniform grid cells for repeated collectibles and keep currency counters outside the scrolling collection region.",
+        "Limit each tile to identity and one or two high-value stats; move the full stat block and actions into a selected-item pane."
+      ]
+    },
+    {
+      "id": "impl-simulator-shop",
+      "genreId": "simulator",
+      "aspect": "shop",
+      "documentId": "docs-production-monetization-developer-products",
+      "rationale": "Developer products fit repeatable purchases such as currency, boosts, potions, and consumable progression items.",
+      "rules": [
+        "Use developer products for repeatable currency or boosts and separate them visually from permanent one-time entitlements.",
+        "Design product icons so the important silhouette survives the documented circular crop and group products into meaningful categories."
+      ]
+    },
+    {
+      "id": "impl-simulator-inventory",
+      "genreId": "simulator",
+      "aspect": "inventory",
+      "documentId": "docs-ui-grid-table-layouts",
+      "rationale": "The official grid layout is appropriate for pet, item, egg, boost, and world collections with stable cell sizing.",
+      "rules": [
+        "Keep pet or item cards uniform and use explicit sorting for rarity, power, equipped state, or discovery order.",
+        "Reserve a separate region for equip, lock, delete, trade, and compare actions so each grid tile stays scannable."
+      ]
+    },
+    {
+      "id": "impl-simulator-map-composition",
+      "genreId": "simulator",
+      "aspect": "map_composition",
+      "documentId": "docs-tutorials-curriculums-environmental-art-construct-your-world",
+      "rationale": "The world-construction curriculum supports assembling a coherent environment from planned modular assets.",
+      "rules": [
+        "Place the core loop destinations around a visible spawn landmark, then use paths and elevation to fan out into later worlds.",
+        "Build each progression zone from a small reusable asset family and one unmistakable landmark rather than a dense field of unrelated props."
+      ]
+    },
+    {
+      "id": "impl-simulator-low-poly-props",
+      "genreId": "simulator",
+      "aspect": "low_poly_props",
+      "documentId": "docs-parts-meshes",
+      "rationale": "MeshParts can provide stylized silhouettes for pets, portals, machines, trees, and rocks while retaining explicit collision decisions.",
+      "rules": [
+        "Use a shared faceting and proportion language across portals, shops, resource nodes, and environmental props.",
+        "Simplify collision around decorative meshes so players do not snag on visual detail while moving repeatedly through the hub."
+      ]
+    },
+    {
+      "id": "impl-simulator-materials",
+      "genreId": "simulator",
+      "aspect": "materials",
+      "documentId": "docs-parts-materials",
+      "rationale": "Roblox materials and variants can separate progression zones and functional objects without requiring large texture sets.",
+      "rules": [
+        "Give terrain, paths, buildings, portals, and collectible nodes distinct material roles that remain recognizable from a high camera.",
+        "Reserve the strongest saturation or emissive response for portals, rewards, and active machines instead of every decorative prop."
+      ]
+    },
+    {
+      "id": "impl-simulator-lighting",
+      "genreId": "simulator",
+      "aspect": "lighting",
+      "documentId": "docs-tutorials-use-case-tutorials-lighting-enhance-outdoor-environments",
+      "rationale": "Outdoor lighting guidance combines global light, atmosphere, local sources, and reflective response for a readable open hub.",
+      "rules": [
+        "Use even global light for repeated navigation while giving portals and event spaces a controlled local-light identity.",
+        "Keep haze, glare, and bloom low enough that currency icons, destination labels, and pet silhouettes remain readable against the world."
+      ]
+    },
+    {
+      "id": "impl-simulator-interaction",
+      "genreId": "simulator",
+      "aspect": "interaction",
+      "documentId": "api-proximityprompt",
+      "rationale": "Prompts can expose portals, sell zones, machines, rewards, and shops with device-appropriate input labels.",
+      "rules": [
+        "Name both action and destination, such as “Travel” and “Moon World,” so identical portal shapes do not create ambiguity.",
+        "Use exclusivity or distance tuning in dense hubs so the player sees one relevant machine or portal prompt at a time."
+      ]
+    },
+    {
+      "id": "impl-racing-ui-hud",
+      "genreId": "racing",
+      "aspect": "ui_hud",
+      "documentId": "docs-tutorials-use-case-tutorials-ui-create-hud-meters",
+      "rationale": "Racing requires persistent speed, lap, position, damage, boost, or progress information around an unobstructed road view.",
+      "rules": [
+        "Anchor telemetry to device-safe edges and test phone notches and built-in controls with Studio Device Emulator.",
+        "Use animated meter fills for boost, damage, or race progress while leaving the center and vanishing point clear for driving."
+      ]
+    },
+    {
+      "id": "impl-racing-shop",
+      "genreId": "racing",
+      "aspect": "shop",
+      "documentId": "docs-production-monetization-passes",
+      "rationale": "Passes fit permanent access or privileges such as a vehicle class, garage capacity, or enduring customization entitlement.",
+      "rules": [
+        "Present permanent vehicle or garage entitlements separately from repeatable currency so ownership remains understandable after purchase.",
+        "Reflect owned state in both the shop and garage, preventing a paid vehicle class from continuing to look locked."
+      ]
+    },
+    {
+      "id": "impl-racing-inventory",
+      "genreId": "racing",
+      "aspect": "inventory",
+      "documentId": "docs-ui-grid-table-layouts",
+      "rationale": "A uniform grid supports a garage of vehicles, liveries, parts, and tuning presets with comparable cards.",
+      "rules": [
+        "Keep vehicle cards equal in size and use a stable order for owned, available, and locked entries.",
+        "Move performance graphs, tuning controls, and long descriptions into a selected-vehicle pane rather than shrinking them into every card."
+      ]
+    },
+    {
+      "id": "impl-racing-map-composition",
+      "genreId": "racing",
+      "aspect": "map_composition",
+      "documentId": "docs-tutorials-curriculums-environmental-art-greybox-your-environment",
+      "rationale": "Greyboxing is the stage for measuring route width, sight distance, shortcuts, spawn safety, and scale before city dressing.",
+      "rules": [
+        "Block the full racing line, corner radii, overtaking zones, barriers, and reset areas before adding buildings or scenery.",
+        "Playtest long straights and elevated shortcuts so one route does not create an unintended permanent advantage or impossible recovery."
+      ]
+    },
+    {
+      "id": "impl-racing-low-poly-props",
+      "genreId": "racing",
+      "aspect": "low_poly_props",
+      "documentId": "docs-parts-meshes",
+      "rationale": "Vehicle, barrier, sign, lamp, and roadside MeshParts need readable silhouettes and predictable collision at speed.",
+      "rules": [
+        "Simplify roadside prop silhouettes so direction signs, barriers, and hazards can be recognized before the car reaches them.",
+        "Use collision shapes that follow the intended road boundary; decorative overhangs should not catch vehicles unexpectedly."
+      ]
+    },
+    {
+      "id": "impl-racing-materials",
+      "genreId": "racing",
+      "aspect": "materials",
+      "documentId": "docs-art-modeling-surface-appearance",
+      "rationale": "SurfaceAppearance can distinguish asphalt, painted lines, metal, glass, rubber, and wet surfaces through controlled maps.",
+      "rules": [
+        "Keep road roughness and lane-marking value contrast stable across weather and time-of-day variations.",
+        "Use metalness and smoothness selectively on vehicles and guardrails so road and hazard edges remain the highest-clarity surfaces."
+      ]
+    },
+    {
+      "id": "impl-racing-lighting",
+      "genreId": "racing",
+      "aspect": "lighting",
+      "documentId": "docs-tutorials-use-case-tutorials-lighting-enhance-outdoor-environments",
+      "rationale": "The outdoor-lighting workflow combines sun position, atmosphere, local lights, and reflective materials for moving scenes.",
+      "rules": [
+        "Balance headlights and streetlights with global exposure so lane markings remain visible beyond the nearest pool of light.",
+        "Use atmosphere and local color to distinguish districts without allowing glare or bloom to hide braking points and traffic."
+      ]
+    },
+    {
+      "id": "impl-racing-interaction",
+      "genreId": "racing",
+      "aspect": "interaction",
+      "documentId": "docs-input-input-action-system",
+      "rationale": "The official Input Action System explicitly supports acceleration, deceleration, boosters, and refuel actions across devices.",
+      "rules": [
+        "Define named actions for steer, accelerate, brake, handbrake, boost, reset, and camera instead of branching by device in each vehicle script.",
+        "Switch between driving and navigation contexts so garage or pause controls cannot continue accelerating the car underneath the menu."
+      ]
+    },
+    {
+      "id": "impl-roleplay-ui-hud",
+      "genreId": "roleplay",
+      "aspect": "ui_hud",
+      "documentId": "docs-production-publishing-adaptive-design",
+      "rationale": "Roleplay games combine chat, jobs, homes, vehicles, customization, and social controls across many input types and screen sizes.",
+      "rules": [
+        "Use responsive layouts that collapse secondary social and customization panels before they cover the world on a small screen.",
+        "Change control hints for touch, gamepad, and keyboard while keeping labels legible and primary role state visible."
+      ]
+    },
+    {
+      "id": "impl-roleplay-shop",
+      "genreId": "roleplay",
+      "aspect": "shop",
+      "documentId": "docs-production-monetization-shop",
+      "rationale": "Roblox Shop can organize passes and developer products into categories that match a broad roleplay economy.",
+      "rules": [
+        "Group homes, vehicles, cosmetics, job perks, and currency into categories that mirror the in-world systems players already understand.",
+        "Preview listing and category changes in Studio and keep item names consistent between Shop, dealership, wardrobe, and housing interfaces."
+      ]
+    },
+    {
+      "id": "impl-roleplay-inventory",
+      "genreId": "roleplay",
+      "aspect": "inventory",
+      "documentId": "docs-ui-grid-table-layouts",
+      "rationale": "Uniform grid and table layouts support wardrobes, furniture catalogs, vehicles, jobs, and household storage.",
+      "rules": [
+        "Use a grid for browsable items and a separate preview or details panel for color, placement, ownership, and action controls.",
+        "Keep categories and sorting stable across wardrobe, home, and vehicle inventories so each system does not invent a new navigation model."
+      ]
+    },
+    {
+      "id": "impl-roleplay-map-composition",
+      "genreId": "roleplay",
+      "aspect": "map_composition",
+      "documentId": "docs-tutorials-curriculums-environmental-art-construct-your-world",
+      "rationale": "A roleplay city benefits from planned landmarks, modular districts, and a reusable asset library assembled into a coherent world.",
+      "rules": [
+        "Give each district one long-range landmark and connect jobs, housing, shopping, and civic areas with routes players can explain to one another.",
+        "Measure travel time and social gathering space during greybox before filling streets with decorative buildings and props."
+      ]
+    },
+    {
+      "id": "impl-roleplay-low-poly-props",
+      "genreId": "roleplay",
+      "aspect": "low_poly_props",
+      "documentId": "docs-tutorials-use-case-tutorials-modeling-assemble-modular-environments",
+      "rationale": "Modular environment pieces allow many homes and storefronts to share construction rules without becoming identical.",
+      "rules": [
+        "Build walls, windows, doors, roofs, counters, and trims on a shared snap grid with predictable pivots.",
+        "Vary storefronts and homes through signs, awnings, color roles, and small prop sets while preserving the same modular dimensions."
+      ]
+    },
+    {
+      "id": "impl-roleplay-materials",
+      "genreId": "roleplay",
+      "aspect": "materials",
+      "documentId": "docs-art-modeling-surface-appearance",
+      "rationale": "Surface maps can distinguish close-up civic, home, vehicle, and retail materials while preserving shared geometry.",
+      "rules": [
+        "Separate concrete, painted wall, wood, glass, road, and metal through broad roughness and value roles before adding small texture detail.",
+        "Use higher-detail surface treatment only on places players approach closely; distant city blocks should rely on silhouette and color grouping."
+      ]
+    },
+    {
+      "id": "impl-roleplay-lighting",
+      "genreId": "roleplay",
+      "aspect": "lighting",
+      "documentId": "docs-tutorials-use-case-tutorials-lighting-enhance-indoor-environments",
+      "rationale": "Indoor lighting guidance balances global light, windows, local sources, shadows, atmosphere, and performance.",
+      "rules": [
+        "Use window light and local fixtures to establish entrances, counters, seating, and exits inside public buildings.",
+        "Keep local-light ranges bounded so adjacent apartments or shops retain distinct moods and do not wash one another out."
+      ]
+    },
+    {
+      "id": "impl-roleplay-interaction",
+      "genreId": "roleplay",
+      "aspect": "interaction",
+      "documentId": "api-proximityprompt",
+      "rationale": "Roleplay worlds contain many nearby doors, jobs, vehicles, seats, shops, and home controls that benefit from named prompts.",
+      "rules": [
+        "Use explicit action and object text such as “Start Shift — Café” or “Enter — Apartment 3B,” with localization enabled.",
+        "Tune distance, line-of-sight, hold duration, and exclusivity so dense interiors expose only the interaction the player is facing."
+      ]
+    },
+    {
+      "id": "impl-tower_defense-ui-hud",
+      "genreId": "tower_defense",
+      "aspect": "ui_hud",
+      "documentId": "docs-ui-grid-table-layouts",
+      "rationale": "Tower defense screens repeatedly compare maps, towers, upgrades, waves, and loadout cards in structured sets.",
+      "rules": [
+        "Use uniform cells for tower and map cards so portrait, level, role, cost, lock state, and rarity occupy stable positions.",
+        "Set a maximum cell count and responsive size constraints so cards remain legible on phones instead of shrinking indefinitely."
+      ]
+    },
+    {
+      "id": "impl-tower_defense-shop",
+      "genreId": "tower_defense",
+      "aspect": "shop",
+      "documentId": "docs-production-monetization-developer-products",
+      "rationale": "Repeatable currency, consumable boosts, and crate-like purchases fit developer products, while permanent privileges should remain visibly separate.",
+      "rules": [
+        "Group repeatable currency or consumables by use and keep them separate from permanent tower slots or access entitlements.",
+        "Design product icons to survive the documented circular crop and use category names that match the loadout and tower collection UI."
+      ]
+    },
+    {
+      "id": "impl-tower_defense-inventory",
+      "genreId": "tower_defense",
+      "aspect": "inventory",
+      "documentId": "docs-ui-grid-table-layouts",
+      "rationale": "A tower collection or deck is a natural grid with a selected statistics region and stable sorting.",
+      "rules": [
+        "Keep the collection grid focused on tower identity, role, rarity, and level; show range, damage, cooldown, and upgrade detail outside the card.",
+        "Use text or icon labels in addition to rarity color so tower roles remain understandable for players who cannot distinguish every hue."
+      ]
+    },
+    {
+      "id": "impl-tower_defense-map-composition",
+      "genreId": "tower_defense",
+      "aspect": "map_composition",
+      "documentId": "docs-tutorials-curriculums-environmental-art-greybox-your-environment",
+      "rationale": "The environment greybox guidance is built around a three-lane combat map and explicitly tests vantage, traversal, material cues, and strategic space.",
+      "rules": [
+        "Block enemy route, bends, build pads, objective, and camera views before decorating the biome.",
+        "Playtest whether every lane segment can be read and targeted from intended placement areas without one dominant or unreachable vantage point."
+      ]
+    },
+    {
+      "id": "impl-tower_defense-low-poly-props",
+      "genreId": "tower_defense",
+      "aspect": "low_poly_props",
+      "documentId": "docs-parts-meshes",
+      "rationale": "Towers, enemies, barricades, and map props need distinct silhouettes and collision that does not hide or obstruct the route.",
+      "rules": [
+        "Give each tower role a different major silhouette before adding weapon or costume detail.",
+        "Keep decorative collision outside placement and lane space, and use simpler collision for repeated rocks, trees, and fortifications."
+      ]
+    },
+    {
+      "id": "impl-tower_defense-materials",
+      "genreId": "tower_defense",
+      "aspect": "materials",
+      "documentId": "docs-parts-materials",
+      "rationale": "Material and color grouping can separate enemy path, buildable terrain, blocked terrain, objective, and biome decoration.",
+      "rules": [
+        "Give the enemy route a stable material or value contrast that survives snow, desert, forest, and night variants.",
+        "Reserve strong material or color accents for build pads, selected towers, targets, and the base objective rather than all scenery."
+      ]
+    },
+    {
+      "id": "impl-tower_defense-lighting",
+      "genreId": "tower_defense",
+      "aspect": "lighting",
+      "documentId": "docs-tutorials-use-case-tutorials-lighting-enhance-outdoor-environments",
+      "rationale": "Outdoor lighting guidance supports biome mood while preserving route and tower visibility under global and local light.",
+      "rules": [
+        "Keep the full enemy path and valid placement space visible under the chosen sun angle, atmosphere, and shadow settings.",
+        "Bound attack lights, bloom, and emissive effects to the event area so one tower cannot erase the lane or neighboring units in glare."
+      ]
+    },
+    {
+      "id": "impl-tower_defense-interaction",
+      "genreId": "tower_defense",
+      "aspect": "interaction",
+      "documentId": "docs-workspace-raycasting",
+      "rationale": "Raycasting provides a world hit point and hit instance for cursor, touch, or camera-directed tower placement.",
+      "rules": [
+        "Cast from the active pointer or camera into the world, then derive the placement preview from the returned position and surface.",
+        "Filter invalid geometry and show valid or invalid state before confirmation so a click never silently places a tower on the wrong surface."
+      ]
+    },
+    {
+      "id": "impl-fps_arena-ui-hud",
+      "genreId": "fps_arena",
+      "aspect": "ui_hud",
+      "documentId": "docs-tutorials-use-case-tutorials-ui-create-hud-meters",
+      "rationale": "An FPS HUD must keep health, ammunition, objective, and ability state accessible without covering aim or target silhouettes.",
+      "rules": [
+        "Keep health and ammunition in predictable edge zones and test safe regions with Studio Device Emulator.",
+        "Animate compact bars or counters for damage and objective progress while leaving the central reticle region unobstructed."
+      ]
+    },
+    {
+      "id": "impl-fps_arena-shop",
+      "genreId": "fps_arena",
+      "aspect": "shop",
+      "documentId": "docs-production-game-design-contextual-purchases",
+      "rationale": "Pre-play, lobby, and complementary purchase moments are safer than prompting a player during live combat.",
+      "rules": [
+        "Place loadout, cosmetic, or round consumable offers before deployment or during a real intermission.",
+        "Allow the full purchase flow to complete without the round starting underneath it; never cover aiming or movement during a firefight."
+      ]
+    },
+    {
+      "id": "impl-fps_arena-inventory",
+      "genreId": "fps_arena",
+      "aspect": "inventory",
+      "documentId": "docs-players-tools",
+      "rationale": "Roblox Tool behavior covers equippable weapons, tool icons, tooltips, physical handles, meshes, and welds.",
+      "rules": [
+        "Give every weapon a distinct TextureId and ToolTip so hotbar and loadout identity remain consistent.",
+        "Weld weapon parts into one unanchored unit with a deliberate handle so equipping cannot lock or destabilize the character."
+      ]
+    },
+    {
+      "id": "impl-fps_arena-map-composition",
+      "genreId": "fps_arena",
+      "aspect": "map_composition",
+      "documentId": "docs-tutorials-curriculums-environmental-art-greybox-your-environment",
+      "rationale": "The official greybox curriculum specifically demonstrates a three-lane team first-person map and tests playstyle, vantage, scale, and orientation.",
+      "rules": [
+        "Greybox lanes, connectors, cover, vertical routes, spawn protection, and objective space before applying final assets.",
+        "Playtest long sightlines and elevated positions for unfair advantage, then use placeholder materials to help players orient between lanes."
+      ]
+    },
+    {
+      "id": "impl-fps_arena-low-poly-props",
+      "genreId": "fps_arena",
+      "aspect": "low_poly_props",
+      "documentId": "docs-parts-meshes",
+      "rationale": "Cover, doors, crates, weapons, barriers, and machinery need readable silhouettes and collision that matches combat expectations.",
+      "rules": [
+        "Design cover around crouch, standing, and vault silhouettes before adding surface detail.",
+        "Use simple predictable collision for repeated combat props so bullets and player movement do not catch on decorative geometry."
+      ]
+    },
+    {
+      "id": "impl-fps_arena-materials",
+      "genreId": "fps_arena",
+      "aspect": "materials",
+      "documentId": "docs-art-modeling-surface-appearance",
+      "rationale": "SurfaceAppearance can separate concrete, painted cover, metal, glass, rubber, and emissive technology through controlled maps.",
+      "rules": [
+        "Use value and roughness contrast to distinguish walkable floor, cover, doorway, and objective surfaces at combat distance.",
+        "Keep normal, metalness, and emissive detail subordinate to target silhouettes and route cues; material richness must not camouflage enemies."
+      ]
+    },
+    {
+      "id": "impl-fps_arena-lighting",
+      "genreId": "fps_arena",
+      "aspect": "lighting",
+      "documentId": "docs-tutorials-use-case-tutorials-lighting-enhance-indoor-environments",
+      "rationale": "Indoor lighting guidance balances global light, local sources, reflections, shadows, atmosphere, and navigation.",
+      "rules": [
+        "Use local lights to mark doors, objectives, stair entries, and cover transitions while preserving target contrast in adjacent shadows.",
+        "Test exposure and shadow settings from actual first-person sightlines so bright windows or dark corners do not create one-sided combat advantage."
+      ]
+    },
+    {
+      "id": "impl-fps_arena-interaction",
+      "genreId": "fps_arena",
+      "aspect": "interaction",
+      "documentId": "docs-input-input-action-system",
+      "rationale": "The Input Action System explicitly supports FPS battle and spectator contexts and cross-device actions.",
+      "rules": [
+        "Define fire, aim, reload, crouch, sprint, interact, ability, and weapon-swap actions once across keyboard, gamepad, and touch.",
+        "Enable separate battle, spectator, loadout, and menu contexts so a binding cannot trigger incompatible actions in two states."
+      ]
+    },
+    {
+      "id": "impl-anime_battle-ui-hud",
+      "genreId": "anime_battle",
+      "aspect": "ui_hud",
+      "documentId": "docs-production-publishing-adaptive-design",
+      "rationale": "Ability-heavy combat needs responsive bars, cooldowns, targets, currencies, and touch actions across changing device capability.",
+      "rules": [
+        "Scale and reflow the ability bar, health, stamina, and target information so touch buttons never cover the combat center.",
+        "Swap visible input hints when the active device changes and keep every cooldown state readable through more than color alone."
+      ]
+    },
+    {
+      "id": "impl-anime_battle-shop",
+      "genreId": "anime_battle",
+      "aspect": "shop",
+      "documentId": "docs-production-monetization-developer-products",
+      "rationale": "Repeatable currency, rolls, rerolls, boosts, and consumables fit developer products and benefit from clear category and icon treatment.",
+      "rules": [
+        "Separate repeatable rolls or currency from permanent character access and label the result type before purchase.",
+        "Keep important character or item detail inside the documented circular icon-safe region and organize offers by the same categories used in inventory."
+      ]
+    },
+    {
+      "id": "impl-anime_battle-inventory",
+      "genreId": "anime_battle",
+      "aspect": "inventory",
+      "documentId": "docs-ui-grid-table-layouts",
+      "rationale": "Character, skill, weapon, trait, and cosmetic collections need uniform cards with a stable comparison structure.",
+      "rules": [
+        "Use a consistent portrait-card grid and reserve a separate pane for level, rarity, abilities, equipped state, and actions.",
+        "Sort and filter by role or collection state so a growing roster does not force the player to scan one long undifferentiated wall."
+      ]
+    },
+    {
+      "id": "impl-anime_battle-map-composition",
+      "genreId": "anime_battle",
+      "aspect": "map_composition",
+      "documentId": "docs-tutorials-curriculums-core-building-greybox-a-playable-area",
+      "rationale": "Arena scale, vertical routes, ability range, spawn reset, and camera clearance must be solved before stylized world dressing.",
+      "rules": [
+        "Greybox dash distance, knockback space, aerial height, walls, and recovery routes using the final character controller.",
+        "Playtest whether large abilities can be read and escaped from each major area without the camera clipping into nearby geometry."
+      ]
+    },
+    {
+      "id": "impl-anime_battle-low-poly-props",
+      "genreId": "anime_battle",
+      "aspect": "low_poly_props",
+      "documentId": "docs-parts-meshes",
+      "rationale": "Stylized rocks, trees, buildings, weapons, and arena markers can use MeshParts with strong silhouettes and simplified collision.",
+      "rules": [
+        "Use exaggerated but simple silhouettes for dojo roofs, rocks, gates, weapons, and trees so the arena remains readable during effects.",
+        "Separate effect anchors and hit volumes from decorative mesh detail so combat logic does not inherit visual complexity."
+      ]
+    },
+    {
+      "id": "impl-anime_battle-materials",
+      "genreId": "anime_battle",
+      "aspect": "materials",
+      "documentId": "docs-parts-materials",
+      "rationale": "Material and color roles can support stylized worlds and gameplay telegraphs without detailed texture sets.",
+      "rules": [
+        "Use broad flat material families for ground, structures, props, and hazards, with a limited accent set tied to abilities or teams.",
+        "Keep arena floor and wall values distinct from effects and character silhouettes so saturated attacks remain readable."
+      ]
+    },
+    {
+      "id": "impl-anime_battle-lighting",
+      "genreId": "anime_battle",
+      "aspect": "lighting",
+      "documentId": "docs-environment-post-processing-effects",
+      "rationale": "Post-processing offers bloom, blur, color correction, depth of field, sun rays, and color grading at global or camera scope.",
+      "rules": [
+        "Use color correction or restrained bloom to establish the world palette, while preserving neutral contrast around combat telegraphs.",
+        "Apply camera-only blur or grading for short states such as menus or special moves, then restore gameplay clarity immediately."
+      ]
+    },
+    {
+      "id": "impl-anime_battle-interaction",
+      "genreId": "anime_battle",
+      "aspect": "interaction",
+      "documentId": "docs-input-input-action-system",
+      "rationale": "The Input Action System explicitly names fighting-game abilities and move swapping as a use case.",
+      "rules": [
+        "Define named light attack, heavy attack, block, dash, target, and ability-slot actions across touch, gamepad, and keyboard.",
+        "Use separate gameplay, character-selection, and menu contexts so a move input cannot activate while the player is editing a loadout."
+      ]
+    },
+    {
+      "id": "impl-survival-ui-hud",
+      "genreId": "survival",
+      "aspect": "ui_hud",
+      "documentId": "docs-tutorials-use-case-tutorials-ui-create-hud-meters",
+      "rationale": "Survival depends on persistent health, stamina, hunger, temperature, durability, or objective state that must remain readable on every device.",
+      "rules": [
+        "Place the most urgent meters on safe edges and verify phone notches, Roblox controls, and small-screen legibility with Device Emulator.",
+        "Animate fill and color changes for depletion while avoiding large alerts that cover nearby threats or resource nodes."
+      ]
+    },
+    {
+      "id": "impl-survival-shop",
+      "genreId": "survival",
+      "aspect": "shop",
+      "documentId": "docs-production-game-design-contextual-purchases",
+      "rationale": "Base, lobby, death, and pre-run moments are safer purchase contexts than active gathering or combat.",
+      "rules": [
+        "Present optional supplies or run preparation at a base, lobby, or post-failure pause where the player is not under immediate threat.",
+        "Leave enough time for the complete purchase flow and do not resume weather, combat, or timed survival loss underneath the dialog."
+      ]
+    },
+    {
+      "id": "impl-survival-inventory",
+      "genreId": "survival",
+      "aspect": "inventory",
+      "documentId": "docs-ui-grid-table-layouts",
+      "rationale": "A uniform grid supports resources, food, tools, weapons, clothing, recipes, and storage while tables suit crafting requirements.",
+      "rules": [
+        "Use a consistent item grid with clear quantity, durability, equipped, and locked states, and move long descriptions into a detail pane.",
+        "Use aligned recipe rows for ingredients, owned counts, output, and craft action so shortages can be scanned quickly."
+      ]
+    },
+    {
+      "id": "impl-survival-map-composition",
+      "genreId": "survival",
+      "aspect": "map_composition",
+      "documentId": "docs-tutorials-curriculums-environmental-art-construct-your-world",
+      "rationale": "Large survival spaces benefit from planned landmark hierarchy, modular biomes, reusable assets, and tested routes.",
+      "rules": [
+        "Use mountains, rivers, coastlines, towers, or settlements as nested landmarks that remain recognizable from several approach directions.",
+        "Playtest travel time and resource spacing before dense decoration so the world supports exploration without becoming empty or repetitive."
+      ]
+    },
+    {
+      "id": "impl-survival-low-poly-props",
+      "genreId": "survival",
+      "aspect": "low_poly_props",
+      "documentId": "docs-parts-meshes",
+      "rationale": "Resources, tools, shelters, trees, rocks, containers, and traps need readable silhouettes and practical collision.",
+      "rules": [
+        "Create small modular families for harvestable trees, rocks, crates, shelter pieces, and tools with consistent scale and faceting.",
+        "Simplify collision on dense foliage and resource props so gathering routes are not blocked by invisible detail."
+      ]
+    },
+    {
+      "id": "impl-survival-materials",
+      "genreId": "survival",
+      "aspect": "materials",
+      "documentId": "docs-art-modeling-surface-appearance",
+      "rationale": "SurfaceAppearance can distinguish wood, stone, soil, metal, water, cloth, and wet or damaged states through controlled maps.",
+      "rules": [
+        "Use roughness and value to make gatherable wood, stone, metal, food, and equipment recognizable before the player opens inventory.",
+        "Keep texture density within the low-poly target; surface maps should reinforce broad material identity instead of simulating tiny geometry everywhere."
+      ]
+    },
+    {
+      "id": "impl-survival-lighting",
+      "genreId": "survival",
+      "aspect": "lighting",
+      "documentId": "docs-environment-atmosphere",
+      "rationale": "Atmosphere density, offset, haze, color, glare, and decay control distance, silhouette, weather mood, and time-of-day readability.",
+      "rules": [
+        "Tune density and offset together so distant landmarks fade enough to create depth but remain useful for navigation.",
+        "Use haze, color, and decay to signal weather or danger while checking that resource silhouettes and safe routes remain visible at gameplay distance."
+      ]
+    },
+    {
+      "id": "impl-survival-interaction",
+      "genreId": "survival",
+      "aspect": "interaction",
+      "documentId": "api-proximityprompt",
+      "rationale": "Prompts provide named cross-device interactions and hold behavior for gathering, crafting, doors, storage, and shelter systems.",
+      "rules": [
+        "Use action and object labels such as “Harvest — Pine Tree” or “Open — Supply Crate” so repeated props remain understandable.",
+        "Use hold duration for harvesting or repair and exclusivity in dense resource areas so several prompts do not overlap."
+      ]
+    }
+  ]
+}

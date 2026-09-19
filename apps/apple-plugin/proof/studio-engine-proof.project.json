@@ -1,0 +1,27 @@
+{
+  "name": "Apple Studio Engine Proof",
+  "tree": {
+    "$className": "DataModel",
+    "Workspace": {
+      "$className": "Workspace",
+      "AppleStudioEngineProofMarker": {
+        "$className": "Folder",
+        "$attributes": {
+          "AppleStudioEngineProof": true
+        }
+      }
+    },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "AppleCommandsUnderProof": {
+        "$path": "../src/Commands.luau"
+      },
+      "AppleSourceHashTarget": {
+        "$path": "AppleSourceHashTarget.luau"
+      },
+      "AppleStudioEngineProof": {
+        "$path": "AppleStudioEngineProof.luau"
+      }
+    }
+  }
+}

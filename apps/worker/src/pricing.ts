@@ -19,12 +19,13 @@ export interface ModelPrice {
   usdPerMCachedInput?: number;
 }
 
-// Prices verified against developers.cloudflare.com/workers-ai/platform/pricing (2026-08-30).
-// If Cloudflare changes a price, update it here — nothing else needs to change.
+// Prices verified against the current Cloudflare Workers AI model page and pricing page
+// (2026-09-18). Where those two primary pages differ by rounding, use the HIGHER rate here: this
+// table is a spend reservation boundary, so a small over-reservation is safe and an under-reservation
+// is not. If Cloudflare changes a price, update it here — nothing else needs to change.
 export const MODEL_PRICES: Record<string, ModelPrice> = {
-  // PRODUCTION MODEL. Reasoning-capable, 1M context, native tool calling, vision.
-  // Cached input is billed at $0.03/M, which the gateway accounts for when the provider
-  // reports prompt_tokens_details.cached_tokens.
+  '@cf/zai-org/glm-4.7-flash': { id: '@cf/zai-org/glm-4.7-flash', usdPerMInput: 0.0605, usdPerMOutput: 0.4 },
+  // Internal visual specialist. Cached input is billed at the published discounted rate.
   '@cf/zai-org/glm-5.3-flash': { id: '@cf/zai-org/glm-5.3-flash', usdPerMInput: 0.15, usdPerMOutput: 0.5, usdPerMCachedInput: 0.03 },
   '@cf/openai/gpt-oss-120b': { id: '@cf/openai/gpt-oss-120b', usdPerMInput: 0.35, usdPerMOutput: 0.75 },
   '@cf/openai/gpt-oss-20b': { id: '@cf/openai/gpt-oss-20b', usdPerMInput: 0.2, usdPerMOutput: 0.3 },

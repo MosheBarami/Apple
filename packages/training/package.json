@@ -6,6 +6,10 @@
   "description": "Licence-gated, machine-verified SFT dataset construction and local LoRA training for Apple.",
   "scripts": {
     "test": "node --test src/*.test.mjs",
-    "build-dataset": "node src/build-dataset.mjs"
+    "build-dataset": "node src/build-dataset.mjs",
+    "audit-dataset": "node src/audit-dataset.mjs",
+    "build-game-logic": "node src/build-game-logic.mjs",
+    "evaluate-game-logic": "node src/evaluate-game-logic.mjs",
+    "score-local-pilot": "node src/score-local-pilot.mjs"
   }
 }

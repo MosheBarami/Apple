@@ -50,7 +50,7 @@ await esbuild.build({
   }],
 });
 const app = (await import(`file://${OUT}`)).default;
-const { PROJECTS, MEMBERS } = await import(`file://${join(HERE, 'stubs', 'supa.mjs')}`);
+const { PROJECTS, MEMBERS, ROWS } = await import(`file://${join(HERE, 'stubs', 'supa.mjs')}`);
 process.on('exit', () => rmSync(OUT, { force: true }));
 
 //[[ EVERY REQUEST CARRIES AN ExecutionContext, BECAUSE THE WORKERS RUNTIME ALWAYS SUPPLIES ONE.
@@ -170,6 +170,8 @@ function fresh() {
   BUDGET.killed = false;
   BUDGET.fails = false;
   MEMBERS.set(PROJECT, []);
+  ROWS.delete('project_members');
+  ROWS.delete('membership_access_state');
   // Deferred work from a previous test is dropped rather than carried, so a fire started against a
   // database that has since been closed cannot surface as this test's failure.
   deferred = [];
@@ -598,6 +600,16 @@ test('removing a member switches off the standing actors they pointed at the pro
   const db = fresh();
   const env = envFor(db);
   MEMBERS.set(PROJECT, [{ user_id: BOB, role: 'editor' }]);
+  // `MEMBERS` drives the shared-access boundary. The lifecycle route also reads the concrete row
+  // it is about to revoke so a nonexistent member cannot produce a fake audit/outbox event.
+  ROWS.set('project_members', [{
+    project_id: PROJECT,
+    user_id: BOB,
+    role: 'editor',
+    expires_at: null,
+    revoked_at: null,
+    suspended_at: null,
+  }]);
   const { body } = await create(env, BOB, { trigger: 'manual' });
   const id = body.automation.id;
 

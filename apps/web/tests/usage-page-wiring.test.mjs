@@ -31,7 +31,7 @@ import { fileURLToPath } from 'node:url';
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
 const usage = readFileSync(join(WEB, 'src', 'routes', 'usage.tsx'), 'utf8');
 const plans = readFileSync(join(WEB, 'src', 'components', 'plans.tsx'), 'utf8');
-const css = readFileSync(join(WEB, 'src', 'styles.css'), 'utf8');
+const css = readFileSync(join(WEB, 'src', 'design/system.css'), 'utf8');
 
 // The enforced table, so the figures the ladder prints can be checked against what the server
 // applies rather than against a literal in this file.
@@ -145,7 +145,7 @@ test('A CHECKOUT ONLY EVER STARTS A FIRST SUBSCRIPTION', () => {
   // earlier in the same handler.
   assert.match(usageCode, /currentPlan === 'free' && canBuy\) setPendingPlan/,
     'only an account with no subscription yet may reach an order at all');
-  assert.match(usageCode, /else portal\.mutate\(\)/, 'everything else is a portal visit');
+  assert.match(usageCode, /else if \(plan === 'free'\) portal\.mutate\(\)/, 'only cancellation can bypass a priced preview');
 });
 
 /**
@@ -357,8 +357,8 @@ test('A PAID-TO-PAID CHANGE IS NO LONGER A BARE REDIRECT', () => {
   // The redirect that survives is the move down to Free, which is a cancellation and has no
   // upgrade invoice to preview. It must come after the priced branch, never instead of it.
   assert.ok(
-    choose.indexOf('setPendingChange(plan)') < choose.indexOf('else portal.mutate()'),
-    'the bare redirect may only be the fall-through for a tier with no price',
+    choose.indexOf('setPendingChange(plan)') < choose.indexOf("else if (plan === 'free') portal.mutate()"),
+    'the bare redirect may only be an explicit cancellation, never a missing paid price',
   );
   assert.match(usageCode, /import \{ ConfirmDialog \}/, 'it asks first');
   assert.match(usageCode, /fetchBillingPreview/, 'and the amount comes from the server');

@@ -11,11 +11,10 @@
 //
 //    It deliberately does NOT compare the model id or the neuron amounts. The baseline is frozen at
 //    a pre-refactor revision, so its DEFAULT_MODELS is whatever shipped then; comparing those
-//    compares old CONFIGURATION to new, and which model serves a mode is allowed to change. It did:
-//    `@cf/zai-org/glm-5.3-flash` requires a paid Cloudflare plan and cannot run on Workers Free,
-//    so the modes moved to gpt-oss-120b/20b with llama-3.2-11b-vision for the critic. Neurons are a
-//    function of the model's price row, so pinning them here would make any model change fail the
-//    suite for the wrong reason. Cost arithmetic is asserted separately, against an explicit model.
+//    compares old CONFIGURATION to new, and which model serves a mode is allowed to change. Neurons
+//    are a function of the model's price row, so pinning them here would make any model change fail
+//    the suite for the wrong reason. Cost arithmetic is asserted separately, against an explicit
+//    model, and the current frontier defaults are asserted in their own tests below.
 //
 // 2. THE LAYER IS HONEST. OpenAI, Google and DeepSeek have no credentials on this account, and the
 //    tests assert they report exactly that, that DeepSeek additionally reports it cannot serve the
@@ -222,7 +221,7 @@ const REQUESTS = [
 // 1. behaviour preservation
 // ---------------------------------------------------------------------------
 
-test('REFACTOR PROOF: the GLM path is byte-identical to the pre-refactor gateway', async (t) => {
+test('REFACTOR PROOF: provider refactor preserves transport outside model-specific reasoning config', async (t) => {
   if (!BASELINE) {
     t.skip('no pre-provider-layer revision of gateway.ts is reachable from git history');
     return;
@@ -235,7 +234,14 @@ test('REFACTOR PROOF: the GLM path is byte-identical to the pre-refactor gateway
     const after = await G.chat(a.env, structuredClone(req), { kind: 'probe', sessionId: 'sess-1' });
 
     assert.deepEqual(a.seen.runs.length, 1, `${name}: exactly one inference call`);
-    assert.deepEqual(a.seen.runs[0].payload, b.seen.runs[0].payload, `${name}: same wire payload`);
+    // Reasoning controls are provider-model schema, and the product now intentionally routes
+    // different foundations. Compare the transport payload after removing only those model-specific
+    // knobs; messages, tools, token ceiling and temperature must remain byte-for-byte equivalent.
+    const stablePayload = (payload) => {
+      const { reasoning, reasoning_effort, ...rest } = payload;
+      return rest;
+    };
+    assert.deepEqual(stablePayload(a.seen.runs[0].payload), stablePayload(b.seen.runs[0].payload), `${name}: same transport payload`);
     assert.deepEqual(a.seen.runs[0].opts, b.seen.runs[0].opts, `${name}: same AI Gateway options`);
 
     // WHAT THIS PROOF DOES AND DOES NOT COVER.
@@ -261,11 +267,110 @@ test('REFACTOR PROOF: the GLM path is byte-identical to the pre-refactor gateway
   }
 });
 
-test('the production model id still routes to the Workers AI adapter', () => {
-  const adapter = P.adapterForModelId('@cf/zai-org/glm-5.3-flash');
-  assert.equal(adapter.id, 'workers-ai');
+test('every Apple product route still uses the Workers AI adapter', () => {
+  for (const modelId of [P.APPLE_MODEL_ID, P.APPLE_MAX_MODEL_ID, P.VISION_MODEL_ID]) {
+    assert.equal(P.adapterForModelId(modelId).id, 'workers-ai', `${modelId} must use Workers AI`);
+  }
   // and so does anything unrecognised — the AI binding is the only transport this worker has
   assert.equal(P.adapterForModelId('@cf/some/future-model').id, 'workers-ai');
+});
+
+test('gateway defaults implement the product-model split while vision stays independent', () => {
+  assert.equal(G.DEFAULT_MODELS.clay.id, P.APPLE_MODEL_ID, 'the Apple lane must resolve to Qwen3');
+  assert.equal(G.DEFAULT_MODELS.memory.id, P.APPLE_MODEL_ID, 'Apple housekeeping must stay on the Apple foundation');
+  assert.equal(G.DEFAULT_MODELS.stone.id, P.APPLE_MAX_MODEL_ID, 'the Apple MAX builder lane must resolve to GLM-4.7 Flash');
+  assert.equal(G.DEFAULT_MODELS.rune.id, P.APPLE_MAX_MODEL_ID, 'the Apple MAX autonomous lane must resolve to GLM-4.7 Flash');
+  assert.equal(G.DEFAULT_MODELS.vision.id, P.VISION_MODEL_ID, 'vision remains the separate multimodal specialist');
+
+  assert.equal(G.DEFAULT_MODELS.clay.ctx, P.APPLE_CONTEXT_WINDOW);
+  assert.equal(G.DEFAULT_MODELS.stone.ctx, P.APPLE_MAX_CONTEXT_WINDOW);
+  assert.equal(G.DEFAULT_MODELS.rune.ctx, P.APPLE_MAX_CONTEXT_WINDOW);
+  assert.equal(G.DEFAULT_MODELS.vision.ctx, P.VISION_CONTEXT_WINDOW);
+  assert.equal(G.DEFAULT_MODELS.clay.nativeTools, true);
+  assert.equal(G.DEFAULT_MODELS.stone.nativeTools, true);
+  assert.equal(G.DEFAULT_MODELS.rune.nativeTools, true);
+});
+
+test('the chosen Apple, Apple MAX and vision catalogue rows carry the verified facts', () => {
+  const apple = P.WORKERS_AI_MODELS.find((model) => model.id === P.APPLE_MODEL_ID);
+  const max = P.WORKERS_AI_MODELS.find((model) => model.id === P.APPLE_MAX_MODEL_ID);
+  const vision = P.WORKERS_AI_MODELS.find((model) => model.id === P.VISION_MODEL_ID);
+  assert.ok(apple && max && vision, 'all three selected routes must be catalogued');
+
+  assert.deepEqual(
+    [apple.displayName, apple.supportsTools, apple.supportsVision, apple.contextWindow, apple.inputCostPer1M, apple.outputCostPer1M],
+    ['Qwen3 30B A3B FP8', true, false, 32_768, 0.0509, 0.335],
+  );
+  assert.ok(apple.unverifiedFields.includes('maxOutput'), 'Qwen max output must stay labelled unverified');
+
+  assert.deepEqual(
+    [max.displayName, max.supportsTools, max.supportsVision, max.contextWindow, max.inputCostPer1M, max.outputCostPer1M],
+    ['GLM-4.7 Flash', true, false, 131_072, 0.0605, 0.4],
+  );
+  assert.ok(max.unverifiedFields.includes('maxOutput'), 'GLM-4.7 max output must stay labelled unverified');
+
+  assert.equal(vision.displayName, 'GLM-5.3 Flash');
+  assert.equal(vision.supportsVision, true);
+  assert.equal(vision.contextWindow, 1_310_720);
+});
+
+test('a stale free-tier KV map cannot restore legacy models for user-facing keys', async () => {
+  G.resetModelCache();
+  const stale = {
+    clay: { id: '@cf/openai/gpt-oss-20b', nativeTools: true, maxTokens: 2000, ctx: 128_000, temperature: 0.3 },
+    stone: { id: '@cf/openai/gpt-oss-120b', nativeTools: true, maxTokens: 5600, ctx: 128_000, temperature: 0.25 },
+    rune: { id: '@cf/openai/gpt-oss-120b', nativeTools: true, maxTokens: 6500, ctx: 128_000, temperature: 0.25 },
+    memory: { id: '@cf/openai/gpt-oss-20b', nativeTools: false, maxTokens: 800, ctx: 128_000, temperature: 0.2 },
+    vision: { id: '@cf/meta/llama-3.2-11b-vision-instruct', nativeTools: false, maxTokens: 4000, ctx: 128_000, temperature: 0.3 },
+    probe: { id: '@cf/qwen/qwen3-30b-a3b-fp8', nativeTools: true, maxTokens: 120, ctx: 128_000, temperature: 0.2 },
+  };
+  const { env } = fakeEnv({ KV: { get: async () => JSON.stringify(stale) } });
+  const models = await G.getModels(env);
+  assert.equal(models.clay.id, P.APPLE_MODEL_ID);
+  assert.equal(models.memory.id, P.APPLE_MODEL_ID);
+  assert.equal(models.stone.id, P.APPLE_MAX_MODEL_ID);
+  assert.equal(models.rune.id, P.APPLE_MAX_MODEL_ID);
+  assert.equal(models.vision.id, P.VISION_MODEL_ID);
+  assert.equal(models.probe.id, '@cf/qwen/qwen3-30b-a3b-fp8', 'custom diagnostic keys remain configurable');
+  G.resetModelCache();
+});
+
+test('GLM-4.7 native tool calls stay structured and use its documented reasoning control', () => {
+  const { payload } = P.workersAiAdapter.encode({
+    modelId: P.APPLE_MAX_MODEL_ID,
+    messages: [{ role: 'user', content: 'Call echo_probe.' }],
+    tools: [{ name: 'echo_probe', description: 'Return a message.', parameters: { type: 'object' } }],
+    maxTokens: 256,
+    temperature: 0.2,
+    reasoningEffort: 'low',
+  });
+  assert.deepEqual(payload.tools, [
+    { type: 'function', function: { name: 'echo_probe', description: 'Return a message.', parameters: { type: 'object' } } },
+  ]);
+  assert.equal(payload.reasoning_effort, 'low');
+  const decoded = P.workersAiAdapter.decode(
+    {
+      choices: [{ finish_reason: 'tool_calls', message: { content: null, tool_calls: [{ id: 'call_1', type: 'function', function: { name: 'echo_probe', arguments: '{"message":"ok"}' } }] } }],
+      usage: { prompt_tokens: 166, completion_tokens: 12 },
+    },
+    500,
+    P.APPLE_MAX_MODEL_ID,
+  );
+  assert.equal(decoded.finishReason, 'tool_calls');
+  assert.deepEqual(decoded.toolCalls, [{ id: 'call_1', name: 'echo_probe', arguments: '{"message":"ok"}' }]);
+  assert.equal(decoded.text, '');
+});
+
+test('Qwen Apple requests do not receive an undocumented reasoning-effort field', () => {
+  const { payload } = P.workersAiAdapter.encode({
+    modelId: P.APPLE_MODEL_ID,
+    messages: [{ role: 'user', content: 'Inspect this project.' }],
+    maxTokens: 256,
+    temperature: 0.2,
+    reasoningEffort: 'high',
+  });
+  assert.equal(Object.hasOwn(payload, 'reasoning_effort'), false);
+  assert.equal(Object.hasOwn(payload, 'reasoning'), false);
 });
 
 test('the response still reports provider "workers-ai" and settles on reported neurons', async () => {
@@ -556,6 +661,18 @@ test('Workers AI cost still goes through the existing neuron price table', () =>
   // and the cached-input discount the table publishes is applied
   const cached = P.neuronsForModelTokens(glm, 1_000_000, 0, 1_000_000);
   assert.equal(cached, Math.ceil(0.03 / 0.000011));
+});
+
+test('Apple and Apple MAX reservations use the conservative selected-model price rows', () => {
+  const apple = P.allModels().find((m) => m.id === P.APPLE_MODEL_ID);
+  const max = P.allModels().find((m) => m.id === P.APPLE_MAX_MODEL_ID);
+  assert.ok(apple && max);
+  // Qwen's model page currently prints $0.0509/M input while Cloudflare's pricing table rounds it
+  // to $0.051/M. The reservation boundary intentionally uses the larger figure.
+  assert.equal(P.neuronsForModelTokens(apple, 1_000_000, 1_000_000), Math.ceil((0.051 + 0.335) / 0.000011));
+  // GLM-4.7 has the opposite rounding disagreement ($0.0605 on its model page, $0.060 on pricing),
+  // so the same fail-closed rule uses $0.0605/M input.
+  assert.equal(P.neuronsForModelTokens(max, 1_000_000, 1_000_000), Math.ceil((0.0605 + 0.4) / 0.000011));
 });
 
 test('token-billed providers convert into neurons so the BudgetDO ceiling still applies', () => {

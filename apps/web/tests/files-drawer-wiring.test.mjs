@@ -25,7 +25,7 @@ import { fileURLToPath } from 'node:url';
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
 const workspace = readFileSync(join(WEB, 'src', 'routes', 'workspace.tsx'), 'utf8');
 const panel = readFileSync(join(WEB, 'src', 'components', 'ws', 'files-panel.tsx'), 'utf8');
-const css = readFileSync(join(WEB, 'src', 'styles', 'workspace.css'), 'utf8');
+const css = readFileSync(join(WEB, 'src', 'design', 'system.css'), 'utf8');
 
 /** Source with comments stripped, so a name discussed in prose is not mistaken for one in use. */
 const code = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');

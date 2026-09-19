@@ -15,6 +15,8 @@ importers:
         specifier: ^4.127.1
         version: 4.127.1(@cloudflare/workers-types@5.20260830.1)
 
+  apps/apple-plugin: {}
+
   apps/benchmark/crystal-canyon: {}
 
   apps/plugin: {}

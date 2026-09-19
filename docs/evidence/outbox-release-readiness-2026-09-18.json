@@ -1,0 +1,40 @@
+{
+  "checkedAt": "2026-09-18T20:38:03.613Z",
+  "kind": "read_only_rpc_readiness",
+  "tokensRegenerated": false,
+  "distinctTokens": true,
+  "checks": [
+    {
+      "tokenOwner": "apple",
+      "requestedConsumer": "apple",
+      "matching": true,
+      "status": 200,
+      "ready": true,
+      "passed": true
+    },
+    {
+      "tokenOwner": "apple",
+      "requestedConsumer": "golem",
+      "matching": false,
+      "status": 200,
+      "ready": false,
+      "passed": true
+    },
+    {
+      "tokenOwner": "golem",
+      "requestedConsumer": "golem",
+      "matching": true,
+      "status": 200,
+      "ready": true,
+      "passed": true
+    },
+    {
+      "tokenOwner": "golem",
+      "requestedConsumer": "apple",
+      "matching": false,
+      "status": 200,
+      "ready": false,
+      "passed": true
+    }
+  ]
+}

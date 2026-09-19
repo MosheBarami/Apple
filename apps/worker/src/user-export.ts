@@ -181,6 +181,18 @@ export const USER_EXPORT: readonly ExportTable[] = [
     },
   },
   {
+    // The latest access state may be stricter than the underlying Postgres/KV grant while a mirror
+    // write or Durable Object delivery is being retried. It is therefore a fact about the person's
+    // current project access, not merely queue bookkeeping, and belongs beside project_members in
+    // their export.
+    store: 'postgres',
+    table: 'membership_access_state',
+    access: 'rls',
+    ownerColumn: 'user_id',
+    fields: ['project_id', 'user_id', 'version', 'role', 'expires_at', 'access', 'updated_at'],
+    excluded: {},
+  },
+  {
     store: 'd1',
     table: 'api_keys',
     access: 'worker',
@@ -213,7 +225,10 @@ export const NEVER_EXPORT: readonly string[] = ['key_hash', 'token_hash', 'token
  * Without this slot the only way to record "we looked at it and decided no" would be to say nothing,
  * which is indistinguishable from never having looked.
  */
-export const NOT_EXPORTED_TABLES: Readonly<Record<string, string>> = {};
+export const NOT_EXPORTED_TABLES: Readonly<Record<string, string>> = {
+  membership_access_outbox:
+    'a transient per-worker delivery queue duplicating membership_access_state; attempts, retry timing and transport errors are service operations rather than an additional fact about the person',
+};
 
 export interface NonPostgresStore {
   /** Which kind of storage, and therefore which binding erases it. */
@@ -272,6 +287,7 @@ export const NON_POSTGRES_STORES: readonly NonPostgresStore[] = [
 
   // ---------------------------------------------------------- Durable Object storage
   { store: 'do', binding: 'SESSION_DO', name: 'messages', personal: true, holds: 'THE CONVERSATION — every message, in full, with its tool trace' },
+  { store: 'do', binding: 'SESSION_DO', name: 'message_models', personal: true, holds: 'which Apple product model each conversation message selected' },
   { store: 'do', binding: 'SESSION_DO', name: 'message_revisions', personal: true, holds: 'earlier versions of a message the person edited and re-sent' },
   { store: 'do', binding: 'SESSION_DO', name: 'checkpoints', personal: true, holds: 'snapshots of the place, with who took them' },
   { store: 'do', binding: 'SESSION_DO', name: 'checkpoint_chunks', personal: true, holds: 'the bytes of those snapshots' },
@@ -280,6 +296,14 @@ export const NON_POSTGRES_STORES: readonly NonPostgresStore[] = [
   { store: 'do', binding: 'QUOTA_DO', name: 'month_totals', personal: true, holds: 'the monthly rollup of that spend' },
   { store: 'do', binding: 'QUOTA_DO', name: 'billing_events', personal: true, holds: 'the Stripe events that set this account\'s plan' },
   { store: 'do', binding: 'QUOTA_DO', name: 'applied_events', personal: true, holds: 'which of those were already applied, so a redelivery cannot double-charge' },
+  {
+    store: 'do',
+    binding: 'QUOTA_DO',
+    name: 'billing_authority_replays',
+    personal: true,
+    holds:
+      'one account\'s bounded replay cache of normalized billing mutations, kept so a webhook retry returns the same subscription or credit decision; it does not store the raw Stripe payload or credentials',
+  },
   { store: 'do', binding: 'ADMIN_DO', name: 'events', personal: true, holds: 'the request and audit log; an event carries the actor id unless the person opted out' },
   { store: 'do', binding: 'ADMIN_DO', name: 'counters', personal: false, holds: 'service-wide operational counters, no actor' },
   { store: 'do', binding: 'BUDGET_DO', name: 'spend', personal: false, holds: 'service-wide inference spend per day, no actor' },
@@ -297,7 +321,9 @@ export const NON_POSTGRES_STORES: readonly NonPostgresStore[] = [
   { store: 'kv', binding: 'KV', name: 'ws:<project>:', personal: true, holds: 'the files the agent wrote in a project workspace' },
   { store: 'kv', binding: 'KV', name: 'wsv:<project>:', personal: true, holds: 'earlier versions of those files' },
   { store: 'kv', binding: 'KV', name: 'wst:<project>:', personal: true, holds: 'deleted workspace files, until the trash window expires' },
-  { store: 'kv', binding: 'KV', name: 'image:<project>:', personal: true, holds: 'generated images, for an hour' },
+  { store: 'd1', binding: 'CORPUS', name: 'generated_images', personal: true, holds: 'generated image files until project deletion; download from the authenticated image result' },
+  { store: 'd1', binding: 'CORPUS', name: 'generated_image_tombstones', personal: true, holds: 'deleted project IDs retained to fence late image writes; no pixels or account details' },
+  { store: 'kv', binding: 'KV', name: 'image:<project>:', personal: true, holds: 'temporary previews and older generated images, for an hour' },
   { store: 'kv', binding: 'KV', name: 'audio:<project>:', personal: true, holds: 'generated audio, for an hour' },
   { store: 'kv', binding: 'KV', name: 'share:link:', personal: true, holds: 'share links, keyed by the bearer token, with who created them' },
   { store: 'kv', binding: 'KV', name: 'share:grant:<project>:', personal: true, holds: 'grants redeemed from a share link' },

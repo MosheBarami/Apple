@@ -29,7 +29,10 @@ const stripComments = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s
 
 test('stop is reachable from the workspace, not only from the plugin', () => {
   assert.match(COMPOSER, /aria-label="Stop this run"/);
-  assert.match(WS, /onStop=\{stop\}/);
+  const composer = WS.slice(WS.indexOf('<Composer'), WS.indexOf('/>', WS.indexOf('<Composer')) + 2);
+  assert.match(composer, /onStop=\{\(\) => \{/);
+  assert.match(composer, /if \(!chatAllowed\)/, 'a viewer/commenter must not send a stop frame the server will refuse');
+  assert.match(composer, /\bstop\(\);/, 'the allowed path no longer reaches the socket stop action');
 });
 
 // ------------------------------------------------------------------- retry ---
@@ -85,16 +88,16 @@ test('a quota stop offers no retry', () => {
   assert.match(TURN, /item\.stopReason !== 'quota'/);
 });
 
-test('retry is offered only on the last turn', () => {
+test('retry is offered only on the last turn when this member may chat', () => {
   // Retrying an older turn would silently discard everything after it. That is the edit path, and
-  // it asks first.
-  assert.match(WS, /onRetry=\{item\.id === lastAssistantId && !running \? retryLast : undefined\}/);
+  // it asks first. A viewer/commenter must not be shown a retry that the shared socket will refuse.
+  assert.match(WS, /onRetry=\{item\.id === lastAssistantId && !running && chatAllowed \? retryLast : undefined\}/);
 });
 
 test('retry is absent while something is running', () => {
-  assert.match(WS, /&& !running \? retryLast : undefined/);
+  assert.match(WS, /&& !running && chatAllowed \? retryLast : undefined/);
   const fn = WS.slice(WS.indexOf('const retryLast'), WS.indexOf('const [editing'));
-  assert.match(fn, /if \(running\) return;/, 'and guarded again in the handler, not only in the render');
+  assert.match(fn, /if \(running(?:\s*\|\|[^)]*)?\) return;/, 'and guarded again in the handler, not only in the render');
 });
 
 // ------------------------------------------------------------ what it reuses ---
@@ -103,7 +106,7 @@ test('retry goes through edit_resend rather than a second re-run path', () => {
   // The server behaviour a retry needs — drop the failed turn, run the prompt again — is exactly
   // what an edit does. A second endpoint would be a second definition of re-running.
   const fn = WS.slice(WS.indexOf('const retryLast'), WS.indexOf('const [editing'));
-  assert.match(fn, /editAndResend\(lastUser\.id, lastUser\.content, PRODUCT_MODE_TO_SPECIALIST\[mode\]\)/);
+  assert.match(fn, /editAndResend\(lastUser\.id, lastUser\.content, PRODUCT_MODE_TO_SPECIALIST\[mode\](?:,\s*\w+)?\)/);
 });
 
 test('it resends the last USER message, not the failed assistant turn', () => {
@@ -137,12 +140,12 @@ test('the outcome line is a row, so the control sits with the sentence', () => {
   // parked underneath it.
   assert.match(TURN, /<div className=\{`gx-outcome\$\{/);
   assert.match(TURN, /className="gx-outcome__text"/);
-  const CSS = readFileSync(join(WEB, 'src', 'styles', 'workspace.css'), 'utf8');
+  const CSS = readFileSync(join(WEB, 'src', 'design', 'system.css'), 'utf8');
   const rule = CSS.slice(CSS.indexOf('.gx-outcome {'));
-  assert.match(rule, /align-items: baseline/);
+  assert.match(rule, /align-items:\s*baseline/);
 });
 
 test('the retry control has a visible focus state', () => {
-  const CSS = readFileSync(join(WEB, 'src', 'styles', 'workspace.css'), 'utf8');
+  const CSS = readFileSync(join(WEB, 'src', 'design', 'system.css'), 'utf8');
   assert.match(CSS, /\.gx-outcome__retry:focus-visible/);
 });

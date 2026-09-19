@@ -1,0 +1,24 @@
+{
+  "name": "Apple Restore Engine Proof",
+  "tree": {
+    "$className": "DataModel",
+    "Workspace": {
+      "$className": "Workspace",
+      "AppleRestoreEngineProofMarker": {
+        "$className": "Folder",
+        "$attributes": {
+          "AppleRestoreEngineProof": true
+        }
+      }
+    },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "AppleCommandsUnderRestoreProof": {
+        "$path": "../src/Commands.luau"
+      },
+      "AppleRestoreEngineProof": {
+        "$path": "AppleRestoreEngineProof.luau"
+      }
+    }
+  }
+}

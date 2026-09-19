@@ -22,6 +22,7 @@
 // the confident next step — it is offered with `verify` telling the user Golem could not tell.
 import type { StudioOp, OpResult, GolemMode } from '@golem/shared';
 import { creditRangeForRuns } from '@golem/shared';
+import { APPLE_UI_SOURCE } from './ui-kit';
 
 // -----------------------------------------------------------------------------------------------
 // The scan. ONE Studio round trip.
@@ -309,6 +310,25 @@ interface ScanIndex {
   labels: string;
   classes: Record<string, number>;
   scan: ProjectScan;
+  presentationSourceIncomplete: boolean;
+}
+
+/**
+ * AppleUI is a first-party presentation module, not gameplay evidence.
+ *
+ * Its display labels and validation messages necessarily contain words such as "objective". The
+ * scanner deliberately keeps string contents because authored UI can announce a genre, so simply
+ * stripping strings would weaken every detector. Identity is the actual known source, not a
+ * path or comment a modified/user module can retain. A known capped prefix is not evidence about
+ * its unread tail: omit the presentation prefix but keep missing code evidence UNKNOWN.
+ */
+function appleUiSourceKind(script: ScannedScript, sourceCapped: boolean): 'complete' | 'partial' | null {
+  if (script.className !== 'ModuleScript') return null;
+  const source = script.source.trim();
+  const known = APPLE_UI_SOURCE.trim();
+  if (source === known) return 'complete';
+  if (sourceCapped && source.length >= 1024 && known.startsWith(source)) return 'partial';
+  return null;
 }
 
 /**
@@ -382,7 +402,16 @@ export function stripLuauComments(source: string): string {
 }
 
 function buildIndex(scan: ProjectScan): ScanIndex {
-  const code = scan.scripts.map((s) => stripLuauComments(s.source)).join('\n').toLowerCase();
+  let presentationSourceIncomplete = false;
+  const code = scan.scripts
+    .filter((s) => {
+      const kind = appleUiSourceKind(s, scan.truncated.source);
+      if (kind === 'partial') presentationSourceIncomplete = true;
+      return kind === null;
+    })
+    .map((s) => stripLuauComments(s.source))
+    .join('\n')
+    .toLowerCase();
   const labels = [
     // The place name first: it is the most deliberate statement of intent in the whole scan.
     scan.place ?? '',
@@ -397,7 +426,7 @@ function buildIndex(scan: ProjectScan): ScanIndex {
     // "Zone1" and "Stage12" must read as two tokens for the lexicons above
     .replace(/([a-z])(\d)/gi, '$1 $2')
     .toLowerCase();
-  return { code, labels, classes: scan.classes, scan };
+  return { code, labels, classes: scan.classes, scan, presentationSourceIncomplete };
 }
 
 /** Class names under Lighting that mean somebody deliberately treated the mood. */
@@ -423,7 +452,7 @@ function detect(ix: ScanIndex, d: Detector): { state: Detected; evidence: string
   // A negative is only a negative if the scan actually saw the whole project. When scripts or
   // sources were truncated, a code-only signal that did not match is UNKNOWN, not missing.
   const codeOnly = !!d.code && !d.labels && !d.klass;
-  if (codeOnly && (ix.scan.truncated.scripts || ix.scan.truncated.source)) {
+  if ((codeOnly || (ix.presentationSourceIncomplete && !!d.code)) && (ix.scan.truncated.scripts || ix.scan.truncated.source)) {
     return { state: 'unknown', evidence: 'not all script source was read' };
   }
   if (!d.code && !d.labels && !d.klass) return { state: 'unknown', evidence: 'no detector' };
@@ -744,7 +773,9 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     complexity: 'small', mode: 'stone', runs: 1, priority: 40,
     dependsOn: [], genres: ['any'], satisfiedBy: ['client_ui'],
     build: [
-      'Add a ScreenGui in StarterGui with the one or two numbers that drive the loop.',
+      'install_module("ui_kit") — the first-party AppleUI HUD and shop presentation module in ReplicatedStorage.',
+      'From a LocalScript in StarterPlayerScripts, require AppleUI and mount it in the local PlayerGui with showShop=false for a HUD-only game. Use setBalance for the server-confirmed number and destroy the controller when replacing it.',
+      'If this game already has objectives, use setObjectives with observed server progress and explicit completion; do not add an unsolicited quest system. Use notify for confirmed events, never fabricated rewards. Check narrow-screen text, safe areas and scrolling in Play mode.',
       'Update it from the server value, never from a local guess.',
     ],
     acceptance: ['The number on screen matches the server value after a rejoin.'],
@@ -859,6 +890,8 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     complexity: 'medium', mode: 'stone', runs: 1, priority: 90,
     dependsOn: ['economy', 'readable_hud'], genres: ['any'], satisfiedBy: ['shop'],
     build: [
+      'install_module("ui_kit") — reuse AppleUI for the responsive shop instead of recreating button and pending-state logic.',
+      'Wire setItems to the real server catalog, and onRequest(itemId) to a rate-limited server purchase handler. Return true only after the server confirms; update the displayed balance from server data. Missing wiring must remain unavailable, never simulate a purchase.',
       'Build a shop the player walks to, with the purchasable items shown in the world.',
       'Take the purchase decision on the server and deduct there.',
     ],

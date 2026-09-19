@@ -27,8 +27,10 @@ import type {
   StudioPlace,
   StudioDiagnostics,
   StudioLinkSummary,
+  ProductModel,
+  PluginCapabilityReportV1,
 } from '@golem/shared';
-import { MESSAGE_MAX_CHARS, recordsRevision, type AssetSourcePolicy } from '@golem/shared';
+import { canUseProductModel, isRunFailure, MESSAGE_MAX_CHARS, recordsRevision, type AssetSourcePolicy } from '@golem/shared';
 
 /**
  * The edit history being moved onto the message that replaces an edited one.
@@ -54,12 +56,14 @@ import {
   type RawFrame,
 } from '../frame-bus';
 import { promptWithAttachments } from '../attachments';
+import { artifactCompletion } from '../artifact-completion';
+import { checkpointEvidence, checkpointCoverageNote } from '../checkpoint-evidence';
 import { advance, isTerminal, startPlaytest } from '../playtest-stream';
 import { creditsForNeurons } from '../pricing';
 import { chat as llmChat, BudgetError, RateLimitedError } from '../gateway';
 import { systemPrompt, collapseArtDirection, MEMORY_UPDATE_PROMPT } from '../prompts';
 import { designBrief } from '../design-brief';
-import { toolDefs, toolNames, targetOf, runTool, type AgentCtx, type PlaytestBus } from '../tools';
+import { TOOLS, toolDefs, toolNames, targetOf, runTool, type AgentCtx, type PlaytestBus } from '../tools';
 import { MCP_TOOL_NAMES } from '../mcp';
 import { planFromDetail, planDetail, settlePlan, type RunPlan } from '../run-plan';
 import { critiqueToText } from '../vision';
@@ -83,6 +87,17 @@ import { CollabStore, collabContext } from './collab-store.ts';
 import { asCollabRole, can, type CollabRole } from '../collab.ts';
 import { makeBeat, presenceSnapshot, type PresenceActivity } from '../presence.ts';
 import { partitionOpsByRun } from '../op-attribution';
+import {
+  acceptAccessChangeVersion,
+  accessRevokedFor,
+  canonicalGrantExpiry,
+  clearAccessRevoked,
+  currentAccessCursor,
+  markAccessRevoked,
+  runMustStop,
+  type RevocationReason,
+  type RunAccessVerdict,
+} from '../run-access';
 import { placeAdmission, readPlaceReport, servesOps, type PlaceAdmission } from '../studio-place';
 import { WORKER_FAILURES, asFailureKind } from '../op-failure';
 import { latestSelection, sameSelection, companionOpAccess, sanitizeCompanionOp, companionRefusal } from '../companion';
@@ -117,6 +132,13 @@ import { recordEvent } from '../analytics';
 import { flushEvents } from '../analytics-sink';
 import { fenceToolOutput, describeThreats } from '../injection.ts';
 import { advisory, scoreSubmission, type Submission } from '../abuse.ts';
+import {
+  filterToolsForPlugin,
+  normalisePluginCapabilities,
+  pluginCapabilityPromptNote,
+  type PluginToolFilter,
+  type ToolStudioRequirements,
+} from '../plugin-capabilities';
 
 /**
  * The poll response, plus the one field the shared contract does not carry yet.
@@ -130,11 +152,21 @@ import { advisory, scoreSubmission, type Submission } from '../abuse.ts';
  */
 type PollResponse = PluginPollResponse & { client?: PluginCompatibility };
 
+const STUDIO_TOOL_REQUIREMENTS: ToolStudioRequirements = Object.fromEntries(
+  Object.entries(TOOLS)
+    .filter(([, tool]) => tool.studio)
+    .map(([name, tool]) => [name, tool.studioOps ?? []]),
+) as ToolStudioRequirements;
+
+const pluginCapabilitiesKey = (tokenHash: string): string => `pluginCapabilities:${tokenHash}`;
+
 interface AgentState {
   status: 'idle' | 'running' | 'stopping';
   /** the run's unforgeable fence id; optional so a run persisted by an older deploy still loads */
   fenceId?: string;
   mode: GolemMode;
+  /** The user's model entitlement, independent of the legacy specialist/autonomy mode. */
+  productModel?: ProductModel;
   msgId: string;
   llm: GatewayRequest['messages'];
   step: number;
@@ -150,6 +182,10 @@ interface AgentState {
   startedAt: number;
   lastStepAt: number;
   userId: string;
+  /** The verified socket identity that initiated this run; owner billing stays in userId. */
+  initiatedBy?: string;
+  /** Trusted grant deadline, when the ingress was able to carry one. */
+  initiatorExpiresAt?: string | number;
   // ---- adaptive reasoning signals. All optional: a run persisted by an older deployment
   // deserialises unchanged and simply starts from the baseline effort. ----
   /** how many steps this run has already spent at high effort */
@@ -232,6 +268,12 @@ interface AgentState {
    * message sent while nobody is listening, and `run_intent` is emitted exactly once per run.
    */
   intent?: RunIntent;
+  /** Last measured prompt size sent this run. Scalar metadata only — no prompt text is copied. */
+  contextUsedChars?: number;
+  contextMaxChars?: number;
+  /** Cumulative user-turn loss across the run. Absent means no observed drop, not a guessed zero. */
+  contextDroppedGroups?: number;
+  contextDroppedChars?: number;
   /**
    * The plan `propose_plan` announced, and the tool row it was announced on.
    *
@@ -241,6 +283,23 @@ interface AgentState {
    */
   plan?: RunPlan;
 }
+
+type AccessChange = RevocationReason | 'clear';
+
+function accessCursorEvent(value: string | undefined): { access: AccessChange; role: CollabRole | null } | null {
+  if (typeof value !== 'string') return null;
+  const split = value.indexOf(':');
+  if (split <= 0) return null;
+  const access = value.slice(0, split);
+  if (access !== 'clear' && access !== 'removed' && access !== 'suspended' && access !== 'demoted') return null;
+  const rawRole = value.slice(split + 1);
+  const role = rawRole === 'none' ? null : asCollabRole(rawRole);
+  if ((access === 'clear' || access === 'demoted') && role === null) return null;
+  if ((access === 'removed' || access === 'suspended') && role !== null) return null;
+  return { access, role };
+}
+
+const accessClearPendingKey = (userId: string): string => `accessClearPending:${userId}`;
 
 // step limits are a direct cost multiplier: every step is a full priced inference call
 // Step limits are a direct cost multiplier: every step is a full priced inference call. They were
@@ -298,6 +357,33 @@ function asGolemMode(x: unknown): GolemMode | null {
     Object.prototype.hasOwnProperty.call(STEP_LIMITS, x) &&
     Object.prototype.hasOwnProperty.call(MODE_BASE_TOKENS, x);
   return inBoth ? (x as GolemMode) : null;
+}
+
+/** Runtime validation for the additive product-model field on newer clients. */
+function asProductModel(x: unknown): ProductModel | undefined | null {
+  if (x === undefined || x === null) return undefined;
+  return x === 'apple' || x === 'apple-max' ? x : null;
+}
+
+/** Legacy specialist requests keep their old meaning; new requests carry this model explicitly. */
+function effectiveProductModel(mode: GolemMode, requested?: ProductModel): ProductModel {
+  return requested ?? (mode === 'clay' ? 'apple' : 'apple-max');
+}
+
+/** Apple uses the existing limited Clay gateway configuration while retaining Stone's tools. */
+function gatewayModelFor(mode: GolemMode, productModel?: ProductModel): string {
+  if (productModel === 'apple') return 'clay';
+  if (productModel === 'apple-max') return mode === 'clay' ? 'stone' : mode;
+  return mode;
+}
+
+/** The free Apple lane is bounded independently of the specialist's tool policy. */
+function maxStepsFor(mode: GolemMode, productModel?: ProductModel): number {
+  return productModel === 'apple' ? Math.min(STEP_LIMITS[mode], STEP_LIMITS.clay) : STEP_LIMITS[mode];
+}
+
+function baseTokensFor(mode: GolemMode, productModel?: ProductModel): number {
+  return productModel === 'apple' ? MODE_BASE_TOKENS.clay : MODE_BASE_TOKENS[mode];
 }
 const STEP_STALE_MS = 180_000;
 
@@ -462,6 +548,9 @@ export class SessionDO extends DurableObject<Env> {
   /** msgId of the run in flight, so a forwarded frame can be attributed. */
   private currentMsgId: string | undefined;
   private seq = 0;
+  /** Current pairing identity and its validated capability report. Never shared across tokens. */
+  private activePluginTokenHash: string | null = null;
+  private pluginCapabilityReport: PluginCapabilityReportV1 | null = null;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -469,7 +558,12 @@ export class SessionDO extends DurableObject<Env> {
       this.sql.exec(`
         create table if not exists messages(
           id text primary key, role text not null, mode text, content text not null,
-          tool_trace text, created_at integer not null);
+          tool_trace text,
+          stop_reason text, run_failure text, credits_spent integer,
+          context_used_chars integer, context_max_chars integer,
+          context_dropped_groups integer, context_dropped_chars integer,
+          denied_tools text,
+          created_at integer not null);
         create index if not exists messages_time on messages(created_at);
         create table if not exists checkpoints(
           id text primary key, label text not null, kind text not null,
@@ -484,6 +578,8 @@ export class SessionDO extends DurableObject<Env> {
         create table if not exists message_revisions(
           message_id text not null, seq integer not null, content text not null,
           created_at integer not null, primary key(message_id, seq));
+        create table if not exists message_models(
+          message_id text primary key, product_model text not null);
       `);
       //[[ WHY a failure is recorded as a KIND and not only as a sentence: see src/op-failure.ts.
       //
@@ -497,6 +593,27 @@ export class SessionDO extends DurableObject<Env> {
       } catch {
         /* already added on an earlier boot */
       }
+      //[[ TERMINAL MESSAGE METADATA, WITHOUT REWRITING OLD HISTORY.
+      //
+      //   The live socket has always known how a run ended (`msg_end`), what the final settled
+      //   Credit total was, and the last context-budget measurement. The SQLite row did not. A
+      //   browser refresh therefore replaced a failed/stopped turn with the same text but NO
+      //   outcome, which is not a cosmetic omission: the reloaded transcript contradicted the run
+      //   the user had just watched.
+      //
+      //   These columns are deliberately scalar. No prompt, intent summary, hidden reasoning, or
+      //   provider message is copied into terminal metadata. NULL on an older row means unknown;
+      //   it must never be upgraded to `done` merely because the column did not exist yet. ]]
+      const messageColumns = this.sql.exec(`select name from pragma_table_info('messages')`).toArray() as { name: string }[];
+      const hasMessageColumn = (name: string) => messageColumns.some((column) => column.name === name);
+      if (!hasMessageColumn('stop_reason')) this.sql.exec(`alter table messages add column stop_reason text`);
+      if (!hasMessageColumn('run_failure')) this.sql.exec(`alter table messages add column run_failure text`);
+      if (!hasMessageColumn('credits_spent')) this.sql.exec(`alter table messages add column credits_spent integer`);
+      if (!hasMessageColumn('context_used_chars')) this.sql.exec(`alter table messages add column context_used_chars integer`);
+      if (!hasMessageColumn('context_max_chars')) this.sql.exec(`alter table messages add column context_max_chars integer`);
+      if (!hasMessageColumn('context_dropped_groups')) this.sql.exec(`alter table messages add column context_dropped_groups integer`);
+      if (!hasMessageColumn('context_dropped_chars')) this.sql.exec(`alter table messages add column context_dropped_chars integer`);
+      if (!hasMessageColumn('denied_tools')) this.sql.exec(`alter table messages add column denied_tools text`);
       //[[ WHICH RUN DID THIS. The record's anchor back into the conversation.
       //
       //   `PendingOp.runId` already tags every queued op — op-attribution.ts depends on it to stop
@@ -540,10 +657,22 @@ export class SessionDO extends DurableObject<Env> {
       } catch {
         /* already added on an earlier boot */
       }
+      const checkpointColumns = this.sql.exec(`select name from pragma_table_info('checkpoints')`).toArray() as { name: string }[];
+      if (!checkpointColumns.some(column => column.name === 'coverage')) this.sql.exec(`alter table checkpoints add column coverage text`);
+      if (!checkpointColumns.some(column => column.name === 'preserved_objects')) this.sql.exec(`alter table checkpoints add column preserved_objects integer`);
       const q = await this.ctx.storage.get<PendingOp[]>('opQueue');
       if (q) this.opQueue = q;
       const seq = await this.ctx.storage.get<number>('seq');
       if (seq) this.seq = seq;
+      const tokenHash = (await this.ctx.storage.get<string>('pluginTokenHash')) ?? null;
+      this.activePluginTokenHash = tokenHash;
+      if (tokenHash) {
+        const stored = await this.ctx.storage.get<unknown>(pluginCapabilitiesKey(tokenHash));
+        this.pluginCapabilityReport = normalisePluginCapabilities(stored);
+        if (stored !== undefined && this.pluginCapabilityReport === null) {
+          await this.ctx.storage.delete(pluginCapabilitiesKey(tokenHash));
+        }
+      }
       const lastSeen = (await this.ctx.storage.get<number>('pluginLastSeen')) ?? 0;
       this.pluginSeenRecently = Date.now() - lastSeen < 8000;
       //[[ A playtest outlives the instance that started it, for the same reason a run does.
@@ -581,6 +710,205 @@ export class SessionDO extends DurableObject<Env> {
     // — the socket does it in `hello` — so by the time a tool runs this is set.
     if (b) this.boundProjectId = b.projectId;
     return b;
+  }
+
+  /**
+   * Re-ask who may keep a durable run alive. `userId` remains the owner's billing identity; the
+   * initiator is a separate, verified field so a collaborator's revocation cannot either charge
+   * them or accidentally stop the owner's run.
+   */
+  private async runAccessVerdict(agent: Pick<AgentState, 'initiatedBy' | 'initiatorExpiresAt'>): Promise<RunAccessVerdict> {
+    const bind = await this.bind();
+    let mark =
+      typeof agent.initiatedBy === 'string' && agent.initiatedBy.trim().length > 0
+        ? await accessRevokedFor(this.ctx.storage, agent.initiatedBy)
+        : null;
+    let initiatorExpiresAt = agent.initiatorExpiresAt;
+    const now = Date.now();
+    if (
+      typeof agent.initiatedBy === 'string'
+      && agent.initiatedBy.trim().length > 0
+      && agent.initiatedBy !== bind?.ownerId
+    ) {
+      const current = await currentAccessCursor(this.ctx.storage, agent.initiatedBy);
+      if (current.status === 'known') initiatorExpiresAt = current.expiresAt ?? undefined;
+      else if (current.status === 'corrupt') initiatorExpiresAt = 'unreadable-access-expiry';
+      const event = accessCursorEvent(current.event);
+      // The sequence is persisted before socket/fence effects. If the object crashes in that tiny
+      // window, the cursor itself is enough to stop the run on its next alarm instead of waiting
+      // for the outbox retry to reconstruct the mark.
+      if (mark === null && event !== null && event.access !== 'clear') {
+        mark = { userId: agent.initiatedBy, reason: event.access, at: now };
+      }
+      // `none` and the numeric rollout cursor fall back to the deadline pinned at ingress.
+    }
+    return runMustStop(
+      {
+        initiatedBy: agent.initiatedBy,
+        ownerId: bind?.ownerId,
+        initiatorExpiresAt,
+      },
+      mark,
+      now,
+    );
+  }
+
+  /** Stop a revoked/expired run before its next model step and purge its not-yet-delivered ops. */
+  private async stopForAccess(agent: AgentState): Promise<boolean> {
+    const verdict = await this.runAccessVerdict(agent);
+    if (!verdict.stop) return false;
+    agent.status = 'stopping';
+    agent.finalText = agent.finalText || verdict.message;
+    await this.dropOpsForRun(agent.msgId);
+    await this.finishRun(agent, 'stopped');
+    return true;
+  }
+
+  /** Read additive model metadata without changing the long-lived messages table schema. */
+  private productModelsFor(ids: readonly string[]): Map<string, ProductModel> {
+    const out = new Map<string, ProductModel>();
+    if (ids.length === 0) return out;
+    const placeholders = ids.map(() => '?').join(',');
+    const rows = this.sql
+      .exec(`select message_id, product_model from message_models where message_id in (${placeholders})`, ...ids)
+      .toArray() as { message_id?: unknown; product_model?: unknown }[];
+    for (const row of rows) {
+      const model = asProductModel(row.product_model);
+      if (typeof row.message_id === 'string' && model !== undefined && model !== null) out.set(row.message_id, model);
+    }
+    return out;
+  }
+
+  /**
+   * Terminal facts that used to exist only on the live socket.
+   *
+   * Every value is validated on the way OUT as well as on the way in. These rows live for years
+   * across worker versions; a corrupt/legacy scalar must disappear as unknown rather than become a
+   * confident outcome after reload. `denied_tools` is the one list and is still stored as one
+   * bounded SQLite TEXT scalar containing worker-owned registry names — never prompt text.
+   */
+  private terminalMetadataFor(ids: readonly string[]): Map<string, {
+    stopReason?: 'done' | 'stopped' | 'error' | 'quota' | 'incomplete';
+    error?: RunFailure;
+    creditsSpent?: number;
+    context?: { usedChars: number; maxChars: number; dropped?: { groups: number; chars: number } };
+    deniedTools?: string[];
+  }> {
+    const out = new Map<string, {
+      stopReason?: 'done' | 'stopped' | 'error' | 'quota' | 'incomplete';
+      error?: RunFailure;
+      creditsSpent?: number;
+      context?: { usedChars: number; maxChars: number; dropped?: { groups: number; chars: number } };
+      deniedTools?: string[];
+    }>();
+    if (ids.length === 0) return out;
+    const placeholders = ids.map(() => '?').join(',');
+    const rows = this.sql.exec(
+      `select id, stop_reason, run_failure, credits_spent,
+              context_used_chars, context_max_chars, context_dropped_groups, context_dropped_chars,
+              denied_tools
+         from messages where id in (${placeholders})`,
+      ...ids,
+    ).toArray() as Record<string, unknown>[];
+    const reasons = new Set(['done', 'stopped', 'error', 'quota', 'incomplete']);
+    for (const row of rows) {
+      if (typeof row['id'] !== 'string') continue;
+      const meta: {
+        stopReason?: 'done' | 'stopped' | 'error' | 'quota' | 'incomplete';
+        error?: RunFailure;
+        creditsSpent?: number;
+        context?: { usedChars: number; maxChars: number; dropped?: { groups: number; chars: number } };
+        deniedTools?: string[];
+      } = {};
+      const stopReason = row['stop_reason'];
+      if (typeof stopReason === 'string' && reasons.has(stopReason)) {
+        meta.stopReason = stopReason as 'done' | 'stopped' | 'error' | 'quota' | 'incomplete';
+      }
+      if (isRunFailure(row['run_failure'])) meta.error = row['run_failure'];
+      const credits = row['credits_spent'];
+      if (typeof credits === 'number' && Number.isSafeInteger(credits) && credits >= 0) meta.creditsSpent = credits;
+
+      const used = row['context_used_chars'];
+      const max = row['context_max_chars'];
+      if (
+        typeof used === 'number' && Number.isSafeInteger(used) && used >= 0
+        && typeof max === 'number' && Number.isSafeInteger(max) && max > 0
+        && used <= max
+      ) {
+        const context: { usedChars: number; maxChars: number; dropped?: { groups: number; chars: number } } = {
+          usedChars: used,
+          maxChars: max,
+        };
+        const groups = row['context_dropped_groups'];
+        const chars = row['context_dropped_chars'];
+        if (
+          typeof groups === 'number' && Number.isSafeInteger(groups) && groups > 0
+          && typeof chars === 'number' && Number.isSafeInteger(chars) && chars > 0
+        ) {
+          context.dropped = { groups, chars };
+        }
+        meta.context = context;
+      }
+
+      if (typeof row['denied_tools'] === 'string') {
+        try {
+          const value = JSON.parse(row['denied_tools']) as unknown;
+          if (
+            Array.isArray(value)
+            && value.length <= 128
+            && value.every((name) => typeof name === 'string' && name.length > 0 && name.length <= 64 && /^[a-z0-9_]+$/.test(name))
+          ) {
+            meta.deniedTools = value;
+          }
+        } catch {
+          /* corrupt legacy metadata is unknown, never a guessed empty list */
+        }
+      }
+      if (Object.keys(meta).length > 0) out.set(row['id'], meta);
+    }
+    return out;
+  }
+
+  /** Persist model identity beside a message; old rows remain valid and simply have no entry. */
+  private rememberProductModel(messageId: string, productModel: ProductModel): void {
+    this.sql.exec(
+      `insert into message_models(message_id, product_model) values(?,?)
+         on conflict(message_id) do update set product_model = excluded.product_model`,
+      messageId,
+      productModel,
+    );
+  }
+
+  /** Read only a successful QuotaDO state; an error body is never evidence of paid access. */
+  private async productModelPlan(userId: string): Promise<string | undefined> {
+    try {
+      const stub = this.env.QUOTA_DO.get(this.env.QUOTA_DO.idFromName(userId));
+      const res = await stub.fetch('https://do/state');
+      if (!res.ok) return undefined;
+      const data = (await res.json()) as { plan?: unknown };
+      return typeof data?.plan === 'string' ? data.plan : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /** MAX admission is checked against the QuotaDO's plan, never against a client claim. */
+  private async productModelVerdict(
+    bind: { ownerId: string },
+    mode: GolemMode,
+    requested?: ProductModel,
+  ): Promise<{ ok: true; model: ProductModel } | { ok: false; model: ProductModel; message: string }> {
+    const model = effectiveProductModel(mode, requested);
+    // The free lane is intentionally usable while a billing read is unavailable. MAX is the
+    // paid capability, so only that lane needs an authoritative QuotaDO read.
+    if (canUseProductModel(model, undefined)) return { ok: true, model };
+    const plan = await this.productModelPlan(bind.ownerId);
+    if (canUseProductModel(model, plan)) return { ok: true, model };
+    return {
+      ok: false,
+      model,
+      message: 'Apple MAX requires a paid subscription. Choose Apple to continue free.',
+    };
   }
 
   /** The project this session is bound to, or null before the binding has been read. */
@@ -633,29 +961,129 @@ export class SessionDO extends DurableObject<Env> {
   }
 
   /** The identity this socket was accepted with, or null for one that predates the attachment. */
-  private beatOf(ws: WebSocket): { userId: string; role: CollabRole; connectionId: string; activity: PresenceActivity } | null {
+  private beatOf(ws: WebSocket): {
+    userId: string;
+    role: CollabRole;
+    connectionId: string;
+    activity: PresenceActivity;
+    grantExpiresAt: string | null | undefined;
+  } | null {
     try {
-      const att = ws.deserializeAttachment() as { userId?: unknown; role?: unknown; connectionId?: unknown; activity?: unknown } | null;
+      const att = ws.deserializeAttachment() as {
+        userId?: unknown;
+        role?: unknown;
+        connectionId?: unknown;
+        activity?: unknown;
+        grantExpiresAt?: unknown;
+      } | null;
       const role = asCollabRole(att?.role);
       if (!att || role === null || typeof att.userId !== 'string' || typeof att.connectionId !== 'string') return null;
       const activity = att.activity === 'typing' || att.activity === 'building' ? att.activity : 'viewing';
-      return { userId: att.userId, role, connectionId: att.connectionId, activity };
+      const grantExpiresAt = Object.prototype.hasOwnProperty.call(att, 'grantExpiresAt')
+        ? canonicalGrantExpiry(att.grantExpiresAt)
+        : undefined;
+      // A present unreadable deadline is a damaged permission attachment, not a permanent grant.
+      if (Object.prototype.hasOwnProperty.call(att, 'grantExpiresAt') && grantExpiresAt === undefined) return null;
+      return { userId: att.userId, role, connectionId: att.connectionId, activity, grantExpiresAt };
     } catch {
       return null;
     }
+  }
+
+  private attachedBeat(
+    current: NonNullable<ReturnType<SessionDO['beatOf']>>,
+    input: { role?: CollabRole; activity?: PresenceActivity; expiresAt?: string | null },
+  ) {
+    const beat = makeBeat({
+      userId: current.userId,
+      role: input.role ?? current.role,
+      connectionId: current.connectionId,
+      nowMs: Date.now(),
+      activity: input.activity ?? current.activity,
+    });
+    if (beat === null) return null;
+    const grantExpiresAt = input.expiresAt === undefined ? current.grantExpiresAt : input.expiresAt;
+    return grantExpiresAt === undefined ? beat : { ...beat, grantExpiresAt };
+  }
+
+  /** Prefer the versioned cursor over a socket/run's ingress snapshot. */
+  private async effectiveGrantAccess(
+    userId: string,
+    ownerId: string,
+    fallback: string | null | undefined,
+  ): Promise<{
+    ok: true;
+    expiresAt: string | null | undefined;
+    event: { access: AccessChange; role: CollabRole | null } | null;
+  } | { ok: false }> {
+    if (userId === ownerId) return { ok: true, expiresAt: null, event: null };
+    const current = await currentAccessCursor(this.ctx.storage, userId);
+    if (current.status === 'corrupt') return { ok: false };
+    const event = accessCursorEvent(current.event);
+    if (current.event !== undefined && event === null) return { ok: false };
+    return {
+      ok: true,
+      expiresAt: current.status === 'known' ? current.expiresAt : fallback,
+      event,
+    };
+  }
+
+  private async scheduleGrantExpiry(expiresAt: string | null | undefined): Promise<void> {
+    if (typeof expiresAt !== 'string') return;
+    const at = Date.parse(expiresAt);
+    if (!Number.isFinite(at)) return;
+    const existing = await this.ctx.storage.getAlarm();
+    if (existing === null || at < existing) await this.ctx.storage.setAlarm(Math.max(Date.now() + 1, at));
+  }
+
+  /** Close naturally expired sockets and leave one alarm at the earliest remaining deadline. */
+  private async enforceSocketExpiries(): Promise<void> {
+    const bind = await this.bind();
+    if (bind === null) return;
+    const now = Date.now();
+    let next: number | null = null;
+    const byUser = new Map<string, Awaited<ReturnType<SessionDO['effectiveGrantAccess']>>>();
+    for (const ws of this.ctx.getWebSockets('client')) {
+      const beat = this.beatOf(ws);
+      if (beat === null) continue;
+      let effective = byUser.get(beat.userId);
+      if (effective === undefined) {
+        effective = await this.effectiveGrantAccess(beat.userId, bind.ownerId, beat.grantExpiresAt);
+        byUser.set(beat.userId, effective);
+      }
+      if (!effective.ok) {
+        try { ws.close(1008, 'access state unreadable'); } catch { /* already closing */ }
+        continue;
+      }
+      if (effective.event?.access === 'removed' || effective.event?.access === 'suspended') {
+        try { ws.close(1008, 'access changed'); } catch { /* already closing */ }
+        continue;
+      }
+      const eventRole = effective.event?.role;
+      const expiresAt = effective.expiresAt;
+      const desiredRole = eventRole ?? beat.role;
+      if (desiredRole !== beat.role || expiresAt !== beat.grantExpiresAt) {
+        const updated = this.attachedBeat(beat, { role: desiredRole, expiresAt: expiresAt ?? null });
+        if (updated !== null) {
+          try { ws.serializeAttachment(updated); } catch { /* already closing */ }
+        }
+      }
+      if (typeof expiresAt !== 'string') continue;
+      const at = Date.parse(expiresAt);
+      if (!Number.isFinite(at) || at <= now) {
+        try { ws.close(1008, 'access expired'); } catch { /* already closing */ }
+        continue;
+      }
+      next = next === null ? at : Math.min(next, at);
+    }
+    if (next !== null) await this.scheduleGrantExpiry(new Date(next).toISOString());
   }
 
   /** Refresh this socket's heartbeat, and tell the room. */
   private touch(ws: WebSocket, activity?: PresenceActivity) {
     const current = this.beatOf(ws);
     if (current === null) return;
-    const beat = makeBeat({
-      userId: current.userId,
-      role: current.role,
-      connectionId: current.connectionId,
-      nowMs: Date.now(),
-      activity: activity ?? current.activity,
-    });
+    const beat = this.attachedBeat(current, { activity });
     if (beat === null) return;
     try {
       ws.serializeAttachment(beat);
@@ -684,7 +1112,51 @@ export class SessionDO extends DurableObject<Env> {
    * Returns what it actually did. `matched: 0` is a real and common answer — the person was not
    * connected — and the route reports it rather than an unconditional `ok: true`.
    */
-  private applyAccessChange(userId: string, role: CollabRole | null): { matched: number; closed: number; demoted: number } {
+  private async applyAccessChange(
+    userId: string,
+    role: CollabRole | null,
+    access: AccessChange,
+    expiresAt?: string | null,
+  ): Promise<{ matched: number; closed: number; demoted: number }> {
+    const agent = await this.ctx.storage.get<AgentState>('agent');
+    const activeRunByUser =
+      agent !== undefined &&
+      agent.status !== 'idle' &&
+      agent.initiatedBy === userId &&
+      typeof agent.msgId === 'string' &&
+      agent.msgId.length > 0;
+    if (access === 'clear') {
+      if (activeRunByUser && agent) {
+        // Keep the revocation fence until the old run is idle. A regrant must never resurrect the
+        // run it invalidated; finishRun consumes this deferred clear after purging its ops.
+        if (await accessRevokedFor(this.ctx.storage, userId)) {
+          await this.ctx.storage.put(accessClearPendingKey(userId), true);
+        }
+      } else {
+        await clearAccessRevoked(this.ctx.storage, userId);
+        await this.ctx.storage.delete(accessClearPendingKey(userId));
+      }
+    } else {
+      await this.ctx.storage.delete(accessClearPendingKey(userId));
+      await markAccessRevoked(this.ctx.storage, { userId, reason: access, at: Date.now() });
+      if (activeRunByUser && agent) {
+        // Purge before waking the alarm. The queue is the only durable boundary before Studio;
+        // anything already delivered is intentionally not undone.
+        await this.dropOpsForRun(agent.msgId);
+        this.pollWaiter?.();
+        await this.ctx.storage.setAlarm(Date.now() + 1);
+      }
+    }
+    const expiryMs = typeof expiresAt === 'string' ? Date.parse(expiresAt) : null;
+    const expiredNow = expiryMs !== null && (!Number.isFinite(expiryMs) || expiryMs <= Date.now());
+    if (activeRunByUser && agent && expiredNow) {
+      // Expiry is not a revocation mark because a later extension before the boundary may keep the
+      // run alive. The version cursor is the authority; purge/wake here closes the delivery race.
+      await this.dropOpsForRun(agent.msgId);
+      this.pollWaiter?.();
+      await this.ctx.storage.setAlarm(Date.now() + 1);
+    }
+    await this.scheduleGrantExpiry(expiresAt);
     let matched = 0;
     let closed = 0;
     let demoted = 0;
@@ -692,7 +1164,7 @@ export class SessionDO extends DurableObject<Env> {
       const beat = this.beatOf(ws);
       if (beat === null || beat.userId !== userId) continue;
       matched += 1;
-      if (role === null) {
+      if (role === null || expiredNow) {
         try {
           // 1008 is "policy violation", which is what this is: the connection is no longer
           // permitted. The client reconnects and is refused at the door like anyone else.
@@ -703,16 +1175,20 @@ export class SessionDO extends DurableObject<Env> {
         }
         continue;
       }
-      if (beat.role === role) continue;
-      const next = makeBeat({ userId: beat.userId, role, connectionId: beat.connectionId, nowMs: Date.now(), activity: beat.activity });
+      const roleChanged = beat.role !== role;
+      const expiryChanged = expiresAt !== undefined && beat.grantExpiresAt !== expiresAt;
+      if (!roleChanged && !expiryChanged) continue;
+      const next = this.attachedBeat(beat, { role, ...(expiresAt === undefined ? {} : { expiresAt }) });
       if (next === null) continue;
       try {
         ws.serializeAttachment(next);
-        demoted += 1;
+        if (roleChanged) demoted += 1;
         // The tab is TOLD. Without this the controls keep offering what the server will now
         // refuse, and the person finds out by pressing one and reading a permission error they
         // have no explanation for.
-        ws.send(JSON.stringify({ type: 'error', code: 'role_changed', message: `Your role on this project is now ${role}.` } satisfies ServerMsg));
+        if (roleChanged) {
+          ws.send(JSON.stringify({ type: 'error', code: 'role_changed', message: `Your role on this project is now ${role}.` } satisfies ServerMsg));
+        }
       } catch {
         /* a closing socket cannot be updated, and does not need to be */
       }
@@ -764,13 +1240,7 @@ export class SessionDO extends DurableObject<Env> {
     for (const ws of this.ctx.getWebSockets('client')) {
       const beat = this.beatOf(ws);
       if (beat === null || beat.activity !== 'building') continue;
-      const next = makeBeat({
-        userId: beat.userId,
-        role: beat.role,
-        connectionId: beat.connectionId,
-        nowMs: Date.now(),
-        activity: 'viewing',
-      });
+      const next = this.attachedBeat(beat, { activity: 'viewing' });
       if (next === null) continue;
       try {
         ws.serializeAttachment(next);
@@ -889,6 +1359,11 @@ export class SessionDO extends DurableObject<Env> {
       // viewer starting one are the same connection.
       const who = this.socketRole(req, bind);
       if (who === null) return json({ error: 'forbidden' }, 403);
+      // The worker may carry the already-validated grant deadline over a private header. Keep the
+      // value only in memory and pin it onto the run; never persist the member's JWT or the header.
+      const rawGrantExpiry = req.headers.get('X-Golem-Grant-Expires-At');
+      const grantExpiresAt = rawGrantExpiry === null ? null : canonicalGrantExpiry(rawGrantExpiry);
+      if (grantExpiresAt === undefined) return json({ error: 'bad_grant_expiry' }, 400);
       // the JWT is kept only in memory for the lifetime of this DO instance so a
       // background memory sync can use it; it is never written to durable storage
       const jwt = req.headers.get('X-User-Jwt');
@@ -900,7 +1375,8 @@ export class SessionDO extends DurableObject<Env> {
       // knows who is on the other end without a storage read.
       const beat = makeBeat({ userId: who.userId, role: who.role, connectionId: crypto.randomUUID(), nowMs: Date.now() });
       if (beat === null) return json({ error: 'forbidden' }, 403);
-      server.serializeAttachment(beat);
+      server.serializeAttachment({ ...beat, grantExpiresAt });
+      await this.scheduleGrantExpiry(grantExpiresAt);
       // Everyone already here learns someone arrived; the arriver gets the list in the same shape
       // rather than a special one-off payload.
       this.broadcastPresence();
@@ -977,6 +1453,14 @@ export class SessionDO extends DurableObject<Env> {
         pluginProtocol?: string;
         place?: unknown;
       };
+      // Change the in-memory pairing fence before the first storage await below. A poll that
+      // authenticated the previous token and resumes during this registration may finish, but it
+      // can no longer install capabilities into the new pairing's live state.
+      const priorActiveTokenHash = this.activePluginTokenHash;
+      if (priorActiveTokenHash !== body.tokenHash) {
+        this.activePluginTokenHash = body.tokenHash;
+        this.pluginCapabilityReport = null;
+      }
       //[[ SUPERSESSION IS RECORDED, NOT ONLY PERFORMED.
       //
       //   A fresh pairing has always replaced the previous plugin token, and the Studio that lost
@@ -987,6 +1471,10 @@ export class SessionDO extends DurableObject<Env> {
       const previous = await this.ctx.storage.get<string>('pluginTokenHash');
       if (previous && previous !== body.tokenHash) {
         await this.ctx.storage.put('pluginSuperseded', { hash: previous, at: Date.now() });
+      }
+      if (previous !== body.tokenHash) {
+        if (previous) await this.ctx.storage.delete(pluginCapabilitiesKey(previous));
+        await this.ctx.storage.delete(pluginCapabilitiesKey(body.tokenHash));
       }
       // a fresh pairing supersedes any previous plugin token for this project
       await this.ctx.storage.put({ pluginTokenHash: body.tokenHash, pluginTokenIssuedAt: Date.now() });
@@ -1022,6 +1510,12 @@ export class SessionDO extends DurableObject<Env> {
         await this.ctx.storage.put('pluginTokenIssuedAt', issuedAt);
       }
       if (!expect || Date.now() - issuedAt > PLUGIN_TOKEN_TTL_MS) {
+        const staleHash = expect ?? this.activePluginTokenHash;
+        if (staleHash && this.activePluginTokenHash === staleHash) {
+          this.activePluginTokenHash = null;
+          this.pluginCapabilityReport = null;
+          await this.ctx.storage.delete(pluginCapabilitiesKey(staleHash));
+        }
         return json({ error: 'token expired', message: 'This pairing has expired. Pair again from the Apple web app.' }, 401);
       }
       const presented = await sha256hex(token);
@@ -1061,7 +1555,7 @@ export class SessionDO extends DurableObject<Env> {
       }
       const reported = readPluginHeaders(req.headers);
       const body = (await req.json()) as PluginPollRequest;
-      return this.handlePluginPoll(body, reported);
+      return this.handlePluginPoll(body, reported, expect);
     }
 
     //[[ COLLABORATION: comments, mentions, reactions, reviews, approvals and version history.
@@ -1096,8 +1590,17 @@ export class SessionDO extends DurableObject<Env> {
     }
 
     if (path === '/collab/access-changed' && req.method === 'POST') {
-      // Called by the membership routes after their writes land. See `applyAccessChange`.
-      const payload = (await req.json().catch(() => null)) as { userId?: unknown; role?: unknown } | null;
+      // Called immediately by a membership route and at-least-once by the durable outbox. The
+      // version is persisted before effects and an equal version is deliberately re-applied: if the
+      // object crashed after persisting the sequence but before closing a socket/marking a run, the
+      // duplicate is the recovery path. Only a LOWER version is stale.
+      const payload = (await req.json().catch(() => null)) as {
+        userId?: unknown;
+        role?: unknown;
+        access?: unknown;
+        version?: unknown;
+        expiresAt?: unknown;
+      } | null;
       const userId = typeof payload?.userId === 'string' && payload.userId.length > 0 ? payload.userId : null;
       if (userId === null) return json({ error: 'bad_request' }, 400);
       // THE OWNER'S ROLE IS THE `projects.owner_id` COLUMN and no membership write can move it, so
@@ -1107,7 +1610,39 @@ export class SessionDO extends DurableObject<Env> {
       // returns null for anything outside the allowlist, and leaving the socket at the
       // capabilities it already had would be the one direction that must never be the default.
       const role = payload?.role === null || payload?.role === undefined ? null : asCollabRole(payload.role);
-      return json(this.applyAccessChange(userId, role));
+      const access: AccessChange =
+        payload?.access === 'removed' || payload?.access === 'suspended' || payload?.access === 'demoted' || payload?.access === 'clear'
+          ? payload.access
+          : role === null
+            ? 'removed'
+            : 'clear';
+      const version = payload?.version;
+      if (version !== undefined && version !== null && (typeof version !== 'number' || !Number.isSafeInteger(version) || version <= 0)) {
+        return json({ error: 'bad_version' }, 400);
+      }
+      return this.ctx.blockConcurrencyWhile(async () => {
+        const order = await acceptAccessChangeVersion(
+          this.ctx.storage,
+          userId,
+          version,
+          payload?.expiresAt,
+          `${access}:${role ?? 'none'}`,
+        );
+        if (order.reason === 'invalid') return json({ error: 'bad_version' }, 400);
+        if (order.reason === 'conflict') return json({ error: 'access_event_conflict' }, 409);
+        if (order.reason === 'corrupt_storage') return json({ error: 'access_version_unavailable' }, 500);
+        if (!order.accepted) {
+          // A stale event is successfully CONSUMED. Returning 200 lets the exact outbox row be
+          // acknowledged; replaying it forever cannot improve the state and would only keep work
+          // permanently due.
+          return json({ matched: 0, closed: 0, demoted: 0, applied: false, stale: true, version, previous: order.previous });
+        }
+        const changed = await this.applyAccessChange(userId, role, access, order.expiresAt);
+        // Preserve the old exact response shape for rollout-era direct pushes and their tests.
+        return order.versioned
+          ? json({ ...changed, applied: true, duplicate: order.reason === 'duplicate', version })
+          : json(changed);
+      });
     }
 
     if (path === '/collab/presence' && req.method === 'GET') {
@@ -1124,6 +1659,8 @@ export class SessionDO extends DurableObject<Env> {
       const rows = this.sql
         .exec(`select id, role, mode, content, tool_trace, created_at from messages where created_at < ? order by created_at desc limit ?`, before, limit)
         .toArray() as { id: string; role: string; mode: string | null; content: string; tool_trace: string | null; created_at: number }[];
+      const productModels = this.productModelsFor(rows.map((r) => r.id));
+      const terminal = this.terminalMetadataFor(rows.map((r) => r.id));
       //[[ HOW MANY EARLIER VERSIONS EACH MESSAGE HAS, counted here rather than asked for later.
       //
       //   The conversation needs this to decide whether to draw an "edited" mark at all. A request
@@ -1142,6 +1679,8 @@ export class SessionDO extends DurableObject<Env> {
           id: r.id,
           role: r.role,
           mode: r.mode,
+          ...(productModels.has(r.id) ? { productModel: productModels.get(r.id) } : {}),
+          ...(terminal.get(r.id) ?? {}),
           content: r.content,
           toolTrace: r.tool_trace ? JSON.parse(r.tool_trace) : null,
           createdAt: new Date(r.created_at).toISOString(),
@@ -1300,6 +1839,8 @@ export class SessionDO extends DurableObject<Env> {
         .toArray() as { id: string; role: string; mode: string | null; content: string; tool_trace: string | null; created_at: number }[];
       const truncated = rows.length > EXPORT_MAX;
       const kept = truncated ? rows.slice(0, EXPORT_MAX) : rows;
+      const productModels = this.productModelsFor(kept.map((r) => r.id));
+      const terminal = this.terminalMetadataFor(kept.map((r) => r.id));
       const bind = await this.bind();
       const total = (this.sql.exec(`select count(*) as n from messages`).one() as { n: number }).n;
 
@@ -1315,6 +1856,8 @@ export class SessionDO extends DurableObject<Env> {
           id: r.id,
           role: r.role,
           mode: r.mode,
+          ...(productModels.has(r.id) ? { productModel: productModels.get(r.id) } : {}),
+          ...(terminal.get(r.id) ?? {}),
           content: r.content,
           toolTrace: r.tool_trace ? JSON.parse(r.tool_trace) : null,
           createdAt: new Date(r.created_at).toISOString(),
@@ -1324,8 +1867,8 @@ export class SessionDO extends DurableObject<Env> {
 
     if (path === '/checkpoints' && req.method === 'GET') {
       const rows = this.sql
-        .exec(`select id, label, kind, script_count, instance_count, size_bytes, created_at, author_id, description from checkpoints order by created_at desc limit 50`)
-        .toArray() as { id: string; label: string; kind: string; script_count: number; instance_count: number; size_bytes: number; created_at: number; author_id: string | null; description: string | null }[];
+        .exec(`select id, label, kind, script_count, instance_count, size_bytes, created_at, author_id, description, coverage, preserved_objects from checkpoints order by created_at desc limit 50`)
+        .toArray() as { id: string; label: string; kind: string; script_count: number; instance_count: number; size_bytes: number; created_at: number; author_id: string | null; description: string | null; coverage: string | null; preserved_objects: number | null }[];
       return json({
         checkpoints: rows.map((r) => ({
           id: r.id,
@@ -1335,6 +1878,7 @@ export class SessionDO extends DurableObject<Env> {
           scriptCount: r.script_count,
           instanceCount: r.instance_count,
           sizeBytes: r.size_bytes,
+          ...(r.coverage === 'exact' || r.coverage === 'supported-subset' ? { coverage: r.coverage, preservedObjects: r.preserved_objects ?? 0 } : {}),
           /** Who took it, or null for one Apple took and for a row that predates the column. */
           authorId: r.author_id,
           /** What it contains or why it was taken. Null when nobody wrote one. */
@@ -1379,7 +1923,12 @@ export class SessionDO extends DurableObject<Env> {
     // regression run. It takes exactly the path a chat message takes — same startRun, same tools,
     // same quota, same budget — so what it measures is the real agent, not a test harness.
     if (path === '/agent-run' && req.method === 'POST') {
-      const { text, mode, effort } = (await req.json()) as { text: string; mode?: GolemMode; effort?: Effort };
+      const { text, mode, effort, productModel } = (await req.json()) as {
+        text: string;
+        mode?: GolemMode;
+        effort?: Effort;
+        productModel?: unknown;
+      };
       if (!text?.trim()) return json({ ok: false, error: 'text required' }, 400);
       const agent = await this.ctx.storage.get<AgentState>('agent');
       if (agent?.status === 'running') return json({ ok: false, error: 'a run is already in progress' }, 409);
@@ -1390,8 +1939,12 @@ export class SessionDO extends DurableObject<Env> {
       // sets the same step ceiling the socket path does.
       const runMode = mode === undefined || mode === null ? 'stone' : asGolemMode(mode);
       if (!runMode) return json({ ok: false, error: `unknown mode` }, 400);
-      await this.startRun(bind, text.slice(0, MESSAGE_MAX_CHARS), runMode, effort);
-      return json({ ok: true, started: true, mode: runMode, effort: effort ?? 'adaptive' });
+      const selectedModel = asProductModel(productModel);
+      if (selectedModel === null) return json({ ok: false, error: 'unknown product model' }, 400);
+      const modelVerdict = await this.productModelVerdict(bind, runMode, selectedModel);
+      if (!modelVerdict.ok) return json({ ok: false, error: modelVerdict.message, code: 'product_model_unavailable' }, 403);
+      await this.startRun(bind, text.slice(0, MESSAGE_MAX_CHARS), runMode, effort, undefined, undefined, selectedModel, bind.ownerId);
+      return json({ ok: true, started: true, mode: runMode, ...(selectedModel ? { productModel: selectedModel } : {}), effort: effort ?? 'adaptive' });
     }
 
     // Run one Studio op directly, with no agent loop and no inference. The visual eval harness
@@ -1570,8 +2123,14 @@ export class SessionDO extends DurableObject<Env> {
     //   immediately rather than for one more poll interval, and the place binding goes with it
     //   because it described a pairing that no longer exists. ]]
     if (path === '/studio/revoke' && req.method === 'POST') {
-      const had = !!(await this.ctx.storage.get<string>('pluginTokenHash'));
-      await this.ctx.storage.delete(['pluginTokenHash', 'pluginTokenIssuedAt', 'pluginLastSeen', 'pluginPlace', 'pluginSuperseded']);
+      const tokenHash = (await this.ctx.storage.get<string>('pluginTokenHash')) ?? this.activePluginTokenHash;
+      const had = !!tokenHash;
+      this.activePluginTokenHash = null;
+      this.pluginCapabilityReport = null;
+      await this.ctx.storage.delete([
+        'pluginTokenHash', 'pluginTokenIssuedAt', 'pluginLastSeen', 'pluginPlace', 'pluginSuperseded',
+        ...(tokenHash ? [pluginCapabilitiesKey(tokenHash)] : []),
+      ]);
       this.lastSeenWrittenAt = 0;
       this.pollDueBy = 0;
       this.pluginSeenRecently = false;
@@ -1680,6 +2239,7 @@ export class SessionDO extends DurableObject<Env> {
     return {
       msgId: agent.msgId,
       mode: agent.mode,
+      ...(agent.productModel ? { productModel: agent.productModel } : {}),
       phase: agent.phase ?? 'planning',
       step: agent.step,
       totalSteps: agent.maxSteps,
@@ -1720,7 +2280,32 @@ export class SessionDO extends DurableObject<Env> {
     //   this repository keeps finding: an inference that is true today, load-bearing forever, and
     //   silent when it stops being true. The cost of refusing is one reconnect; the cost of
     //   assuming is every future socket that fails to carry a role.
-    const me = this.beatOf(ws);
+    let me = this.beatOf(ws);
+    if (me !== null) {
+      const access = await this.effectiveGrantAccess(me.userId, bind.ownerId, me.grantExpiresAt);
+      if (!access.ok) {
+        try { ws.close(1008, 'access state unreadable'); } catch { /* already closing */ }
+        return;
+      }
+      if (access.event?.access === 'removed' || access.event?.access === 'suspended') {
+        try { ws.close(1008, 'access changed'); } catch { /* already closing */ }
+        return;
+      }
+      const expiresMs = typeof access.expiresAt === 'string' ? Date.parse(access.expiresAt) : null;
+      if (expiresMs !== null && (!Number.isFinite(expiresMs) || expiresMs <= Date.now())) {
+        try { ws.close(1008, 'access expired'); } catch { /* already closing */ }
+        return;
+      }
+      const currentRole = access.event?.role ?? me.role;
+      if (access.expiresAt !== me.grantExpiresAt || currentRole !== me.role) {
+        const updated = this.attachedBeat(me, { role: currentRole, expiresAt: access.expiresAt ?? null });
+        if (updated !== null) {
+          try { ws.serializeAttachment(updated); } catch { return; }
+          me = { ...me, role: currentRole, grantExpiresAt: access.expiresAt };
+        }
+      }
+      await this.scheduleGrantExpiry(access.expiresAt);
+    }
     const mayNot = (action: Parameters<typeof can>[1]): boolean => me === null || !can(me.role, action);
     const refuse = (message: string) => {
       ws.send(JSON.stringify({ type: 'error', code: 'forbidden', message } satisfies ServerMsg));
@@ -1756,12 +2341,16 @@ export class SessionDO extends DurableObject<Env> {
             );
             return;
           }
-          this.touch(ws, 'building');
           const mode = asGolemMode(msg.mode);
           if (!mode) {
             // Refused by name. A `?? 'clay'` default here would accept a hostile value and run it
             // quietly as something else, which is the same failure wearing a helpful face.
             this.broadcast({ type: 'error', code: 'bad_mode', message: 'Unknown mode for this request.' });
+            return;
+          }
+          const productModel = asProductModel(msg.productModel);
+          if (productModel === null) {
+            this.refuseOne(ws, { type: 'error', code: 'bad_product_model', message: 'Unknown product model for this request.' });
             return;
           }
           const text = msg.text.slice(0, MESSAGE_MAX_CHARS);
@@ -1795,7 +2384,17 @@ export class SessionDO extends DurableObject<Env> {
           //   The project comes from `bind`, never from the frame — that is what stops an id from
           //   somebody else's project resolving here. ]]
           const withFiles = await promptWithAttachments(this.env, bind.projectId, text, msg.attachments);
-          await this.startRun(bind, withFiles, mode, undefined, ws);
+          await this.startRun(
+            bind,
+            withFiles,
+            mode,
+            undefined,
+            ws,
+            undefined,
+            productModel,
+            me?.userId,
+            me?.grantExpiresAt ?? undefined,
+          );
         }
         return;
       case 'edit_resend': {
@@ -1821,6 +2420,21 @@ export class SessionDO extends DurableObject<Env> {
               ? 'This connection is out of date — reload the page to keep building.'
               : 'Your role on this project cannot edit the conversation.',
           );
+          return;
+        }
+        const mode = asGolemMode(msg.mode);
+        if (!mode) {
+          this.refuseOne(ws, { type: 'error', code: 'bad_mode', message: 'Unknown mode for this request.' });
+          return;
+        }
+        const productModel = asProductModel(msg.productModel);
+        if (productModel === null) {
+          this.refuseOne(ws, { type: 'error', code: 'bad_product_model', message: 'Unknown product model for this request.' });
+          return;
+        }
+        const modelVerdict = await this.productModelVerdict(bind, mode, productModel);
+        if (!modelVerdict.ok) {
+          this.refuseOne(ws, { type: 'error', code: 'product_model_unavailable', message: modelVerdict.message });
           return;
         }
         const agent = await this.ctx.storage.get<AgentState>('agent');
@@ -1855,6 +2469,7 @@ export class SessionDO extends DurableObject<Env> {
         const removed = (
           this.sql.exec(`select count(*) as n from messages where created_at >= ?`, row.created_at).one() as { n: number }
         ).n;
+        this.sql.exec(`delete from message_models where message_id in (select id from messages where created_at >= ?)`, row.created_at);
         this.sql.exec(`delete from messages where created_at >= ?`, row.created_at);
 
         // Every client, not just the asker: a second tab would otherwise keep showing messages the
@@ -1862,11 +2477,6 @@ export class SessionDO extends DurableObject<Env> {
         this.broadcast({ type: 'history_truncated', fromMessageId: row.id, removed });
 
         {
-          const mode = asGolemMode(msg.mode);
-          if (!mode) {
-            this.broadcast({ type: 'error', code: 'bad_mode', message: 'Unknown mode for this request.' });
-            return;
-          }
           //[[ WHAT THE USER WROTE BEFORE, KEPT.
           //
           //   The dialog in front of this says "That cannot be undone", and for the conversation it
@@ -1882,11 +2492,21 @@ export class SessionDO extends DurableObject<Env> {
           //   four earlier versions, all identical to the one in front of them. The rule lives in
           //   @golem/shared because the web app increments its own count optimistically and the
           //   two must agree. ]]
-          await this.startRun(bind, text, mode, undefined, ws, {
-            from: row.id,
-            previous: recordsRevision(row.content, text) ? row.content : null,
-            at: row.created_at,
-          });
+          await this.startRun(
+            bind,
+            text,
+            mode,
+            undefined,
+            ws,
+            {
+              from: row.id,
+              previous: recordsRevision(row.content, text) ? row.content : null,
+              at: row.created_at,
+            },
+            productModel,
+            me?.userId,
+            me?.grantExpiresAt ?? undefined,
+          );
         }
         return;
       }
@@ -1966,8 +2586,13 @@ export class SessionDO extends DurableObject<Env> {
     /** The socket that asked, so the refusal reaches that person and not the room. */
     origin?: WebSocket,
     carryRevisionsFrom?: CarriedRevisions,
+    productModel?: ProductModel,
+    initiatedBy?: string,
+    initiatorExpiresAt?: string | number,
   ) {
-    const attempt = await this.startGate(() => this.startRunInner(bind, text, mode, forcedEffort, origin, carryRevisionsFrom));
+    const attempt = await this.startGate(() =>
+      this.startRunInner(bind, text, mode, forcedEffort, origin, carryRevisionsFrom, productModel, initiatedBy, initiatorExpiresAt),
+    );
     if (!attempt.ran) {
       this.refuseOne(origin, { type: 'error', code: 'busy', message: 'Apple is already working — stop the current run first.' });
     }
@@ -1980,12 +2605,26 @@ export class SessionDO extends DurableObject<Env> {
     forcedEffort?: Effort,
     origin?: WebSocket,
     carryRevisionsFrom?: CarriedRevisions,
+    productModel?: ProductModel,
+    initiatedBy?: string,
+    initiatorExpiresAt?: string | number,
   ) {
     const existing = await this.ctx.storage.get<AgentState>('agent');
     if (existing && existing.status !== 'idle' && Date.now() - existing.lastStepAt < STEP_STALE_MS) {
       this.refuseOne(origin, { type: 'error', code: 'busy', message: 'Apple is already working — stop the current run first.' });
       return;
     }
+    const access = await this.runAccessVerdict({ initiatedBy, initiatorExpiresAt });
+    if (access.stop) {
+      this.refuseOne(origin, { type: 'error', code: 'forbidden', message: access.message });
+      return;
+    }
+    const modelVerdict = await this.productModelVerdict(bind, mode, productModel);
+    if (!modelVerdict.ok) {
+      this.refuseOne(origin, { type: 'error', code: 'product_model_unavailable', message: modelVerdict.message });
+      return;
+    }
+    const selectedProductModel = modelVerdict.model;
     // Clear any stop left behind by a previous run. Belt and braces with finishRun's clear:
     // a stop that arrives in the moment a run is finishing can land after that clear, and it
     // must not travel into the run the user starts next.
@@ -2000,9 +2639,13 @@ export class SessionDO extends DurableObject<Env> {
       return;
     }
     this.broadcast({ type: 'quota', quota: quota.state });
+    // Mark the socket only after entitlement and quota admission succeeded. A refused MAX request
+    // must not leave a collaborator's presence claiming that a build is in flight.
+    if (origin) this.touch(origin, 'building');
 
     const userMsgId = crypto.randomUUID();
     this.sql.exec(`insert into messages(id, role, mode, content, created_at) values(?,?,?,?,?)`, userMsgId, 'user', mode, text, Date.now());
+    this.rememberProductModel(userMsgId, selectedProductModel);
 
     //[[ THE EDIT HISTORY FOLLOWS THE MESSAGE.
     //
@@ -2078,6 +2721,9 @@ export class SessionDO extends DurableObject<Env> {
     })();
     this.pinnedPrefs = personalisation.prefs;
     const promptMemory = memoryForPrompt(memory, personalisation.memoryMode);
+    const promptBaseTools = toolsForMode(mode, studioConnected, toolNames());
+    const promptUserTools = applyToolPermissions(promptBaseTools, personalisation.prefs.tool_permissions);
+    const promptCapabilityFilter = this.pluginToolFilter(promptUserTools);
     const sys = systemPrompt({
       mode,
       studioConnected,
@@ -2105,6 +2751,7 @@ export class SessionDO extends DurableObject<Env> {
       //   style families §L asks for, and padding a thin match into a prompt would
       //   spend tokens on every step to tell the model what it did not need. ]]
       uiBrief: traits.uiDesignTask && mode !== 'clay' ? (designBrief(text)?.text ?? null) : null,
+      studioCapabilityNote: pluginCapabilityPromptNote(promptCapabilityFilter),
       personalisation: personalisation.promptBlock,
       fenceId,
     });
@@ -2120,19 +2767,22 @@ export class SessionDO extends DurableObject<Env> {
     const agent: AgentState = {
       status: 'running',
       mode,
+      productModel: selectedProductModel,
       msgId,
       fenceId,
       // The original request is PINNED: the trim may never evict it. Losing it was the defect
       // trimTranscript documents — the agent kept working with no record of the task.
       llm: [{ role: 'system', content: sys }, ...history, { role: 'user', content: text, pinned: true }],
       step: 0,
-      maxSteps: STEP_LIMITS[mode],
+      maxSteps: maxStepsFor(mode, selectedProductModel),
       creditsSpent: 1,
       trace: [],
       finalText: '',
       startedAt: Date.now(),
       lastStepAt: Date.now(),
       userId: bind.ownerId,
+      ...(typeof initiatedBy === 'string' && initiatedBy.trim().length > 0 ? { initiatedBy } : {}),
+      ...(initiatorExpiresAt !== undefined ? { initiatorExpiresAt } : {}),
       highEffortUsed: 0,
       // Classified once from the user's own words, so every step of the run knows whether it is
       // design work, systems work, or an under-specified request that needs interpreting.
@@ -2151,7 +2801,7 @@ export class SessionDO extends DurableObject<Env> {
     // server had never heard of, and Edit / Try again / Regenerate — all of which resolve that id
     // against the messages table — answered "That message is no longer in the conversation" until
     // the page was reloaded. See web/src/lib/message-identity.ts.
-    this.broadcast({ type: 'msg_start', msgId, role: 'assistant', mode, userMsgId });
+    this.broadcast({ type: 'msg_start', msgId, role: 'assistant', mode, productModel: selectedProductModel, userMsgId });
     // Exactly once per run, and only after msg_start so the client has a message to attach it to.
     if (intent) this.broadcast({ type: 'run_intent', msgId, intent });
     this.currentMsgId = agent.msgId;
@@ -2203,9 +2853,13 @@ export class SessionDO extends DurableObject<Env> {
   }
 
   async alarm() {
+    // Socket grants expire even when no run is active. The deadline is represented by an alarm so
+    // hibernation cannot turn "expires at 14:00" into "expires when the tab next sends a frame".
+    await this.enforceSocketExpiries();
     const agent = await this.ctx.storage.get<AgentState>('agent');
     if (!agent) return;
     if (agent.status === 'idle') return;
+    if (await this.stopForAccess(agent)) return;
     if (agent.status === 'stopping' || (await stopRequested(this.ctx.storage))) {
       agent.status = 'stopping';
       await this.finishRun(agent, 'stopped');
@@ -2285,6 +2939,9 @@ export class SessionDO extends DurableObject<Env> {
     // `boundProjectId` on an instance revived mid-run. The constructor restores it too,
     // so this is belt and braces rather than the only path — see the note there.
     await this.bind();
+    // The alarm check and this await are separate turns. Re-check after re-binding so a
+    // revocation that landed while the object was waking cannot spend another model step.
+    if (await this.stopForAccess(agent)) return;
     //[[ Re-established here, not only in startRunInner.
     //
     //   `currentMsgId` is an instance field, and a run outlives the instance: the Durable
@@ -2349,6 +3006,15 @@ export class SessionDO extends DurableObject<Env> {
     //   take. What they can lose is turns, and that is what this counts. ]]
     const trimmed = trimTranscriptReport(agent.llm, MAX_PROMPT_CHARS);
     agent.llm = trimmed.llm;
+    // Keep only the arithmetic needed to reconstruct the last live `context_budget` state after a
+    // reload. No prompt text is copied. The last size wins; drops accumulate because a turn removed
+    // on step four is still absent on step sixteen, exactly like the browser's live reducer.
+    agent.contextUsedChars = trimmed.after;
+    agent.contextMaxChars = trimmed.maxChars;
+    if (trimmed.droppedGroups > 0) {
+      agent.contextDroppedGroups = (agent.contextDroppedGroups ?? 0) + trimmed.droppedGroups;
+      agent.contextDroppedChars = (agent.contextDroppedChars ?? 0) + trimmed.droppedChars;
+    }
     this.broadcast({
       type: 'context_budget',
       msgId: agent.msgId,
@@ -2373,7 +3039,10 @@ export class SessionDO extends DurableObject<Env> {
     //   remove, so a preference cannot hand run_luau to the one mode whose entire purpose is that
     //   it cannot touch the project. See applyToolPermissions. ]]
     const base = toolsForMode(agent.mode, studioConnected, toolNames());
-    const allowed = applyToolPermissions(base, agent.toolPermissions);
+    const userAllowed = applyToolPermissions(base, agent.toolPermissions);
+    const offeredCapabilityFilter = this.pluginToolFilter(userAllowed);
+    const offeredAllowed = offeredCapabilityFilter.allowed;
+    const knownTools = new Set(toolNames());
 
     //[[ AND SAY WHAT WAS TAKEN.
     //
@@ -2432,20 +3101,21 @@ export class SessionDO extends DurableObject<Env> {
     // deployment, and the whole point is to stop paying for a tool call that cannot succeed.
     const hasAssetLibrary = await assetLibraryAvailable(this.env);
 
+    const gatewayModel = gatewayModelFor(agent.mode, agent.productModel);
     const res = await llmChat(
       this.env,
       {
-        model: agent.mode,
+        model: gatewayModel,
         messages: agent.llm,
-        tools: toolDefs(studioConnected, allowed, { assetLibrary: hasAssetLibrary }),
+        tools: toolDefs(studioConnected, offeredAllowed, { assetLibrary: hasAssetLibrary }),
         reasoningEffort: choice.effort,
-        maxTokens: tokensForEffort(MODE_BASE_TOKENS[agent.mode], choice.effort),
+        maxTokens: tokensForEffort(baseTokensFor(agent.mode, agent.productModel), choice.effort),
       },
       // Same affinity key for every step of the run, so Workers AI can reuse the prefill for the
       // identical system-prompt-and-tools prefix instead of recomputing ~5,200 tokens each step.
       // The DO id is per-project and opaque, so it is never shared across tenants.
       {
-        kind: `${agent.mode}:step:${choice.effort}`,
+        kind: `${agent.productModel ?? agent.mode}:step:${choice.effort}`,
         sessionId: this.ctx.id.toString(),
         // Attribution for the model trace. Null when the run predates a bind rather than a
         // placeholder — `breakdownBy` counts unattributed calls instead of inventing a tenant.
@@ -2454,6 +3124,11 @@ export class SessionDO extends DurableObject<Env> {
         runId: agent.msgId,
       },
     );
+    // Pairing can change while the model is in flight. Re-read the current capability report before
+    // interpreting or executing its response, and intersect it with what THIS call was offered.
+    // A reconnect may narrow a step immediately; it may never widen the step after inference.
+    const capabilityFilter = this.pluginToolFilter(userAllowed);
+    const allowed = new Set([...offeredAllowed].filter((name) => capabilityFilter.allowed.has(name)));
     //[[ THE MODEL SOMETIMES WRITES THE CALL INSTEAD OF MAKING IT, and until this ran the payload
     //   was printed at the user as the answer. Observed in production: a request for a clicker
     //   loop came back as eighty lines of `propose_plan` arguments in the chat window, nothing
@@ -2463,7 +3138,7 @@ export class SessionDO extends DurableObject<Env> {
     //   Done BEFORE `lastCalls` is taken and before `res.text` is read, so the recovered call is
     //   indistinguishable downstream from one the model actually made. ]]
     if (!res.toolCalls.length && res.text) {
-      const rescued = recoverToolCall(res.text, allowed, new Set(toolNames()));
+      const rescued = recoverToolCall(res.text, allowed, knownTools);
       if (rescued.call) {
         res.toolCalls = [{ id: `rescued_${agent.step}`, name: rescued.call.name, arguments: rescued.call.arguments }];
         res.text = rescued.text;
@@ -2490,6 +3165,24 @@ export class SessionDO extends DurableObject<Env> {
     agent.priorStepFailed = false;
     agent.visualDefectsFound = false;
 
+    // A generated-image/model claim needs evidence from THIS run, not an invented ID
+    // copied into prose. Hold replies until the requested artifact tool succeeds.
+    const artifact = artifactCompletion(agent.mode === 'clay' ? undefined : agent.request, agent.trace);
+    if (artifact.missing) {
+      res.text = '';
+      agent.finalText = '';
+    }
+    if (
+      res.text &&
+      !res.toolCalls.length &&
+      agent.mutated &&
+      studioConnected &&
+      agent.traits?.visualDesignTask &&
+      capabilityFilter.withheld.includes('inspect_visually')
+    ) {
+      res.text += '\n\nRendered appearance was not verified: the connected Studio does not provide the required visual inspection operation.';
+    }
+
     // Credits track real spend: charge the difference between what this call actually cost
     // and the 1 Credit already taken for the step. Users are never billed for our estimate.
     // Round Credits once per RUN, not once per call: otherwise a run of five small calls costs
@@ -2511,6 +3204,55 @@ export class SessionDO extends DurableObject<Env> {
       this.broadcast({ type: 'quota', quota: settle.state });
     }
 
+    // A stop may land while inference is in flight. The provider has already run by the time we
+    // can observe it here, so its measured usage remains settled; what MUST NOT happen is taking a
+    // tool call returned after the click and applying one more mutation before the existing
+    // after-tool stop check sees the signal. This read is deliberately after settlement and before
+    // any response text or tool execution: Stop is not a refund, and it is still a stop.
+    if (await stopRequested(this.ctx.storage)) {
+      agent.status = 'stopping';
+      await this.finishRun(agent, 'stopped');
+      return;
+    }
+
+    // `finishReason` is the provider's statement about whether this RESPONSE completed. The
+    // gateway preserves `length` after it settles provider usage, but until this branch SessionDO
+    // ignored the field and a response guillotined at the output-token ceiling was persisted as
+    // `msg_end.stopReason = done`. That is a partial observation rendered as a completed build.
+    //
+    // Structured tool calls take precedence: the gateway itself reports `tool_calls` whenever it
+    // retained one, and those calls are work still to execute rather than a terminal response.
+    // Everything else must positively say `stop`; an absent reason fails closed rather than
+    // inventing completion for a response shape an older/newer adapter did not describe.
+    const finishReason = (res as { finishReason?: 'stop' | 'tool_calls' | 'length' | 'error' }).finishReason;
+    if (!res.toolCalls.length && finishReason !== 'stop') {
+      const providerNote =
+        finishReason === 'length'
+          ? 'The model reached its output limit before finishing this step. Everything completed before the cutoff is saved. Send another message and Apple will continue from here.'
+          : finishReason === 'error'
+            ? 'The model could not complete this step. Everything completed before it stopped is saved. Send another message and Apple will continue from here.'
+            : 'The model response did not confirm that this step completed. Everything completed before that response is saved. Send another message and Apple will continue from here.';
+      const artifactNote = artifact.missing
+        ? artifact.tool === 'generate_image'
+          ? 'No image was generated in this run. There is no new image to view or download.'
+          : 'No 3D model was generated in this run. Check the Studio connection and generation availability before retrying.'
+        : '';
+      const partial = typeof res.text === 'string' ? res.text.trim() : '';
+      const segment = [partial, artifactNote, providerNote].filter(Boolean).join('\n\n');
+      const prior = agent.streamedText ?? '';
+      const terminalContent = prior && segment ? `${prior}\n${segment}` : prior || segment;
+      agent.finalText = terminalContent;
+      agent.streamedText = terminalContent;
+      if (segment) this.broadcast({ type: 'delta', msgId: agent.msgId, text: prior ? `\n${segment}` : segment });
+      await this.finishRun(
+        agent,
+        artifact.missing ? 'incomplete' : 'error',
+        finishReason === 'length' || artifact.missing ? undefined : 'model_failed',
+        terminalContent,
+      );
+      return;
+    }
+
     if (res.text) {
       agent.finalText = res.text;
       agent.streamedText = (agent.streamedText ?? '') + res.text;
@@ -2519,6 +3261,19 @@ export class SessionDO extends DurableObject<Env> {
 
     if (!res.toolCalls.length) {
       agent.llm.push({ role: 'assistant', content: res.text });
+      if (artifact.missing) {
+        const available = toolDefs(studioConnected, allowed, { assetLibrary: hasAssetLibrary })
+          .some((tool) => tool.name === artifact.tool);
+        if (!artifact.attempted && available && (agent.nudges ?? 0) < MAX_NUDGES && agent.step < agent.maxSteps) {
+          agent.nudges = (agent.nudges ?? 0) + 1;
+          agent.llm.push({ role: 'user', content: `The requested artifact has not been created in this run. Call ${artifact.tool} now. Do not invent an artifact ID or describe work as completed without a successful tool result.` });
+          await this.persistAgent(agent);
+          await this.ctx.storage.setAlarm(Date.now() + 10);
+          return;
+        }
+        await this.finishRun(agent, 'incomplete');
+        return;
+      }
       // A build request that ends with prose and no change has failed, whatever the prose says.
       // Measured: the model replied "One part is still Plastic - finding and fixing it, then a
       // visual inspection:" and stopped, announcing work it never did. Steer it back rather than
@@ -2533,6 +3288,7 @@ export class SessionDO extends DurableObject<Env> {
         agent.mutated &&
         studioConnected &&
         agent.traits?.visualDesignTask &&
+        allowed.has('inspect_visually') &&
         !agent.autoCritiqued &&
         agent.step < agent.maxSteps - 1
       ) {
@@ -2627,6 +3383,7 @@ export class SessionDO extends DurableObject<Env> {
     const ctx = this.agentCtx(agent);
     agent.seenCalls = agent.seenCalls ?? [];
     for (const call of res.toolCalls.slice(0, 4)) {
+      if (await this.stopForAccess(agent)) return;
       const t0 = Date.now();
       const toolId = call.id;
       const sig = `${call.name}:${call.arguments}`;
@@ -2662,8 +3419,33 @@ export class SessionDO extends DurableObject<Env> {
         tool: call.name,
       });
       this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name, target: targetOf(call.name, call.arguments) });
-      const out = await runTool(ctx, call.name, call.arguments);
-      const entry: ToolTraceEntry = { tool: call.name, summary: out.summary, ok: out.ok, durationMs: Date.now() - t0 };
+      const capabilityBlocked = capabilityFilter.withheld.includes(call.name);
+      const safeToolName = knownTools.has(call.name) ? call.name : 'requested tool';
+      const out = allowed.has(call.name)
+        ? await runTool(ctx, call.name, call.arguments)
+        : {
+            summary: capabilityBlocked
+              ? `${safeToolName}: unavailable in connected Studio`
+              : `${safeToolName}: unavailable in this run`,
+            resultForLlm: JSON.stringify({
+              error: capabilityBlocked
+                ? `${safeToolName} is unavailable because the connected Studio explicitly reports a required operation unsupported. It was not executed. Use the Studio tools still offered for this run.`
+                : `${safeToolName} is not available in this run and was not executed. Use only the tools offered for the current mode and permissions.`,
+              executed: false,
+            }),
+            ok: false,
+            detail: undefined,
+          };
+      const entry: ToolTraceEntry = {
+        tool: call.name,
+        summary: out.summary,
+        ok: out.ok,
+        durationMs: Date.now() - t0,
+        // `runTool` has already capped this payload for the live tool_end event; keep that same
+        // untrusted document in history, where the browser validates it before rendering. Without
+        // it, a refreshed transcript reduces a generated image to a text-only row.
+        detail: out.detail,
+      };
       agent.trace.push(entry);
       // Feed the outcome back to the reasoning policy: a failed tool or a failed visual gate
       // means the next step should think harder rather than repeat the same cheap attempt.
@@ -2718,6 +3500,7 @@ export class SessionDO extends DurableObject<Env> {
         agent.status = 'stopping';
         break;
       }
+      if (await this.stopForAccess(agent)) return;
     }
 
     // Checked again here, not only inside the tool loop: a stop that arrives after the last
@@ -2886,8 +3669,22 @@ export class SessionDO extends DurableObject<Env> {
      * "just pass the message through" a compile error rather than a leak nobody notices.
      */
     error?: RunFailure,
+    /**
+     * A terminal sentence assembled from evidence outside the ordinary completion path.
+     *
+     * Used only when the provider explicitly did NOT complete its response. The partial text is
+     * still useful evidence, but neither `done` nor the generic incomplete fallback may overwrite
+     * the sentence that says it was cut short. Ordinary calls omit this and retain the established
+     * artifact/incomplete safeguards below.
+     */
+    contentOverride?: string,
   ) {
+    const artifact = artifactCompletion(agent.mode === 'clay' ? undefined : agent.request, agent.trace);
+    if (reason === 'done' && artifact.missing) reason = 'incomplete';
     agent.status = 'idle';
+    // Clear the run attribution before the first await: any later out-of-run Studio op must not
+    // inherit the finished run's id, even if this cleanup is interrupted midway through.
+    this.currentMsgId = undefined;
 
     // The run is over, so the "is building" beside somebody's name is no longer true. Done first,
     // synchronously, because everything below this awaits and an isolate that goes away mid-tidy
@@ -2903,6 +3700,13 @@ export class SessionDO extends DurableObject<Env> {
     await clearStop(this.ctx.storage);
     // Nothing this run queued may still be applied to the place now that it has ended.
     const abandoned = await this.dropOpsForEndedRuns(undefined);
+    // A regrant that arrived while this run was still live is deliberately deferred until now.
+    // Clearing the mark earlier would let an invalidated run resume if its next alarm raced the
+    // regrant; clearing only after the run is idle makes the regrant apply to future runs only.
+    if (agent.initiatedBy && (await this.ctx.storage.get<boolean>(accessClearPendingKey(agent.initiatedBy))) === true) {
+      await clearAccessRevoked(this.ctx.storage, agent.initiatedBy);
+      await this.ctx.storage.delete(accessClearPendingKey(agent.initiatedBy));
+    }
     //[[ AND THE RUN STOPS OWNING OPS QUEUED AFTER IT.
     //
     //   `execStudioOp` tags every op with `currentMsgId`, and this field used to survive the
@@ -2915,11 +3719,10 @@ export class SessionDO extends DurableObject<Env> {
     //   exercises. The costly one is the automatic pre-run checkpoint: that is the undo point
     //   the product promises before it changes anything, and it silently was not taken.
     //
-    //   Clearing it here puts those ops back on the `runId === undefined` path, which
+    //   Clearing it at run end above puts those ops back on the `runId === undefined` path, which
     //   partitionOpsByRun keeps — an op that belonged to no run cannot belong to an ended one.
     //   A5 is untouched: ops queued DURING a run still carry that run's id, and runStep
     //   re-establishes the field on every step, so an eviction mid-run cannot land here. ]]
-    this.currentMsgId = undefined;
     if (abandoned > 0) {
       console.warn(`[session] discarded ${abandoned} queued op(s) from a run that ended`);
     }
@@ -2936,8 +3739,6 @@ export class SessionDO extends DurableObject<Env> {
     // second, contradictory card; `uiTools` is updated in step so a reconnecting browser replays
     // the settled plan and not the proposal. See run-plan.ts for what `done` is allowed to mean.
     //
-    // Placed AFTER the currentMsgId clear above on purpose: op-attribution.test.mjs reads the head
-    // of this method for that line, and burying it under a block this long made the guard go red.
     if (agent.plan) {
       const settled = settlePlan(agent.plan, agent.trace);
       agent.plan = settled;
@@ -2981,12 +3782,17 @@ export class SessionDO extends DurableObject<Env> {
     // point: on the run this was written for, that text was the single word "Done." A reply that
     // reports work which did not happen is worse than an error, because the user has no reason to
     // check. The tool trace is still attached, so the timeline shows exactly what was attempted.
-    const content =
+    const content = contentOverride ?? (
       reason === 'incomplete'
-        ? 'I did not change anything in your project. I looked around but never made the edit you ' +
+        ? artifact.missing
+          ? (artifact.tool === 'generate_image'
+            ? 'No image was generated in this run. There is no new image to view or download.'
+            : 'No 3D model was generated in this run. Check the Studio connection and generation availability before retrying.')
+          : 'I did not change anything in your project. I looked around but never made the edit you ' +
           'asked for, which is a fault on my side rather than a result. Nothing was modified, so ' +
           'there is nothing to undo — ask me again and I will build it.'
-        : agent.finalText || (reason === 'stopped' ? 'Stopped.' : 'Done.');
+        : agent.finalText || (reason === 'stopped' ? 'Stopped.' : 'Done.')
+    );
     if (content !== agent.streamedText) {
       // make sure fallback/step-limit text reaches clients that saw no delta for it
       this.broadcast({ type: 'delta', msgId: agent.msgId, text: agent.streamedText ? '\n' + content : content });
@@ -3000,6 +3806,34 @@ export class SessionDO extends DurableObject<Env> {
       JSON.stringify(agent.trace),
       Date.now(),
     );
+    // The live socket's terminal facts belong to THIS assistant row: its id is the run id and is
+    // the exact provenance the client already uses for every delta/tool/end frame. Persist only
+    // bounded metadata here. In particular, `agent.intent` and `agent.request` are deliberately
+    // absent — both contain prompt-derived text and terminal history does not need another copy of
+    // the user's words.
+    const deniedToolsForHistory =
+      Array.isArray(agent.deniedTools)
+      && agent.deniedTools.length <= 128
+      && agent.deniedTools.every((name) => typeof name === 'string' && name.length > 0 && name.length <= 64 && /^[a-z0-9_]+$/.test(name))
+        ? JSON.stringify(agent.deniedTools)
+        : null;
+    this.sql.exec(
+      `update messages
+          set stop_reason = ?, run_failure = ?, credits_spent = ?,
+              context_used_chars = ?, context_max_chars = ?,
+              context_dropped_groups = ?, context_dropped_chars = ?, denied_tools = ?
+        where id = ?`,
+      reason,
+      error ?? null,
+      Number.isSafeInteger(agent.creditsSpent) && agent.creditsSpent >= 0 ? agent.creditsSpent : null,
+      Number.isSafeInteger(agent.contextUsedChars) && (agent.contextUsedChars ?? -1) >= 0 ? agent.contextUsedChars : null,
+      Number.isSafeInteger(agent.contextMaxChars) && (agent.contextMaxChars ?? 0) > 0 ? agent.contextMaxChars : null,
+      Number.isSafeInteger(agent.contextDroppedGroups) && (agent.contextDroppedGroups ?? 0) > 0 ? agent.contextDroppedGroups : null,
+      Number.isSafeInteger(agent.contextDroppedChars) && (agent.contextDroppedChars ?? 0) > 0 ? agent.contextDroppedChars : null,
+      deniedToolsForHistory,
+      agent.msgId,
+    );
+    this.rememberProductModel(agent.msgId, agent.productModel ?? effectiveProductModel(agent.mode));
     await this.persistAgent(agent);
     // The settled cost of the whole run. Read here, after the last `quotaSpend`, because every
     // earlier broadcast of this number was taken before that step's settlement and was therefore
@@ -3225,9 +4059,9 @@ export class SessionDO extends DurableObject<Env> {
       projectId: this.boundProjectId ?? undefined,
       assetSources: this.pinnedPrefs?.asset_sources ?? undefined,
       studioConnected: () => this.opQueue.length < 100 && this.pluginSeenRecently,
-      execStudioOp: (op, timeoutMs) => this.execStudioOp(op, timeoutMs),
-      createCheckpoint: (label, kind) => this.createCheckpoint(label, kind),
-      restoreCheckpoint: (id: string) => this.restoreCheckpoint(id),
+      execStudioOp: (op, timeoutMs) => this.execStudioOp(op, timeoutMs, agent),
+      createCheckpoint: (label, kind) => this.createCheckpoint(label, kind, {}, agent),
+      restoreCheckpoint: (id: string) => this.restoreCheckpoint(id, agent),
       // Frames go to the browser and nowhere else. They are deliberately not
       // persisted: a run's worth of uncompressed RGB would be tens of megabytes
       // in DO storage to show something the user was already watching. A client
@@ -3236,7 +4070,7 @@ export class SessionDO extends DurableObject<Env> {
       emitFrame: (frame) => {
         this.publishFrame(frame, { recompress: false });
       },
-      playtest: this.playtestBus(),
+      playtest: this.playtestBus(agent),
       addMemoryFact: async (fact) => {
         // The same three-way rule as the distiller, through the same function — `remember` is a
         // write to the same field, and a tool that obeyed a different policy from the background
@@ -3337,7 +4171,7 @@ export class SessionDO extends DurableObject<Env> {
    * plugin that has gone away produces a recorded drop rather than a frame the
    * card would otherwise keep showing as current.
    */
-  private playtestBus(): PlaytestBus {
+  private playtestBus(agentRun?: AgentState): PlaytestBus {
     return {
       begin: ({ requestedSeconds, action }) => {
         const id = `pt_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e6).toString(36)}`;
@@ -3382,6 +4216,7 @@ export class SessionDO extends DurableObject<Env> {
         const res = await this.execStudioOp(
           { op: 'render_view', view: 'eye', width: PLAYTEST_FRAME_WIDTH, height: PLAYTEST_FRAME_HEIGHT },
           8000,
+          agentRun,
         );
         const data = res.ok ? (res.data as RenderViewResult & { error?: string }) : null;
         const view = data?.views?.[0];
@@ -3443,7 +4278,22 @@ export class SessionDO extends DurableObject<Env> {
     return dropped.length;
   }
 
-  private async execStudioOp(studioOp: StudioOp, timeoutMs = 30_000): Promise<OpResult> {
+  /** Drop only one still-live run's queued work when its membership changes mid-step. */
+  private async dropOpsForRun(runId: string): Promise<number> {
+    const dropped = this.opQueue.filter((op) => op.runId === runId);
+    if (dropped.length === 0) return 0;
+    this.opQueue = this.opQueue.filter((op) => op.runId !== runId);
+    await this.ctx.storage.put('opQueue', this.opQueue);
+    for (const op of dropped) {
+      const waiter = this.opWaiters.get(op.id);
+      if (!waiter) continue;
+      this.opWaiters.delete(op.id);
+      waiter({ id: op.id, ok: false, error: 'This build no longer has access to the project', failure: WORKER_FAILURES.runEnded });
+    }
+    return dropped.length;
+  }
+
+  private async execStudioOp(studioOp: StudioOp, timeoutMs = 30_000, run?: AgentState): Promise<OpResult> {
     if (!(await this.pluginConnected())) {
       return { id: 'none', ok: false, error: 'Studio is not connected', failure: WORKER_FAILURES.notConnected };
     }
@@ -3456,6 +4306,16 @@ export class SessionDO extends DurableObject<Env> {
     //   the moment the user switches back. ]]
     if (this.placeMismatch) {
       return { id: 'none', ok: false, error: this.placeMismatch.message, failure: WORKER_FAILURES.placeMismatch };
+    }
+    // A membership event may arrive while the model is between tool calls. Check immediately
+    // before queueing so a revoked run cannot hand a fresh mutation to the next plugin poll.
+    if (run) {
+      const verdict = await this.runAccessVerdict(run);
+      if (verdict.stop) {
+        await this.dropOpsForRun(run.msgId);
+        void this.ctx.storage.setAlarm(Date.now() + 1);
+        return { id: 'none', ok: false, error: verdict.message, failure: WORKER_FAILURES.runEnded };
+      }
     }
     this.seq += 1;
     // Tagged with the run that asked for it. A queued op outlives the request that made it —
@@ -3528,6 +4388,30 @@ export class SessionDO extends DurableObject<Env> {
   private lastActivity = 0;
   private lastClientWrittenAt = 0;
 
+  /** Capability narrowing is always the last narrowing layer: mode, user preference, then plugin. */
+  private pluginToolFilter(candidates: ReadonlySet<string>): PluginToolFilter {
+    return filterToolsForPlugin(candidates, STUDIO_TOOL_REQUIREMENTS, this.pluginCapabilityReport);
+  }
+
+  /**
+   * Persist only a canonical report for the pairing that authenticated this poll.
+   *
+   * The storage key includes the token hash. A superseded poll can finish late and write only its
+   * own dead key; it can never replace the report a newer pairing reads. The in-memory report has
+   * the same fence and therefore cannot be poisoned by that late poll either.
+   */
+  private async recordPluginCapabilities(raw: unknown, pairingHash: string): Promise<void> {
+    if (this.activePluginTokenHash !== pairingHash) return;
+    const report = normalisePluginCapabilities(raw);
+    if (report === null) {
+      this.pluginCapabilityReport = null;
+      await this.ctx.storage.delete(pluginCapabilitiesKey(pairingHash));
+      return;
+    }
+    await this.ctx.storage.put(pluginCapabilitiesKey(pairingHash), report);
+    if (this.activePluginTokenHash === pairingHash) this.pluginCapabilityReport = report;
+  }
+
   /**
    * Remember which plugin build is on the other end.
    *
@@ -3554,7 +4438,14 @@ export class SessionDO extends DurableObject<Env> {
   private async handlePluginPoll(
     body: PluginPollRequest,
     reported: { version: string | null; protocol: number | null } = { version: null, protocol: null },
+    pairingHash: string | null = null,
   ): Promise<Response> {
+    // Omission means "already acknowledged" for the new Bridge and "legacy client" for old ones;
+    // neither may erase a report. A PRESENT malformed report, however, is explicitly unknown and
+    // falls back to legacy compatibility exactly like parsePluginCapabilities does.
+    if (body.capabilities !== undefined && pairingHash !== null) {
+      await this.recordPluginCapabilities(body.capabilities, pairingHash);
+    }
     const wasConnected = await this.pluginConnected();
     // the plugin polls every ~0.4-2.5s; persisting the heartbeat every time is pure write
     // amplification. Keep it in memory and only checkpoint it to storage every few seconds.
@@ -3677,7 +4568,16 @@ export class SessionDO extends DurableObject<Env> {
     }
 
     // long-poll: if agent is running and no ops queued, wait briefly for new ops
-    const agent = await this.ctx.storage.get<AgentState>('agent');
+    let agent = await this.ctx.storage.get<AgentState>('agent');
+    let accessStopped = false;
+    if (agent?.status === 'running') {
+      const verdict = await this.runAccessVerdict(agent);
+      if (verdict.stop) {
+        accessStopped = true;
+        await this.dropOpsForRun(agent.msgId);
+        void this.ctx.storage.setAlarm(Date.now() + 1);
+      }
+    }
     // Long-poll whenever there is nothing to hand over, not only mid-run.
     //
     // This replaces a 2,500 ms idle re-poll, and then replaces the 20,000 ms backoff that was tried
@@ -3693,7 +4593,7 @@ export class SessionDO extends DurableObject<Env> {
     // 12s hold made every op fail with "Studio is not connected" between polls. The hold must stay
     // comfortably inside that window — changing both at once would trade one silent failure for
     // another.
-    const running = agent?.status === 'running';
+    const running = agent?.status === 'running' && !accessStopped;
     const idleFor = Date.now() - (await this.lastActivityAt());
     const parked = !running && idleFor > POLL_IDLE_AFTER_MS;
     const holdMs = running ? POLL_HOLD_ACTIVE_MS : POLL_HOLD_WARM_MS;
@@ -3701,7 +4601,7 @@ export class SessionDO extends DurableObject<Env> {
     // Parked: return at once and let the plugin sleep. The cost of not holding is that an op
     // queued during that sleep waits for the next poll — bounded by POLL_WAIT_IDLE_MS, and only
     // ever paid on the first op after several minutes of silence.
-    if (!parked && !this.opQueue.length) {
+    if (!accessStopped && !parked && !this.opQueue.length) {
       await new Promise<void>((resolve) => {
         const t = setTimeout(resolve, holdMs);
         this.pollWaiter = () => {
@@ -3712,10 +4612,34 @@ export class SessionDO extends DurableObject<Env> {
       });
     }
 
+    // A revocation can wake the long poll after the first read above. Re-read both the run and
+    // the fence before handing over anything; an event that landed during the hold wins.
+    agent = await this.ctx.storage.get<AgentState>('agent');
+    accessStopped = false;
+    if (agent?.status === 'running') {
+      const verdict = await this.runAccessVerdict(agent);
+      if (verdict.stop) {
+        accessStopped = true;
+        await this.dropOpsForRun(agent.msgId);
+        void this.ctx.storage.setAlarm(Date.now() + 1);
+      }
+    }
+    const deliveryRunning = agent?.status === 'running' && !accessStopped;
+
     // Backstop for the purge in finishRun. The queue is persisted, so a Durable Object that
     // restarts between a run ending and the next poll would otherwise hand the plugin ops from
     // a run nobody is waiting on.
-    await this.dropOpsForEndedRuns(agent?.status === 'running' ? agent.msgId : undefined);
+    await this.dropOpsForEndedRuns(deliveryRunning && agent ? agent.msgId : undefined);
+
+    // One final check closes the await above as a delivery race: once this returns, splicing is
+    // synchronous, so a mark cannot insert another op between the verdict and the response.
+    if (deliveryRunning && agent) {
+      const verdict = await this.runAccessVerdict(agent);
+      if (verdict.stop) {
+        accessStopped = true;
+        await this.dropOpsForRun(agent.msgId);
+      }
+    }
 
     //[[ DELIVERY IS AT-MOST-ONCE, AND THAT IS THE DECISION RATHER THAN AN OVERSIGHT.
     //
@@ -3739,9 +4663,9 @@ export class SessionDO extends DurableObject<Env> {
     //   has already applied and replies with the earlier result instead of re-running it. That
     //   is a plugin protocol change, not a worker one, and it is the shape any future attempt
     //   at this should take. Until then, losing work is the cheaper mistake. ]]
-    const ops = this.opQueue.splice(0, 10);
+    const ops = accessStopped ? [] : this.opQueue.splice(0, 10);
     if (ops.length) await this.ctx.storage.put('opQueue', this.opQueue);
-    const waitMs = running ? 400 : parked ? POLL_WAIT_IDLE_MS : 1000;
+    const waitMs = deliveryRunning ? 400 : parked ? POLL_WAIT_IDLE_MS : 1000;
     // Record when the next poll is due, so `pluginConnected()` judges against what we actually
     // asked for instead of a constant that can drift away from it.
     this.pollDueBy = Date.now() + waitMs + POLL_STALE_GRACE_MS;
@@ -3943,18 +4867,21 @@ export class SessionDO extends DurableObject<Env> {
     label: string,
     kind: CheckpointMeta['kind'],
     meta2: { authorId?: string | null; description?: string | null } = {},
+    run?: AgentState,
   ): Promise<CheckpointMeta | { error: string }> {
     const authorId = meta2.authorId ?? null;
     const description = (meta2.description ?? '').trim().slice(0, MAX_CHECKPOINT_DESCRIPTION) || null;
     if (!(await this.pluginConnected())) return { error: 'Studio is not connected — connect Studio to create checkpoints.' };
-    const snap = await this.execStudioOp({ op: 'snapshot', root: 'game', includeScripts: true }, 60_000);
+    const id = crypto.randomUUID();
+    const snap = await this.execStudioOp({ op: 'snapshot', root: 'game', includeScripts: true, checkpointId: id }, 60_000, run);
     if (!snap.ok) return { error: snap.error ?? 'snapshot failed' };
+    const evidence = checkpointEvidence(snap.data, id);
+    if (!evidence.ok) return { error: evidence.error };
     const payload = JSON.stringify(snap.data);
     if (payload.length > MAX_SNAPSHOT_BYTES) {
       return { error: `This project is too large to checkpoint (${Math.round(payload.length / 1e6)} MB). Apple still edits it normally — use Studio's own undo for large rollbacks.` };
     }
     const gz = await gzip(payload);
-    const id = crypto.randomUUID();
     const meta = (snap.data ?? {}) as { scriptCount?: number; instanceCount?: number };
     const CHUNK = 900_000;
     for (let i = 0; i * CHUNK < gz.byteLength; i++) {
@@ -3966,7 +4893,7 @@ export class SessionDO extends DurableObject<Env> {
       );
     }
     this.sql.exec(
-      `insert into checkpoints(id, label, kind, script_count, instance_count, size_bytes, created_at, author_id, description) values(?,?,?,?,?,?,?,?,?)`,
+      `insert into checkpoints(id, label, kind, script_count, instance_count, size_bytes, created_at, author_id, description, coverage, preserved_objects) values(?,?,?,?,?,?,?,?,?,?,?)`,
       id,
       label,
       kind,
@@ -3976,6 +4903,8 @@ export class SessionDO extends DurableObject<Env> {
       Date.now(),
       authorId,
       description,
+      evidence.coverage ?? null,
+      evidence.preservedObjects ?? null,
     );
     // RETENTION, ENFORCED IN THE SAME WRITE that adds the new one — so the cap is a fact about the
     // table rather than a job that might not have run. By age alone: `kind` is not in either clause,
@@ -3996,6 +4925,7 @@ export class SessionDO extends DurableObject<Env> {
       scriptCount: meta.scriptCount ?? 0,
       instanceCount: meta.instanceCount ?? 0,
       sizeBytes: gz.byteLength,
+      ...(evidence.coverage ? { coverage: evidence.coverage, preservedObjects: evidence.preservedObjects } : {}),
       authorId,
       description,
     };
@@ -4003,7 +4933,7 @@ export class SessionDO extends DurableObject<Env> {
     return cp;
   }
 
-  async restoreCheckpoint(id: string): Promise<{
+  async restoreCheckpoint(id: string, run?: AgentState): Promise<{
     ok: boolean;
     error?: string;
     /** What the plugin reports it actually put back. Absent when the op never reached Studio. */
@@ -4044,9 +4974,22 @@ export class SessionDO extends DurableObject<Env> {
       buf.set(new Uint8Array(c.data), off);
       off += c.data.byteLength;
     }
-    const jsonStr = await gunzip(buf);
+    let snapshot: unknown;
+    try {
+      snapshot = JSON.parse(await gunzip(buf));
+    } catch {
+      const error = 'The saved checkpoint could not be read. Nothing was sent to Studio.';
+      say('failed', { error });
+      return { ok: false, error };
+    }
+    const evidence = checkpointEvidence(snapshot, id);
+    if (!evidence.ok) {
+      const error = evidence.error.replace('Checkpoint was not saved:', 'Checkpoint cannot be restored:');
+      say('failed', { error });
+      return { ok: false, error };
+    }
     say('applying');
-    const applied = await this.execStudioOp({ op: 'restore', root: 'game', snapshot: JSON.parse(jsonStr) }, 120_000);
+    const applied = await this.execStudioOp({ op: 'restore', root: 'game', snapshot, checkpointId: id }, 120_000, run);
     if (!applied.ok) {
       say('failed', { error: applied.error });
       return { ok: false, error: applied.error };
@@ -4103,8 +5046,9 @@ export class SessionDO extends DurableObject<Env> {
       say('done', { fidelity, note });
       return { ok: true, fidelity, note };
     }
-    say('done', { fidelity });
-    return { ok: true, fidelity };
+    const coverageNote = checkpointCoverageNote(evidence.coverage, evidence.preservedObjects);
+    say('done', { fidelity, ...(coverageNote ? { note: coverageNote } : {}) });
+    return { ok: true, fidelity, ...(coverageNote ? { note: coverageNote } : {}) };
   }
 
   private async quotaSpend(userId: string, credits: number, kind: string): Promise<{ ok: boolean; state: QuotaState }> {

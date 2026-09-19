@@ -27,6 +27,8 @@ export interface KnownIssue {
   impact: string;
   /** What to do instead, today. An entry with no workaround is an apology, not an answer. */
   workaround: string;
+  /** Explicit recovery destinations, rendered as keyboard-accessible links. */
+  links?: { label: string; href: string }[];
   /** First observed, ISO date. */
   openedAt: string;
   /** Null while it is still true. */
@@ -36,29 +38,30 @@ export interface KnownIssue {
 export const KNOWN_ISSUES: KnownIssue[] = [
   {
     id: 'plugin-not-in-creator-store',
-    title: 'The Studio plugin is not listed in the Roblox creator store yet',
+    title: 'Public Studio plugin installation is unavailable',
     impact:
-      'Every "Install the plugin" link in the app and on this site goes to the documentation rather '
-      + 'than straight to a store page, so installing takes a few more steps than it eventually will.',
+      'The previous Creator Store listing was removed. New customers can use chat, but cannot '
+      + 'build inside Studio without an existing working plugin connection.',
     workaround:
-      'Follow /docs/plugin, which has the current install route end to end. Nothing about the '
-      + 'plugin itself is different — only how you get it — and the links become store links on '
-      + 'their own the day the listing is live.',
+      'There is no public installation workaround '
+      + 'or confirmed release date. A replacement is being tested locally; it is not a released plugin.',
+    links: [{ label: 'Plugin availability', href: '/docs/plugin' }],
     openedAt: '2026-09-01',
     resolvedAt: null,
   },
   {
     id: 'plugin-presence-not-detectable',
-    title: 'Apple cannot tell whether the plugin is installed',
+    title: 'An offline connection does not prove the plugin is missing',
     impact:
-      'The browser has no way to observe Roblox Studio, so the app never says "the plugin is '
-      + 'missing". If you have not installed it, the workspace waits for a Studio that is never '
-      + 'going to connect, and the reason is not stated on screen.',
+      'Apple reports a live connection when a paired plugin communicates with it. Without that '
+      + 'connection, the browser cannot distinguish an uninstalled plugin from a closed or disconnected Studio.',
     workaround:
-      'If the Apple panel is not in Studio’s Plugins tab, it is not installed — /docs/plugin '
-      + 'covers that case, and /docs/troubleshooting covers the panel that was installed and did '
-      + 'not appear. We report installation as an action to take, never as a status we detected, '
-      + 'because inventing that status would be worse than leaving it unsaid.',
+      'If you already have a working plugin, open Studio and its Apple panel, then connect it to '
+      + 'your project. New installations remain unavailable; check plugin availability before trying to pair.',
+    links: [
+      { label: 'Troubleshoot a missing panel', href: '/docs/troubleshooting' },
+      { label: 'Plugin availability', href: '/docs/plugin' },
+    ],
     openedAt: '2026-09-01',
     resolvedAt: null,
   },

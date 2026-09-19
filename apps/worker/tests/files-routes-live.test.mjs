@@ -29,6 +29,7 @@ import { rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { tmpdir } from 'node:os';
+import { d1 } from './stubs/d1.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
@@ -94,6 +95,7 @@ const kv = {
 };
 
 const env = {
+  CORPUS: d1().CORPUS,
   KV: kv,
   SESSION_DO: { idFromName: (n) => n, get: () => ({ async fetch() { return new Response('{}', { status: 200 }); } }) },
 };

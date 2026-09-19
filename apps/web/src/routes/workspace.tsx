@@ -1,14 +1,14 @@
 // /projects/:id — a conversation with a capable collaborator.
 //
-// One lane, not three. The work surface and the context rail are gone as
-// permanent columns: what the agent produces now appears inline in the
-// conversation where it happened, and the two things that genuinely persist
-// between turns — checkpoints and project memory — are one click away in a
-// drawer rather than occupying a third of the screen forever.
+// One lane, not three. The conversation and a bounded Studio stage share the
+// workbench; the stage is evidence beside the thread, not a second dashboard.
+// The two things that genuinely persist between turns — checkpoints and
+// project memory — remain one click away in a drawer rather than occupying a
+// third of the screen forever.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { PRODUCT_MODES, PRODUCT_MODE_TO_SPECIALIST, type ProductMode } from '@golem/shared';
+import { PRODUCT_MODES, PRODUCT_MODE_TO_SPECIALIST, canUseProductModel, type ProductMode, type ProductModel } from '@golem/shared';
 import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { shortRelative } from '../lib/format';
 import { exportDoneLine, exportProgressLine, exportStartLine, exportToastKey } from '../lib/export-progress';
@@ -17,6 +17,7 @@ import { CreditsPanel } from '../components/ws/credits-panel';
 import { supabase, type ProjectRow } from '../lib/supabase';
 import { useProjectSocket } from '../lib/use-project-socket';
 import { studioConnection } from '../lib/studio-connection';
+import { interfaceSound } from '../lib/interface-sound';
 import { StudioLinkNote } from '../components/ws/studio-link-note';
 import { useToast } from '../components/toast';
 import { EditableProjectTitle } from '../components/editable-title';
@@ -35,6 +36,8 @@ import { InstructionsPanel } from '../components/ws/instructions-panel';
 import {
   ApiError,
   downloadExport,
+  fetchMe,
+  fetchBillingConfig,
   fetchMembers,
   fetchPersonalisation,
   fetchProjectAccess,
@@ -47,7 +50,7 @@ import {
   type SearchHit,
 } from '../lib/api';
 import { FilesPanel } from '../components/ws/files-panel';
-import { ACCESS_LOADING, allows, normaliseAccess, type AccessState } from '../lib/capabilities';
+import { ACCESS_LOADING, allows, normaliseAccess, whyNot, type AccessState } from '../lib/capabilities';
 import type { AssetSourcePolicy, ChatAttachment } from '@golem/shared';
 import { owesAnswer } from '../lib/asset-sources';
 import { AssetSourceDialog } from '../components/asset-source-dialog';
@@ -60,13 +63,12 @@ import { PairingDialog } from '../components/pairing-dialog';
 import { Composer } from '../components/ws/composer';
 import { Drawer, Icon, PATH } from '../components/ws/primitives';
 import { Turn } from '../components/ws/turn';
-import { StudioView } from '../components/ws/studio-view';
 import { StudioActivity } from '../components/ws/studio-activity';
-import { PlaytestCard } from '../components/ws/playtest-card';
-import { ConnectStudio } from '../components/ws/connect-studio';
+import { ProjectStage } from '../components/ws/project-stage';
 import { ChatWelcome } from '../components/ws/chat-welcome';
 import { EmptyState } from '../components/empty-state';
 import { Spinner } from '../components/loading';
+import { maxUpgradeAvailable } from '../lib/creation-intent';
 
 async function fetchProject(id: string): Promise<ProjectRow | null> {
   if (MOCK_MODE) return mockProjects.find((p) => p.id === id) ?? mockProjects[0] ?? null;
@@ -89,16 +91,16 @@ async function fetchProject(id: string): Promise<ProjectRow | null> {
  */
 const SUGGESTIONS = [
   {
-    label: 'A lobby with a portal',
-    prompt: 'Build a lobby with a spinning golden portal that teleports players to the arena.',
+    label: 'A portal hub',
+    prompt: 'Build a lobby with a spinning portal that teleports players to a floating arena.',
   },
   {
-    label: 'A coin that scores',
-    prompt: 'Add a coin pickup that awards 5 points and plays a chime.',
+    label: 'A floating obby',
+    prompt: 'Build a colorful floating obby with checkpoints, jumps, and a finish platform.',
   },
   {
-    label: 'Tell me what is unfinished',
-    prompt: 'Look at the scene and tell me what reads as unfinished.',
+    label: 'A coin simulator',
+    prompt: 'Build a cozy coin-collecting simulator with a shop, upgrades, and a bright spawn area.',
   },
 ] as const;
 
@@ -116,10 +118,19 @@ const SUGGESTIONS = [
 type Drawer = null | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members' | 'files' | 'history' | 'automations';
 type DrawerName = 'none' | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members' | 'files' | 'history' | 'automations';
 const DRAWERS = ['none', 'checkpoints', 'memory', 'credits', 'search', 'members', 'files', 'history', 'automations'] as const;
+const STAGE_STATES = ['open', 'collapsed'] as const;
+type MobileSurface = 'conversation' | 'project';
 
 export function WorkspacePage() {
   const params = useParams<{ id: string }>();
   const projectId = params.id ?? '';
+  // React Router reuses the route component when only :id changes. Key the project-owned body so
+  // no local state from project A can produce even one render under project B's URL: transcript,
+  // open edit dialogs, drafts, drawers and the socket hook all begin again with B's identity.
+  return <WorkspaceProjectPage key={projectId} projectId={projectId} />;
+}
+
+function WorkspaceProjectPage({ projectId }: { projectId: string }) {
   const { toast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
@@ -145,7 +156,34 @@ export function WorkspacePage() {
     },
     [projectId],
   );
+  // The stage is an optional companion, not the default destination. Keep a
+  // per-project choice on this device so opening it is intentional and a
+  // reload does not reclaim the conversation's reading width.
+  const [stageOpen, setStageOpen] = useState(
+    () => readViewChoice(`stage.${projectId}`, STAGE_STATES, 'collapsed') === 'open',
+  );
+  const [mobileSurface, setMobileSurface] = useState<MobileSurface>('conversation');
+  const setStageExpanded = useCallback(
+    (open: boolean) => {
+      setStageOpen(open);
+      writeViewChoice(`stage.${projectId}`, open ? 'open' : 'collapsed');
+      // Opening the stage should reveal it immediately on a narrow screen;
+      // closing always returns the user to the conversation lane.
+      setMobileSurface(open ? 'project' : 'conversation');
+    },
+    [projectId],
+  );
+  useEffect(() => {
+    const restored = readViewChoice(`stage.${projectId}`, STAGE_STATES, 'collapsed') === 'open';
+    setStageOpen(restored);
+    setMobileSurface('conversation');
+  }, [projectId]);
   const [mode, setMode] = useState<ProductMode>('agent');
+  const [productModel, setProductModel] = useState<ProductModel>('apple');
+  const account = useQuery({ queryKey: ['me'], queryFn: fetchMe, staleTime: 60_000, retry: 1 });
+  const billing = useQuery({ queryKey: ['billing-config'], queryFn: fetchBillingConfig, staleTime: 60_000, retry: false });
+  const modelPlan = account.data?.quota.plan;
+  const modelAllowed = canUseProductModel(productModel, modelPlan);
   const [seed, setSeed] = useState<string | undefined>(undefined);
   const [label, setLabel] = useState('');
   // Kept beside the label rather than inside the form element so clearing both after a save is one
@@ -172,19 +210,17 @@ export function WorkspacePage() {
   //   answers with the capability set. The owner is a member of their own project through that
   //   column, so there is no separate owner path: one query serves both.
   //
-  //   ONE ACCESS QUERY, NOT ONE PER DRAWER. Two drawers need this same answer — Files, to decide
-  //   whether Rename/Delete are offered, and Members, to decide whether the roster's controls are
-  //   live — and each arrived with its own copy. Two `useQuery` calls on one key is not twice the
-  //   cost, but it is two places for `enabled` and the error mapping to drift, and they already
-  //   had. Declared once, here, and gated on either drawer being open, so the check is still not
-  //   bought for a user who opens neither.
+  //   ONE ACCESS QUERY, NOT ONE PER CONTROL. It governs the composer, edit/retry/stop and the
+  //   Files/Members drawers. Waiting until a drawer opens means a viewer sees an editor composer,
+  //   sends successfully to the WebSocket, then loses their draft only when the server refuses the
+  //   frame. The workspace therefore resolves access as part of opening the project itself.
   //
   //   `retry: false`: a 403 here is the correct answer to a question we asked, not a flake, and
   //   three silent retries would only delay the panel telling the user what it found out. ]]
   const accessQuery = useQuery({
     queryKey: ['access', projectId],
     queryFn: () => fetchProjectAccess(projectId),
-    enabled: projectId.length > 0 && (drawer === 'files' || drawer === 'members'),
+    enabled: projectId.length > 0,
     retry: false,
     staleTime: 5 * 60_000,
   });
@@ -204,6 +240,8 @@ export function WorkspacePage() {
     if (!accessQuery.isSuccess) return ACCESS_LOADING;
     return normaliseAccess(accessQuery.data);
   }, [accessQuery.isSuccess, accessQuery.isError, accessQuery.error, accessQuery.data]);
+  const chatAllowed = allows(access, 'chat');
+  const chatWhy = whyNot(access, 'chat');
 
   const onServerError = useCallback(
     (code: string, message: string) => toast(message || `Something went wrong (${code})`, 'error'),
@@ -320,8 +358,8 @@ export function WorkspacePage() {
   //   When it has not loaded, or a member has since left, the row says "Another member" — an
   //   honest gap. It must never fall back to the reader.
   //
-  //   The ACCESS check this route also needs is declared once, above, and gated on the drawers
-  //   that need it — see its comment for why two copies of it drifted apart the first time. ]]
+  //   The ACCESS check this route also needs is declared once, above, for the whole workspace —
+  //   chat actions and these drawers consume the same resolved role/capability answer. ]]
   const roster = useQuery({
     queryKey: ['members', projectId, 'active', ''],
     queryFn: () => fetchMembers(projectId, new URLSearchParams({ status: 'active' })),
@@ -403,11 +441,11 @@ export function WorkspacePage() {
    * that is the edit path, which asks first.
    */
   const retryLast = useCallback(() => {
-    if (running) return;
+    if (running || !modelAllowed || !chatAllowed) return;
     const lastUser = [...messages].reverse().find((m) => m.role === 'user');
     if (!lastUser) return;
-    editAndResend(lastUser.id, lastUser.content, PRODUCT_MODE_TO_SPECIALIST[mode]);
-  }, [messages, running, editAndResend, mode]);
+    editAndResend(lastUser.id, lastUser.content, PRODUCT_MODE_TO_SPECIALIST[mode], productModel);
+  }, [messages, running, editAndResend, mode, productModel, modelAllowed, chatAllowed]);
 
   // Which of my own messages is being edited, if any.
   const [editing, setEditing] = useState<{ id: string; content: string } | null>(null);
@@ -530,9 +568,11 @@ export function WorkspacePage() {
       section: 'Run',
       keywords: ['cancel', 'halt', 'abort'],
       hint: shortcutLabel(SHORTCUTS.stop),
-      enabled: running,
-      why: 'Nothing is running',
-      run: stop,
+      enabled: running && chatAllowed,
+      why: !running ? 'Nothing is running' : (chatWhy ?? 'You cannot stop this run'),
+      run: () => {
+        if (chatAllowed) stop();
+      },
     },
     {
       id: 'ws-checkpoint',
@@ -676,6 +716,7 @@ export function WorkspacePage() {
   useEffect(() => {
     if (studio.connected && !wasConnected.current) {
       toast(`Studio connected${studio.state?.placeName ? ` · ${studio.state.placeName}` : ''}`, 'success');
+      interfaceSound.play('connect');
     }
     wasConnected.current = studio.connected;
   }, [studio.connected, studio.state, toast]);
@@ -758,6 +799,14 @@ export function WorkspacePage() {
   };
 
   const send = (text: string, attachments: ChatAttachment[] = []): boolean => {
+    if (!chatAllowed) {
+      toast(`${chatWhy ?? 'You cannot send messages in this project.'} Your draft is kept.`, 'error');
+      return false;
+    }
+    if (!modelAllowed) {
+      toast('Apple MAX requires a paid subscription. Choose Apple to continue free. Your draft is kept.', 'error');
+      return false;
+    }
     if (askFirst(text)) return false;
     // Sending re-arms following: you have just added to the conversation, so you want to watch it.
     stick.current = true;
@@ -766,10 +815,11 @@ export function WorkspacePage() {
     // The product mode the user picked becomes the internal specialist here,
     // at the one point a message is built. Everything downstream — the wire
     // protocol, stored sessions, budget accounting — still speaks GolemMode.
-    if (!sendChat(text, PRODUCT_MODE_TO_SPECIALIST[mode], attachments)) {
+    if (!sendChat(text, PRODUCT_MODE_TO_SPECIALIST[mode], attachments, productModel)) {
       toast('Not connected yet — hang on a moment. Your message is still in the box.', 'error');
       return false;
     }
+    interfaceSound.play('send');
     return true;
   };
 
@@ -861,6 +911,10 @@ export function WorkspacePage() {
           </span>
         )}
 
+        <div className="studio-workspace-controls">
+          <button type="button" className="studio-preview-toggle" onClick={() => setStageExpanded(!stageOpen)} aria-expanded={stageOpen}>Studio <span aria-hidden="true">↗</span></button>
+          <details className="studio-project-menu">
+            <summary>Project <span aria-hidden="true">+</span></summary>
         <div className="gx-top__actions">
           {/* Who else is in this project. Draws nothing at all when you are alone — see
               components/presence-model.ts. */}
@@ -1002,33 +1056,66 @@ export function WorkspacePage() {
             <Icon d={PATH.chevronRight} size={13} />
           </button>
         </div>
+          </details>
+        </div>
       </header>
 
-      {/* The one sentence under the Studio pill — when it last polled, how much work is waiting,
-          how slow the round trip is, or the fact that Studio is holding the wrong place open. Draws
-          nothing when there is nothing worth saying, so a healthy link adds no chrome. The rebind
-          button is passed only while a mismatch is actually on the wire; see components/ws/
-          studio-link-note.tsx. */}
-      <StudioLinkNote
-        status={studioStatus}
-        facts={studio.link}
-        onRebind={studio.link.placeMismatch ? rebindPlace : undefined}
-      />
+      <div className="gx-workbench-shell">
+        {stageOpen && (
+          <div className="gx-workbench__tabs" role="tablist" aria-label="Workspace views">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mobileSurface === 'conversation'}
+              aria-controls="workspace-conversation"
+              className={mobileSurface === 'conversation' ? 'is-active' : ''}
+              onClick={() => setMobileSurface('conversation')}
+            >
+              Conversation
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mobileSurface === 'project'}
+              aria-controls="workspace-project-stage"
+              className={mobileSurface === 'project' ? 'is-active' : ''}
+              onClick={() => setMobileSurface('project')}
+            >
+              Project
+            </button>
+          </div>
+        )}
 
-      {/* --------------------------------------------------- conversation */}
-      <div className="gx-scroll" ref={scrollRef} onScroll={onScroll}>
-        {/* role="log" with `aria-relevant="additions"` — NOT the default "additions text".
-            A whole turn appearing is an addition worth reporting; the characters streaming into a
-            turn already on screen are a text mutation, and reporting those floods the polite queue
-            with fragments of a sentence that is still being written. The settled reply is
-            announced once, by the region at the foot of this view. */}
         <div
-          className="gx-thread"
-          role="log"
-          aria-label="Conversation"
-          aria-live="polite"
-          aria-relevant="additions"
+          className={`gx-workbench ${stageOpen ? 'is-stage-open' : 'is-stage-collapsed'}`}
+          data-mobile-surface={mobileSurface}
         >
+          <section id="workspace-conversation" className="gx-conversation" aria-label="Conversation">
+          {/* The one sentence under the Studio pill — when it last polled, how much work is waiting,
+              how slow the round trip is, or the fact that Studio is holding the wrong place open. Draws
+              nothing when there is nothing worth saying, so a healthy link adds no chrome. The rebind
+              button is passed only while a mismatch is actually on the wire; see components/ws/
+              studio-link-note.tsx. */}
+          <StudioLinkNote
+            status={studioStatus}
+            facts={studio.link}
+            onRebind={studio.link.placeMismatch ? rebindPlace : undefined}
+          />
+
+          {/* ------------------------------------------------ conversation */}
+          <div className="gx-scroll" ref={scrollRef} onScroll={onScroll}>
+            {/* role="log" with `aria-relevant="additions"` — NOT the default "additions text".
+                A whole turn appearing is an addition worth reporting; the characters streaming into a
+                turn already on screen are a text mutation, and reporting those floods the polite queue
+                with fragments of a sentence that is still being written. The settled reply is
+                announced once, by the region at the foot of this view. */}
+            <div
+              className="gx-thread"
+              role="log"
+              aria-label="Conversation"
+              aria-live="polite"
+              aria-relevant="additions"
+            >
           {historyState === 'error' && (
             <EmptyState
               state="connectionFailed"
@@ -1059,11 +1146,11 @@ export function WorkspacePage() {
               // Offered only while nothing is running: the server refuses an edit mid-run, and a
               // control that is always there but sometimes refuses is worse than one that is only
               // there when it works.
-              editable={item.role === 'user' && !running}
+              editable={item.role === 'user' && !running && chatAllowed}
               onEdit={(id, content) => setEditing({ id, content })}
               // Only the last turn, and only while idle. An offer that is present but inert is a
               // worse answer than no offer.
-              onRetry={item.id === lastAssistantId && !running ? retryLast : undefined}
+              onRetry={item.id === lastAssistantId && !running && chatAllowed ? retryLast : undefined}
               // Drawn only when the transcript says this message HAS earlier versions — Turn makes
               // that call, because it is the thing holding the count.
               onShowRevisions={setShowingRevisions}
@@ -1071,27 +1158,25 @@ export function WorkspacePage() {
             </div>
           ))}
 
-          {/* The connect prompt sits at the foot of the conversation — where
-              the eye already is before typing — and vanishes the instant
-              Studio attaches. It is a pure function of studioStatus, so there
-              is no dismissal state to get stuck. */}
-          <ConnectStudio status={studioStatus} onPair={() => setShowPairing(true)} />
+            </div>
+          </div>
+        </section>
 
-          {/* The playtest viewport. Renders only while the worker says a
-              playtest exists — it is a pure function of `playtest`, so it
-              cannot linger after one ends or appear before one starts. Placed
-              above the build renders because a live run is the thing the user
-              is waiting on. */}
-          <PlaytestCard run={playtest} frames={frames} studioConnected={studio.connected} />
-
-          {/* Renders forwarded from Studio during this session. Pinned below
-              the conversation so a long build does not push them out of sight. */}
-          <StudioView frames={frames} running={running} />
+        <ProjectStage
+          collapsed={!stageOpen}
+          onCollapsedChange={(collapsed) => setStageExpanded(!collapsed)}
+          status={studioStatus}
+          onPair={() => setShowPairing(true)}
+          frames={frames}
+          running={running}
+          playtest={playtest}
+          studioConnected={studio.connected}
+        />
         </div>
       </div>
 
       {/* ------------------------------------------------------ composer -- */}
-      <div>
+      <div className="gx-compose-region">
         {/* BACK TO THE LIVE EDGE.
             Shown only while the reader has actually left it, so it is never a control sitting
             there doing nothing, and it names how much arrived while they were away — counted from
@@ -1112,6 +1197,11 @@ export function WorkspacePage() {
         {connNote && (
           <p className="gx-conn-note" role="status">
             {connNote}
+          </p>
+        )}
+        {chatWhy && (
+          <p className="gx-conn-note" role="status">
+            {chatWhy} Your draft is kept.
           </p>
         )}
         {sourceAsk !== null && (
@@ -1136,7 +1226,14 @@ export function WorkspacePage() {
 
         <Composer
           onSend={send}
-          onStop={stop}
+          studioConnected={studio.connected}
+          onStop={() => {
+            if (!chatAllowed) {
+              toast(chatWhy ?? 'You cannot stop this run.', 'error');
+              return;
+            }
+            stop();
+          }}
           draftKey={projectId}
           // The upload target. Same value as the draft key here and a different KIND of thing —
           // see the prop's own comment: one is a storage namespace, the other is authorisation.
@@ -1144,9 +1241,12 @@ export function WorkspacePage() {
           // A refused file says so where every other refusal in this workspace says so.
           onNotice={(m) => toast(m, 'error')}
           running={running}
-          disabled={conn !== 'open'}
-          mode={mode}
-          onModeChange={setMode}
+          disabled={conn !== 'open' || !chatAllowed}
+          productModel={productModel}
+          modelPlan={modelPlan}
+          maxUpgradeAvailable={maxUpgradeAvailable(billing.data)}
+          onModelChange={(next) => { setProductModel(next); setMode('agent'); }}
+          onUpgrade={() => navigate('/usage')}
           seed={seed}
           selection={studio.selection}
           // The other faces in this project read "is typing" off this. The frame has been in the
@@ -1230,6 +1330,9 @@ export function WorkspacePage() {
                   truncated in the markup: the worker already caps it at 500 characters, and a
                   second cap here would hide the end of somebody's own words for no reason. */}
               {c.description && <span className="gx-cp__desc">{c.description}</span>}
+              {c.coverage === 'supported-subset' && (
+                <span className="gx-cp__desc">Restores supported objects; protected engine objects are preserved rather than rolled back.</span>
+              )}
               {/* THE RESTORE, WHILE IT IS HAPPENING AND WHEN IT IS OVER.
 
                   This drawer used to close on the click, and the worker used to broadcast nothing
@@ -1282,9 +1385,17 @@ export function WorkspacePage() {
           busy={running}
           onCancel={() => setEditing(null)}
           onConfirm={(text) => {
+            if (!chatAllowed) {
+              toast(`${chatWhy ?? 'You cannot edit messages in this project.'} Your edit is kept.`, 'error');
+              return;
+            }
+            if (!modelAllowed) {
+              toast('Choose Apple or subscribe to use Apple MAX. Your edit is kept.', 'error');
+              return;
+            }
             // Same translation the composer does: `mode` is the PRODUCT mode the user picked,
             // and the wire carries the specialist it maps to.
-            editAndResend(editing.id, text, PRODUCT_MODE_TO_SPECIALIST[mode]);
+            editAndResend(editing.id, text, PRODUCT_MODE_TO_SPECIALIST[mode], productModel);
             setEditing(null);
           }}
         />

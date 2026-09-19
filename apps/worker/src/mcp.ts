@@ -10,10 +10,11 @@
 // place through a door with none of the gates the agent passes: no checkpoint before the change,
 // no asset policy, no critic, no user sitting there able to say stop.
 //
-// So the surface is exactly one thing: READ THIS PLACE. Structure, scripts, symbols, the current
-// selection, where the camera is, what the console said. Everything that writes, spends, or
-// reaches outside the place is excluded, and every exclusion is written down in MCP_EXCLUDED with
-// its reason.
+// So the surface is read-only project work: READ THIS PLACE, plus bounded offline reference guidance
+// that is already available without Studio, inference or an outbound fetch. Structure, scripts,
+// symbols, selection, camera state and console output read the live place; creation-skill and genre
+// references read checked-in static data. Everything that writes, spends, or reaches outside is
+// excluded, and every exclusion is written down in MCP_EXCLUDED with its reason.
 //
 // THE FILTER IS AN ALLOWLIST WHOSE COMPLEMENT IS WRITTEN DOWN. A denylist would expose a tool
 // added next month by default — nobody would have to decide anything, and the first sign would be
@@ -57,7 +58,7 @@ export const MCP_META_SERVER_INFO = 'io.modelcontextprotocol/serverInfo';
 export const MCP_SERVER_INFO = { name: 'apple', version: '1.0.0' } as const;
 
 export const MCP_INSTRUCTIONS =
-  'Read-only access to a Roblox place that Apple builds inside the user\'s own Studio session. ' +
+  'Read-only access to a Roblox project Apple builds inside the user\'s own Studio session, including bounded offline creation guidance. ' +
   'Every tool takes `project_id`, which must be a project this API key was granted. ' +
   'These tools only read: to change a place, start an agent run with POST /v1/projects/{id}/runs, ' +
   'which puts the change through Apple\'s own checkpoints, asset policy and review.';
@@ -185,6 +186,19 @@ export interface McpToolEntry {
   needsProject: true;
 }
 
+/**
+ * Registry tools that are safe on this read-only surface even though they issue no Studio op.
+ *
+ * Their data is checked into the Worker bundle and the implementations are `studio: false`: no
+ * provider inference, no network request, no mutation. MCP still requires a granted `project_id`
+ * so every call remains anchored to the same tenant/project authorization boundary as place reads.
+ */
+export const MCP_OFFLINE_STATIC_TOOLS = [
+  'search_creation_skills',
+  'read_creation_skill',
+  'get_genre_references',
+] as const;
+
 export const MCP_TOOLS: readonly McpToolEntry[] = [
   { tool: 'get_project_tree', scope: 'projects:read', needsProject: true },
   { tool: 'list_scripts', scope: 'projects:read', needsProject: true },
@@ -196,6 +210,9 @@ export const MCP_TOOLS: readonly McpToolEntry[] = [
   { tool: 'get_selection', scope: 'projects:read', needsProject: true },
   { tool: 'viewport_info', scope: 'projects:read', needsProject: true },
   { tool: 'get_output_logs', scope: 'projects:read', needsProject: true },
+  { tool: 'search_creation_skills', scope: 'projects:read', needsProject: true },
+  { tool: 'read_creation_skill', scope: 'projects:read', needsProject: true },
+  { tool: 'get_genre_references', scope: 'projects:read', needsProject: true },
 ];
 
 export const MCP_TOOL_NAMES: readonly string[] = MCP_TOOLS.map((t) => t.tool);
@@ -209,11 +226,12 @@ export function mcpTool(name: unknown): McpToolEntry | undefined {
 /**
  * The Studio ops an exposed tool is allowed to send to the plugin.
  *
- * Membership of MCP_TOOLS is a CLAIM that a tool only reads. This list is what makes the claim
- * checkable: the test re-derives the ops each exposed tool issues — following the helpers it calls,
+ * Membership of MCP_TOOLS is a CLAIM that a tool only reads. For Studio-backed tools this list makes
+ * the claim checkable: the test re-derives the ops each exposed tool issues — following the helpers it calls,
  * because `dumpScripts` sends `dump_scripts` from outside the tool's own body and a scrape that
  * stopped at the block boundary would have reported a tool as read-only without having looked at
- * the path that does most of its work.
+ * the path that does most of its work. `MCP_OFFLINE_STATIC_TOOLS` is the explicit second class:
+ * read-only tools that issue no Studio op at all.
  */
 export const MCP_READ_ONLY_STUDIO_OPS: readonly string[] = [
   'get_tree',

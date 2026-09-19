@@ -66,6 +66,12 @@ const git = (a) => {
   catch { return ''; }
 };
 
+// Audit the current checkout, including new source, not the index's previous design.
+// Deleted tracked paths cannot import anything; ignored generated files aren't source.
+const currentFiles = (...patterns) => [...new Set(git([
+  'ls-files', '--cached', '--others', '--exclude-standard', '-z', '--', ...patterns,
+]).split('\0').filter(Boolean))].filter((rel) => existsSync(join(ROOT, rel)));
+
 /* ------------------------------------------------------------- denominator --- */
 //
 // §6.3. Each exception carries its reason inline; an exception without one is a hole.
@@ -92,7 +98,7 @@ const EXCEPTIONS = [
  */
 const DECLARED_ENTRIES = (() => {
   const set = new Set();
-  for (const manifest of ['package.json', ...git(['ls-files', '*/package.json', '*/*/package.json']).split('\n')].filter(Boolean)) {
+  for (const manifest of currentFiles('package.json', '*/package.json', '*/*/package.json')) {
     try {
       const pkg = JSON.parse(readFileSync(join(ROOT, manifest), 'utf8'));
       const dir = manifest === 'package.json' ? '' : `${dirname(manifest)}/`;
@@ -132,7 +138,7 @@ const isExcepted = (rel) =>
   // Astro pages and layouts are routed by the framework, not imported.
   /^apps\/site\/src\/(pages|layouts)\//.test(rel);
 
-const tracked = git(['ls-files', '*.ts', '*.tsx', '*.mjs', '*.js']).split('\n').filter(Boolean);
+const tracked = currentFiles('*.ts', '*.tsx', '*.mjs', '*.js');
 
 /**
  * Files that can IMPORT, which is a wider set than files that can BE a dead end.
@@ -142,7 +148,7 @@ const tracked = git(['ls-files', '*.ts', '*.tsx', '*.mjs', '*.js']).split('\n').
  * nothing. That is the checker's blind spot presented as the repository's defect: confident,
  * specific and wrong, which is the worst kind of finding a checker can produce.
  */
-const importerSources = [...tracked, ...git(['ls-files', '*.astro']).split('\n').filter(Boolean)];
+const importerSources = [...tracked, ...currentFiles('*.astro')];
 const examined = tracked.filter((f) => !isExcepted(f) && !f.includes('node_modules/'));
 
 /**
@@ -162,7 +168,7 @@ const examined = tracked.filter((f) => !isExcepted(f) && !f.includes('node_modul
  * Keeping the two sets separate means the graph gets the edge and the denominator does not move:
  * 318 files before and after.
  */
-const RESOLVABLE = new Set([...importerSources, ...git(['ls-files', '*.json']).split('\n').filter(Boolean)]);
+const RESOLVABLE = new Set([...importerSources, ...currentFiles('*.json')]);
 
 console.log(`DENOMINATOR ${examined.length} files; EXCEPTIONS ${EXCEPTIONS.length}: ${EXCEPTIONS.map((e) => e.glob).join(', ')}`);
 
@@ -184,7 +190,7 @@ function readText(rel) {
 const WORKSPACE_DIRS = new Map();
 const WORKSPACE = (() => {
   const map = new Map();
-  for (const manifest of git(['ls-files', '*/package.json', '*/*/package.json']).split('\n').filter(Boolean)) {
+  for (const manifest of currentFiles('*/package.json', '*/*/package.json')) {
     try {
       const pkg = JSON.parse(readFileSync(join(ROOT, manifest), 'utf8'));
       if (!pkg.name?.startsWith('@')) continue;
@@ -242,8 +248,8 @@ function tryCandidates(base) {
  * The nearest ancestor directory that owns a package.json — the base an esbuild `stdin` module
  * resolves against.
  */
-const PACKAGE_ROOTS = git(['ls-files', 'package.json', '*/package.json', '*/*/package.json'])
-  .split('\n').filter(Boolean).map((m) => (m === 'package.json' ? '' : dirname(m)))
+const PACKAGE_ROOTS = currentFiles('package.json', '*/package.json', '*/*/package.json')
+  .map((m) => (m === 'package.json' ? '' : dirname(m)))
   .sort((a, b) => b.length - a.length);
 
 /** Resolve a specifier to a repo path, trying the extensions this repo actually uses. */

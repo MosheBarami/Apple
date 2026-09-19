@@ -21,6 +21,11 @@
         "class_name": "QuotaDO"
       },
       {
+        "name": "LEGACY_QUOTA_DO",
+        "class_name": "QuotaDO",
+        "script_name": "golem"
+      },
+      {
         "name": "PAIRING_DO",
         "class_name": "PairingDO"
       },
@@ -87,8 +92,15 @@
     "SUPABASE_URL": "https://npqvyijsvzkuwddyhtpm.supabase.co",
     "SUPABASE_ANON_KEY": "sb_publishable_CZXQt2nYfaSnkYF5XoslzQ_LaIIn6wt",
     "ENVIRONMENT": "production",
+    "BILLING_WORKER_NAME": "apple",
+    "MEMBERSHIP_OUTBOX_CONSUMER": "apple",
     "AI_GATEWAY_ID": "golem",
     "BUILD_SHA": "616d84b"
+  },
+  "triggers": {
+    "crons": [
+      "* * * * *"
+    ]
   },
   "observability": {
     "enabled": true

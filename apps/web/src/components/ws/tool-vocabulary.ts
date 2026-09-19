@@ -106,6 +106,9 @@ export const TOOL = {
 
   // C04 — reading the docs is not inspecting the user's project.
   search_docs: { kind: 'searching_knowledge', label: 'Searched the Roblox docs' },
+  search_creation_skills: { kind: 'searching_knowledge', label: 'Searched the creation skills' },
+  read_creation_skill: { kind: 'searching_knowledge', label: 'Read a creation skill' },
+  get_genre_references: { kind: 'searching_knowledge', label: 'Reviewed references for this genre' },
   // Named for the question, not the table. "Looked up how a shop is usually built" is what the
   // owner sees the agent doing; "Called find_mechanic" is a sentence about our tool registry.
   find_mechanic: { kind: 'searching_knowledge', label: 'Looked up how this mechanic is usually built' },

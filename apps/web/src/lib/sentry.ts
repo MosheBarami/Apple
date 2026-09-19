@@ -437,7 +437,12 @@ const browserDeps = (): SentryDeps => ({
     return { ok: res.ok, status: res.status };
   },
   target: typeof window === 'undefined' ? null : window,
-  location: typeof window === 'undefined' ? null : { origin: window.location.origin, pathname: window.location.pathname },
+  location: typeof window === 'undefined'
+    ? null
+    : {
+        get origin() { return window.location.origin; },
+        get pathname() { return window.location.pathname; },
+      },
 });
 
 /**

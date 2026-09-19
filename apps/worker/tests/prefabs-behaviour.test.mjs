@@ -441,13 +441,17 @@ function runProfile(body, tag) {
     'task = { wait = function() end, spawn = function(f, ...) f(...) end }',
     '',
     '-- A DataStore with real read-modify-write semantics and schedulable failures.',
-    'local store = { data = {}, writes = 0, failNext = 0 }',
+    'local store = { data = {}, writes = 0, failNext = 0, yieldNextUpdate = false }',
     'function store:UpdateAsync(key, transform)',
     '\tif self.failNext > 0 then',
     '\t\tself.failNext = self.failNext - 1',
     '\t\terror("DataStore unavailable")',
     '\tend',
     '\tself.writes = self.writes + 1',
+    '\tif self.yieldNextUpdate then',
+    '\t\tself.yieldNextUpdate = false',
+    '\t\tcoroutine.yield("store-update")',
+    '\tend',
     '\tlocal updated = transform(self.data[key])',
     '\tif updated ~= nil then',
     '\t\tself.data[key] = updated',
@@ -478,7 +482,7 @@ function runProfile(body, tag) {
 
   const source = [
     prelude,
-    `local M = (function()\n${P.PREFABS.profile_store.source}\nend)()`,
+    `local function profileModule()\n${P.PREFABS.profile_store.source}\nend\nlocal M = profileModule()`,
     body,
     'print("PREFAB-OK")',
   ].join('\n\n');
@@ -658,6 +662,55 @@ test('RELEASE REFUSES TO WRITE OVER A LOCK THAT IS NO LONGER OURS', () => {
   assert.ok(r.ok, r.output);
 });
 
+test('a stale release cannot overwrite a different server that acquired, committed and released the profile', () => {
+  const r = runProfile([
+    'local first = M.load(player)',
+    'assert(first ~= nil)',
+    'first.coins = 40',
+    'store.yieldNextUpdate = true',
+    'local oldResult = nil',
+    'local oldRelease = coroutine.create(function() oldResult = M.release(player) end)',
+    'local started, why = coroutine.resume(oldRelease)',
+    'assert(started, tostring(why))',
+    'assert(coroutine.status(oldRelease) == "suspended", "the old release must still be waiting for the store")',
+    '',
+    '-- A separate instance of the actual generated module owns a separate cache and server ID.',
+    'advance(901)',
+    'game.JobId = "server-B"',
+    'local B = profileModule()',
+    'game.JobId = "server-A"',
+    'assert(B.load(player) ~= nil, "B may take the expired lock")',
+    'assert(store.data["u_7"].lock.serverId == "server-B")',
+    'assert(B.commit(player, { coins = 900 }) == true)',
+    'assert(B.release(player) == true)',
+    'assert(store.data["u_7"].value.coins == 900 and store.data["u_7"].lock == nil, "B completed its real release before A resumes")',
+    '',
+    'local resumed, resumeWhy = coroutine.resume(oldRelease)',
+    'assert(resumed, tostring(resumeWhy))',
+    'assert(coroutine.status(oldRelease) == "dead")',
+    'assert(store.data["u_7"].value.coins == 900, "stale A release overwrote the newer completed B session")',
+    'assert(store.data["u_7"].lock == nil, "B left the record unlocked")',
+    'assert(oldResult == false, "an unlocked record is not proof that A still owns it")',
+    'assert(M.get(player) == nil)',
+    'local retried = M.load(player)',
+    'assert(retried ~= nil and retried.coins == 900, "a refused release must clear the local fence and permit an honest reload")',
+  ].join('\n'), 'prof-release-after-other-server-released');
+  assert.ok(r.ok, r.output);
+});
+
+test('a release cannot recreate a datastore record whose lock and value disappeared', () => {
+  const r = runProfile([
+    'local data = M.load(player)',
+    'assert(data ~= nil)',
+    'data.coins = 40',
+    'store.data["u_7"] = nil',
+    'assert(M.release(player) == false, "missing stored ownership must refuse release")',
+    'assert(store.data["u_7"] == nil, "release must not recreate an unowned record")',
+    'assert(M.get(player) == nil)',
+  ].join('\n'), 'prof-release-record-missing');
+  assert.ok(r.ok, r.output);
+});
+
 test('a commit refuses when another server holds the lock, even without a refresh first', () => {
   // The write path checks for itself. A purchase must get a false here, because a false is what
   // stops the receipt being consumed.
@@ -667,6 +720,108 @@ test('a commit refuses when another server holds the lock, even without a refres
     'assert(M.commit(player, { coins = 999 }) == false, "a commit under a foreign lock must fail")',
     'assert(store.data["u_7"].value.coins ~= 999, "and must not have written")',
   ].join('\n'), 'prof-commit-foreign-lock');
+  assert.ok(r.ok, r.output);
+});
+
+test('a commit that resumes after player removal cannot recreate the released session lock', () => {
+  const r = runProfile([
+    'assert(M.load(player) ~= nil, "the session loads and owns the lock")',
+    'assert(store.data["u_7"].lock.serverId == "server-A")',
+    '',
+    'store.yieldNextUpdate = true',
+    'local commitResult = nil',
+    'local commitThread = coroutine.create(function()',
+    '\tcommitResult = M.commit(player, { coins = 999 })',
+    'end)',
+    'local started, startWhy = coroutine.resume(commitThread)',
+    'assert(started, tostring(startWhy))',
+    'assert(coroutine.status(commitThread) == "suspended", "commit must be paused inside UpdateAsync")',
+    '',
+    '-- PlayerRemoving releases the same Profile session while the older commit is still in flight.',
+    'assert(type(removingHandler) == "function", "Profile must own PlayerRemoving cleanup")',
+    'removingHandler(player)',
+    'assert(M.get(player) == nil, "release must forget the live cache entry")',
+    'assert(store.data["u_7"].lock == nil, "release must clear the stored session lock")',
+    'assert(store.data["u_7"].value.coins == 0, "release persisted the pre-commit value")',
+    '',
+    'local resumed, resumeWhy = coroutine.resume(commitThread)',
+    'assert(resumed, tostring(resumeWhy))',
+    'assert(coroutine.status(commitThread) == "dead", "commit must finish after the store resumes")',
+    'assert(commitResult == false, "a commit resumed after release must be refused")',
+    'assert(store.data["u_7"].lock == nil, "the departed session lock must stay released")',
+    'assert(store.data["u_7"].value.coins == 0, "the departed player candidate must not land after release")',
+  ].join('\n'), 'prof-commit-after-remove');
+  assert.ok(r.ok, r.output);
+});
+
+test('a commit paused before removal must refuse even while release is still yielding with our lock stored', () => {
+  const r = runProfile([
+    'assert(M.load(player) ~= nil, "the session loads and owns the lock")',
+    '',
+    'store.yieldNextUpdate = true',
+    'local commitResult = nil',
+    'local commitThread = coroutine.create(function()',
+    '\tcommitResult = M.commit(player, { coins = 999 })',
+    'end)',
+    'local started, startWhy = coroutine.resume(commitThread)',
+    'assert(started, tostring(startWhy))',
+    'assert(coroutine.status(commitThread) == "suspended", "commit must pause before its transform")',
+    '',
+    'store.yieldNextUpdate = true',
+    'local releaseResult = nil',
+    'local releaseThread = coroutine.create(function()',
+    '\treleaseResult = M.release(player)',
+    'end)',
+    'local releasing, releaseWhy = coroutine.resume(releaseThread)',
+    'assert(releasing, tostring(releaseWhy))',
+    'assert(coroutine.status(releaseThread) == "suspended", "release must still be inside UpdateAsync")',
+    'assert(M.get(player) == nil, "release clears the current cache entry before its write finishes")',
+    'assert(store.data["u_7"].lock.serverId == "server-A", "stored lock is deliberately still ours")',
+    '',
+    'local resumedCommit, commitWhy = coroutine.resume(commitThread)',
+    'assert(resumedCommit, tostring(commitWhy))',
+    'assert(coroutine.status(commitThread) == "dead")',
+    'assert(commitResult == false, "a stale commit must refuse once its cache entry was removed")',
+    'assert(store.data["u_7"].value.coins == 0, "stale candidate must not land while release is pending")',
+    'assert(store.data["u_7"].lock.serverId == "server-A", "pending release still owns the lock until it resumes")',
+    '',
+    'local resumedRelease, finalReleaseWhy = coroutine.resume(releaseThread)',
+    'assert(resumedRelease, tostring(finalReleaseWhy))',
+    'assert(coroutine.status(releaseThread) == "dead")',
+    'assert(releaseResult == true, "release should finish normally")',
+    'assert(store.data["u_7"].value.coins == 0, "release preserves the pre-commit value")',
+    'assert(store.data["u_7"].lock == nil, "release must finish with no orphaned lock")',
+  ].join('\n'), 'prof-commit-during-release');
+  assert.ok(r.ok, r.output);
+});
+
+test('an older commit cannot write after a same-server reload replaced its cache entry', () => {
+  const r = runProfile([
+    'assert(M.load(player) ~= nil, "the first session loads")',
+    '',
+    'store.yieldNextUpdate = true',
+    'local commitResult = nil',
+    'local commitThread = coroutine.create(function()',
+    '\tcommitResult = M.commit(player, { coins = 999 })',
+    'end)',
+    'local started, startWhy = coroutine.resume(commitThread)',
+    'assert(started, tostring(startWhy))',
+    'assert(coroutine.status(commitThread) == "suspended", "old commit must pause before its transform")',
+    '',
+    '-- A later load on this server is allowed to keep the same server lock, but installs a new cache entry.',
+    'local reloaded = M.load(player)',
+    'assert(reloaded ~= nil, "same-server reload should succeed under the existing contract")',
+    'assert(M.get(player) == reloaded, "reload must become the current cache entry")',
+    'assert(store.data["u_7"].lock.serverId == "server-A", "storage still shows this server as owner")',
+    '',
+    'local resumed, resumeWhy = coroutine.resume(commitThread)',
+    'assert(resumed, tostring(resumeWhy))',
+    'assert(coroutine.status(commitThread) == "dead")',
+    'assert(commitResult == false, "the replaced cache entry must fence the older commit")',
+    'assert(store.data["u_7"].value.coins == 0, "the stale candidate must not overwrite the reloaded session")',
+    'assert(store.data["u_7"].lock.serverId == "server-A", "the current same-server session keeps its lock")',
+    'assert(M.get(player) == reloaded and M.get(player).coins == 0, "the replacement cache entry stays current")',
+  ].join('\n'), 'prof-commit-after-reload');
   assert.ok(r.ok, r.output);
 });
 
@@ -703,6 +858,106 @@ test('release is safe to call twice', () => {
     'assert(M.release(player) == false, "a second release has nothing to save")',
     'assert(store.writes == writes, "and must not write again")',
   ].join('\n'), 'prof-double-release');
+  assert.ok(r.ok, r.output);
+});
+
+test('a replacement load is refused while the previous same-user release is still in flight', () => {
+  const r = runProfile([
+    'local first = M.load(player)',
+    'assert(first ~= nil)',
+    'first.coins = 40',
+    '',
+    'store.yieldNextUpdate = true',
+    'local oldReleaseResult = nil',
+    'local oldRelease = coroutine.create(function()',
+    '\toldReleaseResult = M.release(player)',
+    'end)',
+    'local started, startWhy = coroutine.resume(oldRelease)',
+    'assert(started, tostring(startWhy))',
+    'assert(coroutine.status(oldRelease) == "suspended", "old release must be paused before its transform")',
+    'assert(M.get(player) == nil, "release has already removed the old cache entry")',
+    'assert(store.data["u_7"].lock.serverId == "server-A", "old stored lock is deliberately still present")',
+    '',
+    'local writesBeforeReplacement = store.writes',
+    'local replacement = M.load(player)',
+    'assert(store.writes == writesBeforeReplacement, "fenced load must return nil before touching DataStore")',
+    'if replacement ~= nil then',
+    '\tassert(M.commit(player, { coins = 200 }) == true, "replacement session should be able to commit while admitted")',
+    'end',
+    '',
+    'local resumed, resumeWhy = coroutine.resume(oldRelease)',
+    'assert(resumed, tostring(resumeWhy))',
+    'assert(coroutine.status(oldRelease) == "dead")',
+    'assert(oldReleaseResult == true, "the original release should finish normally")',
+    '',
+    'if replacement ~= nil then',
+    '\tassert(store.data["u_7"].lock ~= nil and store.data["u_7"].lock.serverId == "server-A", "stale release cleared the replacement session lock")',
+    '\tassert(store.data["u_7"].value.coins ~= 40, "stale release overwrote the replacement session value")',
+    'end',
+    'assert(replacement == nil, "load must return nil/retry while an older same-user release is in flight")',
+    'assert(M.get(player) == nil, "a refused replacement load must not leave a cache entry")',
+    '',
+    'local after = M.load(player)',
+    'assert(after ~= nil and after.coins == 40, "load should succeed after release completes and read the released value")',
+  ].join('\n'), 'prof-load-during-release');
+  assert.ok(r.ok, r.output);
+});
+
+test('an old release cannot overwrite a replacement session that loaded and released before it resumes', () => {
+  const r = runProfile([
+    'local first = M.load(player)',
+    'assert(first ~= nil)',
+    'first.coins = 40',
+    '',
+    'store.yieldNextUpdate = true',
+    'local oldReleaseResult = nil',
+    'local oldRelease = coroutine.create(function()',
+    '\toldReleaseResult = M.release(player)',
+    'end)',
+    'local started, startWhy = coroutine.resume(oldRelease)',
+    'assert(started, tostring(startWhy))',
+    'assert(coroutine.status(oldRelease) == "suspended", "old release must be paused before its transform")',
+    '',
+    'local writesBeforeReplacement = store.writes',
+    'local replacement = M.load(player)',
+    'assert(store.writes == writesBeforeReplacement, "fenced replacement must not touch DataStore")',
+    'if replacement ~= nil then',
+    '\tassert(M.commit(player, { coins = 200 }) == true, "replacement session should commit an independent table")',
+    '\tassert(M.release(player) == true, "the admitted replacement session should release normally")',
+    '\tassert(store.data["u_7"].value.coins == 200 and store.data["u_7"].lock == nil, "replacement release must land before the old callback resumes")',
+    'end',
+    '',
+    'local resumed, resumeWhy = coroutine.resume(oldRelease)',
+    'assert(resumed, tostring(resumeWhy))',
+    'assert(coroutine.status(oldRelease) == "dead")',
+    '',
+    'if replacement ~= nil then',
+    '\tassert(store.data["u_7"].value.coins == 200, "stale old release overwrote the newer completed session")',
+    'else',
+    '\tassert(oldReleaseResult == true, "the original release should finish once no replacement was admitted")',
+    '\tassert(store.data["u_7"].value.coins == 40 and store.data["u_7"].lock == nil, "original release should persist its own value and clear its lock")',
+    'end',
+    'assert(replacement == nil, "replacement load must be refused while the older release is in flight")',
+    'assert(M.get(player) == nil, "refused replacement must not leak a cache entry")',
+  ].join('\n'), 'prof-load-release-during-old-release');
+  assert.ok(r.ok, r.output);
+});
+
+test('an exhausted release retry does not strand the next load behind local fencing', () => {
+  const r = runProfile([
+    'local first = M.load(player)',
+    'assert(first ~= nil)',
+    'first.coins = 40',
+    '',
+    'store.failNext = 99',
+    'assert(M.release(player) == false, "release should surface exhausted DataStore retries")',
+    'store.failNext = 0',
+    'assert(M.get(player) == nil, "failed release still ends that local cache session")',
+    '',
+    'local reloaded = M.load(player)',
+    'assert(reloaded ~= nil, "a finished failed release must clear any local in-flight fence")',
+    'assert(store.data["u_7"].lock ~= nil and store.data["u_7"].lock.serverId == "server-A", "reload should retake/refresh this server lock")',
+  ].join('\n'), 'prof-release-retry-fence-clears');
   assert.ok(r.ok, r.output);
 });
 

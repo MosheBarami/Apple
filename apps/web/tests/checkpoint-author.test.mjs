@@ -11,11 +11,30 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import ts from 'typescript';
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { checkpointAuthorView, rosterNames } = await import('../src/lib/checkpoint-author.ts');
 
 const manual = (authorId) => ({ kind: 'manual', authorId });
+
+function hasOptionalNullableStringProperty(source, interfaceName, propertyName) {
+  const file = ts.createSourceFile('shared-index.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const iface = file.statements.find((node) => ts.isInterfaceDeclaration(node) && node.name.text === interfaceName);
+  if (!iface) return false;
+  const member = iface.members.find((node) => (
+    ts.isPropertySignature(node)
+    && ts.isIdentifier(node.name)
+    && node.name.text === propertyName
+  ));
+  if (!member?.questionToken || !member.type) return false;
+  const types = ts.isUnionTypeNode(member.type) ? [...member.type.types] : [member.type];
+  const hasString = types.some((node) => node.kind === ts.SyntaxKind.StringKeyword);
+  const hasNull = types.some((node) => (
+    ts.isLiteralTypeNode(node) && node.literal.kind === ts.SyntaxKind.NullKeyword
+  ));
+  return types.length === 2 && hasString && hasNull;
+}
 
 test('your own checkpoint is yours', () => {
   assert.deepEqual(checkpointAuthorView(manual('u-me'), 'u-me'), { who: 'you', label: 'You' });
@@ -69,8 +88,27 @@ test('the drawer renders the author beside the date', () => {
 
 test('the shape the browser reads actually carries an author', () => {
   const shared = readFileSync(join(WEB, '..', '..', 'packages', 'shared', 'src', 'index.ts'), 'utf8');
-  const meta = shared.slice(shared.indexOf('export interface CheckpointMeta'));
-  assert.match(meta.slice(0, 1400), /authorId\?: string \| null/);
+  assert.equal(
+    hasOptionalNullableStringProperty(shared, 'CheckpointMeta', 'authorId'),
+    true,
+    'CheckpointMeta.authorId must remain optional and nullable rather than merely appearing nearby in source text',
+  );
+});
+
+test('the checkpoint author contract guard fails when optionality or nullability is removed', () => {
+  const shared = readFileSync(join(WEB, '..', '..', 'packages', 'shared', 'src', 'index.ts'), 'utf8');
+  const exact = 'authorId?: string | null;';
+  assert.equal(shared.split(exact).length - 1, 1, 'falsification requires one exact authorId contract to mutate');
+  assert.equal(
+    hasOptionalNullableStringProperty(shared.replace(exact, 'authorId: string | null;'), 'CheckpointMeta', 'authorId'),
+    false,
+    'the guard must fail if authorId becomes required',
+  );
+  assert.equal(
+    hasOptionalNullableStringProperty(shared.replace(exact, 'authorId?: string;'), 'CheckpointMeta', 'authorId'),
+    false,
+    'the guard must fail if authorId stops accepting legacy/unrecorded null',
+  );
 });
 
 test('search has a word for a record that is neither yours nor Apple’s', () => {

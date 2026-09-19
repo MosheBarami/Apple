@@ -96,7 +96,7 @@ test('the edited text is capped like any other prompt', () => {
 // ----------------------------------------------------------------- the protocol ---
 
 test('both messages are in the shared protocol', () => {
-  assert.match(SHARED, /\| \{ type: 'edit_resend'; messageId: string; text: string; mode: GolemMode \}/);
+  assert.match(SHARED, /\| \{ type: 'edit_resend'; messageId: string; text: string; mode: GolemMode; productModel\?: ProductModel \}/);
   assert.match(SHARED, /\| \{ type: 'history_truncated'; fromMessageId: string; removed: number \}/);
 });
 
@@ -153,6 +153,22 @@ test('an unchanged message cannot be "edited"', () => {
 
 test('the edit control is absent while a run is in flight', () => {
   // The server refuses it, and a control that is always present but sometimes refuses is worse
-  // than one that is only present when it works.
-  assert.match(WS, /editable=\{item\.role === 'user' && !running\}/);
+  // than one that is only present when it works. Access can also be revoked while this page is
+  // open, so all three facts belong to the offer: own message, no run, chat still allowed.
+  const assertEditGate = (src) => {
+    const match = /editable=\{([^}]*)\}/.exec(src);
+    assert.ok(match, 'the Turn edit gate must still be wired');
+    const gate = match[1];
+    assert.match(gate, /item\.role === 'user'/, 'only the user\'s own message may be edited');
+    assert.match(gate, /!running/, 'the edit offer must disappear while a run is active');
+    assert.match(gate, /\bchatAllowed\b/, 'revoked chat permission must remove the edit offer too');
+  };
+  assertEditGate(WS);
+
+  // Falsification: a guard that only checked the old role/run pair would stay green after access
+  // revocation support was accidentally dropped. Removing that one conjunct must make this guard red.
+  assert.throws(
+    () => assertEditGate(WS.replace(/\s*&&\s*chatAllowed(?=\})/, '')),
+    /chat permission/,
+  );
 });

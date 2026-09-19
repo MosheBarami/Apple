@@ -305,6 +305,23 @@ test('THE TWO LEDGER ROWS FOR ONE ACTIVITY ARE ONE LINE', () => {
   assert.equal(rows.length, 3, 'Agent, Super Agent and Search — three buckets, not four rows');
 });
 
+test('legacy specialist ledger names use the public activity and preserve the whole charge', () => {
+  for (const [internal, publicMode] of [['clay', 'plan'], ['stone', 'agent'], ['rune', 'super']]) {
+    const rows = spendByKind([{ kinds: [{ kind: `chat_${publicMode}`, credits: 1 }, { kind: `usage_${internal}`, credits: 8 }] }]);
+    assert.equal(rows.length, 1, `${internal} admission and settlement must share one activity`);
+    assert.equal(rows[0].credits, 9);
+    assert.equal(rows[0].label, usageKindLabel(`usage_${publicMode}`));
+    assert.doesNotMatch(rows[0].label, /clay|stone|rune/i);
+  }
+  assert.equal(usageKindLabel('usage_constructor'), 'Usage constructor');
+});
+
+test('an aggregate extra balance does not claim it was purchased rather than granted', () => {
+  const view = meterView(quota({ allowanceRemaining: 0, credits: 300, creditsRemaining: 300 }), NOW);
+  assert.match(view.detail, /300 extra credits/);
+  assert.doesNotMatch(view.detail, /purchased/);
+});
+
 test('THE BIGGEST SPEND IS FIRST, because that is the one worth knowing about', () => {
   const rows = spendByKind(DAYS);
   for (let i = 1; i < rows.length; i++) assert.ok(rows[i - 1].credits >= rows[i].credits, JSON.stringify(rows));
@@ -365,7 +382,8 @@ test('A GENUINE ZERO LAST MONTH IS A COMPARISON; an unknown one is not', () => {
 });
 
 test('the labels are the product’s own words for the modes', () => {
-  assert.match(usageKindLabel('chat_plan'), /plan/i);
+  // A historical autonomy label must not pretend it identifies product-model weights.
+  assert.equal(usageKindLabel('chat_plan'), 'Plan');
   assert.match(usageKindLabel('usage_super'), /super/i);
   assert.match(usageKindLabel('api_chat'), /api/i);
   assert.match(usageKindLabel('docs_search'), /search/i);

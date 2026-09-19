@@ -166,7 +166,7 @@ test('the assumptions actually reach the screen, and carry a style of their own'
   const tsx = readFileSync(join(web, 'src/components/ws/thinking.tsx'), 'utf8');
   assert.match(tsx, /stage\.assumptions/, 'the Thinking card never reads the assumptions');
   assert.match(tsx, /Apple assumed/, 'the assumptions render with no label saying they were assumed');
-  const css = readFileSync(join(web, 'src/styles/workspace.css'), 'utf8');
+  const css = readFileSync(join(web, 'src/design/system.css'), 'utf8');
   assert.match(css, /\.gx-assumed\b/, 'the assumption block renders unstyled');
 });
 

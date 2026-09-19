@@ -16,6 +16,10 @@ import type { BillingChange, Invoice, InvoiceDetail, SubscriptionView } from './
 import { getAccessToken } from './supabase';
 import { noteReachability } from './connectivity';
 import type { SearchType } from './search-filters';
+import type { CatalogAsset } from './asset-catalog';
+
+export const searchAssetCatalog = (query: string, signal?: AbortSignal, insertableOnly = false): Promise<{ assets: CatalogAsset[] }> =>
+  request(`/api/assets/search?query=${encodeURIComponent(query)}&limit=20&insertableOnly=${insertableOnly}&previews=true`, { signal });
 
 export class ApiError extends Error {
   status: number;
@@ -45,7 +49,11 @@ async function request<T>(path: string, init: RequestInit = {}, extraHeaders: Re
   let res: Response;
   try {
     res = await fetch(path, { ...init, headers });
-  } catch {
+  } catch (error) {
+    // A caller cancelling an obsolete read is not a network outage. Project navigation deliberately
+    // aborts transcript/checkpoint reads from the project being left; turning that into a reachability
+    // failure would flash an offline banner precisely because navigation worked.
+    if (error !== null && typeof error === 'object' && 'name' in error && (error as { name?: unknown }).name === 'AbortError') throw error;
     // THE ONLY PLACE THAT KNOWS THE REQUEST NEVER LEFT. lib/connectivity.ts reads `navigator.onLine`
     // in one direction only and takes the other direction from here — see the banner's comment for
     // why the browser's own opinion is not enough.
@@ -72,6 +80,9 @@ async function request<T>(path: string, init: RequestInit = {}, extraHeaders: Re
   }
   return body as T;
 }
+
+export const grantOwnerCredits = (): Promise<{ granted: number }> =>
+  request('/api/me/owner-credits', { method: 'POST' });
 
 // ---------------------------------------------------------------- notifications
 //
@@ -335,8 +346,11 @@ export const saveBillingDetails = (
  * is no separate owner path to keep in step, and there is exactly one way the app reads a
  * transcript.
  */
-export const fetchMessages = (projectId: string, limit = 100) =>
-  request<{ messages: MessageDto[] }>(`/api/shared/${encodeURIComponent(projectId)}/messages?limit=${limit}`);
+export const fetchMessages = (projectId: string, limit = 100, signal?: AbortSignal) =>
+  request<{ messages: MessageDto[] }>(
+    `/api/shared/${encodeURIComponent(projectId)}/messages?limit=${limit}`,
+    signal ? { signal } : {},
+  );
 
 /**
  * The earlier versions of one message the user edited.
@@ -764,8 +778,11 @@ export async function downloadAccountExport(): Promise<void> {
 }
 
 /** The history of builds, read the same way the transcript is — see fetchMessages. */
-export const fetchCheckpoints = (projectId: string) =>
-  request<{ checkpoints: CheckpointMeta[] }>(`/api/shared/${encodeURIComponent(projectId)}/checkpoints`);
+export const fetchCheckpoints = (projectId: string, signal?: AbortSignal) =>
+  request<{ checkpoints: CheckpointMeta[] }>(
+    `/api/shared/${encodeURIComponent(projectId)}/checkpoints`,
+    signal ? { signal } : {},
+  );
 
 /**
  * WHAT APPLE ACTUALLY DID INSIDE STUDIO.
@@ -926,6 +943,10 @@ export const disconnectDiscord = (): Promise<{ removed: boolean }> =>
  * life of the document.
  */
 export async function fetchImageObjectUrl(projectId: string, imageId: string): Promise<string> {
+  return URL.createObjectURL(await fetchImageBlob(projectId, imageId));
+}
+
+async function fetchImageBlob(projectId: string, imageId: string): Promise<Blob> {
   const token = await getAccessToken();
   const headers = new Headers();
   if (token) headers.set('Authorization', `Bearer ${token}`);
@@ -950,7 +971,43 @@ export async function fetchImageObjectUrl(projectId: string, imageId: string): P
     // them here would put the caller back to guessing.
     throw new ApiError(res.status === 404 ? 'image expired or not found' : `image fetch failed (${res.status})`, res.status);
   }
-  return URL.createObjectURL(await res.blob());
+  return res.blob();
+}
+
+/** Identify supported raster containers; a provider's content type can be wrong. */
+export async function imageDownloadFormat(blob: Blob): Promise<{ extension: string; mime: string }> {
+  const bytes = new Uint8Array(await blob.slice(0, 12).arrayBuffer());
+  const starts = (signature: number[]) => signature.every((byte, i) => bytes[i] === byte);
+  if (starts([137, 80, 78, 71, 13, 10, 26, 10])) return { extension: 'png', mime: 'image/png' };
+  if (starts([255, 216, 255])) return { extension: 'jpg', mime: 'image/jpeg' };
+  if (starts([82, 73, 70, 70]) && bytes[8] === 87 && bytes[9] === 69 && bytes[10] === 66 && bytes[11] === 80) {
+    return { extension: 'webp', mime: 'image/webp' };
+  }
+  if (starts([71, 73, 70, 56]) && (bytes[4] === 55 || bytes[4] === 57) && bytes[5] === 97) {
+    return { extension: 'gif', mime: 'image/gif' };
+  }
+  throw new ApiError('Unsupported image format. The file was not saved.', 422);
+}
+
+/** Save authenticated image bytes locally; no token is ever placed in a download URL. */
+export async function downloadProjectImage(
+  projectId: string,
+  imageId: string,
+  fetchImage = fetchImageBlob,
+): Promise<void> {
+  const blob = await fetchImage(projectId, imageId);
+  const format = await imageDownloadFormat(blob);
+  const url = URL.createObjectURL(blob.slice(0, blob.size, format.mime));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `apple-image-${imageId}.${format.extension}`;
+  document.body.appendChild(link);
+  try {
+    link.click();
+  } finally {
+    link.remove();
+    requestAnimationFrame(() => URL.revokeObjectURL(url));
+  }
 }
 
 /** Pull the project and image ids back out of a path this app generated, or null. */

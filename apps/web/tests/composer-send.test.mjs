@@ -177,8 +177,11 @@ test('onSend reports whether the message left', () => {
 
 test('a refused send returns before the box or the draft is cleared', () => {
   const submit = COMPOSER.slice(COMPOSER.indexOf('const submit ='), COMPOSER.indexOf('const onKeyDown'));
-  assert.match(submit, /if \(!onSend\(value, readyAttachments\(staged\)\)\) return;/, 'the refusal must short-circuit');
-  const guard = submit.indexOf('if (!onSend(value, readyAttachments(staged))) return;');
+  // The submitted text may include a user-selected creation intent. Its variable name is not
+  // the invariant: refused delivery must still precede every destructive clear.
+  const refusal = /if \(!onSend\(\w+, readyAttachments\(staged\)\)\) return;/;
+  assert.match(stripComments(submit), refusal, 'the refusal must short-circuit');
+  const guard = submit.search(refusal);
   assert.ok(guard !== -1);
   assert.ok(guard < submit.indexOf("setText('')"), 'the guard must precede emptying the box');
   assert.ok(guard < submit.indexOf('clearDraft(draftKey)'), 'the guard must precede clearing the draft');
@@ -186,7 +189,7 @@ test('a refused send returns before the box or the draft is cleared', () => {
 
 test('the workspace returns false when the socket refused the message', () => {
   const fn = WS.slice(WS.indexOf('const send = (text: string'), WS.indexOf('const lastAssistantId'));
-  assert.match(fn, /if \(!sendChat\(text, PRODUCT_MODE_TO_SPECIALIST\[mode\], attachments\)\) \{/);
+  assert.match(fn, /if \(!sendChat\(text, PRODUCT_MODE_TO_SPECIALIST\[mode\], attachments(?:,\s*\w+)?\)\) \{/);
   assert.match(fn, /return false;/);
   assert.match(fn, /return true;/);
 });

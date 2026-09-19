@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <title>Apple — build Roblox games inside Studio</title>
+    <meta name="description" content="Apple writes the scripts, builds the parts and wires the systems inside the Roblox place you already have open in Studio." />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23080808'/%3E%3Cpath d='m5 24 7-19 7 9 8-6-6 19-8-9-8 6Zm7-19 1 13 6-4 2 13' fill='none' stroke='%23eeeeee' stroke-width='1.5' stroke-linejoin='round'/%3E%3C/svg%3E"
+    />
+    <script>
+      // Paint the right theme before first frame so there is never a light flash.
+      try {
+        var p = JSON.parse(localStorage.getItem('apple.prefs.v1') || 'null');
+        var t = p ? p.appearance : localStorage.getItem('apple-theme');
+        if (t === 'system') t = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', t === 'light' ? 'light' : 'dark');
+      } catch (e) {}
+    </script>
+    <script type="module" crossorigin src="/app/assets/index-155RQ2jz.js"></script>
+    <link rel="modulepreload" crossorigin href="/app/assets/react-CbGl50uX.js">
+    <link rel="modulepreload" crossorigin href="/app/assets/supabase-CyI6DAKv.js">
+    <link rel="modulepreload" crossorigin href="/app/assets/markdown-0Pr9SZxJ.js">
+    <link rel="stylesheet" crossorigin href="/app/assets/index-CIlUvRCI.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

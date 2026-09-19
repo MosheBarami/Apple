@@ -36,7 +36,7 @@ import { fileURLToPath } from 'node:url';
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
 const RENDER = readFileSync(join(WEB, 'src', 'lib', 'generative-ui', 'render.tsx'), 'utf8');
-const STYLES = readFileSync(join(WEB, 'src', 'styles.css'), 'utf8');
+const STYLES = readFileSync(join(WEB, 'src', 'design/system.css'), 'utf8');
 
 const out = join(mkdtempSync(join(tmpdir(), 'ttl-')), 'ig.mjs');
 execFileSync(join(WEB, '..', 'worker', 'node_modules', '.bin', 'esbuild'),
@@ -64,12 +64,12 @@ test('the failure branch is wired to the image failing, not to anything else', (
   assert.match(src, /image\.alt/, 'and the alt text shown — it is the only thing still true');
 });
 
-test('THE COPY AND THE TTL AGREE, read from the worker rather than repeated', () => {
-  // The sentence says "kept for an hour". If someone changes the TTL, this fails rather than
-  // leaving the product telling users something that stopped being true.
-  assert.equal(IMAGE_TTL_SECONDS, 3600, 'the TTL moved and the copy did not');
+test('missing-image copy does not claim every saved image expires with legacy previews', () => {
+  assert.ok(IMAGE_TTL_SECONDS > 0, 'legacy previews still have a bounded lifetime');
   const src = safeImageSource();
-  assert.match(src, /kept for an hour/, 'the component must state the retention it actually gets');
+  assert.match(src, /unavailable/);
+  assert.match(src, /temporary previews may have expired/);
+  assert.doesNotMatch(src, /generated images are kept for an hour|This image has expired/);
 });
 
 test('every class the failure branch names is styled', () => {
@@ -158,4 +158,13 @@ test('the status is preserved on the way out, so the caller can tell the cases a
 test('a path this app did not generate is rendered directly, with nothing to authenticate to', () => {
   assert.match(render, /parseImagePath\(image\.src\)/, 'the path is recognised, not assumed');
   assert.match(render, /internal \? 'loading' : 'ready'/, 'and a foreign src does not wait on a fetch');
+});
+
+test('save availability follows the observed image state, including expired history', () => {
+  const source = render.replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.match(source, /onAvailabilityChange\?\.\(image\.src, state\)/);
+  assert.match(source, /availability === 'failed' \|\| unavailable/);
+  assert.match(source, /disabled=\{saving \|\| availability !== 'ready'\}/);
+  assert.match(source, /availability=\{imageStates\[single\.thumbnail\.src\] \?\? 'loading'\}/);
+  assert.match(source, /availability=\{imageStates\[asset\.thumbnail!\.src\] \?\? 'loading'\}/);
 });

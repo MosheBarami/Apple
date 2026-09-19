@@ -21,7 +21,7 @@
 // "Studio connected" is still printed only on the `studio_status` signal passed in as
 // `studioConnected` — never inferred from the code having been shown, and never as a claim that the
 // plugin is installed, which the browser cannot know.
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   STUDIO_PLUGIN_INSTALL_HREF,
@@ -30,6 +30,7 @@ import {
 } from '@golem/shared';
 import { createPairingCode, discardStudioQueue, disconnectStudio, fetchStudioDiagnostics, rebindPlace } from '../lib/api';
 import { countdownTo, fullStamp, shortRelative } from '../lib/format';
+import { pairingAttemptConnected, type PairingAttemptBaseline } from '../lib/pairing-confirmation';
 import { Modal } from './modal';
 import { Forge } from './loading';
 import { Failure } from './failure';
@@ -209,20 +210,49 @@ export function PairingDialog({ projectId, studioConnected, onClose }: PairingDi
   const [errorMsg, setErrorMsg] = useState('');
   const [remaining, setRemaining] = useState<string | null>(null);
   const record = useStudioRecord(projectId);
+  const mintGenerationRef = useRef(0);
+  const attemptRef = useRef<(PairingAttemptBaseline & { projectId: string; generation: number }) | null>(null);
+
+  // A mint may still be in flight when the workspace switches projects or this dialog unmounts.
+  // Advancing the generation makes both late success and late failure settlements inert.
+  useEffect(() => {
+    mintGenerationRef.current += 1;
+    attemptRef.current = null;
+    setPairing(null);
+    setState('idle');
+    setErrorMsg('');
+    setRemaining(null);
+    return () => {
+      mintGenerationRef.current += 1;
+    };
+  }, [projectId]);
 
   const mint = useCallback(() => {
+    const generation = mintGenerationRef.current + 1;
+    mintGenerationRef.current = generation;
+    attemptRef.current = {
+      projectId,
+      generation,
+      studioConnected,
+      diagnosticsKnown: record.data !== undefined,
+      pairedAt: record.data?.pairedAt ?? null,
+      lastSeenAt: record.data?.link.lastSeenAt ?? null,
+    };
     setState('loading');
     setPairing(null);
+    setErrorMsg('');
     createPairingCode(projectId)
       .then((dto) => {
+        if (mintGenerationRef.current !== generation || attemptRef.current?.projectId !== projectId) return;
         setPairing(dto);
         setState('ready');
       })
       .catch((e: Error) => {
+        if (mintGenerationRef.current !== generation || attemptRef.current?.projectId !== projectId) return;
         setErrorMsg(e.message);
         setState('error');
       });
-  }, [projectId]);
+  }, [projectId, record.data, studioConnected]);
 
   //[[ A CODE IS NOT MINTED OVER AN EXISTING PAIRING WITHOUT BEING ASKED FOR.
   //
@@ -249,22 +279,75 @@ export function PairingDialog({ projectId, studioConnected, onClose }: PairingDi
   }, [pairing]);
 
   const expired = state === 'ready' && remaining === null;
+  const attempt = attemptRef.current;
+  const mintedCodeConnected = state === 'ready' && pairing !== null && attempt?.projectId === projectId
+    ? pairingAttemptConnected(
+        attempt,
+        studioConnected,
+        record.data
+          ? {
+              pairedAt: record.data.pairedAt,
+              connected: record.data.link.connected,
+              lastSeenAt: record.data.link.lastSeenAt,
+            }
+          : null,
+      )
+    : false;
+
+  // While a visible code can still be claimed, re-read the server's connection record. This is
+  // especially important for replacement pairing: the browser's existing `true` bridge signal is
+  // the old Studio until a new token issuance and a heartbeat after it are observed. The refresh
+  // stops at the code's deadline (plus one final two-second observation window for an in-flight
+  // claim) and is cleaned up on every attempt/project/unmount transition.
+  useEffect(() => {
+    if (state !== 'ready' || !pairing || mintedCodeConnected) return;
+    const expiresAt = Date.parse(pairing.expiresAtIso);
+    const watchUntil = Number.isFinite(expiresAt) ? expiresAt + 2_000 : Date.now();
+    const refresh = () => {
+      if (Date.now() <= watchUntil) void record.refetch();
+    };
+    refresh();
+    const t = window.setInterval(() => {
+      if (Date.now() > watchUntil) {
+        window.clearInterval(t);
+        return;
+      }
+      void record.refetch();
+    }, 1_000);
+    return () => window.clearInterval(t);
+  }, [state, pairing, mintedCodeConnected, record.refetch]);
+
+  // A first-time socket transition can beat the next diagnostics tick. Once it does, refresh the
+  // shared record immediately so the connection card above names the Studio that actually claimed.
+  useEffect(() => {
+    if (!mintedCodeConnected) return;
+    void record.refetch();
+  }, [mintedCodeConnected, record.refetch]);
+
+  const showConnected = state === 'idle'
+    ? studioConnected
+    : mintedCodeConnected;
 
   return (
     <Modal title="Studio connection" onClose={onClose}>
       <div className="pairing-col">
         <ConnectionRecord projectId={projectId} />
 
-        {studioConnected && state === 'idle' ? (
+        {showConnected ? (
           <div className="pairing-success" role="status">
             <span className="pairing-success-icon">
               <StatusIcon status="success" size={22} />
             </span>
             <h3>Studio connected</h3>
-            <p className="muted">Apple can now build directly in your place.</p>
+            <p className="muted">Studio is connected. Enable edits in the plugin before asking Apple to change your place.</p>
             <button type="button" className="btn btn-primary" onClick={onClose}>
               Start building
             </button>
+            {state === 'idle' && paired && (
+              <button type="button" className="btn" onClick={mint}>
+                Pair a different Studio
+              </button>
+            )}
           </div>
         ) : (
           <div className="pairing-code-col">
@@ -316,7 +399,7 @@ export function PairingDialog({ projectId, studioConnected, onClose }: PairingDi
               </div>
             )}
 
-            {state !== 'idle' && (
+            {state === 'ready' && pairing && !expired && (
               <>
                 <p className="pairing-how">
                   In Roblox Studio, open the <strong>Apple</strong> plugin and enter this code.
@@ -338,7 +421,7 @@ export function PairingDialog({ projectId, studioConnected, onClose }: PairingDi
                 rel={STUDIO_PLUGIN_STORE_LIVE ? 'noopener noreferrer' : undefined}
                 className="pairing-link"
               >
-                Don&rsquo;t have the plugin? Install Apple for Studio
+                {STUDIO_PLUGIN_STORE_LIVE ? 'Install Apple for Studio' : 'Public installation unavailable — see status'}
                 {STUDIO_PLUGIN_STORE_LIVE ? ' ↗' : ''}
               </a>
             </p>

@@ -23,7 +23,8 @@
  * an unbounded agent loop is a larger exposure than any single under-reserved call.
  *
  * Found by rbxai-a3's reachability trace; the facts were re-verified here against the source and
- * then executed rather than taken on report.
+ * then executed rather than taken on report. The control fixture uses an explicitly paid plan
+ * because legacy stone/rune requests are now the MAX-equivalent lane and are entitlement-gated.
  *
  * Run with:  node --test           (from apps/worker)
  */
@@ -85,7 +86,10 @@ function session() {
   const doStub = (body) => ({ idFromName: () => 'id', get: () => ({ fetch: async () => Response.json(body) }) });
   const env = {
     AI: { run: async () => ({ response: 'ok' }) },
-    QUOTA_DO: doStub({ ok: true, allowed: true, remaining: 100, credits: 100, plan: 'free' }),
+    // Stone and rune are the legacy MAX-equivalent modes. This control account is explicitly
+    // paid so the test continues exercising their mode allowlist and step ceilings; free-account
+    // denial is covered by the product-model entitlement tests.
+    QUOTA_DO: doStub({ ok: true, allowed: true, remaining: 100, credits: 100, plan: 'builder' }),
     BUDGET_DO: doStub({ ok: true, reserved: 10, state: { killed: false } }),
     ADMIN_DO: doStub({ ok: true }),
   };

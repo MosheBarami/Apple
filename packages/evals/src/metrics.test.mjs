@@ -365,3 +365,18 @@ test('partition itemises what was left out and why', () => {
   assert.deepEqual(ungraded.map((u) => u.reason).sort(), ['grader_unavailable', 'timeout', 'transport_error']);
   assert.ok(ungraded.every((u) => u.taskId));
 });
+
+test('base-gate incomplete responses retain their measured cause without moving quality scores', () => {
+  const reasons = ['truncated', 'unexpected_model', 'missing_finish_reason'];
+  const incomplete = reasons.map((reason, index) => ok(`incomplete-${index}`, null, {
+    scored: false, complete: false, ungradedReason: reason,
+  }));
+  const records = [ok('complete', 1), ...incomplete];
+  const split = partition(records);
+  assert.deepEqual(split.ungraded.map(row => row.reason), reasons);
+  assert.equal(split.graded.length, 1);
+  const scores = scoreRecords(records);
+  assert.equal(scores.metrics.passRate.value, 1);
+  assert.equal(scores.metrics.passRate.ungraded, 3);
+  assert.equal(scores.metrics.completionRate.value, 0.25);
+});

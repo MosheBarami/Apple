@@ -12,7 +12,7 @@
 // so the published schema cannot describe a route that is not there and a route cannot exist
 // without a declared scope. A path Hono serves but this table omits is answered 404 by the
 // middleware — an undeclared route is unreachable rather than unguarded.
-import type { GatewayMessage, GatewayResponse } from '@golem/shared';
+import type { GatewayMessage, GatewayResponse, ProductModel } from '@golem/shared';
 import type { ApiScope } from './api-keys';
 
 // ---------------------------------------------------------------------------
@@ -192,8 +192,9 @@ export function matchRoute(method: string, pathname: string): RouteMatch | undef
  * a caller who cannot exist would keep the old name alive in the product forever in exchange for
  * nothing. If a key is ever minted before this ships, add the aliases.
  */
-export const PUBLIC_MODELS: Record<string, { internal: string; description: string }> = {
-  'apple-chat': { internal: 'stone', description: 'The builder. Answers, explains and writes Roblox code.' },
+export const PUBLIC_MODELS: Record<string, { internal: string; description: string; productModel?: ProductModel }> = {
+  'apple-chat': { internal: 'clay', productModel: 'apple', description: 'Apple. Fast answers and smaller edits.' },
+  'apple-max': { internal: 'stone', productModel: 'apple-max', description: 'Apple MAX. Larger multi-file builds for paid subscribers.' },
   'apple-plan': { internal: 'clay', description: 'The planner. Reasons about a place without proposing edits to it.' },
 };
 
@@ -225,6 +226,7 @@ export type Parsed<T> = { ok: true; value: T } | { ok: false; fault: RequestFaul
 export interface ChatCompletionRequest {
   publicModel: string;
   internalModel: string;
+  productModel?: ProductModel;
   messages: GatewayMessage[];
   maxTokens: number;
   temperature: number | undefined;
@@ -371,6 +373,7 @@ export function parseChatCompletionRequest(body: unknown): Parsed<ChatCompletion
     value: {
       publicModel: b.model,
       internalModel: model.internal,
+      ...(model.productModel ? { productModel: model.productModel } : {}),
       messages,
       maxTokens: maxTokens.value ?? DEFAULT_OUTPUT_TOKENS,
       temperature: temperature.value,

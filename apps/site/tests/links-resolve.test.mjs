@@ -102,7 +102,7 @@ test('the navigation reaches every section it names, from every page', () => {
   const nav = [...html].find(([f]) => f.startsWith('pricing'));
   assert.ok(nav, 'no pricing page in the build — this check would be vacuous');
   const frags = [...nav[1].matchAll(/href="\/#([a-z-]+)"/g)].map((m) => m[1]);
-  assert.ok(frags.length >= 3, `the shared nav offers ${frags.length} in-page destinations — it used to offer none from here`);
+  assert.ok(frags.length > 0, `the shared nav offers no product-section destinations`);
   const landing = ids.get('index.html');
   assert.ok(landing, 'no landing page in the build');
   assert.deepEqual(frags.filter((f) => !landing.has(f)), [], 'the nav points at sections the landing does not have');

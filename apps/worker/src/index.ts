@@ -1,5 +1,8 @@
 // Golem worker entry: API routes + static serving + DO exports.
 import { ingestAssets, type IngestRequest } from './asset-ingest';
+import { searchAssetLibrary } from './asset-library';
+import { resolveAssetCatalogPreviews, catalogAssetMetadata } from './asset-catalog-previews';
+import { ASSET_KINDS, type AssetKind } from './assets';
 import { importPending, unimportAssets } from './asset-import';
 import { putRobloxCredential, describeRobloxCredential, deleteRobloxCredential } from './user-credentials';
 import {
@@ -12,13 +15,12 @@ import type { Context } from 'hono';
 import {
   verifyStripeSignature,
   interpretStripeEvent,
-  entitlementFor,
   buildCheckoutRequest,
   buildInvoicePreviewRequest,
   buildPortalRequest,
   checkoutConfigured,
   checkoutGuard,
-  priceIdFor,
+  billingConfigFor,
   readInvoicePreview,
   subscriptionView,
   invoiceBelongsTo,
@@ -33,6 +35,13 @@ import {
   type ReconcileRow,
   type Subscription,
 } from './billing';
+import {
+  BILLING_AUTHORITY_WORKER,
+  BILLING_REPLICA_WORKER,
+  BillingAuthorityError,
+  deliverBillingMutation,
+  invokeBillingAuthority,
+} from './billing-origin-authority';
 import { exportFilename, renderTranscriptMarkdown, type TranscriptExport } from './export';
 import { accountExportFilename, collectAccountExport } from './account-export';
 import { describeSweep, runRetentionSweeps } from './retention-sweep';
@@ -49,7 +58,7 @@ import type { Env, AuthedUser } from './env';
 import { verifyJwt, bearerToken } from './auth';
 import { getOwnedProject, getProfile, getProjectAccess, listProjectMembers, memberDirectory, supaRest, type MemberRow, type ProjectRow } from './supa';
 import { parseSupportSubmission } from './support';
-import { can, capabilitiesFor, asCollabRole, asShareScope, effectivePermissions, redeemShareLink, GRANTABLE_ROLES, type CollabAction, type CollabRole, type Membership, type ShareResource } from './collab';
+import { can, capabilitiesFor, asCollabRole, asShareScope, effectivePermissions, redeemShareLink, GRANTABLE_ROLES, type CollabAction, type CollabRole, type Membership, type MembershipAccessChange, type ShareResource } from './collab';
 import {
   isShareToken,
   kvGrantBarred,
@@ -76,10 +85,18 @@ import {
   planBulkInvite,
   type MembershipEventInput,
 } from './membership';
+import {
+  deliverMembershipAccessEvent,
+  drainMembershipAccessOutbox,
+  notifyLatestMembershipAccessChange,
+  recordLinkMembershipAccessEvent,
+  type MembershipAccessEvent,
+} from './membership-access-outbox';
 import { companionOpAccess, companionRefusal, sanitizeCompanionOp } from './companion';
 import { chat as llmChat, embed, getModels, budgetReport, budgetState, setKillSwitch, rawProbe, BudgetError } from './gateway';
 import { capabilityTable, providerHealth, selectProvider } from './providers';
-import { imageKvKey, type ImageMeta } from './imagegen';
+import { imageKvKey, imageMimeType, type ImageMeta } from './imagegen';
+import { readGeneratedImage } from './generated-images';
 import { ATTACHMENT_TTL_SECONDS, deleteAttachment, putAttachment, readAttachment } from './attachments';
 import { audioKvKey, servableAudioType, type AudioMeta } from './audio-store';
 import { kvWorkspace } from './webtools';
@@ -281,7 +298,7 @@ import {
   type RateLimitVerdict,
 } from './public-api';
 import type { RenderViewResult, OpResult, StudioOp, QuotaState, RunSnapshot, PairingCodeDto, StudioLinkSummary } from '@golem/shared';
-import { isPlanId, PLAN_IDS, PRICE_CURRENCY, type PlanId } from '@golem/shared';
+import { canUseProductModel, isPlanId, PRICE_CURRENCY, type ProductModel } from '@golem/shared';
 import { MAX_ATTACHMENT_BYTES, attachmentRefusalMessage, type AttachmentRefusal } from '@golem/shared';
 
 /**
@@ -712,6 +729,77 @@ app.get('/api/health', async (c) => {
   });
 });
 
+/**
+ * Read-only catalogue browse. This is intentionally lexical-only: displaying catalogue metadata
+ * must not spend inference credits or reach Workers AI/Vectorize, and a Roblox id is provenance
+ * from the catalogue rather than a safety or permission verdict.
+ */
+app.get('/api/assets/search', async (c) => {
+  const rawQuery = c.req.query('query');
+  const query = (rawQuery ?? '').trim();
+  if (query.length > 120) return c.json({ error: 'query must be at most 120 characters', assets: [] }, 400);
+
+  const rawKind = c.req.query('kind');
+  let kind: AssetKind | undefined;
+  if (rawKind) {
+    if (!(ASSET_KINDS as readonly string[]).includes(rawKind)) {
+      return c.json({ error: `kind must be one of ${ASSET_KINDS.join(', ')}`, assets: [] }, 400);
+    }
+    kind = rawKind as AssetKind;
+  }
+
+  const rawLimit = c.req.query('limit');
+  const limit = rawLimit === undefined ? 20 : Number(rawLimit);
+  if (rawLimit !== undefined && (!/^\d+$/.test(rawLimit) || !Number.isInteger(limit) || limit < 1 || limit > 20)) {
+    return c.json({ error: 'limit must be an integer from 1 to 20', assets: [] }, 400);
+  }
+
+  const rawInsertableOnly = c.req.query('insertableOnly');
+  if (rawInsertableOnly !== undefined && rawInsertableOnly !== 'true' && rawInsertableOnly !== 'false') {
+    return c.json({ error: 'insertableOnly must be true or false', assets: [] }, 400);
+  }
+  const insertableOnly = rawInsertableOnly === 'true';
+  const rawPreviews = c.req.queries('previews') ?? [];
+  if (rawPreviews.length > 1 || (rawPreviews.length === 1 && rawPreviews[0] !== 'true' && rawPreviews[0] !== 'false')) {
+    return c.json({ error: 'previews must be true or false (once only)', assets: [] }, 400);
+  }
+  const previews = rawPreviews[0] === 'true';
+  // Empty search is a valid browse state, but it must not claim that an unavailable/unseeded
+  // catalogue is empty. It also avoids issuing a pointless FTS query.
+  if (!query) return c.json({ assets: [] });
+
+  try {
+    const hits = await searchAssetLibrary(c.env, query, {
+      lexicalOnly: true,
+      kind,
+      insertableOnly,
+      k: limit,
+    });
+    const hitPreviews = await resolveAssetCatalogPreviews(hits, previews);
+    return c.json({
+      assets: hits.map((hit, index) => ({
+        id: hit.id,
+        name: hit.name,
+        kind: hit.kind,
+        source: hit.source,
+        sourceUrl: hit.sourceUrl,
+        author: hit.author,
+        licence: hit.licence,
+        attributionRequired: hit.attributionRequired,
+        robloxAssetId: hit.robloxAssetId,
+        availability: hit.availability,
+        ...catalogAssetMetadata(hit),
+        ...(previews ? { preview: hitPreviews[index] ?? { state: 'unavailable', url: null } } : {}),
+      })),
+    });
+  } catch (error) {
+    if (/no such table|no such module/i.test(String((error as Error)?.message ?? error))) {
+      return c.json({ error: 'asset catalogue is unavailable', assets: [] }, 503);
+    }
+    throw error;
+  }
+});
+
 // ---------------------------------------------------------------- project session routes
 /**
  * THE PROJECT GATE, AND WHY IT HAS TWO MODES.
@@ -776,6 +864,7 @@ app.get('/api/projects/:id/ws', async (c) => {
   const headers = new Headers(c.req.raw.headers);
   headers.set('X-User-Id', ctx.user.userId);
   headers.set('X-User-Jwt', ctx.user.jwt);
+  headers.delete('X-Golem-Grant-Expires-At');
   return ctx.stub.fetch(new Request('https://do/ws', { headers, method: 'GET' }));
 });
 
@@ -849,20 +938,26 @@ app.get('/api/projects/:id/images/:imageId', async (c) => {
   // address a different namespace in the same KV store.
   if (!UUID_RE.test(imageId)) return c.json({ error: 'not found' }, 404);
 
-  const { value: base64, metadata } = await c.env.KV.getWithMetadata<ImageMeta>(imageKvKey(ctx.project.id, imageId));
-  // Expiry is the NORMAL outcome here, not an edge case: images live IMAGE_TTL_SECONDS and a
-  // conversation lives as long as the user keeps it, so scrolling back to yesterday's work lands
-  // on this branch. The client says so in words; this says so in a status code.
+  const saved = await readGeneratedImage(c.env, ctx.project.id, imageId);
+  if (saved.deleted) return c.json({ error: 'not found' }, 404);
+  const { value: base64, metadata } = saved.base64 !== null
+    ? { value: saved.base64, metadata: null }
+    : await c.env.KV.getWithMetadata<ImageMeta>(imageKvKey(ctx.project.id, imageId));
+  // New generated images are durable. Old generated images and temporary previews may expire.
   //
   // The body is byte-identical to the one above. It used to carry `reason: 'expired_or_missing'`,
   // which quietly undid the point of making every failure a 404: the status codes matched and the
   // BODIES told a prober which of the two cases they had hit.
   if (!base64) return c.json({ error: 'not found' }, 404);
 
-  const bytes = Uint8Array.from(atob(base64), (ch) => ch.charCodeAt(0));
+  let bytes: Uint8Array;
+  try { bytes = Uint8Array.from(atob(base64), (ch) => ch.charCodeAt(0)); }
+  catch { return c.json({ error: 'not found' }, 404); }
+  const contentType = imageMimeType(bytes);
+  if (!contentType) return c.json({ error: 'not found' }, 404);
   return new Response(bytes, {
     headers: {
-      'Content-Type': 'image/png',
+      'Content-Type': contentType,
       // PRIVATE. This is one user's generated content behind an authorised route, and a shared
       // cache holding it would serve it to whoever asked next. max-age is bounded by the TTL, so
       // a cached copy can never outlive the object it is a copy of.
@@ -870,7 +965,7 @@ app.get('/api/projects/:id/images/:imageId', async (c) => {
       // header at RESPONSE time, so serving the full hour to an image fetched 59 minutes after it
       // was stored cached it for another hour — outliving the object by nearly the whole TTL, which
       // is exactly what the comment here used to claim was impossible.
-      'Cache-Control': `private, max-age=${remainingLife(metadata)}`,
+      'Cache-Control': saved.base64 !== null ? 'private, no-store' : `private, max-age=${remainingLife(metadata)}`,
       'Content-Length': String(bytes.byteLength),
       // The bytes are model-generated and served from our origin; nothing should ever execute or
       // embed them as anything but an image.
@@ -2376,43 +2471,63 @@ app.post('/api/billing/webhook', async (c) => {
   const outcome = interpretStripeEvent(event, c.env);
   if (!outcome.userId) return c.json({ ok: true, ignored: outcome.ignored ?? 'no user', dunning: dunning?.kind ?? null });
 
-  const quota = c.env.QUOTA_DO.get(c.env.QUOTA_DO.idFromName(outcome.userId));
-  if (outcome.subscription) {
-    // Entitlement is recomputed from status and period rather than trusting the plan field, so a
-    // cancelled or lapsed subscription cannot leave a paid tier behind.
-    const plan = entitlementFor(outcome.subscription, Math.floor(Date.now() / 1000));
-    await quota.fetch('https://do/set-plan', {
-      method: 'POST',
-      // The customer id rides along so the billing portal has an account to open later. It is the
-      // only way back to a subscription the user started, and it arrives on these events alone.
-      //
-      // THE WHOLE SUBSCRIPTION GOES TOO. status, currentPeriodEnd and cancelAtPeriodEnd were read
-      // from the event and then dropped here, which is why the product could not tell a renewal
-      // from a cancellation after the webhook returned. The event id goes with it so a redelivery
-      // is applied once — the signature window bounds a replay, it does not make one a no-op.
-      body: JSON.stringify({
-        plan,
-        customerId: outcome.subscription.customerId,
-        subscription: outcome.subscription,
-        eventId: outcome.eventId,
-      }),
+  if (!outcome.subscription && !outcome.creditsDelta) {
+    return c.json({
+      ok: true,
+      applied: { plan: false, credits: 0 },
+      ignored: outcome.ignored ?? 'no entitlement change',
+      dunning: dunning?.kind ?? null,
     });
   }
-  if (outcome.creditsDelta) {
-    await quota.fetch('https://do/grant-credits', {
-      method: 'POST',
-      body: JSON.stringify({ credits: outcome.creditsDelta, eventId: outcome.eventId }),
+
+  // A request Host is not a billing role. Only Apple's deployment may resolve provider state;
+  // golem is an explicitly bound replica, not a second independent Stripe authority. Check both
+  // prerequisites before an authority call can commit an otherwise undeliverable purchase.
+  if (c.env.BILLING_WORKER_NAME !== BILLING_AUTHORITY_WORKER || !c.env.LEGACY_QUOTA_DO) {
+    recordEvent({
+      kind: 'error', scope: '/api/billing/webhook', errorKind: 'billing_authority_configuration',
+      message: 'Canonical billing authority or replica binding is not configured', fatal: false,
     });
+    return c.json({ error: 'billing authority not configured' }, 503);
   }
-  // `dunning` is reported on BOTH exits, not only the one where nothing could be attributed. An
-  // event that raised a notice and applied no entitlement — an expired checkout is exactly that —
-  // otherwise came back indistinguishable from one the product ignored entirely, in the response
-  // that is the only thing Stripe's dashboard and our own tests can see.
-  return c.json({
-    ok: true,
-    applied: { plan: !!outcome.subscription, credits: outcome.creditsDelta ?? 0 },
-    dunning: dunning?.kind ?? null,
-  });
+  try {
+    const authority = c.env.QUOTA_DO.get(c.env.QUOTA_DO.idFromName(outcome.userId));
+    const result = await invokeBillingAuthority(authority, event);
+    const mutation = result.mutation;
+    // A malformed acknowledgement cannot turn an actionable event into an intentional no-op,
+    // route a write to a different account, or change an additive purchase amount.
+    if (
+      !mutation
+      || mutation.userId !== outcome.userId
+      || mutation.sourceEventId !== outcome.eventId
+      || mutation.eventId !== outcome.eventId
+      || (outcome.subscription
+        ? mutation.kind !== 'subscription'
+          || mutation.subscription.subscriptionId !== outcome.subscription.subscriptionId
+        : mutation.kind !== 'credits' || mutation.credits !== outcome.creditsDelta)
+    ) {
+      throw new BillingAuthorityError('quota_authority_mismatch', 503, 'Billing authority acknowledgement did not match the event');
+    }
+    const replica = c.env.LEGACY_QUOTA_DO.get(c.env.LEGACY_QUOTA_DO.idFromName(outcome.userId));
+    // Even an authority replay MUST retry this delivery. Apple may have committed while the first
+    // replica request or response failed; shared deduplication here would strand the old namespace.
+    await deliverBillingMutation(replica, mutation, BILLING_REPLICA_WORKER);
+    return c.json({
+      ok: true,
+      applied: { plan: mutation.kind === 'subscription', credits: mutation.kind === 'credits' ? mutation.credits : 0 },
+      replayed: result.replayed,
+      dunning: dunning?.kind ?? null,
+    });
+  } catch (error) {
+    const code = error instanceof BillingAuthorityError ? error.code : 'billing_delivery_failed';
+    recordEvent({
+      kind: 'error', scope: '/api/billing/webhook', errorKind: 'billing_delivery',
+      message: code, fatal: false,
+    });
+    // Stripe must retry a partial application. Do not reflect provider bodies, identifiers, or
+    // thrown transport messages, and never answer success before both stores acknowledge.
+    return c.json({ error: 'billing event was not fully acknowledged', code }, 503);
+  }
 });
 
 /**
@@ -2748,9 +2863,9 @@ app.get('/api/billing/invoices/:id', async (c) => {
 
 /** What the plan controls should offer, so the UI never shows a button that cannot work. */
 app.get('/api/billing/config', async (c) => {
+  const billing = billingConfigFor(c.env);
   return c.json({
-    checkout: checkoutConfigured(c.env),
-    purchasable: PLAN_IDS.filter((p: PlanId) => priceIdFor(c.env, p) !== null),
+    ...billing,
     // THE SERVER SAYS WHAT IT CHARGES IN. A '$' on a page is not a currency — the same glyph is the
     // US, Canadian and Australian dollar — and before this the only place the real charge currency
     // appeared was Stripe's own page, after the user had already committed to paying.
@@ -4108,6 +4223,41 @@ app.post('/api/admin/quota-reset', async (c) => {
   return c.json(await res.json());
 });
 
+/** Owner-only temporary balance switch. Identity comes from the verified session, never input. */
+app.post('/api/me/owner-credits', async (c) => {
+  const user = c.get('user');
+  if (user.email?.toLowerCase() !== 'moshe.barami111@gmail.com') return c.json({ error: 'forbidden' }, 403);
+  const res = await c.env.QUOTA_DO.get(c.env.QUOTA_DO.idFromName(user.userId)).fetch('https://do/grant-credits', {
+    method: 'POST',
+    body: JSON.stringify({ credits: 1_000_000_000, eventId: 'owner-temporary-unlimited-2026-09-17' }),
+  });
+  return c.json(await res.json(), res.status as 200);
+});
+
+/**
+ * Add a temporary operator Credit balance to one account.
+ *
+ * This is deliberately separate from the renewable plan allowance and from Stripe: it cannot
+ * impersonate a subscription, and the idempotency key prevents a retried admin request from
+ * minting the balance twice. The global BudgetDO ceiling remains authoritative even for an
+ * account with a large balance.
+ */
+app.post('/api/admin/grant-credits', async (c) => {
+  const { userId, credits, eventId } = await c.req.json<{ userId?: unknown; credits?: unknown; eventId?: unknown }>();
+  const target = typeof userId === 'string' ? userId.trim() : '';
+  const amount = Math.floor(Number(credits));
+  const idempotencyKey = typeof eventId === 'string' ? eventId.trim() : '';
+  if (!target || !Number.isSafeInteger(amount) || amount < 1 || amount > 1_000_000_000 || !idempotencyKey) {
+    return c.json({ error: 'userId, eventId and 1-1000000000 credits are required' }, 400);
+  }
+  auditAdminAction(c, 'admin.grant-credits', target);
+  const res = await c.env.QUOTA_DO.get(c.env.QUOTA_DO.idFromName(target)).fetch('https://do/grant-credits', {
+    method: 'POST',
+    body: JSON.stringify({ credits: amount, eventId: `admin:${idempotencyKey}` }),
+  });
+  return c.json(await res.json(), res.status as 200);
+});
+
 app.post('/api/admin/set-plan', async (c) => {
   const { userId, plan } = await c.req.json<{ userId: string; plan: 'free' | 'builder' }>();
   // Recorded BEFORE the write, and recorded whether or not the write succeeds. An audit row that
@@ -4799,6 +4949,24 @@ async function quotaSpend(env: Env, userId: string, credits: number, kind: strin
   return (await res.json()) as { ok: boolean; state?: { creditsRemaining?: number } };
 }
 
+/** Read the account's enforced plan without ever treating an unreadable ledger as paid access. */
+async function quotaPlan(env: Env, userId: string): Promise<unknown | null> {
+  try {
+    const res = await env.QUOTA_DO.get(env.QUOTA_DO.idFromName(userId)).fetch('https://do/state');
+    if (!res.ok) return null;
+    const body = (await res.json()) as { plan?: unknown };
+    return body?.plan ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function accountCanUseProductModel(env: Env, userId: string, model: ProductModel): Promise<boolean> {
+  if (model === 'apple') return true;
+  const plan = await quotaPlan(env, userId);
+  return canUseProductModel(model, typeof plan === 'string' ? plan : undefined);
+}
+
 function idemStorageKey(keyId: string, idemKey: string): string {
   return `idem:${keyId}:${idemKey}`;
 }
@@ -4839,6 +5007,13 @@ async function handleCompletion(c: PublicCtx, legacy: boolean): Promise<Response
   const parsed = legacy ? parseLegacyCompletionRequest(body) : parseChatCompletionRequest(body);
   if (!parsed.ok) return refuse(parsed.fault.status, parsed.fault.code, parsed.fault.message, parsed.fault.param);
   const req: ChatCompletionRequest = parsed.value;
+
+  // Model entitlement is checked before idempotency replay and, crucially, before any quota
+  // admission or provider call. Test keys are deterministic simulations and never spend, so they
+  // retain their sandbox behaviour even when the request names the paid model.
+  if (key.mode !== 'test' && req.productModel && !(await accountCanUseProductModel(c.env, key.userId, req.productModel))) {
+    return refuse(403, 'model_not_entitled', 'Apple MAX requires a paid subscription. Choose Apple to continue free.', 'model');
+  }
 
   // ---- idempotency ----
   const idemHeader = c.req.header('Idempotency-Key');
@@ -5022,13 +5197,19 @@ app.get('/v1/projects/:id/messages', async (c) => {
 /** Public run modes. Internal specialist names are never on the wire — see router.ts. */
 const PUBLIC_RUN_MODES: Record<string, 'clay' | 'stone' | 'rune'> = { plan: 'clay', agent: 'stone', super: 'rune' };
 
+/** Additive model selector for API runs; legacy mode remains the specialist/autonomy axis. */
+function asProductModel(value: unknown): ProductModel | undefined | null {
+  if (value === undefined || value === null) return undefined;
+  return value === 'apple' || value === 'apple-max' ? value : null;
+}
+
 app.post('/v1/projects/:id/runs', async (c) => {
   const key = c.get('apiKey');
   const requestId = c.get('requestId');
   const g = grantedStub(c);
   if (!g) return ungranted(c);
   const { id, stub } = g;
-  const body = await c.req.json<{ input?: unknown; mode?: unknown }>().catch(() => null);
+  const body = await c.req.json<{ input?: unknown; mode?: unknown; productModel?: unknown }>().catch(() => null);
   const input = typeof body?.input === 'string' ? body.input.trim() : '';
   if (!input) return c.json(errorBody(400, 'invalid_request_error', "'input' is required.", requestId, 'input'), 400);
 
@@ -5042,6 +5223,15 @@ app.post('/v1/projects/:id/runs', async (c) => {
     );
   }
   const mode = PUBLIC_RUN_MODES[wanted]!;
+  const productModel = asProductModel(body?.productModel);
+  if (productModel === null) {
+    return c.json(errorBody(400, 'invalid_request_error', "'productModel' must be 'apple' or 'apple-max'.", requestId, 'productModel'), 400);
+  }
+  // Entitlement is checked before any session admission. A paid model must never reach quota,
+  // idempotency or provider work for an account whose authoritative QuotaDO plan is unavailable.
+  if (key.mode !== 'test' && productModel && !(await accountCanUseProductModel(c.env, key.userId, productModel))) {
+    return c.json(errorBody(403, 'model_not_entitled', 'Apple MAX requires a paid subscription. Choose Apple to continue free.', requestId, 'productModel'), 403);
+  }
 
   if (key.mode === 'test') {
     // THE SANDBOX DOES NOT START A RUN, and says so in the payload rather than only in the docs.
@@ -5056,6 +5246,7 @@ app.post('/v1/projects/:id/runs', async (c) => {
         sandbox: true,
         project: id,
         mode: wanted,
+        ...(productModel ? { productModel } : {}),
         note: 'Test-mode key: no run was started and nothing in the place was touched.',
       },
       202,
@@ -5065,15 +5256,18 @@ app.post('/v1/projects/:id/runs', async (c) => {
 
   const res = await stub.fetch('https://do/agent-run', traced(c, {
     method: 'POST',
-    body: JSON.stringify({ text: input.slice(0, 8000), mode }),
+    body: JSON.stringify({ text: input.slice(0, 8000), mode, ...(productModel ? { productModel } : {}) }),
   }));
-  const out = (await res.json()) as { ok?: boolean; error?: string };
+  const out = (await res.json()) as { ok?: boolean; error?: string; code?: string };
   if (!res.ok || out.ok === false) {
+    if (res.status === 403 || out.code === 'product_model_unavailable') {
+      return c.json(errorBody(403, 'model_not_entitled', out.error ?? 'Apple MAX requires a paid subscription. Choose Apple to continue free.', requestId, 'productModel'), 403);
+    }
     const status = res.status === 409 ? 409 : res.status === 400 ? 400 : 502;
     return c.json(errorBody(status, 'run_not_started', out.error ?? 'The run could not be started.', requestId), status as 409);
   }
   void count(c.env, 'api_run_started');
-  return c.json({ id: `run_${id}`, object: 'run', status: 'running', project: id, mode: wanted }, 202);
+  return c.json({ id: `run_${id}`, object: 'run', status: 'running', project: id, mode: wanted, ...(productModel ? { productModel } : {}) }, 202);
 });
 
 app.get('/v1/projects/:id/runs/current', async (c) => {
@@ -5491,39 +5685,12 @@ async function recordMembershipEvents(
   return { ok: ok && rows.length === inputs.length, written: ok ? rows.length : 0, requested: inputs.length };
 }
 
-/**
- * PUSH A MEMBERSHIP CHANGE INTO THE SOCKETS THAT ARE ALREADY OPEN.
- *
- * The HTTP half of this was already right and is tested: every shared route re-resolves membership
- * through `sharedAccess` on every request, so a removed member is a stranger on their next call.
- * A WEBSOCKET MAKES NO FURTHER CALLS. The role is decided once at the handshake, frozen onto the
- * socket, and every later frame is gated against that frozen value — so a member who was removed,
- * suspended or demoted kept every capability they had for as long as the tab stayed open, and a
- * workspace tab stays open for days.
- *
- * Best effort by design: the membership change has ALREADY LANDED by the time this runs, and a
- * Durable Object that cannot be reached must not undo it. What this must not do is let the route
- * claim it happened — the counts come back on the response, so `{ matched: 0 }` is a fact the
- * caller can read and `null` says the push could not be made at all.
- */
-async function pushAccessChange(
-  stub: DurableObjectStub,
-  userId: string,
-  role: CollabRole | null,
-): Promise<{ matched: number; closed: number; demoted: number } | null> {
-  try {
-    const res = await stub.fetch('https://do/collab/access-changed', {
-      method: 'POST',
-      body: JSON.stringify({ userId, role }),
-    });
-    if (!res.ok) return null;
-    const out = (await res.json()) as { matched?: unknown; closed?: unknown; demoted?: unknown };
-    return typeof out?.matched === 'number'
-      ? { matched: out.matched, closed: Number(out.closed) || 0, demoted: Number(out.demoted) || 0 }
-      : null;
-  } catch {
-    return null;
-  }
+/** The event kind a role write creates; migration 0009 derives the same answer in its trigger. */
+function membershipAccessChange(before: Pick<MemberRow, 'role'> | null, nextRole: CollabRole | null): MembershipAccessChange {
+  // Only a loss of the build capability invalidates an in-flight collaborator run. A role change
+  // that keeps `chat` (for example admin -> editor) remains an allowed run and is not mislabeled
+  // as a revocation.
+  return before !== null && can(before.role, 'chat') && !can(nextRole, 'chat') ? 'demoted' : 'clear';
 }
 
 /** One door to the Durable Object's collaboration store, so identity crosses exactly once. */
@@ -5575,6 +5742,9 @@ app.get('/api/shared/:id/ws', async (c) => {
   const headers = new Headers(c.req.raw.headers);
   headers.set('X-User-Id', ctx.user.userId);
   headers.set('X-User-Jwt', ctx.user.jwt);
+  headers.delete('X-Golem-Grant-Expires-At');
+  const grantExpiry = ctx.membership.expiresAtMs;
+  if (typeof grantExpiry === 'number' && Number.isFinite(grantExpiry)) headers.set('X-Golem-Grant-Expires-At', new Date(grantExpiry).toISOString());
   //[[ SET, NEVER APPENDED — the browser's own headers were copied into this object one line above,
   //   and a client that sent `X-Golem-Role: owner` would otherwise have written its own permission
   //   slip. `set` replaces; the value here is the one the access decision produced. ]]
@@ -5850,8 +6020,17 @@ app.post('/api/shared/:id/members', async (c) => {
   if (!ok) return c.json({ error: 'invite_failed', status }, 502);
 
   const kind = inviteEventKind(before, { role });
-  // A DEMOTION MUST REACH THE TAB, not wait for a reload. See `pushAccessChange`.
-  const live = await pushAccessChange(ctx.stub, userId, role);
+  // Migration 0009 wrote the versioned delivery intent in the SAME transaction as this row. The
+  // call below is only the low-latency first attempt; a failed attempt remains in the outbox for
+  // both Durable Object namespaces.
+  const live = await notifyLatestMembershipAccessChange(c.env, ctx.user.jwt, {
+    projectId: ctx.project.id,
+    userId,
+    role,
+    access: membershipAccessChange(before, role),
+    expiresAt,
+    stub: ctx.stub,
+  });
   const audit = await recordMembershipEvents(c, ctx, [
     { kind, subjectId: userId, fromRole: before?.role ?? null, toRole: role },
   ]);
@@ -5893,8 +6072,8 @@ app.post('/api/shared/:id/members/bulk', async (c) => {
 
   const before = new Map<string, MemberRow | null>();
   for (const row of plan.accepted) before.set(row.userId, await membershipRow(c, ctx, row.userId));
-  // Every accepted row is a role change for somebody, and a bulk demotion must reach their tabs by
-  // the same route a single one does — see `pushAccessChange`. Applied after the insert below.
+  // Every accepted row is a role change for somebody. The insert below fires one transactional
+  // outbox event per row; the loop after it is only the immediate delivery attempt.
 
   const { ok, status } = await supaRest(c.env, ctx.user.jwt, '/project_members', {
     method: 'POST',
@@ -5920,7 +6099,14 @@ app.post('/api/shared/:id/members/bulk', async (c) => {
   let liveSockets = 0;
   if (ok) {
     for (const row of plan.accepted) {
-      const live = await pushAccessChange(ctx.stub, row.userId, row.role);
+      const live = await notifyLatestMembershipAccessChange(c.env, ctx.user.jwt, {
+        projectId: ctx.project.id,
+        userId: row.userId,
+        role: row.role,
+        access: membershipAccessChange(before.get(row.userId) ?? null, row.role),
+        expiresAt: row.expiresAt,
+        stub: ctx.stub,
+      });
       liveSockets += live?.matched ?? 0;
     }
   }
@@ -5972,15 +6158,35 @@ app.delete('/api/shared/:id/members/:userId', async (c) => {
 
   const at = new Date().toISOString();
   const before = await membershipRow(c, ctx, userId);
+  const grant = await readKvGrant(c.env, ctx.project.id, userId);
+  if (before === null && grant === null) return c.json({ error: 'not_a_member' }, 404);
+
+  let linkIntent: MembershipAccessEvent | null = null;
   // Revoked, not deleted: "this access ended" is a fact worth keeping, and a deleted row cannot
-  // tell an audit reader that someone ever had access at all.
-  const { ok } = await supaRest(
-    c.env,
-    ctx.user.jwt,
-    `/project_members?project_id=eq.${encodeURIComponent(ctx.project.id)}&user_id=eq.${encodeURIComponent(userId)}`,
-    { method: 'PATCH', body: JSON.stringify({ revoked_at: at }) },
-  );
-  if (!ok) return c.json({ error: 'revoke_failed' }, 502);
+  // tell an audit reader that someone ever had access at all. The row trigger writes the durable
+  // intent atomically. A KV-only guest has no trigger, so its RPC below becomes the authority BEFORE
+  // the KV mirror is touched.
+  if (before !== null) {
+    const { ok } = await supaRest(
+      c.env,
+      ctx.user.jwt,
+      `/project_members?project_id=eq.${encodeURIComponent(ctx.project.id)}&user_id=eq.${encodeURIComponent(userId)}`,
+      { method: 'PATCH', body: JSON.stringify({ revoked_at: at }) },
+    );
+    if (!ok) return c.json({ error: 'revoke_failed' }, 502);
+  } else {
+    const linkRole = asCollabRole(grant?.role);
+    if (linkRole === null) return c.json({ error: 'revoke_failed', detail: 'unreadable_link_role' }, 502);
+    const intent = await recordLinkMembershipAccessEvent(c.env, ctx.user.jwt, {
+      projectId: ctx.project.id,
+      userId,
+      role: linkRole,
+      access: 'removed',
+      expiresAt: grant?.expires_at ?? null,
+    });
+    if (!intent.ok || intent.event === null) return c.json({ error: 'revoke_failed', status: intent.status }, 502);
+    linkIntent = intent.event;
+  }
 
   //[[ BOTH STORES, OR THE REMOVAL IS A SUGGESTION.
   //
@@ -5994,10 +6200,20 @@ app.delete('/api/shared/:id/members/:userId', async (c) => {
   //   `removed: true` is the second half: the same link, presented again, must not undo an
   //   administrator's decision. Re-admission is an explicit act — an invitation, or the reactivate
   //   route below — not a second click on a URL the person still has in their inbox. ]]
-  const linkGrantRevoked = await revokeKvGrant(c.env, ctx.project.id, userId, { at, by: ctx.user.userId, removed: true });
+  const linkGrantRevoked =
+    grant === null ? false : await revokeKvGrant(c.env, ctx.project.id, userId, { at, by: ctx.user.userId, removed: true });
 
-  // The open tab is closed here, not left holding the capabilities it had at handshake.
-  const live = await pushAccessChange(ctx.stub, userId, null);
+  // The open tab is attempted immediately. Loss here is recovered from the per-consumer outbox.
+  const live = linkIntent
+    ? (await deliverMembershipAccessEvent(c.env, linkIntent)).counts
+    : await notifyLatestMembershipAccessChange(c.env, ctx.user.jwt, {
+        projectId: ctx.project.id,
+        userId,
+        role: null,
+        access: 'removed',
+        expiresAt: before?.expires_at ?? grant?.expires_at ?? null,
+        stub: ctx.stub,
+      });
 
   //[[ AND THE STANDING ACTORS THEY LEFT BEHIND.
   //
@@ -6010,14 +6226,14 @@ app.delete('/api/shared/:id/members/:userId', async (c) => {
   const automationsStopped = await stopAutomationsFor(c.env, userId, ctx.project.id);
 
   const audit = await recordMembershipEvents(c, ctx, [
-    { kind: 'removed', subjectId: userId, fromRole: before?.role ?? null, reason: c.req.query('reason') ?? null },
+    { kind: 'removed', subjectId: userId, fromRole: before?.role ?? asCollabRole(grant?.role), reason: c.req.query('reason') ?? null },
   ]);
   securityNotice(
     c,
     ctx.project.owner_id,
     `member:${ctx.project.id}:${userId}`,
     `Someone lost access to ${ctx.project.name}`,
-    `A ${before?.role ?? 'member'} was removed from the project.`,
+    `A ${before?.role ?? asCollabRole(grant?.role) ?? 'member'} was removed from the project.`,
   );
   return c.json({ ok: true, userId, revoked: true, linkGrantRevoked, automationsStopped, audited: audit.ok, liveSockets: live });
 });
@@ -6055,6 +6271,7 @@ app.post('/api/shared/:id/members/:userId/suspend', async (c) => {
   if (before === null && grant === null) return c.json({ error: 'not_a_member' }, 404);
 
   let ok = true;
+  let linkIntent: MembershipAccessEvent | null = null;
   if (before !== null) {
     const patched = await supaRest(
       c.env,
@@ -6066,6 +6283,18 @@ app.post('/api/shared/:id/members/:userId/suspend', async (c) => {
       },
     );
     ok = patched.ok;
+  } else {
+    const linkRole = asCollabRole(grant?.role);
+    if (linkRole === null) return c.json({ error: 'suspend_failed', detail: 'unreadable_link_role' }, 502);
+    const intent = await recordLinkMembershipAccessEvent(c.env, ctx.user.jwt, {
+      projectId: ctx.project.id,
+      userId,
+      role: linkRole,
+      access: 'suspended',
+      expiresAt: grant?.expires_at ?? null,
+    });
+    ok = intent.ok;
+    linkIntent = intent.event;
   }
   if (!ok) return c.json({ error: 'suspend_failed' }, 502);
   const linkGrantSuspended =
@@ -6077,11 +6306,20 @@ app.post('/api/shared/:id/members/:userId/suspend', async (c) => {
           suspended_by: ctx.user.userId,
         });
 
-  // A SUSPENDED GRANT IS DEAD WHILE IT LASTS, which is why this closes rather than demotes: there
-  // is no role a suspension leaves behind, and `classifyGrant` already refuses the row at the door.
-  const live = await pushAccessChange(ctx.stub, userId, null);
+  // A SUSPENDED GRANT IS DEAD WHILE IT LASTS, which is why this closes rather than demotes. The
+  // versioned outbox makes this first delivery attempt recoverable.
+  const live = linkIntent
+    ? (await deliverMembershipAccessEvent(c.env, linkIntent)).counts
+    : await notifyLatestMembershipAccessChange(c.env, ctx.user.jwt, {
+        projectId: ctx.project.id,
+        userId,
+        role: null,
+        access: 'suspended',
+        expiresAt: before?.expires_at ?? grant?.expires_at ?? null,
+        stub: ctx.stub,
+      });
   const audit = await recordMembershipEvents(c, ctx, [
-    { kind: 'suspended', subjectId: userId, fromRole: before?.role ?? null, reason: reason.length === 0 ? null : reason },
+    { kind: 'suspended', subjectId: userId, fromRole: before?.role ?? asCollabRole(grant?.role), reason: reason.length === 0 ? null : reason },
   ]);
   return c.json({ ok: true, userId, suspended: true, at, reason: reason.length === 0 ? null : reason, linkGrantSuspended, audited: audit.ok, liveSockets: live });
 });
@@ -6109,7 +6347,11 @@ app.post('/api/shared/:id/members/:userId/reactivate', async (c) => {
   const grant = await readKvGrant(c.env, ctx.project.id, userId);
   if (before === null && grant === null) return c.json({ error: 'not_a_member' }, 404);
 
+  const role = asCollabRole(before?.role ?? grant?.role);
+  if (role === null) return c.json({ error: 'reactivate_failed', detail: 'unreadable_role' }, 502);
+
   let ok = true;
+  let linkIntent: MembershipAccessEvent | null = null;
   if (before !== null) {
     const patched = await supaRest(
       c.env,
@@ -6124,14 +6366,38 @@ app.post('/api/shared/:id/members/:userId/reactivate', async (c) => {
   }
   if (!ok) return c.json({ error: 'reactivate_failed' }, 502);
   // …and the bar a removal put on the link grant is lifted here, by the same administrator
-  // capability that set it.
+  // capability that set it. A KV-only reactivation restores the mirror FIRST; the durable `clear`
+  // is committed second, so a crash between them leaves the previous deny state in force.
   const linkGrantRestored = grant === null ? false : await restoreKvGrant(c.env, ctx.project.id, userId);
+  if (before === null) {
+    if (!linkGrantRestored) return c.json({ error: 'reactivate_failed', detail: 'link_restore_failed' }, 502);
+    const intent = await recordLinkMembershipAccessEvent(c.env, ctx.user.jwt, {
+      projectId: ctx.project.id,
+      userId,
+      role,
+      access: 'clear',
+      expiresAt: grant?.expires_at ?? null,
+    });
+    if (!intent.ok || intent.event === null) return c.json({ error: 'reactivate_failed', status: intent.status }, 502);
+    linkIntent = intent.event;
+  }
 
-  const role = before?.role ?? grant?.role ?? null;
+  // A regrant is a signal too. SessionDO defers clearing an active run's fence until that run is
+  // idle, so this cannot accidentally resume the invalidated work that was already stopped.
+  const live = linkIntent
+    ? (await deliverMembershipAccessEvent(c.env, linkIntent)).counts
+    : await notifyLatestMembershipAccessChange(c.env, ctx.user.jwt, {
+        projectId: ctx.project.id,
+        userId,
+        role,
+        access: 'clear',
+        expiresAt: before?.expires_at ?? grant?.expires_at ?? null,
+        stub: ctx.stub,
+      });
   const audit = await recordMembershipEvents(c, ctx, [
     { kind: 'reactivated', subjectId: userId, toRole: role, reason: typeof c.req.query('reason') === 'string' ? c.req.query('reason') : null },
   ]);
-  return c.json({ ok: true, userId, reactivated: true, role, linkGrantRestored, audited: audit.ok });
+  return c.json({ ok: true, userId, reactivated: true, role, linkGrantRestored, audited: audit.ok, liveSockets: live });
 });
 
 /**
@@ -6799,7 +7065,40 @@ app.notFound(async (c) => {
  * when the handler resolves is a sweep that gets cancelled halfway, and it would be cancelled at a
  * different halfway point every night.
  */
-async function runScheduled(env: Env): Promise<void> {
+const MEMBERSHIP_OUTBOX_CRON = '* * * * *';
+const RETENTION_CRON = '0 3 * * *';
+
+async function runScheduled(env: Env, cron: string | null): Promise<void> {
+  if (cron === MEMBERSHIP_OUTBOX_CRON) {
+    const delivery = await drainMembershipAccessOutbox(env);
+    // Zero-work minutes stay out of the analytics sink; Cloudflare already records the invocation.
+    // A claimed row, and especially an unacknowledged one, is the fact an operator needs here.
+    if (delivery.claimed > 0) {
+      recordEvent({
+        kind: 'audit',
+        action: 'membership_access_delivery',
+        actorKind: 'system',
+        allowed: delivery.failed === 0,
+        subject: `claimed=${delivery.claimed} accepted=${delivery.accepted} acknowledged=${delivery.acknowledged} failed=${delivery.failed}`,
+      });
+    }
+    for (const failure of delivery.failures) {
+      recordEvent({
+        kind: 'error',
+        scope: `membership-access:${failure.projectId}:${failure.userId}:${failure.version}`,
+        errorKind: 'outbox_delivery_failed',
+        message: failure.error,
+        fatal: false,
+        actorId: null,
+      });
+    }
+    if (delivery.claimed > 0) await flushEvents(env);
+    return;
+  }
+
+  // This handler has two configured schedules. Unknown/manual scheduled events retain the old
+  // retention behavior rather than silently doing nothing; the configured minute cron is the only
+  // value that selects outbox delivery.
   const report = await runRetentionSweeps(env);
   // ONE AUDIT LINE PER NIGHT, carrying the counts. The point is not the tidy log: a night the cron
   // did not fire looks identical to a night with nothing to delete unless the run itself is
@@ -6838,13 +7137,13 @@ async function runScheduled(env: Env): Promise<void> {
  * applying. So the scheduled handler reports before it re-throws, and it re-throws so Cloudflare
  * still records the invocation as failed.
  */
-async function reportedScheduled(env: Env): Promise<void> {
+async function reportedScheduled(env: Env, cron: string | null): Promise<void> {
   try {
-    await runScheduled(env);
+    await runScheduled(env, cron);
   } catch (e) {
     const report = reportToSentry(env, e, {
       kind: 'scheduled',
-      route: 'cron/retention-sweep',
+      route: cron === MEMBERSHIP_OUTBOX_CRON ? 'cron/membership-access-outbox' : 'cron/retention-sweep',
       method: 'CRON',
       status: null,
     });
@@ -6857,5 +7156,6 @@ async function reportedScheduled(env: Env): Promise<void> {
 }
 
 export default Object.assign(app, {
-  scheduled: (_event: unknown, env: Env, _ctx: unknown) => reportedScheduled(env),
+  scheduled: (event: { cron?: unknown } | null, env: Env, _ctx: unknown) =>
+    reportedScheduled(env, typeof event?.cron === 'string' ? event.cron : RETENTION_CRON),
 });

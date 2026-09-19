@@ -24,6 +24,7 @@ import { EmptyState } from '../components/empty-state';
 import { useCommands } from '../lib/commands';
 import { useProvideNewProject } from '../lib/shell';
 import { SHORTCUTS, shortcutLabel } from '../lib/shortcuts';
+import { filterProjects } from '../lib/project-search';
 
 /**
  * The project list for one scope.
@@ -582,6 +583,7 @@ export function DashboardPage() {
   // remembered filter greets the user with a dashboard that is missing most of their projects for
   // a reason they set days ago and have no memory of.
   const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
   const [tagging, setTagging] = useState<ProjectRow | null>(null);
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -598,6 +600,7 @@ export function DashboardPage() {
   // Counted separately and always, so the Archived tab can show how many are in there without
   // switching to it — a tab that might be empty is a tab nobody clicks.
   const archived = useQuery({ queryKey: ['projects-archived'], queryFn: () => fetchProjects('archived') });
+  const visibleProjects = filterProjects(projects.data ?? [], search);
 
   //[[ THE CHIP ROW IS BUILT FROM ITS OWN, UNFILTERED QUERY.
   //
@@ -806,6 +809,17 @@ export function DashboardPage() {
         </div>
       )}
 
+      {((projects.data?.length ?? 0) > 0 || search.length > 0) && (
+        <div className="project-search">
+          <input type="search" aria-label="Search projects" placeholder="Search this list…"
+            value={search} maxLength={120} onChange={event => setSearch(event.target.value)} />
+          {search.length > 0 && <button type="button" className="btn btn-quiet" onClick={() => setSearch('')}>Clear search</button>}
+          {search.trim() && projects.isSuccess && (
+            <span role="status">{visibleProjects.length} of {projects.data.length} loaded projects</span>
+          )}
+        </div>
+      )}
+
       {projects.isPending && (
         <div className="card-grid" aria-busy="true" aria-label="Loading projects">
           {[0, 1, 2].map((i) => (
@@ -863,9 +877,13 @@ export function DashboardPage() {
         />
       )}
 
-      {projects.isSuccess && projects.data.length > 0 && (
+      {projects.isSuccess && projects.data.length > 0 && visibleProjects.length === 0 && (
+        <p className="page-note">No projects match “{search.trim()}” in this list. Clear the search or change scope.</p>
+      )}
+
+      {projects.isSuccess && visibleProjects.length > 0 && (
         <div className="card-grid">
-          {projects.data.map((p) => (
+          {visibleProjects.map((p) => (
             <Link key={p.id} to={`/projects/${p.id}`} className="project-card">
               <div className="project-card-top">
                 {/* The pin is drawn on the card, not only in the menu. Without it the top card is
@@ -896,13 +914,13 @@ export function DashboardPage() {
                   ? truncate(p.memory_summary, 150)
                   : p.description
                     ? truncate(p.description, 150)
-                    : 'Nothing built yet — open it and start describing.'}
+                    : 'Open this conversation to continue.'}
               </p>
               <div className="project-card-meta">
                 {p.place_name ? (
                   <span className="pill pill-quiet">{p.place_name}</span>
                 ) : (
-                  <span className="pill pill-quiet">Not linked</span>
+                  <span className="pill pill-quiet">No saved place name</span>
                 )}
                 {/* Drawn as text, not as buttons: the whole card is a link to the project, and a
                     control inside a link either swallows the navigation or fires alongside it.
@@ -923,8 +941,9 @@ export function DashboardPage() {
         <footer className="page-foot">
           <span className="eyebrow">Getting Apple into Studio</span>
           <p>
-            Apple builds through a Studio plugin. Install it once, open a project, and use{' '}
-            <strong>Connect</strong> to pair the two.
+            {STUDIO_PLUGIN_STORE_LIVE
+              ? <>Install the Studio plugin, then use <strong>Connect</strong> to pair your place.</>
+              : 'Public Studio installation is unavailable. You can use chat now; building in Studio requires an existing plugin connection.'}
           </p>
           <div className="page-foot-links">
             {/* Destination comes from @golem/shared and is the store page only
@@ -936,7 +955,7 @@ export function DashboardPage() {
               target={STUDIO_PLUGIN_STORE_LIVE ? '_blank' : undefined}
               rel={STUDIO_PLUGIN_STORE_LIVE ? 'noopener noreferrer' : undefined}
             >
-              Install Apple for Studio{' '}
+              {STUDIO_PLUGIN_STORE_LIVE ? 'Install Apple for Studio' : 'Studio installation status'}{' '}
               {STUDIO_PLUGIN_STORE_LIVE && <span aria-hidden="true">↗</span>}
             </a>
             <a href="/docs" target="_blank" rel="noopener noreferrer">

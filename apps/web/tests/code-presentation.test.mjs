@@ -34,7 +34,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const WEB = join(HERE, '..');
 const BLOCK = readFileSync(join(WEB, 'src', 'components', 'ws', 'code-block.tsx'), 'utf8');
 const MARKDOWN = readFileSync(join(WEB, 'src', 'lib', 'markdown.tsx'), 'utf8');
-const CSS = readFileSync(join(WEB, 'src', 'styles', 'workspace.css'), 'utf8');
+const CSS = readFileSync(join(WEB, 'src', 'design', 'system.css'), 'utf8');
 
 const joined = (src, lang) => tokenize(src, lang).map((t) => t.text).join('');
 const kinds = (src, lang) => tokenize(src, lang).map((t) => t.kind);

@@ -121,7 +121,15 @@ export function framesForRun(frames: readonly StudioFrame[], run: PlaytestRun | 
 function statusLabel(run: PlaytestRun, freshness: FrameFreshness, frameAgeMs: number | undefined): string {
   if (run.phase === 'failed') return 'Playtest failed';
   if (run.phase === 'finished') {
-    return run.framesDelivered > 0 ? 'Playtest finished — last frame captured' : 'Playtest finished — no frames captured';
+    const evidence = freshness === 'none'
+      ? (run.framesDelivered > 0 ? 'frame unavailable' : 'no frames captured')
+      : 'last diagnostic frame';
+    const issues = run.consoleErrors > 0
+      ? `${run.consoleErrors} console error${run.consoleErrors === 1 ? '' : 's'}`
+      : run.consoleWarnings > 0
+        ? `${run.consoleWarnings} console warning${run.consoleWarnings === 1 ? '' : 's'}`
+        : '';
+    return `Playtest finished — ${issues ? `${issues} · ` : ''}${evidence}`;
   }
   if (run.phase === 'preparing') return 'Preparing — run mode has not started';
   if (run.phase === 'stopping') return 'Stopping run mode';
@@ -190,7 +198,7 @@ export function playtestView(
     freshness,
     frameAgeMs,
     elapsedMs: Math.max(0, end - run.startedAt),
-    action: run.action,
+    action: run.phase === 'finished' ? statusLabel(run, freshness, frameAgeMs) : run.action,
     live: run.phase === 'running',
     label: statusLabel(run, freshness, frameAgeMs),
     // Anything not currently true is visually demoted. A finished playtest's

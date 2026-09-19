@@ -116,7 +116,7 @@ export interface Prefs {
 }
 
 export const DEFAULT_PREFS: Readonly<Prefs> = Object.freeze({
-  appearance: 'system',
+  appearance: 'dark',
   motion: 'system',
   region: 'system',
   hourCycle: 'system',
@@ -227,6 +227,47 @@ export const PREF_LABELS: Readonly<Record<keyof Prefs, string>> = {
 export const PREFS_KEY = 'apple.prefs.v1';
 
 /**
+ * Interface sound belongs to the same device-level preference family as the
+ * settings blob, but is kept in its own key. The sound control lives on the
+ * run card rather than in Settings, and adding an invisible field to `Prefs`
+ * would make the Settings search promise a control it cannot render.
+ *
+ * The default is deliberately on: the browser still cannot make a sound
+ * until `interface-sound.ts` receives a user gesture and unlocks its audio
+ * context. This records the user's choice without treating an autoplay
+ * restriction as if the preference were muted.
+ */
+export const SOUND_PREF_KEY = 'apple.interface-sound.v1';
+export const DEFAULT_SOUND_ENABLED = true;
+
+export function isSoundEnabled(value: unknown): value is boolean {
+  return typeof value === 'boolean';
+}
+
+/** Read the card's sound choice, failing open to the product default. */
+export function readSoundEnabled(): boolean {
+  if (typeof window === 'undefined') return DEFAULT_SOUND_ENABLED;
+  try {
+    const raw = window.localStorage.getItem(SOUND_PREF_KEY);
+    if (raw === null) return DEFAULT_SOUND_ENABLED;
+    const value: unknown = JSON.parse(raw);
+    return isSoundEnabled(value) ? value : DEFAULT_SOUND_ENABLED;
+  } catch {
+    /* private window, blocked storage, or a malformed value */
+    return DEFAULT_SOUND_ENABLED;
+  }
+}
+
+/** Persist only a real boolean; callers cannot accidentally store a truthy string. */
+export function writeSoundEnabled(enabled: boolean): void {
+  try {
+    window.localStorage.setItem(SOUND_PREF_KEY, JSON.stringify(enabled === true));
+  } catch {
+    /* storage unavailable — the choice still holds for this render */
+  }
+}
+
+/**
  * The key the theme used before this module existed.
  *
  * Read once, on the first load after this ships, so that someone who chose light six months ago
@@ -274,6 +315,7 @@ export function resetPrefs(): Prefs {
   try {
     window.localStorage.removeItem(PREFS_KEY);
     window.localStorage.removeItem(LEGACY_THEME_KEY);
+    window.localStorage.removeItem(SOUND_PREF_KEY);
   } catch {
     /* nothing to remove if we could not have written it */
   }

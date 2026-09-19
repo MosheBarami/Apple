@@ -144,6 +144,21 @@ async function library() {
   return d1;
 }
 
+test('an in-batch duplicate is counted as a reject and cannot duplicate the FTS mirror', async () => {
+  const d1 = await library();
+  try {
+    const result = await L.upsertAssets(d1, [CURATED, { ...CURATED }], { seed: true });
+    assert.equal(result.written, 1, 'one canonical id means one written record');
+    assert.equal(result.rejected.length, 1, 'the duplicate must be accounted for, not silently dropped');
+    assert.match(result.rejected[0].errors[0], /duplicate id/i);
+
+    const mirror = await d1.CORPUS.prepare(
+      'select count(*) as n from asset_library_fts where asset_id = ?',
+    ).bind(CURATED.id).first();
+    assert.equal(Number(mirror.n), 1, 'one canonical asset must have one searchable mirror row');
+  } finally { d1.close(); }
+});
+
 test('the curated row comes back FIRST, above the scrape that outranks it on nothing but a column', async () => {
   const d1 = await library();
   try {

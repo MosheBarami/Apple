@@ -880,6 +880,7 @@ test('A MEMBERSHIP CHANGE IS PUSHED INTO THE ROOM, not left for the next request
   assert.ok(removal, 'a removal must reach the session Durable Object');
   assert.equal(removal.body.userId, MEMBER_ID);
   assert.equal(removal.body.role, null, 'a removal has no lesser role to demote to');
+  assert.equal(removal.body.access, 'removed', 'the DO receives an explicit removal fence');
   assert.deepEqual(gone.json.liveSockets, { matched: 1, closed: 1, demoted: 0 }, 'and the route REPORTS what the push did');
 
   // A DEMOTION carries the new role, so the socket is rewritten rather than closed.
@@ -888,6 +889,7 @@ test('A MEMBERSHIP CHANGE IS PUSHED INTO THE ROOM, not left for the next request
   const demotion = doCalls.find((d) => d.path === '/collab/access-changed');
   assert.ok(demotion, 'a role change must reach the session Durable Object');
   assert.equal(demotion.body.role, 'viewer');
+  assert.equal(demotion.body.access, 'demoted', 'a build-capable role loss is an explicit fence');
 
   // A SUSPENSION closes, because a suspended grant is dead while it lasts.
   reset({ members: [{ user_id: MEMBER_ID, role: 'editor' }] });
@@ -895,6 +897,7 @@ test('A MEMBERSHIP CHANGE IS PUSHED INTO THE ROOM, not left for the next request
   const suspension = doCalls.find((d) => d.path === '/collab/access-changed');
   assert.ok(suspension, 'a suspension must reach the session Durable Object');
   assert.equal(suspension.body.role, null);
+  assert.equal(suspension.body.access, 'suspended', 'a suspension is an explicit fence');
 
   // A DURABLE OBJECT THAT CANNOT BE REACHED DOES NOT UNDO THE CHANGE — it has already landed in
   // both stores — and must not be reported as a push that happened.

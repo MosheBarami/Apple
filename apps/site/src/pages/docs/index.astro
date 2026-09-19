@@ -1,6 +1,7 @@
 ---
-import { PRODUCT_MODES_OFFERED, PRODUCT_MODE_INFO } from '@golem/shared';
+import { PRODUCT_MODELS, PRODUCT_MODEL_INFO } from '@golem/shared';
 import DocsLayout from '../../layouts/DocsLayout.astro';
+import { STUDIO_PLUGIN_STORE_LIVE } from '../../lib/studio-plugin';
 
 // The modes a person may choose, named from the product rather than from memory. This page said
 // "Plan, Agent and Super Agent" in its description and again in its own index of pages, and
@@ -8,7 +9,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 // manual's own modes page could no longer explain. A list of what exists is not a list of what is
 // offered, and a reader cannot tell the two apart from here.
 const modeNames = new Intl.ListFormat('en', { type: 'conjunction' }).format(
-  PRODUCT_MODES_OFFERED.map((m) => PRODUCT_MODE_INFO[m].name),
+  PRODUCT_MODELS.map((m) => PRODUCT_MODEL_INFO[m].name),
 );
 ---
 
@@ -19,19 +20,21 @@ const modeNames = new Intl.ListFormat('en', { type: 'conjunction' }).format(
 >
   <p>
     Apple turns plain-language descriptions into real changes inside Roblox Studio. These docs cover
-    the whole journey: installing the plugin, connecting it to a project, choosing a mode,
+    the whole journey: installing the plugin, connecting it to a project, choosing a model,
     understanding Credits, and knowing exactly what happens to your data.
   </p>
+
+  {!STUDIO_PLUGIN_STORE_LIVE && <div class="callout"><p><strong>Public Studio installation is unavailable.</strong> You can create an account and chat now. Building inside Studio requires an existing working plugin; new users should check <a href="/docs/plugin">installation status</a> before following the setup guides.</p></div>}
 
   <h2>Start here</h2>
   <ul>
     <li>
-      <strong><a href="/docs/getting-started">Getting started</a></strong> — signup to first build,
-      end to end.
+      <strong><a href="/docs/getting-started">Getting started</a></strong> — create your workspace
+      and check what is available.
     </li>
     <li>
-      <strong><a href="/docs/plugin">Install the plugin</a></strong> — get Apple for Studio from the
-      Creator Store.
+      <strong><a href="/docs/plugin">{STUDIO_PLUGIN_STORE_LIVE ? 'Install the plugin' : 'Plugin availability'}</a></strong> —
+      {STUDIO_PLUGIN_STORE_LIVE ? ' get Apple for Studio from the Creator Store.' : ' public installation is currently unavailable.'}
     </li>
     <li>
       <strong><a href="/docs/connect">Connect a project</a></strong> — link the plugin to one Apple
@@ -42,7 +45,7 @@ const modeNames = new Intl.ListFormat('en', { type: 'conjunction' }).format(
   <h2>Using Apple</h2>
   <ul>
     <li>
-      <strong><a href="/docs/modes">Modes</a></strong> — {modeNames}: what each is for,
+      <strong><a href="/docs/modes">Models</a></strong> — {modeNames}: what each is for,
       what each costs, and how to pick.
     </li>
     <li>
@@ -76,9 +79,7 @@ const modeNames = new Intl.ListFormat('en', { type: 'conjunction' }).format(
 
   <div class="callout">
     <p>
-      In a hurry? The one-sentence manual: install the
-      <a href="/docs/plugin">plugin</a> from the Creator Store, open your place in Studio,
-      <a href="/docs/connect">connect</a> it to a project with a code, and tell Apple what to build.
+      {STUDIO_PLUGIN_STORE_LIVE ? <>Install the <a href="/docs/plugin">plugin</a>, open your place in Studio, <a href="/docs/connect">connect</a> it to a project, and describe your idea.</> : <>Start with <a href="/app/signup">a free account</a> and a conversation. If you already have a working plugin, <a href="/docs/connect">connect your place</a>. Otherwise, wait for an approved public installation path.</>}
     </p>
   </div>
 

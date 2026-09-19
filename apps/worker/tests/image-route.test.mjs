@@ -95,10 +95,11 @@ test('every failure is the same 404, so the route is not an existence oracle', (
 /* ---------------------------------------------------------- what it returns --- */
 
 test('the bytes are served as a private, non-sniffable image', () => {
-  assert.match(route, /'Content-Type': 'image\/png'/);
+  assert.match(route, /'Content-Type': contentType/);
+  assert.match(route, /const contentType = imageMimeType\(bytes\)/);
   // PRIVATE: one user's generated content behind an authorised route. A shared cache holding it
   // would serve it to whoever asked next.
-  assert.match(route, /'Cache-Control': `private, max-age=\$\{remainingLife\(metadata\)\}`/);
+  assert.match(route, /'Cache-Control':[^\n]+private, no-store[^\n]+private, max-age=\$\{remainingLife\(metadata\)\}/);
   assert.equal(/Cache-Control['"`:\s]+['"`]public/.test(route), false, 'a public cache must never hold user pixels');
   assert.match(route, /'X-Content-Type-Options': 'nosniff'/);
 });
@@ -185,5 +186,7 @@ test('the tool still tells the model the pixels are not placed in the game', () 
   // been applied to a Decal. Nothing uploads to Roblox yet, and the description is the only thing
   // standing between the user and that sentence.
   const TOOLS = readFileSync(join(WORKER, 'src', 'tools.ts'), 'utf8');
-  assert.match(TOOLS, /never tell the user the image has been placed/);
+  const imageTool = TOOLS.slice(TOOLS.indexOf('  generate_image: {'), TOOLS.indexOf('  search_docs: {'))
+    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  assert.match(imageTool, /never tell the user the image has been placed|Nothing is uploaded to Roblox or applied to the user's place/);
 });

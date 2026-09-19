@@ -43,7 +43,8 @@ export interface ProviderModel {
    * Names of fields on THIS record that are conservative placeholders rather than numbers taken
    * from the provider's own documentation. Honesty has to be structural: a disabled provider whose
    * context window was guessed says so here instead of pretending to a precision it does not have.
-   * Empty for models we actually run.
+   * Empty when every field is documented. A production route may still carry an explicitly named
+   * conservative field when the provider does not publish that limit.
    */
   unverifiedFields: readonly string[];
 }

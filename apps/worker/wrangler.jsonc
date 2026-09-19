@@ -30,6 +30,8 @@
     "SUPABASE_URL": "https://npqvyijsvzkuwddyhtpm.supabase.co",
     "SUPABASE_ANON_KEY": "sb_publishable_CZXQt2nYfaSnkYF5XoslzQ_LaIIn6wt",
     "ENVIRONMENT": "production",
+    "BILLING_WORKER_NAME": "golem",
+    "MEMBERSHIP_OUTBOX_CONSUMER": "golem",
     "AI_GATEWAY_ID": "golem",
     "BUILD_SHA": "616d84b"
   },
@@ -42,6 +44,8 @@
   //   03:00 UTC, once a day. It deletes whole ranges from D1, which is single-threaded, so it runs
   //   when almost nothing else does — see schema-once.ts for what happens to this database when
   //   bulk work and ordinary requests arrive together. ]]
-  "triggers": { "crons": ["0 3 * * *"] },
+  // Every minute drains a bounded membership-access batch. This Worker acknowledges only the
+  // `golem` delivery row; `apple` has a distinct SessionDO namespace and its own trigger.
+  "triggers": { "crons": ["* * * * *", "0 3 * * *"] },
   "observability": { "enabled": true }
 }

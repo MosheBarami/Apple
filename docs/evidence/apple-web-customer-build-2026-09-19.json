@@ -1,0 +1,10 @@
+{
+  "startedAt": "2026-09-18T21:33:03.683Z",
+  "release": "6d7a5be-dirty.281a62eb4f58",
+  "browserMonitoringConfigured": true,
+  "sourceBefore": "281a62eb4f589992ae7e07a68f125bcfc818173344b443b6051e756b37db5891",
+  "sourceAfter": "281a62eb4f589992ae7e07a68f125bcfc818173344b443b6051e756b37db5891",
+  "processExitCode": 0,
+  "signal": null,
+  "deployed": false
+}

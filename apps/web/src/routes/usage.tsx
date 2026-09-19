@@ -10,7 +10,8 @@ import { OrderSummaryDialog } from '../components/order-summary';
 import { meterView, periodComparisonLine, spendByKind } from '../components/usage-meter-model';
 import { formatNumber } from '../lib/format';
 import { Failure } from '../components/failure';
-import { PRODUCT_MODES_OFFERED, PLAN_COPY, PRODUCT_MODE_INFO, formatMoney, isPlanId, type PlanId } from '@golem/shared';
+import { PRODUCT_MODELS, PRODUCT_MODEL_INFO, PLAN_COPY, formatMoney, isPlanId, type PlanId } from '@golem/shared';
+import { ModelMark } from '../components/ws/model-mark';
 import {
   billingChangeLine,
   billingDetailsSaveLine,
@@ -43,7 +44,7 @@ import { useToast } from '../components/toast';
 
 // The modes a person may CHOOSE. PRODUCT_MODES is every mode the system can produce —
 // pricing one nobody can start is how "Super Agent" survived being removed from the composer.
-const MODES = PRODUCT_MODES_OFFERED;
+const MODELS = PRODUCT_MODELS;
 
 /**
  * The ring shows the ALLOWANCE, and credits are reported beside it — never added into the arc.
@@ -680,7 +681,7 @@ export function UsagePage() {
                 user can actually spend. */}
             {view.credits > 0 && (
               <p className="credits-credits">
-                <strong>{formatNumber(view.credits)}</strong> purchased credits, which do not expire
+                <strong>{formatNumber(view.credits)}</strong> extra credits (purchased or granted), which do not expire
                 <span className="muted"> — spent only once the allowance is gone</span>
               </p>
             )}
@@ -691,12 +692,11 @@ export function UsagePage() {
             {comparison && <p className="credits-compare">{comparison}</p>}
             <p className="muted">{view.resetsIn ?? 'Resets in a moment'}</p>
             <ul className="mode-cost-list">
-              {MODES.map((m) => (
+              {MODELS.map((m) => (
                 <li key={m} className="mode-cost">
-                  <span className={`mode-dot mode-dot-${m}`} aria-hidden="true" />
-                  <span className="mode-cost-name">{PRODUCT_MODE_INFO[m].name}</span>
-                  <span className="mode-cost-blurb">{PRODUCT_MODE_INFO[m].blurb}</span>
-                  <span className="mode-cost-value">{PRODUCT_MODE_INFO[m].typicalCredits}</span>
+                  <ModelMark variant={m === 'apple' ? 'apple' : 'max'} />
+                  <span className="mode-cost-name">{m === 'apple-max' ? <>Apple <span className="apple-max-name">MAX</span></> : PRODUCT_MODEL_INFO[m].name}: </span>
+                  <span className="mode-cost-blurb">{m === 'apple' ? 'Limited daily use on the free tier.' : 'Available with a paid subscription.'}</span>
                 </li>
               ))}
             </ul>
@@ -783,6 +783,7 @@ export function UsagePage() {
 
           <PlanLadder
             current={currentPlan}
+            purchasable={billing.data?.purchasable}
             busyPlan={busyPlan}
             // What this deployment actually charges in, from the server rather than assumed by the
             // page. Undefined while the config is in flight, which falls back to the declared code.
@@ -812,7 +813,7 @@ export function UsagePage() {
                     else if (canBuy) setPendingChange(plan);
                     // Moving down to Free is a cancellation, not a priced swap — there is no
                     // upgrade invoice to preview, and the portal IS the cancellation flow.
-                    else portal.mutate();
+                    else if (plan === 'free') portal.mutate();
                   }
                 : undefined
             }

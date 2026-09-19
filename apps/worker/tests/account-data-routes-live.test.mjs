@@ -121,6 +121,9 @@ function seedD1() {
   db.raw.exec(`create table if not exists user_credentials(user_id text not null, provider text not null, sealed text not null, roblox_creator_id text not null, creator_type text not null, scopes text not null, fingerprint text not null, hint text not null, created_at text not null, last_used_at text, expires_at text, primary key(user_id, provider))`);
   db.raw.exec(`create table if not exists creator_write_log(id integer primary key autoincrement, user_id text not null, at text not null, action text not null, roblox_creator_id text not null, creator_type text not null, target text, ok integer not null, http_status integer, request text, response text)`);
   db.raw.exec(`create table if not exists project_asset_use(project_id text not null, asset_id text not null, first_used_at text not null, last_used_at text not null, uses integer not null default 1, via_live_api integer not null default 0, context text, primary key(project_id, asset_id))`);
+  db.raw.exec('CREATE TABLE generated_images(project_id TEXT NOT NULL, image_id TEXT NOT NULL, base64 TEXT NOT NULL, stored_bytes INTEGER NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY(project_id,image_id))');
+  x('INSERT INTO generated_images VALUES (?, ?, ?, ?, ?)', PROJECT, 'image-a', 'pixels', 6, 1);
+  x('INSERT INTO generated_images VALUES (?, ?, ?, ?, ?)', BOBS_PROJECT, 'image-b', 'pixels-b', 8, 1);
 
   x(`insert into api_keys values (?,?,?,?,?,?,?,?,?,?,?)`, 'k1', ALICE, 'live', 'ci', 'HASH-OF-THE-KEY', '[]', '[]', 1, null, null, null);
   x(`insert into api_keys values (?,?,?,?,?,?,?,?,?,?,?)`, 'k2', BOB, 'live', 'bobs', 'BOB-HASH', '[]', '[]', 1, null, null, null);
@@ -367,6 +370,9 @@ test('the account deletion erases every store the worker can reach', async () =>
   assert.equal(countRows(DB.raw, `select count(*) from user_credentials where user_id = ?`, ALICE), 0);
   assert.equal(countRows(DB.raw, `select count(*) from creator_write_log where user_id = ?`, ALICE), 0);
   assert.equal(countRows(DB.raw, `select count(*) from project_asset_use where project_id = ?`, PROJECT), 0);
+  assert.equal(countRows(DB.raw, 'SELECT COUNT(*) FROM generated_images WHERE project_id = ?', PROJECT), 0);
+  assert.equal(countRows(DB.raw, 'SELECT COUNT(*) FROM generated_images WHERE project_id = ?', BOBS_PROJECT), 1);
+  assert.equal(countRows(DB.raw, 'SELECT COUNT(*) FROM generated_image_tombstones WHERE project_id = ?', PROJECT), 1);
 
   // KV: every prefix of every owned project, paging past the first page.
   for (const p of ['ws', 'wsv', 'wst']) {
@@ -440,6 +446,9 @@ test('deleting a project fans out past the Durable Object it used to stop at', a
   const body = await res.json();
 
   assert.deepEqual(PURGED, [PROJECT], 'the conversation object must still be purged');
+  assert.equal(countRows(DB.raw, 'SELECT COUNT(*) FROM generated_images WHERE project_id = ?', PROJECT), 0);
+  assert.equal(countRows(DB.raw, 'SELECT COUNT(*) FROM generated_images WHERE project_id = ?', BOBS_PROJECT), 1);
+  assert.equal(countRows(DB.raw, 'SELECT COUNT(*) FROM generated_image_tombstones WHERE project_id = ?', PROJECT), 1);
   assert.equal(countRows(DB.raw, `select count(*) from memory_entries where scope = 'project' and scope_id = ?`, PROJECT), 0);
   assert.equal(countRows(DB.raw, `select count(*) from memory_audit where scope_id = ?`, PROJECT), 0);
   assert.equal(countRows(DB.raw, `select count(*) from notifications where project_id = ?`, PROJECT), 0);

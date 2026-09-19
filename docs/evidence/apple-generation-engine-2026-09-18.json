@@ -1,0 +1,98 @@
+{
+  "ok": true,
+  "limitations": [
+    "structural QC cannot establish genre-specific visual quality; inspect the redone model in Studio",
+    "timeout, disconnect and late-result cleanup are deterministic mock proofs here and are not forced against the live provider",
+    "this proof performs no upload, publication or persistent asset creation"
+  ],
+  "prompt": "a small low-poly wooden shipping crate with simple bevels, clean proportions, and no text",
+  "checks": [
+    {
+      "ok": true,
+      "observed": {
+        "capability": "DynamicGeneration",
+        "sessionScoped": true,
+        "method": "GenerateModelAsync",
+        "available": true
+      },
+      "name": "generation_capability_probe",
+      "durationMs": 0
+    },
+    {
+      "ok": true,
+      "observed": {
+        "qc": {
+          "largestPartAxisStuds": 1.916576623916626,
+          "visualJudgementRequired": true,
+          "visualVerdict": "unreviewed",
+          "verdictScope": "structural_only",
+          "trianglesMeasured": false,
+          "detached": true,
+          "verdict": "pass",
+          "descendants": 2,
+          "anchoredParts": 1,
+          "scripts": 0,
+          "boundsStuds": [
+            1.91652512550354,
+            1.1969122886657715,
+            1.6260170936584473
+          ],
+          "kind": "structural",
+          "triangleCap": 1500,
+          "parts": 1
+        },
+        "path": "game.Workspace.AppleGenerationProofDestination[\"Apple Generated Model 6565e464\"]",
+        "generationId": "fd643b98-81d2-4773-b6d9-818dceda800e",
+        "recording": {
+          "identifier": "recording_3802827324251608587",
+          "name": "Apple generate_model proof-generation-once",
+          "operation": "Enum.FinishRecordingOperation.Commit",
+          "committed": true,
+          "displayName": "Apple generate_model"
+        },
+        "sessionScoped": true,
+        "recordingFinishes": 1,
+        "recordingStarts": 1
+      },
+      "name": "one_generation_detached_qc_single_recording",
+      "durationMs": 32276
+    },
+    {
+      "ok": true,
+      "observed": {
+        "restoredByRedo": true,
+        "redoName": "Apple generate_model proof-generation-once",
+        "removedByUndo": true,
+        "undoName": "Apple generate_model proof-generation-once",
+        "redoneModel": "Apple Generated Model 6565e464"
+      },
+      "name": "generation_recording_undo_redo",
+      "durationMs": 32
+    },
+    {
+      "ok": true,
+      "observed": {
+        "instruction": "Inspect silhouette, proportions, topology artifacts, texture coherence, Roblox scale, and low-poly genre fit before accepting the live gate.",
+        "model": "Apple Generated Model 6565e464",
+        "destination": "game.Workspace.AppleGenerationProofDestination",
+        "meshParts": 1,
+        "parts": 1
+      },
+      "name": "visual_review_handoff",
+      "durationMs": 0
+    },
+    {
+      "ok": true,
+      "observed": {
+        "furtherCommandsRefused": true,
+        "destroyed": true
+      },
+      "name": "generation_command_teardown",
+      "durationMs": 0
+    }
+  ],
+  "providerCallRequested": true,
+  "placeId": 0,
+  "schema": 1,
+  "engineObserved": true
+}

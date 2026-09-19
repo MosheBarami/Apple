@@ -24,6 +24,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import ts from 'typescript';
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -120,13 +121,117 @@ test('replacing an existing file says what happens to the text being replaced', 
 const panel = readFileSync(join(WEB, 'src', 'components', 'ws', 'files-panel.tsx'), 'utf8');
 const api = readFileSync(join(WEB, 'src', 'lib', 'api.ts'), 'utf8');
 
+const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+
+function extractedRefresh(source) {
+  const tree = ts.createSourceFile('files-panel.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  let callback = null;
+  const visit = (node) => {
+    if (
+      ts.isVariableDeclaration(node)
+      && node.name.getText(tree) === 'refresh'
+      && node.initializer
+      && ts.isCallExpression(node.initializer)
+    ) {
+      const first = node.initializer.arguments[0];
+      if (first && (ts.isArrowFunction(first) || ts.isFunctionExpression(first)) && ts.isBlock(first.body)) {
+        callback = first;
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(tree);
+  assert.ok(callback, 'FilesPanel refresh callback was not found by the TypeScript AST');
+  const body = callback.body.getText(tree);
+  const run = new AsyncFunction('listing', 'file', 'history', 'open', 'selection', body.slice(1, -1));
+  return (listing, file, history, open) => run(listing, file, history, open, { current: { open, file, history } });
+}
+
+async function refreshCalls(refresh, open) {
+  const calls = [];
+  const query = (name) => ({ refetch: async () => { calls.push(name); } });
+  await refresh(query('listing'), query('file'), query('history'), open);
+  return calls;
+}
+
+function pickerHasPermission(source) {
+  const tree = ts.createSourceFile('files-panel.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const pickers = [];
+  function visit(node) {
+    if (ts.isJsxSelfClosingElement(node) && node.tagName.getText(tree) === 'input'
+      && node.attributes.properties.some(attr => ts.isJsxAttribute(attr) && attr.name.getText(tree) === 'type'
+        && attr.initializer && ts.isStringLiteral(attr.initializer) && attr.initializer.text === 'file')) {
+      let guarded = false;
+      for (let parent = node.parent; parent; parent = parent.parent) {
+        if (ts.isBinaryExpression(parent) && parent.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken
+          && parent.left.getText(tree) === 'canEdit') guarded = true;
+      }
+      pickers.push(guarded);
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(tree);
+  return pickers.length === 1 && pickers[0];
+}
+
 test('THE PICKER EXISTS, IS GATED ON PERMISSION, AND CALLS THE UPLOAD', () => {
   assert.match(panel, /type="file"/, 'there must be a real file input');
   assert.match(panel, /uploadCheck\(/, 'and the limits must be checked before it is read');
   assert.match(panel, /uploadProjectFile\(/, 'and something must actually send it');
   // canEdit hides Rename, Duplicate and Delete for a viewer; an upload control outside that guard
   // would put a viewer one click from a 403 they cannot do anything about.
-  assert.match(panel, /\{canEdit && \(\n\s*<p/, 'the control must sit behind the build permission');
+  // The permission, not the layout container's tag name, is the contract.
+  assert.equal(pickerHasPermission(panel), true, 'the file input must sit behind the build permission');
+  const guard = '{canEdit && (\n        <div className="gx-files__upload">';
+  assert.equal(panel.split(guard).length - 1, 1, 'falsification must remove the actual upload permission');
+  assert.equal(pickerHasPermission(panel.replace(guard, '{true && (\n        <div className="gx-files__upload">')), false,
+    'an unguarded file input must fail independently of its container');
+});
+
+test('ADD A FILE IS A NATIVE KEYBOARD BUTTON THAT FORWARDS ONCE TO THE HIDDEN PICKER', () => {
+  const start = panel.indexOf('{canEdit && (');
+  const end = panel.indexOf('Text only —', start);
+  assert.notEqual(start, -1, 'the editable upload block is missing');
+  assert.notEqual(end, -1, 'the upload block no longer reaches its limit copy');
+  const upload = panel.slice(start, end);
+
+  // A native button supplies Enter/Space activation. The old <label> around a display:none input
+  // had mouse activation but no keyboard control of its own.
+  assert.match(upload, /<button\b[\s\S]*?type="button"[\s\S]*?>[\s\S]*?Add a file[\s\S]*?<\/button>/,
+    'Add a file must remain a native button');
+  assert.match(upload, /<button\b[\s\S]*?disabled=\{busy\}/,
+    'the picker button must be disabled while an upload is already running');
+  assert.match(upload, /<input\b[\s\S]*?ref=\{picker\}[\s\S]*?type="file"[\s\S]*?disabled=\{busy\}/,
+    'the hidden picker must share the same busy gate');
+
+  const forwards = upload.match(/picker\.current\?\.click\(\)/g) ?? [];
+  assert.equal(forwards.length, 1, 'one activation must forward exactly once to the file input');
+});
+
+test('REFRESH DOES NOT MANUALLY FETCH path=null, BUT REFRESHES BOTH OPEN-FILE QUERIES WHEN SELECTED', async () => {
+  const refresh = extractedRefresh(panel);
+  assert.deepEqual(
+    await refreshCalls(refresh, null),
+    ['listing'],
+    'manual refetch bypasses enabled; open=null must not issue content/history requests',
+  );
+  assert.deepEqual(
+    await refreshCalls(refresh, 'GameState.luau'),
+    ['listing', 'file', 'history'],
+    'an actual open file must refresh its content and version history after a mutation',
+  );
+});
+
+test('THE REFRESH REGRESSION WOULD REJECT THE OLD UNCONDITIONAL CALLBACK', async () => {
+  const oldRefresh = new AsyncFunction(
+    'listing', 'file', 'history', 'open',
+    'await listing.refetch(); await file.refetch(); await history.refetch();',
+  );
+  await assert.rejects(
+    async () => assert.deepEqual(await refreshCalls(oldRefresh, null), ['listing']),
+    { name: 'AssertionError' },
+    'the guard must fail if file/history refetch becomes unconditional again',
+  );
 });
 
 test('the occupied path is asked about, not reported as a failure', () => {

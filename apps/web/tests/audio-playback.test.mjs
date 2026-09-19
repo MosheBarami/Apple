@@ -41,7 +41,7 @@ const STORE = await import(`file://${bundle(join(WEB, '..', 'worker', 'src', 'au
 
 const api = readFileSync(join(WEB, 'src', 'lib', 'api.ts'), 'utf8');
 const render = readFileSync(join(WEB, 'src', 'lib', 'generative-ui', 'render.tsx'), 'utf8');
-const styles = readFileSync(join(WEB, 'src', 'styles.css'), 'utf8');
+const styles = readFileSync(join(WEB, 'src', 'design/system.css'), 'utf8');
 
 const PROJECT = '11111111-1111-4111-8111-111111111111';
 const AUDIO = '3f2504e0-4f89-11d3-9a0c-0305e82c3301';

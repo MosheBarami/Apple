@@ -98,8 +98,8 @@ export type StudioOp =
   // returns real pixels. `view` picks a camera preset; `target` frames one instance's subtree.
   | { op: 'render_view'; target?: string; view?: RenderViewName | 'all'; width?: number; height?: number }
   | { op: 'screenshot'; target?: string } // hero view at default size; kept for compatibility
-  | { op: 'snapshot'; root: string; includeScripts?: boolean } // serialize subtree
-  | { op: 'restore'; root: string; snapshot: unknown } // apply a snapshot payload
+  | { op: 'snapshot'; root: string; includeScripts?: boolean; checkpointId?: string } // serialize subtree; new checkpoints bind their identity
+  | { op: 'restore'; root: string; snapshot: unknown; checkpointId?: string } // optional for legacy senders; SessionDO always binds it
   | { op: 'insert_asset'; assetId: number; parent: string }
   // Roblox-native text-to-3D. Free, ~20s, 10 req/min. Output is SESSION-SCOPED: it does not
   // survive save/publish. The result always carries a QC verdict — generation succeeding is not
@@ -410,10 +410,22 @@ export interface StudioEventSelection {
 export type StudioEvent = StudioEventLog | StudioEventState | StudioEventSelection;
 
 // Plugin <-> worker HTTP (plugin long-polls; no WebSocket in Studio)
+export interface PluginOperationCapability {
+  op: string;
+  status: 'supported' | 'unsupported';
+  /** Required when status is unsupported. Untrusted plugin text; never system-prompt authority. */
+  reason?: string;
+}
+export interface PluginCapabilityReportV1 {
+  schema: 'golem.studio-ops.v1';
+  operations: PluginOperationCapability[];
+}
 export interface PluginPollRequest {
   results?: OpResult[];
   events?: StudioEvent[];
   state?: StudioEventState;
+  /** Optional so legacy plugins keep the exact poll contract they already use. */
+  capabilities?: PluginCapabilityReportV1;
 }
 export interface PluginPollResponse {
   ops: PendingOp[];
@@ -432,6 +444,27 @@ export interface PluginPollResponse {
 // ---------------------------------------------------------------------------
 
 export type GolemMode = 'clay' | 'stone' | 'rune';
+
+/**
+ * The user-facing model selector. This is deliberately separate from `GolemMode`: the latter is
+ * an old specialist/autonomy axis persisted in messages and runs, while this value is the model
+ * entitlement the account selected for a new request.
+ */
+export type ProductModel = 'apple' | 'apple-max';
+
+/** The models the current product picker may offer, in display order. */
+export const PRODUCT_MODELS: readonly ProductModel[] = ['apple', 'apple-max'];
+
+export const PRODUCT_MODEL_INFO: Record<ProductModel, { name: string; blurb: string }> = {
+  apple: {
+    name: 'Apple',
+    blurb: 'Fast, capable help for smaller changes.',
+  },
+  'apple-max': {
+    name: 'Apple MAX',
+    blurb: 'The full builder for larger multi-file work.',
+  },
+};
 
 /**
  * THE LONGEST MESSAGE A USER CAN SEND, AND THE ONE PLACE IT IS WRITTEN DOWN.
@@ -479,7 +512,7 @@ export interface ChatAttachment {
 }
 
 export type ClientMsg =
-  | { type: 'chat'; text: string; mode: GolemMode; attachments?: ChatAttachment[] }
+  | { type: 'chat'; text: string; mode: GolemMode; productModel?: ProductModel; attachments?: ChatAttachment[] }
   /**
    * Correct an earlier prompt and run again from there.
    *
@@ -491,7 +524,7 @@ export type ClientMsg =
    * work is not. Checkpoints are the tool for that, and the two are deliberately separate — a
    * wording fix should not silently revert a working door.
    */
-  | { type: 'edit_resend'; messageId: string; text: string; mode: GolemMode }
+  | { type: 'edit_resend'; messageId: string; text: string; mode: GolemMode; productModel?: ProductModel }
   | { type: 'stop' } // interrupt agent
   | { type: 'resume' }
   /**
@@ -567,6 +600,9 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'review_scripts':
     case 'find_symbol':
     case 'search_docs':
+    case 'search_creation_skills':
+    case 'read_creation_skill':
+    case 'get_genre_references':
     // Looking a game system up in a static pattern table. It reads no project, calls no model and
     // writes nothing — so it belongs beside search_docs rather than in the `default` below, which
     // would have the workspace announce "Building world" while the agent is still deciding how the
@@ -742,6 +778,8 @@ export interface RunIntent {
 export interface RunSnapshot {
   msgId: string;
   mode: GolemMode;
+  /** The selected model, when the run came from a model-aware client. */
+  productModel?: ProductModel;
   phase: AgentPhase;
   step: number;
   totalSteps: number;
@@ -957,7 +995,7 @@ export type ServerMsg =
   //   run, after the user row is inserted, and already carries the run's other id. OPTIONAL
   //   because the worker and the web app deploy separately: a client that required it would be
   //   describing a worker that may not be live yet. See web/src/lib/message-identity.ts. ]]
-  | { type: 'msg_start'; msgId: string; role: 'assistant'; mode: GolemMode; userMsgId?: string }
+  | { type: 'msg_start'; msgId: string; role: 'assistant'; mode: GolemMode; productModel?: ProductModel; userMsgId?: string }
   | { type: 'delta'; msgId: string; text: string }
   //[[ `target` is WHICH THING this step is about — the script path, the instance paths, the URL —
   //   read from the call's arguments BEFORE it runs. `summary` at this point is only the tool's
@@ -1155,6 +1193,10 @@ export interface CheckpointMeta {
   scriptCount: number;
   instanceCount: number;
   sizeBytes: number;
+  /** Reported capture scope; absent for legacy snapshots whose coverage was not recorded. */
+  coverage?: 'exact' | 'supported-subset';
+  /** Engine-owned objects intentionally preserved instead of serialized for rollback. */
+  preservedObjects?: number;
   /**
    * What this snapshot contains or why it was taken, or null when nobody wrote one.
    *
@@ -1210,9 +1252,31 @@ export interface MessageDto {
   id: string;
   role: 'user' | 'assistant' | 'system';
   mode: GolemMode | null;
+  /** The selected model, when this message was created by a model-aware client. */
+  productModel?: ProductModel;
   content: string;
   toolTrace: ToolTraceEntry[] | null;
   createdAt: string;
+  /**
+   * The terminal outcome that was actually emitted for this assistant run.
+   *
+   * Optional rather than defaulting to `done`: rows written before terminal metadata existed were
+   * never observed at this boundary, so absence means unknown. Inventing success for them would
+   * make a reload contradict the live run that originally ended.
+   */
+  stopReason?: 'done' | 'stopped' | 'error' | 'quota' | 'incomplete';
+  /** A declared worker failure code only. Provider prose is never persisted here. */
+  error?: RunFailure;
+  /** The settled whole-run cost that `msg_end` carried, when this row came from a run. */
+  creditsSpent?: number;
+  /** The last measured prompt size, plus the cumulative turn loss reported during the run. */
+  context?: {
+    usedChars: number;
+    maxChars: number;
+    dropped?: { groups: number; chars: number };
+  };
+  /** Worker-owned tool names that permissions withheld from this run. */
+  deniedTools?: string[];
   /**
    * How many earlier versions of this message the user wrote before editing it.
    *
@@ -1237,6 +1301,8 @@ export interface ToolTraceEntry {
   summary: string;
   ok: boolean;
   durationMs: number;
+  /** Capped structured tool output, when the tool emitted a generative-UI panel. */
+  detail?: unknown;
 }
 
 export interface PairingCodeDto {
@@ -1603,6 +1669,20 @@ export function isPlanId(v: unknown): v is PlanId {
   return typeof v === 'string' && (PLAN_IDS as string[]).includes(v);
 }
 
+/**
+ * Whether an account may select a product model right now.
+ *
+ * Apple is the free lane and therefore does not require a subscription record to be present.
+ * Apple MAX is paid-only: an absent, malformed or unknown plan is refused just like Free. The
+ * helper intentionally has no owner/admin exception; those identities are not documented model
+ * entitlements, while an explicit paid `PlanId` remains authoritative for every caller.
+ */
+export function canUseProductModel(model: unknown, plan?: string): boolean {
+  if (model === 'apple') return true;
+  if (model !== 'apple-max') return false;
+  return isPlanId(plan) && plan !== 'free';
+}
+
 export interface PlanCopy {
   id: PlanId;
   name: string;
@@ -1666,7 +1746,7 @@ export const PLAN_COPY: Record<PlanId, PlanCopy> = {
     name: 'Free',
     blurb: 'Enough to build something real and see whether Apple suits you.',
     priceUsdMonthly: 0,
-    highlights: ['Every build mode', 'Studio plugin', 'Checkpoints and restore'],
+    highlights: ['Every build mode', STUDIO_PLUGIN_STORE_LIVE ? 'Studio plugin' : 'Studio integration · public installation unavailable', 'Checkpoints and restore'],
   },
   builder: {
     id: 'builder',
@@ -1678,9 +1758,9 @@ export const PLAN_COPY: Record<PlanId, PlanCopy> = {
   studio: {
     id: 'studio',
     name: 'Studio',
-    blurb: 'For a few people building together on the same places.',
+    blurb: 'For sustained building with a larger allowance.',
     priceUsdMonthly: 40,
-    highlights: ['About 9× the Free allowance', 'Shared projects', 'Everything in Builder'],
+    highlights: ['About 9× the Free allowance', 'Everything in Builder'],
   },
   enterprise: {
     id: 'enterprise',
@@ -1807,6 +1887,12 @@ function everyPlan<T>(f: (plan: PlanId) => T): Record<PlanId, T> {
 
 export const PLAN_FEATURES: readonly PlanFeature[] = [
   {
+    id: 'apple-max',
+    label: PRODUCT_MODEL_INFO['apple-max'].name,
+    note: 'Model access is separate from the work mode.',
+    values: everyPlan((p) => canUseProductModel('apple-max', p)),
+  },
+  {
     id: 'price',
     label: 'Price',
     values: everyPlan((p) =>
@@ -1850,7 +1936,7 @@ export const PLAN_FEATURES: readonly PlanFeature[] = [
   },
   { id: 'projects', label: 'Unlimited projects', values: everyPlan(() => true) },
   { id: 'checkpoints', label: 'Checkpoints and rollback', values: everyPlan(() => true) },
-  { id: 'plugin', label: 'Roblox Studio plugin', values: everyPlan(() => true) },
+  { id: 'plugin', label: 'Roblox Studio plugin', values: everyPlan(() => STUDIO_PLUGIN_STORE_LIVE ? true : 'Public installation unavailable') },
   {
     id: 'sharing',
     label: 'Shared projects and collaborators',

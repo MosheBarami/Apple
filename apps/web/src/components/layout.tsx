@@ -38,6 +38,8 @@ import { SupportDialog } from './support-dialog';
 import { projectIdFromPath } from './support-model';
 import { OfflineBanner } from './offline-banner';
 import { OnboardingTour } from './onboarding-tour';
+import { StudioAtmosphere } from './studio-atmosphere';
+import { ModelMark } from './ws/model-mark';
 import { restartTour, writeProgress } from '../lib/onboarding';
 
 /** How many conversations the rail lists before deferring to "View all chats". */
@@ -218,6 +220,32 @@ function Rail({ name, email, isAdmin, quota, quotaPending, quotaFailed, width, o
   //   a second, and only the last one is a decision. ]]
   const dragging = useRef(false);
   const railEl = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const restore = document.activeElement as HTMLElement | null;
+    const rail = railEl.current;
+    // A focus trap alone does not hide background controls from screen readers.
+    const background = document.getElementById('main-content');
+    const previousInert = background?.inert ?? false;
+    if (background) background.inert = true;
+    const focusable = () => Array.from(rail?.querySelectorAll<HTMLElement>('a[href],button:not(:disabled),input,select,[tabindex="0"]') ?? [])
+      .filter(node => node.getClientRects().length > 0);
+    focusable()[0]?.focus();
+    const trap = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab') return;
+      const nodes = focusable();
+      const first = nodes[0];
+      const last = nodes[nodes.length - 1];
+      if (!first || !last) return;
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    rail?.addEventListener('keydown', trap);
+    return () => {
+      rail?.removeEventListener('keydown', trap);
+      if (background) background.inert = previousInert;
+      restore?.focus?.();
+    };
+  }, []);
   const isRtl = () =>
     railEl.current ? window.getComputedStyle(railEl.current).direction === 'rtl' : false;
 
@@ -236,6 +264,8 @@ function Rail({ name, email, isAdmin, quota, quotaPending, quotaFailed, width, o
     <aside
       ref={railEl}
       className={`gx-rail${railOpen ? ' is-open' : ''}${railCollapsed ? ' is-collapsed' : ''}`}
+      role="dialog"
+      aria-modal="true"
       aria-label="Conversations"
     >
       <div className="gx-rail__head">
@@ -401,7 +431,7 @@ function Shell() {
   const { session, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const { railOpen, openRail, closeRail, railCollapsed, toggleRailCollapsed, newProject } = useShell();
+  const { railOpen, openRail, closeRail, railCollapsed, newProject } = useShell();
   const { theme, setTheme } = useTheme();
   const [showShortcuts, setShowShortcuts] = useState(false);
   // Remounting the tour is how "Show me around" restarts it: the component reads its progress on
@@ -474,7 +504,7 @@ function Shell() {
     { id: 'nav-usage', title: 'Usage', section: 'Navigate', keywords: ['credits', 'spend', 'billing'], run: () => navigate('/usage') },
     { id: 'nav-settings', title: 'Settings', section: 'Navigate', keywords: ['preferences', 'account', 'profile'], run: () => navigate('/settings') },
     ...(isAdmin ? [{ id: 'nav-admin', title: 'Admin', section: 'Navigate', keywords: ['ops'], run: () => navigate('/admin') }] : []),
-    { id: 'toggle-rail', title: railCollapsed ? 'Expand the sidebar' : 'Collapse the sidebar', section: 'View', keywords: ['nav', 'panel'], run: toggleRailCollapsed },
+    { id: 'toggle-rail', title: railOpen ? 'Close navigation' : 'Open navigation', section: 'View', keywords: ['nav', 'panel'], run: railOpen ? closeRail : openRail },
     { id: 'toggle-theme', title: theme === 'dark' ? 'Switch to light' : 'Switch to dark', section: 'View', keywords: ['theme', 'dark', 'light', 'appearance'], run: () => setTheme(theme === 'dark' ? 'light' : 'dark') },
     { id: 'shortcuts', title: 'Keyboard shortcuts', section: 'View', keywords: ['keys', 'hotkeys', 'bindings'], hint: shortcutLabel(SHORTCUTS.help), run: () => setShowShortcuts(true) },
     // A tour you get exactly one chance at is a tour people skip on their first nervous minute and
@@ -500,7 +530,7 @@ function Shell() {
       {/* Renders nothing unless something was actually observed — see lib/connectivity.ts. */}
       <OfflineBanner />
 
-      <Rail
+      {railOpen && <Rail
         name={name}
         email={email}
         isAdmin={isAdmin}
@@ -509,13 +539,14 @@ function Shell() {
         quotaFailed={me.isError}
         width={railWidth}
         onWidth={setWidth}
-      />
+      />}
 
       {railOpen && (
-        <button type="button" className="gx-scrim" onClick={closeRail} aria-label="Close navigation" />
+        <button type="button" className="gx-scrim" onClick={closeRail} tabIndex={-1} aria-hidden="true" />
       )}
 
       <main id="main-content" className="gx-main">
+        <StudioAtmosphere />
         {/* THE ONLY WAY BACK TO THE RAIL ON A PHONE, SO IT CANNOT BELONG TO ONE ROUTE.
             Below 861px the rail is off-canvas and only `.is-open` returns it. This button used
             to live in the workspace topbar, which meant the dashboard, usage, settings, roadmap
@@ -524,14 +555,22 @@ function Shell() {
             It is `position: fixed` rather than a row of its own: a shell-owned header bar would
             stack a second bar above the workspace topbar, and this way the workspace looks
             exactly as it did while every other route gains the control. */}
-        <button
+        <nav className="studio-dock" aria-label="Workspace navigation">
+          <Link to="/" className="studio-dock__brand" aria-label="Apple — projects"><ModelMark variant="apple" /></Link>
+          <button type="button" aria-label="New chat" title="New chat" onClick={() => { if (location.pathname !== '/') navigate('/'); newProject(); }}><Icon d={PATH.compose} /></button>
+          <button
           type="button"
-          className="gx-icon-btn gx-rail-toggle"
+          className="studio-navigation"
           onClick={openRail}
           aria-label="Open navigation"
+          aria-expanded={railOpen}
+          title="Conversations"
         >
           <Icon d={PATH.menu} />
         </button>
+          <Link to="/usage" className="studio-dock__link" aria-label="Usage and Credits" title="Usage and Credits"><Icon d={PATH.gauge} /></Link>
+          <Link to="/settings" className="studio-dock__account" aria-label="Settings" title="Settings"><Icon d={PATH.settings} /></Link>
+        </nav>
         {/* A ROUTE THAT THROWS IS A PANE THAT FAILED, NOT AN APPLICATION THAT DIED.
             The root boundary in app.tsx sits outside the router, so a crash anywhere took the
             rail, the palette and the toasts with it — removing the one control that would

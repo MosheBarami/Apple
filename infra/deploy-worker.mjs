@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Deploy the worker with BUILD_SHA stamped from the commit being deployed.
 //
-//   node infra/deploy-worker.mjs [apple|golem]
+//   node infra/deploy-worker.mjs [apple|golem] [--secrets-file <ignored JSON or .env file>]
 //
 // WHY THIS EXISTS. `BUILD_SHA` is a plain var in wrangler.*.jsonc, edited by hand before a deploy.
 // It went stale the first time anyone deployed without remembering — including me, an hour ago:
@@ -19,7 +19,8 @@
 // how the value went stale. So the stamp says so: `86c63b9-dirty` is a truthful answer and an
 // unqualified sha would not be.
 import { execFileSync } from 'node:child_process';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
+import { statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -31,6 +32,26 @@ if (target !== 'apple' && target !== 'golem') {
   process.exit(2);
 }
 
+// Upload required secrets with the reviewed code in the same version. Unknown flags must never
+// be silently ignored and turn a configuration request into an unintended deployment.
+const extras = process.argv.slice(3);
+let secretsFile = null;
+if (extras.length) {
+  if (extras.length !== 2 || extras[0] !== '--secrets-file' || !extras[1]) {
+    console.error('deploy-worker: use [apple|golem] [--secrets-file <ignored JSON or .env file>]');
+    process.exit(2);
+  }
+  secretsFile = resolve(ROOT, extras[1]);
+  try {
+    if (!statSync(secretsFile).isFile()) throw new Error('not a file');
+    // A release secret file must never become an accidental tracked artifact.
+    execFileSync('git', ['check-ignore', '-q', '--', secretsFile], { cwd: ROOT, stdio: 'pipe' });
+  } catch {
+    console.error('deploy-worker: the secrets file must exist and be gitignored');
+    process.exit(2);
+  }
+}
+
 const git = (...a) => execFileSync('git', a, { cwd: ROOT, encoding: 'utf8' }).trim();
 const sha = git('rev-parse', '--short', 'HEAD');
 const dirty = git('status', '--porcelain').length > 0;
@@ -39,7 +60,8 @@ const stamp = dirty ? `${sha}-dirty` : sha;
 console.log(`deploying ${target} as BUILD_SHA=${stamp}`);
 execFileSync(
   join(WORKER, 'node_modules', '.bin', 'wrangler'),
-  ['deploy', '--config', target === 'apple' ? 'wrangler.apple.jsonc' : 'wrangler.jsonc', '--var', `BUILD_SHA:${stamp}`],
+  ['deploy', '--config', target === 'apple' ? 'wrangler.apple.jsonc' : 'wrangler.jsonc', '--var', `BUILD_SHA:${stamp}`,
+    ...(secretsFile ? ['--secrets-file', secretsFile] : [])],
   { cwd: WORKER, stdio: 'inherit' },
 );
 

@@ -109,6 +109,10 @@ test('NO SURFACE GLUES A CURRENCY SYMBOL TO A PRICE ANY MORE', () => {
 
 test('every surface that prints a price formats it', () => {
   for (const [what, src] of Object.entries(sources)) {
+    if (what === 'the landing page' && !/priceUsdMonthly|priceUsd|formatMoney\(/.test(src)) {
+      assert.doesNotMatch(src, /[$€£]\s*\d/, 'a price-free landing must not quietly acquire hardcoded amounts');
+      continue;
+    }
     assert.match(src, /formatMoney\(/, `${what} must render prices through the shared formatter`);
     assert.match(src, /from '@golem\/shared'/, `${what} must take it from shared, not a local copy`);
   }

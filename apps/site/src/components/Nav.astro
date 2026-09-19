@@ -14,10 +14,8 @@ import AppleMark from './AppleMark.astro';
 //   On the landing itself a same-document fragment still scrolls without a navigation; from
 //   /pricing it loads the landing and lands on the section.
 const links = [
-  { href: '/#product', label: 'Product' },
-  { href: '/#library', label: 'Library' },
-  { href: '/#modes', label: 'Modes' },
-  { href: '/#how', label: 'How it works' },
+  { href: '/#inside', label: 'Product' },
+  { href: '/#models', label: 'Models' },
   { href: '/pricing', label: 'Pricing' },
   { href: '/docs', label: 'Docs' },
 ];
@@ -89,7 +87,7 @@ const isCurrent = (href: string) =>
             signed-in one nothing they cannot already do. Two doors, named for what is behind
             them. */}
         <a href="/app/login" class="btn btn-ghost nav__signin">Sign in</a>
-        <a href="/app/signup" class="btn btn-primary nav__cta" data-cursor-label="start building">Start building</a>
+        <a href="/app/signup" class="btn btn-primary nav__cta">Create an account</a>
       </div>
     </nav>
 
@@ -112,9 +110,7 @@ const isCurrent = (href: string) =>
     position: sticky;
     top: 0;
     z-index: 500;
-    background: color-mix(in srgb, var(--paper) 82%, transparent);
-    backdrop-filter: blur(16px) saturate(1.1);
-    -webkit-backdrop-filter: blur(16px) saturate(1.1);
+    background: var(--paper);
     border-bottom: 1px solid transparent;
     transition: border-color var(--dur) var(--ease-out),
       background-color var(--dur) var(--ease-out);
@@ -122,7 +118,7 @@ const isCurrent = (href: string) =>
 
   :global(html.scrolled) .nav {
     border-bottom-color: var(--line);
-    background: color-mix(in srgb, var(--paper) 92%, transparent);
+    background: var(--paper);
   }
 
   .nav__inner {

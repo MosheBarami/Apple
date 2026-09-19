@@ -1,6 +1,7 @@
 // Agent tool definitions + dispatcher. Tools either talk to Studio (via the session DO's
 // op queue) or run worker-side (docs search, memory, checkpoints).
 import type { Env } from './env';
+import { generatedImageCapacity, saveGeneratedImage } from './generated-images';
 import { rgbBase64ToDataUrl, decodeRgbBase64, encodePng, bytesToBase64 } from './png';
 import { retryHint } from './op-failure';
 import type { GatewayToolDef, StudioOp, OpResult, CheckpointMeta, RenderViewResult, StudioFrame, AssetSourcePolicy } from '@golem/shared';
@@ -26,6 +27,7 @@ import {
 } from './assets';
 import { searchAssetLibrary } from './asset-library';
 import { GENRE_KIT_IDS, getGenreKit, admitToKit } from './genre-kits';
+import { getGenreReferenceGuide, GENRE_REFERENCE_GUIDE_ASPECT_IDS } from './genre-reference-guide';
 import {
   applyEdits,
   checkSyntax,
@@ -77,7 +79,13 @@ import { admitProgram, isRefusal, capPrints, type SandboxJob } from './sandbox';
 import { PREFABS, PREFAB_IDS, prefabCatalogue } from './prefabs';
 import { MECHANIC_PATTERNS, MECHANIC_MENU, rankMechanics, answerFor } from './mechanics';
 import { MECHANIC_CITATIONS } from './mechanic-citations';
-import { runWebTool, webToolDef, type WebToolCtx, type WorkspaceStore } from './webtools';
+import {
+  CREATOR_SKILL_DOMAINS,
+  getGenreSkillProfile,
+  readCreatorSkill,
+  searchCreatorSkills,
+} from './creator-skills';
+import { checkWorkspacePath, kvWorkspace, runWebTool, webToolDef, WORKSPACE_MAX_BYTES, type WebToolCtx, type WorkspaceStore } from './webtools';
 import type { WebFetchLike } from './net-policy';
 import { chat } from './gateway';
 
@@ -224,6 +232,8 @@ const S = (props: Record<string, unknown>, required: string[] = []): unknown => 
 interface ToolImpl {
   def: GatewayToolDef;
   studio: boolean; // requires studio connection
+  /** Studio operations this tool may require. Every `studio: true` registry entry must name them. */
+  studioOps?: readonly StudioOp['op'][];
   run(ctx: AgentCtx, args: Record<string, unknown>): Promise<unknown>;
 }
 
@@ -1175,11 +1185,13 @@ export const TOOLS: Record<string, ToolImpl> = {
       }),
     },
     studio: true,
+    studioOps: ['get_tree'],
     run: (ctx, a) => op(ctx, { op: 'get_tree', root: a.root as string | undefined, maxDepth: (a.maxDepth as number) ?? 4, maxNodes: 800 }),
   },
   list_scripts: {
     def: { name: 'list_scripts', description: 'List all scripts in the project with paths, class and line counts.', parameters: S({ root: { type: 'string' } }) },
     studio: true,
+    studioOps: ['list_scripts'],
     run: (ctx, a) => op(ctx, { op: 'list_scripts', root: a.root as string | undefined }),
   },
   read_script: {
@@ -1190,13 +1202,14 @@ export const TOOLS: Record<string, ToolImpl> = {
       parameters: S({ path: { type: 'string' } }, ['path']),
     },
     studio: true,
+    studioOps: ['read_script'],
     run: (ctx, a) => op(ctx, { op: 'read_script', path: String(a.path ?? '') }),
   },
   edit_script: {
     def: {
       name: 'edit_script',
       description:
-        'Create or edit a script. Provide either `source` (full new content) or `edits` (find/replace list, exact match). To create a new script set `create_class` + `create_parent`. ' +
+        'Create or edit a script. Provide exactly one of `source` (full new content), `edits` (find/replace list, exact match), or `source_file` (an exact saved .lua/.luau workspace version). To create a new script set `create_class` + `create_parent`. ' +
         'The result is parsed BEFORE it is written: a body that does not compile is refused and nothing is changed. Pass `base_hash` from read_script to also refuse a write over a concurrent Studio edit.',
       parameters: S(
         {
@@ -1206,6 +1219,13 @@ export const TOOLS: Record<string, ToolImpl> = {
             type: 'array',
             items: S({ find: { type: 'string' }, replace: { type: 'string' }, all: { type: 'boolean' } }, ['find', 'replace']),
           },
+          source_file: S(
+            {
+              path: { type: 'string', description: 'Project workspace path ending in .lua or .luau.' },
+              version: { type: 'number', description: 'Exact saved workspace version to use. No latest-version fallback.' },
+            },
+            ['path', 'version'],
+          ),
           create_class: { type: 'string', enum: ['Script', 'LocalScript', 'ModuleScript'] },
           create_parent: { type: 'string', description: 'Parent path when creating' },
           base_hash: {
@@ -1217,12 +1237,49 @@ export const TOOLS: Record<string, ToolImpl> = {
       ),
     },
     studio: true,
+    studioOps: ['read_script', 'edit_script'],
     run: async (ctx, a) => {
       const path = String(a.path ?? '');
-      const hasSource = typeof a.source === 'string';
-      const edits = Array.isArray(a.edits) ? (a.edits as { find: string; replace: string; all?: boolean }[]) : undefined;
-      if (!hasSource && !(edits && edits.length)) {
-        return { error: 'pass either `source` (the full new body) or a non-empty `edits` list' };
+      const hasSourceArg = Object.prototype.hasOwnProperty.call(a, 'source');
+      const hasEditsArg = Object.prototype.hasOwnProperty.call(a, 'edits');
+      const hasSourceFileArg = Object.prototype.hasOwnProperty.call(a, 'source_file');
+      if (Number(hasSourceArg) + Number(hasEditsArg) + Number(hasSourceFileArg) !== 1) {
+        return { error: 'pass exactly one of `source`, `edits`, or `source_file`' };
+      }
+
+      let directSource: string | undefined;
+      let edits: { find: string; replace: string; all?: boolean }[] | undefined;
+      let sourceFile: { path: string; version: number; provenance: 'project_workspace_version' } | undefined;
+
+      if (hasSourceArg) {
+        if (typeof a.source !== 'string') return { error: '`source` must be a string' };
+        directSource = a.source;
+      } else if (hasEditsArg) {
+        if (!Array.isArray(a.edits) || a.edits.length === 0) return { error: '`edits` must be a non-empty list' };
+        edits = a.edits as { find: string; replace: string; all?: boolean }[];
+      } else {
+        if (!ctx.projectId) return { error: '`source_file` requires a project workspace' };
+        if (!a.source_file || typeof a.source_file !== 'object' || Array.isArray(a.source_file)) {
+          return { error: '`source_file` must contain `path` and `version`' };
+        }
+        const requested = a.source_file as { path?: unknown; version?: unknown };
+        if (typeof requested.path !== 'string') return { error: '`source_file.path` must be a project workspace path' };
+        const verdict = checkWorkspacePath(requested.path);
+        if (!verdict.ok) return { error: `source_file path refused: ${verdict.detail}` };
+        if (!/\.lua(?:u)?$/i.test(verdict.path)) return { error: '`source_file.path` must end in .lua or .luau' };
+        if (!Number.isInteger(requested.version) || Number(requested.version) < 1) {
+          return { error: '`source_file.version` must be a whole number from 1 upwards' };
+        }
+        const version = Number(requested.version);
+        const saved = await kvWorkspace(ctx.env.KV, ctx.projectId).readVersion(verdict.path, version);
+        if (!saved) {
+          return { error: `version ${version} of ${verdict.path} is not kept in this project workspace` };
+        }
+        if (saved.bytes > WORKSPACE_MAX_BYTES) {
+          return { error: `${verdict.path} version ${version} is larger than the ${WORKSPACE_MAX_BYTES}-byte workspace file limit` };
+        }
+        directSource = saved.content;
+        sourceFile = { path: verdict.path, version, provenance: 'project_workspace_version' };
       }
       const create =
         a.create_class && a.create_parent
@@ -1248,7 +1305,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       if (absent && !create) {
         return { error: `script not found: ${path} — pass create_class and create_parent to create it` };
       }
-      if (absent && !hasSource) {
+      if (absent && directSource === undefined) {
         return { error: `${path} does not exist yet, so there is nothing for \`edits\` to match. Pass \`source\` with the full body.` };
       }
 
@@ -1265,8 +1322,8 @@ export const TOOLS: Record<string, ToolImpl> = {
       }
 
       let after: string;
-      if (hasSource) {
-        after = String(a.source);
+      if (directSource !== undefined) {
+        after = directSource;
       } else {
         const applied = applyEdits(before ?? '', edits!);
         if (!applied.ok) {
@@ -1289,11 +1346,19 @@ export const TOOLS: Record<string, ToolImpl> = {
         };
       }
 
+      // A saved workspace file crosses a new trust boundary: persisted project text becomes live
+      // Luau without being copied through the model. Keep asset ingress behind the same narrow
+      // admission helper used by Studio-bound Luau before the plugin sees a mutation.
+      if (sourceFile) {
+        const ingress = refuseLuauIngress(after);
+        if (ingress) return ingress;
+      }
+
       const res = await op(ctx, {
         op: 'edit_script',
         path,
-        source: hasSource ? after : undefined,
-        edits: hasSource ? undefined : edits,
+        source: directSource !== undefined ? after : undefined,
+        edits: directSource !== undefined ? undefined : edits,
         create,
         baseHash,
       });
@@ -1323,6 +1388,7 @@ export const TOOLS: Record<string, ToolImpl> = {
         ...(res as Record<string, unknown>),
         added: stat.added,
         removed: stat.removed,
+        ...(sourceFile ? { sourceFile } : {}),
         ...(warnings.length ? { warnings: warnings.map((f) => `line ${f.line}: ${f.rule} — ${f.detail}`) } : {}),
       };
     },
@@ -1330,6 +1396,7 @@ export const TOOLS: Record<string, ToolImpl> = {
   search_scripts: {
     def: { name: 'search_scripts', description: 'Search all script sources for a string. Returns matches with paths and line numbers. For a NAME rather than a substring, find_symbol resolves scope and search_scripts does not.', parameters: S({ query: { type: 'string' } }, ['query']) },
     studio: true,
+    studioOps: ['search_scripts'],
     run: (ctx, a) => op(ctx, { op: 'search_scripts', query: String(a.query ?? ''), maxResults: 40 }),
   },
   review_scripts: {
@@ -1349,6 +1416,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       }),
     },
     studio: true,
+    studioOps: ['read_script', 'dump_scripts'],
     run: async (ctx, a) => {
       const includeWarnings = a.include_warnings !== false;
       const keep = (severity: string): boolean => severity === 'error' || includeWarnings;
@@ -1410,6 +1478,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       }),
     },
     studio: true,
+    studioOps: ['read_script', 'dump_scripts'],
     run: async (ctx, a) => {
       const path = typeof a.path === 'string' ? a.path.trim() : '';
       const line = Number(a.line);
@@ -1462,6 +1531,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       parameters: S({ path: { type: 'string', description: 'Script to format.' } }, ['path']),
     },
     studio: true,
+    studioOps: ['read_script', 'edit_script'],
     run: async (ctx, a) => {
       const path = String(a.path ?? '').trim();
       if (!path) return { error: 'pass `path`' };
@@ -1494,6 +1564,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       parameters: S({ items: { type: 'array', items: { type: 'object' } } }, ['items']),
     },
     studio: true,
+    studioOps: ['create_instances'],
     run: (ctx, a) => op(ctx, { op: 'create_instances', items: (a.items as never[]) ?? [] }),
   },
   /**
@@ -1520,6 +1591,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       parameters: S({ path: { type: 'string' }, props: { type: 'object' }, attributes: { type: 'object' } }, ['path']),
     },
     studio: true,
+    studioOps: ['get_instance', 'set_props'],
     run: async (ctx, a) => {
       const path = String(a.path ?? '');
       const props = (a.props ?? undefined) as Record<string, unknown> | undefined;
@@ -1551,6 +1623,7 @@ export const TOOLS: Record<string, ToolImpl> = {
   delete_instances: {
     def: { name: 'delete_instances', description: 'Delete instances by path.', parameters: S({ paths: { type: 'array', items: { type: 'string' } } }, ['paths']) },
     studio: true,
+    studioOps: ['delete_instances'],
     run: (ctx, a) => op(ctx, { op: 'delete_instances', paths: (a.paths as string[]) ?? [] }),
   },
   /**
@@ -1580,6 +1653,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       parameters: S({ path: { type: 'string', description: 'Full path, e.g. game.Workspace.Lobby.Floor' } }, ['path']),
     },
     studio: true,
+    studioOps: ['get_instance'],
     run: async (ctx, a) => {
       const path = String(a.path ?? '');
       if (!path) return { error: 'path is required' };
@@ -1629,6 +1703,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       parameters: S({}),
     },
     studio: true,
+    studioOps: ['get_selection'],
     run: async (ctx) => op(ctx, { op: 'get_selection' }),
   },
   /**
@@ -1645,6 +1720,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       parameters: S({ path: { type: 'string', description: 'Full path of the instance to frame.' } }, ['path']),
     },
     studio: true,
+    studioOps: ['camera_focus'],
     run: async (ctx, a) => {
       const path = String(a.path ?? '');
       if (!path) return { error: 'path is required' };
@@ -1673,6 +1749,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       ),
     },
     studio: true,
+    studioOps: ['select'],
     run: async (ctx, a) => {
       const paths = (Array.isArray(a.paths) ? a.paths : [])
         .filter((p): p is string => typeof p === 'string' && p.trim().length > 0)
@@ -1696,6 +1773,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       parameters: S({}),
     },
     studio: true,
+    studioOps: ['viewport_info'],
     run: async (ctx) => op(ctx, { op: 'viewport_info' }),
   },
   run_luau: {
@@ -1706,6 +1784,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       parameters: S({ code: { type: 'string' } }, ['code']),
     },
     studio: true,
+    studioOps: ['run_code'],
     run: async (ctx, a) => {
       // Admitted BEFORE the op is queued. By the time an asset reaches the place its scripts have
       // already had their chance to run, so there is no useful check on the far side of this.
@@ -1730,6 +1809,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       parameters: S({ seconds: { type: 'number', description: '2-15, default 5' } }),
     },
     studio: true,
+    studioOps: ['run_code', 'snapshot', 'run_mode', 'get_logs', 'restore'],
     run: async (ctx, a) => {
       const secs = Math.min(15, Math.max(2, Number(a.seconds) || 5));
 
@@ -1874,6 +1954,7 @@ export const TOOLS: Record<string, ToolImpl> = {
   get_output_logs: {
     def: { name: 'get_output_logs', description: 'Read recent Studio output/console logs (errors, warnings, prints).', parameters: S({}) },
     studio: true,
+    studioOps: ['get_logs'],
     run: (ctx) => op(ctx, { op: 'get_logs', maxEntries: 120 }),
   },
   render_view: {
@@ -1887,6 +1968,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       }),
     },
     studio: true,
+    studioOps: ['render_view'],
     run: async (ctx, a) => {
       const res = await renderViews(ctx, a.target ? String(a.target) : undefined, String(a.view ?? 'hero'));
       if ('error' in res) return res;
@@ -1925,6 +2007,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       }),
     },
     studio: true,
+    studioOps: ['render_view'],
     run: async (ctx, a) => {
       // Checked BEFORE the render, not after: without a project the pixels are unretrievable by
       // anyone, so stalling the user's Studio to rasterise five angles would spend their editor's
@@ -2057,6 +2140,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       ),
     },
     studio: true,
+    studioOps: ['run_code'],
     run: async (ctx, a) => {
       const mood = String(a.mood ?? '');
       if (!Object.prototype.hasOwnProperty.call(MOODS, mood)) {
@@ -2120,6 +2204,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       ),
     },
     studio: true,
+    studioOps: ['run_code'],
     run: async (ctx, a) => {
       const effect = String(a.effect ?? '');
       const path = String(a.path ?? '');
@@ -2165,6 +2250,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       parameters: S({}),
     },
     studio: true,
+    studioOps: ['run_code'],
     run: async (ctx, a) => {
       const raw = await op(ctx, { op: 'run_code', code: AUDIT_LUAU, timeoutMs: 15_000 }, 30_000);
       if (raw && typeof raw === 'object' && 'error' in (raw as Record<string, unknown>)) return raw;
@@ -2318,6 +2404,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       ),
     },
     studio: true,
+    studioOps: ['run_code'],
     run: async (ctx, a) => {
       const refusal = refuseSpecCases(a.cases);
       if (refusal) return { error: refusal };
@@ -2417,6 +2504,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       ),
     },
     studio: true,
+    studioOps: ['read_script', 'edit_script'],
     run: async (ctx, a) => {
       const id = String(a.module ?? '');
       const prefab = PREFABS[id];
@@ -2454,11 +2542,12 @@ export const TOOLS: Record<string, ToolImpl> = {
         };
       }
       const found = readError === null;
+      let currentSource: string | undefined;
       if (found) {
-        const current = String((existing as { source?: unknown }).source ?? '');
+        currentSource = String((existing as { source?: unknown }).source ?? '');
         // Identical is a no-op, not a refusal: re-asking for a module already installed should be
         // boring rather than an error the model has to reason about.
-        if (current === prefab.source) {
+        if (currentSource === prefab.source) {
           return {
             alreadyInstalled: prefab.moduleName,
             at: path,
@@ -2476,12 +2565,15 @@ export const TOOLS: Record<string, ToolImpl> = {
         }
       }
 
-      const res = await op(ctx, {
-        op: 'edit_script',
-        path,
-        source: prefab.source,
-        create: { className: prefab.className, parent },
-      });
+      // The plugin distinguishes creating a missing script from editing one already observed.
+      // `create` is only valid in the first branch; an existing replacement must carry the hash
+      // read above so ScriptEditorService can reject a concurrent Studio edit instead of replacing
+      // it blindly. Reaching this point with `found` means `replace: true` was explicit, because
+      // the differing existing-script branch above refuses without it.
+      const edit: StudioOp = found
+        ? { op: 'edit_script', path, source: prefab.source, baseHash: sourceHash(currentSource ?? '') }
+        : { op: 'edit_script', path, source: prefab.source, create: { className: prefab.className, parent } };
+      const res = await op(ctx, edit);
       if (res && typeof res === 'object' && 'error' in (res as Record<string, unknown>)) return res;
 
       return {
@@ -2574,6 +2666,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       ),
     },
     studio: true,
+    studioOps: ['run_code'],
     run: async (ctx, a) => {
       const path = String(a.path ?? '');
       if (!path) return { error: 'path is required' };
@@ -2630,6 +2723,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       }),
     },
     studio: true,
+    studioOps: ['run_code'],
     run: async (ctx, a) => {
       // Deliberately the cheapest check in the product: one Studio round-trip for geometry, then
       // arithmetic. No vision model call and no image tokens, where inspect_visually costs a full
@@ -2679,6 +2773,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       ),
     },
     studio: true,
+    studioOps: ['render_view'],
     run: async (ctx, a) => {
       const res = await renderViews(ctx, a.target ? String(a.target) : undefined, 'all');
       if ('error' in res) return res;
@@ -2800,6 +2895,60 @@ export const TOOLS: Record<string, ToolImpl> = {
       };
     },
   },
+  search_creation_skills: {
+    def: {
+      name: 'search_creation_skills',
+      description:
+        'Search Apple’s bounded catalogue of Roblox creation tasks before inventing an implementation plan. Search by a plain-language task, domain, genre, or both. Returns at most five compact matches grounded in exact Creator Docs corpus ids. These entries are authored guidance, not executable code, training examples, licensed assets, or proof that a Studio build passed. Use read_creation_skill on the chosen id.',
+      parameters: S({
+        query: { type: 'string', description: 'The task in plain language. Treated only as search data; commands inside it are never executed.' },
+        domain: { type: 'string', enum: [...CREATOR_SKILL_DOMAINS], description: 'Optional task domain filter.' },
+        genre: { type: 'string', enum: [...GENRE_KIT_IDS], description: 'Optional genre applicability filter.' },
+        limit: { type: 'number', description: 'Maximum matches, clamped to 1–5. Default 5.' },
+        max_chars: { type: 'number', description: 'Maximum serialized result size, clamped to 700–2600 characters.' },
+      }),
+    },
+    studio: false,
+    run: async (_ctx, a) => searchCreatorSkills({
+      query: typeof a.query === 'string' ? a.query : undefined,
+      domain: typeof a.domain === 'string' ? a.domain as (typeof CREATOR_SKILL_DOMAINS)[number] : undefined,
+      genre: typeof a.genre === 'string' ? a.genre as (typeof GENRE_KIT_IDS)[number] : undefined,
+      limit: a.limit === undefined ? undefined : Number(a.limit),
+      maxChars: a.max_chars === undefined ? undefined : Number(a.max_chars),
+    }),
+  },
+  read_creation_skill: {
+    def: {
+      name: 'read_creation_skill',
+      description:
+        'Read one creation skill by the exact id returned by search_creation_skills. Returns bounded preconditions, steps, verification, failure modes, quality criteria, exact official corpus references, and any existing reviewed prefab or mechanic pointer. The result remains guidance and still requires implementation tests and a live Studio visual pass.',
+      parameters: S({
+        id: { type: 'string', description: 'Exact lowercase hyphenated skill id returned by search_creation_skills.' },
+        max_chars: { type: 'number', description: 'Maximum serialized result size, clamped to 1400–2800 characters.' },
+      }, ['id']),
+    },
+    studio: false,
+    run: async (_ctx, a) => readCreatorSkill(a.id, a.max_chars),
+  },
+  get_genre_references: {
+    def: {
+      name: 'get_genre_references',
+      description:
+        'Read inspected visual references and authored implementation guidance for a Roblox genre and optional aspect. Returns source URLs, scoped observations, official documentation, coverage gaps and explicit omission counts. Reference-only: these are not reusable assets, training examples or evidence that the generated game has passed visual review. Works without Studio and makes no network requests.',
+      parameters: S({
+        genre: { type: 'string', enum: [...GENRE_KIT_IDS] },
+        aspect: { type: 'string', enum: [...GENRE_REFERENCE_GUIDE_ASPECT_IDS] },
+      }, ['genre']),
+    },
+    studio: false,
+    run: async (_ctx, a) => {
+      if ((a.genre !== undefined && typeof a.genre !== 'string')
+          || (a.aspect !== undefined && typeof a.aspect !== 'string')) {
+        return { error: 'genre and aspect must be canonical string identifiers' };
+      }
+      return getGenreReferenceGuide({ genre: a.genre, aspect: a.aspect, maxChars: 2700 });
+    },
+  },
   get_genre_kit: {
     def: {
       name: 'get_genre_kit',
@@ -2815,6 +2964,7 @@ export const TOOLS: Record<string, ToolImpl> = {
         // the second guess is no better informed than the first.
         return { error: `there is no "${String(a.genre)}" kit. The ten are: ${GENRE_KIT_IDS.join(', ')}.` };
       }
+      const skillProfile = getGenreSkillProfile(kit.id);
 
       // THE GATE RUNS ON THE WAY OUT, not only in the test. A pin that stopped being admissible —
       // because the licence table changed, not because this file did — must not reach a customer's
@@ -2839,6 +2989,20 @@ export const TOOLS: Record<string, ToolImpl> = {
       return {
         genre: kit.id,
         pitch: kit.pitch,
+        visualReferences: { tool: 'get_genre_references', genre: kit.id, use: 'reference_only' },
+        // Put the creation profile before the larger palette/library payload. runTool caps model
+        // context at 3,000 characters, and the task guidance must survive that cap even when a kit
+        // has a long curated asset description.
+        ...(skillProfile ? {
+          creationSkills: {
+            featuredSkillIds: skillProfile.skillIds.slice(0, 8),
+            qualityCriteria: skillProfile.qualityCriteria,
+            assetDirection: skillProfile.assetDirection,
+            guidanceStatus: skillProfile.guidanceStatus,
+            studioVisualPass: skillProfile.studioVisualPass,
+            readWith: 'read_creation_skill',
+          },
+        } : {}),
         palette: kit.palette,
         lighting: kit.lighting,
         buildTheseYourself: kit.procedural,
@@ -2855,7 +3019,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'search_asset_library',
       description:
-        "Search Apple's curated CC0 asset library. Every hit has a recorded licence that permits use — which is not the same as being safe, and each id is still resolved and security-gated by insert_asset like any other. Prefer this over the Creator Store for anything procedural geometry cannot do — foliage and characters especially. EVERY HIT CARRIES `availability`: \"insertable\" means assetId is a real Roblox id you can pass to insert_asset now; \"needs_import\" means the library holds this asset but its bytes have not been uploaded to Roblox yet, so assetId is null — say so plainly and build the thing another way for now, never invent an id for it. Results are ranked with the curated packs above the bulk Creator Store scrape, so the earlier hits are the better-made ones.",
+        "Search Apple's curated asset library. Every hit carries the licence recorded for that library row; inspect the returned provenance before use, and remember that a recorded licence is not the same as a safety verdict. Each numeric assetId is still resolved and security-gated by insert_asset like any other. Prefer this over the Creator Store for anything procedural geometry cannot do — foliage and characters especially. EVERY HIT CARRIES `libraryId`, the stable canonical `asset_library.id` (never a Roblox id), `assetId`, the numeric Roblox id or null until import, `insertable`, and `availability`: \"insertable\" means assetId is a real Roblox id you can pass to insert_asset now; \"needs_import\" means the library holds this asset but its bytes have not been uploaded to Roblox yet, so assetId is null — say so plainly and build the thing another way for now, never invent an id for it. Source, licence, attributionRequired, and status provenance also travel with every hit. Results are ranked with curated rows ahead of the bulk Creator Store scrape; ranking is relevance, not a quality or safety guarantee.",
       parameters: S(
         {
           query: { type: 'string' },
@@ -2920,19 +3084,24 @@ export const TOOLS: Record<string, ToolImpl> = {
         (ctx.discoveredAssetIds ??= new Set()).add(h.robloxAssetId);
         (ctx.libraryAssetIds ??= new Set()).add(h.robloxAssetId);
       }
-      // `availability` travels with every hit, because "we have nothing like that" and "we have
-      // exactly that, it is not imported yet" are different answers and the person deserves the
-      // second one. `assetId` is null on a needs_import row — that is the truth, and insert_asset
-      // would refuse an invented id anyway.
+      // The canonical library id and provenance travel with every hit, because "we have nothing
+      // like that" and "we have exactly that, it is not imported yet" are different answers and
+      // the person deserves the second one. `assetId` is null on a needs_import row — that is the
+      // truth, and insert_asset would refuse an invented id anyway.
       return hits.map((h) => ({
+        libraryId: h.id,
         assetId: h.robloxAssetId,
         name: h.name,
         kind: h.kind,
         triangles: h.triangles,
         boundsStuds: h.boundsStuds,
         tags: h.tags,
+        insertable: h.insertable,
         availability: h.availability,
         source: h.source,
+        licence: h.licence,
+        attributionRequired: h.attributionRequired,
+        status: h.status,
       }));
     },
   },
@@ -2977,6 +3146,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       parameters: S({ assetId: { type: 'number' }, parent: { type: 'string' } }, ['assetId']),
     },
     studio: true,
+    studioOps: ['insert_asset', 'get_tree', 'list_scripts', 'read_script', 'delete_instances'],
     run: async (ctx, a) => {
       const assetId = Number(a.assetId);
       if (!Number.isInteger(assetId) || assetId <= 0) return { error: `${String(a.assetId)} is not a valid asset id` };
@@ -3079,6 +3249,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       ),
     },
     studio: true,
+    studioOps: ['generate_model'],
     run: (ctx, a) =>
       op(
         ctx,
@@ -3101,20 +3272,21 @@ export const TOOLS: Record<string, ToolImpl> = {
       parameters: S({ path: { type: 'string' }, intent: { type: 'string' } }, ['path']),
     },
     studio: true,
+    studioOps: ['inspect_model'],
     run: (ctx, a) => op(ctx, { op: 'inspect_model', path: String(a.path ?? ''), intent: a.intent ? String(a.intent) : undefined }, 45_000),
   },
   generate_image: {
     def: {
       name: 'generate_image',
       description:
-        "Generate an original 2D image — UI icon, decal, tiling texture, thumbnail or concept study — art-directed to the Roblox simulator style (thick near-black outlines, saturated colour, chunky flat-shaded forms). Describe the SUBJECT only and set the structured fields; the style grammar is applied for you, so do not write 'roblox style' into the subject. Two things are refused rather than attempted: words baked into the image (put type in a TextLabel with a UIStroke instead — it is sharper and stays editable) and logos or brand marks (use the provider's own official asset). The result reports a deterministic flatness check: 'too_detailed' means the render came back realistic and should be regenerated or discarded. The image is SHOWN to the user in the workspace and is retrievable for an hour under `imageId`. There is still NO path that uploads it to Roblox or applies it to a Decal, so never tell the user the image has been placed in their game — they can see it, not use it yet.",
+        "Generate an original 2D image — UI icon, decal, tiling texture, thumbnail or concept study. Defaults are outlined, chunky game art. Preserve the user's exact subject and background colors in subject; those override default palettes, including requests for neutral or dark colors. Use structured fields for other style choices. Embedded text and brand marks are refused: use editable TextLabels or official brand assets instead. The flatness heuristic does NOT verify appearance, color or subject fidelity; inspect the image before claiming a match. Results appear under View results with Save image and remain retrievable for one hour. Nothing is uploaded to Roblox or applied to the user's place.",
       parameters: S(
         {
           subject: { type: 'string', description: 'What to draw, as a plain noun phrase. No words to render, no brand names.' },
           target: { type: 'string', enum: ['ui_icon', 'decal', 'texture', 'thumbnail', 'concept'] },
           palette: {
             type: 'array',
-            description: 'Palette roles from the style spec, e.g. ["currency_soft"] for a coin or ["grass","dirt"] for ground.',
+            description: 'Default palette roles only when the user has not specified colors. Preserve requested subject/background colors in subject; do not replace silver, grey or dark colors with a gold/saturated palette.',
             items: { type: 'string', enum: ['grass', 'dirt', 'stone', 'cliff', 'foliage', 'wood', 'sky', 'sand', 'accent', 'positive', 'danger', 'premium', 'currency_soft', 'currency_hard', 'locked'] },
           },
           outline: { type: 'string', enum: ['heavy', 'very_heavy'], description: 'default heavy; the style never uses a thin outline' },
@@ -3144,26 +3316,22 @@ export const TOOLS: Record<string, ToolImpl> = {
         steps: a.steps ? Number(a.steps) : undefined,
         seed: a.seed ? Number(a.seed) : undefined,
       };
+      // The result is stored under a project-scoped key and is only retrievable through the
+      // project-owned image route. Refuse before calling the paid image model when this isolated
+      // harness/admin caller has no project, rather than generating pixels nobody can access.
+      if (!ctx.projectId) return { error: 'generate_image needs a project to store the result against' };
+      if (!await generatedImageCapacity(ctx.env, ctx.projectId)) return { error: 'Image storage is full or this project was deleted. No image generation was started.' };
       const res = await generateImage(ctx.env, req);
       // A refusal is a result, not a crash: the model gets told what to do instead.
       if ('refused' in res) return { error: res.message, reason: res.reason, offending: res.offending };
       // The pixels never enter the transcript — a base64 PNG is ~230k characters of nothing the
-      // model can read. They go to KV under a key, exactly as render_view keeps frames out.
-      // MERGE NOTE: main's refusal, not my partial result. Mine reported "generated, but there is
-      // nowhere to put it" with the dimensions, on the grounds that an eval harness might still
-      // want them. But the pixels are addressed BY PROJECT, so without one the image is
-      // unretrievable by anyone, and handing back its size is a description of something nobody
-      // can ever see. Refusing says the same thing without pretending a result exists.
-      //
-      // Worth a follow-up either way: both versions check this AFTER generating, so the neurons
-      // are spent before anyone notices there is nowhere to put the result. The check belongs
-      // before the call, and that is a change rather than a merge resolution.
-      if (!ctx.projectId) return { error: 'generate_image needs a project to store the result against' };
-      const imageId = await storeImage(ctx.env, res.pngBase64, ctx.projectId);
+      // model can read. The bounded private store keeps them until this project is deleted.
+      let imageId: string;
+      try { imageId = await saveGeneratedImage(ctx.env, res.pngBase64, ctx.projectId); }
+      catch { return { error: 'The image was generated but could not be saved. Do not claim successful delivery or retry automatically.', neurons: res.neurons }; }
 
       // The pixels reach the BROWSER by path, never through the transcript. A 1024x1024 PNG as a
-      // data URL is far past MAX_UI_DETAIL_CHARS, and the model could not read it anyway. This
-      // half is mine; main had the store and the route but nothing that put an image on screen.
+      // data URL is far past MAX_UI_DETAIL_CHARS, and the model could not read it anyway.
       ctx.uiDetail = imagePanel(ctx.projectId, imageId, req.subject, {
         width: res.width,
         height: res.height,
@@ -3178,6 +3346,8 @@ export const TOOLS: Record<string, ToolImpl> = {
         steps: res.steps,
         flatness: res.flatness.verdict,
         flatnessNote: res.flatness.note,
+        appearanceVerified: false,
+        verificationNote: 'Image delivered, but subject/color fidelity has not been visually verified. Do not claim it matches the request merely because generation succeeded.',
         aspectHonoured: res.aspectHonoured,
         prompt: res.prompt,
       };
@@ -3233,6 +3403,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       parameters: S({ label: { type: 'string' } }, ['label']),
     },
     studio: true,
+    studioOps: ['snapshot'],
     run: async (ctx, a) => ctx.createCheckpoint(String(a.label ?? 'checkpoint'), 'auto'),
   },
   /**
@@ -3401,11 +3572,13 @@ export const TOOLS: Record<string, ToolImpl> = {
   design_sound: {
     def: AUDIO_TOOLS.design_sound!.def,
     studio: AUDIO_TOOLS.design_sound!.studio,
+    studioOps: ['run_code'],
     run: (ctx, a) => AUDIO_TOOLS.design_sound!.run(ctx, a),
   },
   assign_sounds: {
     def: AUDIO_TOOLS.assign_sounds!.def,
     studio: AUDIO_TOOLS.assign_sounds!.studio,
+    studioOps: ['run_code'],
     run: (ctx, a) => AUDIO_TOOLS.assign_sounds!.run(ctx, a),
   },
   generate_sound: {
@@ -3451,6 +3624,9 @@ const TARGET_ARG: Readonly<Record<string, { key: string; kind: 'string' | 'list'
   workspace_read: { key: 'path', kind: 'string' },
   workspace_write: { key: 'path', kind: 'string' },
   run_spec: { key: 'path', kind: 'string' },
+  search_creation_skills: { key: 'query', kind: 'string' },
+  read_creation_skill: { key: 'id', kind: 'string' },
+  get_genre_references: { key: 'genre', kind: 'string' },
 };
 
 /** Collapse to one line and cap. The target sits beside a label; it may not push the layout. */

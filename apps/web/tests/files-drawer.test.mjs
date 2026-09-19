@@ -69,9 +69,13 @@ test('the panel is mounted only while the drawer is open', () => {
   //   above, and members-panel.test.mjs passed on the same line by pinning the name that won.
   //   Two tests disagreeing about a string is not a finding about the code.
   //
-  //   What has to hold is that the check is asked ONLY while a drawer that needs it is open.
+  //   Access is now also the authority for chat/edit/retry/stop, so the answer must be known before
+  //   the person presses those controls. The FILE LIST stays lazy; the small access check does not.
   const q = WS.search(/queryKey: \['[a-z-]*access[a-z-]*', projectId\]/);
   assert.ok(q > 0, 'no access query found under any key name');
-  assert.match(WS.slice(q, q + 400), /enabled:[^\n]*drawer === 'files'/,
-    'the access check must be gated on the files drawer, not bought on every workspace load');
+  const accessQuery = WS.slice(q, q + 400);
+  assert.match(accessQuery, /enabled:\s*projectId\.length > 0/,
+    'the access check must be available to workspace chat controls, not delayed until a drawer opens');
+  assert.doesNotMatch(accessQuery, /drawer === 'files'|drawer === 'members'/,
+    'the shared access check regressed to drawer-only loading');
 });

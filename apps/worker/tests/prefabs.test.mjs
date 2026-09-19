@@ -87,7 +87,8 @@ function stubCtx({ existing = null, data = { ok: true }, readError = null } = {}
 const writes = (ops) => ops.filter((o) => o.op !== 'read_script');
 
 test('the catalogue is real and each entry is complete', () => {
-  assert.equal(P.PREFAB_IDS.length, 10);
+  // Inventory tripwire: ui_kit is a reviewed client presentation module, not a money authority.
+  assert.equal(P.PREFAB_IDS.length, 11);
   for (const id of P.PREFAB_IDS) {
     const p = P.PREFABS[id];
     assert.equal(p.id, id);
@@ -271,6 +272,18 @@ test('a chosen parent is honoured', async () => {
   assert.equal(w[0].create.parent, 'game.ServerScriptService.Systems');
 });
 
+test('the UI kit installs its exact reviewed source where a LocalScript can require it', async () => {
+  const { ctx, ops } = stubCtx();
+  const result = await T.TOOLS.install_module.run(ctx, { module: 'ui_kit' });
+  const edits = writes(ops);
+  assert.equal(edits.length, 1);
+  assert.equal(edits[0].path, 'game.ReplicatedStorage.AppleUI');
+  assert.deepEqual(edits[0].create, { className: 'ModuleScript', parent: 'game.ReplicatedStorage' });
+  assert.equal(edits[0].source, P.PREFABS.ui_kit.source);
+  assert.equal(result.installed, 'AppleUI');
+  assert.match(result.api.join(' '), /CLIENT ONLY/);
+});
+
 // --- installing over something that is already there -------------------------------------------
 
 test('IT READS BEFORE IT WRITES, because edit_script REPLACES a script', async () => {
@@ -298,6 +311,8 @@ test('replace: true overwrites, and reports that it did', async () => {
   assert.equal(res.installed, 'Profile');
   assert.equal(res.replaced, true, 'an overwrite must be reported, not silent');
   assert.equal(writes(ops).length, 1);
+  assert.equal(writes(ops)[0].create, undefined, 'an existing replacement must not carry the create envelope');
+  assert.match(writes(ops)[0].baseHash, /^[0-9a-f]{8}$/, 'an existing replacement must be pinned to the read version');
   assert.equal(writes(ops)[0].source, P.PREFABS.profile_store.source);
 });
 

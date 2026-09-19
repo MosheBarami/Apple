@@ -23,7 +23,6 @@ import {
 const free = PLAN_LIMITS.free;
 const paid = PLAN_IDS.filter((id) => id !== 'free' && PLAN_COPY[id].priceUsdMonthly !== null);
 import Base from '../layouts/Base.astro';
-import CreditMeter from '../components/CreditMeter.astro';
 import FAQ from '../components/FAQ.astro';
 
 // Figures come from docs/COST-MODEL.md through the SAME arithmetic the worker uses,
@@ -114,26 +113,25 @@ const limitFaq = [
     a: `<p>A unit of real compute. One Credit is 30 neurons of real compute, and Apple bills from the engine's own reported figure for each call rather than from an estimate. A full Agent build — read the tree, edit scripts, create instances, verify — measured 511 neurons, about $0.0056. That is why the free tier can exist at all.</p>`,
   },
   {
-    q: 'When does Pro launch, and what will it cost?',
-    a: `<p>Pro is on the waitlist. We have not fixed the price yet, and we will not charge anyone before the plan, the price and the terms are published. Joining the waitlist costs nothing and commits you to nothing — it just gets you first access and a say in what Pro should include.</p>`,
+    q: 'Can I subscribe now?',
+    a: `<p>Paid checkout is not open in this preview. Builder and Studio are the planned subscription tiers. Your account’s Plans & Credits page shows live purchase availability; no subscription starts without a confirmed checkout.</p>`,
   },
 ];
 ---
 
 <Base
   title="Pricing — Apple"
-  description={`Apple is free: ${free.creditsPerDay} Credits a day, all three modes, unlimited projects, checkpoints included. Builder and Studio add more. No card is needed to start.`}
+  description={`Start with Apple and ${free.creditsPerDay} daily Credits. Apple MAX is the subscription tier. Paid checkout and public Studio installation are not yet open in this preview.`}
 >
   <!-- ==================================================== head -->
   <section class="section phead is-ember" aria-labelledby="pricing-title">
     <div class="sheet-rails" aria-hidden="true"></div>
     <div class="wrap">
       <p class="eyebrow">Pricing</p>
-      <h1 id="pricing-title" class="carved">Free to build. Honestly.</h1>
+      <h1 id="pricing-title" class="carved">Start with Apple.</h1>
       <p class="lede lede-wide">
-        No card. No trial countdown. A hard daily quota is what keeps the free
-        tier sustainable — and it is the same number we show you burning down in
-        the workspace.
+        Apple is the limited free tier. Apple MAX is for paid subscribers.
+        Paid checkout is not open in this preview; the paid plans below describe the planned offering.
       </p>
 
       <div class="plans">
@@ -145,17 +143,17 @@ const limitFaq = [
           <ul class="plan__list">
             <li><strong>{free.creditsPerDay.toLocaleString()} Credits</strong> per day · {free.creditsPerMonth.toLocaleString()} a month</li>
             <li>About {buildsPerMonth('free')} quality-gated builds a month</li>
-            <li>Every mode — {PRODUCT_MODES_OFFERED.map((m) => PRODUCT_MODE_INFO[m].name).join(' and ')}</li>
+            <li>Apple · limited free access</li>
             <li>Unlimited projects</li>
             <li>Checkpoints &amp; rollback</li>
-            <li>Studio plugin included</li>
+            <li>Studio integration · public installation pending</li>
             {/* Published for every plan, including this one. Three of the four tiers said nothing
                 about support anywhere, and a buyer cannot tell silence from "there is none". */}
             <li>{PLAN_SUPPORT.free.channel}</li>
           </ul>
           <a href="/app/signup" class="btn btn-primary plan__cta">Start building — free</a>
           <p class="plan__note">
-            Nothing to cancel, because there is nothing to start.
+            No paid subscription to cancel. Free chat is available now.
           </p>
         </article>
 
@@ -184,20 +182,21 @@ const limitFaq = [
                   {PLAN_LIMITS[id].creditsPerMonth.toLocaleString()} a month
                 </li>
                 <li>About {buildsPerMonth(id)} quality-gated builds a month</li>
+                <li>Apple MAX access</li>
                 {PLAN_COPY[id].highlights.map((h) => (
                   <li>{h}</li>
                 ))}
                 <li>{PLAN_SUPPORT[id].channel}</li>
               </ul>
-              <a href="/app/usage" class="btn btn-ghost plan__cta">Choose {PLAN_COPY[id].name}</a>
+              <p class="plan__note">Planned tier — not available to purchase yet.</p>
             </article>
           ))
         }
 
         <p class="plan__note" style="grid-column:1/-1;max-width:62ch">
           One build costs about {CREDITS_PER_BUILD} Credits, so every figure above is also a number of
-          builds — which is the only form of it anyone can act on. These are the same limits the
-          service enforces; this page reads them rather than restating them.
+          estimated builds. Free limits apply now; paid prices and limits describe the planned
+          offering and may change before checkout opens.
         </p>
 
         {/*
@@ -243,7 +242,7 @@ const limitFaq = [
           <thead>
             <tr>
               <th scope="col">Capability</th>
-              {PLAN_IDS.map((id) => <th scope="col">{PLAN_COPY[id].name}</th>)}
+              {PLAN_IDS.map((id) => <th scope="col">{PLAN_COPY[id].name}{id !== 'free' ? ' (planned)' : ''}</th>)}
             </tr>
           </thead>
           <tbody>
@@ -285,33 +284,13 @@ const limitFaq = [
       </div>
 
       <p class="plan__note" style="max-width:62ch">
-        Read from the same tables the service enforces, so this cannot drift from what you
-        actually get. Worth saying plainly: apart from the allowance and the commercial
-        terms, nothing here is held back for a paid tier.
+        Figures come from the shared plan configuration. Free access is available now; paid
+        tiers and Apple MAX subscriptions are not yet available to purchase. Studio access also requires
+        a connected plugin; public installation is currently unavailable.
       </p>
     </div>
   </section>
 
-  <!-- ==================================================== calculator -->
-  <section class="section calcsec" id="calculator" aria-labelledby="calc-title">
-    <div class="wrap">
-      <header class="sechead">
-        <p class="eyebrow" data-reveal>Usage explorer</p>
-        <h2 id="calc-title" data-reveal class="carved">
-          Work out your own day
-        </h2>
-        <p class="lede lede-wide" data-reveal>
-          Rather than guessing whether a day’s allowance is a lot, set the sliders to
-          how you actually build. Whichever limit binds first is the one that
-          applies.
-        </p>
-      </header>
-
-      <div data-reveal data-reveal-delay="100">
-        <CreditMeter />
-      </div>
-    </div>
-  </section>
 
   <!-- ==================================================== per-mode -->
   <section class="section" aria-labelledby="credits-title">
@@ -320,8 +299,8 @@ const limitFaq = [
         <p class="eyebrow" data-reveal>Per request</p>
         <h2 id="credits-title" data-reveal class="carved">What a Credit buys</h2>
         <p class="lede lede-wide" data-reveal>
-          Bigger apples burn more, because they do more work per request. The
-          craft is picking the smallest one that can carry the job.
+          These are internal work-mode estimates, not the Apple and Apple MAX model selector.
+          Final usage depends on the work performed.
         </p>
       </header>
 
@@ -341,7 +320,7 @@ const limitFaq = [
               modeRows.map((r) => (
                 <tr class={r.cls}>
                   <td>
-                    <span class="dot" aria-hidden="true" /> {r.mode}
+                    {r.mode}
                   </td>
                   <td>
                     <code>{r.cost}</code>
@@ -412,16 +391,19 @@ const limitFaq = [
      page had, on a page nobody had measured. */
   .plans {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 1.5rem;
     margin: clamp(2.25rem, 5vw, 3.5rem) auto 0;
-    max-width: 900px;
+    max-width: 1120px;
   }
 
   .plan {
     display: flex;
     flex-direction: column;
     padding: clamp(1.5rem, 3vw, 2.1rem);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    box-shadow: none;
   }
 
   .plan__flag {
@@ -592,7 +574,7 @@ const limitFaq = [
     margin-inline: auto;
   }
 
-  @media (max-width: 760px) {
+  @media (max-width: 900px) {
     .plans {
       grid-template-columns: 1fr;
     }

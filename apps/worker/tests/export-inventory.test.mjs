@@ -352,6 +352,30 @@ test('every personal store has a deliberate answer to "where do I get this"', as
   const listed = elsewhereFor();
   assert.ok(listed.length >= 20, `only ${listed.length} personal stores were listed`);
   for (const e of listed) assert.ok(e.where.length > 15, `${e.name}: "${e.where}" is not an answer`);
+
+  const replayStore = SPEC.NON_POSTGRES_STORES.find((s) => s.name === 'billing_authority_replays');
+  assert.ok(replayStore, 'the billing authority replay table is retained per-user state and must be inventoried');
+  assert.deepEqual(
+    { store: replayStore.store, binding: replayStore.binding, personal: replayStore.personal },
+    { store: 'do', binding: 'QUOTA_DO', personal: true },
+    'the replay cache must stay inside the per-user QuotaDO boundary',
+  );
+  assert.match(replayStore.holds, /normalized billing mutations/i);
+  assert.match(replayStore.holds, /does not store the raw Stripe payload or credentials/i);
+
+  const replayAnswer = listed.find((e) => e.name === 'billing_authority_replays');
+  assert.ok(replayAnswer, 'the account export must say where the replay cache fits into data availability');
+  assert.match(replayAnswer.where, /not offered as a separate download/i);
+  assert.match(replayAnswer.where, /\/api\/billing\/history/);
+
+  const quota = readFileSync(join(WORKER, 'src', 'do', 'quota.ts'), 'utf8');
+  const replayStart = quota.indexOf('private storeAuthorityReplay(');
+  const replayEnd = quota.indexOf('private async applyLocalBillingMutation(', replayStart);
+  assert.ok(replayStart >= 0 && replayEnd > replayStart, 'could not locate the replay persistence boundary');
+  const replayPersistence = quota.slice(replayStart, replayEnd);
+  assert.match(replayPersistence, /JSON\.stringify\(mutation\)/, 'the cache must persist the normalized mutation');
+  assert.doesNotMatch(replayPersistence, /JSON\.stringify\(event\)/, 'the raw provider event must never become replay storage');
+  assert.match(replayPersistence, /RETENTION\.quotaLedgerDays/, 'the replay cache must remain bounded by the QuotaDO retention horizon');
 });
 
 // ------------------------------------------------------------------ falsification ---

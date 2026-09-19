@@ -1,0 +1,31 @@
+.apple-catalog-overlay .modal-panel { border-radius:20px; background:var(--paper); width:min(860px,calc(100vw - 32px)); }
+.apple-catalog-overlay .modal-overlay { background:#0009; }
+.apple-catalog { display:grid; grid-template-columns:minmax(0,1fr); min-width:0; gap:16px; }
+.apple-catalog p { margin:0; font-size:13px; line-height:1.6; }
+.apple-catalog__search { display:flex; gap:8px; }
+.apple-catalog__search input { min-width:0; flex:1; }
+.apple-catalog__filter { display:flex; gap:8px; align-items:center; font-size:13px; }
+.apple-catalog__filter input { width:auto; }
+.apple-catalog__results { list-style:none; margin:0; padding:0; display:grid; gap:0; }
+.apple-catalog__results li { display:grid; grid-template-columns:120px minmax(0,1fr) auto; align-items:center; gap:20px; padding:20px 0; border-top:1px solid var(--line); }
+.apple-catalog__details { display:grid; flex:1; gap:5px; min-width:0; overflow-wrap:anywhere; }
+.apple-catalog__details strong { font-size:16px; font-weight:600; }
+.apple-catalog__details span { font-size:12px; line-height:1.5; }
+.apple-catalog__results button { flex-shrink:0; font-size:12px; }
+.apple-catalog__preview { position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; width:120px; height:136px; flex-shrink:0; border:1px solid var(--line); border-radius:12px; background:color-mix(in srgb,var(--ink) 4%,var(--paper)); color:var(--muted); overflow:hidden; }
+.apple-catalog__preview img { display:block; position:absolute; inset:0; width:100%; height:calc(100% - 23px); padding:6px; object-fit:contain; opacity:0; }
+.apple-catalog__preview img.is-loaded { opacity:1; }
+.apple-catalog__preview-note { padding:0 8px; font-size:11px; line-height:1.4; text-align:center; }
+.apple-catalog__preview-caption { position:absolute; bottom:0; left:0; right:0; padding:5px; text-align:center; font-size:10px; border-top:1px solid var(--line); }
+.apple-catalog__identifier { font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.apple-catalog__details .apple-catalog__kind { font-size:11px; text-transform:capitalize; }
+.apple-catalog__metadata { line-height:1.6; }
+.apple-catalog__footnote { padding-top:14px; border-top:1px solid var(--line); }
+@media (max-width:600px) {
+  .apple-catalog-overlay .modal-panel { width:calc(100vw - 20px); }
+  .apple-catalog__results li { grid-template-columns:80px minmax(0,1fr); gap:12px; align-items:start; }
+  .apple-catalog__preview { width:80px; height:105px; }
+  .apple-catalog__results button { grid-column:2; justify-self:start; }
+  .apple-catalog__details strong { font-size:14px; }
+  .apple-catalog__preview-caption { font-size:9px; }
+}

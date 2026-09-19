@@ -33,7 +33,7 @@ const { invoiceStatusPill, formatMoney, invoiceAmountMinor } = await import(`fil
 
 const usage = readFileSync(join(WEB, 'src', 'routes', 'usage.tsx'), 'utf8');
 const api = readFileSync(join(WEB, 'src', 'lib', 'api.ts'), 'utf8');
-const css = readFileSync(join(WEB, 'src', 'styles.css'), 'utf8');
+const css = readFileSync(join(WEB, 'src', 'design/system.css'), 'utf8');
 /** Source with comments stripped, so a class named in prose is not mistaken for one in use. */
 const code = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 const usageCode = code(usage);

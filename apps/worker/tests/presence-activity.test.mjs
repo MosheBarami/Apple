@@ -119,7 +119,7 @@ function session(sockets) {
       /* downstream stubs */
     }
   };
-  return { store, say };
+  return { store, say, runtime: s };
 }
 
 // =============================================================================================
@@ -176,24 +176,41 @@ test('STARTING A RUN SETS `building` — the claim this is all about', async () 
   assert.equal(me.activity, 'viewing');
 });
 
-test('THE SERVER WITHDRAWS `building` WHEN THE RUN ENDS — asserted on the source, and here is why', () => {
-  //[[ A SOURCE ASSERTION, SAID OUT LOUD.
-  //
-  //   Reaching finishRun means completing an agent run: the gateway, a model, the plugin, the
-  //   budget object and the alarm that drives the loop. MEASURED in this fixture — a chat leaves
-  //   the run `running` and it stays that way — so a test that drove `chat` and then asserted the
-  //   beat had been cleared would be asserting something that never happened for a reason
-  //   unrelated to the mechanism.
-  //
-  //   So this checks the call is there, at the head of the method, where an isolate that goes away
-  //   mid-tidy cannot skip it. It goes red if the call is deleted, which is the failure worth
-  //   catching; it cannot catch a `clearBuildingBeats` that has been broken from the inside, and
-  //   it does not claim to. ]]
+test('THE SERVER WITHDRAWS `building` WHEN THE RUN ENDS — helper behavior plus exact finishRun wiring', async () => {
+  // First execute the real helper. TypeScript `private` is erased in this bundle, so this is the
+  // production method, not a copy of its loop in the test.
+  const me = socket(MEMBER, 'editor');
+  const other = socket(OWNER, 'owner');
+  const s = session([me, other]);
+  await s.say(me, { type: 'presence', activity: 'building' });
+  await s.say(other, { type: 'presence', activity: 'building' });
+  assert.equal(me.activity, 'building');
+  assert.equal(other.activity, 'building');
+  s.runtime.clearBuildingBeats();
+  assert.equal(me.activity, 'viewing');
+  assert.equal(other.activity, 'viewing');
+  assert.equal(me.lastPresenceFor(OWNER), 'viewing', 'the room must hear the withdrawal too');
+
+  // Reaching finishRun end-to-end still requires the gateway/plugin/budget stack this fixture does
+  // not stand up. Bound the source assertion to the finishRun method itself instead of a magic
+  // character window: comments may grow without moving the property out of view.
   const src = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
   assert.match(src, /private clearBuildingBeats\(\)/, 'the withdrawal must exist');
-  const finish = src.slice(src.indexOf('private async finishRun('));
-  assert.ok(finish.length > 0, 'finishRun must still exist');
-  assert.match(finish.slice(0, 1200), /this\.clearBuildingBeats\(\);/, 'finishRun must call it, before the awaits');
+  const assertFinishWithdraws = (source) => {
+    const start = source.indexOf('private async finishRun(');
+    const end = source.indexOf('\n  private memoryModeOn(', start);
+    assert.ok(start >= 0 && end > start, 'finishRun must still have a bounded method body');
+    const finish = source.slice(start, end);
+    const clear = finish.indexOf('this.clearBuildingBeats();');
+    const firstAwait = finish.indexOf('await ');
+    assert.ok(clear >= 0, 'finishRun must call clearBuildingBeats');
+    assert.ok(firstAwait < 0 || clear < firstAwait, 'the withdrawal must happen before finishRun awaits');
+  };
+  assertFinishWithdraws(src);
+  assert.throws(
+    () => assertFinishWithdraws(src.replace('this.clearBuildingBeats();', '')),
+    /must call clearBuildingBeats/,
+  );
   // It downgrades to `viewing` and to nothing else: `typing` would be a second false claim.
   const body = src.slice(src.indexOf('private clearBuildingBeats()'), src.indexOf('private broadcastPresence()'));
   assert.match(body, /activity: 'viewing'/);

@@ -27,8 +27,9 @@ const REPO = join(WEB, '..', '..');
 const TURN = readFileSync(join(WEB, 'src', 'components', 'ws', 'turn.tsx'), 'utf8');
 const WS = readFileSync(join(WEB, 'src', 'routes', 'workspace.tsx'), 'utf8');
 const SOCKET = readFileSync(join(WEB, 'src', 'lib', 'use-project-socket.ts'), 'utf8');
+const SOCKET_STATE = readFileSync(join(WEB, 'src', 'lib', 'project-socket-state.ts'), 'utf8');
 const API = readFileSync(join(WEB, 'src', 'lib', 'api.ts'), 'utf8');
-const CSS = readFileSync(join(WEB, 'src', 'styles', 'workspace.css'), 'utf8');
+const CSS = readFileSync(join(WEB, 'src', 'design', 'system.css'), 'utf8');
 const DIALOG = readFileSync(join(WEB, 'src', 'components', 'ws', 'revisions-dialog.tsx'), 'utf8');
 const SHARED = readFileSync(join(REPO, 'packages', 'shared', 'src', 'index.ts'), 'utf8');
 /** Statements only. A negative assertion must never run against the prose explaining it — the
@@ -41,7 +42,10 @@ const DIALOG_CODE = stripComments(DIALOG);
 test('the count travels with the transcript, not one request per turn', () => {
   // Fifty turns would be fifty requests, and the marks would appear one at a time as they landed.
   assert.match(SHARED, /revisions\?: number;/);
-  assert.match(SOCKET, /revisions: m\.revisions/);
+  assert.match(SOCKET, /res\.messages\.map\(chatItemFromMessageDto\)/,
+    'history must use the one MessageDto -> ChatItem mapper rather than retyping transcript fields');
+  assert.match(SOCKET_STATE, /revisions: message\.revisions/,
+    'the transcript mapper must carry the server-owned revision count');
 });
 
 test('an unknown count is not drawn as "no earlier versions"', () => {

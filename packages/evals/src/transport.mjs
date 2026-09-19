@@ -30,19 +30,27 @@ export function buildPrompt(system, prompt) {
  * be flattened here.
  *
  * @returns {Promise<{ok: true, ms: number, text: string, usage?: object, neurons: number|null,
- *                    modelId: string|null, toolCalls: object[]|null, raw: object}>}
+ *                    modelId: string|null, toolCalls: object[]|null, finishReason: string|null,
+ *                    raw: object}>}
  * @throws {TransportError} on network failure, non-JSON body, HTTP error, or {ok:false}.
  */
-export async function callModel({ apiBase, adminKey, model, prompt, system, rag = false, tools = false, timeoutMs = 120_000, fetchImpl = fetch }) {
+export async function callModel({ apiBase, adminKey, model, prompt, system, rag = false, tools = false, maxTokens, timeoutMs = 120_000, fetchImpl = fetch }) {
+  if (maxTokens != null && (!Number.isInteger(maxTokens) || maxTokens < 1)) {
+    throw new TypeError('maxTokens must be a positive integer when provided');
+  }
   const url = `${apiBase.replace(/\/+$/, '')}/api/admin/model-test`;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(new Error(`timeout after ${timeoutMs}ms`)), timeoutMs);
   let res;
   try {
+    const body = { model, prompt: buildPrompt(system, prompt), rag, tools };
+    // Omission preserves the endpoint's existing 1,600-token default for ordinary eval runs.
+    // Bounded experiments must opt into their registered ceiling explicitly.
+    if (maxTokens != null) body.maxTokens = maxTokens;
     res = await fetchImpl(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Admin-Key': adminKey },
-      body: JSON.stringify({ model, prompt: buildPrompt(system, prompt), rag, tools }),
+      body: JSON.stringify(body),
       signal: ctrl.signal,
     });
   } catch (e) {
@@ -69,6 +77,7 @@ export async function callModel({ apiBase, adminKey, model, prompt, system, rag 
     neurons: Number.isFinite(body.neurons) ? body.neurons : null,
     modelId: typeof body.model === 'string' ? body.model : null,
     toolCalls: Array.isArray(body.toolCalls) ? body.toolCalls : null,
+    finishReason: typeof body.finishReason === 'string' ? body.finishReason : null,
     raw: body,
   };
 }

@@ -1,0 +1,708 @@
+/**
+ * Executable Luau tests for the new Apple Studio command boundary.
+ *
+ * Commands.luau is embedded byte-for-byte in one standalone Luau chunk. The prelude is a small
+ * Roblox-shaped mock and deliberately does not provide a source loader: if the command engine ever
+ * evaluates generated source, this suite turns that mistake red.
+ */
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const SOURCE_PATH = join(HERE, '..', 'src', 'Commands.luau');
+const SOURCE = readFileSync(SOURCE_PATH, 'utf8');
+
+const PRELUDE = String.raw`--!nocheck
+local function typeofMock(v)
+    if type(v) == "table" and rawget(v, "__type") then return v.__type end
+    if type(v) == "table" and rawget(v, "__class") then return "Instance" end
+    return type(v)
+end
+typeof = typeofMock
+local v3mt = {}
+v3mt.__index = v3mt
+v3mt.__add = function(a,b) return setmetatable({__type="Vector3",X=a.X+b.X,Y=a.Y+b.Y,Z=a.Z+b.Z},v3mt) end
+v3mt.__sub = function(a,b) return setmetatable({__type="Vector3",X=a.X-b.X,Y=a.Y-b.Y,Z=a.Z-b.Z},v3mt) end
+v3mt.__mul = function(a,b)
+    if type(a)=="number" then return setmetatable({__type="Vector3",X=a*b.X,Y=a*b.Y,Z=a*b.Z},v3mt) end
+    return setmetatable({__type="Vector3",X=a.X*b,Y=a.Y*b,Z=a.Z*b},v3mt)
+end
+local function v3(x, y, z) return setmetatable({ __type = "Vector3", X = x or 0, Y = y or 0, Z = z or 0 }, v3mt) end
+Vector3 = { new = v3, zero = v3(0,0,0) }
+Vector2 = { new = function(x, y) return { __type = "Vector2", X = x or 0, Y = y or 0 } end }
+NumberRange = { new = function(a, b) return { __type = "NumberRange", Min = a, Max = b or a } end }
+Rect = { new = function(a, b, c, d) return { __type = "Rect", Min = v3(a, b, 0), Max = v3(c, d, 0) } end }
+Color3 = { new = function(r, g, b) return { __type = "Color3", R = r or 0, G = g or 0, B = b or 0 } end }
+UDim = { new = function(s, o) return { __type = "UDim", Scale = s or 0, Offset = o or 0 } end }
+UDim2 = { new = function(xs, xo, ys, yo) return { __type = "UDim2", X = UDim.new(xs, xo), Y = UDim.new(ys, yo) } end }
+BrickColor = { new = function(v) return { __type = "BrickColor", Name = tostring(v) } end }
+CFrame = {}
+local cfmt = {}
+cfmt.__index = cfmt
+local function cf(x,y,z)
+    local value = setmetatable({__type="CFrame",Position=v3(x or 0,y or 0,z or 0)}, cfmt)
+    value._c = {value.Position.X,value.Position.Y,value.Position.Z,1,0,0,0,1,0,0,0,1}
+    return value
+end
+function CFrame.new(...) local a={...}; return cf(a[1] or 0,a[2] or 0,a[3] or 0) end
+function CFrame.Angles(...) return cf(0,0,0) end
+function CFrame.lookAt(origin, target) return cf(origin.X,origin.Y,origin.Z) end
+function cfmt:GetComponents() return table.unpack(self._c) end
+function cfmt:VectorToWorldSpace(value) return value end
+cfmt.__mul = function(a,b) return cf(a.Position.X+b.Position.X,a.Position.Y+b.Position.Y,a.Position.Z+b.Position.Z) end
+cfmt.__add = function(a,b) return cf(a.Position.X+b.X,a.Position.Y+b.Y,a.Position.Z+b.Z) end
+Enum = { FinishRecordingOperation = { Commit = "Commit", Cancel = "Cancel" }, Material = { SmoothPlastic = "Enum.Material.SmoothPlastic" }, Font = { SourceSans = "Enum.Font.SourceSans" } }
+
+local methods = {}
+local mt = {
+    __index = function(self, key)
+        if key == "Parent" then return rawget(self, "__parent") end
+        if key == "CFrame" then return rawget(self, "__cframe") end
+        if key == "Position" then return rawget(self, "__position") end
+        return methods[key] or rawget(self, key)
+    end,
+    __newindex = function(self, key, value)
+        if key == "Parent" then
+            local old = rawget(self, "__parent")
+            if old and old.__children then for i, child in ipairs(old.__children) do if child == self then table.remove(old.__children, i); break end end end
+            rawset(self, "__parent", value)
+            if value and value.__children then table.insert(value.__children, self) end
+        elseif key == "CFrame" then rawset(self,"__cframe",value); rawset(self,"__position",value.Position)
+        elseif key == "Position" then rawset(self,"__position",value); rawset(self,"__cframe",cf(value.X,value.Y,value.Z))
+        else rawset(self, key, value) end
+    end,
+}
+function methods:IsA(wanted)
+    if wanted == "Instance" or wanted == self.ClassName then return true end
+    if wanted == "LuaSourceContainer" then return self.ClassName == "Script" or self.ClassName == "LocalScript" or self.ClassName == "ModuleScript" end
+    if wanted == "BasePart" then return self.ClassName == "Part" or self.ClassName == "MeshPart" or self.ClassName == "WedgePart" or self.ClassName == "CornerWedgePart" or self.ClassName == "SpawnLocation" end
+    if wanted == "GuiObject" then return self.ClassName == "Frame" or self.ClassName == "TextLabel" or self.ClassName == "TextButton" or self.ClassName == "TextBox" or self.ClassName == "ScrollingFrame" end
+    return false
+end
+function methods:GetChildren() local out={}; for i,child in ipairs(self.__children) do out[i]=child end; return out end
+function methods:GetDescendants()
+    local out={}
+    local function visit(node) for _,child in ipairs(node:GetChildren()) do table.insert(out,child); visit(child) end end
+    visit(self); return out
+end
+function methods:IsDescendantOf(ancestor)
+    local current=self.Parent
+    while current do if current==ancestor then return true end; current=current.Parent end
+    return false
+end
+function methods:FindFirstChild(name) for _, child in ipairs(self.__children) do if child.Name == name then return child end end end
+function methods:Destroy() self.Parent = nil; self.__destroyed = true end
+function methods:SetAttribute(name, value) self.__attributes[name] = value end
+function methods:GetAttribute(name) return self.__attributes[name] end
+function methods:GetAttributes() local out = {}; for k, v in pairs(self.__attributes) do out[k] = v end; return out end
+function methods:Clone()
+    if self.Archivable == false then return nil end
+    local copy = Instance.new(self.ClassName)
+    for k,v in pairs(self) do
+        if k~="__parent" and k~="__cframe" and k~="__position" and k~="__children" and k~="__attributes" and k~="__class" then rawset(copy,k,v) end
+    end
+    if self.CFrame then copy.CFrame=self.CFrame end
+    for k,v in pairs(self.__attributes) do copy.__attributes[k]=v end
+    for _,child in ipairs(self.__children) do local childCopy=child:Clone(); if childCopy then childCopy.Parent=copy end end
+    return copy
+end
+function methods:GetBoundingBox()
+    local parts={}
+    if self:IsA("BasePart") then parts={self} else for _,d in ipairs(self:GetDescendants()) do if d:IsA("BasePart") then table.insert(parts,d) end end end
+    if #parts==0 then error("no parts") end
+    local minX,minY,minZ=math.huge,math.huge,math.huge
+    local maxX,maxY,maxZ=-math.huge,-math.huge,-math.huge
+    for _,part in ipairs(parts) do
+        minX=math.min(minX,part.Position.X-part.Size.X/2); minY=math.min(minY,part.Position.Y-part.Size.Y/2); minZ=math.min(minZ,part.Position.Z-part.Size.Z/2)
+        maxX=math.max(maxX,part.Position.X+part.Size.X/2); maxY=math.max(maxY,part.Position.Y+part.Size.Y/2); maxZ=math.max(maxZ,part.Position.Z+part.Size.Z/2)
+    end
+    local center=v3((minX+maxX)/2,(minY+maxY)/2,(minZ+maxZ)/2)
+    return cf(center.X,center.Y,center.Z),v3(maxX-minX,maxY-minY,maxZ-minZ)
+end
+Instance = {}
+function Instance.new(className)
+    local value=setmetatable({ __class = true, ClassName = className, Name = className, Source = "", Archivable=true, __children = {}, __attributes = {} }, mt)
+    if value:IsA("BasePart") then value.CFrame=cf(0,0,0); value.Size=v3(1,1,1); value.Transparency=0; value.Locked=false end
+    if value:IsA("GuiObject") then value.Visible=true end
+    return value
+end
+local root = setmetatable({ __class = true, ClassName = "DataModel", Name = "game", __children = {} }, mt)
+local services = {}
+local function addService(name) local item = Instance.new(name); item.Name = name; item.Parent = root; services[name] = item end
+for _, name in ipairs({"Workspace","ReplicatedStorage","ServerScriptService","ServerStorage","StarterGui","StarterPack","StarterPlayer","ReplicatedFirst","Lighting","SoundService","Teams","TextChatService","MaterialService"}) do addService(name) end
+function root:GetService(name) if services[name] then return services[name] end; error("missing service " .. name) end
+game = root
+workspace = services.Workspace
+local camera=Instance.new("Camera"); camera.Name="Camera"; camera.CFrame=cf(0,10,20); camera.FieldOfView=70; camera.ViewportSize=v3(1280,720,0); camera.Parent=workspace; workspace.CurrentCamera=camera
+local terrain=Instance.new("Terrain"); terrain.Name="Terrain"; terrain.Parent=workspace
+local starterPlayerScripts=Instance.new("StarterPlayerScripts"); starterPlayerScripts.Name="StarterPlayerScripts"; starterPlayerScripts.Parent=services.StarterPlayer
+local starterCharacterScripts=Instance.new("StarterCharacterScripts"); starterCharacterScripts.Name="StarterCharacterScripts"; starterCharacterScripts.Parent=services.StarterPlayer
+for _, className in ipairs({"ChatWindowConfiguration","ChatInputBarConfiguration","ChannelTabsConfiguration","BubbleChatConfiguration"}) do
+    local config=Instance.new(className); config.Name=className; config.Parent=services.TextChatService; services.TextChatService[className]=config
+end
+
+local editor = {}
+function editor:GetEditorSource(scriptObject) return scriptObject.Source end
+function editor:UpdateSourceAsync(scriptObject, callback) scriptObject.Source = callback(scriptObject.Source) end
+local history = { log = {}, recording = nil, nextId = 0, refuse = false, finishError = false }
+function history:TryBeginRecording(name, displayName) if self.refuse or self.recording then return nil end; self.nextId += 1; self.recording = "r" .. self.nextId; table.insert(self.log, "begin:" .. name); return self.recording end
+function history:FinishRecording(id, operation)
+    if id ~= self.recording then error("wrong recording") end
+    if self.finishError and tostring(operation) == "Commit" then self.finishError = false; error("commit failed") end
+    table.insert(self.log, tostring(operation)); self.recording = nil
+end
+function history:SetWaypoint(name) table.insert(self.log, "waypoint:" .. name) end
+local runService = { edit = true }
+function runService:IsEdit() return self.edit end
+local selection = { values = {} }
+function selection:Get() return self.values end
+function selection:Set(v) self.values = v end
+local logs = { values = {} }
+function logs:GetLogHistory() return self.values end
+services.ScriptEditorService = editor
+services.ChangeHistoryService = history
+services.RunService = runService
+services.Selection = selection
+services.LogService = logs
+require = function() error("generated source must never be loaded by Commands") end
+
+local passed, failed, failures = 0, 0, {}
+local function spec(name, fn) local ok, err = pcall(fn); if ok then passed += 1 else failed += 1; table.insert(failures, name .. ": " .. tostring(err)) end end
+local function eq(a, b, why) if a ~= b then error((why or "value") .. ": expected " .. tostring(b) .. ", got " .. tostring(a), 2) end end
+local function has(text, needle) if not string.find(tostring(text), needle, 1, true) then error("expected " .. tostring(text) .. " to contain " .. needle, 2) end end
+local function report() print(("commands: %d passed%s"):format(passed, if failed > 0 then ", " .. failed .. " FAILED" else "")); for _, e in ipairs(failures) do print(e) end; if failed > 0 then error("command specs failed") end end
+`;
+
+const SPEC = String.raw`
+local function newCommands(options)
+    local opts = options or {}
+    opts.game = game
+    return Commands.new(opts)
+end
+local function run(c, id, op, allow, stillCurrent) return c:execute(id, op, allow == true, stillCurrent) end
+local function fakeGeneratedModel()
+    local model = Instance.new("Model")
+    local part = Instance.new("MeshPart"); part.Name = "GeneratedPart"; part.Size = v3(2, 3, 4); part.Anchored = true; part.Parent = model
+    return model
+end
+local function fakeGeneration(config)
+    local adapter = { calls = 0, discarded = {}, destroyed = false, config = config or {} }
+    function adapter:generate(op, current)
+        self.calls += 1
+        if self.config.assertNoRecording then eq(history.recording, nil, "provider call must run before ChangeHistory") end
+        if self.config.onGenerate then self.config.onGenerate(current, op) end
+        if self.config.result then return self.config.result end
+        local model = fakeGeneratedModel()
+        self.lastModel = model
+        return {
+            ok = true, model = model, sessionScoped = true, generationId = "mock-generation",
+            maxTriangles = op.maxTriangles or 6000, predefinedSchema = op.predefinedSchema or "Body1", elapsedSeconds = 1.25,
+            qc = { kind = "structural", verdict = "pass", detached = true, parts = 1, trianglesMeasured = false, visualJudgementRequired = true },
+        }
+    end
+    function adapter:discard(model) table.insert(self.discarded, model); model:Destroy(); return true end
+    function adapter:destroy() self.destroyed = true end
+    return adapter
+end
+
+spec("unknown operations are explicit refusals", function()
+    local c = newCommands()
+    local r = run(c, "unknown", { op = "not_a_studio_op" }, true)
+    eq(r.ok, false, "unknown ok"); eq(r.failure, "refused", "unknown failure"); has(r.error, "unknown Studio operation")
+    c:destroy()
+end)
+
+spec("ping and all read operations use data and no recording", function()
+    local scriptObject = Instance.new("Script"); scriptObject.Name = "Logic"; scriptObject.Source = "local answer = 42\\nprint(answer)\\n"; scriptObject.Parent = services.ServerScriptService
+    local c = newCommands()
+    local ping = run(c, "ping", { op = "ping" }, false); eq(ping.ok, true); eq(ping.data.pong, true)
+    local tree = run(c, "tree", { op = "get_tree", root = "game.ServerScriptService", maxDepth = 2, maxNodes = 2 }, false); eq(tree.ok, true); eq(tree.data.root.name, "ServerScriptService")
+    local listed = run(c, "list", { op = "list_scripts", root = "game.ServerScriptService" }, false); eq(listed.ok, true); eq(listed.data.scripts[1].path, "game.ServerScriptService.Logic")
+    local read = run(c, "read", { op = "read_script", path = "game.ServerScriptService.Logic" }, false); eq(read.ok, true); eq(read.data.source, scriptObject.Source); eq(#read.data.baseHash, 8)
+    local dump = run(c, "dump", { op = "dump_scripts", root = "game.ServerScriptService" }, false); eq(dump.ok, true); eq(dump.data.scripts[1].source, scriptObject.Source)
+    local search = run(c, "search", { op = "search_scripts", root = "game.ServerScriptService", query = "answer" }, false); eq(search.ok, true); eq(search.data.matches[1].line, 1)
+    local badPath = run(c, "bad-path", { op = "get_tree", root = "game.Workspace..x" }, false); eq(badPath.ok, false)
+    eq(history.recording, nil, "read recording")
+    c:destroy()
+end)
+
+spec("ambiguous sibling names are conflicts instead of arbitrary targets", function()
+    local first = Instance.new("Part"); first.Name = "Duplicate"; first.Parent = workspace
+    local second = Instance.new("Part"); second.Name = "Duplicate"; second.Parent = workspace
+    local c = newCommands()
+    local read = run(c, "ambiguous-read", { op = "get_instance", path = "game.Workspace.Duplicate" }, false)
+    eq(read.ok, false); eq(read.failure, "conflict"); has(read.error, "2 siblings")
+    local write = run(c, "ambiguous-write", { op = "set_props", path = "game.Workspace.Duplicate", props = { Transparency = { t = "number", v = 0.5 } } }, true)
+    eq(write.ok, false); eq(write.failure, "conflict"); eq(first.Transparency, 0); eq(second.Transparency, 0)
+    first:Destroy(); second:Destroy(); c:destroy()
+end)
+
+spec("selection and logs are bounded observations", function()
+    local part = Instance.new("Part"); part.Name = "Selected"; part.Parent = workspace; selection:Set({ part })
+    logs.values = { { message = "hello", messageType = "MessageOutput", timestamp = 10 }, { message = "warn", messageType = "MessageWarning", timestamp = 11 } }
+    local c = newCommands()
+    local selected = run(c, "selection", { op = "get_selection" }, false); eq(selected.ok, true); eq(selected.data.selection[1].path, "game.Workspace.Selected")
+    local result = run(c, "logs", { op = "get_logs", sinceClock = 10 }, false); eq(result.ok, true); eq(#result.data.entries, 1); eq(result.data.entries[1].message, "warn")
+    c:destroy()
+end)
+
+spec("selection, camera and viewport use the companion consent boundary without undo noise", function()
+    local target = workspace:FindFirstChild("Selected")
+    target.CFrame = CFrame.new(4, 2, -3); target.Size = v3(2, 4, 2)
+    local c = newCommands()
+    local before = #history.log
+    local denied = run(c, "select-denied", { op = "select", paths = { "game.Workspace.Selected" } }, false)
+    eq(denied.ok, false); has(denied.error, "explicit edit consent")
+    local selected = run(c, "select-live", { op = "select", paths = { "game.Workspace.Selected" } }, true)
+    eq(selected.ok, true); eq(selected.data.selected, 1); eq(selection.values[1], target)
+    local viewport = run(c, "viewport", { op = "viewport_info" }, false)
+    eq(viewport.ok, true); eq(viewport.data.camera.fov, 70); eq(viewport.data.camera.viewportSize[1], 1280)
+    local focused = run(c, "focus", { op = "camera_focus", path = "game.Workspace.Selected" }, true)
+    eq(focused.ok, true); eq(focused.data.focused, "game.Workspace.Selected")
+    eq(#history.log, before, "Studio-only controls must not create undo entries")
+    c:destroy()
+end)
+
+spec("writes need explicit consent and edit mode", function()
+    local c = newCommands()
+    local denied = run(c, "denied", { op = "create_instances", items = {{ className = "Part", name = "Denied", parent = "game.Workspace" }} }, false)
+    eq(denied.ok, false); has(denied.error, "explicit edit consent")
+    runService.edit = false
+    local modeDenied = run(c, "mode", { op = "create_instances", items = {{ className = "Part", name = "DeniedMode", parent = "game.Workspace" }} }, true)
+    eq(modeDenied.ok, false); has(modeDenied.error, "Studio edit mode")
+    runService.edit = true; c:destroy()
+end)
+
+spec("typed creation and set_props commit a recording", function()
+    local c = newCommands()
+    local made = run(c, "create", { op = "create_instances", items = {{ className = "Part", name = "Typed", parent = "game.Workspace", props = { Anchored = { t = "bool", v = true }, Size = { t = "Vector3", v = { 4, 2, 1 } } }, attributes = { Zone = { t = "string", v = "safe" } }, children = {{ className = "Folder", name = "Nested" }} }} }, true)
+    eq(made.ok, true, "create " .. tostring(made.error)); local part = workspace:FindFirstChild("Typed"); eq(part.Anchored, true); eq(part.Size.X, 4); eq(part:GetAttribute("Zone"), "safe")
+    local changed = run(c, "props", { op = "set_props", path = "game.Workspace.Typed", props = { Transparency = { t = "number", v = 0.25 } } }, true)
+    eq(changed.ok, true, "props"); eq(part.Transparency, 0.25); eq(history.recording, nil, "closed recording")
+    c:destroy()
+end)
+
+spec("create_instances preflights collisions and the whole nested tree", function()
+    local c = newCommands()
+    local existing = run(c, "existing-name", { op = "create_instances", items = {{ className = "Part", name = "Typed", parent = "game.Workspace" }} }, true)
+    eq(existing.ok, false); eq(existing.failure, "conflict"); eq(workspace:FindFirstChild("Typed").ClassName, "Part")
+
+    local duplicateChildren = run(c, "duplicate-children", { op = "create_instances", items = {{
+        className = "Folder", name = "DuplicateTree", parent = "game.Workspace", children = {
+            { className = "Part", name = "Same" }, { className = "Part", name = "Same" },
+        },
+    }} }, true)
+    eq(duplicateChildren.ok, false); eq(duplicateChildren.failure, "conflict"); eq(workspace:FindFirstChild("DuplicateTree"), nil)
+
+    local override = run(c, "nested-parent", { op = "create_instances", items = {{
+        className = "Folder", name = "OverrideTree", parent = "game.Workspace", children = {
+            { className = "Part", name = "Child", parent = "game.ServerStorage" },
+        },
+    }} }, true)
+    eq(override.ok, false); eq(override.failure, "invalid"); eq(workspace:FindFirstChild("OverrideTree"), nil)
+
+    local branches = {}
+    for branch = 1, 40 do
+        local leaves = {}
+        for leaf = 1, 10 do table.insert(leaves, { className = "Part", name = "Leaf" .. tostring(leaf) }) end
+        table.insert(branches, { className = "Folder", name = "Branch" .. tostring(branch), children = leaves })
+    end
+    local tooLarge = run(c, "create-cap", { op = "create_instances", items = {{ className = "Folder", name = "TooLarge", parent = "game.Workspace", children = branches }} }, true)
+    eq(tooLarge.ok, false); eq(tooLarge.failure, "invalid"); has(tooLarge.error, "400-node"); eq(workspace:FindFirstChild("TooLarge"), nil)
+    c:destroy()
+end)
+
+spec("companion structural edits resolve first, record, and keep paths unambiguous", function()
+    local c = newCommands()
+    local made = run(c, "companion-create", { op = "create_instances", items = {
+        { className = "Part", name = "CompA", parent = "game.Workspace" },
+        { className = "Part", name = "CompB", parent = "game.Workspace" },
+        { className = "Folder", name = "CompDest", parent = "game.Workspace" },
+    } }, true)
+    eq(made.ok, true, tostring(made.error))
+    local renamed = run(c, "rename", { op = "rename_instance", path = "game.Workspace.CompA", name = "CompAlpha" }, true)
+    eq(renamed.ok, true); eq(renamed.data.path, "game.Workspace.CompAlpha")
+    local cloned = run(c, "clone", { op = "clone_instances", paths = { "game.Workspace.CompAlpha" } }, true)
+    eq(cloned.ok, true, tostring(cloned.error)); eq(#cloned.data.created, 1); has(cloned.data.created[1], "CompAlpha (2)")
+    local grouped = run(c, "group", { op = "group_instances", paths = { "game.Workspace.CompAlpha", "game.Workspace.CompB" }, name = "CompGroup" }, true)
+    eq(grouped.ok, true, tostring(grouped.error)); eq(grouped.data.grouped, 2)
+    local ungrouped = run(c, "ungroup", { op = "ungroup_instances", paths = { grouped.data.path } }, true)
+    eq(ungrouped.ok, true, tostring(ungrouped.error)); eq(#ungrouped.data.released, 2)
+    local moved = run(c, "move", { op = "move_instances", moves = {{ path = "game.Workspace.CompAlpha", newParent = "game.Workspace.CompDest" }} }, true)
+    eq(moved.ok, true, tostring(moved.error)); eq(moved.data.moved[1], "game.Workspace.CompDest.CompAlpha")
+    local locked = run(c, "lock", { op = "set_locked", paths = { "game.Workspace.CompDest" }, locked = true }, true)
+    eq(locked.ok, true); eq(locked.data.parts, 1)
+    local alpha = services.Workspace:FindFirstChild("CompDest"):FindFirstChild("CompAlpha")
+    eq(alpha.Locked, true); alpha.Transparency = 0.35
+    local hidden = run(c, "hide", { op = "set_visible", paths = { "game.Workspace.CompDest.CompAlpha" }, visible = false }, true)
+    eq(hidden.ok, true); eq(alpha.Transparency, 1); eq(alpha:GetAttribute("__AppleStudioHiddenTransparencyV1"), 0.35); eq(alpha:GetAttribute("__AppleStudioHiddenMarkerV1"), true)
+    local shown = run(c, "show", { op = "set_visible", paths = { "game.Workspace.CompDest.CompAlpha" }, visible = true }, true)
+    eq(shown.ok, true); eq(alpha.Transparency, 0.35); eq(alpha:GetAttribute("__AppleStudioHiddenTransparencyV1"), nil); eq(alpha:GetAttribute("__AppleStudioHiddenMarkerV1"), nil)
+    alpha:SetAttribute("__AppleStudioHiddenTransparencyV1", 0.7)
+    local collision = run(c, "hide-collision", { op = "set_visible", paths = { "game.Workspace.CompDest.CompAlpha" }, visible = false }, true)
+    eq(collision.ok, false); eq(alpha.Transparency, 0.35, "a pre-existing reserved attribute is never overwritten")
+    alpha:SetAttribute("__AppleStudioHiddenTransparencyV1", nil)
+    local deleted = run(c, "delete", { op = "delete_instances", paths = { "game.Workspace.CompB", cloned.data.created[1] } }, true)
+    eq(deleted.ok, true); eq(deleted.data.count, 2); eq(workspace:FindFirstChild("CompB"), nil)
+    eq(history.recording, nil, "all structural recordings close")
+    c:destroy()
+end)
+
+spec("transform_instances moves and scales through one recorded plan", function()
+    local mover = Instance.new("Part"); mover.Name = "Mover"; mover.CFrame = CFrame.new(1, 2, 3); mover.Size = v3(1, 2, 3); mover.Parent = workspace
+    local c = newCommands()
+    local transformed = run(c, "transform", { op = "transform_instances", paths = { "game.Workspace.Mover" }, move = { 2, 3, 4 }, scale = 2 }, true)
+    eq(transformed.ok, true, tostring(transformed.error)); eq(transformed.data.parts, 1)
+    eq(mover.Position.X, 3); eq(mover.Position.Y, 5); eq(mover.Position.Z, 7)
+    eq(mover.Size.X, 2); eq(mover.Size.Y, 4); eq(mover.Size.Z, 6)
+    local refused = run(c, "bad-transform", { op = "transform_instances", paths = { "game.Workspace.Mover" }, scale = 0 / 0 }, true)
+    eq(refused.ok, false); eq(mover.Size.X, 2, "invalid transform leaves geometry unchanged")
+    c:destroy()
+end)
+
+spec("multi-target structural failures happen before the first mutation", function()
+    local survivor = Instance.new("Part"); survivor.Name = "PreflightSurvivor"; survivor.Parent = workspace
+    local c = newCommands()
+    local result = run(c, "preflight", { op = "delete_instances", paths = { "game.Workspace.PreflightSurvivor", "game.Workspace.DoesNotExist" } }, true)
+    eq(result.ok, false); eq(workspace:FindFirstChild("PreflightSurvivor"), survivor)
+    eq(history.recording, nil); eq(history.log[#history.log], "Cancel")
+    local service = run(c, "service-refusal", { op = "delete_instances", paths = { "game.Workspace" } }, true)
+    eq(service.ok, false); eq(service.failure, "refused"); has(service.error, "because it is a service"); eq(game:GetService("Workspace"), workspace)
+    local duplicate = run(c, "duplicate", { op = "delete_instances", paths = { "game.Workspace.PreflightSurvivor", "game.Workspace.PreflightSurvivor" } }, true)
+    eq(duplicate.ok, false); eq(duplicate.failure, "invalid"); eq(workspace:FindFirstChild("PreflightSurvivor"), survivor)
+    local moveToRoot = run(c, "move-root", { op = "move_instances", moves = {{ path = "game.Workspace.PreflightSurvivor", newParent = "game" }} }, true)
+    eq(moveToRoot.ok, false); eq(moveToRoot.failure, "refused"); eq(survivor.Parent, workspace)
+    local cloneToRoot = run(c, "clone-root", { op = "clone_instances", paths = { "game.Workspace.PreflightSurvivor" }, parent = "game" }, true)
+    eq(cloneToRoot.ok, false); eq(cloneToRoot.failure, "refused"); eq(#workspace:GetChildren() >= 1, true)
+    local createInCamera = run(c, "create-camera", { op = "create_instances", items = {{ className = "Part", name = "NoCameraChild", parent = "game.Workspace.Camera" }} }, true)
+    eq(createInCamera.ok, false); has(createInCamera.error, "engine-owned"); eq(workspace:FindFirstChild("Camera"):FindFirstChild("NoCameraChild"), nil)
+    c:destroy()
+end)
+
+spec("unsafe classes, properties, nonfinite values and content are refused", function()
+    local c = newCommands()
+    eq(run(c, "class", { op = "create_instances", items = {{ className = "ModuleScript", name = "No", parent = "game.Workspace" }} }, true).ok, false)
+    eq(run(c, "prop", { op = "set_props", path = "game.Workspace.Typed", props = { Source = { t = "string", v = "bad" } } }, true).ok, false)
+    eq(run(c, "nan", { op = "set_props", path = "game.Workspace.Typed", props = { Transparency = { t = "number", v = 0 / 0 } } }, true).ok, false)
+    eq(run(c, "content", { op = "set_props", path = "game.Workspace.Typed", props = { Texture = { t = "Content", v = "rbxassetid://1" } } }, true).ok, false)
+    local cameraScript = run(c, "camera-script", {
+        op = "edit_script",
+        path = "game.Workspace.Camera.HiddenScript",
+        source = "return 1\\n",
+        create = { className = "ModuleScript", parent = "game.Workspace.Camera" },
+    }, true)
+    eq(cameraScript.ok, false); eq(cameraScript.failure, "refused"); eq(workspace:FindFirstChild("Camera"):FindFirstChild("HiddenScript"), nil)
+    local mismatchedParent = run(c, "mismatched-script-parent", {
+        op = "edit_script",
+        path = "game.ServerScriptService.Misplaced",
+        source = "return 1\\n",
+        create = { className = "ModuleScript", parent = "game.Workspace" },
+    }, true)
+    eq(mismatchedParent.ok, false); eq(mismatchedParent.failure, "conflict"); eq(workspace:FindFirstChild("Misplaced"), nil); eq(services.ServerScriptService:FindFirstChild("Misplaced"), nil)
+    c:destroy()
+end)
+
+spec("edit_script checks baseHash in the editor callback", function()
+    local c = newCommands()
+    local read = run(c, "read-before-edit", { op = "read_script", path = "game.ServerScriptService.Logic" }, false)
+    local write = run(c, "edit", { op = "edit_script", path = "game.ServerScriptService.Logic", source = "return 7\\n", baseHash = read.data.baseHash }, true)
+    eq(write.ok, true, "edit " .. tostring(write.error)); eq(services.ServerScriptService:FindFirstChild("Logic").Source, "return 7\\n")
+    local changed = run(c, "read-again", { op = "read_script", path = "game.ServerScriptService.Logic" }, false)
+    services.ServerScriptService:FindFirstChild("Logic").Source = "-- Studio changed\\n"
+    local conflict = run(c, "conflict", { op = "edit_script", path = "game.ServerScriptService.Logic", source = "return 9\\n", baseHash = changed.data.baseHash }, true)
+    eq(conflict.ok, false); eq(conflict.failure, "conflict"); eq(services.ServerScriptService:FindFirstChild("Logic").Source, "-- Studio changed\\n"); eq(history.recording, nil)
+    local remote = run(c, "remote", { op = "edit_script", path = "game.ServerScriptService.Logic", source = "require(123)\\n", baseHash = changed.data.baseHash }, true)
+    eq(remote.ok, false, "remote module")
+    c:destroy()
+end)
+
+spec("snapshot binds checkpoint identity and reports honest whole-place coverage", function()
+    local folder = Instance.new("Folder"); folder.Name = "Snapshot"; folder.Parent = workspace
+    local child = Instance.new("Part"); child.Name = "Part"; child.Parent = folder
+    local c = newCommands()
+    local snap = run(c, "snapshot", { op = "snapshot", root = "game.Workspace.Snapshot", includeScripts = true, checkpointId = "cp-subtree-1" }, false)
+    eq(snap.ok, true); eq(snap.data.format, "apple-studio-snapshot-v1"); eq(snap.data.complete, true)
+    eq(snap.data.restorable, true); eq(snap.data.coverage, "exact"); eq(snap.data.checkpointId, "cp-subtree-1")
+    local unbound = run(c, "snapshot-place-unbound", { op = "snapshot", root = "game", includeScripts = true }, false)
+    eq(unbound.ok, false); eq(unbound.failure, "invalid"); has(unbound.error, "checkpointId")
+    local place = run(c, "snapshot-place", { op = "snapshot", root = "game", includeScripts = true, checkpointId = "cp-place-1" }, false)
+    eq(place.ok, true, tostring(place.error)); eq(place.data.node.className, "DataModel")
+    eq(place.data.root, "game"); eq(place.data.restorable, true); eq(place.data.complete, false); eq(place.data.wholePlaceComplete, false)
+    eq(place.data.coverage, "supported-subset"); eq(place.data.scriptCount >= 1, true); eq(place.data.instanceCount >= 1, true)
+    eq(next(place.data.skipped), nil, "default engine-owned containers/configuration must not be silently skipped")
+    eq(#place.data.protected, 6, "default place must report Camera, Terrain and four TextChat configuration singletons as protected coverage")
+    local protectedClasses = {}; for _, entry in ipairs(place.data.protected) do protectedClasses[entry.className] = true end
+    for _, className in ipairs({"Camera","Terrain","ChatWindowConfiguration","ChatInputBarConfiguration","ChannelTabsConfiguration","BubbleChatConfiguration"}) do
+        eq(protectedClasses[className], true, "missing protected coverage for " .. className)
+    end
+    local authoredConfig = Instance.new("ChatWindowConfiguration"); authoredConfig.Name = "AuthoredChatConfig"; authoredConfig.Parent = workspace
+    local authoredPlace = run(c, "snapshot-place-authored-config", { op = "snapshot", root = "game", includeScripts = true, checkpointId = "cp-place-authored-config" }, false)
+    eq(authoredPlace.ok, true); eq(authoredPlace.data.restorable, false); eq(authoredPlace.data.coverage, "incomplete")
+    eq(authoredPlace.data.skipped.ChatWindowConfiguration, 1, "an authored config-class instance outside TextChatService must not disappear as protected engine content")
+    authoredConfig:Destroy()
+    c:destroy()
+end)
+
+spec("restore is checkpoint-bound, source-hash verified and one recorded mutation", function()
+    local folder = Instance.new("Folder"); folder.Name = "RestoreTarget"; folder:SetAttribute("Version", "checkpoint"); folder.Parent = workspace
+    local child = Instance.new("Part"); child.Name = "Before"; child.Transparency = 0.25; child.Parent = folder
+    local scriptObject = Instance.new("ModuleScript"); scriptObject.Name = "Logic"; scriptObject.Source = "return 'checkpoint'\\n"; scriptObject.Parent = folder
+    local c = newCommands()
+    local snap = run(c, "restore-snapshot", { op = "snapshot", root = "game.Workspace.RestoreTarget", includeScripts = true, checkpointId = "cp-restore-1" }, false)
+    eq(snap.ok, true, tostring(snap.error)); eq(snap.data.restorable, true); eq(snap.data.complete, true)
+    local sourceNode = nil
+    for _, node in ipairs(snap.data.node.children) do if node.className == "ModuleScript" then sourceNode = node end end
+    eq(sourceNode ~= nil, true); eq(sourceNode.source, "return 'checkpoint'\\n"); eq(sourceNode.sourceChars, #sourceNode.source); eq(type(sourceNode.baseHash), "string"); eq(#sourceNode.baseHash, 8)
+
+    child.Name = "After"; child.Transparency = 0.9
+    scriptObject.Source = "return 'changed'\\n"
+    folder:SetAttribute("Version", "changed")
+    local extra = Instance.new("Part"); extra.Name = "Extra"; extra.Parent = folder
+    local beforeHistory = #history.log
+    local restored = run(c, "restore-commit", { op = "restore", root = "game.Workspace.RestoreTarget", checkpointId = "cp-restore-1", snapshot = snap.data }, true, function() return true end)
+    eq(restored.ok, true, tostring(restored.error)); eq(restored.data.restored, true); eq(restored.data.checkpointId, "cp-restore-1")
+    eq(restored.data.scriptsRestored, 1); eq(restored.data.scriptsExpected, 1); eq(restored.data.failedInstances, 0); eq(restored.data.failedScripts, 0); eq(restored.data.failedProperties, 0)
+    eq(folder:GetAttribute("Version"), "checkpoint"); eq(folder:FindFirstChild("Extra"), nil)
+    eq(folder:FindFirstChild("Before").Transparency, 0.25); eq(folder:FindFirstChild("Logic").Source, "return 'checkpoint'\\n")
+    eq(#history.log, beforeHistory + 2); has(history.log[beforeHistory + 1], "begin:Apple restore restore-commit"); eq(history.log[beforeHistory + 2], "Commit")
+    eq(history.recording, nil)
+
+    local wrong = run(c, "restore-wrong-id", { op = "restore", root = "game.Workspace.RestoreTarget", checkpointId = "cp-other", snapshot = snap.data }, true, function() return true end)
+    eq(wrong.ok, false); eq(wrong.failure, "conflict"); eq(#history.log, beforeHistory + 2, "identity refusal happens before recording")
+
+    local tampered = {}
+    for k,v in pairs(snap.data) do tampered[k]=v end
+    tampered.node = {}
+    for k,v in pairs(snap.data.node) do tampered.node[k]=v end
+    tampered.node.children = {}
+    for i,v in ipairs(snap.data.node.children) do tampered.node.children[i]=v end
+    local badScript = nil
+    for _, node in ipairs(tampered.node.children) do if node.className == "ModuleScript" then badScript = node end end
+    eq(badScript ~= nil, true)
+    local badScriptCopy = {}; for k,v in pairs(badScript) do badScriptCopy[k]=v end
+    for i,node in ipairs(tampered.node.children) do if node == badScript then tampered.node.children[i]=badScriptCopy end end
+    badScriptCopy.source = "return 'tampered'\\n"
+    local hashRefusal = run(c, "restore-hash", { op = "restore", root = "game.Workspace.RestoreTarget", checkpointId = "cp-restore-1", snapshot = tampered }, true, function() return true end)
+    eq(hashRefusal.ok, false); eq(hashRefusal.failure, "invalid"); has(hashRefusal.error, "hash"); eq(#history.log, beforeHistory + 2)
+    c:destroy()
+end)
+
+spec("incomplete snapshot is never checkpoint-eligible or mutated from", function()
+    local root = Instance.new("Folder"); root.Name = "IncompleteSnapshot"; root.Parent = workspace
+    local supported = Instance.new("Part"); supported.Name = "Supported"; supported.Parent = root
+    local unsupported = Instance.new("RemoteEvent"); unsupported.Name = "Unsupported"; unsupported.Parent = root
+    local c = newCommands()
+    local snap = run(c, "incomplete-snapshot", { op = "snapshot", root = "game.Workspace.IncompleteSnapshot", includeScripts = true, checkpointId = "cp-incomplete-1" }, false)
+    eq(snap.ok, true, tostring(snap.error)); eq(snap.data.complete, false); eq(snap.data.restorable, false); eq(snap.data.checkpointEligible, false); eq(snap.data.coverage, "incomplete")
+    eq(snap.data.skipped.RemoteEvent, 1)
+    local beforeHistory = #history.log
+    local refused = run(c, "incomplete-restore", { op = "restore", root = "game.Workspace.IncompleteSnapshot", checkpointId = "cp-incomplete-1", snapshot = snap.data }, true, function() return true end)
+    eq(refused.ok, false); eq(refused.failure, "invalid"); has(refused.error, "incomplete or unbound")
+    eq(#history.log, beforeHistory, "incomplete checkpoint refusal happens before recording")
+    eq(root:FindFirstChild("Supported"), supported); eq(root:FindFirstChild("Unsupported"), unsupported)
+    root:Destroy()
+    c:destroy()
+end)
+
+spec("restore rejects stale protected or unsupported current content before mutation", function()
+    local c = newCommands()
+    local cameraChild = Instance.new("Folder"); cameraChild.Name = "CameraStateA"; cameraChild.Parent = camera
+    local snap = run(c, "stale-snapshot", { op = "snapshot", root = "game", includeScripts = true, checkpointId = "cp-stale-1" }, false)
+    eq(snap.ok, true, tostring(snap.error)); eq(snap.data.restorable, true)
+    local marker = Instance.new("Part"); marker.Name = "StaleMutationMarker"; marker.Parent = workspace
+    cameraChild:Destroy()
+    local cameraReplacement = Instance.new("Folder"); cameraReplacement.Name = "CameraStateB"; cameraReplacement.Parent = camera
+    local beforeHistory = #history.log
+    local stale = run(c, "stale-restore", { op = "restore", root = "game", checkpointId = "cp-stale-1", snapshot = snap.data }, true, function() return true end)
+    eq(stale.ok, false); eq(stale.failure, "conflict"); has(stale.error, "protected Studio content changed")
+    eq(workspace:FindFirstChild("StaleMutationMarker"), marker); eq(#history.log, beforeHistory, "stale refusal happens before recording")
+    cameraReplacement:Destroy()
+
+    local subtree = Instance.new("Folder"); subtree.Name = "UnsupportedCurrent"; subtree.Parent = workspace
+    local supported = Instance.new("Part"); supported.Name = "Supported"; supported.Parent = subtree
+    local supportedSnap = run(c, "unsupported-snapshot", { op = "snapshot", root = "game.Workspace.UnsupportedCurrent", checkpointId = "cp-unsupported-1", includeScripts = true }, false)
+    eq(supportedSnap.ok, true)
+    local unknown = Instance.new("RemoteEvent"); unknown.Name = "DoNotDelete"; unknown.Parent = subtree
+    local refused = run(c, "unsupported-restore", { op = "restore", root = "game.Workspace.UnsupportedCurrent", checkpointId = "cp-unsupported-1", snapshot = supportedSnap.data }, true, function() return true end)
+    eq(refused.ok, false); eq(refused.failure, "conflict"); has(refused.error, "unsupported current content")
+    eq(subtree:FindFirstChild("DoNotDelete"), unknown); eq(subtree:FindFirstChild("Supported"), supported); eq(#history.log, beforeHistory)
+    marker:Destroy(); subtree:Destroy()
+    c:destroy()
+end)
+
+spec("3D generation fails closed when the adapter is unavailable", function()
+    local c = newCommands()
+    local generated = run(c, "generate", { op = "generate_model", prompt = "a genre-specific haunted station", parent = "game.Workspace" }, true)
+    eq(generated.ok, false); eq(generated.failure, "refused"); has(generated.error, "GenerationService adapter"); has(generated.error, "no substitute")
+    local inspected = run(c, "inspect", { op = "inspect_model", path = "game.Workspace.Mover" }, false)
+    eq(inspected.ok, false); has(inspected.error, "quality gate")
+    c:destroy()
+end)
+
+spec("capability report is operation-derived and reports live generation availability", function()
+    local function byOp(report, wanted)
+        for _, item in report.operations do if item.op == wanted then return item end end
+        return nil
+    end
+
+    local unavailable = newCommands()
+    local report = Commands.capabilities(unavailable)
+    eq(report.schema, "golem.studio-ops.v1")
+    eq(byOp(report, "get_tree").status, "supported")
+    eq(byOp(report, "snapshot").status, "supported")
+    eq(byOp(report, "restore").status, "supported")
+    eq(byOp(report, "undo_waypoint").status, "supported")
+    eq(byOp(report, "run_code").status, "unsupported")
+    has(byOp(report, "run_code").reason, "never loaded")
+    eq(byOp(report, "generate_model").status, "unsupported")
+    for index = 2, #report.operations do
+        eq(report.operations[index - 1].op < report.operations[index].op, true, "capabilities are deterministic")
+    end
+    unavailable:destroy()
+
+    local generation = fakeGeneration()
+    local available = newCommands({ generation = generation })
+    eq(byOp(Commands.capabilities(available), "generate_model").status, "supported")
+    available:destroy()
+
+    local probed = fakeGeneration()
+    function probed:probe() return { available = false, reason = "DynamicGeneration is temporarily unavailable" } end
+    local probedCommands = newCommands({ generation = probed })
+    eq(byOp(Commands.capabilities(probedCommands), "generate_model").status, "supported", "temporary native availability stays runtime-scoped")
+    probedCommands:destroy()
+end)
+
+spec("3D generation performs provider work detached then commits one placement recording", function()
+    local before = #history.log
+    local adapter = fakeGeneration({ assertNoRecording = true })
+    local c = newCommands({ generation = adapter })
+    local generated = run(c, "generation-commit", {
+        op = "generate_model", prompt = "low-poly wooden crate", intent = "crate",
+        maxTriangles = 1200, predefinedSchema = "Body1", parent = "game.Workspace",
+    }, true, function() return true end)
+    eq(generated.ok, true, tostring(generated.error)); eq(adapter.calls, 1)
+    eq(generated.data.sessionScoped, true); eq(generated.data.qc.verdict, "pass"); eq(generated.data.qc.visualJudgementRequired, true)
+    has(generated.data.path, "Apple Generated Model")
+    local placed = adapter.lastModel
+    eq(placed, adapter.lastModel); eq(placed.Parent, workspace)
+    eq(#history.log, before + 2, "generation must create exactly one recording")
+    has(history.log[before + 1], "begin:Apple generate_model generation-commit")
+    eq(history.log[before + 2], "Commit")
+    eq(history.recording, nil)
+    placed:Destroy(); c:destroy(); eq(adapter.destroyed, true)
+end)
+
+spec("generation discards detached results when consent or destination validity changes", function()
+    local before = #history.log
+    local live = true
+    local consentAdapter = fakeGeneration({
+        onGenerate = function(current)
+            eq(current(), true, "consent must be live at provider start")
+            live = false
+        end,
+    })
+    local consentCommands = newCommands({ generation = consentAdapter })
+    local denied = run(consentCommands, "generation-disconnect", { op = "generate_model", prompt = "crate", parent = "game.Workspace" }, true, function() return live end)
+    eq(denied.ok, false); eq(denied.failure, "refused"); eq(#consentAdapter.discarded, 1); eq(consentAdapter.lastModel.__destroyed, true)
+    eq(#history.log, before, "revoked consent must prevent any recording")
+    consentCommands:destroy()
+
+    local destination = Instance.new("Folder"); destination.Name = "GenerationDestination"; destination.Parent = workspace
+    local destinationAdapter = fakeGeneration({ onGenerate = function() destination:Destroy() end })
+    local destinationCommands = newCommands({ generation = destinationAdapter })
+    local moved = run(destinationCommands, "generation-destination", { op = "generate_model", prompt = "crate", parent = "game.Workspace.GenerationDestination" }, true, function() return true end)
+    eq(moved.ok, false); eq(moved.failure, "conflict"); eq(destinationAdapter.lastModel.__destroyed, true)
+    eq(#history.log, before, "changed destination must prevent any recording")
+    destinationCommands:destroy()
+end)
+
+spec("generation cancels or refuses placement failures and destroys the result", function()
+    local adapter = fakeGeneration()
+    local c = newCommands({ generation = adapter })
+    local before = #history.log
+    history.refuse = true
+    local busy = run(c, "generation-history-busy", { op = "generate_model", prompt = "crate", parent = "game.Workspace" }, true, function() return true end)
+    history.refuse = false
+    eq(busy.ok, false); eq(busy.failure, "conflict"); eq(adapter.lastModel.__destroyed, true); eq(#history.log, before)
+
+    history.finishError = true
+    local failedCommit = run(c, "generation-commit-failure", { op = "generate_model", prompt = "crate", parent = "game.Workspace" }, true, function() return true end)
+    eq(failedCommit.ok, false); eq(failedCommit.failure, "internal"); eq(adapter.lastModel.__destroyed, true)
+    eq(history.recording, nil); eq(history.log[#history.log], "Cancel")
+    c:destroy()
+end)
+
+spec("generation cancels the recording if consent ends immediately before commit", function()
+    local adapter = fakeGeneration()
+    local c = newCommands({ generation = adapter })
+    local checks = 0
+    local function current()
+        checks += 1
+        return checks < 4
+    end
+    local before = #history.log
+    local result = run(c, "generation-placement-disconnect", {
+        op = "generate_model", prompt = "crate", parent = "game.Workspace",
+    }, true, current)
+    eq(result.ok, false); eq(result.failure, "refused")
+    eq(adapter.lastModel.__destroyed, true); eq(adapter.lastModel.Parent, nil)
+    eq(#history.log, before + 2, "placement cancellation must finish its one opened recording")
+    has(history.log[before + 1], "begin:Apple generate_model generation-placement-disconnect")
+    eq(history.log[before + 2], "Cancel")
+    eq(history.recording, nil)
+    c:destroy()
+end)
+
+spec("history refusal and destroy are visible", function()
+    local c = newCommands(); history.refuse = true
+    local r = run(c, "busy", { op = "create_instances", items = {{ className = "Part", name = "Busy", parent = "game.Workspace" }} }, true)
+    eq(r.ok, false); eq(r.failure, "conflict"); history.refuse = false; c:destroy()
+    eq(run(c, "dead", { op = "ping" }, false).ok, false)
+end)
+
+report()
+`;
+
+function available() {
+  try { execFileSync('luau', ['--help'], { stdio: 'pipe' }); return true; } catch { return false; }
+}
+function runLuau(source = SOURCE) {
+  const dir = mkdtempSync(join(tmpdir(), 'apple-commands-'));
+  const file = join(dir, 'commands.gen.luau');
+  writeFileSync(file, PRELUDE + '\nlocal Commands = (function()\n' + source + '\nend)()\n' + SPEC);
+  try { return { status: 0, output: execFileSync('luau', [file], { encoding: 'utf8', stdio: 'pipe' }) }; }
+  catch (error) { return { status: error.status ?? 1, output: String(error.stdout ?? '') + String(error.stderr ?? '') }; }
+}
+
+test('new command engine passes executable Studio-mock suite', { skip: available() ? false : 'luau is not on PATH' }, () => {
+  const result = runLuau();
+  assert.match(result.output, /^commands: (\d+) passed$/m, 'suite did not report a clean run:\n' + result.output);
+  const report = /^commands: (\d+) passed$/m.exec(result.output);
+  assert.ok(report && Number(report[1]) >= 8, 'too few assertions ran:\n' + result.output);
+  assert.equal(result.status, 0, result.output);
+});
+
+test('mutation-consent guard is live (red-first falsification)', { skip: available() ? false : 'luau is not on PATH' }, () => {
+  const needle = '\t\tif MUTATING[name] or DEFERRED_MUTATING[name] or CONSENT_ONLY[name] then\n\t\t\tif allowEdits ~= true then return failureResult(id, "refused", "writes require explicit edit consent", started) end';
+  assert.equal(SOURCE.split(needle).length, 2, 'falsification anchor must occur once');
+  const broken = SOURCE.replace(needle, needle.replace('~= true', '== true'));
+  const result = runLuau(broken);
+  assert.notEqual(result.status, 0, 'the intentionally broken mutation guard stayed green:\n' + result.output);
+});
+
+test('restore removal stays undoable for ChangeHistory', () => {
+  const match = /local function clearRestoreRoot\([\s\S]*?\nend\n\nlocal function preflightDeletable/.exec(SOURCE);
+  assert.ok(match, 'clearRestoreRoot implementation was not found');
+  const clearRestoreRoot = match[0];
+  assert.doesNotMatch(
+    clearRestoreRoot,
+    /:Destroy\(\)/,
+    'Instance:Destroy() locks Parent and prevents ChangeHistory Undo/Cancel from restoring the pre-restore instance',
+  );
+  assert.match(clearRestoreRoot, /child\.Parent\s*=\s*nil/, 'restore must remove authored instances by parenting to nil so ChangeHistory can restore them');
+});

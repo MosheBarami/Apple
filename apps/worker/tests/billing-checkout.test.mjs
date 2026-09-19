@@ -56,6 +56,25 @@ test('an unconfigured deployment refuses rather than half-working', () => {
   assert.equal(r.status, 503, 'unconfigured is a service state, not a bad request');
 });
 
+test('billing readiness hides prices until the global Stripe plumbing is configured', () => {
+  const env = {
+    STRIPE_PRICE_BUILDER: 'price_builder_1',
+    STRIPE_PRICE_STUDIO: 'price_studio_1',
+  };
+  assert.deepEqual(B.billingConfigFor(env), {
+    checkout: false,
+    purchasable: [],
+  }, 'price ids without the webhook and API key are not a usable offer');
+});
+
+test('billing readiness exposes only plans whose own prices are configured', () => {
+  const partial = { ...LIVE, STRIPE_PRICE_STUDIO: '   ' };
+  assert.deepEqual(B.billingConfigFor(partial), {
+    checkout: true,
+    purchasable: ['builder'],
+  }, 'a partial deployment can safely sell the tier it actually configured');
+});
+
 test('FREE IS NOT A CHECKOUT — moving down is a cancellation', () => {
   // A zero-price subscription checkout would create a SECOND subscription beside the paid one that
   // is still running, so the user keeps being charged for the tier they just left.

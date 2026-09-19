@@ -17,6 +17,7 @@ import { rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { tmpdir } from 'node:os';
+import { d1 } from './stubs/d1.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
@@ -62,6 +63,7 @@ const store = (project, image, secondsLeft) => kv.set(`image:${project}:${image}
 store(A_PROJECT, IMAGE, 3600);
 
 const env = {
+  CORPUS: d1().CORPUS,
   KV: {
     async getWithMetadata(key) { return kv.get(key) ?? { value: null, metadata: null }; },
     async get(key) { return kv.get(key)?.value ?? null; },
@@ -86,6 +88,54 @@ test('the route is REGISTERED — a request reaches it and returns the bytes', a
   const bytes = new Uint8Array(await res.arrayBuffer());
   const expected = Uint8Array.from(atob(PNG_B64), (ch) => ch.charCodeAt(0));
   assert.deepEqual([...bytes], [...expected], 'the bytes served must be the bytes stored');
+});
+
+test('JPEG output is delivered as JPEG rather than mislabeled PNG', async () => {
+  const id = '77777777-7777-4777-8777-777777777777';
+  const bytes = Uint8Array.from([255, 216, 255, 224, 0, 16, 74, 70, 73, 70, 0]);
+  kv.set(`image:${A_PROJECT}:${id}`, { value: Buffer.from(bytes).toString('base64'), metadata: { expiresAt: nowSec() + 60 } });
+  const res = await app.request(url(A_PROJECT, id), as(ALICE), env);
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get('Content-Type'), 'image/jpeg');
+  assert.deepEqual(new Uint8Array(await res.arrayBuffer()), bytes);
+});
+
+test('a durable image is served after 90 days without a cached authorization bypass', async () => {
+  const id = '99999999-9999-4999-8999-999999999999';
+  await env.CORPUS.prepare('INSERT INTO generated_images VALUES (?, ?, ?, ?, ?)')
+    .bind(A_PROJECT, id, PNG_B64, PNG_B64.length, Date.now() - 90 * 86400_000).run();
+  const res = await app.request(url(A_PROJECT, id), as(ALICE), env);
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get('Cache-Control'), 'private, no-store');
+  assert.deepEqual([...new Uint8Array(await res.arrayBuffer())], [...Buffer.from(PNG_B64, 'base64')]);
+  assert.equal((await app.request(url(A_PROJECT, id), as(BOB), env)).status, 404);
+});
+
+test('invalid base64 and active non-image payloads are not served as images', async () => {
+  const id = '88888888-8888-4888-8888-888888888888';
+  for (const value of ['not valid base64!', Buffer.from('<svg onload="alert(1)"></svg>').toString('base64')]) {
+    kv.set(`image:${A_PROJECT}:${id}`, { value, metadata: null });
+    const res = await app.request(url(A_PROJECT, id), as(ALICE), env);
+    assert.equal(res.status, 404);
+    assert.deepEqual(await res.json(), { error: 'not found' });
+  }
+});
+
+test('a deleted project never falls back to legacy pixels, including late preview writes', async () => {
+  const project = 'abababab-abab-4bab-8bab-abababababab';
+  PROJECTS.set(project, ALICE); // Simulates erasure before ownership row deletion, or a failed purge.
+  store(project, IMAGE, 3600);
+  assert.equal((await app.request(url(project, IMAGE), as(ALICE), env)).status, 200);
+  await env.CORPUS.prepare('INSERT INTO generated_image_tombstones VALUES (?)').bind(project).run();
+  const reads = [];
+  const fencedEnv = { ...env, KV: { ...env.KV, async getWithMetadata(key) { reads.push(key); return env.KV.getWithMetadata(key); } } };
+  for (const id of [IMAGE, 'acacacac-acac-4cac-8cac-acacacacacac']) {
+    store(project, id, 3600); // Includes a preview arriving AFTER the deletion sweep.
+    const res = await app.request(url(project, id), as(ALICE), fencedEnv);
+    assert.equal(res.status, 404);
+    assert.deepEqual(await res.json(), { error: 'not found' });
+  }
+  assert.deepEqual(reads, [], 'a deletion fence must suppress KV fallback, not just D1 results');
 });
 
 /* -------------------------------------------------------------- authorisation --- */

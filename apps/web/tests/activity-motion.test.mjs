@@ -29,29 +29,35 @@ import { readFileSync } from 'node:fs';
 
 import { motionPlan } from '../src/components/ws/activity-model.ts';
 
-const CSS = readFileSync(new URL('../src/styles/workspace.css', import.meta.url), 'utf8')
+const CSS = readFileSync(new URL('../src/design/system.css', import.meta.url), 'utf8')
   // Comments carry example declarations and prose about animation; parsing them
   // as rules would produce confident nonsense.
   .replace(/\/\*[\s\S]*?\*\//g, '');
 
 /** The byte range of the `prefers-reduced-motion: reduce` block, by brace matching. */
-function reduceBlockRange(css) {
-  const open = css.indexOf('@media (prefers-reduced-motion: reduce)');
-  assert.notEqual(open, -1, 'the stylesheet must have a reduced-motion block at all');
-  const first = css.indexOf('{', open);
-  let depth = 0;
-  for (let i = first; i < css.length; i += 1) {
-    if (css[i] === '{') depth += 1;
-    else if (css[i] === '}') {
-      depth -= 1;
-      if (depth === 0) return [open, i];
+function reducedMotionRanges(css) {
+  const ranges = [];
+  const re = /@media\s*\(\s*prefers-reduced-motion\s*:\s*reduce\s*\)/g;
+  let match;
+  while ((match = re.exec(css)) !== null) {
+    const open = css.indexOf('{', match.index);
+    let depth = 0;
+    for (let i = open; i < css.length; i += 1) {
+      if (css[i] === '{') depth += 1;
+      else if (css[i] === '}') {
+        depth -= 1;
+        if (depth === 0) {
+          ranges.push([match.index, i]);
+          break;
+        }
+      }
     }
   }
-  throw new Error('unbalanced braces in the reduced-motion block');
+  assert.ok(ranges.length > 0, 'the stylesheet must have a reduced-motion block at all');
+  return ranges;
 }
 
-const [REDUCE_FROM, REDUCE_TO] = reduceBlockRange(CSS);
-const REDUCE_BLOCK = CSS.slice(REDUCE_FROM, REDUCE_TO);
+const REDUCE_RANGES = reducedMotionRanges(CSS);
 
 /** Every `selector { body }` pair, with where it starts. Rule bodies here never nest. */
 function rules(css) {
@@ -65,9 +71,9 @@ function rules(css) {
 }
 
 const RULES = rules(CSS);
-const inReduce = (rule) => rule.at > REDUCE_FROM && rule.at < REDUCE_TO;
+const inReduce = (rule) => REDUCE_RANGES.some(([from, to]) => rule.at > from && rule.at < to);
 /** Rules that style the activity timeline or an evidence card. */
-const isActivity = (rule) => /gx-act|gx-ev\b|gx-ev__/.test(rule.selector);
+const isActivity = (rule) => /\.gx-(?:act|ev|ring)\b/.test(rule.selector);
 const animates = (rule) => /animation\s*:\s*(?!none)[^;]+/.test(rule.body);
 const transitions = (rule) => /transition\s*:\s*(?!none)[^;]+/.test(rule.body);
 
@@ -109,13 +115,14 @@ test('every transition on the activity timeline is gated the same way', () => {
   assert.deepEqual(ungated.map((r) => r.selector), []);
 });
 
-test('the reduce block switches off the activity animations it can reach', () => {
-  const killed = RULES.filter((r) => inReduce(r) && isActivity(r) && /animation\s*:\s*none/.test(r.body));
-  assert.ok(killed.length > 0, 'the reduce block must name the activity selectors explicitly');
-  const named = killed.map((r) => r.selector).join(' ');
-  for (const selector of ['.gx-act__step', '.gx-ev', '.gx-ev__bar', '.gx-act__pip']) {
-    assert.ok(named.includes(selector), `${selector} animates elsewhere and must be listed under reduce`);
-  }
+test('a generic reduced-motion policy neutralises activity travel', () => {
+  const generic = RULES.filter(
+    (r) => inReduce(r)
+      && /(^|,)\s*\*\s*(,|$)/.test(r.selector)
+      && /animation\s*:\s*none\s*!important/.test(r.body)
+      && /transition\s*:\s*none\s*!important/.test(r.body),
+  );
+  assert.ok(generic.length > 0, 'reduced motion needs a generic animation and transition reset');
 });
 
 // ---------------------------------------------------------------------------
@@ -137,10 +144,16 @@ test('reduced motion never hides an activity element outright', () => {
 });
 
 test('the in-flight ring keeps reading as unfinished when it stops spinning', () => {
-  const ring = RULES.find((r) => inReduce(r) && r.selector.includes('.gx-ring__spin'));
-  assert.ok(ring, 'the spinner must be addressed under reduce');
-  assert.match(ring.body, /animation\s*:\s*none/);
-  assert.match(ring.body, /stroke-dasharray/, 'stopped, it still has to look like a partial arc');
+  const base = RULES.find((r) => !inReduce(r) && r.selector === '.gx-ring__spin');
+  assert.ok(base, 'the in-flight ring has no base rule');
+  assert.match(base.body, /stroke-dasharray/, 'the ring must remain a partial arc when motion stops');
+  const generic = RULES.some(
+    (r) => inReduce(r) && /\*\s*(,|$)/.test(r.selector) && /animation\s*:\s*none\s*!important/.test(r.body),
+  );
+  const explicit = RULES.some(
+    (r) => inReduce(r) && r.selector.includes('.gx-ring__spin') && /animation\s*:\s*none/.test(r.body),
+  );
+  assert.ok(generic || explicit, 'the ring must stop under reduced motion');
 });
 
 test('the live pip keeps a halo with no animation at all', () => {
@@ -157,11 +170,17 @@ test('the live pip keeps a halo with no animation at all', () => {
 });
 
 test('the loading bar is parked, not deleted', () => {
+  const base = RULES.find((r) => !inReduce(r) && r.selector === '.gx-ev__bar');
+  assert.ok(base, 'the evidence loading bar has no base rule');
+  assert.match(base.body, /background:/, 'the bar must remain visible');
   const parked = RULES.filter((r) => inReduce(r) && r.selector.includes('.gx-ev__bar'));
-  assert.ok(parked.length > 0);
-  const body = parked.map((r) => r.body).join(' ');
-  assert.match(body, /animation\s*:\s*none/);
-  assert.match(body, /background-position/, 'it must still be a visible bar, held at rest');
+  const generic = RULES.some(
+    (r) => inReduce(r) && /\*\s*(,|$)/.test(r.selector) && /animation\s*:\s*none\s*!important/.test(r.body),
+  );
+  assert.ok(parked.length > 0 || generic, 'the bar must be parked under reduced motion');
+  if (parked.length > 0) {
+    assert.match(parked.map((r) => r.body).join(' '), /background-position/);
+  }
 });
 
 test('the reduce block never restyles a state colour', () => {

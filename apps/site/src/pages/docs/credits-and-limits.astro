@@ -15,6 +15,7 @@ import {
 const free = PLAN_LIMITS.free;
 const paid = PLAN_IDS.filter((id) => id !== 'free' && PLAN_COPY[id].priceUsdMonthly !== null);
 import DocsLayout from '../../layouts/DocsLayout.astro';
+import { GENERATED_IMAGE_MAX_BYTES, GENERATED_PROJECT_BYTES, GENERATED_PROJECT_COUNT } from '../../../../worker/src/generated-image-limits';
 
 /*
  * THE PER-MODE PRICES WERE TYPED HERE, AND ONE OF THEM PRICED A MODE NOBODY CAN BUY.
@@ -120,8 +121,8 @@ const sessionShape = modes
     Apple keeps notes, plans and generated data in a workspace beside each project — Apple's own
     storage, not your Roblox place — and you can open, add, rename and download those files from the
     Files drawer in the workspace. It holds <strong>text files only</strong>: .md, .txt, .json,
-    .csv, .luau, .lua, .ts, .js, .yml and .yaml. There is no image or model storage here; assets
-    live in your place.
+    .csv, .luau, .lua, .ts, .js, .yml and .yaml. Generated images are separate: download them
+    from their result in the conversation. Roblox models live in your place.
   </p>
   <ul>
     <li><strong>48 KB per file.</strong> A file past that is refused rather than truncated, so a
@@ -134,7 +135,21 @@ const sessionShape = modes
   </ul>
   <p>
     None of this counts against your Credits. Credits pay for inference; files are storage, and the
-    limits above are the whole of it.
+    storage has the limits described here.
+  </p>
+
+  <h2>Generated images</h2>
+  <p>
+    New generated images stay with their project until it is deleted. Each image can be up to
+    {GENERATED_IMAGE_MAX_BYTES / 1024 / 1024} MiB, with at most {GENERATED_PROJECT_COUNT} images
+    and {GENERATED_PROJECT_BYTES / 1024 / 1024} MiB of encoded image data per project
+    (encoding uses about a third more space than the downloaded file).
+    Download a copy to keep outside Apple. Older temporary images that have expired cannot be recovered.
+  </p>
+  <p>
+    Generation is refused before starting when project or service storage is full. Existing images
+    are not removed to make room. Concurrent runs can still fill the space while an image is being
+    generated; if saving fails, Apple reports that failure instead of claiming delivery.
   </p>
 
   <h2>Other limits worth knowing</h2>

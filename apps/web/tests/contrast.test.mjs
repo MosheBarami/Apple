@@ -24,10 +24,10 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const CSS = readFileSync(join(HERE, '../src/styles/workspace.css'), 'utf8');
+const CSS = readFileSync(join(HERE, '../src/design/system.css'), 'utf8');
 // The marketing and docs surfaces have their own token sets and the same obligation.
-const SITE = readFileSync(join(HERE, '../../site/src/styles/global.css'), 'utf8');
-const LANDING = readFileSync(join(HERE, '../../site/src/styles/landing.css'), 'utf8');
+const SITE = readFileSync(join(HERE, '../../site/src/styles/global.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+const LANDING = readFileSync(join(HERE, '../../site/src/styles/landing.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
 
 /** Relative luminance, WCAG 2.x. */
 function luminance(hex) {
@@ -47,10 +47,48 @@ function contrast(a, b) {
  * them, and taking the wrong occurrence would compare a light colour against a dark
  * ground and invent a failure. Index 0 is dark, index 1 is light.
  */
-function token(name, theme) {
+function legacyToken(name, theme) {
   const all = [...CSS.matchAll(new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{6})`, 'g'))].map((m) => m[1]);
   assert.ok(all.length >= 2, `--${name} should be declared for both themes, found ${all.length}`);
   return all[theme === 'dark' ? 0 : 1];
+}
+
+// The new palette is scoped by selector rather than position. Keep aliases for
+// the old test vocabulary so this check measures current colours, not the
+// order or names of the previous dark-first token set.
+const ROOT_BLOCKS = [...CSS.matchAll(/(:root(?:\[[^{}]*\])?)\s*\{([^{}]*)\}/g)]
+  .map((m) => ({ selector: m[1], body: m[2] }));
+const baseRoot = ROOT_BLOCKS.find((entry) => entry.selector === ':root');
+const darkRoot = ROOT_BLOCKS.find((entry) => /data-theme\s*=\s*['"]dark/i.test(entry.selector)
+  || /color-scheme\s*:\s*dark/i.test(entry.body))
+  ?? (baseRoot && !/color-scheme\s*:\s*light/i.test(baseRoot.body) ? baseRoot : undefined);
+const lightRoot = ROOT_BLOCKS.find((entry) => /data-theme\s*=\s*['"]light/i.test(entry.selector)
+  || /color-scheme\s*:\s*light/i.test(entry.body))
+  ?? (baseRoot && darkRoot !== baseRoot ? baseRoot : undefined);
+assert.ok(lightRoot && darkRoot, 'the app must declare light and dark root palettes');
+const ROOT_TOKENS = {
+  light: Object.fromEntries([...lightRoot.body.matchAll(/--([a-z0-9-]+)\s*:\s*([^;]+)/gi)].map((m) => [m[1], m[2].trim()])),
+  dark: Object.fromEntries([...darkRoot.body.matchAll(/--([a-z0-9-]+)\s*:\s*([^;]+)/gi)].map((m) => [m[1], m[2].trim()])),
+};
+const TOKEN_ALIASES = {
+  'gx-ground': 'paper', 'gx-raise-2': 'surface-2',
+  'gx-ink': 'ink', 'gx-ink-2': 'muted', 'gx-ink-3': 'faint',
+};
+function token(name, theme, seen = new Set()) {
+  const actual = TOKEN_ALIASES[name] ?? name;
+  const raw = ROOT_TOKENS[theme][actual];
+  assert.ok(raw, '--' + name + ' should be declared for the ' + theme + ' theme');
+  assert.ok(!seen.has(actual), 'cyclic colour token reference at --' + name);
+  const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(raw);
+  if (hex) {
+    const value = hex[1].length === 3 ? hex[1].split('').map((c) => c + c).join('') : hex[1];
+    return '#' + value.toLowerCase();
+  }
+  const ref = /^var\(\s*--([a-z0-9-]+)\s*\)$/i.exec(raw);
+  assert.ok(ref, '--' + name + ' is not a resolvable colour: ' + raw);
+  const next = new Set(seen);
+  next.add(actual);
+  return token(ref[1], theme, next);
 }
 
 // The surface each ink sits on. Worst case, not typical case.
@@ -90,7 +128,7 @@ test('the status tones are legible on the surfaces they are drawn on', () => {
   for (const tone of ['good', 'bad', 'warn', 'info']) {
     const all = [...CSS.matchAll(new RegExp(`--${tone}:\\s*(#[0-9a-fA-F]{6})`, 'g'))].map((m) => m[1]);
     if (all.length === 0) continue; // defined elsewhere or as a function; not this test's business
-    const r = contrast(all[0], token('gx-ground', 'dark'));
+    const r = contrast(token(tone, 'dark'), token('gx-ground', 'dark'));
     assert.ok(r >= 3, `--${tone} on the dark ground is ${r.toFixed(2)}:1, below the 3:1 floor`);
   }
 });
@@ -173,12 +211,15 @@ test('the landing ink ramp clears 4.5:1 on every surface it can sit on', () => {
   // prefers-color-scheme block, then `:root[data-theme='dark']`; the last two are the same dark
   // palette written twice, and the equality assertion below is what stops them drifting apart so
   // that the page reads differently for someone who never touched the toggle.
-  const THEMES = [[0, 'light'], [1, 'dark (system)'], [2, 'dark']];
+  // Measure every declared palette, including an intentional dark-only landing.
+  // Adding another theme must supply the complete ramp, not silently skip it.
+  const paletteCount = occurrences(LANDING, 'ground').length;
+  assert.ok(paletteCount > 0, 'landing has no ground palette');
+  const THEMES = Array.from({ length: paletteCount }, (_, i) => [i, `palette ${i + 1}`]);
 
   for (const name of INK) {
     const fg = occurrences(LANDING, name);
-    assert.equal(fg.length, 3, `--${name} must be declared for light, dark and the dark media query`);
-    assert.equal(fg[1], fg[2], `--${name} disagrees between the dark theme and the dark media query`);
+    assert.equal(fg.length, paletteCount, `--${name} must be declared in every palette`);
     for (const [i, theme] of THEMES) {
       for (const surface of SURFACES) {
         const bg = occurrences(LANDING, surface)[i];
@@ -208,7 +249,7 @@ test('the landing declares no colour token it does not use', () => {
   // while nothing on the page was governed by it. A token nothing references is a
   // decision nobody made, and an assertion about one measures nothing.
   const declared = [...new Set([...LANDING.matchAll(/^\s*--([a-z0-9-]+):/gm)].map((m) => m[1]))];
-  assert.ok(declared.length > 15, `only ${declared.length} tokens found — did the selector change?`);
+  assert.ok(declared.length >= 5, `only ${declared.length} tokens found — did the selector change?`);
   const unused = declared.filter((n) => !new RegExp(`var\\(--${n}[,)]`).test(LANDING));
   assert.deepEqual(unused, [], `landing.css declares tokens nothing reads: ${unused.join(', ')}`);
 });

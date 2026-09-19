@@ -35,7 +35,10 @@ test('every surface a person CHOOSES from reads the offered list', () => {
   //[[ THE DRIFT THIS CATCHES. Four surfaces list modes and three had been updated by hand. A
   //   fifth added next month would default to PRODUCT_MODES and re-advertise a mode nobody can
   //   start, and nothing would say so — it renders, it prices, it just cannot be reached. ]]
-  for (const file of ['components/ws/composer.tsx', 'routes/usage.tsx', 'lib/automations.ts']) {
+  // The composer now offers independent product models, not autonomy modes.
+  assert.match(read('components/ws/composer.tsx'), /PRODUCT_MODELS\.map/);
+  assert.match(read('routes/usage.tsx'), /PRODUCT_MODELS/);
+  for (const file of ['lib/automations.ts']) {
     const src = read(file);
     assert.match(src, /PRODUCT_MODES_OFFERED/, `${file} must offer from the offered list`);
     // The bare list may still be imported for a type or a lookup; what must not happen is

@@ -1,0 +1,108 @@
+{
+  "startedAt": "2026-09-18T20:30:35.766629+00:00",
+  "artifact": "/var/folders/hw/0ybpmzsn323dbcc3cgjwrb700000gn/T/apple-ui-engine-proof-XJPif6/AppleUI-proof.rbxlx",
+  "artifactSha256": "55102ad59f2e5d57f7db1387125d774484b656c8436c7a60d2f5fb854ae240c8",
+  "sourceManifest": {
+    "artifact": "/var/folders/hw/0ybpmzsn323dbcc3cgjwrb700000gn/T/apple-ui-engine-proof-XJPif6/AppleUI-proof.rbxlx",
+    "theme": "simulator",
+    "sha256": "55102ad59f2e5d57f7db1387125d774484b656c8436c7a60d2f5fb854ae240c8",
+    "sourceHashes": {
+      "AppleUI.luau": "00ff5037f3d7611605f2e1d21676e195d68358ac59ce3daa538d3bfe84a38de4",
+      "Proof.server.luau": "9511ac4c80523a70ff976e6eaa2321f236836a6e2f29e52713c9c70da5900c8f",
+      "Proof.client.luau": "ded386378f4f8001fad1972d6acfa1a66839fcd877574cfef58e05f1b585be85"
+    },
+    "compiledScripts": 3,
+    "studioExecuted": false,
+    "published": false,
+    "installedPlugin": false
+  },
+  "runnerSha256": "a665125a262972f1c12a2b4fd791ad39d4c0c7ccb18492bc2002a89c10e82db6",
+  "processExitCode": 0,
+  "reports": [
+    {
+      "marker": "APPLE_UI_LAYOUT",
+      "value": {
+        "viewport": [
+          1439,
+          755
+        ],
+        "hud": [
+          16,
+          16,
+          260,
+          126
+        ],
+        "theme": "simulator",
+        "visuallyAccepted": false
+      }
+    },
+    {
+      "marker": "APPLE_UI_PURCHASE",
+      "value": {
+        "message": "Movement upgrade confirmed",
+        "balance": 75,
+        "item": "speed",
+        "upgrades": 1,
+        "theme": "simulator",
+        "walkSpeed": 20,
+        "accepted": true
+      }
+    },
+    {
+      "marker": "APPLE_UI_PURCHASE",
+      "value": {
+        "message": "Movement upgrade confirmed",
+        "balance": 50,
+        "item": "speed",
+        "upgrades": 2,
+        "theme": "simulator",
+        "walkSpeed": 24,
+        "accepted": true
+      }
+    },
+    {
+      "marker": "APPLE_UI_PURCHASE",
+      "value": {
+        "message": "Movement upgrade confirmed",
+        "balance": 25,
+        "item": "speed",
+        "upgrades": 3,
+        "theme": "simulator",
+        "walkSpeed": 28,
+        "accepted": true
+      }
+    },
+    {
+      "marker": "APPLE_UI_PURCHASE",
+      "value": {
+        "message": "All three upgrades are owned",
+        "balance": 25,
+        "item": "speed",
+        "upgrades": 3,
+        "theme": "simulator",
+        "walkSpeed": 28,
+        "accepted": false
+      }
+    },
+    {
+      "marker": "APPLE_UI_PLAY_ENDED",
+      "value": {
+        "visualVerdict": "unreviewed",
+        "reason": "inspection_window_elapsed",
+        "kind": "server_readback",
+        "schema": 1,
+        "states": [
+          {
+            "balance": 25,
+            "walkSpeed": 28,
+            "upgrades": 3
+          }
+        ]
+      }
+    }
+  ],
+  "published": false,
+  "visualVerdict": "requires_main_inspection",
+  "scriptOutputSha256": "e4db12d82b73d0a31b7aafe632404148b29de691ea45a023a2ebc2200326bb35",
+  "startupLogSha256": "c0db25954f726d95af784f9cdc29a31a7c1a01edcdea7f364117e6662685573c"
+}

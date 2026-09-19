@@ -72,7 +72,10 @@ test('PLAN can still do the thing it exists to do', () => {
   // A read-only mode that cannot read is not safe, it is useless — and a caller who
   // finds Plan unhelpful reaches for Agent on a project they were being careful with.
   const allowed = toolsForMode('clay', true, ALL);
-  for (const needed of ['get_project_tree', 'list_scripts', 'read_script', 'search_scripts']) {
+  for (const needed of [
+    'get_project_tree', 'list_scripts', 'read_script', 'search_scripts',
+    'search_creation_skills', 'read_creation_skill',
+  ]) {
     assert.ok(allowed.has(needed), `Plan cannot ${needed}, so it cannot inspect anything`);
   }
 });
@@ -94,15 +97,65 @@ test('AGENT and SUPER get the full toolset', () => {
   }
 });
 
-test('with Studio disconnected, EVERY mode drops to two tools', () => {
-  // Not a Plan-mode rule — it applies first, to all three. There is no project to act
-  // on, so offering tools that act on one would produce refusals the model has to
-  // learn from instead of a toolset that never suggested them.
-  for (const mode of ['clay', 'stone', 'rune']) {
+test('without Studio, builders retain image generation but Plan stays read-only', () => {
+  // Image generation is worker-side and stores a project-scoped preview; it never edits the
+  // Roblox place. It must remain discoverable for Agent/Super Agent while Studio is offline.
+  // Explicit capability tripwire: get_genre_references was reviewed as static, bounded retrieval
+  // with no project access, network request or mutation (genre-reference-tools.test.mjs).
+  const expected = {
+    clay: ['get_genre_references', 'read_creation_skill', 'remember', 'search_creation_skills', 'search_docs'],
+    stone: ['generate_image', 'get_genre_references', 'read_creation_skill', 'remember', 'search_creation_skills', 'search_docs'],
+    rune: ['generate_image', 'get_genre_references', 'read_creation_skill', 'remember', 'search_creation_skills', 'search_docs'],
+  };
+  for (const [mode, names] of Object.entries(expected)) {
     const allowed = toolsForMode(mode, false, ALL);
-    assert.deepEqual([...allowed].sort(), ['remember', 'search_docs'],
-      `${mode} offers more than search_docs and remember with no Studio`);
+    assert.deepEqual([...allowed].sort(), [...names].sort(),
+      `${mode} has the wrong offline toolset`);
   }
+});
+
+test('offline image generation is not a Studio mutation or a model-generation escape hatch', () => {
+  assert.ok(ALL.includes('generate_image'), 'generate_image must remain registered');
+  assert.ok(ALL.includes('generate_model'), 'generate_model must remain registered');
+  for (const mode of ['stone', 'rune']) {
+    const allowed = toolsForMode(mode, false, ALL);
+    assert.equal(allowed.has('generate_image'), true, `${mode} cannot generate an image offline`);
+    assert.equal(allowed.has('generate_model'), false, `${mode} can invoke Studio model generation offline`);
+    for (const m of MUTATING) assert.equal(allowed.has(m), false, `${mode} leaked ${m} while offline`);
+  }
+  for (const mode of ['clay', 'memory', undefined]) {
+    assert.equal(toolsForMode(mode, false, ALL).has('generate_image'), false,
+      `${String(mode)} must not gain image generation outside a real builder mode`);
+  }
+});
+
+test('generate_image refuses a missing project before the paid model call', () => {
+  const src = readFileSync(join(WORKER, 'src', 'tools.ts'), 'utf8');
+  const start = src.indexOf('  generate_image: {');
+  const end = src.indexOf('  search_docs: {', start);
+  assert.ok(start >= 0 && end > start, 'could not isolate generate_image in the tool table');
+  const body = src.slice(start, end);
+  const guard = body.indexOf('if (!ctx.projectId)');
+  const inference = body.indexOf('const res = await generateImage(ctx.env, req)');
+  assert.ok(guard >= 0, 'generate_image must refuse without a project');
+  assert.ok(inference >= 0, 'generate_image must call the image service through generateImage');
+  assert.ok(guard < inference, 'missing project must be rejected before paid image inference');
+});
+
+test('generate_model stays Studio-backed and reports an unavailable GenerationService honestly', () => {
+  const toolSrc = readFileSync(join(WORKER, 'src', 'tools.ts'), 'utf8');
+  const pluginSrc = readFileSync(join(WORKER, '..', 'plugin', 'src', 'Generation.luau'), 'utf8');
+  const opsSrc = readFileSync(join(WORKER, '..', 'plugin', 'src', 'Ops.luau'), 'utf8');
+  const start = toolSrc.indexOf('  generate_model: {');
+  const end = toolSrc.indexOf('  inspect_model: {', start);
+  assert.ok(start >= 0 && end > start, 'could not isolate generate_model in the tool table');
+  const tool = toolSrc.slice(start, end);
+  assert.match(tool, /studio: true/, 'generate_model must not be offered as a worker-only tool');
+  assert.match(opsSrc, /handlers\.generate_model\s*=\s*function\(op\)/);
+  assert.match(opsSrc, /Generation\.generateAndInspect/);
+  assert.match(pluginSrc, /GetService\("GenerationService"\)/);
+  assert.match(pluginSrc, /GenerationService is unavailable in this Studio build/,
+    'a missing beta service must be surfaced as an explicit refusal');
 });
 
 test('disconnected beats mode: even Super Agent cannot mutate', () => {

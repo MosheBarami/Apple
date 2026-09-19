@@ -5,7 +5,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from './components/error-boundary';
 import { ToastProvider } from './components/toast';
 import { CommandProvider } from './lib/commands';
-import { Cursor, Grain } from './components/atmosphere';
 import { ThemeProvider } from './lib/theme';
 import { AuthGuard, AuthProvider, GuestGuard } from './lib/auth';
 import { AppLayout } from './components/layout';
@@ -37,6 +36,7 @@ const AdminPage = lazy(() => import('./routes/admin').then((m) => ({ default: m.
 // Only these two are lazy. Dashboard and workspace are where a user lands, and splitting
 // those would trade bundle size for a round trip on the path that matters most.
 const UiLabPage = lazy(() => import('./routes/ui-lab').then((m) => ({ default: m.UiLabPage })));
+const StudioPreviewPage = import.meta.env.DEV ? lazy(() => import('./routes/studio-preview').then((m) => ({ default: m.StudioPreviewPage }))) : () => null;
 import { JoinPage } from './routes/join';
 import { NotFoundPage } from './routes/not-found';
 
@@ -62,6 +62,7 @@ export function App() {
                     user, so the registry has to sit where both are available. */}
                 <CommandProvider>
                 <Routes>
+                  {import.meta.env.DEV && <Route path="/studio-preview" element={<Suspense fallback={<div>Loading preview…</div>}><StudioPreviewPage /></Suspense>} />}
                   <Route
                     path="/login"
                     element={
@@ -142,8 +143,6 @@ export function App() {
                 </CommandProvider>
               </AuthProvider>
             </BrowserRouter>
-            <Grain />
-            <Cursor />
           </ToastProvider>
         </QueryClientProvider>
       </ThemeProvider>

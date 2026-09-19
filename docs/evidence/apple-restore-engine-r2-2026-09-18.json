@@ -1,0 +1,68 @@
+{
+  "ok": false,
+  "checks": [
+    {
+      "ok": true,
+      "observed": {
+        "protectedContainers": {
+          "StarterCharacterScripts": true,
+          "StarterPlayerScripts": true
+        },
+        "exact": true
+      },
+      "name": "starter_player_protected_containers_are_snapshot_coverage",
+      "durationMs": 1
+    },
+    {
+      "ok": true,
+      "observed": {
+        "coverage": "supported-subset",
+        "protectedCount": 6,
+        "skipped": [],
+        "restorable": true
+      },
+      "name": "default_new_place_restorable_supported_subset",
+      "durationMs": 20
+    },
+    {
+      "ok": false,
+      "error": "Undo did not restore the pre-restore part state",
+      "name": "restore_commit_single_recording_undo_redo",
+      "durationMs": 536
+    },
+    {
+      "ok": true,
+      "observed": {
+        "refusedBeforeRecording": true
+      },
+      "name": "tampered_source_hash_refuses_before_recording",
+      "durationMs": 29
+    },
+    {
+      "ok": false,
+      "error": "FinishRecording(Cancel) did not restore the pre-restore part state",
+      "name": "mid_restore_failure_cancels_and_rolls_back",
+      "durationMs": 57
+    },
+    {
+      "ok": true,
+      "observed": {
+        "identityBound": true,
+        "explicitConsentRequired": true
+      },
+      "name": "checkpoint_identity_and_consent_refuse_before_mutation",
+      "durationMs": 0
+    },
+    {
+      "ok": true,
+      "observed": {
+        "clean": true
+      },
+      "name": "fixture_cleanup",
+      "durationMs": 0
+    }
+  ],
+  "placeId": 0,
+  "schema": 1,
+  "engineObserved": true
+}

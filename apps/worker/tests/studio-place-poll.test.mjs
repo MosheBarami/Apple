@@ -44,7 +44,7 @@ const state = (over = {}) => ({
 });
 
 /** A SessionDO over an in-memory context. `seed` pre-populates durable storage. */
-async function session(seed = {}, { sqlThrowsOnAlter = false } = {}) {
+async function session(seed = {}, { duplicateOplogFailureColumn = false } = {}) {
   const m = new Map(Object.entries(seed));
   const statements = [];
   const sent = [];
@@ -53,7 +53,9 @@ async function session(seed = {}, { sqlThrowsOnAlter = false } = {}) {
     sql: {
       exec(q) {
         statements.push(q);
-        if (sqlThrowsOnAlter && /alter table/i.test(q)) throw new Error('duplicate column name: failure');
+        if (duplicateOplogFailureColumn && /alter table oplog add column failure text/i.test(q)) {
+          throw new Error('duplicate column name: failure');
+        }
         return { one: () => ({ c: 0 }), toArray: () => [] };
       },
     },
@@ -294,7 +296,18 @@ test('the oplog gains its failure column, and a second boot survives the duplica
   // every later boot is the success case. Letting it escape would take the object down.
   const first = await session({ bind: { projectId: 'p', projectName: 'P', ownerId: 'o' } });
   assert.ok(first.statements.some((q) => /alter table oplog add column failure/.test(q)), 'the column is added');
-  const second = await session({ bind: { projectId: 'p', projectName: 'P', ownerId: 'o' } }, { sqlThrowsOnAlter: true });
+  const second = await session(
+    { bind: { projectId: 'p', projectName: 'P', ownerId: 'o' } },
+    { duplicateOplogFailureColumn: true },
+  );
+  assert.ok(
+    second.statements.some((q) => /alter table oplog add column failure text/i.test(q)),
+    'CONTROL: this boot actually exercised the duplicate oplog failure-column ALTER',
+  );
+  assert.ok(
+    second.statements.some((q) => /alter table checkpoints add column coverage text/i.test(q)),
+    'the duplicate simulation must not turn unrelated checkpoint migrations into duplicate failures',
+  );
   const r = await second.call('/studio/link', { method: 'GET' });
   assert.equal(r.status, 200, 'the object still works on its second boot');
 });

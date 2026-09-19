@@ -225,6 +225,7 @@ ALLOW = re.compile(
 # tunnel, a laptop on the LAN — and a blocklist by construction cannot catch those.
 ALLOWED_HOSTS = {
     "golem.moshe-barami111.workers.dev",  # the production worker; DEFAULT_API
+    "apple.moshe-barami111.workers.dev",  # verified Apple production origin
 }
 
 URL_RE = re.compile(rb"https?://([A-Za-z0-9._:-]+)")
@@ -281,6 +282,7 @@ MUST_FLAG = [
 ]
 MUST_NOT_FLAG = [
     b'local DEFAULT_API = "https://golem.moshe-barami111.workers.dev"',
+    b'local APPLE_ORIGIN = "https://apple.moshe-barami111.workers.dev"',
     b'codeBox.PlaceholderText = "Pairing code (e.g. K7M3QP)"',
     b'plugin:SetSetting("golem_session", HttpService:JSONEncode(session))',
     b'["X-Golem-Token"] = token or "",',

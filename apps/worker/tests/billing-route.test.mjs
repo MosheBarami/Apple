@@ -41,11 +41,19 @@ test('a failed verification returns 400 without telling the prober why', () => {
   assert.equal(/c\.json\(\{ error: verdict\.reason/.test(route), false, 'the reason must not be returned to the caller');
 });
 
-test('entitlement is recomputed, not taken from the event', () => {
-  // A cancelled or lapsed subscription must not leave a paid tier behind because the plan field
-  // still says "pro".
-  assert.match(route, /entitlementFor\(outcome\.subscription/);
-  assert.ok(route.indexOf('entitlementFor') < route.indexOf("'https://do/set-plan'"), 'recompute before writing the plan');
+test('the public route cannot bypass the acknowledged billing authority with a direct event grant', () => {
+  // Current-state reconciliation now runs inside the per-user serialized authority. This source
+  // tripwire prevents reintroducing the old bypass; real HTTP + SQLite cancellation, expiry,
+  // current-tier, partial-delivery and replay behavior is exercised in billing-webhook-authority.
+  assert.match(route, /await invokeBillingAuthority\(/);
+  assert.match(route, /await deliverBillingMutation\(/);
+  assert.ok(route.indexOf('await invokeBillingAuthority') < route.indexOf('await deliverBillingMutation'),
+    'the replica receives the authority result, not the event snapshot');
+  assert.doesNotMatch(
+    route,
+    /\.fetch\(['"]https:\/\/do\/(?:set-plan|grant-credits)['"]/,
+    'no direct unacknowledged entitlement write may bypass the authority',
+  );
 });
 
 test('an event with no user is acknowledged, not retried forever', () => {
