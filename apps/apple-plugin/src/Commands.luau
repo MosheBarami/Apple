@@ -2324,6 +2324,89 @@ local function handleCreate(self: any, op: any): (any?, string?, string?)
 	return { created = paths, count = #paths }, nil
 end
 
+--[[ INSERT A ROBLOX-HOSTED ASSET, AND NEVER ITS CODE.
+
+	This was refused — "no remote asset loader is exposed through the command bridge" — and
+	`scripts/verify-artifact.py` FAILED the build on `GetService("InsertService")` to enforce it.
+	The refusal cost the product its headline feature: the asset library holds 81,648 items a user
+	can insert without uploading anything, and with this op unsupported the worker withheld the
+	tool, so the library delivered nothing at all.
+
+	THE REFUSAL AIMED AT THE RIGHT DANGER AND HIT THE WRONG TARGET. What got the legacy plugin
+	removed for "Misusing Roblox Systems" is `apps/plugin/src/Ops.luau:521`: it builds a
+	ModuleScript out of an HTTP response body and `require`s it, so text arriving over the wire
+	becomes running code. `InsertService:LoadAsset` is not that shape. It is a first-party Roblox
+	service, it takes an asset id rather than a payload, and Roblox decides what comes back.
+
+	THE REAL RISK IS DIFFERENT, AND THIS IS WHERE IT IS STOPPED. A model fetched by id can still
+	CONTAIN scripts — that is how malicious free models spread. So the loaded tree is searched for
+	any `LuaSourceContainer` BEFORE a single instance is parented into the place, and an asset
+	carrying even one script is destroyed and refused by name. The build now REQUIRES this guard to
+	be present in the shipped bytes, which is a stronger invariant than forbidding the loader was:
+	"no loader" could always be satisfied by a plugin that inserts nothing, while "no insertion
+	without the code refusal" cannot be satisfied by removing the guard.
+
+	Every child is checked against `destinationRefusal` before ANY child is parented, so a
+	multi-part asset cannot leave half of itself behind when the second part is refused.
+]]
+local function handleInsertAsset(self: any, op: any): (any?, string?, string?)
+	local assetId = op.assetId
+	if type(assetId) ~= "number" or assetId ~= assetId or assetId % 1 ~= 0 or assetId <= 0 or assetId > 9007199254740991 then
+		return nil, "invalid", "assetId must be a positive whole number"
+	end
+
+	local parent
+	if op.parent ~= nil then
+		local resolved, _, parentErr, parentKind = resolvePath(self.game, self.options.services, op.parent, true)
+		if not resolved then return nil, parentKind or "not_found", parentErr end
+		parent = resolved
+	else
+		local okWorkspace, workspaceService = pcall(function() return self.game:GetService("Workspace") end)
+		if not okWorkspace or typeof(workspaceService) ~= "Instance" then return nil, "internal", "Workspace is unavailable" end
+		parent = workspaceService
+	end
+	if not writableTarget(self.game, parent) then return nil, "refused", "insert parent is outside Apple's place scope" end
+
+	local okLoad, loaded = pcall(function()
+		return self.game:GetService("InsertService"):LoadAsset(assetId)
+	end)
+	if not okLoad or typeof(loaded) ~= "Instance" then
+		return nil, "refused", "Roblox would not load asset " .. tostring(assetId) .. ": " .. tostring(loaded)
+	end
+
+	local scripts = {}
+	for _, descendant in loaded:GetDescendants() do
+		if descendant:IsA("LuaSourceContainer") then table.insert(scripts, descendant.Name) end
+	end
+	if #scripts > 0 then
+		destroyInstance(loaded)
+		return nil, "refused", "asset " .. tostring(assetId) .. " carries " .. tostring(#scripts) .. " script(s) and was not inserted; Apple inserts geometry, not code"
+	end
+
+	local children = loaded:GetChildren()
+	if #children == 0 then
+		destroyInstance(loaded)
+		return nil, "refused", "asset " .. tostring(assetId) .. " contained nothing to insert"
+	end
+
+	local parentPath = readablePath(self, parent) or "the insert parent"
+	for _, child in children do
+		local refusal = destinationRefusal(self.game, parent, parentPath, classNameOf(child))
+		if refusal then
+			destroyInstance(loaded)
+			return nil, "refused", refusal
+		end
+	end
+
+	local inserted = {}
+	for _, child in children do
+		child.Parent = parent
+		table.insert(inserted, fullPath(self.game, child) or nameOf(child))
+	end
+	destroyInstance(loaded)
+	return { assetId = assetId, inserted = inserted, count = #inserted, parent = parentPath }, nil
+end
+
 local function handleSetProps(self: any, op: any): (any?, string?, string?)
 	local inst, canonical, err, pathKind = resolvePath(self.game, self.options.services, op.path, true)
 	if not inst then return nil, pathKind or "not_found", err end
@@ -3346,6 +3429,7 @@ local HANDLERS = {
 	set_visible = handleSetVisible,
 	edit_script = handleEditScript,
 	snapshot = handleSnapshot,
+	insert_asset = handleInsertAsset,
 }
 
 	-- Operations that this independent build cannot implement without widening the Studio capability
@@ -3354,7 +3438,6 @@ local HANDLERS = {
 	local UNSUPPORTED = {
 		run_code = "run_code is intentionally unavailable in this readable plugin: received text is never loaded, required or executed inside Studio",
 	run_mode = "run_mode is not supported by this independent Apple plugin build; start and stop tests in Studio",
-	insert_asset = "insert_asset is intentionally unavailable in this build; no remote asset loader is exposed through the command bridge",
 	inspect_model = "inspect_model is unavailable in this build because the verified model-quality gate is not present",
 }
 
@@ -3367,6 +3450,7 @@ local DEFERRED_MUTATING = {
 
 local MUTATING = {
 	create_instances = true,
+	insert_asset = true,
 	set_props = true,
 	delete_instances = true,
 	move_instances = true,

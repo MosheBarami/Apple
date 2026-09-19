@@ -44,6 +44,24 @@ REQUIRED = {
     "GenerateModelAsync": "Roblox-native text-to-3D; the legacy artifact shipped with zero of these",
     "golem.studio-ops.v1": "the capability report schema the worker parses; without it every tool is offered blind",
     "/api/studio/poll": "the long-poll the plugin is",
+    # INSERTION IS ALLOWED ONLY WITH ITS GUARD.
+    #
+    # `GetService("InsertService")` used to sit in FORBIDDEN, and that ban cost the product its
+    # headline feature: the asset library's 81,648 insertable items had no delivery path at all,
+    # because the worker withholds any tool the plugin reports unsupported.
+    #
+    # The ban was aimed at the right danger and hit the wrong target. What got the legacy plugin
+    # removed for Misusing Roblox Systems is `require`ing a ModuleScript built from an HTTP body —
+    # text off the wire becoming running code — and all three of those shapes are still forbidden
+    # below. `LoadAsset` is not that: a first-party service, an id rather than a payload, and
+    # Roblox deciding what comes back.
+    #
+    # The real risk is that a fetched model CONTAINS scripts, so the guard against that is
+    # REQUIRED here instead. That is a STRONGER invariant than the ban: "no loader" is satisfied
+    # by a plugin that inserts nothing, whereas "no insertion without the code refusal" cannot be
+    # satisfied by deleting the guard, because deleting it fails this check.
+    "LuaSourceContainer": "the scan that refuses an asset carrying code, before anything is parented",
+    "Apple inserts geometry, not code": "the refusal message; its absence means the scan was removed or defanged",
 }
 
 # Patterns that must NOT be in the shipped bytes. These are call shapes, never mentions: Commands
@@ -53,7 +71,6 @@ FORBIDDEN = [
     (rb"loadstring\s*\(", "dynamic source compilation"),
     (rb"pcall\s*\(\s*require\s*,", "requiring a constructed ModuleScript — the legacy run_code pattern"),
     (rb":\s*GetObjects\s*\(", "remote object loading"),
-    (rb"GetService\s*\(\s*[\"']InsertService[\"']\s*\)", "asset insertion"),
     (rb"CreateAssetAsync\s*\(", "asset upload"),
 ]
 
@@ -102,7 +119,7 @@ def main() -> int:
             failures.append(f"the build contains {why}: {hit.group()[:40]!r}")
 
     # A scanner nobody tests is a scanner that quietly stops working.
-    planted = b'loadstring("x") pcall(require, m) a:GetObjects(1) game:GetService("InsertService") s:CreateAssetAsync(m)'
+    planted = b'loadstring("x") pcall(require, m) a:GetObjects(1) s:CreateAssetAsync(m)'
     unfireable = [why for pattern, why in FORBIDDEN if not re.search(pattern, planted)]
     if unfireable:
         failures.append("these rules cannot match anything and are checking nothing: " + ", ".join(unfireable))

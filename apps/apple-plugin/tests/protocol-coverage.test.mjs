@@ -34,12 +34,32 @@ test('every live StudioOp has a handler, named refusal, deferred path, restore p
 });
 
 test('dangerous compatibility operations explain their refusal', () => {
-  for (const op of ['run_code', 'insert_asset']) {
+  for (const op of ['run_code']) {
     assert.match(commands, new RegExp(`\\b${op}\\s*=\\s*"[^"]{24,}"`));
   }
   assert.match(commands, /received text is never loaded, required or executed/);
-  assert.match(commands, /no remote asset loader/);
   assert.match(commands, /no substitute was created/);
+});
+
+test('insert_asset is supported, and its code refusal is what makes that safe', () => {
+  // insert_asset stopped being a refusal on 2026-09-19 — the review is in
+  // worker-capability-contract.test.mjs. What replaced the refusal is asserted here, because a
+  // supported insert with no code guard is strictly worse than the refusal was.
+  assert.match(commands, /insert_asset\s*=\s*handleInsertAsset/, 'insert_asset must be dispatched, not refused');
+  assert.doesNotMatch(commands, /insert_asset\s*=\s*"/, 'insert_asset must not also carry a refusal string');
+
+  const body = commands.slice(commands.indexOf('local function handleInsertAsset'));
+  const guard = body.slice(0, body.indexOf('\nlocal function '));
+  assert.ok(guard.length > 400, 'handleInsertAsset was not found — this test would check nothing');
+  assert.match(guard, /IsA\("LuaSourceContainer"\)/, 'the insert path must scan the loaded tree for code');
+  assert.match(guard, /Apple inserts geometry, not code/, 'the refusal must say what it refused');
+
+  // ORDER MATTERS MORE THAN PRESENCE. A scan that runs after the instances are already in the
+  // place has not prevented anything.
+  const scanAt = guard.indexOf('IsA("LuaSourceContainer")');
+  const parentAt = guard.indexOf('child.Parent = parent');
+  assert.ok(scanAt > 0 && parentAt > 0 && scanAt < parentAt,
+    'the code scan must run BEFORE anything is parented into the place');
 });
 
 test('restore is the bounded preflight-before-recording path', () => {

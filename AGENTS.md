@@ -111,7 +111,10 @@ skeletons forever. **If a query 400s on a missing column, look here first.**
 
 ```
 total 510,014 items a user can insert · 215 packs, counted separately as containers
-live-insertable today: 81,648 of 511,208 D1 rows · 429,560 pending_ingest · 0 audio ingested
+carries a robloxAssetId: 81,648 of 511,208 D1 rows · 429,560 pending_ingest · 0 audio ingested
+INSERTABLE BY THE PRODUCT TODAY: 0. Measured in Studio — InsertService:LoadAsset answers
+"User is not authorized" for library assets and OK for an asset the account owns. Free on the
+Creator Store means free to TAKE, not free to LOAD. See docs/evidence/library-requires-ownership-2026-09-19.md
 creator_store 102,780 rows for 81,311 distinct assets · kenney 215 packs / 56,718 files
 iconify · game_icons · opengameart · cgbookcase · creator_store_audio 13,023 (reachable by nobody)
 never harvested: sketchfab   (poly_haven and ambientcg ARE live in D1)

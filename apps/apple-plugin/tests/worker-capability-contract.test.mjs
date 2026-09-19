@@ -130,15 +130,34 @@ const skip = luauMissing ? 'luau is not on PATH' : !workerBuildable ? 'the worke
  *   run_code       — received text is never compiled or required inside Studio. That refusal is the
  *                    whole reason this plugin can be submitted at all; the removed asset built a
  *                    ModuleScript out of the HTTP body and required it. Twelve tools ride on it.
- *   insert_asset   — no remote asset loader is reachable from the command bridge.
  *   inspect_model  — the verified model-quality gate is not in this build.
  *   run_mode       — no automatic Run; the user starts and stops tests themselves.
+ *
+ * insert_asset LEFT THIS LIST ON 2026-09-19, and this paragraph is the review the comment below
+ * demands. It was withheld because "no remote asset loader is reachable from the command bridge",
+ * and that refusal cost the product its headline feature: all 81,648 live rows in the asset
+ * library are Creator Store CONTAINER assets (59,938 decals, 21,710 meshparts), and measuring in
+ * Studio showed there is no loader-free path to place them — MeshId is not writable,
+ * AssetService:CreateMeshPartAsync answers "Failed to load mesh asset", and Decal.Texture on a
+ * decal id renders blank. So the library delivered nothing at all, to anyone, ever.
+ *
+ * The ban was aimed at the right danger and hit the wrong target. The prohibited shape is
+ * `require`ing a ModuleScript built from an HTTP body — text off the wire becoming running code —
+ * and that shape is still forbidden, still pinned below, and still absent. LoadAsset is a
+ * first-party service taking an id, with Roblox deciding what comes back.
+ *
+ * The real risk is that a fetched model CONTAINS scripts, and that is now refused explicitly:
+ * handleInsertAsset scans the loaded tree for any LuaSourceContainer BEFORE parenting anything and
+ * destroys-and-refuses the whole asset if it finds one. verify-artifact.py REQUIRES that guard in
+ * the shipped bytes, which is a stronger invariant than the ban was — "no loader" is satisfied by
+ * a plugin that inserts nothing, whereas "no insertion without the code refusal" cannot be
+ * satisfied by deleting the guard.
  *
  * If this list changes, a human reviews the change. Do not bump it to match.
  */
 const WITHHELD_BY_DESIGN = [
   'add_effect', 'assign_sounds', 'audit_build', 'check_composition', 'design_sound',
-  'insert_asset', 'inspect_model', 'remove_effect', 'run_and_check', 'run_luau', 'run_spec',
+  'inspect_model', 'remove_effect', 'run_and_check', 'run_luau', 'run_spec',
   'set_mood',
 ].sort();
 
@@ -272,7 +291,9 @@ test('the shipped plugin refuses the pattern the removed Creator Store asset con
     /\bloadstring\s*\(/,
     /pcall\s*\(\s*require\s*,/,
     /:\s*GetObjects\s*\(/,
-    /GetService\s*\(\s*["']InsertService["']\s*\)/,
+    // InsertService left this list with insert_asset — see the review above. GetObjects stays:
+    // it takes a URL and is the shape that fetches arbitrary content, where LoadAsset takes an id
+    // that Roblox resolves. The two are not the same call wearing different names.
     /\bCreateAssetAsync\s*\(/,
     /rbxassetid:\/\//,
   ];

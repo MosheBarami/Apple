@@ -24,7 +24,15 @@ end
 Enum = setmetatable({}, { __index = function(_, category)
     return setmetatable({}, { __index = function(_, value) return category .. "." .. value end })
 end })
-Color3 = { new = function(...) return { ... } end, fromRGB = function(...) return { ... } end }
+-- Color3 keeps its array shape (existing assertions index it positionally) AND gains R/G/B,
+-- because the kit's button bevel reads them to derive a lighter top and a darker bottom edge.
+-- A stub that models only the constructor cannot exercise code that reads the value back.
+Color3 = {
+	new = function(r, g, b) return { r, g, b, R = r or 0, G = g or 0, B = b or 0 } end,
+	fromRGB = function(r, g, b) return { r, g, b, R = (r or 0) / 255, G = (g or 0) / 255, B = (b or 0) / 255 } end,
+}
+ColorSequenceKeypoint = { new = function(t, colour) return { Time = t, Value = colour } end }
+ColorSequence = { new = function(keypoints) return { Keypoints = keypoints } end }
 UDim = { new = function(...) return { ... } end }
 UDim2 = { new = function(...) return { ... } end, fromOffset = function(...) return { ... } end, fromScale = function(...) return { ... } end }
 Vector2 = { new = function(...) return { ... } end }
