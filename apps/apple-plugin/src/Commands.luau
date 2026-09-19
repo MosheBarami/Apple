@@ -3083,8 +3083,22 @@ local function applyRestore(self: any, plan: any): (any?, string?, string?)
 	}, nil
 end
 
-local function failureResult(id: string, kind: string, message: string, started: number): any
-	return { id = id, ok = false, error = message, failure = kind, durationMs = math.max(0, math.floor((nowSeconds() - started) * 1000)) }
+-- `remedy` IS WHAT THE PERSON CAN DO ABOUT IT, as a code from the vocabulary in
+-- packages/shared (`REFUSAL_REMEDIES`), never as a sentence. It exists because on 2026-09-19 the
+-- refusal "writes require explicit edit consent" reached the model with no remedy attached, and the
+-- model filled the silence: it told the user to change a Studio setting that does not exist and
+-- never mentioned the button two inches from the refusal. A refusal that names no remedy is an
+-- invitation to invent one. Optional, because most failures are not refusals; omitted reads as
+-- "unknown" on the worker side, never as "there is nothing to do".
+local function failureResult(id: string, kind: string, message: string, started: number, remedy: string?): any
+	return {
+		id = id,
+		ok = false,
+		error = message,
+		failure = kind,
+		remedy = remedy,
+		durationMs = math.max(0, math.floor((nowSeconds() - started) * 1000)),
+	}
 end
 
 local function errorParts(err: any): (string, string)
@@ -3524,17 +3538,17 @@ function Commands.new(options: any?): any
 		if self.destroyed then return failureResult(id, "refused", "command engine is destroyed", started) end
 		if type(op) ~= "table" or type(op.op) ~= "string" then return failureResult(id, "invalid", "operation must contain a string op", started) end
 		local name = op.op
-		if UNSUPPORTED[name] then return failureResult(id, "refused", UNSUPPORTED[name], started) end
+		if UNSUPPORTED[name] then return failureResult(id, "refused", UNSUPPORTED[name], started, "none") end
 		local handler = HANDLERS[name]
 		if name == "undo_waypoint" then
-			if not editMode() then return failureResult(id, "refused", "writes require Studio edit mode", started) end
-			if allowEdits ~= true then return failureResult(id, "refused", "writes require explicit edit consent", started) end
+			if not editMode() then return failureResult(id, "refused", "writes require Studio edit mode", started, "leave_test_mode") end
+			if allowEdits ~= true then return failureResult(id, "refused", "writes require explicit edit consent", started, "edit_consent") end
 			return runUndoWaypoint(id, op, started)
 		end
 			if not handler and name ~= "restore" and not DEFERRED_MUTATING[name] then return failureResult(id, "refused", "unknown Studio operation: " .. name, started) end
 		if MUTATING[name] or DEFERRED_MUTATING[name] or CONSENT_ONLY[name] then
-			if allowEdits ~= true then return failureResult(id, "refused", "writes require explicit edit consent", started) end
-			if not editMode() then return failureResult(id, "refused", "writes require Studio edit mode", started) end
+			if allowEdits ~= true then return failureResult(id, "refused", "writes require explicit edit consent", started, "edit_consent") end
+			if not editMode() then return failureResult(id, "refused", "writes require Studio edit mode", started, "leave_test_mode") end
 		end
 		if MUTATING[name] or DEFERRED_MUTATING[name] then
 			if self.activeRecording ~= nil then return failureResult(id, "conflict", "another Apple write is already in progress", started) end

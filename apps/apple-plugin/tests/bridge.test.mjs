@@ -131,6 +131,7 @@ local function makeBridge()
         schema = "golem.studio-ops.v1",
         operations = {{ op = "run_code", status = "unsupported", reason = "fixture refusal text" }},
     }
+    local executeResult = nil
     local bridge
     local config = {
         plugin = plugin,
@@ -140,6 +141,14 @@ local function makeBridge()
         end,
         execute = function(id, op, stillCurrent)
             table.insert(executed, { id = id, op = op, stillCurrent = stillCurrent })
+            -- Overridable so a block can test what the TRANSPORT does with an unusual result
+            -- without rebuilding the whole fixture beside it. Default unchanged.
+            if executeResult ~= nil then
+                local copy = {}
+                for key, value in executeResult do copy[key] = value end
+                copy.id = id
+                return copy
+            end
             return { id = id, ok = true, data = { ran = op.op } }
         end,
         state = function()
@@ -154,7 +163,8 @@ local function makeBridge()
         function(value) stateValue = value end,
         function() return calls end,
         function() return capabilityCalls end,
-        function(value) capabilityValue = value end
+        function(value) capabilityValue = value end,
+        function(value) executeResult = value end
 end
 
 local function pending(id, op)
@@ -367,6 +377,55 @@ do
     assert(tick())
     assert(#liveExecuted == 0 and not live:isConnected())
     assert(string.find(liveStatuses[#liveStatuses], "state", 1, true) ~= nil)
+end
+
+-- A REFUSAL'S REMEDY MUST CROSS THE WIRE — AND AN ARBITRARY FIELD MUST STILL NOT.
+--
+-- 'remedy' was added to Commands.luau and to the worker on the same evening, each with its own
+-- passing tests, and it arrived nowhere: the allowlist in shapeResult dropped it, because dropping
+-- the unknown is exactly that loop's job. The bug it was written to fix then reproduced verbatim,
+-- in the live product, minutes after the fix "shipped" — and an independent reviewer hit it too.
+-- A field that exists at both ends is not a field until something asserts on the BODY IN BETWEEN.
+--
+-- The negative half is the load-bearing half. If this only checked that remedy survives, widening
+-- the copy to a blind key-for-key copy would pass it while re-opening the hole the allowlist exists
+-- to close.
+do
+    -- The response queue is shared with every block above and the one before this leaves an
+    -- unconsumed fixture behind. Start from a known state or this block measures that instead.
+    while #responses > 0 do table.remove(responses, 1) end
+    local bridge, statuses, _, executed, _, _, _, _, setExecuteResult = makeBridge()
+    setExecuteResult({
+        ok = false,
+        error = "writes require explicit edit consent",
+        failure = "refused",
+        remedy = "edit_consent",
+        secretToken = "must-not-cross",
+    })
+    queueResponse({ token = "remedy.secret", projectId = "remedy-project", projectName = "Remedy" })
+    assert(bridge:connect("REMED1"))
+    queueResponse({ ops = { pending("remedy-op", "create_instances") }, waitMs = 1 })
+    assert(tick())
+    assert(#executed == 1, "the refused op never reached execute — this assertion would be vacuous")
+
+    -- READ THE BODY OF A FAILED DELIVERY, not of a successful one. The fixture records the body
+    -- BY REFERENCE, and the bridge removes each result from that same table once the poll succeeds,
+    -- so a successful poll leaves behind a recorded body whose results array has been emptied in
+    -- place. Several runs of this block were spent measuring that artifact rather than the product.
+    -- queueFailure keeps the results pending, which is the same trick the redelivery block above
+    -- uses and the reason it could assert on a body at all.
+    queueFailure("temporary network failure")
+    assert(tick(), "the poll that reports the result did not run")
+    local body = requests[#requests].body
+    assert(type(body) == "table" and type(body.results) == "table", "the failed poll carried no results array")
+    local sent = nil
+    for _, entry in body.results do
+        if entry.id == "remedy-op" then sent = entry end
+    end
+    assert(sent ~= nil, "the result was executed and never reported")
+    assert(sent.failure == "refused", "the failure kind did not cross the wire")
+    assert(sent.remedy == "edit_consent", "the remedy did not cross the wire; the model is left to invent one")
+    assert(sent.secretToken == nil, "the allowlist let an arbitrary field through")
 end
 
 print("bridge protocol assertions passed")

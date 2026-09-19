@@ -25,6 +25,7 @@
  * reason that says the classification is unknown. An optimistic default here re-runs a mutation
  * against somebody's place on the strength of a guess.
  */
+import { REFUSAL_REMEDIES, isRefusalRemedyCode } from '@golem/shared';
 import type { OpFailureKind, OpResult, StudioOp } from '@golem/shared';
 
 /**
@@ -144,4 +145,36 @@ export function retryHint(op: StudioOp | { op: string } | string | null | undefi
   if (result.ok) return null;
   const v = retryEligibility(op, result);
   return v.retryable ? `This can be retried: ${v.reason}.` : `Do not retry this as-is: ${v.reason}.`;
+}
+
+/**
+ * WHAT THE USER CAN DO — or, said out loud, that there is nothing.
+ *
+ * On 2026-09-19 the live product refused a write with "writes require explicit edit consent", and
+ * the model relayed that correctly and then invented the fix: open "File > Project Settings >
+ * Security" and enable "Allow Scripted Updates". No such menu, page or setting exists in Roblox
+ * Studio. The real remedy was two clicks away in the Apple panel and went unmentioned.
+ *
+ * The model did not misread anything. It was handed a refusal with no remedy and a user who plainly
+ * wanted one, and it filled the gap. Every silence in a tool result is filled eventually; the only
+ * question is by whom. So:
+ *
+ *   - a refusal with a known code gets the product's own remedy, verbatim;
+ *   - a refusal explicitly coded `none` gets a sentence saying no setting enables this AND telling
+ *     the model not to suggest one, which is a far harder thing to contradict than a silence;
+ *   - a refusal from a plugin too old to send a code gets an admission of ignorance, not a guess.
+ *
+ * That last branch matters. "Unknown" and "there is nothing to do" are different facts, and a
+ * worker that printed the second when it meant the first would be committing this module's own
+ * original sin one level up.
+ */
+export function remedyHint(result: Pick<OpResult, 'ok' | 'failure' | 'remedy'>): string | null {
+  if (result.ok) return null;
+  if (asFailureKind(result.failure) !== 'refused') return null;
+  if (isRefusalRemedyCode(result.remedy)) return REFUSAL_REMEDIES[result.remedy];
+  return (
+    'This build does not report what would resolve this refusal. Say that you do not know how to ' +
+    'enable it rather than guessing at a Studio setting; a wrong instruction costs the user more ' +
+    'than an honest "I am not sure".'
+  );
 }

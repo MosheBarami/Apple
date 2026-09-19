@@ -3,7 +3,7 @@
 import type { Env } from './env';
 import { generatedImageCapacity, saveGeneratedImage } from './generated-images';
 import { rgbBase64ToDataUrl, decodeRgbBase64, encodePng, bytesToBase64 } from './png';
-import { retryHint } from './op-failure';
+import { retryHint, remedyHint } from './op-failure';
 import type { GatewayToolDef, StudioOp, OpResult, CheckpointMeta, RenderViewResult, StudioFrame, AssetSourcePolicy } from '@golem/shared';
 import { RENDER_VIEWS } from '@golem/shared';
 import { searchDocsDetailed } from './rag';
@@ -429,12 +429,23 @@ async function dumpScripts(
  * `retry` is a separate field rather than more prose glued onto `error`, because the two are
  * different kinds of thing: one is what happened, the other is what may be done about it, and a
  * model that skims the first still gets the second.
+ *
+ * `fix` is the third of those things and it was missing, which cost a user a wrong instruction on
+ * 2026-09-19: told only that a write was refused for want of edit consent, the model invented a
+ * Studio settings page that does not exist rather than naming the button in the Apple panel. `retry`
+ * answers "may I do this again"; `fix` answers "what does the PERSON do", and a refusal is precisely
+ * the case where those two have different answers. See remedyHint in op-failure.ts.
  */
 async function op(ctx: AgentCtx, studioOp: StudioOp, timeoutMs = 30_000): Promise<unknown> {
   const res = await ctx.execStudioOp(studioOp, timeoutMs);
   if (!res.ok) {
     const hint = retryHint(studioOp, res);
-    return { error: res.error ?? 'operation failed', ...(hint ? { retry: hint } : {}) };
+    const fix = remedyHint(res);
+    return {
+      error: res.error ?? 'operation failed',
+      ...(hint ? { retry: hint } : {}),
+      ...(fix ? { fix } : {}),
+    };
   }
   return res.data ?? { ok: true };
 }

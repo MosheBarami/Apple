@@ -660,9 +660,18 @@ test('new command engine passes executable Studio-mock suite', { skip: available
 });
 
 test('mutation-consent guard is live (red-first falsification)', { skip: available() ? false : 'luau is not on PATH' }, () => {
-  const needle = '\t\tif MUTATING[name] or DEFERRED_MUTATING[name] or CONSENT_ONLY[name] then\n\t\t\tif allowEdits ~= true then return failureResult(id, "refused", "writes require explicit edit consent", started) end';
-  assert.equal(SOURCE.split(needle).length, 2, 'falsification anchor must occur once');
-  const broken = SOURCE.replace(needle, needle.replace('~= true', '== true'));
+  // THE ANCHOR IS A SHAPE, NOT A LINE. It used to be the exact literal of the consent check,
+  // trailing `started)` and all, and it broke the moment that call gained a remedy argument —
+  // loudly, with "falsification anchor must occur once", which is the right way for a
+  // spelling-pinned guard to die. The property being falsified never involved the argument list:
+  // it is that the MUTATING branch contains exactly one consent check and that inverting it makes
+  // the executable suite fail. Matched up to the end of the call so a further argument does not
+  // retire the guard again, and still asserted UNIQUE so a second consent check cannot hide here.
+  const anchor = /\t\tif MUTATING\[name\] or DEFERRED_MUTATING\[name\] or CONSENT_ONLY\[name\] then\n\t\t\tif allowEdits ~= true then return failureResult\([^\n]*?\) end/;
+  const found = SOURCE.match(new RegExp(anchor, 'g')) ?? [];
+  assert.equal(found.length, 1, 'falsification anchor must occur once');
+  const broken = SOURCE.replace(anchor, (m) => m.replace('~= true', '== true'));
+  assert.notEqual(broken, SOURCE, 'the mutation did not land — re-aim it before trusting this test');
   const result = runLuau(broken);
   assert.notEqual(result.status, 0, 'the intentionally broken mutation guard stayed green:\n' + result.output);
 });

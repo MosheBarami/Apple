@@ -62,6 +62,17 @@ REQUIRED = {
     # satisfied by deleting the guard, because deleting it fails this check.
     "LuaSourceContainer": "the scan that refuses an asset carrying code, before anything is parented",
     "Apple inserts geometry, not code": "the refusal message; its absence means the scan was removed or defanged",
+    # A REFUSAL THAT NAMES NO REMEDY GETS ONE INVENTED FOR IT.
+    #
+    # Observed live on 2026-09-19: the plugin refused a write for want of edit consent, the model
+    # relayed that correctly, and then told the user to enable "Allow Scripted Updates" under
+    # "File > Project Settings > Security" — a menu, a page and a setting that do not exist in
+    # Roblox Studio — while never mentioning the button two inches from the refusal.
+    #
+    # The remedy CODE is what the worker turns into the product's own instruction, so a build that
+    # ships the refusal without it ships the silence that caused this. Checked in the bytes rather
+    # than the source for the same reason as everything else here: the two have disagreed before.
+    "edit_consent": "the remedy code on the consent refusal; without it the model is left to invent a fix, and it does",
 }
 
 # Patterns that must NOT be in the shipped bytes. These are call shapes, never mentions: Commands

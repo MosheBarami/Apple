@@ -268,11 +268,22 @@ local function resultForExecution(config: Config, id: string, op: any, stillCurr
 	end
 	-- Copy only the shared OpResult fields.  In particular, never echo a callback's arbitrary
 	-- fields back to the worker.  The requested id wins if an implementation returned a stale id.
+	--
+	-- THIS ALLOWLIST IS WHY A FIELD CAN EXIST AT BOTH ENDS AND STILL NOT ARRIVE.  `remedy` was added
+	-- to Commands.luau and to the worker on the same evening, with tests at both ends, and it went
+	-- nowhere: this loop dropped it silently, because dropping the unknown is exactly its job.  The
+	-- symptom was the bug it was meant to fix, reproduced verbatim by a different agent minutes
+	-- after the "fix" shipped.  A field added at two ends is not a field until the wire carries it.
 	local result: any = { id = id, ok = value.ok == true }
 	if value.data ~= nil then result.data = value.data end
 	if type(value.error) == "string" then result.error = string.sub(value.error, 1, 1000) end
 	if tonumber(value.durationMs) ~= nil then result.durationMs = value.durationMs end
 	if type(value.failure) == "string" then result.failure = value.failure end
+	-- Bounded like `error`, and left unvalidated against the vocabulary on purpose: the worker
+	-- refuses a code it does not know (`isRefusalRemedyCode`) and says so, which is the honest
+	-- answer for a plugin newer than the worker.  Validating here as well would turn "newer client"
+	-- into "silently no remedy", which is the same silence this field exists to remove.
+	if type(value.remedy) == "string" then result.remedy = string.sub(value.remedy, 1, 64) end
 	return result
 end
 

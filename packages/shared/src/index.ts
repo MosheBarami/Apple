@@ -279,6 +279,52 @@ export interface OpResult {
    * never as "retryable".
    */
   failure?: OpFailureKind;
+  /**
+   * WHAT THE PERSON CAN DO ABOUT IT — a code from a closed vocabulary, never a sentence.
+   *
+   * THE FAILURE THIS EXISTS TO PREVENT, observed in the live product on 2026-09-19. The plugin
+   * refused a write with "writes require explicit edit consent". The refusal reached the model,
+   * which relayed it accurately and then INVENTED the fix: it told the user to open
+   * "File > Project Settings > Security" and turn on "Allow Scripted Updates" — a menu, a page and
+   * a setting that do not exist in Roblox Studio — and never mentioned the real remedy, which is
+   * pressing "Enable edits…" twice in the Apple panel two inches away.
+   *
+   * A refusal that names no remedy is an invitation to invent one, and a model will always accept
+   * it. So every refusal now carries either a remedy the product can vouch for, or the explicit
+   * value `none`, which says in so many words that no setting enables this. Contradicting an
+   * explicit "there is no setting" is a much harder thing for a model to do than filling a silence.
+   *
+   * A CODE, not prose, for the same reason `failure` is a kind: anything that reads a sentence to
+   * decide what to say is an assertion on a spelling, and rewording the refusal would silently
+   * change the advice. Absent means a plugin build that predates the field, which reads as
+   * "unknown" — not as "no remedy".
+   */
+  remedy?: RefusalRemedyCode;
+}
+
+/**
+ * The closed vocabulary of remedies. Adding a refusal means adding a row here, which is the point:
+ * the compiler asks what the user is supposed to do about it.
+ */
+export const REFUSAL_REMEDIES = {
+  /** The consent gate is off. This is the one the model invented a fix for. */
+  edit_consent: 'In Studio, open the Apple panel and press “Enable edits…”, then “Allow edits for this connection”. Consent is per connection and turns off when you disconnect.',
+  /** Studio is running a test, so the plugin will not write. */
+  leave_test_mode: 'Stop the running test in Studio (the ⏹ Stop button) and ask again — Apple only edits in edit mode.',
+  /** The asset is not in the signed-in user's inventory. */
+  take_asset_first: 'Open that asset on the Creator Store and take it into your inventory, then ask again. Roblox only lets a plugin load assets the signed-in account owns.',
+  /** The requested target is outside the scope the plugin will write to. */
+  choose_allowed_target: 'Ask for a target inside the place Apple may write to — Workspace, ServerStorage, ServerScriptService, ReplicatedStorage, StarterGui, StarterPack or StarterPlayer.',
+  /** The asset carried code, which this product will not insert on anyone's behalf. */
+  choose_scriptless_asset: 'Pick a different asset, or take that one yourself in Studio. Apple inserts geometry, never code it did not write.',
+  /** Nothing the user can change. Said out loud so the model cannot fill the gap with a guess. */
+  none: 'There is no setting that enables this. Do not suggest one — tell the user plainly that this build does not do it, and offer what it can do instead.',
+} as const;
+
+export type RefusalRemedyCode = keyof typeof REFUSAL_REMEDIES;
+
+export function isRefusalRemedyCode(v: unknown): v is RefusalRemedyCode {
+  return typeof v === 'string' && Object.prototype.hasOwnProperty.call(REFUSAL_REMEDIES, v);
 }
 
 /**

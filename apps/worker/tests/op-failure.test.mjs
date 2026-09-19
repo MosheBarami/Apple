@@ -28,7 +28,7 @@ const out = join(mkdtempSync(join(tmpdir(), 'opfail-')), 'op-failure.mjs');
 execFileSync(join(HERE, '..', 'node_modules', '.bin', 'esbuild'),
   [join(HERE, '..', 'src', 'op-failure.ts'), '--bundle', '--format=esm', '--platform=neutral',
    '--main-fields=main,module', '--outfile=' + out], { stdio: 'pipe' });
-const { retryEligibility, retryHint, mutates, MUTATING_OPS, asFailureKind, WORKER_FAILURES } = await import(out);
+const { retryEligibility, retryHint, remedyHint, mutates, MUTATING_OPS, asFailureKind, WORKER_FAILURES } = await import(out);
 
 const fail = (failure) => ({ ok: false, failure });
 
@@ -139,4 +139,77 @@ test("every failure the worker itself produces has a declared kind, and none of 
   assert.equal(kinds.includes('internal'), false);
   assert.equal(WORKER_FAILURES.notConnected, 'transport');
   assert.equal(WORKER_FAILURES.timeout, 'timeout');
+});
+
+// ------------------------------------------------- the refusal that got a fix invented for it
+
+/**
+ * OBSERVED IN THE LIVE PRODUCT, 2026-09-19. The plugin refused a write with "writes require
+ * explicit edit consent". The model relayed that accurately, then told the user to open
+ * "File > Project Settings > Security" and enable "Allow Scripted Updates" — no such menu, page or
+ * setting exists in Roblox Studio — and never mentioned the real remedy, two clicks away in the
+ * Apple panel.
+ *
+ * The model was handed a refusal with no remedy and a user who wanted one. Every silence in a tool
+ * result gets filled; the only question is by whom.
+ */
+
+test('the consent refusal now carries the remedy that exists, not a silence', () => {
+  const fix = remedyHint({ ok: false, failure: 'refused', remedy: 'edit_consent' });
+  assert.match(fix, /Enable edits/);
+  assert.match(fix, /Allow edits for this connection/);
+  // The invented one must not be reachable from the product's own vocabulary.
+  assert.doesNotMatch(fix, /Project Settings|Allow Scripted Updates/i);
+});
+
+test("a refusal with no remedy SAYS there is none, and forbids inventing one", () => {
+  const fix = remedyHint({ ok: false, failure: 'refused', remedy: 'none' });
+  assert.match(fix, /no setting that enables this/i);
+  assert.match(fix, /[Dd]o not suggest one/);
+});
+
+test('an unclassified refusal admits ignorance rather than claiming there is nothing to do', () => {
+  // "Unknown" and "there is nothing to do" are different facts. A build too old to send a code
+  // must not have its silence read as the second one — that is this module's own original sin,
+  // committed one level up.
+  const fix = remedyHint({ ok: false, failure: 'refused' });
+  assert.match(fix, /does not report/i);
+  assert.doesNotMatch(fix, /no setting that enables this/i);
+  assert.equal(remedyHint({ ok: false, failure: 'refused', remedy: 'not_a_real_code' }), fix,
+    'an unknown code must be treated as absent, never guessed at');
+});
+
+test('only refusals get a remedy — a timeout or a success gets none', () => {
+  assert.equal(remedyHint({ ok: true }), null);
+  assert.equal(remedyHint({ ok: false, failure: 'timeout' }), null, 'a timeout is not something the user can fix by clicking');
+  assert.equal(remedyHint({ ok: false, failure: 'transport' }), null);
+  assert.equal(remedyHint({ ok: false }), null, 'an unclassified failure is not known to be a refusal');
+});
+
+test('every remedy in the vocabulary is an instruction, and none of them invents Studio UI', async () => {
+  const { REFUSAL_REMEDIES } = await import('../../../packages/shared/src/index.ts');
+  const codes = Object.keys(REFUSAL_REMEDIES);
+  assert.ok(codes.length >= 5, 'the vocabulary shrank — this check would be vacuous');
+  for (const [code, text] of Object.entries(REFUSAL_REMEDIES)) {
+    assert.ok(text.length > 40, `${code}: a remedy too short to act on is a silence with extra steps`);
+    // The exact fiction the model produced. If it ever appears in the product's OWN advice, the
+    // guard has to fail rather than bless it.
+    assert.doesNotMatch(text, /Project Settings|Allow Scripted Updates/i, `${code} repeats the invented setting`);
+  }
+  // Every code the plugin can send must be one the worker can answer.
+  for (const code of ['edit_consent', 'leave_test_mode', 'none']) {
+    assert.ok(codes.includes(code), `the plugin sends ${code} and the vocabulary does not define it`);
+  }
+});
+
+test('THE PLUGIN ACTUALLY SENDS THE CODE — the vocabulary is not a table nothing populates', () => {
+  const src = readFileSync(join(ROOT, 'apps/apple-plugin/src/Commands.luau'), 'utf8');
+  // Read at the refusal sites, not by counting the word: a remedy defined and never attached is
+  // exactly the shape of a guard that cannot fail.
+  assert.match(src, /writes require explicit edit consent", started, "edit_consent"/,
+    'the consent refusal no longer carries its remedy code');
+  assert.match(src, /writes require Studio edit mode", started, "leave_test_mode"/,
+    'the edit-mode refusal no longer carries its remedy code');
+  assert.match(src, /UNSUPPORTED\[name\], started, "none"/,
+    'a deliberately unsupported op no longer says that nothing enables it');
 });
