@@ -170,7 +170,7 @@ test('the curated row comes back FIRST, above the scrape that outranks it on not
   } finally { d1.close(); }
 });
 
-test('every hit says whether it can be inserted TODAY or needs an import first', async () => {
+test('every hit says whether it can be inserted TODAY, needs taking, or needs an import first', async () => {
   const d1 = await library();
   try {
     const hits = await L.searchAssetLibrary(d1, 'crate');
@@ -183,12 +183,42 @@ test('every hit says whether it can be inserted TODAY or needs an import first',
     // other, and a UI that has to re-derive it from a null id is a UI that will get it wrong.
     assert.equal(curated.insertable, false, 'a row with no Roblox id cannot be inserted yet');
     assert.equal(curated.availability, 'needs_import', 'and it must say so in a word a person can read');
-    assert.equal(scrape.insertable, true, 'a row that already carries a Roblox id is usable now');
-    assert.equal(scrape.availability, 'insertable', 'and must say so');
+    // A ROBLOX ID IS NOT PERMISSION, which is what this assertion used to say. Measured in Studio
+    // 2026-09-19: InsertService:LoadAsset on an asset this account owns returns OK, and on a
+    // creator_store library row returns "User is not authorized". Free on the Creator Store is
+    // free to TAKE, not free to LOAD — and every one of the library's 81,648 live rows is a
+    // third party's. `insertable` stays true (an id exists and is resolvable), but the WORD the
+    // model and the UI read is now needs_take, because "usable now" was false for all of them.
+    assert.equal(scrape.insertable, true, 'a row that already carries a Roblox id has an id');
+    assert.equal(scrape.availability, 'needs_take', 'but a third party owns it, so the user must take it first');
 
     // Availability is NOT the lifecycle column. Both facts travel, separately.
     assert.equal(curated.status, 'pending_ingest');
     assert.equal(scrape.status, 'active');
+  } finally { d1.close(); }
+});
+
+test('a source WE mint ids for stays insertable — needs_take is about ownership, not about having an id', async () => {
+  // Found by falsification: making requiresTaking() return true for every source broke NOTHING,
+  // because no fixture covered "ours, and it has an id". Without this, the rule could quietly
+  // become "nothing is ever insertable" and every test would still pass while the product told
+  // users to go and take assets they already own.
+  const d1 = await library();
+  try {
+    const OURS = {
+      ...CURATED,
+      id: 'kenney/props/ours-with-an-id',
+      name: 'crate we uploaded ourselves',
+      robloxAssetId: 7788990011,
+      sha256: 'a'.repeat(64),
+      status: 'active',
+    };
+    const written = await L.upsertAssets(d1, [OURS], { seed: true });
+    assert.deepEqual(written.rejected, [], `the fixture must be accepted: ${JSON.stringify(written.rejected)}`);
+    const hit = (await L.searchAssetLibrary(d1, 'crate')).find((h) => h.id === OURS.id);
+    assert.ok(hit, 'the fixture row was not returned');
+    assert.equal(hit.source, 'kenney', 'this asserts nothing unless the row really is a source we mint for');
+    assert.equal(hit.availability, 'insertable', 'an id in our own account is insertable without the user taking anything');
   } finally { d1.close(); }
 });
 
@@ -245,6 +275,7 @@ test('the gate the model is handed BEFORE it searches must not exclude the rows 
     // And it must name the fact that DOES decide it, in the words the search emits, so the model can
     // match one to the other instead of inferring a rule from a null id.
     assert.match(gate, /needs_import/, 'the gate must name the state a curated row is actually in');
+    assert.match(gate, /needs_take/, 'and the state every creator_store row is actually in');
     assert.match(gate, /insertable/, 'and the state that means an id exists today');
 
     // Widening must not drop the real restriction: the dead statuses are still dead.

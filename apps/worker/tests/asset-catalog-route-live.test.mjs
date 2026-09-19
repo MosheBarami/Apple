@@ -90,6 +90,11 @@ const CURATED = {
   boundsStuds: null,
   sha256: null,
 };
+// Named INSERTABLE because it carries a real Roblox id, which is what this file tests. Its
+// `availability` is `needs_take`, not `insertable`: measured in Studio 2026-09-19, LoadAsset on a
+// creator_store id answers "User is not authorized" while an owned id answers OK. Free on the
+// Creator Store is free to TAKE, not free to LOAD. The fixture keeps its name — it is about
+// having an id — and the expectations below say the true word.
 const INSERTABLE = {
   ...CURATED,
   id: 'creator_store/props/9182736455',
@@ -236,7 +241,7 @@ test('authenticated catalogue returns real provenance fields and availability wi
       boundsStuds: null,
     });
     assert.equal(insertable.robloxAssetId, INSERTABLE.robloxAssetId);
-    assert.equal(insertable.availability, 'insertable');
+    assert.equal(insertable.availability, 'needs_take');
     assert.deepEqual(insertable.tags, INSERTABLE.tags);
     assert.equal(insertable.triangles, 432);
     assert.deepEqual(insertable.boundsStuds, [2, 3, 4]);
@@ -252,7 +257,7 @@ test('insertableOnly=true narrows catalogue results by recorded Roblox id, not s
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.deepEqual(body.assets.map((asset) => asset.id), [INSERTABLE.id]);
-    assert.equal(body.assets[0].availability, 'insertable');
+    assert.equal(body.assets[0].availability, 'needs_take');
   } finally { db.close(); }
 });
 
@@ -290,7 +295,7 @@ test('opted-in real route batches recorded ids and never forwards caller credent
     assert.deepEqual(ready.preview, { state: 'ready', url: READY_URL });
     assert.equal(ready.sourceUrl, INSERTABLE.sourceUrl);
     assert.equal(ready.licence, INSERTABLE.licence);
-    assert.equal(ready.availability, 'insertable');
+    assert.equal(ready.availability, 'needs_take');
     assert.deepEqual(assets.find((hit) => hit.id === CURATED.id).preview, unavailable);
     assert.equal(thumbnailRequests.length, 1);
     const { input, init } = thumbnailRequests[0];

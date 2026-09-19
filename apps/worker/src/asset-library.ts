@@ -172,6 +172,31 @@ export function mintedByUs(source: AssetSourceSite): boolean {
   return !PRE_EXISTING_ID_SOURCES.includes(source);
 }
 
+/**
+ * Sources whose ids the INSERTING USER DOES NOT OWN, and therefore cannot load.
+ *
+ * The comment above says referencing a Creator Store id "costs no upload to anybody's account".
+ * That is true and it is not the whole cost. Measured in Studio on 2026-09-19:
+ *
+ *     InsertService:LoadAsset(107230158271368)  -- an asset this account owns  -> OK
+ *     InsertService:LoadAsset(578157972)        -- a creator_store library row -> User is not authorized
+ *
+ * Free on the Creator Store means free to TAKE, not free to LOAD. Taking is an explicit per-user
+ * act through the Toolbox, which is why the Toolbox inserts these and a script cannot. So
+ * `availability: 'insertable'` — documented to the model as "you can pass this to insert_asset
+ * now" — was false for 59,938 decals and 21,710 meshparts, every one of the library's live rows.
+ *
+ * `generated_roblox` is NOT here: those are generated into the user's own account, so they own
+ * them. `roblox_official` IS here, conservatively: it was not measured, and telling the model to
+ * take something it may already be able to load is a far smaller error than telling it to insert
+ * something that will refuse. See docs/evidence/library-requires-ownership-2026-09-19.md.
+ */
+export const REQUIRES_TAKING: readonly AssetSourceSite[] = ['creator_store', 'roblox_official'];
+
+export function requiresTaking(source: AssetSourceSite): boolean {
+  return REQUIRES_TAKING.includes(source);
+}
+
 // ---------------------------------------------------------------------------------------------
 // Quality
 // ---------------------------------------------------------------------------------------------
@@ -1118,7 +1143,7 @@ export async function recordVerification(
  * that will get it wrong, and the person on the other end of the agent gets told "we have nothing"
  * when the truth is "we have exactly that, it needs an import".
  */
-export type AssetAvailability = 'insertable' | 'needs_import';
+export type AssetAvailability = 'insertable' | 'needs_take' | 'needs_import';
 
 export interface AssetHit {
   id: string;
@@ -1227,7 +1252,7 @@ function toHit(r: Row, score: number): AssetHit {
     source: r.source as AssetSourceSite,
     status: r.status as AssetStatus,
     insertable,
-    availability: insertable ? 'insertable' : 'needs_import',
+    availability: !insertable ? 'needs_import' : requiresTaking(r.source as AssetSourceSite) ? 'needs_take' : 'insertable',
     quality: assetQuality({ source: r.source, name: r.name }),
     score,
   };
