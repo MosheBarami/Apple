@@ -2082,7 +2082,12 @@ local function handleTree(self: any, op: any): (any?, string?, string?)
 		return { root = node, nodeCount = state.count, truncated = state.truncated }, nil
 	end
 	local synthetic: any = { path = "game", name = "game", class = "DataModel", children = {}, childCount = 0 }
-	for _, serviceName in READ_SERVICES do
+	-- READ_SERVICES is a SET: the service NAME is the key and the value is always `true`. Every
+	-- other reader indexes it (READ_SERVICES[name]); this was the one place that iterated it, and
+	-- it iterated for values, so serviceName was the boolean `true` on all thirteen passes.
+	-- GetService refused each one inside serviceFrom's pcall and the whole-place tree came back as
+	-- a grammatical `game` with no children at all. Measured in Studio 2026-09-20, 52 warnings.
+	for serviceName in READ_SERVICES do
 		local service = serviceFrom(self.game, self.options.services, serviceName)
 		if service and state.count < state.maxNodes then
 			local node = makeNode(self, service, "game." .. serviceName, 1, state)

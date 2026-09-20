@@ -75,6 +75,43 @@ spec("ping and all read operations use data and no recording", function()
     c:destroy()
 end)
 
+spec("the whole-place tree names the services instead of an empty game", function()
+    -- WHAT THIS DEFENDS, MEASURED 2026-09-20 against the running Studio (log
+    -- 0.739.0.7390687_20260919T231453Z_Studio_657fb, 52 occurrences between 12:36:06Z and
+    -- 16:36:38Z, every one arriving through Bridge.pollLoop): "argument #1 expects a string, but
+    -- boolean was passed", thrown by GetService inside handleTree's service sweep.
+    --
+    -- READ_SERVICES is a SET -- name -> true -- and every other reader indexes it by key. The
+    -- sweep alone iterated it for VALUES, so serviceName was the boolean true thirteen times,
+    -- GetService refused each one inside a pcall, and serviceFrom answered nil. The root-less
+    -- get_tree therefore returned a well-formed game with zero children and truncated=false: the
+    -- agent asked what is in the place and Studio said, in good grammar, nothing. Nothing above
+    -- notices, because an empty place is a legal answer.
+    --
+    -- The spec above only ever asked for root = "game.ServerScriptService", which takes the
+    -- other branch of handleTree and never reaches the sweep. That is why this shipped. The
+    -- assertion is therefore on the ROOT-LESS call specifically, and it checks a named service
+    -- carrying a real child rather than only a count, so a sweep that returns thirteen stubs
+    -- cannot satisfy it either.
+    local marker = Instance.new("Part"); marker.Name = "WholePlaceMarker"; marker.Parent = services.ServerScriptService
+    local c = newCommands()
+    local tree = run(c, "whole-place", { op = "get_tree", maxDepth = 3, maxNodes = 400 }, false)
+    eq(tree.ok, true, "whole-place tree ok")
+    eq(tree.data.root.name, "game", "whole-place root name")
+    local byName = {}
+    for _, child in tree.data.root.children do byName[child.name] = child end
+    for _, serviceName in { "Workspace", "ServerScriptService", "ReplicatedStorage", "Lighting", "StarterGui" } do
+        if byName[serviceName] == nil then error("whole-place tree omitted " .. serviceName, 2) end
+        eq(byName[serviceName].path, "game." .. serviceName, serviceName .. " path")
+    end
+    eq(tree.data.root.childCount, 13, "whole-place service count")
+    if tree.data.nodeCount <= 13 then error("whole-place tree returned service stubs with no contents", 2) end
+    local found = false
+    for _, child in byName.ServerScriptService.children do if child.name == "WholePlaceMarker" then found = true end end
+    eq(found, true, "whole-place tree reaches an authored instance")
+    marker:Destroy(); c:destroy()
+end)
+
 spec("ambiguous sibling names are conflicts instead of arbitrary targets", function()
     local first = Instance.new("Part"); first.Name = "Duplicate"; first.Parent = workspace
     local second = Instance.new("Part"); second.Name = "Duplicate"; second.Parent = workspace
