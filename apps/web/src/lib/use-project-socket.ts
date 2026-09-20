@@ -871,6 +871,29 @@ export function useProjectSocket(
         setLogs((list) => [...list, ...msg.entries].slice(-MAX_LOGS));
         break;
       case 'error':
+        //[[ AN ERROR ENDS THE RUN, AND THE UI HAD NO WAY OF KNOWING THAT.
+        //
+        //   This called the toast and nothing else, so `running` stayed true and the workspace went
+        //   on saying the agent was thinking — forever, with a red toast next to it. That is the
+        //   owner's own report of the product: "the agent always in the thinking fails at
+        //   something".
+        //
+        //   Reproduced end to end on 2026-09-20 by infra/e2e.mjs against the deployed product. A
+        //   free account asking for Apple MAX gets `product_model_unavailable`, which session.ts
+        //   sends through `refuseOne` — one message, then return. No msg_end, no run_state, no
+        //   terminal event of any kind. The harness waited 150 seconds and gave up; a person waits
+        //   as long as they are willing to.
+        //
+        //   `error` is the fatal channel by construction, which is why clearing here is correct
+        //   rather than merely convenient: the case directly below records that `notice` exists
+        //   precisely so a warning about a run that is STILL GOING does not come through here.
+        //
+        //   The worker should also emit a terminal event after refusing, and that is
+        //   apps/worker/src/do/session.ts, which another lane holds tonight. Clearing here is not a
+        //   workaround for it: a client that stays busy because a server forgot one message is a
+        //   defect on its own, and this is the half that does not need the other half to be right. ]]
+        setRunning(false);
+        setAgentStatus(null);
         errorCbRef.current(msg.code, msg.message);
         break;
       case 'notice':
