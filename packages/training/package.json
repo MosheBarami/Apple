@@ -23,6 +23,7 @@
     "measure-hf-corpus": "node src/measure-hf-corpus.mjs",
     "clear-rights": "node src/clear-rights.mjs",
     "screen-row-licences": "node src/screen-row-licences.mjs",
+    "sweep-hub-coverage": "node src/sweep-hub-coverage.mjs",
     "measure-need-index": "node src/measure-need-index.mjs",
     "measure-retrieval-hybrid": "node src/measure-retrieval-hybrid.mjs",
     "measure-embedding-retrieval": "node src/measure-embedding-retrieval.mjs",

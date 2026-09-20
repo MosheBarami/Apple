@@ -1,0 +1,279 @@
+{
+  "generated_at": "2026-09-20T20:22:45.635Z",
+  "generator": "packages/training/src/sweep-hub-coverage.mjs",
+  "method": "Hugging Face dataset search, 100 results per term, against a baseline of every id already in the discovery register or the measured corpus. Every hit not in that baseline is classified as Roblox material or not by its id, author and tags — because widening the net catches more unrelated material, not less.",
+  "baseline_ids": 119,
+  "terms_already_swept": [
+    "roblox",
+    "luau",
+    "rblx",
+    "robloxstudio",
+    "rbx",
+    "roblox studio",
+    "lua game"
+  ],
+  "terms_tried": [
+    "rojo",
+    "roblox-ts",
+    "robloxts",
+    "rbxlx",
+    "rbxm",
+    "rbxl",
+    "bloxstrap",
+    "luau-lang",
+    "roblox api",
+    "datastore",
+    "obby",
+    "roblox game",
+    "luau script",
+    "roblox lua",
+    "creator store",
+    "roblox ui",
+    "roblox dataset",
+    "luau code",
+    "rbxassetid",
+    "roblox studio plugin"
+  ],
+  "per_term": [
+    {
+      "term": "rojo",
+      "searched": true,
+      "returned": 2,
+      "new_ids": 2,
+      "new_relevant": 0
+    },
+    {
+      "term": "roblox-ts",
+      "searched": true,
+      "returned": 0,
+      "new_ids": 0,
+      "new_relevant": 0
+    },
+    {
+      "term": "robloxts",
+      "searched": true,
+      "returned": 0,
+      "new_ids": 0,
+      "new_relevant": 0
+    },
+    {
+      "term": "rbxlx",
+      "searched": true,
+      "returned": 0,
+      "new_ids": 0,
+      "new_relevant": 0
+    },
+    {
+      "term": "rbxm",
+      "searched": true,
+      "returned": 0,
+      "new_ids": 0,
+      "new_relevant": 0
+    },
+    {
+      "term": "rbxl",
+      "searched": true,
+      "returned": 0,
+      "new_ids": 0,
+      "new_relevant": 0
+    },
+    {
+      "term": "bloxstrap",
+      "searched": true,
+      "returned": 0,
+      "new_ids": 0,
+      "new_relevant": 0
+    },
+    {
+      "term": "luau-lang",
+      "searched": true,
+      "returned": 0,
+      "new_ids": 0,
+      "new_relevant": 0
+    },
+    {
+      "term": "roblox api",
+      "searched": true,
+      "returned": 0,
+      "new_ids": 0,
+      "new_relevant": 0
+    },
+    {
+      "term": "datastore",
+      "searched": true,
+      "returned": 28,
+      "new_ids": 28,
+      "new_relevant": 0
+    },
+    {
+      "term": "obby",
+      "searched": true,
+      "returned": 0,
+      "new_ids": 0,
+      "new_relevant": 0
+    },
+    {
+      "term": "roblox game",
+      "searched": true,
+      "returned": 2,
+      "new_ids": 0,
+      "new_relevant": 0
+    },
+    {
+      "term": "luau script",
+      "searched": true,
+      "returned": 0,
+      "new_ids": 0,
+      "new_relevant": 0
+    },
+    {
+      "term": "roblox lua",
+      "searched": true,
+      "returned": 14,
+      "new_ids": 0,
+      "new_relevant": 0
+    },
+    {
+      "term": "creator store",
+      "searched": true,
+      "returned": 0,
+      "new_ids": 0,
+      "new_relevant": 0
+    },
+    {
+      "term": "roblox ui",
+      "searched": true,
+      "returned": 0,
+      "new_ids": 0,
+      "new_relevant": 0
+    },
+    {
+      "term": "roblox dataset",
+      "searched": true,
+      "returned": 8,
+      "new_ids": 0,
+      "new_relevant": 0
+    },
+    {
+      "term": "luau code",
+      "searched": true,
+      "returned": 3,
+      "new_ids": 0,
+      "new_relevant": 0
+    },
+    {
+      "term": "rbxassetid",
+      "searched": true,
+      "returned": 0,
+      "new_ids": 0,
+      "new_relevant": 0
+    },
+    {
+      "term": "roblox studio plugin",
+      "searched": true,
+      "returned": 0,
+      "new_ids": 0,
+      "new_relevant": 0
+    }
+  ],
+  "summary": {
+    "terms_tried": 20,
+    "terms_searched": 20,
+    "terms_failed": 0,
+    "new_ids_total": 30,
+    "new_and_roblox": 0,
+    "new_and_not_roblox": 30
+  },
+  "new_and_roblox": [],
+  "new_and_not_roblox_sample": [
+    {
+      "id": "evaleval/EEE_datastore",
+      "downloads": 26941,
+      "likes": 40,
+      "matched_query": "datastore",
+      "matched_on": []
+    },
+    {
+      "id": "deeplumiere/EEE_datastore",
+      "downloads": 1792,
+      "likes": 1,
+      "matched_query": "datastore",
+      "matched_on": []
+    },
+    {
+      "id": "OpenSciLM/OpenScholar-DataStore-V3",
+      "downloads": 945,
+      "likes": 23,
+      "matched_query": "datastore",
+      "matched_on": []
+    },
+    {
+      "id": "sealad886/dfn4_mlx_datastore",
+      "downloads": 423,
+      "likes": 0,
+      "matched_query": "datastore",
+      "matched_on": []
+    },
+    {
+      "id": "DataStore/orca-whirlpool-historical-data",
+      "downloads": 360,
+      "likes": 0,
+      "matched_query": "datastore",
+      "matched_on": []
+    },
+    {
+      "id": "OpenSciLM/OpenScholar-DataStore-V2",
+      "downloads": 227,
+      "likes": 3,
+      "matched_query": "datastore",
+      "matched_on": []
+    },
+    {
+      "id": "DataStore/meteora-dlmm-historical-data",
+      "downloads": 181,
+      "likes": 0,
+      "matched_query": "datastore",
+      "matched_on": []
+    },
+    {
+      "id": "kshitijthakkar/EEE_datastore",
+      "downloads": 165,
+      "likes": 0,
+      "matched_query": "datastore",
+      "matched_on": []
+    },
+    {
+      "id": "tamilore/EEE_datastore",
+      "downloads": 128,
+      "likes": 0,
+      "matched_query": "datastore",
+      "matched_on": []
+    },
+    {
+      "id": "gh12-0839j4/data-store-cache",
+      "downloads": 72,
+      "likes": 0,
+      "matched_query": "datastore",
+      "matched_on": []
+    },
+    {
+      "id": "wentingzhao/knn-prompt-datastore",
+      "downloads": 64,
+      "likes": 0,
+      "matched_query": "datastore",
+      "matched_on": []
+    },
+    {
+      "id": "DataStore/pumpswap-amm-historical-data-sample",
+      "downloads": 62,
+      "likes": 0,
+      "matched_query": "datastore",
+      "matched_on": []
+    }
+  ],
+  "limits": [
+    "This measures the reach of Hugging Face SEARCH, not the contents of the Hub. A dataset whose id, author and tags never say roblox or luau is invisible to it.",
+    "Each term is capped at the first 100 results, so a term returning exactly 100 may be truncated.",
+    "Relevance is judged from metadata only; no dataset was downloaded or read."
+  ]
+}

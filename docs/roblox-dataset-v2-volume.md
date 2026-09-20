@@ -159,3 +159,43 @@ it is not a grant covering each underlying file. That is why the four stay uncle
 
 `knowledge/references.jsonl` is the one release file whose every contributing source is cleared:
 16,781 rows from `creator-docs` plus 431 from `luau-lang/site`, which is exactly its 17,212.
+
+## Is that really all of it?
+
+The inventory behind v1 carried its own disclaimer — `coverage_claim: "Named query families only;
+not all Hub content."` — and between it and the volume measure, seven terms had been tried: roblox,
+luau, rblx, robloxstudio, rbx, "roblox studio", "lua game". The order was "almost everything under
+roblox on Hugging Face", and seven terms does not answer that.
+
+Twenty more were tried — toolchain (`rojo`, `roblox-ts`), file formats (`rbxlx`, `rbxm`, `rbxl`),
+engine surface (`datastore`, `rbxassetid`), genre words — by
+`node packages/training/src/sweep-hub-coverage.mjs`, artifact `runs/hub-coverage-sweep.json`.
+
+**20 terms searched, 0 failed, 30 datasets found that the baseline did not have, and 0 of the 30
+are Roblox material.** `datastore` returns OpenScholar retrieval stores and Solana trade archives;
+`rojo` is Spanish for red. Every one was classified and kept in the artifact rather than dropped.
+
+That is as close to "everything under roblox on the Hub" as dataset search can get, and the guard
+on it exists because a negative result is the same shape a broken search client produces: if a
+future run has every search fail, `hub-coverage-sweep.test.mjs` goes red rather than reporting
+complete coverage.
+
+Also corrected: the ledger recorded "6 of 290 HF repositories acquired". The 290 in
+`manifests/hf-inventory.json` is **94 datasets and 196 models**, and all 94 datasets are already in
+both the discovery register and the measured corpus. There is no unexamined dataset tranche there.
+
+## Why none of this flips `training_approved`
+
+Rights clearance is necessary and it is not sufficient, and the release says so itself. The one
+file whose sources are both cleared is `knowledge/references.jsonl` — and `release/README.md`
+describes that track as *"Official documentation sections and engine-reference entries, kept
+retrieval-only"*. It was never a training track. The same README states plainly that
+"`training_approved` and `production_training_ready` are false intentionally", and keeps a
+"Remaining quality work" section naming the semantic, integration and type validation that has not
+been done.
+
+So the three flags stay false, and the reason has changed shape rather than gone away: it is no
+longer "nobody checked the licences". It is that the knowledge track is retrieval-only by design,
+the code and SFT tracks rest on publisher declarations rather than clearances, and no semantic
+validation has been run on any of them. Those are three different debts and they need three
+different pieces of evidence.
