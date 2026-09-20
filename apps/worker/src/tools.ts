@@ -30,6 +30,7 @@ import { searchAssetLibrary } from './asset-library';
 import { GENRE_KIT_IDS, getGenreKit, admitToKit } from './genre-kits';
 import { getGenreReferenceGuide, GENRE_REFERENCE_GUIDE_ASPECT_IDS } from './genre-reference-guide';
 import { getUIConstruction, UI_CONSTRUCTION_GENRE_IDS, UI_CONSTRUCTION_SCREEN_IDS } from './ui-construction-guide';
+import { askVerifiedModule, VERIFIED_MODULE_COUNT } from './verified-modules';
 import {
   applyEdits,
   checkSyntax,
@@ -3036,6 +3037,40 @@ export const TOOLS: Record<string, ToolImpl> = {
     run: async (_ctx, a) => {
       if (typeof a.id !== 'string') return { error: 'id must be a string naming a screen type or a genre' };
       return getUIConstruction({ id: a.id });
+    },
+  },
+  //[[ THE LOGIC WE HAVE WATCHED PASS, instead of the logic the model re-derives.
+  //
+  //   eval-v4 measured game logic at 0/8 for the trained model and 0/8 for its base. The failures
+  //   are near-misses, which is what makes them dangerous: the house style is perfect and the
+  //   arithmetic is wrong. `honest-percent` came back multiplying by 99 instead of 100. A customer
+  //   cannot see that, the build succeeds, and the number is quietly wrong forever.
+  //
+  //   These eighty modules were authored here and each is RUN against its own exhaustive checks at
+  //   build time by scripts/build-verified-modules.mjs; one that fails is absent rather than
+  //   shipped. So this tool is the difference between code somebody reviewed and code somebody
+  //   watched pass.
+  //
+  //   Two-step on purpose: describe the NEED and get a shortlist, then ask for the ID and get the
+  //   source. Returning source on a fuzzy match would hand over a plausible wrong module, and a
+  //   plausible wrong module is worse than none — nothing downstream checks it. ]]
+  get_verified_module: {
+    def: {
+      name: 'get_verified_module',
+      description:
+        'Reviewed-and-EXECUTED Luau for the logic that is easy to get subtly wrong — cooldowns, currency, percentages, leaderboards, inventory limits, round transitions, XP curves, checkpoints. '
+        + VERIFIED_MODULE_COUNT
+        + ' modules, each run against its own exhaustive checks at build time; one that fails is not shipped. Describe what the logic must do in `need` to get a shortlist, then call again with `id` to get the source. USE THIS BEFORE WRITING GAME LOGIC BY HAND: the model measurably writes the right shape with the wrong arithmetic, and a wrong constant here is invisible to the customer and permanent in their game.',
+      parameters: S({
+        need: { type: 'string', description: 'What the logic must do, in plain words. Returns a shortlist of ids.' },
+        id: { type: 'string', description: 'A module id from a shortlist. Returns its source.' },
+      }, []),
+    },
+    studio: false,
+    run: async (_ctx, a) => {
+      if (a.id !== undefined && typeof a.id !== 'string') return { error: 'id must be a string' };
+      if (a.need !== undefined && typeof a.need !== 'string') return { error: 'need must be a string' };
+      return askVerifiedModule({ id: a.id, need: a.need });
     },
   },
   get_genre_kit: {

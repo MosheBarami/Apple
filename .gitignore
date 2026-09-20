@@ -44,6 +44,9 @@ packages/corpus/raw/*
 # ui-construction-guide.ts imports it statically — esbuild embeds it in the Worker bundle, and a
 # Worker has no filesystem to read the source directory from at runtime.
 !packages/corpus/data/ui-construction.json
+# Built by scripts/build-verified-modules.mjs. COMMITTED for the same reason: verified-modules.ts
+# imports it statically and a Worker has no filesystem.
+!packages/corpus/data/verified-modules.json
 # The harvest artefacts, and the split between them is about REPRODUCIBILITY, not size.
 #
 # Tracked: the sources that are scraped or that publish no versioned index. cgbookcase reads a
