@@ -54,11 +54,20 @@
  * that ships.
  */
 
-/** A quoted string, and the file it was taken out of. */
-export type ProofQuote = { text: string; from: 'plugin' | 'record' };
-
 const record = 'docs/evidence/plugin-consent-verified-in-studio-2026-09-19.md';
 const plugin = 'apps/apple-plugin/src/init.server.luau';
+
+/**
+ * A quoted string, and the file it was taken out of.
+ *
+ * `from` is the PATH, not a label. It was declared as `'plugin' | 'record'` while every one of the
+ * eleven call sites passes the value of the consts above, so `astro check` reported eleven errors
+ * and `pnpm -r typecheck` is the first step of the first CI job — the whole run was red on it.
+ * tests/proof-is-evidence.test.mjs already reads it either way (it maps the two labels to paths and
+ * otherwise uses the value as a path), so widening the type to the paths is what the code and the
+ * guard were both already doing.
+ */
+export type ProofQuote = { text: string; from: typeof record | typeof plugin };
 
 export const CONSENT_PROOF = {
   /** The day the control pair was run, and the day the capture below was taken. */
