@@ -1,0 +1,336 @@
+{
+  "genre": "screen-trading",
+  "label": "The TRADE screen — two-sided offer windows, the add/remove timer, confirm-twice, value readouts and unbalanced refusals, escrowed listings, scam-prevention locks, and trade history",
+  "recorded": "2026-09-20",
+  "provenance": "Web research on 2026-09-20, not owner screenshots. Every row below was fetched over the network that day from the community wikis of shipped Roblox experiences that ship a player-to-player trade window — Adopt Me!, Jailbreak, Murder Mystery 2, Blox Fruits, Grow a Garden, Toilet Tower Defense, Pet Simulator X / 99 — plus the Roblox platform's own trade system, and one DevForum post. Fandom serves its article HTML behind Cloudflare while api.php is open, so each wiki row was read as WIKITEXT through that wiki's api.php parse endpoint; the URL and the method are both recorded in each source field so the claim can be re-checked. No image, no Luau source and no asset is copied here. Each row records a claim the page states in PROSE. Where a claim comes from a gallery caption rather than body text — Jailbreak's enumeration of its trade end-states, Murder Mystery 2's placement of the offers, and Grow a Garden's 'Trading Ticket being held' are the THREE cases — the row says so, because a caption names a screen somebody else saw and this session did not.",
+  "incomplete": false,
+  "references": [
+    {
+      "id": "adoptme-trade-flow-timer-and-unfair-warning",
+      "source": "https://adoptme.fandom.com/wiki/Trade%20System — read on 2026-09-20 through https://adoptme.fandom.com/api.php?action=parse&page=Trade%20System&prop=wikitext&format=json, because Fandom serves its article HTML behind Cloudflare while api.php is open.",
+      "demonstrates": [
+        "THE COUNTDOWN AND THE ACCEPT BUTTON ARE THE SAME CONTROL. A counter in the bottom-right of the trade menu counts down from 5, and when it ends it TURNS INTO the green accept button. There is no greyed-out accept to hammer at while you wait — the control does not exist until it is safe to press.",
+        "Every add AND every removal resets that counter, and the page states the reason outright: the cool-down 'prevents users from accidentally accepting a trade after items are removed, added, or replaced'. The reset is aimed at the removal, not at the addition.",
+        "Adding is a green '+' that opens a picker; REMOVING is clicking the item in the trade itself. Two different gestures, and the removal one is the same click that would inspect it.",
+        "THE UNFAIR-TRADE WARNING SAYS DIFFERENT THINGS TO THE TWO PLAYERS. When the game judges a trade unfair, the player on the winning side is warned that scamming is a bannable offence, and the other party is warned they might be getting scammed. If both proceed, the system grants 15 MORE SECONDS to accept or decline. It slows the trade down rather than refusing it.",
+        "Slot count is a shipped decision that moved twice: 4 items, raised to 9 in the November 2020 Trading Update, raised to 18 on 5 May 2023 — and the same 2023 change added trade CHAT NOTIFICATIONS so a player can keep track of changes made within a trade. The bigger the offer grew, the more the interface had to narrate its own changes.",
+        "Either player can request to view the other's BACKPACK from an icon in the trade chat menu; the other side gets an accept/decline prompt, and locked and untradable items are excluded from what is shown. The viewer can click an item to SUGGEST adding it, which posts to the trade chat with its own accept/decline — a suggestion is a message, not an action on the offer.",
+        "Suggesting a REMOVAL flashes a red 'x' over the item and posts to the trade chat. The suggestion is drawn on the thing it refers to as well as written down.",
+        "Backpack viewing has a three-way permission — always allow, always ask, never allow — defaulting to always ask, and the page names the reason it was built in January 2026: Roblox chat restrictions stopped players in different age groups from talking, so the negotiation had to move out of chat and into the interface.",
+        "Spectating is a first-class mode: a player already in a trade shows 'Spectate Trade' instead of 'Trade' on the interaction menu. Spectators react with a fixed emoji set that appears along the SIDE of the trading window, and a number in the bottom-right corner reports how many are watching.",
+        "A trade request that is left unanswered EXPIRES, and a player whose trades are off or set to friends-only never receives the request — the sender is told so rather than being left waiting.",
+        "The game turns OFF player interaction icons while a trade is open, which is how it killed 'fail trading'. The counter-measure was removing a control from the world, not adding one to the window."
+      ]
+    },
+    {
+      "id": "adoptme-scam-catalogue-as-ui-defect-list",
+      "source": "https://adoptme.fandom.com/wiki/Scams — read on 2026-09-20 through https://adoptme.fandom.com/api.php?action=parse&page=Scams&prop=wikitext&format=json. Read as a defect list rather than as lore: each scam names a property of the trade window that made it possible.",
+      "demonstrates": [
+        "THE WEAR BUTTON AND THE CONFIRM BUTTON SIT IN VERY SIMILAR SPACES, and the page says so in as many words as the reason a whole scam class works: a scammer gets the victim rapidly clicking Wear to change an outfit, and a click lands on Confirm. A destructive confirm placed where a harmless repeated action lives is a shipped, named, exploited layout defect.",
+        "THE ITEM PICKER COVERS THE OFFER. 'When the victim is adding items to the trade, the backpack covers most of their screen' — so the scammer swaps their side while the victim is choosing. The picker occluding the opposing offer is what makes a mid-add switch invisible, and Adopt Me's own later additions (trade chat change notifications, the flashing removal marker) are the fix arriving years after the hole.",
+        "THE LAST SLOT IS WHERE YOU GET ROBBED. A scammer fills the offer with low-value items so the high-value one lands in the final slot, then swaps it while the victim is still adding, 'as the victim would not pay as much attention to the bottom slot before accepting'. Position in a slot grid is not neutral — attention falls off toward the end of the list.",
+        "A VARIANT THAT CHANGES AN ITEM'S VALUE IS A LETTER BADGE ON THE CARD: a purple 'M' for Mega Neon, a green 'N' for Neon. The swap scam works precisely because the pet model is otherwise identical, so the badge IS the value — and a badge is a small mark to check under time pressure.",
+        "The window shows a LOADING state while an item is being added, and the page states that items always appear before either player can accept or decline. A side that has added nothing therefore shows nothing, never a spinner — which is why 'my trade menu is glitching' is diagnosable as a lie.",
+        "IDENTITY IS MARKED IN THE TRADE ITSELF: a smiley face beside the username means this is genuinely your friend, and the trade menu ALERTS you when you trade someone whose username is merely SIMILAR to one on your friends list. The near-miss is caught by the window, not left to the player's eyes.",
+        "A pop-up warning fires before a player's first trade AFTER JOINING A NEW SERVER — per session, not once per account. The warning is treated as something you need again in a new room, not a tutorial you dismiss forever.",
+        "The game intercepts the phrase 'trust trade' in chat and answers with a warning not to do it. The anti-scam surface extends outside the trade window into the text channel that sets the trade up."
+      ]
+    },
+    {
+      "id": "adoptme-trade-licence-quiz-gate",
+      "source": "https://adoptme.fandom.com/wiki/Trade%20License — read on 2026-09-20 through https://adoptme.fandom.com/api.php?action=parse&page=Trade%20License&prop=wikitext&format=json.",
+      "demonstrates": [
+        "THE GATE IS A TEST, NOT A LEVEL. Three scenarios are presented and the player must judge each as safe or a scam; the answer controls are a RED button for 'no, this is a scam' and a GREEN button for 'yes, this is safe'. All three must be right, and a failed test can be retaken without limit.",
+        "The licence gates a CAPABILITY, not the screen: without it a player still trades, just not ultra-rare or legendary pets. The trade window stays available and one class of item stays unmovable.",
+        "The licence is also the trade-history and report tool, and the history window is bounded — the LAST 30 DAYS, not all time.",
+        "History and reporting are reached by holding the licence and clicking or tapping the screen: the audit surface is an equipped object in the world rather than a tab inside the trade window.",
+        "The licence itself cannot be traded or given away, which is what stops the gate being purchasable from another player."
+      ]
+    },
+    {
+      "id": "adoptme-trading-hub-async-listings",
+      "source": "https://adoptme.fandom.com/wiki/Trading%20Hub and https://adoptme.fandom.com/wiki/Trading%20Hub%20Phone — both read on 2026-09-20 through https://adoptme.fandom.com/api.php?action=parse&page=Trading%20Hub&prop=wikitext&format=json and the same endpoint with page=Trading%20Hub%20Phone.",
+      "demonstrates": [
+        "THE TWO SIDES OF A MARKETPLACE ARE TWO DIFFERENT NPCs. Robo-Todd is the sell desk — post a listing, view offers on it, modify it. Robo-Rob is the buy desk — search other players' listings, offer on them, review your own outstanding offers. The screen you are on tells you which side of the transaction you are.",
+        "SEARCH RUNS IN BOTH DIRECTIONS: pick items from your own inventory to see what is being offered FOR them, or pick items you want to see what others are offering them for. The same search box answers 'what is mine worth' and 'what will this cost me'.",
+        "There is no empty-results state. Most relevant listings come first, and when there is no exact match — or the player has scrolled past every match — the screen falls back to listings for OTHER items that player owns.",
+        "LISTED ITEMS ARE ESCROWED. Anything placed in a listing or an offer cannot be equipped or used in another trade until the listing or offer is cancelled or completed. The item is visibly committed rather than merely promised.",
+        "Listing capacity is a priced scarcity stated on the screen: a listing costs 100 in-game Bucks, each player may hold two active listings, and a third slot is purchasable for 49 Robux.",
+        "Listings only display while their owner is IN A SERVER — an offline player's listings disappear rather than going stale, so what a buyer sees is always answerable.",
+        "AN UNBALANCED CHECK RUNS AT LISTING TIME TOO, AND THERE IT REFUSES: 'When posting a listing or offer, it will not go through if the trade is detected as too unbalanced.' The live window's answer to an unfair trade, on the Trade System page, is a WARNING plus 15 more seconds — so the asynchronous path blocks where the synchronous one only slows down. Neither page says the two checks are the same mechanism; only that both exist.",
+        "The companion phone READS EVERYWHERE AND WRITES IN ONE PLACE: trade history, active listings and active offers are viewable anywhere, but offers and listings cannot be created or modified unless the player is in the Hub.",
+        "The phone displays the player's LOCAL TIME in its top-left corner — a clock on a trading tool, because cross-server listings are the one part of the system that happens while you are not looking."
+      ]
+    },
+    {
+      "id": "jailbreak-item-cards-double-accept-unbalanced",
+      "source": "https://jailbreak.fandom.com/wiki/Trading — read on 2026-09-20 through https://jailbreak.fandom.com/api.php?action=parse&page=Trading&prop=wikitext&format=json.",
+      "demonstrates": [
+        "BOTH PARTIES ACCEPT TWICE, AND THE FAIRNESS CHECK COMES BEFORE THE WHOLE SEQUENCE: 'Once the trading system has decided that the trade is fair, both parties must accept two times to complete the trade.' The gate is in front of accepting at all, not specifically in front of the second press — the page says nothing about what happens between the two accepts. Fairness is a precondition of confirming, not a warning beside the button.",
+        "The system AUTO-DECLINES two shapes outright: items traded for nothing at all, and a high-value item traded for a low-value one. A refusal, not a nudge.",
+        "The unbalanced message is printed at the BOTTOM of the trade menu and it names the direction — 'Unbalanced: Your side is too low/high'. It is written from the reader's point of view, so the two players see different text about the same trade.",
+        "A trade request has a clock and the clock is SOLD: the other player has 1 minute to accept, or 90 seconds if the requester owns the Trading VIP pass. A gamepass buys patience from a stranger.",
+        "Eight items per side, and the inventory used to fill them gained a SEARCH function in a later update — a cap small enough to read alongside a picker too big to scroll.",
+        "ITEM CARDS ARE COLOUR-CODED BY TYPE, not by rarity: vehicles red, furniture yellow, weapon skins purple, vehicle customisations blue, consumables grey. The first thing the colour tells you is what KIND of thing you are being offered.",
+        "PROVENANCE IS A TINT, NOT A BADGE: if the current holder is the item's original owner, the whole card appears gold.",
+        "A button in the card's TOP-RIGHT CORNER opens the item's history — original owner, how many traded monthly, how many of those were unique, and the creation date. The card is small and the provenance is one tap behind it.",
+        "THEY DELIBERATELY CHANGED WHICH NUMBER IS SHOWN. On 7 July 2023 'Monthly Traded' and 'Monthly Unique' were ADDED to trading cards and the lifetime 'times traded' figure was REMOVED in the same week. A shipped trade UI swapping a total for a rolling window is a decision about what a number is for, and it is arguable in both directions.",
+        "A creation date that cannot be known gets an honest, stated default: items that existed before trading shipped show the date their owner first joined, from May 2022 onward.",
+        "Duplicates are marked with a NUMBER on the card in the inventory rather than repeating the card.",
+        "Seasonal items carry the season AND the level that was required to earn it; an item with no level marker was that season's extra prize. Three of the card's slots exist only to say how the thing was obtained.",
+        "The trading GUI was later made SMALLER, and the wiki records the suspected reason: you could not see the other player's chat behind it. A modal shrunk to stop it covering the conversation it depends on.",
+        "The page's own gallery captions — which name screens this session did not view — enumerate THREE TERMINAL STATES: 'Trade accepted', a trade 'denied automatically by the system due to being unbalanced', and a trade 'declined by the player'. Three FURTHER captions name in-progress accept states — a party accepted, both parties accepted, both accepted once and one accepted again — and two more name miscellaneous error dialogs 'usually shown when trying to trade copies of items that were created using exploits'. An automatic refusal and a human refusal are different screens.",
+        "Trading happens in a dedicated world where teams, arrests and damage are all disabled, and a later update added a setting to opt out of trading INSIDE that world — a player can be in the trading place and not be tradeable."
+      ]
+    },
+    {
+      "id": "mm2-full-screen-window-and-platform-gap",
+      "source": "https://murder-mystery-2.fandom.com/wiki/Trading — read on 2026-09-20 through https://murder-mystery-2.fandom.com/api.php?action=parse&page=Trading&prop=wikitext&format=json.",
+      "demonstrates": [
+        "Entry is from the PLAYER LIST in the top-right: clicking a name opens a small menu with exactly two buttons, Profile and Trade. The trade request is a verb attached to a person, not a screen you open and then search in.",
+        "The trade menu COVERS THE WHOLE SCREEN and the player's own inventory appears down the LEFT side of it — the page says both in prose, and describes no partial-overlay variant. The prose stops there: it never places the offers. Two GALLERY CAPTIONS — naming screens this session did not view — add 'offers on the right', and nothing read here says how many offer panels there are or how they sit relative to each other.",
+        "Every item added starts a SIX-SECOND wait before accepting is possible. Unlike Adopt Me's counter, the page describes the wait without describing a control that changes — the timer is a condition, and the accept button is just unavailable during it.",
+        "The cap is on DISTINCT items, not on quantity: four unique items per side, but multiples of each. A stack is one slot.",
+        "TRADING IS GATED BY LEVEL FOR AN ANTI-DUPE REASON. Since 28 December 2021 a player must be level 10 or higher, introduced specifically as a measure against duping — the progression gate is an economy control wearing a progression costume.",
+        "THE PRIVACY TOGGLE IS MISSING ON PHONES, and the wiki states it plainly: the button under the player list that turns off incoming trade requests 'cannot be toggled on phones'. A shipped consent control with no mobile path is recorded in the game's own reference.",
+        "Untradable categories are enumerated in prose — effects, emotes and radios — and around mid-January 2022 an exploit let players put effects, emotes, POWERS and radios into a trade in order to scam. WHAT THE PAGE RECORDS IS THE OUTCOME, NOT THE SCREEN: the untradable items 'will not appear in the other player's inventory, only the weapons or pets will be traded to that perspective player'. The scammer is the one who places them, so they would occupy the scammer's own offer, and nothing read here says what the trade window drew while they sat in it. The trade completed and delivered less than it carried — the defect whether or not the offer rendered them.",
+        "Documented failure modes the interface has no state for: both sides unable to add, both accepting with nothing happening, and trades that break until players rejoin. A trade window with only success and cancel is missing the states its own players hit."
+      ]
+    },
+    {
+      "id": "bloxfruits-seat-trade-and-value-band",
+      "source": "https://blox-fruits.fandom.com/wiki/Trading — read on 2026-09-20 through https://blox-fruits.fandom.com/api.php?action=parse&page=Trading&prop=wikitext&format=json.",
+      "demonstrates": [
+        "THE QUEUE IS A CHAIR. Trading starts by sitting down; a second player sits on the opposite side; the pop-up menu appears only once both seats are filled. There is no request, no accept — the seating IS the handshake, and it is physically obvious to bystanders who is trading whom.",
+        "The pop-up simply DOES NOT APPEAR if either player has spent their five daily trades. A quota is expressed as the absence of the window, which tells the other player nothing about why.",
+        "THE FAIRNESS BAND IS A HARD NUMBER: fruits in a trade may not differ by more than 40% in total price, and adding Robux-bought products raises that ceiling to roughly 80–100%. The game refuses outside the band rather than warning inside it, and the band widens when real money is involved.",
+        "Eligibility is checked PER RECIPIENT: a gamepass or permanent fruit cannot be given to a player who already owns it. The same offer is legal against one partner and illegal against another, so the window has to validate against the person opposite.",
+        "An item must be STORED in inventory before it can be traded, and stored fruits can no longer be dropped. Committing a thing to tradability is a separate, one-way step from owning it.",
+        "THE CANCEL PATH MUST NOT LIVE ONLY IN THE GUI. The page records an exploit called 'Freeze Trade' that freezes the trade interface and prevents the victim from jumping, so they cannot cancel — plus an 'Auto Accept' that forces acceptance. A trade whose only escape is a button inside the frozen window has no escape."
+      ]
+    },
+    {
+      "id": "growagarden-ticket-countdown-and-running-totals",
+      "source": "https://growagarden.fandom.com/wiki/Trade%20System — read on 2026-09-20 through https://growagarden.fandom.com/api.php?action=parse&page=Trade%20System&prop=wikitext&format=json.",
+      "demonstrates": [
+        "BOTH SIDES' TOTALS ARE SHOWN ABOVE THE WINDOW. The player sees their own and the other player's full value of everything added, and the page states the purpose: to let players estimate whether the trade is fair. The fairness judgement is handed to the player as a number instead of being made for them.",
+        "Hovering an added item shows its currency value AND its crop weight — the per-item detail is a hover, the per-side total is permanent.",
+        "Adding an item starts a five-second countdown; REMOVING one resets it, and the page names anti-scam as the reason for the reset specifically.",
+        "TWO STAGES, NAMED SEPARATELY: both players accept, and then must CONFIRM. The page's stated purpose for the second stage is 'to ensure everything is being traded fairly' — the confirm exists to make you look again, not to record intent twice.",
+        "TRADING COSTS AN ITEM YOU GET FROM THE SHOP: to trade, players use a Trading Ticket obtained from the Gear Shop. The right to open the window is an object you have to acquire, which makes trade frequency a shop lever. The page does not say the ticket is spent by a trade, and it does not say in prose that it must be held — only a gallery caption ('Trading Ticket being held') shows it in hand.",
+        "Thirteen items per cycle, and only pets and harvested crops are tradable at all.",
+        "A CURRENCY FIELD WITH SHORTHAND AND A SILENT CEILING: amounts can be typed abbreviated ('5T', '3B') rather than in full, and anything above 1QI in shorthand will not go through. A free-text number in an offer needs both a parser and a documented ceiling.",
+        "ACCOUNT AGE GATES TRADING BUT NOT GIFTING: an account under 10 days old cannot trade, yet can still gift and receive gifts. The restriction is aimed at the two-sided exchange, not at generosity.",
+        "A percentage fee on traded currency existed and was REMOVED — 10% on every currency amount, so an offer of 1,000,000 delivered 900,000. A fee that silently changes the number the other player sees is a thing shipped games have tried and walked back."
+      ]
+    },
+    {
+      "id": "growagarden-trade-world-index-and-booths",
+      "source": "https://growagarden.fandom.com/wiki/Trade%20World and https://growagarden.fandom.com/wiki/Trade%20Booths — both read on 2026-09-20 through https://growagarden.fandom.com/api.php?action=parse&page=Trade%20World&prop=wikitext&format=json and the same endpoint with page=Trade%20Booths.",
+      "demonstrates": [
+        "THE TRADE WORLD DELETES WHAT CANNOT BE TRADED. On entry, all seeds, gear and food are removed from the inventory — everything except the Trading Ticket and the Booth Sign. The picker in that world therefore cannot show an untradable item, because untradable items are not there.",
+        "THE MAIN CURRENCY IS DELIBERATELY USELESS HERE. Sheckles, the whole game's currency, cannot be spent in the trading experience; a separate Trade Token is the only medium. The economies are firewalled rather than converted.",
+        "Trade Tokens are bought with Robux at one token per Robux across five fixed tiers — 50, 250, 1,000, 5,000 and 25,000 — a ladder with the conversion rate stated rather than implied.",
+        "SELLING IS A STALL YOU OWN: each player claims a booth on join, and a player who has not claimed one is dropped at a random empty booth rather than being left without a place to sell.",
+        "The seller sets their own price, with a floor of 1 token, and the deduction taken from a sale is CAPPED IN ABSOLUTE TERMS at 10 tokens rather than being a percentage. A flat cap means the fee stops mattering as the price rises, which is the opposite of the platform's percentage cut.",
+        "Listings can be unlisted by their owner, so a stall is editable state rather than a commitment.",
+        "THE INDEX SHOWS EVERY ITEM INCLUDING THE ONES YOU DO NOT OWN, and each entry carries three things: a 'Find Sellers' button that checks for online sellers right now, a price GRAPH, and a RAP figure. A price history chart inside a Roblox game's trading screen is the fullest 'what is this worth' surface in this file.",
+        "The trade panel itself is present in BOTH the main game and the trade world and carries the same three things in each: trade history, trade settings, and the tokens passed during trading.",
+        "Booth skins are explicitly cosmetic and give no boost, and they are themselves tradable — the shopfront is inventory, so the marketplace sells the furniture of the marketplace."
+      ]
+    },
+    {
+      "id": "ttd-ready-unready-history-and-sterile-plaza",
+      "source": "https://toilet-tower-defense-game.fandom.com/wiki/Trading and https://toilet-tower-defense-game.fandom.com/wiki/Trading%20Plaza — both read on 2026-09-20 through https://toilet-tower-defense-game.fandom.com/api.php?action=parse&page=Trading&prop=wikitext&format=json and the same endpoint with page=Trading%20Plaza.",
+      "demonstrates": [
+        "READY IS REVERSIBLE AND THE TIMER SAYS SO. After pressing ready a timer appears and the player can UNREADY during it. The commitment has a stated window in which it can be taken back, which is a different promise from a countdown that merely delays.",
+        "The trade carries its own PRIVATE CHAT behind a button in the window — negotiation is inside the trade rather than in the public channel where anyone can quote you.",
+        "TRADE HISTORY IS A BUTTON ON THE TRADE SCREEN and it records BOTH relative and absolute time: how long ago the trade happened, plus the date and time. Relative for recency, absolute for disputes.",
+        "The privacy setting has FOUR options — Everyone, None, Only Friends, Disabled — and the wiki notes most players do not know how to reach the last one. Two of the four mean approximately the same thing, which is what a setting list looks like when options were added rather than designed.",
+        "THE SYSTEM CHAT ANSWERS IMPERSONATION AUTOMATICALLY. When a user puts '[Partner]' in chat, the system replies that this user is not a partner and is trying to scam, and points at the real partner list. The platform's own text channel is used as an anti-fraud surface.",
+        "A SCROLLING OFFER HIDES CHANGES. The documented 'spamming bad units' scam works by filling the offer with junk so the victim scrolls down, then removing the good item at the top while they are looking at the bottom. The offer list scrolling is the vulnerability, and the page's advice — 'always make sure to look up and down during trading' — is the interface asking the player to do its job.",
+        "A STALE OFFER IS ONLY DETECTABLE BY A FLICKER. Against exploit-based swaps the page tells players to watch the green accept bar and judge whether it 'flicked'. When the only signal that an offer changed is a one-frame animation on a different control, the window is not reporting its own state.",
+        "AN UNVALIDATED NUMBER GOES STRAIGHT INTO THE OFFER. A documented exploit puts a gem count of '-0' — the wiki adds 'keep note that its negative' — into the trade, and the page calls the result 'just a visual glitch', noting that the same player's gem count 'will just be \"0\" anywhere else'. THE WORD 'INFINITE' IS THE SCAMMER'S SPOKEN CLAIM ABOUT THAT FIELD, NOT THE FIELD'S OUTPUT: the page says the scammer 'will claim its \"infinite\"' and, asked to offer less, 'will claim they cant since its infinite'. Nothing read here says the offer renders anything other than '-0'. The offer's currency field displays what it is handed, and here it is handed a number no one checked.",
+        "THE TRADING PLAZA IS THE GAME WITH THINGS SWITCHED OFF: a 75-player cap so more people can trade, no teleporters to maps so nobody drifts into a match, voice chat disabled, and the leaderboard showing coins and gems but NOT wins. The same leaderboard component renders a different column set in the trading area, because in a trade a player's wealth is the relevant statistic and their skill is not.",
+        "A marketplace sale above 10,000 gems is announced in the public chat with the buyer, the unit and the price — a price ticker with a threshold, so only notable sales become public.",
+        "Overhead nameplates were changed to show coins, gems and Endless rank above every player specifically to make begging scams harder. Identity was enriched as an anti-fraud measure."
+      ]
+    },
+    {
+      "id": "roblox-platform-trade-accept-counter-decline",
+      "source": "https://roblox.fandom.com/wiki/Trade%20system — read on 2026-09-20 through https://roblox.fandom.com/api.php?action=parse&page=Trade%20system&prop=wikitext&format=json. This is the Roblox WEBSITE's own trade window rather than an in-experience one, and it is included because it is the pattern every in-experience trade screen is compared against by its players.",
+      "demonstrates": [
+        "THERE ARE THREE VERBS, NOT TWO: Accept, Decline and COUNTER. Countering replaces the trade and leaves the original requester holding an inbound one, so a negotiation is a chain of trades rather than edits to a shared one.",
+        "ACCEPT OPENS A SECOND SCREEN that asks whether to complete the trade, and only 'Yes' there executes it. The confirm is a separate surface, not a second press of the same button.",
+        "THE DECLINE IS CONFIRMED TOO. Declining also redirects to a message asking whether to reject, and only then archives the trade. The destructive-but-recoverable action gets the same ceremony as the destructive-and-final one.",
+        "OUTCOMES ARE ARCHIVED INTO NAMED BUCKETS — completed trades in one, declined trades in 'Inactive'. History is filed by what happened to it.",
+        "Currency is added AT THE BOTTOM of the trade display, below the items, and it is capped relative to the goods: post-fee Robux may not exceed 50% of the RAP of the included items. RAP is the page's own term and it is NOT the same thing as 'value', which the same page defines separately as an unofficial appraisal built from submitted trade proofs. Money is a sweetener with a ceiling, and the ceiling is measured against the platform's own figure rather than the community's.",
+        "A 30% fee is taken from Robux moved in a trade, so the number the sender types and the number the receiver gets are different and both have to be legible.",
+        "THREE SEPARATE PRECONDITIONS CAN MAKE A TRADE IMPOSSIBLE — at least one of the two users holding no limited items, privacy settings disabling trading, or the absence of a Premium membership. A window that cannot open has more than one reason, and only naming the right one is useful.",
+        "Two-step verification was attached to trading in 2021, after scams involving compromised accounts. The confirm step became an out-of-band one.",
+        "A DAILY CEILING ON WHAT ONE ACCOUNT SENDS: 'As of September 16, 2022, there is a rate limit on trades, only allowing you to send 100 trades per day.' The page's word is TRADES, not requests, and it counts sending rather than completing; it does not say whether anything caps what arrives. The reason is offered as a guess, not a fact — 'this was likely done due to the large number of \"Trade Bots\", which were scripts that automatically sent out hundreds of trades an hour'."
+      ]
+    },
+    {
+      "id": "petsim-partner-list-filtered-by-availability",
+      "source": "https://pet-simulator.fandom.com/wiki/Trading%20(Pet%20Simulator%20X) and https://pet-simulator.fandom.com/wiki/Trading%20(Pet%20Simulator%2099) — both read on 2026-09-20 through https://pet-simulator.fandom.com/api.php?action=parse&page=Trading%20(Pet%20Simulator%20X)&prop=wikitext&format=json and the same endpoint with the Pet Simulator 99 page.",
+      "demonstrates": [
+        "THE PARTNER LIST IS FILTERED, NOT JUST VALIDATED. Only players with trading enabled appear, and the trade option is unavailable for a player who is ALREADY IN A TRADE or who has disabled trading toward you specifically. A request that could never arrive is never offered.",
+        "The trade screen is reached from the side menu in one game and from a button inside the inventory in the other — in both, trading is a mode of the inventory rather than a separate destination.",
+        "An incoming request appears as a pop-up at the TOP of the screen with accept and decline, so it does not cover whatever the player is doing when it arrives.",
+        "A FLOOR GUARD BLOCKS EMPTYING YOURSELF OUT: attempting to trade away every pet raises a pop-up reading that the named player cannot have an empty inventory. The refusal names the player it protects.",
+        "The cap can be very large when the items are cheap: 'There is a trade limit of 100 pets per trade.' That sentence is the whole of it — the page describes no layout for an offer that size, so nothing read here says how a hundred pets are drawn, whether the offer scrolls, or what a slot looks like when there are that many.",
+        "The three-way privacy setting (enabled / friends only / disabled) appears in BOTH games' settings screens and in almost identical words, which makes it a shape two shipped titles landed on separately rather than one studio's choice."
+      ]
+    },
+    {
+      "id": "devforum-global-order-book-escrow-and-inbox",
+      "source": "https://devforum.roblox.com/t/i-implemented-global-trading-for-my-rpg/4754701 — fetched on 2026-09-20 as https://devforum.roblox.com/t/4754701.json, a Cool Creations post by the developer of an RPG describing the global trading he built. This is one developer's own system rather than a shipped chart-topping game, and it is weighted below every wiki row above.",
+      "demonstrates": [
+        "The stated problem is the shape of every row above it: standard Roblox trading 'requires that both players are online and in the exact same server', which the author calls tedious. Asynchronous trading exists because co-presence is the constraint.",
+        "The asynchronous form is an ORDER BOOK, not a listing wall: a sell order and a buy order matched automatically on price priority, which means neither player ever sees the other's window and the confirm has to happen at listing time.",
+        "ESCROW IS NAMED AS THE FIRST MECHANIC — the items leave the inventory when the sell order is placed. This matches Adopt Me's Trading Hub lock from an unrelated source.",
+        "Fulfilment goes to an INBOX that delivers items and currency even while the recipient is offline, so an asynchronous trade screen needs a fourth surface beyond offer, history and listings: somewhere the proceeds land.",
+        "A dead-letter queue backs the delivery so a failed cross-server hand-off is retried rather than lost. The interface promise 'your items are safe while listed' is only as true as that retry path."
+      ]
+    }
+  ],
+  "rules": [
+    {
+      "rule": "Make the countdown BECOME the accept control, rather than greying an accept button out beside it.",
+      "why": "Adopt Me's counter runs from 5 in the bottom-right of the trade menu and turns into the green accept button when it ends. A disabled button invites hammering, and a player hammering a button at the moment it becomes live is exactly the failure the cool-down exists to prevent."
+    },
+    {
+      "rule": "Reset the timer on every change to either side — and reset it hardest on a REMOVAL.",
+      "why": "Adopt Me and Grow a Garden both reset their countdown when an item is removed, and both wikis name the same reason: the danger is accepting a trade whose contents changed after you read them. Adding something is visible; taking something away is what you miss."
+    },
+    {
+      "rule": "Confirm twice, and make the second confirm a DIFFERENT surface from the first.",
+      "why": "Jailbreak requires both parties to accept twice once its trading system has judged the trade fair — the fairness check gates the sequence, not the second press in particular; Grow a Garden separates accept from confirm and states the confirm exists to make you check; the Roblox platform sends Accept to a whole separate screen that asks again. Three independent implementations, one shape: the second press must cost a glance, not a millisecond."
+    },
+    {
+      "rule": "Confirm the DECLINE as well.",
+      "why": "The Roblox platform routes Decline through its own are-you-sure and only then files the trade under Inactive. The decline is the cheap-looking control sitting beside the expensive one, and a misclick on it throws away a negotiation that took ten minutes to build."
+    },
+    {
+      "rule": "Never place the confirm where a harmless, repeatable action lives.",
+      "why": "Adopt Me's own wiki records an entire scam class built on the Wear button and the Confirm button occupying 'very similar spaces': a scammer gets the victim clicking Wear rapidly and one click lands on Confirm. This is the clearest measured case in the library of adjacency itself being the defect."
+    },
+    {
+      "rule": "The item picker must not cover the opposing offer — and if it must, log every change to the offer in text.",
+      "why": "Adopt Me's mega/neon switch scam works because 'the backpack covers most of their screen' while the victim is adding, so the other side can be swapped unseen. Adopt Me's answer, years later, was trade-chat notifications of changes and a red marker flashed over an item when its removal is suggested. The occlusion came first and the narration was the patch."
+    },
+    {
+      "rule": "Show a running total for EACH side, permanently, above the offers — and put per-item detail on hover.",
+      "why": "Grow a Garden displays both players' full added value above the trading window and states its purpose as letting players judge fairness themselves; hovering an item adds its value and weight. A total that is present without being asked for is what makes a mid-trade swap arithmetically visible even when it is visually subtle."
+    },
+    {
+      "rule": "When refusing an unbalanced trade, say WHICH SIDE is wrong, from the reader's point of view.",
+      "why": "Jailbreak prints 'Unbalanced: Your side is too low/high' at the bottom of the trade menu — the same trade produces different text for the two players. 'This trade is unfair' tells a player nothing they can act on."
+    },
+    {
+      "rule": "An automatic refusal and a human decline are DIFFERENT end screens.",
+      "why": "Jailbreak's own gallery captions enumerate a trade 'denied automatically by the system due to being unbalanced' and a trade 'declined by the player' as separate states, alongside two distinct error dialogs for exploit-created items. Collapsing them teaches the player that the other person rejected them when the system did."
+    },
+    {
+      "rule": "Warn the two sides of a suspicious trade DIFFERENTLY, and extend the clock instead of blocking.",
+      "why": "Adopt Me warns the advantaged player that scamming is bannable and the other that they may be being scammed, then grants 15 more seconds if both proceed. One message addressed to nobody in particular is the message neither player reads — and a hard block would also refuse every genuine gift."
+    },
+    {
+      "rule": "Pick ONE of: a hard fairness band, or a value readout — and know which you shipped.",
+      "why": "Blox Fruits refuses any trade whose fruit values differ by more than 40% and widens the band toward 80–100% when Robux-bought products are involved; Jailbreak auto-declines the lopsided and was publicly pressured by its own players to make the balancing 'less restricting'; Grow a Garden shows totals and lets the player decide. A band protects the careless and blocks the generous; a readout does the reverse. A screen that shows a total AND silently refuses is the one combination that confuses everybody."
+    },
+    {
+      "rule": "Refuse the empty side, and refuse the empty inventory.",
+      "why": "Jailbreak auto-declines items-for-nothing; Pet Simulator X raises a named pop-up when a player tries to trade away every pet they own. Both refusals cover the same moment — a player one click from having nothing — and neither is expressible as a fairness percentage."
+    },
+    {
+      "rule": "Cap the offer, and treat the cap as a layout decision: past about a dozen slots the offer scrolls, and a scrolling offer needs a change log.",
+      "why": "The shipped caps are 4 then 9 then 18 (Adopt Me), 8 (Jailbreak), 4 unique with stacks (Murder Mystery 2), 4 (Blox Fruits), 13 (Grow a Garden) and 100 (Pet Simulator X). Both documented last-slot scams — Adopt Me's bottom-slot swap and Toilet Tower Defense's junk-spam — exist only because the offer grew taller than the screen."
+    },
+    {
+      "rule": "Make READY reversible and say for how long.",
+      "why": "Toilet Tower Defense shows a timer after ready in which the player can unready. A commitment with a visible take-back window is a different promise from a delay you simply wait out, and it is the state a player reaches for the moment they notice something changed."
+    },
+    {
+      "rule": "Filter the partner list by who can actually be traded right now.",
+      "why": "Pet Simulator X hides the trade option for a player already in a trade or who has disabled trading toward you, and lists only players with trading enabled. A request that can never arrive is a dead control that teaches the player the feature is broken."
+    },
+    {
+      "rule": "Privacy is a three-way choice — enabled, friends only, disabled — and it must exist on every platform you ship to.",
+      "why": "Pet Simulator X and Pet Simulator 99 both ship exactly those three and almost the same words for them ('disable, enable, or set as friends only' / 'enable, disable, or set as only friends'); Toilet Tower Defense shipped four, two of which mean roughly the same thing and one of which its own wiki says most players cannot find. Adopt Me is NOT evidence for the third state — its page names only two, trades 'turned off' and the setting put to 'friends only'. Murder Mystery 2's toggle 'cannot be toggled on phones' — a consent control with no mobile path, recorded in the game's own reference."
+    },
+    {
+      "rule": "Mark identity inside the trade window, and alert on near-miss usernames.",
+      "why": "Adopt Me shows a smiley beside a genuine friend's name in the trade and alerts the player when the partner's username is merely SIMILAR to one on their friends list. Impersonation by a lowercase L is invisible to a reader under time pressure and trivial for the window to catch."
+    },
+    {
+      "rule": "The mark that changes an item's value belongs ON the card, and the card's colour should encode TYPE.",
+      "why": "Adopt Me distinguishes Mega Neon from Neon by a purple 'M' against a green 'N' — and a documented scam swaps one for the other precisely because the models are otherwise identical. Jailbreak colours cards by item type, tints a card gold when its holder is the original owner, and prints the season plus the level it required. In both, everything that determines worth is a mark you can check in one glance."
+    },
+    {
+      "rule": "Put provenance one tap behind the card, and prefer a rolling window to a lifetime total.",
+      "why": "Jailbreak's cards carry a corner button opening original owner, creation date, monthly traded and monthly unique — and in July 2023 the lifetime 'times traded' figure was REMOVED the same week the monthly ones arrived. A total counts a decade of churn equally; a monthly figure answers whether this thing is moving NOW. It is arguable in both directions, which is why it is worth recording that a shipped game picked a side."
+    },
+    {
+      "rule": "State the fallback when provenance is unknown, rather than leaving the field blank.",
+      "why": "Jailbreak shows items created before trading existed with their owner's join date, from May 2022 onward. A blank field looks like a bug; a stated default looks like history, and a player can reason about it."
+    },
+    {
+      "rule": "Escrow anything on offer, and show that it is locked.",
+      "why": "Adopt Me's Trading Hub makes listed and offered items unequippable and unusable in any other trade until the listing is cancelled or completes, and an independent DevForum implementation of global trading names escrow as its first mechanic. Without it the same item is promised to three people, and two of them find out at the confirm."
+    },
+    {
+      "rule": "An asynchronous trade needs a fourth surface: an inbox where proceeds land.",
+      "why": "The DevForum global-trading post delivers fulfilled items and currency to a player's inbox even while they are offline, backed by a dead-letter queue for failed hand-offs. Offer, history and listings cover the synchronous case; the moment a trade can complete while you are logged out, something has to hold the result."
+    },
+    {
+      "rule": "Trade history is its own screen, it is bounded, and it carries both relative and absolute time.",
+      "why": "Toilet Tower Defense records how long ago each trade happened plus the date and time; Adopt Me's licence shows the last 30 days and is also the reporting tool; the Roblox platform files trades into completed and inactive buckets. Relative time is what a player reads; absolute time is what a report needs."
+    },
+    {
+      "rule": "Gate the CAPABILITY, not the screen — and gate it with a test when the risk is judgement rather than skill.",
+      "why": "Adopt Me's licence is three safe-or-scam scenarios answered with a red and a green button, retakeable without limit, and it unlocks only ultra-rare and legendary trading; Murder Mystery 2 requires level 10 explicitly as an anti-dupe measure; Grow a Garden blocks accounts under 10 days from trading while still allowing them to GIFT. Hiding the whole window teaches nothing; leaving it open with one class of item immovable teaches exactly what the gate is for."
+    },
+    {
+      "rule": "Validate the free-text currency field, and document its ceiling.",
+      "why": "Grow a Garden accepts abbreviated amounts like '5T' and silently refuses anything above 1QI; Toilet Tower Defense documents an exploit that puts a gem count of '-0' into the offer where every other screen shows '0' — its wiki calls that a visual glitch, and the 'infinite' part is what the scammer SAYS about the field rather than what the field prints. A number typed into a trade is an attack surface with a keyboard attached to it, and a field that will accept a negative zero is one a scammer can narrate."
+    },
+    {
+      "rule": "The cancel path must survive the trade window being unresponsive.",
+      "why": "Blox Fruits documents a 'Freeze Trade' exploit that freezes the trade interface and prevents the victim from jumping so they cannot escape, and an 'Auto Accept' that presses the button for them. If the only way out is a control inside the frame that is stuck, there is no way out."
+    },
+    {
+      "rule": "Guarantee that what the other side's offer DISPLAYS is what will actually transfer.",
+      "why": "Murder Mystery 2 records a mid-January 2022 exploit in which untradable effects, emotes, powers and radios could be put into a trade and then did not arrive — 'only the weapons or pets will be traded'. Its page states the missing delivery and not what the window showed, so what it proves is a gap between a trade's CONTENTS and its result. Toilet Tower Defense tells players to watch whether the green accept bar 'flicked' to detect a swapped offer. When the only evidence that an offer changed is a one-frame animation on another control, the window is not reporting its own state — the offer must be rendered from server truth and visibly reset when it changes."
+    },
+    {
+      "rule": "Make the trading place the game with things switched off.",
+      "why": "Four independent games do the same thing: Jailbreak's island disables teams, arrests and damage; Toilet Tower Defense's plaza caps at 75 players, removes map teleporters, disables voice chat and drops WINS from the leaderboard so only coins and gems show; Grow a Garden's trade world strips every untradable item from the inventory on entry and makes the main currency unspendable; Blox Fruits confines trading to exactly two named places, a café in one sea and a mansion in another. The trading surface is defined as much by what it removes as by what it adds."
+    },
+    {
+      "rule": "Price the listing, not the handshake — and state the fee before the confirm, in the units the player will feel it.",
+      "why": "Adopt Me charges 100 Bucks for EVERY Trading Hub listing and lets a player hold two active at once, with a third concurrent slot purchasable for 49 Robux — the first two slots are not free, they are the ones whose CAPACITY costs nothing; Grow a Garden caps its sale deduction at 10 tokens in ABSOLUTE terms rather than as a percentage; the Roblox platform takes a 30% fee from Robux moved and caps post-fee Robux at 50% of the RAP of the included items — RAP, not the community's 'value', which the same page defines separately as an unofficial appraisal built from submitted trade proofs. A flat cap stops mattering as the price rises and a percentage never does, and the player should be able to see which one they are living with."
+    },
+    {
+      "rule": "Put the negotiation inside the trade, because the platform may take the chat away.",
+      "why": "Toilet Tower Defense ships a private chat button in the trade window. Adopt Me built backpack viewing with click-to-suggest in January 2026 for a stated reason: Roblox chat restrictions stopped players in different age groups from talking to each other, so the haggling had to become interface. A trade screen that assumes the players can type at each other is one policy change away from being unusable."
+    },
+    {
+      "rule": "Cap and clock the REQUEST separately from the trade.",
+      "why": "Jailbreak gives the recipient 1 minute to answer, 90 seconds if the sender owns the VIP pass; Adopt Me expires unanswered requests; the Roblox platform caps an account at 100 trades SENT per day — its page's wording is 'a rate limit on trades', and it attributes the change only tentatively, to trade bots sending hundreds an hour. Sending is the spam surface, so it needs its own ceiling, and answering is the one that needs its own clock. Only the Jailbreak and Adopt Me clocks are stated to belong to the request rather than to the trade."
+    }
+  ],
+  "limits": [
+    "EVERY WIKI ROW WAS READ AS WIKITEXT THROUGH api.php, because Fandom serves article HTML behind Cloudflare. That is the same content, but it means the SCREENSHOTS those pages embed were named and not seen. Every claim above is one a page states in prose — except THREE that come from gallery CAPTIONS and are labelled as such in their own rows: the Jailbreak end-state enumeration, Murder Mystery 2's 'offers on the right', and Grow a Garden's 'Trading Ticket being held'.",
+    "NO GEOMETRY AT ALL. Not one source read here gives a pixel size, a stroke weight, a corner radius, a font size, a colour value or a panel proportion for a trade window. Where a position is recorded — the counter in the bottom-right, the unbalanced line at the bottom of the menu, the info button in a card's top-right, the totals above the window, the inventory down the left — it is because the page says so in words. Nothing in this file should be used as a measurement.",
+    "THE LAYOUT OF THE TWO SIDES IS THE THINNEST PART OF THIS FILE. Murder Mystery 2's page is the only one that describes the arrangement at all, and it barely does: the PROSE gives only 'Your inventory will appear on the left side on the screen' and the menu covering the whole screen, while 'offers on the right' is a gallery caption and not body text. Nothing read here says whether the two offers sit side by side or stacked, which side the local player occupies, whether the partner's name sits above their offer, how the accept state of the other player is drawn beyond Toilet Tower Defense's 'green bar', or what an empty slot looks like. A generated trade window still has to invent its own composition.",
+    "MOBILE IS ALMOST ABSENT. The only platform-specific fact found is a DEFECT — Murder Mystery 2's trade-request toggle cannot be operated on phones. Nothing here says how any of these windows reflow on a phone, whether the picker becomes a sheet, or how a hover-only affordance like Grow a Garden's per-item value detail is reached by touch. Grow a Garden's hover readout in particular has no recorded touch equivalent.",
+    "SEVERAL ANTI-SCAM CLAIMS ARE READ OUT OF SCAM DESCRIPTIONS, which is evidence of a hole and not a transcript of a design meeting. 'The backpack covers most of their screen' and 'the Wear and Confirm buttons are in very similar spaces' are community observations of what went wrong, written by players. They are strong because they are specific and because the games later shipped fixes that match them — but the studio never said either sentence.",
+    "THE VALUE QUESTION IS ANSWERED OUTSIDE THE GAME IN MOST OF THESE TITLES. Murder Mystery 2, Jailbreak and Toilet Tower Defense all point players at third-party value sites, and Blox Fruits states outright that there are no real trading values in the game. Only Grow a Garden's Index was found to ship a price graph and a RAP figure in-experience. One source is not enough to say how a shipped in-game value display is built, and that is the single weakest axis of this file.",
+    "THE CONFIRM-TWICE PATTERN IS WELL ATTESTED AND ITS TIMING IS NOT. Three sources confirm two stages; none says whether the second stage has its own timer, whether one player's second accept is visible to the other before they press theirs, or what happens when one side confirms and the other walks away. Jailbreak's captions imply an intermediate 'both accepted once, one accepted twice' state exists, and nothing read describes what it looks like.",
+    "ONE ROW IS A SINGLE DEVELOPER'S OWN POST rather than a shipped chart-topper, and it is the only source in this file for asynchronous order-book trading and for the inbox. Adopt Me's Trading Hub corroborates the escrow lock independently, but the matching engine, the offline delivery and the dead-letter queue rest on one self-reported implementation and are weighted accordingly.",
+    "NO ROBLOX DOCUMENTATION BACKS ANY OF THIS. create.roblox.com documents purchase prompts and receipts for the shop screen; nothing equivalent exists for player-to-player trading, which is entirely a game-level construction. There is therefore no engine-level requirement recorded here of the kind screen-shop.json carries for grid sizing — everything above is convention, and convention can be argued with.",
+    "THREE ADVERSARIAL PASSES HAVE NOW BEEN RUN OVER THIS FILE, AND EACH FOUND FINER ERRORS THAN THE ONE BEFORE IT. That is what converging looks like; it is also what a process looks like just before somebody declares victory early, so the history is written down instead of the verdict. PASS ONE re-fetched every source cited here and flagged six claims: 2 were DELETED outright because the cited page does not contain them (Murder Mystery 2's community trading servers having no coin spawns and no XP — that page contains 'coin', 'XP' and 'trading server' exactly zero times; and Adopt Me shipping the same three-way privacy setting as the two Pet Simulator games, when its page names only 'turned off' and 'friends only'), and 4 were NARROWED, of three kinds: a gallery caption read as prose, a defined term swapped for a looser one (Robux capped at 50% of RAP, not of 'value'), and inference presented as reading ('consumable', 'must be holding' and 'hotbar' attached to a sentence that says only that players use a ticket from the Gear Shop). That same session found two errors the verifier had missed and fixed them: the Roblox precondition is 'at least one of the users has no limited items', which a row had reversed into 'neither side holding any', and Blox Fruits' two trading locations are a café and a mansion, which a rule had generalised to 'two rooms'. Eight changes in all. PASS TWO read the REPAIRED file rather than the sources and found ten more, every one graded minor, and they were minor in a specific and instructive way: over-counts, glosses, and two structural failures worth naming. (a) A CLAIM CORRECTED IN ONE PLACE AND LEFT STANDING IN ANOTHER — pass one narrowed 'value' to 'RAP' inside references[].demonstrates and left the looser wording in a rules[].why, and the same drift had happened to Adopt Me's listing price, correct in the reference row and wrong in the rule. (b) A SUMMARY THAT NO LONGER MATCHED ITS OWN FILE — pass one raised the provenance note's count of caption-derived claims from one to two and stopped one short of its own record, since limits[0] already named a third. PASS THREE, ON 2026-09-20, SETTLED ALL TEN. Four assertions were DELETED outright with nothing put in their place: that Toilet Tower Defense's '-0' gem exploit RENDERS as 'infinite' (the page says '-0' is what goes in and calls it a visual glitch; 'infinite' is the scammer's spoken claim); that Pet Simulator X's 100-pet cap 'means the offer is a scrolling grid rather than a row of slots' (an invented layout fact, and one that contradicted limits[2] on the same page); that Murder Mystery 2's untradable items 'DISPLAYED on the victim's side of the window' (the page records only that they did not arrive, and the scammer is the one who places them, so the side was backwards too); and that the check blocking an Adopt Me Trading Hub listing is 'the SAME' detection that guards the live window (neither page says so, and the two behave differently — the listing is refused, the live trade is warned and given 15 more seconds). Five claims were NARROWED: Jailbreak's gallery captions enumerate THREE terminal states, not four; Jailbreak's fairness check gates the whole accept sequence rather than the second press specifically; the Roblox platform's cap is on 100 trades SENT per day in the page's own word 'trades', with the anti-bot reason offered as a guess and not a fact; and rules[28] was corrected twice over, from 'half the items' value' to 'half the RAP' and from 'two slots free' to two concurrent listings that each cost 100 Bucks. Five rules[].why entries carrying a duplicate of a corrected claim were fixed alongside their reference rows (rules[2], rules[24], rules[26], rules[28], rules[30]), and the provenance note and limits[0] were both rewritten to say THREE caption-derived claims, which is what this file actually contains. No reference row lost an observation in any of the three passes and the reference count is unchanged at 13. WHAT IS STILL UNSETTLED, NAMED RATHER THAN CLOSED. (1) Nobody here has seen these screens: every claim is read out of a wiki, and the sources are edited by players, so a page can be confidently wrong in ways no amount of re-reading it will reveal. (2) Whether Toilet Tower Defense's offer field renders a '-0' gem count as anything other than '-0' is unknown; the page calls it a visual glitch without saying what is drawn. (3) Whether Murder Mystery 2's trade window displayed the untradable items during the January 2022 exploit is unknown, so the rule that what an offer shows must be what transfers rests on Toilet Tower Defense's 'flicked' bar plus an outcome, not on a documented display. (4) Whether Adopt Me's listing-time unbalanced check and its live-window fairness judgement are one mechanism is unknown; only their outcomes are recorded. (5) Whether the Roblox 100-per-day cap counts requests sent or trades completed is not resolvable from the page, which says 'send 100 trades per day'. (6) Reading Jailbreak's 'both parties accepted once and the other party accepted again' caption as an IN-PROGRESS state rather than a terminal one is this file's inference from the caption set, not something the page states. (7) rules[12]'s 'past about a dozen slots the offer scrolls' is a prescription of this file's own; only Toilet Tower Defense documents an offer a player actually scrolls, and no source gives a threshold. A FOURTH PASS WOULD FIND MORE, and the honest reason this one stops is that the errors are now smaller than the uncertainty in the sources themselves — not that the file is clean."
+  ]
+}

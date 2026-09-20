@@ -1,0 +1,495 @@
+{
+  "genre": "screen-social",
+  "label": "The SOCIAL surfaces — friend lists with presence, party and guild/clan rosters, rank ladders, chat channels and tabs, chat tags, invite flows and the moderation controls that sit on all of them",
+  "recorded": "2026-09-20",
+  "provenance": "Web research, not owner screenshots. Two kinds of source were read on 2026-09-20 and they are kept apart on purpose. (1) Roblox's own documentation, fetched over plain HTTP from create.roblox.com — which serves every page as clean Markdown at a `.md` alternate discoverable from the page head and indexed in https://create.roblox.com/docs/llms.txt, so the docs were read as prose and tables rather than scraped out of a rendered app shell. (2) The community wikis of FIVE SHIPPED Roblox games — Roblox BedWars, Tower Defense Simulator, Blox Fruits, Deepwoken and Arcane Odyssey, read as nine wiki rows because BedWars carries five — and three DevForum threads; Fandom serves article HTML behind Cloudflare while its api.php is open, so each wiki page was read as wikitext through api.php, and DevForum topics were read through their .json endpoint. No image, no Luau source and no asset is copied here. Every row says where it was read and on what date so the claim can be re-checked. The counts here are 8 Roblox-docs rows, 3 DevForum rows and 9 wiki rows, which is the whole of the 20; an earlier version of this paragraph said six games; five were read. THE ENGINE-DEFAULT NUMBERS IN THIS FILE ARE REAL MEASUREMENTS AND THE SHIPPED-GAME CLAIMS ARE NOT: the text sizes, transparencies and colour values below come from Roblox's own property tables for the default chat UI and describe ONLY that default UI. ONE EXCEPTION, RECORDED IN THE LIMITS AND WITHDRAWN FROM THE FILE: the channel tabs' TextSize, where Roblox's own guide says 18 and Roblox's own class reference says 14, so it is not a measurement this file can give. Nothing here measures a shipped game's custom social screen.",
+  "incomplete": false,
+  "references": [
+    {
+      "id": "roblox-docs-textchat-overview",
+      "source": "https://create.roblox.com/docs/en-us/chat/in-experience-text-chat.md — fetched 2026-09-20 with curl; Roblox's own overview of TextChatService, page's own last_updated stamp 2026-09-18. Fetched at the `.md` alternate because create.roblox.com's HTML is a client-rendered app shell.",
+      "demonstrates": [
+        "A chat surface is FOUR configuration objects, not one: ChatWindowConfiguration, ChatInputBarConfiguration, ChannelTabsConfiguration and BubbleChatConfiguration. Each can be disabled independently, so 'hide the chat' is four different decisions — a game can keep bubbles over heads while removing the window entirely.",
+        "Two channels exist by default and they are not symmetric: RBXGeneral carries player messages and RBXSystem carries the game's own announcements. A system line is a MESSAGE IN A CHANNEL, not a separate toast layer.",
+        "A user in a channel is its own object — TextSource — and a user in three channels is THREE TextSources, each carrying that user's permissions in that channel. Whether someone can type is therefore a per-channel fact, so a muted-in-guild-chat state cannot be a flag on the player.",
+        "A chat command is a first-class instance (TextChatCommand with PrimaryAlias and SecondaryAlias) parented to the service, not a string compared inside a message handler. Commands and messages diverge at SendAsync: a command fires Triggered and STOPS — it never reaches the server's delivery path or any other client.",
+        "Every display callback must be NON-YIELDING. ShouldDeliverCallback, OnIncomingMessage, OnBubbleAdded and OnChatWindowAdded all block the whole chat system if they wait, which forbids the obvious implementation of a rank badge — look the rank up when the message arrives.",
+        "A sent message is drawn TWICE on the sender's own screen: once locally the moment SendAsync is called, and again when the server's processed copy comes back through MessageReceived. The local draw is optimistic and the second copy replaces it, so the message list is keyed and updated rather than appended to.",
+        "ShouldDeliverCallback runs on the server once PER TextSource in the channel, which is what makes proximity chat and permission-scoped delivery possible — the same message is a separate yes/no decision for every recipient."
+      ]
+    },
+    {
+      "id": "roblox-docs-channel-tabs",
+      "source": "https://create.roblox.com/docs/en-us/chat/chat-window.md — fetched 2026-09-20 with curl (last_updated 2026-09-18) — cross-checked against the property list at https://create.roblox.com/docs/en-us/reference/engine/classes/ChannelTabsConfiguration.md, fetched the same day.",
+      "demonstrates": [
+        "THE CHANNEL TAB ROW IS OFF BY DEFAULT. Roblox ships the window and the input bar enabled and the tabs disabled, so the default shipped Roblox chat is a single undifferentiated stream and every multi-channel game has turned tabs on deliberately.",
+        "Tab names are assigned by the engine from a fixed table and two of the four are not what a designer would pick: RBXGeneral becomes 'General', RBXSystem is FOLDED INTO the General tab rather than getting its own, RBXTeam becomes 'Team', and RBXWhisper is titled with the USER NAME OF THE OTHER PLAYER. A whisper tab is named after a person; every other tab is named after a function.",
+        "A custom TextChannel's tab takes the channel's Instance.Name, and the overview page warns that two channels sharing a name causes unintended behaviour in the default window — so the channel name is an identity key, not a label.",
+        "THE SELECTED TAB DIFFERS FROM AN UNSELECTED ONE BY TEXT COLOUR ALONE. The full property list carries HoverBackgroundColor3 but NO selected-background property: the only selection-state property in the whole class is SelectedTabTextColor3, defaulting to pure white [255,255,255] against an unselected [175,175,175]. Hover gets a whole background ([125,125,125]); selection gets a lighter grey.",
+        "The tab strip is OPAQUE while the window it labels is translucent — ChannelTabsConfiguration.BackgroundTransparency defaults to 0 against the chat window's 0.3 and the input bar's 0.2. Chrome that names things is solid; the surface that carries the words is see-through.",
+        "Tab text is BOLDER than the messages under it — BuilderSansBold against BuilderSansMedium for the window and the input bar — and BOTH cited Roblox pages agree on that. WHETHER IT IS ALSO LARGER IS UNRESOLVED IN ROBLOX'S OWN DOCS AND THIS FILE DOES NOT SETTLE IT: the guide table on chat-window.md gives ChannelTabsConfiguration.TextSize a default of 18, while the class reference at reference/engine/classes/ChannelTabsConfiguration.md says verbatim 'Size of the text in channel tabs. Default value is `14`.' Both were re-fetched on 2026-09-20 and they still disagree; the window and the input bar are 14 on both pages, and every other tab property matches across the two. Do not use 18 as a measurement — the only way to settle it is to read the property in Studio, which nobody here did.",
+        "The tabs DROP the text stroke the messages keep — TextStrokeTransparency defaults to 1 on the tabs and 0.5 on the window and input bar. The stroke exists to hold legibility over an arbitrary 3D world; the tabs sit on an opaque strip and do not need it.",
+        "ChannelTabsConfiguration exposes AbsolutePosition and AbsoluteSize as read-only properties, so a custom social panel can measure where the default tab strip landed and lay itself out around it instead of guessing.",
+        "A user's name colour in chat defaults to their Player.TeamColor. Chat is team-coded before anyone writes a line of code, which is why a game that colours names by rank or clan is overriding a signal that is already there.",
+        "The message prefix is the sender's DisplayName, and prefix and body are separately styleable — PrefixTextProperties is its own properties object, so a tag, a colour or a UIGradient can be applied to the name without touching the message text."
+      ]
+    },
+    {
+      "id": "roblox-docs-chat-guidelines-boundary",
+      "source": "https://create.roblox.com/docs/en-us/chat/guidelines.md — fetched 2026-09-20 with curl (last_updated 2026-09-18); Roblox's own policy page defining what counts as chat.",
+      "demonstrates": [
+        "THE PAGE DRAWS THE BOUNDARY EXPLICITLY, AND IT IS NOT WHERE A DESIGNER WOULD DRAW IT. Bubbles over an avatar's head, direct messages, the chat window and team messages are all chat. Menu text, status updates like 'Two minutes remaining!', admin-command announcements, moderation audit logs and — named outright — a user renaming their pet dog are NOT.",
+        "A comment box is not chat UNTIL IT GETS A REPLY BUTTON. The page says comments on posts are not chat, then adds that if the comments support replies those replies are a conversation and the policy applies. One affordance moves the whole surface across the line.",
+        "Any editable text one user can see from another must be rate-limited to AT LEAST ONE MINUTE — signs and bulletin boards are the named examples. A shared text field is not a text field; it is a chat surface with a cooldown.",
+        "Whether the local player may message another player is a SERVER QUERY, not something the game knows: CanUserChatAsync, CanUsersChatAsync and CanUsersDirectChatAsync exist because privacy settings, parental controls, the app store the player installed from and local law can each forbid it. A friend row's message button therefore needs an unavailable state driven by an answer the game has to ask for.",
+        "A channel built for direct messaging must be MARKED as one with TextChannel:SetDirectChatRequester(). A DM is not a two-person channel; it is a channel that has declared itself a DM.",
+        "Abuse reporting is not something the game builds. The page states TextChannels handle reportability automatically — so a custom chat frontend that bypasses TextChannel has silently removed the report path, and nothing on screen will say so."
+      ]
+    },
+    {
+      "id": "roblox-docs-cross-server-here-and-global",
+      "source": "https://create.roblox.com/docs/en-us/chat/cross-server-chat.md — fetched 2026-09-20 with curl (last_updated 2026-09-18).",
+      "demonstrates": [
+        "With cross-server chat on, the window carries exactly TWO tabs and both are named after a PLACE rather than a function: 'Here' for this server and 'Global' for the rest. The tab row answers where, not what.",
+        "IT IS ON BY DEFAULT FOR ALL GAMES, and switched off from the Creator Dashboard under Audience → Communication Settings rather than in code. A game that has never thought about global chat already has it.",
+        "The Global tab is DISABLED IN PRIVATE SERVERS, stated as respecting users who only want to play with specific friends. The tab row is a different length depending on what kind of server you joined, so the count of tabs is not a constant the layout can assume.",
+        "Each global channel connects about 200 users, and the page gives readability and performance as the reason. A cap on who is in a room is a UI decision presented as an infrastructure one.",
+        "Under load the throttle applies to SENDERS AND RECEIVERS and messages DROP. A global channel is lossy by design, so a chat that guarantees delivery is describing a different feature.",
+        "The Global tab supports only a SUBSET of commands — /mute <username>, /unmute <username>, /help, /clear. The command vocabulary is per-channel, which means an autocomplete list is per-channel too.",
+        "Roblox groups servers for global chat by age, language and occupancy. Who is in the room is decided by the platform, not by the game, and the game cannot render a roster for it."
+      ]
+    },
+    {
+      "id": "roblox-docs-custom-chat-frontend-and-tags",
+      "source": "https://create.roblox.com/docs/en-us/chat/examples/simple-custom-frontend-ui.md and https://create.roblox.com/docs/en-us/chat/examples/group-chat-tags.md — both fetched 2026-09-20 with curl (both last_updated 2026-09-18); Roblox's own worked examples for replacing the chat UI and for badging a sender.",
+      "demonstrates": [
+        "Replacing the chat is TWO separate ScreenGuis, not one panel: the input bar and the message list are built and parented independently, matching the two configuration objects that were disabled to make room for them.",
+        "The message list is a ScrollingFrame with a UIListLayout, and each message is a TextLabel NAMED AFTER ITS MessageId. The example looks the label up by that name on every arrival and edits it in place if it already exists — because MessageReceived fires once on send and once on receipt, and appending twice is the default failure.",
+        "THE PENDING STATE IS THE SAME ROW AT HALF OPACITY. An outgoing message — Status == Sending — is drawn with BackgroundTransparency 0.5 and settles to 0 when the server's copy lands. No spinner, no greyed-out duplicate, no separate 'sending' area.",
+        "The example's own comment states the expectation as a fact about users, not a preference: the input box is cleared after sending. It is cleared on FocusLost regardless of whether the send succeeded.",
+        "A failed send is reported INSIDE the transcript — the pcall's failure path calls DisplaySystemMessage('Failed to send message') into the same channel. The error lands where the message would have.",
+        "THE TAG EXAMPLE EXISTS TO WARN AGAINST THE OBVIOUS IMPLEMENTATION. Querying group membership inside OnIncomingMessage is called out as not recommended because the callback cannot yield and the chat system hangs. The prescribed shape is: resolve membership once on PlayerAdded, write it to a player ATTRIBUTE, and read the attribute in the callback.",
+        "The tag is applied by REBUILDING THE PREFIX — PrefixText becomes '[VIP] ' .. message.PrefixText — so a tag is a string prepended to the name, and a second tag from a second system would prepend again in whatever order the callbacks happened to run.",
+        "Returning nil from the callback means 'leave it alone'. The no-tag path is an absence of a properties object rather than a default one, so a tag system that always returns properties has opted every message into custom rendering."
+      ]
+    },
+    {
+      "id": "roblox-docs-invite-prompt-not-yours-to-draw",
+      "source": "https://create.roblox.com/docs/en-us/production/promotion/invite-prompts.md — fetched 2026-09-20 with curl (last_updated 2026-09-18).",
+      "demonstrates": [
+        "THE FRIEND PICKER IS NOT THE GAME'S TO DRAW. PromptGameInvite raises Roblox's own prompt, which by default shows a menu of the player's friends each with an Invite button. The game's job ends at the call — the same hand-off shape the shop screen has with the Robux purchase dialog.",
+        "The ability to invite at all must be QUERIED FIRST with CanSendGameInviteAsync, wrapped in pcall, because the docs say it varies by platform and by player. An invite button that is always enabled is wrong on some devices and there is no way to find that out by looking.",
+        "Two different prompts come out of one API: with no InviteUser set the player picks from a list; with an InviteUser the prompt targets that one friend. The same button therefore means 'invite somebody' or 'invite this person' depending on where it was pressed from.",
+        "A CUSTOM PROMPT MESSAGE THAT IS TOO LONG IS NOT SHOWN AT ALL. The docs state that if PromptMessage overflows the bounds of the UI it will not be displayed — it does not truncate, wrap or ellipsise. The failure is silence.",
+        "The notification the friend receives is NOT a string the game passes. It is an asset created on the Creator Dashboard under Engagement → Notifications, referenced by id, tied to a specific game, and it MUST contain the {experienceName} placeholder; {displayName} is optional. Invite copy is a published, localisable asset.",
+        "LaunchData is capped at 200 characters and is the only channel through which an invite can say anything about itself — who sent it, where to spawn, what to award — and multiple values have to be JSON-encoded into that budget.",
+        "LAUNCH DATA ARRIVES LATE AND THE DOCS' OWN SAMPLE LOOPS FOR IT: ten attempts, one second apart, before giving up. Anything that renders 'you joined <friend>' cannot be drawn at PlayerAdded, because at PlayerAdded the reason the player is there is not knowable yet."
+      ]
+    },
+    {
+      "id": "roblox-docs-socialservice-party",
+      "source": "https://create.roblox.com/docs/en-us/reference/engine/classes/SocialService.md — fetched 2026-09-20 with curl; the engine class reference for SocialService, read for GetPartyAsync, GetPlayersByPartyId and the Team Rebalance sample.",
+      "demonstrates": [
+        "A PARTY IS A PLATFORM OBJECT THE GAME DOES NOT OWN. Player.PartyId is set by Roblox, and the sentinel for 'not in a party' is the EMPTY STRING rather than nil — so the check is `partyId == \"\"`, and a truthiness test passes for a player with no party.",
+        "GetPartyAsync returns members ORDERED BY WHEN EACH ACCEPTED THE PARTY INVITE — earliest first, most recent last. The roster has no rank field at all; the order IS the record of how the group formed.",
+        "Party members are not necessarily in the same place, let alone the same server. Each member's row carries PlaceId, JobId, PrivateServerId and ReservedServerAccessCode — so a party roster renders WHERE SOMEBODY IS as a first-class column, and the access code exists so 'join them' can actually work across a reserved server.",
+        "GetPlayersByPartyId is the same query narrowed to this server: it behaves like Players:GetPlayers() filtered by party. A party panel therefore has two populations to draw — members here, and members elsewhere — from two different calls.",
+        "The documented worked example is TEAM ASSIGNMENT, not a roster: on join, find a party member already on a team and follow them, and fall back to the smaller team otherwise. Keeping a party together is a thing the game must implement; the platform only tells you who the party is.",
+        "Studio has a Party Simulator testing mode, named in both party methods, because a party cannot be observed in a solo playtest — the same shape as the friends modules, which need a multi-client run.",
+        "The sibling call path for voice/phone invites is separate and gated the same way: CanSendCallInviteAsync must be checked before PromptPhoneBook, and the docs give the same reason — the ability varies by player."
+      ]
+    },
+    {
+      "id": "roblox-docs-friends-locator-and-spawn",
+      "source": "https://create.roblox.com/docs/en-us/resources/modules/friends-locator.md and https://create.roblox.com/docs/en-us/resources/modules/spawn-with-friends.md — both fetched 2026-09-20 with curl (both last_updated 2026-09-18); Roblox's own published developer modules for finding and joining friends inside a place.",
+      "demonstrates": [
+        "ROBLOX'S OWN ANSWER TO 'WHERE ARE MY FRIENDS' IS NOT A LIST. It is an overhead locator icon carrying the friend's avatar portrait, drawn in the world over their head.",
+        "THE INDICATOR IS INVERTED FROM THE OBVIOUS DESIGN: thresholdDistance defaults to 100 studs and friends CLOSER than that get NO icon. The marker appears when you have lost someone and disappears when you have found them, so its presence means distance rather than presence.",
+        "maxLocators defaults to 10 — the screen refuses to carry more than ten of these at once, no matter how many friends are in the server.",
+        "alwaysOnTop defaults to true, so the locator draws over world geometry. A social marker outranks the scene it sits in.",
+        "Clicking the icon TELEPORTS YOU TO THEM by default (teleportToFriend = true). The presence indicator and the join action are the same control.",
+        "The custom-UI contract is name-based and exact: a Frame named FriendLocator, optionally containing an ImageLabel named Portrait and a TextLabel named DisplayName, which the module finds and fills. The docs' step 3 reads 'When finished, disable the parent ScreenGui so that the module doesn't show the custom locator UI until needed', so the authored default is OFF and the module owns visibility. (A claim that screen-shop.json records the same convention was deleted on re-check: that file records only that the shop's open button must live outside the shop frame, not any authored-disabled default.)",
+        "A stated limit worth designing around: avatar images do NOT appear on locator icons in Studio testing because of how user ids are handled there, so the portrait slot is empty in every playtest and populated only in a published place.",
+        "Teleporting to a friend under instance streaming can cause a streaming pause, and the docs' sample calls RequestStreamAroundAsync on the destination first. 'Join friend' is a world-loading problem before it is a UI one.",
+        "SpawnWithFriends puts a joining player 5 studs from a friend by default, and EXCLUDES candidates moving faster than 48 studs/second so nobody is dropped next to a moving vehicle.",
+        "That module ships a validator hook whose documented example is 'only if they are on the same team', and a second documented example that keeps players out of VIP rooms by tagging invisible blocks RestrictedSpawnArea. 'Spawn near a friend' has to be told where it is not allowed to put you, and the answer is level data, not UI state."
+      ]
+    },
+    {
+      "id": "devforum-getfriendswhoplayed",
+      "source": "https://devforum.roblox.com/t/4644214.json — read 2026-09-20 through the topic's .json endpoint; official Roblox announcement, live title quoted exactly as '[Full Release] GetFriendsWhoPlayed API: Build Scalable Friend Leaderboards and Social Engagement Loops', created_at 2026-05-19, with in-post updates dated 2026-06-25 (fully released for all games) and 2026-08-10 (BatchGetAsync). THE DEFAULT .json STREAM IS A PARTIAL WINDOW AND THIS ROW SAYS SO: it returns 20 posts ending at post 25, against posts_count 45, highest_post_number 52 and last_posted_at 2026-08-27. The two community reactions below are posts 3 and 4, read verbatim; the thread's later replies were not read.",
+      "demonstrates": [
+        "The reason a friends leaderboard is hard is stated by Roblox outright: without this API you must fan out DataStore reads across a user's ENTIRE friend list, including everyone who has never touched your game.",
+        "Player:GetFriendsWhoPlayedAsync() returns ONLY AN ARRAY OF USER IDS. No names, no avatars, no scores, no first- or last-played timestamps. The announcement is explicit that it does not store scores or rank players — 'you still own storage, ranking, and display' — so every visible field on a friend row is a second lookup the game performs itself.",
+        "THE RATE-LIMIT GUIDANCE IS A DIRECT INSTRUCTION ABOUT THIS SCREEN: treat the 'ever played' call as an infrequent bootstrap, cache the result, and do NOT refresh on every UI open. A friends panel that re-queries when the player opens it is the named anti-pattern.",
+        "The named use cases beyond leaderboards are 'friends who play this game' sections in menus and surfaces that highlight active friends — so Roblox's own framing of this data is a menu section, not a standalone screen.",
+        "A top reply objects on exactly the grounds the library already records elsewhere: knowing which specific friends have played lets a game choose whose name to put in front of you to pressure an invite. Recorded as a community objection to a shipped API, not as a measurement.",
+        "A second reply asks for first-played and last-played times, which the API does not return — the gap between what the platform exposes and what a friend row wants to show is visible in the thread itself."
+      ]
+    },
+    {
+      "id": "devforum-launchdata-blank",
+      "source": "https://devforum.roblox.com/t/2443900.json — read 2026-09-20 through the topic's .json endpoint; bug report 'LaunchData is consistently a blank string of text', created_at 2023-06-29, acknowledged at post 4 with the bug-queue's standard 'Thanks for the report!' reply (that account carries no staff flag in the JSON; the only author the endpoint flags Roblox Staff is post 21's). THE DEFAULT .json STREAM IS NOT THE WHOLE TOPIC: it returns 20 posts ending at post 21 (2025-11-03), while the same payload's last_posted_at reads 2025-12-12 and posts_count 21 sits against highest_post_number 22. The omitted final post was fetched separately at https://devforum.roblox.com/posts/13494360.json — post 22, 2025-12-12.",
+      "demonstrates": [
+        "THE INVITE-TO-JOIN HANDOFF FAILS IN PRODUCTION IN A WAY IT DOES NOT FAIL IN TESTING. The reporter runs identical code in a test place and a live place: the test place reads the inviter's UserId out of LaunchData and the live place reads an empty string.",
+        "The failure is silent and indistinguishable from 'this player did not arrive via an invite', because both cases present as the same empty string the docs use as the sentinel.",
+        "A linked report in the same thread says PromptMessage 'appears to be doing absolutely nothing' and that ExperienceInviteOptions looks ignored — so the two things the invite options object is for, custom copy and launch data, are both reported as unreliable by developers who were following the documented sample.",
+        "Post 4 answers 'Thanks for the report! We'll follow up when we have an update for you.' and the thread then runs through 2024 and 2025 with developers on shipped games re-confirming it. On 2025-11-03, post 21, an account the forum flags Roblox Staff writes that launch data read successfully in a testing experience and asks for a reproduction. The LAST post, 22, is dated 2025-12-12: a developer answering that 'sometimes launchData is missing when opening Roblox and sometimes works by just closing and reopening Roblox', with strings sometimes arriving cut in half. AS OF THAT LAST POST THE BUG IS OPEN AND INTERMITTENT, which is the honest state to design against: any social screen that depends on LaunchData needs a path for when it is blank.",
+        "The practical construction consequence: 'you were invited by <name>' is not a state a joining player's UI can assert. It is at best a state it can upgrade into after the data arrives, and at worst one it never reaches."
+      ]
+    },
+    {
+      "id": "devforum-novachat-replacement",
+      "source": "https://devforum.roblox.com/t/4513813.json — read 2026-09-20 through the topic's .json endpoint. The live title, quoted exactly, is 'NovaChat V1.0.7 - CHAT UPDATE PART 2 - A Modern, Feature-Rich Chat Replacement (UPDATE)'; created_at 2026-03-12. Read for the feature list its author considers the baseline for a custom chat. THE DEFAULT .json STREAM IS A PARTIAL WINDOW AND THIS ROW SAYS SO: it returns 20 posts ending at post 20, against posts_count 330, highest_post_number 347 and last_posted_at 2026-08-11. Everything below comes from post 1 and posts 2–5; roughly 325 later replies were not read, so nothing here can be read as the thread's verdict on the resource.",
+      "demonstrates": [
+        "The author's own list of what a replacement chat must carry is the useful part, and it names things TextChatService does not give you: a TYPING INDICATOR, an emoji picker dropdown, a commands dropdown, customisable sounds, anti-spam protection, and a command bar. The sounds line reads exactly 'Custom Sounds - Personalize notification sounds' — notification sounds, not a sound per message; an earlier reading of this row overstated it.",
+        "USERNAME COLOUR AND MESSAGE COLOUR ARE LISTED AS TWO INDEPENDENT SETTINGS. The engine's own default couples the name to TeamColor and leaves the body white; this resource's first advertised feature is breaking that coupling.",
+        "AN ACTION MENU OPENS FROM A USERNAME IN THE TRANSCRIPT — 'click on usernames for quick actions'. That is the bridge between the chat surface and the social surface: the roster you act on is the list of people who have spoken.",
+        "The markdown syntax is published as a table and the highlight delimiters are colour-specific rather than semantic: *bold*, _italics_, ~~strikethrough~~, ++yellow highlight++, ==red highlight==, !!green highlight!!. Three of the six tokens name a colour, so the formatting vocabulary hard-codes a palette.",
+        "Channels are described as unlimited and user-creatable, against the engine's default of two — which is the same pressure the ChannelTabs table implies, from the community side.",
+        "The first reply asks whether a custom chat is bannable because it bypasses chat moderation, and the author answers that it uses Roblox's Text Chat Filtering. Recorded because it is the guidelines page's requirement surfacing unprompted in a community thread: the first question a custom chat gets asked is whether it still filters."
+      ]
+    },
+    {
+      "id": "bedwars-clan-ranks-tabs-and-tag",
+      "source": "https://robloxbedwars.fandom.com/wiki/Clan — read 2026-09-20 through https://robloxbedwars.fandom.com/api.php?action=parse&page=Clan&prop=wikitext&format=json, because Fandom serves its article HTML behind Cloudflare while api.php is open. Roblox BedWars, shipped, clans added 2022-03-04.",
+      "demonstrates": [
+        "FOUR RANKS AND THE LADDER IS A CAPABILITY LADDER, NOT A TITLE LADDER: Member contributes; Officer adds inviting; Admin adds buying upgrades and the Management tab; Leader adds deleting the clan. Admins explicitly CANNOT delete the clan or change the clan tag — the two irreversible identity actions are held one rung higher than everything else.",
+        "THE TAB ROW IS A DIFFERENT LENGTH FOR DIFFERENT RANKS. The wiki states the Invite tab is visible only to Officer and above and the Management tab only to Admin and above. This is the opposite of the visible-but-unavailable convention recorded in fps_arena.json for Phantom Forces' votekick, and the two shipped games disagree in the open: BedWars hides the capability, Phantom Forces shows it greyed. Neither is obviously right and a generator must pick one on purpose.",
+        "THE TAG IS THE IDENTITY KEY AND THE NAME IS NOT. A clan tag cannot reuse one that already exists; a clan NAME is allowed to duplicate another clan's. The 5-character tag is unique, the human-readable name is decorative.",
+        "Clan tags are limited to 5 characters, and the wiki notes most two-character tags are already taken — a short unique namespace exhausts, which is a state the creation form has to render.",
+        "SPECIFIC TAGS ARE RESERVED AND THE PUBLISHED LIST IS OPEN-ENDED. The wiki's Trivia line reads 'Players cannot make their clan tag: DV, SUS, EZGG, TNQR, TANQR, DEV, MOD, Ez, ADMIN, TYP, Etc.' — the trailing 'Etc.' marks those ten as examples, so the denylist is longer than the page publishes and its remainder is unknown. The page states the list exists 'to prevent the player to steal tags from famous players and developers'. Its reasons for individual entries are hedged and are recorded here as hedged: DEV, MOD, ADMIN and EZGG are blocked 'most likely to prevent confusion', EZ 'likely to avoid toxicity'. What is checkable is that a user-chosen identity string carries a denylist covering both staff words and specific creators' names, and that the form's rejection set is not fully discoverable from outside; the per-entry motive is the wiki guessing.",
+        "One tag renders on THREE surfaces at once: beside the player's name in chat, on the tablist, and on the player's overhead nametag. A clan tag is not a chat feature; it is a five-character string that has to stay legible in three different renderers.",
+        "Tag COLOUR is a purchasable, EXPIRING cosmetic — bought with clan crystals for 7 days to customise the player's chat. The tag's colour is time-limited state, so the chat prefix has an expiry a roster does not.",
+        "The member cap is an UPGRADE, not a constant: it starts at 10 and buys upward in +5 steps to 80 across fourteen levels. A roster screen has to show 'members / cap' where the cap itself moves.",
+        "CLAN CHAT IS DEFINED BY WHAT IT SURVIVES: the wiki's distinguishing claim is that clan chat saves even if the player leaves the game. Server chat is per-session; clan chat is persistent, and that single difference is the whole feature.",
+        "THE SHIPPED HISTORY OF THAT PERSISTENT CHAT IS A WARNING. Clan chat was added 2022-05-20 and DISABLED 2022-05-21 — one day — and was not re-enabled until 2023-02-03. That is 258 days dark, about eight and a half months; the wiki's History table carries all three dates. A persistent cross-server chat is the hardest thing on this screen to ship safely, and this is what that looked like.",
+        "Searching for a clan by tag or name arrived 2025-02-28, nearly three years after clans shipped. The directory is not part of the minimum viable clan; the roster is.",
+        "Announcements are a separate authored surface inside Management, and the wiki carries a notice that announcements can still be filtered by Roblox — a broadcast written by a player is still user text and still passes the filter."
+      ]
+    },
+    {
+      "id": "bedwars-friends-list-presence",
+      "source": "https://robloxbedwars.fandom.com/wiki/Friends%20List — read 2026-09-20 through robloxbedwars.fandom.com/api.php with action=parse&prop=wikitext, for the reason above. Feature added 2022-11-18; the page is filed under the wiki's UI category.",
+      "demonstrates": [
+        "THE LIST DELIBERATELY EXCLUDES THE PEOPLE YOU ARE ALREADY WITH: the wiki states clan and party members are NOT displayed here. The friends list is scoped to people you are not currently grouped with, which makes it a surface for STARTING contact rather than a directory of everyone you know.",
+        "Presence spans the studio's whole portfolio, not one game: the list shows friends who are in BedWars, in a BedWars match, or in Islands — a different published experience by the same developer. Cross-experience presence is a studio-level feature built on top of a per-game friends list.",
+        "The row is three slots in a fixed arrangement: avatar in a grey box, name beside it, and the friend's CURRENT STATE — which game, or in a match — on a second line under the name.",
+        "THE ROW'S ACTION IS CONDITIONAL ON PRESENCE. A Spectate button appears only when the friend is in a match; when they are in the lobby or in Islands, no button appears at all. The row is not a button with a disabled state — the control is absent.",
+        "The action is a JOIN THAT IS NOT A JOIN: clicking Spectate teleports you into the friend's game but you can only watch. The wiki records that on the feature's first day a bug let players actually join and play, which is how you can tell the spectate-only limit is a deliberate rule and not an accident.",
+        "Rows sort ALPHABETICALLY — not by presence, not by recency, not by whether the row has a button. The one actionable row is not floated to the top.",
+        "A COUNT of how many friends are online in either game is displayed alongside the list, so the panel answers 'is anyone around' before the player reads a single row.",
+        "BEING VISIBLE HERE IS OPT-OUT: players can disable friends spectating them from the settings screen. A presence surface needs a corresponding switch on the settings screen, and the two screens are therefore coupled.",
+        "A recorded failure mode: if the friend is in a Custom Match, the spectate attempt returns an error message. The button is offered in a state where the action cannot complete."
+      ]
+    },
+    {
+      "id": "bedwars-party-lobby",
+      "source": "https://robloxbedwars.fandom.com/wiki/Party — read 2026-09-20 through robloxbedwars.fandom.com/api.php with action=parse&prop=wikitext. Filed under the wiki's UI and Gameplay categories.",
+      "demonstrates": [
+        "The party is a LOBBY-ONLY construct: the Create Party button sits above the hotbar and the wiki states this can only be done in the Lobby. The control does not exist during a match.",
+        "THE INVITE PICKER IS THE SERVER ROSTER, NOT YOUR FRIENDS LIST. The party menu shows current members, a list of ALL the players in that server, and a search bar over them. Who you can invite is defined by proximity in a lobby rather than by a social graph.",
+        "Only the LEADER can queue for a gamemode, and the leader removes someone with an X beside their name in the roster. The roster is the moderation surface — there is no separate manage screen.",
+        "Invites arrive as a pop-up in the BOTTOM RIGHT corner, and every invite also accumulates in an Invites tab inside the Party menu. A transient notification and a durable queue for the same event.",
+        "STALE INVITES DELETE THEMSELVES RATHER THAN ERRORING: the wiki states that selecting a party that has already left the server makes it disappear. The list cleans up on interaction, so a row can vanish under the player's finger.",
+        "An invite is joinable only if the party is still in the server AND has fewer than 16 members, so a row in the invites list carries two liveness conditions that are not visible on it.",
+        "PARTY SIZE GATES THE MODE LIST, and the game reports it as an error AFTER the leader tries to queue rather than by disabling the modes. A 16-player party can only enter custom matches, Infected and 30v30. This is the third independent shipped confirmation in this library of party-size constraining mode availability — Rivals and Tower Defense Simulator are the other two.",
+        "Maximum party size is 16, which is larger than any of its own team sizes — so a party is explicitly allowed to be a group that cannot fit into most of the game's modes."
+      ]
+    },
+    {
+      "id": "bedwars-tablist-streamer-mode",
+      "source": "https://robloxbedwars.fandom.com/wiki/Tablist — read 2026-09-20 through robloxbedwars.fandom.com/api.php with action=parse&prop=wikitext. Added 2021-08-02, removed 2021-08-09, re-added 2022-11-11.",
+      "demonstrates": [
+        "The tablist REPLACES the default Roblox leaderboard rather than sitting beside it — a game that wants per-player social state on screen takes over the platform's own roster surface.",
+        "IT IS A HOLD, NOT A TOGGLE, ON PC: the wiki says players hold the Tab key and that releasing it closes the tablist. The alternative it gives is a button with three lines in the top-right corner; the page does not say which platforms get that button or whether pressing it holds the surface open, so only the PC hold is recorded here.",
+        "A row carries kit, relic, clan tag, kills and whether the player still has a bed; a team header carries the team's total kills and its player count. Social identity (the clan tag) and match state (kills, bed) share one row.",
+        "STREAMER MODE REPLACES A NAME WITH A DERIVED PSEUDONYM, NOT A BLANK. A hidden player renders as '<equipped kit>-###' with a randomly generated digit — 'Baker-###' — and a player on the default kit renders as 'None-###'. The row keeps a name-shaped, referable token so the list stays readable and sortable; what it gives up is that the pseudonym still leaks the kit.",
+        "THE SAME GAME REMOVED THIS SCREEN A WEEK AFTER SHIPPING IT. The tablist launched 2021-08-02, was removed 2021-08-09 and did not return until 2022-11-11 — fifteen months. Those dates are the wiki's own History table. WHY IT WAS PULLED IS NOT RECORDED: the page's Trivia line reads 'The tablist was most likely removed due to players disliking seeing others kits', which is the wiki speculating rather than the game explaining. So this is a precedent for a shipped social screen being withdrawn whole and staying gone for over a year; it is NOT evidence about the motive, and the kit-leaking pseudonym above cannot be read as contradicting a reason nobody documented.",
+        "Hovering a team's relic reveals its name and description. The roster row shows the icon and defers the words to hover, so the row height is not set by the longest description.",
+        "Fields were still being added years later — player stat points and team level arrived 2024-08-16. A roster row is not a fixed schema; it accretes."
+      ]
+    },
+    {
+      "id": "bedwars-chat-tags-colour-classes",
+      "source": "https://robloxbedwars.fandom.com/wiki/Chat — read 2026-09-20 through robloxbedwars.fandom.com/api.php with action=parse&prop=wikitext. Filed under the wiki's UI and Gameplay categories; carries a notice dated 2026-01-07.",
+      "demonstrates": [
+        "COLOURS ARE REUSED ACROSS RELATED TAGS AND THE BRACKETED WORD DISAMBIGUATES WITHIN A SHARED COLOUR. The page lists TEN TAGS IN SIX COLOURS: [VIP] and [TRANSLATOR] share #00ff00 — the page says outright that TRANSLATOR uses 'the same light green as VIP'; [AC MOD] and [LEAD AC MOD] share #a800d2; [EMOTE ARTIST], [FAMOUS] and [COMMUNITY MANAGER] share #ff00ff; and [DEV] (#f05c51), [MAP MAKER] (#3d3ef2) and [PATRON] (#00ffff) each hold a colour alone. Seven of the ten share a colour with another tag and three do not, so the palette is smaller than the tag set without being a clean taxonomy of it. The sharpest case is the moderator pair: one purple carries both ranks of one role and only the word LEAD separates them.",
+        "THE TAG TINTS THE NAME, NOT JUST ITSELF. The wiki states the VIP tag colours the player's username light green as well. A tag is a two-part recolour of the message prefix, which is exactly what Roblox's PrefixTextProperties object is shaped to do.",
+        "CHAT TAGS ARE NOT UNIVERSALLY VISIBLE. As of 2026-01-07 the wiki records that players who are not age-check verified through Roblox's face age scan cannot use chat commands and cannot SEE chat tags. The same message renders differently for different viewers, so a tag is a per-viewer decoration and not a property of the message.",
+        "[DEV] WAS FORMERLY [ADMIN], AND THE SAME GAME'S CLAN SYSTEM BLOCKS PLAYERS FROM USING DEV, MOD AND ADMIN AS CLAN TAGS. The denylist does not match the live tag set one-for-one, and that is the interesting part: ADMIN is a retired tag name, and MOD is not a tag at all on this page — it appears only inside [AC MOD] and [LEAD AC MOD]. A game that badges authority in chat reserves the old names and the word-stems too, everywhere else a player can choose a string; the two wiki pages document the two halves of one decision.",
+        "The chat opens with the '/' key or a button in the top-left corner, which matches ChatInputBarConfiguration.KeyboardKeyCode defaulting to Slash in Roblox's own docs — this shipped game did not move it.",
+        "MOST commands are not case-sensitive, and the quantifier is the wiki's own: 'Most of them are not case-sensitive, meaning \"/LOBBY\" will actually be registered as /lobby itself.' The page never says which ones are the exception, so case-insensitivity is the documented majority behaviour and not a guarantee. An autocomplete and a parser that both assume lowercase will disagree with players, and a parser that assumes case-insensitivity universally will disagree with this game.",
+        "The command set is split by authority in the same list: some commands are usable by anyone anywhere, and a large block — generator multipliers, deathmatch time, item-shop editing, anti-cheat toggling, world edit via //pos1 //pos2 and //set — only by the creator of a Custom Match. The host panel is not a screen here; it is a privileged prefix in the same input box everyone types into.",
+        "A COMMAND CAN ACT ON YOUR PARTY RATHER THAN ON YOU: /bedwars teleports the player AND every party member to the lobby, while /lobby moves only the caller. Two aliases for nearly the same verb differ by blast radius.",
+        "Drop announcements are system chat lines with a SCOPE PREFIX — '[Server]:' for a legendary pull visible to this server, '[GLOBAL]:' for a mythic visible everywhere. The prefix is how a reader tells how far a broadcast reached.",
+        "Sending a message plays a sound, chosen at random from two variations, and specific typed words trigger specific sounds — 'Honk' plays a goose, 'Arf' plays a seal. Content-triggered reactions off chat text are independently documented by Roblox's own SocialInteractions module, which does the same thing with animations.",
+        "Recorded as the wiki's own speculation rather than as fact: the page says /hub was replaced by /lobby 'possibly due to players being warned by Roblox for using it'. If true it is a command renamed because of platform moderation, but the wiki does not claim to know."
+      ]
+    },
+    {
+      "id": "tds-party-two-rosters-one-list",
+      "source": "https://tds.fandom.com/wiki/Party — read 2026-09-20 through https://tds.fandom.com/api.php?action=parse&page=Party&prop=wikitext&format=json. Tower Defense Simulator, shipped.",
+      "demonstrates": [
+        "THE INVITE PANEL SHOWS TWO POPULATIONS WITH DIFFERENT ROW SCHEMAS, AND THAT IS THE POINT. Friends are listed first and show only whether they are online — their level is NOT displayed. Players in the server are listed second and DO show their level. Both show username and profile icon. The row carries what is knowable about that candidate, so the same list has two shapes.",
+        "Once in a party the menu is two screens: the member list — username, level, profile icon per member — and, on the right, the invite list. Roster and recruiting are side by side rather than behind a tab.",
+        "Party maximum is six, and if the party is larger than the squad size selected in Matchmaking the game will not let the player start. Party size gating the mode is confirmed here independently of BedWars and of Rivals.",
+        "PARTY LOCK — invite-only — IS ON BY DEFAULT, AND THE WIKI RECORDS THAT IT USED TO BE OFF. A shipped default was flipped toward closed. Public parties still exist: a player not in a party sees a list of public parties alongside the create button.",
+        "'Members Can Invite' is OFF by default, so inviting is a leader-granted capability rather than a rank. This is a third distinct answer to the same question — BedWars ties inviting to a rank, Deepwoken to a rank, Tower Defense Simulator to a switch the leader flips.",
+        "The party carries JOIN FILTERS AS NUMBERS: Maximum Level defaults to 1,000 and Minimum Level to 0, and the wiki states neither has a limit on what it can be set to. A roster screen can be configured to exclude people before they ever appear in it.",
+        "AN INVITE REACHES THE PLAYER WHEREVER THEY ARE ON ROBLOX, AND THE SURFACE CHANGES WITH IT: in the lobby it is an in-lobby prompt that falls back into an invites section if not answered immediately, with accept and deny; in a match or off-platform it is a notification whose two actions are dismiss or join the lobby. One event, three renderings, two different action pairs.",
+        "THE NOTIFICATION COPY IS A POOL, NOT A STRING. The wiki lists seven distinct invite texts, each interpolating the friend's name and the game's name — 'The towers needs you! [Friend name] is waiting for you…', '[Friend name] is gathering a squad…'. That is what Roblox's Notification asset mechanism looks like when a shipped game uses it properly, and it implies the game published seven notification assets rather than one."
+      ]
+    },
+    {
+      "id": "bloxfruits-crew-roster-and-errors",
+      "source": "https://blox-fruits.fandom.com/wiki/Crew — read 2026-09-20 through https://blox-fruits.fandom.com/api.php?action=parse&page=Crew&prop=wikitext&format=json. Blox Fruits, shipped.",
+      "demonstrates": [
+        "THE CREATION GATE AND THE JOINING GATE ARE DIFFERENT: creating a crew requires level 300, and the wiki states outright there is no restriction on players below 300 JOINING one. The cost of founding a group is not the cost of being in it.",
+        "The crew interface's contents are enumerated by the wiki and the order is the design: the Captain's name AT THE TOP; then members with name, level and bounty; the crew's collective bounty; the member count out of the current cap; a leave/abandon button; and a search box with invite and kick restricted to the captain.",
+        "MEMBERS SORT ASCENDING BY BOUNTY — the weakest member is listed first and the strongest last, under a captain pinned above the sort. The roster's ordering is a stat, not alphabetical and not join order, which is a third answer alongside BedWars (alphabetical, in its friends list) and Roblox's party API (invite-acceptance order).",
+        "A MISSING ICON IS RENDERED AS A CHARACTER: the wiki notes there is no icon for bounty, so it is displayed with a currency sign. A stat with no art does not get omitted — it gets a glyph, and the glyph is wrong for the currency it stands in for.",
+        "INVITING IS BY TYPED USERNAME, NOT BY PICKING A ROW. The captain types a name into a small search box with Invite and Kick buttons beside it. The candidate must be in the same server, not already in a crew, and on the Pirates faction — three preconditions none of which the input box can show.",
+        "THE FAILURE VOCABULARY IS ENUMERATED AND SURFACES AT THE TOP OF THE SCREEN: 'ERROR: Player not found', 'ERROR: Player is already in a Crew', 'ERROR: Player is already in your Crew', and for removal 'ERROR: Member not found'. A typed-name invite needs a distinct message per precondition, and 'not found' has to cover both a typo and a player in another server.",
+        "The same search box drives both invite and kick, and the wiki's kick instructions still say to click Invite — recorded as written, because either the wiki is wrong or two destructive-and-constructive verbs really do share one input.",
+        "THE CREW EMBLEM IS A FREE IMAGE: the player uploads an image to Roblox and pastes the asset id into an Icon Editor. The wiki devotes a whole section to walking a player through finding an id on the Creator Marketplace, which is what an asset-id field costs its users.",
+        "The cap starts at 15 and is bought up to 30, one slot at a time for 2,000 fragments each, and the roster's counter reads 'out of 15-30' — the denominator itself is purchased.",
+        "The leaderboard is described as top 99 in one sentence and 'will only show 100 crews' in the next; recorded as the inconsistency it is. Its checkable part is that TIED CREWS SHARE A POSITION rather than being broken apart by a tiebreaker.",
+        "A recorded defect that is squarely a UI failure: after switching faction from Marine to Pirate the crew button does not appear at all until the player rejoins the game. A capability the player still has becomes invisible because the surface did not re-evaluate."
+      ]
+    },
+    {
+      "id": "deepwoken-guild-emblem-and-succession",
+      "source": "https://deepwoken.fandom.com/wiki/Guilds — read 2026-09-20 through https://deepwoken.fandom.com/api.php?action=parse&page=Guilds&prop=wikitext&format=json. Deepwoken, shipped.",
+      "demonstrates": [
+        "THE EMBLEM EDITOR IS A CLOSED SET, AND THE REASON IS WHERE THE EMBLEM HAS TO GO. It is a two-pane window: 89 selectable icons on one side, a colour picker on the other. The wiki states the emblem and its background CANNOT have their colours changed separately — one colour drives both. That emblem then renders on six surfaces: above the player's name, in the player list, on ship sails and flags, on captured banners, on guild bases, and beside counters during War Mode. A symbol that must read on a sail and in a list cannot be an arbitrary uploaded image — which is exactly what Blox Fruits allows, and the two shipped games have made opposite calls on the same problem.",
+        "Guild names are 1–26 characters, must be unique, and forbid special characters — the wiki names !, $, #, @ and & — with inappropriate names called a bannable offence. The same unique-identity-string problem BedWars solves with a 5-character tag is solved here with a longer unique name and a character denylist.",
+        "IDENTITY IS EDITABLE BUT RATE-LIMITED AND PAID: renaming costs R$100 and carries a WEEK-LONG cooldown, and a freshly created guild is already under that cooldown. Switching between guilds has its own 1-minute cooldown. A group's name is treated as something other players have memorised.",
+        "THE RANK LADDER IS PUBLISHED AS A CAPABILITY MATRIX with three columns — invite/kick, promote, modify base — and the interesting cell is promotion: a Guild Lieutenant can promote only UP TO OFFICER, one rung below themselves. You cannot create a peer. Leader alone can kick remotely; Lieutenant and Officer can kick only members.",
+        "THERE IS NO MEMBER CAP AT ALL — 'You can have as many members in a guild as you want.' Against BedWars' purchased 10→80 and Blox Fruits' purchased 15→30, this is a third shipped answer, and it means the roster is an unbounded scroll rather than a counter.",
+        "SUCCESSION IS A CLAIM, NOT AN ASSIGNMENT. If the leader is terminated, banned or leaves, leadership goes to the first person who SPEAKS TO A GUILD CLERK — an NPC in the world. The wiki is emphatic that it is not given to anyone randomly and that you must go there to claim it. The handover of a group's ownership is a physical action in the world, not a dialog.",
+        "GUILD CHAT IS A PREFIX CHARACTER, NOT A TAB. In public servers a message is sent to guildmates and allies by prefixing '!'. The channel selector lives inside the text the player is already typing, which is the opposite of the ChannelTabsConfiguration approach Roblox documents.",
+        "AND THE DEFAULT CHANNEL CHANGES WITH THE SERVER TYPE: in instanced servers, including dungeons, any message goes to everyone inside WITHOUT the prefix. The same keystrokes mean different audiences in different places, so the input bar has to say which one it is in.",
+        "A FAILURE TO LOAD RENDERS AS A REAL, WRONG ANSWER: the wiki records that if a guild fails to load client-side it displays as 'The Authority' — an actual faction in the game. A missing value falls back to a plausible one, so the screen cannot be distinguished from a correct screen, and a player reads a stranger as an enemy faction member.",
+        "Guild standing is displayed on the PLAYER LIST once a score threshold is reached, top 1000 appear on a Guild Leaderboard, and guild score RESETS at the start of every month. The rank beside a name is a monthly-recurring number, not a lifetime one.",
+        "Membership survives death and character wipe, and the only exits are speaking to the Guild Clerk or being exiled. In a game built around losing characters, the group is the durable thing."
+      ]
+    },
+    {
+      "id": "arcane-odyssey-guild-rank-names-are-data",
+      "source": "https://roblox-arcane-odyssey.fandom.com/wiki/Guilds — read 2026-09-20 through https://roblox-arcane-odyssey.fandom.com/api.php?action=parse&page=Guilds&prop=wikitext&format=json; the subdomain was found by following a 301 from arcane-odyssey.fandom.com. NOTE: this page carries the wiki's own 'Needs Info' and 'Future Content' category tags, so it is weighted below the Deepwoken and BedWars rows.",
+      "demonstrates": [
+        "RANK NAMES ARE DATA, NOT STRUCTURE. The five default ranks are leader, co-leader, admin, elite and member, and the wiki states the names of these ranks can be changed. A roster component that hard-codes 'Officer' cannot render this game's guilds.",
+        "ONE OF THE FIVE RANKS HAS NO PERMISSIONS AT ALL. Elite's permissions are listed as N/A, identical to Member's. It exists purely as a label — a purely honorific tier between the ranks that can do something and the ranks that cannot, which a permission-derived roster would collapse and get wrong.",
+        "The ladder is otherwise capability-shaped and narrower than Deepwoken's: Leader promotes, demotes, kicks, invites and edits identity; Co-leader promotes, demotes, kicks and invites; Admin invites ONLY. Inviting is the first capability granted in this game, in BedWars and in Deepwoken alike.",
+        "EDITING THE GUILD'S IDENTITY IS PAID FROM THE GROUP'S TREASURY, NOT THE LEADER'S POCKET: 3,000 Drachma to change the name or logo, 1,000 to change a colour. Changing what the group looks like spends what the group earned.",
+        "THE FRAME SHAPE ENCODES THE ORGANISATION TYPE. The wiki distinguishes guilds from clans in this game partly by saying guild icons are shown with a CIRCULAR frame. Two kinds of player group coexist and are told apart by the geometry around the emblem rather than by a label.",
+        "Standing is presented as eight NAMED tiers with explicit thresholds — New 0–1,999, Novice 2,000–9,999, Average 10,000–49,999, Adept 50,000–149,999, Prominent 150,000–249,999, Renowned 250,000–499,999, Prosperous 500,000–999,999, Wealthy 1,000,000+. The raw number is bucketed into a word before it is shown, and the buckets are roughly multiplicative rather than even."
+      ]
+    }
+  ],
+  "rules": [
+    {
+      "rule": "Ask whether the local player may contact this person before drawing a control that contacts them.",
+      "why": "Roblox's chat guidelines page exists because privacy settings, parental controls, the installing app store and local law can each forbid a message, and it names CanUserChatAsync, CanUsersChatAsync and CanUsersDirectChatAsync as the way to find out. The invite path says the same thing for the same reason — CanSendGameInviteAsync must be checked first because the ability varies by platform and player. A message or invite button with no unavailable state is wrong on some devices and the screen cannot tell which."
+    },
+    {
+      "rule": "Do not draw the friend picker for an invite. Call the platform prompt and let it draw.",
+      "why": "PromptGameInvite raises Roblox's own prompt, which already shows the player's friends each with an Invite button. This is the same hand-off screen-shop.json records for Robux purchases: a custom picker in front of the platform one stacks two choosers, and the custom one cannot see the friend list anyway."
+    },
+    {
+      "rule": "A friend row's action is present or absent, not enabled or disabled, when the action depends on where the friend is.",
+      "why": "BedWars shows a Spectate button only when the friend is in a match and shows no button at all when they are in the lobby or in the studio's other game. A greyed button invites a click that can never succeed; the same wiki records that the one state where the button IS shown and cannot complete — a Custom Match — produces an error, which is the cost of getting this wrong."
+    },
+    {
+      "rule": "Scope the friends list to people the player is not already grouped with, or say why you did not.",
+      "why": "BedWars excludes clan and party members from its friends list outright. It is a real decision with a real counter-argument — a player looking for a specific name will not find them — and it is the difference between a surface for starting contact and a directory. Whichever way a generator goes, it should go there on purpose."
+    },
+    {
+      "rule": "Do not re-query the friend list when the panel opens. Bootstrap it once and cache it.",
+      "why": "Roblox's own GetFriendsWhoPlayed announcement gives this as rate-limit guidance in as many words: treat 'ever played' as an infrequent bootstrap, use since-timestamp calls to refresh, and avoid refreshing on every frame or every UI open. Opening a panel is the most natural place to refresh and it is the named anti-pattern."
+    },
+    {
+      "rule": "Every visible field on a friend row is a lookup the game performs itself.",
+      "why": "GetFriendsWhoPlayedAsync returns an array of user ids and nothing else — the announcement states it does not store scores or rank players and that display is still yours. A row design with six fields is six fetch paths and six empty states, and the thread's own replies show developers asking for first- and last-played times the API does not return."
+    },
+    {
+      "rule": "Render a locator for a friend who is far away, and remove it when they are close.",
+      "why": "Roblox's FriendsLocator module defaults thresholdDistance to 100 studs and shows NO icon for friends nearer than that, caps the screen at 10 icons, and draws them over world geometry. The indicator means distance, not presence — which is the inversion most implementations get backwards, and the cap is why a busy server does not turn into a wall of portraits."
+    },
+    {
+      "rule": "Make the presence indicator and the join action the same control.",
+      "why": "FriendsLocator's icon teleports you to that friend on click by default. Splitting 'where are they' from 'take me there' adds a step to the only thing anybody wanted from the marker — and the module ships the split as an option (teleportToFriend = false) rather than as the default."
+    },
+    {
+      "rule": "Turn the channel tab row on deliberately, and expect its length to change at runtime.",
+      "why": "ChannelTabsConfiguration ships DISABLED, so the default Roblox chat is one undifferentiated stream. And a tab row is not a fixed set once it is on: whisper tabs are titled with the other player's name and appear per conversation, and the cross-server Global tab is removed entirely in private servers."
+    },
+    {
+      "rule": "If you build the tab row yourself, give selection more than a text colour.",
+      "why": "Roblox's own ChannelTabsConfiguration has HoverBackgroundColor3 and no selected-background property at all — the entire selected state is SelectedTabTextColor3 at white against [175,175,175]. Hover is louder than selection in the engine default, which is backwards. THE CROSS-FILE CITATION THIS REASON USED TO CARRY WAS FALSE AND IS DELETED: screen-shop.json records reviewers calling a tab row's pills 'a bit out of place being green' — a colour objection — not anyone misreading a selection state. That file is not evidence for this rule; the engine's own property list is."
+    },
+    {
+      "rule": "Key the message list by MessageId and update in place; never append on arrival.",
+      "why": "MessageReceived fires twice for a message the local player sent — once optimistically at SendAsync and once when the server's processed copy returns. Roblox's own custom-frontend example names the label after the MessageId and edits it if it already exists, and the page carries an explicit warning about it."
+    },
+    {
+      "rule": "Draw a pending message as the same row at reduced opacity, in place.",
+      "why": "The documented example uses BackgroundTransparency 0.5 while Status is Sending and 0 once it is confirmed. The message does not move, does not get a spinner, and does not get replaced by a different element — so a filtered message settling into its final text is a single visual change rather than a reflow."
+    },
+    {
+      "rule": "Resolve a sender's rank once when they join, store it as an attribute, and read the attribute in the message callback.",
+      "why": "Every chat display callback must be non-yielding, and Roblox's own chat-tag example says querying group membership inside OnIncomingMessage is not recommended because it can hang the chat system. The tag on a message is cached state about a player, never a live lookup, which is also why a rank change mid-session will not repaint old messages."
+    },
+    {
+      "rule": "Give chat tags a small palette where the colour names the class of authority and the word disambiguates within it.",
+      "why": "BedWars runs TEN chat tags in SIX colours, and seven of the ten share a colour with another tag: VIP and TRANSLATOR share a green — the wiki says TRANSLATOR uses the same light green as VIP — the two anti-cheat moderator tags share a purple, and three credit tags share a magenta, while DEV, MAP MAKER and PATRON each hold a colour alone. A reader learns the shared colours and reads the bracketed word only when the colour is ambiguous; ten unique colours would make every tag equally loud and none of them legible at a glance. The shipped instance is evidence for REUSING a colour across related tags, not for a clean colour-per-class scheme — half its colours carry a single tag."
+    },
+    {
+      "rule": "Treat a chat tag as a per-viewer decoration, not a property of the message.",
+      "why": "BedWars records that as of 2026-01-07 players without Roblox face-age verification cannot see chat tags at all. The same message renders with and without its badge depending on who is reading, so anything that depends on the tag being visible — a rank a player is supposed to recognise, an authority signal before a moderation action — has to survive its absence."
+    },
+    {
+      "rule": "Reserve your own authority words everywhere a player can choose a string.",
+      "why": "BedWars badges its developers [DEV] — formerly [ADMIN] — and its anti-cheat moderators [AC MOD] and [LEAD AC MOD] in chat, and its clan system blocks DEV, MOD and ADMIN as clan tags alongside named creators' tags such as TNQR and TANQR. The denylist is WIDER than the tag list: ADMIN is retired and MOD is never a tag by itself, only a stem inside [AC MOD]. Any game that shows a rank next to a name has created a vocabulary players will try to forge, and the denylist — old names and stems included — belongs on the creation form, not in moderation."
+    },
+    {
+      "rule": "Make the group's short tag the unique key and let the display name collide.",
+      "why": "BedWars requires a clan TAG to be unique and explicitly allows two clans to share a NAME. The tag is what appears beside a player in chat, on the tablist and on their overhead nametag, so it is the thing that must identify; the name is read once on a roster screen where a collision costs nothing. Deepwoken makes the opposite call — a unique 1–26 character name — and pays for it with a character denylist and a paid, week-cooled rename."
+    },
+    {
+      "rule": "Build the rank ladder as a capability matrix, and cap promotion below the promoter's own rank.",
+      "why": "Deepwoken publishes its ranks as a three-column table — invite/kick, promote, modify base — and a Lieutenant can promote only up to Officer. You cannot create your own peer, which is what stops a single compromised officer from replicating themselves through a roster. Every shipped group system read here grants INVITING first and keeps deletion and identity-editing for the top rung alone."
+    },
+    {
+      "rule": "Decide once whether a capability a player lacks is hidden or shown-unavailable, and apply it everywhere.",
+      "why": "The two shipped games disagree in the open. BedWars hides the Invite tab below Officer and the Management tab below Admin, so the tab row is a different length per rank. Phantom Forces — recorded in fps_arena.json — leaves the votekick visible below Rank 25 and makes only the initiate action unavailable, which teaches what the rank is for. Mixing the two inside one product means a player cannot learn which absence means what."
+    },
+    {
+      "rule": "Do not hard-code rank labels. Treat them as data the group owns.",
+      "why": "Arcane Odyssey ships leader, co-leader, admin, elite and member as DEFAULTS and lets a guild rename all five. A roster that hard-codes 'Officer' renders that game's guilds wrong, and a roster that derives the rank label from the permission set collapses Elite into Member — which is a distinct, purely honorific tier in the same list."
+    },
+    {
+      "rule": "Show the roster's member count against a denominator that can move.",
+      "why": "Three shipped games give three different caps and two of them are purchased: BedWars starts at 10 and buys up to 80 in +5 steps, Blox Fruits starts at 15 and buys up to 30 one slot at a time, and Deepwoken has no cap at all. 'Members / cap' is a live pair, and a design that assumes a constant cap cannot render an unbounded roster or a growing one."
+    },
+    {
+      "rule": "State the roster's sort order, because there is no default and the shipped games do not agree.",
+      "why": "Blox Fruits sorts crew members ASCENDING by bounty under a captain pinned above the sort; BedWars sorts its friends list alphabetically and does not float the one actionable row; Roblox's own GetPartyAsync returns members in the order they accepted the invite, with no rank field at all. Each order answers a different question, and picking one silently answers a question nobody asked."
+    },
+    {
+      "rule": "Give the group emblem a closed icon set when the emblem has to render in the world.",
+      "why": "Deepwoken offers 89 icons and a single colour that drives both emblem and background, because the emblem appears above player names, in the player list, on ship sails and flags, on captured banners, on bases and beside War Mode counters. Blox Fruits instead accepts a free asset id and the wiki spends a whole section teaching players how to find one. The closed set is what makes the symbol legible at sail size; the open one is what makes it expressive on a roster screen. The right answer follows from where the thing is drawn."
+    },
+    {
+      "rule": "Rate-limit and price identity changes; do not rate-limit membership.",
+      "why": "Deepwoken charges R$100 to rename a guild and imposes a week-long cooldown, applying that cooldown to newly created guilds too, while leaving membership uncapped. Arcane Odyssey charges the guild TREASURY 3,000 to change a name or logo and 1,000 for a colour. The thing other players have memorised is the expensive one to change."
+    },
+    {
+      "rule": "Make handing over ownership an explicit claim, not an automatic promotion.",
+      "why": "In Deepwoken, when a guild leader is terminated, banned or leaves, leadership passes to the first person who speaks to a Guild Clerk — an NPC in the world — and the wiki is emphatic that it is not given out randomly. An automatic promotion means somebody logs in owning a group they did not ask for; a claim means the successor performed an act the roster can point to."
+    },
+    {
+      "rule": "Persistent group chat is not the same feature as server chat, and it is the hardest one on this screen.",
+      "why": "The distinguishing property BedWars names for clan chat is that it saves even when the player leaves the game. That feature was added 2022-05-20, disabled 2022-05-21 — one day — and did not return until 2023-02-03. A generator asked for 'clan chat' should either build the persistent thing knowing that, or build a scoped channel and say that is what it built."
+    },
+    {
+      "rule": "If the channel selector is a prefix character rather than a tab, the input bar must say which channel it is in.",
+      "why": "Deepwoken sends guild messages by prefixing '!' in public servers, and in instanced servers any message goes to everyone inside WITHOUT the prefix. The same keystrokes mean different audiences in different places, and nothing in the transcript distinguishes them before the message is sent."
+    },
+    {
+      "rule": "Scope a broadcast with a prefix that says how far it reached.",
+      "why": "BedWars prefixes rare-drop announcements '[Server]:' or '[GLOBAL]:', and Roblox's cross-server chat names its two tabs 'Here' and 'Global'. A reader's first question about an announcement is who else saw it, and both a shipped game and the platform answer it in the first token."
+    },
+    {
+      "rule": "Scope the command vocabulary to the channel, and make the autocomplete follow it.",
+      "why": "Roblox's Global tab supports only /mute, /unmute, /help and /clear, a strict subset of the standard set. BedWars splits its own commands between anyone-anywhere and Custom-Match-host-only in one list. ChatInputBarConfiguration.AutocompleteEnabled offers commands on '/' by default, so an autocomplete that does not know the channel offers commands that will be rejected."
+    },
+    {
+      "rule": "Build the invite picker from the population the invite can actually reach.",
+      "why": "BedWars' party menu lists every player in the server with a search bar; Tower Defense Simulator lists friends first and then players in the server; Blox Fruits requires a typed username of somebody in your server who is not in a crew and is on the right faction. In all three the reachable set is narrower than 'your friends', and a picker drawn from the wrong population produces rows that fail on click."
+    },
+    {
+      "rule": "Let the row schema differ between candidate groups when different things are knowable about them.",
+      "why": "Tower Defense Simulator's invite list shows friends with online status and NO level, and players in the server with their level. The same list carries two shapes because the game knows a server player's level and does not know an absent friend's. Forcing one schema means either an empty column or a fabricated one."
+    },
+    {
+      "rule": "Enumerate the invite failure messages, one per precondition.",
+      "why": "Blox Fruits surfaces 'Player not found', 'Player is already in a Crew', 'Player is already in your Crew' and 'Member not found' at the top of the screen. A typed-name invite has at least four ways to fail and a single 'could not invite' leaves the captain retyping a name that was never the problem."
+    },
+    {
+      "rule": "Give an invite a transient notification AND a durable queue, and let stale entries disappear.",
+      "why": "BedWars pops invites in the bottom-right corner and accumulates every one in an Invites tab, where selecting a party that has left the server makes the row disappear rather than error. Tower Defense Simulator does the same: an invite not answered immediately falls into an invites section with accept and deny. A pop-up alone loses invites that arrive mid-fight."
+    },
+    {
+      "rule": "Deliver invite copy as a pool of published notification strings, each interpolating the sender and the game.",
+      "why": "Roblox requires the notification text to be a Notification asset created on the Creator Dashboard, containing the {experienceName} placeholder and optionally {displayName}. Tower Defense Simulator ships seven different invite lines built that way. One string repeated is the thing players learn to ignore, and the platform makes the plural version the documented path."
+    },
+    {
+      "rule": "Never assert 'you joined <friend>' on arrival. Treat it as a state the screen may upgrade into.",
+      "why": "LaunchData is capped at 200 characters, arrives seconds late — Roblox's own sample retries ten times at one-second intervals — and a DevForum bug report open from 2023 through its last post in November 2025 says it is consistently blank in live experiences while working in test ones. The empty string is also the sentinel for 'not invited', so the failure is indistinguishable from the ordinary case."
+    },
+    {
+      "rule": "Let party size constrain the mode list, and say so before the player queues rather than after.",
+      "why": "Three shipped games confirm the constraint independently — BedWars caps parties at 16 and restricts a full one to three modes, Tower Defense Simulator refuses to start when the party exceeds the selected squad size, and Rivals (in fps_arena.json) removes 1v1 from the list when two people are partied. Two of the three report it as an error after the attempt, which is the part worth improving rather than copying."
+    },
+    {
+      "rule": "Follow the platform's PartyId when assigning teams; do not invent your own grouping on top of it.",
+      "why": "Player.PartyId is set by Roblox and its documented worked example is exactly team assignment: on join, find a party member already on a team and follow them, else balance. The party exists whether the game acknowledges it or not, and a game that splits one across teams has broken something it did not build."
+    },
+    {
+      "rule": "A party roster renders WHERE each member is, not just who they are.",
+      "why": "GetPartyAsync returns PlaceId, JobId, PrivateServerId and ReservedServerAccessCode per member, because a party spans servers and places. The access code is there so 'join them' can work into a reserved server — which means the roster's join control has a different implementation per row depending on where that member is."
+    },
+    {
+      "rule": "Check `partyId == \"\"`, never `if partyId`.",
+      "why": "Roblox's sentinel for 'not in a party' is the empty string rather than nil, so a truthiness test passes for every player who has no party, and every party-aware branch runs for everybody."
+    },
+    {
+      "rule": "Anonymise a name into a stable token, not into a blank — and check what the token leaks.",
+      "why": "BedWars' streamer mode replaces a tablist name with '<equipped kit>-###', keeping the row name-shaped, sortable and referable — that half is documented and it is the technique worth copying. The check is in the rule because this instance fails it on its face: the pseudonym still names the equipped kit, so a player hiding their identity is still broadcasting a gameplay attribute to everyone reading the roster. (The wiki also speculates — 'most likely' — that the tablist was once removed over players seeing others' kits. That motive is not documented and this rule does not rest on it.)"
+    },
+    {
+      "rule": "Be willing to remove a field from a social screen when showing it invites pressure on a person.",
+      "why": "One shipped precedent with a recorded reason, plus a community objection of the same shape. Phantom Forces changed its votekick popup to hide the yes/no split so a server could not see who to pressure (fps_arena.json). The community objection to GetFriendsWhoPlayed is that shape from the other direction — knowing which friends played lets a game choose whose name to put in front of you. BedWars did pull its whole tablist a week after shipping it and leave it out for fifteen months, but its wiki only guesses at why, so that case is evidence that a social screen CAN be withdrawn whole — not evidence about what triggers it."
+    },
+    {
+      "rule": "A social panel needs a matching switch on the settings screen.",
+      "why": "BedWars lets players disable friends spectating them from settings, and Roblox's guidelines make communication access a function of privacy settings the player controls elsewhere. Every presence or contact surface implies an opt-out that lives on a different screen, and shipping the panel without the switch ships a feature the player cannot decline."
+    },
+    {
+      "rule": "Make a failure to load render as a failure, never as a plausible value.",
+      "why": "Deepwoken's guilds fall back to displaying 'The Authority' — a real faction in the game — when a guild fails to load client-side. A player then reads a stranger as a member of a specific organisation on the strength of a network error, and no part of the screen distinguishes that from a correct render. The same shape appears in Blox Fruits, where a crew button silently does not appear after a faction change until the player rejoins."
+    },
+    {
+      "rule": "Give every roster stat an icon or leave the slot out; do not substitute a character.",
+      "why": "Blox Fruits has no bounty icon and renders a currency sign in its place, so a bounty reads as money on a roster where money is a different thing. A missing asset that degrades into a wrong asset is worse than a missing column."
+    },
+    {
+      "rule": "If a custom chat replaces the default UI, it still has to go through TextChannel.",
+      "why": "Roblox's guidelines state that TextChannels handle filtering, privacy settings and abuse reporting automatically, and that any user-to-user text must be filtered. The first reply a community chat replacement received on the DevForum was whether it bypasses moderation. A custom frontend that emits messages some other way has silently removed the report path, and nothing on screen will say so."
+    },
+    {
+      "rule": "Open the action menu from the username in the transcript.",
+      "why": "A community chat replacement lists 'click on usernames for quick actions' among its headline features, and it is the cheapest bridge between the chat surface and the social one: the roster a player wants to act on is usually the list of people who have just spoken, and it is already on screen."
+    },
+    {
+      "rule": "Rate-limit any shared editable text to at least one minute, and treat it as a chat surface.",
+      "why": "Roblox's guidelines require it outright for editable text one user can see from another, naming signs and bulletin boards. The same page draws the line in a place worth memorising: a comment box is not chat until it supports replies, at which point it is."
+    }
+  ],
+  "limits": [
+    "THE ONLY NUMBERS IN THIS FILE THAT ARE MEASUREMENTS DESCRIBE ROBLOX'S DEFAULT CHAT UI. BackgroundTransparency 0.3/0.2/0, TextStrokeTransparency 0.5/0.5/1, TextSize 14 for the chat window and 14 for the input bar, and the Color3 values all come from Roblox's own property tables for ChatWindowConfiguration, ChatInputBarConfiguration and ChannelTabsConfiguration, and are correct for the default window. ONE NUMBER THIS FILE USED TO GIVE IS WITHDRAWN: the channel tabs' own TextSize. The guide table on chat-window.md says 18 and the class reference for ChannelTabsConfiguration says 14, both re-fetched 2026-09-20, and the conflict is Roblox's rather than this file's — an earlier version of this entry asserted 18 as settled. Do not use either number without reading the property in Studio. None of these say anything about how any shipped game sizes its own social panels. NO STROKE WEIGHT, CORNER RADIUS, PADDING, AVATAR SIZE, ROW HEIGHT OR COLUMN COUNT FOR A CUSTOM ROSTER OR FRIENDS PANEL WAS FOUND ANYWHERE. Nothing outside those three engine tables should be used as a measurement.",
+    "THE GUILD AND CLAN SAMPLE SKEWS COMBAT-HEAVY AND THAT IS THIS FILE'S BIGGEST BLIND SPOT. Four of the five group systems read — BedWars clans, Blox Fruits crews, Deepwoken guilds, Arcane Odyssey guilds — belong to PvP or PvP-adjacent games where the group exists to fight; the fifth is Tower Defense Simulator's party, which is co-op, and it is a party rather than a persistent group. Nothing here is backed by a social-hangout, roleplay or life-sim game, and those are exactly the games where the friend list and the chat ARE the gameplay. Brookhaven and Welcome to Bloxburg were never read. A request for a social screen in a hangout game is only partly covered by this file.",
+    "NO SHIPPED DIRECT-MESSAGE SURFACE WAS FOUND. Roblox documents that a DM channel must be marked with TextChannel:SetDirectChatRequester and that CanUsersDirectChatAsync gates it, and ChannelTabsConfiguration names the whisper tab after the other player — but not one of the five shipped games read here has a documented one-to-one messaging screen. Everything above about DMs comes from the platform's rules for building one, not from anybody's implementation of one.",
+    "PLAYER-OPERATED MODERATION CONTROLS ARE ALMOST ABSENT. The only ones read anywhere are the four typed commands in Roblox's global chat — /mute, /unmute, /help, /clear. No report panel, block list, mute list or per-player context menu from any shipped game was read, and Roblox's guidelines say only that TextChannels make messages reportable, without describing the surface. A request for a chat moderation screen is largely unbacked.",
+    "VOICE CHAT IS ENTIRELY OUT OF SCOPE HERE. VoiceChatService, the self-view, speaker indicators, push-to-talk and mute-per-player were not read at all, and SocialService's phone-book path was read only far enough to note that CanSendCallInviteAsync gates PromptPhoneBook the same way the game-invite check does.",
+    "Fandom serves its article HTML behind Cloudflare, so all NINE wiki rows were read through api.php as wikitext. That is the same content, but every screenshot those pages embed was NAMED AND NOT SEEN. Every wiki claim above is one the page states in prose or in a table; none is inferred from an image nobody looked at. This is why the file records what a roster CONTAINS and in what ORDER, and never how it is laid out.",
+    "The Arcane Odyssey page carries the wiki's own 'Needs Info' and 'Future Content' category tags, so its five-rank permission ladder is weaker evidence than Deepwoken's published matrix or BedWars' four-rank description. It is kept because the rank-names-are-editable and honorific-Elite observations are specific enough to check, and it is flagged rather than dropped.",
+    "The Blox Fruits crew page contradicts itself about its leaderboard — 'top 99 crews' in one line and 'will only show 100 crews' in the next — and its kick instructions tell the player to click the Invite button. Both are recorded as written rather than silently corrected, because the wiki is the source and guessing which way it is wrong would be inventing.",
+    "The LaunchData bug report's last post is 2025-12-12, a developer describing the failure as intermittent and sometimes cleared by restarting the client; the last Roblox Staff post before it, 2025-11-03, asks for a reproduction after failing to hit the bug in a test experience. WHETHER IT IS FIXED NOW IS UNKNOWN and nothing in the thread says it is. The rule above is written to be safe either way — a screen that degrades gracefully when LaunchData is blank costs nothing if the bug is gone. FOR THE NEXT READER, AND IT APPLIES TO EVERY DEVFORUM ROW IN THIS FILE RATHER THAN ONLY THIS ONE: a topic's default .json stream returns about twenty posts, not the topic. Here it stops at post 21 and silently omits post 22, and only the payload's own last_posted_at showed that a later post existed — which is exactly how the 2025-11-03 date got into this row. The other two DevForum rows were read through the same window and, until the third pass, did not say so; both now declare it in their source lines. t/4644214 returns 20 posts ending at post 25 against posts_count 45 / highest_post_number 52 / last_posted_at 2026-08-27, and t/4513813 returns 20 ending at post 20 against posts_count 330 / highest 347 / last 2026-08-11. No claim in either row was falsified — all of them sit in post 1 and posts 2–5, re-read verbatim on 2026-09-20 — but a partial window has to be declared, not discovered.",
+    "One claim in the BedWars chat row is the wiki's own speculation and is marked as such in the row: that /hub was replaced by /lobby because of Roblox warnings. It is recorded because the rename itself is checkable; the motive is not.",
+    "No source read here describes what a social screen does when it is EMPTY — no friends online, a guild with one member, an invite list with nobody in it. The friends-list row records that a count of online friends is shown, which is the closest anything comes. Empty states on this screen are unbacked.",
+    "THREE HOSTILE RE-READS, AND WHAT EACH ONE COST. This file has been adversarially re-checked three times, all on 2026-09-20. Every pass re-fetched the cited pages instead of re-reading the file, and every pass found FINER errors than the one before it — which is what convergence looks like, and also what a process looks like just before somebody declares victory early. PASS 1 re-fetched every source and hunted claims the cited page does not support. Across the batch of eight screen files it found 52 such claims, of which 6 were deleted and 41 narrowed; in THIS file six claims were corrected or narrowed and one causal clause was deleted along with the claim it rested on. The kinds, because the kind is the part that generalises: (1) AN UNDER-COUNT STATED AS FACT — 'ten tags across five colours' for the BedWars chat tags, where the page shows ten tags in SIX colours and the enumeration had silently dropped [PATRON] (#00ffff); (2) A TAG THAT IS NOT ON THE CITED PAGE — a [MOD] chat badge, where the page's moderator tags are [AC MOD] and [LEAD AC MOD] and MOD survives only as a blocked clan-tag stem; (3) THE SOURCE'S OWN SPECULATION RESTATED AS RECORDED CAUSE — the tablist's removal attributed to players disliking seeing others' kits, which the wiki hedges with 'most likely' in a Trivia line, and which two rules leaned on; (4) A DATE READ OFF A TRUNCATED VIEW — the LaunchData thread's 'last post 2025-11-03', which was only the last post the default .json stream returns. PASS 2 read the repaired file and found 64 further items across seven of the eight files, all graded minor. SEVEN of them were in this file. PASS 3 is this one, and it settled all seven: (1) AN ARITHMETIC ERROR INSIDE CORRECT DATA — the clan-chat outage was called 'roughly twenty months' while its own three dates, all correct against the wiki's History table, span 2022-05-21 to 2023-02-03, which is 258 days or about eight and a half months, an error of ~2.4x; (2) TWO CITED PAGES THAT DISAGREE, RECORDED AS ONE SETTLED FACT — ChannelTabsConfiguration.TextSize is 18 on chat-window.md and 14 on the class reference, both cited in the same row and both re-fetched; the file asserted 18 in the reference AND in the measurements limit above, so the same error sat in two places; the BOLDER half (BuilderSansBold vs BuilderSansMedium) is confirmed by both pages and was kept; (3) A QUANTIFIER DROPPED — 'commands are NOT case-sensitive' where the wiki says 'MOST of them are not case-sensitive'; (4) TWO CROSS-FILE CITATIONS THE CITED FILE DOES NOT SUPPORT — screen-shop.json was cited for reviewers misreading a tab row's selection states (it records a tab COLOUR objection, 'out of place being green') and for an authored-default-off convention (it records only that the shop's open button must live outside the shop frame); both were deleted and the deletions recorded where they stood; (5) A CLOSED LIST QUOTED FROM AN OPEN SOURCE — the ten reserved BedWars clan tags, whose wiki line ends 'Etc.'; (6) A TRUNCATION LESSON TAUGHT IN ONE ROW AND NOT APPLIED TO ITS SIBLINGS — two other DevForum rows were read through the same 20-post window and did not say so; both now declare their window; (7) A TITLE AND A FEATURE QUOTED INEXACTLY — the NovaChat topic's live title, and 'per-message custom sounds' for a line that reads 'Custom Sounds - Personalize notification sounds'. PASS 3 also found, unprompted, that THE FILE'S OWN SUMMARIES HAD STOPPED MATCHING IT: the provenance said six shipped games where five were read (nine wiki rows, five games), and two limits entries repeated the six. That is the same defect as a stale claim and is fixed above. WHAT IS STILL UNSETTLED, BY NAME, BECAUSE THIS IS THE LAST REPAIR ROUND: (a) THE CHANNEL-TAB TEXT SIZE. Roblox's guide and Roblox's class reference disagree, 18 against 14, and no amount of re-reading resolves it; it needs the property read in Studio, which nobody here has done. (b) THE TWO PARTIAL DEVFORUM WINDOWS. t/4513813 has ~325 unread replies and t/4644214 ~25; every claim drawn from them is from post 1 and posts 2–5, so neither row can be read as what the thread concluded. (c) THE BEDWARS RESERVED-TAG DENYLIST is longer than the ten examples the wiki publishes and the remainder is not discoverable from the page. (d) WHETHER THE LaunchData BUG IS FIXED is unknown, as the limit above says. (e) THE BLOX FRUITS LEADERBOARD contradicts itself (top 99 against 100) and is recorded as written rather than resolved. (f) NOTHING IN THIS FILE HAS BEEN CHECKED AGAINST A RUNNING GAME — all three passes compared text to text, and the wiki rows were read as wikitext with every embedded screenshot named and unseen. A FOURTH PASS WOULD FIND MORE. The honest reason to stop is not that the file is clean; it is that the remaining items are now smaller than the file's own measurement error, and a library that claims to be perfect is exactly the kind of claim this library exists to distrust. Nothing was invented to replace what was narrowed, and no claim was rescued with 'appears to' or 'suggests' — where a claim did not survive, it was deleted."
+  ]
+}

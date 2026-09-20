@@ -1,0 +1,357 @@
+{
+  "genre": "screen-gacha",
+  "label": "The SUMMON / HATCH / REVEAL screen, across genres — banners and egg machines, odds panels, pity counters, luck modifiers, multi-pull width, the roll control, the reveal cutscene and its skip",
+  "recorded": "2026-09-20",
+  "provenance": "Researched over the network on 2026-09-20 with curl. Two rows are Roblox's own policy — the Creator Hub page at create.roblox.com/docs/production/monetization/paid-random-items (plain HTTPS, HTML fetched and stripped to text) and the DevForum announcement that shipped it, read as JSON through devforum.roblox.com/t/<id>.json. Two more DevForum rows were read the same way. The remaining rows are community wikis of shipped Roblox games — Anime Adventures, Anime Vanguards, Sol's RNG, Blox Fruits, Adopt Me and Pet Simulator 99 / X — read as wikitext through each wiki's api.php action=parse endpoint, because Fandom serves its article HTML behind Cloudflare while api.php is open. Subdomains were probed with curl before use; anime-adventures and sols-rng both 301 to different hosts, and the hosts actually read are recorded in each source field. No image, no Luau and no asset id is copied here. Short interface strings DO appear — a blocked-purchase message, a shared-cooldown line, a gamepass store description, the fixed grammar of a chat announcement — and every one of them is quoted from the page's own prose, where the page publishes it as a fact about the system; none is lifted from anyone's artwork. What is recorded is the construction convention each page states in prose: what is on screen, how it is arranged, what states it has, what it does when a buff is running or a counter is full, and which of those decisions Roblox has already made for you by policy.",
+  "incomplete": false,
+  "references": [
+    {
+      "id": "roblox-policy-paid-random-items",
+      "source": "https://create.roblox.com/docs/production/monetization/paid-random-items — fetched 2026-09-20 with curl (HTTP 200, HTML stripped to text locally). The page itself advertises a machine-readable twin at https://create.roblox.com/docs/en-us/production/monetization/paid-random-items.md and an index at https://create.roblox.com/docs/llms.txt. This is Roblox's own policy page for paid random items, not commentary on it.",
+      "demonstrates": [
+        "THE ODDS PANEL IS NOT A FEATURE, IT IS A CONDITION OF SHIPPING. If an outcome is bought with Robux, or with a currency that Robux can buy, the creator must indicate all possible outcomes AND the actual numerical odds. A summon screen without a rate table is not an austere summon screen, it is a non-compliant one.",
+        "PITY SYSTEMS ARE NAMED IN POLICY AS A PROBABILITY MODIFIER ITEM, in the same list as luck boosts, enhanced resource drops and rate-up scrolls. The counter that looks like a mercy mechanic is classified with the things that sell you better odds, and inherits their disclosure duty.",
+        "THE ODDS AFFORDANCE MUST CARRY A WORD, NOT JUST A GLYPH. When there are too many outcomes to fit in the player's view, the itemised list may live in a clickable pop-up — but the page says outright that 'using a standalone symbol like the (i) icon without a descriptive word is not sufficient'. What the page requires is a descriptive WORD; the two labels it prints — 'Info' and 'Details' — are its examples, not an enumeration, and the announcement FAQ words it the same way ('it needs an accompanying word like “Info” or “Details”'). This is the rare case of a platform specifying that a control must be worded at all.",
+        "The odds panel must be visible and accessible PRIOR to purchase, not after the spend and not inside the result.",
+        "Odds are displayed as percentages and the percentages of all final outcomes must sum to exactly 100%. So a rate list is a closed set, and an outcome nobody bothered to enumerate is a hole in a number that has to add up.",
+        "There is a stated rounding rule and a stated disclaimer for it: round to four or more decimal places lower than the decimal place with the first non-zero number, and carry a line such as 'Probabilities are rounded; total of displayed individual probabilities may not equal 100%'. A 1-in-400,000 outcome therefore needs both a long number and a sentence about it.",
+        "A shortcut exists for flat tables: if many items share one probability, the list may be headed 'Odds for each item listed below: X%' rather than repeating the figure on every row.",
+        "THE RATE TABLE IS PER PLAYER AND LIVE, NOT A CONSTANT. Where a player can only obtain one instance of an outcome, the odds shown for the remaining outcomes must be updated to that player's up-to-date remaining odds — the list re-normalises as a collection fills.",
+        "A luck item's effect must be numerically explained before purchase, AND while it is active the displayed odds must be dynamically updated to the player's true odds. A rate panel that shows base rates while a potion is running is wrong by policy, not merely unhelpful.",
+        "Indirect purchase counts: keys, re-roll tokens and spin tickets bought with Robux drag the thing they open into scope, so a currency layer between Robux and the reveal does not remove the duty.",
+        "A free path is exempt: randomised rewards given for an action that costs no Robux and no Robux-purchasable currency need no odds disclosure. The same chest can require a rate panel or not depending on how it was opened.",
+        "PolicyService:GetPolicyInfoForPlayerAsync() returns ArePaidRandomItemsRestricted and IsPaidItemTradingAllowed, so the summon screen has a per-player restricted variant that the client must ask for before drawing.",
+        "SIX named treatments are listed for a restricted player, and the page requires the creator to apply one of them: offer an unpaid, earnable path to the same item (mystery eggs granted free at gameplay milestones); offer the outcomes in a pre-determined, non-random order disclosed before purchase (first spin always 5 gems, second always 10); offer the specific outcome for direct guaranteed purchase priced on its expected value (a 10-Robux box with 5% odds on a sword becomes a 200-Robux sword); remove or hide the generator, replacing a prize wheel with a shop offering direct purchases; block the purchase with an error message; or remove the user from the parts of the game with paid random items, by teleporting them away. Only one of the six is an error state; the other five are design choices.",
+        "The blocked-purchase treatment is given with its copy: the purchase button is replaced by 'Sorry, this item is unavailable for users in your region'. The button is REPLACED, not greyed.",
+        "When IsPaidItemTradingAllowed is false the player must not be able to reach trading for the outcome of a paid random item — so a reveal card's onward actions are gated by the same per-player policy call."
+      ]
+    },
+    {
+      "id": "devforum-paid-random-items-announcement",
+      "source": "https://devforum.roblox.com/t/clarifying-requirements-for-paid-random-items/4654622 — read 2026-09-20 through https://devforum.roblox.com/t/4654622.json, which returns the thread as structured data over plain HTTPS. The opening post is Roblox staff announcing the policy above; the replies read here are creators. 77 posts exist and only the first six were read.",
+      "demonstrates": [
+        "The announcement states the enforcement path in as many words: audit your game for compliance to avoid moderation, noncompliant experiences are moderated with notice through Roblox's moderation message system, and reinstatement goes through the appeals system. The odds panel is load-bearing for the experience staying up.",
+        "Paid random items are described as a highly regulated monetization mechanism that is legally prohibited for certain users — which is why the per-player PolicyService branch exists at all, and why it cannot be treated as an optional regional nicety.",
+        "The four categories are enumerated by name, and they cover more of a game than a prize wheel: Capsule (spin a wheel, hatch an egg, open a chest), Enhancement (a potion whose duration is random, an upgrade that may fail), Combination (synthesising two rare eggs for a better chance at a better result), and Probability-Adjustment (luck boosts, pity, rate-up scrolls). An upgrade machine with a failure chance is a gacha screen wearing different art.",
+        "A creator raised an unresolved edge in the replies and it is worth designing around rather than answering: a crate that TELLS you what it contains before you buy, where buying it changes what the next crate contains. Outcome disclosed, no randomness at the moment of purchase, yet the sequence is random. No staff answer to it was read in the posts fetched here.",
+        "The first substantive creator reply is 'these will be a bit of a hassle to implement for existing games', which places the cost of this screen where it actually lands: retrofitting disclosure onto a reveal that was built without it."
+      ]
+    },
+    {
+      "id": "anime-adventures-summon-banner",
+      "source": "https://animeadventures.fandom.com/wiki/Summon — read 2026-09-20 through https://animeadventures.fandom.com/api.php?action=parse&page=Summon&prop=wikitext&format=json. The subdomain anime-adventures redirects here (checked with curl -o /dev/null -w '%{redirect_url}'); Fandom serves article HTML behind Cloudflare while api.php is open.",
+      "demonstrates": [
+        "THE BANNER IS THREE SLOTS AND THE MIDDLE ONE IS NOT DECORATION. Three Mythics are featured; the centre has a 50% chance of being the Mythic you get, the two beside it 10% each, and any unfeatured Mythic 0.526%. Position on the banner IS the weight, so the layout is the odds table in another form.",
+        "THE PITY BAR BELONGS TO THE MIDDLE SLOT, NOT TO THE RARITY. Each summon adds 1/400 to a pity bar that guarantees the featured MIDDLE unit at 400 pulls. A player at 399 is 399 pulls into one specific character, not into a tier.",
+        "Pity has TWO reset causes and only one of them is the player's: pulling any Mythic resets it to 0, and the banner refreshing also resets it. The banner refreshes every hour with random featured units, so an hourly clock the player does not control can erase the counter.",
+        "The event banner moves its pity target by what you already own: pity is 200 summons there instead of 400, and unowned featured Mythics are PRIORITISED until all of them are obtained. The guarantee is computed against the collection, not fixed at authoring time.",
+        "The pity depth is a property of the banner, not of the game — 400 on Legacy and Special, 200 on Event — so the denominator has to be read off the banner the player is looking at.",
+        "Event pity is quoted as a total price as well as a count: 2,000 event currency for the Mythic pity. The screen states what the guarantee costs, not just how far away it is.",
+        "The published rate table is PER-RARITY, NOT PER-UNIT, and the page says so: 'Every single unit has the same chance of being obtained from a Summon according to their Rarity.' Rare 81.9%, Epic 16%, Legendary 2%, Mythic 0.25% (0.5% on Special and Event), Secret 1 in 400,000 — with a separate shiny sub-rate printed beside FOUR of the five (Rare 0.819%, Epic 0.16%, Legendary 0.02%, Mythic 0.0025%, each restated for the Shiny Hunter gamepass and Mythic restated again per banner) while Secret's shiny rate is published as '???'. A blanket shiny chance sits on the same list without being reconciled with them: 'All summoned unit has 1% chance to be Shiny version (3% if obtained Shiny Hunter gamepass)'. The page never says the list sums to anything, and it does not: the four figures given as percentages total 100.15% before the Secret rate is counted at all.",
+        "LUCK POTIONS DO NOT REDUCE PITY, and the page says so explicitly. Two systems that both look like 'help' are kept independent, which means the screen must not let a potion appear to advance the counter.",
+        "Stacked luck is published as a single resulting figure rather than as three multipliers: Luck plus Super Lucky plus Ultra Lucky sets the Mythic chance to 0.936%. The player is told the answer, not the arithmetic.",
+        "The luck potions are sold FOR ROBUX INSIDE THE BANNER WINDOW (Super Lucky 99 Robux for 2x, Ultra Lucky 149 Robux for 3x). The odds-modifier shop is a surface of the summon screen, not a trip to the main shop.",
+        "A rare enough pull leaves the screen entirely: Secret and Shiny Mythic summons are announced in Roblox chat globally, across every server. The reveal has a server-wide tier above the personal one.",
+        "BANNER TIERS GATE WHAT THE RATE TABLE EVEN CONTAINS, BY ACCOUNT LEVEL: Tier 0 (level 0+) cannot summon Secret units or shinies at all, Tier 1 (level 5+) can summon shinies but not Secret, Tier 2 (level 20+) both. The stated reason is to stop late-game players farming pulls on alt accounts. Two players looking at one banner are looking at two different outcome sets.",
+        "Secret is explicitly excluded from pity — one outcome in the table has no floor under it, and the page states that as a fact about the system rather than leaving it to be inferred.",
+        "The two banners differ in CURRENCY, not just contents: the Legacy banner spends legacy gems obtained by converting regular gems or disenchanting units, and a summon can alternatively be paid with a Summon Ticket. One roll control, three payment forms.",
+        "The price is per-player before anything else: 50 gems, or 40 with the VIP gamepass."
+      ]
+    },
+    {
+      "id": "anime-vanguards-summon-pity-and-autosell",
+      "source": "https://animevanguards.fandom.com/wiki/Summon — read 2026-09-20 through https://animevanguards.fandom.com/api.php?action=parse&page=Summon&prop=wikitext&format=json. A second shipped Roblox unit-collector, read for the same reason and by the same method as the row above, so the two can be compared.",
+      "demonstrates": [
+        "The odds panel has a NAME AND A HOME: 'the Index menu on the banner states the chances of being obtained for every unit on the banner'. It is a sub-menu of the banner, which is exactly the clickable details pop-up Roblox's policy permits — and it is reached from the banner rather than from a settings screen.",
+        "The summon area is a hub of three stores, not one screen: the banners themselves, a Unit Index, and a Normalize shop for transferring or removing shiny status. The reveal's downstream actions get their own counters nearby rather than living on the result card.",
+        "The same three-slot banner appears independently here — middle 50%, left and right 20% each, rotating hourly — which makes the weighted centre a convention across two unrelated games rather than one studio's habit.",
+        "THREE PITY COUNTERS RUN AT ONCE ON ONE BANNER, at wildly different depths: on the Special and Selection banners, Legendary at 50 summons, Mythic at 400, Vanguard at 25,000. The restart rule is not uniform across them and the page states the exception in the same breath — 'Their pity counts restart after you get a unit of that specific rarity. This does not apply to the Vanguard rarity.' A single progress bar cannot represent this screen.",
+        "Each pity depth is published WITH ITS PRICE IN BOTH FORMS — Legendary 2,500 gems (2,000 with VIP), Mythic 20,000 (16,000), Vanguard 1,250,000 (1,000,000). The counter and the invoice are the same fact shown twice.",
+        "A PITY COUNTER CAN BE PERMANENTLY SPENT. Vanguard pity is one-time only: if the player gets a Vanguard before or when the count is reached, the pity is used up and 'marked as pity reached', and is never available again on that banner. So the counter needs a third state — consumed — that is neither progress nor full.",
+        "TWO BANNERS CAN SHARE ONE COUNTER: the Selection and Special banners share the same pity count. Pity belongs to a pool, and showing it on the banner implies otherwise unless the screen says so.",
+        "The Selection banner lets the player CHOOSE the middle unit, and then locks the choice for 24 hours; the side units stay the same even when one duplicates the chosen middle, and if no middle is chosen the sides resume rotating hourly. A banner slot is editable, and its edit has a cooldown.",
+        "Event Vanguard pity is stated in both currencies at once — 20,000 summons or 3,000,000 event currency for the unit, 15,000 or 2,250,000 for the memoria — and is gated at player Level 10.",
+        "AUTO SELL IS SCOPED IN TIME AND THE PAGE SAYS SO: it sells the selected rarities obtained from summons made AFTER the feature is toggled on. It does not reach backwards into the inventory, which is the only thing that makes it safe to offer at all.",
+        "THE DEVELOPERS REFUSED TO SHIP THE MOST DANGEROUS SWITCH. Auto sell does not sell shiny units or units with traits, and the page states plainly, in a grey parenthetical beside the toggle's description, 'There's no option to auto sell shiny units.' — the option a player might want is deliberately absent, because a forgotten toggle would destroy the one-in-a-thousand outcome the whole screen exists to produce. Auto-selling trait units, which is recoverable, IS offered, under Settings then Miscellaneous.",
+        "Secret and Vanguard have no auto-sell entry at all, only manual sale from the inventory — the automation list is deliberately shorter than the rarity list, and the gap is where the irreversible outcomes live.",
+        "Each auto-sell row carries its payout so the toggle is a priced decision: Rare 50 gold, Epic 100, Legendary 500, Exclusive and Mythic 1,500 (3,000 evolved).",
+        "A one-of-one outcome gets interface of its own: a Serialized unit shows its serial number ON HOVER, the first ten obtained each get a unique cosmetic, and above ten the serial is built into both the unit and the cosmetic model. Scarcity is rendered on the item, not announced in a banner.",
+        "Level 10 gates Secret, Vanguard and shiny outcomes, and the Shiny Hunter gamepass BUYS PAST THE LEVEL GATE. A progression lock and a purchase lock sit on the same outcome.",
+        "Luck boosts have a stated duration (one hour), a stated stacked result (62.5%), and two stated non-effects: they do not raise Secret, Vanguard or shiny chances, and they do not reduce pity. The negative statements are as prominent on the page as the positive ones.",
+        "The VIP discount is scoped: 50 gems becomes 40, but the discount does not apply to Event banners. A price shown on one banner cannot be reused on the next."
+      ]
+    },
+    {
+      "id": "sols-rng-roll-button-and-skip-settings",
+      "source": "https://sol-rng.fandom.com/wiki/Rolling — read 2026-09-20 through https://sol-rng.fandom.com/api.php?action=parse&page=Rolling&prop=wikitext&format=json. The subdomain sols-rng 301s to sol-rng (checked with curl). This is a shipped Roblox game whose entire loop IS the reveal, which is why it is read here for the roll control and the skip.",
+      "demonstrates": [
+        "THE ROLL CONTROL IS ONE BUTTON, CENTRED ALONG THE BOTTOM OF THE SCREEN, and pressing it triggers a wheel-like animation before the outcome's own opening animation plays. In a game that is nothing but pulls, the pull is a single bottom-centre button.",
+        "THE BUTTON CARRIES ITS OWN NEXT-ROLL STATE. Every tenth roll grants double luck, and a counter below the word 'Roll' on the button reads 'x2 Luck Ready' when it is armed. The forecast lives on the control that will consume it, not in a separate HUD element.",
+        "That readout is DERIVED, not fixed: equipment changes both the multiplier and the interval, and the button's text changes with it — 'x6 Luck Ready' with one gear, 'x3' with another, 'x1.3' with a third, and 'x2.5' rising to 'x5' with a fourth during a ten-roll window inside a twenty-roll cycle. One label, many sources.",
+        "A GEAR THAT GIVES 1.35x DISPLAYS AS 'x1.3'. The button truncates the number it is showing, so the displayed multiplier and the applied multiplier disagree in the last digit — recorded because a generated screen will format a float and produce exactly this.",
+        "The counter has an off-by-one the wiki has to explain to readers: 'whatever number is shown on the counter, the roll with 1 number above it will be a bonus roll'. A counter that needs a sentence of errata is a counter that is displaying the wrong end of the interval.",
+        "THE SKIP IS THE PRODUCT. Quick Roll is the only paid rolling mechanic in the game, a 100-Robux gamepass, and what it sells is that 'the animation doesn't play' plus a much shorter cooldown. The reveal ceremony is priced as friction the player can buy out of.",
+        "The free skip is a THRESHOLD, NOT A TOGGLE: the Roll Cutscene setting takes a number, and cutscenes for outcomes below that rarity are skipped. The player says how rare something must be to be worth watching.",
+        "The same threshold shape is reused for TWO other settings — Auto Equip, which equips an aura whose rarity is higher than the value in the field beside it, and Swap Warning, which warns above the same kind of value — so 'how rare is rare enough' is one authored concept applied three times. The Storage Full Warning sitting beside them has no value field at all; it is a plain enable/disable, so the threshold is not simply the house style of this settings list.",
+        "THE FILTER CAN ONLY NAME WHAT YOU HAVE ALREADY SEEN. The Aura Filter chooses which outcomes to auto-equip or auto-skip, and it can only be applied to outcomes already in the player's Collection. A first-ever reveal therefore cannot be silently skipped by a rule set before it existed — the option list is the collection.",
+        "Precedence between overlapping automation is stated rather than left to discover: the page lists five rolling-configuration settings and says the Aura Filter 'overrides all other skip/equip settings'. Settings that can contradict each other are shipped with the winner named.",
+        "Auto Roll runs the loop unattended and carries its own infrastructure — it is gated on group membership, and it rejoins the game every twenty minutes to defeat Roblox's anti-AFK. An auto-pull feature is a session-management feature.",
+        "Rolling is explicitly stated not to be affected by the player's ping, which is the reassurance a client-animated reveal has to earn.",
+        "A displayed rarity is CONTEXTUAL: the breakthrough system gives one outcome two published rarities — a regular rate and a higher native rate while its biome is active, for example 1 in 400,000,000 against 1 in 100,000,000. Which number is true depends on the world state at the moment of the roll."
+      ]
+    },
+    {
+      "id": "sols-rng-opening-cutscene-staging",
+      "source": "https://sol-rng.fandom.com/wiki/Opening_Cutscenes — read 2026-09-20 through https://sol-rng.fandom.com/api.php?action=parse&page=Opening%20Cutscenes&prop=wikitext&format=json. Read for the staging of the reveal itself, which the Rolling page above only points at.",
+      "demonstrates": [
+        "THE CEREMONY HAS A RARITY FLOOR. Opening cutscenes exist only for Epic and above; everything below simply resolves. A game built entirely on pulls does not animate most of them.",
+        "EVERY RARITY TIER HAS ITS OWN CUTSCENE STYLE — different backgrounds, different dramatic effects, different endings — so the tier is legible from the first frame, before the item's name is shown. The reveal answers 'how good' before it answers 'what'.",
+        "The staging is specified per tier and it is short: for Epic the screen goes black with an ominous tone running throughout, then the edges of the screen glow in the outcome's own colour. For Unique the screen goes black, a dropbeat hits, a star in the outcome's colour appears, and only then do the edges glow and reveal it. Colour arrives before identity in both.",
+        "ONE PER-ITEM COLOUR TOKEN DRIVES THREE SURFACES. The star's colour in the cutscene is taken from the outcome's title colour in the Collection or Inventory, and the page states the consequence outright: change that Collection font colour and the cutscene star follows, as does the background that appears near the end. The inventory row and the reveal are theming off the same value, which is why they can never drift.",
+        "The exception is stated with the rule: outcomes with custom stars, or with no star at all, opt out of that derivation. The token has an override.",
+        "AFTER the cutscene, a message naming the outcome and its rarity is posted to the server chat. The reveal ends by leaving a durable line in a surface other people can read.",
+        "The chat line has a fixed grammar and it includes the odds: '[@username] HAS FOUND [aura], CHANCE OF 1 IN [1,000-9,999]!' — exclamation mark included, and the bracketed figure is the tier's own odds range, printed per tier. The number that justified the ceremony is repeated in the announcement.",
+        "The chat line is coloured by tier, with the hexadecimal published per tier — Epic in a violet, Unique in an orange. The announcement is a rarity-tokened component, not a plain system message.",
+        "RARITY TIERS ARE DEFINED BY ODDS RANGES, NOT BY LABELS SOMEBODY ASSIGNED: Epic is 1 in 1,000 to 9,999, Unique is 1 in 10,000 to 99,998. A tier is a bucket over the rate table, which is what lets a new outcome be filed automatically.",
+        "AT THE HIGHER TIER THE REVEAL ESCAPES THE SCREEN: a Unique roll momentarily flashes bright yellow lines around the map of the server, so people who are not looking at the pulling player's interface still see it happen.",
+        "THE REVEAL HAS TWO AUDIO SLOTS, AND ONLY THE SLOTS ARE PER-TIER. Each tier section documents a 'Sound of one being rolled' and, separately, a 'Sound effect after rolling'. The files that fill them are NOT distinct per tier: 100k.wav and 10k+ Roll.ogg both serve Unique AND Legendary, 1milplus.mp3 serves Mythical AND Exalted, the two highest tiers publish an after-roll sound only, and the Glorious table lists a sound PER AURA under a column headed 'Opening Star & Sound'. Audio is reused downward and split per item upward — the two-slot shape is the convention, not the sting."
+      ]
+    },
+    {
+      "id": "blox-fruits-gacha-animation-is-theatre",
+      "source": "https://blox-fruits.fandom.com/wiki/Blox_Fruit_Gacha — read 2026-09-20 through https://blox-fruits.fandom.com/api.php?action=parse&page=Blox%20Fruit%20Gacha&prop=wikitext&format=json. The gacha NPC of one of the largest shipped Roblox experiences.",
+      "demonstrates": [
+        "THE RESULT IS DECIDED AT THE MOMENT OF THE CLICK AND THE SPIN IS THEATRE, AND THE WIKI SAYS SO IN THOSE TERMS: the rolling interface 'is by all means visual', initial velocity and the items surrounding the central one do not affect the result, and the player is given the item according to in-game rates the instant the trigger is pressed. Anything a generated screen does to make the wheel decide the outcome is a second source of truth.",
+        "THE PROOF IS A LEAK IN THE SHIPPED SCREEN. Players on very low or very high latency can see the item ALREADY IN THEIR INVENTORY before the animation cycle even starts. The reveal and the inventory are fed by the same server response, and nothing holds the inventory back until the ceremony finishes — which is the exact failure a generated reveal will reproduce.",
+        "The page's own verdict, written in the same breath as that proof, is that 'It has no changes from the old style of spinning, besides taunting/wasting the player's time.' — a comparison against the spin it replaced, not a claim that the animation does nothing. The ceremony is not free goodwill; it is spent patience — though this is a community wiki's verdict on a shipped animation and not the studio's.",
+        "THE ROLL IS GATED BY A CLOCK, NOT ONLY BY A PRICE: one roll every two hours. The control therefore has a cooldown state that is its normal state most of the day.",
+        "COOLDOWNS ARE SHARED ACROSS SEPARATE GACHA MACHINES, and the interface got it wrong: a text error displayed 'Shares cooldown with Regular Gacha!' where it should have read 'Shares cooldown with Summer Gacha!'. A reused string that was never re-read for its new home — the same defect class as a settings panel showing another option's title.",
+        "THE PRICE IS COMPUTED PER PLAYER FROM PROGRESSION, not stored on the item: 25,000 plus 150 for each level above the first, with a 20% discount for Roblox Premium. The number on the button is a formula's output, and the wiki has to publish a table of sample levels because it changes every time the player levels up.",
+        "The gacha's odds are stated to be WORSE than the world's own spawn chances for the same items — the convenience path is explicitly the unlucky path, and the page says so before listing anything else.",
+        "A featured banner can REMOVE entries as well as promote them: a 24-hour event banner made one top item rollable and made common items UNROLLABLE. The pool is edited in both directions, so a rate panel cannot be a static asset.",
+        "The world model advertises the banner state: while a limited gacha is running, the vendor gains a purple aura. The 3D scene carries the campaign flag, not just the interface.",
+        "THE REEL AND THE DROP TABLE CAN DISAGREE, AND NOBODY CAN TELL WHETHER IT IS INTENT OR A BUG. One item does not appear in the rolling interface after a purchase, and the wiki records both readings side by side. A reel populated separately from the table is a bug generator.",
+        "A recorded failure mode of the reveal overlay: during one event, rolling a particular item left the rolling interface stuck on screen for several seconds on some devices. A reveal that owns the whole screen needs a dismissal that cannot be missed.",
+        "The dialog in front of the gacha is a real gate and it broke: after one event the vendor said nothing and opened the gacha box interface immediately, and on cancelling 'he says “...”' — an ellipsis, not an empty line — and only in the Second and Third Sea. The conversational wrapper around a purchase surface is a component that can fail independently of the purchase surface.",
+        "FIRST USE AND FIRST JACKPOT BOTH GRANT A TITLE — one for the first purchase ever, one for the first legendary-grade result. The screen hands out an achievement for pressing the button once, and another for the outcome it is selling."
+      ]
+    },
+    {
+      "id": "adopt-me-eggs-rate-table-and-paid-skip",
+      "source": "https://adoptme.fandom.com/wiki/Eggs — read 2026-09-20 through https://adoptme.fandom.com/api.php?action=parse&page=Eggs&prop=wikitext&format=json. The egg system of one of the largest shipped Roblox experiences, read for its published rate tables and its hatch-now path.",
+      "demonstrates": [
+        "THE RATE TABLE KEEPS ITS ZERO ROWS. Every egg publishes the same five rarity buckets in the same order, and eggs that cannot produce a bucket print '0% Common' rather than omitting the row. Fixed row set, so two eggs can be compared line against line at a glance instead of being read.",
+        "41 OF THE 42 FIVE-BUCKET TABLES SUM TO EXACTLY 100, which is what the platform policy demands, and the published sets are real numbers rather than round ones: 45 / 33 / 14.5 / 6 / 1.5 on one egg, 22 / 19 / 34 / 20 / 5 on another, 0 / 25 / 37 / 30 / 8 on a third. The forty-second is the Royal Desert Egg, published as 35 / 25 / 37 / 30 / 8 — 135%. A rate table that does not add up is a shipped state and not a hypothetical, so the sum is a thing to check rather than a thing to assume.",
+        "AN EGG HAS A RARITY OF ITS OWN, SEPARATE FROM THE RARITIES IT PRODUCES, and the two can look contradictory: an egg labelled Common produces a 1.5% Legendary, an egg labelled Legendary produces 45% Uncommon, and THREE eggs — Blue, Pink and Throwback — are labelled Rare while producing 100% Uncommon. Two rarity axes on one card, and they must be visually distinguishable or the card lies.",
+        "A degenerate rate table is a legitimate product: several eggs are 100% Legendary and 0% everything else. The guaranteed pull uses the same component as the gamble.",
+        "RANDOMNESS IS NESTED AND THE ODDS ARE PUBLISHED AT EACH LAYER: one egg carries a note that there is a 30% chance of getting it from one gift box and 80% from a more expensive one, on top of its own five-bucket table. This is exactly the indirect-purchase case the platform policy names, rendered as two stacked probabilities.",
+        "HATCHING IS A TASK, NOT A TIMER. The egg has to be cared for the way a pet is, completing gameplay tasks — so the progress element on the card is a checklist of actions, not a clock the player waits out.",
+        "THE SKIP IS SOLD PER EGG AND SOLD REPEATEDLY: a 35-Robux 'Hatch Now!' gamepass, purchasable with no limit as long as the player has the funds and an egg. A gamepass used here as a consumable.",
+        "THE PAID SKIP HAS A DECLARED FAILURE PATH THAT IS NOT A REFUND: if an egg fails to hatch after the gamepass is bought, the player receives an Instant Hatch Potion instead, which does the same job. The compensation is an equivalent consumable the player can spend when they choose, which keeps the failure inside the game's own economy.",
+        "RETIRED CONTENT KEEPS ITS ROW AND GAINS A FLAG. The catalogue carries an 'Available Right Now?' column with a tick or a cross rather than deleting eggs that have left rotation, and states that limited eggs are obtainable only by trading once gone. The odds of a thing you cannot buy still have to be readable.",
+        "A COLLECTION BOARD LIVES IN THE HATCHING AREA, not in a separate menu: a board in the nursery shows every pet currently in the game alongside the ones this player has, and it changes with the player's inventory. The place you pull is the place you see what is missing.",
+        "A feature was removed rather than kept: players could once rename their eggs, and that ability was withdrawn when pet accessories arrived. The egg card lost an editable field."
+      ]
+    },
+    {
+      "id": "pet-simulator-99-mastery-animation-speed",
+      "source": "https://pet-simulator-99.fandom.com/wiki/Mastery_(Pet_Simulator_99) — read 2026-09-20 through https://pet-simulator-99.fandom.com/api.php?action=parse&page=Mastery%20(Pet%20Simulator%2099)&prop=wikitext&format=json. Read for the Eggs mastery track and, by accident, for what every other track buys first.",
+      "demonstrates": [
+        "THE REVEAL ANIMATION IS A COST THE PLAYER GRINDS DOWN, AND IT IS THE FIRST THING FIVE OF THE FOURTEEN MASTERY TRACKS SELL. The level-10 perk of the Potions mastery is '2x Potion upgrading animation speed'; of the Enchants mastery, '2x Enchant upgrading animation speed'; of the Fruits mastery, '2x faster animation when upgrading'; of the Eggs mastery, '+20% hatch animation speed'; of the Pets mastery, '2x Fuse Machine Animation speed' and '2x Gold Machine animation speed', with '2x Rainbow machine animation speed' at level 20. The other nine tracks sell something else first — flag slots, cheaper vending machines, better chest loot — and two of those nine (Superior Chests, Fuse) publish no level-10 row at all. Five separate machines, five separate tracks, and in each of the five the first reward is a shorter animation. That is a studio deciding, five times over, that its own ceremony is a thing players want less of.",
+        "The egg track does the same in three steps rather than one: +20% hatch animation speed at level 10, +35% at 50, +50% at 90. The reveal never disappears, it asymptotes — which is a different decision from Sol's RNG selling the skip outright and from Adopt Me selling an instant hatch.",
+        "MULTI-PULL WIDTH IS EARNED AS WELL AS BOUGHT: the same track grants +1 bonus egg slot at level 40, +2 at 60, +3 at 90 and +5 at 99. The number of simultaneous reveals is a progression variable, so the reveal layout cannot assume a fixed count.",
+        "Price is on the same track as width and speed — eggs get 10% cheaper at level 20, 20% at 70, 30% at 99 — so the cost shown on the hatch control is a per-player computed number like everything else on this screen.",
+        "THE FINISH IS A SECOND AXIS ON THE SAME PULL: the track grants +3% chance to hatch golden pets at level 30 and +1% rainbow at level 80, and the pets track grants more of both. A result is 'which item' AND 'which finish', and both are rolled at once.",
+        "The mastery counter's scale is published and it is brutal: a normal egg gives 0.4 experience and an exclusive egg gives 25,000, so maxing the track takes roughly 32.59 million ordinary hatches or 522 exclusive ones. A progress bar on this screen is measured in millions of pulls, which is what makes the animation-speed perk the reward it is."
+      ]
+    },
+    {
+      "id": "pet-simulator-99-luck-enchants",
+      "source": "https://pet-simulator-99.fandom.com/wiki/Enchants_(Pet_Simulator_99) — read 2026-09-20 through https://pet-simulator-99.fandom.com/api.php?action=parse&page=Enchants%20(Pet%20Simulator%2099)&prop=wikitext&format=json. Read for how a shipped game presents the luck modifiers whose numbers the platform policy requires it to disclose.",
+      "demonstrates": [
+        "A LUCK MODIFIER IS ONE NAMED ITEM WITH A TIER LADDER, NOT TEN ITEMS: a single 'Lucky Eggs' enchant occupies ten rows, each row a different rarity grade of the same enchant, giving +15%, +30%, +50%, +75%, +95%, +110%, +125%, +140%, +155% and +160% egg luck. The card is one component whose grade colour and number both change.",
+        "THE LADDER'S LAST STEP IS THE SMALLEST ON IT BY A FACTOR OF THREE: the ten grades read 15, 30, 50, 75, 95, 110, 125, 140, 155, 160, so the steps run +15 to +25 points apart the whole way up and then the final tier adds five. A player who reads the table can see what the top grade is worth before chasing it, which is information the table gives away by being published at all.",
+        "A MODIFIER CAN ADD AN ENTRY TO THE DROP TABLE RATHER THAN REWEIGHT IT: one enchant reads 'Adds +1 RARE Active Huge to hatch' alongside a 40% luck increase. So the rate panel's row set is itself mutable by equipment, not just its percentages.",
+        "Modifiers target one axis of the result each, and say which: one enchant raises the odds of hatching Active Huge pets by 25%, another raises shiny odds by 60%, a retired one by 150%. The finish and the identity have separate multipliers that the player equips separately.",
+        "NOT EVERY SHIPPED MODIFIER CARRIES A NUMBER. In the same table, one enchant reads only 'Boosts your ability to hatch Rainbow pets' with no figure, sitting beside rows that give exact percentages. Recorded as observed: an unnumbered odds modifier next to numbered ones is precisely the shape Roblox's paid-random-items policy asks creators to eliminate, and its presence in a shipped list is the reason that policy had to be restated.",
+        "Sources of a modifier are listed per row and they are plural and uneven — random drops from breakables, specific chests, gift boxes, or an exclusive Robux shop where several are marked no longer obtainable. The luck item's own provenance is part of its card."
+      ]
+    },
+    {
+      "id": "pet-simulator-multi-pull-gamepasses",
+      "source": "https://pet-simulator.fandom.com/wiki/Auto_Hatch_Gamepass_(Pet_Simulator_X) and https://pet-simulator.fandom.com/wiki/+40_Egg_Hatch_Gamepass_(Pet_Simulator_99) — both read 2026-09-20 through https://pet-simulator.fandom.com/api.php?action=parse&page=<title>&prop=wikitext&format=json. Read for how multi-pull width and unattended pulling are sold.",
+      "demonstrates": [
+        "MULTI-PULL WIDTH IS A LADDER OF STACKING PURCHASES WITH PREREQUISITES, NOT A SETTING: the +40 egg gamepass costs 1,499 Robux, is marked stackable and giftable, and REQUIRES the +15 egg gamepass to have been bought first. The control that says how many eggs open at once is reading a stack of owned passes.",
+        "Its own store copy states the stacking in the description — 'Hatch WAY more eggs at a time' followed by a bracketed [STACKS] — so the stacking is disclosed on the tile rather than discovered after two purchases.",
+        "AN AUTO-PULL LOOP NEEDS NAMED STOP CONDITIONS AND THIS ONE PUBLISHES TWO: auto hatch 'will cease when the user can no longer afford the egg or has no more storage'. Out of money and out of room are the two ways an unattended reveal loop ends, and both are states the screen has to be able to show.",
+        "Auto hatch is described as 'an option that may be selected during hatching eggs' — it is a control inside the hatch surface, not a global toggle in settings.",
+        "THE AUTOMATION LAYERS COMPOSE ACROSS SEPARATE PURCHASES: the player can set auto-delete and can open three or eight eggs at a time while still auto-hatching, each behind its own gamepass. The width, the disposal and the loop are three independently owned features that have to agree on one screen.",
+        "That composition leaks: the page records a known exploit where teleporting mid-loop keeps eggs hatching while the player does something else. An unattended reveal loop that does not stop when its surface goes away is a shipped bug with a following."
+      ]
+    },
+    {
+      "id": "devforum-egg-hatch-panel-critique",
+      "source": "https://devforum.roblox.com/t/ui-feedback-egg-hatching-system/673960 — read 2026-09-20 through https://devforum.roblox.com/t/673960.json. A Creations Feedback thread on a hatch-result panel, read for what reviewers actually name when they look at one.",
+      "demonstrates": [
+        "The first and most repeated critique is saturation: the panel was read as too bright and too blue, one reviewer saying their eyes wanted to keep looking away from it and another that the background tabs were too bold and drew too much attention. A reveal panel that is loud everywhere has nowhere left to put the reveal.",
+        "THE ONE ACCENT WAS SPENT ON THE WRONG CONTROL. ONE reviewer (post 2, not a chorus) wrote that the red Equip button 'doesn't seem to match the colors of the rest of the UI. It is the only red thing in there and stands out a lot.' On a result card the accent belongs to the action the card exists to offer, and red is not that action.",
+        "The delete button had the opposite defect on the same panel — blended into the background — so the two actions on one card were mis-weighted in opposite directions at the same time.",
+        "A SPECIFIC LAYOUT CORRECTION FOR THE RESULT CARD, FROM ONE REVIEWER (post 2): the Pet Name and Pet Stats labels were 'too close to each other', the stats label was about the same size as the name label with far more to fit, and the proposal was to put the pet name ABOVE the image of the pet and let the stats stay where they were. Name above image, stats below.",
+        "A control strip read as an empty bar. The same single reviewer asked 'What's this empty bar in the middle' and proposed deleting it and stretching the name and stats section into the space; the author answered that it was the options/settings strip, including multi-delete. A row of affordances with no labelled contents is invisible to the people it is for.",
+        "THE BUTTON TEXT READ AS CRAMPED AND THE CAUSE WAS A STROKE, NOT A BOX. One reviewer wrote that on 'both delete and equip buttons the text is hardly spaced at all'; another said the EQUIP/DELETE text looked weird and suspected the font or the colour; the author answered that he had set the text to pure red with a darker red TextStroke 'for extra detail'; and the reply was to remove the stroke, because with it 'it looks like the letters are way too close'. What looks like a padding defect was resolved as a glyph-weight defect — recorded because a generated screen reaches for padding first.",
+        "TWO SMALL x-OF-y READOUTS ARE NAMED AS THE SECOND THING THE EYE SHOULD REACH: a reviewer wanted the player's eyes 'drawn towards the buttons first, with enough contrast to be able to notice the other important features such as the 0/3 and 0/50.' NOBODY IN THE THREAD SAYS WHAT EITHER FRACTION COUNTS, and the screenshot that would show it was named and not seen — so what is recorded here is the visual ranking (buttons first, these second), not the meaning."
+      ]
+    },
+    {
+      "id": "devforum-hatch-impact-is-screen-space",
+      "source": "https://devforum.roblox.com/t/feedback-on-my-egg-hatching-system/696599 — read 2026-09-20 through https://devforum.roblox.com/t/696599.json. A short Creations Feedback thread on a playable hatching system, read for what reviewers said was missing from the moment itself.",
+      "demonstrates": [
+        "The reviewer's verdict on a hatch that already worked was that the hatching part was fun and that what it needed was sound and particles 'to give it even more impact'. Sound is named first and named alongside the visual, not after it.",
+        "THE PARTICLES ARE SCREEN-SPACE, NOT WORLD-SPACE, AND THE REVIEWER SPELLED IT OUT: two-dimensional interface frames for confetti or for the shell exploding across the screen. The reveal's impact is built out of the same objects as the panel, which is why it survives a camera that is somewhere else.",
+        "The implementation asked about and confirmed in the thread is TweenService on those frames, or a purpose-built module — the impact layer is animated interface elements, not an emitter attached to a part.",
+        "The author's other visible fix in the same thread was an 'unequip all' button that had been broken, which places bulk inventory actions on the same surface as the reveal rather than in a separate inventory screen."
+      ]
+    }
+  ],
+  "rules": [
+    {
+      "rule": "Draw the odds panel before you draw anything else, label its opener with a WORD, and put it in reach before the spend.",
+      "why": "Roblox's paid random items policy requires all outcomes and their numerical odds to be disclosed prior to purchase, permits the itemised list to live in a clickable pop-up, and says in as many words that a bare (i) glyph without a descriptive word is not sufficient. Anime Vanguards ships exactly this as a named Index menu on the banner. A summon screen without it is not minimal, it is moderatable."
+    },
+    {
+      "rule": "Make the rate list a closed set that sums to 100%, keep the zero rows, and carry the rounding disclaimer when a number is long.",
+      "why": "The policy requires the percentages of all final outcomes to sum to exactly 100% and gives the rounding rule and the disclaimer sentence for long decimals. Adopt Me prints '0% Common' on eggs that cannot produce one, which is what makes two eggs comparable line against line instead of read twice."
+    },
+    {
+      "rule": "Recompute the displayed odds while a luck buff is active, and while a one-per-player outcome is already owned.",
+      "why": "The policy requires enhanced odds to be dynamically updated to the user's true odds when a modifier is active, and requires the remaining outcomes to re-normalise once a player can no longer obtain one of them. Anime Adventures publishes the stacked result as a single figure — 0.936% — rather than three multipliers, which is the same instinct: show the answer, not the arithmetic."
+    },
+    {
+      "rule": "Branch the whole screen on PolicyService before drawing it, and REPLACE the purchase control rather than greying it.",
+      "why": "GetPolicyInfoForPlayerAsync returns ArePaidRandomItemsRestricted and IsPaidItemTradingAllowed, and the policy's own blocked-purchase example replaces the button with 'Sorry, this item is unavailable for users in your region'. A greyed roll button with a tooltip is a dead end; the policy lists six treatments in all, and the other five — a free earnable path, a disclosed deterministic order, direct purchase at expected value, removing or hiding the generator, or moving the player out of the parts of the game that carry paid random items — each send the player somewhere instead of stopping them."
+    },
+    {
+      "rule": "Decide the outcome at the click, animate a result you already hold, and do not let the inventory show it first.",
+      "why": "The Blox Fruits wiki states that the rolling interface is purely visual and the item is awarded at the moment the trigger is pressed — and proves it by noting that players on unusual latency see the item in their inventory before the animation starts. That leak is the shipped version of the bug a generated reveal will have: two surfaces fed by one response, with nothing holding the second back."
+    },
+    {
+      "rule": "Give the reveal a rarity floor. Animate the rare outcome and resolve the common one.",
+      "why": "Sol's RNG plays opening cutscenes only for Epic and above, in a game that is nothing but pulls. Animating every outcome spends the ceremony on the outcomes that did not earn it, and it is the reason the skip has to be sold in the first place."
+    },
+    {
+      "rule": "Let the tier be legible before the identity is — colour and staging first, name last.",
+      "why": "Each rarity in Sol's RNG has its own cutscene style, and the staging described per tier puts a coloured star or a coloured screen edge before the reveal of what was actually obtained. The player's question in the first half-second is how good, not what."
+    },
+    {
+      "rule": "Drive the reveal's colour from the same per-item token as the inventory row.",
+      "why": "In Sol's RNG the cutscene star takes its colour from the item's title colour in the Collection, and the wiki states that changing the Collection colour changes the star and the end-of-cutscene background with it. One token, three surfaces, and no possibility of the reveal and the inventory disagreeing about what rarity something is."
+    },
+    {
+      "rule": "Make the skip a threshold the player sets, not a toggle, and sell the instant version separately if you sell one.",
+      "why": "Sol's RNG's Roll Cutscene setting takes a rarity number and skips anything below it, while the 100-Robux Quick Roll gamepass removes the animation entirely — and the same threshold shape is reused for auto-equip and for swap warnings. A binary skip forces the player to choose between watching everything and watching nothing."
+    },
+    {
+      "rule": "Let an auto-skip or auto-sell rule name only outcomes the player has already obtained.",
+      "why": "Sol's RNG's Aura Filter can only be applied to auras already in the Collection. That single constraint makes it impossible for a rule written on Monday to silently discard the first-ever sighting of something on Friday — the option list IS the collection, so a first reveal is always seen."
+    },
+    {
+      "rule": "Withhold the automation switch that can destroy the outcome the screen exists to produce, and say that you withheld it.",
+      "why": "Anime Vanguards' auto-sell covers five rarities and the wiki states plainly 'There's no option to auto sell shiny units.', while auto-selling trait units — which is recoverable — is offered under a settings submenu. This is a shipped game refusing to ship a convenience because a forgotten toggle would delete a one-in-a-thousand pull, and it is the clearest precedent in this file for leaving a capability out on purpose."
+    },
+    {
+      "rule": "Scope a bulk automation to what happens AFTER it is switched on, and say so on the control.",
+      "why": "Anime Vanguards' auto-sell acts only on summons made after the feature is toggled on and does not reach backwards into the inventory. That temporal scope is the entire reason the switch is safe to offer, so it belongs on the switch."
+    },
+    {
+      "rule": "A pity counter needs its target, its denominator, its price, and a consumed state.",
+      "why": "Anime Adventures binds pity to the middle banner slot rather than to a rarity; Anime Vanguards runs Legendary, Mythic and Vanguard counters at 50, 400 and 25,000 on one banner, publishes each one's gem cost with and without VIP, and marks the Vanguard counter 'pity reached' when it is permanently spent. A single bar labelled Pity can represent none of that."
+    },
+    {
+      "rule": "Say what resets the counter, including the resets the player does not cause.",
+      "why": "Anime Adventures resets pity both on a Mythic pull and when the banner refreshes on its hourly clock, and Anime Vanguards' Selection and Special banners SHARE one counter. A counter whose reset rules are invisible reads as a betrayal the first time it empties on its own."
+    },
+    {
+      "rule": "State the non-interactions as loudly as the interactions.",
+      "why": "Both Anime Adventures and Anime Vanguards say outright that luck potions do NOT reduce pity, and Anime Vanguards adds that they do not raise Secret, Vanguard or shiny odds. Two systems that both look like help are independent, and the screen has to prevent the potion from appearing to move the bar."
+    },
+    {
+      "rule": "Position on a banner IS weight — put the heaviest outcome in the middle and let the layout carry the odds.",
+      "why": "Two unrelated shipped games converge on a three-slot banner with the centre weighted at 50% and the flanks at 10% and 20% respectively. Once players know the convention, the arrangement communicates the rate table before the Index menu is opened."
+    },
+    {
+      "rule": "Treat the rate table's ROW SET as mutable, not just its percentages.",
+      "why": "A Blox Fruits event banner made one item rollable and common items unrollable for 24 hours; a Pet Simulator 99 enchant reads 'Adds +1 RARE Active Huge to hatch'. Equipment and campaigns add and remove entries, so a rate panel built from a static list will show outcomes that cannot happen and hide ones that can."
+    },
+    {
+      "rule": "Assume the outcome has two axes — identity and finish — and roll both on one pull.",
+      "why": "Pet Simulator 99 grants golden and rainbow hatch chances on the same track as the pets themselves; Anime Adventures publishes a shiny sub-rate beside four of its five rarities and prints '???' for the fifth; Anime Vanguards publishes ONE blanket shiny chance (1.5%, 3% with Shiny Hunter) and says shinies exist only for some Epic, some Legendary and all Mythic and higher. Neither publishes one per rarity — but both price the finish as a separate number from the identity, which is the part that transfers. The result card has to render a variant of a thing, not a thing, and the rate panel has to price both."
+    },
+    {
+      "rule": "Show remaining storage on the hatch screen, and rank the small x-of-y readouts second in the visual order, right after the buttons.",
+      "why": "Pet Simulator X's auto-hatch 'will cease when the user can no longer afford the egg or has no more storage' — storage is one of exactly two named ways an unattended reveal loop ends, so a screen that hides it cannot explain why it stopped. Separately, and weaker: one reviewer on a hatch panel named two small fraction readouts, the 0/3 and the 0/50, as what the eye should reach after the buttons. The thread never says what either counts, so the ranking is the finding and the meaning is not."
+    },
+    {
+      "rule": "Do not assume a fixed number of simultaneous reveals.",
+      "why": "Pet Simulator 99 grows the egg count through a stacking, prerequisite-gated ladder of Robux passes — the +40 pass requires the +15 pass to be owned first, so those two alone stack to +55 — AND through FOUR mastery levels that add slots (+1 at 40, +2 at 60, +3 at 90, +5 at 99, another +11). No page read here publishes the base count, so this file cannot state a maximum; what it can state is that the layout is handed a count at runtime and that the count is not small."
+    },
+    {
+      "rule": "Compute the price on the control from the player, and never bake it into the tile.",
+      "why": "Blox Fruits derives the roll price from player level with a published formula and a Premium discount; both unit-collectors read here quote a VIP price beside the base price, and Anime Vanguards notes the discount does not apply on event banners. Pet Simulator 99 makes eggs 10, 20 and 30% cheaper by mastery level. Every one of these games recomputes the number on the button per player, per banner."
+    },
+    {
+      "rule": "Build the reveal's impact out of screen-space interface elements and give it sound.",
+      "why": "A feedback thread's concrete advice for a working hatch was sound plus two-dimensional interface frames for confetti and shell fragments, tweened — not a world-space emitter. Sol's RNG gives the reveal two audio slots — a sound while rolling and a separate sound after rolling — although the files that fill them are reused across tiers and split per item at the top end, so the two-slot shape is the convention and not a per-tier sting. Interface particles survive a camera that is looking somewhere else; a part-attached emitter does not."
+    },
+    {
+      "rule": "End the reveal by leaving a durable line somewhere other than the reveal.",
+      "why": "Sol's RNG posts the outcome and its odds to server chat after the cutscene, in a per-tier colour and with a fixed grammar that includes the 1-in-N. Anime Adventures escalates a Secret or shiny mythic to a global announcement across every server. The modal closes; the line stays, and it is what makes a rare pull a social event rather than a private one."
+    },
+    {
+      "rule": "Reserve the accent on the result card for the action the card exists to offer, and give the destructive action weight without giving it the accent.",
+      "why": "On a reviewed hatch panel one reviewer said the Equip button was the only red thing on it and stood out a lot while matching nothing; a different reviewer said the delete button beside it looked too blended into the background. Both were wrong at once and in opposite directions — each named by a single reader, not by a consensus."
+    },
+    {
+      "rule": "Lay the result card out as name, then image, then stats — and never let a control strip read as an empty bar.",
+      "why": "ONE reviewer on a hatch panel proposed exactly that order because the name and stats labels were too close to each other, and the same reviewer had to ask what the empty bar in the middle of the panel was; it turned out to be the options strip. A row of affordances with no visible contents is invisible to the people it is for."
+    },
+    {
+      "rule": "Format the number on the roll control from the value that is actually applied, and show the interval from the end the player is counting toward.",
+      "why": "Sol's RNG's roll button displays 'x1.3 Luck Ready' for a gear that grants 1.35x, and the wiki has to explain to readers that the bonus roll is the one AFTER the number shown on the counter. Two small formatting decisions that generated a paragraph of errata on a community wiki."
+    },
+    {
+      "rule": "Give the roll control a cooldown state and treat it as the normal state.",
+      "why": "The Blox Fruits gacha rolls once every two hours and shares that cooldown with sibling machines — and the shipped interface got the sibling's NAME wrong in its own cooldown string, because the line was reused and never re-read. If cooldowns are shared, the string that names the sibling is generated, not typed."
+    },
+    {
+      "rule": "Treat the reveal animation's duration as a resource the player spends, and give them a way to spend less of it.",
+      "why": "Three unrelated shipped games monetise or reward exactly this: Sol's RNG sells the skip for 100 Robux, Adopt Me sells an instant hatch for 35 Robux per egg, and Pet Simulator 99 makes animation speed the level-10 reward of five separate mastery tracks. A studio that makes shortening its own ceremony the first thing progression buys has told you what the ceremony costs."
+    },
+    {
+      "rule": "When a paid skip fails, hand back an equivalent consumable rather than a refund or a silence.",
+      "why": "Adopt Me states that an egg that fails to hatch after the Hatch Now gamepass is bought yields an Instant Hatch Potion instead, which does the same job. The failure is resolved inside the game's own economy, at a moment of the player's choosing, without a support ticket."
+    },
+    {
+      "rule": "Keep retired content in the catalogue with an availability flag instead of deleting the row.",
+      "why": "Adopt Me's egg table carries an 'Available Right Now?' column and keeps eggs that left rotation, noting they can only be obtained by trading. The odds of something a player already owns or might be offered still have to be readable after it stops being sold."
+    },
+    {
+      "rule": "Put the luck shop and the collection board inside the pull surface, not a menu away.",
+      "why": "Anime Adventures sells its Robux luck potions in the banner window itself; Anime Vanguards' summon area is three stores including the Unit Index; Adopt Me puts a board showing every pet in the game and the ones you have in the nursery where the eggs hatch. The place you pull is the place you see what is missing and what improves your odds."
+    },
+    {
+      "rule": "Let the world model carry the campaign state as well as the interface.",
+      "why": "When a limited gacha is running in Blox Fruits, the vendor gains a purple aura. A player who walks past learns the banner is live without opening anything, which is the only way a limited window reaches somebody who was not already looking at the screen."
+    }
+  ],
+  "limits": [
+    "THE MULTI-PULL RESULT GRID — the classic ten-summon summary screen where ten outcomes land at once and the rarest is called out — IS NOT ATTESTED BY ANYTHING READ HERE, AND THAT IS THIS FILE'S BIGGEST HOLE. Both unit-collector pages were searched for x10, 10x, multi and bulk and returned nothing; the only multi-pull evidence in this file is Pet Simulator's egg-slot ladder, which widens how many eggs open at once without describing how the results are laid out, staged or summarised. A request for a ten-pull reveal is still answered from the model's own memory of gacha games rather than from anything read out of a shipped Roblox one.",
+    "No numeric stroke weight, corner radius, padding, font size or animation duration was found in any source read here. Nothing in this file is a measurement. 'Hatch animation speed +50%' is a ratio against an unpublished baseline, not a duration.",
+    "Fandom serves its article HTML behind Cloudflare, so every wiki row was read as wikitext through api.php. That is the same content, but the SCREENSHOTS those pages embed were named and not seen — every claim above is one the page states in prose. Where a page said only that an interface element exists without describing it, nothing was recorded. The same applies to the two DevForum rows, which were read as thread JSON: the panel screenshots their posts attach were named in the markup and not seen. That is exactly why the reviewed hatch panel's '0/3' and '0/50' are recorded here as two unlabelled fractions and not as two capacities — the only thing that could say what they count is the image, and the image was not read.",
+    "The DevForum announcement row has 77 posts and only the first six were read. The creator question recorded there — whether a crate that discloses its own contents before purchase but changes the NEXT crate's contents is a paid random item — may well have been answered by staff further down the thread, and that answer is not in this file. Do not treat the question's presence here as evidence that it is unresolved. The hatch-panel thread is the opposite case and it is worth saying so: it holds exactly 10 posts and all 10 were read, which is what makes the per-post attribution in that row ('post 2 alone', 'post 5', 'posts 8-9') something a reader can check rather than something to trust.",
+    "Roblox's policy page is the current text as of 2026-09-20 and it was restated that same week precisely because it kept being read loosely. Every claim drawn from it should be re-checked against the live page rather than against this row before it is relied on for a shipping decision, and nothing here is legal advice about any jurisdiction.",
+    "Two of the games read — Sol's RNG and Anime Vanguards — document their interfaces unusually well because their interfaces are the whole game. That is a sampling bias toward pull-centric designs. Nothing here is backed by a game where the gacha is a small side surface, and that is exactly the case where the rules above about ceremony, chat announcements and world-model signalling would most likely be wrong.",
+    "Community wikis are written by players, not by the studios. Where a page states a design intention — that a tally was hidden on purpose, that an option was deliberately not offered — it is the community's reading of a shipped behaviour and not a developer statement, with one exception: the Roblox policy page and its announcement are first-party. The Pet Simulator 99 enchant with no published number is recorded as an observation about a shipped table, not as an accusation that anything is non-compliant; whether that particular item is bought with Robux was not established.",
+    "Nothing read here describes the EMPTY and ERROR states of a summon screen: what a banner shows before its first refresh, what the roll control shows when the player cannot afford it, what happens to an in-flight reveal when the server rejects the purchase, or what a pity counter reads on a brand-new account. Those are the states a generated screen gets wrong first and they are unbacked.",
+    "THREE ADVERSARIAL RE-READS, ALL ON 2026-09-20, AND THIS IS THE WHOLE OF WHAT THEY FOUND — INCLUDING WHAT IS STILL OPEN. PASS ONE re-fetched every cited source and narrowed nine claims; none was deleted and none was a fabrication. Every one was quantifier inflation — a count or a scope stated wider than the page supports: 'five' treatments where the policy table lists six; 'every' mastery track where five of fourteen qualify; 'three other settings' where the third has no value field; 'four settings' where the page lists five; '+15 to +20 points apart' where one step is +25; two sums asserted that the pages never assert and that do not hold (the Anime Adventures rarity list totals 100.15%; 41 of Adopt Me's 42 egg tables sum to 100 and the Royal Desert Egg is 135%); and a pity restart rule stated as uniform where the page names its exception in the next sentence. PASS TWO read the repaired file and found NINE more, all finer than pass one's and all graded minor. PASS THREE settled every one of them and deleted exactly one claim. THE DELETION: that Sol's RNG records a distinct roll sound and a distinct after-roll sound per rarity tier. Re-extracting the audio files per tier shows the opposite — 100k.wav and 10k+ Roll.ogg both serve Unique AND Legendary, 1milplus.mp3 serves Mythical AND Exalted, Glorious and Transcendent publish an after-roll sound only, and the Glorious table lists a sound per AURA. The claim was false in a reference row and repeated in a rule; both copies are gone, and what replaced them says only that the reveal has two audio slots. THE OTHER EIGHT WERE NARROWED: a rule that credited 'five mastery levels' with adding egg slots where the table adds them at four, carrying an invented total ('one result or forty-five') that no source read supports and that is now simply absent; 'a shiny sub-rate for every rarity', which neither game publishes — Anime Adventures prints '???' for Secret, Anime Vanguards publishes one blanket 1.5% — and which had survived in BOTH a reference row and a rule after an earlier fix touched only one of them; two glosses laid over a DevForum thread, that the panel's 0/3 and 0/50 mean equipped-of-maximum and stored-of-maximum (nobody in the thread says what either counts) and that cramped button text meant missing internal padding (the thread resolves it as a red TextStroke closing up the letters), the second of which had also been used to link this file to the shop screen's findings and no longer links to anything; a policy claim that the odds control 'has to read Info or Details' where the page requires a descriptive word and offers those two as examples; four quotes tightened to their pages' exact wording (Anime Vanguards' auto-sell note, the Sol's RNG chat line's exclamation mark, the Blox Fruits NPC's '...' on cancel, and the wiki's verdict, which compares the spin to 'the old style of spinning' rather than calling it functionless); an undercount in the Adopt Me row; and three findings attributed to plural 'reviewers' that come from post 2 of a ten-post thread alone, now attributed to one reader in the row and in both rules that repeat them. PASS THREE ALSO CORRECTED PASS TWO: pass two reported that TWO Adopt Me eggs are labelled Rare while producing 100% Uncommon. Re-parsing all 42 rows gives THREE — Blue, Pink and Throwback — so the auditor's own count was wrong in the same direction as the file's. WHAT IS STILL UNSETTLED, BY NAME, because three converging passes are evidence the errors are shrinking and not evidence that there are none. (1) The Sol's RNG audio finding now rests on FILE CAPTIONS in the wikitext ('Sound of one being rolled', 'Sound effect after rolling'), which is weaker evidence than a sentence of prose; the caption could be a wiki editor's convention rather than the game's structure, and no page read here describes the audio design directly. (2) In the Blox Fruits verdict the antecedent of 'It' is genuinely ambiguous in the source — it may mean the rolling interface or only the reworked spin — and the quote is now recorded verbatim precisely because this file cannot resolve it. (3) What the reviewed hatch panel's 0/3 and 0/50 actually count is unknowable from the thread and will stay unknowable without the screenshot. (4) The 'three slots, heaviest in the middle' convention is an inference from two games that DISAGREE about the flanks (10% each against 20% each); two points are a line only if you already believe in the line. (5) The absolutes were not swept exhaustively. Re-checked and confirmed against their pages this pass: 'every egg publishes the same five buckets in the same order' (all 42 rows, one spelling Ultra-Rare without the hyphen), 'every rarity tier has its own cutscene style' (the page's own opening sentence), 'a board showing every pet currently in the game' (the page's own words), and the six policy treatments. Every other 'every', 'all', 'always', 'only' and 'both' still in this file is un-audited and should be counted against the source before it is relied on."
+  ]
+}

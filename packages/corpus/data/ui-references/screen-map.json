@@ -1,0 +1,353 @@
+{
+  "genre": "screen-map",
+  "label": "The MAP screen, across genres — corner minimaps and their framing, rotation and its off switch, full-screen map overlays, legends and layer toggles, blips and marker vocabularies, player-placed and system-placed waypoints, off-screen arrows and distance readouts, fog and deliberately hidden regions, fast-travel selection from the map",
+  "recorded": "2026-09-20",
+  "provenance": "Web research, not owner screenshots. Read over the network on 2026-09-20: six community wikis of SHIPPED Roblox experiences — Jailbreak, Welcome to Bloxburg, Ultimate Driving, The Wild West, Emergency Response: Liberty County and Fisch — fetched as wikitext through each wiki's api.php, because Fandom serves its article HTML behind Cloudflare while api.php is open; plus six devforum.roblox.com topics, read across five rows because one row holds both versions of the same resource, fetched as JSON through the topic endpoint, which is plain HTTP. Every row names the page it was read from and how — and where a row also leans on a SECOND page, that page is named inside the observation itself rather than left implicit; that happens twice here, both in The Wild West rows. No image, no asset id and no sentence of anyone's interface art is stored here; what is recorded is the construction the page states IN WORDS — what is on screen, how it is framed, what states it has, and what it does when the player is out of range, off the map, or looking at a region the map refuses to draw. Those words are usually body prose, trivia bullets or a legend table, and in FOUR places an image or gallery caption; each of the four says so where it stands, because a caption is the page's text but it is not the page's argument. THREE rows carry engine-level Luau behaviour — the aspect-ratio projection bug (t/4847297), the realtime raycast render (t/2776543) and the MOBA fog system (t/4822269) — and only the first of the three reports a DEFECT. That defect is the fact worth keeping; the other two are their authors' own accounts of their own working code, which is a weaker thing.",
+  "incomplete": false,
+  "references": [
+    {
+      "id": "jailbreak-minimap-self-is-an-arrow",
+      "source": "https://jailbreak.fandom.com/wiki/Minimap — read on 2026-09-20 through https://jailbreak.fandom.com/api.php?action=parse&page=Minimap&prop=wikitext&format=json, because Fandom serves article HTML behind Cloudflare while api.php is open.",
+      "demonstrates": [
+        "THE PLAYER'S OWN MARKER IS A DIFFERENT SHAPE FROM EVERYONE ELSE'S, not a different colour. Other players are circles; the viewing player is an arrow. Shape carries 'this is you' and additionally carries heading, which a dot cannot; colour is left free to carry team.",
+        "Colour then carries team and only team: Criminals are a red circle, Police a blue circle. One channel, one meaning.",
+        "VISIBILITY IS PER-RELATIONSHIP, NOT A GLOBAL SETTING. Same-team players are shown wherever they are; opposite-team players only BLINK onto the minimap when they are near. The same marker type has two different existence rules depending on who is looking.",
+        "The corner is platform-dependent: bottom-left on desktop, top-right on mobile. The two platforms do not agree, and the page states both rather than one with an exception.",
+        "The minimap is dismissible by the player — a circle button on its frame closes it — so the minimap is chrome the player is allowed to refuse, not a fixed part of the HUD.",
+        "Mobile is given a SMALLER VIEWED AREA than a computer player gets, so the same widget shows less world on a smaller screen rather than shrinking the same world into fewer pixels.",
+        "A recorded fix worth designing against: after one update the minimap 'no longer covers your bounty'. A corner minimap sits on top of whatever HUD element already owned that corner, and shipping it is how you find out which one.",
+        "A recorded defect worth designing against: when the minimap 'was revamped in the Nukes Update, there was a glitch where the arrow of the player's location would point in the wrong direction than where they were facing', and it 'was patched in the Cargo Ship Update'. A LATER update — the page never says the NEXT one, and an earlier version of this row called it 'a full update cycle' on no evidence. A heading marker is the one piece of a minimap that can be confidently wrong without looking broken.",
+        "Map art drifts from the world and the page says so twice: the minimap image went unchanged for almost seven months while buildings were added, and two named locations did not appear on it at all until a later update. The map image is a separate artefact with its own release schedule, not a view of the place.",
+        "A gamemode can overlay the same minimap rather than replacing it — the battle-royale mode draws the closing storm on it. READ FROM A GALLERY CAPTION on that page, not from its body prose."
+      ]
+    },
+    {
+      "id": "jailbreak-waypoints-system-first-player-second",
+      "source": "https://jailbreak.fandom.com/wiki/Waypoints — read on 2026-09-20 through https://jailbreak.fandom.com/api.php?action=parse&page=Waypoints&prop=wikitext&format=json, because Fandom serves article HTML behind Cloudflare while api.php is open.",
+      "demonstrates": [
+        "SYSTEM-PLACED WAYPOINTS SHIPPED FOURTEEN AND A HALF MONTHS BEFORE PLAYER-PLACED ONES. The update history dates the first waypoints to a robbery drop-off — 'arrows guiding the player to the drop off location', December 20, 2020 — and player-placeable waypoints to March 5, 2022. That is 14 months and 16 days; an earlier version of this row rounded it to fifteen. The game learned to point at one thing before it learned to let you point at anything.",
+        "PLACING A WAYPOINT AND EXPANDING THE MINIMAP SHIPPED IN THE SAME UPDATE, and that is causal rather than coincidental: the March 2022 entry reads 'Minimap is now able to be expanded, Waypoints are added'. You cannot click a destination on a corner widget, so the ability to place one required a full-size surface first.",
+        "Placement is a two-step mode, not a click: press an 'Add Waypoint' button, THEN click anywhere on the map. Removal is its own named button rather than a second click on the marker.",
+        "THE WAYPOINT'S REAL SURFACE IS THE WORLD, NOT THE MAP. Closing the map leaves arrows near the character leading to the destination — the map is where you set it and the world is where you follow it.",
+        "A waypoint deletes itself on arrival. Reaching the destination is the completion signal; there is no dismiss step and no stale marker.",
+        "Automatic waypoints are attached to STATE, not to place: they appear when the player picks up a crate, obtains a uranium rod, enters a particular vehicle with another officer, or steals from a named location, and they point at where that specific carried thing is turned in.",
+        "ONE AUTOMATIC WAYPOINT WAS DELIBERATELY DELAYED: the power-plant delivery point was changed 'to only appear once you exited the building'. A destination marker raised while the player is still inside points through walls and reads as noise, so it waits for the player to be somewhere it can be true.",
+        "A WAYPOINT-LED TUTORIAL WAS SHIPPED AND THEN WITHDRAWN. In March 2024 waypoints guided new joins to nearby robberies and gun shops, with 'new sub-text to waypoint guidance, providing more direction'; the update history then records the tutorial removed 'due to the experimental feature proving unsuccessful'. Guidance arrows are a plausible onboarding device that a large shipped game tried and took back out.",
+        "A waypoint can be a race fixture rather than navigation — the page names using one as a finish line to count laps, and a later entry toggles a waypoint to a track start line in private servers only."
+      ]
+    },
+    {
+      "id": "bloxburg-minimap-rotation-is-a-setting",
+      "source": "https://welcome-to-bloxburg.fandom.com/wiki/Minimap — read on 2026-09-20 through https://welcome-to-bloxburg.fandom.com/api.php?action=parse&page=Minimap&prop=wikitext&format=json, because Fandom serves article HTML behind Cloudflare while api.php is open.",
+      "demonstrates": [
+        "ROTATION IS A PREFERENCE WITH AN OFF SWITCH. The page states that the minimap rotating with the direction the avatar faces 'can be turned off in the Options menu'. Rotate-with-heading versus fixed north is not a decision the designer gets to make once for everybody; a shipped game put it in settings.",
+        "The full map is a FILTERED VIEW WITH A CATEGORY PICKER, not one flat picture: six named categories — Players, Plots, Jobs, Points of Interest, Shops, Transport — reached from a selection menu the player can toggle on or off, so the legend and the filter are the same control.",
+        "Pin colour encodes SOCIAL RELATIONSHIP, not type: friends are green pins and other users are purple pins, inside the same Players category.",
+        "THE FULL MAP'S VIEW CONTROLS ARE THE FOUR THE PAGE ENUMERATES, not three: 'players can zoom in, zoom out, use the center button to return the view to their current location, and toggle the selection menu on or off.' A map you can pan needs a way back to yourself, and a map whose legend is a filter needs a way to put the filter away. AND THE SOURCE CONTRADICTS ITSELF ABOUT THE CENTRE BUTTON: its very next paragraph says 'Players can also pinpoint a location on the map by clicking the center button, which places a blue arrow pointing to the location', which is a second and different job for the same named control. One of the two sentences is wrong and this file cannot tell which, so nothing here should be built on that button doing exactly one thing.",
+        "A pinned location produces TWO artefacts at once — a blue arrow pointing to it, and a distance counter above it measured in studs. The page separately notes the waypoint system 'uses Roblox's standard unit of measurement, studs', so the number is engine units shown raw rather than a converted distance.",
+        "Hovering a marker reveals that location's NAME — READ FROM A GALLERY CAPTION, 'The name of a location appearing when hovering over it', because the body prose never mentions hover — so the map is drawn with icons and reads out words on demand rather than carrying labels at rest.",
+        "FAST TRAVEL IS A CATEGORY OF THE MAP. Clicking a bus-stop icon in the Transport category teleports the player, described by the page as 'an alternative to fast traveling at the bus stops themselves' — the same journey is purchasable from the world object and from the map, and the map did not replace the object.",
+        "The Transport category collects three different vehicle-rental systems — bus stops, e-scooter stands and bicycle stands — under one heading, so a category is named by what the player wants (to get somewhere) rather than by which subsystem owns the object.",
+        "THE MINIMAP'S CONTENTS CHANGE WITH THE ACTIVE JOB: while doing the delivery or taxi jobs, the minimap shows the customer's location. A task injects a transient marker into a widget that otherwise shows fixed geography.",
+        "THE MINIMAP IS DATED ON ITS OWN PAGE AND NOTHING MORE IS CLAIMED: it 'was added in Version 1.14.0', which the page's changelog link names as 'Version 1.14.0 - April 2026', and the article is filed under a Version 1.14.0 category. A game already at version 1.14 added a minimap in one of its versions. How long Bloxburg had shipped before that is NOT stated on this page — an earlier version of this row said 'years' and no source read here supports it."
+      ]
+    },
+    {
+      "id": "ultimate-driving-minimap-visibility-from-sensors",
+      "source": "https://ultimate-driving.fandom.com/wiki/Mini_Map — read on 2026-09-20 through https://ultimate-driving.fandom.com/api.php?action=parse&page=Mini%20Map&prop=wikitext&format=json, because Fandom serves article HTML behind Cloudflare while api.php is open.",
+      "demonstrates": [
+        "WHO APPEARS ON THE ENEMY'S MAP IS DERIVED FROM SENSOR COVERAGE, NOT FROM A TOGGLE. The 2020 overhaul added 'anonymous markers for other players on the map for your team', and police 'are able to see map markers for all players near another police officer or traffic camera'. A civilian is on the police map because they drove past a camera. The map is a readout of a surveillance network the world actually contains, which makes concealment a route choice instead of a setting.",
+        "The markers for teammates are ANONYMOUS — a position without an identity. The map answers 'someone is there' and refuses 'who'.",
+        "THE FULL MAP WAS DELIBERATELY MADE SMALLER THAN THE SCREEN. The same overhaul 'changed the minimap GUI design into more of a modern tablet form so it doesn't cover the entire screen'. A full-screen map is the obvious shape and this game rejected it, so the player can keep driving while reading it.",
+        "The corner minimap doubles as the button that opens the full map — the page's caption on the current minimap image calls it one that 'also acts like a button to open the GUI'. THAT IS AN IMAGE CAPTION, not body prose, and it is the only place the page says it. The widget is its own affordance and needs no separate icon.",
+        "LETTERS WERE REPLACED BY ICONS, and the page dates it. Its trivia reads 'In older minimaps, letters were used to indicate major locations, such as gas stations and dealerships', and the 2020 entry reads 'All major locations that were marked with a letter were replaced with a mannered icon.' Both are quoted here as the page words them; an earlier version of this row reordered the first inside its quotation marks. A legend you have to consult was traded for glyphs you can read directly.",
+        "The marker set is an enumerated legend with a description per entry — spawn, gas station, police station, fire station, highway/DOT, trucker, transit, mail, hospital — so the icon vocabulary is a documented table rather than art added case by case.",
+        "SOME MARKERS ARE EVENTS, NOT PLACES: a structure-fire marker appears on any home currently on fire, and a mail marker on any home with mail to deliver or collect. The same legend carries permanent geography and live work.",
+        "A MARKER THE PLAYER CAN DISMISS: the icon showing the player's own parked vehicle can be removed from the map by selecting it. Your own belongings clutter a map faster than anything else, so the marker for them is disposable.",
+        "Navigation is a placed beacon that you then follow — 'pinpointing and following the green beacon you have made' — and a later phase added sharing your location with friends 'or to taunt police', so a position marker is a thing a player can publish on purpose.",
+        "The name of the road or city being driven through is shown as a banner, and only on PC and console — mobile does not get it. A text overlay that fits beside a minimap on a monitor is dropped rather than shrunk on a phone.",
+        "That road label became a ROUTE SHIELD rather than text: before one version the indicator spelled a route number as words, and after it displays the route's shield graphic. A sign the player already recognises beats the same characters set in the UI font.",
+        "A LOCALISED BUILD SHIPS A DIFFERENT MAP: players on the Chinese servers get a variant with the legend table removed and the town and state-park name labels removed. The map is not one asset with translated strings; the labelled layer can be dropped entirely."
+      ]
+    },
+    {
+      "id": "wild-west-map-hidden-regions",
+      "source": "https://thewild-west.fandom.com/wiki/Map — read on 2026-09-20 through https://thewild-west.fandom.com/api.php?action=parse&page=Map&prop=wikitext&format=json, because Fandom serves article HTML behind Cloudflare while api.php is open.",
+      "demonstrates": [
+        "REGIONS ARE WITHHELD FROM THE MAP WHILE STAYING WALKABLE. Two named areas 'are not visible on the map', and before one version everything north of a named landmark 'was hidden on the Map but still accessible'. Fog here is not a discovery mechanic that fills in — it is a permanent editorial decision about which parts of a world the map admits exist.",
+        "THE FULL MAP HAS MORE THAN ONE VIEW, AND A PLACE CAN BE ABSENT FROM ONE OF THEM: 'As of 4.0, the Upper District is not visible from the map view of The Highland Plains.' The page states the omission and not its cause — it never says which of the two sits above the other, or that verticality is the reason — so what is carried is only that a map view is scoped to a region and that a named location can fail to appear in the view of a region beside it.",
+        "THE MAP USED TO BE AN ITEM AND IS NOW CHROME. It was equippable to the hotbar, opened to a brown paper sheet, tracked outlaws, and carried its own item description; it was 'later removed, and replaced with a Minimap and Map'. A diegetic map you hold was traded for persistent UI you cannot lose.",
+        "The minimap sits bottom-right and has two ways to disappear. This page names both and no more: the minimap always appears there 'unless Cinematic Mode is activated or the setting to display the Minimap is disabled.' THAT CINEMATIC MODE TAKES THE REST OF THE HUD WITH IT IS NOT ON THIS PAGE — it is on the same wiki's Cinematic Mode page, read the same day, which calls the option one for 'taking clean screenshots or recording videos without on-screen distractions', says activating it hides 'most HUD elements', and lists the map among the interfaces a player cannot view while it is on. Named here because this row's own source does not carry it. A screenshot mode is a second, separate reason every HUD element needs a hide path.",
+        "THREAT IS GRADED BY ACCESSORY ON ONE BASE GLYPH, NOT BY COLOUR. All three hostile tiers are a red circle with a skull: bare skull is Danger, skull with a hat is Killer, skull with hat and dual revolvers is Menace. Escalation is legible at a glance and costs no new colour, which is already spent on team.",
+        "The self marker is a green circle and a faction member is a blue circle — the same shape, different colour — while a tracked outlaw gets red footsteps and an active robber a diamond. Shape is reserved for what KIND of thing it is; colour for whose side it is on.",
+        "Two service icons are distinguished by colour alone — a purple revolver for the gun shop and a golden revolver for the fort supplier — which is the exception that shows the rule: only near-identical functions are allowed to share a glyph.",
+        "Service icons are literal objects rather than abstract pins: a saw for the sawmill, a bear paw for hunt-and-trade, a scale for the auction house, a horse for the stable, a pickaxe for mining.",
+        "FACTION TERRITORY IS AN OVERLAY WITH ITS OWN ON/OFF, separate from the icons, and the wiki keeps a picture of the map both with and without it. BOTH HALVES OF THIS COME FROM GALLERY CAPTIONS — 'The map when not showing faction territories' and 'The option to turn faction territories on or off' — and not from the page's body, which never mentions the toggle — an area fill is a different kind of layer from a point marker and is toggled separately.",
+        "The full map is bound to M and the page lists exactly what it is for: your location, your faction members, dangerous criminals, robberies, and services. Five answers — the same ORDER of size as Bloxburg's six categories and ER:LC's five toggles, which is the whole of the comparison being made and not a claim that the three lists match."
+      ]
+    },
+    {
+      "id": "wild-west-world-markers-same-vocabulary-two-surfaces",
+      "source": "https://thewild-west.fandom.com/wiki/World_Markers — read on 2026-09-20 through https://thewild-west.fandom.com/api.php?action=parse&page=World%20Markers&prop=wikitext&format=json, because Fandom serves article HTML behind Cloudflare while api.php is open.",
+      "demonstrates": [
+        "THE MAP LEGEND AND THE WORLD-MARKER TABLE ARE ONE VOCABULARY LISTED TWICE — but this page does not say all six glyphs are drawn in the world, and an earlier version of this row claimed it did. The page's opening sentence is 'Markers show the locations of players, events, and notable areas on the map.' Only two entries name a world surface: the exclamation mark 'hovers over any criminal who has recently set off an alarm', and the faction star 'can be seen through terrain and buildings' and 'appears above their name'. The three skull tiers say only that each 'reveals the location of a player' who did some named thing — Danger and Killer add that it is revealed 'to nearby players', and the Menace entry does not say to whom; the money bag 'shows the location of Forts and Outlaw Camps'; the top hat 'shows the distance to them'. What IS checkable is the shared alphabet: the skull, the skull-with-hat, the skull-with-hat-and-revolvers, the exclamation mark, the money bag and the top hat all appear again in the Legend of the same wiki's Map page, which is the row above this one. The player learns the vocabulary once; which surface each glyph is drawn on is stated for two of the six and left open for the other four.",
+        "A DISTANCE READOUT SCOPED TO OUT-OF-RANGE — AND THE SOURCE SAYS IT NO LONGER RUNS. The Mayor escort marker 'shows the distance to them, when not in range. The range is approximately 50 metres to not show, and is represented by a large golden force field', and the same row closes with the page's own bold note: 'Because of the removal of quests, this feature no longer works and cannot be seen in-game.' The game's Map page agrees, listing the top hat as 'Mayor Protection Quest (currently disabled)'. What is recorded here is a construction this game shipped and then lost along with the quest system that raised it, not a pattern running today.",
+        "Markers are drawn THROUGH terrain and buildings on purpose: the faction-member marker is described as visible through geometry and as sitting above that player's name, so it is anchored to the nameplate rather than floating independently.",
+        "A SYSTEM GLYPH IS REPLACED BY PLAYER-AUTHORED ART when one exists — the faction star becomes the faction's own logo if the owner has set one. The default marker is a placeholder for identity the players supply.",
+        "OWNERSHIP IS THE SAME SHAPE IN TWO COLOURS: the fort marker is a flag, green when your faction holds it and red when it is unclaimed or held by anyone else. 'Not mine' and 'theirs' are deliberately the same state to the marker.",
+        "A MARKER THAT ONLY EXISTS WHILE A TASK IS ACTIVE: the drop-off icon appears 'when carrying a stolen Money Bag' and then shows every place that bag can be delivered. The map's contents are a function of what the player is holding.",
+        "Hostile markers are revealed to NEARBY players for a LIMITED TIME and only under a condition — the bare-skull tier additionally requires the player to have a bounty. Exposure is bounded on three axes at once: who sees it, for how long, and whether the state qualifies at all.",
+        "The page opens by saying most of these markers 'can be disabled in Options', so a marker vocabulary this large is shipped with the assumption that players will turn parts of it off."
+      ]
+    },
+    {
+      "id": "erlc-map-layer-toggles",
+      "source": "https://emergency-response-liberty-county.fandom.com/wiki/In-Game_Map — read on 2026-09-20 through https://emergency-response-liberty-county.fandom.com/api.php?action=parse&page=In-Game%20Map&prop=wikitext&format=json, because Fandom serves article HTML behind Cloudflare while api.php is open.",
+      "demonstrates": [
+        "THREE WAYS TO OPEN ONE MAP, and one of them is a hold: 'holding Tab, M, or clicking on the minimap'. A held key gives a peek that closes itself, a pressed key gives a mode, and the minimap gives a pointer path — the same surface is reached by all three rather than each opening a different view.",
+        "THE LEGEND IS FIVE INDEPENDENT LAYERS THE PLAYER SWITCHES ON AND OFF: zip codes, street names, landmarks, jobs and ATMs. Two of those are pure labelling and three are point markers, and they are toggled with the same control, so 'what is written on the map' is as optional as 'what is marked on it'.",
+        "Street names being a toggleable layer at all says the base map is drawn without them — the geography is the picture and the words are an overlay that a roleplay player wants and a pursuit driver does not.",
+        "The page's own body is a list of named locations grouped by district, which is what the map has to render: the world is authored as a small number of legible neighbourhoods with named landmarks, not as continuous terrain.",
+        "The wiki labels one of its two map images as outdated while leaving both up — the same drift the Jailbreak page records, from an unrelated game and an unrelated editor."
+      ]
+    },
+    {
+      "id": "fisch-gps-is-a-bought-coordinate-readout",
+      "source": "https://fisch.fandom.com/wiki/GPS — read on 2026-09-20 through https://fisch.fandom.com/api.php?action=parse&page=GPS&prop=wikitext&format=json, because Fandom serves article HTML behind Cloudflare while api.php is open.",
+      "demonstrates": [
+        "A NAVIGATION READOUT CAN BE A PURCHASABLE ITEM RATHER THAN CHROME. The GPS costs 100 of the in-game currency and is picked up at two named world locations — a chair next to the pond in one town, the guard post tower in another — and it 'lets the player see the current coordinates they are standing at'. The instrument that answers 'where am I' is a thing this game makes the player go and buy, not a panel the HUD carries by default.",
+        "Y is height and the page says so plainly — 'increasing as the player goes up' — so the readout is three engine numbers presented unconverted, not a bearing and a range.",
+        "The compass is placed at the top of the screen, not in a corner — a heading-only instrument is a strip, and a strip belongs on an edge the eye already crosses.",
+        "RECORDED AS A DEFECT IN THE SOURCE, NOT AS A CLAIM ABOUT THE GAME: the page's prose bullets and its own summary list disagree about which sign of X is east. Nothing about axis direction is carried out of this row; what is carried is that a raw-coordinate interface is hard enough to describe that its own wiki contradicts itself within twenty lines, which is the cost of the design."
+      ]
+    },
+    {
+      "id": "devforum-viewport-minimap-aspect-defect",
+      "source": "https://devforum.roblox.com/t/4847297 — Scripting Support topic 'Incorrrect Icon Positioning on Minimap', opened 2026-09-03, fetched 2026-09-20 as JSON from https://devforum.roblox.com/t/4847297.json, which devforum serves over plain HTTP.",
+      "demonstrates": [
+        "A NON-SQUARE MINIMAP SILENTLY MIS-PLACES EVERY MARKER, and this is the whole thread. The author reports that icon positions are correct when the minimap is a perfect square and wrong the moment its width and height differ. Camera:WorldToViewportPoint returns a point in the CAMERA's aspect ratio, and the code multiplies it by the frame's size — so the error is invisible during development in a square mock-up and appears when the frame is given its real shape.",
+        "The fix is a horizontal remap about the centre, and it is four lines: subtract 0.5, multiply by the frame's aspect divided by the camera's aspect, add 0.5 back. Recorded because the failure is geometry, not style, and a generated minimap that skips it is wrong in a way no visual review catches.",
+        "A LIVE MINIMAP IS A ViewportFrame WITH ITS OWN CAMERA, positioned at the character's XZ with a fixed height offset and pitched straight down. The height offset is what sets how much world the widget shows, so 'zoom' on this construction is a camera height, not an image scale.",
+        "THE VIEWPORT MINIMAP CANNOT DRAW TERRAIN OR PEOPLE. The world is populated by cloning every BasePart into the frame while explicitly skipping Terrain, skipping Accessories, and skipping anything parented under a Humanoid. A live viewport minimap therefore shows built geometry only, and every character, every landscape feature and every prop must be re-added as a separate marker.",
+        "NORTH IS A PLACED OBJECT, NOT A WORLD AXIS: the code reads the LookVector of a part named for facing north and measures the player's heading against it. Which way is up on the map is authored in the place file, which is the only way a map image drawn at an arbitrary rotation can agree with the world.",
+        "This implementation rotates THE ARROW and leaves the map fixed — the opposite of the rotating-map systems in the other rows — and the signed angle needs the cross product's Y sign to tell left from right, because an unsigned angle between two vectors cannot."
+      ]
+    },
+    {
+      "id": "devforum-realtime-vs-prerendered-minimap",
+      "source": "https://devforum.roblox.com/t/2776543 — Creations Feedback topic (devforum category id 20) 'Realtime minimap using EditableImage & Parallel Luau', opened 2024-01-03, fetched 2026-09-20 as JSON from https://devforum.roblox.com/t/2776543.json.",
+      "demonstrates": [
+        "THE ARGUMENT IN THIS THREAD IS THE ARCHITECTURAL CHOICE, STATED OUT LOUD. A reader asks why not use a single pre-rendered image of the whole map and simply rotate and resize the frame; the author answers that doing so 'defeats the purpose of this being a realtime minimap, which was the whole point. It updates and displays immediate changes around you.' A pre-rendered map is cheap and lies about anything that moves; a live one is honest and costs milliseconds every frame. Which one a game needs is decided by whether its world changes.",
+        "PIXEL ACCURACY IS WHAT IS RULED OUT, AND THE AUTHOR SAYS SO: 'it's impossible to get a pixel-accurate minimap because that would fry your CPU with millions of raycasts per frame'. The working figure quoted is a 64x64 image updating every frame at roughly 6 milliseconds across 8 threads, measured on the author's own Ryzen 5 2400G — and he offers a way past it in the same paragraph, 'spread[ing] the render across several frames'. So a realtime minimap is a coarse image by construction; HOW coarse is a budget on one machine, not a constant, and 64x64 must not be quoted anywhere as the cap.",
+        "HEIGHT IS ENCODED AS DARKNESS: things below the player 'will get darker until it becomes 100% black', black being where the scan distance runs out. One channel does double duty as depth cue and as range boundary, so the edge of knowledge and the bottom of the world look the same on purpose.",
+        "Deliberate noise is added to the render 'so it doesn't look so flat' — a procedurally generated map image reads as dead without grain, which is a texture decision rather than a data one.",
+        "ZOOM IS A HOVER PEEK, NOT A MODE: hovering the minimap temporarily renders at full resolution at a stated performance cost, and the author says it is 'not really supposed to move around with it, it's for you to take a quick look when it's too blurry'. The expensive view is bounded by the gesture that holds it open."
+      ]
+    },
+    {
+      "id": "devforum-fog-of-war-two-methods",
+      "source": "https://devforum.roblox.com/t/4822269 — Game Design Support topic (devforum category id 103) 'Experimenting With Fog of War for My Roblox MOBA', opened 2026-08-20, fetched 2026-09-20 as JSON from https://devforum.roblox.com/t/4822269.json and re-fetched the same day during an adversarial re-read. The topic is a single post with no replies (posts_count 1, reply_count 0), so everything below is the author's own account.",
+      "demonstrates": [
+        "FOG ON THE MAP AND FOG IN THE WORLD ARE BUILT BY TWO DIFFERENT MECHANISMS REPRESENTING ONE IDEA, and the author says so: the minimap's visible area is computed by raycasting across the map against walls and barrier objects, while the 3D world's fog is a light attached to each unit with shadows enabled so geometry occludes it naturally.",
+        "THE RAYCAST APPROACH IS CHOSEN OVER THE OBVIOUS ONE ON PURPOSE: it exists so that 'the vision on the map roughly matches what the player would actually be able to see in the game world rather than just revealing a basic circle around them'. A radius is the default and it is wrong wherever there is a wall — which in a MOBA is the entire jungle, the one place vision decides fights.",
+        "A STACKING CORRECTION IS PART OF THE DESIGN, NOT A BUG FIX: when several units are close together the author LOWERS the brightness of each one's light, 'so that stacking several units in one place doesn't completely light up the map or blind everyone'. Per-unit reveal that sums is a reveal system that breaks exactly when a team groups up, which is the most common thing a team does.",
+        "THE AUTHOR NAMES THE REMAINING WEAKNESS HIMSELF, AND IT IS NOT THE VISIBILITY TEST: 'There's definitely still some polishing to do, particularly with how smoothly everything updates.' Both mechanisms above answer WHAT is visible; what he says is unfinished is how the revealed area changes from frame to frame. On a reveal system the transition is a separate problem from the test, and it is the one left over."
+      ]
+    },
+    {
+      "id": "devforum-plums-minimap-border-snapping",
+      "source": "https://devforum.roblox.com/t/986298 (V1, opened 2021-01-15 — 244 replies across 343 posts) and https://devforum.roblox.com/t/4281550 (V2, opened 2026-01-21 — 7 replies across 12 posts) — the two Community Resources topics (devforum category id 74) for Plum's Minimap, fetched 2026-09-20 as JSON from https://devforum.roblox.com/t/986298.json and https://devforum.roblox.com/t/4281550.json.",
+      "demonstrates": [
+        "BLIPS SNAP TO THE BORDER RATHER THAN DISAPPEARING. The feature is named in both posts — 'blips that snap to the corners of your minimap' — so a point of interest outside the visible radius is pinned to the edge in its bearing direction instead of being culled. A marker that vanishes at the frame edge tells the player nothing about where the thing went.",
+        "A ROUND MINIMAP IS A SEPARATE FEATURE FROM A SQUARE ONE: 'make a rounded minimap that respects it's boundaries' is listed as a capability, because a circular mask changes where the border is for every blip and cannot be achieved by rounding the corners of a square.",
+        "ROTATION FOLLOWS THE CAMERA, NOT THE CHARACTER, in this system — 'rotate the minimap to face the direction of the player's camera'. Bloxburg's page describes the same feature as following the avatar's facing. The two are different whenever the camera is free, and neither source treats its choice as the only one.",
+        "A LARGE WORLD NEEDS SEVERAL MAP IMAGES, NOT ONE BIG ONE: 'add high quality maps with multiple images for larger maps'. Beyond some size, one texture cannot hold enough detail, and the minimap becomes a tiled surface with the seams as an implementation problem.",
+        "The stated motive is retention, not navigation: both posts open with players not being able to find 'the points of interest most important for your progression' and claim the system improves 'qualified playthrough rate for new players'. A minimap is being sold as a funnel fix.",
+        "V2 added a GPS system and a full-size map for POI alongside the corner widget, so the three surfaces — corner minimap, full map, routed guidance — are treated as one product rather than three features.",
+        "CONFIGURATION BY TAG: a reply reports that nothing appeared until they added a 'Minimap' tag to a Frame, which then 'automatically turned that frame into a minimap'. The widget's position, size and styling are authored in the UI tree and the system attaches to it, rather than the system building its own frame.",
+        "CLICK-THE-MINIMAP-TO-OPEN-THE-FULL-MAP IS CONFIRMED HERE FROM THE FAILURE SIDE: a user reports 'the fullmap doesnt works for me, i clicked to the minimap but nothing happens'. They expected that gesture without being told, which is the same gesture Jailbreak, Ultimate Driving and ER:LC all document."
+      ]
+    },
+    {
+      "id": "devforum-rorender-map-image-is-a-diagram",
+      "source": "https://devforum.roblox.com/t/3525559 — Community Resources topic 'RoRender V4 [Minimap Generator]', opened 2025-03-04, fetched 2026-09-20 as JSON from https://devforum.roblox.com/t/3525559.json.",
+      "demonstrates": [
+        "A MAP IMAGE IS A STYLISED DIAGRAM ASSEMBLED FROM LAYERS, NOT A PHOTOGRAPH FROM ABOVE. The tool's editor is described as a set of separable overlays: building overlay, road overlay, material overlay, depth-based water colouring, automatic zone and boundary shapes, contour lines, targeted texture effects and custom outlines. Each is a decision about what the map emphasises, made after the render rather than during it.",
+        "THE PREVIOUS VERSION'S FAILURE IS NAMED, AND IT IS GENRE-BLINDNESS: it 'was a simple raytracing tool that produced similar-looking maps regardless of the game genre or style', with the consequence that 'racing games couldn't properly highlight their tracks' and 'RPGs couldn't distinguish between different zones'. A correct top-down render of a place is not yet a map of that game.",
+        "Custom meshes needed explicit support and did not get it until V4, which means a world built from meshes rather than parts renders to a map that is missing pieces unless the generator was written for it.",
+        "A reply names the target the whole category is aiming at by reference — a Google Maps or GTA V style — which is the visual convention a Roblox player arrives already able to read."
+      ]
+    }
+  ],
+  "rules": [
+    {
+      "rule": "Draw the player as a different SHAPE from everyone else — an arrow, not a coloured dot.",
+      "why": "Jailbreak makes every other player a circle and the viewing player an arrow. Shape says 'you' and carries heading at the same time, which leaves colour entirely free to carry team; a game that distinguishes itself by colour has spent the one channel it needed for sides."
+    },
+    {
+      "rule": "Let rotation be a setting, and say which thing it follows.",
+      "why": "Bloxburg's page states the rotate-with-facing behaviour 'can be turned off in the Options menu', so a shipped game refused to decide it for everyone. Plum's system rotates to the CAMERA and Bloxburg's to the AVATAR, and a third implementation leaves the map fixed and rotates the arrow instead — three shipped answers, which is the tell that this is a preference and not a fact."
+    },
+    {
+      "rule": "Pick a corner deliberately and expect to fight whatever already lives there.",
+      "why": "Four sources give four placements — Jailbreak bottom-left on desktop and top-right on mobile, Bloxburg top-right, Ultimate Driving bottom-left, The Wild West bottom-right. There is no convention to inherit. Jailbreak separately records an update whose change was that the minimap 'no longer covers your bounty', which is what the corner question actually costs."
+    },
+    {
+      "rule": "Make the minimap itself the button that opens the full map.",
+      "why": "Ultimate Driving describes its minimap as a thing that 'also acts like a button to open the GUI'; Jailbreak and ER:LC both list clicking the minimap alongside a key; and a user of Plum's system reported the full map as broken because clicking the minimap did nothing. Players try that gesture whether or not it was advertised."
+    },
+    {
+      "rule": "Give the full map a held-key peek as well as a pressed-key mode.",
+      "why": "ER:LC opens the same map by 'holding Tab, M, or clicking on the minimap'. A hold closes itself when released, which is what a driver or a player under fire needs; a press is what a player planning a route needs. They are different interactions to the same surface, not two surfaces."
+    },
+    {
+      "rule": "Build the legend as toggleable layers, so the legend and the filter are one control.",
+      "why": "Bloxburg's map has six categories reached from a selection menu; ER:LC toggles zip codes, street names, landmarks, jobs and ATMs; The Wild West toggles faction territory separately from icons and says most world markers 'can be disabled in Options'. Three unrelated games arrived at five or six switchable groups, which is also the size at which a static legend stops being readable."
+    },
+    {
+      "rule": "Treat labels as a layer too, not as part of the map art.",
+      "why": "ER:LC lets the player switch street names and zip codes off, and Ultimate Driving's Chinese build ships with the legend table and the town and park labels removed entirely. If the words are baked into the image, neither of those is possible and the map cannot be localised or decluttered."
+    },
+    {
+      "rule": "Use shape for what a thing IS and colour for whose side it is on, and grade severity by adding to the glyph.",
+      "why": "The Wild West runs three hostile tiers off one skull — bare, with a hat, with a hat and revolvers — while keeping red for hostility and blue and green for faction and self. Escalation costs no new colour, which matters because colour is already fully spent by the time a map has teams."
+    },
+    {
+      "rule": "Snap an off-radius marker to the border instead of culling it.",
+      "why": "Plum's minimap sells border-snapping blips as a headline feature across both versions. A marker that disappears at the frame edge answers 'is it near?' and destroys 'which way?', and which way is the question a corner minimap exists to answer."
+    },
+    {
+      "rule": "Show a distance number only while the target is out of reach.",
+      "why": "The Wild West's Mayor escort marker 'shows the distance to them, when not in range', with the range stated at roughly 50 metres — and the same page records that this feature 'no longer works and cannot be seen in-game' since quests were removed, so it is a construction that shipped rather than one running now. A counter that keeps ticking once the player can see the thing is a number they have stopped reading. Bloxburg's stud counter on a pinned location is the same instrument, but its page does NOT say the number is hidden on approach, so the out-of-range conditioning rests on this one withdrawn feature and nothing else read here."
+    },
+    {
+      "rule": "Set the waypoint on the map and follow it in the world.",
+      "why": "Jailbreak's waypoints are placed on the expanded map and then, on closing it, appear as arrows near the character leading to the destination. The map is a planning surface and the world is a guidance surface; a waypoint that only exists inside the map makes the player keep the map open while driving."
+    },
+    {
+      "rule": "Place a waypoint in two steps — an explicit Add mode, then a click — and give Remove its own control.",
+      "why": "Jailbreak names both buttons. A map that places a waypoint on any click cannot also be panned, zoomed or used to press a fast-travel icon, all of which the same surface has to support."
+    },
+    {
+      "rule": "Delete a waypoint when the player arrives.",
+      "why": "Jailbreak's waypoints 'automatically remove themselves when you reach your destination'. Arrival is the completion signal the system already has; making the player dismiss it adds a step whose only outcome is stale markers when they forget."
+    },
+    {
+      "rule": "Attach system waypoints to STATE, and delay one that would point through a wall.",
+      "why": "Jailbreak raises a delivery waypoint when the player picks up specific loot, and it changed the power-plant one 'to only appear once you exited the building'. A destination marker raised while the player is still inside the source building points at geometry and reads as noise, which is a bug the player experiences as the system being wrong rather than early."
+    },
+    {
+      "rule": "Ship system-placed guidance before player-placed waypoints, and do not assume guided onboarding will survive.",
+      "why": "Jailbreak's first waypoints were robbery drop-off arrows in December 2020 and player-placeable ones arrived in March 2022 — pointing at one thing is a much smaller problem than accepting an arbitrary destination. The same history also records a waypoint-led tutorial added in 2024 and then removed 'due to the experimental feature proving unsuccessful', so the obvious use of guidance arrows is one a large game tried and withdrew."
+    },
+    {
+      "rule": "Ship the expandable map in the same change as the ability to place a waypoint.",
+      "why": "Jailbreak's update history puts 'Minimap is now able to be expanded' and 'Waypoints are added' in one March 2022 entry. You cannot pick a destination on a corner widget the size of a thumbnail, so the placement feature is not shippable without the surface."
+    },
+    {
+      "rule": "Make markers a function of what the player is currently doing.",
+      "why": "The Wild West shows drop-off points only while the player carries a stolen money bag; Bloxburg's minimap shows the customer while a delivery or taxi job is running; Ultimate Driving marks houses that are on fire and houses with mail waiting. A map that shows every possible destination at all times has the same information density as showing none."
+    },
+    {
+      "rule": "Derive who appears on an opponent's map from something in the world, not from a rule in the code.",
+      "why": "Ultimate Driving shows police the markers of players near another police officer OR near a traffic camera, and Jailbreak blinks an opposing player onto the minimap only when they are close. Both make concealment a route decision the player can reason about, which a global visibility flag cannot be."
+    },
+    {
+      "rule": "An anonymous position marker is a legitimate design, not an incomplete one.",
+      "why": "Ultimate Driving's 2020 overhaul added 'anonymous markers for other players on the map for your team'. The map answers 'someone is there' and refuses 'who'. NO SOURCE IN THIS FILE COVERS PHANTOM FORCES; the comparison this rule used to assert bare is recorded in the sibling packages/corpus/data/ui-references/fps_arena.json, where Phantom Forces 'showed the yes/no split on votekicks and changed it in 7.0.0 to show only the number who voted'. Same trade, read there and not here: less information, deliberately, because the extra field was usable against a person."
+    },
+    {
+      "rule": "Let the player dismiss markers for their own belongings.",
+      "why": "Ultimate Driving lets a player remove their own parked-vehicle icon by selecting it. Self-generated clutter accumulates faster than authored clutter, and a marker the player placed by existing is the one they are most entitled to remove."
+    },
+    {
+      "rule": "Draw the same marker vocabulary in the world and on the map.",
+      "why": "The Wild West lists its skull tiers, exclamation mark, money bag and faction star in one World Markers table, and the same glyphs reappear in the Legend of its Map page. The page says of the exclamation mark that it 'hovers over any criminal' and of the faction star that it 'can be seen through terrain and buildings', and describes the rest only as showing or revealing a location without naming a surface — so what this rule rests on is the shared vocabulary across the two surfaces, not a claim that every glyph hovers in the world. The player learns the alphabet once; a map with a private icon language has to be taught separately."
+    },
+    {
+      "rule": "Prefer a drawn glyph to a lettered key.",
+      "why": "Ultimate Driving's 2020 pass records that 'All major locations that were marked with a letter were replaced with a mannered icon', and its trivia says 'In older minimaps, letters were used to indicate major locations, such as gas stations and dealerships.' A letter requires the legend to be open; a fuel pump does not."
+    },
+    {
+      "rule": "Use the sign the player already knows.",
+      "why": "Ultimate Driving changed its road indicator from spelling out a route number to displaying that route's shield graphic. The characters were identical; the recognition was not."
+    },
+    {
+      "rule": "Consider not covering the whole screen with the full map.",
+      "why": "Ultimate Driving's overhaul 'changed the minimap GUI design into more of a modern tablet form so it doesn't cover the entire screen', which for a driving game means the map can be read without stopping. Full-screen is the default shape and at least one shipped game rejected it on purpose."
+    },
+    {
+      "rule": "Let fast travel be selectable from the map without removing it from the world.",
+      "why": "Bloxburg teleports the player when they click a bus-stop icon in the map's Transport category, and its own page calls this 'an alternative to fast traveling at the bus stops themselves'. The world object stays; the map is a second door to the same journey, which is what keeps the stops meaningful places."
+    },
+    {
+      "rule": "Give a pannable map a button that returns the view to the player.",
+      "why": "Bloxburg's page lists a centre button that 'return[s] the view to their current location' among the four controls it enumerates for the full map — zoom in, zoom out, recentre, and toggle the selection menu. The moment a map can be dragged, 'where was I?' becomes a question the interface created and therefore has to answer. Read the caveat with it: the same page then says the centre button pinpoints a location and drops an arrow, so the source disagrees with itself about that control. The recentre reading is the one this rule takes and it is not certain."
+    },
+    {
+      "rule": "Put names behind hover rather than on the map at rest.",
+      "why": "Bloxburg draws icons and reveals a location's name when the player hovers it. A map carrying every label permanently is a map that has to choose a font size for its densest district and live with it everywhere else."
+    },
+    {
+      "rule": "Correct for aspect ratio when projecting a world position onto a minimap frame, or every marker is wrong.",
+      "why": "A 2026 Scripting Support thread reports icons placing correctly only while the minimap is a perfect square, because Camera:WorldToViewportPoint returns a point in the camera's aspect ratio and the code scaled it by the frame's size. The fix is to remap X about 0.5 by the ratio of the two aspects. This is geometry, not taste: the bug is invisible in a square prototype and appears when the widget is given its shipping shape."
+    },
+    {
+      "rule": "Know which minimap you are building: a pre-rendered image, a live ViewportFrame, or a per-frame raycast render.",
+      "why": "The three appear in three separate sources with three separate costs. A pre-rendered image is nearly free and cannot show anything that moved since it was rendered — Jailbreak's page records its own image going unchanged for 'almost seven months (3/3/18 - 9/29/18)' while buildings were added. A ViewportFrame clones parts and, as written in the thread read here, explicitly excludes Terrain, Accessories and anything under a Humanoid, so it shows built geometry and nothing else. A raycast render updates live, and the one read here ran at 64x64 every frame — the author's own working figure on his own Ryzen 5 2400G, not a ceiling, since he names a way past it: 'You can still extract more performance by cheating and having the render be spread across several frames.' What he states as impossible is only the pixel-accurate end, which 'would fry your CPU with millions of raycasts per frame'."
+    },
+    {
+      "rule": "Author north as an object in the place, not as a world axis.",
+      "why": "The working minimap read here measures the player's heading against the LookVector of a part placed for that purpose. A map image drawn at any rotation other than the world's can only agree with the world if the reference direction is authored beside it."
+    },
+    {
+      "rule": "Compute map fog from line of sight, not from a radius.",
+      "why": "The MOBA fog system read here raycasts across the map against walls and barrier objects specifically so vision 'roughly matches what the player would actually be able to see in the game world rather than just revealing a basic circle around them'. A circle is wrong exactly where walls are, and in the genres that use fog, walls are where the game happens."
+    },
+    {
+      "rule": "Stop per-unit reveal from summing when a team groups up.",
+      "why": "The same author lowers each unit's light brightness when several are close together, 'so that stacking several units in one place doesn't completely light up the map or blind everyone'. Additive reveal breaks precisely when a team does the most normal thing it does."
+    },
+    {
+      "rule": "Hiding a region from the map is a legitimate decision, and it is not the same as fog.",
+      "why": "The Wild West keeps two named areas off the map permanently and previously hid everything north of a landmark 'on the Map but still accessible'. Fog fills in as you explore; this never does. A map that admits the existence of everything has given away the shape of the world before the player walks it."
+    },
+    {
+      "rule": "Encode height as darkness on a live map, and let it double as the edge of range.",
+      "why": "The realtime raycast minimap darkens things below the player until they reach full black, which is also where the scan distance ends. One channel carries depth and the boundary of knowledge, and they are the same visual for an honest reason: both mean 'nothing reliable here'."
+    },
+    {
+      "rule": "Make an expensive high-resolution view a peek bounded by the gesture that holds it.",
+      "why": "The same system renders at full resolution only while the cursor hovers the minimap, and its author says it is 'not really supposed to move around with it'. Tying an expensive mode to a hold rather than a toggle means the player cannot accidentally leave it running."
+    },
+    {
+      "rule": "Style the map image as a diagram with separated layers — buildings, roads, materials, water, zones, contours, outlines.",
+      "why": "The generator read here names its predecessor's failure as producing 'similar-looking maps regardless of the game genre or style', so that 'racing games couldn't properly highlight their tracks' and 'RPGs couldn't distinguish between different zones'. A correct render of a place from above is not yet a map of the game played there."
+    },
+    {
+      "rule": "Tile a big world's map across several images.",
+      "why": "Plum's system lists 'multiple images for larger maps' as a capability. Past some world size one texture cannot hold usable detail, and the resulting seams are an implementation problem that has to be planned rather than discovered."
+    },
+    {
+      "rule": "Attach the minimap system to a frame the designer authored, rather than letting it build its own.",
+      "why": "A user of Plum's V2 reported nothing appearing until they tagged an existing Frame, which 'automatically turned that frame into a minimap'. Position, size, corner radius and stroke then come from the UI tree where every other element's do, instead of from a system's private defaults."
+    },
+    {
+      "rule": "A minimap the player cannot hide is a bug.",
+      "why": "Jailbreak closes its minimap from a button on the frame; The Wild West hides it from a setting AND automatically in cinematic mode; The Wild West's marker page says most world markers can be disabled in Options. Screenshot modes and player preference are two independent reasons, and both need the same off switch."
+    }
+  ],
+  "limits": [
+    "NO NUMBER IN THIS FILE IS A MEASUREMENT OF A PIXEL. Nothing read here states a minimap's size, a corner radius, a stroke weight, a blip diameter, a font size or a padding value. The two figures that come CLOSEST to one are an engine height offset in one person's script and a render resolution in another's, and both belong to that implementation rather than to the convention. (Other numbers appear above — a 50-metre game range, 6 milliseconds across 8 threads, update dates — and none of them is a pixel either.) Anything this file is asked for in pixels has to come from the genre file, not from here.",
+    "FANDOM SERVES ITS ARTICLE HTML BEHIND CLOUDFLARE, so every wiki row was read through api.php as wikitext. That is the same content, but the SCREENSHOTS those pages embed were named and not seen. Every claim above is one a page states in prose; none is inferred from an image nobody looked at. This matters most for the legends: Ultimate Driving and The Wild West describe each icon in words, and what is recorded is the description, not the drawing.",
+    "THE ZOOM AND PAN INTERACTION IS THE THINNEST PART OF THIS FILE. Bloxburg names four controls — zoom in, zoom out, recentre, and a toggle for the selection menu — AND THEN CONTRADICTS ITSELF about what the centre button does, giving it a second job as a location pinpoint in the next paragraph. Nothing else read here describes how a full map is panned, whether it has zoom LEVELS or continuous zoom, whether the minimap has its own zoom separate from the map's, or what happens at the zoom extremes. A request for a map with a proper zoom model is still largely unbacked.",
+    "NOTHING HERE DOCUMENTS A DISCOVERY-STYLE FOG THAT FILLS IN PERMANENTLY AS A PLAYER EXPLORES. The only fog read is a MOBA vision system, which is live and reversible, and the only hidden regions read are permanent editorial omissions in The Wild West. The classic explore-to-reveal map — the one a survival or RPG kit would want — is not attested by any source in this file, and the rules above must not be read as covering it.",
+    "MOBILE MAP INTERACTION IS ALMOST ENTIRELY ABSENT. Two facts exist: Jailbreak puts the minimap in the opposite corner on mobile and gives it a smaller viewed area, and Ultimate Driving's road-name banner is PC and console only. Nothing read describes how a waypoint is placed by touch, how pinch-zoom behaves on a full map, or how a hover-only affordance like Bloxburg's name-on-hover degrades on a device with no cursor — and Bloxburg's hover labels and the realtime minimap's hover zoom are both, on their face, unreachable on a phone.",
+    "THE FAST-TRAVEL SELECTION SCREEN IS BACKED BY ONE GAME. Bloxburg teleporting from a bus-stop icon in the map's Transport category is the only fast-travel-from-the-map row here. Nothing read describes a fast-travel confirmation step, a cost display, a cooldown, a locked or undiscovered destination, or what a fast-travel list looks like when it is a list rather than a map. Blox Fruits' home-point system was read and discarded from this file because its wiki describes an NPC and a teleport, not an interface.",
+    "THE FISCH ROW CONTAINS A SOURCE DEFECT AND IS CARRIED ANYWAY, DELIBERATELY. That page's prose bullets and its own summary list disagree about which sign of X points east. No axis claim is taken from it; what is taken is the design — a compass at the top of the screen and a coordinate readout the player buys — plus the observation that describing this interface defeated its own wiki inside twenty lines. WHETHER FISCH HAS A MINIMAP IS NOT KNOWN HERE. The cited GPS page never says, and after the 2026-09-20 re-read this row no longer claims it in either direction; the absence of a Minimap page on that wiki is not evidence about the game. The row's id was renamed from 'fisch-no-minimap-at-all' in the same pass, because an id is a claim too.",
+    "FIVE OF THE SIX GAMES READ HERE ARE DRIVING, LAW-ENFORCEMENT OR OPEN-WORLD-ROLEPLAY GAMES — Jailbreak, Welcome to Bloxburg, Ultimate Driving, The Wild West and Emergency Response: Liberty County, with Fisch the single outlier — which is where minimaps are densest and therefore where they are best documented. Nothing here is backed by a tycoon, a tower defence game, an obby or a simulator, and the smaller and more vertical those worlds are, the less of this transfers. A pet simulator's 'map' is usually a zone teleport list, and no source in this file describes one.",
+    "TWO ROWS ARE COMMUNITY RESOURCES BEING ADVERTISED BY THEIR AUTHORS, and their claims about outcomes — 'Roblox's most popular minimap', improving 'qualified playthrough rate' — are marketing and are recorded as such rather than believed. What is taken from those rows is the FEATURE LIST, which is checkable against the product; two bug reports from third parties in the Plum replies, which are checkable against nobody's interest; and one reply naming Google Maps and GTA V as the look being aimed at, which is a reader's comparison rather than a seller's claim. A third kind was being taken and is not any more: the RoRender row carried the seller's account of the market — that developers 'skipped minimaps entirely' for want of customisation — and a third pass on 2026-09-20 deleted it, because an outcome claim in sales copy is exactly what this entry says is not believed.",
+    "NO SOURCE READ HERE IS ROBLOX'S OWN DOCUMENTATION. create.roblox.com/docs was not consulted for this file, so the three engine-level rows rest on community threads rather than on an official description of ViewportFrame or WorldToViewportPoint behaviour — and BOTH of those two APIs are described here from ONE thread, t/4847297, by one developer. The aspect-ratio correction in particular is reported by one developer and confirmed by them against an older thread they found; it is consistent with how a projection returning normalised camera coordinates must behave, but it has not been checked against the API reference and should be before it is relied on as an engine fact.",
+    "THREE HOSTILE PASSES RAN OVER THIS FILE ON 2026-09-20, AND EACH FOUND FINER ERRORS THAN THE ONE BEFORE. That is what the file has instead of a claim to be correct, and it is the more useful thing to hand the next reader. PASS ONE re-fetched every cited source. SEVEN claims did not survive as written: ONE WAS DELETED OUTRIGHT, FOUR WERE NARROWED, AND TWO SOURCE STRINGS WERE CORRECTED, and TWO RULES WERE DELETED with the claims they rested on — 'shipping no map at all is a real option' and 'accept that a top-down map has one layer' — because a rule whose reason evaporated is a preference wearing a citation. Four kinds of error. (1) A SPLICED QUOTATION: the fog-of-war row attributed 'entering or leaving vision' to the author's statement of what is unfinished, when the post uses that phrase for what he is HAPPY with; the unfinished part is 'how smoothly everything updates'. (2) AN ARGUMENT FROM ABSENCE: the Fisch row led with 'a large open-world Roblox game ships with no minimap', which the cited GPS page never states. (3) AN INFERENCE PRESENTED AS THE PAGE'S OWN STATEMENT, twice — 'the treasure map is a coordinate pair rather than a picture', and 'the region above it' in The Wild West row, where the page says only that one named area is not visible from another's map view. (4) A FIGURE AND A LABEL READ OFF THE WRONG FIELD: the Plum topic's '343 replies' was its posts_count against a reply_count of 244, and the fog topic was labelled Cool Creations when its category id 103 is Game Design Support. PASS TWO read the repaired file and found ELEVEN more, every one of them graded minor by the pass that found them — a grading this file has no way to check. Their kinds are the ones to look for next, because they are what survives a pass that only re-checks sources: AN OVER-COUNT (the Bloxburg map's view controls called 'three and only three' where the page enumerates four); A CLAIM FIXED IN THE REFERENCE ROW AND LEFT STANDING IN A RULE'S WHY (the World Markers 'all hover in the world' universal); A QUOTATION REORDERED INSIDE ITS OWN QUOTATION MARKS (Ultimate Driving's letters trivia); A TRUE CLAIM SOURCED FROM AN UNCITED PAGE (cinematic mode hiding the whole HUD); A WORKING FIGURE HARDENED INTO A CAP (64x64 as a limit rather than one author's number on one CPU); A FREQUENCY COMPARISON WITH NO BASIS ('as often a tooling outcome as a design choice'); DATE ARITHMETIC ROUNDED THE WRONG WAY (fifteen months for 14 months and 16 days, with both dates in the same sentence); AN UNSUPPORTED DURATION ('shipped for years without one', nowhere on the cited page); AN UNATTRIBUTED CROSS-FILE COMPARISON (Phantom Forces, which no source in THIS file covers); A STALE PROVENANCE COUNT ('two rows' carrying engine-level behaviour where three do); and AN INVENTED ADJACENCY (a glitch said to last 'a full update cycle' when the page names two updates and never says they are consecutive). PASS THREE, this one, worked all eleven. ONE WAS DELETED OUTRIGHT — the RoRender row's market claim, sales copy about developers skipping minimaps, which limit 8 already said was not taken from that row and which the file had kept anyway. TEN WERE NARROWED, RE-QUOTED OR RE-ATTRIBUTED, and FIVE RULE WHYS held a copy of a corrected claim and were fixed with it, which is the first failure mode above and the reason every correction in this pass was grepped for across the whole file. Then, re-reading the file rather than the list, this pass found SIX MORE of its own, all finer again: FOUR CLAIMS REST ON IMAGE OR GALLERY CAPTIONS rather than body prose while the provenance promised prose — the battle-royale storm, Bloxburg's name-on-hover, Ultimate Driving's minimap-as-button, and The Wild West's faction-territory toggle, each now marked at the claim; one loose numeric comparison ('five answers, which is what the six-category and five-toggle sets also come to') tightened to the order-of-size comparison it actually is; and the realtime row's own 64x64 sentence made consistent with the rule that quoted it. THE PROVENANCE AND LIMITS 0, 2, 8 AND 9 WERE ALL STALE AGAINST THEIR OWN FILE and were rewritten. NOTHING WAS ADDED TO REPLACE ANYTHING REMOVED, in any of the three passes. WHAT IS STILL UNSETTLED, BY NAME — none of these was resolvable from the sources read, and the next reader should not take silence for confidence. (a) BLOXBURG'S CENTRE BUTTON has two incompatible jobs on one page: recentre the view, and pinpoint a location with an arrow. This file cannot tell which is right; the recentre reading is the one its rule takes. (b) THE WILD WEST NAMES A WORLD SURFACE FOR ONLY TWO OF ITS SIX MARKER GLYPHS. Whether the other four are drawn in the world, only on the map, or both is not stated anywhere read here. (c) TWO REPAIRS IN THIS PASS WERE MADE BY CITING A SECOND PAGE RATHER THAN BY DELETING — the map legend's copy of the marker vocabulary, and cinematic mode hiding the HUD. Both are true of the pages named and both break the promise that a row rests on its own source alone; a reader who wants that promise kept should delete those two clauses rather than trust them. (d) NOBODY CHECKED THAT THE LEGEND ART AND THE WORLD-MARKER ART ARE THE SAME DRAWINGS. What is recorded is that the same names and descriptions appear on both pages, which is a weaker claim than one vocabulary drawn twice. (e) THE ASPECT-RATIO CORRECTION IS STILL UNCHECKED against Roblox's own API reference, exactly as limit 9 said after pass one; no pass has closed it. (f) WHETHER FISCH HAS A MINIMAP IS STILL NOT KNOWN, as limit 6 says. (g) ONLY ONE DATE INTERVAL IN THIS FILE WAS COMPUTED — the December 20, 2020 to March 5, 2022 one. Every other duration above is quoted from a page that did the arithmetic itself, and none of those was re-derived. THE TREND IS THE POINT: seven, then eleven, then eleven again, with each pass finding SMALLER faults than the last — from a spliced quote and an argument from absence, to an over-count and a stale summary, to which paragraph of a page a sentence came from. That is what converging looks like and it is also what a process looks like just before somebody calls it finished. This is where the repairing stopped, not where the errors ran out."
+  ]
+}

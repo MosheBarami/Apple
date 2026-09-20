@@ -1,0 +1,379 @@
+{
+  "genre": "screen-onboarding",
+  "label": "The FIRST-RUN screen, across genres — forced tutorials, skippable tutorials, spotlight-and-arrow highlights, contextual just-in-time prompts, timed hints, checklist guides, gated controls, and what any of it does for a player who already knows",
+  "recorded": "2026-09-20",
+  "provenance": "Web research on 2026-09-20, not owner screenshots. Three rows were read from Roblox's own documentation as markdown (create.roblox.com serves a .md twin of every docs page, which is plain HTTP and carries the same prose as the rendered page). SIX rows were read from the community wikis of shipped Roblox games — Tower Defense Simulator (two rows), DOORS (two rows), Roblox BedWars and Adopt Me! — through each wiki's api.php as wikitext, because Fandom serves article HTML behind Cloudflare while api.php is open. Two rows were read from devforum.roblox.com topic JSON. Three plus six plus two is eleven, which is this file's reference count; an earlier version of this sentence said four wiki rows and its own arithmetic summed to nine, against eleven references actually present. It was corrected on 2026-09-20 by the third adversarial pass, and it is recorded rather than quietly fixed because a provenance line that miscounts its own rows is the part of a reference file a reader trusts most and checks least. No image, no Luau source and no asset is copied here. Every row names the URL it was read from and how, so each claim can be re-checked; where a claim is weaker than the rest, the row says so in its own text rather than in a footnote.",
+  "incomplete": false,
+  "references": [
+    {
+      "id": "roblox-docs-onboarding-techniques",
+      "source": "https://create.roblox.com/docs/en-us/production/game-design/onboarding-techniques.md — fetched 2026-09-20 with curl; Roblox's own documentation, page last_updated 2026-09-18. This is the single densest first-party source in the file and most of the rules below trace back to it.",
+      "demonstrates": [
+        "THE SPOTLIGHT IS THREE TREATMENTS AT ONCE, NOT ONE. The page's worked example — the _Hello Kitty Cafe_ highlight — is described as the desired button spotlighted while the rest of the screen is dimmed, a coloured outline on the button, AND an arrow pointing at it. Three simultaneous marks on one target, and the docs' claim for them is that there is then 'no mistaking what the player is expected to click next'.",
+        "The docs argue the highlight against the SENTENCE, not against nothing. They print the text version — open your inventory by clicking on the backpack button — and object that it makes the player interpret the word 'backpack' and then hunt the UI for it. The arrow removes the interpretation step, and that is the stated reason to prefer it.",
+        "A hint PERSISTS until the step is done rather than timing out: persistent visual elements 'stay on-screen until the player has completed a step of the tutorial', and the docs give wandering off as the case they are designed for — 'even if they choose to explore, the hints remain to guide them when they are ready to return'. A hint that expires punishes exactly the player it exists for.",
+        "Three named techniques, and they are three different mechanisms rather than three intensities of one: visual elements (arrows, particles, trails, in-world signs), contextual tutorials, and timed hints.",
+        "CONTEXTUAL TUTORIALS TRIGGER ON STATE, NOT ON PLACE. The example is _Squishmallows_: the combination-station tutorial fires when the player has two identical Squishmallows in their inventory. The stated reason to keep it out of the first-run sequence is that it 'would make it too long and irrelevant, and players may forget the information before they can use it'.",
+        "The same game uses a contextual tutorial for its MARKETPLACE deliberately, because the marketplace serves mid and late-game players — so a feature a new player cannot use yet is taught when they find it, not at minute one.",
+        "THE TIMED-HINT DELAY IS MEASURED, NOT CHOSEN. The worked example: playtesting finds most players press the button within 10 seconds, so the highlight is added at 11 seconds. The rule stated around it is that a timed hint should appear only AFTER the majority have already completed the objective, and that the balance to find is between firing so fast the player feels denied the chance to work it out and waiting so long they are frustrated.",
+        "Timed hints 'only appear the first time the task is presented' and should be 'sufficient to help struggling players after only being shown once'. One showing, first occurrence only, to the subset that needs it.",
+        "The hint system outlives the first session: the docs' own example of surfacing an overlooked feature is highlighting the trade button for a player who has not engaged with trading in their FIRST TWO SESSIONS.",
+        "A directional trail 'strongly suggests an action, but doesn't require it', and the docs claim the availability of choice is what makes the tutorial feel less forced. This is an argument for a non-blocking guide over a modal.",
+        "In _Color or Die_ a sign explaining the core survival mechanic is placed in the player's line of sight at the moment they collect their first paint bucket — described as impossible to miss, and as not preventing the player from starting the game. Prominence and non-blocking are treated as compatible.",
+        "The accessibility case is made in construction terms: arrows and particle effects 'communicate without words and don't require translation to be understood by a global audience', the docs count not having to 'worry about a text string getting longer after translation' as a benefit to the UI designer, and on mobile 'text can be too small to read comfortably'.",
+        "A feedback list is given for _Winds of Fortune_ — hit flashes, damage numbers flying off the enemy, a throbbing red low-health screen effect, both health meters updating, coins flying out on a kill, and the quest counter incrementing. What the docs claim for the combination is narrower than 'no tutorial': it 'ensures most players understand what's happening without a needing more explicit combat tutorial' (the missing word is the source's). Six feedback signals that make the lesson smaller, not a lesson deleted.",
+        "The closing warning is about the absence of feedback, not about teaching: without it players 'may not know that the action they took did anything, and wonder if they did something wrong, or wonder if the game is buggy'."
+      ]
+    },
+    {
+      "id": "roblox-docs-ftue-is-a-funnel",
+      "source": "https://create.roblox.com/docs/en-us/production/game-design/onboarding.md — fetched 2026-09-20 with curl; Roblox's own documentation for the First-Time User Experience, page last_updated 2026-09-18.",
+      "demonstrates": [
+        "The FTUE is defined as 'the first few minutes of gameplay', and the docs say outright what it introduces, in this order: the game, the INTERFACE, and the mechanics. The interface is a first-class subject of onboarding rather than the container onboarding happens in.",
+        "Its success is defined by exactly two things — Day 1 retention and the onboarding goals — and D1 retention is defined as the share of players who make it through the FTUE. The tutorial is measured as a funnel that is 'widest at the top and narrowest at the bottom', and 'all games lose some amount of players along this path'.",
+        "The two designs Roblox names as the canonical A/B test against each other are 'a shorter dialogue sequence versus a guided arrow'. Those are treated as substitutes for the same job, which is the clearest signal in the docs that dialogue is one option and not the default.",
+        "Teaching the essentials is split into two obligations, not one: the player must grasp controls for navigation and interaction, AND the core loop. On the second the docs are explicit that the player must understand both what they are expected to do and WHY they should do it.",
+        "Complex, unfamiliar controls are to be DISPLAYED ON SCREEN, and the illustration named is a control readout from Super Striker League. A persistent control legend is a documented onboarding element, separate from any tutorial sequence.",
+        "Early XP thresholds should be kept low so the player levels up quickly, which makes the first level-up an onboarding beat rather than a progression one.",
+        "The docs prescribe ending onboarding with 'an intentionally designed moment of joy' — rewards, animation, celebratory effects at a milestone — and the stated purpose is the NEXT session, not this one.",
+        "By the end of onboarding the player should be aware of the full range of content available, with short, mid and long-term goals surfaced 'in highly visible places, either in the game-world or the UI'. The last thing onboarding does is point at things it did not teach."
+      ]
+    },
+    {
+      "id": "roblox-docs-onboarding-funnel-api",
+      "source": "https://create.roblox.com/docs/en-us/production/analytics/funnel-events.md — fetched 2026-09-20 with curl; Roblox's own documentation for AnalyticsService funnel events, page last_updated 2026-09-18.",
+      "demonstrates": [
+        "THE ENGINE SHIPS A SEPARATE CALL FOR ONBOARDING. LogOnboardingFunnelStepEvent exists alongside the general LogFunnelStepEvent, and the difference is that the onboarding one is a ONE-TIME funnel: it takes no funnelSessionId, because the FTUE is defined as happening once per user. The engine has already decided that the first run is not repeatable.",
+        "A step is logged AFTER the player completes it, and the docs say the important thing is consistency about when the call is made and using 'easy-to-interpret names'. A step carries BOTH parts, not one: the call is LogOnboardingFunnelStepEvent(player, stepNumber, stepName), and the worked example passes `1, -- Step number` alongside `\"In Farm\" -- Step name`. The number orders the funnel; the name is what a human reads off the dashboard. The name is also droppable — the docs' own exploit-protection example logs (player, step) with the number alone.",
+        "A SKIP BUTTON SILENTLY FALSIFIES THE FUNNEL. The docs state that if you log step 3 without logging steps 1 or 2, the funnel considers 1 and 2 completed. A tutorial that jumps a skipping player to the end and logs it therefore reports that player as having finished every step.",
+        "Repeated steps are ignored — only the first instance of a step counts — which is why a player who disconnects and rejoins mid-tutorial needs no special handling in a one-time funnel.",
+        "Events can only be sent from the SERVER and only in published games; nothing can be logged from the client or from Studio. A tutorial that lives entirely in a LocalScript cannot report itself, and the docs' own example crosses that gap with a RemoteEvent.",
+        "That RemoteEvent is shown WITH its exploit: the client example deliberately fires step 10 on a three-step tutorial, and the server example rejects any step above maxStep before logging. Tutorial progress arriving from the client is untrusted input.",
+        "Filters apply ONLY to the first step of a funnel, so a player who starts the tutorial on mobile and finishes on desktop is attributed to mobile throughout. Device-specific onboarding cannot be read out of a mid-funnel breakdown.",
+        "Roblox's own reference project, Plant, is shown losing 70% of players between step 1 ('In Farm') and step 2 ('Plant Seed'). The published remedies are contextual indicators directing users to plant, or requiring a successful plant before the rest of the game opens.",
+        "A funnel step rename shows as a WARNING on the dashboard for any date range spanning the change, which is the engine admitting that a renamed step breaks comparability with its own history."
+      ]
+    },
+    {
+      "id": "tds-forced-first-mission-and-its-gate",
+      "source": "https://tds.fandom.com/wiki/Tutorial , https://tds.fandom.com/wiki/Boot%20Camp and https://tds.fandom.com/wiki/Welcome%20Recruit — all three read on 2026-09-20 through https://tds.fandom.com/api.php?action=parse&page=<Page>&prop=wikitext, because Fandom serves its article HTML behind Cloudflare while api.php is open. Tower Defense Simulator is a shipped Roblox experience; these pages carry a dated update history, which is where most of the claims below come from.",
+      "demonstrates": [
+        "THE RETURNING-PLAYER CHECK IS A ROBLOX BADGE, NOT A SAVE FLAG. On first join an opening cutscene plays, and then: a player without the badge for beating the Tutorial is 'instantly sent to the Boot Camp mission which they have to complete', and a player who has it 'will be left in the Main Lobby'. Badge ownership is queryable from any server and survives a data-store failure; a profile flag does not.",
+        "The tutorial is FORCED and says so — the player \"you are forced to complete at least the first mission\". It is also replayable afterwards, from Settings: the update history records a bug where 'beating the Tutorial for the first time through settings does not reward the badge', which only makes sense if Settings carries a replay entry.",
+        "SKIPPING AND COMPLETING WERE CONFUSED FOR A YEAR. The 24 February 2024 entry records that skipping the tutorial still awarded the badge; it was fixed on 8 March 2024 and REGRESSED on 15 March 2024. Because the badge is also the gate, a skip that awards it is a skip that permanently turns the tutorial off.",
+        "THE HUD IS EDITED FOR THE LESSON. Base health is replaced by a progress bar, because losing by letting enemies reach the exit was made impossible on 25 June 2025. A number the game is built around is removed from the screen for the duration of teaching rather than left there showing a value that can no longer move.",
+        "The interface is progressively LOCKED, not progressively revealed, and each lock is a dated decision: consumables hotbar disabled (23 May 2024), only towers the narrator asks for are selectable (20 November 2024), access to Settings removed (30 April 2025), Skills disabled (28 May 2025). The tutorial narrows the interface to the one control being taught.",
+        "Loadout and cosmetics are overridden too: the player's chosen towers 'are replaced the moment the match starts', all skins are replaced with Default and golden perks are not applied. The tutorial refuses to run against player-authored state — and the one time a skin leaked through, it broke the lesson (31 July 2026: a non-default Sniper skin 'causes Wave 2 to break').",
+        "THE SOFTLOCK IS THE CHARACTERISTIC FAILURE OF A SCRIPTED TUTORIAL, and this page records four of them. Upgrading too fast could leave the player short of cash with no way forward; selecting the consumables hotbar could stop the requested action from registering; towers in the hotbar could become unselectable; opening the emote/sticker wheel could remove the inventory entirely, 'preventing progress until the player rejoins'. Every one is a step that waits on an exact state the player can leave.",
+        "One softlock survived a rejoin: a player who spent all their tutorial coins in a brief window where menus were not yet blocked could not buy the thing the next step required, 'and upon rejoining, also preventing finishing the Tutorial'. A tutorial that writes to persistent data mid-sequence can brick itself.",
+        "A BALANCE CHANGE BROKE THE TUTORIAL TWICE IN ONE DAY. On 11 March 2026 a tower price change made the Sniper unaffordable on Wave 2, 'making the Tutorial impossible to beat'; a hotfix raised the wave's cash the same day. A scripted tutorial is coupled to the live economy and has to be re-tested against every tuning pass.",
+        "The mission carries a one-line in-game description that states what it teaches: 'Learn to place and upgrade Scout and Sniper, then hold off a mixed enemy wave.' Verbs and named subjects, not a theme.",
+        "Its cash is SET rather than earned — after each wave the player's balance is assigned a specific number (200, then 450, then 1,500) with no wave bonus. The tutorial removes the resource variable so the lesson lands the same way for everyone.",
+        "Waves cannot be skipped, waves 1 and 2 run a 1:00 timer and the final wave's timer is infinite — the clock is removed from the step that asks the player to do something new.",
+        "Tower obtainment pop-ups were changed on 23 May 2024 to use the tower's ICON instead of its model. A first-run pop-up introducing a thing shows the icon the hotbar will show, not a viewport render of the object.",
+        "The forced sequence spans two surfaces and the team changed its mind about that twice: the lobby part was removed on 12 March 2025 and re-added on 25 June 2025. Onboarding in a lobby-plus-match game is not only the match.",
+        "The opening cutscene is separate content with its own name, its own icon and its own audio, and it is where the game's premise is delivered — the teaching mission that follows contains no story at all."
+      ]
+    },
+    {
+      "id": "tds-commander-teaching-portrait",
+      "source": "https://tds.fandom.com/wiki/Commander%20(Narrator) and the dialogue tables on https://tds.fandom.com/wiki/Boot%20Camp and https://tds.fandom.com/wiki/Tutorial/Waves — read on 2026-09-20 through https://tds.fandom.com/api.php?action=parse&page=<Page>&prop=wikitext, for the Cloudflare reason above.",
+      "demonstrates": [
+        "THE NARRATOR HAS A POSE THAT MEANS 'THIS LINE IS AN INSTRUCTION', AND IT IS NOT EXCLUSIVE TO THEM. The portrait set is eight named states — Neutral, Aggressive, Thinking, Sneaky, TEACH, Scared, Disappointed, and a no-animation still. Across Boot Camp and all three archived Tutorial/Waves versions, every beat that asks the player to do something uses the Teach state, with one exception the third pass found, so this is a strong tendency rather than a rule. The converse fails in the same table: the line that closes the upgrade lesson — 'Good thing you upgraded your towers, because we got more enemies on the way!' — is pure framing and carries Teach too, in the versions checked, though not verified across all four. So the implication runs one way. An instruction is always in the teaching pose; the teaching pose is not always an instruction.",
+        "IN THE TEACHING POSE HE PUTS ON GLASSES AND THE PISTOL IS GONE. The page records that the narrator normally carries a holstered sidearm, 'though in his teaching icon it is missing', and that 'in his teaching icon, he also wears glasses'. A shipped game redrew its narrator to be visibly unarmed while explaining a control. Somebody decided the instructor and the commander should not look like the same man.",
+        "The same narrator ships in TWO renderings — an animated 3D portrait and a static icon — used by different modes. One character, two costs, chosen per surface.",
+        "The dialogue beat is SELECT-THEN-PLACE, always two steps: 'Select the sniper tower.' is its own beat, and 'Place the sniper on the highlighted spot.' is the next one. Picking a tool and using it are never taught in the same instruction.",
+        "The instruction carries the CONSTRAINT before the action: 'Snipers can only be placed on high up vantage points. Place the sniper on the highlighted spot.' The rule the player would otherwise discover by failing is stated first, in the same bubble.",
+        "The target is highlighted in the world and the text refers to the highlight rather than to a place — 'the highlighted spot'. The prose and the visual element are written for each other, so the line survives a map change.",
+        "SELLING IS TAUGHT BY MANUFACTURING THE SHORTFALL. In the five-wave version, the narrator gives the player an expensive tower and then says 'Looks like you're a little short on cash. Try selling some of your towers, starting with your scout.' The game creates the situation the control exists for instead of listing the control.",
+        "Every teaching beat is preceded by a reason to care — 'No time to waste. If you want to survive, you'll need to upgrade your towers.' — and followed by an acknowledgement — 'Nice work!', 'Good work!' — so a step is a three-part unit: why, do, done.",
+        "The wave that follows a lesson is announced as a consequence of it: 'Good thing you upgraded your towers, because we got more enemies on the way!' The tutorial tells the player their action mattered before the action could have visibly mattered.",
+        "Spoken audio was added to the dialogue on 25 June 2025 and a follow-up patch the same day fixed lines that did not play. Voice is an added layer over a text bubble that still works without it, not a replacement for it.",
+        "The tutorial script SHRANK. The version live until 31 July 2026 ran five waves and taught place, upgrade, a third tower type, hidden enemies, selling and a boss; the current Boot Camp runs three waves and teaches exactly place, upgrade and survive. The 2025 wave that introduced a fourth tower and the sell mechanic was cut out of the first run entirely."
+      ]
+    },
+    {
+      "id": "bedwars-fifteen-step-tutorial-mode",
+      "source": "https://robloxbedwars.fandom.com/wiki/Tutorial — read on 2026-09-20 through https://robloxbedwars.fandom.com/api.php?action=parse&page=Tutorial&prop=wikitext, for the Cloudflare reason above. Roblox BedWars is a shipped experience; the tutorial mode described was added 5 July 2024.",
+      "demonstrates": [
+        "The tutorial is documented as a TABLE OF FIFTEEN STEPS with three columns — the step number, the prompt the game shows, and what the player must actually do. Prompt and action are separate fields, and across all fifteen rows the prompt is shorter than the action.",
+        "TEN OF THE FIFTEEN STEPS NAME BOTH INPUTS IN ONE LINE. 'Press 3 on your keyboard or tap the wool icon in the hotbar.' 'Press C or tap the home icon.' 'Press 3 on your keyboard or tap the axe icon in the hotbar. Then, face the enemy's bed and hold left-click (or tap and hold bed on mobile) till bed is destroyed.' There is no second mobile tutorial: one instruction carries the key and the touch gesture, and the touch half is described by the ICON rather than by a slot number, because the mobile player has no number to press. The other five rows have no control to name — walk onto the iron, go to the shopkeeper, gather, repeat step 12 — except the bridging step, which names only the tap ('by tapping in the empty space').",
+        "THE GATE CHECKS THAT YOU ENTERED, NOT THAT YOU FINISHED. The page records that the limited-time modes are locked until you play the tutorial, and then says outright what that means: 'play doesn't mean complete, so you can hop it and get back to lobby and play all the other modes.' A shipped game chose an entry check over a completion check, so the tutorial can be dismissed without lying to the player about why the modes are locked.",
+        "Dialogue is PARTIALLY skippable: a single key skips 'some dialog'. Not the steps, and not all of the talking.",
+        "Select and use are separate steps throughout, and each re-selection is re-instructed: step 3 selects wool, step 4 places one; step 5 selects the pickaxe, step 6 breaks the block; step 7 selects wool AGAIN before placing around the bed. The tutorial never assumes the hotbar is still where it left it.",
+        "The placement target is a highlighted cube in the world — the player places 'into the highlighted cube space' — and for the bridging step the highlights become a whole route: 'Use the black highlighted cubes as a guide.' One ghost for one action, a trail of ghosts for a path.",
+        "THE TUTORIAL OPPONENT IS DELIBERATELY HANDICAPPED, and the wiki states the tell: 'The enemy will slowly swing their sword.' The combat lesson is built so it cannot be lost, and the slowness is visible rather than hidden in a damage number.",
+        "The final step is the same action as an earlier step with one variable changed — step 15 is 'repeat step 12, but this time do not cross the bridge' — so the tutorial ends on a rehearsal of what it taught rather than on something new.",
+        "Completion pays a permanent title and a ONE-WEEK rental of any one of four premium kits. The graduation reward is a timed trial of the thing the player has not bought, not currency.",
+        "A recorded launch bug is worth designing against: on release, completing the tutorial made every game mode appear in the lobby while none of them could be played. A screen that shows unlocked content it has not unlocked is worse than one that shows it locked.",
+        "The page notes the tutorial mode itself 'was widely suggested as a feature' on the developers' former public suggestion site, and dates it — 'This was implemented in July 5, 2024.' A tutorial added to a running game by request rather than designed with it. How long after launch, the page does not say, and it is not claimed here."
+      ]
+    },
+    {
+      "id": "adoptme-guide-checklist-onboarding",
+      "source": "https://adoptme.fandom.com/wiki/Guide and https://adoptme.fandom.com/wiki/Tutorial%20Graduation%20Cap — read on 2026-09-20 through https://adoptme.fandom.com/api.php?action=parse&page=<Page>&prop=wikitext, for the Cloudflare reason above. Adopt Me! is a shipped Roblox experience; the Guide was released 16 December 2025.",
+      "demonstrates": [
+        "ONBOARDING AS A PERSISTENT TAB, NOT A SEQUENCE. The Guide 'can be accessed on the right side of their screen along with the Dress Up, Shop, and Friends tabs' — the teaching surface sits in the same rail as the game's permanent panels, at equal weight, and is never modal.",
+        "It is a CHECKLIST of non-repeatable achievements, split into three named sections — Pets, Explore, House — and the sections are paginated (Pets runs three pages, House two). A section, not a step counter, is the unit of navigation.",
+        "Dependency gating lives INSIDE a list rather than between lists: 'Some achievements in each section require previous ones to be completed before they are available.' A list can therefore be partly visible and partly locked at the same time.",
+        "THE REWARD SIZE MARKS THE BEAT THAT MATTERS. Of the 73 tasks, 60 pay a flat 5 Bucks and ten pay between 20 and 130. Exactly three pay 355 — hatch an egg, buy an egg, complete a task-board task — a seventy-fold jump over the base rate, on the three actions that are the actual conversion moments. The number is the emphasis; nothing else on the row changes.",
+        "The very first entry in the whole system is 'Open Your Backpack'. The first thing a shipped game's teaching track asks for is opening a UI panel, and it pays for it.",
+        "A repeating two-beat shape runs through the list: 'Visit the Nursery' then 'Buy an Egg'; 'Visit the Salon' then 'Paint Your Pet'; 'Visit the Dealership' then 'Buy a Vehicle'; 'Visit the Toy Shop' then 'Buy a Sticker Pack'. Finding the surface and using the surface are separately taught and separately paid.",
+        "MANIPULATION VERBS GET ONE ROW EACH. The House section lists Place Furniture in Your House, Rotate Furniture, Resize Furniture and Color Furniture as four distinct tasks. A control with four transforms is taught as four lessons, not as one 'learn building' step. Three of the four also pay a furniture item on top of the flat 5 Bucks — Rotate a Neat Water Bowl, Resize a Neat Food Bowl, Color a Tidy Litter Box — while Place, the row that comes first, pays the 5 alone.",
+        "The ladder inside a single mechanic is spelled out rather than summarised: ageing a pet is six consecutive tasks — Junior, Pre-Teen, Teen, Post-Teen, Full Grown, each its own row. The list is willing to be long where the mechanic is repetitive.",
+        "Some rows are pure UI literacy with no gameplay at all — 'Open the Journal', 'Edit Your Profile', 'Add a Section to Your Profile', 'Add a Sticker to Your Profile', 'Open Storage', 'Save an Outfit for Your Pet'. Six rows out of the 73 tasks the page lists; counting 'Open Your Backpack' and 'Open the Taskboard' as interface rows too reaches eight. A small, deliberate slice of the list spent on the panels.",
+        "One row is a plain time gate — 'Play for 2 Hours' — sitting in the same list as the action rows, which means a checklist is allowed to contain an item the player cannot do on purpose.",
+        "The teaching track has a WEARABLE GRADUATION MARKER: finishing 'Teach a Pet a Trick' grants the Tutorial Graduation Cap, a non-tradable common pet accessory. The reward for learning is a cosmetic that says publicly that you learned.",
+        "The safety and trading path is taught by the same list and in order — Visit the Safety Hub, Acquire Your Trade License, Enter a Trade, Complete a Trade, Spectate a Trade — with the license between the hub and the first trade. An onboarding checklist is where a gated permission gets explained.",
+        "The whole system is dated on its own page — 'a reward system in Adopt Me! that was released on December 16, 2025' — and what it teaches is a game whose Nursery, Salon, Dealership, Safety Hub and trading are already there to be visited. A teaching surface added to an established game rather than shipped with one. The page does not give the game's launch date, so no gap is claimed here."
+      ]
+    },
+    {
+      "id": "doors-moonlight-escalating-death-tips",
+      "source": "https://doors-game.fandom.com/wiki/Guiding%20Light — read on 2026-09-20 through https://doors-game.fandom.com/api.php?action=parse&page=Guiding%20Light&prop=wikitext, for the Cloudflare reason above. DOORS is a shipped Roblox horror experience; the entity described has been in the game since 10 August 2022.",
+      "demonstrates": [
+        "THE HINT GETS MORE HELPFUL EACH TIME YOU FAIL THE SAME WAY, AND THE FIRST ONE IS DELIBERATELY VAGUE. The page states it outright — 'the tips become increasingly precise as the player dies to the same entity' — and the ladder is printed in full. First death: 'Pay attention to any cues that may hint at its attack.' Second: 'Pay attention to the lights. They are related to its attack.' Third: 'The lights will always flicker when it is near. Whenever this happens, find a hiding spot.' Only on the third failure is the mechanic named and the counter-action given. A shipped game chose to withhold the answer from a player who has already lost once.",
+        "The death screen's teaching layout is three fields, and the wiki tabulates them as such: CAUSE, ADDRESSAL, ADVICE. BOTH the addressal and the advice move with the escalation — the addressal marks the repeat in the game's voice ('You died to who you call Rush...', then 'You died to Rush again...', then 'It seems you are having trouble with Rush...') while the advice is the half that gets more precise. Where a row varies by LOCATION rather than by count, the table reuses the ladder instead of writing a new one: the addressal cell reads 'First, second or third Hotel death addressal' and only the advice is fresh.",
+        "THE ADVICE KNOWS WHERE YOU DIED, NOT JUST WHAT KILLED YOU. The same entity in a different room yields different text: 'In the greenhouse, there are no lights that can flicker. You must rely on sound queues.' A later area gets its own line again. The tip is keyed on the pair (what killed you, where), not on the entity alone.",
+        "A death with a compound cause gets a compound tip: dying while trapped produces 'That was Snare who trapped you. You'll need a light source to scan for them' — naming the thing the player never saw rather than the thing that landed the blow.",
+        "SOME THINGS ARE NOT TAUGHT ON THE FIRST FAILURE AT ALL. The page records that no tip is given for certain entities when a player first dies to them, which is a per-entity decision about whether a first death should be explained or left alone.",
+        "THE WHOLE TEACHING LAYER IS SWITCHED OFF BY THE PLAYER'S OWN DIFFICULTY CHOICE: 'if any modifiers are active, Moonlight will not give any death messages.' Opting into harder rules opts out of being taught, without a separate setting for it.",
+        "An April Fools mode replaced the tips with non-tips — 'unique death messages, all of which do not help players at all' — which proves the advice is a discrete, swappable content layer rather than text baked into the death screen.",
+        "THE IN-WORLD HINT MARKS BOTH ENDS OF THE TASK. When the player struggles to find a required item, the highlight shows the object's location AND 'the location it should be used', such as a generator or a door. Source and destination are two marks, not one.",
+        "The hint is triggered by STRUGGLE rather than by a step: it fires when the player has been unable to find the item 'for a long time'. This is the timed hint of the Roblox docs, shipped, with the timer running on the player rather than on the tutorial. [CORRECTED 2026-09-20: the trigger phrase quoted here was read from COMMENTED-OUT wikitext, which never renders on the page — so it is what an editor wrote and not what any player was ever shown. The escalation behaviour around it stands on the rendered prose; the exact phrase does not, and is retained only as a note about the source.]",
+        "During a chase the hints are different in kind — the correct door, where to crouch, where to jump, and the door shut behind the player at the end — and a game modifier that disables every other highlight still leaves the chase highlights on. The hint that is load-bearing is never turned off.",
+        "A RECORDED FLAW WORTH DESIGNING AGAINST: the highlight still fires 'even if players have escaped from the dark room or found the item without her help.' The hint is not cancelled by the player solving it first, so a competent player is told the answer to a question they have already answered.",
+        "A hint that lies is treated as a bug: the system once lit a fake door with a dimmer glow than a real one, which let players read the trap off the hint's brightness. The two glows were made identical."
+      ]
+    },
+    {
+      "id": "doors-journal-discovery-gated-reference",
+      "source": "https://doors-game.fandom.com/wiki/The%20Journal — read on 2026-09-20 through https://doors-game.fandom.com/api.php?action=parse&page=The%20Journal&prop=wikitext, for the Cloudflare reason above. The Journal's own page dates it to 28 August 2026; no page read here states the game's launch date, so no gap since launch is claimed from it.",
+      "demonstrates": [
+        "THE REFERENCE FOR THE PLAYER WHO ALREADY KNOWS IS A SEPARATE SURFACE FROM THE TUTORIAL, AND IT IS BOUND TO ONE KEY. It is described as a place to go 'if player ever needs a refresher on how certain entities, items, locations, etc. function', openable in the lobby AND mid-run, with 'press J on your Keyboard and that will bring up the Journal'.",
+        "ENTRIES ARE DISCOVERY-GATED AND WRITE THEMSELVES: 'Pages and entries will update and fill out automatically as you actively play, encounter, and interact', and the book physically gains pages 'as more entities are discovered'. You cannot read ahead, and you never have to go and claim what you learned.",
+        "AN ENTRY CAN BE REVEALED IN HALVES. Seven of the entries transcribed as text carry an explicit '...Continued' break — Rush, Ambush, Screech, Eyes, Dupe, Giggle and Seek — with the identification and the danger and intelligence ratings above it and further behaviour below; the second half of Rush is where 'Lights flicker when it is about to attack' and 'Wardrobes are great hiding spots' live. It is not every entry: about fifteen of the roughly fifty-seven entries are transcribed as text at all, the rest are reproduced as page scans, and eight of the fifteen carry no break.",
+        "The entry leads with the CONSEQUENCE, not the mechanic. Twelve of the fifteen transcribed entries open with a red line describing the death before anything else — 'Terrifying death. Not painful, feels like dying alone.', 'Death feels like being pulled into a meat grinder', 'Death is slow. Sometimes takes up to what feels like several days before I stop thinking.' — and only then describe the appearance and the behaviour. The hook is the cost of not reading it.",
+        "Structured fields sit alongside free prose: the transcriptions carry fixed icon slots for a danger rating and an intelligence rating, and one behaviour cue gets its own icon — the flickering-lights-means-hide symbol. The page is part datasheet, part diary.",
+        "THE ACTIONABLE SENTENCE IS BOLDED INSIDE THE PROSE. 'Have to hide or I'm dead', 'Wardrobes are great hiding spots', 'doesnt attack as much if I have a light source equipped', 'look away from these things'. The reader can take the advice off the page without reading the lore around it.",
+        "A SECOND VOICE ANSWERS INSIDE THE PLAYER'S OWN NOTES, in its own colour. The blue interjections are one-line corrections — 'Check the door numbers.' against the entry for the entity that hides behind fake doors, 'You're welcome.' against the observation that the lights warn you. The guidance and the speculation are attributed to different authors on the same page.",
+        "Sections that do not exist yet are LABELLED rather than hidden: Items, Locations and Miscellaneous are shown 'coming soon'. The reference declares its own coverage gaps to the reader.",
+        "The book has a table of contents and a self page — an entry about the player, unlocked by an achievement — so the index is itself a collectible surface.",
+        "Entries carry deliberate uncertainty in the player's voice ('Some kind of poltergeist? Ghost?', 'Intelligence completely unknown'), which is how a reference written in character stays honest about what has not been established.",
+        "The genre reaches into the reference: one entity has a chance to jumpscare from its own journal page. The refresher surface is not exempt from the game."
+      ]
+    },
+    {
+      "id": "devforum-measured-tutorial-dropoff",
+      "source": "https://devforum.roblox.com/t/41-of-players-leaving-game-within-30-seconds-of-tutorial/3814365 — read on 2026-09-20 through https://devforum.roblox.com/t/3814365.json (DevForum serves topic JSON over plain HTTP). A developer posting instrumented funnel data from their own game's tutorial, with replies.",
+      "demonstrates": [
+        "REAL NUMBERS FROM A REAL INSTRUMENTED TUTORIAL: a five-minute, sixteen-step story tutorial. 41% of players do not get past step 1, which the author says takes about 20 seconds and is 'heavily guided'. Only 30% finish all sixteen.",
+        "The author ruled out the technical explanations in the same post — crash rate under 1 in 200, average FPS 70 from the Analytics dashboard — so the drop-off is attributable to the design rather than to performance.",
+        "A second developer reports the same shape independently from a different game: roughly 50% will not sit through a click-to-advance cinematic tutorial.",
+        "The playtester's two concrete findings are both construction defects, not taste: 'tutorial text is quite small', and a combat tutorial bug that BLOCKED PROGRESS. A scripted tutorial that can be blocked converts a bug into a total loss of the player.",
+        "The sharpest critique is an argument against coverage: do not teach what every button and screen does, because the player concludes the game 'has a lot of moving parts and is too complicated'. The proposed alternative is to teach movement first, then demonstrate each feature at the moment it is needed — 'a player faces an enemy and has to open the loadout to respond' — rather than walking the player through loadout screens up front. That is the contextual-tutorial argument arrived at independently by a player who quit.",
+        "ONE REPLY OF NINE asks for a skip and a replay, in a single sentence and neither half alone: 'i think you should make an option to skip the tutorial and do the tutorial again'. One person, not a pattern — recorded because it is the only feature request in the thread, and because a shipped game reaches the same pair independently (TDS has both, and shipped a badge bug on each).",
+        "Sixteen steps is described by its own author as 'small steps', and 41% still leave in the first one — step granularity did not protect the opening."
+      ]
+    },
+    {
+      "id": "devforum-spotlight-and-step-modules",
+      "source": "https://devforum.roblox.com/t/spotlightui-guided-focus-module/4267581 and https://devforum.roblox.com/t/release-onboard-modern-lightweight-onboarding-tutorial-framework/4751478 — read on 2026-09-20 through https://devforum.roblox.com/t/4267581.json and https://devforum.roblox.com/t/4751478.json. Two community-published onboarding modules. WEAKER THAN THE ROWS ABOVE and recorded as such: neither is a shipped game, one is at v1.0 pre-release with known bugs, and the other's author wrote in his own thread that an early version was posted before it was finished. They are kept because between them they enumerate the parts a tutorial overlay actually needs, and both authors publish the parts theirs does NOT have.",
+      "demonstrates": [
+        "THE HIGHLIGHT MUST FOLLOW A MOVING TARGET — AND ONE OF THE TWO MODULES ADVERTISED IT BEFORE IT HAD IT. OnBoard's changelog describes the focus cutout as one that 'dynamically tracks moving UI elements and viewport resizes smoothly during active steps'. SpotlightUI's opening post claims it 'updates targets at runtime, so highlights stay accurate even if UI moves or changes' — but when a reader asks 'Can it follow ui element that changes positions', the author answers 'Currently no, it'll be added in the next release' and suggests running the focus call on a RenderStepped connection by hand until then. A spotlight computed once is wrong the moment a list scrolls or the window changes shape, which is why it gets asked for in the thread — and the headline claim was still ahead of the code.",
+        "A step is an OBJECT with named fields, and both modules converge on nearly the same set: an id, a title, a body, a target, and independent booleans for the arrow and for the dimming overlay. Arrow and dim are separately switchable per step, not one 'highlight' flag.",
+        "ADVANCING IS ITS OWN TYPED CONCEPT. One module types its trackers explicitly — Number, Boolean, Signal, Zone, Click and Timer — so the condition that ends a step is a first-class field rather than a callback the author wires by hand. A commenter in the same thread reports failing to find the click tracker before discovering it, which is what happens when the advance condition is not obvious in the step definition.",
+        "The overlay must set IgnoreGuiInset so it covers the whole screen; a commenter raised this against a module that did not. A dimming layer that stops at the top inset leaves the one strip of screen the player is most likely to be looking at undimmed.",
+        "The overlay's stacking is a stated problem to solve rather than a detail: one module advertises adjusting focus borders and dimming 'without requiring manual Z-Index hacks', which says what the default experience is.",
+        "The step counter is a typed element of the card rather than text somebody remembered to write: one module's changelog lists font support 'across titles, descriptions, and step counters'. The other has it only as a plan — 'Progress Indicators (e.g. \"Step 2 of 5\")' sits in its v1.1 list, which is to say its v1.0 ships without one.",
+        "THE PUBLISHED ROADMAP IS A LIST OF WHAT A v1.0 TUTORIAL OVERLAY IS MISSING, and it is a good specification: click-to-advance, progress indicators, step callbacks for show and complete, arrow indicators pointing at the target, replay controls (skip, previous, replay), multi-target highlighting, and improved mobile touch detection. Every one of those is something a tutorial needs and a first version does not have.",
+        "The same roadmap's known-issues list names two failures worth designing against: memory leaks in long-running or repeated spotlight sequences, and a circle-shaped spotlight whose width is inconsistent on certain screen sizes. A round cutout is the shape most likely to be wrong on a phone.",
+        "Highlighting is required for BOTH UI elements and 3D world objects, and both modules ship the pair — UI spotlight masks plus directional arrows, beams and world targets. A tutorial that can only point at GuiObjects cannot say 'go there'.",
+        "The sequence itself is named and addressable — one example's id is literally 'FirstTimePlayer' — and the API is Start, Next, Previous, GoToStep, Stop. A tutorial is a cursor over a list, which is what makes replay and resume possible at all.",
+        "Theming is centralised in one config in both modules (fonts, colours, overlay transparency, highlight, arrow, tween), and a commenter's complaint is exactly what happens when it is not complete: the card hardcodes a gradient on its title, so overriding the theme's text colour does nothing. One title colour and one body colour also turn out to be two settings, not one."
+      ]
+    }
+  ],
+  "rules": [
+    {
+      "rule": "Decide the first-run gate before anything else, and prefer a check that survives a data-store failure.",
+      "why": "Tower Defense Simulator gates its forced tutorial on whether the player owns a Roblox BADGE, not on a saved profile flag: no badge means they are 'instantly sent to the Boot Camp mission which they have to complete', badge means they are 'left in the Main Lobby'. Badge ownership is queryable from any server and cannot be lost to a profile that failed to load, and a player who is re-taught because their save was slow is a player who has been told the game does not know them."
+    },
+    {
+      "rule": "Never let the skip control award the completion mark.",
+      "why": "TDS shipped exactly that bug on 24 February 2024, fixed it on 8 March and regressed it on 15 March. Because the same badge is also the gate, a skip that awards it turns the tutorial off permanently for a player who never saw it. BedWars took the opposite route deliberately and its wiki states the consequence out loud — the gate checks that you entered, so 'play doesn't mean complete'."
+    },
+    {
+      "rule": "Ship the skip and the replay, and test the completion reward on BOTH paths.",
+      "why": "Tower Defense Simulator shipped both — the tutorial can be skipped, and it can be replayed from Settings — and the update history logs a badge bug on each path on the day the tutorial was added: 'Beating the Tutorial for the first time through settings does not reward the badge' and 'Skipping the Tutorial still awards the badge'. The skip bug was fixed on 8 March 2024 and was back on 15 March. Two exits, two reward paths, two bugs. The demand side is thin and is recorded as thin: on the one thread with measured funnel data, a single reply out of nine asks for the pair — one developer's opinion, not a measured preference."
+    },
+    {
+      "rule": "Narrow the interface to the control being taught, and lock the rest.",
+      "why": "TDS's tutorial disabled the consumables hotbar, made only the requested tower selectable, disabled skills, and removed access to Settings — four separate dated decisions over fourteen months, each one following a bug where the open control broke the lesson. It also overrides loadout and skins, and the one time a non-default skin leaked through, it 'causes Wave 2 to break'."
+    },
+    {
+      "rule": "Edit the HUD for the lesson: remove a readout the tutorial has made meaningless.",
+      "why": "TDS replaced the base health bar with a PROGRESS bar in the tutorial on 25 June 2025, in the same change that made losing impossible. Leaving the health bar there would have shown a number the game had just stopped letting move, which teaches the player to ignore the one readout the real game is built around."
+    },
+    {
+      "rule": "Set the resources instead of letting the player earn them.",
+      "why": "TDS's tutorial assigns a specific cash balance after each wave — 200, then 450, then 1,500 — with no wave bonus. It stopped doing that once, by accident, when a balance patch made the taught tower unaffordable and left the tutorial 'impossible to beat' until a hotfix the same day. A scripted step that depends on the live economy has to be re-tested against every tuning pass."
+    },
+    {
+      "rule": "Teach select and use as two steps, and re-teach the selection every time it changes.",
+      "why": "Both scripted tutorials read here do it with one exception the third pass found, so this is a strong tendency rather than a rule. TDS: 'Select the sniper tower.' then 'Place the sniper on the highlighted spot.' BedWars: select wool, place wool, select pickaxe, break block, then select wool AGAIN before placing around the bed. Neither assumes the hotbar is still where the last step left it."
+    },
+    {
+      "rule": "Put the constraint in the same bubble as the instruction, before the verb.",
+      "why": "'Snipers can only be placed on high up vantage points. Place the sniper on the highlighted spot.' The rule the player would otherwise learn by having the placement rejected is stated first, so the rejection never happens."
+    },
+    {
+      "rule": "Write the instruction against the highlight, not against the place.",
+      "why": "TDS says 'the highlighted spot' and BedWars says 'the highlighted cube space'. The text and the visual element are written for each other, which is what lets the map change without the script changing — and it is the same reason Roblox's own docs prefer an arrow to the sentence 'click the backpack button', which makes the player interpret a word and then hunt for it."
+    },
+    {
+      "rule": "A spotlight is three marks on one target: dim everything else, outline the target, and point at it.",
+      "why": "Roblox's documentation describes its worked example that way — the button spotlighted while the rest of the screen is dimmed, a coloured outline on it, and an arrow pointing at it — and claims the result is that there is 'no mistaking what the player is expected to click next'. The community modules confirm it from the other side by making the arrow and the overlay separate per-step booleans, which is what a single 'highlight' flag cannot express."
+    },
+    {
+      "rule": "The dim layer must ignore the GUI inset, and the cutout must re-anchor every frame.",
+      "why": "One community overlay module ships the tracking and says so in a changelog — the cutout 'dynamically tracks moving UI elements and viewport resizes smoothly during active steps' — and a reviewer in that same thread told it to set `screenGui.IgnoreGuiInset = true` 'this way it can cover the full screen'. The other module makes the tracking claim in its opening post and then concedes it in reply: asked whether it can follow a UI element that changes position, the author answers 'Currently no, it'll be added in the next release'. A spotlight computed once is wrong the moment a list scrolls, and a headline feature is not the same as a shipped one."
+    },
+    {
+      "rule": "Make the advance condition a typed field on the step, not a callback somebody remembers to wire.",
+      "why": "One module types its trackers as Number, Boolean, Signal, Zone, Click and Timer, and in the same thread a user reports having failed to find the click tracker before eventually digging it out. If the thing that ends the step is not visible in the step's own definition, the common case — advance when this button is pressed — is the one people cannot find."
+    },
+    {
+      "rule": "Give the step card a step counter as a real element.",
+      "why": "Both modules carry one — one ships it in the card's typography support, the other has 'Progress Indicators (e.g. \"Step 2 of 5\")' on its roadmap as a thing v1.0 lacks. A sixteen-step tutorial that never says how many are left is asking the player to decide whether to stay without telling them what they are agreeing to; one such tutorial lost 41% of players inside the first step."
+    },
+    {
+      "rule": "Time a hint by measuring, and show it once, to the people who need it.",
+      "why": "Roblox's own guidance gives the method and the arithmetic: playtesting finds most players press the button within 10 seconds, so the highlight appears at 11. The stated constraints are that the hint appear only after the majority have already finished, only the first time the task is presented, and only to those who need it. DOORS ships the same idea with the clock running on the player — the item highlight fires when they have been unable to find it 'for a long time'. [CORRECTED 2026-09-20: the trigger phrase quoted here was read from COMMENTED-OUT wikitext, which never renders on the page — so it is what an editor wrote and not what any player was ever shown. The escalation behaviour around it stands on the rendered prose; the exact phrase does not, and is retained only as a note about the source.]"
+    },
+    {
+      "rule": "Escalate a repeated-failure hint, and make the first one deliberately less than the answer.",
+      "why": "DOORS states that 'the tips become increasingly precise as the player dies to the same entity', and prints the ladder: first death says to watch for cues, second says the lights are related, third names the mechanic and the counter-action. This is the clearest recorded case in this library of a shipped game choosing to withhold the answer from a player who has already lost, and it is arguable in both directions — but it is what shipped, and the ladder is what makes a first death feel like a near miss rather than a tutorial."
+    },
+    {
+      "rule": "Key a failure hint on what killed the player AND where, not on the cause alone.",
+      "why": "The same DOORS entity in a room with no lights produces a different tip — 'In the greenhouse, there are no lights that can flicker. You must rely on sound queues.' — because the advice that works in the first area is useless in the second. A tip table indexed only by cause will eventually tell a player to watch something that is not there."
+    },
+    {
+      "rule": "Cancel the hint when the player solves it first.",
+      "why": "This is the one recorded flaw in an otherwise exemplary system: DOORS 'will still highlight doors or objects even if players have escaped from the dark room or found the item without her help'. A hint that cannot be cancelled tells a competent player the answer to a question they have already answered, which is how a helpful system starts reading as a nagging one."
+    },
+    {
+      "rule": "Let the hint layer be switchable as a layer, and keep the load-bearing hints out of the switch.",
+      "why": "DOORS turns off every death message when the player enables difficulty modifiers, and one joke mode replaced the tips wholesale with non-tips — both of which are only possible because the advice is a discrete content layer. But a modifier that removes every highlight still leaves the chase highlights on, because the chase is not survivable without them."
+    },
+    {
+      "rule": "Teach a non-core feature when the player meets it, not at minute one.",
+      "why": "Roblox documents this as the contextual or 'just in time' tutorial and gives the trigger as a state, not a place — in _Squishmallows_ the combination tutorial fires when two identical items are in the inventory. The stated reason is that putting it in the first run 'would make it too long and irrelevant, and players may forget the information before they can use it'. A player who quit somebody else's tutorial made the same argument from the other side: do not teach what every button does, or the player concludes the game is too complicated."
+    },
+    {
+      "rule": "Manufacture the situation a control exists for instead of listing the control.",
+      "why": "TDS taught SELLING by handing the player an expensive tower and then saying 'Looks like you're a little short on cash. Try selling some of your towers, starting with your scout.' The lesson is the shortfall; the sentence only names the button."
+    },
+    {
+      "rule": "Make the tutorial opponent visibly worse, not secretly worse.",
+      "why": "BedWars' wiki records the tell as part of the step: 'The enemy will slowly swing their sword.' The combat lesson is built so it cannot be lost, and the handicap is legible on screen rather than hidden in a damage multiplier — the same trade BIG Paintball 2 makes in fps_arena.json by compensating platforms in the reward path rather than in the aiming code."
+    },
+    {
+      "rule": "Name both inputs on one line, and describe the touch half by its icon.",
+      "why": "Ten of BedWars' fifteen tutorial steps do it: 'Press 3 on your keyboard or tap the wool icon in the hotbar', 'Press C or tap the home icon'. There is no second mobile tutorial. The touch half cannot say 'slot 3' because the mobile player has no number to press, so it names the thing they can see. The five that name no key are the rows with no control to press — walk onto the iron, go to the shopkeeper, gather, repeat step 12 — plus the bridging step, which names only the tap."
+    },
+    {
+      "rule": "Prefer a visual element to a sentence wherever the sentence would need translating.",
+      "why": "Roblox's documentation makes this a localisation and accessibility argument rather than a taste one: arrows and particle effects 'don't require translation to be understood by a global audience', a designer using them does not 'have to worry about a text string getting longer after translation', and on mobile 'text can be too small to read comfortably'. The independent playtester critique of a real tutorial was, in full, that its text was too small."
+    },
+    {
+      "rule": "Keep a persistent control legend on screen, separate from any tutorial sequence.",
+      "why": "Roblox's onboarding page names displaying complex, unfamiliar controls on-screen as an onboarding technique in its own right, illustrated with a shipped game's control readout — not as a step in a sequence, and therefore still there after the sequence ends."
+    },
+    {
+      "rule": "Give the returning player a reference bound to one key, reachable from inside the game.",
+      "why": "DOORS added a journal whose page dates it to 28 August 2026 and whose stated job is a refresher 'on how certain entities, items, locations, etc. function', openable in the lobby and mid-run on a single keypress. That is years into a running game — the same wiki dates the guiding light to 10 August 2022 — though no page read here states the game's launch date. Adopt Me! reaches the same place differently, by putting its teaching checklist in the same right-hand tab rail as Shop and Friends, at equal weight and never modal."
+    },
+    {
+      "rule": "Fill a reference by playing, and split a long entry so the identification comes before the rest of it.",
+      "why": "The DOORS journal's pages 'update and fill out automatically as you actively play, encounter, and interact', so you cannot read ahead about a thing you have not met. Seven of the roughly fifteen entries transcribed as text carry an explicit '...Continued' break, with the identification and the danger and intelligence ratings above it and further behaviour below — the half of Rush below the break is the one that says the lights flicker and to get into a wardrobe. Eight of those fifteen carry no break and most of the book's fifty-odd entries are not transcribed at all, so this is what the long entries do, not a house format."
+    },
+    {
+      "rule": "Bold the actionable sentence inside the prose, and attribute a correction to a different voice.",
+      "why": "The journal's entries are diary prose with the usable line bolded — 'Wardrobes are great hiding spots' — and a second character's one-line corrections interleaved in their own colour. A reader can take the advice off the page without reading the story, and the guidance is visibly not the same speaker as the speculation."
+    },
+    {
+      "rule": "Label a section that has no content yet rather than hiding it.",
+      "why": "The journal shows Items, Locations and Miscellaneous as 'coming soon'. A reference that hides its gaps lets the player conclude it is complete and stop looking."
+    },
+    {
+      "rule": "Make a teaching checklist a list of verbs, one verb per row, including the UI verbs.",
+      "why": "Adopt Me!'s Guide gives Place, Rotate, Resize and Color Furniture four separate rows — three of the four paying a furniture item on top of the flat 5 Bucks, Place paying the 5 alone — and spends at least six of its 73 rows on pure interface literacy: Open the Journal, Open Storage, Edit Your Profile, Add a Section to Your Profile, Add a Sticker to Your Profile, Save an Outfit for Your Pet. Its very first entry in the whole system is 'Open Your Backpack'."
+    },
+    {
+      "rule": "Split finding a surface from using it, and pay for both.",
+      "why": "The same list runs the pattern four times — Visit the Nursery then Buy an Egg, Visit the Salon then Paint Your Pet, Visit the Dealership then Buy a Vehicle, Visit the Toy Shop then Buy a Sticker Pack. In a game whose content is places, knowing where the thing is is half the lesson."
+    },
+    {
+      "rule": "Use the reward SIZE to mark the beat that matters, and leave everything else flat.",
+      "why": "60 of the 73 rows in Adopt Me!'s Guide pay a flat 5 Bucks and ten pay between 20 and 130. Exactly three pay 355 — hatch an egg, buy an egg, complete a task — a seventyfold jump over the base rate, on the three actions that are the real conversion moments. Nothing else on those rows is emphasised; the number is the emphasis."
+    },
+    {
+      "rule": "Gate inside the list, not between lists.",
+      "why": "Adopt Me! states that 'some achievements in each section require previous ones to be completed before they are available', so one section is simultaneously part visible and part locked. A section that only unlocks whole teaches nothing about what is inside it."
+    },
+    {
+      "rule": "End the teaching track on a marker the player can wear or show.",
+      "why": "Adopt Me! grants a non-tradable Tutorial Graduation Cap for teaching a pet a trick; BedWars grants a permanent title plus a one-week rental of any one of four premium kits; TDS grants a badge whose description is addressed to the player as a recruit. In all three the graduation reward is a thing rather than currency, and in two of the three it is publicly visible."
+    },
+    {
+      "rule": "End with a rehearsal, not with something new.",
+      "why": "BedWars' final tutorial step is 'repeat step 12, but this time do not cross the bridge' — the last thing the player does is the thing they were taught, with one variable changed. Roblox's own guidance asks for the last beat to be an intentionally designed moment of joy, and a moment of joy cannot land on a mechanic the player has not yet succeeded at."
+    },
+    {
+      "rule": "Give the narrator a pose that means 'this line is an instruction'.",
+      "why": "Tower Defense Simulator's narrator has eight named portrait states and one of them is TEACH; across Boot Camp and all three archived Tutorial/Waves versions, every beat that asks for an action uses it, with no exception. The converse does not hold — the framing line that closes the upgrade lesson carries Teach too — so the pose is a reliable mark ON instructions rather than a reliable mark OF them. In the teaching pose he also wears glasses and his holstered sidearm is missing: a shipped game redrew its commander to be visibly unarmed while explaining a control."
+    },
+    {
+      "rule": "Write a teaching beat in three parts: why, do, done.",
+      "why": "'No time to waste. If you want to survive, you'll need to upgrade your towers.' / 'Let's start with the scout. Upgrade him to level 2.' / 'Good work!' Then the consequence is asserted before it could be observed — 'Good thing you upgraded your towers, because we got more enemies on the way!' Roblox's own docs demand the same structure from the other end: the player must understand both what they are expected to do and why."
+    },
+    {
+      "rule": "Treat every waiting step as a softlock until proven otherwise.",
+      "why": "One page of TDS update history records four distinct tutorial softlocks — upgrading too fast leaving the player short of cash, the consumables hotbar swallowing the requested input, hotbar towers becoming unselectable, and the emote wheel removing the inventory entirely 'preventing progress until the player rejoins'. One of them survived a rejoin and bricked the account's tutorial for good. A playtester of a different game reported the same failure shape in one sentence: a combat tutorial bug that blocked progress."
+    },
+    {
+      "rule": "Log every step server-side, validate the step number, and never log the steps a skip jumped over.",
+      "why": "Roblox's funnel documentation is explicit on all three. Events can only be sent from the server and only in published games, so a client-side tutorial cannot report itself; its own example shows a client firing step 10 of a three-step tutorial and a server rejecting anything above maxStep; and 'if you skip a step in a funnel, the earlier steps automatically complete', which means a skip button that logs the final step reports every skipper as having finished the whole thing."
+    },
+    {
+      "rule": "Expect to lose most players at the first ACTION, and instrument it before redesigning it.",
+      "why": "Roblox's own reference project loses 70% between 'In Farm' and 'Plant Seed' — between arriving and doing the first thing. A developer with sixteen instrumented steps lost 41% inside step 1 and only 30% reached the end, and was able to say it was not performance because he had the crash rate and the frame rate next to the funnel. Without the instrumentation, both of those are invisible."
+    },
+    {
+      "rule": "Prefer the non-blocking guide to the modal, and keep the hint alive while the player wanders.",
+      "why": "Roblox's documentation says a directional trail 'strongly suggests an action, but doesn't require it', that the availability of choice is what keeps a tutorial from feeling forced, and that persistent elements 'stay on-screen until the player has completed a step' precisely so that 'even if they choose to explore, the hints remain to guide them when they are ready to return'. The one shipped forced tutorial read here is a tower-defence mission where standing still is a lose condition; a game where the player can wander has a different problem."
+    },
+    {
+      "rule": "Before writing a combat tutorial, count the feedback the fight already gives.",
+      "why": "Roblox's own guidance lists six simultaneous feedback signals in one shipped game — hit flashes, damage numbers flying off the enemy, a throbbing red low-health effect, both health meters updating, coins flying out on a kill, and the quest counter incrementing — and says the combination 'ensures most players understand what's happening without a needing more explicit combat tutorial' (the missing word is the source's). The claim is a SMALLER tutorial, not none: the lesson a player can read off the screen does not need a step."
+    },
+    {
+      "rule": "Cut the first run down over time, and move what you cut into context.",
+      "why": "TDS's tutorial went from five waves teaching four towers, hidden enemies, selling and a boss, down to three waves teaching place, upgrade and survive. Adopt Me! and Roblox's documentation both push the same way from the other side: the rest is a checklist you can open whenever, or a contextual prompt that fires when the feature becomes relevant."
+    }
+  ],
+  "limits": [
+    "GHOST HANDS WERE NOT FOUND AND ARE NOT BACKED. The brief for this file named ghost hands as one of the techniques to look for, and nothing read here describes an animated hand, finger or cursor demonstrating a gesture. Arrows, dimmed-screen spotlights, outlines, world highlights, beams and directional trails are all attested; a demonstrated gesture is not. Anything a generator produces in that shape is unsourced.",
+    "THE MOBILE FIRST RUN IS THE THINNEST PART OF THIS FILE. The only direct evidence is BedWars naming a touch action alongside every key, and two indirect notes — Roblox's docs saying text can be too small to read comfortably on mobile, and one overlay module listing 'improve mobile touch detection' as a known gap. Nothing read here describes how a spotlight, an arrow or a step card is laid out on a phone, what a tutorial does with an on-screen thumbstick, or how a step that says 'press' reads when there is no keyboard. A phone-specific onboarding layout is unbacked.",
+    "THE RETURNING PLAYER IS BACKED MORE THINLY THAN THE FIRST RUN. Four things are attested: a badge check that routes a returning player past the whole sequence, a replay entry in a Settings menu (known only from a bug report about it), a key-bound reference book, and a persistent checklist tab. Nothing read here describes what a returning player sees when a NEW feature ships into a game they already know — the 'what's new' surface — or how a contextual tutorial decides not to fire for a veteran. Roblox's docs gesture at it once, with a hint shown to a player who has not used trading in two sessions, and that single sentence is all there is.",
+    "NO NUMERIC GEOMETRY WAS FOUND ANYWHERE. Not one source read here states a stroke weight, corner radius, padding, font size, overlay transparency, arrow size or animation duration for any onboarding element. The two timing numbers in this file — an 11-second hint delay and a 20-second first step — come from a worked example and from one developer's own game, and neither is a standard. Nothing in this file should be used as a measurement.",
+    "THE WIKI ROWS WERE READ AS WIKITEXT THROUGH api.php, because Fandom serves article HTML behind Cloudflare. That is the same prose, but it means the SCREENSHOTS those pages embed were named and not seen. Every wiki claim above is one the page states in words; none is inferred from an image nobody looked at. The same applies to the Roblox docs rows, which were read as markdown: the images are referenced by their alt text, and where a claim rests on one — the three-mark spotlight example, the 70% drop-off figure — it rests on the alt text and the surrounding prose, which is weaker than having seen the picture.",
+    "THE TWO COMMUNITY MODULES ARE THE WEAKEST ROW AND THE FILE SAYS SO IN THE ROW ITSELF. Neither is a shipped game. One is a v1.0 pre-release publishing its own memory leaks; the other's author posted an unfinished version and said so in the thread. They are used only for the enumeration of parts, never for whether a technique works.",
+    "FOUR SHIPPED GAMES IS A NARROW SAMPLE AND THEY ARE NOT EVENLY SPREAD. Tower Defense Simulator carries two rows and is the only forced, fully scripted tutorial here; the other three are a fifteen-step guided mode, a checklist, and a failure-driven hint system. There is no obby, no racing game, no tycoon and no roleplay game in this file, and a tycoon's first run — where the teaching surface is usually the first purchasable dropper rather than any of these shapes — is entirely unbacked.",
+    "NO A/B RESULT IS RECORDED. Roblox's documentation repeatedly recommends testing a shorter dialogue sequence against a guided arrow, and a 5-second against a 10-second hint delay, but publishes no outcome for either. Every claim in this file about which of two designs is better is an argument somebody made, or a change somebody shipped, and never a measured comparison. The only measured numbers here are drop-off rates, which say where players leave and not what would have kept them.",
+    "AN ADVERSARIAL RE-READ ON 2026-09-20 CORRECTED 13 CLAIMS IN THIS FILE, and the kind of error is worth more than the count. Every source resolved and every source was real; the failures were all on this side of the citation. ONE WAS FABRICATED: a rule claimed 'a second developer asking for feedback on a different game's tutorial raised the same pair unprompted' — all nine replies to that thread were re-read and no such developer exists; the sentence is deleted and the rule now stands on Tower Defense Simulator's two shipped exits instead. ONE WAS BACKWARDS ('Steps are named strings, not indices', where the cited call takes a step number AND a step name) and one more inverted a table it cited (the DOORS addressal changes at every rung, so the advice is not 'the only part that changes'). ONE QUOTATION WAS A SPLICE of two different BedWars steps and is replaced with the two verbatim lines. FOUR WERE 'EVERY' WHERE THE SOURCE HAD A COUNT: every journal page opening with a red death line (twelve of the fifteen transcribed entries), every entry carrying a '...Continued' break (seven), every BedWars step naming both inputs (ten of fifteen), and every Teach-state beat being an instruction (true one way only — an instruction is always Teach, but one framing line is Teach too). ONE PROPORTION WAS INVENTED ('roughly a fifth' of the Adopt Me! Guide teaching a panel; the list has 73 tasks and six such rows, eight counted generously), ONE REWARD CLAIM WAS WRONG (Place Furniture pays no item, unlike Rotate, Resize and Color), TWO INFERRED A GAP SINCE LAUNCH that neither page states ('six years' for Adopt Me!, 'three years' for BedWars — both deleted, both pages give only the feature's own date), and ONE OMITTED A CONTRADICTION IT HAD SEEN: a module advertising that its highlight follows a moving target, whose author answers in the same thread 'Currently no, it'll be added in the next release'. Nothing was invented to keep the count up; every repair narrows, quotes exactly, or deletes. No reference row lost enough observations to fall below two, so the file still carries 11 references. The pattern to watch for in the rest of this library is the one this file had: good sourcing underneath, and a confident sentence on top that the source does not carry.",
+    "THIRD ADVERSARIAL PASS, 2026-09-20, and this file is the one that nearly escaped it. Its repair agent finished its work and then crashed on output formatting, so no adversary read the repaired file — it was carried as verified when nothing had verified it. A final audit re-fetched all nine sources, re-measured the five most specific claims (four exact, down to counts: 73 Adopt Me! tasks split 60/10/3, ten of BedWars' fifteen steps naming both a key and a tap, seven continuation breaks across ~15 transcribed entries, the 41%/30% drop-off figures) and spot-checked ~30 further quotations, all verbatim. It then found five defects, all now corrected above: two absolutes disproved by a counter-example, a provenance line that miscounted its own rows and whose arithmetic summed to nine against eleven references, a quotation altered from the source's wording, and a phrase quoted from commented-out wikitext that never rendered for any player. The lesson worth carrying: the file that skipped verification was the file with the most errors, and nothing in the process noticed until somebody went looking for the gap."
+  ]
+}

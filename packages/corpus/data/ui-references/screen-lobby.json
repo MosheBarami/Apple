@@ -1,0 +1,402 @@
+{
+  "genre": "screen-lobby",
+  "label": "The LOBBY, MATCHMAKING and PARTY surfaces — queue objects and queue menus, party rosters and invites, ready gates and countdowns, rank bands and eligibility gates, private servers, and the teleport that ends the screen",
+  "recorded": "2026-09-20",
+  "provenance": "Web research, not owner screenshots. Read on 2026-09-20 from four shipped Roblox games (Tower Defense Simulator, Roblox BedWars, DOORS, RIVALS) through each Fandom wiki's api.php as wikitext, from Roblox's own teleport documentation as markdown, and from three devforum.roblox.com topics through Discourse's .json endpoint. Fandom serves article HTML behind Cloudflare — https://tds.fandom.com/wiki/Elevators, https://robloxbedwars.fandom.com/wiki/Ranked, https://doors-game.fandom.com/wiki/Elevator and https://robloxrivals.fandom.com/wiki/Ranked each returned HTTP 403 to a plain GET on this date, while api.php returned the same articles as wikitext — so every wiki row below is a claim the page states in prose, never one inferred from an image nobody looked at. That claim about prose is true of this file only because three adversarial re-reads on the same date made it true: earlier drafts carried rows whose layout, orientation and exclusivity were inferred rather than read, and limits[10] names every one that was deleted or narrowed, which pass caught it, and what remains uncertain. No image, no Luau source and no asset is copied here; each row records where the claim was read and how, so the claim can be re-checked.",
+  "incomplete": false,
+  "references": [
+    {
+      "id": "tds-elevators-queue-as-object",
+      "source": "https://tds.fandom.com/wiki/Elevators — read 2026-09-20 via curl of https://tds.fandom.com/api.php?action=parse&page=Elevators&prop=wikitext&format=json (the article URL itself returned 403 behind Cloudflare on the same date).",
+      "demonstrates": [
+        "THE QUEUE OBJECT CARRIES A FULL CARD, NOT A LABEL. Each elevator displays the map it leads to, the map name, THE MAP'S CREATOR, and the difficulty. Crediting the map author on the matchmaking surface is a decision — the creator's name is the one field on that card that has nothing to do with deciding whether to get in.",
+        "ONE COMPONENT IS BOTH THE EMPTY STATE AND THE PROGRESS. A progress bar sits at the bottom of the card and first reads 'Waiting for Players...'; it CHANGES INTO A TIMER once players have entered. The empty state is not a separate panel that gets swapped out — it is the same bar saying it has nothing to count yet.",
+        "The current number of players in the elevator is shown at the RIGHT END of that progress bar, so occupancy and time-remaining are one reading rather than two widgets.",
+        "A SECOND STATE READOUT EXISTS BESIDE THE CARD: 'On all elevators, it shows a floating label that indicates player size, which would display the timer after the server size had been set.' The source states that the label is on the elevator and says nothing about where — not above it, not how far it reads — so only its existence and its two states are recorded. Before v1.89.0 the floating label 'would only exist on Challenge Trials elevators', so it went from one elevator type to all of them: the card alone was not enough.",
+        "THE FIRST PLAYER IN CONFIGURES THE QUEUE. On entering, the elevator asks the player who entered what party size it should be for; after that choice the timer starts. On Story Mode elevators the same rule picks the MISSION — the first player to enter chooses it, and everyone who joins afterwards is taken to that mission.",
+        "Once configured, a box appears inside displaying 'nearly identical information to the map icon of the elevator' — the person standing inside is shown the same card the people outside are reading, deliberately duplicated rather than assumed.",
+        "CAPACITY IS PER MODE AND THE WAIT IS NOT: Survival elevators hold 4, Hardcore 3, Voidcore 3, Story 4, and ALL FOUR wait up to 20 seconds. The clock is a constant; the capacity is the variable.",
+        "QUEUES ARE DUPLICATED RATHER THAN SHARED. There are TWO Survival elevators for each available Survival difficulty — twelve in the Main Lobby — so arriving at a full one is not the same as being blocked.",
+        "PROGRESSION IS GATED AT THE OBJECT, NOT ON A BUTTON. There is exactly one Voidcore elevator, sited between the two Hardcore ones, and it 'can only be entered by players who have beaten Hardcore'. The lock is on entry, so an ineligible player never fills a slot they cannot use.",
+        "Hardcore elevators show a map that CHANGES EVERY MINUTE — a rotating offer on a queue object, which means the card a player is reading has a shelf life.",
+        "TEAM CHOICE WAS ONCE EXPRESSED AS WHICH OBJECT YOU STOOD IN: the removed Versus elevators were TWO SEPARATE elevators, one per team, four players each for eight per map. When Versus moved to the matchmaking menu, teams became randomly assigned instead — the physical form was the only thing that had let players pick a side.",
+        "A PAID VOTE WEIGHT SHIPPED IN A SHARED LOBBY VOTE. On the original Survival elevators the difficulty was decided by player vote, and a player holding the VIP gamepass 'would be able to place two votes on the difficulty'. This is the file's clearest case of monetisation reaching inside a group decision surface.",
+        "There is an explicit control for LEAVING the queue: the button that exits the elevator shipped before BETA v1.7 with the placeholder text 'leave elevator lol', which is how the wiki records that the button exists at all."
+      ]
+    },
+    {
+      "id": "tds-matchmaking-two-step-menu",
+      "source": "https://tds.fandom.com/wiki/Matchmaking — read 2026-09-20 via curl of https://tds.fandom.com/api.php?action=parse&page=Matchmaking&prop=wikitext&format=json.",
+      "demonstrates": [
+        "TWO ENTRY POINTS INTO ONE SYSTEM: the main method is a 'Play' button in the MIDDLE of the screen, and the secondary method is statues placed in the lobby, used only for limited-time events. The physical object and the centre-screen button are alternatives to each other, not different queues.",
+        "THE CURRENT FLOW IS MODE THEN PLAYER COUNT, WITH THE PAGE'S OWN HEDGE KEPT: 'in most cases a screen with multiple options will appear', and 'After getting through the mode selection, you will be asked to select a player count'. It is not the only flow the same page documents — for events up to the Ducky Revenge Event 'the old Matchmaking menu is used instead, where a small pop-up window will appear with multiple difficulty options if they exist before choosing the player count', which is three steps. An earlier draft called the flow EXACTLY two steps and said nothing else is asked; the page supports neither word.",
+        "The mode step has FIVE sections — Survival, Story, PVP, Arcade, Sandbox — and Survival itself contains eight modes. Sections group modes by what kind of session they are, not by difficulty.",
+        "THE SIZE STEP'S OPTIONS ARE CONSTRAINED BY THE MODE CHOSEN IN THE STEP BEFORE. Hardcore and Voidcore cap at trios because quads is unavailable there; PVP REPLACES the solo/duo/trio/quad vocabulary entirely with 1v1 and 2v2. The same slot in the same flow renders a different vocabulary depending on the previous answer.",
+        "AN ICON SHIPPED LYING ABOUT ITS COUNT: Sandbox and the Halloween 2025 live events add five-player 'squads' and six-player 'mega' options, and 'in both cases, the same icon for quads is used'. Two options that mean five and six are drawn with the icon for four.",
+        "A DOUBLE GATE ON ONE OPTION: the five- and six-player Sandbox options are locked unless the player BOTH owns the Sandbox Plus+ gamepass AND is in a party with other players. Purchase alone does not unlock it.",
+        "THE SEARCH STEP IS SKIPPED WHEN IT HAS NOTHING TO DO: 'If playing in solos or if the Party size is the same as selected player count, a match will be created instantly.' A queue screen that always appears would be showing a search that is not happening.",
+        "MATCHING WIDENS ON PURPOSE AND THE WIKI SAYS SO: pairing starts on similar Level (or ELO in ranked PVP) 'however, the system will not try to find players of similar Level forever. After a certain point, it will accept players of lower Level and higher Level, creating large gaps'. The quality of a match degrades with waiting, by design.",
+        "AGE GROUP IS A MATCHMAKING CONSTRAINT FOR A COMMUNICATION REASON: similar age groups are considered 'to ensure that all players in the match are able to see each other's messages'. Who can be matched is decided partly by who will be able to read each other's chat.",
+        "The match-found readout is a ROSTER WITH STATS, not a list of names: 'every single player's loadout, level, triumph count and loss count will be displayed, alongside their username and avatar'. (Recorded with its ambiguity: this sentence sits inside the article's Sandbox bullet but is phrased generally, and the article's own gallery carries a separate 'Match found' caption.)",
+        "A MODE CAN BE REACHABLE FROM A DIFFERENT SCREEN ENTIRELY: Challenge Maps have no option in the matchmaking menu and can only be accessed through the Quests menu. The mode picker is not the complete list of modes.",
+        "THE PRIMITIVE VERSION IS RECORDED AS WELL: Legacy Event Matchmaking 'had no actual options for the player' — match size was always the maximum and the game filled the remaining slots with strangers. Choice of size was added later, which dates it as a feature rather than a given.",
+        "An abandoned design is described in full: the Matchmaking Elevator, tested publicly and never shipped, moved the player out of the lobby into an elevator where 'player avatars would start appearing inside' as they were found. Representing the search as bodies arriving in a room was built, tested, and dropped in favour of a menu."
+      ]
+    },
+    {
+      "id": "tds-party-roster-and-defaults",
+      "source": "https://tds.fandom.com/wiki/Party — read 2026-09-20 via curl of https://tds.fandom.com/api.php?action=parse&page=Party&prop=wikitext&format=json.",
+      "demonstrates": [
+        "THE EMPTY STATE OF A PARTY SCREEN IS A BROWSER OF OTHER PEOPLE'S PARTIES. A player opening the menu while not in a party is shown 'a list of public Parties and a button which allows them to create a Party'. The screen does not open on an empty roster with a create button alone.",
+        "PARTY SIZE BLOCKS THE MATCH RATHER THAN RESIZING IT. Up to six people can be in a party, 'though if the Party player count is higher than the selected squad size in Matchmaking, the game will not allow the player to start a match'. The game refuses; it does not silently raise the squad size or split the party.",
+        "THE ROSTER AND THE INVITE LIST SIT TOGETHER, AND THE PAGE CONTRADICTS ITSELF ABOUT HOW: 'Once in a party, there are two screens. The first is Party member list, showing every member of it, including their username, level and profile icon. On the right, there is a list of users to invite.' Two screens and 'on the right' cannot both be literal, and the word 'left' appears nowhere on the page. Recorded as the page has it: the member row carries username, level and profile icon, the invite list is placed 'on the right', and no further layout is attested.",
+        "THE INVITE LIST IS TWO GROUPS THAT SHOW DIFFERENT FIELDS, AND THAT IS THE ARGUABLE DECISION. Friends come first and their level is NOT displayed — 'only information about them is them being online'. Players in the server are the second group and their level IS displayed. A friend is someone you invite because they are a friend; a stranger in your lobby is someone you invite after checking their level.",
+        "THE PRIVACY DEFAULT WAS FLIPPED TOWARD CLOSED: 'Party Lock is a setting which makes the Party be invite only. It is enabled by default, but it used to be disabled.' A shipped game changed its party from open-by-default to invite-only-by-default.",
+        "A SECOND DEFAULT POINTS THE SAME WAY: 'Members Can Invite' is DISABLED by default, so only the leader can invite until the leader says otherwise.",
+        "PARTY SETTINGS INCLUDE A LEVEL BAND WITH NO CEILING: Maximum Level defaults to 1,000 and Minimum Level to 0, and both are stated to have 'no limit to what it can be set to'. The host filters who may join by progression, before matchmaking ever does.",
+        "THE SETTINGS ARE STATED AS THE LEADER'S, WITHOUT AN EXCLUSION: 'There are a few settings for Parties which can be changed by the Party leader.' The page attributes the change to the leader and never says a member cannot make it; the word ONLY was an earlier draft's, and the settings pane being a leader-only surface is not attested here.",
+        "AN UNACCEPTED INVITE BECOMES A QUEUE, NOT A LOST POPUP: 'If invited in the lobby and the invite is not accepted instantly, the invite will be included in the invites section of the Party menu', where it can be accepted or denied later.",
+        "THE INVITE'S FORM DEPENDS ON WHERE THE INVITEE IS: in the same lobby it is an in-screen invite; elsewhere it is a Roblox notification 'either in-game or in their Roblox notifications, giving them an option to dismiss the invite or to join the lobby' — the far-away version's affirmative action is joining a LOBBY, not joining a party.",
+        "INVITE COPY IS A SET RATHER THAN ONE STRING, FOR TWO OF THE THREE INVITE SURFACES: 'Invites during a match or on the Roblox sites can have the text:' introduces seven variants, each naming the friend and the game ('[Friend name] is gathering a squad in Tower Defense Simulator!'). The page does not say the seven are randomised, does not say how one is chosen, and does not extend them to the in-lobby invite — which its own gallery lists as a third, separate case."
+      ]
+    },
+    {
+      "id": "bedwars-party-leader-and-stale-rows",
+      "source": "https://robloxbedwars.fandom.com/wiki/Party — read 2026-09-20 via curl of https://robloxbedwars.fandom.com/api.php?action=parse&page=Party&prop=wikitext&format=json.",
+      "demonstrates": [
+        "THE CREATE CONTROL IS ANCHORED TO THE HOTBAR, NOT TO A MENU BAR: players 'select the \"Create Party\" button above their hotbar', and this can only be done in the Lobby. The party entry point sits in the gameplay HUD's own furniture.",
+        "A PARTY IS SIXTEEN PEOPLE HERE — against Tower Defense Simulator's six — so the roster component cannot assume it fits on screen without scrolling.",
+        "THE MENU IS THREE THINGS AT ONCE: the party's current players, a list of all the players in that server, and A SEARCH BAR to search through them. Sixteen slots and a whole server's population is the size at which browsing stops working and search becomes a component.",
+        "ONLY THE LEADER ENTERS THE QUEUE: 'To join a game the \"leader\" of that party must join the queue for a gamemode.' A party has exactly one queue-entry point, so every other member's Play button must be something other than a Play button.",
+        "The leader removes a member 'by selecting the \"X\" next to a player's name' — the kick control lives on the row, not in a submenu.",
+        "INVITES LAND BOTTOM-RIGHT and accumulate in an Invites tab inside the Party menu, so the transient and the persistent form of the same invite are both built.",
+        "A STALE INVITE DELETES ITSELF RATHER THAN FAILING ON CLICK: 'if a player selects a party that has already left the server it will disappear'. The list heals when touched instead of erroring.",
+        "JOINABILITY IS TWO CONDITIONS, BOTH CHECKED AT CLICK TIME: the party must still be in the server AND have fewer than 16 players.",
+        "OVERSIZE IS REPORTED AS AN ERROR AT QUEUE TIME, NOT AS A DISABLED MODE: 'If the leader of a party that tries to join a gamemode has too many players, they will receive an error'. Compare Tower Defense Simulator, which refuses the start for the same reason — two shipped games both chose to let the player ask and then say no.",
+        "PARTY SIZE PRUNES THE MODE LIST: at a full 16 'the only modes you can join are custom matches, infected and 30v30'. Most of the mode picker becomes unreachable because of a choice made on a different screen."
+      ]
+    },
+    {
+      "id": "bedwars-ranked-eligibility-and-penalties",
+      "source": "https://robloxbedwars.fandom.com/wiki/Ranked — read 2026-09-20 via curl of https://robloxbedwars.fandom.com/api.php?action=parse&page=Ranked&prop=wikitext&format=json (the article URL returned 403 behind Cloudflare on the same date).",
+      "demonstrates": [
+        "TWO SURFACES, ONE QUEUE: a ranked match is joined 'by interacting with the armored NPC ... OR play within the classic mode inside of the \"Play\" button'. The lobby NPC and the menu are two doors into the same room, which means neither can own state the other lacks.",
+        "THE ELIGIBILITY GATE IS A DISJUNCTION WITH GRANDFATHER CLAUSES, AND THAT IS WHY IT CANNOT BE RENDERED AS ONE LINE. Ranked is open to accounts meeting ONE OR MORE of: 7 days of account age AND player level 20+; OR having played a ranked match before that requirement existed; OR having bought a R$1 gamepass before 25 March 2022. Two of the three branches are historical and unverifiable from the player's current state.",
+        "THE LEVEL FLOOR MOVED: a January 2025 change 'Increased the Ranked queue level requirement' to Level 20, so the number in that gate is a tuning value and not a constant.",
+        "A PARTY IS REFUSED ENTRY WHEN ONE MEMBER IS OUT OF BAND: 'people in certain ranks can only queue with players in their rank requirements. If a player is not within the rank requirements, their party will not be queued.' The bands are enumerated per rank — Gold plays up to Platinum, Platinum plays Gold to Diamond, Diamond plays Platinum to Nightmare — so the reason for the refusal is a specific member, and a queue screen that only says 'cannot queue' is withholding the one fact that would fix it.",
+        "ABANDONING BEFORE THE MATCH STARTS ESCALATES RATHER THAN PUNISHING AT ONCE: 'If you leave the game before the match starts, you will get a warning to not to do it again. If you do this enough times, you will start to get timeouts from playing in ranked.' The first offence is a message, not a lockout.",
+        "A MATCH CAN BE CANCELLED FOR BEING UNDERPOPULATED AFTER IT HAS BEEN FORMED: 'If a team only has 3 (5v5), 2 (Squads) or fewer players on it before the start of a match, the match will be cancelled.' Match-found is not the end of the failure modes.",
+        "THERE IS A NAMED TIMER GUI WITH A CONSEQUENCE ATTACHED TO A SPECIFIC READING: the match 'will end and disable RP gain if the match does not meet enough player count before the timer GUI hits 30 seconds'. Thirty on that clock is the moment the session stops counting.",
+        "THE PRE-MATCH PHASE IS A TIMED GROUP DECISION WITH A VISIBLE TIE-BREAKER: each team gets twenty seconds to ban two kits 'voted by their respective teammates', and 'a fair wheel of RNG is spun if there is no unanimity on the ban'. The randomiser is shown rather than resolved silently — the team watches the tie being broken.",
+        "After the ban phase 'each player on both teams then blindly picks a kit without extra delay' — the pick is simultaneous and hidden, which is a different component from the ban that precedes it."
+      ]
+    },
+    {
+      "id": "bedwars-lobby-npcs-and-boards",
+      "source": "https://robloxbedwars.fandom.com/wiki/Lobby — read 2026-09-20 via curl of https://robloxbedwars.fandom.com/api.php?action=parse&page=Lobby&prop=wikitext&format=json. The page carries a Stub and an Incomplete banner naming seasons it is missing, which is recorded here rather than ignored. It also tags its Kit Display section {{Removedcontent}} and five Easter Egg sections {{Removed}}: nothing from the Easter Egg sections is used, and the Kit Display observation says on its own face that the wiki marks it gone.",
+      "demonstrates": [
+        "THE MODE PICKER IS A CAST OF NPCs: the lobby's NPCs are enumerated as Doubles, Squads, Lucky Block, Solo, Custom Match, 30v30, Verify Account, Duels and Ranked Queue, and 'they allow the player to queue for various gamemodes, create custom matches, and to verify your BedWars account'. Standing in front of a character is the queue.",
+        "AN ACCOUNT ACTION WAS GIVEN THE SAME PHYSICAL FORM AS A GAMEMODE: 'Verify Account' is an NPC in the same list as Solo and Squads, and verifying grants a 20% Battle Pass XP bonus. A settings-shaped task was put where the modes are because it pays.",
+        "STATS ARE ARCHITECTURE, NOT A MENU: two boards stand in the lobby — a monthly wins leaderboard and a player stats board — so the two readouts that are not about starting a match are still physical objects you walk to.",
+        "THE LEADERBOARD PINS YOUR OWN ROW AT THE BOTTOM: it shows the top 100 players by monthly wins and the top 200 highest ranked, 'and at the very bottom, it shows each individual player's position and wins per month'. A ranking nobody can reach still has to tell each reader where they are.",
+        "THE STATS BOARD IS TWO SCOPES ON ONE SURFACE: global totals (total wins, bed breaks, final kills) alongside per-gamemode stats (bed breaks, final kills, wins, highest streak, current streak) for each of the seven gamemodes.",
+        "RETURNING TO THE LOBBY IS ROUTED BY WHERE YOUR FRIENDS ARE: '/lobby' takes a player back from a match, and 'if no friends are in the current lobby, the /lobby command will teleport the player to the same server'. The default destination is decided by a social check, not by proximity.",
+        "A SHOP WAS OPENED BY TOUCHING ITS SUBJECT, AND THE WIKI MARKS THE SECTION REMOVED: 'When a player interacts with any of the kits, it will open up the kit shop' — but the Kit Display section that sentence sits in is tagged {{Removedcontent}}, so this is a pattern the game had and dropped, not a surface it has now. Kept on the same footing as the historical Tower Defense Simulator rows: evidence about a decision somebody made, not a description of today's lobby.",
+        "BEING AWAY IS A PLACE: a portal teleports the player to a dedicated AFK Area, with the AFK Shop beside it. Idling is given a room rather than a status.",
+        "A RECORDED DEFECT WORTH DESIGNING AGAINST: 'The Custom Matches NPC is currently placed offset, facing backwards instead.' When the queue control is a character in a world, its ORIENTATION is part of whether it reads as interactive, and nothing in a layout system catches it."
+      ]
+    },
+    {
+      "id": "doors-elevator-countdown-and-ready-gate",
+      "source": "https://doors-game.fandom.com/wiki/Elevator — read 2026-09-20 via curl of https://doors-game.fandom.com/api.php?action=parse&page=Elevator&prop=wikitext&format=json (the article URL returned 403 behind Cloudflare on the same date).",
+      "demonstrates": [
+        "THE COUNTDOWN STARTS ON THE FIRST PLAYER, NOT ON BEING FULL: 'If a minimum of one player enters, a countdown will begin, lasting from 5–30 seconds.' A solo player is never held waiting for a group that may not come, and the range means the clock is variable rather than fixed.",
+        "THE READY-CHECK IS A GATE ON THE SKIP BUTTON, WITH NO CHECKLIST. 'A large, glowing button will allow instant access to the Reception once pressed, although everyone must be spawned in and finished with the Pre-Run Shop first.' Readiness is enforced at the moment of the shortcut rather than displayed per player — the only feedback is that the button does not work yet.",
+        "THE QUEUE OBJECT IS SINGLE-USE AND ACTIVELY EVICTS: after all players exit, the door closes and cannot be accessed again, and a player who re-enters 'will be kicked out in about 3–5 seconds and the elevator gate will close'. It does not merely stop accepting — it removes whoever is standing in it.",
+        "PUBLIC, PRIVATE AND CUSTOM CAPACITY ARE THREE DIFFERENT NUMBERS FROM ONE SENTENCE: 'Up to four players can be inside an elevator at one time, although this is expanded to 12 in private servers, and it is expanded to 50 in custom elevators.' The same object carries three caps depending on who owns the session.",
+        "CREATING YOUR OWN LOBBY IS TWO CHOICES: 'They can choose up to 50 players in their game, as well as a friends only option.' Capacity and audience are the whole configuration surface.",
+        "OPTIONS INSIDE THAT CREATE FLOW ARE ACHIEVEMENT-GATED: Modifiers require the 'Rock Bottom' achievement and a Backdoor custom elevator requires 'Detour'. Progression does not just unlock content — it unlocks fields in the host's setup form.",
+        "THE CAP IS PER MODE, FROM ONE CONTROL: the custom elevator holds 8 in HOTEL-, SUPER HARD MODE, Retro Mode and Cringle's Workshop, and only 4 in Daily Runs, against 50 normally. The number beside the slider depends on what is being hosted.",
+        "THE CAP EXCEEDS WHAT THE DESIGN SUPPORTS, AND THE COMMUNITY SAYS SO: 'Despite the maximum players allowed to fit in an elevator being 50, it is discouraged to play with groups past four, as hiding spaces can become an issue.' A configurable maximum is not a recommendation: the number the host can set is 50 and the number the same wiki advises not to pass is four.",
+        "THE CAP MOVED BY A LARGE STEP IN ONE UPDATE: 'When the Content Update was released, the maximum amount of people in a custom elevator was raised from 12 to 50', so the range a host's control must cover is not stable across versions.",
+        "COUNTDOWN AUDIO IS TIERED: the sound set names a 'Timer Tick' and a separate 'Major Timer Tick', so the last seconds of a lobby countdown sound different from the rest of it.",
+        "A SEASONAL VARIANT CHANGED THE WHOLE TIMING MODEL: PARTY MODE elevators held 8 and replaced the music with 'a countdown from 3'. The lobby's waiting experience was re-authored for an event rather than reskinned.",
+        "THE LOBBY HAS DIFFERENT OBJECTS FOR DIFFERENT SIZES: the article refers to 'the solo and duo elevators on the right side of the Lobby' being changed into squad elevators for an event — the lobby's queue objects are differentiated by party size before anyone touches a menu."
+      ]
+    },
+    {
+      "id": "rivals-duel-pads-and-party-constraint",
+      "source": "https://robloxrivals.fandom.com/wiki/Mechanics — read 2026-09-20 via curl of https://robloxrivals.fandom.com/api.php?action=parse&page=Mechanics&prop=wikitext&format=json. Complemented by https://robloxrivals.fandom.com/wiki/Lobby (same method, same date), a stub whose one substantive sentence names the four parts the lobby is separated into — Duels, Weapons, Market and Shooting Range.",
+      "demonstrates": [
+        "THE QUEUE OBJECT'S CAPACITY IS THE PER-SIDE COUNT, NOT THE MATCH TOTAL: 'For 1v1s, duel pads need 1 player each, for 2v2s, duel pads need 2 players, and so on.' One physical object carries a different occupancy for every gamemode, so a duel pad cannot be labelled with a fixed number. How many pads a duel uses, how they are oriented, and whether the pad you step on decides your team are three things an earlier draft asserted and this page never says; they are removed rather than hedged.",
+        "A MINIMUM OF TWO PLAYERS IS REQUIRED TO START, and 'Play Solo' exists ONLY in a private server. The public lobby has no single-player path through the same object.",
+        "Once the pad is ready 'a countdown will begin from 3 and when it finishes the match starts' — a three-count, far shorter than Tower Defense Simulator's twenty seconds, because the pad is already full when it starts.",
+        "PRIVATE SERVERS CAN RELAX THE OBJECT'S OWN RULE TO BUILD ASYMMETRIC MATCHES: 'there's an option to add duel pads that allow infinite players. The infinite players per duel pad option helps make 1v3s'. A 1v3 is not configured in a team editor — it is configured by removing a pad's occupancy limit.",
+        "The default private-server ceilings are stated together: 'more extensive options than just 5 players per duel pad being the max' and 'a max of 16 players in private servers without infinite players enabled'. Two separate caps, per-pad and per-server.",
+        "PARTY MEMBERSHIP IS A PERSISTENT TEAM ASSIGNMENT WITH THREE EXIT CONDITIONS: party members are on your team in whatever match you play 'as long as they're in the party and don't leave the game, party, or get kicked'.",
+        "PARTY SIZE REMOVES GAMEMODES FROM THE LIST: 'if you have 2 people in your party, you can't play 1v1s, but you can play 2v2s, 3v3s, etc.' The mode list is a function of the party, so it cannot be a static menu.",
+        "The lobby is divided into four named areas — Duels, Weapons, Market and Shooting Range — so queueing, loadout, buying and practice are four PLACES rather than four tabs.",
+        "A LOST STREAK IS RECOVERABLE FOR A PRICE THAT RISES: the Recovery cost runs 5, 10, 20, 40, 80 Keys and 100 from the sixth use onward, and the window only starts when the player next plays a streak-affecting mode — 'If the player does not play another gamemode that affects win streaks after losing the streak, the 24-hour timer does not start'. A lobby-side countdown that begins on an action rather than on the clock."
+      ]
+    },
+    {
+      "id": "rivals-ranked-gate-band-and-lockout",
+      "source": "https://robloxrivals.fandom.com/wiki/Ranked — read 2026-09-20 via curl of https://robloxrivals.fandom.com/api.php?action=parse&page=Ranked&prop=wikitext&format=json (the article URL returned 403 behind Cloudflare on the same date).",
+      "demonstrates": [
+        "THE RANKED QUEUE'S ELIGIBILITY IS A SIX-ITEM CONJUNCTION, WHICH IS AS LONG AS THIS LIBRARY HAS SEEN: complete 10 standard duels (wins and losses both count), reach Level 100, hold a Roblox account at least 14 days old, add a verified phone number OR spend Robux OR verify with ID, complete at least 30 tasks, and have a verified account. A gate this long cannot be a tooltip.",
+        "ONE BRANCH OF THAT GATE CARRIES A PLATFORM CAVEAT IN THE REQUIREMENT ITSELF: email verification is excluded '(email doesn't work due to roblox bugs)'. A requirement that has to name which of its own options is broken is a requirement the screen must explain rather than list.",
+        "THE PARTY RANK BAND IS STATED AS A NUMBER AND THEN AS WORKED EXAMPLES: 'players must be within 4 tiers (800 ELO) of each other. For example, a Platinum I player can queue with ranks ranging from Silver III to Diamond II.' The rule is a distance; what a player needs is the resulting range, and the source gives both.",
+        "LEAVING AN ONGOING MATCH COSTS A 15-MINUTE MATCHMAKING LOCKOUT AND AN AUTOMATIC LOSS, 'regardless of the reason'. The lockout is a state the lobby has to render, and refusing to distinguish a crash from a rage-quit is the decision — stated outright rather than hedged.",
+        "A RATING CAN FALL WHILE NOBODY IS PLAYING: at Onyx I or higher, seven days of inactivity begins ELO decay of 100 per day from the eighth day 'until the player returns to Ranked or reaches a baseline of 3,000 ELO'. The number on the profile is not a record of what you did.",
+        "THE PROTECTION ITEM IS DELIBERATELY WORSE THAN IT LOOKS AND DELIBERATELY NOT FOR EVERYONE: an ELO Shield prevents loss for one match but 'is consumed regardless of whether the match is a win or a loss', shields do not stack, cannot be purchased, and 'players at Platinum I (1,800 ELO) or higher do not receive daily shields'. A consumable the shop is forbidden to sell, which expires daily and burns on a win, aimed only at players below a threshold.",
+        "PLACEMENT IS SEEDED BY LAST SEASON, NOT ONLY BY THIS ONE: after ten placement matches 'your initial placement is influenced by both your match results and your rank from the previous season'. Two players with identical placement records can be placed differently, which a placement screen showing only a win-loss record cannot explain.",
+        "THE MAP IS CHOSEN BY ELIMINATION, NOT BY SELECTION: 'teams vote through a process of elimination; banning two of the three proposed maps leaves the final one for the match'. Nobody picks the map — it is the last one standing.",
+        "A BAN PHASE PROTECTS PLAYERS WHO OWN LITTLE: the default loadout 'cannot be banned unless every player in the match owns more than four weapons in the respective category'. The ban list shrinks so that a poor inventory is never banned into having nothing."
+      ]
+    },
+    {
+      "id": "roblox-docs-teleport-party-and-failure",
+      "source": "https://create.roblox.com/docs/en-us/projects/teleport.md — fetched 2026-09-20 as markdown (the page's own last_updated field reads 2026-09-18). Complemented by https://create.roblox.com/docs/reference/engine/classes/TeleportService, fetched the same day for the arrival-side code samples.",
+      "demonstrates": [
+        "THE ENGINE HAS A PARTY CONCEPT AND THE DOCS SAY TO CHECK IT BEFORE TELEPORTING: after getting a player from a Touched or ProximityPrompt event, 'you can check if the player is part of a team (Player.Team) or party (Player.PartyId)' and then use Team:GetPlayers() or SocialService:GetPlayersByPartyId() 'if you want to teleport the entire group rather than just the individual'. A queue pad that teleports only whoever touched it splits a party, and the fix is documented.",
+        "THE DOCUMENTED TRIGGER FOR A QUEUE OBJECT IS EXACTLY THE PHYSICAL ONE THE SHIPPED GAMES USE: BasePart.Touched or ProximityPrompt.Triggered. The pad is not a workaround for a missing menu; it is the pattern the platform documents.",
+        "ARRAY ORDER SILENTLY DECIDES WHERE A WHOLE PARTY LANDS: 'If you don't specify a server, users are teleported into a public server; the information of the first user in the list is used for matchmaking.' Which member of a party is element one of the array is a matchmaking input, and nothing on screen shows it.",
+        "THE CLIENT MAY NOT START A TELEPORT: TeleportAsync is server-only and client-side Teleport() is deprecated 'and should not be used for new work, even if your place is configured as \"Fully Open\"'. So a queue button is a RemoteEvent or a prompt, never a local teleport — the same server-authority shape the shop screen has.",
+        "THREE DESTINATIONS COME OUT OF ONE OPTIONS OBJECT, AND THE UI MUST DISTINGUISH THEM: TeleportOptions.ServerInstanceId targets a specific PUBLIC server, ReservedServerAccessCode joins an EXISTING private server, and ShouldReserveServer = true creates a NEW one. 'Join a friend', 'join my private server' and 'create a private server' are three different fields on one call.",
+        "THE BETWEEN-PLACES SCREEN CANNOT THINK: a custom teleport screen is set with SetTeleportGui, and 'Any scripts within the ScreenGui do not run.' Whatever a queue's loading screen shows — a spinner, a tip, a countdown — has to be authored without logic.",
+        "THE ARRIVAL SIDE HAS TO TAKE OVER MANUALLY: the reference's own sample calls GetArrivingTeleportGui(), then ReplicatedFirst:RemoveDefaultLoadingScreen(), parents the gui to PlayerGui, waits, and destroys it. The handoff from Roblox's loading screen to the game's is code the game writes.",
+        "A TELEPORT CAN SUCCEED AND THEN FAIL, LEAVING THE PLAYER STANDING IN THE LOBBY: 'Even if a call succeeds and the teleport initiates, it can still fail at the last moment without throwing an error and leave the user in the server', firing TeleportInitFailed. A queue that clears its own state on a successful call has already lost the player.",
+        "THE RETRY POLICY IS PER FAILURE REASON, WITH DIFFERENT WAITS: the documented handler waits 15 seconds on Enum.TeleportResult.Flooded, 1 second on Failure, and for anything else raises the error 'instead of retrying'. Three outcomes, three behaviours — a single generic 'retrying...' message is wrong for two of them.",
+        "THE DOCUMENTED RETRY BUDGET IS FIVE ATTEMPTS at one second apart, so the worst honest case is several seconds of a player standing on a pad that appears to have done nothing.",
+        "DATA SENT WITH A TELEPORT IS VISIBLE TO THE CLIENT AND UNENCRYPTED, and the docs say 'Don't pass secure data using this method'. A match roster handed forward from the lobby may carry names and loadouts, never currency or entitlements.",
+        "JOIN-A-FRIEND ROUTING IS AN ACCESS SETTING, AND THE WRONG CHOICE SENDS FRIENDS TO THE WRONG PLACE: under anything other than 'Fully open', 'players who try to join their friends in non-start places will instead join your game's start place.' A friend who tried to join a match lands in the lobby — which looks like a bug in the lobby and is a setting on the dashboard.",
+        "'Secure within universe only' is recommended specifically 'for places that exclusively use reserved servers', which is the private-server case — so a game with private matches has a documented reason to lock its non-start places."
+      ]
+    },
+    {
+      "id": "devforum-partyservice-cross-server-state",
+      "source": "https://devforum.roblox.com/t/partyservice-plus-party-matchmaking-framework/4668883 — read 2026-09-20 through Discourse's JSON endpoint at the same path with .json appended. A Community Resources release post for a paid party/matchmaking framework, read for the problems it advertises solving.",
+      "demonstrates": [
+        "A PARTY IS CROSS-SERVER STATE, WHICH IS WHY IT CANNOT BE READ OFF THE CURRENT SERVER: the framework describes 'cross-server matching utilizing MemoryStoreService and MessagingService' for 'the orchestration of cross-server player groups'. A member list rendered from Players:GetPlayers() is a different list from the party.",
+        "THE NAMED FAILURE IS ORPHANED STATE ON DISCONNECT: it claims to ensure that 'when players disconnect, their lobby state is cleaned up, leadership is transferred, and the queue is updated without leaving orphaned data'. Three separate things break on one disconnect, and the post treats the combination as the hard part.",
+        "LEADERSHIP IS TRANSFERRED AUTOMATICALLY WHEN THE HOST LEAVES — the party outlives its leader, so the roster's leader marker is a property that moves rather than a fixed row.",
+        "THE QUEUE ENTRY IS OWNED BY THE PARTY, NOT BY A PLAYER: 'Matchmaking queue removal if a player leaves or the party disbands.' Dissolving the party withdraws the queue entry, which is only correct if the queue was entered as a group in the first place.",
+        "ROOM CODES ARE A FIRST-CLASS JOIN PATH ALONGSIDE INVITES: 'Create parties and join via unique room codes'. A code is how someone joins who is not in your server and not on your friends list — the case neither the friends list nor the in-server list covers.",
+        "THE MEMBER LIST IS EXPLICITLY A SCROLLER: 'Scrolling member list to support large parties without visual clipping' is listed as a feature, which is a statement that a fixed-height roster clips at real party sizes — BedWars' sixteen-player cap is exactly that size.",
+        "EVERY PARTY ACTION IS RE-CHECKED SERVER-SIDE: 'Server-side verification for all party actions to prevent invalid requests'. Invite, kick, promote and queue are all requests, not local mutations.",
+        "The post separates 'clean server-side methods' from 'an optional client UI', so the party screen is explicitly a view over a service and not the service itself."
+      ]
+    },
+    {
+      "id": "devforum-private-server-confirm-removed",
+      "source": "https://devforum.roblox.com/t/no-confirmation-when-creating-a-free-private-server/4637591 — read 2026-09-20 through Discourse's JSON endpoint at the same path with .json appended. A bug report against Roblox's own server-list UI, plus the two replies on it.",
+      "demonstrates": [
+        "ROBLOX'S OWN PRIVATE-SERVER SURFACE IS A 'Servers' TAB CONTAINING A 'Private servers' SECTION WITH A 'Create one for free' BUTTON — the platform's private-server flow lives inside a server browser rather than in a separate screen.",
+        "A CONFIRMATION STEP WAS REMOVED IN A REDESIGN AND SOMEBODY NOTICED: 'The new server list UI does not include a confirmation modal before creating a free private server ... For comparison, the previous version of the server list UI did have a confirmation modal.' This is the rare recorded case of a confirm step being lost rather than debated.",
+        "THE ACTION IS IRREVERSIBLE, WHICH IS THE WHOLE ARGUMENT: 'the private server is permanently added to My Inventory > Private Servers. You can't \"delete\" private servers'. Free does not mean harmless — the cost is permanent clutter in a list the player later has to search.",
+        "THE REPORTED FAILURE IS A SCROLL GESTURE, ON TOUCH: 'I was trying to scroll through the server list on my phone, but my finger slipped and I accidentally tapped the \"Create one for free\" button'. An irreversible control placed inside a scrollable list is reachable by the gesture used to read the list.",
+        "THE DISAGREEMENT IS RECORDED TOO, AND IT IS THE INTERESTING PART: a replier argues 'its actually not a bug but a feature request', and the reporter answers 'I reported this as a bug because this functionality existed in the old UI. This could've been an oversight.' Whether a removed safeguard is a regression or a missing feature is genuinely contested, and a library recording only the winning side would be recording a preference."
+      ]
+    },
+    {
+      "id": "devforum-lobby-queue-showcase-transition",
+      "source": "https://devforum.roblox.com/t/showcase-lobby-queue-ui/4431815 — read 2026-09-20 through Discourse's JSON endpoint at the same path with .json appended. THE WEAKEST ROW IN THIS FILE and marked as such: the original post is a video, which was NOT watched, so everything below is read from the replies of people who did watch it rather than from the artefact.",
+      "demonstrates": [
+        "A COUNTDOWN THAT CHANGES APPEARANCE AT FIVE SECONDS WAS THE THING VIEWERS NAMED FIRST: 'The sudden change at 5 seconds really gives that \"phew\" reaction if you enter in those last seconds.' The last five seconds of a lobby countdown are worth a distinct state, and the reaction it produces is felt by the person who joined late, not by the one already waiting.",
+        "THE DEFECT A REVIEWER CAUGHT WAS THE LOBBY HUD FAILING TO CLEAR: 'at 00:06, your Interface has an issue with hiding these UI icons out' during the transition. When a queue overlay takes the screen, the lobby's own buttons have to be dismissed with it, and a leftover icon is the visible seam.",
+        "The reviewer's framing of that defect is worth keeping: 'Even though most players won't notice it, it still to be sure you should fix it' — the seam in a transition is held to a higher standard than its visibility warrants, by peers, unprompted."
+      ]
+    }
+  ],
+  "rules": [
+    {
+      "rule": "When the game already has a lobby, make the queue a PLACE and give that place a card: destination, name, author, difficulty.",
+      "why": "Tower Defense Simulator's elevators display the map, its name, its CREATOR and its difficulty; RIVALS' duel pads and BedWars' NPCs do the same job with no dialog at all. Roblox's own docs name Touched and ProximityPrompt.Triggered as the way to start a teleport, so the pad is the documented pattern rather than a substitute for a missing menu."
+    },
+    {
+      "rule": "Let the progress bar BE the empty state — one component that says 'Waiting for Players...' and turns into a timer.",
+      "why": "That is exactly what a Tower Defense Simulator elevator does, with the occupancy count parked at the bar's right end. A separate empty panel that gets swapped for a separate timer is two components that must agree; this is one that cannot disagree with itself."
+    },
+    {
+      "rule": "Start the countdown on the first player, not on the queue being full, and give the last few seconds their own state.",
+      "why": "DOORS begins a 5–30 second count when a minimum of ONE player enters, so a solo player is never held for a group that may not come. A lobby-queue showcase's reviewers named the change at five seconds as the moment that lands, and DOORS' sound set carries a separate 'Major Timer Tick' for the same reason."
+    },
+    {
+      "rule": "Let the first player in configure the queue, and show everyone else what was chosen.",
+      "why": "Tower Defense Simulator asks the first entrant for the party size, and on Story elevators the first entrant picks the mission for everyone who follows. The choice is then echoed on a floating label on the elevator and in a box that appears once a player is inside, so nobody joins a queue whose terms they cannot read."
+    },
+    {
+      "rule": "Duplicate queue objects per option rather than queueing behind one.",
+      "why": "Two Survival elevators per difficulty — twelve in Tower Defense Simulator's main lobby — and RIVALS' duel pads, whose stated requirement is the per-side count rather than the match total. Duplication is also how Tower Defense Simulator once assigned teams: Versus Elevators had 'two separate elevators for each team', and when Versus moved into Matchmaking 'teams would instead be randomly assigned'. The RIVALS page never says its pads decide the side, so the team evidence here is Tower Defense Simulator's alone."
+    },
+    {
+      "rule": "Gate progression at the entrance to the queue object, not on a greyed button inside it.",
+      "why": "Tower Defense Simulator's single Voidcore elevator 'can only be entered by players who have beaten Hardcore'. An ineligible player never occupies a slot they cannot use, and the lock is discovered by walking rather than by clicking and being refused."
+    },
+    {
+      "rule": "Make the size step depend on the mode step, including its vocabulary.",
+      "why": "Tower Defense Simulator caps Hardcore and Voidcore at trios, and in PVP it replaces solo/duo/trio/quad entirely with 1v1 and 2v2. The same slot in the same flow renders a different set of words depending on the previous answer, so the size control cannot be a constant."
+    },
+    {
+      "rule": "Never reuse an icon for a count it does not depict.",
+      "why": "Tower Defense Simulator's Sandbox five- and six-player options ship using the QUAD icon, and the wiki records it plainly. An icon is the fastest read on a size picker, and one that is wrong is worse than a number alone."
+    },
+    {
+      "rule": "Skip the search screen when the party already fills the match.",
+      "why": "'If playing in solos or if the Party size is the same as selected player count, a match will be created instantly.' A searching animation that runs when no search is happening teaches players that the animation means nothing."
+    },
+    {
+      "rule": "Say that matching widens with time, because it does.",
+      "why": "Tower Defense Simulator matches on Level and age group but 'will not try to find players of similar Level forever', accepting large gaps after a point; RIVALS bands parties at 800 ELO. Match quality degrades as the wait grows in every ranked system read here, and a queue screen showing only a spinner hides the one thing changing."
+    },
+    {
+      "rule": "Make the match-found screen a roster with stats, not a list of names.",
+      "why": "Tower Defense Simulator's wiki says 'every single player's loadout, level, triumph count and loss count will be displayed, alongside their username and avatar' — in a sentence that sits inside the article's Sandbox bullet while being phrased generally, which is the ambiguity references[1] and limits[8] record and which this rule now carries too. The question at match-found is who these people are, and the answer is the numbers that predict how the session will go; what is certain is that one shipped mode does it, not that every mode does."
+    },
+    {
+      "rule": "Open the party screen on a browser of other people's parties, not on an empty roster.",
+      "why": "Tower Defense Simulator shows 'a list of public Parties and a button which allows them to create a Party' to a player who is not in one. A create button alone assumes the player wants to lead; most of them want to join."
+    },
+    {
+      "rule": "Show different fields for friends than for strangers in the same invite list.",
+      "why": "Tower Defense Simulator lists friends first with ONLY their online status, and players in the server WITH their level. A friend is invited because they are a friend; a stranger in your lobby is invited after you check what they bring. Showing level for both would imply you are meant to judge your friends by it."
+    },
+    {
+      "rule": "Default a party to closed, and default invite rights to the leader alone.",
+      "why": "Tower Defense Simulator's Party Lock is 'enabled by default, but it used to be disabled', and Members Can Invite is disabled by default. A shipped game moved its own default toward closed after running the open version."
+    },
+    {
+      "rule": "Give the host filters over who may join — including a level band — and put them behind the leader.",
+      "why": "Tower Defense Simulator's party settings are the ones 'which can be changed by the Party leader', and they include Minimum Level (default 0) and Maximum Level (default 1,000) with no stated ceiling. The host screens the party before matchmaking screens the match, and the two filters are different jobs. (That the leader is the only one who can change them is this file's recommendation, not something the page states.)"
+    },
+    {
+      "rule": "Refuse a mismatched party at the moment the player asks, and name which member is the problem.",
+      "why": "Tower Defense Simulator will not allow a match to start when the party is larger than the chosen squad size; BedWars returns an error when the leader queues an oversized party; BedWars ranked refuses to queue a party containing anyone outside the rank band; RIVALS requires party members within 800 ELO. Four shipped systems all let the player ask and then say no. The one thing none of the sources record is naming the member responsible, which is the only fact that would let the player fix it."
+    },
+    {
+      "rule": "Let party size prune the mode list rather than letting the player pick a mode it forbids.",
+      "why": "RIVALS: two people in a party removes 1v1 from the list. BedWars: a full sixteen leaves only custom matches, infected and 30v30. A social choice made in one screen changes what is reachable in another, so the mode list cannot be a static menu."
+    },
+    {
+      "rule": "Route every queue action through the leader, and build the member's view as something other than a Play button.",
+      "why": "'To join a game the \"leader\" of that party must join the queue for a gamemode'; Tower Defense Simulator's elevators likewise follow the leader who enters. A party has one queue-entry point, so a member staring at an identical Play button is being lied to."
+    },
+    {
+      "rule": "Build the roster to scroll and add a search box once the party can hold more than a screenful.",
+      "why": "BedWars parties hold sixteen and its menu ships a search bar over the whole server's player list; PartyService Plus advertises a 'scrolling member list to support large parties without visual clipping' as a feature, which is a statement that fixed-height rosters clip at real sizes."
+    },
+    {
+      "rule": "Treat party state as cross-server state, and clean up three things on every disconnect.",
+      "why": "PartyService Plus orchestrates parties over MemoryStoreService and MessagingService, and names what breaks when one member drops: lobby state must be cleaned up, LEADERSHIP TRANSFERRED, and the QUEUE ENTRY UPDATED. A roster rendered from the current server's player list is a different list from the party."
+    },
+    {
+      "rule": "Make the queue entry belong to the party, so disbanding withdraws it.",
+      "why": "'Matchmaking queue removal if a player leaves or the party disbands.' A queue entry that survives its party is a match about to be formed for people who are no longer together."
+    },
+    {
+      "rule": "Offer a room code alongside invites and the friends list.",
+      "why": "PartyService Plus makes 'join via unique room codes' a first-class path. A code covers the case neither other path does: somebody who is not on your friends list and not in your server."
+    },
+    {
+      "rule": "Keep an unaccepted invite; do not let it expire into nothing.",
+      "why": "Tower Defense Simulator moves an unaccepted lobby invite into the invites section of the party menu; BedWars shows invites bottom-right AND keeps them in an Invites tab. Both built the transient and the persistent form of one invite because a popup is missed while the player is doing something else."
+    },
+    {
+      "rule": "Let a stale invite delete itself when touched rather than erroring.",
+      "why": "In BedWars, 'if a player selects a party that has already left the server it will disappear'. Cross-server rows go stale between render and click, and the honest response to a dead row is to remove it, not to explain it."
+    },
+    {
+      "rule": "Write invite copy as a set of variants that name the friend, not one string.",
+      "why": "Tower Defense Simulator ships seven for invites 'during a match or on the Roblox sites' — 'Wave incoming! [Friend name] is inviting you to battle it out'. Its in-lobby invite is a third surface the page gives no copy for. An invitation is the one message a player receives repeatedly from the same source, and a single string reads as a system notice by the third time."
+    },
+    {
+      "rule": "Gate the skip button on everyone's readiness, and accept that this is a ready-check without a checklist.",
+      "why": "In DOORS the glowing instant-start button works only once 'everyone must be spawned in and finished with the Pre-Run Shop'. It is the simplest working ready-check read anywhere here — and its weakness is that the only feedback for a blocked start is a button that does nothing, which is a cost worth taking deliberately rather than by accident."
+    },
+    {
+      "rule": "Make a full queue object single-use, and evict anyone who steps back in.",
+      "why": "A DOORS elevator closes after its occupants leave and kicks a re-entrant out in 3–5 seconds. A queue object that merely stops accepting still looks available from across the lobby."
+    },
+    {
+      "rule": "Make private-server creation two decisions — capacity and audience — and let progression unlock fields inside that form.",
+      "why": "A DOORS custom elevator is 'up to 50 players in their game, as well as a friends only option', while Modifiers require the 'Rock Bottom' achievement and a Backdoor elevator requires 'Detour'. Progression does not only unlock content; it unlocks controls on the host's setup screen."
+    },
+    {
+      "rule": "Derive the capacity control's maximum from the mode, and do not offer a maximum the design cannot carry.",
+      "why": "DOORS caps a custom elevator at 50 normally, 8 in four listed modes and 4 in Daily Runs — and its own wiki says playing past FOUR is discouraged because hiding spaces run out. A configurable maximum reads as a recommendation, and this one offers 50 against an advised ceiling of four."
+    },
+    {
+      "rule": "Confirm an irreversible create, even when it is free — and never site it inside a scrollable list without one.",
+      "why": "Roblox's redesigned server list dropped the confirmation modal its predecessor had, and creating a free private server adds it permanently to an inventory with no delete. The reported failure was a finger slipping while scrolling the list on a phone. Free is not the same as reversible, and a scroll gesture reaches every control in the thing being scrolled."
+    },
+    {
+      "rule": "Render an eligibility gate as the specific unmet condition, never as a disabled button.",
+      "why": "RIVALS requires SIX things at once to reach ranked, one of which has to explain that email verification is excluded because of platform bugs; BedWars' gate is a disjunction whose other two branches are historical and unverifiable from the player's present state. Neither fits in a tooltip, and a greyed Play button tells a player nothing they can act on."
+    },
+    {
+      "rule": "Say what a penalty costs and when it ends, and put the current lockout where the queue is.",
+      "why": "RIVALS: leaving an ongoing match is a 15-minute matchmaking lockout plus an automatic loss 'regardless of the reason'. BedWars escalates instead — a warning first, timeouts after repeats. Both are states the lobby has to render, because the player discovers them by trying to queue."
+    },
+    {
+      "rule": "Show a number that can change while the player is away as something that decays, not as a record.",
+      "why": "RIVALS deducts 100 ELO per day from the eighth day of inactivity at Onyx I or above, down to a 3,000 floor. A rating that drops overnight is not a history of matches played, and a profile presenting it as one will be wrong the moment somebody takes a week off."
+    },
+    {
+      "rule": "Resolve a group decision in the open — show the tie being broken.",
+      "why": "BedWars spins 'a fair wheel of RNG' when a team's kit ban vote is not unanimous; RIVALS chooses a map by elimination, banning two of three proposed maps so the last one stands. Neither game resolves the tie silently, because a group that did not see the resolution assumes it was rigged."
+    },
+    {
+      "rule": "Let a ban list shrink so that a player with little cannot be banned into nothing.",
+      "why": "In RIVALS the default loadout 'cannot be banned unless every player in the match owns more than four weapons in the respective category'. A pick-and-ban phase that can strip a new player of everything they own is a paywall wearing a competitive mechanic's clothes."
+    },
+    {
+      "rule": "Put the player's own row at the bottom of a leaderboard nobody can top.",
+      "why": "BedWars' monthly board shows the top 100 by wins and the top 200 by rank, 'and at the very bottom, it shows each individual player's position and wins per month'. A ranking that never mentions its reader is a poster."
+    },
+    {
+      "rule": "Teleport the party, not the toucher — check Player.PartyId or Player.Team first.",
+      "why": "Roblox's own teleport guide says to check team or party after a Touched or ProximityPrompt event and use Team:GetPlayers() or SocialService:GetPlayersByPartyId() 'if you want to teleport the entire group rather than just the individual'. A pad that sends only whoever stepped on it splits every party that uses it."
+    },
+    {
+      "rule": "Order the player array deliberately, because its first element chooses the server.",
+      "why": "'If you don't specify a server, users are teleported into a public server; the information of the first user in the list is used for matchmaking.' Which member is element one is a matchmaking input that appears nowhere on screen, so it has to be chosen rather than inherited from iteration order."
+    },
+    {
+      "rule": "Start every teleport from the server; the queue control fires a remote, never a local teleport.",
+      "why": "TeleportAsync is server-only and the client-side Teleport() is deprecated 'even if your place is configured as \"Fully Open\"'. The same server-authority rule the shop screen follows applies to the control that spends a player's session."
+    },
+    {
+      "rule": "Keep the lobby's queue state until the arrival is confirmed, and handle each teleport failure differently.",
+      "why": "A teleport 'can still fail at the last moment without throwing an error and leave the user in the server', firing TeleportInitFailed. The documented handler waits 15 seconds on Flooded, 1 second on Failure, and refuses to retry anything else — three outcomes with three behaviours, across up to five attempts. A queue that clears itself on a successful call has already lost the player."
+    },
+    {
+      "rule": "Author the between-places screen with no logic in it.",
+      "why": "A gui passed to SetTeleportGui runs no scripts: 'Any scripts within the ScreenGui do not run.' Whatever it shows must be a still frame, and the handoff on arrival is manual — GetArrivingTeleportGui, RemoveDefaultLoadingScreen, parent, destroy."
+    },
+    {
+      "rule": "Pass the roster forward, never the entitlements.",
+      "why": "TeleportData 'is visible to the client and unencrypted' and the docs say not to put secure data in it. Names, avatars and loadout ids can ride along to the match screen; currency, ownership and rank cannot."
+    },
+    {
+      "rule": "Check the Access Control setting before blaming the lobby for friends landing in it.",
+      "why": "Under anything other than 'Fully open', 'players who try to join their friends in non-start places will instead join your game's start place'. A friend who tried to join a match and arrived in the lobby looks like a lobby bug and is a dashboard setting — and 'Secure within universe only' is the documented choice for places that exclusively use reserved servers."
+    },
+    {
+      "rule": "Dismiss the lobby HUD with the transition that covers it.",
+      "why": "The one defect a reviewer caught in a lobby-queue showcase was the interface failing to hide its own icons during the transition, six seconds in — 'Even though most players won't notice it, it still to be sure you should fix it'. A queue overlay that takes the screen while the lobby's buttons stay behind it shows the seam."
+    }
+  ],
+  "limits": [
+    "THE EXPLICIT READY-CHECK IS THE BIGGEST HOLE IN THIS FILE AND IT SHOULD BE FILLED BEFORE ANYTHING HERE IS TRUSTED FOR ONE. Nothing read describes the shape most competitive games outside Roblox use: a modal that appears when a match is found, shows each member as ready / not ready / declined, runs an accept timer, and returns the party to the queue when somebody declines. The closest attested thing is DOORS gating its skip button on everyone having finished the pre-run shop — a ready-check with no per-player readout at all. The rule above records that honestly, but a request for a real ready-check modal is still answered from nothing.",
+    "NO IN-EXPERIENCE SERVER BROWSER WAS FOUND. The only server-list evidence here is Roblox's OWN platform UI, and it was read secondhand through a bug report rather than by fetching the server list page — so its 'Servers' tab and 'Private servers' section are attested, and nothing about filters, sorting, ping, region or player-count columns in a game-built browser is attested at all.",
+    "NOTHING READ DESCRIBES WHAT A QUEUE SCREEN TELLS THE PLAYER ABOUT THE WAIT. Tower Defense Simulator states that matching widens over time and RIVALS states the ELO band, but no source records an estimated wait time, a queue position, a players-found-of-needed counter, or any readout of the search's progress beyond an elevator's occupancy count. The rule saying to surface the widening is therefore a recommendation drawn from the mechanic, not an observation of a shipped screen.",
+    "NO NUMERIC MEASUREMENT APPEARS ANYWHERE IN THIS FILE. No stroke weight, corner radius, padding, font size or colour value was found in any source read here, and nothing above should be used as a measurement. The numbers that ARE here — 20-second elevator waits, a 3-count on a duel pad, 5–30 seconds in DOORS, 800 ELO, 15 minutes — are behaviour, not geometry.",
+    "NOTHING HERE IS ABOUT PHONES. Not one source describes how any of these surfaces reflow on a small screen, despite the private-server bug report's failure being specifically a mis-tap while scrolling on a phone. Party rosters of sixteen, an invite list a source places 'on the right' of the member list, and a matchmaking menu with five sections are exactly the layouts that break at phone width, and no source read here says what any of them do there.",
+    "FOUR GAMES, AND ALL FOUR ARE SESSION-BASED. Tower Defense Simulator, BedWars, DOORS and RIVALS all end a session and return you to a hub. Nothing here is backed by a persistent-world genre — a tycoon, a roleplay game, a simulator — where the 'lobby' is the game itself and the party/private-server surfaces have to sit inside live play rather than in front of it. A search of the Blox Fruits wiki for this subject returned a single thin page and was not pursued.",
+    "THE FANDOM ROWS ARE PROSE, NOT PIXELS. All four wikis served their article HTML behind Cloudflare — four of the cited pages returned HTTP 403 to a plain GET on 2026-09-20 — so each was read through api.php as wikitext. That is the same content, but the SCREENSHOTS those pages embed were named and not seen, and every claim above is one the page states in words.",
+    "ONE ROW IS WEAKER THAN THE REST AND SAYS SO IN ITS OWN SOURCE FIELD: the lobby-queue showcase is a video that was not watched, and its three observations come from the replies of people who did watch it. It contributes the five-second countdown state and the hide-the-HUD defect, and nothing in this file rests on it alone.",
+    "ONE CLAIM CARRIES AN AMBIGUITY THAT WAS NOT RESOLVED: Tower Defense Simulator's sentence about the match-found screen showing every player's loadout, level, triumph count and loss count sits inside the article's Sandbox bullet while being phrased generally. It is recorded with that ambiguity attached rather than promoted to a general fact.",
+    "A CHUNK OF THE TOWER DEFENSE SIMULATOR MATERIAL IS HISTORICAL. Legacy Event Matchmaking, the Matchmaking Elevator, MEGA, Special, Challenge Trials, Versus and the Solo/Duo/Trio elevators are all removed or never-shipped, and the VIP double-vote belonged to the original Survival elevators. Those rows are recorded because a design that was built and then dropped is evidence about the decision — but none of them describes what the game looks like today.",
+    "THREE ADVERSARIAL RE-READS, ALL ON 2026-09-20, AND EACH FOUND FINER ERRORS THAN THE ONE BEFORE — which is what converging looks like and also what a process looks like just before somebody declares victory too early. Below, references and rules are named by array position from 0, and observations are counted from 1, the way the passes wrote them. PASS ONE DELETED ONE OBSERVATION AND NARROWED FOUR, all of a single kind: the sentence went further than the page it cited. DELETED — an Arcade Server observation sitting in references[8], true but read off https://robloxrivals.fandom.com/wiki/Arcade_Server, a page this file never cited; it was dropped rather than re-cited, so that every observation checks against the source of the row it sits in. NARROWED — a floating label 'above' the elevator and 'legible from across the room' in references[0], cut back to what the wikitext says ('On all elevators, it shows a floating label'); the identical inference where it recurred in rules[3]; and the arithmetic 'eleven times the advisable size' and 'CUSTOM BY TWELVE' in references[6] and rules[28], since 50 against 4 is neither ratio. Nothing was written to replace the deletion, so the file is one observation smaller than its first draft. PASS TWO READ THE REPAIRED FILE AND FOUND SEVEN MORE, all narrower and all graded minor: six claims that still outran their page, and one rule that had never inherited a hedge its own reference already carried. It repaired nothing; it only named them. PASS THREE SETTLED ALL SEVEN, DELETED NOTHING, AND NARROWED SIX OBSERVATIONS PLUS ONE RULE REASON. (1) references[2] observation 3 had the roster and the invite list 'SIDE BY SIDE' with members 'on the left'; the page says 'there are two screens', places only the invite list 'on the right', and never uses the word 'left'. (2) references[7] observation 1 had 'a duel is two pads facing each other' with the team settled by which pad you stepped on; the Mechanics page states only that a pad's requirement is the per-side count, so the arrangement, the orientation and the team rule are all gone rather than hedged. (3) references[1] observation 2 said the flow is 'EXACTLY' two steps and that 'Nothing else is asked'; the same page documents a legacy menu whose difficulty pop-up comes before the player count, which is three. (4) references[5] observation 7 presented the BedWars kit shop as a present surface when the section holding that sentence is tagged {{Removedcontent}}; it is now recorded as a pattern the game dropped. (5) references[2] observation 8 — pass two numbered it 6 — added 'ONLY' to 'There are a few settings for Parties which can be changed by the Party leader.' (6) references[2] observation 11 called the seven invite strings 'RANDOMISED' and generalised them; the page says neither, and scopes them to invites 'during a match or on the Roblox sites'. (7) rules[10] asserted the match-found roster flatly and now carries the Sandbox-bullet ambiguity that references[1] and limits[8] had been carrying alone. PASS THREE THEN SWEPT FOR DUPLICATES, BECAUSE PASS TWO PROVED THEY EXIST: a claim corrected in a reference and left standing in a rule is still in the file. The same corrections were applied to rules[4] (the pad-decides-the-team inference, replaced with the Tower Defense Simulator Versus-elevator evidence that does state it — 'two separate elevators for each team'), rules[6] ('two-step flow'), rules[14] ('leader-only'), rules[24] (invite copy left unscoped) and limits[4] ('two-column invite panels'). Two source fields were stale the same way: references[5] recorded the page's Stub and Incomplete banners but not the {{Removedcontent}} tag over the section it quotes, and references[7] said the RIVALS Lobby stub 'states only that the lobby is divided into four parts' when it also names them. Pass three re-fetched the six pages its items touched — Tower Defense Simulator's Elevators, Matchmaking and Party, BedWars' Lobby, and RIVALS' Mechanics and Lobby — and every span it left inside quotation marks matches those pages verbatim. RUNNING TOTAL ACROSS THE THREE PASSES: one observation deleted, ten observations narrowed (four, then six), six rule reasons or limits entries brought into line with the references they came from, two source fields corrected. Thirteen references throughout, none carrying fewer than two observations. WHAT IS STILL UNSETTLED, BY NAME — because a reader is better served by this than by a file that claims to be finished. (a) HOW RIVALS DUEL PADS ARE ARRANGED, and whether the pad you stand on is your side, is very likely how the game works and is now simply absent, because no page read here says it; anyone who opens the game settles it in a minute, and until then the rule about duplicated queue objects rests on Tower Defense Simulator alone. (b) THE MATCH-FOUND ROSTER in references[1] observation 10 is still ambiguous between Sandbox and every mode — the wiki's sentence is general and its position is not — and only a live screenshot or a clearer revision resolves it; limits[8] is the standing record of that. (c) references[1] KEEPS THE ID 'tds-matchmaking-two-step-menu' although its own observation now records a three-step legacy variant; the id was left because it is an identifier rather than a claim, and this sentence exists so nobody reads it as one. (d) EVERY WIKI PAGE HERE IS PLAYER-MAINTAINED, so 'the page says so' is the ceiling of confidence in this file, and no number of passes raises it — a page can be wrong about the game and this file will faithfully be wrong with it. (e) THE COUNTS WERE FIVE, SEVEN, THEN ONE: pass one corrected five, pass two found seven, and pass three settled those seven and found one more of its own. That curve is flattening, not zero, and a fourth pass would find something. Pass three can prove it: its own first draft of the references[5] source field said the page tags FOUR Easter Egg sections {{Removed}} when it tags five, which is precisely the over-count class pass two was built to catch, and it was caught only because the tags were counted a second time before this entry was written."
+  ]
+}
