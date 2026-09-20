@@ -169,6 +169,17 @@ packages/training/data/*/*
 # derived, and stay out.
 !packages/training/data/hf/
 packages/training/data/hf/*.jsonl
+# ...and the GITHUB ACQUISITION LEDGER, on exactly the terms above. `acquire-github-luau.mjs`
+# writes two files per corpus directory. `rows.jsonl` is third-party Luau source and stays out:
+# it is not ours to redistribute, and `repos.jsonl` pins the commit every row came from, so it is
+# re-fetchable by anyone holding the ledger.
+#
+# `repos.jsonl` is the ledger, and it is the opposite kind of file. Per repository it records the
+# pinned commit, the path of the LICENSE that was read, the sha256 of that licence TEXT, and
+# whether the text corroborated the SPDX id GitHub detected — plus every repository that was
+# REFUSED and the grounds. It is the entire evidence for the rights tier the corpus claims. A
+# licence verdict that only exists on the machine that made it is a verdict nobody can review.
+!packages/training/data/*/repos.jsonl
 packages/training/mlxdata-text/
 packages/training/mlxdata/
 
