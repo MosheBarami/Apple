@@ -35,11 +35,11 @@ function createBatch() {
   return m[1].replace(/\/\*[\s\S]*?\*\//g, ' ');
 }
 
-/** Every `alter table ...` the constructor attempts, in source order. */
+/** Every `alter table ...` / `update ...` the constructor runs, in source order. */
 function migrations() {
-  const found = [...SRC.matchAll(/this\.sql\.exec\(`(alter table [^`]+)`\)/g)].map((m) => m[1]);
-  assert.ok(found.length >= 2, `only ${found.length} migration(s) found in quota.ts; expected the `
-    + 'billing_events add-column and the ledger rename');
+  const found = [...SRC.matchAll(/this\.sql\.exec\(`((?:alter table|update) [^`]+)`\)/g)].map((m) => m[1]);
+  assert.ok(found.length >= 3, `only ${found.length} migration statement(s) found in quota.ts; expected the `
+    + 'billing_events add-column, the ledger add-column and the copy that carries the history over');
   return found;
 }
 
@@ -88,11 +88,29 @@ test('booting twice is a no-op, because the constructor runs on every start', ()
   assert.equal(row.s, 5, 'a second boot changed the ledger');
 });
 
-test('the rename is a RENAME in the shipped source, not an ADD', () => {
-  // The whole defect is that the two are indistinguishable until somebody looks at the data. An
-  // `add column credits` passes the first test above only if no legacy rows exist.
+//[[ RE-AIMED WHEN THE MIGRATION STOPPED BEING A RENAME, AND THE OLD ASSERTION WAS RIGHT UNTIL
+//   THAT MOMENT. This read `assert.match(..., /rename column sparks to credits/)`, which was the
+//   right shape for the first attempt. That attempt was deployed and the production error did not
+//   change, and because it sat in an empty catch there was no way to tell whether the statement
+//   ran, threw, or was never reached — RENAME COLUMN support in this SQLite is not something I
+//   could establish. The shipped migration is now ADD + UPDATE, decided from pragma_table_info.
+//   The PROPERTY never moved: an `add column` without the copy leaves every historical row at 0,
+//   an account that has spent reads as brand new, and it is billed as fresh. ]]
+test('the migration carries the history over, rather than only silencing the error', () => {
   const ledgerMigrations = migrations().filter((m) => /\bledger\b/.test(m));
-  assert.equal(ledgerMigrations.length, 1, `expected exactly one ledger migration, got ${ledgerMigrations.length}`);
-  assert.match(ledgerMigrations[0], /rename column sparks to credits/,
-    'the ledger migration is not a rename; historical spend would read as zero');
+  assert.ok(ledgerMigrations.some((m) => /add column credits/.test(m)),
+    'nothing in quota.ts adds a credits column to ledger');
+  assert.ok(ledgerMigrations.some((m) => /update ledger set credits\s*=\s*sparks/.test(m)),
+    'the credits column is added and never filled from sparks — every historical row would read 0, '
+    + 'the account would look like it had never spent, and it would be billed as fresh');
+});
+
+test('the migration is decided from the schema, not attempted and swallowed', () => {
+  // The first attempt was a bare try/catch. It told nobody whether it had run. A migration that
+  // cannot say whether it applied is the defect this whole file is about, one level up.
+  assert.match(SRC, /pragma_table_info\('ledger'\)/,
+    'the ledger migration does not read the columns it is deciding about');
+  assert.doesNotMatch(SRC.slice(SRC.indexOf('add column credits'), SRC.indexOf('add column credits') + 400),
+    /catch\s*\{\s*\/\*[^*]*\*\/\s*\}/,
+    'the ledger migration is back inside an empty catch, where a failure to migrate is invisible');
 });

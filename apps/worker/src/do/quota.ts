@@ -109,10 +109,28 @@ export class QuotaDO extends DurableObject<Env> {
       //   DO created fresh with `credits` there is no `sparks` to rename and this throws
       //   immediately. The same drift was already known and handled on the Supabase side — see the
       //   `credits:sparks` retry in account-export.ts — and never here. ]]
-      try {
-        this.sql.exec(`alter table ledger rename column sparks to credits`);
-      } catch {
-        /* already migrated, or created fresh with `credits` */
+      //[[ DECIDED FROM THE SCHEMA, NOT ATTEMPTED AND SWALLOWED.
+      //
+      //   The first version of this was `alter table ledger rename column sparks to credits` in a
+      //   try/catch, matching the billing_events alter above. It was deployed and the production
+      //   error did not change — and because the catch was empty there was no way to tell whether
+      //   the statement had run, thrown, or never been reached. That is the same failure this
+      //   repository keeps meeting, written by me into the fix for it: an inability to migrate,
+      //   rendered as nothing at all.
+      //
+      //   So the columns are READ first and the migration runs only when it is actually needed,
+      //   and it uses ADD + UPDATE rather than RENAME COLUMN, whose support in this SQLite is not
+      //   something I could establish from the documentation. ADD COLUMN is the one form the
+      //   billing_events migration above has already been observed to work with here.
+      //
+      //   The UPDATE is what makes this safe. `add column credits` alone leaves every historical
+      //   row at 0, the account reads as never having spent, and it is billed as fresh. ]]
+      const ledgerColumns = new Set(
+        this.sql.exec(`select name from pragma_table_info('ledger')`).toArray().map((r) => String(r.name)),
+      );
+      if (ledgerColumns.size > 0 && !ledgerColumns.has('credits') && ledgerColumns.has('sparks')) {
+        this.sql.exec(`alter table ledger add column credits integer not null default 0`);
+        this.sql.exec(`update ledger set credits = sparks`);
       }
     });
   }
@@ -678,7 +696,11 @@ export class QuotaDO extends DurableObject<Env> {
       const { day } = (await req.json().catch(() => ({}))) as { day?: string };
       const target = day && /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : this.today();
       this.sql.exec(`delete from ledger where day = ?`, target);
-      return Response.json({ ok: true, cleared: target, state: await this.state() });
+      // The ledger's own column names ride along. When this route answered 500 with
+      // `no such column: credits` there was no way to see what the table actually had, and two
+      // deploys were spent guessing at it from the error string alone.
+      const columns = this.sql.exec(`select name from pragma_table_info('ledger')`).toArray().map((r) => String(r.name));
+      return Response.json({ ok: true, cleared: target, ledgerColumns: columns, state: await this.state() });
     }
     /*
      * THE INDIVIDUAL CHARGES, for the person who has to answer "what was this?".
