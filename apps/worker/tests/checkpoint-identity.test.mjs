@@ -92,3 +92,49 @@ test('an empty Luau omissions table encoded as [] is accepted, but nonempty omis
     assert.equal(rows(h, 'select * from checkpoints').length, accepted ? 1 : 0);
   }
 });
+
+// THE SNAPSHOT REFUSAL NAMED NOTHING. On 2026-09-20 the owner's build reported "Couldn't snapshot
+// your project before starting (Studio could not capture a restorable snapshot of the supported
+// objects). Continuing without an undo point." That one sentence was returned for three unrelated
+// failures with three different remedies — the place outgrew the plugin's bounded walk, the place
+// held classes this version cannot serialise, or the plugin never stamped the snapshot with the
+// checkpoint id. The test above proves each is REFUSED; this one proves each says which it was,
+// because a refusal that cannot be acted on is the defect, not the refusal.
+test('each snapshot refusal names its own cause, with only the numbers Studio sent', async () => {
+  const refusal = async extra => {
+    const h = sessionHarness();
+    h.session.execStudioOp = async op => ({ ok: true, data: snapshot(op.checkpointId, extra) });
+    const { error } = await h.session.createCheckpoint('refused', 'manual');
+    assert.ok(error, JSON.stringify(extra));
+    return error;
+  };
+
+  // Bounded walk stopped early. Quotes the plugin's own counters, never a cap this side invented.
+  const tooLarge = await refusal({ truncated: true, nodeCount: 800, sourceChars: 600123 });
+  assert.match(tooLarge, /too large for one checkpoint/);
+  assert.match(tooLarge, /reached 800 objects and 600123 characters of script/);
+  assert.match(tooLarge, /Studio's own undo/);
+
+  // A count Studio did not send is not reported as zero.
+  const tooLargeQuiet = await refusal({ truncated: true, nodeCount: 0, sourceChars: 0 });
+  assert.match(tooLargeQuiet, /too large for one checkpoint/);
+  assert.doesNotMatch(tooLargeQuiet, /reached/);
+
+  // Unserialisable objects: named, most frequent first, so support can act on the class.
+  const named = await refusal({ restorable: false, skipped: { Terrain: 1, MeshPart: 3 } });
+  assert.match(named, /these objects exactly: MeshPart x3, Terrain x1/);
+  assert.doesNotMatch(named, /too large/);
+
+  // Incomplete with nothing named is reported as unnamed, not as a cause this side guessed.
+  const unnamed = await refusal({ restorable: false, skipped: {} });
+  assert.match(unnamed, /every object exactly \(it named none of them\)/);
+
+  // Identity, which is a plugin-version problem and nothing to do with size or coverage.
+  const unstamped = await refusal({ checkpointEligible: false });
+  assert.match(unstamped, /did not stamp its snapshot with this checkpoint/);
+  assert.match(unstamped, /Update the Studio plugin/);
+  assert.doesNotMatch(unstamped, /too large|these objects exactly/);
+
+  // The whole point: a reader can tell them apart.
+  assert.equal(new Set([tooLarge, named, unnamed, unstamped]).size, 4);
+});

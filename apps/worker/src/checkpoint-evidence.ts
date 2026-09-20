@@ -22,8 +22,25 @@ export function checkpointEvidence(value: unknown, checkpointId: string): Admiss
   if (data.format !== APPLE_SNAPSHOT_FORMAT) return refuse('Studio returned an unsupported snapshot format.');
   if (data.checkpointId !== checkpointId) return refuse('the snapshot identity does not match this checkpoint.');
   if (data.root !== 'game' || data.scope !== 'place') return refuse('Studio returned a different snapshot scope.');
-  if (data.restorable !== true || data.checkpointEligible !== true || data.truncated !== false) {
-    return refuse('Studio could not capture a restorable snapshot of the supported objects.');
+  // THREE CAUSES USED TO SHARE ONE SENTENCE. "Studio could not capture a restorable snapshot of the
+  // supported objects" was what the owner saw on 2026-09-20, and it was returned for a place larger
+  // than the plugin's bounded walk, for a place holding objects this version cannot serialise, and
+  // for a snapshot the plugin never stamped with this checkpoint's id. Three causes, three different
+  // remedies: shrink/accept Studio undo, look at the named classes, update the plugin. Neither the
+  // owner nor support could tell which had happened. Each names itself now, and quotes only numbers
+  // the plugin actually sent — a count it did not send is not reported as zero.
+  //
+  // Order is the causal order on the wire, not preference: `truncated` forces `restorable` false in
+  // apps/apple-plugin/src/Commands.luau:2927, and `checkpointEligible` is `restorable` AND identity,
+  // so testing the narrowest cause last is what makes the named cause the actual one.
+  if (data.truncated !== false) {
+    return refuse(`this project is too large for one checkpoint — Studio stopped early${snapshotReach(data)}. Apple still edits it normally; Studio's own undo is the rollback for a place this size.`);
+  }
+  if (data.restorable !== true) {
+    return refuse(`Studio read the project but could not capture ${omittedObjects(data.skipped)}, so a restore would not put it back as it is.`);
+  }
+  if (data.checkpointEligible !== true) {
+    return refuse('Studio did not stamp its snapshot with this checkpoint, so a restore could not be matched to it. Update the Studio plugin.');
   }
   if (data.includeScripts !== true || data.sourceHashAlgorithm !== 'fnv1a32') {
     return refuse('script source or its integrity report is missing.');
@@ -45,6 +62,27 @@ export function checkpointEvidence(value: unknown, checkpointId: string): Admiss
   }
   if (!data.node || typeof data.node !== 'object' || Array.isArray(data.node)) return refuse('snapshot tree is missing.');
   return { ok: true, coverage, preservedObjects };
+}
+
+/** How far the bounded walk actually got, from the plugin's own counters. Silent about any it omitted. */
+function snapshotReach(data: Record<string, unknown>): string {
+  const parts: string[] = [];
+  for (const [key, unit] of [['nodeCount', 'objects'], ['sourceChars', 'characters of script']] as const) {
+    const value = data[key];
+    if (Number.isSafeInteger(value) && (value as number) > 0) parts.push(`${value} ${unit}`);
+  }
+  return parts.length ? ` (it reached ${parts.join(' and ')})` : '';
+}
+
+/** Names the classes Studio itself listed. When it listed none, says that rather than guessing a cause. */
+function omittedObjects(skipped: unknown): string {
+  if (!skipped || typeof skipped !== 'object') return 'every object exactly (it named none of them)';
+  const entries = (Object.entries(skipped as Record<string, unknown>) as [string, unknown][])
+    .filter(([, n]) => Number.isSafeInteger(n) && (n as number) > 0)
+    .sort((a, b) => (b[1] as number) - (a[1] as number));
+  if (!entries.length) return 'every object exactly (it named none of them)';
+  const named = entries.slice(0, 3).map(([className, n]) => `${className} x${n}`).join(', ');
+  return `these objects exactly: ${named}${entries.length > 3 ? ` and ${entries.length - 3} more` : ''}`;
 }
 
 export function checkpointCoverageNote(coverage: unknown, preservedObjects: unknown): string | undefined {
