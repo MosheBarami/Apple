@@ -43,12 +43,30 @@ Two numbers are deliberately kept separate from the headline:
   PII benchmarks, YouTube comments. Real Roblox data; teaches nothing about writing Luau. The
   classifier that separates them is in the script, where the decision can be read and argued with.
 
-## Why the register could not answer this
+## What the register already knew — a correction
 
-`packages/training/discovery/v2/hf-datasets.jsonl` catalogued 115 datasets with a licence, a
-disposition and a reason each — careful work, and the licence half of the job is done well. Every
-one of its `row_count` fields is 0. It recorded what each dataset IS and never what each dataset
-HOLDS. It also had no script behind it: produced once by hand, reproducible by nothing.
+An earlier revision of this file said of `packages/training/discovery/v2/hf-datasets.jsonl`:
+"Every one of its `row_count` fields is 0. It recorded what each dataset IS and never what each
+dataset HOLDS." **Both sentences are false, and they are corrected here rather than quietly
+removed, because the error is the exact one this repository exists to refuse: a failure to read
+was written down as a finding about the thing being read.**
+
+`row_count` in that register is not a number. It is an object — `{value, source, per_config}` —
+and reading it as a number is what produced the zero. Measured against the field it actually has:
+**114 of 115 records carry that object, 90 carry a non-null `value`, 86 carry a positive one, and
+those sum to 3,632,969 rows.** Each one names where it came from: `"huggingface dataset-viewer
+/size endpoint, read 2026-09-20"`. The register did record what each dataset holds, from the same
+endpoint family this re-measure used.
+
+The two registers in fact agree exactly where it counts. Restricted to the ids this re-measure
+classifies as Luau code, the register's own row counts sum to **2,643,431 — the same number, to
+the row, as the headline above**, produced by a different person on a different pass. The whole
+3,632,969 − 2,643,431 gap is non-Luau material: 418,956 rows the re-measure visited and rejected
+as usernames, meshes and avatars, plus 571,396 rows on 17 ids the re-measure never visited.
+
+What remains true of the register, and is why the re-measure was still worth running: it had no
+script behind it, so it was reproducible by nothing; and it drew no line between Roblox data and
+Luau *code*, which is the line that separates the 2.6M from the rest.
 
 The same gap is open on the GitHub side and is worse. `discovery/v2/github.jsonl` holds 4,851
 repositories, but only **577 were opened**; 4,269 are search-result leads whose licence is
@@ -59,3 +77,44 @@ counted there come only from the 577.
 this machine reports the keyring login failing for account MPROGAMING. Unauthenticated that is 60
 requests an hour against a job needing roughly 8,500 — about six days. This is not done and is not
 being worked around. It needs one working GitHub token.
+
+## How much of it may we use
+
+Volume is not permission. Every measured Luau dataset was given a licence verdict against a stated
+policy — the product charges money, so non-commercial is fatal, and share-alike and copyleft are
+excluded because the obligation would reach the weights and the service. The register is
+`packages/training/runs/rights-clearance.json`, rebuilt by
+`node packages/training/src/clear-rights.mjs`, and guarded by `src/rights-clearance.test.mjs`.
+
+| rows | disposition |
+| ---: | --- |
+| 2,069,435 | permissively licensed across 21 datasets (MIT, Apache-2.0, ODC-By, CC-BY-4.0) |
+| 1,995,636 | of those, after collapsing suspected re-uploads of one corpus |
+| 568,645 | no grant at all — licence "not stated", "other" or "unknown" |
+| 5,351 | share-alike, excluded by policy |
+
+So the ceiling for acquisition is about **2.0M permissively-declared rows**, against the 55,331 v1
+shipped. The word "declared" is load-bearing and is the subject of the next section.
+
+## Declared is not cleared
+
+Of the six sources v1 actually shipped from, **two are cleared and four are not**, and the
+difference is evidentiary rather than legal:
+
+| source | verdict | evidence |
+| --- | --- | --- |
+| `Roblox/creator-docs` | cleared, CC-BY-4.0 | LICENSE retrieved at pinned `6991e0e7`; attribution required |
+| `luau-lang/site` | cleared, MIT | LICENSE.md retrieved at pinned `81c1c185`; notice must be retained |
+| `Roblox/luau_corpus` | publisher declaration only | no licence file at `e739f802`; card tag `mit` |
+| `Pinkstack/luau-pretrain-corpus-filtered` | publisher declaration only | no licence file at `a1289ea9`; card tag `odc-by` |
+| `Pinkstack/LuauDev-instructions-SFT-preview` | publisher declaration only | no licence file at `b84175a2`; card tag `mit` |
+| `khtsly/Luau-Coder-1.0-Preview-SFT` | publisher declaration only | no licence file at `1038c903`; card tag `apache-2.0` |
+
+The two `null` licences that `release/sources.json` carried are now resolved, with retrieved text
+and a sha256 of it. All four card tags match what `sources.json` declared, so nothing was
+misreported — but a card tag is the uploader's assertion about a compilation they assembled, and
+it is not a grant covering each underlying file. That is why the four stay uncleared and why
+`training_approved` stays `false` on the code and SFT tracks.
+
+`knowledge/references.jsonl` is the one release file whose every contributing source is cleared:
+16,781 rows from `creator-docs` plus 431 from `luau-lang/site`, which is exactly its 17,212.
