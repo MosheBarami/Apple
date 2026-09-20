@@ -72,7 +72,15 @@ test('the step cap and the wall clock refund too — they report `done` on the w
 });
 
 test('WORK THE USER CAN KEEP IS CHARGED FOR, whatever went wrong afterwards', () => {
-  assert.equal(refundVerdict(barren({ opsApplied: 1 })).why, 'delivered');
+  //[[ RE-AIMED 2026-09-20. THE PRINCIPLE IN THE TITLE IS RIGHT; `opsApplied` WAS THE WRONG PROXY.
+  //   This asserted `opsApplied: 1 -> delivered`. session.ts computes opsApplied as every tool call
+  //   that SUCCEEDED — `get_project_tree` and `propose_plan` included, both of which change
+  //   nothing and both of which open every Agent run. So "work the user can keep" was true for any
+  //   run that reached its plan, and a run that died at step 1 having built nothing was charged in
+  //   full. Owner's screenshot: 30 Credits, nothing created, no refund. A read is not work anybody
+  //   can keep; `mutated` is the flag that means the place changed, and it is asserted below. ]]
+  assert.equal(refundVerdict(barren({ opsApplied: 1 })).refund, true,
+    'a successful READ is being counted as work the user can keep, so a failed run pays in full');
   assert.equal(refundVerdict(barren({ mutated: true })).why, 'delivered');
   assert.equal(
     refundVerdict(barren({ artifactRequested: true, artifactMissing: false })).why,
@@ -105,7 +113,9 @@ test('pressing stop is not a refund, and neither is a run nobody was charged for
 
 test('runDeliveredSomething is the single answer both the verdict and the wording are written from', () => {
   assert.equal(runDeliveredSomething(barren()), false);
-  assert.equal(runDeliveredSomething(barren({ opsApplied: 3 })), true);
+  // Three successful reads are still nothing delivered — see the re-aim note above.
+  assert.equal(runDeliveredSomething(barren({ opsApplied: 3 })), false);
+  assert.equal(runDeliveredSomething(barren({ mutated: true })), true);
 });
 
 test('THE SENTENCE SAYS WHAT THE LEDGER RETURNED, never what was asked for', () => {

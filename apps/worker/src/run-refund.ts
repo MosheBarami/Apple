@@ -87,7 +87,29 @@ const REFUNDABLE_OUTCOMES: ReadonlySet<string> = new Set(['timeout', 'step_limit
  * asking "what counts as output?" deserves one answer rather than two that can drift.
  */
 export function runDeliveredSomething(i: RefundInputs): boolean {
-  if (i.opsApplied > 0) return true;
+  //[[ `opsApplied` COUNTS READS, AND IT WAS THE REASON A FAILED RUN WAS NEVER REFUNDED.
+  //
+  //   session.ts computes it as `agent.trace.filter((t) => t.ok).length` — every tool call that
+  //   SUCCEEDED, whatever it did. `get_project_tree` is one. `propose_plan` is one. Both are reads
+  //   that change nothing, and every Agent run opens with them.
+  //
+  //   So the first clause here was true for essentially every run that got as far as planning, and
+  //   the refund never fired. Owner's screenshot, 2026-09-20: a tower-defence build stopped at step
+  //   1 of 16 on "the model reached its output limit", nothing created, nothing changed in the
+  //   place — 30 Credits charged and no refund sentence. On a 231-Credit day that is seven failures
+  //   to an exhausted account, which is exactly the "annoying credits block" that was reported.
+  //
+  //   `mutated` below is the signal that was always meant to carry this: session.ts sets it only
+  //   when `out.ok && MUTATING_TOOLS.has(call.name)`. Dropping the read count leaves delivery
+  //   defined as it reads in English — the place changed, an artifact was produced, or prose was
+  //   delivered in a prose mode.
+  //
+  //   THE RESIDUE, STATED RATHER THAN HIDDEN. MUTATING_TOOLS lists six tools and does not include
+  //   `format_script`, which rewrites a script's source. A run that only reformatted a script and
+  //   then failed will now refund, where before the read count happened to catch it. That is a
+  //   narrow over-refund against charging for every failed run, and it is the better error of the
+  //   two. Closing it properly means widening MUTATING_TOOLS in session.ts, which another lane has
+  //   uncommitted work in tonight; it is not fixed here and is not claimed to be. ]]
   if (i.mutated) return true;
   // An artifact that was asked for AND produced is output whatever else went wrong.
   if (i.artifactRequested && !i.artifactMissing) return true;
