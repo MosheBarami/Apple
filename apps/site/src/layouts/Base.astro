@@ -8,9 +8,23 @@ interface Props {
   description: string;
   /** omit nav/footer chrome (unused today, kept for future embeds) */
   bare?: boolean;
+  /**
+   * A page that must never be a search result, and must never nominate a canonical URL.
+   *
+   * THE 404 PAGE WAS ADVERTISING ITSELF AS A DESTINATION. It is served at /404 as a cacheable HTTP
+   * 200 (apps/worker/src/static.ts — the status is that lane's to fix), and this layout gave it
+   * `<link rel="canonical" href=".../404/">`. So the one URL on the site whose own canonical
+   * answers 404 was also the one telling crawlers that URL is where this content lives. A crawler
+   * that believes both indexes "That page is not here" and points it at a dead address.
+   *
+   * `noindex` is the half this lane can fix and the half that actually decides indexing: it emits
+   * robots/googlebot noindex and suppresses the self-canonical, so there is no destination claim
+   * left to honour whatever status code the bytes arrive with.
+   */
+  noindex?: boolean;
 }
 
-const { title, description, bare = false } = Astro.props;
+const { title, description, bare = false, noindex = false } = Astro.props;
 const site = Astro.site ?? new URL('https://appleworks.pages.dev');
 const canonical = new URL(Astro.url.pathname, site);
 // A PNG, not the SVG this was. Facebook, X, LinkedIn and Slack all document PNG/JPEG/GIF/WEBP
@@ -28,7 +42,14 @@ const ogImage = new URL('/og.png', site);
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
-    <link rel="canonical" href={canonical} />
+    {noindex ? (
+      <>
+        <meta name="robots" content="noindex, follow" />
+        <meta name="googlebot" content="noindex, follow" />
+      </>
+    ) : (
+      <link rel="canonical" href={canonical} />
+    )}
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     {/* The icon set is generated from favicon.svg by scripts/make-brand-assets.mjs, so
         every size is the same drawing. The 1.2 MB of PNGs that used to sit in
@@ -41,7 +62,7 @@ const ogImage = new URL('/og.png', site);
     <meta property="og:site_name" content="Apple" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta property="og:url" content={canonical} />
+    {!noindex && <meta property="og:url" content={canonical} />}
     <meta property="og:image" content={ogImage} />
     <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1200" />
@@ -51,7 +72,14 @@ const ogImage = new URL('/og.png', site);
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
-    <meta name="theme-color" content="#080808" />
+    {/* #080808 is the retired pre-warm-ramp black. It was typed here on all seven routes and the
+        toggle never touched it, so a phone showed an address-bar band a shade cooler than the
+        #141312 page beneath it — a visible seam at the top of every page — and in light mode that
+        near-black band sat over an almost-white page. The value is now read from `--theme-color` on
+        :root and rewritten on every toggle, so there is one definition per theme and it lives in the
+        stylesheet with the rest of the ramp. The server-rendered value is the dark ground, matching
+        this element's default `data-theme="dark"`. */}
+    <meta name="theme-color" id="theme-color" content="#141312" />
 
     <script is:inline>
       // Runs before first paint: no flash of the wrong theme, and reveals can
@@ -122,7 +150,20 @@ const ogImage = new URL('/og.png', site);
         return mqDark.matches ? 'dark' : 'light';
       }
 
+      /**
+       * The address-bar colour, read from the stylesheet rather than restated here. Called from
+       * paintToggles so every path that changes the theme — the button, and an OS change while no
+       * explicit choice is set — repaints the band as well as the page.
+       */
+      function paintBand() {
+        const meta = document.getElementById('theme-color');
+        if (!meta) return;
+        const v = getComputedStyle(root).getPropertyValue('--theme-color').trim();
+        if (v) meta.setAttribute('content', v);
+      }
+
       function paintToggles() {
+        paintBand();
         const theme = currentTheme();
         document
           .querySelectorAll<HTMLElement>('[data-theme-toggle]')

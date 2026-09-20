@@ -14,6 +14,7 @@ export * from './registry';
 
 export {
   workersAiAdapter,
+  acceptsReasoningEffort,
   gatewayOpts,
   APPLE_MODEL_ID,
   APPLE_MAX_MODEL_ID,

@@ -1,0 +1,313 @@
+{
+ "tally": {
+  "base": {
+   "game-logic": {
+    "ok": 0,
+    "n": 8,
+    "reasons": {
+     "fails_own_checks": 8
+    }
+   },
+   "trajectory": {
+    "ok": 0,
+    "n": 13,
+    "reasons": {
+     "no_tool_call": 4,
+     "tool_does_not_exist": 5,
+     "arguments_rejected": 4
+    }
+   }
+  },
+  "adapter": {
+   "game-logic": {
+    "ok": 0,
+    "n": 8,
+    "reasons": {
+     "fails_own_checks": 7,
+     "not_standalone": 1
+    }
+   },
+   "trajectory": {
+    "ok": 8,
+    "n": 13,
+    "reasons": {
+     "arguments_rejected": 2,
+     "no_tool_call": 3
+    }
+   }
+  }
+ },
+ "perRow": [
+  {
+   "id": "unlock-prerequisites",
+   "family": "unlock-prerequisites",
+   "kind": "game-logic",
+   "base": {
+    "ok": false,
+    "reason": "fails_own_checks"
+   },
+   "adapter": {
+    "ok": false,
+    "reason": "fails_own_checks"
+   }
+  },
+  {
+   "id": "weighted-selection",
+   "family": "weighted-selection",
+   "kind": "game-logic",
+   "base": {
+    "ok": false,
+    "reason": "fails_own_checks"
+   },
+   "adapter": {
+    "ok": false,
+    "reason": "fails_own_checks"
+   }
+  },
+  {
+   "id": "grid-cell-position",
+   "family": "ui-grid-placement",
+   "kind": "game-logic",
+   "base": {
+    "ok": false,
+    "reason": "fails_own_checks"
+   },
+   "adapter": {
+    "ok": false,
+    "reason": "fails_own_checks"
+   }
+  },
+  {
+   "id": "scrollbar-thumb",
+   "family": "ui-scrollbar-thumb",
+   "kind": "game-logic",
+   "base": {
+    "ok": false,
+    "reason": "fails_own_checks"
+   },
+   "adapter": {
+    "ok": false,
+    "reason": "fails_own_checks"
+   }
+  },
+  {
+   "id": "honest-percent",
+   "family": "ui-percent-display",
+   "kind": "game-logic",
+   "base": {
+    "ok": false,
+    "reason": "fails_own_checks"
+   },
+   "adapter": {
+    "ok": false,
+    "reason": "fails_own_checks"
+   }
+  },
+  {
+   "id": "remap-range",
+   "family": "ui-value-remap",
+   "kind": "game-logic",
+   "base": {
+    "ok": false,
+    "reason": "fails_own_checks"
+   },
+   "adapter": {
+    "ok": false,
+    "reason": "fails_own_checks"
+   }
+  },
+  {
+   "id": "snap-slider-value",
+   "family": "ui-slider-snap",
+   "kind": "game-logic",
+   "base": {
+    "ok": false,
+    "reason": "fails_own_checks"
+   },
+   "adapter": {
+    "ok": false,
+    "reason": "fails_own_checks"
+   }
+  },
+  {
+   "id": "notification-queue",
+   "family": "ui-notification-queue",
+   "kind": "game-logic",
+   "base": {
+    "ok": false,
+    "reason": "fails_own_checks"
+   },
+   "adapter": {
+    "ok": false,
+    "reason": "not_standalone"
+   }
+  },
+  {
+   "id": "guard-a-remote#0",
+   "family": "remote-guard",
+   "kind": "trajectory",
+   "base": {
+    "ok": false,
+    "reason": "no_tool_call"
+   },
+   "adapter": {
+    "ok": true
+   }
+  },
+  {
+   "id": "guard-a-remote#1",
+   "family": "remote-guard",
+   "kind": "trajectory",
+   "base": {
+    "ok": false,
+    "reason": "tool_does_not_exist"
+   },
+   "adapter": {
+    "ok": true
+   }
+  },
+  {
+   "id": "guard-a-remote#2",
+   "family": "remote-guard",
+   "kind": "trajectory",
+   "base": {
+    "ok": false,
+    "reason": "arguments_rejected",
+    "detail": "call: missing required argument \"cases\""
+   },
+   "adapter": {
+    "ok": false,
+    "reason": "arguments_rejected",
+    "detail": "call: missing required argument \"cases\""
+   }
+  },
+  {
+   "id": "guard-a-remote#3",
+   "family": "remote-guard",
+   "kind": "trajectory",
+   "base": {
+    "ok": false,
+    "reason": "tool_does_not_exist"
+   },
+   "adapter": {
+    "ok": false,
+    "reason": "no_tool_call"
+   }
+  },
+  {
+   "id": "daily-reward-streak#0",
+   "family": "daily-reward",
+   "kind": "trajectory",
+   "base": {
+    "ok": false,
+    "reason": "no_tool_call"
+   },
+   "adapter": {
+    "ok": true
+   }
+  },
+  {
+   "id": "daily-reward-streak#1",
+   "family": "daily-reward",
+   "kind": "trajectory",
+   "base": {
+    "ok": false,
+    "reason": "tool_does_not_exist"
+   },
+   "adapter": {
+    "ok": true
+   }
+  },
+  {
+   "id": "daily-reward-streak#2",
+   "family": "daily-reward",
+   "kind": "trajectory",
+   "base": {
+    "ok": false,
+    "reason": "arguments_rejected",
+    "detail": "call: missing required argument \"cases\""
+   },
+   "adapter": {
+    "ok": false,
+    "reason": "arguments_rejected",
+    "detail": "call: missing required argument \"cases\""
+   }
+  },
+  {
+   "id": "daily-reward-streak#3",
+   "family": "daily-reward",
+   "kind": "trajectory",
+   "base": {
+    "ok": false,
+    "reason": "tool_does_not_exist"
+   },
+   "adapter": {
+    "ok": true
+   }
+  },
+  {
+   "id": "designed-hud#0",
+   "family": "ui-kit",
+   "kind": "trajectory",
+   "base": {
+    "ok": false,
+    "reason": "no_tool_call"
+   },
+   "adapter": {
+    "ok": true
+   }
+  },
+  {
+   "id": "designed-hud#1",
+   "family": "ui-kit",
+   "kind": "trajectory",
+   "base": {
+    "ok": false,
+    "reason": "no_tool_call"
+   },
+   "adapter": {
+    "ok": true
+   }
+  },
+  {
+   "id": "designed-hud#2",
+   "family": "ui-kit",
+   "kind": "trajectory",
+   "base": {
+    "ok": false,
+    "reason": "arguments_rejected",
+    "detail": "call: argument \"module_name\" is not in the tool's schema"
+   },
+   "adapter": {
+    "ok": true
+   }
+  },
+  {
+   "id": "designed-hud#3",
+   "family": "ui-kit",
+   "kind": "trajectory",
+   "base": {
+    "ok": false,
+    "reason": "arguments_rejected",
+    "detail": "call: missing required argument \"intent\""
+   },
+   "adapter": {
+    "ok": false,
+    "reason": "no_tool_call"
+   }
+  },
+  {
+   "id": "designed-hud#4",
+   "family": "ui-kit",
+   "kind": "trajectory",
+   "base": {
+    "ok": false,
+    "reason": "tool_does_not_exist"
+   },
+   "adapter": {
+    "ok": false,
+    "reason": "no_tool_call"
+   }
+  }
+ ]
+}

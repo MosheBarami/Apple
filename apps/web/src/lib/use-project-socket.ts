@@ -83,6 +83,18 @@ export interface ChatItem {
   error?: string;
   createdAt: number;
   /**
+   * When this client watched the run finish — set from `msg_end`, which is the only moment it
+   * can be observed here.
+   *
+   * It exists because the terminal row needs a clock and the tools can no longer supply one for
+   * an interrupted run: a step that never reported now carries no end time at all (see `msg_end`
+   * below), so `eventsFromTurn`'s fallback — the last observed tool end — can be undefined, and
+   * without a clock it emits no `run_end` and the card loses the row that says the run is over.
+   * UNDEFINED FOR A RELOADED TURN, which did not watch anything; those carry real tool ends and
+   * the fallback covers them.
+   */
+  endedAt?: number;
+  /**
    * How many earlier versions of this message the user wrote before editing it.
    *
    * Comes with the transcript so the "edited" mark can be drawn without one request per turn, and
@@ -647,7 +659,26 @@ export function useProjectSocket(
             // Only when the worker sent one: `?? item.creditsSpent` rather than `?? 0`, so an older
             // worker leaves the field absent instead of asserting that the run was free.
             creditsSpent: msg.creditsSpent ?? item.creditsSpent,
-            tools: item.tools.map((t) => (t.done ? t : { ...t, done: true, ok: false, durationMs: Date.now() - t.startedAt })),
+            // WHEN THE RUN ENDS THIS DOES NOT LEARN HOW EACH STEP ENDED.
+            //
+            // It used to write `ok: false` and a `durationMs` computed from this instant onto every
+            // tool still open — two measurements, neither of them observed. `tool_end` is the only
+            // message that carries an outcome, and for these it never arrived: the run stopped
+            // first. So a step that was interrupted was reported as one that FAILED, with a
+            // duration attached as though somebody had timed it.
+            //
+            // It also made the reducer's `unknown` state unreachable. activity-model.ts defines it
+            // in as many words — "the step started, the run is over, and no result for it ever
+            // arrived" — and wrote the copy, the dashed glyph and the sentence "The run ended
+            // before this step reported a result." for it. Nothing could ever produce it, because
+            // this line answered the question before the reducer could decline to.
+            //
+            // `done: true` is honest and is all that is known: the step is not running any more.
+            // `ok` stays undefined and no duration is invented. `endedAt` below is the one clock
+            // this client did watch — the arrival of msg_end — and it is what dates the terminal
+            // row now that these tools no longer carry a synthetic end.
+            endedAt: Date.now(),
+            tools: item.tools.map((t) => (t.done ? t : { ...t, done: true })),
           };
           return next;
         });

@@ -166,3 +166,64 @@ test('every class the new panel draws with exists in a stylesheet', () => {
   const missing = [...classes].filter((c) => !CSS.includes('.' + c));
   assert.deepEqual(missing, [], `admin.tsx draws with classes no stylesheet defines: ${missing.join(', ')}`);
 });
+
+/* ===========================================================================================
+ * D31f64d — THE MODEL TESTER'S RESULT BLOCK LOST ITS CSS AND NOBODY NOTICED, because losing it
+ * makes a page look plain rather than broken, and only an operator ever sees this page.
+ *
+ * MEASURED IN CHROMIUM against the real stylesheet, at 860px, before the rules existed:
+ *
+ *   .admin-result       padding 0px · border 0px none · border-radius 0px · background
+ *                       transparent · display block — a bare run of text against the panel edge
+ *   .admin-result-err   EVERY ONE of those identical, and color rgb(244,243,242) = --ink, which
+ *                       is what the OK variant is. The modifier whose only job is to make a
+ *                       failure look different did nothing whatsoever.
+ *   .admin-pre          white-space:pre, max-height:none — one tool_calls line measured
+ *                       scrollWidth 1440 inside clientWidth 724, i.e. a sideways-scrolling strip
+ *
+ * After: 14px/16px padding, a --line hairline at --r-md on --paper-2; the error variant's leading
+ * rule is rgb(246,170,170) = --bad while the other three sides stay --line; the long line wraps
+ * (scrollWidth 689 === clientWidth 689) and is capped at 280px.
+ *
+ * The RAG tester was unaffected and is not touched.
+ * ======================================================================================== */
+
+const CSS_RULES = read('src', 'design', 'system.css').replace(/\/\*[\s\S]*?\*\//g, '');
+
+test('the classes the model tester emits are the classes the stylesheet draws', () => {
+  // Pinned from the JSX rather than written out, so a rename in admin.tsx cannot leave the rules
+  // below pointing at nothing — which is the exact way these three went dead in the first place.
+  // Every `admin-*` token inside a className, whether it is a plain string or a template with a
+  // conditional in it — `admin-result-err` only ever appears inside one of those.
+  const emitted = new Set(
+    [...ADMIN_CODE.matchAll(/className=(?:"([^"]*)"|\{`((?:[^`\\]|\\.)*)`\})/g)]
+      .flatMap((m) => [...(m[1] ?? m[2]).matchAll(/\badmin-[\w-]+/g)].map((x) => x[0])),
+  );
+  for (const name of ['admin-result', 'admin-result-err', 'admin-pre']) {
+    assert.ok(emitted.has(name), `admin.tsx no longer emits .${name} — re-aim these rules`);
+  }
+  for (const name of emitted) {
+    assert.match(CSS_RULES, new RegExp(`\\.${name}(?![\\w-])[^{}]*\\{[^{}]*\\S[^{}]*\\}`),
+      `.${name} is rendered by admin.tsx and drawn by nothing`);
+  }
+});
+
+test('the result block is a framed block, and the error variant is visibly not the ok one', () => {
+  assert.match(CSS_RULES, /\.admin-result\s*\{[^{}]*padding:/, 'it sat flush against the panel edge');
+  assert.match(CSS_RULES, /\.admin-result\s*\{[^{}]*border:1px solid var\(--line\)/, 'and had no frame');
+  assert.match(CSS_RULES, /\.admin-result-err\s*\{[^{}]*var\(--bad\)/,
+    'the error variant computed identically to the ok one in every property');
+  // The tone is the RULE, not the prose: the operator's own output must not be tinted as if the
+  // model had said something wrong. Same discipline as components/failure.css.
+  assert.doesNotMatch(CSS_RULES, /\.admin-result-err\s*\{[^{}]*(?<!border-inline-start-)color:var\(--bad\)/,
+    'colour belongs on the leading rule, not on the result text');
+});
+
+test('an unbounded model answer cannot scroll sideways or bury the form', () => {
+  assert.match(CSS_RULES, /\.admin-pre\s*\{[^{}]*white-space:pre-wrap/,
+    'a tool_calls dump has no line breaks — measured 1440px of content in a 724px box');
+  assert.match(CSS_RULES, /\.admin-pre\s*\{[^{}]*overflow-wrap:anywhere/,
+    'and an unbroken token would still overflow');
+  assert.match(CSS_RULES, /\.admin-pre\s*\{[^{}]*max-height:/,
+    'a long completion pushed the form it came from off the screen');
+});

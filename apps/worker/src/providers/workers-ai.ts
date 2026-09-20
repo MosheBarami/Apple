@@ -231,6 +231,22 @@ export function extractUsage(r: any, inputChars: number, text: string): Normaliz
  */
 export const WORKERS_AI_RETRYABLE = /\b3021\b|rate limit|too many requests|capacity temporarily/i;
 
+/**
+ * DOES THIS MODEL ACTUALLY TAKE A REASONING EFFORT?
+ *
+ * The gate itself is not new — `encode` has always dropped `reasoning_effort` for anything that is
+ * not a GLM route, because sending an undocumented field to Qwen is the wrong fix. What is new is
+ * that the answer is ASKABLE from outside, and that matters because the product was telling users
+ * about a setting this function had silently discarded: on the free lane the reasoning tier was
+ * computed, rendered in the thinking card, written into the run's replayable history, and then
+ * dropped here before the request left the building. A label with nothing behind it.
+ *
+ * Exported so there is ONE rule rather than a second copy of this regex living next to the UI.
+ */
+export function acceptsReasoningEffort(modelId: string): boolean {
+  return /^@cf\/zai-org\/glm-/.test(modelId);
+}
+
 // ---------------------------------------------------------------------------
 // adapter
 // ---------------------------------------------------------------------------
@@ -286,7 +302,7 @@ export const workersAiAdapter: ProviderAdapter = {
     }
     // Cloudflare documents reasoning_effort for GLM-4.7/5.3. Qwen3 is reasoning-capable but its
     // binding schema does not document an effort knob, so do not send it an invented field.
-    if (req.reasoningEffort && /^@cf\/zai-org\/glm-/.test(req.modelId)) {
+    if (req.reasoningEffort && acceptsReasoningEffort(req.modelId)) {
       payload.reasoning_effort = req.reasoningEffort;
     }
     if (req.jsonSchema) payload.response_format = { type: 'json_schema', json_schema: req.jsonSchema };

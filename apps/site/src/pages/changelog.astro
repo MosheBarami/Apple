@@ -164,8 +164,8 @@ import { PLAN_LIMITS } from '@golem/shared';
             <li>Reads and searches your scripts, edits them through Studio's own script editor APIs.</li>
             <li>Creates, moves, configures and deletes instances with typed, validated operations.</li>
             <li>
-              Wraps every operation batch in a ChangeHistory waypoint — native
-              <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo.
+              Wraps every operation in its own ChangeHistory waypoint — native
+              <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo, one step per change rather than one per run.
             </li>
             <li>
               Starts and stops run mode, captures logs, and reports results back for verification.

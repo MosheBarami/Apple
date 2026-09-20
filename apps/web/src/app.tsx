@@ -21,21 +21,31 @@ import { SettingsPage } from './routes/settings';
 // signed-in reader can open. That is not a security boundary (the routes are
 // ADMIN_KEY-guarded server-side and always were) but there is no reason to publish it.
 const AdminPage = lazy(() => import('./routes/admin').then((m) => ({ default: m.AdminPage })));
-// LAZY, alone among the routes. The specimen book is a review surface — every approved
-// block type with representative data, plus the rejection cases — and it is not linked
-// from anywhere in the product, so statically importing it made every user download a
-// page almost none of them will open.
+// LAZY, alone among the routes — AND NOW DEV-ONLY. The specimen book is a review surface:
+// every approved block type with representative data, plus the rejection cases, including
+// documents carrying `javascript:alert(1)` so a reviewer can watch the sanitiser refuse
+// them. It is not linked from anywhere in the product, and splitting it was the first half
+// of the answer to "why does every customer download this".
 //
-// MEASURED, not estimated: with this route and the admin one split out, the main bundle
-// goes 213.75 kB -> 193.24 kB raw and 61.36 kB -> 55.48 kB gzipped. `ui-lab-*.js`
-// (12.37 kB / 4.88 kB) is fetched only on navigation. Deleting the route outright would
-// save more than splitting it does, because some of what it pulls in is shared with
-// pages that ship anyway — which is why the first version of this comment had the wrong
-// figure in it.
+// The other half is that splitting it does not stop a customer OPENING it. Any signed-in
+// person could type /app/ui-lab, or follow a link somebody pasted, and land on an internal
+// review page. `import.meta.env.DEV` is a build-time constant, so in production this is
+// `() => null`, the dynamic import is unreachable and the chunk is not emitted at all —
+// MEASURED: after this change `grep -rl 'ui-lab\|UI lab\|CANONICAL STATES' dist/` returns
+// nothing at all, where before it returned the chunk. The route registration below is
+// removed in the same breath, so the path falls through to Not found rather than to a
+// blank screen.
+//
+// MEASURED just now, `vite build` both ways: with the route registered, the build emits
+// `ui-lab-*.js` at 13.80 kB (5.29 gzip) and the entry is 589.80 kB (173.12 gzip). Gated,
+// there is no such chunk and the entry is 586.71 kB (171.99 gzip) — so gating it also
+// takes 3.09 kB of shared code out of the entry that splitting alone left behind.
 //
 // Only these two are lazy. Dashboard and workspace are where a user lands, and splitting
 // those would trade bundle size for a round trip on the path that matters most.
-const UiLabPage = lazy(() => import('./routes/ui-lab').then((m) => ({ default: m.UiLabPage })));
+const UiLabPage = import.meta.env.DEV
+  ? lazy(() => import('./routes/ui-lab').then((m) => ({ default: m.UiLabPage })))
+  : () => null;
 const StudioPreviewPage = import.meta.env.DEV ? lazy(() => import('./routes/studio-preview').then((m) => ({ default: m.StudioPreviewPage }))) : () => null;
 import { JoinPage } from './routes/join';
 import { NotFoundPage } from './routes/not-found';
@@ -129,14 +139,32 @@ export function App() {
                         </Suspense>
                       }
                     />
-                    <Route
-                      path="/ui-lab"
-                      element={
-                        <Suspense fallback={<div className="page" aria-busy="true" />}>
-                          <UiLabPage />
-                        </Suspense>
-                      }
-                    />
+                    {/* DEV ONLY — the same treatment /studio-preview already gets a few lines up,
+                        and for a stronger reason. This is an internal review surface: it renders
+                        "CANONICAL STATES · M01–M10", "Tone is a property of the state, not a prop"
+                        and, deliberately, hostile documents carrying `javascript:alert(1)` and
+                        `<img src=x onerror=alert(1)>` so a reviewer can watch the sanitiser refuse
+                        them. Every one of those is a correct thing for a reviewer to see and a
+                        bewildering thing for a customer to find, and any signed-in person could
+                        find it by typing the path or following a shared link.
+                        THE ROUTE ITSELF IS OMITTED rather than the element blanked, so in
+                        production /app/ui-lab falls through to `path="*"` and gets the ordinary
+                        Not found page — a route that renders nothing is a blank screen, which is
+                        the failure this repository keeps finding in a different costume.
+                        NOT A SECURITY BOUNDARY, and it was never protecting anything: the
+                        specimens are fixtures, the XSS cases are inert by construction, and the
+                        bundle they lived in was already public. It is the same judgement as the
+                        admin split above — there is no reason to publish it. */}
+                    {import.meta.env.DEV && (
+                      <Route
+                        path="/ui-lab"
+                        element={
+                          <Suspense fallback={<div className="page" aria-busy="true" />}>
+                            <UiLabPage />
+                          </Suspense>
+                        }
+                      />
+                    )}
                     <Route path="*" element={<NotFoundPage />} />
                   </Route>
                 </Routes>

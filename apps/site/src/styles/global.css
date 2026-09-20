@@ -2,6 +2,11 @@
 
 :root {
   color-scheme: light;
+  /* The address-bar colour, derived rather than typed into every layout. Base.astro reads this
+     property off :root and writes it into <meta name="theme-color">, on load and on every toggle.
+     It is always the page's own background, which is what stops the band at the top of a phone
+     screen from being a different black (or a near-black over a white page) than the page itself. */
+  --theme-color: #f5f5f5;
   --paper: #f5f5f5;
   --paper-2: #eeeeee;
   --surface: #ffffff;
@@ -90,6 +95,7 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     color-scheme: dark;
+    --theme-color: #141312;
     --paper: #141312;
     --paper-2: #171615;
     --surface: #232221;
@@ -140,6 +146,7 @@
 
 :root[data-theme='dark'] {
   color-scheme: dark;
+  --theme-color: #141312;
   --paper: #141312;
   --paper-2: #171615;
   --surface: #232221;

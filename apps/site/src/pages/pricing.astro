@@ -17,6 +17,45 @@ import {
   PRODUCT_MODE_INFO,
   MODE_INFO,
   PRODUCT_MODE_TO_SPECIALIST, CREDIT_PURCHASE_LIVE as SHARED_CREDIT_PURCHASE_LIVE } from '@golem/shared';
+import { STUDIO_PLUGIN_STORE_LIVE, STUDIO_PLUGIN_STORE_REFUSAL } from '../lib/studio-plugin';
+import { DAILY_NEURON_CEILING } from '../../../worker/src/pricing';
+
+/*
+ * THE LIMIT THIS PAGE NEVER MENTIONED, ON THE PAGE WHERE PEOPLE DECIDE.
+ *
+ * A plan's Credits are a per-account allowance. Behind all of them is ONE service-wide daily
+ * ceiling on inference — apps/worker/src/pricing.ts, DAILY_NEURON_CEILING — and a run stops against
+ * it with "Apple has reached today's shared building capacity" while the customer's own balance
+ * still shows Credits. /docs/credits-and-limits and /docs/troubleshooting both disclose it. This
+ * page, which is the one a prospect reads before signing up, did not: it said "about N builds a
+ * month, free" and stopped.
+ *
+ * The figures are DERIVED from the worker's own ceiling rather than typed, so the sentence cannot
+ * outlive the number. The per-account arithmetic is deliberately printed as a floor, because the
+ * honest claim is "a handful of busy accounts", not a promise about any particular day.
+ */
+const serviceCreditsPerDay = Math.floor(DAILY_NEURON_CEILING / NEURONS_PER_CREDIT);
+
+/*
+ * "STUDIO INTEGRATION · PUBLIC INSTALLATION PENDING" WAS TYPED, AND IT WAS THE SOFTEST WORD ON THE
+ * SITE, ON THE ONLY PLAN ANYBODY CAN TAKE TODAY.
+ *
+ * "Pending" reads as a queue somebody is working through. The real state is a moderation decision:
+ * Roblox removed the listing, the "Distribute on Creator Store" setting is locked rather than
+ * switched off, an appeal is filed and no date can be promised. This page's own comparison table
+ * says "public installation is currently unavailable" eight hundred pixels further down, so the
+ * page disagreed with itself — and the bullet was a hardcoded string while the closing note was
+ * already derived, which is exactly how one of them got left behind.
+ *
+ * It is now asked, like every other availability claim on this page: STUDIO_PLUGIN_STORE_LIVE says
+ * whether the install path works, and STUDIO_PLUGIN_STORE_REFUSAL says whether it is refused rather
+ * than merely unbuilt. The day the appeal succeeds, this line changes with the constant.
+ */
+const studioBullet = STUDIO_PLUGIN_STORE_LIVE
+  ? 'Studio integration · install from the Creator Store'
+  : STUDIO_PLUGIN_STORE_REFUSAL
+    ? 'Studio integration · public installation removed by Roblox moderation, appeal filed'
+    : 'Studio integration · public installation unavailable';
 
 // THE NUMBERS ON THIS PAGE ARE READ, NOT WRITTEN. They used to be typed in prose and in the plan
 // cards, so the marketing site and the thing enforcing the quota could drift apart — and they had:
@@ -252,7 +291,7 @@ const limitFaq = [
             <li>Up to 3 steps per request — longer builds continue across messages</li>
             <li>Unlimited projects</li>
             <li>Checkpoints &amp; rollback</li>
-            <li>Studio integration · public installation pending</li>
+            <li>{studioBullet}</li>
             {/* Published for every plan, including this one. Three of the four tiers said nothing
                 about support anywhere, and a buyer cannot tell silence from "there is none". */}
             <li>{PLAN_SUPPORT.free.channel}</li>
@@ -310,6 +349,17 @@ const limitFaq = [
             </article>
           ))
         }
+
+        <p class="plan__note" style="grid-column:1/-1;max-width:62ch">
+          <strong>There is a second limit, and it is not yours.</strong> Every plan above draws on one
+          shared pool of about {serviceCreditsPerDay.toLocaleString()} Credits of building a day
+          across the whole service, which is roughly{' '}
+          {Math.floor(serviceCreditsPerDay / free.creditsPerDay)} accounts building flat out. When
+          that day's pool is gone, a run stops with “Apple has reached today's shared building
+          capacity” even though your own balance still shows Credits. It resets at midnight UTC, the
+          same instant for everyone, and the steps that already finished stay done and stay paid for.{' '}
+          <a href="/docs/credits-and-limits">How the two limits differ</a>.
+        </p>
 
         <p class="plan__note" style="grid-column:1/-1;max-width:62ch">
           One build costs about {CREDITS_PER_BUILD} Credits, so every figure above is also a number of

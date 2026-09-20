@@ -18,6 +18,7 @@ import type { GatewayMessage, GatewayRequest, GatewayResponse, GatewayToolCall, 
 import { estimateNeurons, neuronsFor, MAX_NEURONS_PER_REQUEST } from './pricing';
 import { recordEvent } from './analytics';
 import {
+  acceptsReasoningEffort,
   adapterForModelId,
   contentText,
   estimateNeuronsForModel,
@@ -84,7 +85,23 @@ export const DEFAULT_MODELS: Record<string, ModelCfg> = {
   // Neither is vision-capable, so visual critique deliberately remains on GLM-5.3 Flash.
   // -------------------------------------------------------------------------
 
-  clay: { id: '@cf/qwen/qwen3-30b-a3b-fp8', nativeTools: true, maxTokens: 2000, ctx: 32_768, temperature: 0.3 },
+  //[[ CLAY IS NOT ONLY PLAN MODE. It is also the gateway the FREE product lane runs on.
+  //
+  //   `gatewayModelFor` in do/session.ts sends every `productModel: 'apple'` run here, whatever
+  //   mode it is in — and `toolsForMode` hands a free Agent run STONE'S COMPLETE TOOLSET. At
+  //   maxTokens 2000 this ceiling was the binding clamp on that lane: the free user was offered
+  //   run_luau and given a third of the room the paid lane gets to write the call, so the answer
+  //   was guillotined at finish_reason "length", nothing was built, and the Credits were spent
+  //   anyway. That is the same failure the paragraph above records being measured on stone, on the
+  //   lane that has no way to pay its way out of it.
+  //
+  //   6500 matches `rune`, the largest base budget any offered toolset is sized for, so this
+  //   ceiling can no longer be the thing that truncates a tool call. It raises no REQUEST on its
+  //   own: `maxTokens` below is `min(what the caller asked for, this)`, and Plan mode still asks
+  //   for 2,000 (MODE_BASE_TOKENS.clay × high). The bill stays bounded by the neuron reservation
+  //   and BudgetDO, and qwen3's output rate is the cheapest row in pricing.ts — a full 6,500-token
+  //   answer here reserves ~198 neurons against MAX_NEURONS_PER_REQUEST of 1,200. ]]
+  clay: { id: '@cf/qwen/qwen3-30b-a3b-fp8', nativeTools: true, maxTokens: 6500, ctx: 32_768, temperature: 0.3 },
 
   // Agent and Super Agent need enough output room for a complete Luau tool call. The global
   // neuron reservation remains the hard spend gate, so these ceilings do not create an unbounded
@@ -176,6 +193,31 @@ export async function getModels(env: Env): Promise<Record<string, ModelCfg>> {
   }
   modelCache = { at: Date.now(), models };
   return models;
+}
+
+/**
+ * WILL A REASONING EFFORT SENT TO THIS MODEL KEY ACTUALLY REACH THE MODEL?
+ *
+ * The adaptive policy decides an effort for every step and SessionDO renders it to the user. On the
+ * free lane that render was a claim about a request that was never made: `gatewayModelFor` routes
+ * `productModel: 'apple'` to `clay`, which is a Qwen3 route, and the Workers AI adapter drops
+ * `reasoning_effort` for anything that is not a GLM route because Qwen's binding schema does not
+ * document the knob. So the thinking card said the model was thinking hard and it was not.
+ *
+ * This answers the question the UI needs BEFORE the call, from the same rule the adapter applies
+ * inside it, so the two cannot drift. It resolves the model key through `getModels` — a KV override
+ * can repoint `clay` at a GLM route, and the answer has to follow the config that is live rather
+ * than the one in DEFAULT_MODELS.
+ *
+ * A model served by any adapter other than Workers AI answers FALSE. That is deliberate and it is
+ * the honest direction: no other adapter has been measured to honour the field, and "we do not know
+ * that it was applied" must render as nothing rather than as a claim. When a second provider is
+ * credentialed, the thing to do is give it its own predicate — not to make this one optimistic.
+ */
+export async function reasoningEffortApplies(env: Env, modelKey: string): Promise<boolean> {
+  const cfg = (await getModels(env))[modelKey];
+  if (!cfg) return false;
+  return adapterForModelId(cfg.id) === workersAiAdapter && acceptsReasoningEffort(cfg.id);
 }
 
 /** Test seam: model configuration is cached for a minute in production. */

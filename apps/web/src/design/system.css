@@ -256,11 +256,32 @@ pre { overflow:auto; border:1px solid var(--line); padding:18px; background:var(
 .gx-think.is-reduced .gx-think__word,.gx-think.is-page-hidden .gx-think__word { animation:none; }
 @keyframes thinking-light { 0%,100% { background-position:100% 0; } 50% { background-position:0% 0; } }
 .gx-think__word { font-size:14px; font-weight:400; } .gx-think__hint { color:var(--faint); font-size:12px; margin-inline-start:auto; } .gx-think__chev { display:flex; } .gx-think__sound { border:0; padding:5px; font-size:12px; }
+/* THE ONLY CHEVRON IN THE BUNDLE THAT DID NOT TURN. Measured open and shut in Chromium: both
+   reported `transform: none`, so the one visible acknowledgement that the click landed was the
+   content appearing — and on a card whose body is a height transition, that reads as a delay.
+   Four other carets in this app already do this and all four do it the same way, so this is the
+   idiom rather than a new one: layout.css:302 (the account menu), composer.css:134 (the model
+   chip), project-stage.css:98 (the project panel). --t-base because the reader is watching the
+   panel move, not the cursor. The reduced-motion block at the foot of this file kills the
+   transition with !important and leaves the rotation, which is correct: the arrow still ends up
+   pointing the right way, it simply gets there without travelling. */
+.gx-think__chev { transition:transform var(--t-base) var(--ease-in-out); }
+.gx-think__toggle[aria-expanded='true'] .gx-think__chev { transform:rotate(180deg); }
 .gx-think__body { display:none; } .gx-think__body.is-open { display:block; animation:type-arrive 200ms ease-out; } .gx-think__inner { padding:0 0 18px 38px; }
-.gx-think__compact { padding:0 0 14px 38px; } .gx-think__compact-list,.gx-timeline,.gx-plan,.gx-act__steps,.gx-act,.gx-act__phases { list-style:none; padding:0; margin:0; }
-.gx-think__compact-step { display:flex; gap:10px; align-items:start; margin-top:5px; font-size:12px; color:var(--muted); } .gx-think__compact-copy { display:grid; } .gx-think__compact-kicker { text-transform:uppercase; letter-spacing:.1em; font-size:9px; } .gx-think__compact-mark { padding-top:3px; }
-.gx-think__compact-ring { display:block; width:12px; height:3px; margin-top:5px; background:var(--accent); animation:working-line 1.1s ease-in-out infinite; }
-.gx-think.is-terminal .gx-think__compact-ring,.gx-think.is-reduced .gx-think__compact-ring,.gx-think.is-page-hidden .gx-think__compact-ring { animation:none; }
+/* THE COMPACT PREVIEW IS GONE AND ITS SEVEN RULES WENT WITH IT.
+   `.gx-think__compact`, `-list`, `-step`, `-copy`, `-kicker`, `-mark` and `-ring` styled a second
+   activity row under the header that the redesign removed — and
+   tests/thinking-redesign.test.mjs now FORBIDS the markup (`assert.doesNotMatch(JSX,
+   /className="gx-think__compact/)`) while three of its own assertions pinned the CSS for it, so
+   the suite was simultaneously requiring the rules to exist and the elements to not. Nothing in
+   src/ has emitted any of these class names; grep, not inference.
+   THE LIVE INDICATOR IT USED TO BE is now `.model-signature.is-live` (line ~212), whose animation
+   is gated in the JSX by `live={isLive && !reducedMotion && !pageHidden}` rather than by the three
+   `.gx-think.is-*` CSS overrides below — which is why those overrides had nothing to turn off. The
+   test's three assertions were re-aimed at the mechanism that renders.
+   `.gx-think__compact-list` was the first selector in the list-reset rule and only that selector
+   is dropped: --timeline, --plan, --act__steps, --act and --act__phases all render. */
+.gx-timeline,.gx-plan,.gx-act__steps,.gx-act,.gx-act__phases { list-style:none; padding:0; margin:0; }
 .gx-stage-row { padding:10px 0; border-top:1px solid var(--line); } .gx-stage-row__name,.gx-act__phase-name { font-size:13px; font-weight:400; } .gx-stage-row__text,.gx-stage-row__body,.gx-act__detail { color:var(--muted); font-size:13px; }
 .gx-act__step { display:flex; gap:10px; padding:6px 0; } .gx-act__mark { width:17px; flex-shrink:0; } .gx-act__mark svg { max-width:16px; height:16px; } .gx-act__step-body { flex:1; min-width:0; } .gx-act__step-head { display:flex; justify-content:space-between; gap:16px; } .gx-act__detail { display:block; } .gx-act__ms { font:10px var(--font-mono); color:var(--faint); flex-shrink:0; }
 .gx-act__step-label,.gx-act__detail,.gx-stage-row__body,.gx-act__phase-body { min-width:0; overflow-wrap:anywhere; }
@@ -367,6 +388,25 @@ pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
 .meter { height:5px; background:var(--surface-3); overflow:hidden; } .meter > * { height:100%; background:var(--accent); }
 .admin-subhead { margin:28px 0 12px; font-size:18px; } .admin-table { font-size:12px; } .table-wrap { max-width:100%; overflow:auto; }
 .mono-cell,.admin-pre { font-family:var(--font-mono); font-size:12px; } .num { text-align:end; font-variant-numeric:tabular-nums; }
+/* WHAT THE MODEL TESTER CAME BACK WITH — three class names admin.tsx has always emitted and a
+   stylesheet rewrite left with nothing to match.
+   MEASURED IN CHROMIUM before this rule existed: `.admin-result` reported padding:0px, border:0px
+   none, border-radius:0px, background transparent, display:block — and `.admin-result-err`
+   reported every one of those identically, plus color rgb(244,243,242), which is --ink, which is
+   what the OK variant is. So the modifier whose entire job is to make a failure look different
+   changed nothing at all, and both landed as bare blocks against the panel's own edge.
+   THE TONE IS A LEADING RULE, which is how every other failure in this app is drawn (see
+   components/failure.css). Colour is spent there and nowhere else: the operator already knows
+   which block failed because there is one on screen, and tinting the output would make the model's
+   own words look like the error. */
+.admin-result { display:grid; gap:10px; margin-top:16px; padding:14px 16px; border:1px solid var(--line); border-radius:var(--r-md); border-inline-start:2px solid var(--line); background:var(--paper-2); }
+.admin-result > p { margin:0; }
+.admin-result-err { border-inline-start-color:var(--bad); }
+/* A MODEL'S ANSWER HAS NO MAXIMUM LENGTH AND A tool_calls DUMP HAS NO LINE BREAKS. The `pre`
+   element rule leaves `white-space:pre` and no height cap, so one 1,400px line of JSON scrolled
+   sideways inside a 724px box — measured — and a long completion pushed the form off the screen.
+   Same treatment as `.failure__detail code` and `.crash-detail`, because it is the same content. */
+.admin-pre { margin:0; max-height:280px; padding:10px 12px; border-radius:var(--r-xs); line-height:1.55; white-space:pre-wrap; overflow-wrap:anywhere; }
 .rag-hit { padding-block:14px; border-top:1px solid var(--line); } .rag-preview,.page-sub { color:var(--muted); font-size:13px; }
 .gx-outcome { display:flex; flex-wrap:wrap; align-items:baseline; gap:12px; margin-block:16px; }
 .gx-outcome__retry:focus-visible,.gx-history-toggle:focus-visible { outline:2px solid var(--accent); outline-offset:4px; }
@@ -388,6 +428,28 @@ pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
 .gx-act__phase.is-active .gx-act__pip { background:var(--accent); box-shadow:0 0 0 3px var(--acc-ember-soft); }
 /* activity.tsx:205 renders `gx-stage-row gx-term is-<kind>`; this rule said `.gx-act__terminal`. */
 .gx-term { border-block-start:1px solid var(--line); margin-block-start:12px; padding-block:12px; font-size:13px; }
+/* A RUN THAT CRASHED LOOKED EXACTLY LIKE A RUN THAT WORKED, three rows deep in the same card.
+   Measured in Chromium with getComputedStyle, before these three rules: a failed step's glyph came
+   out at rgb(189,186,182) — --muted, the same ink as the ✓ beside it; a failed phase's pip at
+   rgb(170,167,163), --faint, the same as a finished phase's; and "Stopped by an error" was drawn in
+   exactly the colour of "Finished". The gate verdicts a few pixels above DO carry `.is-fail`'s
+   --bad, so one card said failure in colour in one place and said it in a 5px grey glyph in three
+   others.
+   THE COLOUR LANDS ON THE STATUS MARK, NEVER ON THE PROSE — the same rule empty-state.css states
+   and for the same reason: the reader already knows which step it was from the row they are
+   reading, and tinting the label would make the step's NAME look like the thing that is wrong.
+   `.gx-act__mark` rather than `.gx-tick`, because the × is a <path> carrying its own
+   `stroke="currentColor"` presentation attribute — a `stroke` set on the parent <svg> loses to it,
+   so colouring the wrapper and letting currentColor resolve is the only thing that reaches the
+   stroke. Verified rendered, not assumed. */
+.gx-act__step.is-failed .gx-act__mark { color:var(--bad); }
+.gx-act__phase.is-failed .gx-act__pip { background:var(--bad); }
+/* THE TWO TERMINALS THAT ARE A STOP, and only those two. `stopped` is the user's own Stop button
+   and `recovered` is a run that got there anyway; neither is a failure and neither takes the
+   colour. `incomplete` stays neutral for the reason activity-model.ts gives about `unknown` — it
+   is the absence of an outcome, not a bad one, and painting it red would be a claim the wire never
+   made. That leaves `failed` and `quota`: the run stopped and nothing came of it. */
+.gx-term.is-failed .gx-stage-row__name,.gx-term.is-quota .gx-stage-row__name { color:var(--bad); }
 .gx-ev { border:1px solid var(--line); margin-block:10px; padding:14px; } .gx-ev__bar { height:3px; background:var(--accent); }
 .gx-ring__track { stroke:var(--line); } .gx-ring__spin { stroke-dasharray:20 12; transform-origin:center; }
 /* The `prefers-reduced-motion` block below already sets `.gx-ring__spin { animation:none }` — it was

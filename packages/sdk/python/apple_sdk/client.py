@@ -22,7 +22,14 @@ from typing import Any, Callable, Dict, Optional, Union
 from .errors import ApiError, backoff_seconds, message_from_body, should_retry
 from .numbers import finite_int
 
-DEFAULT_BASE_URL = "https://golem.moshe-barami111.workers.dev"
+#: The public base URL of the production worker.
+#:
+#: ``apple``, not ``golem``. The legacy host serves ``/api/*`` from a separate, older deployment
+#: (measured 2026-09-20: buildSha 44d9ded-dirty there, e30b7f9-dirty on the canonical origin, 31
+#: commits apart) and the browser redirect that moves pages across deliberately exempts ``/api/*``,
+#: so an SDK caller was never carried over. Kept identical to ``DEFAULT_BASE_URL`` in
+#: ``packages/sdk/src/wire.mjs``; ``protocol-parity.test.mjs`` asserts the two agree.
+DEFAULT_BASE_URL = "https://apple.moshe-barami111.workers.dev"
 
 #: Mirrors ``GolemMode`` in packages/shared. A runtime list, because a TypeScript union
 #: is not one and this value routinely arrives from a config file or a command line.

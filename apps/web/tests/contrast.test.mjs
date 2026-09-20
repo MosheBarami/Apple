@@ -19,7 +19,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -248,8 +248,23 @@ test('the landing declares no colour token it does not use', () => {
   // --faint was not, because a test asserted a contract on it and went on passing
   // while nothing on the page was governed by it. A token nothing references is a
   // decision nobody made, and an assertion about one measures nothing.
+  //
+  // A TOKEN CAN BE READ FROM SOMEWHERE OTHER THAN CSS, and this check could not see that. It flagged
+  // --theme-color, which the layouts read with
+  // `getComputedStyle(root).getPropertyValue('--theme-color')` to paint the phone address bar to
+  // match the page. That is a real consumer; the token is doing exactly the job it was declared for.
+  // Reading only the stylesheet made the check report its own blind spot as an unused declaration —
+  // and the fix a person would reach for is deleting the token, which breaks the address bar.
+  //
+  // So "read" now means read by anything that ships: a var() in the CSS, or a getPropertyValue in
+  // the layouts that carry the theme script.
   const declared = [...new Set([...LANDING.matchAll(/^\s*--([a-z0-9-]+):/gm)].map((m) => m[1]))];
   assert.ok(declared.length >= 5, `only ${declared.length} tokens found — did the selector change?`);
-  const unused = declared.filter((n) => !new RegExp(`var\\(--${n}[,)]`).test(LANDING));
+  const layoutDir = join(HERE, '..', '..', 'site', 'src', 'layouts');
+  const layouts = existsSync(layoutDir)
+    ? readdirSync(layoutDir).filter((f) => f.endsWith('.astro')).map((f) => readFileSync(join(layoutDir, f), 'utf8')).join('\n')
+    : '';
+  const readsFromScript = (n) => new RegExp(`getPropertyValue\\(\\s*['\"]--${n}['\"]`).test(layouts);
+  const unused = declared.filter((n) => !new RegExp(`var\\(--${n}[,)]`).test(LANDING) && !readsFromScript(n));
   assert.deepEqual(unused, [], `landing.css declares tokens nothing reads: ${unused.join(', ')}`);
 });

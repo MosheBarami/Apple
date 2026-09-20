@@ -1,0 +1,36 @@
+{
+  "schema": "apple-mlx-dataset-v4",
+  "builtFrom": [
+    "ALL_GAME_LOGIC_CURRICULUM",
+    "TOOL_TRAJECTORY_CURRICULUM(+b)"
+  ],
+  "rows": 233,
+  "splitSizes": {
+    "train": 187,
+    "valid": 25,
+    "test": 21
+  },
+  "trackRows": {
+    "game-logic": 80,
+    "tool-trajectory": 153
+  },
+  "families": 110,
+  "evaluationTasksChecked": 88,
+  "source": "first-party-authored",
+  "harvestedRows": 0,
+  "customerData": false,
+  "capturedFromStudio": false,
+  "limitations": [
+    "tool results are not recorded; trajectory rows carry an explicit marker, never invented content",
+    "teaches tool selection and argument construction, not recovery from a failed result",
+    "no Roblox engine, rendering, networking or persistence was executed",
+    "not a model capability evaluation; no model has been trained on this yet"
+  ],
+  "productionTrainingReady": false,
+  "fileDigests": {
+    "train.jsonl": "96fefa40bc1cdc5547b38b801cd129a371eae3a424444bd965b7e825a944bad5",
+    "valid.jsonl": "7ce5bc832c7f91de1143a9411b1cc4d0f0056781e59d880e07bfa4e53fc5e9a2",
+    "test.jsonl": "403dcae2a354e92c7d2d98b45d6d000bd81c822db36e50d9ea176a3defdcdf95"
+  },
+  "digest": "40e8263a67707f5222af7a06c40c5d52aeb0ca2814d5ad2856699bbb9cd3e6d8"
+}

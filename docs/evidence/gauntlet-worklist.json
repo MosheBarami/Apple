@@ -1,0 +1,726 @@
+{
+ "generated": "2026-09-20",
+ "bar": "https://lovable.dev",
+ "items": [
+  {
+   "id": "Df5b536",
+   "area": "asset-library",
+   "severity": "blocker",
+   "title": "Nothing has ever been imported: 0 of 511,208 library rows are insertable today, and the 74,068 pending rows the shipped resolver can actually handle have never been attempted",
+   "user": "The owner's statement that a curated library \"has never existed\" is exactly right, and it is worse than not-yet-run: two thirds of the catalogue is permanently un-importable by the code that ships. Every Kenney, OpenGameArt, ambientCG, Poly Haven, cgbookcase and game-icons row the agent surfaces is a pointer to somebody else's website.",
+   "file": "apps/worker/src/asset-import.ts",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "D9f8959",
+   "area": "marketing-site",
+   "severity": "major",
+   "title": "Landing page's fixed transparent header has no scrim, so the hero's own centred <p> smears through the nav on the first scroll (375px and 1280px); the CSS comment's stated mitigation \u2014 \"the hero is a viewport tall, so the first thing that scrolls under the nav is a section boundary rather than a paragraph\" \u2014 is false, because align-items:center puts that paragraph mid-viewport. All 19 other pages use the shared sticky opaque header and hide the same overlap.",
+   "user": "On a phone, the first scroll of the product's front page smears the headline paragraph through the navigation \u2014 two lines of white text on top of each other, both unreadable. The page a buyer judges the product by looks broken before they reach a single feature.",
+   "file": "apps/site/src/styles/landing.css",
+   "fix": "",
+   "status": "fixed-deployed"
+  },
+  {
+   "id": "D9864e3",
+   "area": "web-app-screens",
+   "severity": "major",
+   "title": "The crash card has no layout CSS: none of its five `crash-*` classes has a single rule in the shipped stylesheet, so both boundaries render full-bleed, unpadded, uncentred, with the two recovery buttons touching at 0px",
+   "user": "When the app throws, the user gets \"The apple stumbled\" as bare text jammed against the top-left corner of the browser window, full width, with the two recovery buttons butted together. The product's worst moment is the only screen nobody styled \u2014 every other failure state (Failure, EmptyState) is a considered, centred card.",
+   "file": "apps/web/src/components/error-boundary.tsx",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "Dd8a983",
+   "area": "worker-api-surface",
+   "severity": "major",
+   "title": "Settings \u2192 Connections offers a Discord pairing code with an expiry countdown, but neither the apple nor the golem worker has DISCORD_PUBLIC_KEY, so the sole redemption path is unreachable \u2014 and unlike /api/billing/config there is no capability probe for the UI to degrade on",
+   "user": "A signed-in user opens Settings \u2192 Connections, picks a project, presses 'Get a code', and is shown `/link 123456` with a countdown. They type it into Discord. Nothing answers \u2014 the bot endpoint returns 503 to Discord itself. They watch the code expire, get another, and conclude the product is broken. Nothing in the UI or in any API response says the integration is not configured on this deployment.",
+   "file": "",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "D9ebf8b",
+   "area": "studio-plugin",
+   "severity": "major",
+   "title": "A paired Studio session dies permanently after ~250-256 operations (the whole refused batch is lost, and the pairing code cannot be reused)",
+   "user": "After enough building in one sitting, Studio abruptly disconnects with \"Apple sent too many operations to this Studio session\" and the plugin drops back to the pairing screen. The code they typed is dead, so they have to go back to the web app and generate a new one \u2014 and it will happen again 256 operations later. The worker keeps handing out at most 10 ops per poll, so this is roughly 26 polls of real work, well inside a single \"build me a lobby\" session.",
+   "file": "",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "D7d76b1",
+   "area": "studio-plugin",
+   "severity": "major",
+   "title": "On a still-warm SessionDO whose issued poll deadline has lapsed, a reconnecting plugin poll tells the browser `connected:true` while `pluginConnected()` keeps answering false for the length of the poll hold (~6s, and only when the project was active within POLL_IDLE_AFTER_MS); a run started in that window is given a system prompt that says Studio is NOT connected for the rest of its life",
+   "user": "Exactly what the owner reported. They type the pairing code, the plugin says \"Connected \u00b7 <project>\", the web app pops its green \"Studio connected\" pill, they immediately ask for a build \u2014 and the assistant replies that Studio is not connected and to please connect the plugin. Because the sentence is baked into the run's system prompt, it keeps saying that for the rest of the run even after the tools quietly come back on a later step.",
+   "file": "",
+   "fix": "",
+   "status": "fixed-deployed"
+  },
+  {
+   "id": "D68b938",
+   "area": "studio-plugin",
+   "severity": "major",
+   "title": "A plugin that stops polling is never broadcast: an open tab's green Studio pill (which shows the place name, not the words \"Studio connected\") stays green until the page is reloaded, the socket drops, or the user clicks the web app's own \"disconnect Studio\"",
+   "user": "A user closes Roblox Studio, or the plugin quits on any of its own terminal paths, and the workspace header keeps showing the green \"Studio \u00b7 <place>\" pill indefinitely. The model, which reads a different function, correctly refuses to build. Two answers to one question on one screen \u2014 the same defect apps/worker/src/do/session.ts:698-707 documents as already fixed for a different pair of readers.",
+   "file": "",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "D25c8d6",
+   "area": "asset-library",
+   "severity": "major",
+   "title": "The semantic leg of agent asset search matches nothing \u2014 no asset vectors are ever written and no VEC_ASSETS index exists \u2014 and it pays a metered embedding against the shared budget before discovering that",
+   "user": "Nothing visible, which is the problem: the product bills a Workers AI embedding per asset search for a retrieval leg that structurally cannot return a row. It also means the FTS leg measured above is the whole of asset search \u2014 there is no semantic fallback to rescue the zero-insertable result.",
+   "file": "apps/worker/src/asset-library.ts",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "D54643a",
+   "area": "asset-library",
+   "severity": "major",
+   "title": "Apple's publish-readiness route green-lights assets named after third-party IP: all 81,648 active library rows carry one blanket \"Roblox Terms of Use\" string that normalises to ROBLOX-TOU \u2014 a rule whose own stated justification is \"Roblox-authored asset\" \u2014 so commercialUseReport() returns ok:true for a row literally named \"Minecraft tree\"",
+   "user": "A customer who allows \"The Apple library\" gets, as the only thing Apple can actually place, other people's 2008 uploads \u2014 some of them named after Nintendo, Sega, Disney and Bandai properties \u2014 recorded in the product's own provenance table as free for commercial use with no credit owed.",
+   "file": "apps/worker/src/asset-library.ts",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "D368f29",
+   "area": "billing-and-money",
+   "severity": "major",
+   "title": "The Stripe drift report compares only plan and status, so a lost cancel-at-period-end and a stale stored period end both return 'ok' \u2014 the stale one on the very record subscriptionView reads as lapsed and needing attention",
+   "user": "A customer cancels in the Stripe portal and that one webhook is lost (Stripe gives up, a deploy is mid-flight, the signing secret was rotated). Apple keeps serving them the paid tier forever and the owner's reconciliation report says every account agrees. Conversely, a paying Studio customer whose renewal event is missed is told on the Usage page that their subscription lapsed and needs attention \u2014 and the same report calls that account healthy.",
+   "file": "apps/worker/src/billing.ts",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "Da7f8f6",
+   "area": "billing-and-money",
+   "severity": "major",
+   "title": "QuotaDO enforces a plan frozen at webhook time: once the period lapses it keeps granting paid credits and Apple MAX while the same /api/me says billing.plan=free \u2014 one-directional, with no alarm, cron or repair path",
+   "user": "One GET /api/me hands the app two different answers to 'what plan is this account on'. Whichever webhook is missed, the two disagree silently: the meter grants 21,000 credits a month while the billing panel says the subscription lapsed, or vice versa. Nothing in the product makes them agree.",
+   "file": "apps/worker/src/do/quota.ts",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "D486469",
+   "area": "billing-and-money",
+   "severity": "major",
+   "title": "profiles.plan has no writer in either deployed worker and no reconciler, yet it ships unqualified in the /api/me/export personal-data document \u2014 the authoritative plan is a QuotaDO KV key the export inventory does not list, and the divergence is producible today via /api/admin/set-plan (the /api/me copy has no UI consumer)",
+   "user": "A paying Studio customer who exercises their data-export right receives a document stating plan: free, because the column the export reads is one nothing in the product can write. The authoritative value is in a store the export inventory does not cover.",
+   "file": "apps/worker/src/user-export.ts",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "D200b7f",
+   "area": "claims-vs-product",
+   "severity": "major",
+   "title": "Landing page's Undo card contradicts itself: \"Every change is one waypoint\" is true (one ChangeHistoryService recording per op, Commands.luau:3628; Bridge.luau:556 dispatches ops one at a time), which makes \"a run you dislike is a single Ctrl+Z away\" false for any run with more than one write \u2014 and the docs' \"each batch is one native undo step\" is wrong too, not just weaker",
+   "user": "A customer who dislikes what a build did presses Ctrl+Z once, as the front page told them to, and gets back only the last of several changes \u2014 the place is left in a half-reverted state they then have to reason about manually. The related docs pages hedge this as \"each batch of Apple changes is one native undo step\" (/docs/getting-started, /docs/troubleshooting, /docs/faq), which is true per batch and still does not make one keystroke undo a run.",
+   "file": "",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "Dfbbf02",
+   "area": "claims-vs-product",
+   "severity": "major",
+   "title": "/docs/credits-and-limits says the balance is \"always visible in the workspace header, and it updates live\"; the balance meter is in the left rail's footer, and nothing refreshes it when Credits are spent \u2014 the worker's live `quota` socket message is received by the hook and dropped by the workspace",
+   "user": "The balance shown beside the account is whatever it was when the page was last loaded. A customer building for an hour watches a number that does not move, then discovers the real figure only on reload or when a run is refused. (The per-run \"N Credits this run\" counter in the thinking panel \u2014 apps/web/src/components/ws/thinking.tsx:376-378 \u2014 is real, so the /pricing FAQ's \"running total live\" claim holds; it is the balance claim that does not.)",
+   "file": "",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "Db9a704",
+   "area": "claims-vs-product",
+   "severity": "major",
+   "title": "Builder's 'Priority during busy periods' bullet ships on both the live /pricing card and the signed-in app bundle, contradicting /docs/credits-and-limits; PLAN_LIMITS carries only creditsPerDay/creditsPerMonth, so no code path can read a plan priority",
+   "user": "The differentiator a buyer would pay $12/month for does not exist, and the product's own documentation says so two clicks away. When checkout opens, the first paying customer to hit a slow period gets the same queue position as the free tier.",
+   "file": "",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "D5fe0f0",
+   "area": "claims-vs-product",
+   "severity": "major",
+   "title": "Both live privacy pages promise no training exception \u2014 the policy even says an opt-in program does not exist yet \u2014 while the shipped settings page offers a training opt-in switch that no collection path consumes",
+   "user": "Two published statements a careful reader cannot reconcile: an absolute \"never, no exception\" on the website and a live opt-in switch in the account settings. Whichever they believe, one of them is wrong \u2014 and a user who ticks the switch to help contributes nothing, because no code collects on it.",
+   "file": "",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "Dc19672",
+   "area": "marketing-site",
+   "severity": "minor",
+   "title": "/pricing and the in-app plan ladder both list \"Priority during busy periods\" on Builder, which /docs/credits-and-limits denies (\"No plan buys a place further up that queue\") and no plan-aware queue ordering implements \u2014 but the tier is not purchasable (checkout:false, card reads \"Planned tier\"), and the nearest real commitment is support ordering, not compute",
+   "user": "A customer pays $12/month partly for queue priority, then reads in the product's own docs that paying changes their allowance and not their turn. One of the three reasons to upgrade is not a thing the software does.",
+   "file": "packages/shared/src/index.ts",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "Df9f19b",
+   "area": "marketing-site",
+   "severity": "minor",
+   "title": "/pricing never mentions the shared service-wide inference cap that can stop a run while the user's own Credits remain \u2014 the docs page discloses it, the page people decide on does not",
+   "user": "A prospect reads \"about 30 builds a month, free\" and signs up. Once four or so accounts are active, runs stop with \"Apple has reached today's shared building capacity\" while their own balance still shows Credits \u2014 a limit the page they bought on never mentioned.",
+   "file": "apps/worker/src/pricing.ts",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "De7dae1",
+   "area": "marketing-site",
+   "severity": "minor",
+   "title": "/docs/billing documents the paid subscription lifecycle as if it were live; the \"no way to buy\" caveat the author added covers only extra Credits, while /pricing and /terms both state checkout is closed",
+   "user": "A prospect clicking \"Billing & payments\" in the docs nav reads five sections of procedure for a paid account and concludes subscriptions are live. Nothing on that page tells them there is no way to become a paying customer.",
+   "file": "apps/site/src/pages/docs/billing.astro",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "D9c7935",
+   "area": "marketing-site",
+   "severity": "minor",
+   "title": "/pricing's Free card is the only place on the site that softens the plugin blocker to \"public installation pending\" \u2014 contradicting its own comparison table and closing note on the same page, and hardcoded rather than derived from STUDIO_PLUGIN_STORE_LIVE",
+   "user": "\"Pending\" reads as coming-soon, on the one page where a buyer decides. The real state \u2014 removed by Roblox moderation, distribution setting locked, appeal filed, no date \u2014 is on the page they are least likely to open, and the softened word sits on the only plan anyone can actually take today.",
+   "file": "apps/site/src/pages/pricing.astro",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "D261bef",
+   "area": "marketing-site",
+   "severity": "minor",
+   "title": "Page metadata bypasses the STUDIO_PLUGIN_STORE_LIVE gate: two docs pages promise a Creator Store install path in their live meta/og:description while their gated bodies say installation is unavailable",
+   "user": "A search result or a pasted link promises \"How to install Apple for Studio from the Roblox Creator Store.\" The visitor clicks through to a page that tells them they cannot install it. The correction was made on one page and not on the three that people actually share.",
+   "file": "apps/site/src/pages/docs/plugin.astro",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "Dd2008c",
+   "area": "marketing-site",
+   "severity": "minor",
+   "title": "apps/site/src/layouts/Landing.astro (index.astro's sole layout) ships no theme machinery, so the live homepage ignores both the stored apple-theme choice and prefers-color-scheme, and offers no toggle",
+   "user": "Switch to light on /pricing, click the Apple wordmark to go home, and the homepage is still dark with no control to change it. Click Pricing again and it is light again. The site's one visible preference is silently dropped on its front page.",
+   "file": "apps/site/src/pages/index.astro",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "Dddec74",
+   "area": "marketing-site",
+   "severity": "minor",
+   "title": "theme-color is hardcoded to the retired #080808 on all 7 routes and the toggle never updates it, so light mode puts a near-black address bar over an #f5f5f5 page; site.webmanifest adds a third stale black (#080a0f)",
+   "user": "On a phone the address-bar band is a cooler black than the page below it, leaving a visible seam at the top of every page. Switch to light mode and the address bar stays near-black above a white page.",
+   "file": "apps/site/public/site.webmanifest",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "D85422a",
+   "area": "web-app-screens",
+   "severity": "minor",
+   "title": "The run timeline's outer <ol class=\"gx-act\"> has no CSS rule, so it renders with browser-default decimal markers and a 40px indent \u2014 but only inside the \"View details\" panel, which is collapsed by default on every turn",
+   "user": "Every time Apple runs, the step-by-step timeline \u2014 the thing the customer watches to see the agent working \u2014 is drawn as a raw HTML numbered list: \"1.\", \"2.\" markers and a 40px indent that pushes the phase separator lines out of alignment with everything else in the panel. Every other list on the same screen is styled. It reads as a half-finished page.",
+   "file": "apps/web/src/components/ws/activity.tsx",
+   "fix": "",
+   "status": "fixed-deployed"
+  },
+  {
+   "id": "D92d349",
+   "area": "web-app-screens",
+   "severity": "minor",
+   "title": "Rail's monthly-exhaustion copy names upgrade as \"the only way\" without consulting /api/billing/config, while the composer in the same bundle does consult it and says \"not available yet\"",
+   "user": "A customer who runs out of allowance is told in the rail that upgrading is the only way through, walks to /app/usage, and finds that every paid tier is labelled \"Not available yet\" with no button. There is no in-app path to becoming a paying customer at all on the live deployment, and the two screens contradict each other.",
+   "file": "apps/web/src/components/usage-meter-model.ts",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "Dac7571",
+   "area": "web-app-screens",
+   "severity": "minor",
+   "title": "Phase status dot `.gx-act__pip` renders 0x0 (inline span, no `display`), so no phase dot draws at either call site (activity.tsx:167 and :239)",
+   "user": "In the run timeline, completed phases show no status dot at all, and the in-progress phase shows only a faint green sliver produced by the box-shadow of a zero-size box rather than the intended 5px accent dot. The `.gx-act__phase.is-active .gx-act__pip` accent rule (system.css:375) that exists to mark which phase is running effectively does nothing.",
+   "file": "apps/web/src/design/system.css",
+   "fix": "",
+   "status": "fixed-deployed"
+  },
+  {
+   "id": "D9daefc",
+   "area": "worker-api-surface",
+   "severity": "minor",
+   "title": "POST /v1/projects/:id/runs accepts and silently ignores Idempotency-Key (the route table's `idempotent: true` is read by nothing); a retry gets a 409 from the liveness guard rather than a replay \u2014 it does not start a second billed run",
+   "user": "An API customer whose POST /v1/projects/:id/runs times out or returns 502 on the response path retries it with the same Idempotency-Key \u2014 the natural reflex on an API whose /v1/chat/completions honours that header and replays. The header is accepted and silently ignored: a second agent run starts on the same project and their Credits are spent twice. There is no error telling them the header did nothing.",
+   "file": "",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "Dad0bbf",
+   "area": "worker-api-surface",
+   "severity": "minor",
+   "title": "AUTH_EXEMPT lists /api/waitlist with no handler (already tracked as ledger item D49); measured live, it 404s while sibling unknown /api/* paths 401 \u2014 and two code comments assert the route is in use",
+   "user": "No user-visible breakage today \u2014 nothing calls the path. The cost is that the one list reviewers use to decide which endpoints may skip authentication contains an entry that describes nothing, and a reviewed-and-signed-off comment attached to it. If a /api/waitlist handler is ever added, it ships already exempt from JWT auth without anyone re-reviewing that decision.",
+   "file": "",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "Db69401",
+   "area": "studio-plugin",
+   "severity": "minor",
+   "title": "Studio dock status sticks on \"Connection hiccup \u2014 retrying\u2026\" after one failed poll: successful polls never repaint it back to \"Connected \u00b7 <project>\" (only _end or a reconnect clears it) \u2014 a restore the previous plugin had and the rewrite dropped",
+   "user": "A single dropped request \u2014 a laptop lid, a Wi-Fi switch \u2014 and the Apple panel says \"Connection hiccup \u2014 retrying\u2026\" forever, above a button that reads \"Disconnect\". The link is fine and ops are flowing, but the one label the user looks at to answer \"is this working?\" says it is not, for the rest of the Studio session.",
+   "file": "",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "D578296",
+   "area": "studio-plugin",
+   "severity": "minor",
+   "title": "The place-mismatch contract contradicts itself: the worker withholds ops and keeps the link alive expecting the plugin to poll until the user switches back, but the built Apple plugin treats any placeMismatch as terminal and retires the session after one poll \u2014 so the worker's own escape route is dead (not yet user-visible: STUDIO_PLUGIN_STORE_LIVE is false and the live /plugin.rbxm is a stale Golem build without this code)",
+   "user": "A user opens a second place in the same Studio. The plugin disconnects for good and drops to the pairing screen; the web app's last word was \"connected\", and since there is no disconnect broadcast the pill stays green. The refusal sentence tells them to \"switch to the paired place, then pair again if needed\", but switching back does nothing because the session is gone and the code is spent.",
+   "file": "",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "D894a52",
+   "area": "asset-library",
+   "severity": "minor",
+   "title": "search_asset_library's maxTriangles neither filters nor reranks \u2014 triangles is null on all 511,208 library rows, so both guards (asset-library.ts:1391 and :1369) short-circuit",
+   "user": "A model told to keep a build under a triangle budget can pass maxTriangles and get no filtering at all, with no signal that the constraint was ignored. catalogDetails() in the web lib renders \"N triangles\" and \"X x Y x Z studs\" from the same two columns, so that display could never have fired either.",
+   "file": "apps/worker/src/asset-library.ts",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "D295274",
+   "area": "asset-library",
+   "severity": "minor",
+   "title": "asset_library holds zero rows of kind 'sfx' although search_asset_library advertises 'sfx' and the decision table names the library as the first source for sound; 13,023 harvested audio rows sit un-ingested on disk",
+   "user": "Every genre kit offers exactly five pinned sounds and the library has nothing else. A customer asking for a specific sound effect gets one of 50 hand-pinned clips or nothing, while 13,023 already-usable free Roblox audio ids sit in a JSON file that nothing loads.",
+   "file": "packages/corpus/data/library/creator_store_audio.json",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "D680b1c",
+   "area": "billing-and-money",
+   "severity": "minor",
+   "title": "Entitlement webhook never checks Stripe's `livemode` flag, relying entirely on the signing secret's mode for separation (defense-in-depth gap; no reachable exploit \u2014 checkout is guarded and is the only writer of `metadata.userId`)",
+   "user": "If the STRIPE_WEBHOOK_SECRET still on the live worker is the test-mode one from that episode, a Stripe test-mode subscription event \u2014 paid for with 4242 4242 4242 4242, a card number printed in Stripe's own public docs \u2014 is accepted in production and grants a real Studio plan. The fix that was shipped closed the shop front and left the till open.",
+   "file": "apps/worker/src/index.ts",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "Dd129c6",
+   "area": "billing-and-money",
+   "severity": "minor",
+   "title": "/docs/billing routes every money remedy to a Stripe portal that returns 503 on this deployment, and never says checkout is closed \u2014 while sibling /docs/modes does",
+   "user": "Someone who reads the billing docs before signing up comes away believing there is a working paid product with cards, invoices and cancellations, then finds \"Not available yet\" on every tier. The page that should set the expectation is the one page that does not.",
+   "file": "apps/site/src/pages/docs/billing.astro",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "D56957e",
+   "area": "claims-vs-product",
+   "severity": "minor",
+   "title": "\"Download my data\" lists \"every message, your checkpoints, what you have spent\" among the file's contents, but nothing writes those three Postgres tables, so the export always returns them as `not_recorded_here` pointers instead \u2014 though the same paragraph's next sentence, and the file's own `complete: false` / `incomplete` fields, do disclose the gap",
+   "user": "A user exercising a data-access right clicks the button described as containing every message and their spend history, downloads it, and finds `not_recorded_here` where their conversation and their charges should be. Anyone checking a bill or keeping a record before deleting an account acts on a file that does not contain the three things the button named.",
+   "file": "",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "D3d54ba",
+   "area": "claims-vs-product",
+   "severity": "minor",
+   "title": "The live app's API-keys panel names an SDK in three shipped places while the live FAQ says there is no published client library \u2014 packages/sdk is fully built but \"private\": true and on no registry",
+   "user": "A developer mints a key, goes looking for the SDK the panel named, finds no package on npm and no docs page for one, and concludes either that they are missing something or that the product's copy is unreliable.",
+   "file": "",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "D812315",
+   "area": "test-suite-honesty",
+   "severity": "minor",
+   "title": "Two \"is not guarded by a confirmation dialog\" guards cannot fail for the property they name: they scan only the 400 chars AFTER the call, and nothing else enforces the rule (the archive path's confirmationFor reference is a comment, not a call)",
+   "user": "Nothing today \u2014 but the guard that is supposed to keep confirmation dialogs off reversible actions is dead. Its own comment states the reason it exists: \"A dialog in front of a reversible action teaches people to dismiss dialogs, which is exactly the habit that makes the DELETE confirmation stop working.\" Someone can add a confirmation prompt to Archive and to Pin, ship it, and all 1957 web tests stay green. The end state is customers reflex-dismissing dialogs and then blowing past the DELETE confirmation, which takes chat history, checkpoints and the Studio pairing with it.",
+   "file": "apps/web/tests/archive.test.mjs",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "D5cf85f",
+   "area": "marketing-site",
+   "severity": "polish",
+   "title": "\"not a Apple choice\" (should be \"an\") in the opening paragraph of /docs/updating \u2014 third sentence, not the first",
+   "user": "A visible typo in the lead sentence of a docs page, on a site whose whole voice is \"we say things precisely.\"",
+   "file": "apps/site/src/pages/docs/updating.astro",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "D14e15d",
+   "area": "marketing-site",
+   "severity": "polish",
+   "title": "apps/worker/src/static.ts serves the marketing 404 page as a cacheable HTTP 200 at /404 \u2014 the only URL on the site whose own canonical (/404/) returns 404",
+   "user": "Nothing, day to day. But the error page advertises itself to search engines as a canonical destination pointing at a URL that 404s, so it can surface as a result.",
+   "file": "apps/site/src/pages/404.astro",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "Dd7711a",
+   "area": "web-app-screens",
+   "severity": "polish",
+   "title": "/app/ui-lab, an internal specimen book, ships to production and is reachable by any signed-in user; its own 13 lab-* chrome classes have no CSS, so specimen cards and the nav column render without frame or grid (the app rail, page header and specimen contents are styled)",
+   "user": "A customer who types /app/ui-lab (or lands on it from a shared link) gets an unstyled internal review page reading \"CANONICAL STATES \u00b7 M01\u2013M10\", \"STATUS MARKS \u00b7 I-series\", \"Tone is a property of the state, not a prop\", plus deliberate XSS specimens such as `javascript:alert(1)` and `<img src=x onerror=alert(1)>`. It is raw text on a plain background with no card, no nav and no way back except the rail.",
+   "file": "apps/web/src/app.tsx",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "D31f64d",
+   "area": "web-app-screens",
+   "severity": "polish",
+   "title": "The admin Model tester's result block lost its CSS in a stylesheet rewrite \u2014 .admin-result, .admin-result-err and most of .admin-pre are gone (the RAG tester is unaffected)",
+   "user": "An operator running the model or RAG tester gets the result dumped as an unframed block with no padding, border or error tint \u2014 and the `admin-result-err` variant that exists to make a failure visually distinct does nothing at all.",
+   "file": "apps/web/src/routes/admin.tsx",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "Da8d928",
+   "area": "worker-api-surface",
+   "severity": "polish",
+   "title": "Env.RESVG_WASM is a leftover from an abandoned experiment: its doc comment says \"bound in wrangler.jsonc\", no wrangler file has ever contained a wasm_modules section, and the same commit that added the field recorded that wrangler rejects wasm_modules for this ES-module worker",
+   "user": "Nothing at runtime. The defect is in the map: the Env interface \u2014 the file a reader consults to learn what this worker is wired to \u2014 names a binding that does not exist in either deployment and tells the reader to look for it in a wrangler file that has never had it. The real behaviour it implies (SVG assets are refused, apps/worker/src/asset-import.ts:132) is decided by a different mechanism entirely.",
+   "file": "",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "Da78780",
+   "area": "studio-plugin",
+   "severity": "polish",
+   "title": "pluginLastSeenAt()'s Math.max is dead code and its comment claims a freshness defense it does not implement \u2014 no shipped surface renders the ~4s skew",
+   "user": "The pairing dialog and the link note under the conversation report a last-seen age that can be several seconds behind the truth while the connection is live \u2014 and during a fast run, where the heartbeat checkpoint is skipped, it is stalest exactly when the most is happening. It is the same class of two-clocks defect as the header/panel/assistant disagreement this file already carries a comment about.",
+   "file": "",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "D4d0571",
+   "area": "claims-vs-product",
+   "severity": "polish",
+   "title": "/docs/troubleshooting quotes two panel messages verbatim from apps/plugin \u2014 the legacy plugin the site itself tells you not to build \u2014 while three sibling quotes on the same page match the shipped artifact exactly",
+   "user": "A user copies the message out of the Studio panel, searches the troubleshooting page for it, and gets no match \u2014 on a page whose stated purpose is \"Every message the Apple Studio panel can show\". The remedies themselves are correct; only the quoted strings are stale.",
+   "file": "",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "D11c9ff",
+   "area": "claims-vs-product",
+   "severity": "polish",
+   "title": "M09's body implies the project was reverted, contradicting the failure copy the product actually shows (\"Everything up to there is saved\") \u2014 and it is rendered, in the live /ui-lab specimen gallery",
+   "user": "Nothing today, because the state has no call site \u2014 but the string is in the shipped bundle, and the first surface to wire up M09 will tell a user their place was reverted when their finished steps are still applied, which is the more dangerous direction for that mistake.",
+   "file": "",
+   "fix": "",
+   "status": "open"
+  },
+  {
+   "id": "D8007c5",
+   "area": "thinking-ui",
+   "severity": "major",
+   "title": "In light mode the Thinking card's live title never reaches 4.5:1 \u2014 hardcoded #a0a0a0/#ffffff gradient on #fafafa, letters erased by the sweep and left faded when motion is reduced",
+   "user": "With the app set to light mode, the line that tells you what Apple is doing right now fades out and back every few seconds, and the first few letters are usually just not there. It looks like the page is half-loaded.",
+   "file": "",
+   "fix": "In apps/web/src/design/system.css, move the three hex values in `.gx-think.is-live .gx-think__word` onto tokens (e.g. `--muted` -> `--ink` -> `--muted`) so the light ramp flips them, or add a `:root[data-theme='light'] .gx-think.is-live .gx-think__word` override with a dark-on-light gradient. The token version is the real fix; the file already proves it works \u2014 `.gx-think__foot strong` two rules away uses `var(--muted)` and needs no override.",
+   "status": "fixed-deployed"
+  },
+  {
+   "id": "Dd0b717",
+   "area": "thinking-ui",
+   "severity": "major",
+   "title": "The activity timeline's root <ol> has no CSS rule at all, so the browser draws ordinal numbers and a 40px indent that nobody designed",
+   "user": "Inside the expanded card the steps are numbered '1.', '2.', '3.' like a Word document, shoved 40 pixels further right than the headings above them. On a phone a third of the screen width is empty margin before any text starts.",
+   "file": "",
+   "fix": "In apps/web/src/design/system.css:250, change `.gx-act__phases` to `.gx-act` in that selector list (or add `.gx-act` alongside it), and change `.gx-act__terminal` at line 376 to `.gx-term` to match what apps/web/src/components/ws/activity.tsx:205 actually emits.",
+   "status": "fixed-deployed"
+  },
+  {
+   "id": "Dc5b169",
+   "area": "thinking-ui",
+   "severity": "major",
+   "title": "The phase dot is a zero-sized inline span \u2014 the phase marker has never rendered, and the live-phase accent halo paints only as a faint misplaced smear",
+   "user": "There is no dot next to the phase names, and nothing on the screen marks which phase is running right now.",
+   "file": "",
+   "fix": "Add `display:inline-block` (or `display:block` with the phase row made a flex/grid container) to `.gx-act__pip` in apps/web/src/design/system.css:374.",
+   "status": "fixed-deployed"
+  },
+  {
+   "id": "Dfa1e2f",
+   "area": "runs-fail-and-charge",
+   "severity": "major",
+   "title": "Free default lane gets Stone's full builder toolset through a 2,000-token output ceiling vs the paid lane's 5,500 \u2014 a real, uncompensated asymmetry, but no failure of it has been measured",
+   "user": "Free users click Agent \u2014 the default \u2014 ask for a build, and the answer gets guillotined partway through with nothing created. It is not bad luck; the free lane is given roughly a third of the room the paid lane gets while being asked to do the same job with the same tools. And each of those cut-off attempts costs Credits.",
+   "file": "",
+   "fix": "In apps/worker/src/do/session.ts, stop keying the output budget on productModel alone. Either (a) raise the clay gateway's ceiling in apps/worker/src/gateway.ts:87 so the free lane has room for a complete tool call \u2014 the neuron reservation in gateway.ts:341-343 and BudgetDO remain the real spend gate, so this does not uncap the bill \u2014 or (b) make baseTokensFor/gatewayModelFor consistent with the toolset: if the free lane keeps Stone's tools (session.ts:3098 toolsForMode(agent.mode)), it needs a budget sized for a Stone tool call, and if it is meant to be a Clay-sized lane it should be given Clay's toolset too. Whichever is chosen, add a test asserting min(tokensForEffort(baseTokensFor(mode, productModel), 'high'), gatewayModelFor's cfg.maxTokens) is large enough for the largest tool call the offered toolset can produce.",
+   "status": "open"
+  },
+  {
+   "id": "Dacb346",
+   "area": "max-thinks-low",
+   "severity": "major",
+   "title": "classifyRequest marks bare approvals (\"ok\", \"yes\", \"sure\", \"no\") and any message containing \"what can you do\" as conversational, which pins the whole run to low effort \u2014 suppressing the apple-max floor and every escalation signal except priorStepFailed",
+   "user": "He is on Apple MAX in Agent mode. Apple proposes a plan, he replies \"ok\" \u2014 or in Hebrew \"\u05d1\u05e1\u05d3\u05e8\" \u2014 and Apple goes and builds. The whole build, up to sixteen steps, thinks at the cheapest tier, on the model he pays for. The output is worse and nothing on screen says why. \"what can you do with the round timer\" is a question about his game, and it gets the same cheap treatment because the classifier reads it as a question about Apple itself.",
+   "file": "apps/worker/src/reasoning.ts:190",
+   "fix": "In `chooseEffort` (apps/worker/src/reasoning.ts), make the conversational early return conditional on the run not having mutated and not being past step 1 \u2014 or better, stop pinning the trait: in `runStep` (apps/worker/src/do/session.ts around 3127) pass `conversational: agent.traits?.conversational && agent.step === 1 && !agent.mutated`. Separately, in `classifyRequest` (reasoning.ts:134) require META_QUESTION_RE to match the WHOLE trimmed message rather than a substring, so \"what can you do with the round timer\" is not read as a question about the assistant.",
+   "status": "fixed-deployed"
+  },
+  {
+   "id": "D2bdd12",
+   "area": "max-thinks-low",
+   "severity": "major",
+   "title": "The effort explanation shown to paying users is written in the dead Golem vocabulary \u2014 \"clay baseline\", \"stone baseline\", \"rune baseline\"",
+   "user": "He expands the thinking panel on a MAX run and reads \"Reasoning effort: high \u2014 clay baseline; apple-max floor\". \"Clay\" is a name the product stopped using. It is in the user interface of a product he told people to strip the old names out of, and it is mixed in the same sentence with the current name.",
+   "file": "apps/web/src/components/ws/thinking.tsx:385",
+   "fix": "Stop emitting internal specialist names into a user-facing string. Either have `chooseEffort` in apps/worker/src/reasoning.ts push a product-language token (Plan / Agent / Super Agent, via PRODUCT_MODE_TO_SPECIALIST inverted) instead of the raw GolemMode, or add a display mapping in apps/web/src/components/ws/thinking.tsx before rendering `status.effortReason`. The first is better: the same string also reaches the admin trace.",
+   "status": "fixed-deployed"
+  },
+  {
+   "id": "D63b224",
+   "area": "golem-residue",
+   "severity": "major",
+   "title": "check-rebrand.mjs exits 1 today and nothing runs it \u2014 drift already landed on 2026-09-19 unobserved (internal identifiers only, and it never checks clay/stone/rune)",
+   "user": "He asked a hundred times, someone wrote a program to check it, the program says NO every time it is run, and the program is never run. The rebrand has had no enforcement at all since it was written.",
+   "file": "/Users/moshe/Desktop/RbxAI/scripts/check-rebrand.mjs",
+   "fix": "Add `node scripts/check-rebrand.mjs` to the gate list in /Users/moshe/Desktop/RbxAI/scripts/gate-suite.mjs and to the CI job in /Users/moshe/Desktop/RbxAI/.github/workflows/ci.yml, and add a `check:rebrand` script to /Users/moshe/Desktop/RbxAI/package.json, so the exit code is load-bearing. Do not do this before the next finding is fixed, or it will go green while blind.",
+   "status": "open"
+  },
+  {
+   "id": "D1699b6",
+   "area": "golem-residue",
+   "severity": "major",
+   "title": "check-rebrand.mjs's walker mistakes regex literals for strings, going blind to ~15k lines and hiding exactly one real Golem literal \u2014 so the next \"REBRAND COMPLETE\" will be false",
+   "user": "The checker's clean-looking short list is not a clean bill of health. It read about two thirds of the code and reported on that, while printing a number that sounds complete.",
+   "file": "/Users/moshe/Desktop/RbxAI/scripts/check-rebrand.mjs",
+   "fix": "In blankComments() in /Users/moshe/Desktop/RbxAI/scripts/check-rebrand.mjs, add a regex-literal case: when `/` appears in a position where a regex can start (after `=`, `(`, `,`, `:`, `[`, `!`, `&`, `|`, `?`, `{`, `}`, `;`, `return`, or start of file) and is not `//` or `/*`, skip to the unescaped closing `/` honouring `[...]` character classes, then skip the flags. Add a self-test asserting that a file containing /['\"]x/ does not produce a multi-line single- or double-quoted region.",
+   "status": "open"
+  },
+  {
+   "id": "Da76e88",
+   "area": "golem-residue",
+   "severity": "major",
+   "title": "WIRE/PERSISTED: clay/stone/rune is a LIVE WebSocket wire value and a persisted Durable-Object SQLite column \u2014 not a label; the cited Postgres CHECK constraint, however, is dead (nothing writes that table)",
+   "user": "Nothing, yet \u2014 the words are invisible in the UI. But they are the reason the rename keeps stopping: they are a database constraint and a protocol, so whoever tries a global replace breaks chat.",
+   "file": "/Users/moshe/Desktop/RbxAI/packages/shared/src/index.ts",
+   "fix": "Migration, in this order: (1) add a Supabase migration widening the CHECK to ('clay','stone','rune','plan','agent','super'); (2) make the worker's session DO accept both spellings on read and write the new one; (3) backfill; (4) narrow the CHECK to the new set. Then rename the type in packages/shared/src/index.ts:548. Fix or delete the false 'mode: AppleMode' claim at packages/shared/src/index.ts:1565 and :1601 in the same commit.",
+   "status": "open"
+  },
+  {
+   "id": "D6061b1",
+   "area": "thinking-ui",
+   "severity": "minor",
+   "title": "The in-flight ring never spins and `.is-moving` matches no CSS rule anywhere \u2014 including in the deployed bundle \u2014 and the test that guards it is vacuous twice over",
+   "user": "While a step is running its little circle just sits there. Nothing on the card moves to say work is still happening, so a slow step is indistinguishable from a frozen page.",
+   "file": "",
+   "fix": "Add the spin to apps/web/src/design/system.css under the gate the tests already assume, e.g. `.gx-act.is-moving .gx-ring__spin { animation:status-turn 1.2s linear infinite; }` reusing the existing `status-turn` keyframes at line 381; and add a positive assertion to apps/web/tests/activity-motion.test.mjs that at least one `.gx-act.is-moving` rule animates, so the guard can no longer pass on an empty set.",
+   "status": "fixed-deployed"
+  },
+  {
+   "id": "De79ab5",
+   "area": "thinking-ui",
+   "severity": "minor",
+   "title": "A hedged request that yields no checklist and no assumptions loses its open question: the worker computes and sends it, buildTimeline's Plan gate drops it",
+   "user": "You type something vague. Apple works out that it doesn't know what you meant and writes the question down \u2014 and the card never shows it to you. You only find out it guessed when the build comes back wrong.",
+   "file": "",
+   "fix": "In apps/web/src/components/ws/thinking-model.ts:199, change the gate to `if (checklist.length > 0 || assumptions.length > 0 || questions.length > 0)`. Add the case to apps/web/tests/thinking-model.test.mjs next to the existing assumptions-only case.",
+   "status": "open"
+  },
+  {
+   "id": "Dbbbbdc",
+   "area": "thinking-ui",
+   "severity": "minor",
+   "title": "msg_end force-closes open tools with ok:false, so the reducer's purpose-built 'unknown' state and its copy/glyph are dead; the only path that can reach it \u2014 an interrupted/stale run \u2014 renders a red 'failed' instead. Pressing Stop is NOT the trigger.",
+   "user": "You press Stop and the step you interrupted is reported as having failed, with a duration attached as if it had been measured. Three pieces of UI written for 'we don't know how that step ended' never appear.",
+   "file": "",
+   "fix": "In apps/web/src/lib/use-project-socket.ts:650, close open tools without asserting an outcome \u2014 set `done:true` and leave `ok` undefined (and omit the synthesised `durationMs`) \u2014 then let apps/web/src/components/ws/activity-model.ts:406-408 take its `unknown` branch. It needs `ok?: boolean` on ToolEvent to stay optional, which it already is.",
+   "status": "open"
+  },
+  {
+   "id": "D301ce5",
+   "area": "thinking-ui",
+   "severity": "minor",
+   "title": "The Thinking card's header mark renders at 30px instead of the 18px intended, because the sizing rule targets a class the component does not emit",
+   "user": "A bright green logo more than twice the height of the text sits next to the status line and rotates the whole time a build is running. It dominates the card.",
+   "file": "",
+   "fix": "Change the selector in apps/web/src/design/system.css:233 from `.gx-think__toggle .model-mark` to `.gx-think__toggle .model-signature`.",
+   "status": "fixed-deployed"
+  },
+  {
+   "id": "Dc55404",
+   "area": "runs-fail-and-charge",
+   "severity": "minor",
+   "title": "A run killed by the 3-step cap or the wall clock is recorded as outcome 'done' and counted OK by successRollup \u2014 which only reaches the admin-only /api/admin/analytics JSON, not any rendered dashboard",
+   "user": "He asks \"how often do runs actually fail?\" and any number the system gives him is wrong in his favour. A free build that stopped three steps in, unfinished and paid for, is filed under the same label as a build that worked. The two most common failure shapes on the free lane are counted as a success and as nothing at all.",
+   "file": "",
+   "fix": "In apps/worker/src/do/session.ts, add distinct stop reasons for these exits \u2014 e.g. 'step_limit' at :3024 and 'timeout' at :3018 \u2014 add them to BUILD_OUTCOMES in apps/worker/src/analytics.ts:291, and classify them in successOf (analytics.ts:768-778) as failures rather than letting them fall into the 'done' bucket. Reclassify 'incomplete' as failed too, since session.ts:3417's own comment says \"A run that still owes work has FAILED\"; leaving it unclassified contradicts the code that emits it.",
+   "status": "open"
+  },
+  {
+   "id": "D884b14",
+   "area": "runs-fail-and-charge",
+   "severity": "minor",
+   "title": "The durable build log carries no failure kind at all, so a 'length' truncation is recoverable only per-project from messages (stop_reason='error' AND run_failure IS NULL), never fleet-wide",
+   "user": "There is no answer to \"how many runs are getting cut off?\" because the product throws the provider's own statement away the moment it has finished writing an apology with it. The failure he can see happening has no number attached to it anywhere.",
+   "file": "",
+   "fix": "Add `finishReason: string | null` to BuildEvent in apps/worker/src/analytics.ts:343 and to its reader at analytics.ts:462, and pass it from apps/worker/src/do/session.ts:3929-3941 (thread the value from :3283 onto agent state so finishRun can read it). Then bucket builds by finishReason in the rollups alongside featureLabel (analytics.ts:619-621).",
+   "status": "open"
+  },
+  {
+   "id": "Dcbbb62",
+   "area": "runs-fail-and-charge",
+   "severity": "minor",
+   "title": "The free lane's status line reports a reasoning tier and a specialist baseline that the run it describes never used",
+   "user": "The thinking card says the model is thinking hard. On the free lane it is not \u2014 the setting is computed, shown on screen, written into the run's history, and then dropped before the request leaves the building. The label is decoration.",
+   "file": "",
+   "fix": "In apps/worker/src/gateway.ts, have llmChat report back whether the effort was actually applied (the adapter already knows at providers/workers-ai.ts:289), and in apps/worker/src/do/session.ts:3144-3152 broadcast the applied effort rather than the chosen one \u2014 or omit the field entirely when it was dropped, so the UI shows nothing instead of showing a claim. Do not remove the adapter's gate; sending an undocumented field to Qwen is the wrong fix.",
+   "status": "open"
+  },
+  {
+   "id": "D1bfeeb",
+   "area": "max-thinks-low",
+   "severity": "minor",
+   "title": "uiDesignTask reaches chooseEffort but it never branches on it, so UI-only requests skip the design escalation that spatial requests get \u2014 observable only in Plan mode on non-MAX Apple",
+   "user": "On the free Apple tier in Plan mode, asking about a lamp in the lobby gets careful thinking and asking about a tooltip on the settings icon gets cheap thinking. Interface work is half the product and it is the half the policy cannot see. The comment in the file says the signal exists to make UI work first-class; the code never uses it.",
+   "file": "apps/worker/src/reasoning.ts:141",
+   "fix": "Add `if (s.uiDesignTask) raise('high', 'interface design work');` to `chooseEffort` in apps/worker/src/reasoning.ts alongside the visualDesignTask raise, and add `'uiDesignTask'` to the `AgentState.traits` Pick at apps/worker/src/do/session.ts:216 so the value survives the type contract as well as the storage round-trip.",
+   "status": "open"
+  },
+  {
+   "id": "D889a68",
+   "area": "max-thinks-low",
+   "severity": "minor",
+   "title": "The chosen reasoning effort is only visible while the run is streaming and only if the user manually expands a display:none panel \u2014 on msg_end the client nulls agentStatus, so the effort and per-run credits lines are destroyed rather than merely collapsed",
+   "user": "This is why the question \"why is it on low when it is MAX\" had to be asked at all. The product knows the answer on every step and shows it only to someone who already suspects something is wrong and goes looking. For the eight months this was broken, no user had a way to notice.",
+   "file": "apps/web/src/components/ws/thinking.tsx:250",
+   "fix": "In apps/web/src/components/ws/thinking.tsx, lift the one-line effort/step/credits summary out of the collapsible `gx-think__body` and render it in the always-visible header row, leaving the timeline and denied-tools detail inside the collapse.",
+   "status": "open"
+  },
+  {
+   "id": "Db44b2b",
+   "area": "golem-residue",
+   "severity": "minor",
+   "title": "The 4 surviving \"golem\" literals in the live bundle are wire/internal identifiers on the repo's own closed rebrand-exemption list \u2014 no user sees them, and only golem-ui's exemption rationale fails measurement",
+   "user": "Open devtools on the live product, start a chat, and the Network tab's WebSocket row reads `Sec-WebSocket-Protocol: golem.v1, golem.jwt.<jwt>`. Download a project export and the response headers read `X-Golem-Export-SHA256`. The old name is in the product a stranger can inspect today.",
+   "file": "/Users/moshe/Desktop/RbxAI/apps/web/src/lib/use-project-socket.ts",
+   "fix": "Not a find-replace \u2014 see the WIRE/PERSISTED findings. The plugin and the browser both send golem.v1, so the rename is a dual-accept: apps/worker/src/do/session.ts:1498 and apps/worker/src/auth.ts:38-39 must accept BOTH 'golem.v1'/'golem.jwt.' and 'apple.v1'/'apple.jwt.' for one plugin-release cycle, then apps/web/src/lib/use-project-socket.ts:910 and packages/sdk/src/wire.mjs:14,23 switch to the new names, then the old accept is dropped.",
+   "status": "open"
+  },
+  {
+   "id": "D80bdf4",
+   "area": "golem-residue",
+   "severity": "minor",
+   "title": "BLOCKERS.md:134 marks the rebrand CLOSED on a run that no longer reproduces \u2014 but the cause is five post-close wire/deployment identifiers in source, not the stale bundle, and the deployed bundle is clean today",
+   "user": "He is told the rebrand is finished, by a record that cites a measurement of a build that is no longer deployed and a file count that has since nearly doubled.",
+   "file": "/Users/moshe/Desktop/RbxAI/docs/backlog/BLOCKERS.md",
+   "fix": "Reopen the row in /Users/moshe/Desktop/RbxAI/docs/backlog/BLOCKERS.md:134 and make the captured-bundle path in scripts/check-rebrand.mjs refuse a capture older than the current deployment (compare against the asset hashes in the live /app HTML) instead of silently reading a stale file.",
+   "status": "open"
+  },
+  {
+   "id": "Df261c2",
+   "area": "golem-residue",
+   "severity": "minor",
+   "title": "MODE_RULES still names the stone and rune modes 'Stone' and 'Rune' in the system prompt while clay was renamed to 'Plan' \u2014 an unfiltered leak channel for internal specialist names",
+   "user": "The assistant can say 'in Stone mode I will\u2026' in a product whose UI says Agent. One of the three was renamed and two were left, which is why it reads as half-finished rather than deliberate.",
+   "file": "/Users/moshe/Desktop/RbxAI/apps/worker/src/prompts.ts",
+   "fix": "In /Users/moshe/Desktop/RbxAI/apps/worker/src/prompts.ts, change line 189 to `Mode: Agent (builder).` and line 197 to `Mode: Super Agent (deep builder).`, matching what clay:'Mode: Plan.' already does, and update the comment at :153-155.",
+   "status": "open"
+  },
+  {
+   "id": "De755cc",
+   "area": "golem-residue",
+   "severity": "minor",
+   "title": "The JS and Python SDK clients default to the legacy golem host, which serves /api/* from a 27-commit-stale worker \u2014 and the guard asserting \"no shipped client points at the legacy host\" omits both files",
+   "user": "Anyone handed the SDK installs a package called golem, gets a client that talks to golem.moshe-barami111.workers.dev by default, and imports a type called GolemMode \u2014 in a product called Apple.",
+   "file": "/Users/moshe/Desktop/RbxAI/packages/sdk/src/wire.mjs",
+   "fix": "Change DEFAULT_BASE_URL in /Users/moshe/Desktop/RbxAI/packages/sdk/src/wire.mjs:59 to https://apple.moshe-barami111.workers.dev (the Luau client at packages/sdk/luau/AppleClient.luau already did this). Rename the package to @apple/sdk in packages/sdk/package.json and update the two importers. The GolemMode type export and the golem.v1/golem.jwt. constants move with the wire rename, not before it.",
+   "status": "open"
+  },
+  {
+   "id": "D3a2912",
+   "area": "golem-residue",
+   "severity": "minor",
+   "title": "Golem-era names still ship: pricing.astro:147/443 emits inert is-clay/is-stone on the live Plan/Agent rows and the web bundle ships rune-spinner + forge-* (the cited CreditMeter.astro is orphaned and ships nothing; the --acc-clay/stone/rune variables DO ship, neutralized)",
+   "user": "View source on the pricing page and the rows are called clay and stone. Inspect the app's loading state and the spinner is called rune-spinner inside a forge.",
+   "file": "/Users/moshe/Desktop/RbxAI/apps/site/src/components/CreditMeter.astro",
+   "fix": "Rename is-clay/is-stone to is-plan/is-agent in /Users/moshe/Desktop/RbxAI/apps/site/src/components/CreditMeter.astro (and the matching ids sm-clay/sm-stone at :38,48,59,69,517) and in apps/site/src/pages/pricing.astro; rename .rune-spinner to .status-spinner in /Users/moshe/Desktop/RbxAI/apps/web/src/components/loading.css:118-119 and its two call sites; delete the dead --acc-clay/--acc-stone/--acc-rune blocks from apps/site/src/styles/global.css. These are pure CSS, nothing persists them.",
+   "status": "open"
+  },
+  {
+   "id": "De43c03",
+   "area": "golem-residue",
+   "severity": "minor",
+   "title": "check-rebrand.mjs implements two of the three denominators \u00a76.10 names \u2014 no sitemap route's rendered HTML is ever fetched",
+   "user": "The checker's own headline says it covers the deployed site. It covers one page of it.",
+   "file": "/Users/moshe/Desktop/RbxAI/scripts/check-rebrand.mjs",
+   "fix": "In /Users/moshe/Desktop/RbxAI/scripts/check-rebrand.mjs, change ORIGIN to https://apple.moshe-barami111.workers.dev, and extend fetchBundle() to also fetch each route in the site's sitemap (or the nine known routes) and append their rendered HTML to the denominator, as \u00a76.10 states.",
+   "status": "open"
+  },
+  {
+   "id": "D2fc6f6",
+   "area": "thinking-ui",
+   "severity": "polish",
+   "title": "A failed step's X and a failed phase carry no status tint inside the activity timeline, unlike the gate verdicts on the same card \u2014 though the glyph, the copy, the sr-text and the red turn-level outcome sentence (turn.css:85) all still mark the failure",
+   "user": "A run that crashed looks exactly like a run that worked. The only difference is a tiny grey \u00d7 instead of a tiny grey \u2713, and the line that says 'Stopped by an error' is the same colour as 'Finished'.",
+   "file": "",
+   "fix": "In apps/web/src/design/system.css add colour for the states the components already emit: `.gx-act__step.is-failed .gx-tick{stroke:var(--bad)}`, `.gx-act__phase.is-failed .gx-act__pip{background:var(--bad)}`, and `.gx-term.is-failed .gx-stage-row__name,.gx-term.is-quota .gx-stage-row__name{color:var(--bad)}` (with `.gx-term` first corrected per the `.gx-act__terminal` finding).",
+   "status": "open"
+  },
+  {
+   "id": "Dc27ef7",
+   "area": "thinking-ui",
+   "severity": "polish",
+   "title": "The Thinking card's chevron never rotates on open, unlike the four other carets in the same shipped bundle",
+   "user": "The little arrow points down whether the card is open or shut, so there is no sign the click did anything except the content appearing.",
+   "file": "",
+   "fix": "Add `.gx-think__toggle[aria-expanded='true'] .gx-think__chev { transform:rotate(180deg); }` to apps/web/src/design/system.css, matching the idiom at project-stage.css:98.",
+   "status": "open"
+  },
+  {
+   "id": "D38e22a",
+   "area": "thinking-ui",
+   "severity": "polish",
+   "title": "A test pins the collapsed card's compact-preview CSS while forbidding its markup: 7 rules, plus .gx-think__hint and headerHint()'s return value, are dead",
+   "user": "Collapsed, the card is one line of text and an arrow. There is no secondary line saying 'Click to expand', and the small pulsing bar that used to show the card was alive is gone \u2014 which is why a running build reads as a static line of grey text.",
+   "file": "",
+   "fix": "Either render the line \u2014 add `<span className=\"gx-think__hint\">{hint}</span>` before the chevron in apps/web/src/components/ws/thinking.tsx:315 \u2014 or delete the dead selectors from apps/web/src/design/system.css lines 248, 250-253 and 335. Pick one; leaving both is what let the other CSS-vs-component drifts in this report go unnoticed.",
+   "status": "open"
+  }
+ ]
+}

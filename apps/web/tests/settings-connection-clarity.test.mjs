@@ -26,9 +26,18 @@ test('Discord unknown state is not presented as disconnected or allowed to mint 
   assert.match(settings, /disabled=\{!projectId\s*\|\|\s*mint\.isPending\s*\|\|\s*link\.isPending\s*\|\|\s*link\.isError\}/);
   assert.match(settings, /Code pending — not connected yet/);
 });
-test('privacy copy distinguishes default exclusion from optional contribution', () => {
-  assert.doesNotMatch(settings, /Apple never trains on your work/);
-  assert.match(settings, /Training contribution is off by default/);
+test('privacy copy states the promise outright, with no control beside it', () => {
+  // THIS TEST USED TO ASSERT THE OPPOSITE, and it was right at the time: the page offered an
+  // optional contribution, so the copy had to distinguish "off by default" from "never". The owner
+  // ruled on 2026-09-20 that the never-train promise the published privacy pages make is the true
+  // one, and the switch was removed — which left this guard pinning the wording of a decision the
+  // product had reversed. That is the failure mode this repository keeps naming: a test that
+  // outlives the choice it was written for stops protecting anything and starts blocking the fix.
+  //
+  // Re-aimed at what must now hold: the page STATES the promise, and offers no way to change it.
+  assert.match(settings, /Apple never trains on your work/);
+  assert.doesNotMatch(settings, /Training contribution is off by default/);
+  assert.doesNotMatch(settings, /name="trainingOptIn"/, 'a control here would contradict the sentence above it');
 });
 
 test('asset preferences cannot render an empty answer before they have loaded', () => {

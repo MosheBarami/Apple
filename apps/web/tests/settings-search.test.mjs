@@ -85,7 +85,9 @@ test('the words people type find the control they mean', () => {
     ['password', 'password'],
     ['decimal', 'region'],
     ['defaults', 'reset-settings'],
-    ['training', 'training-opt-in'],
+    // The control became a statement when the never-train promise replaced the opt-in switch.
+    // Somebody typing 'training' still has to land on the sentence that answers them.
+    ['training', 'training-promise'],
   ];
   for (const [query, id] of cases) {
     const hits = matchSettings(query);

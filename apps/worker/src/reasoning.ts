@@ -246,6 +246,18 @@ export function chooseEffort(s: ReasoningSignals): ReasoningChoice {
   // Large irreversible actions get the careful think BEFORE they happen, not after.
   if (s.irreversibleChange) raise('high', 'irreversible change ahead');
   if (s.visualDesignTask) raise('high', 'visual or spatial design work');
+  //[[ INTERFACE WORK IS DESIGN WORK, and until this line the policy could not see it.
+  //
+  //   `uiDesignTask` was classified on every request, carried on `agent.traits`, spread into these
+  //   signals — and read by nothing here. So on the free tier in Plan mode, asking about a lamp in
+  //   the lobby bought careful thinking and asking about a tooltip on the settings icon bought
+  //   cheap thinking, from the same policy, about the same product.
+  //
+  //   It is a SEPARATE line rather than being folded into `visualDesignTask` for the reason the
+  //   signal itself is separate (see its declaration): the two want different briefs, they overlap
+  //   often, and a request may honestly be both. `raise` is idempotent, so a request that is both
+  //   is escalated once and names whichever reason it hit first. ]]
+  if (s.uiDesignTask) raise('high', 'interface design work');
   if (s.multiSystemTask) raise('high', 'multiple interacting systems');
   if (s.ambiguousRequest) raise('high', 'request needs interpretation');
 

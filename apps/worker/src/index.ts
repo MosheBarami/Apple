@@ -643,7 +643,22 @@ app.use('/api/*', async (c, next) => {
 // It is safe to expose because of what it does NOT return: `billingConfigFor` yields a boolean and
 // a list of plan ids, plus the charge currency. No key, no price id, no customer, no account. The
 // same facts are already printed on the page it feeds.
-const AUTH_EXEMPT = ['/api/health', '/api/studio/claim', '/api/studio/poll', '/api/waitlist', '/api/billing/webhook', '/api/discord/interactions', '/api/recovery-request', '/api/billing/config'];
+//
+//[[ `/api/waitlist` WAS HERE AND DESCRIBED NOTHING.
+//
+//   There is no such handler in this file and no caller in apps/site or apps/web; measured live it
+//   404s, while a sibling unknown `/api/*` path 401s — which is the exemption itself being
+//   observed, because an exempt path falls through the middleware to the 404 handler and a
+//   non-exempt one is refused before routing. It carried the annotation "write-only, rate-limited,
+//   holds an email and nothing else", which is a review of a route that does not exist.
+//
+//   Nothing was broken for a user, and that was the risk. This list is the one reviewers read to
+//   decide which endpoints may skip authentication; an entry describing nothing costs nothing right
+//   up until somebody adds a `/api/waitlist` handler, which then ships already exempt with a
+//   signed-off comment attached and no second look. Deleting it means that handler has to earn the
+//   line. The waitlist product itself is gone — see the notes in apps/web/src/routes/usage.tsx and
+//   apps/site/src/pages/pricing.astro — so there is nothing left for it to be the review OF. ]]
+const AUTH_EXEMPT = ['/api/health', '/api/studio/claim', '/api/studio/poll', '/api/billing/webhook', '/api/discord/interactions', '/api/recovery-request', '/api/billing/config'];
 app.use('/api/*', async (c, next) => {
   const path = new URL(c.req.url).pathname;
   if (AUTH_EXEMPT.includes(path) || path.startsWith('/api/admin/')) return next();
@@ -3072,6 +3087,20 @@ app.post('/api/discord/interactions', async (c) => {
 app.post('/api/projects/:id/discord-code', async (c) => {
   const ctx = await withOwnedProject(c, c.req.param('id'));
   if (!ctx) return c.json({ error: 'not found' }, 404);
+  //[[ DO NOT MINT A CODE THAT CANNOT BE REDEEMED.
+  //
+  //   `/api/discord/interactions` refuses with 503 when DISCORD_PUBLIC_KEY is unset — correctly,
+  //   because unverified it is a public button that spends other people's credits. Neither
+  //   deployment has ever had that key. So the sole redemption path for a code minted here answers
+  //   Discord itself with 503, and the user watched a countdown run out on a code that was never
+  //   going to work, twice, and concluded the product was broken. Nothing in the UI or in any API
+  //   response said the integration is not configured on this deployment.
+  //
+  //   Refusing HERE, with the same shape `/api/discord/link` now advertises, is what turns a dead
+  //   countdown into a sentence. 503 rather than 400: nothing about the request is wrong. ]]
+  if (!discordConfigured(c.env)) {
+    return c.json({ error: DISCORD_UNCONFIGURED_MESSAGE, configured: false }, 503);
+  }
   void count(c.env, 'discord_code_create');
   return discordStub(c.env).fetch('https://do/mint', {
     method: 'POST',
@@ -3079,13 +3108,40 @@ app.post('/api/projects/:id/discord-code', async (c) => {
   });
 });
 
-/** Which Discord account, if any, may currently spend this user's Credits. */
+/**
+ * CAN THIS DEPLOYMENT REDEEM A DISCORD CODE AT ALL?
+ *
+ * The public key is the whole answer: `handleDiscordRequest` refuses with 503 without it, so a
+ * deployment that lacks it has no redemption path whatever else is set. The bot token only
+ * registers the slash command list and is not on the hot path — see the Env doc comments.
+ *
+ * This is the same shape `/api/billing/config` uses, and for the same reason: a capability the
+ * server knows about and the UI cannot see becomes, on screen, a feature that is simply broken.
+ */
+export function discordConfigured(env: Env): boolean {
+  return typeof env.DISCORD_PUBLIC_KEY === 'string' && env.DISCORD_PUBLIC_KEY.length > 0;
+}
+
+/** One sentence, owned here rather than invented separately by each caller. */
+export const DISCORD_UNCONFIGURED_MESSAGE =
+  'Discord is not set up on this deployment yet, so a link code would not work. Nothing else about your project is affected.';
+
+/**
+ * Which Discord account, if any, may currently spend this user's Credits — and whether this
+ * deployment can link one at all.
+ *
+ * `configured` is additive: an older client that ignores it reads exactly what it read before.
+ */
 app.get('/api/discord/link', async (c) => {
   const user = c.get('user');
+  const configured = discordConfigured(c.env);
+  // A deployment with no redemption path has no links to report either, and asking the DO for them
+  // would be a round trip whose answer cannot matter.
+  if (!configured) return c.json({ link: null, configured, reason: DISCORD_UNCONFIGURED_MESSAGE });
   const body = await okJson<{ link: LinkRecord | null }>(
     discordStub(c.env).fetch(`https://do/link-for-owner?appleUserId=${encodeURIComponent(user.userId)}`),
   );
-  return c.json({ link: body?.link ?? null });
+  return c.json({ link: body?.link ?? null, configured });
 });
 
 /** Revoke from the Apple side. Discord's own `/unlink` revokes the same link from the other end. */
@@ -5287,7 +5343,17 @@ app.post('/v1/projects/:id/runs', async (c) => {
   const g = grantedStub(c);
   if (!g) return ungranted(c);
   const { id, stub } = g;
-  const body = await c.req.json<{ input?: unknown; mode?: unknown; productModel?: unknown }>().catch(() => null);
+  // Read as TEXT, then parse. The idempotency fingerprint is taken over the exact bytes the caller
+  // sent — re-serialising a parsed object would make two byte-different requests with the same
+  // meaning share a key, which is the opposite of the guarantee.
+  const bodyText = await c.req.text();
+  type RunBody = { input?: unknown; mode?: unknown; productModel?: unknown };
+  let body: RunBody | null;
+  try {
+    body = JSON.parse(bodyText || 'null') as RunBody | null;
+  } catch {
+    body = null;
+  }
   const input = typeof body?.input === 'string' ? body.input.trim() : '';
   if (!input) return c.json(errorBody(400, 'invalid_request_error', "'input' is required.", requestId, 'input'), 400);
 
@@ -5311,25 +5377,85 @@ app.post('/v1/projects/:id/runs', async (c) => {
     return c.json(errorBody(403, 'model_not_entitled', 'Apple MAX requires a paid subscription. Choose Apple to continue free.', requestId, 'productModel'), 403);
   }
 
+  //[[ THE HEADER THE ROUTE TABLE ALREADY PROMISED.
+  //
+  //   `PUBLIC_ROUTES` marks this route `idempotent: true` — and nothing read that flag, and nothing
+  //   read the header. An API customer whose POST timed out or came back 502 on the response path
+  //   retries with the same `Idempotency-Key`, which is the natural reflex on an API whose
+  //   `/v1/chat/completions` honours it and replays. Here it was accepted and silently discarded.
+  //
+  //   What the retry actually got depended on timing, and both answers were wrong. While the first
+  //   run was still live, SessionDO's own liveness guard answered 409 "a run is already in
+  //   progress" — an error, for a request the caller was told was protected. Once that run had
+  //   finished, the retry started a SECOND run on the same project and spent the Credits again.
+  //
+  //   Placed after validation and entitlement and before anything that starts work, which is the
+  //   same order handleCompletion uses. A malformed body must be a 400 whatever key it carries, and
+  //   a key must never become the thing that admits an unentitled model.
+  //
+  //   The SANDBOX is covered too: a test key exists so CI can hammer the whole request path, and an
+  //   idempotency guarantee that only exists in live mode is one a CI job cannot exercise. ]]
+  const idemHeader = c.req.header('Idempotency-Key');
+  let idemKey: string | null = null;
+  let idemFingerprint: string | null = null;
+  if (idemHeader !== undefined) {
+    if (!idempotencyKeyValid(idemHeader)) {
+      return c.json(
+        errorBody(400, 'invalid_idempotency_key', 'Idempotency-Key must be 1-255 printable ASCII characters.', requestId),
+        400,
+      );
+    }
+    idemKey = idemHeader;
+    idemFingerprint = await keyHash(`POST ${new URL(c.req.url).pathname}\n${bodyText}`);
+    const verdict = idempotencyVerdict(await idemLoad(c.env, key.id, idemKey), idemFingerprint);
+    if (verdict.kind === 'conflict') {
+      return c.json(
+        errorBody(409, 'idempotency_key_reuse', 'This Idempotency-Key was already used with a different request body.', requestId),
+        409,
+      );
+    }
+    if (verdict.kind === 'replay') {
+      return new Response(verdict.record.body, {
+        status: verdict.record.status,
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Replayed': 'true' },
+      });
+    }
+  }
+
+  /**
+   * Remember the answer, so the retry gets THIS one rather than a second run or a 409.
+   *
+   * Only a 202 is stored. A refusal is not a run and must not be replayed: a caller whose key was
+   * used on a request that was rejected for a transient reason — no Credits left for today — has to
+   * be able to retry it and get a real answer tomorrow, and freezing the refusal for 24 hours would
+   * make the header a way to break your own account.
+   */
+  const remember = async (payload: unknown): Promise<void> => {
+    if (!idemKey || !idemFingerprint) return;
+    await c.env.KV.put(
+      idemStorageKey(key.id, idemKey),
+      JSON.stringify({ fingerprint: idemFingerprint, status: 202, body: JSON.stringify(payload) } satisfies IdempotencyRecord),
+      { expirationTtl: 86_400 },
+    );
+  };
+
   if (key.mode === 'test') {
     // THE SANDBOX DOES NOT START A RUN, and says so in the payload rather than only in the docs.
     // A test key that could drive a real build would make "test key" a label rather than a
     // boundary — and CI would be editing somebody's place.
     void count(c.env, 'api_run_sandbox');
-    return c.json(
-      {
-        id: `run_sandbox_${requestId.replace(/^req_/, '')}`,
-        object: 'run',
-        status: 'simulated',
-        sandbox: true,
-        project: id,
-        mode: wanted,
-        ...(productModel ? { productModel } : {}),
-        note: 'Test-mode key: no run was started and nothing in the place was touched.',
-      },
-      202,
-      { 'X-Golem-Sandbox': 'true' },
-    );
+    const simulated = {
+      id: `run_sandbox_${requestId.replace(/^req_/, '')}`,
+      object: 'run',
+      status: 'simulated',
+      sandbox: true,
+      project: id,
+      mode: wanted,
+      ...(productModel ? { productModel } : {}),
+      note: 'Test-mode key: no run was started and nothing in the place was touched.',
+    };
+    await remember(simulated);
+    return c.json(simulated, 202, { 'X-Golem-Sandbox': 'true' });
   }
 
   const res = await stub.fetch('https://do/agent-run', traced(c, {
@@ -5345,7 +5471,9 @@ app.post('/v1/projects/:id/runs', async (c) => {
     return c.json(errorBody(status, 'run_not_started', out.error ?? 'The run could not be started.', requestId), status as 409);
   }
   void count(c.env, 'api_run_started');
-  return c.json({ id: `run_${id}`, object: 'run', status: 'running', project: id, mode: wanted, ...(productModel ? { productModel } : {}) }, 202);
+  const started = { id: `run_${id}`, object: 'run', status: 'running', project: id, mode: wanted, ...(productModel ? { productModel } : {}) };
+  await remember(started);
+  return c.json(started, 202);
 });
 
 app.get('/v1/projects/:id/runs/current', async (c) => {

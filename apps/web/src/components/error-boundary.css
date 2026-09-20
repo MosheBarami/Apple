@@ -1,0 +1,174 @@
+/* THE CRASH CARD — the one screen in this product that shipped with no layout at all.
+ *
+ * Every one of the five `crash-*` class names in error-boundary.tsx was written and none of them
+ * had a single rule anywhere in the bundle. Measured in a browser against the real component and
+ * the real stylesheet, before this file existed: `.crash-screen` was a plain block at
+ * x=0 y=0 w=1280 with `padding:0px`, `.crash-card` had `max-width:none`, no border, no radius and
+ * no padding, and the two recovery buttons sat at a gap of exactly 0px with different heights
+ * (36px for "Try again", 44.8px for "Reload the app", because only the first one has a variant
+ * rule and the second was left with the bare <button> element padding). The <h1> came out at 54px
+ * — `clamp(32px,5vw,54px)` from the element rule, i.e. the marketing-page display size — at the
+ * top-left corner of the window.
+ *
+ * So the product's worst moment was the only state nobody drew, while Failure and EmptyState next
+ * to it each have a considered panel. That asymmetry is the defect; the rules below are the
+ * smallest thing that removes it, and every value is a token or matches a sibling panel.
+ *
+ * THE TWO SCOPES ARE NOT THE SAME PICTURE, and that is the reason both get rules here rather than
+ * one rule and one dead class name.
+ *
+ *   scope="app" has replaced the entire document — there is no rail, no palette, nothing else on
+ *   screen. It takes the viewport and centres in it, because there is nothing to sit beside.
+ *
+ *   scope="route" is one pane inside a live shell: the rail is still there, the command palette
+ *   still opens, and walking away is the recovery. So it does NOT claim the viewport height, it
+ *   starts where the pane's content starts, and it drops the raised fill — a filled card stacked
+ *   on the shell's own surface reads as two boxes, and this one is not the whole screen.
+ *
+ * NOTHING HERE CASTS A SHADOW and nothing sets a weight, per design/system.css: separation is a
+ * hairline and a surface step, hierarchy is size, colour and space.
+ */
+
+/* ------------------------------------------------------------------------ the ground --- */
+
+/* `100dvh` rather than `100vh`: on iOS the difference is the address bar, and a crash card that
+   is one bar-height taller than the screen puts its own recovery buttons under the chrome.
+   The page colour is already on :root, so this sets no background of its own. */
+.crash-screen {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  min-height: 100dvh;
+  padding: 32px 24px;
+}
+
+/* Inside the shell: the pane is not the screen. `min-height:0` hands the height back to the card,
+   and `align-content:start` puts it where a route's content would have started rather than
+   floating it in the middle of a pane whose height belongs to the rail. */
+.crash-screen.is-route {
+  align-content: start;
+  min-height: 0;
+  padding: 32px 24px;
+}
+
+/* -------------------------------------------------------------------------- the card --- */
+
+/* 520px is the measure this panel's prose wants — the same order as `.es__body`'s 500px cap two
+   files away — and `width:100%` is what keeps it from being 520px wide on a 375px phone.
+   START-ALIGNED, deliberately, unlike `.es`: this card contains a <pre> holding whatever string
+   the error carried, and centred monospace is unreadable. */
+.crash-card {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+  width: 100%;
+  max-width: 520px;
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  text-align: start;
+}
+
+/* See the header: one object among several, so it keeps the frame and loses the fill. */
+.crash-card--route {
+  background: transparent;
+}
+
+/* 25px is `.es__title`'s size — the canonical "something went wrong here" heading in this app.
+   The element rule's clamp() tops out at 54px, which is a landing-page size and was what this
+   actually rendered at. */
+.crash-card h1 {
+  margin: 0;
+  font-size: 25px;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+  color: var(--ink);
+}
+
+/* The two sentences: what broke, and whether anything was lost. `text-wrap:pretty` for the same
+   reason failure.css gives — these end on the word that matters ("your projects and data are
+   safe") and a one-word last line throws it away. */
+.crash-card > p {
+  margin: 0;
+  max-width: 100%;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+/* ------------------------------------------------------------- what the error said --- */
+
+/* An Error.message has no line breaks and no maximum length. The `pre` element rule gives this a
+   border, 18px of padding and the default `white-space:pre`, so a 400-character message became a
+   horizontally scrolling strip and a stack-shaped one had no height cap at all. Wrapped, broken at
+   any character, and capped — the same treatment `.failure__detail code` gets, because it is the
+   same content. Quieter than the prose above it: this is for the screenshot somebody sends to
+   support, not for the person reading the sentence. */
+.crash-detail {
+  width: 100%;
+  max-height: 150px;
+  margin: 2px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xs);
+  background: var(--surface-2);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--muted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  overflow: auto;
+}
+
+/* --------------------------------------------------------------------- the way out --- */
+
+/* WRAPS RATHER THAN SHRINKS, so at 375px "Reload the app" drops to its own line instead of
+   squeezing its label. The 10px gap is what the 0px was.
+   THE SECOND BUTTON IS SIZED HERE because `.btn-primary` sets `min-height:36px; padding:0 12px`
+   and a bare `.btn` sets neither, so the pair rendered 36px and 44.8px tall side by side. Matching
+   the primary's box is the point — not giving the pair a new size. */
+.crash-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.crash-actions > .btn {
+  flex: none;
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 14px;
+}
+
+/* The route card's last line, and the only one that names the action that actually works. Quiet,
+   because it is a footnote on a card whose two buttons are already the offer. */
+.crash-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--faint);
+}
+
+/* ------------------------------------------------------------------------- at 375px --- */
+
+@media (max-width: 600px) {
+  .crash-screen,
+  .crash-screen.is-route {
+    padding: 24px 16px;
+  }
+  .crash-card {
+    padding: 20px;
+    gap: 11px;
+  }
+  .crash-card h1 {
+    font-size: 21px;
+  }
+  /* A phone screen is short; a detail block filling half of it hides the buttons under it. */
+  .crash-detail {
+    max-height: 120px;
+  }
+}

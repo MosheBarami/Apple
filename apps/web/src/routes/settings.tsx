@@ -1818,7 +1818,7 @@ export function SettingsPage() {
       </Section>
 
 
-      <Section title="Privacy" visible={sectionShows('analytics-opt-out', 'download-my-data')}>
+      <Section title="Privacy" visible={sectionShows('training-promise', 'analytics-opt-out', 'download-my-data')}>
         {/* THE TOGGLE IS GONE, AND THE PROMISE IS THE REASON.
             Both published privacy pages say Apple never trains on a customer's projects — the
             policy states outright that no opt-in programme exists. This row offered exactly that
@@ -1828,6 +1828,15 @@ export function SettingsPage() {
             the one worth keeping, so the switch goes rather than the sentence. `training_opt_in`
             stays in the database untouched — dropping a column is a migration, and nothing reads
             it now. */}
+        <Row id="training-promise" visible={shows('training-promise')}>
+          <p className="settings-lead">Apple never trains on your work.</p>
+          <p className="settings-note">
+            Your projects, your prompts and the code Apple writes for you are yours. They are not used to
+            train models, and there is no setting here that would change that — the commitment is the
+            product's, not a preference you have to remember to keep switched off.
+          </p>
+        </Row>
+
 
         {/* THE REQUEST LOG CARRIED EVERY ACCOUNT ID AND NOTHING COULD TURN IT OFF.
             The number below is the real retention window from apps/worker/src/retention.ts, and

@@ -27,7 +27,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -388,4 +388,87 @@ test('the labels are the product’s own words for the modes', () => {
   assert.match(usageKindLabel('api_chat'), /api/i);
   assert.match(usageKindLabel('docs_search'), /search/i);
   assert.ok(usageKindLabel('').length > 0, 'even an empty kind gets a word rather than a blank row');
+});
+
+// --- 5. the rail may not sell what this deployment cannot sell -------------------------
+
+/**
+ * D92d349 — THE RAIL NAMED UPGRADING AS "THE ONLY WAY", HAVING ASKED NOBODY.
+ *
+ * With the month spent and no credits, `nextAction` read: "The monthly limit does not lift until
+ * next month. Credits cannot be bought yet, so upgrading is the only way to raise it." Nothing in
+ * this file had ever looked at /api/billing/config, which is what /app/usage asks before it labels
+ * every paid tier "Not available yet" and draws no button at all. `CREDIT_PURCHASE_LIVE` is false
+ * and `checkout` is false on the live deployment, so a customer who ran out was sent, in the one
+ * sentence they would act on, to a page with nothing on it to buy.
+ *
+ * composer.tsx in the same bundle already had the shape: `maxUpgradeAvailable` is THREE-valued,
+ * and the third value is not "no". The model takes the same three.
+ */
+const spentMonth = (over = {}) => quota({
+  creditsUsedToday: 0, creditsUsedThisMonth: PLAN_LIMITS.free.creditsPerMonth,
+  allowanceRemaining: 0, credits: 0, ...over,
+});
+
+test('THE DEAD STOP DOES NOT OFFER AN UPGRADE THIS DEPLOYMENT CANNOT SELL', () => {
+  const v = meterView(spentMonth(), NOW, { upgradeAvailable: false });
+  assert.equal(v.tone, 'bad');
+  assert.equal(v.period, 'month');
+  const next = v.nextAction ?? '';
+  assert.match(next, /not available yet/i,
+    'the rail must say what the plans page says, got: ' + next);
+  assert.doesNotMatch(next, /upgrad\w* (is|as) the only way|only way to raise/i,
+    'naming upgrading as the only way while nothing is for sale is the defect, got: ' + next);
+});
+
+test('and it DOES offer one where the deployment can', () => {
+  const next = meterView(spentMonth(), NOW, { upgradeAvailable: true }).nextAction ?? '';
+  assert.match(next, /upgrad/i, 'where checkout is live, upgrading is the real way through');
+  assert.doesNotMatch(next, /not available yet/i);
+});
+
+/**
+ * NULL IS BOTH "STILL ASKING" AND "ASKED AND COULD NOT FIND OUT", and the rail renders
+ * continuously through the first of those — so the hedged sentence may not report a failed
+ * observation either. It names the page that knows, which is true in both cases. Same rule as
+ * `pending` vs `unknown` at the top of this file, one subsystem further out.
+ */
+test('and where it does not know, it claims neither', () => {
+  for (const opts of [{}, { upgradeAvailable: null }, { upgradeAvailable: undefined }]) {
+    const next = meterView(spentMonth(), NOW, opts).nextAction ?? '';
+    assert.ok(next.length > 0, 'a dead stop still has to say something');
+    assert.doesNotMatch(next, /only way to raise|not available yet/i,
+      'an unanswered question is not an answer in either direction, got: ' + next);
+    assert.doesNotMatch(next, /could not be confirmed|did not answer/i,
+      'and it is not a failed observation either while the request may still be in flight, got: ' + next);
+    assert.match(next, /Usage and Credits/i, 'it must name the page that does know, got: ' + next);
+  }
+});
+
+/**
+ * THE WIRING, which is the half a model test cannot reach. Three call sites have to carry the
+ * answer or the model's new branch is dead code: the rail's meter, the meter component, and the
+ * usage page's own copy of the same view.
+ */
+test('the three surfaces that render this model all pass the billing answer through', () => {
+  const src = (...p) => readFileSync(join(WEB, 'src', ...p), 'utf8');
+
+  const meter = src('components', 'usage-meter.tsx');
+  assert.match(meter, /upgradeAvailable\?:\s*boolean\s*\|\s*null/, 'UsageMeter must accept it');
+  assert.match(meter, /meterView\([^)]*upgradeAvailable/, 'and hand it to the model');
+  assert.match(meter, /upgradeAvailable\s*=\s*null/,
+    'the default must be "unknown", not false — a caller that never asked knows nothing, and false is a claim');
+
+  const layout = src('components', 'layout.tsx');
+  assert.match(layout, /fetchBillingConfig/, 'the shell must actually ask /api/billing/config');
+  assert.match(layout, /queryKey:\s*\['billing-config'\]/,
+    'by the same key usage.tsx and workspace.tsx use, or the three surfaces can disagree');
+  assert.match(layout, /upgradeAvailable=\{maxUpgradeAvailable\(billing\.data\)\}/,
+    'and pass the answer to the rail');
+  assert.match(layout, /<UsageMeter[^>]*upgradeAvailable=\{upgradeAvailable\}/,
+    'which the rail has to forward to the meter');
+
+  const usage = src('routes', 'usage.tsx');
+  assert.match(usage, /meterView\([^;]{0,240}?upgradeAvailable:\s*maxUpgradeAvailable\(billing\.data\)/,
+    'the usage page renders the same model a few hundred pixels above "Not available yet"');
 });

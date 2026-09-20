@@ -26,12 +26,49 @@ test('the wire carries per-run cost, separately from account-wide quota', () => 
   assert.match(SHARED, /\{ type: 'quota'; quota: QuotaState \}/);
 });
 
+/**
+ * Read one broadcast whole, by BALANCING ITS BRACES.
+ *
+ * This used to take a 320-character window and stop at the first `})`. An inline conditional spread
+ * inside the object — `...(effortApplied ? { effort, effortReason } : {})` — contains `})`, so the
+ * scan ended mid-object and reported that a broadcast carrying `creditsSpent` on the very next line
+ * did not carry it. The field was never missing; the reader could not see it.
+ *
+ * That is the defect this suite exists to catch, pointed at itself: a check that cannot see the
+ * thing it is checking reports its own blindness as the product's fault. A window is a guess about
+ * how long code is, and code gets longer.
+ */
+function broadcastsOf(source, type) {
+  const out = [];
+  const needle = `type: '${type}'`;
+  for (let i = source.indexOf(needle); i !== -1; i = source.indexOf(needle, i + 1)) {
+    // Walk back to the `{` that opens this object literal, then forward to its match.
+    let open = source.lastIndexOf('{', i);
+    if (open === -1) continue;
+    let depth = 0;
+    let end = -1;
+    for (let j = open; j < source.length; j++) {
+      const c = source[j];
+      if (c === '{') depth++;
+      else if (c === '}') {
+        depth--;
+        if (depth === 0) { end = j; break; }
+      }
+    }
+    if (end !== -1) out.push(source.slice(open, end + 1));
+  }
+  return out;
+}
+
 test('the worker actually sends it, not just declares it', () => {
   // A field on the type that nothing populates is the same as no field.
-  const sends = [...SESSION.matchAll(/type: 'agent_status'[\s\S]{0,320}?\}\)/g)].map((m) => m[0]);
+  const sends = broadcastsOf(SESSION, 'agent_status');
   assert.ok(sends.length >= 2, `expected several agent_status broadcasts, found ${sends.length}`);
+  // Non-vacuity: if the reader were blind again, every entry would look costless and the assertion
+  // below would fail for the wrong reason. Prove it can see a field it is not asserting on.
+  assert.ok(sends.filter((s) => s.includes('phase')).length >= 2, 'the broadcast reader is not reading');
   const withCost = sends.filter((s) => s.includes('creditsSpent'));
-  assert.ok(withCost.length >= 2, 'the step-level broadcasts must carry the run cost');
+  assert.ok(withCost.length >= 2, `the step-level broadcasts must carry the run cost; ${withCost.length} of ${sends.length} do`);
 });
 
 test('the client carries it forward between settlements', () => {

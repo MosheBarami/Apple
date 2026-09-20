@@ -14,14 +14,31 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
   <h2 id="messages">What the panel says</h2>
 
-  <h3>“Invalid or expired code”</h3>
+  {/*
+    TWO QUOTES ON THIS PAGE WERE COPIED FROM apps/plugin — the retired plugin the site itself tells
+    you not to build — AND NOT FROM THE SHIPPED ONE.
+
+    This page's stated purpose is “Every message the Apple Studio panel can show”, so a quote that
+    does not match the artifact is the one failure it cannot afford: a reader copies the text out of
+    Studio, searches this page for it, and finds nothing.
+
+    Verbatim from apps/apple-plugin/src/Bridge.luau, the shipped artifact:
+      “Invalid or expired pairing code.”                       (was “Invalid or expired code”)
+      “Could not reach Apple — check Studio’s network permission.”
+                                                        (was “— check your internet”)
+    The three other quotes on this page — “Session ended — reconnect with a new code” and
+    “Connection hiccup — retrying…” from the same file, and “This Apple build is too old for the
+    server” from apps/worker/src/plugin-version.ts — already matched and are unchanged. The remedies
+    below were correct throughout; only the strings were stale.
+  */}
+  <h3>“Invalid or expired pairing code”</h3>
   <p>
     Codes last 10 minutes and work once. Generate a fresh one in the web workspace
     (<a href="/docs/connect">Connect a project</a>) and type it in promptly. Case and dashes do not
     matter, so mistyping those is not the cause — a stale code almost always is.
   </p>
 
-  <h3>“Could not reach Apple — check your internet”</h3>
+  <h3>“Could not reach Apple — check Studio’s network permission”</h3>
   <p>
     The plugin's HTTPS request never landed. In order of likelihood:
   </p>
@@ -178,8 +195,11 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <h2>Apple changed something I didn't want</h2>
   <p>Three exits, smallest first:</p>
   <ol>
-    <li>Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> (<kbd>⌘Z</kbd> on macOS) in Studio. Each batch of Apple changes is one native undo step.</li>
-    <li>Restore the checkpoint Apple took before the run, from the project's sidebar.</li>
+    {/* The unit is the operation, not the batch: Commands.luau opens one ChangeHistoryService
+        recording per operation and Bridge.luau executes a batch one operation at a time. Saying
+        "each batch is one undo step" sent people to press Ctrl+Z once for a run that needed six. */}
+    <li>Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> (<kbd>⌘Z</kbd> on macOS) in Studio. Each change Apple made is its own undo step, so a run of several steps needs one press per step.</li>
+    <li>Restore the checkpoint Apple took before the run, from the project's sidebar. That takes the whole run back in one action, which <kbd>Ctrl</kbd>+<kbd>Z</kbd> cannot do.</li>
     <li>Say what is wrong in the chat. Fixing a wrong turn is usually faster than rolling back.</li>
   </ol>
 

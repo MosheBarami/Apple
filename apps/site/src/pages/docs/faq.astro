@@ -39,7 +39,12 @@ const general = [
   },
   {
     q: 'Apple made a change I hate. Now what?',
-    a: `<p>Three exits, in order of size: press <kbd>Ctrl+Z</kbd> in Studio (each Apple batch is one native undo step); restore the automatic checkpoint taken before the run; or just tell Apple what you hate — it can usually fix a wrong turn faster than a rollback.</p>`,
+    // "EACH APPLE BATCH IS ONE NATIVE UNDO STEP" WAS THE WRONG UNIT, and it made Ctrl+Z sound like
+    // the whole-run exit. The plugin opens one ChangeHistoryService recording per OPERATION
+    // (apps/apple-plugin/src/Commands.luau) and the bridge executes a server batch one operation at
+    // a time (apps/apple-plugin/src/Bridge.luau), so a batch of six writes is six undo steps. The
+    // checkpoint is the single-action exit; Ctrl+Z is the fine-grained one.
+    a: `<p>Three exits, in order of size: press <kbd>Ctrl+Z</kbd> in Studio to take back the last change (one undo step per change Apple made, so a multi-step run needs one press per step); restore the automatic checkpoint taken before the run, which undoes the whole run in one action; or just tell Apple what you hate — it can usually fix a wrong turn faster than a rollback.</p>`,
   },
   {
     //[[ THIS ANSWER SAID "Not yet", AND THE FEATURE WAS ALREADY IN THE READER'S OWN ACCOUNT.

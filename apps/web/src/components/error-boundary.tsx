@@ -31,6 +31,7 @@
 // when the network is the thing that broke.
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { captureException } from '../lib/sentry.ts';
+import './error-boundary.css';
 
 interface State {
   error: Error | null;

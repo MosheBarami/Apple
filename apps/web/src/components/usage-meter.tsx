@@ -20,14 +20,21 @@ const TONE_LABEL: Record<MeterView['tone'], string> = {
  * it is what a request in flight looks like AND what a failed one looks like, and the two need
  * different words. The caller is the only one that knows which.
  */
-export function UsageMeter({ quota, pending = false, failed = false, now = Date.now() }: {
+export function UsageMeter({ quota, pending = false, failed = false, upgradeAvailable = null, now = Date.now() }: {
   quota: unknown;
   pending?: boolean;
   /** The caller knows the fetch failed. Stated rather than inferred from a missing payload. */
   failed?: boolean;
+  /**
+   * Can this deployment actually sell an upgrade? From /api/billing/config, three-valued the same
+   * way composer.tsx's `maxUpgradeAvailable` is: true, false, and "could not find out". The
+   * DEFAULT IS null, not false — a caller that never asked knows exactly as much as one whose ask
+   * failed, and the model hedges on both rather than asserting either.
+   */
+  upgradeAvailable?: boolean | null;
   now?: number;
 }) {
-  const v = meterView(quota, now, { pending, failed });
+  const v = meterView(quota, now, { pending, failed, upgradeAvailable });
   const pct = Math.round(v.allowanceFraction * 100);
   const bare = v.tone === 'unknown' || v.tone === 'pending';
 

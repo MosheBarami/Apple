@@ -260,11 +260,24 @@ export function Thinking({
   // run, even when the run produced no stages of its own.
   const isLive = streaming && !activity.terminal;
   const title = activity.terminal?.note ?? (isLive && compact.current ? presentActionLabel(compact.current) : (isLive && status ? (PHASE_LABEL[status.phase] ?? status.phase) : 'Activity'));
-  const hint = activity.terminal
+  // THE SECOND LINE OF THE HEADER, WHICH WAS COMPUTED ON EVERY RENDER AND DRAWN BY NOBODY.
+  //
+  // `hint` has been assigned here since the redesign and never reached the JSX, so `.gx-think__hint`
+  // and the 375px rule that hides it were both dead, and so was headerHint()'s whole return value.
+  // Collapsed, the card was one line of text and an arrow with no statement anywhere that the arrow
+  // did something.
+  //
+  // AND IT MAY NOT SAY WHAT THE FIRST LINE ALREADY SAID. While a run is live with a named action,
+  // `title` IS that action label and the expression below produces the identical string — printing
+  // it twice, once in ink and once in grey, would have been the reason this line looked wrong
+  // enough to leave out. Where the two collide the second line falls back to the affordance, which
+  // is the thing the first line never carries.
+  const liveHint = activity.terminal
     ? (open ? 'Hide details' : 'View details')
     : isLive
       ? (compact.current ? presentActionLabel(compact.current) : 'Working')
       : headerHint(input, open);
+  const hint = liveHint === title ? (open ? 'Hide details' : 'View details') : liveHint;
 
   useEffect(() => {
     // Applying the preference is intentionally silent: this must not create or
@@ -313,6 +326,10 @@ export function Thinking({
         >
           <ModelMark live={isLive && !reducedMotion && !pageHidden} />
           <span className="gx-think__word">{title}</span>
+          {/* Not announced: `aria-expanded` on this button already tells a screen reader what the
+              arrow means, and "View details" read out after the run's own state is noise. It is a
+              visual affordance, which is exactly what was missing. */}
+          <span className="gx-think__hint" aria-hidden="true">{hint}</span>
           <span className="gx-think__chev" aria-hidden="true">
             <Icon d={PATH.chevronDown} size={14} />
           </span>

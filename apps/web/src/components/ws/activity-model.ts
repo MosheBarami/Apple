@@ -696,6 +696,13 @@ export function eventsFromTurn(source: {
       });
     }
     if (!tool.done) continue;
+    // CLOSED, BUT NEVER REPORTED ON. `msg_end` marks every still-open tool `done` so nothing
+    // spins forever, and deliberately does NOT invent an outcome for it — `ok` stays undefined.
+    // There is no `tool_end` to emit here: the two fields it would have to carry, the verdict and
+    // the clock, are exactly the two nobody measured. Leaving the record end-less is what lets
+    // the reducer take its `unknown` branch ("the step started, the run is over, and no result
+    // for it ever arrived") instead of reading a fabricated `ok:false` as a failure.
+    if (tool.ok === undefined) continue;
     // With no observed start this timestamp is arithmetic, not observation; the
     // reducer marks the record unobserved so its phase reports measured tool
     // time rather than wall time.

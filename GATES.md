@@ -338,7 +338,7 @@ like it covers it.
     check-escape-hatches, check-proof-figures (a gitignored corpus file is absent from this
     checkout) and the root tests. Re-tick it by running gate-check, which writes the real line.
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=1cbbd2d; tree-clean=yes; break-sha=1cbbd2d; EXPECT=unmatched; output-sha256=d3ca83a0f1c28c107d19848521978c0fed503026b5dd9621c7b7078b3a626ac6; output-bytes=43; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=224; deps-sha=26ef956a96cd451b185f2c1f; at=2026-09-14T20:29:15.030Z
-  EVIDENCE: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=c1b9265de6a1/55 entries; git-sha=e64e4b8; tree-clean=yes; deps-clean=yes; EXPECT=unmatched; output-sha256=aa5ee3ede3e13866af596a8f8bcd17a1e261ce2772cce7c585782d0250f98162; output-bytes=613; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=438; deps-sha=f16c3e1a3ee64c7d3f57cc85; at=2026-09-15T21:22:21.020Z
+  EVIDENCE: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=beb9e39b26a2/57 entries; git-sha=2d34ef1; tree-clean=no; deps-clean=no; EXPECT=unmatched; output-sha256=6b6b4bbfdfb1842dc7da2ae85dd61057461dd6de8f3d5abdab8b351327ef1368; output-bytes=735; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=840; deps-sha=e30a5e6681814efb997ee8e8; at=2026-09-19T23:39:57.751Z
 
 - [x] G91: Every package typechecks
     CHECK: node scripts/gate-typecheck.mjs

@@ -40,6 +40,11 @@ await esbuild.build({
           }
           export class RateLimitedError extends Error {}
           export async function chat(env, req, opts) { return env.__testChat(req, opts); }
+          // runStep asks the gateway whether the reasoning effort it chose will actually reach the
+          // model, so it can report the applied setting instead of the chosen one. This file is
+          // about FINISH REASONS, so the fake answers the way the lane these fixtures model does
+          // (a GLM route, where the effort is sent) and leaves that behaviour to its own test.
+          export async function reasoningEffortApplies() { return true; }
         `,
       }));
     },

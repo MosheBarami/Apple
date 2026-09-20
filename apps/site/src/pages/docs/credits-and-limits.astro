@@ -109,12 +109,31 @@ const sessionShape = modes
     start of the request is not returned, which is why that is said out loud rather than left for a
     reader to discover on the usage chart.
   */}
+  {/*
+    "ALWAYS VISIBLE IN THE WORKSPACE HEADER, AND IT UPDATES LIVE" WAS WRONG TWICE.
+
+    Where: the balance meter is in the FOOTER OF THE LEFT RAIL, not a header —
+    apps/web/src/components/layout.tsx renders <UsageMeter> inside `.gx-rail__foot`.
+
+    Live: it is not. The meter is fed from `me.data?.quota`, a react-query ['me'] query with
+    staleTime 60s, and apps/web/src/app.tsx sets refetchOnWindowFocus: false. Only two actions in
+    Settings ever invalidate it. The worker DOES push a live `quota` socket message — the hook
+    handles it and exposes `quota` (apps/web/src/lib/use-project-socket.ts) — but workspace.tsx
+    does not destructure `quota` from the hook, so the update is received and dropped. The figure a
+    customer watches for an hour is the one from page load.
+
+    What IS live is the per-run total: thinking.tsx renders "<n> Credits this run" from
+    status.creditsSpent while the run works, which is why that sentence stays and the balance
+    sentence changed. Wiring the balance is an apps/web fix and was reported to the lead as one.
+  */}
   <h2>How metering works</h2>
   <p>
-    Your balance is always visible in the workspace header, and it updates live. One Credit is taken
-    when a request starts, and the rest settles against the compute the run actually consumed — so
-    the number moves while a long build is working, rather than arriving as a total you could not
-    see coming.
+    Your balance sits in the footer of the left rail, beside your account. It is read when the
+    workspace loads and does not refresh itself while you build — reload the page for the current
+    figure. What does move as it happens is the run you are watching: the thinking panel counts the
+    Credits this run has spent, step by step. One Credit is taken when a request starts, and the
+    rest settles against the compute the run actually consumed, so a long build's cost arrives as
+    it is incurred rather than as a total you could not see coming.
   </p>
   <p>
     A step that fails on our side is not charged: Credits are settled from the compute a call

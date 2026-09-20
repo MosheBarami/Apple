@@ -55,8 +55,22 @@ export const CLIENT_MSG_TYPES = Object.freeze([
 /** Activities a `presence` message may report. Mirrors the union in @golem/shared. */
 export const PRESENCE_ACTIVITIES = Object.freeze(['viewing', 'typing', 'building']);
 
-/** The public base URL of the production worker. */
-export const DEFAULT_BASE_URL = 'https://golem.moshe-barami111.workers.dev';
+/**
+ * The public base URL of the production worker.
+ *
+ * `apple`, NOT `golem`. The old default was not merely off-brand — the legacy host serves /api/*
+ * from a SEPARATE, OLDER deployment. Measured 2026-09-20: /api/health reported buildSha
+ * 44d9ded-dirty there and e30b7f9-dirty on the canonical origin, 31 commits apart. And the page
+ * redirect that moves a BROWSER to the canonical origin deliberately exempts /api/* — see
+ * apps/worker/tests/legacy-host.test.mjs, where the exemption is pinned so an authenticated POST
+ * never loses its body to a 308 — so an SDK caller is not carried across by it. Anyone handed this
+ * package therefore talked to a month-old worker by default and had no way to notice.
+ *
+ * `PRODUCT_ORIGIN` in @golem/shared is the same string. It is repeated rather than imported
+ * because this package is consumed as plain files by the CLI and mirrored by the Python and Luau
+ * clients, which cannot import TypeScript; protocol-parity.test.mjs asserts the three agree.
+ */
+export const DEFAULT_BASE_URL = 'https://apple.moshe-barami111.workers.dev';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

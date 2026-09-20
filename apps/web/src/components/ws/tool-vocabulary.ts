@@ -112,6 +112,15 @@ export const TOOL = {
   // Named for the question, not the table. "Looked up how a shop is usually built" is what the
   // owner sees the agent doing; "Called find_mechanic" is a sentence about our tool registry.
   find_mechanic: { kind: 'searching_knowledge', label: 'Looked up how this mechanic is usually built' },
+  // TWO TOOLS THE WORKER GAINED WHILE THIS TABLE STOOD STILL, which the cross-check in
+  // tool-vocabulary.test.mjs caught: without an entry each would have rendered through the
+  // underscore-stripping fallback as "get ui construction" and "get verified module" — our
+  // registry's names, in the middle of a column of written sentences.
+  // Named for the question the agent is answering, per the two notes below: what the owner sees is
+  // Apple checking how a real shop screen is put together, and Apple reaching for logic that has
+  // already been run rather than writing the arithmetic fresh.
+  get_ui_construction: { kind: 'searching_knowledge', label: 'Looked up how this screen is usually built' },
+  get_verified_module: { kind: 'searching_knowledge', label: 'Took logic that has already been checked' },
 
   // C05
   choose_asset_source: { kind: 'searching_assets', label: 'Chose an asset source' },

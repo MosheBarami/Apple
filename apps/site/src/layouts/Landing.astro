@@ -10,10 +10,23 @@ const { title, description } = Astro.props;
 const site = Astro.site ?? new URL('https://appleworks.pages.dev');
 const canonical = new URL(Astro.url.pathname, site);
 const ogImage = new URL('/og.png', site);
+
+/*
+ * `data-theme="dark"` on <html> is the same default Base.astro sets, so the two layouts agree about
+ * what a visitor with no stored preference gets, and the inline script below applies a stored
+ * choice before first paint. Until this, the landing had no attribute, no script and no toggle, and
+ * landing.css had one ramp — so choosing light on /pricing and clicking the wordmark landed a
+ * reader on a dark homepage with no control to change it.
+ *
+ * DO NOT PUT AN ASTRO EXPRESSION BETWEEN <!doctype> AND <html>. One was written here first; Astro
+ * stopped treating the file as a full document and emitted the page with no <html> and no <head>
+ * at all, which the browser then rebuilt implicitly — so data-theme was gone at runtime while the
+ * source still read correctly. The reasoning lives in this comment for that reason.
+ */
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" class="no-js" data-theme="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -39,9 +52,82 @@ const ogImage = new URL('/og.png', site);
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
-    <meta name="theme-color" content="#080808" />
+    {/* #080808 was the retired pre-warm-ramp black and it was typed here, so on a phone the address
+        bar sat a shade cooler than the #141312 page under it and left a seam across the top of every
+        route — and it stayed near-black in light mode, over an almost-white page. The value is now
+        derived: the script below reads `--theme-color` off :root and writes it here on load and on
+        every toggle, so the band cannot disagree with the palette again. The server-rendered value
+        is the dark ground, which is what the default `data-theme="dark"` renders. */}
+    <meta name="theme-color" id="theme-color" content="#141312" />
+
+    <script is:inline>
+      // Runs before first paint, exactly as Base.astro's does: no flash of the wrong theme, and the
+      // stored choice made anywhere else on the site is honoured here too.
+      (function () {
+        var d = document.documentElement;
+        d.classList.remove('no-js');
+        try {
+          var t = localStorage.getItem('apple-theme');
+          if (t === 'light' || t === 'dark') d.setAttribute('data-theme', t);
+        } catch (e) {
+          /* private mode — keep the default */
+        }
+      })();
+    </script>
   </head>
   <body>
     <slot />
+
+    <script is:inline>
+      // The landing's own theme wiring. It is inline and tiny rather than a module because this
+      // route's whole point is that it ships essentially nothing; the alternative was leaving the
+      // front page as the only route on the site with no way to change a preference every other
+      // route offers.
+      (function () {
+        var root = document.documentElement;
+
+        /** The address-bar colour is read from the stylesheet, never typed twice. */
+        function paintBand() {
+          var meta = document.getElementById('theme-color');
+          if (!meta) return;
+          var v = getComputedStyle(root).getPropertyValue('--theme-color').trim();
+          if (v) meta.setAttribute('content', v);
+        }
+
+        function theme() {
+          var set = root.getAttribute('data-theme');
+          return set === 'light' ? 'light' : 'dark';
+        }
+
+        function paintToggles() {
+          var t = theme();
+          var list = document.querySelectorAll('[data-theme-toggle]');
+          for (var i = 0; i < list.length; i++) {
+            list[i].setAttribute('aria-pressed', String(t === 'dark'));
+            list[i].setAttribute(
+              'aria-label',
+              t === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'
+            );
+          }
+        }
+
+        document.addEventListener('click', function (e) {
+          var btn = e.target && e.target.closest ? e.target.closest('[data-theme-toggle]') : null;
+          if (!btn) return;
+          var next = theme() === 'dark' ? 'light' : 'dark';
+          root.setAttribute('data-theme', next);
+          try {
+            localStorage.setItem('apple-theme', next);
+          } catch (err) {
+            /* private mode — the choice still applies for this page view */
+          }
+          paintToggles();
+          paintBand();
+        });
+
+        paintToggles();
+        paintBand();
+      })();
+    </script>
   </body>
 </html>

@@ -1,0 +1,57 @@
+{
+  "schema": "apple-game-logic-seeds-v1",
+  "examples": 28,
+  "splitSizes": {
+    "train": 20,
+    "val": 3,
+    "test": 5
+  },
+  "families": {
+    "bounded-reward": "train",
+    "cooldown-clock": "train",
+    "crafting-batches": "train",
+    "damage-mitigation": "train",
+    "dense-filter-preservation": "test",
+    "dense-sample-mean": "train",
+    "dependency-order": "train",
+    "economy-transaction": "train",
+    "finite-normalization": "train",
+    "fractional-band-classification": "test",
+    "half-open-time-window": "train",
+    "interval-overlap": "train",
+    "inventory-capacity": "train",
+    "level-from-xp": "train",
+    "ordered-checkpoints": "train",
+    "range-normalization": "train",
+    "round-transitions": "train",
+    "route-cost": "train",
+    "seeded-shuffle": "train",
+    "stable-leaderboard": "val",
+    "team-balance": "test",
+    "turn-rotation": "train",
+    "ui-aspect-fitting": "train",
+    "ui-grid-capacity": "train",
+    "ui-richtext-escaping": "val",
+    "ui-viewport-window": "test",
+    "unlock-prerequisites": "val",
+    "weighted-selection": "test"
+  },
+  "evaluationTasksChecked": 88,
+  "lineage": {
+    "previousDigest": "d86ce53e2b261e92780385bfb76808a0499e9b1069f0c3ec407ac9e9e1b3d263",
+    "preservedFamilies": 24
+  },
+  "source": "first-party-authored-synthetic",
+  "customerData": false,
+  "studioTrajectories": 0,
+  "verification": "actual local Luau execution plus assertion-failing mutation for every answer",
+  "limitations": [
+    "small seed curriculum, not a production-scale training set",
+    "no Roblox engine, visual or networking execution",
+    "not a model capability evaluation",
+    "family-disjoint holdout is a development set, not an independent promotion benchmark"
+  ],
+  "productionTrainingReady": false,
+  "trainedModel": false,
+  "digest": "1dbac25f80c5f0852d5a196d601f7dc48a8ce62bbd31528e9b992d8ef4f22e75"
+}

@@ -10,12 +10,23 @@ import { STUDIO_PLUGIN_STORE_LIVE } from '../../lib/studio-plugin';
 const modeNames = new Intl.ListFormat('en', { type: 'disjunction' }).format(
   PRODUCT_MODELS.map((m) => PRODUCT_MODEL_INFO[m].name),
 );
+/*
+ * THE BODY WAS GATED AND THE METADATA WAS NOT, WHICH IS THE HALF PEOPLE ACTUALLY SHARE.
+ *
+ * A <meta name="description"> and its og:description twin are what a search result and a pasted
+ * link show. This page's body has asked STUDIO_PLUGIN_STORE_LIVE since the listing was removed,
+ * while its description went on promising a Creator Store install path in every snippet — so the
+ * promise reached the reader BEFORE the correction did, and the correction only arrived if they
+ * clicked. Same constant, same answer, one sentence earlier.
+ */
 const free = PLAN_LIMITS.free;
 ---
 
 <DocsLayout
   title="Getting started — Apple Docs"
-  description="From signup to your first AI-built feature in Roblox Studio: create an account, make a project, install the plugin, pair, and chat your first build."
+  description={STUDIO_PLUGIN_STORE_LIVE
+    ? 'From signup to your first AI-built feature in Roblox Studio: create an account, make a project, install the plugin, pair, and chat your first build.'
+    : 'From signup to your first conversation with Apple: create an account, make a project and start chatting. Public Studio installation is unavailable, so the Studio steps apply only to an existing working plugin.'}
   heading="Getting started"
 >
   <p>
@@ -84,9 +95,10 @@ const free = PLAN_LIMITS.free;
 
   <div class="callout">
     <p>
-      <strong>Safety net:</strong> every batch of changes is one native undo step
-      (<kbd>Ctrl+Z</kbd> / <kbd>⌘Z</kbd> in Studio), and Apple checkpoints your place before every
-      agent run. You can restore any checkpoint from the workspace sidebar — even days later.
+      <strong>Safety net:</strong> every individual change is one native undo step
+      (<kbd>Ctrl+Z</kbd> / <kbd>⌘Z</kbd> in Studio), so undoing a whole run means one press per
+      step. Apple also checkpoints your place before every agent run, and restoring that checkpoint
+      from the workspace sidebar takes the whole run back at once — even days later.
     </p>
   </div>
 

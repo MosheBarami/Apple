@@ -22,6 +22,15 @@ import {
 // So the wording now derives from what Roblox actually says about THIS id on its appeals page,
 // through one shared constant. If the appeal succeeds, `refusal` goes null and this paragraph
 // disappears on its own rather than needing a reader to notice it is stale.
+/*
+ * THE BODY WAS GATED AND THE METADATA WAS NOT, WHICH IS THE HALF PEOPLE ACTUALLY SHARE.
+ *
+ * A <meta name="description"> and its og:description twin are what a search result and a pasted
+ * link show. This page's body has asked STUDIO_PLUGIN_STORE_LIVE since the listing was removed,
+ * while its description went on promising a Creator Store install path in every snippet — so the
+ * promise reached the reader BEFORE the correction did, and the correction only arrived if they
+ * clicked. Same constant, same answer, one sentence earlier.
+ */
 const decided = refusal
   ? new Date(refusal.decidedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
   : null;
@@ -35,7 +44,9 @@ const decided = refusal
 
 <DocsLayout
   title="Install the plugin — Apple Docs"
-  description="How to install Apple for Studio from the Roblox Creator Store, and what Studio asks for the first time it runs."
+  description={storeLive
+    ? 'How to install Apple for Studio from the Roblox Creator Store, and what Studio asks for the first time it runs.'
+    : 'Public installation of Apple for Studio is unavailable: Roblox removed the Creator Store listing and an appeal is pending. What the decision means, and what the install steps will be once a listing exists.'}
   heading="Install Apple for Studio"
 >
   <p>

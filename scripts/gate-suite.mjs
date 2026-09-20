@@ -108,6 +108,20 @@ const parts = [
   { label: 'check-workspace-coverage', ...run('node', ['scripts/check-workspace-coverage.mjs']) },
   { label: 'check-escape-hatches', ...run('node', ['scripts/check-escape-hatches.mjs']) },
   { label: 'check-deadends', ...run('node', ['scripts/check-deadends.mjs', '--gate']) },
+  //[[ THE RENAME. WRITTEN, CORRECT, AND NEVER ONCE RUN BY ANYTHING.
+  //
+  //   check-rebrand.mjs has exited 1 since the day it was written and no gate, no npm script and
+  //   no CI job invoked it, so its exit code carried no weight at all — drift landed on 2026-09-19
+  //   and nothing noticed. It is the thing the owner has asked for more times than anything else in
+  //   this repository, and the enforcement was a program nobody called.
+  //
+  //   --offline ON PURPOSE. The full check fetches the live origin to date its capture, and a gate
+  //   that needs the network is a gate that goes red for reasons that are not about the code. The
+  //   offline half is the DETERMINISTIC one and it is the half that catches source drift, which is
+  //   what landed unobserved. Its success line says "IN SOURCE … THE DEPLOYED SITE WAS NOT CHECKED"
+  //   rather than claiming the deployed site, so the narrower run cannot be misread as the wide one.
+  //   The deployed half belongs on the deploy path: `node scripts/check-rebrand.mjs --deployed`.
+  { label: 'check-rebrand', ...run('node', ['scripts/check-rebrand.mjs', '--offline']) },
   // The competitor teardown. It was a script nobody ran, which is how it came to report
   // "clean" over two of the site's six stylesheets while an 86px h1 and a 144px numeral sat in
   // the four it never opened. A guard outside the suite is a guard that has already gone stale.

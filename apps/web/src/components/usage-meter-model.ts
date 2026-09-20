@@ -138,7 +138,7 @@ const finite = (n: unknown): n is number => Number.isFinite(n);
 export function meterView(
   quota: unknown,
   now: number,
-  opts?: { pending?: boolean; failed?: boolean },
+  opts?: { pending?: boolean; failed?: boolean; upgradeAvailable?: boolean | null },
 ): MeterView {
   // Pending is checked first and on its own: a request in flight has no payload to inspect, and
   // inspecting the absent one is how "not yet" became "the service did not answer".
@@ -205,13 +205,44 @@ export function meterView(
     // `buildCheckoutRequest` hardcodes `mode: 'subscription'` and no payment-mode path exists.
     // The pricing page was corrected first and this was missed, which is what a fact with three
     // copies does. Both now read the one constant.
-    nextAction = CREDIT_PURCHASE_LIVE
-      ? (period === 'month'
-        ? 'Add credits, or upgrade — the monthly limit does not lift until next month.'
-        : 'Wait for the reset, or add credits.')
-      : (period === 'month'
-        ? 'The monthly limit does not lift until next month. Credits cannot be bought yet, so upgrading is the only way to raise it.'
-        : 'It refills at midnight UTC. Credits cannot be bought yet, so waiting is the way through.');
+    // AND THE SAME MISTAKE ONE STEP FURTHER OUT. The month-exhausted line named upgrading as "the
+    // only way to raise it" while never asking whether this deployment can sell anything. It
+    // cannot today — /api/billing/config reports `checkout:false` with an empty `purchasable`, so
+    // /app/usage labels every paid tier "Not available yet" and draws no button. A customer read
+    // "upgrading is the only way", walked to the page that sells the upgrade, and found nothing
+    // for sale. Two screens in one bundle, contradicting each other about the one thing that gets
+    // the user moving again.
+    //
+    // composer.tsx already had the right shape for this and had it for three states, not two:
+    // `maxUpgradeAvailable` is true / false / null, and the third is "we asked and could not find
+    // out", which gets its own sentence rather than being folded into either answer. Same rule as
+    // `pending` vs `unknown` at the top of this file — a failure to observe must not render as an
+    // observation, in EITHER direction. Undefined means the caller never looked, which is the same
+    // amount of knowledge as a failed look, so both land on the hedged line.
+    //
+    // THE THIRD BRANCH DOES NOT CLAIM THE ASK FAILED, because null is BOTH "still asking" and
+    // "asked and could not find out", and the rail renders continuously through the first of
+    // those. "Availability could not be confirmed" would be an observation reported before the
+    // observation was made — the exact defect `pending` vs `unknown` exists to prevent at the top
+    // of this file. It names the one page that does know, which is true in both cases and is what
+    // the reader would do after either sentence.
+    const upgrade = opts?.upgradeAvailable ?? null;
+    const monthlyPath = CREDIT_PURCHASE_LIVE
+      ? (upgrade === true
+        ? 'Add credits, or upgrade to raise it.'
+        : upgrade === false
+          ? 'Add credits — paid plans are not available yet.'
+          : 'Add credits. Usage and Credits shows whether a paid plan can raise it.')
+      : (upgrade === true
+        ? 'Credits cannot be bought yet, but upgrading raises it now.'
+        : upgrade === false
+          ? 'Credits cannot be bought and paid plans are not available yet, so waiting is the way through.'
+          : 'Credits cannot be bought yet. Usage and Credits shows whether a paid plan can raise it.');
+    nextAction = period === 'month'
+      ? `The monthly limit does not lift until next month. ${monthlyPath}`
+      : CREDIT_PURCHASE_LIVE
+        ? 'Wait for the reset, or add credits.'
+        : 'It refills at midnight UTC. Credits cannot be bought yet, so waiting is the way through.';
   }
 
   return {

@@ -1,0 +1,193 @@
+/* THE SPECIMEN BOOK'S OWN CHROME — thirteen class names the page has always emitted and no
+ * stylesheet in the bundle has ever matched.
+ *
+ * The page is reachable only in development now (see app.tsx: the route is not registered in a
+ * production build, and `grep -rl 'ui-lab' dist/` finds nothing). That removes the reason a
+ * CUSTOMER should never have met it; it does not remove the reason it should be drawn. This page
+ * exists so a reviewer can see whether ten empty states read as one family and whether success and
+ * failure are distinguishable by SHAPE and not only by colour — and a review surface with no
+ * frames, no grid and no separation between one specimen and the next cannot answer either
+ * question. An unstyled specimen book makes the components look worse than they are, which is the
+ * one thing it must not do.
+ *
+ * NOTHING HERE IS NEW VOCABULARY. Every value is a token from design/system.css, and the frame is
+ * the same hairline-and-surface-step the rest of the app uses. The specimens inside must be judged
+ * against the product's own surfaces, so the book is drawn in the product's own materials.
+ */
+
+/* ----------------------------------------------------------------- one specimen --- */
+
+/* A card, because the thing being reviewed is INSIDE it and the boundary is the whole point: two
+   specimens flowing into each other is how a reviewer mistakes one component's spacing for the
+   next one's. */
+.lab-specimen {
+  display: grid;
+  gap: 14px;
+  margin-block: 20px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--paper-2);
+  /* The nav below is a list of `#lab-<id>` links, so every one of these is a scroll target. */
+  scroll-margin-top: 90px;
+}
+
+/* The caption above the specimen: what it is, then why it is here. Two lines, both quiet — this
+   page is about what is under them. */
+.lab-specimen-head {
+  display: grid;
+  gap: 3px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.lab-specimen-name {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+}
+
+.lab-specimen-note {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+/* `min-width:0` because a specimen can be a wide table or a long unbroken string, and without it
+   the grid track takes the content's width and the whole page gets a horizontal scrollbar. */
+.lab-specimen-body {
+  min-width: 0;
+}
+
+/* A DOCUMENT THAT IS SUPPOSED TO BE REFUSED. These are the hostile specimens — a
+   `javascript:` href, an `onerror` attribute — and what the reviewer is checking is that the
+   sanitiser produced the safe fallback instead of markup. Marked with the same leading rule every
+   failure in this app carries (components/failure.css), so a rejection case can never be mistaken
+   for an approved one at a glance. */
+.lab-invalid {
+  border-inline-start: 2px solid var(--bad);
+}
+
+/* ------------------------------------------------------------------- the grids --- */
+
+/* The status marks, side by side. `auto-fill` rather than a fixed count: the point of this row is
+   that the marks read as ONE FAMILY, and that judgement needs them on as few lines as the window
+   allows, not on a number of lines somebody picked. */
+.lab-marks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(210px, 100%), 1fr));
+  gap: 12px;
+}
+
+.lab-mark {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xs);
+}
+
+/* The canonical states are whole panels rather than glyphs, so they get a wider track and a rule
+   between them — an EmptyState is already centred text on nothing, and two of them abutting look
+   like one state with two titles. */
+.lab-states {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+  gap: 16px;
+}
+
+.lab-state {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xs);
+}
+
+/* The canonical id — "M04 · no_projects · creation". It is a label on the specimen, not part of
+   it, so it is the quietest thing in the card. */
+.lab-state-id {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--faint);
+  overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------------- the book and its index --- */
+
+/* A sticky index beside the specimens. There are two dozen of them and they are long; without this
+   the only way to reach the one you are reviewing is to scroll past every other.
+   `minmax(0, 1fr)` on the second track, not `1fr`: a grid item's default `min-width:auto` lets one
+   wide specimen push the whole layout past the viewport. */
+.lab-layout {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+  margin-top: 28px;
+}
+
+.lab-nav {
+  position: sticky;
+  top: 90px;
+  display: grid;
+  gap: 2px;
+  max-height: calc(100dvh - 120px);
+  overflow: auto;
+  padding-inline-end: 6px;
+}
+
+.lab-nav a {
+  padding: 5px 8px;
+  border-radius: var(--r-xs);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+  transition: color var(--t-fast) var(--ease-out), background-color var(--t-fast) var(--ease-out);
+}
+
+.lab-nav a:hover {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+/* -------------------------------------------------------------------- narrow --- */
+
+/* Below the two-column threshold the index goes on top and stops sticking: 200px of nav beside a
+   175px specimen is not a review surface. */
+@media (max-width: 860px) {
+  .lab-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+  .lab-nav {
+    position: static;
+    grid-auto-flow: column;
+    grid-auto-columns: max-content;
+    max-height: none;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--line);
+  }
+  .lab-specimen {
+    padding: 16px;
+  }
+}
+
+/* system.css kills every transition under reduce with !important; restated so this sheet is
+   correct on its own terms rather than by someone else's blanket rule. */
+@media (prefers-reduced-motion: reduce) {
+  .lab-nav a {
+    transition: none;
+  }
+}

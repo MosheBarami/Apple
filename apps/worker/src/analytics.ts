@@ -288,7 +288,20 @@ export const OUTCOMES = ['ok', 'failed', 'unknown'] as const;
 export type Outcome = (typeof OUTCOMES)[number];
 
 /** How a run ended, mirroring SessionDO's own stop reasons. */
-export const BUILD_OUTCOMES = ['done', 'failed', 'stopped', 'quota', 'incomplete', 'error', 'unknown'] as const;
+/**
+ * HOW A RUN ENDED, in the vocabulary the rollups count in.
+ *
+ * `step_limit` and `timeout` were added because they were not distinguishable: a run killed by the
+ * step cap and a run killed by the wall clock both called `finishRun(agent, 'done')`, so the two
+ * most common ways a free build stops short were filed under the same label as a build that worked
+ * — and `successOf` below then counted them as successes. "How often do runs actually fail?" had an
+ * answer that was wrong in our favour, and wrong by the exact amount that matters most.
+ *
+ * This is the ANALYTICS vocabulary, deliberately wider than the `msg_end.stopReason` the browser is
+ * sent: that union lives in @golem/shared and is rendered by apps/web, and widening it is a change
+ * to a contract this file does not own.
+ */
+export const BUILD_OUTCOMES = ['done', 'failed', 'stopped', 'quota', 'incomplete', 'error', 'step_limit', 'timeout', 'unknown'] as const;
 export type BuildOutcome = (typeof BUILD_OUTCOMES)[number];
 
 /** Who performed an audited action. */
@@ -348,6 +361,18 @@ export interface BuildEvent extends EventBase {
   opsFailed: number | null;
   durationMs: number | null;
   neurons: number | null;
+  /**
+   * The PROVIDER's last word on whether the response completed — 'stop', 'length', 'tool_calls',
+   * 'error' — or null on a run that never reached inference, or one persisted by an older deploy.
+   *
+   * The product used to throw this away the moment it had finished writing an apology with it: the
+   * sentence "the model reached its output limit" was composed from it in do/session.ts and the
+   * value itself went nowhere. So "how many runs are getting cut off?" was answerable only one
+   * project at a time, by inference, from `messages` rows where stop_reason='error' and run_failure
+   * is null — and never across the fleet. A failure we can watch happening had no number attached
+   * to it anywhere.
+   */
+  finishReason: string | null;
 }
 
 /** One privileged or security-relevant action, allowed or refused. */
@@ -465,6 +490,11 @@ export function normalizeEvent(raw: unknown): Normalized {
           opsFailed: readCount(o['opsFailed']),
           durationMs: readCount(o['durationMs']),
           neurons: readCount(o['neurons']),
+          // Bounded and free-form: it is the provider's own token, and a provider we have not met
+          // may use a word this file does not know. Null rather than 'unknown' — a run that never
+          // reached inference genuinely has no finish reason, and that is not the same fact as a
+          // reason we failed to read.
+          finishReason: readText(o['finishReason'], 32),
         },
       };
     }
@@ -765,13 +795,29 @@ export interface SuccessRollup {
   rate: Metric;
 }
 
+/**
+ * WHAT COUNTS AS A FAILURE.
+ *
+ * `step_limit` and `timeout` are failures. They used to be `done` — the two branches that end a run
+ * on the step cap and on the wall clock both called `finishRun(agent, 'done')` — so the two most
+ * common shapes of a free build stopping short were counted here as successes.
+ *
+ * `incomplete` is a failure too, and was unclassified. do/session.ts's own comment at the branch
+ * that emits it says so in one sentence: "A run that still owes work has FAILED, and must not be
+ * reported as success." Leaving it out of the denominator contradicted the code that produces it.
+ *
+ * `stopped` and `quota` stay UNCLASSIFIED, deliberately, and for the reason in the doc comment
+ * below: the user pressed stop, or they ran out. Neither is a defect in the build.
+ */
+const FAILED_OUTCOMES = new Set(['failed', 'error', 'step_limit', 'timeout', 'incomplete']);
+
 function successOf(outcomes: readonly string[]): SuccessRollup {
   let ok = 0;
   let failed = 0;
   let unclassified = 0;
   for (const o of outcomes) {
     if (o === 'ok' || o === 'done') ok += 1;
-    else if (o === 'failed' || o === 'error') failed += 1;
+    else if (FAILED_OUTCOMES.has(o)) failed += 1;
     else unclassified += 1;
   }
   return { total: outcomes.length, ok, failed, unclassified, rate: rateMetric(ok, ok + failed, unclassified) };
@@ -1167,6 +1213,35 @@ export function windowTruncated(i: {
   return oldest > since;
 }
 
+export interface BuildRollup {
+  total: number;
+  /** One row per outcome — `build:step_limit` is now distinguishable from `build:done`. */
+  byOutcome: ErrorBucket[];
+  /**
+   * One row per provider finish reason, plus `none` for runs that never reached inference.
+   *
+   * This is the fleet-wide answer to "how many runs are getting cut off?": `length` is the
+   * truncation the product previously composed an apology from and then discarded. `fatal` on each
+   * row is how many of those builds also ended in a failed outcome, so a finish reason that is
+   * benign (`stop`, `tool_calls`) is visibly not the same thing as one that is not.
+   */
+  byFinishReason: ErrorBucket[];
+}
+
+/** Builds, counted by how they ended and by what the provider said about the last response. */
+export function buildRollup(events: readonly GolemEvent[]): BuildRollup {
+  const builds = events.filter(isBuild);
+  const failed = (b: BuildEvent) => FAILED_OUTCOMES.has(b.outcome);
+  return {
+    total: builds.length,
+    byOutcome: errorBuckets(builds.map((b) => ({ key: b.outcome, fatal: failed(b) })), builds.length),
+    byFinishReason: errorBuckets(
+      builds.map((b) => ({ key: b.finishReason ?? 'none', fatal: failed(b) })),
+      builds.length,
+    ),
+  };
+}
+
 export interface AnalyticsSummary {
   window: EventWindow;
   counts: Record<EventKind, number>;
@@ -1174,6 +1249,7 @@ export interface AnalyticsSummary {
   latency: LatencyRollup;
   tokens: TokenRollup;
   success: SuccessAnalytics;
+  builds: BuildRollup;
   errors: ErrorBreakdown;
   providers: BreakdownResult;
   models: BreakdownResult;
@@ -1197,6 +1273,7 @@ export function summarize(
     latency: latencyRollup(events),
     tokens: tokenRollup(events),
     success: successRollup(events),
+    builds: buildRollup(events),
     errors: errorBreakdown(events),
     providers: providerBreakdown(events),
     models: modelBreakdown(events),

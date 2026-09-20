@@ -1111,6 +1111,102 @@ test('Idempotency-Key replays the first answer and refuses a second, different b
   assert.equal(streamed.json.error.code, 'idempotency_not_supported_for_stream');
 });
 
+/**
+ * Defect D9daefc — the route table marked `/v1/projects/:id/runs` `idempotent: true` and NOTHING
+ * read the flag or the header.
+ *
+ * A customer whose POST timed out or came back 502 on the response path retries with the same
+ * `Idempotency-Key`, which is the natural reflex on an API whose `/v1/chat/completions` honours it
+ * and replays. The header was accepted and silently discarded, and what the retry got depended on
+ * timing: while the first run was still live, SessionDO's liveness guard answered 409 "a run is
+ * already in progress"; once it had finished, the retry started a SECOND run and spent the Credits
+ * again. Neither is what the caller was told they were protected from.
+ */
+test('Idempotency-Key on a run replays the first 202 instead of starting a second run', async () => {
+  const bundle = makeEnv({ session: async ({ path }) => (path === '/agent-run' ? { ok: true, started: true } : { ok: true }) });
+  const key = await seedKey(bundle, { scopes: [...K.API_SCOPES], projects: GRANTED });
+  const body = { input: 'build a market stall' };
+  const headers = { 'Idempotency-Key': 'run-42' };
+  const runs = () => bundle.trace.calls.filter((c) => c.path === '/agent-run').length;
+
+  const first = await call(`/v1/projects/${PROJECT_ID}/runs`, { method: 'POST', key: key.key, env: bundle.env, headers, body });
+  assert.equal(first.status, 202, first.text.slice(0, 200));
+  assert.equal(first.res.headers.get('Idempotency-Replayed'), null);
+  assert.equal(runs(), 1);
+
+  const retry = await call(`/v1/projects/${PROJECT_ID}/runs`, { method: 'POST', key: key.key, env: bundle.env, headers, body });
+  assert.equal(retry.status, 202, 'the retry was not replayed — the caller sees an error or a second run');
+  assert.equal(retry.res.headers.get('Idempotency-Replayed'), 'true');
+  assert.equal(retry.text, first.text, 'the replay was not byte-identical');
+  assert.equal(runs(), 1, 'the retry started a SECOND agent run on the same project');
+});
+
+test('the same run key with a different body is a conflict, and starts nothing', async () => {
+  const bundle = makeEnv({ session: async () => ({ ok: true, started: true }) });
+  const key = await seedKey(bundle, { scopes: [...K.API_SCOPES], projects: GRANTED });
+  const headers = { 'Idempotency-Key': 'run-43' };
+  await call(`/v1/projects/${PROJECT_ID}/runs`, { method: 'POST', key: key.key, env: bundle.env, headers, body: { input: 'build a stall' } });
+  const before = bundle.trace.calls.filter((c) => c.path === '/agent-run').length;
+
+  const reused = await call(`/v1/projects/${PROJECT_ID}/runs`, {
+    method: 'POST', key: key.key, env: bundle.env, headers, body: { input: 'delete everything' },
+  });
+  assert.equal(reused.status, 409);
+  assert.equal(reused.json.error.code, 'idempotency_key_reuse');
+  assert.equal(
+    bundle.trace.calls.filter((c) => c.path === '/agent-run').length,
+    before,
+    'a conflicting key still started a run — replaying the old answer would have been just as wrong',
+  );
+});
+
+test('a malformed run idempotency key is refused, not ignored', async () => {
+  const bundle = makeEnv({ session: async () => ({ ok: true, started: true }) });
+  const key = await seedKey(bundle, { scopes: [...K.API_SCOPES], projects: GRANTED });
+  const bad = await call(`/v1/projects/${PROJECT_ID}/runs`, {
+    method: 'POST', key: key.key, env: bundle.env, headers: { 'Idempotency-Key': 'has space' }, body: { input: 'x' },
+  });
+  assert.equal(bad.status, 400);
+  assert.equal(bad.json.error.code, 'invalid_idempotency_key');
+  assert.deepEqual(bundle.trace.calls.filter((c) => c.path === '/agent-run'), []);
+});
+
+test('validation and entitlement still decide before the key does', async () => {
+  const bundle = makeEnv({ session: async () => ({ ok: true, started: true }) });
+  const key = await seedKey(bundle, { scopes: [...K.API_SCOPES], projects: GRANTED });
+  const headers = { 'Idempotency-Key': 'run-44' };
+  // A bad body is a 400 whatever key it carries, and the refusal must NOT be stored: a caller has to
+  // be able to fix the body and retry with the same key.
+  const bad = await call(`/v1/projects/${PROJECT_ID}/runs`, { method: 'POST', key: key.key, env: bundle.env, headers, body: { input: '   ' } });
+  assert.equal(bad.status, 400);
+  assert.equal(bad.json.error.param, 'input');
+
+  const fixed = await call(`/v1/projects/${PROJECT_ID}/runs`, { method: 'POST', key: key.key, env: bundle.env, headers, body: { input: 'now with words' } });
+  assert.equal(fixed.status, 202, 'a refusal was frozen under the key, so the caller can never use it');
+  assert.equal(fixed.res.headers.get('Idempotency-Replayed'), null);
+});
+
+test('a test key gets the same guarantee, so CI can exercise it', async () => {
+  const bundle = makeEnv({ session: async () => ({ ok: true }) });
+  const key = await seedKey(bundle, { mode: 'test', scopes: [...K.API_SCOPES], projects: GRANTED });
+  const headers = { 'Idempotency-Key': 'run-sandbox-1' };
+  const first = await call(`/v1/projects/${PROJECT_ID}/runs`, { method: 'POST', key: key.key, env: bundle.env, headers, body: { input: 'x' } });
+  const again = await call(`/v1/projects/${PROJECT_ID}/runs`, { method: 'POST', key: key.key, env: bundle.env, headers, body: { input: 'x' } });
+  assert.equal(first.status, 202);
+  assert.equal(again.res.headers.get('Idempotency-Replayed'), 'true');
+  assert.equal(again.json.id, first.json.id, 'the sandbox handed out two different run ids for one key');
+});
+
+test('a run without the header is unaffected — every call still starts a run', async () => {
+  const bundle = makeEnv({ session: async () => ({ ok: true, started: true }) });
+  const key = await seedKey(bundle, { scopes: [...K.API_SCOPES], projects: GRANTED });
+  for (let i = 0; i < 2; i++) {
+    const r = await call(`/v1/projects/${PROJECT_ID}/runs`, { method: 'POST', key: key.key, env: bundle.env, body: { input: 'go' } });
+    assert.equal(r.status, 202);
+  }
+  assert.equal(bundle.trace.calls.filter((c) => c.path === '/agent-run').length, 2, 'idempotency was applied to callers who never asked for it');
+});
+
 test('an unknown /v1 path is a JSON 404, not the marketing 404 page', async () => {
   const bundle = makeEnv();
   const key = await seedKey(bundle, {});

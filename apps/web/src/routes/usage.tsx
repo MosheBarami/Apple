@@ -8,6 +8,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { PlanLadder } from '../components/plans';
 import { OrderSummaryDialog } from '../components/order-summary';
 import { meterView, periodComparisonLine, spendByKind } from '../components/usage-meter-model';
+import { maxUpgradeAvailable } from '../lib/creation-intent';
 import { formatNumber } from '../lib/format';
 import { Failure } from '../components/failure';
 import { PRODUCT_MODELS, PRODUCT_MODEL_INFO, PLAN_COPY, formatMoney, isPlanId, type PlanId } from '@golem/shared';
@@ -534,15 +535,22 @@ export function UsagePage() {
   // two independent readings of one payload is how they come to disagree — which is the bug this
   // page already had against the server it is reporting on. meterView decides which limit is
   // binding, keeps allowance and credits apart, and is tested on its own.
-  const view = meterView(me.data?.quota, Date.now(), { pending: me.isPending });
+  // w14 — the upgrade and downgrade path. Declared before the meter because the meter's dead-stop
+  // copy now depends on it: this page labels every unpurchasable tier "Not available yet" a few
+  // hundred pixels below, and the sentence above it may not say upgrading is the way through while
+  // this page says nothing is for sale.
+  const billing = useQuery({ queryKey: ['billing-config'], queryFn: fetchBillingConfig, retry: false });
+
+  // ONE MODEL FOR BOTH SURFACES. The rail's meter and this page describe the same two balances, and
+  // two independent readings of one payload is how they come to disagree — which is the bug this
+  // page already had against the server it is reporting on. meterView decides which limit is
+  // binding, keeps allowance and credits apart, and is tested on its own.
+  const view = meterView(me.data?.quota, Date.now(), { pending: me.isPending, upgradeAvailable: maxUpgradeAvailable(billing.data) });
 
   // Both halves come from the SAME rollup on the server, so the comparison is measured one way.
   // Reading this month off the quota and last month off the ledger would be two different bases
   // subtracted from each other, which is the shape of a figure nobody can reconcile.
   const comparison = periodComparisonLine(usage.data?.thisMonth, usage.data?.previousMonth);
-
-  // w14 — the upgrade and downgrade path.
-  const billing = useQuery({ queryKey: ['billing-config'], queryFn: fetchBillingConfig, retry: false });
   const { toast } = useToast();
   const [busyPlan, setBusyPlan] = useState<PlanId | null>(null);
   /**

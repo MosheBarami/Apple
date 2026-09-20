@@ -153,12 +153,17 @@ export function Turn({
           phaseMarks,
           stopReason: item.stopReason,
           error: item.error,
+          // The instant this client saw `msg_end`. Undefined for a reloaded turn, which watched
+          // nothing — those fall back to the last observed tool end, which they always have.
+          // A run interrupted mid-tool no longer does, because that tool now carries no invented
+          // end, and without this the terminal row would vanish for exactly those runs.
+          endedAt: item.endedAt,
         }),
         upcoming: plannedSteps,
         now,
         streaming: item.streaming,
       }),
-    [item.tools, item.stopReason, item.error, item.streaming, phaseMarks, plannedSteps, now],
+    [item.tools, item.stopReason, item.error, item.endedAt, item.streaming, phaseMarks, plannedSteps, now],
   );
 
   if (item.role === 'user') {

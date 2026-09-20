@@ -61,7 +61,7 @@ import { artifactCompletion } from '../artifact-completion';
 import { checkpointEvidence, checkpointCoverageNote } from '../checkpoint-evidence';
 import { advance, isTerminal, startPlaytest } from '../playtest-stream';
 import { creditsForNeurons } from '../pricing';
-import { chat as llmChat, BudgetError, RateLimitedError } from '../gateway';
+import { chat as llmChat, reasoningEffortApplies, BudgetError, RateLimitedError } from '../gateway';
 import { systemPrompt, collapseArtDirection, MEMORY_UPDATE_PROMPT } from '../prompts';
 import { designBrief } from '../design-brief';
 import { TOOLS, toolDefs, toolNames, targetOf, runTool, type AgentCtx, type PlaytestBus } from '../tools';
@@ -129,7 +129,7 @@ import {
 import { memoryAccessFor } from '../memory-store';
 import { EMPTY_PERSONALISATION, applyToolPermissions, deniedTools, memoryModeOf, personalisationForProject } from '../preferences';
 import { allModels } from '../providers/registry';
-import { recordEvent } from '../analytics';
+import { recordEvent, type BuildOutcome } from '../analytics';
 import { flushEvents } from '../analytics-sink';
 import { fenceToolOutput, describeThreats } from '../injection.ts';
 import { advisory, scoreSubmission, type Submission } from '../abuse.ts';
@@ -212,8 +212,16 @@ interface AgentState {
   priorStepFailed?: boolean;
   /** the last visual critique failed its quality gate */
   visualDefectsFound?: boolean;
-  /** what the user's request looks like, classified once when the run starts */
-  traits?: Pick<ReasoningSignals, 'visualDesignTask' | 'multiSystemTask' | 'ambiguousRequest' | 'conversational'>;
+  /**
+   * What the user's request looks like, classified once when the run starts.
+   *
+   * `uiDesignTask` was missing from this Pick while `classifyRequest` returned it and line ~2956
+   * assigned the whole object — so the value was written to storage, round-tripped, and spread into
+   * `chooseEffort`'s signals on every step, with the type contract saying it was not there. A field
+   * that exists at runtime and not in the type is a field no reader can be written against, which is
+   * how it came to be classified, stored, spread and read by nobody.
+   */
+  traits?: Pick<ReasoningSignals, 'visualDesignTask' | 'uiDesignTask' | 'multiSystemTask' | 'ambiguousRequest' | 'conversational'>;
   /** pins the reasoning tier for the whole run; set only by the A/B harness, never in production */
   forcedEffort?: Effort;
   /** a mutating tool has succeeded this run, so there is something to show for it */
@@ -271,6 +279,16 @@ interface AgentState {
   passes?: PassRecord[];
   /** a rebuild has already been ordered this run; ordering it twice would loop */
   rebuildOrdered?: boolean;
+  /**
+   * The provider's own last word on the most recent response — 'stop', 'tool_calls', 'length',
+   * 'error'. Carried on the run's state rather than in a local so `finishRun` can record it.
+   *
+   * The value was being read, used to compose the sentence "the model reached its output limit
+   * before finishing this step", and then dropped. So the one failure a user can watch happening
+   * had no number attached to it anywhere: 'length' truncation was recoverable per-project by
+   * inference from `messages` and never across the fleet. See BuildEvent.finishReason.
+   */
+  lastFinishReason?: string;
   // ---- live-UI state. Optional so a run persisted by an older deployment
   // deserialises unchanged and simply replays an emptier snapshot. ----
   /** the stage the run is currently in, for the reconnect snapshot */
@@ -389,7 +407,7 @@ function effectiveProductModel(mode: GolemMode, requested?: ProductModel): Produ
 }
 
 /** Apple uses the existing limited Clay gateway configuration while retaining Stone's tools. */
-function gatewayModelFor(mode: GolemMode, productModel?: ProductModel): string {
+export function gatewayModelFor(mode: GolemMode, productModel?: ProductModel): string {
   if (productModel === 'apple') return 'clay';
   if (productModel === 'apple-max') return mode === 'clay' ? 'stone' : mode;
   return mode;
@@ -400,8 +418,31 @@ function maxStepsFor(mode: GolemMode, productModel?: ProductModel): number {
   return productModel === 'apple' ? Math.min(STEP_LIMITS[mode], STEP_LIMITS.clay) : STEP_LIMITS[mode];
 }
 
-function baseTokensFor(mode: GolemMode, productModel?: ProductModel): number {
-  return productModel === 'apple' ? MODE_BASE_TOKENS.clay : MODE_BASE_TOKENS[mode];
+/**
+ * THE OUTPUT BUDGET FOLLOWS THE TOOLSET, AND THE TOOLSET IS KEYED ON `mode`.
+ *
+ * This used to read `productModel === 'apple' ? MODE_BASE_TOKENS.clay : MODE_BASE_TOKENS[mode]`,
+ * which sized the free lane's answer as though it were a Plan-mode answer. It is not: the tools a
+ * run is offered come from `toolsForMode(agent.mode, …)` — see runStep — and that function does
+ * not look at the product model at all, so a free Agent run is handed run_luau, edit_script and
+ * delete_instances and then given 2,000 output tokens (MODE_BASE_TOKENS.clay × high) to express
+ * one. The paid lane gets 5,500 for the identical toolset.
+ *
+ * The measurement that sized MODE_BASE_TOKENS.stone is in gateway.ts: a market-stall build script
+ * is ~5,300 characters, and at 2,400 output tokens it came back `finish_reason: "length"` — an
+ * unparseable tool call, nothing built, and the Credits spent. Asking the free lane to do the
+ * Stone job on a Clay budget is that failure made structural.
+ *
+ * So: the budget is whatever the offered toolset is sized for. What the free lane is still bounded
+ * by is `maxStepsFor` (fewer steps) and the cheaper model behind `gatewayModelFor` — bounds that
+ * make a run smaller rather than making it fail halfway through writing a tool call.
+ *
+ * Exported alongside `gatewayModelFor` because the budget that reaches the provider is the MINIMUM
+ * of the two — llmChat clamps with `Math.min(req.maxTokens ?? cfg.maxTokens, cfg.maxTokens)` — so
+ * a guard that reads only this half would have stayed green through the whole defect.
+ */
+export function baseTokensFor(mode: GolemMode): number {
+  return MODE_BASE_TOKENS[mode];
 }
 const STEP_STALE_MS = 180_000;
 
@@ -1333,6 +1374,50 @@ export class SessionDO extends DurableObject<Env> {
   }
 
   /**
+   * WHAT THE OPEN TABS WERE LAST TOLD, so a change can be told to them too.
+   *
+   * Every `studio_status connected:true` in this file is broadcast by something that HAPPENS — a
+   * poll arriving, a pairing, a queue being cleared. A plugin going away does not happen; it is the
+   * absence of the next poll, and absences broadcast nothing. So a user who closed Studio, or whose
+   * plugin took any of its own terminal paths, kept a green "Studio · <place>" pill in the header
+   * until they reloaded the page. `pluginConnected()` — which the model reads — correctly refused to
+   * build the whole time: two answers to one question on one screen, which is the defect this file
+   * already carries a comment about at the wake path.
+   *
+   * There is no timer to hang this on that would not fight for the object's single alarm with the
+   * run loop, which resets it to `now + 10ms` on every step. What there IS, already, is the
+   * browser's own 25-second ping (see `webSocketMessage`): a tab that is showing the pill is by
+   * definition a tab that is talking to us. Asking the question when it does costs one synchronous
+   * comparison and bounds the stale pill at one ping instead of at forever.
+   */
+  private studioAnnouncedConnected = false;
+
+  /**
+   * Announce a plugin that stopped polling, ONCE, to everyone watching.
+   *
+   * Guarded on what was last announced rather than on a raw poll of the state, so this cannot
+   * become a `studio_status` per ping per tab. Synchronous on purpose: `pluginConnectedNow()` is
+   * the same rule `pluginConnected()` applies, minus a storage read the constructor has already
+   * done, so there is no second rule here to drift.
+   */
+  private noticeStudioSilence(): void {
+    if (!this.studioAnnouncedConnected) return;
+    if (this.pluginConnectedNow()) return;
+    this.studioAnnouncedConnected = false;
+    const last = Math.max(this.lastSeenWrittenAt, this.pluginLastSeenMs);
+    this.broadcast({
+      type: 'studio_status',
+      connected: false,
+      // NOT null. "Never connected" and "connected until a moment ago" are different facts and the
+      // header renders them differently — see the note on `studioLastSeenAt` in the hello frame.
+      lastSeenAt: last > 0 ? last : null,
+      queuedOps: this.opQueue.length,
+      place: this.boundPlace,
+      placeMismatch: null,
+    });
+  }
+
+  /**
    * ONE rule, so there cannot be two answers. Both readers above are this function.
    *
    * `pollDueBy` EXTENDS the window, it does not replace it. Its own declaration says what it is —
@@ -1369,10 +1454,21 @@ export class SessionDO extends DurableObject<Env> {
    * `pluginConnected()` does: the heartbeat is only written to storage every 4s, so between
    * checkpoints storage is behind by up to that much and reporting it would age the link by four
    * seconds every time somebody opened a tab.
+   *
+   * IT DID NOT DO THAT, and the comment above was a claim rather than a description. The in-memory
+   * copy of the heartbeat is `pluginLastSeenMs` — written on EVERY poll. `lastSeenWrittenAt` is the
+   * checkpoint clock: it is assigned `now` in the same breath as `storage.put('pluginLastSeen',
+   * now)` and is therefore always EQUAL to `stored`, never ahead of it, so the Math.max could not
+   * move the answer by a millisecond. What it reported was the last CHECKPOINT, up to four seconds
+   * behind the truth — stalest during a fast run, which is when the checkpoint is skipped most and
+   * when the most is happening.
+   *
+   * `pluginConnected()` three lines up takes the max of all THREE. This now asks the same question
+   * of the same three clocks, which is the only way there cannot be a second answer.
    */
   private async pluginLastSeenAt(): Promise<number | null> {
     const stored = (await this.ctx.storage.get<number>('pluginLastSeen')) ?? 0;
-    const last = Math.max(stored, this.lastSeenWrittenAt);
+    const last = Math.max(stored, this.lastSeenWrittenAt, this.pluginLastSeenMs);
     return last > 0 ? last : null;
   }
 
@@ -1456,11 +1552,17 @@ export class SessionDO extends DurableObject<Env> {
       // rather than a special one-off payload.
       this.broadcastPresence();
       const quota = await this.quotaState(bind.ownerId);
+      // What this tab is about to be told is, from now on, what it believes — including after this
+      // object was evicted and revived with a heartbeat it never saw arrive. Arming the flag from
+      // the sentence we are actually sending is what makes `noticeStudioSilence` able to correct a
+      // pill that was painted green by a hello rather than by a poll.
+      const studioConnected = await this.pluginConnected();
+      if (studioConnected) this.studioAnnouncedConnected = true;
       server.send(
         JSON.stringify({
           type: 'hello',
           sessionId: bind.projectId,
-          studioConnected: await this.pluginConnected(),
+          studioConnected,
           quota,
           //[[ "NOT CONNECTED" IS TWO DIFFERENT FACTS AND THE USER CAN ONLY ACT ON ONE OF THEM.
           //
@@ -2211,6 +2313,9 @@ export class SessionDO extends DurableObject<Env> {
       this.pluginLastSeenMs = 0;
       this.boundPlace = null;
       this.placeMismatch = null;
+      // Already said, so `noticeStudioSilence` must not say it a second time when the next ping
+      // arrives and finds the heartbeat cleared.
+      this.studioAnnouncedConnected = false;
       this.broadcast({ type: 'studio_status', connected: false, lastSeenAt: null, queuedOps: this.opQueue.length, place: null, placeMismatch: null });
       // A poll parked in the long hold is released at once, so the plugin learns within a
       // round trip instead of after the hold expires.
@@ -2257,9 +2362,12 @@ export class SessionDO extends DurableObject<Env> {
       }
       // Every open tab is told the new depth, or the panel keeps offering to discard work that is
       // already gone.
+      const stillConnected = await this.pluginConnected();
+      // This frame IS what the tabs were last told, so `noticeStudioSilence` must not repeat it.
+      this.studioAnnouncedConnected = stillConnected;
       this.broadcast({
         type: 'studio_status',
-        connected: await this.pluginConnected(),
+        connected: stillConnected,
         lastSeenAt: await this.pluginLastSeenAt(),
         queuedOps: 0,
         place: this.boundPlace,
@@ -2342,6 +2450,11 @@ export class SessionDO extends DurableObject<Env> {
     }
     const bind = await this.bind();
     if (!bind) return;
+
+    // A tab that is talking to us is a tab that is showing the Studio pill. If the plugin has gone
+    // quiet since we last said otherwise, this is where everyone watching finds out — there is no
+    // other event that fires when a plugin simply stops. See `noticeStudioSilence`.
+    this.noticeStudioSilence();
 
     //[[ WHAT THIS SOCKET MAY DO, ASKED PER MESSAGE.
     //
@@ -2931,6 +3044,9 @@ export class SessionDO extends DurableObject<Env> {
     // Socket grants expire even when no run is active. The deadline is represented by an alarm so
     // hibernation cannot turn "expires at 14:00" into "expires when the tab next sends a frame".
     await this.enforceSocketExpiries();
+    // Cheap, and it catches the case the ping cannot: Studio closed mid-run, while the run loop is
+    // the thing waking this object.
+    this.noticeStudioSilence();
     const agent = await this.ctx.storage.get<AgentState>('agent');
     if (!agent) return;
     if (agent.status === 'idle') return;
@@ -3038,13 +3154,15 @@ export class SessionDO extends DurableObject<Env> {
     const duration = runDurationVerdict({ startedAt: agent.startedAt, mode: agent.mode, now: Date.now() });
     if (duration.over) {
       agent.finalText = agent.finalText || duration.reason;
-      await this.finishRun(agent, 'done');
+      // 'done' on the wire, 'timeout' in the log. The user is told what stopped it by
+      // `duration.reason`; the rollups now count it as the failure it is.
+      await this.finishRun(agent, 'done', undefined, undefined, 'timeout');
       return;
     }
 
     if (agent.step > agent.maxSteps) {
       agent.finalText = agent.finalText || 'I reached the step limit for this run. Progress so far is saved — send another message to continue.';
-      await this.finishRun(agent, 'done');
+      await this.finishRun(agent, 'done', undefined, undefined, 'step_limit');
       return;
     }
     if (agent.step > 1) {
@@ -3164,18 +3282,45 @@ export class SessionDO extends DurableObject<Env> {
     });
     if (agent.forcedEffort) choice.effort = agent.forcedEffort;
     if (choice.effort === 'high') agent.highEffortUsed = (agent.highEffortUsed ?? 0) + 1;
-    // Surface the reasoning POLICY's decision — the tier it picked and its own
-    // one-line justification. This is a classification of the request, never
-    // the model's hidden reasoning, and carries no prompt or transcript text.
-    agent.effort = choice.effort;
-    agent.effortReason = choice.reason;
+    const gatewayModel = gatewayModelFor(agent.mode, agent.productModel);
+    //[[ REPORT THE SETTING THAT WAS APPLIED, NOT THE ONE THAT WAS CHOSEN.
+    //
+    //   The policy decides an effort for every step whatever the lane. Whether that effort reaches
+    //   the model is a different question, and on the free lane the answer was no: `gatewayModelFor`
+    //   routes `productModel: 'apple'` to `clay`, which is a Qwen3 route, and the Workers AI adapter
+    //   drops `reasoning_effort` for anything that is not a GLM route — correctly, because sending
+    //   an undocumented field to Qwen would be the wrong fix. So the tier was computed, rendered in
+    //   the thinking card, written into the run's replayable history, and then dropped before the
+    //   request left the building. The thinking card said the model was thinking hard. It was not.
+    //
+    //   OMITTED rather than downgraded to 'low'. "Low" would be a second false claim — the provider
+    //   was told nothing at all, which is not the same as being told to think cheaply — and the
+    //   field is already optional on the wire for runs that predate it, so a UI that renders
+    //   nothing for an absent effort is the behaviour that already exists.
+    //
+    //   `agent.effort` is cleared for the same reason and not merely left unsent: it is replayed on
+    //   `run_state` after a refresh (see runSnapshot), so a value kept here would put the claim back
+    //   on screen by another route.
+    //
+    //   What the policy chose is NOT wasted on this lane — `tokensForEffort` still sizes the output
+    //   budget from it. What is withheld is only the statement about the provider's own knob. ]]
+    const effortApplied = await reasoningEffortApplies(this.env, gatewayModel);
+    if (effortApplied) {
+      // Surface the reasoning POLICY's decision — the tier it picked and its own
+      // one-line justification. This is a classification of the request, never
+      // the model's hidden reasoning, and carries no prompt or transcript text.
+      agent.effort = choice.effort;
+      agent.effortReason = choice.reason;
+    } else {
+      delete agent.effort;
+      delete agent.effortReason;
+    }
     this.broadcast({
       type: 'agent_status',
       phase: agent.phase ?? 'planning',
       step: agent.step,
       totalSteps: agent.maxSteps,
-      effort: choice.effort,
-      effortReason: choice.reason,
+      ...(effortApplied ? { effort: choice.effort, effortReason: choice.reason } : {}),
       creditsSpent: agent.creditsSpent,
     });
 
@@ -3183,7 +3328,6 @@ export class SessionDO extends DurableObject<Env> {
     // deployment, and the whole point is to stop paying for a tool call that cannot succeed.
     const hasAssetLibrary = await assetLibraryAvailable(this.env);
 
-    const gatewayModel = gatewayModelFor(agent.mode, agent.productModel);
     const res = await llmChat(
       this.env,
       {
@@ -3191,7 +3335,7 @@ export class SessionDO extends DurableObject<Env> {
         messages: agent.llm,
         tools: toolDefs(studioConnected, offeredAllowed, { assetLibrary: hasAssetLibrary }),
         reasoningEffort: choice.effort,
-        maxTokens: tokensForEffort(baseTokensFor(agent.mode, agent.productModel), choice.effort),
+        maxTokens: tokensForEffort(baseTokensFor(agent.mode), choice.effort),
       },
       // Same affinity key for every step of the run, so Workers AI can reuse the prefill for the
       // identical system-prompt-and-tools prefix instead of recomputing ~5,200 tokens each step.
@@ -3307,6 +3451,11 @@ export class SessionDO extends DurableObject<Env> {
     // Everything else must positively say `stop`; an absent reason fails closed rather than
     // inventing completion for a response shape an older/newer adapter did not describe.
     const finishReason = (res as { finishReason?: 'stop' | 'tool_calls' | 'length' | 'error' }).finishReason;
+    // KEPT, not only read. `finishRun` records it on the build log so a truncation is countable
+    // across the fleet rather than only reconstructable one project at a time. Written on EVERY
+    // step, so the value on the log is the last thing the provider said about this run — which is
+    // the response the run ended on.
+    agent.lastFinishReason = finishReason;
     if (!res.toolCalls.length && finishReason !== 'stop') {
       const providerNote =
         finishReason === 'length'
@@ -3760,6 +3909,19 @@ export class SessionDO extends DurableObject<Env> {
      * artifact/incomplete safeguards below.
      */
     contentOverride?: string,
+    /**
+     * HOW THE RUN ENDED, FOR THE BUILD LOG — a finer answer than `reason` where one exists.
+     *
+     * A run killed by the step cap and a run killed by the wall clock both end with `reason:
+     * 'done'`, because `done` is what the browser's `msg_end.stopReason` union can carry: that
+     * union lives in @golem/shared and is rendered by apps/web, and widening it is a change to a
+     * contract this file does not own. But the ANALYTICS vocabulary is this file's to widen, and
+     * filing "stopped three steps in, unfinished, and paid for" under the same label as "it worked"
+     * is what made every failure-rate number wrong in our own favour.
+     *
+     * Omitted means `reason`, which is what every ordinary caller wants.
+     */
+    buildOutcome?: BuildOutcome,
   ) {
     const artifact = artifactCompletion(agent.mode === 'clay' ? undefined : agent.request, agent.trace);
     if (reason === 'done' && artifact.missing) reason = 'incomplete';
@@ -3954,7 +4116,13 @@ export class SessionDO extends DurableObject<Env> {
     // the cost rollup reports that run as unreadable instead of adding a zero to the total.
     recordEvent({
       kind: 'build',
-      outcome: reason,
+      // NOT `reason`. See the `buildOutcome` parameter: `done` is the only thing the browser's
+      // stopReason union can carry for a step-cap or wall-clock exit, and counting those as
+      // successes is the defect. The override never applies when `finishRun` rewrote `reason`
+      // above — an artifact-missing run is `incomplete` whatever the caller hoped for — which is
+      // why this reads `reason === 'done' ? …` rather than taking the override unconditionally.
+      outcome: reason === 'done' ? (buildOutcome ?? 'done') : reason,
+      finishReason: agent.lastFinishReason ?? null,
       steps: agent.step,
       opsApplied: agent.trace.filter((t) => t.ok).length,
       opsFailed: agent.trace.filter((t) => !t.ok).length,
@@ -4568,6 +4736,11 @@ export class SessionDO extends DurableObject<Env> {
     // amplification. Keep it in memory and only checkpoint it to storage every few seconds.
     const now = Date.now();
     this.pluginLastSeenMs = now;
+    // A poll IS the plugin being here. Whatever the browser was last told, from this instant the
+    // truth is "connected" — so the flag that decides whether a later silence is worth announcing
+    // is armed here rather than only on the `!wasConnected` transition below, which a warm object
+    // that has been polling since before this deploy would never take.
+    this.studioAnnouncedConnected = true;
     if (now - this.lastSeenWrittenAt > 4000) {
       this.lastSeenWrittenAt = now;
       await this.ctx.storage.put('pluginLastSeen', now);

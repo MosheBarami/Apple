@@ -30,6 +30,18 @@
 :root {
   color-scheme: dark;
 
+  /*
+   * THE ADDRESS BAR IS PART OF THE PAGE, AND IT WAS A DIFFERENT COLOUR FROM IT.
+   *
+   * Both layouts shipped `<meta name="theme-color" content="#080808">` — the retired pre-warm-ramp
+   * black — so on a phone the browser band above this page was a cooler, darker black than the
+   * #141312 below it and left a visible seam at the top of every route. `--theme-color` is that
+   * value derived from the palette instead of typed beside it: the layouts' inline script reads
+   * this property off :root and writes it into the meta, so the band can never disagree with the
+   * page again, in either theme.
+   */
+  --theme-color: #141312;
+
   /* The ramp. Four steps and an inverted one, which is all the reference uses. */
   --ground: #141312;
   --raised: #171615;
@@ -87,6 +99,64 @@
   --control-h: 36px;
 
   --ease: cubic-bezier(0.22, 0.68, 0.24, 1);
+
+  /* The warm glow behind the composer, tokenised so the light theme can carry its own strength.
+     A terracotta at 16% is a visible lift on #141312 and invisible on #f4f3f2. */
+  --glow-strong: rgba(217, 149, 118, 0.16);
+  --glow-soft: rgba(217, 149, 118, 0.05);
+}
+
+/*
+ * THE LANDING PAGE WAS THE ONE ROUTE WITH NO LIGHT THEME AND NO TOGGLE.
+ *
+ * Every other page imports global.css, which defines :root[data-theme='light']; this file defined
+ * one ramp and Landing.astro shipped no theme script, so switching to light on /pricing and
+ * clicking the wordmark landed a reader on a dark homepage with no control to change it — the
+ * site's one visible preference, silently dropped on its front page.
+ *
+ * This is the same ramp inverted rather than a second design: every step keeps its ROLE (ground is
+ * the page, raised is one step off it, inverted is the opposite end) and its warmth (red highest,
+ * blue lowest, at every step), so nothing in the rules below this block had to change. Two things
+ * could not simply invert and are named:
+ *
+ *   THE ACCENT. #00d492 measures 1.75:1 on #f4f3f2 — unreadable. The hue is kept and the value
+ *   dropped to #00694a (6.07:1 on the page, 5.5:1 on its own 12% tint), so the one saturated colour
+ *   is still the one saturated colour and is still legible. The tint itself stays mixed from the
+ *   bright green, because a tint's job is to be a tint.
+ *
+ *   THE COMPOSER. On dark it is a dark translucent fill with a near-white rim, because the rim is
+ *   what carries brightness there. On light the page is already the bright thing, so the composer
+ *   becomes the solid white slab the reference actually uses, with a dark hairline.
+ */
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --theme-color: #f4f3f2;
+
+  --ground: #f4f3f2;
+  --raised: #ffffff;
+  --surface: #ebeae8;
+  --surface-2: #dedcda;
+  --card: var(--surface);
+  --inverted: #141312;
+
+  --ink: #141312;
+  --ink-secondary: #343230;
+  --muted: #63605d;
+  --faint: #706d6a;
+
+  --line: rgba(20, 19, 18, 0.10);
+  --control-fill: rgba(20, 19, 18, 0.05);
+
+  --accent: #00694a;
+  --accent-soft: color-mix(in srgb, #00d492 12%, transparent);
+  --accent-ink: #00583e;
+
+  --composer-fill: #ffffff;
+  --composer-rim: rgba(20, 19, 18, 0.16);
+
+  --glow-strong: rgba(217, 149, 118, 0.22);
+  --glow-soft: rgba(217, 149, 118, 0.08);
 }
 
 * { box-sizing: border-box; }
@@ -232,6 +302,17 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
   border: 0;
 }
 .pill-quiet:hover { background: var(--surface-2); opacity: 1; }
+/* The right-hand group. The link row is absolutely centred, so the header's flow children are the
+   wordmark and this — two items, which is what `space-between` on the shell expects. Adding the
+   toggle as a third flow child instead pushed it into the centre, under the nav. */
+.header-actions { display: flex; align-items: center; gap: 6px; }
+/* A square instance of the same 36px control, so the icon is optically centred rather than sitting
+   in a button padded for a word. `currentColor` inherits --ink from .pill-quiet, which is how one
+   pair of glyphs works in both themes. */
+.pill-icon { width: var(--control-h); padding: 0; justify-content: center; cursor: pointer; }
+.pill-icon .icon-moon { display: none; }
+.pill-icon[aria-pressed='true'] .icon-sun { display: none; }
+.pill-icon[aria-pressed='true'] .icon-moon { display: block; }
 
 /* ----------------------------------------------------------------- hero */
 
@@ -267,7 +348,7 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
   position: absolute; left: 50%; top: -18%;
   width: min(760px, 78vw); height: 92%;
   transform: translateX(-50%);
-  background: radial-gradient(ellipse at 50% 40%, rgba(217, 149, 118, 0.16), rgba(217, 149, 118, 0.05) 42%, transparent 68%);
+  background: radial-gradient(ellipse at 50% 40%, var(--glow-strong), var(--glow-soft) 42%, transparent 68%);
   filter: blur(26px);
   animation: column-breathe 14s ease-in-out infinite alternate;
 }
@@ -279,7 +360,7 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
 .atmosphere .ridge { animation: settle 26s ease-in-out infinite alternate; }
 @keyframes drift { from { transform: translateX(-50%) translateY(0); } to { transform: translateX(calc(-50% - 26px)) translateY(-14px); } }
 @keyframes settle { from { opacity: 0.4; } to { opacity: 0.68; } }
-.atmosphere::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(20,19,18,0) 30%, var(--ground) 92%); }
+.atmosphere::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 30%, var(--ground) 92%); }
 
 /* The focal object is the product's own composer, not a screenshot of it.
    THE GROUP, NOT JUST THE BOX. On the bar the composer and the row beneath it are one block: 40px

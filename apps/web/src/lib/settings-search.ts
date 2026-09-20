@@ -109,7 +109,9 @@ export const SETTING_FIELDS: readonly SettingField[] = [
     section: 'Notifications',
     keywords: ['notification', 'alerts', 'mentions', 'build failed', 'email me', 'unsubscribe', 'turn off'],
   },
-  { id: 'training-opt-in', title: 'Contribute anonymised snippets', section: 'Privacy', keywords: ['training', 'privacy', 'data', 'opt in', 'opt out'] },
+  // Was 'training-opt-in', a control. Apple does not train on customer work, so there is nothing to
+  // opt into — but somebody searching "training" deserves to find the statement that says so.
+  { id: 'training-promise', title: 'Apple never trains on your work', section: 'Privacy', keywords: ['training', 'privacy', 'data', 'opt in', 'opt out', 'model'] },
   {
     id: 'analytics-opt-out',
     title: 'Analytics',

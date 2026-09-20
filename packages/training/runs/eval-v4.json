@@ -1,0 +1,316 @@
+{
+ "model": "unsloth/Llama-3.2-3B-Instruct",
+ "adapter": "adapters/apple-v4-best",
+ "rows": {
+  "unlock-prerequisites": {
+   "family": "unlock-prerequisites",
+   "kind": "game-logic",
+   "reference": {
+    "role": "assistant",
+    "content": "```luau\nreturn function(required, completed)\n    if type(required) ~= \"table\" or type(completed) ~= \"table\" or getmetatable(required) ~= nil or getmetatable(completed) ~= nil then return false end\n    for _, id in ipairs(required) do\n        if type(id) ~= \"string\" or id == \"\" or completed[id] ~= true then return false end\n    end\n    return true\nend\n```"
+   },
+   "base": "Here is a standalone Luau module that meets the requirements:\n```lua\nlocal module = {}\n\nmodule.unlocked = function(required, completed)\n    -- Check if inputs are tables\n    if type(required) ~= \"table\" or type(completed) ~= \"table\" then\n        return false\n    end\n\n    -- Check if required is an array\n    if #required == 0 then\n        return true\n    end\n\n    -- Check if required has a metatable\n    if getmetatable(required) then\n        return false\n    end\n\n    -- Validate required array\n    for i, v in ipairs(required) do\n        if type(v) ~= \"string\" or #v == 0 then\n            return false\n        end\n    end\n\n    -- Validate completed set\n    for k, v in pairs(completed) do\n        if type(k) ~= \"string\" or type(v) ~= \"boolean\" then\n            return false\n        end\n    end\n\n    -- Check if all required IDs are mapped to true\n    for _, v in ipairs(required) do\n        if completed[v] ~= true then\n            return false\n        end\n    end\n\n    return true\nend\n\nreturn module\n```\nHere's an explanation of the code:\n\n1. We first check if the inputs are tables. If not, we return `false`.\n2. We then check if the `required` array is empty. If it is, we return `true` since there are no requirements.\n3. We check if the `required` array has a metatable. If it does, we return `false` since the problem statement requires that the tables have no metatable.\n4. We validate the `required` array by checking if each element is a non-empty string.\n5. We validate the `completed` set by checking if each key is a string and each value is a boolean.\n6. We check if all required IDs are mapped to `true` in the `completed` set.\n7. If all checks pass, we return `true`.\n\nYou can use this module like this:\n```lua\nlocal module = require(script.unlocked)\n\nlocal required = {\"req1\", \"req2\"}\nlocal completed = {\"req1\" = true, \"req2\" = true}\n\nprint(module.unlocked(required, completed)) -- prints: true\n\nlocal invalid_completed = {\"req1\" = true, \"req3\" = true}\nprint(module.unlocked(required, invalid_completed)) -- prints: false\n\nlocal invalid_required = {\"req1\", \"req2\", 123}\nprint(module.unlocked(invalid_required, completed)) -- prints: false\n```",
+   "adapter": "```luau\nlocal function validate(requirements)\n    if type(requirements) ~= \"table\" or getmetatable(requirements) ~= nil then return false end\n    local required = requirements.required\n    local completed = requirements.completed\n    if type(required) ~= \"table\" or type(completed) ~= \"table\" then return false end\n    for key in pairs(required) do\n        if type(key) ~= \"string\" or key == \"\" or getmetatable(key) ~= nil then return false end\n        if required[key] ~= true then return false end\n    end\n    for key in pairs(completed) do\n        if type(key) ~= \"string\" or key == \"\" or getmetatable(key) ~= nil then return false end\n        if completed[key] ~= true then return false end\n    end\n    return true\nend\nreturn function(required, completed)\n    if not validate({required = required, completed = completed}) then return false end\n    for key in pairs(required) do\n        if not completed[key] then return false end\n    end\n    return true\nend\n```"
+  },
+  "weighted-selection": {
+   "family": "weighted-selection",
+   "kind": "game-logic",
+   "reference": {
+    "role": "assistant",
+    "content": "```luau\nlocal function array(value)\n    if type(value) ~= \"table\" or getmetatable(value) ~= nil then return false end\n    local length = #value\n    for key in pairs(value) do\n        if type(key) ~= \"number\" or key % 1 ~= 0 or key < 1 or key > length then return false end\n    end\n    for i = 1, length do\n        if value[i] == nil then return false end\n    end\n    return true\nend\nreturn function(weights, ticket)\n    if not array(weights) or #weights == 0 then return nil end\n    if type(ticket) ~= \"number\" or ticket ~= ticket or math.abs(ticket) == math.huge then return nil end\n    local total = 0\n    for i = 1, #weights do\n        local weight = weights[i]\n        if type(weight) ~= \"number\" or weight ~= weight or math.abs(weight) == math.huge or weight < 0 then return nil end\n        total += weight\n        if total ~= total or math.abs(total) == math.huge then return nil end\n    end\n    if total <= 0 or ticket < 0 or ticket >= total then return nil end\n    local cumulative = 0\n    for i = 1, #weights do\n        cumulative += weights[i]\n        if ticket < cumulative then return i end\n    end\n    return nil\nend\n```"
+   },
+   "base": "Here's a standalone Luau module that fulfills your requirements:\n\n```lua\nlocal function pick(weights, ticket)\n    -- Check if weights is a table\n    if type(weights) ~= \"table\" then\n        error(\"weights must be a table\")\n    end\n\n    -- Check if weights is nonempty\n    if #weights == 0 then\n        error(\"weights must be a nonempty array\")\n    end\n\n    -- Check if weights contains only nonnegative numbers\n    for _, weight in pairs(weights) do\n        if weight < 0 then\n            error(\"weights must contain only nonnegative numbers\")\n        end\n    end\n\n    -- Check if weights has a finite total\n    local total = 0\n    for _, weight in pairs(weights) do\n        total = total + weight\n        if total == math.huge or math.isinf(total) then\n            error(\"weights must have a finite total\")\n        end\n    end\n\n    -- Check if ticket is finite in the range [0, total)\n    if ticket < 0 or ticket >= total then\n        error(\"ticket must be finite in the range [0, total)\")\n    end\n\n    -- Generate a random number between 0 and total\n    local random = math.random(total)\n\n    -- Find the 1-based index of the selected weight\n    local index = 1\n    local cumulative = 0\n    for _, weight in pairs(weights) do\n        cumulative = cumulative + weight\n        if random <= cumulative then\n            return index\n        end\n        index = index + 1\n    end\n\n    -- This should never happen, but just in case\n    error(\"Failed to find index\")\nend\n```\n\nYou can use this module like this:\n\n```lua\nlocal weights = {1, 2, 3, 4, 5}\nlocal ticket = 10\nlocal index = pick(weights, ticket)\nprint(index)\n```\n\nThis module will return the 1-based index of the selected weight, or `nil` if the input is invalid.",
+   "adapter": "```luau\nlocal function finite(value)\n    return type(value) == \"number\" and value == value and math.abs(value) < math.huge\n        and value % 1 == 0 and math.abs(value) <= 9007199254740991\nend\nlocal function array(value)\n    if type(value) ~= \"table\" or getmetatable(value) ~= nil then return false end\n    local length = #value\n    for key in pairs(value) do\n        if type(key) ~= \"number\" or key % 1 ~= 0 or key < 1 or key > length then return false end\n    end\n    for i = 1, length do\n        if value[i] == nil then return false end\n    end\n    for i = 1, length do\n        if value[i] < 0 or value[i] > 1 then return false end\n    end\n    for i = 1, length do\n        if value[i] == 0 then return false end\n    end\n    for i = 1, length do\n        if value[i] > 1 then return false end\n    end\n    for i = 1, length do\n        if value[i] < value[i - 1] then return false end\n    end\n    for i = 1, length do\n        if value[i] > value[i - 1] then return false end\n    end\n    return true\nend\nreturn function(weights, ticket)\n    if not array(weights) or not finite(ticket) or ticket < 1 then return nil end\n    local total = 0\n    for i = 1, #weights do\n        if weights[i] == 0 then return nil end\n        total += weights[i]\n    end\n    if total == 0 then return nil end\n    local random = math.random()\n    for i = 1, #weights do\n        if random < total * weights[i] then return i end\n        total -= weights[i]\n    end\n    return #weights\nend\n```"
+  },
+  "grid-cell-position": {
+   "family": "ui-grid-placement",
+   "kind": "game-logic",
+   "reference": {
+    "role": "assistant",
+    "content": "```luau\nlocal function integerValue(value)\n    return type(value) == \"number\" and value == value and math.abs(value) < math.huge\n        and value % 1 == 0 and math.abs(value) <= 9007199254740991\nend\nreturn function(index, columns)\n    if not integerValue(index) or index < 1 or index > 1000000 then return nil end\n    if not integerValue(columns) or columns < 1 or columns > 1000 then return nil end\n    local zeroBased = index - 1\n    local row = math.floor(zeroBased / columns) + 1\n    local column = zeroBased % columns + 1\n    return row, column\nend\n```"
+   },
+   "base": "Here is a standalone Luau module that fulfills your requirements:\n\n```lua\nlocal module = {}\n\nfunction module.place(index, columns)\n    -- Check if index and columns are within valid ranges\n    if type(index) ~= \"number\" or type(columns) ~= \"number\" then\n        return nil\n    end\n\n    if index < 1 or index > 1000000 or columns < 1 or columns > 1000 then\n        return nil\n    end\n\n    -- Calculate the row and column\n    local row = math.floor((index - 1) / columns) + 1\n    local col = (index - 1) % columns + 1\n\n    return row, col\nend\n\nreturn module\n```\n\nThis module defines a single function `place` that takes two arguments, `index` and `columns`. It first checks if both arguments are numbers and within the valid ranges. If not, it returns `nil`. Otherwise, it calculates the row and column of the item at the given index using pure layout arithmetic, and returns them as a table.\n\nYou can use this module in your Roblox game like this:\n\n```lua\nlocal module = require(script.place)\n\nlocal index = 10\nlocal columns = 5\nlocal row, col = module.place(index, columns)\nprint(\"Row:\", row)\nprint(\"Column:\", col)\n```\n\nThis will output:\n\n```\nRow: 2\nColumn: 1\n```",
+   "adapter": "```luau\nlocal function finite(value)\n    return type(value) == \"number\" and value == value and math.abs(value) < math.huge and value % 1 == 0 and value >= 0 and value <= 9007199254740991\n        and value % 1000000 == 0 and value <= 999999999999999\nend\nreturn function(index, columns)\n    if not finite(index) or not finite(columns) then return nil end\n    local row = math.floor(index / columns)\n    local col = index % columns + 1\n    return row, col\nend\n```"
+  },
+  "scrollbar-thumb": {
+   "family": "ui-scrollbar-thumb",
+   "kind": "game-logic",
+   "reference": {
+    "role": "assistant",
+    "content": "```luau\nlocal function finite(value)\n    return type(value) == \"number\" and value == value and math.abs(value) < math.huge\nend\nreturn function(contentHeight, viewportHeight, scroll, trackHeight, minimumThumb)\n    if not finite(contentHeight) or not finite(viewportHeight) or not finite(scroll) then return nil end\n    if not finite(trackHeight) or not finite(minimumThumb) then return nil end\n    if contentHeight <= 0 or viewportHeight <= 0 or trackHeight <= 0 then return nil end\n    if minimumThumb <= 0 or minimumThumb > trackHeight or scroll < 0 then return nil end\n    if viewportHeight >= contentHeight then return trackHeight, 0 end\n    local maximumScroll = contentHeight - viewportHeight\n    if scroll > maximumScroll then return nil end\n    local size = math.max(minimumThumb, trackHeight * viewportHeight / contentHeight)\n    return size, (trackHeight - size) * (scroll / maximumScroll)\nend\n```"
+   },
+   "base": "Here is a standalone Luau module that implements the requested functionality:\n\n```lua\nlocal module = {}\n\nfunction module:thumb(contentHeight, viewportHeight, scroll, trackHeight, minimumThumb)\n    -- Validate input values\n    if not (contentHeight > 0 and viewportHeight > 0 and trackHeight > 0 and minimumThumb > 0) then\n        return nil\n    end\n    if minimumThumb > trackHeight then\n        return nil\n    end\n    if scroll < 0 then\n        return nil\n    end\n\n    -- Calculate visible fraction\n    local visibleFraction = 1 - (scroll / (contentHeight - viewportHeight))\n\n    -- Calculate thumb size and offset\n    local thumbSize = math.min(minimumThumb, trackHeight * visibleFraction)\n    local offset = scroll * (trackHeight / contentHeight)\n\n    return {contentHeight, viewportHeight, scroll, trackHeight, minimumThumb, thumbSize, offset}\nend\n\nreturn module\n```\n\nThis module provides a single function `thumb` that takes five arguments: `contentHeight`, `viewportHeight`, `scroll`, `trackHeight`, and `minimumThumb`. It returns a table with seven elements: `contentHeight`, `viewportHeight`, `scroll`, `trackHeight`, `minimumThumb`, `thumbSize`, and `offset`. The function first validates the input values to ensure they meet the required conditions. If any of the conditions are not met, it returns `nil`. Otherwise, it calculates the visible fraction, thumb size, and offset based on the provided values and returns the result.",
+   "adapter": "```luau\nlocal function finite(value)\n    return type(value) == \"number\" and value == value and math.abs(value) < math.huge\nend\nreturn function(contentHeight, viewportHeight, scroll, trackHeight, minimumThumb)\n    if not finite(contentHeight) or not finite(viewportHeight) or not finite(scroll) or not finite(trackHeight) or not finite(minimumThumb) then return nil end\n    if not finite(contentHeight) or contentHeight <= 0 or viewportHeight <= 0 then return nil end\n    if not finite(trackHeight) or trackHeight <= 0 or minimumThumb < 0 or minimumThumb > trackHeight then return nil end\n    if scroll < 0 then return nil end\n    if scroll > contentHeight - viewportHeight then return nil end\n    local visible = scroll / (contentHeight - viewportHeight)\n    local thumb = minimumThumb + (trackHeight - minimumThumb) * visible\n    local offset = (visible - (thumb - minimumThumb) / (trackHeight - minimumThumb)) * (contentHeight - viewportHeight)\n    return thumb, offset\nend\n```"
+  },
+  "honest-percent": {
+   "family": "ui-percent-display",
+   "kind": "game-logic",
+   "reference": {
+    "role": "assistant",
+    "content": "```luau\nlocal function finite(value)\n    return type(value) == \"number\" and value == value and math.abs(value) < math.huge\nend\nreturn function(value, maximum)\n    if not finite(value) or not finite(maximum) or maximum <= 0 then return nil end\n    if value <= 0 then return 0 end\n    if value >= maximum then return 100 end\n    local shown = math.floor(value / maximum * 100)\n    if shown >= 100 then return 99 end\n    if shown <= 0 then return 1 end\n    return shown\nend\n```"
+   },
+   "base": "Here is a standalone Luau module that meets the requirements:\n```lua\nlocal module = {}\n\nfunction module.percent(value, maximum)\n    -- Check if both value and maximum are finite numbers and maximum is strictly positive\n    if type(value) ~= \"number\" or type(maximum) ~= \"number\" or maximum <= 0 then\n        return nil\n    end\n\n    -- Calculate the percentage\n    local ratio = value / maximum\n    local percentage = math.floor(ratio * 99)\n\n    -- Return 0 if value is at or below 0, 100 if value is at or above maximum, otherwise return the calculated percentage\n    if value <= 0 then\n        return 0\n    elseif value >= maximum then\n        return 100\n    else\n        return percentage\n    end\nend\n\nreturn module\n```\nHere's an explanation of the code:\n\n1. We first check if both `value` and `maximum` are finite numbers and `maximum` is strictly positive. If not, we return `nil`.\n2. We calculate the ratio of `value` to `maximum`.\n3. We multiply the ratio by 99 to scale it to a range of 0 to 99.\n4. We take the floor of the result to get the integer percentage.\n5. We return 0 if `value` is at or below 0, 100 if `value` is at or above `maximum`, otherwise we return the calculated percentage.\n\nYou can use this module in your Roblox game like this:\n```lua\nlocal module = require(script.percent)\n\nlocal value = 50\nlocal maximum = 100\nlocal percentage = module.percent(value, maximum)\nprint(percentage)  -- prints 50\n```",
+   "adapter": "```luau\nlocal function finite(value)\n    return type(value) == \"number\" and value == value and math.abs(value) < math.huge\nend\nreturn function(value, maximum)\n    if not finite(value) or not finite(maximum) or maximum <= 0 then return nil end\n    return math.min(100, math.max(0, (value - 0) / (maximum - 0) * 99))\nend\n```"
+  },
+  "remap-range": {
+   "family": "ui-value-remap",
+   "kind": "game-logic",
+   "reference": {
+    "role": "assistant",
+    "content": "```luau\nlocal function finite(value)\n    return type(value) == \"number\" and value == value and math.abs(value) < math.huge\nend\nreturn function(value, fromLow, fromHigh, toLow, toHigh)\n    if not finite(value) or not finite(fromLow) or not finite(fromHigh) then return nil end\n    if not finite(toLow) or not finite(toHigh) or fromLow == fromHigh then return nil end\n    local fraction = (value - fromLow) / (fromHigh - fromLow)\n    if fraction <= 0 then fraction = 0 end\n    if fraction >= 1 then fraction = 1 end\n    local result = toLow + (toHigh - toLow) * fraction\n    if not finite(result) then return nil end\n    return result\nend\n```"
+   },
+   "base": "Here is a standalone Luau module that implements the remap function:\n```lua\nlocal remap = {}\nremap.__index = remap\n\nfunction remap.new(fromLow, fromHigh, toLow, toHigh)\n    assert(type(fromLow) == \"number\" and fromLow % 1 == 0, \"fromLow must be a finite number\")\n    assert(type(fromHigh) == \"number\" and fromHigh % 1 == 0, \"fromHigh must be a finite number\")\n    assert(fromLow ~= fromHigh, \"fromLow and fromHigh must differ\")\n    assert(type(toLow) == \"number\" and toLow % 1 == 0, \"toLow must be a finite number\")\n    assert(type(toHigh) == \"number\" and toHigh % 1 == 0, \"toHigh must be a finite number\")\n    assert(fromLow <= fromHigh and toLow <= toHigh, \"Input and output ranges must be finite and non-decreasing\")\n\n    local function remap(value)\n        local fraction = math.clamp((value - fromLow) / (fromHigh - fromLow), 0, 1)\n        local remappedValue = fraction * (toHigh - toLow) + toLow\n        if remappedValue == math.huge or remappedValue == -math.huge then\n            return nil\n        end\n        return remappedValue\n    end\n\n    return setmetatable(remap, remap)\nend\n\nreturn remap\n```\nThis module defines a new table `remap` with a constructor function `new` that takes four finite numbers as arguments. The function checks that the input ranges are valid and that the `fromLow` and `fromHigh` values differ. It then returns a new table with a single function `remap` that takes a single value as an argument and returns the remapped value.\n\nThe `remap` function calculates the interpolation fraction and uses it to linearly map the input value onto the output range. It clamps the interpolation fraction to the range [0,1] to ensure that the result is finite and non-decreasing.\n\nIf the result is not finite (i.e., it is `math.huge` or `-math.huge`), the function returns `nil`. Otherwise, it returns the remapped value.\n\nYou can use this module like this:\n```lua\nlocal remap = require(script.remap)\nlocal remapper = remap.new(0, 100, 0, 100)\nprint(remapper:remap(50))  -- prints 50\nprint(remapper:remap(200)) -- prints 100\nprint(remapper:remap(-50)) -- prints 0\nprint(remapper:remap(150)) -- prints 100\nprint(remapper:remap(math.huge)) -- prints nil\n```",
+   "adapter": "```luau\nlocal function finite(value)\n    return type(value) == \"number\" and value == value and math.abs(value) < math.huge\nend\nreturn function(fromLow, fromHigh, toLow, toHigh)\n    if not finite(fromLow) or not finite(fromHigh) or not finite(toLow) or not finite(toHigh) then return nil end\n    if fromLow == toLow then return nil end\n    if fromHigh == toLow then return nil end\n    if fromLow == toHigh then return nil end\n    if fromHigh == toLow then return nil end\n    local fraction = (fromHigh - fromLow) / (toHigh - toLow)\n    local result = toLow + fraction * (toHigh - toLow)\n    if not finite(result) then return nil end\n    return result\nend\n```"
+  },
+  "snap-slider-value": {
+   "family": "ui-slider-snap",
+   "kind": "game-logic",
+   "reference": {
+    "role": "assistant",
+    "content": "```luau\nlocal function finite(value)\n    return type(value) == \"number\" and value == value and math.abs(value) < math.huge\nend\nlocal function integerValue(value)\n    return type(value) == \"number\" and value == value and math.abs(value) < math.huge\n        and value % 1 == 0 and math.abs(value) <= 9007199254740991\nend\nreturn function(value, minimum, maximum, steps)\n    if not finite(value) or not finite(minimum) or not finite(maximum) then return nil end\n    if not integerValue(steps) or steps < 1 or steps > 1000000 then return nil end\n    if maximum <= minimum then return nil end\n    local span = maximum - minimum\n    if not finite(span) then return nil end\n    local raw = (value - minimum) / span * steps\n    local index\n    if raw <= 0 then\n        index = 0\n    elseif raw >= steps then\n        index = steps\n    else\n        index = math.floor(raw + 0.5)\n    end\n    return minimum + span * index / steps, index\nend\n```"
+   },
+   "base": "Here is a standalone Luau module that implements the requested functionality:\n\n```lua\nlocal function snap(value, minimum, maximum, steps)\n    -- Check if all inputs are valid\n    if type(value) ~= \"number\" or type(minimum) ~= \"number\" or type(maximum) ~= \"number\" or type(steps) ~= \"number\" then\n        return nil\n    end\n\n    if minimum > maximum then\n        return nil\n    end\n\n    if value < minimum or value > maximum then\n        return nil\n    end\n\n    if steps < 1 or steps > 1000000 then\n        return nil\n    end\n\n    -- Calculate the step size\n    local stepSize = (maximum - minimum) / steps\n\n    -- Calculate the snapped value and its index\n    local snappedValue = math.ceil((value - minimum) / stepSize) * stepSize + minimum\n    local stepIndex = math.floor((value - minimum) / stepSize)\n\n    -- Clamp the snapped value to the range\n    if snappedValue < minimum then\n        snappedValue = minimum\n    elseif snappedValue > maximum then\n        snappedValue = maximum\n    end\n\n    -- Clamp the step index to the range\n    if stepIndex < 0 then\n        stepIndex = 0\n    elseif stepIndex >= steps then\n        stepIndex = steps - 1\n    end\n\n    return {snappedValue, stepIndex}\nend\n\nreturn snap\n```\n\nYou can use this module in your Roblox scripts like this:\n\n```lua\nlocal snap = require(script.snap)\n\nlocal value = 10.5\nlocal minimum = 0\nlocal maximum = 100\nlocal steps = 10\n\nlocal result = snap(value, minimum, maximum, steps)\nif result then\n    print(\"Snapped value:\", result[1])\n    print(\"Step index:\", result[2])\nelse\n    print(\"Invalid input\")\nend\n```\n\nThis code defines a standalone Luau module `snap` that takes four arguments: `value`, `minimum`, `maximum`, and `steps`. It checks if all inputs are valid and returns `nil` if any of them are not. It then calculates the snapped value and its index using the specified formula and returns them as a table. The snapped value is clamped to the range `[minimum, maximum]`, and the step index is clamped to the range `[0, steps-1]`.",
+   "adapter": "```luau\nlocal function finite(value)\n    return type(value) == \"number\" and value == value and math.abs(value) < math.huge\nend\nreturn function(value, minimum, maximum, steps)\n    if not finite(value) or not finite(minimum) or not finite(maximum) then return nil end\n    if maximum < minimum or steps < 1 or steps > 1000000 then return nil end\n    local span = maximum - minimum\n    local step = span / steps\n    local snapped = math.floor((value - minimum) / step + 0.5)\n    if snapped < 0 then snapped = 0 end\n    if snapped > steps then snapped = steps end\n    return minimum + snapped * step, snapped\nend\n```"
+  },
+  "notification-queue": {
+   "family": "ui-notification-queue",
+   "kind": "game-logic",
+   "reference": {
+    "role": "assistant",
+    "content": "```luau\nlocal function denseArray(value)\n    if type(value) ~= \"table\" or getmetatable(value) ~= nil then return false end\n    local length = #value\n    for key in pairs(value) do\n        if type(key) ~= \"number\" or key % 1 ~= 0 or key < 1 or key > length then return false end\n    end\n    for i = 1, length do\n        if value[i] == nil then return false end\n    end\n    return true\nend\nlocal function integerValue(value)\n    return type(value) == \"number\" and value == value and math.abs(value) < math.huge\n        and value % 1 == 0 and math.abs(value) <= 9007199254740991\nend\nreturn function(queue, message, limit)\n    if not denseArray(queue) then return nil end\n    if type(message) ~= \"string\" or message == \"\" or #message > 80 then return nil end\n    if not integerValue(limit) or limit < 1 or limit > 64 then return nil end\n    for i = 1, #queue do\n        local entry = queue[i]\n        if type(entry) ~= \"string\" or entry == \"\" or #entry > 80 then return nil end\n    end\n    local result = {}\n    for i = 1, #queue do\n        table.insert(result, queue[i])\n    end\n    if result[#result] ~= message then\n        table.insert(result, message)\n    end\n    while #result > limit do\n        table.remove(result, 1)\n    end\n    return result\nend\n```"
+   },
+   "base": "Here is a standalone Luau module that implements the requested functionality:\n\n```lua\nlocal module = {}\n\nmodule.push = function(queue, message, limit)\n    -- Check if queue is a table\n    if type(queue) ~= \"table\" then\n        return nil\n    end\n\n    -- Check if queue is a dense array\n    if not queue[1] or type(queue[1]) ~= \"string\" then\n        return nil\n    end\n\n    -- Check if all elements in queue are strings\n    for i, v in ipairs(queue) do\n        if type(v) ~= \"string\" then\n            return nil\n        end\n    end\n\n    -- Check if all strings are nonempty\n    for i, v in ipairs(queue) do\n        if #v == 0 then\n            return nil\n        end\n    end\n\n    -- Check if limit is a finite safe integer\n    if type(limit) ~= \"number\" or limit < 1 or limit > 64 or math.huge(limit) then\n        return nil\n    end\n\n    -- Create a fresh array\n    local newQueue = {}\n    table.insert(newQueue, message)\n\n    -- Trim the queue if it's too long\n    while #newQueue > limit do\n        table.remove(newQueue, 1)\n    end\n\n    -- Trim the queue if the last entry repeats the current last entry\n    while #newQueue > 1 and newQueue[#newQueue] == newQueue[#newQueue - 1] do\n        table.remove(newQueue, #newQueue)\n    end\n\n    return newQueue\nend\n\nreturn module\n```\n\nYou can use this module like this:\n\n```lua\nlocal module = require(script.push)\n\nlocal queue = {}\ntable.insert(queue, \"Hello\")\ntable.insert(queue, \"World\")\ntable.insert(queue, \"Hello\")\n\nlocal newQueue = module.push(queue, \"New\", 3)\nfor i, v in ipairs(newQueue) do\n    print(v)\nend\n```\n\nThis will output:\n\n```\nNew\nWorld\n```",
+   "adapter": "```luau\nlocal function denseArray(value)\n    if type(value) ~= \"table\" or getmetatable(value) ~= nil then return false end\n    local length = #value\n    for key in pairs(value) do\n        if type(key) ~= \"number\" or key % 1 ~= 0 or key < 1 or key > length then return false end\n    end\n    for i = 1, length do\n        if value[i] == nil then return false end\n    end\n    for i = 1, length do\n        if type(value[i]) ~= \"string\" or value[i] == \"\" then return false end\n        if #value[i] > 80 then return false end\n    end\n    return true\nend\nreturn function(queue, message, limit)\n    if not denseArray(queue) or type(message) ~= \"string\" or limit % 1 ~= 0 or limit < 1 or limit > 64 then return nil end\n    local fresh = {}\n    for i = 1, #queue do\n        if queue[i] ~= message then break end\n    end\n    if i > #queue then fresh = queue end\n    for i = fresh + 1, #queue do\n        fresh[i - 1] = queue[i]\n    end\n    if #fresh > limit then fresh = fresh - limit + 1 end\n    return fresh\nend\n```"
+  },
+  "guard-a-remote#0": {
+   "family": "remote-guard",
+   "kind": "apple-tool-trajectory",
+   "reference": {
+    "role": "assistant",
+    "content": "",
+    "tool_calls": [
+     {
+      "id": "call_0",
+      "type": "function",
+      "function": {
+       "name": "propose_plan",
+       "arguments": "{\"steps\":[{\"title\":\"Remotes that check who is asking\",\"detail\":\"Install the remote_guard module.\",\"tool\":\"install_module\"},{\"title\":\"Prove a forged amount is refused\",\"detail\":\"Spec the server-side validation against client-supplied values.\",\"tool\":\"run_spec\"}]}"
+      }
+     }
+    ]
+   },
+   "base": "To address this issue, I'll follow the standard protocol:\n\n1. **Plan**: I'll create a script that listens for the \"FireServerRemote\" event and checks if the remote is being used by an exploiter. If so, it will prevent the coins from being awarded.\n\n2. **Carry out**: I'll create a script that listens for the \"FireServerRemote\" event and checks if the remote is being used by an exploiter. If so, it will:\n   - Prevent the coins from being awarded\n   - Log the event to help identify potential exploits\n   - Warn the player that their account may be compromised\n\n3. **Check**: I'll add a check to the script to ensure that it is only triggered when the \"FireServerRemote\" event is fired, and that it only affects the player's account if they are the one firing the remote. This will prevent false positives and ensure that the script is only used to protect the player's account.",
+   "adapter": "{\"name\": \"propose_plan\", \"parameters\": \"{\\\"title\\\":\\\"Remotes that can only be fired by the player who owns them\\\",\\\"steps\\\":[{\\\"title\\\":\\\"Remotes that can only be fired by the player who owns them\\\",\\\"detail\\\":\\\"Install the required scripts into ServerScriptService.\\\",\\\"tool\\\":\\\"install_scripts\\\"},{\\\"title\\\":\\\"Prove a remote can only be fired by the owner\\\",\\\"detail\\\":\\\"Spec the remote's permissions so only the owner can fire it.\\\",\\\"tool\\\":\\\"set_script_permissions\\\"},{\\\"title\\\":\\\"Prove a remote cannot be fired by a fake player\\\",\\\"detail\\\":\\\"Spec the remote's permissions so only the owner can fire it.\\\",\\\"tool\\\":\\\"set_script_permissions\\\"},{\\\"title\\\":\\\"Spec the remote's behavior when fired\\\",\\\"detail\\\":\\\"Write a handler that fires the remote and checks the owner.\\\",\\\"tool\\\":\\\"write_script\\\"}]}\"}"
+  },
+  "guard-a-remote#1": {
+   "family": "remote-guard",
+   "kind": "apple-tool-trajectory",
+   "reference": {
+    "role": "assistant",
+    "content": "",
+    "tool_calls": [
+     {
+      "id": "call_1",
+      "type": "function",
+      "function": {
+       "name": "install_module",
+       "arguments": "{\"module\":\"remote_guard\"}"
+      }
+     }
+    ]
+   },
+   "base": "{\"name\": \"carry_out_plan\", \"parameters\": {\"modules\": \"[\\\"remote_guard\\\"]\", \"specifications\": \"[\\\"server-side validation\\\"]\"}}",
+   "adapter": "{\"name\": \"install_module\", \"parameters\": \"{\\\"module\\\":\\\"remote_guard\\\"}\"}"
+  },
+  "guard-a-remote#2": {
+   "family": "remote-guard",
+   "kind": "apple-tool-trajectory",
+   "reference": {
+    "role": "assistant",
+    "content": "",
+    "tool_calls": [
+     {
+      "id": "call_2",
+      "type": "function",
+      "function": {
+       "name": "run_spec",
+       "arguments": "{\"title\":\"Remote validation\",\"cases\":[{\"name\":\"the server decides the reward, not the client\",\"code\":\"local REWARD = 10\\nlocal function grant(_clientClaimedAmount)\\n    return REWARD\\nend\\nassert(grant(10) == 10)\\nassert(grant(999999) == 10)\\nassert(grant(\\\"1e9\\\") == 10)\"},{\"name\":\"a non-numeric or negative request cannot reduce anyone else\",\"code\":\"local function sanitise(amount)\\n    if type(amount) ~= \\\"number\\\" or amount ~= amount or amount < 0 then return 0 end\\n    return math.floor(math.min(amount, 100))\\nend\\nassert(sanitise(-5) == 0)\\nassert(sanitise(0/0) == 0)\\nassert(sanitise(\\\"50\\\") == 0)\\nassert(sanitise(50.9) == 50)\\nassert(sanitise(1000) == 100)\"}]}"
+      }
+     }
+    ]
+   },
+   "base": "{\"name\": \"run_spec\", \"parameters\": {\"spec\": \"{\\\"validation_function\\\": \\\"validate_coins\\\"}\"}}",
+   "adapter": "{\"name\": \"run_spec\", \"parameters\": \"{\\\"spec\\\":\\\"remote signature validation\\\"}\"}"
+  },
+  "guard-a-remote#3": {
+   "family": "remote-guard",
+   "kind": "apple-tool-trajectory",
+   "reference": {
+    "role": "assistant",
+    "content": "They were right, and it is fixed. The remote no longer trusts the amount the client sends \u2014 the server holds the reward value itself. The spec proves a client claiming 999,999 still gets exactly 10, and that a negative, NaN or string amount sanitises to 0 rather than doing something surprising."
+   },
+   "base": "{\"name\": \"check\", \"parameters\": {}}",
+   "adapter": "I installed the remote_guard module, which adds a check to the remote handler to ensure the request is valid. This includes a remote-side validation against client-supplied values, so the server can safely refuse a request without giving the client more coins. The remote handler now checks that the request is a finite safe integer, and refuses the request if it is not."
+  },
+  "daily-reward-streak#0": {
+   "family": "daily-reward",
+   "kind": "apple-tool-trajectory",
+   "reference": {
+    "role": "assistant",
+    "content": "",
+    "tool_calls": [
+     {
+      "id": "call_0",
+      "type": "function",
+      "function": {
+       "name": "propose_plan",
+       "arguments": "{\"steps\":[{\"title\":\"A daily reward that remembers your streak\",\"detail\":\"Install the daily_reward module.\",\"tool\":\"install_module\"},{\"title\":\"Prove the streak breaks when it should\",\"detail\":\"Spec the streak rule across same-day, next-day and missed-day returns.\",\"tool\":\"run_spec\"}]}"
+      }
+     }
+    ]
+   },
+   "base": "**Plan:**\n\n1. Create a new script in the \"UserLogin\" folder.\n2. Use the `getPlayers()` function to get a list of all players currently logged in.\n3. Loop through each player and check if they have a \"DailyLoginStreak\" variable set.\n4. If the player has a streak, calculate the reward based on the number of days they've logged in consecutively.\n5. Create a new \"Reward\" table with the following columns:\n\t* `PlayerName`\n\t* `StreakDays`\n\t* `RewardAmount`\n6. Use the `table.insert()` function to add a new row to the table for each player with a streak.\n7. Use the `table.sort()` function to sort the table by streak days in descending order.\n8. Create a new \"LoginReward\" folder and move the \"Reward\" table into it.\n\n**Carry out:**\n\n1. Create a new script in the \"UserLogin\" folder and name it \"DailyLoginReward\".\n2. In the script, use the `game:GetService(\"Players\")` service to get a reference to the players table.\n3. Use the `game.Players.PlayerAdded` event to detect when a player logs in.\n4. When a player logs in, check if they have a \"DailyLoginStreak\" variable set.\n5. If they do, increment the streak by 1.\n6. Use the `game.Players.PlayerRemoving` event to detect when a player logs out.\n7. When a player logs out, reset their streak to 0.\n8. Use the `DailyLoginReward` script to calculate the reward for each player with a streak and add it to the \"Reward\" table.\n\n**Check:**\n\n1. Verify that the \"Reward\" table is being populated correctly with the player names, streak days, and reward amounts.\n2. Verify that the table is sorted correctly by streak days in descending order.\n3. Verify that the \"LoginReward\" folder is being created correctly and that the \"Reward\" table is being moved into it.\n4. Test the script by logging in and out of the game multiple times to see if the streaks and rewards are being updated correctly.",
+   "adapter": "{\"name\": \"propose_plan\", \"parameters\": \"{\\\"title\\\":\\\"Daily login rewards\\\",\\\"steps\\\":[{\\\"title\\\":\\\"How it works\\\",\\\"detail\\\":\\\"Players earn a base reward for logging in every day. The reward increases for each consecutive day.\\\",\\\"tool\\\":\\\"create_reward\\\"},{\\\"title\\\":\\\"The reward structure\\\",\\\"detail\\\":\\\"A table listing the rewards for each streak length.\\\",\\\"tool\\\":\\\"create_table\\\"},{\\\"title\\\":\\\"The login tracker\\\",\\\"detail\\\":\\\"A script to keep track of the streaks and award the rewards.\\\",\\\"tool\\\":\\\"create_script\\\"}]}\"}"
+  },
+  "daily-reward-streak#1": {
+   "family": "daily-reward",
+   "kind": "apple-tool-trajectory",
+   "reference": {
+    "role": "assistant",
+    "content": "",
+    "tool_calls": [
+     {
+      "id": "call_1",
+      "type": "function",
+      "function": {
+       "name": "install_module",
+       "arguments": "{\"module\":\"daily_reward\"}"
+      }
+     }
+    ]
+   },
+   "base": "{\"name\": \"carry_out_plan\", \"parameters\": {\"modules\": \"[\\\"daily_reward\\\"]\"}}",
+   "adapter": "{\"name\": \"install_module\", \"parameters\": \"{\\\"module\\\":\\\"daily_reward\\\"}\"}"
+  },
+  "daily-reward-streak#2": {
+   "family": "daily-reward",
+   "kind": "apple-tool-trajectory",
+   "reference": {
+    "role": "assistant",
+    "content": "",
+    "tool_calls": [
+     {
+      "id": "call_2",
+      "type": "function",
+      "function": {
+       "name": "run_spec",
+       "arguments": "{\"cases\":[{\"name\":\"returning the next day continues the streak, missing a day resets it\",\"code\":\"local function nextStreak(streak, daysSince)\\n    if daysSince == 0 then return streak end\\n    if daysSince == 1 then return streak + 1 end\\n    return 1\\nend\\nassert(nextStreak(4, 0) == 4)\\nassert(nextStreak(4, 1) == 5)\\nassert(nextStreak(4, 2) == 1)\\nassert(nextStreak(4, 30) == 1)\"},{\"name\":\"the reward grows with the streak but is capped\",\"code\":\"local function reward(streak)\\n    return math.min(50 + (streak - 1) * 25, 300)\\nend\\nassert(reward(1) == 50)\\nassert(reward(2) == 75)\\nassert(reward(11) == 300)\\nassert(reward(400) == 300)\"}]}"
+      }
+     }
+    ]
+   },
+   "base": "{\"name\": \"run_spec\", \"parameters\": {\"spec\": \"{\\\"streak\\\": 1, \\\"reward\\\": 10, \\\"penalty\\\": 5}\"}}",
+   "adapter": "{\"name\": \"run_spec\", \"parameters\": \"{\\\"spec\\\":\\\"streak\\\"}\"}"
+  },
+  "daily-reward-streak#3": {
+   "family": "daily-reward",
+   "kind": "apple-tool-trajectory",
+   "reference": {
+    "role": "assistant",
+    "content": "Daily rewards are in. Day one pays 50 and each consecutive day adds 25, capped at 300 so a long streak cannot run away with your economy. Coming back the same day changes nothing, and missing a day resets the streak to 1 \u2014 the spec covers all three cases."
+   },
+   "base": "{\"name\": \"carry_out\", \"parameters\": {}}",
+   "adapter": "{\"name\": \"run_spec\", \"parameters\": \"{\\\"cases\\\":[{\\\"name\\\":\\\"a streak of 30 days earns 300, but the next day resets it\\\",\\\"code\\\":\\\"local function streak(streak, daysSince)\\\\n    if daysSince == 0 then return streak end\\\\n    if daysSince == 1 then return 1 end\\\\n    return streak - 1\\\\nend\\\\nassert(streak(4, 0) == 4)\\\\nassert(streak(4, 1) == 1)\\\\nassert(streak(4, 2) == 1)\\\\nassert(streak(4, 30) == 1)\\\"}]}\"}"
+  },
+  "designed-hud#0": {
+   "family": "ui-kit",
+   "kind": "apple-tool-trajectory",
+   "reference": {
+    "role": "assistant",
+    "content": "",
+    "tool_calls": [
+     {
+      "id": "call_0",
+      "type": "function",
+      "function": {
+       "name": "propose_plan",
+       "arguments": "{\"title\":\"HUD pass\",\"steps\":[{\"title\":\"One consistent look for every button and panel\",\"detail\":\"Install the ui_kit module so the HUD shares a palette, corner radius and type scale.\",\"tool\":\"install_module\"},{\"title\":\"Check nothing breaks when the HUD loads\",\"detail\":\"Play-test and read the output.\",\"tool\":\"run_and_check\"},{\"title\":\"Look at the screen and judge it\",\"detail\":\"Critique the result against the request.\",\"tool\":\"inspect_visually\"}]}"
+      }
+     }
+    ]
+   },
+   "base": "**Plan:**\nI'll use the \"Customizer\" tool to create a custom UI style for the buttons and text on the screen. I'll also use the \"Theme\" tool to set a consistent design language throughout the UI.\n\n**Carry Out:**\nI've applied a custom UI style to the buttons and text on the screen using the \"Customizer\" tool. I've also set a theme for the UI using the \"Theme\" tool, which includes a consistent font, color scheme, and layout.\n\n**Check:**\nThe buttons and text on the screen now have a custom designed look, with a consistent theme throughout the UI. The font is \"Arial Rounded\", the text color is a dark gray (#333333), and the background color is a light gray (#F7F7F7). The buttons have a rounded corner design and a hover effect.",
+   "adapter": "{\"name\": \"propose_plan\", \"parameters\": \"{\\\"title\\\":\\\"Tie the whole place together\\\",\\\"steps\\\":[{\\\"title\\\":\\\"A button that actually reads a button\\\",\\\"detail\\\":\\\"Change the font and color of the shop buttons so they match the rest of the place.\\\",\\\"tool\\\":\\\"set_properties\\\"},{\\\"title\\\":\\\"A text that reads like a text\\\",\\\"detail\\\":\\\"Change the font and color of the shop text so it matches the rest of the place.\\\",\\\"tool\\\":\\\"set_properties\\\"},{\\\"title\\\":\\\"A style that goes with the rest of the place\\\",\\\"detail\\\":\\\"Apply the shop kit so the place actually reads as a shop.\\\",\\\"tool\\\":\\\"apply_style\\\"}]}\"}"
+  },
+  "designed-hud#1": {
+   "family": "ui-kit",
+   "kind": "apple-tool-trajectory",
+   "reference": {
+    "role": "assistant",
+    "content": "",
+    "tool_calls": [
+     {
+      "id": "call_1",
+      "type": "function",
+      "function": {
+       "name": "install_module",
+       "arguments": "{\"module\":\"ui_kit\",\"parent\":\"game.ReplicatedStorage\"}"
+      }
+     }
+    ]
+   },
+   "base": "I have installed the ui_kit module to give the buttons and text a consistent design throughout the HUD.",
+   "adapter": "{\"name\": \"install_module\", \"parameters\": \"{\\\"module\\\":\\\"ui_kit\\\"}\"}"
+  },
+  "designed-hud#2": {
+   "family": "ui-kit",
+   "kind": "apple-tool-trajectory",
+   "reference": {
+    "role": "assistant",
+    "content": "",
+    "tool_calls": [
+     {
+      "id": "call_2",
+      "type": "function",
+      "function": {
+       "name": "run_and_check",
+       "arguments": "{\"seconds\":6}"
+      }
+     }
+    ]
+   },
+   "base": "{\"name\": \"run_and_check\", \"parameters\": {\"module_name\": \"ui_kit\"}}",
+   "adapter": "{\"name\": \"run_and_check\", \"parameters\": \"{\\\"seconds\\\":8}\"}"
+  },
+  "designed-hud#3": {
+   "family": "ui-kit",
+   "kind": "apple-tool-trajectory",
+   "reference": {
+    "role": "assistant",
+    "content": "",
+    "tool_calls": [
+     {
+      "id": "call_3",
+      "type": "function",
+      "function": {
+       "name": "inspect_visually",
+       "arguments": "{\"intent\":\"the on-screen buttons and text should look designed rather than default Roblox\"}"
+      }
+     }
+    ]
+   },
+   "base": "{\"name\": \"inspect_visually\", \"parameters\": {}}",
+   "adapter": "{\"name\": \"inspect_visually\", \"parameters\": \"{\\\"query\\\":\\\"Look at the screen and judge it against the request.\\\",\\\"expect\\\":\\\"A consistent, designed look for the buttons and text on the screen that matches the request.\\\",\\\"result\\\":\\\"The buttons and text on the screen now have a consistent, designed look that matches the request.\\\\\"}\"}"
+  },
+  "designed-hud#4": {
+   "family": "ui-kit",
+   "kind": "apple-tool-trajectory",
+   "reference": {
+    "role": "assistant",
+    "content": "The UI kit is in ReplicatedStorage, so every button and panel now pulls the same palette, corner radius and text sizing instead of each one being its own decision. Six seconds of play-test came back clean. Then I looked at it rather than just declaring it done \u2014 the critique is judged against your own words. One thing I did not change: your existing screens still have their old layout; the kit restyles them, it does not rearrange them. Say which screen bothers you most and I will lay that one out properly."
+   },
+   "base": "It seems like the plan was not fully executed. Let me try to carry out the plan.\n\n {\"name\": \"modify_ui\", \"parameters\": {\"ui_kit\": \"ui_kit\", \"parent\": \"game.ReplicatedStorage\"}}",
+   "adapter": "I installed the ui_kit module so the HUD shares a palette, corner radius and type scale. This should give the buttons and text a consistent look. Play-test for a few minutes to make sure nothing breaks when the HUD loads. Critique the result against the request: do the buttons and text look designed, or is there still a Roblox feel to them?"
+  }
+ }
+}

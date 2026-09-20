@@ -14,13 +14,48 @@ import { SUPPORT_EMAIL } from '@golem/shared';
 // lapsed period still drops to free. If someone tightens either rule, this page goes red naming the
 // sentence that became a lie — which is the failure mode a billing page has, and the reason it is
 // the most dangerous kind of documentation to leave behind.
+//
+//[[ AND THE ONE THING IT DID NOT SAY WAS THAT NONE OF IT IS REACHABLE YET.
+//
+//   Five sections of procedure for a paid account — a failed card, invoices, cancelling, a plan
+//   that has not applied, changing tier — read to a prospect as a product with live subscriptions.
+//   The only caveat on the page covered extra Credits. Meanwhile /pricing renders "Planned tier —
+//   not available to purchase yet" and /terms says the same, so the docs nav's "Billing & payments"
+//   was the one door in the site that did not mention the lock.
+//
+//   ASKED, NOT TYPED, and asked the same way /pricing asks it: /api/billing/config is computed from
+//   the deployment's own environment, so the day Stripe is connected this page stops apologising on
+//   its own. An unreachable probe falls back to "closed", which is the safe error in both
+//   directions — a reader told checkout is shut loses nothing but a click, and the owner sees a
+//   wrong "closed" within a day, while the opposite mistake sends a customer at a 503.
+const BILLING_ORIGIN = 'https://apple.moshe-barami111.workers.dev';
+const billingProbe = await fetch(BILLING_ORIGIN + '/api/billing/config')
+  .then((r) => (r.ok ? r.json() : null))
+  .catch(() => null);
+const checkoutOpen = billingProbe?.checkout === true;
 ---
 
 <DocsLayout
   title="Billing & payments — Apple Docs"
-  description="What happens when a payment fails, where invoices live, how cancelling works, and what to do when a payment went through but the plan has not changed."
+  description={checkoutOpen
+    ? 'What happens when a payment fails, where invoices live, how cancelling works, and what to do when a payment went through but the plan has not changed.'
+    : 'Paid checkout is not open in this preview, so nobody can subscribe yet. How billing will work once it is: failed payments, invoices, cancelling, and changing plan.'}
   heading="Billing & payments"
 >
+  {!checkoutOpen && (
+    <div class="callout">
+      <p>
+        <strong>There is no way to become a paying customer yet.</strong> Paid checkout is not open
+        in this preview — <a href="/pricing">Pricing</a> marks every paid tier "planned" and
+        <a href="/terms">Terms</a> says the same. Everything below describes how billing works for a
+        paid account and applies to nobody today; it is published so that the rules are readable
+        before anyone is subject to them, not because a subscription can be started. Apple is free
+        to use, with the daily allowance on <a href="/docs/credits-and-limits">Credits &amp;
+        limits</a>.
+      </p>
+    </div>
+  )}
+
   <p>
     Everything to do with money — cards, invoices, cancelling — lives in the billing portal, which
     is Stripe's, not ours. You reach it from <strong>Usage</strong> in the app

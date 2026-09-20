@@ -23,7 +23,8 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../lib/auth';
-import { fetchMe } from '../lib/api';
+import { fetchBillingConfig, fetchMe } from '../lib/api';
+import { maxUpgradeAvailable } from '../lib/creation-intent';
 import { shortRelative } from '../lib/format';
 import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { ShellProvider, useShell } from '../lib/shell';
@@ -209,8 +210,9 @@ function AccountMenu({ name, email, isAdmin }: { name: string | null; email: str
 
 /* ----------------------------------------------------------------- rail --- */
 
-function Rail({ name, email, isAdmin, quota, quotaPending, quotaFailed, width, onWidth }:
+function Rail({ name, email, isAdmin, quota, quotaPending, quotaFailed, upgradeAvailable, width, onWidth }:
   { name: string | null; email: string; isAdmin: boolean; quota: unknown; quotaPending: boolean; quotaFailed: boolean;
+    upgradeAvailable: boolean | null;
     width: number; onWidth: (next: number, persist: boolean) => void }) {
   const { railOpen, closeRail, railCollapsed, toggleRailCollapsed, openCheckpoints } = useShell();
 
@@ -412,7 +414,7 @@ function Rail({ name, email, isAdmin, quota, quotaPending, quotaFailed, width, o
           </span>
         </button>
 
-        <UsageMeter quota={quota} pending={quotaPending} failed={quotaFailed} />
+        <UsageMeter quota={quota} pending={quotaPending} failed={quotaFailed} upgradeAvailable={upgradeAvailable} />
         <AccountMenu name={name} email={email} isAdmin={isAdmin} />
       </div>
 
@@ -489,6 +491,18 @@ function Shell() {
   }, []);
 
   const me = useQuery({ queryKey: ['me'], queryFn: fetchMe, staleTime: 60_000, retry: 1 });
+  // CAN THIS DEPLOYMENT ACTUALLY SELL THE UPGRADE THE RAIL IS ABOUT TO NAME.
+  //
+  // The rail's dead-stop copy used to say upgrading was "the only way to raise" a spent monthly
+  // limit, having asked nobody. /api/billing/config is what /app/usage asks before it labels every
+  // paid tier "Not available yet" and draws no button, so the two screens in this one bundle
+  // contradicted each other at the moment a customer was most motivated to act.
+  //
+  // SAME QUERY KEY as workspace.tsx and usage.tsx, so this shares their cache entry rather than
+  // adding a request, and the three surfaces cannot disagree. `retry:false` because a billing
+  // config that did not answer is a thing to say, not a thing to keep asking about — and because
+  // the model's third branch sends the reader to Usage and Credits rather than claiming anything.
+  const billing = useQuery({ queryKey: ['billing-config'], queryFn: fetchBillingConfig, staleTime: 60_000, retry: false });
   // The same query the rail runs, by the same key, so this costs nothing and cannot disagree with
   // the list the user is looking at.
   const navProjects = useQuery({ queryKey: ['projects-nav'], queryFn: fetchRecentProjects, staleTime: 30_000, retry: 1 });
@@ -579,6 +593,7 @@ function Shell() {
         quota={me.data?.quota}
         quotaPending={me.isPending}
         quotaFailed={me.isError}
+        upgradeAvailable={maxUpgradeAvailable(billing.data)}
         width={railWidth}
         onWidth={setWidth}
       />}

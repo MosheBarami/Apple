@@ -818,6 +818,25 @@ test('a run writes a build log from the branch that ended it', () => {
   assert.ok(end > 0, 'the end-of-run broadcast this hangs off no longer exists');
   const block = src.slice(end, end + 900);
   assert.match(block, /kind: 'build'/, 'the build log is written where the run actually ends');
-  assert.match(block, /outcome: reason/, 'with the reason the run ended, not a guess from the reply text');
-  assert.match(block, /neurons: agent\.neuronsUsed \?\? null/, 'an older run reports unknown cost, not zero cost');
+  // The fields are read from the recordEvent CALL rather than from a fixed window after `msg_end`:
+  // a window measures how much COMMENT sits between the two, which is not the property under test.
+  // Proximity is already asserted above.
+  const call = src.slice(src.indexOf("kind: 'build'", end), src.indexOf('runId: agent.msgId', end));
+  assert.ok(call.length > 0 && call.length < 1200, 'the build recordEvent call moved; this guard no longer reads it');
+  const block2 = call;
+  // Still the branch that ended the run and never the reply text — but no longer `reason` alone.
+  // `reason` is what the browser's stopReason union can carry, and a step-cap or wall-clock exit
+  // has to say `done` there; `buildOutcome` is the finer answer for the log. The override applies
+  // ONLY where `reason` is `done`, so finishRun's own rewrite to `incomplete` still wins.
+  assert.match(
+    block2,
+    /outcome: reason === 'done' \? \(buildOutcome \?\? 'done'\) : reason/,
+    'the outcome must come from the branch that ended the run, not from the reply text',
+  );
+  assert.match(
+    block2,
+    /finishReason: agent\.lastFinishReason \?\? null/,
+    "the provider's own last word must be recorded, not only apologised with and dropped",
+  );
+  assert.match(block2, /neurons: agent\.neuronsUsed \?\? null/, 'an older run reports unknown cost, not zero cost');
 });

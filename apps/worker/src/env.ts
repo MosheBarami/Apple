@@ -61,8 +61,19 @@ export interface Env {
   /** AI Gateway id; when unset, calls bypass the gateway (still budget-gated) */
   AI_GATEWAY_ID?: string;
   ADMIN_KEY?: string;
-  /** The resvg renderer, bound in wrangler.jsonc. Absent means this deployment cannot rasterise. */
-  RESVG_WASM?: WebAssembly.Module;
+  //[[ `RESVG_WASM?: WebAssembly.Module` WAS HERE, AND WAS A DIRECTION TO A PLACE THAT DOES NOT EXIST.
+  //
+  //   Its comment read "the resvg renderer, bound in wrangler.jsonc. Absent means this deployment
+  //   cannot rasterise." No wrangler file in this repository has ever contained a `wasm_modules`
+  //   section — neither wrangler.jsonc nor wrangler.apple.jsonc — and the same change that added
+  //   the field recorded, in asset-import.ts, that wrangler rejects `wasm_modules` for this
+  //   ES-module worker and that the static import it would need broke 33 test files.
+  //
+  //   Nothing read it. The behaviour it implied — SVG assets are refused — is decided somewhere
+  //   else entirely and unconditionally: see the Iconify branch in asset-import.ts, which returns
+  //   "this deployment does not rasterise" without consulting any binding. So this interface, the
+  //   file a reader consults to learn what the worker is WIRED TO, named a binding that exists in
+  //   neither deployment and sent the reader to look for it in a file that has never had it. ]]
   /** 32 bytes, base64. Wraps customers' own third-party credentials; without it they are refused. */
   CREDENTIAL_KEY?: string;
   /** The Roblox account library assets are created under. Public id, not a credential;

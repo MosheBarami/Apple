@@ -174,7 +174,7 @@ test('reduced motion stops every landing animation without hiding content', () =
   }
 });
 
-test('the landing uses one dark-only palette, with no dormant light/theme override', () => {
+test('the landing is dark by default, and light only when the visitor asked for it', () => {
   const root = topLevel(':root');
   assert.ok(root, 'landing.css has no top-level :root palette');
   const scheme = decl(root.body, 'color-scheme');
@@ -184,10 +184,27 @@ test('the landing uses one dark-only palette, with no dormant light/theme overri
       `the dark palette has no ${token} token`);
   }
 
-  // The route is intentionally dark-only. A second theme or a light system override would make
-  // the landing's initial pixels depend on a preference the redesign does not support.
-  assert.doesNotMatch(CSS, /prefers-color-scheme|data-theme|color-scheme\s*:\s*(?:light|light\s+dark)/i,
-    'landing.css carries a dormant light/theme override despite the dark-only design');
+  //[[ RE-AIMED, NOT RELAXED. This forbade `data-theme` outright, and the REASON it gave was
+  //   "a second theme or a light system override would make the landing's initial pixels depend on
+  //   a preference the redesign does not support". That reason is about the FIRST PAINT, and it is
+  //   still enforced below — harder than before.
+  //
+  //   What the old rule also forbade was the explicit, opt-in light ramp, and forbidding it was a
+  //   defect: the landing was the only route on the site that dropped the visitor's stored theme
+  //   choice and offered no toggle. Choosing light on /pricing and clicking the wordmark landed a
+  //   reader on a dark homepage they could not change.
+  //
+  //   So: `:root[data-theme='light']` is now REQUIRED, and `prefers-color-scheme` — the one thing
+  //   that could move the initial pixels without the visitor asking — is still banned outright, as
+  //   is `color-scheme: light` at the top level. Default dark; light only on request.
+  assert.doesNotMatch(CSS, /prefers-color-scheme/i,
+    'landing.css lets the OS decide the first paint; the landing is dark by default');
+  assert.match(CSS, /:root\[data-theme='light'\]\s*\{/,
+    'landing.css has no explicit light ramp, so the stored theme choice is dropped on the front page');
+  // Exactly one theme override, and it is the attribute one. A second selector is how a ramp drifts.
+  const overrides = CSS.match(/:root\[data-theme=[^\]]+\]\s*\{/g) ?? [];
+  assert.deepEqual(overrides.map((o) => o.replace(/\s*\{$/, '')), [":root[data-theme='light']"],
+    'landing.css declares a theme override other than the explicit light one');
   const ground = hexLuminance((/--ground\s*:\s*([^;]+)/i.exec(root.body) ?? [])[1] ?? '');
   const surface = hexLuminance((/--surface\s*:\s*([^;]+)/i.exec(root.body) ?? [])[1] ?? '');
   const ink = hexLuminance((/--ink\s*:\s*([^;]+)/i.exec(root.body) ?? [])[1] ?? '');

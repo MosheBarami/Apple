@@ -1,0 +1,35 @@
+{
+  "schema": "apple-game-logic-seeds-v1",
+  "examples": 10,
+  "splitSizes": {
+    "train": 8,
+    "val": 1,
+    "test": 1
+  },
+  "families": {
+    "bounded-reward": "train",
+    "cooldown-clock": "train",
+    "economy-transaction": "train",
+    "finite-normalization": "train",
+    "inventory-capacity": "train",
+    "level-from-xp": "train",
+    "ordered-checkpoints": "train",
+    "round-transitions": "train",
+    "stable-leaderboard": "val",
+    "unlock-prerequisites": "test"
+  },
+  "evaluationTasksChecked": 88,
+  "source": "first-party-authored-synthetic",
+  "customerData": false,
+  "studioTrajectories": 0,
+  "verification": "actual local Luau execution plus assertion-failing mutation for every answer",
+  "limitations": [
+    "small seed curriculum, not a production-scale training set",
+    "no Roblox engine, visual or networking execution",
+    "not a model capability evaluation",
+    "family-disjoint holdout is a development set, not an independent promotion benchmark"
+  ],
+  "productionTrainingReady": false,
+  "trainedModel": false,
+  "digest": "1692622f9ceddd6b1d0e954a56c134ff725cbec137b59abb2d6e0904d5365ee0"
+}

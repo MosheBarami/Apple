@@ -1,0 +1,99 @@
+/**
+ * THE FREE LANE MUST BE ABLE TO FINISH A TOOL CALL IT WAS OFFERED.
+ *
+ * Defect Dfa1e2f: `productModel: 'apple'` runs are routed to the `clay` gateway config, and
+ * `baseTokensFor` sized their answer with `MODE_BASE_TOKENS.clay`. But the TOOLS a run is offered
+ * come from `toolsForMode(agent.mode, …)` in router.ts, which does not look at the product model
+ * at all — so a free Agent run was handed Stone's complete toolset (run_luau, edit_script,
+ * delete_instances) and 2,000 output tokens to express one, against the paid lane's 5,500.
+ *
+ * WHAT THIS ASSERTS is the number that actually reaches the provider, which is neither half on its
+ * own: llmChat computes `Math.min(req.maxTokens ?? cfg.maxTokens, cfg.maxTokens)`, so the request
+ * (`tokensForEffort(baseTokensFor(mode), effort)`) and the model config's ceiling
+ * (`DEFAULT_MODELS[gatewayModelFor(mode, productModel)].maxTokens`) are two different numbers and
+ * the free lane was broken by the second one. A guard that read only `MODE_BASE_TOKENS` would have
+ * stayed green through the whole defect.
+ *
+ * The floor is not invented here. `MODE_BASE_TOKENS[mode]` is this product's own measured answer to
+ * "what does a tool call in this toolset cost to express" — the market-stall measurement recorded
+ * in gateway.ts — so the assertion is that the lane is given at least the budget its own toolset is
+ * sized for, whatever that number becomes later.
+ */
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const WORKER = join(HERE, '..');
+const TMP = mkdtempSync(join(tmpdir(), 'free-lane-budget-'));
+const CF_SHIM = join(TMP, 'cf.mjs');
+writeFileSync(CF_SHIM, 'export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }\n');
+
+function bundle(entry, name) {
+  const out = join(TMP, `${name}.mjs`);
+  execFileSync(
+    join(WORKER, 'node_modules', '.bin', 'esbuild'),
+    [entry, '--bundle', '--format=esm', '--target=es2022', `--alias:cloudflare:workers=${CF_SHIM}`, `--outfile=${out}`],
+    { stdio: 'pipe', cwd: WORKER },
+  );
+  return import(pathToFileURL(out).href);
+}
+
+const S = await bundle(join(WORKER, 'src', 'do', 'session.ts'), 'session');
+const G = await bundle(join(WORKER, 'src', 'gateway.ts'), 'gateway');
+const R = await bundle(join(WORKER, 'src', 'reasoning.ts'), 'reasoning');
+const ROUTER = await bundle(join(WORKER, 'src', 'router.ts'), 'router');
+const TOOLS = await bundle(join(WORKER, 'src', 'tools.ts'), 'tools');
+
+/** Exactly what llmChat will send as `max_tokens` for one step of this lane. */
+function budget(mode, productModel, effort) {
+  const requested = R.tokensForEffort(S.baseTokensFor(mode), effort);
+  const cfg = G.DEFAULT_MODELS[S.gatewayModelFor(mode, productModel)];
+  assert.ok(cfg, `no model config for ${S.gatewayModelFor(mode, productModel)}`);
+  return Math.min(requested, cfg.maxTokens);
+}
+
+/** The toolset the lane is actually offered, from the same function runStep calls. */
+function toolset(mode) {
+  return ROUTER.toolsForMode(mode, true, Object.keys(TOOLS.TOOLS));
+}
+
+test('the free Agent lane is offered Stone\'s toolset — so this is not a Plan-sized job', () => {
+  const free = toolset('stone');
+  assert.ok(free.has('run_luau'), 'the free lane is offered run_luau');
+  // toolsForMode does not branch on productModel at all, which is the whole premise of the defect.
+  assert.deepEqual([...toolset('stone')].sort(), [...toolset('stone')].sort());
+  assert.ok(free.size > toolset('clay').size, 'Agent mode is a strictly wider toolset than Plan');
+});
+
+test('every lane gets at least the budget its own toolset is sized for', () => {
+  for (const mode of ['clay', 'stone', 'rune']) {
+    for (const productModel of ['apple', 'apple-max', undefined]) {
+      const floor = S.baseTokensFor(mode);
+      const got = budget(mode, productModel, 'high');
+      assert.ok(
+        got >= floor,
+        `${productModel ?? 'legacy'}/${mode}: max_tokens ${got} is below the ${floor} its toolset is sized for`,
+      );
+    }
+  }
+});
+
+test('the free and paid Agent lanes are no longer asymmetric in output room', () => {
+  const free = budget('stone', 'apple', 'high');
+  const paid = budget('stone', 'apple-max', 'high');
+  // The measured failure was 2000 vs 5500 — a third of the room for the identical toolset.
+  assert.ok(free >= 5000, `the free Agent lane gets ${free} output tokens`);
+  assert.ok(free >= paid * 0.9, `the free lane (${free}) is still far short of the paid lane (${paid})`);
+});
+
+test('raising the clay ceiling did not raise what Plan mode asks for', () => {
+  // The ceiling is a clamp, not a request: `min(requested, cfg.maxTokens)`. Plan mode's request is
+  // unchanged, so this fix cannot have made a Plan answer more expensive.
+  assert.equal(R.tokensForEffort(S.baseTokensFor('clay'), 'high'), 2000);
+  assert.equal(budget('clay', 'apple', 'high'), 2000);
+});

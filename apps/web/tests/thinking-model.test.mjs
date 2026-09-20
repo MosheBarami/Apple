@@ -185,6 +185,38 @@ test('ASSUMPTIONS ALONE ARE ENOUGH TO DRAW THE PLAN ROW', () => {
   assert.deepEqual(plan.assumptions, ['mood: warm (from "cozier")']);
 });
 
+test('AND SO IS AN OPEN QUESTION, WITH NOTHING ELSE ALONGSIDE IT', () => {
+  // D79ab5 — the same gate, one turn further along, and the one the worker actually produces.
+  // run-intent.ts returns `{summary, checklist, questions, assumptions}` and only returns null
+  // when ALL FOUR are empty, so a hedged request that settled nothing yields questions and
+  // nothing else. That question was computed on the server, sent over the socket and parsed
+  // here — and then the Plan gate, which read only `checklist` and `assumptions`, threw it away.
+  // The user was never told Apple did not know what they meant. They found out from the build.
+  //
+  // The summary is deliberately blank here: an intent whose ONLY content is a question is exactly
+  // the payload that reached the client with nothing to render it. With a summary present the
+  // Intent row would draw and the loss would be less visible, which is how this survived.
+  const stages = buildTimeline({
+    ...EMPTY,
+    intent: { summary: '', checklist: [], questions: ['Which part of the map do you mean?'], assumptions: [] },
+  });
+  const plan = stages.find((s) => s.kind === 'plan');
+  assert.ok(plan, 'the open question had nowhere to render — the card showed the user nothing at all');
+  assert.deepEqual(plan.questions, ['Which part of the map do you mean?']);
+  assert.equal(plan.items, undefined, 'an empty checklist must not draw an empty list');
+  assert.equal(plan.assumptions, undefined, 'and nothing may be invented to fill the other blocks');
+});
+
+test('but a blank question is still not a question', () => {
+  // The gate is `questions.length > 0` AFTER cleaning, not before: an intent carrying two empty
+  // strings must not open a Plan row with nothing in it.
+  const stages = buildTimeline({
+    ...EMPTY,
+    intent: { summary: 'Fix the lobby floor', checklist: [], questions: ['', '   '], assumptions: [] },
+  });
+  assert.deepEqual(kinds(stages), ['intent'], 'blank strings opened an empty Plan row');
+});
+
 // ---------------------------------------------------------------------------
 // 3. Actions come from real tool events and the announced phase
 // ---------------------------------------------------------------------------

@@ -1,0 +1,31 @@
+{
+  "bar": "https://lovable.dev",
+  "capturedAt": "2026-09-20T00:45Z",
+  "capturedBy": "lead, first-hand in the browser pane, not from a description",
+  "constraint": "No account was created (agents must not create accounts), so only the pre-auth surface is the bar: landing, pricing, docs, product tour, and every empty/error state reachable without signing in.",
+  "viewport": [658, 772],
+  "page": {
+    "bodyBg": "oklch(0.9699 0 107)",
+    "bodyFont": "Camera Plain Variable, ui-sans-serif, system-ui",
+    "scrollHeight": 10442,
+    "theme": "LIGHT — deliberately opposite to Apple's dark. Not a defect in ours; do not 'fix' our theme toward theirs."
+  },
+  "trap": {
+    "seoH1": "The document's <h1> is 'AI App Builder' at 14px/24px weight 400 — an SEO tag, NOT the visual hero. Measuring it yields a false comparison. The visual hero is a separate element.",
+    "cookieBanner": "A consent banner is present. Decline non-essential; never accept on the owner's behalf."
+  },
+  "hero": {
+    "line": { "text": "Build something Lovable", "font": "32px/35.2px", "lineHeightRatio": 1.1, "weight": 600, "letterSpacing": "-1.28px (-0.04em)", "color": "rgb(28,28,28)", "top": 267 },
+    "sub": { "text": "Bring a new product, internal tool, or entire company to life.", "font": "16px/24px", "weight": 400, "color": "oklch(0.5 0.001 107)", "top": 307 },
+    "composer": { "width": 569, "height": 60, "top": 396, "placeholderAria": "Chat input" },
+    "shape": "headline -> one sub-line -> composer with a Build button. Apple's hero is the same shape, so the two are directly comparable."
+  },
+  "firstScreenCopy": [
+    "Build something Lovable",
+    "Bring a new product, internal tool, or entire company to life.",
+    "One platform. Endless possibilities.",
+    "If you can describe it, you can build it. Create, run, and manage entire products and businesses from scratch.",
+    "You bring the idea. Lovable brings it to life.",
+    "Describe what you want in plain language. Watch as Lovable builds production-grade software with you in real time."
+  ]
+}

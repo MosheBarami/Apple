@@ -5,7 +5,14 @@ import { PLAN_LIMITS, PRODUCT_MODELS, PRODUCT_MODEL_INFO } from '@golem/shared';
 import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE, STUDIO_PLUGIN_STORE_REFUSAL } from '../lib/studio-plugin';
 
 /*
- * REBUILT 2026-09-19 AGAINST A MEASURED BAR.
+ * REBUILT 2026-09-19 AGAINST A MEASURED BAR, AND THE HERO RE-MEASURED AGAINST IT ON 2026-09-20.
+ *
+ * The second pass exists because the owner rejected the first: the instruction is the reference's
+ * geometry exactly, in our black and green. tesana.ai/en was read again with
+ * getComputedStyle at 1568x900 and at 390x844, and the hero's structure below now mirrors what that
+ * reading found — a viewport-tall section with its content centred, a 56/64 headline over a full-ink
+ * 20/30 sub-line, and one block holding an 838x140 composer, a small qualifying line and a row of
+ * 36px controls. The words, the mark and the claims are unchanged and are ours.
  *
  * The owner named tesana.ai. It was opened in Chrome and read with getComputedStyle rather than
  * admired: the ramp, the type scale, the tracking rule, the radii, the nav treatment and the
@@ -30,7 +37,13 @@ const truths = [
   { label: 'Scope', title: 'One place, the one you opened', body: 'Apple works in the Studio place you pair it to, and nowhere else. It cannot reach your files or your other games.' },
   { label: 'Consent', title: 'Edits are off until you allow them', body: 'The plugin opens read-only. Turning writes on takes two deliberate clicks, and disconnecting turns them off again.' },
   { label: 'Refusals', title: 'It says no, by name', body: 'It will not run code it was sent, drive play mode, or insert an asset carrying a script. Each refusal comes back with its reason.' },
-  { label: 'Undo', title: 'Every change is one waypoint', body: 'Writes are wrapped in Studio’s own undo history, so a run you dislike is a single Ctrl+Z away.' },
+  /* "A RUN YOU DISLIKE IS A SINGLE CTRL+Z AWAY" WAS FALSE FOR EVERY RUN THAT WROTE MORE THAN ONCE.
+     The title is true and stays: Commands.luau opens exactly one ChangeHistoryService recording per
+     operation, and Bridge.luau walks a server batch one operation at a time. That is precisely why
+     the old body could not be true — one waypoint per change means a five-step run is five presses,
+     and a reader who pressed once got back the last write and kept the other four. The one-keystroke
+     exit is the checkpoint, so that is what this now points at. */
+  { label: 'Undo', title: 'Every change is one waypoint', body: 'Writes are wrapped in Studio’s own undo history — one step per change, so a five-step run is five presses of Ctrl+Z. To take a whole run back at once, restore the checkpoint Apple saved before it started.' },
 ];
 
 // The activity figure is data, not a pasted blob: the refused line is the point of the whole
@@ -73,7 +86,24 @@ const capabilities = [
             this site carries a Sign in; the front door did not. */}
         <a href="/app/login">Sign in</a>
       </nav>
+      {/* THE ONE CONTROL THIS PAGE WAS MISSING. Every other route carries a theme toggle in Nav.astro;
+          the landing has its own header and had none, so a reader who chose light elsewhere on the
+          site could not see or change that choice on the front page. Same 36px control height as the
+          links beside it, so the nav is still one row of one-sized objects. */}
+      <div class="header-actions">
+      <button class="pill pill-quiet pill-icon" type="button" data-theme-toggle aria-pressed="true" aria-label="Switch to light theme">
+        <svg class="icon-sun" viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
+          <circle cx="12" cy="12" r="4.2" fill="currentColor"></circle>
+          <g stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+            <path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"></path>
+          </g>
+        </svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
+          <path d="M20 14.4A8.4 8.4 0 0 1 9.6 4a8.4 8.4 0 1 0 10.4 10.4Z" fill="currentColor"></path>
+        </svg>
+      </button>
       <a class="pill" href="/app">Open Apple</a>
+      </div>
     </div>
   </header>
 
@@ -94,40 +124,48 @@ const capabilities = [
         <h1 id="hero-title" class="display">Build it in the place you already have open.</h1>
         <p class="lead">Describe the game you want. Apple builds it inside your own Roblox Studio place, names every step while it happens, and changes nothing until you say so.</p>
 
-        <div class="composer" aria-hidden="true">
-          <div class="composer-field">Ask Apple to build…</div>
-          <div class="composer-bar">
-            {/* THE DOT WAS GREEN AND THE WORD WAS "connected", on a page selling a product whose
-                plugin Roblox has not approved for distribution. A mock is still a claim: the
-                largest, most tappable-looking thing above the fold on a phone told a reader the
-                product was attached to their Studio before they had one. The sub-line two blocks
-                down says the opposite, and a reader believes the picture.
-                "Studio" alone is the same image without the assertion — it shows where the model
-                chip and the connection chip sit, which is the only job this mock has. */}
-            <div class="composer-chips">
-              <span class="chip">Studio</span>
-              <span class="chip">Apple</span>
+        {/* THE COMPOSER AND THE ROW UNDER IT ARE ONE BLOCK. The bar spaces its hero as four things
+            — headline, sub-line, composer, and a small line above a row of controls — with 24px
+            and 40px gaps that only hold if the last two are a single group. Splitting them into
+            siblings with their own margins is how those gaps drifted apart the first time. */}
+        <div class="composer-group">
+          <div class="composer" aria-hidden="true">
+            <div class="composer-field">Ask Apple to build…</div>
+            <div class="composer-bar">
+              {/* THE DOT WAS GREEN AND THE WORD WAS "connected", on a page selling a product whose
+                  plugin Roblox has not approved for distribution. A mock is still a claim: the
+                  largest, most tappable-looking thing above the fold on a phone told a reader the
+                  product was attached to their Studio before they had one. The sub-line two blocks
+                  down says the opposite, and a reader believes the picture.
+                  "Studio" alone is the same image without the assertion — it shows where the model
+                  chip and the connection chip sit, which is the only job this mock has. */}
+              <div class="composer-chips">
+                <span class="chip">Studio</span>
+                <span class="chip">Apple</span>
+              </div>
+              <span class="composer-send">Build</span>
             </div>
-            <span class="pill">Build</span>
+          </div>
+
+          <div class="hero-foot">
+            <p class="availability">
+              {STUDIO_PLUGIN_STORE_LIVE ? (
+                <>Free to start, no card. <a href={STUDIO_PLUGIN_INSTALL_HREF}>Get the Studio plugin ↗</a></>
+              ) : (
+                <>
+                  Free to start, no card. Chat works now; building inside Studio needs the plugin, and
+                  {STUDIO_PLUGIN_STORE_REFUSAL ? ' Roblox has not approved it for distribution.' : ' public installation is not open yet.'}
+                  {' '}<a href={STUDIO_PLUGIN_INSTALL_HREF}>See the status ↗</a>
+                </>
+              )}
+            </p>
+
+            <div class="hero-actions">
+              <a class="pill" href="/app/signup">Create a free account</a>
+              <a class="pill pill-quiet" href="/docs">Read the docs</a>
+            </div>
           </div>
         </div>
-
-        <div class="hero-actions">
-          <a class="pill" href="/app/signup">Create a free account</a>
-          <a class="pill pill-quiet" href="/docs">Read the docs</a>
-        </div>
-
-        <p class="availability">
-          {STUDIO_PLUGIN_STORE_LIVE ? (
-            <>Free to start, no card. <a href={STUDIO_PLUGIN_INSTALL_HREF}>Get the Studio plugin ↗</a></>
-          ) : (
-            <>
-              Free to start, no card. Chat works now; building inside Studio needs the plugin, and
-              {STUDIO_PLUGIN_STORE_REFUSAL ? ' Roblox has not approved it for distribution.' : ' public installation is not open yet.'}
-              {' '}<a href={STUDIO_PLUGIN_INSTALL_HREF}>See the status ↗</a>
-            </>
-          )}
-        </p>
       </div>
     </section>
 

@@ -18,6 +18,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import {
   eventsFromTurn,
@@ -586,4 +587,102 @@ test('the announcement window has an edge, and it is where the code says it is',
 
   assert.deepEqual(kinds(at(1000)), ['editing'], 'exactly at the edge counts as the tool\'s own announcement');
   assert.deepEqual(kinds(at(1001)), ['building', 'editing'], 'one millisecond past it is a row of its own');
+});
+
+/* ===========================================================================================
+ * Dbbbbdc — THE `unknown` STATE ABOVE WAS UNREACHABLE FROM THE ONE PATH THAT PRODUCES IT.
+ *
+ * The test a few hundred lines up pins `unknown` by handing the reducer a bare event log. No
+ * screen ever built that log. The socket builds a merged `ToolEvent[]` and it went through
+ * `eventsFromTurn`, and `msg_end` in lib/use-project-socket.ts wrote
+ *
+ *     { ...t, done: true, ok: false, durationMs: Date.now() - t.startedAt }
+ *
+ * onto every tool still open when the run ended — two measurements, neither observed. So the run
+ * that IS the only way to reach this state was reported as a run that failed, and the dashed
+ * glyph, the words "no result reported" and the sentence "The run ended before this step reported
+ * a result." were dead code.
+ *
+ * MEASURED IN CHROMIUM, the real <Turn> with the real stylesheet, one reported tool and one
+ * interrupted one, before and after:
+ *
+ *   before  li.gx-act__step.is-failed   glyph .gx-tick (the ×)
+ *           "Edited a script — failed … This step reported a failure. Nothing was produced."
+ *           plus one evidence card asserting the failure. 1 card.
+ *   after   li.gx-act__step.is-unknown  glyph .gx-hollow.gx-hollow--dashed
+ *           "Edited a script — no result reported … The run ended before this step reported a
+ *           result."  0 cards. The terminal row survives in both ("Stopped by an error").
+ * ======================================================================================== */
+
+test('A DONE TOOL WITH NO REPORTED OUTCOME IS `unknown`, THROUGH THE ADAPTER THE APP USES', () => {
+  const events = eventsFromTurn({
+    tools: [
+      { toolId: 'a', tool: 'read_script', summary: 'Read 42 lines', ok: true, startedAt: T0, durationMs: 880, done: true },
+      // What `msg_end` leaves behind now: closed, because it is not running; no verdict, because
+      // none arrived; no duration, because nobody timed it.
+      { toolId: 'b', tool: 'edit_script', summary: 'edit_script', startedAt: T0 + 1500, done: true },
+    ],
+    stopReason: 'error',
+    error: 'the run stopped',
+    endedAt: T0 + 4000,
+  });
+
+  // The adapter must not manufacture an end for the second tool: the two fields a `tool_end`
+  // carries are exactly the two nobody measured.
+  assert.deepEqual(
+    events.filter((e) => e.type === 'tool_end').map((e) => e.toolId),
+    ['a'],
+    'an outcome was invented for a step that never reported one',
+  );
+
+  const r = run(events);
+  const steps = r.phases.flatMap((p) => p.steps);
+  const b = steps.find((s) => s.toolId === 'b');
+  assert.ok(b, 'the interrupted step vanished from the timeline');
+  assert.equal(b.state, 'unknown', 'reported as ' + b.state + ' — the wire never said how it ended');
+  assert.equal(b.elapsed, undefined, 'a duration was attached to a step nobody timed');
+  assert.equal(b.endedAt, undefined, 'and so was an end time');
+  // The one that DID report is untouched.
+  assert.equal(steps.find((s) => s.toolId === 'a').state, 'done');
+});
+
+test('and the terminal row survives, because msg_end’s own clock replaces the invented one', () => {
+  // The synthesised `durationMs` was also what dated the run's end. Removing it without passing
+  // `endedAt` would silently delete the row that says the run is over — for exactly the
+  // interrupted runs this change is about, and only when the interrupted tool is the only tool.
+  const tools = [{ toolId: 'b', tool: 'edit_script', summary: 'edit_script', startedAt: T0 + 1500, done: true }];
+
+  const withClock = run(eventsFromTurn({ tools, stopReason: 'error', endedAt: T0 + 4000 }));
+  assert.ok(withClock.terminal, 'no terminal row: the card would not say the run had ended');
+  assert.equal(withClock.terminal.kind, 'failed');
+
+  // Stated rather than papered over: with no clock at all there is still no row, which is the
+  // existing rule — a guessed timestamp on the row that says "this is over" is the worst guess.
+  const noClock = run(eventsFromTurn({ tools, stopReason: 'error' }));
+  assert.equal(noClock.terminal, null, 'a terminal row was dated by something nobody observed');
+});
+
+test('and the one surface that builds this from a turn actually passes that clock', () => {
+  // Without this line the two tests above are about a function nobody calls with an `endedAt`,
+  // and a run interrupted on its only tool loses the row that says it ended.
+  const turn = readFileSync(new URL('../src/components/ws/turn.tsx', import.meta.url), 'utf8');
+  const call = turn.slice(turn.indexOf('eventsFromTurn({'), turn.indexOf('upcoming: plannedSteps'));
+  assert.ok(call.length > 0, 'could not find the eventsFromTurn call');
+  assert.match(call, /endedAt: item\.endedAt/, 'turn.tsx must hand the observed end clock through');
+  assert.match(turn, /\[item\.tools, item\.stopReason, item\.error, item\.endedAt,/,
+    'and memoise on it, or the terminal row appears one render late');
+});
+
+test('the socket closes an open tool without asserting how it ended', () => {
+  const src = readFileSync(new URL('../src/lib/use-project-socket.ts', import.meta.url), 'utf8');
+  const msgEnd = src.slice(src.indexOf("case 'msg_end':"), src.indexOf("case 'run_intent':"));
+  assert.ok(msgEnd.length > 0, 'could not find the msg_end branch');
+  assert.match(msgEnd, /t\.done \? t : \{ \.\.\.t, done: true \}/,
+    'msg_end must close open tools and say nothing else about them');
+  assert.doesNotMatch(msgEnd.replace(/\/\/.*$/gm, ''), /ok: false/,
+    'an interrupted step is not a failed one');
+  assert.doesNotMatch(msgEnd.replace(/\/\/.*$/gm, ''), /durationMs: Date\.now\(\)/,
+    'and it was not timed');
+  assert.match(msgEnd, /endedAt: Date\.now\(\)/,
+    'the terminal row needs the one clock this client did observe');
 });

@@ -15,6 +15,7 @@ import { StatusIcon } from '../components/status-icon';
 import { STATUS, type StatusName } from '../components/status-icon-model';
 import { useToast } from '../components/toast';
 import { createUndoable, UNDO_WINDOW_MS } from '../lib/undo';
+import './ui-lab.css';
 
 interface Specimen {
   id: string;
