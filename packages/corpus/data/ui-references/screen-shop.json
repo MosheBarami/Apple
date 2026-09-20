@@ -1,0 +1,334 @@
+{
+  "genre": "screen-shop",
+  "label": "The SHOP screen, across genres — tab rows, product grids, price pills, owned states, featured banners, currency headers, confirm dialogs",
+  "recorded": "2026-09-20",
+  "provenance": "Researched on the open web on 2026-09-20 with WebSearch and WebFetch. Every row below names a page that was actually fetched and read in that session, except the final row, which says in its own source field that it was NOT fetched and what it is instead. No image, no Luau source, no asset id and no sentence of anyone's UI is stored or reproduced here; what is recorded is the construction convention read out of what each page describes — anatomy, order, state, geometry, and which of those decisions the engine makes for you.",
+  "references": [
+    {
+      "id": "roblox-docs-pass-prompt-owns-finished",
+      "source": "https://create.roblox.com/docs/production/monetization/game-passes — fetched 2026-09-20; Roblox's own documentation for selling a pass from inside an experience.",
+      "demonstrates": [
+        "The Robux confirmation step is NOT the shop's to draw. PromptGamePassPurchase hands off to Roblox's own purchase dialog, and the shop only learns the outcome from the PromptGamePassPurchaseFinished event — a custom 'Are you sure?' in front of that puts two modals in a row.",
+        "A tile's name, price and description are read from GetProductInfo with Enum.InfoType.GamePass; the page's own framing for that call is displaying product information 'inside your game's marketplace', i.e. the shop screen is the documented consumer of that data.",
+        "Ownership is a QUERY, not a stored flag on the tile: UserOwnsGamePassAsync wrapped in pcall, and the docs say to run it on PlayerAdded so the state is already correct the first time the shop is opened.",
+        "Privileges are granted server-side from ServerScriptService, so the OWNED the tile renders is a mirror of server truth rather than the source of it — a client that flips its own tile to OWNED has changed nothing.",
+        "LOWER CONFIDENCE, recorded as such: the WebSearch result summary for this same docs page (2026-09-20) states that UserOwnsGamePassAsync can return false immediately after an in-experience purchase because of caching. That sentence was not in the fetched render, so it is noted rather than relied on — but it is the reason the finished-event payload, not a re-poll, should flip the tile."
+      ]
+    },
+    {
+      "id": "roblox-docs-developer-products-receipt",
+      "source": "https://create.roblox.com/docs/production/monetization/developer-products — fetched 2026-09-20; Roblox's own documentation for consumable products.",
+      "demonstrates": [
+        "PromptProductPurchase likewise raises Roblox's own confirmation dialog; the shop's job ends at the prompt call and resumes at ProcessReceipt.",
+        "Developer products are repurchasable without limit — they are consumables — so a product tile must NEVER acquire an owned state; the pass tile and the product tile are two different components that happen to sit in the same grid.",
+        "ProcessReceipt returns Enum.ProductPurchaseDecision.PurchaseGranted or NotProcessedYet, and NotProcessedYet retries on the next join, so the tile's success feedback is owed to a server result and not to the prompt closing.",
+        "GetProductInfo with Enum.InfoType.Product returns Name, PriceInRobux, Description, IconImageAssetId and IsForSale — five fields that map one-to-one onto a tile's five slots, including an IsForSale that should remove the tile rather than grey it.",
+        "GetDeveloperProductsAsync returns all products at once, which is the documented way to populate a storefront — the grid is generated from data, not hand-placed."
+      ]
+    },
+    {
+      "id": "devforum-shop-graphics-component-split",
+      "source": "https://devforum.roblox.com/t/shop-ui-free-graphics-tutorial/2297542 — fetched 2026-09-20; Community Resources post publishing the separate pieces a shop screen is assembled from.",
+      "demonstrates": [
+        "The shop ships as seven named pieces, and the split IS the convention: a Main Background, a separate Shop Content sheet, a Tab Button, a Purchase Button, an Exit Button, an Open Shop Button and a Shine overlay.",
+        "'Main Background' and 'Shop Content' being two distinct pieces means the outer frame and the scrollable content area are never the same surface — the frame holds the chrome, the content sheet holds the grid.",
+        "The Tab Button is ONE reusable piece, so tabs are instances of a single template differing only by label and selected state, never hand-drawn per category.",
+        "A 'Shine' layer exists as its own element above the panel: the gloss is an overlay, not baked into the panel fill, and can therefore be removed or dimmed without redrawing the panel.",
+        "Currency icons are supplied per currency — gem, Robux, gold, and a separate gold-plus — rather than one generic coin, which says a price is an icon plus a number and the icon is selected by WHICH currency, not decorative.",
+        "The Open Shop Button is published as a piece of the set but is not part of the shop frame, which matches the tutorial row below: the opener lives outside the thing it toggles."
+      ]
+    },
+    {
+      "id": "devforum-shop-critique-grid-stroke-padding",
+      "source": "https://devforum.roblox.com/t/feedback-on-ui-shop/3603272 — fetched 2026-09-20; Creations Feedback thread on a Robux shop with hover animations, described by its own author as having a pet-simulator feel.",
+      "demonstrates": [
+        "The first thing reviewers read off the screenshot was the ABSENCE of a layout object: inconsistent gaps between items told them the author was not using UIGridLayout. Uneven gutters are the tell that a shop was positioned by hand.",
+        "Second critique was stroke: outlines should be THICKER. This is the same finding simulator.json records — a shop that is otherwise right still reads wrong when the stroke is thin.",
+        "Third was padding: button contents felt cramped, meaning a card needs interior padding of its own and cannot rely on the grid's gutter to breathe.",
+        "Buttons expanded too far on hover, and selected items overflowed past the container edge — the hover scale must stay inside the cell.",
+        "The author's own note is the mechanical trap: the enlarged card sits in a ScrollingFrame and goes beyond its size, and UICorner does not solve that. A hover that grows a cell inside a scroller either gets clipped or spills.",
+        "Reviewers asked for UICorner on ALL buttons and on nested components — a single unrounded child inside a rounded card is visible."
+      ]
+    },
+    {
+      "id": "devforum-shop-tabs-named-by-what-they-sell",
+      "source": "https://devforum.roblox.com/t/shop-gui-feedback/4809265 — fetched 2026-09-20; Creations Feedback thread on a shop GUI with three category buttons.",
+      "demonstrates": [
+        "The tab set was Coins, Levels and Rebirths — tabs named after WHAT IS SOLD, never after price band or vendor. Three tabs is an unremarkable count.",
+        "Reviewers said the category buttons 'seem a bit out of place being green': tab pills belong to the panel's own colour family, and green reads as the confirm/buy accent, so spending it on navigation misdirects the eye.",
+        "The same reviewer asked for the close button in a lighter colour so it sits in the theme rather than fighting it.",
+        "A flat panel drew the note that gradients would help — depth on the panel is expected, not optional decoration.",
+        "The author had put a background element in the bottom right and reviewers still proposed a fuller background frame treatment, i.e. a shop panel is expected to have a distinct interior surface behind the content, not bare panel colour."
+      ]
+    },
+    {
+      "id": "itch-monetization-shop-kit-two-tabs-owned-survives",
+      "source": "https://ravencreew.itch.io/roblox-monetization-shop-kit-game-passes-dev-products-a-purchase-ui-already-wir — fetched 2026-09-20; a published, pre-wired Roblox monetization shop kit listing its own contents.",
+      "demonstrates": [
+        "Two tabs, Game Passes and Coin Packs — the minimum honest shop is one durable tab and one consumable tab, because the two have different states and cannot share a tile.",
+        "Four coin packs and three game passes: a tab holds three to four items, not twenty. The shop is a short curated list, and the grid is sized for that.",
+        "Each product carries an icon chip and a description line, so a tile is not icon-plus-price; the description is a first-class slot.",
+        "Exactly one 'BEST VALUE' badge across the coin packs — the tag is a singleton per ladder, and its job is to break the tie between tiers.",
+        "The buy button has two LIVE states, Buy and Owned, swapped at runtime rather than being two separate elements the author remembers to toggle.",
+        "Owned state is persisted on the player profile and the pass service only re-verifies passes the saved profile does not already have, so OWNED survives a MarketplaceService outage instead of flickering back to a sellable Buy.",
+        "Purchase feedback is a toast with a sound hook — the confirmation of success is in-shop and transient, not a second modal.",
+        "The whole catalogue lives in two config files, so tiles are generated from data; a shop with hand-placed tiles cannot be re-priced."
+      ]
+    },
+    {
+      "id": "devforum-store-framework-featured-home-and-stickers",
+      "source": "https://devforum.roblox.com/t/new-plugin-store-ui-pack-store-ui-and-framework/2924475 — fetched 2026-09-20; Community Resources announcement for a store UI pack and framework, listing its structure.",
+      "demonstrates": [
+        "The default view is a HOME PAGE of featured products, distinct from category browsing — opening the shop does not land you on the first category, it lands you on a curated page.",
+        "Categories and subcategories are both supported and a product may appear in more than one category, so the tab row is a filter over one catalogue, not a set of separate shops.",
+        "Callout stickers are a named, enumerated set: 'Top Seller', 'Best Deal', 'New', 'Sale'. They are stickers ON a card, not a different card.",
+        "A product has title, subtitle AND description as three separate text slots, plus its own image, background and colour — the card template carries per-product colour rather than one shop-wide tile colour.",
+        "Multiple virtual currencies coexist with Robux developer products in the same store, and the player's currency is shown in the header.",
+        "The interface auto-sizes with responsive text scaling and is stated to target PC, Tablet and Mobile from one layout, so the grid is expected to reflow rather than to have a separate phone screen."
+      ]
+    },
+    {
+      "id": "kitsblox-shop-anatomy-row-card-and-owned",
+      "source": "https://kitsblox.com/blog/how-to-add-shop-system-roblox — fetched 2026-09-20; a how-to article specifying a shop system's UI structure and states.",
+      "demonstrates": [
+        "The row-form card is specified precisely: item icon on the LEFT, name and brief description in the CENTRE, price and a prominent Buy button on the RIGHT. That ordering is the horizontal card.",
+        "Column counts are stated as 2–3 on desktop and 1 on mobile, built with UIListLayout plus padding and a UISizeConstraint — i.e. a card that carries a description does not run four across.",
+        "Category tabs sit at the top and the named set is Passes, Currency, Boosts, Cosmetics — the same 'named by what is sold' convention as the feedback thread above, from an unrelated source.",
+        "Prices are fetched with MarketplaceService:GetProductInfo() specifically so the shop stays in sync when the price is changed on the website — a hardcoded price is a bug, not a shortcut.",
+        "Owned pass state is three simultaneous changes: a green checkmark, an 'Owned' label, and the button disabled.",
+        "Developer products get a different readout entirely — 'You have 340 coins' — because a consumable has a quantity, not an ownership.",
+        "A confirmation dialog is prescribed before a purchase specifically to prevent accidental transactions, and success is marked with celebratory sound and particles.",
+        "All pricing and currency validation happens server-side and the client display is explicitly informational only."
+      ]
+    },
+    {
+      "id": "devforum-owned-is-an-overlay-not-a-rebuild",
+      "source": "https://devforum.roblox.com/t/how-to-make-a-already-owned-ui/2204657 — fetched 2026-09-20; Scripting Support thread on building an 'Already owned' state.",
+      "demonstrates": [
+        "The owned state is a CHILD of the button made visible over it, not a rebuilt tile — the card keeps its identity and its position while its state changes.",
+        "The ownership check runs three times and the three times are the specification: when the shop script loads, when the button is clicked, and after PromptGamePassPurchaseFinished fires.",
+        "The refresh is one named function re-run from all three entry points, so there is a single place that decides what OWNED looks like.",
+        "The thread's correction is a trap a generator will hit: MouseButton1Click passes no player argument, so the tile must resolve LocalPlayer itself rather than reading a parameter that is not there.",
+        "UserOwnsGamePassAsync is wrapped in pcall at every call site, which means the tile needs a third state — unknown — and not just owned/unowned."
+      ]
+    },
+    {
+      "id": "devforum-grid-canvas-and-cell-sizing",
+      "source": "https://devforum.roblox.com/t/how-do-i-auto-scale-canvas-size-for-a-uigridlayout/1465332 — fetched 2026-09-20; Scripting Support thread on sizing a grid's scroll canvas.",
+      "demonstrates": [
+        "The working recipe is ScrollingFrame.AutomaticCanvasSize set to Y with CanvasSize reset to {0,0},{0,0}, so an underfilled shop shows no scrollbar.",
+        "Scale-sized cells create a feedback loop: the canvas grows, the ScrollingFrame's AbsoluteSize grows with it, and the scaled cells grow again. A shop grid's CellSize must be in OFFSET.",
+        "The responsive technique is therefore a script that recomputes CellSize whenever the ScrollingFrame's AbsoluteSize changes, rather than expressing the cell as a fraction.",
+        "The matching failure for padding comes from WebSearch result text (2026-09-20) summarising a separate engine-bug thread, NOT from a fetched page: AutomaticCanvasSize mis-measures when UIGridLayout padding is expressed in Scale. Recorded at that lower confidence, it points the same way — CellPadding in offset too."
+      ]
+    },
+    {
+      "id": "bloxfruits-wiki-shop-tab-set-and-tier-ladder",
+      "source": "https://bloxfruitswiki.org/wiki/shop/ — fetched 2026-09-20; wiki page documenting the in-game Shop menu of a shipped Roblox experience.",
+      "demonstrates": [
+        "A large shipped shop runs FIVE tabs: Currency and Boosts, Products, Gamepasses, Bundles, Chromatics Skins — so bundles and time-limited cosmetics earn their own tabs rather than being tagged items inside another tab.",
+        "A tab can itself be subdivided — Currency and Boosts is split by game region (Sea 1, Sea 2, Sea 3) — which is a second-level filter inside the tab, not more top-level tabs.",
+        "Each subdivision shows FIVE tiered purchase options, confirming the ladder shape rather than a flat list.",
+        "The ladder spans roughly R$50 to R$1,499, a ~30x range across five steps, so the tiers are multiplicative and the top tier is not a small step up.",
+        "Products, Gamepasses and Bundles each display item image, description and Robux price — the same three-slot card across three different tabs.",
+        "In-game currencies are shown alongside Robux prices for information only and cannot be spent in this shop; the page records no visual marker for already-owned items, which is recorded here as an absence rather than as evidence there is none."
+      ]
+    },
+    {
+      "id": "devforum-currency-tier-card-critique",
+      "source": "https://devforum.roblox.com/t/how-can-i-improve-this-currency-purchase-gui/756188 — fetched 2026-09-20; Art Design Support thread critiquing a single-tier currency purchase card.",
+      "demonstrates": [
+        "Reviewers asked for progressively scaled pack art matching increasing price points — the art on a tier card grows with the tier, and that scaling is how a ladder is read before any number is.",
+        "The quantity is written with a plus prefix ('+5000'), i.e. a consumable card states what you GAIN, not what you will hold.",
+        "The Robux icon sits inside the green buy button next to the price, and reviewers asked for both icon and price CENTRED IN THE BUTTON as one group — the price lives in the action, not beside it.",
+        "The single most-named defect was the Robux icon being oversized relative to its surroundings: the currency icon is sized to the text it sits beside, not to the button it sits in.",
+        "Letter-spacing inside the number was called out as too loose while the gap to the '+' had to stay — the number is one tight token with a separated prefix.",
+        "Reviewers asked for a SYMMETRICAL bevel on the button, and for shadows under the coins and chest, so depth is expected on both the control and its art.",
+        "A one-tier currency panel read as unfinished: reviewers asked for multiple purchase tiers and an exit button before anything else."
+      ]
+    },
+    {
+      "id": "devforum-shop-tutorial-opener-outside-frame",
+      "source": "https://devforum.roblox.com/t/tutorial-how-to-make-roblox-shop-gui-scripting-design-free-plugin/4159627 and https://devforum.roblox.com/t/tutorial-roblox-shop-gui-part-2-scripting-currency-items-purchases/4162394 — both fetched 2026-09-20; parts 1 and 2 of one Community tutorial series building a shop GUI.",
+      "demonstrates": [
+        "The skeleton is named and minimal: a ScreenGui, a ShopFrame centred on screen, a TitleLabel reading SHOP at the top centre, and a CloseButton reading X in the top-right corner.",
+        "The tutorial's one emphasised rule is structural: the open button must live OUTSIDE the shop frame, because it is what shows and hides that frame — nesting the opener inside the panel makes a shop that cannot be reopened.",
+        "The shop frame ships with Visible unchecked, so the closed state is the authored default rather than something a script has to establish on join.",
+        "Soft-currency buying goes through a RemoteEvent and the SERVER re-reads the balance and compares it against the price before deducting — the client's tile never performs the spend.",
+        "Robux buying in the same shop goes through PromptProductPurchase and ProcessReceipt instead, so one shop screen contains two entirely different purchase paths behind visually similar buttons."
+      ]
+    },
+    {
+      "id": "websearch-summary-shop-shape",
+      "source": "NOT FETCHED — this row is WebSearch result text from 2026-09-20 for the query 'roblox store UI best value most popular tag robux coin pack tiers shop design', summarising shop-structure articles. The article it draws on most (vizzbees.com/blog/roblox-shop-gui-tutorial) returned HTTP 429 on two WebFetch attempts and was never read, so this is recorded as a search-engine summary and weighted below every row above it.",
+      "demonstrates": [
+        "The summarised consensus shape is: a dimmed backdrop focusing attention, a header carrying the shop name AND the player's currency balance, category tabs, and an item grid of products with icons and names.",
+        "The dimmed backdrop is the only element in this whole file that no fetched page confirmed, so it is carried as a rule with its confidence stated rather than asserted.",
+        "The same summary repeats the GetProductInfo price-sync point that two fetched sources state independently, which is the reason this row is kept at all rather than discarded."
+      ]
+    }
+  ],
+  "rules": {
+    "note": "Distilled from the references above. This is a SCREEN, not a genre: the geometry tokens (stroke weight, radius, bevel, text stroke) come from the genre file the shop is being built in — simulator.json for a cartoony game. What is here is the shop's own construction: what parts it has, in what order, in what states, and which decisions the engine has already made for you.",
+    "shell": {
+      "form": "one centred modal sheet over a dimmed backdrop, opened and closed by a button that is NOT a descendant of the sheet",
+      "authoredDefault": "the sheet ships Visible = false",
+      "backdropConfidence": "the dim itself is attested only by a search summary; the centred modal and the outside opener are attested by fetched pages",
+      "why": "the tutorial series makes the outside opener its one emphasised structural rule, because an opener nested inside the frame it hides cannot reopen it — this is the single most common way a generated shop ships broken"
+    },
+    "surfaceSplit": {
+      "rule": "three surfaces, never two: an outer panel carrying the chrome, an inner content sheet in a different tint holding the scrollable grid, and the cards on top of it",
+      "why": "the published graphics set ships 'Main Background' and 'Shop Content' as separate pieces, and a feedback thread still asked for a fuller interior background on a shop that had none — a flat panel loses its grid"
+    },
+    "header": {
+      "contains": ["shop name", "the player's balance for every currency this shop spends", "the close control"],
+      "balancePosition": "opposite end of the header from the title",
+      "why": "two independent sources put the balance in the header rather than in the world HUD, and a shop that does not show what you can afford forces the player to close it to check"
+    },
+    "currencyReadout": {
+      "rule": "icon then number, inside a pill, one pill per currency; the icon is chosen by which currency it is and is never a generic coin",
+      "iconSizing": "size the currency icon to the text beside it, not to the container it sits in",
+      "why": "the graphics set ships four distinct currency icons rather than one, and the loudest single critique in the tier-card thread was an oversized Robux icon"
+    },
+    "tabRow": {
+      "count": "2 to 5",
+      "position": "directly under the header, above the content sheet",
+      "naming": "named by WHAT IS SOLD (Passes, Currency, Boosts, Cosmetics, Bundles) — never by price band, vendor or rarity",
+      "template": "one reusable tab component differing only by label and selected state",
+      "exactlyOneActive": true,
+      "colour": "tabs stay in the panel's own colour family; the accent/confirm colour is reserved for buy actions",
+      "why": "three fetched sources give real tab sets and all three name them by merchandise, and reviewers specifically called green tab pills 'out of place' because green is the buy colour"
+    },
+    "tabSplitByState": {
+      "rule": "durable goods (passes) and consumables (developer products) go in DIFFERENT tabs, because their tiles have different states",
+      "minimumShop": "one durable tab plus one consumable tab",
+      "why": "a pass tile terminates in OWNED and a product tile never does; putting them in one grid forces one template to carry two incompatible end states"
+    },
+    "subCategories": {
+      "rule": "a tab may be subdivided inside itself (by region, level band, season); a subdivision never promotes itself to a top-level tab",
+      "why": "a shipped five-tab shop splits its currency tab by game region rather than adding three more tabs, which is what keeps the tab row under five"
+    },
+    "landingView": {
+      "rule": "the shop opens on a curated featured page, not on the first category",
+      "why": "the store framework ships a home page of featured products distinct from category browsing, and a shop that opens on 'Category 1' has no way to promote anything"
+    },
+    "featuredBanner": {
+      "form": "full-width band at the top of the landing view, taller than a grid tile, its own background tint, larger art, its own price control",
+      "count": 1,
+      "why": "the featured band is the only element that can carry an offer bigger than a tile, and more than one band turns the landing view into a second grid"
+    },
+    "grid": {
+      "columnsBy": "card content, not by taste — an icon-and-price square tile runs 4 across; a card carrying a description line runs 2 to 3 across; a row card with icon/text/price laid left-to-right runs 1 across",
+      "phone": "collapse to 1 column",
+      "itemsPerTab": "3 to 6 is normal; a shop tab is a short curated list",
+      "layoutObject": "UIGridLayout for tiles, UIListLayout for row cards — never hand-positioned",
+      "why": "the description slot is what forces the column count, and the very first thing reviewers read off a shop screenshot was uneven gutters telling them no layout object was used"
+    },
+    "gridSizing": {
+      "cellSize": "offset, never scale",
+      "cellPadding": "offset, never scale",
+      "canvas": "ScrollingFrame.AutomaticCanvasSize = Y with CanvasSize reset to {0,0},{0,0}",
+      "responsive": "recompute CellSize from the ScrollingFrame's AbsoluteSize on change, rather than expressing the cell as a fraction",
+      "why": "scale-sized cells feed back into AbsoluteSize as the canvas grows and the grid inflates without bound, and AutomaticCanvasSize mis-measures Scale padding — this is a documented engine behaviour, not a style preference"
+    },
+    "cardAnatomy": {
+      "square": ["icon chip", "name", "price control"],
+      "wide": ["icon chip left", "name and description centre", "price and buy button right"],
+      "textSlots": "title, optional subtitle, optional description — three distinct slots, not one blob",
+      "perCardColour": "the template carries a per-product colour and background, so tiles are allowed to differ from each other",
+      "padding": "every card has interior UIPadding of its own and does not rely on the grid gutter",
+      "corners": "UICorner on the card AND on every nested button and chip",
+      "why": "the row anatomy is specified in that exact left/centre/right order by one source and the icon-chip-plus-description tile by another, and 'contents feel cramped' plus 'add UICorner to nested components' were both explicit critiques"
+    },
+    "priceDisplay": {
+      "rule": "currency icon then number, as one centred group INSIDE the buy button, or in a pill when the button is separate",
+      "never": "bare price text floating beside the button",
+      "numberFormat": "tight number with the prefix separated — a consumable states what you gain, written with a leading plus",
+      "why": "reviewers asked for the icon and price to be centred in the button as a single group, and criticised loose spacing inside the number while insisting the gap to the plus stay"
+    },
+    "priceSource": {
+      "rule": "read Name, PriceInRobux, Description and the icon from GetProductInfo / GetDeveloperProductsAsync at runtime; never hardcode a Robux price into the tile",
+      "why": "two independent fetched sources give the same reason: the price can be changed on the website and a hardcoded tile then lies about it"
+    },
+    "tierLadder": {
+      "steps": "4 to 5",
+      "spread": "multiplicative — a shipped ladder runs roughly 30x from cheapest to dearest across five steps",
+      "artScalesWithTier": true,
+      "why": "reviewers asked for progressively larger pack art matching rising price points, and a shipped five-tier ladder spans R$50 to R$1,499 — a linear ladder of near-equal steps gives the player nothing to compare"
+    },
+    "calloutTag": {
+      "vocabulary": ["BEST VALUE", "BEST DEAL", "TOP SELLER", "NEW", "SALE"],
+      "form": "a sticker ON the card, not a different card",
+      "count": "at most one per card, and at most one BEST-VALUE-class tag per ladder",
+      "why": "the tag exists to break the tie between tiers, and a second one on the same ladder destroys the only job it has"
+    },
+    "ownedState": {
+      "appliesTo": "durable goods only (passes, permanent unlocks)",
+      "rule": "swap the price control for an OWNED chip, mark it (a check glyph), and make the control non-interactive — all three at once",
+      "never": "leave the price visible and grey out the button",
+      "implementation": "an overlay child of the button toggled visible, so the card keeps its identity and position rather than being rebuilt",
+      "thirdState": "unknown — every ownership call is inside a pcall, so the tile needs a pending/unknown look and not just owned/unowned",
+      "why": "one source specifies checkmark + Owned label + disabled together, another shows the overlay-child mechanism, and simulator.json independently records that replacing the price beats greying it — a greyed price still reads as something to compare against your balance"
+    },
+    "ownedRefresh": {
+      "runsAt": ["shop open / script load", "button click", "PromptGamePassPurchaseFinished"],
+      "singleFunction": "one named refresh re-run from all three, so one place decides what OWNED looks like",
+      "flipFrom": "the finished event's outcome, not an immediate re-query",
+      "persistence": "cache ownership on the player's profile and re-verify only what the profile does not already have, so OWNED survives a MarketplaceService outage instead of flickering back to Buy",
+      "why": "the three trigger points are specified in a working thread, and a shipped kit advertises outage-survival as a feature precisely because a re-query can come back false right after a purchase"
+    },
+    "consumableState": {
+      "rule": "a developer-product tile NEVER becomes owned; it shows the quantity the player already holds ('You have 340 coins') and stays buyable",
+      "why": "developer products are repurchasable without limit by design, so an owned state on one is a functional bug dressed as a style choice"
+    },
+    "confirmDialog": {
+      "robux": "do NOT draw one — PromptProductPurchase and PromptGamePassPurchase raise Roblox's own confirmation; a custom one in front of it stacks two modals",
+      "softCurrency": "DO draw one — a single dialog restating item and price with two buttons, confirm in the accent colour and cancel quiet",
+      "why": "Roblox's documentation makes the Robux dialog the engine's, while a shop article prescribes a confirmation for in-game spends specifically to prevent accidental transactions — the two paths look alike on the card and are completely different behind it"
+    },
+    "purchaseOutcome": {
+      "success": "a transient in-shop toast plus a sound; the card flips state in place and the shop does NOT close",
+      "authority": "success is owed to the server result (ProcessReceipt / the finished event), never to the prompt closing",
+      "why": "a shipped kit's feedback is a toast with a sound hook rather than a second modal, and the receipt callback can return NotProcessedYet, which means the prompt closing proves nothing"
+    },
+    "insufficientFunds": {
+      "rule": "the buy control becomes a route to the currency tab, not a dead grey button",
+      "why": "the shop already knows the balance from its own header, and a dead button ends the session where a route continues it"
+    },
+    "serverAuthority": {
+      "rule": "every price check and every deduction happens on the server; the client's card is informational only",
+      "why": "stated outright by one source and demonstrated by another's RemoteEvent flow, where the server re-reads the balance before deducting — a client that spends its own currency is not a shop, it is a suggestion"
+    },
+    "closeControl": {
+      "shape": "circle in the danger colour, overhanging the top-right corner of the OUTER panel",
+      "tone": "keep it inside the theme rather than letting it be the loudest thing on screen",
+      "why": "simulator.json records the overhanging red circle across six references, and a shop feedback thread independently asked for the close button in a lighter colour so it stops fighting the panel"
+    },
+    "hoverState": {
+      "scale": "bounded — the grown card must stay inside its cell",
+      "clipping": "a card that grows past its cell inside a ScrollingFrame is clipped, and UICorner does not fix it; grow within the cell or animate something other than size",
+      "why": "an author hit exactly this and said so in the thread, and reviewers separately reported buttons expanding too large and selected items overflowing the container"
+    },
+    "depth": {
+      "rule": "gradient on the panel, symmetrical bevel on the buy button, a separate shine/gloss layer above the panel rather than baked into its fill",
+      "why": "the shine ships as its own piece in the graphics set so it can be dimmed without redrawing the panel, and both feedback threads asked for gradients and a symmetrical bevel on flat work"
+    },
+    "dataDriven": {
+      "rule": "the catalogue is config; tiles are generated from it and the grid is populated from GetDeveloperProductsAsync or an equivalent list",
+      "why": "a shipped kit puts its whole catalogue in two config files, and Roblox documents fetching all products at once to populate a storefront — a shop with hand-placed tiles cannot be re-priced or re-ordered"
+    },
+    "responsive": {
+      "rule": "one layout that reflows: columns collapse toward 1 on phone, text scales, cells are constrained rather than free",
+      "why": "the store framework targets PC, tablet and mobile from a single auto-sizing layout, and a shop article gives 2–3 columns desktop against 1 on mobile from the same markup"
+    }
+  },
+  "gapsAgainstShippedTheme": [
+    "OPEN: nothing in the kit distinguishes a durable tile from a consumable tile. Until it does, one template will be asked to render both OWNED and 'you have 340', and one of them will be wrong.",
+    "OPEN: there is no tab-row primitive. Tabs here are a single template plus an exactly-one-active rule, and that rule has to live in the component, not in the prompt.",
+    "OPEN: grid column count is a constant (4, from simulator.json). This screen needs it derived from whether the card carries a description, plus a phone collapse to 1.",
+    "OPEN: CellSize/CellPadding in offset with AutomaticCanvasSize = Y and a recompute on AbsoluteSize change is an engine-level requirement, not a style; if the kit emits Scale cells the shop inflates without bound.",
+    "OPEN: no toast primitive, so purchase success has nowhere to land except a modal, which is exactly what the references avoid.",
+    "OPEN: the kit has no concept of 'do not draw this dialog' — a generator told to add a confirm step will add one in front of Roblox's Robux prompt and produce two stacked modals."
+  ],
+  "incomplete": false
+}

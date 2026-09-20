@@ -1,0 +1,424 @@
+{
+  "genre": "screen-inventory",
+  "label": "The INVENTORY screen — item grid, rarity treatment, equipped state, sort/filter row, stack counts, detail pane, delete/lock affordances",
+  "recorded": "2026-09-20",
+  "incomplete": false,
+  "provenance": "Fourteen public web pages fetched on 2026-09-20: eleven Roblox Developer Forum threads (Creations Feedback, Art Design Support, Game Design Support, Community Resources), the published source constants of Roblox's own default backpack GUI in the Roblox/Core-Scripts repository, one open-source inventory framework README on GitHub, and two player-facing wikis/guides describing the inventory screens of shipped games. Every row below names a page that was actually retrieved and read. No image is stored, no Luau source is copied, and no asset is reproduced; what is recorded is construction — what sits where, what shape it is, what changes when state changes, and which published numbers govern the layout.",
+  "evidentiaryLimit": "THIS FILE IS A DIFFERENT KIND OF EVIDENCE FROM simulator.json AND SAYS SO. simulator.json's rows were read off screenshots of shipped games, so its px values are proportional readings of images. These rows were read off TEXT and off PUBLISHED SOURCE CONSTANTS. That makes the numbers here STRONGER than simulator.json's in one narrow band — the default-backpack figures (60px icon, 5px buffer, 10/3/6 hotbar slots, 4/2/3 inventory rows, 40px header, 200px search, 0.50 backdrop fade, 16px tooltip) are literally the values Roblox ships, not approximations — and WEAKER everywhere else: no stroke weight, corner radius, tile padding or rarity-border thickness below was measured off an image. Every value that is not a published constant is either a RATIO between two things that were described or is flagged 'derived': true with the arithmetic stated. Fandom refused three fetches outright (Blox Fruits Inventory 402, Grow a Garden Inventory 402) and one guide site refused with 403 (VideoGamesChronicle's PS99 unequip guide), so nothing from those pages is recorded here even though search previews of them were visible. A preview is not a fetch. The Creator Store listing for a paid inventory kit returned an empty SPA shell, so it is not recorded either.",
+  "references": [
+    {
+      "id": "corescripts-default-backpack-constants",
+      "source": "https://raw.githubusercontent.com/Roblox/Core-Scripts/master/CoreScriptsRoot/Modules/BackpackScript.lua — the published source of Roblox's own default backpack/inventory GUI, fetched 2026-09-20. Read for its named layout constants and state behaviour only; no code is reproduced here.",
+      "demonstrates": [
+        "the inventory cell is a SQUARE of 60px with a 5px buffer between neighbours — a cell pitch of 65px — and that pitch is fixed in offset, not in scale",
+        "the grid's column count is not a constant: it is computed at layout time as the scrolling frame's width divided by the cell pitch, so the grid REFLOWS with the window instead of holding a fixed column count",
+        "the frame that width comes from is the hotbar, whose slot count is 10 on desktop, 3 on small screens under 1024px wide, and 6 in VR — so the inventory grid is as wide as the hotbar and inherits its density",
+        "the expanded inventory shows 4 rows on desktop, 2 on small screens and 3 in VR, i.e. the visible depth shrinks before the width does",
+        "a 40px header band is reserved above the grid for the title and the search field; the search field itself is 200px wide with a 5px margin",
+        "EQUIPPED is drawn as a highlight frame of four coloured EDGE borders around the slot, in a distinct blue, and it is added and removed on the equip state — the slot's own fill is not what changes",
+        "the small digit in a slot's top-left corner is the keyboard hotkey, shown for slots 1-9 plus 0 for the last one, and HIDDEN entirely when there is no keyboard — the digit is a keybind, never an index",
+        "hovering a hotbar slot raises a tooltip carrying the tool's name, 16px tall with a 6px buffer, and only when that name is non-empty",
+        "searching REFLOWS the grid: matching slots are re-parented into the grid with a new layout order and sorted by relevance while non-matches are hidden, so a filtered grid compacts rather than leaving holes",
+        "the inventory panel sits over the game at a backdrop fade of 0.50, and a slot that cannot be dragged is faded to 0.50 rather than being removed"
+      ]
+    },
+    {
+      "id": "devforum-grid-aspect-ratio-conflict",
+      "source": "https://devforum.roblox.com/t/inventory-gui-grid-looks-bad-in-game/3557875 — Art Design Support thread, fetched 2026-09-20. A drag-and-drop inventory grid that was correct in Studio and distorted in-game.",
+      "demonstrates": [
+        "the failure is specifically a Studio-versus-play divergence: the author reports a 'BIG difference' between the two, which means an inventory grid cannot be signed off in the editor",
+        "the diagnosis given and accepted: 'the different sizes are a mismatch between the desired frame size coming from the UIGridListLayout and the UIAspectRatioConstraint inside the frames themselves'",
+        "the accepted fix was to REMOVE the aspect-ratio constraint from the individual slot frames — 'That was my problem, the aspect ratio constraints were messing everything up, now it looks perfect'",
+        "the recommended construction is to put the aspect-ratio constraint on the PARENT frame and let 'the grid items themselves just be controlled by the UIGridLayout'",
+        "negative cell padding in the grid layout was separately called out as a defect: 'dont use a negative padding'"
+      ]
+    },
+    {
+      "id": "devforum-custom-backpack-states-and-sorting",
+      "source": "https://devforum.roblox.com/t/custom-backpackinventory-system/3491103 — Creations Feedback thread, fetched 2026-09-20. A finished custom backpack replacing the default one.",
+      "demonstrates": [
+        "the stated visual recipe for the slot is three things together: 'rounded corners, a darker theme, an outline surrounding each element' — the outline is per-element, not one frame around the whole panel",
+        "slots scale DOWN near the screen edges and UP above 1080p, and the author names the default backpack's constant 60-pixel slot as the thing being corrected — a fixed-offset cell is a known defect at both ends of the resolution range",
+        "rarity is carried by a numeric attribute rendered as STARS on the tile, and the zero/absent case is a real state: the tile reverts to white with no stars rather than to a made-up bottom tier",
+        "stack quantity is written as 'xN' on the tile, and the author distinguishes that from the separate idea of counting duplicate slots",
+        "the sort control offers Name, Rarity and Quantity, with a search field beside it — three axes, not one",
+        "the search at the time required exact spelling and the author's own listed next fix was 'changing the search bar into an algorithm based one, so you don't have to write the names 100% accurately' — an exact-match filter is a shipped-and-regretted decision",
+        "number keys re-sort the inventory directly so items can be rearranged without dragging, i.e. the keyboard is a first-class reordering path, not an accelerator for the mouse path"
+      ]
+    },
+    {
+      "id": "devforum-filter-row-active-state-failure",
+      "source": "https://devforum.roblox.com/t/how-can-this-inventory-ui-be-improved/1573079 — Game Design Support thread, fetched 2026-09-20. A near-fullscreen inventory built from viewport-frame slots inside a scrolling frame.",
+      "demonstrates": [
+        "the filter row is a HORIZONTALLY SCROLLING strip of categories along the top ('All Materials Weapons...'), not a vertical rail — the inventory screen spends its vertical space on the grid",
+        "the first and sharpest critique is that the selected filter is unreadable: 'I can not tell if this view is from which category' — an unmarked active filter is the single most reported failure on this screen",
+        "the second critique is the absence of stacking: 'if you have too much of one item it's going to be annoying scrolling through it all' — an unstacked grid is judged as a scrolling problem, not a data problem",
+        "the third is naming and separation: 'add better dividers and icons for each thing, make each item have a name', with the summary verdict 'it's really basic'",
+        "the author's slots are viewport frames parented under a scrolling frame — the tile renders the item in 3D rather than as a flat icon"
+      ]
+    },
+    {
+      "id": "devforum-drop-button-demotion",
+      "source": "https://devforum.roblox.com/t/inventory-ui-design-feedback/2475638 — Creations Feedback thread, fetched 2026-09-20. A survival-style inventory with a character panel and a hotbar.",
+      "demonstrates": [
+        "the layout is three regions on one sheet: a character/equipment panel on the LEFT with its equipment slots drawn as white squares, the item grid beside it, and the bottom row acting as the hotbar",
+        "the accepted critique on destructive actions: 'Not a big fan of drop item having such a large, dedicated button, I'd move that to a drop-down, key binding or drag event' — a destructive action does not get prime real estate on this screen",
+        "rounded corners on the slots were requested and accepted as an omission the author had not considered — square-cornered slots read as unfinished even to their own author",
+        "typographic consistency was raised as a defect in its own right: the 'Inventory' title was in a different font from the rest and that was changed",
+        "the character panel was asked to be 'less transparent, and a bit brighter' — the equipped region must be more solid than the backdrop it sits on, not equally ghosted",
+        "stack counts are present as text per slot"
+      ]
+    },
+    {
+      "id": "devforum-equip-target-white-border",
+      "source": "https://devforum.roblox.com/t/gui-menu-and-inventory/1672126 — Creations Feedback thread, fetched 2026-09-20. A menu-plus-inventory with a rotatable character view.",
+      "demonstrates": [
+        "the governing interaction, stated plainly: 'The inventory is based on a drag-and-drop system; when selecting a specific item, the slots it can be equipped to are marked with a white border'",
+        "so SELECTION is a two-sided state — it marks the source tile and simultaneously marks every legal destination; the screen teaches its own rules at the moment of pickup",
+        "the equipped-character view is rotatable by dragging left/right, i.e. the equipped region is interactive rather than a static portrait",
+        "the accepted critique was about the tile's immediate surround: 'make the black stuff right by the items a bit lighter and it'll look fine!' — the field behind an item icon must be lighter than the chrome, not the darkest thing on screen"
+      ]
+    },
+    {
+      "id": "devforum-equipped-region-not-floating",
+      "source": "https://devforum.roblox.com/t/placement-of-an-equipped-item-slot/3134434 — Art Design Support thread, fetched 2026-09-20. The author has 'just the floating one on the left' and asks where the equipped slot belongs.",
+      "demonstrates": [
+        "the accepted answer is a dedicated region, not a floating tile: 'have a separated section for the equipped item (like the slot for the left hand item) as well as potentially the player's character with the equipped item in a viewport'",
+        "the reasoning is visual separation — the equipped set is a region of its own, adjacent to the grid and bounded, rather than a slot that happens to sit outside the grid",
+        "a character viewport showing the item IN CONTEXT is offered as the upgrade over a bare equipped slot"
+      ]
+    },
+    {
+      "id": "devforum-deletion-confirmation-patterns",
+      "source": "https://devforum.roblox.com/t/how-should-i-handle-confirmation-for-deletion-of-items/335602 — Game Design Support thread, fetched 2026-09-20. Three named patterns argued against each other.",
+      "demonstrates": [
+        "the in-place pattern, as shipped by the author: 'the red delete button is pressed, it turns grey, and 1.5s later, it turns back to red and the text in the button now says Confirm?' — a timed lockout, then a relabel, then a second press",
+        "the trade-off the author names for it: it avoids 'screen interruption' but spends the player's patience on the wait",
+        "the modal pattern argued against it: 'usually I make a separate Screen GUI for conformation', and the stated reason it is safer is that 'the confirm button would be somewhere else on the screen' — distance from the original tap is the actual safety mechanism, not the extra click",
+        "the undo pattern proposed as the third option: 'a pop-up at the side would allow them to restore their latest deletion for maybe like 30 seconds'",
+        "the strongest position in the thread: 'always add a revert system, this is detrimental to the games cause'",
+        "bulk deletion is treated as a separate control — 'a button that allows you to delete all selected items' — which is what makes a lock affordance necessary"
+      ]
+    },
+    {
+      "id": "devforum-button-versus-label-line",
+      "source": "https://devforum.roblox.com/t/player-status-and-inventory-ui-designs/1002633 — Creations Feedback thread, fetched 2026-09-20. Status and inventory panels critiqued together by the user 'ratwise'.",
+      "demonstrates": [
+        "the stated rule: 'Drawing a hard line between what's a button and what's a text label is one of the most important parts of UI design'",
+        "the concrete failure it was written about: the 'Inventory' title and the 'Close' button carried IDENTICAL styling, so the title read as pressable",
+        "the same defect on the status readouts — name, health and hunger labels had borders and backgrounds and therefore looked like buttons",
+        "the proposed remedy was to strip borders and backgrounds from labels and carry their meaning in coloured type instead, or to fold the value into a coloured frame",
+        "alignment between the title and the close control was itself listed as a defect, alongside a missing colon on one label — this screen is judged at the level of individual glyphs"
+      ]
+    },
+    {
+      "id": "devforum-tile-background-must-be-opaque",
+      "source": "https://devforum.roblox.com/t/feedback-on-inventorybankitem-system-and-its-ui/2759608 — Creations Feedback thread, fetched 2026-09-20. An inventory-plus-bank with drag and drop and an item-stats readout.",
+      "demonstrates": [
+        "the accepted critique on tile backgrounds: 'the small grid of squares behind is to distracting', and the fix applied was to make the item backgrounds more OPAQUE — a patterned or see-through field behind an icon defeats the icon",
+        "the item detail/stats readout was told to move 'under the inventory and could be a lot smaller' — the detail region loses the argument for centre-screen space to the grid",
+        "the governing instruction from the reviewer: 'keep it simple as possible as you don't want the users screen to be cluttered with too much'",
+        "hover audio was called out as a specific defect on this screen: 'UI sounds are too loud, specially the hover sound. They can become annoying quickly, make them more subtle' — a grid of tiles multiplies any per-tile feedback by the number of tiles"
+      ]
+    },
+    {
+      "id": "devforum-item-name-hover-versus-label",
+      "source": "https://devforum.roblox.com/t/inventory-design/2159470 — Creations Feedback thread, fetched 2026-09-20. A backpack grid with a separate hotbar, an armour section and an Item Information panel.",
+      "demonstrates": [
+        "the screen is a backpack grid plus an Item Information panel that fills in when a tile is selected — the detail pane is a slot-driven region, not an always-populated column",
+        "a semi-transparent dark full-screen backdrop sits behind the whole assembly; the author confirms 'The background is already slightly transparent'",
+        "the naming argument in full: a reviewer asks for permanent names — 'I recommend adding the name of the item in the backpack' — and notes there is room, 'you have space to make the backpack window larger'",
+        "the author's counter-proposal was hover-to-reveal: show the name 'when you hover over the item with your mouse', and the permanent label was ultimately judged not to 'fit the UI theme'",
+        "so a tile may carry its name or reveal it on hover, but the choice is a theme decision that has to be made deliberately — an unnamed tile with no hover is the failure both sides were arguing against"
+      ]
+    },
+    {
+      "id": "devforum-rarity-gradient-and-conditional-slots",
+      "source": "https://devforum.roblox.com/t/feedback-on-my-inventory-ui/2612177 — Creations Feedback thread for the game TYPHOON, fetched 2026-09-20. A Tarkov/Project-Zomboid-style grid inventory.",
+      "demonstrates": [
+        "rarity is proposed as a GRADIENT on the grid piece itself, explicitly kept subtle — the tile's own field carries the tier rather than a loud badge",
+        "equipment slots are CONDITIONAL: the belt and holster slots appear only once something is equipped there, rather than standing empty",
+        "a container region appears only 'when items are in vicinity OR you are searching a container', and the toolbar shifts right to reclaim the space when that region is absent — regions on this screen are allowed to come and go, and the neighbours reflow",
+        "the accepted critique was geometric, not chromatic: 'character borders are intersecting eachother' and 'Belt, holster, and back borders are all intersecting' — overlapping slot outlines were the first thing a reviewer named",
+        "the second accepted critique was to 'make the very white borders on the character tab more transparent' — the equipped region's outlines must be quieter than the grid's"
+      ]
+    },
+    {
+      "id": "stoway-inventory-framework-defaults",
+      "source": "https://github.com/Zyn-ic/Stoway — README of an open-source Roblox inventory/hotbar system, fetched 2026-09-20. Read for its published default settings.",
+      "demonstrates": [
+        "published defaults: 10 hotbar slots, a storage limit of 15 items with 0 meaning infinite, stacking on by default with a default maximum stack of 5, sorting on by default",
+        "the sort axes it ships are None, Name, Rarity and ItemType — rarity is a first-class sort key, not a decoration",
+        "the hotbar has a declared 'Static' or 'Dynamic' mode, so whether empty hotbar slots stay visible is an explicit setting rather than an accident of layout",
+        "dropping is a bounded world action with a published distance of 10 studs, and droppability is a per-build flag",
+        "items are tracked by UUID rather than by tool instance, which is what allows two visually identical tiles to carry different state"
+      ]
+    },
+    {
+      "id": "bloxfruits-inventory-tabs-and-search",
+      "source": "https://bffr.fr/wiki/en/mecaniques/inventory/ — player wiki page describing the shipped Blox Fruits inventory screen, fetched 2026-09-20.",
+      "demonstrates": [
+        "the shipped inventory is FIVE tabs — Backpack, Treasure, Wardrobe, Stash and Build — reached from an Items button sitting next to Stats in the menu",
+        "'All tabs except Build have a dropdown menu and a search bar at the top of the interface (toward the top-right corner)' — the filter dropdown and the search field are a PAIR, anchored top-right, and they are per-tab",
+        "the Build tab is the exception because it is the equipped view: it 'summarizes your current equipment: Fighting Style, Gun, Blox Fruit, Accessory, Trinkets, Race, Aura, Skin and Abilities, plus the effects of your equipped trinkets and accessory' — the equipped tab is a named summary of slots, and it carries no search because there is nothing to search",
+        "tabs are cut by ITEM KIND, not by rarity — weapons and consumables, collectibles, cosmetics, materials",
+        "an irreversibility is stated outright: 'A stored Blox Fruit can no longer be dropped' — some tiles simply have no drop affordance, so the action row is per-item, not a fixed footer"
+      ]
+    },
+    {
+      "id": "ps99-pet-menu-header-icons",
+      "source": "https://tryhardguides.com/how-to-equip-your-best-pets-in-pet-simulator-99/ — guide describing the shipped Pet Simulator 99 pet inventory screen, fetched 2026-09-20.",
+      "demonstrates": [
+        "the pet inventory's header carries 'three icons at the top: a padlock, a pet face, and four windows' — a LOCK, a mode toggle, and a grid/layout control, sitting together as a small icon cluster rather than as labelled buttons",
+        "the pet-face icon switches between automatic and manual selection, so auto-equip is a first-class mode of the screen and not a hidden setting",
+        "manual equipping happens inside an explicit 'Edit Mode' that is entered before tiles become selectable — selection is modal on this screen",
+        "equipped capacity is a hard count the screen is built around: 'Your available slots determine the number of pets you can equip. For instance, if you have eight slots, you can select up to eight pets'",
+        "the equipped set persists against new acquisitions until the player changes it, which is what the padlock exists to protect"
+      ]
+    }
+  ],
+  "alsoFetchedAndYieldedLittle": [
+    "https://devforum.roblox.com/t/inventory-ui-feedback-needed/3120183 — the entire thread is about where the title goes ('I think you should place the title in the upper left corner', answered 'This is much better'). Recorded here only as the weak evidence it is: the title of an inventory panel belongs top-left. Nothing else in the thread is construction.",
+    "https://devforum.roblox.com/t/inventory-and-crafting-ui-feedback/3548762 — real critiques but all surface polish: icons not bright enough and 'a little mis-sized', 'maybe increase the padding. it's getting a little cramped in there', 'the white corner effects are a little hard to see', and a push toward UIStrokes for readability over 'flat solid gray'. Folded into tilePadding and slotOutline below, not given its own row.",
+    "https://devforum.roblox.com/t/grid-type-inventory/1476771 — a showcase post with no stated dimensions, slot spec or state behaviour. Nothing recorded.",
+    "https://devforum.roblox.com/t/inventorymaker-a-framework-to-help-you-create-your-own-inventory-system/3619173 — explicitly publishes NO defaults: 'You as the developer must design and create your UI templates... You decide how you want your inventory to look like.' It confirms only that UIGridLayout is the assumed layout primitive.",
+    "https://devforum.roblox.com/t/a-guide-on-rarities/3002622 and https://devforum.roblox.com/t/different-rarities/480305 — both fetched looking for rarity PRESENTATION and both turned out to be about loot-table weights and tier NAMES respectively. Neither says anything about how a tier is drawn. This is why the rarity rules below lean on the two threads that describe an actual treatment (stars, subtle gradient) and stop there."
+  ],
+  "refusedFetches": [
+    "https://blox-fruits.fandom.com/wiki/Inventory — HTTP 402. The Blox Fruits row above comes from an independent wiki that did answer, not from Fandom.",
+    "https://growagarden.fandom.com/wiki/Inventory — HTTP 402. Nothing about Grow a Garden's inventory is recorded in this file.",
+    "https://www.videogameschronicle.com/guide/pet-simulator-99-unequip-pets/ — HTTP 403. The PS99 row above comes from the guide that did answer.",
+    "https://create.roblox.com/store/asset/79400561243014/Custom-Inventory-System-Kit-GUI-Backpack — returned an empty SPA shell with no description text."
+  ],
+  "rules": {
+    "note": "Distilled from the references above. Units are Roblox UI units: px offset for cell geometry, unitless for ratios. Values marked 'published': true are constants Roblox or a named framework actually ships. Values marked 'derived': true are arithmetic on published constants and the arithmetic is stated. Everything else is a shape/hierarchy/state rule with no number attached, which is deliberate — the references support the shape strongly and the pixel far more weakly.",
+    "screenRegions": {
+      "layout": "one panel over a dimmed world, divided into a header band, a filter/sort row, the item grid, an equipped region and a detail region",
+      "required": ["header", "grid", "equippedRegion"],
+      "optional": ["detailPane", "containerPane", "hotbarRow"],
+      "regionsMayBeConditional": true,
+      "why": "TYPHOON's container pane appears only when the player is near or searching a container and the toolbar slides across to take the space back; its belt and holster slots appear only once filled. The regions of an inventory are allowed to come and go, and their neighbours must reflow rather than leave a hole."
+    },
+    "backdrop": {
+      "rule": "the whole screen sits on a full-screen dimmed backdrop, not on an opaque page",
+      "fade": 0.5,
+      "published": true,
+      "why": "Roblox's own backpack uses a backdrop fade of exactly 0.50, and the 'Inventory design' author confirms the same treatment ('The background is already slightly transparent'). An opaque inventory reads as a scene change; a dimmed one reads as a pause."
+    },
+    "gridCell": {
+      "shape": "square",
+      "sizePx": 60,
+      "bufferPx": 5,
+      "pitchPx": 65,
+      "published": true,
+      "derivedNote": "pitch = size + buffer = 65 is arithmetic on two published constants",
+      "why": "these are the shipped values of Roblox's default backpack. A square cell is the platform's own default and every reference that names a slot shape names a square."
+    },
+    "gridColumns": {
+      "rule": "columns are COMPUTED, never authored: floor(availableWidth / cellPitch)",
+      "desktopTypical": 10,
+      "smallScreenTypical": 3,
+      "derived": true,
+      "derivedNote": "the column formula is published; the 10 and 3 follow because the grid inherits the hotbar frame's width and the hotbar ships 10 slots on desktop and 3 under 1024px wide",
+      "contrastWithShopGrid": "a shop grid is 4 across because its tiles are products being compared; an inventory grid is roughly 10 across on desktop because its tiles are possessions being scanned. Reusing the shop's 4-across on an inventory is the loudest wrong answer available on this screen.",
+      "why": "an inventory that holds its column count while the window changes will letterbox or clip; the platform's own inventory reflows."
+    },
+    "gridRows": {
+      "desktop": 4,
+      "smallScreen": 2,
+      "vr": 3,
+      "published": true,
+      "shrinkOrder": "depth before width",
+      "why": "Roblox's own inventory drops from 4 visible rows to 2 on a small screen while the columns follow the hotbar. The grid gets shorter before it gets narrower."
+    },
+    "gridSizingTrap": {
+      "rule": "put the UIAspectRatioConstraint on the grid's PARENT frame; never on the individual slot frames",
+      "alsoNever": "negative cell padding",
+      "why": "the one thread whose grid broke between Studio and play broke for exactly this reason — 'a mismatch between the desired frame size coming from the UIGridListLayout and the UIAspectRatioConstraint inside the frames themselves' — and removing the per-slot constraints fixed it outright. A generator that squares its cells with a per-cell aspect constraint ships a grid that is correct in the editor and wrong in play."
+    },
+    "cellScaling": {
+      "rule": "the cell may not be a hard 60px offset at every resolution — it scales down near screen edges and up above 1080p",
+      "why": "the author of the most complete custom backpack names the default's 'constant size of 60 pixels' as the specific thing being corrected. 60px is the right pitch RATIO to reproduce, not a literal size to freeze."
+    },
+    "slotOutline": {
+      "rule": "one outline per element, applied to every tile, plus a rounded corner on the tile",
+      "neverOverlap": true,
+      "why": "the finished custom backpack's whole recipe is 'rounded corners, a darker theme, an outline surrounding each element'. Square-cornered slots were named as an omission by a reviewer and conceded by the author. Intersecting outlines were the FIRST defect a reviewer named on the TYPHOON inventory ('Belt, holster, and back borders are all intersecting'), so slot bounds must be laid out to touch or gap, never to overlap."
+    },
+    "tileField": {
+      "rule": "the field directly behind an item icon is OPAQUE and lighter than the surrounding chrome",
+      "never": "a visible pattern, a grid-of-squares texture, or a see-through field behind the icon",
+      "why": "'the small grid of squares behind is to distracting' was fixed by making the backgrounds more opaque, and 'make the black stuff right by the items a bit lighter' was the accepted note on another. The icon is the content; the field exists to hold it, not to decorate."
+    },
+    "emptySlot": {
+      "rule": "empty slots render as the same outlined rounded square with the field and no content",
+      "why": "the grid must read as a grid at zero items, and a hotbar with a declared Static mode keeps its empty slots visible on purpose. A grid that only exists where there are items is not a grid."
+    },
+    "equippedState": {
+      "rule": "equipped is a highlight BORDER — four coloured edges drawn around the slot in a distinct hue — added and removed with the state",
+      "never": "recolouring the tile's fill, swapping the icon, or greying the tile",
+      "hueRole": "a single reserved accent used for nothing else on this screen",
+      "why": "Roblox's own backpack draws equipped as a four-edge highlight frame in one reserved blue and leaves the slot itself untouched. A fill change collides with rarity, which already owns the tile's field."
+    },
+    "selectionMarksTargets": {
+      "rule": "selecting a tile marks it AND outlines every slot that item can legally be equipped into, in a second, neutral hue",
+      "why": "stated exactly in the menu-and-inventory thread: 'when selecting a specific item, the slots it can be equipped to are marked with a white border'. The screen teaches its own rules at pickup instead of rejecting a bad drop afterwards."
+    },
+    "equippedRegion": {
+      "rule": "a bounded, adjacent section of the panel — never a floating slot outside the grid",
+      "position": "beside the grid, conventionally left",
+      "solidity": "more opaque than the backdrop, with outlines QUIETER than the grid's",
+      "mayCarryCharacterViewport": true,
+      "why": "the accepted answer to 'where does the equipped slot go' was 'a separated section for the equipped item... as well as potentially the player's character with the equipped item in a viewport', against the author's floating slot. Separately the equipped panel was told to be 'less transparent, and a bit brighter' in one thread and to make its 'very white borders... more transparent' in another: the region must be more present than the backdrop and less insistent than the grid."
+    },
+    "equippedCapacity": {
+      "rule": "when equipping is capped, the cap is shown as a used/max count near the equipped region",
+      "why": "PS99's pet screen is built around it — 'if you have eight slots, you can select up to eight pets'. A cap the player cannot see becomes a rejected tap."
+    },
+    "rarityTreatment": {
+      "rule": "rarity is carried by the TILE'S OWN FIELD — a subtle gradient or tint — optionally reinforced by a repeated glyph such as stars",
+      "never": "a saturated badge that competes with the icon, and never the equipped hue",
+      "zeroState": "an item with no rarity renders plain and un-starred rather than being forced into a bottom tier",
+      "why": "the two references that describe a shipped treatment agree on restraint: TYPHOON puts a deliberately subtle gradient on the grid piece, and the finished custom backpack renders a numeric rarity as stars while reverting to plain white with no stars when the attribute is absent or zero. Nothing fetched supports a loud rarity frame, so nothing here specifies one."
+    },
+    "rarityIsAlsoASortKey": {
+      "rule": "rarity must be selectable as a sort axis, not only drawn",
+      "why": "both the custom backpack (Name / Rarity / Quantity) and the Stoway framework (None / Name / Rarity / ItemType) ship rarity as a first-class sort key. A rarity you can see but cannot order by is decoration."
+    },
+    "stackCount": {
+      "format": "xN",
+      "position": "a corner of the tile, not its centre",
+      "why": "'xN' is the format the finished custom backpack ships. The centre of the tile belongs to the item; the corners belong to the numbers about it."
+    },
+    "stackingIsRequired": {
+      "rule": "duplicate items stack by default; an unstacked grid is a defect",
+      "referenceDefault": 5,
+      "publishedNote": "5 is Stoway's published default maximum stack, offered as a starting point rather than a law",
+      "why": "the clearest complaint on the filter thread was 'if you have too much of one item it's going to be annoying scrolling through it all'. Stacking is judged as a layout obligation, not a data-model preference."
+    },
+    "hotkeyDigit": {
+      "rule": "the small digit in a slot's corner is the KEYBOARD BIND, top-left, and is hidden entirely when there is no keyboard",
+      "never": "a slot index or a position number",
+      "why": "Roblox's own backpack shows it for 1-9 plus 0 on the last slot and removes it when keyboard input is unavailable. A digit that survives onto a touch screen is a promise the device cannot keep."
+    },
+    "itemNaming": {
+      "rule": "every tile must be identifiable — EITHER a name on the tile OR a hover tooltip carrying it, chosen deliberately",
+      "tooltipHeightPx": 16,
+      "tooltipBufferPx": 6,
+      "published": true,
+      "why": "one thread asked for permanent names ('I recommend adding the name of the item in the backpack') and the author chose hover-reveal instead because a label did not 'fit the UI theme'; another simply demanded 'make each item have a name'. Both sides were arguing against the same failure: an unnamed tile with no hover. Roblox's own tooltip ships at 16px tall with a 6px buffer and only appears when the name is non-empty."
+    },
+    "headerBand": {
+      "heightPx": 40,
+      "published": true,
+      "contains": ["title", "search", "icon cluster"],
+      "titlePosition": "top-left",
+      "why": "Roblox reserves a 40px header for the title and search. The one thread devoted entirely to title placement settled on the upper-left corner, which is weak evidence and is recorded as such."
+    },
+    "filterAndSearchPair": {
+      "rule": "a category dropdown or pill row and a search field are a PAIR, anchored in the header, and they are per-tab",
+      "searchWidthPx": 200,
+      "published": true,
+      "why": "Blox Fruits ships exactly this: 'All tabs except Build have a dropdown menu and a search bar at the top of the interface (toward the top-right corner)'. The exception proves the rule — the equipped/Build tab has neither, because there is nothing there to filter."
+    },
+    "filterRowOrientation": {
+      "rule": "categories run as a HORIZONTALLY scrolling strip along the top, not as a vertical rail",
+      "why": "the inventory screen spends its vertical budget on grid rows. Both fetched filter implementations are horizontal strips."
+    },
+    "activeFilterMustBeUnmistakable": {
+      "rule": "the selected category is filled and the rest are outlined; the difference must survive a glance",
+      "why": "'I can not tell if this view is from which category' is the single most direct critique in the whole fetched set. An inventory whose active filter is ambiguous is showing the player a subset they cannot name."
+    },
+    "filteringReflows": {
+      "rule": "filtering and searching COMPACT the grid — matches are re-ordered into the front of the layout and non-matches are removed from flow",
+      "never": "leaving holes where filtered-out tiles used to sit",
+      "why": "Roblox's own backpack re-parents matching slots with a new layout order and sorts them by relevance while hiding the rest. A grid with gaps after a search reads as a broken grid, not a filtered one."
+    },
+    "searchMustBeForgiving": {
+      "rule": "match on substring and tolerate imperfect spelling; do not require an exact name",
+      "why": "the author of the most complete custom backpack shipped exact-match search and named replacing it as their own first fix: 'so you don't have to write the names 100% accurately'. This is a shipped-and-regretted decision, which is the most reliable kind of evidence in this file."
+    },
+    "sortAxes": {
+      "minimum": ["name", "rarity", "quantity"],
+      "alsoSeen": ["itemType"],
+      "why": "unanimous across the two references that ship a sort control at all."
+    },
+    "detailPane": {
+      "rule": "a slot-driven region that fills in on selection and is EMPTY until something is selected",
+      "position": "beside or beneath the grid, and smaller than the grid",
+      "readingOrder": ["name", "stats or requirements", "single primary action"],
+      "why": "the 'Item Information' panel in one thread fills in on selection; a centre-screen detail readout in another was told to move 'under the inventory and could be a lot smaller'. The detail region loses the argument for space to the grid every time it is raised."
+    },
+    "primaryActionIsSingular": {
+      "rule": "one primary action button per selected item, at the bottom of the detail region",
+      "perItem": true,
+      "why": "Blox Fruits states that a stored fruit 'can no longer be dropped' — an item's legal actions differ item by item, so the action row is built from the selected item and not printed as a fixed footer."
+    },
+    "destructiveActionIsDemoted": {
+      "rule": "delete/drop never gets a large dedicated button on the grid surface; it lives in a context menu, a keybind, or a drag gesture",
+      "why": "stated and accepted verbatim: 'Not a big fan of drop item having such a large, dedicated button, I'd move that to a drop-down, key binding or drag event'."
+    },
+    "deleteConfirmation": {
+      "rule": "a destructive action is confirmed by DISTANCE, not merely by a second click",
+      "patterns": [
+        "in-place: the button greys for ~1.5s, returns relabelled 'Confirm?', and deletes on the second press",
+        "modal: a separate confirm surface whose button sits somewhere else on the screen",
+        "undo: delete immediately and offer a restore for roughly 30 seconds"
+      ],
+      "preferred": "modal or undo",
+      "why": "the thread's own reasoning for the modal is spatial — 'the confirm button would be somewhere else on the screen' — and the strongest position stated is 'always add a revert system'. A second click in the same place is the weakest of the three."
+    },
+    "lockAffordance": {
+      "rule": "a padlock toggle in the header icon cluster, and a locked tile is excluded from bulk delete, bulk sell and auto-equip",
+      "why": "PS99's pet inventory carries 'a padlock, a pet face, and four windows' as its three header icons, and the same thread that proposes 'a button that allows you to delete all selected items' is what makes the lock necessary. A bulk destructive action without a lock is an unguarded bulk destructive action."
+    },
+    "headerIconCluster": {
+      "rule": "screen-level toggles — lock, layout/density, auto-equip mode — sit together as a small row of icon buttons in the header, unlabelled",
+      "why": "PS99 groups exactly three of them; they are modes of the screen rather than actions on an item, which is why they sit in the header and not on a tile."
+    },
+    "selectionMayBeModal": {
+      "rule": "when equipping is a multi-select with a cap, an explicit edit mode is legitimate — tiles become selectable only inside it",
+      "why": "PS99 requires entering 'Edit Mode' before pets can be manually chosen, and the screen's default is automatic selection. A capped multi-select needs a state in which taps mean 'choose' rather than 'inspect'."
+    },
+    "tabsCutByKind": {
+      "rule": "top-level tabs divide the inventory by ITEM KIND, with the equipped/loadout view as a peer tab that carries no search",
+      "exampleShape": ["carried", "collectibles", "cosmetics", "materials", "loadout"],
+      "why": "Blox Fruits ships Backpack / Treasure / Wardrobe / Stash / Build. Rarity is a sort axis and a tile treatment; it is not how the top level is cut."
+    },
+    "buttonVersusLabel": {
+      "rule": "labels carry no border and no filled background; anything with a border and a fill must be pressable",
+      "why": "'Drawing a hard line between what's a button and what's a text label is one of the most important parts of UI design', written about an inventory whose title and Close button were styled identically. On a screen that is mostly bordered rectangles, this is the rule that keeps it readable."
+    },
+    "perTileFeedbackIsMultiplied": {
+      "rule": "hover sound, hover scale and hover glow are applied at a fraction of the intensity used elsewhere, because they fire once per tile in a field of dozens",
+      "why": "'UI sounds are too loud, specially the hover sound. They can become annoying quickly, make them more subtle' — a note that only exists because this screen puts fifty hover targets under one cursor sweep."
+    },
+    "tilePadding": {
+      "rule": "padding inside the tile and between tiles is generous enough that the grid does not read as cramped; the reference pitch gives a 5:60 gap-to-cell ratio at the platform default",
+      "gapToCellRatio": 0.083,
+      "derived": true,
+      "derivedNote": "5 / 60 from the two published constants",
+      "why": "'maybe increase the padding. it's getting a little cramped in there' was the accepted note on one inventory, and the platform's own ratio is the only measured anchor available."
+    },
+    "verifyInPlayNotInStudio": {
+      "rule": "an inventory grid is not signed off until it has been seen at play resolution",
+      "why": "the one grid in the fetched set that broke, broke ONLY in play — 'a BIG difference' from Studio — and the cause was invisible in the editor. This screen has a known Studio-versus-play failure mode, so the profile records the check rather than the hope."
+    }
+  },
+  "gapsAgainstShippedTheme": [
+    "OPEN: the kit's grid rule is 4 columns of square tiles, inherited from simulator.json's SHOP grid. An inventory built at 4-across is roughly a third of the density Roblox's own inventory ships. The inventory screen needs its own computed-column grid at a ~65px cell pitch.",
+    "OPEN: no equipped state exists in the kit. There is no four-edge highlight frame and no reserved accent hue held aside for it.",
+    "OPEN: no selection-marks-legal-targets behaviour exists — selecting a tile does not outline the slots it can go into.",
+    "OPEN: no rarity treatment exists on tiles: no field gradient, no star row, and no defined zero-rarity state.",
+    "OPEN: no stack count. Nothing renders 'xN' in a tile corner.",
+    "OPEN: no filter/sort row, so the active-filter state that the references call the screen's commonest failure cannot even be got wrong yet.",
+    "OPEN: no lock affordance and no header icon cluster, which means any bulk action added later would ship unguarded.",
+    "OPEN: delete confirmation is unspecified; the references reject the same-place second click that is the easiest thing to build.",
+    "OPEN: the kit applies UIAspectRatioConstraint per card. On a grid this is the exact construction that produces a Studio-correct, play-broken layout."
+  ],
+  "renderedAndCompared": {
+    "when": null,
+    "how": null,
+    "note": "NOT YET RENDERED. simulator.json earns its authority from having been installed into a Studio place, played, and compared against its references by eye — that is how its text-stroke defect was found. This file has not had that pass. Until an inventory screen built from these rules is rendered at play resolution and looked at, every row above is a claim about what shipped inventories do, not a claim that the kit reproduces them. The verifyInPlayNotInStudio rule applies to this file's own verification first."
+  }
+}

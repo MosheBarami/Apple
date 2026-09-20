@@ -1,0 +1,448 @@
+{
+  "genre": "roleplay",
+  "label": "Roleplay / town-and-city (job pickers, phone hubs, house and furniture placement, avatar and outfit editors, money HUD)",
+  "recorded": "2026-09-20",
+  "provenance": "Desk research, not owner screenshots. Every row below was FETCHED on 2026-09-20 — game wikis read through their MediaWiki API (action=parse&prop=wikitext, because the rendered Fandom pages refuse a plain fetch), two Roblox DevForum threads, two files in Roblox's own public creator-docs repository, one studio dev-blog post and two independent guide sites. No image was opened, downloaded or stored; what is recorded is the prose description of each screen's construction and the positions and counts those descriptions state. Where a value was not stated by a source, it is absent here rather than estimated — see openQuestions.",
+  "copyrightPosture": "These are notes ABOUT interfaces, not copies of them. No Luau, no art, no asset id, no layout file from any of these games is reproduced. A count of tabs and the corner a button sits in are facts about a shipped product, not its expression.",
+  "references": [
+    {
+      "id": "bloxburg-cellphone-hub",
+      "source": "Welcome to Bloxburg Wiki, 'Main Menu' page — https://welcome-to-bloxburg.fandom.com/wiki/Main_Menu (fetched 2026-09-20 via the wiki API)",
+      "demonstrates": [
+        "the game's front door is a four-button menu — Play, Neighborhoods, Store, What's New — with the logo at the TOP LEFT and an options gear at the BOTTOM RIGHT; four buttons, not a grid",
+        "every one of those four destinations is ALSO reachable from an in-world cellphone: 'the Neighborhoods icon in the cellphone', 'the Updates app in the cellphone menu', 'the Settings icon in the cellphone menu'",
+        "the cellphone button itself sits at the LOWER RIGHT corner of the screen once the player is loaded onto their plot",
+        "the Store has a second entry point at the BOTTOM LEFT corner — money-spending lives on the opposite corner from the hub",
+        "the same feature therefore has two doors (a full-screen menu and a phone app) and they are not allowed to look like two different features"
+      ]
+    },
+    {
+      "id": "bloxburg-build-mode",
+      "source": "Welcome to Bloxburg Wiki, 'Build Mode' page — https://welcome-to-bloxburg.fandom.com/wiki/Build_Mode (fetched 2026-09-20 via the wiki API)",
+      "demonstrates": [
+        "entry is a single hammer button at the BOTTOM RIGHT of the screen (or a mailbox interaction in the world); exit is 'the large X button on the bottom right of the screen' — one corner owns both the way in and the way out",
+        "the catalog is a TWO-LEVEL tree with exactly two top-level sections, titled 'Build!' and 'Decorate!'; Build! lists 18 categories (Basements, Basic Shapes, Chimneys, Doors, Fence Gates, Fences, Fireplaces, Floor, Garden, Hatches, Mailboxes, Paths, Pillars, Pools, Roof, Stairs, Structural, Trash, Vehicles, Walls, Wall Trim, Windows) and Decorate! lists 19 (Appliances, Baby & Kids, Beds, Cabinets, Carpets, Chairs, Comfort, Curtains, Counters, Decorations, Electronics, Instruments, Household, Lighting, Plumbing, Pool Items, Storage, Tables, Training)",
+        "each category is presented as a tile carrying ONE representative item as its face — the category is illustrated by a product, never by an abstract icon",
+        "the player's own bought/earned items live in a separate 'Inventory' reached from the BOTTOM LEFT of the build screen, opposite the exit — purchasable catalog and owned stock are different doors",
+        "the search inside a build section has a defined empty state, documented as its own screen ('when a player types something in a build mode section and nothing is found')",
+        "the tools are a named verb set, each on a single-key hotkey: Transform (T), Paint (F), Clone (C), Scale (V), Sell/Delete (G), grid on/off (H), grid size cycle (J), collision on/off (K), hide-above-floor (U), floor up/down (Page Up / Page Down), undo/redo (Ctrl+Z / Ctrl+Y), overhead view (hold Space)",
+        "linear and area items carry PLACEMENT MODES — 'Default, Box, Chain, and Auto for floors and roofs' when placing walls, roofs, floors and fences — cycled with the same key that selects the tool",
+        "Backspace is bound to 'go back to the previous menu', so the catalog is explicitly a navigable stack with a back step, not a flat list"
+      ]
+    },
+    {
+      "id": "bloxburg-avatar-editor",
+      "source": "Welcome to Bloxburg Wiki, 'Customization' page (the in-game Avatar Editor) — https://welcome-to-bloxburg.fandom.com/wiki/Customization (fetched 2026-09-20 via the wiki API)",
+      "demonstrates": [
+        "the editor is reached from the Avatar app in the cellphone menu OR by interacting with a wardrobe, dresser or clothing rack in the world — a diegetic object opens the same panel as the menu entry",
+        "a life-stage control sits at the TOP of the menu as a slider with six named stops: Baby, Toddler, Kid, Teen, Adult, Elderly — a continuous-looking control quantised to named states",
+        "skin tone is also a slider rather than a swatch grid, and the wiki records a real defect of that choice: one tone 'is extremely hard to see against the menu's white' because the slider's own background is white",
+        "outfits are SLOTS, bought one at a time (60 Blockbux each), with a dedicated 'Buy new outfit slot' pop-up and a distinct error state for insufficient slots",
+        "there is a dedicated field for entering item codes from the Roblox catalog, sitting alongside the browsable categories rather than replacing them",
+        "the editor has named, illustrated error states for rule violations that are not about money — too young for a task, too old for a task"
+      ]
+    },
+    {
+      "id": "bloxburg-moods-hud",
+      "source": "Welcome to Bloxburg Wiki, 'Mood' page — https://welcome-to-bloxburg.fandom.com/wiki/Mood (fetched 2026-09-20 via the wiki API)",
+      "demonstrates": [
+        "four needs meters (Fun, Energy, Hunger, Hygiene) live in a Moods MENU at the bottom right, not on the HUD",
+        "the always-visible HUD carries a single aggregated token instead: 'the mood emoticon is in the shape of a notch displaying a single word', colour-coded (Great/Marvelous blue, Energized pink, Happy green, Clean teal, Fine grey)",
+        "the wiki states the reason outright — the notch 'serves as a simple method of determining mood without looking at the Moods menu'",
+        "that notch has MOVED twice across versions (top of screen pre-0.7.2, top notch, then bottom left as of 0.16.0) while remaining one word and one colour — the summary format survived every relayout",
+        "the fix action lives inside the menu next to the meters ('Boost Mood'), and is hidden entirely unless at least one gauge is below 50% — the remedy button only exists when it applies"
+      ]
+    },
+    {
+      "id": "brookhaven-sidebar",
+      "source": "Brookhaven Wiki, 'User Interface' page — https://brookhaven.fandom.com/wiki/User_Interface (fetched 2026-09-20 via the wiki API)",
+      "demonstrates": [
+        "the hub is a vertical SIDEBAR of ten icon entries, each an icon plus a name: Avatar Editor, Inventory, Animations, Vehicles, Houses, Character Bio, Jobs, Map Themes, Pets & Kids, Store",
+        "the Store is one entry in the same rail as everything else — monetisation is not given its own chrome",
+        "a second, smaller group of interfaces sits outside the rail: Home Cams, a Time readout, Settings, Family and Quick Chat",
+        "the page opens by defining the whole surface functionally — 'the buttons on the screen… essentials in games for making the game playable such as getting houses, editing the players avatar or shop' — i.e. the rail IS the game's feature list"
+      ]
+    },
+    {
+      "id": "brookhaven-avatar-editor",
+      "source": "Brookhaven Wiki, 'Avatar Editor' page — https://brookhaven.fandom.com/wiki/Avatar_Editor (fetched 2026-09-20 via the wiki API)",
+      "demonstrates": [
+        "strict two-level navigation: five top-level categories (Animations, Body, Clothes, Pre-Outfits, Accessories) each opening a list of subcategories",
+        "Body 'is the default category that opens when accessing the Avatar Editor' — the editor never opens on an empty or neutral screen",
+        "Accessories is subdivided by ATTACHMENT POINT, eight of them: Hats, Hair, Face, Back, Waist, Front, Neck, Shoulders — the taxonomy is anatomical, not stylistic",
+        "Animations is subdivided by MOVEMENT STATE: All, Idle, Walk, Run, Jump, Fall, Climb, Swim",
+        "opening Accessories first offers a 'Search All Categories' option — a cross-category search above the subcategory list",
+        "every catalog-backed subcategory carries the same control set: search by keyword / ID / creator / group, six sorts (Relevance, Best selling, Most favorited, Price low→high, Price high→low, Recently published), and a six-step time filter (All time, Past month, Past week, Past 3 days, Past day, Past 12 hours) that appears ONLY for the two popularity sorts",
+        "character scale is a ten-stop discrete control from 0.50 to 1.00, not a free slider",
+        "the Animations subcategories 'have the name of the animation unlike other categories that don't' — icon-only tiles are the default and names are the exception, reserved for items a picture cannot distinguish"
+      ]
+    },
+    {
+      "id": "brookhaven-jobs",
+      "source": "Brookhaven Wiki, 'Jobs' page — https://brookhaven.fandom.com/wiki/Jobs (fetched 2026-09-20 via the wiki API)",
+      "demonstrates": [
+        "over 80 jobs, grouped into five named categories chosen by roleplay fiction rather than by reward: Service, Family, Shop, Arts, Outside",
+        "each job is a tile with a job icon and a name, plus a requirement column that reads 'Free' or names a game pass — the requirement occupies the slot a price would occupy in a shop",
+        "selection is immediate and unconfirmed: 'Once a job is selected, it is immediately assigned to the player' — no confirm dialog, no cost step",
+        "the picker is NOT where a job is ended: 'After a player equips a job, a new menu labeled Job appears under the Home Cams button', containing exactly Take a Break, End Break and Quit",
+        "the choice is published to other players — 'a job icon appears above their character's head' — so the picker is choosing a public badge, not a private loadout",
+        "the page states the design intent plainly: jobs 'contribute to character identity and interaction rather than progression-based mechanics'",
+        "jobs can also be granted from a store interface in the world by clicking a job icon inside it — the same tile appears in two different containers"
+      ]
+    },
+    {
+      "id": "brookhaven-character-bio",
+      "source": "Brookhaven Wiki, 'Character Bio' page — https://brookhaven.fandom.com/wiki/Character_Bio (fetched 2026-09-20 via the wiki API)",
+      "demonstrates": [
+        "the genre's signature screen has no analogue in a simulator: two free-text fields, RP Name and Bio, 'displayed above their character in-game'",
+        "colour is chosen in TWO steps — 'selecting a color from the large color palette and then choosing a final shade next to the name input bar' — a palette for hue, then a shade strip docked against the field it affects",
+        "premium is expressed as animated TEXT TREATMENTS of the same field (Flash, Gradient Slow, Gradient Fast) rather than as extra fields",
+        "the page records a structural change made in spring 2026: one menu with four internal categories (Character Bio, Jobs, Map Themes, Kids) was SPLIT into four separate sidebar buttons, leaving Character Bio holding only name and bio",
+        "so the observed direction of travel is nested tabs → a longer flat rail, not the reverse"
+      ]
+    },
+    {
+      "id": "brookhaven-house-controls",
+      "source": "GAMES.GG, 'Brookhaven RP House Controls Guide: Every Feature Explained' — https://games.gg/brookhaven-rp/guides/brookhaven-rp-house-controls/ (fetched 2026-09-20)",
+      "demonstrates": [
+        "the house panel exists twice: as a diegetic wall panel inside every house and as a GUI overlay from the menu, and the two are NOT identical — the House Fire option 'only appears on the manual wall panel, not the main GUI'",
+        "the panel is dynamic: it displays only the controls relevant to that property type, so irrelevant rows are absent rather than greyed out",
+        "the control set is a toggle list grouped by purpose — locks, windows, cameras, garage door; music and disasters; house colour, house sign, props controls, pool",
+        "contextual buttons DOCK ONTO AN EXISTING ANCHOR rather than claiming fresh screen: a quick-access garage button appears near the Home Cameras button when driving a small vehicle",
+        "there is a single destructive bulk action ('remove all placed props in the house at once') living inside the same panel as the per-prop permissions"
+      ]
+    },
+    {
+      "id": "brookhaven-house-claim-state",
+      "source": "GAMES.GG, 'Brookhaven RP Beginner's Guide' — https://games.gg/brookhaven-rp/guides/brookhaven-rp-beginners-guide/ (fetched 2026-09-20)",
+      "demonstrates": [
+        "the menu opens on a keypress (M) and presents tabs, each tab being a whole feature: Houses, Avatar, Vehicles, Moods, Settings",
+        "property tiles carry an AVAILABILITY state a shop tile does not have: unclaimed homes are 'shown in green', and the action on the tile is Claim rather than Buy",
+        "the Houses tab does three jobs at once — claim, teleport between owned homes, and enter build mode — so the property list is also the fast-travel list",
+        "the vehicle list separates free-spawn entries from pass-gated entries in the same list rather than in a separate store"
+      ]
+    },
+    {
+      "id": "erlc-cell-phone",
+      "source": "Emergency Response: Liberty County Wiki, 'Cell Phone' page — https://emergency-response-liberty-county.fandom.com/wiki/Cell_Phone (fetched 2026-09-20 via the wiki API)",
+      "demonstrates": [
+        "a literal phone form-factor with a home screen of app icons: eight functioning applications, each opened from the home screen",
+        "app icons are identified by SHAPE AND COLOUR, not by a label — 'the messaging app (speech bubble icon)', 'the yellow taxi app right next to the Emergency Services app'",
+        "unread state is a red bubble carrying a count, placed next to the sender's name inside the list, and a separate new-message notification outside the phone",
+        "a set of mutually exclusive choices inside an app uses a stepper, not tabs: Police / Fire / DOT are cycled 'using the 2 arrows at the top of the screen'",
+        "a form inside an app is two stacked fields — a top box for the free-text emergency and a bottom box for location that 'may remain blank' — with the optional field second",
+        "submit is a single icon button pinned to the BOTTOM of the phone body: 'the blue paper plane button on the bottom of the phone'",
+        "the home screen surfaces live state so the app need not be opened at all: 'during weather conditions the home screen displays the weather status without the need to open the Weather app'",
+        "the wiki notes a real defect in that summary — 'the home screen shows the same icon for Rain and Thunderstorm conditions' — two states collapsing into one glyph",
+        "the phone hardware itself is a cosmetic slot: five purchasable models, each with five colourways, and switching away loses the previous one",
+        "the phone is confiscated by game state — every player has it 'except currently jailed players'"
+      ]
+    },
+    {
+      "id": "erlc-civilian-jobs",
+      "source": "Emergency Response: Liberty County Wiki, 'Civilian Jobs' page — https://emergency-response-liberty-county.fandom.com/wiki/Civilian_Jobs (fetched 2026-09-20 via the wiki API)",
+      "demonstrates": [
+        "19 civilian jobs, and the picker is DIEGETIC rather than a menu: the player walks into a glowing yellow circle at the job's location and presses the interaction button",
+        "the flow is acknowledge-terms → press 'Start Job', so this genre's job entry has a confirm step that Brookhaven's menu picker does not",
+        "the active-job affordance is a briefcase icon at the TOP RIGHT of the screen whose contents are only 'Quit Job' — quitting again lives on the HUD, not in the picker",
+        "jobs are mutually exclusive by construction: 'A player must quit the job they are in to be able to join another job'",
+        "job state is enforced against other systems — an equipped weapon is unequipped on joining, and wanted players cannot join at all",
+        "each job row in the wiki's own table is the same five columns the in-game listing needs: name, location, items, clothing options, vehicles, tasks",
+        "one job is gated on an in-game counter rather than money (50 job points), and one on a game pass — two different lock reasons on the same tile shape"
+      ]
+    },
+    {
+      "id": "adoptme-furniture-editor",
+      "source": "Adopt Me! Wiki, 'Furniture' page — https://adoptme.fandom.com/wiki/Furniture (fetched 2026-09-20 via the wiki API)",
+      "demonstrates": [
+        "entry is a purple 'Edit' button 'located on the top of their screen while inside their house' — the opposite corner from Bloxburg's bottom-right hammer, so the corner is a per-game choice while the SINGLE-BUTTON entry is the constant",
+        "the catalog is a docked panel on the RIGHT SIDE of the screen, not a centred modal — the room being edited stays visible the whole time",
+        "the same panel is used whether the item is being bought or placed; buying and placing are one act",
+        "there is a hard placement budget shown against the house: 4,000 items by default, raised in 500-item steps to a maximum of 8,000",
+        "the over-limit case is defined and non-punitive: 'the item will not be placed and the player will not be charged'",
+        "the catalog is organised into themed collections (Space, Driftwood, Rattan, Island House, Cozy House, Spooky House, Baby Shop, Artsy, Lunar, Retro Aquatic…) rather than by object type, and each item row is name + price in one currency"
+      ]
+    },
+    {
+      "id": "adoptme-build-ui-notes",
+      "source": "Adopt Me! official dev-blog post, 'Furniture Storage Feature Notes' — https://www.playadopt.me/news/furniture-storage-feature-notes (fetched 2026-09-20)",
+      "demonstrates": [
+        "the studio's own list of what the build UI was missing: new categories and a sorting system, an alphabetical category, and a refined search bar",
+        "a 'Lock mode to keep the furniture menu in place' was added specifically for 'placing large amounts of items' — the catalog closing after each placement was treated as a defect",
+        "a Storage concept separate from both catalog and house: any placed item can be put into Storage and used later 'even in a different house'",
+        "a 'Free category' of starter items exists so a new house is never furnished from an empty wallet"
+      ]
+    },
+    {
+      "id": "berry-avenue-phone-hub",
+      "source": "Bloxodes, 'Berry Avenue RP Wiki - Roleplay Guide' — https://bloxodes.com/wiki/berry-avenue-rp (fetched 2026-09-20)",
+      "demonstrates": [
+        "the phone menu is described as 'the hub for almost everything you do, including picking a job, customizing your avatar, choosing a house, and grabbing a vehicle' — one container, four unrelated systems",
+        "job selection has no gate at all in this game: the Jobs app assigns a role instantly with 'no test or application'",
+        "a second, redundant Avatar button sits on the RIGHT SIDE of the screen as quick access, distinct from the same feature's app inside the phone",
+        "the avatar editor's import path is a fixed four-step route — Menu (top left) → Equipped → Import ID → paste the catalog number → Add",
+        "there is no currency in the game, and the house list still works: tiles are claim/premium rather than priced"
+      ]
+    },
+    {
+      "id": "devforum-city-rp-gui",
+      "source": "Roblox DevForum, '[Feedback] City RP GUI' (Art Design Support) — https://devforum.roblox.com/t/feedback-city-rp-gui/571720 (fetched 2026-09-20)",
+      "demonstrates": [
+        "a shipped city-RP hub built as a translucent Watch Dogs-style overlay rather than a phone, covering jobs, taxes, vehicles, a stock exchange and shops",
+        "the reviewers' concrete construction note was to ADD A BORDER to make the panel read as a smartphone — the frame is what makes a rectangle read as a phone, not the contents",
+        "the reviewers' second note was about what the status bar is for: move money OUT of the top-left status position, put the in-game TIME there, and give money its own widget under a bank icon",
+        "the author's stated reason for not adopting a literal phone is structural and worth recording — a phone's smaller body could not fit the information, and its curved corners fought the open/close animation",
+        "the thread is a live split in the genre: players asked for a literal phone while other players said the flat overlay was 'good and easy to use'"
+      ]
+    },
+    {
+      "id": "roblox-hud-meter-construction",
+      "source": "Roblox creator-docs, 'Create HUD meters' tutorial — https://raw.githubusercontent.com/Roblox/creator-docs/main/content/en-us/tutorials/use-case-tutorials/ui/create-hud-meters.md (fetched 2026-09-20)",
+      "demonstrates": [
+        "Roblox's own numbers for a corner HUD readout: 16px padding from the screen edges, anchor point at the corner it hugs, and the bar sized in SCALE (35% wide, 5% tall) with a 20px maximum height so it cannot balloon on a large screen",
+        "the corner radius is expressed as a SCALE of 0.5 — a true capsule that stays a capsule at every size — not a fixed pixel radius",
+        "the outline is a 3px UIStroke; UIStroke has no scale option, so stroke is the one value that must stay in offset pixels",
+        "the icon is not inside the bar: it is 200% of the bar's height, locked to a 1:1 aspect ratio, and centred on the bar's left end so it overhangs both edges",
+        "the fill is a separate child frame at 100% of the parent, anchored (0, 0.5) so it grows from the left, over a dark 75%-transparent track"
+      ]
+    },
+    {
+      "id": "roblox-staff-ui-tips",
+      "source": "Roblox DevForum, 'Designing UI - Tips and Best Practices' (Roblox Staff) — https://devforum.roblox.com/t/designing-ui-tips-and-best-practices/3074034 (fetched 2026-09-20)",
+      "demonstrates": [
+        "scale is the default and offset is the exception — offset is reserved for icons, fixed-resolution graphics and UIStroke, which cannot scale",
+        "a UICorner set in scale (e.g. 0.2) stays 'much more consistent' across devices than the same corner set in pixels",
+        "the Roblox top bar reserves real estate at the top of every experience — the thread cites 36 offset pixels, with replies noting it is now nearer 58 — so a top-anchored HUD row must start below it",
+        "ScreenInsets is the property that keeps UI clear of notches and dynamic islands; a phone-shaped panel pinned to a screen edge is exactly the thing that collides with them",
+        "anchor-point formulas for the corners a roleplay HUD uses: centre is AnchorPoint (0.5,0.5) at Position {0.5,0},{0.5,0}; bottom-right is AnchorPoint (1,1) at Position {1,0},{1,0}"
+      ]
+    }
+  ],
+  "rules": {
+    "note": "Distilled from the references above. Units are Roblox UI units: offset px for stroke, scale for radius and size unless stated. Counts and positions are quoted from the sources; anything not stated by a source is in openQuestions rather than guessed. The simulator rules (thick stroke, plaque header, overhanging red circle close, price pills) are a DIFFERENT genre's construction and are not assumed here.",
+    "oneHub": {
+      "rule": "Every non-diegetic feature opens inside ONE persistent hub. Do not give jobs, avatar, houses and vehicles four separate floating windows.",
+      "openedFrom": "a single button in a screen corner, present at all times",
+      "why": "Berry Avenue's phone is 'the hub for almost everything… picking a job, customizing your avatar, choosing a house, and grabbing a vehicle'; Brookhaven routes ten features through one sidebar; Bloxburg routes Neighborhoods, Updates, Settings and Avatar through one cellphone. Three independent games, one container each."
+    },
+    "hubForm": {
+      "rule": "Pick exactly one hub form and commit: (a) a PHONE — a portrait body with a visible frame, a status strip, a home screen of app icons, and a back/home affordance at the bottom; or (b) a RAIL — a vertical stack of icon-plus-name entries down one screen edge whose selection swaps the adjacent panel. Never ship both.",
+      "phoneSeen": "ERLC (8 apps), Bloxburg (cellphone menu), Berry Avenue",
+      "railSeen": "Brookhaven (10 entries)",
+      "why": "Both forms are shipped and successful, but they are different navigation models — a phone has a home screen you return to, a rail has a persistent selection. Mixing them produces a rail of icons that each open a modal, which is the shape that reads as a developer tool."
+    },
+    "phoneFrame": {
+      "rule": "If the hub is a phone, the BORDER is what makes it read as a phone. Give the body a visible bezel and a rounded rectangle silhouette before adding any content.",
+      "cornerRadius": "scale, not offset — Roblox's own HUD tutorial uses a scale radius so the shape survives every screen size; UIStroke stays in offset px because it cannot scale",
+      "why": "The single concrete piece of construction feedback on the DevForum City RP hub was to add a border so the panel would read as a smartphone. The same thread records the author's warning that curved corners fight an open/close animation — so the radius has to be decided before the animation, not after."
+    },
+    "railContents": {
+      "rule": "The rail is the game's feature list, one entry per feature, icon plus name. Monetisation is ONE entry in the same rail with the same treatment — it does not get its own chrome.",
+      "observedLength": "10 entries in Brookhaven (Avatar Editor, Inventory, Animations, Vehicles, Houses, Character Bio, Jobs, Map Themes, Pets & Kids, Store)",
+      "why": "Brookhaven's Store sits between Pets & Kids and nothing special, styled like its neighbours. A store rendered louder than the features around it is the tell that the interface was designed by its revenue model rather than by its player."
+    },
+    "flattenNestedTabs": {
+      "rule": "When a hub entry grows a second level of tabs, SPLIT it into sibling entries in the rail rather than nesting.",
+      "why": "Brookhaven did exactly this in spring 2026: one Character Bio menu holding Character Bio / Jobs / Map Themes / Kids became four separate sidebar buttons, leaving Character Bio with only name and bio. The observed direction of travel in this genre is nested tabs → a longer flat rail."
+    },
+    "appIconGrid": {
+      "rule": "A phone home screen is a grid of rounded-square app icons identified by SHAPE AND COLOUR. Each app gets a silhouette distinct enough to be named without reading a label.",
+      "observedCount": "8 apps in ERLC",
+      "why": "The ERLC wiki navigates entirely by icon description — 'the messaging app (speech bubble icon)', 'the yellow taxi app right next to the Emergency Services app'. A grid of same-coloured glyphs cannot be described that way, and a player who cannot describe a button cannot be told where it is."
+    },
+    "statusStrip": {
+      "rule": "The phone's top strip carries TIME and ambient world state. It does NOT carry currency.",
+      "why": "The concrete review note on the DevForum City RP hub was to take money out of the top-left status position, put in-game time there, and give money its own widget under a bank icon. Brookhaven likewise keeps a separate Time readout outside the feature rail. Currency in a status bar reads as a phone battery indicator — ignorable."
+    },
+    "homeScreenSummary": {
+      "rule": "Surface live state on the home screen so an app need not be opened for a glance — and give every distinct state its own glyph.",
+      "why": "ERLC shows the weather on the phone's home screen 'without the need to open the Weather app', and the same wiki records the defect that follows from cutting corners on it: 'the home screen shows the same icon for Rain and Thunderstorm conditions'. A summary that collapses two states into one glyph is worse than no summary, because it is confidently wrong."
+    },
+    "contextualHudDocking": {
+      "rule": "A HUD affordance that appears because of player STATE docks onto an existing anchor button, extending it into a short stack. It does not claim a fresh corner.",
+      "examples": "Brookhaven's Job menu appears under the Home Cams button; a quick-access garage button appears near the Home Cameras button when driving a small vehicle",
+      "why": "Two independent Brookhaven features attach to the same anchor. This is what keeps a roleplay HUD from accumulating one orphan button per system until all four corners are full — which is the failure mode of every city-RP screenshot in the DevForum thread."
+    },
+    "moneyHud": {
+      "rule": "Currency is its own always-on HUD widget: a capsule with the currency icon overhanging its leading end and the number inside, hugging one screen corner.",
+      "geometry": "16px padding from the screen edges; width in scale; height in scale with a hard pixel maximum (20px in Roblox's own tutorial) so it cannot balloon on a large screen; corner radius 0.5 in SCALE so it stays a true capsule; 3px UIStroke in offset px because stroke cannot scale; icon at 200% of the bar height, locked 1:1, centred on the leading end so it overhangs both edges",
+      "topAnchorCaution": "a top-anchored row must start below the Roblox top bar, cited as 36 offset px and reported nearer 58 in replies; use ScreenInsets so it clears notches",
+      "why": "These are Roblox's own published numbers for a corner HUD readout, and they answer the two things a generator gets wrong: the icon is NOT inside the bar, and the radius is scale rather than pixels, which is why hand-built money pills look right on desktop and wrong on a phone."
+    },
+    "needsMeters": {
+      "rule": "N needs meters live in a PANEL. The always-visible HUD carries one aggregated token — a single word plus a colour — not N bars.",
+      "observed": "Bloxburg: four moods (Fun, Energy, Hunger, Hygiene) in a bottom-right menu; the HUD carries a one-word colour-coded notch (blue Great, pink Energized, green Happy, teal Clean, grey Fine)",
+      "why": "The wiki states the purpose of the notch directly — determining mood 'without looking at the Moods menu' — and the notch kept that one-word form across three different screen positions in three versions. Four bars on the HUD is the thing this game replaced."
+    },
+    "remedyButtonIsConditional": {
+      "rule": "A button that fixes a bad state is rendered only while the bad state exists. Do not ship it disabled.",
+      "why": "Bloxburg's 'Boost Mood' button lives beside the meters and is available only when at least one gauge is below 50%. This is the roleplay counterpart of the simulator's ownedState rule: change what occupies the slot rather than greying out what is in it."
+    },
+    "jobPicker": {
+      "rule": "Jobs are a grid of icon-plus-name tiles, grouped under FICTION headings, not reward tiers.",
+      "observedGroups": "Brookhaven: Service, Family, Shop, Arts, Outside (80+ jobs); ERLC: 19 civilian jobs listed by name, location, items, clothing options, vehicles and tasks",
+      "why": "Both games sort by what the role IS, and Brookhaven's own page says why — jobs 'contribute to character identity and interaction rather than progression-based mechanics'. Sorting a roleplay job list by pay turns an identity picker into a grind ladder."
+    },
+    "jobTileLockSlot": {
+      "rule": "The slot a shop tile uses for price is used here for a REQUIREMENT, and the requirement reads 'Free' when there isn't one. Lock reasons are not all money: a game pass and an in-game counter must render in the same slot.",
+      "observed": "Brookhaven job rows read Free or name a game pass; ERLC gates La Mesa on 50 job points and Judge on a game pass",
+      "why": "The simulator rules put a price pill in that slot. A roleplay job has no price, and a tile that leaves the slot empty loses its alignment and its scannability — the requirement is the thing the player is checking."
+    },
+    "jobEquipIsImmediate": {
+      "rule": "Selecting a job from a MENU applies it instantly with no confirm dialog. Selecting one from a WORLD POINT gets an acknowledge step.",
+      "observed": "Brookhaven: 'Once a job is selected, it is immediately assigned to the player'; Berry Avenue: 'no test or application'; ERLC: stand in the glowing yellow circle, acknowledge the terms, press 'Start Job'",
+      "why": "Two shipped conventions, split cleanly by where the choice happens. The menu costs nothing and is reversible, so a confirm step is friction; the world point is a commitment that changes the player's equipment and wanted-status eligibility, so it earns one."
+    },
+    "activeJobControl": {
+      "rule": "An active job produces a small persistent HUD control whose ONLY contents are pause and quit. Quitting is never in the picker.",
+      "observed": "ERLC: a briefcase icon at the top right holding 'Quit Job'; Brookhaven: a Job menu under Home Cams holding Take a Break / End Break / Quit",
+      "why": "Two unrelated games arrived at the same split. A player who wants to stop working is not shopping for a job, and making them reopen a grid of 80 tiles to find the one they already have is the single most common failure in generated job UIs."
+    },
+    "jobsAreExclusive": {
+      "rule": "One job at a time. Joining a second requires quitting the first, and the UI states that rather than silently swapping.",
+      "why": "ERLC: 'A player must quit the job they are in to be able to join another job.' Silent replacement destroys the HUD control above — the player loses the affordance for a job they did not know they had ended."
+    },
+    "overheadIdentity": {
+      "rule": "Every identity choice in these menus is PUBLISHED above the avatar — job icon, RP name, bio. The editor must show a live preview of the overhead nameplate, not only the body.",
+      "why": "Brookhaven renders RP Name and Bio above the character and puts the job icon over the head; ERLC's jobs come with visible clothing options. In this genre the menu is not configuring a private loadout, it is composing what strangers read, and an editor that previews only the avatar hides the actual output."
+    },
+    "identityEditor": {
+      "rule": "An RP-name screen is two text fields plus a two-step colour control: a large palette for hue, then a shade strip docked directly beside the field it recolours.",
+      "why": "Brookhaven does exactly this — 'selecting a color from the large color palette and then choosing a final shade next to the name input bar'. The shade strip has to touch the field because hue and shade are one decision made in two moves, and separating them across a panel breaks the loop."
+    },
+    "premiumIsATreatment": {
+      "rule": "Express premium as extra TREATMENTS of an existing control, not as extra controls.",
+      "observed": "Brookhaven VIP adds Flash and Gradient (Slow/Fast) name effects to the same name field; premium map themes and premium children appear in the same lists as the free ones",
+      "why": "It keeps one layout for paying and non-paying players, so the free player sees a complete screen rather than a screen with holes in it — and the upsell sits on a control the player is already using."
+    },
+    "avatarEditorNav": {
+      "rule": "Two levels, never three: a category row, then a subcategory list, then items. Open on a real category — never on an empty chooser.",
+      "observed": "Brookhaven: Animations / Body / Clothes / Pre-Outfits / Accessories, with Body 'the default category that opens'",
+      "why": "The default-open rule is explicit in the source, and it is what prevents the first frame of the editor from being a menu about a menu. Every additional level multiplies the taps between a player and a hat."
+    },
+    "accessoryTaxonomy": {
+      "rule": "Subdivide accessories by ATTACHMENT POINT and animations by MOVEMENT STATE, not by style.",
+      "attachments": "Hats, Hair, Face, Back, Waist, Front, Neck, Shoulders (8)",
+      "animationStates": "All, Idle, Walk, Run, Jump, Fall, Climb, Swim (8)",
+      "why": "Brookhaven uses both taxonomies, and they map one-to-one onto what the engine can actually equip. A style-based taxonomy ('cute', 'cool') cannot be generated correctly because nothing in the data says which bucket an item belongs to."
+    },
+    "catalogControls": {
+      "rule": "Any browsable item list carries the same control set: a search field, a sort menu, and a time filter that appears only for popularity sorts. A cross-category 'search all' sits above the subcategory list.",
+      "sorts": "Relevance, Best selling, Most favorited, Price low→high, Price high→low, Recently published",
+      "timeFilter": "All time, Past month, Past week, Past 3 days, Past day, Past 12 hours — shown only for Best selling and Most favorited",
+      "why": "Brookhaven repeats this identical control set on every catalog-backed subcategory, which is what lets a player learn it once. The conditional time filter is the detail generators drop; it is what makes 'best selling' mean anything."
+    },
+    "importIdField": {
+      "rule": "An avatar editor must include a direct 'enter an item ID' field beside the browsable categories. It is not an advanced escape hatch; it is a primary path.",
+      "observed": "Bloxburg's code field, Brookhaven's Size & ID subcategory, Berry Avenue's Menu → Equipped → Import ID → paste → Add",
+      "why": "Three of three roleplay games ship it, because the genre's players get outfit IDs from outside the game. An editor with only a browser is unusable for the way this audience actually shops."
+    },
+    "iconOnlyTilesByDefault": {
+      "rule": "Item tiles are icon-only. Add a name only where the picture cannot distinguish the items.",
+      "why": "Brookhaven's Animations subcategories 'have the name of the animation unlike other categories that don't' — a walk cycle and a run cycle look identical as a thumbnail, a hat does not. Labelling every tile costs the grid its density; labelling none costs the animations their meaning."
+    },
+    "quantisedSliders": {
+      "rule": "Continuous-looking avatar controls are quantised to named or numbered stops, and the current stop is displayed.",
+      "observed": "Bloxburg age slider with six named stops (Baby, Toddler, Kid, Teen, Adult, Elderly); Brookhaven scale in ten steps from 0.50 to 1.00",
+      "why": "Both games ship stops rather than a free range because each value changes animations and abilities, not just size. Also record Bloxburg's own documented defect: the skin-tone slider has a tone that 'is extremely hard to see against the menu's white' — a swatch control must never share a value with its own background."
+    },
+    "outfitSlots": {
+      "rule": "Saved looks are numbered SLOTS in a row, each one either filled or an explicit empty slot, with buying another slot as its own action and its own pop-up.",
+      "why": "Bloxburg sells outfit slots at 60 Blockbux each with a dedicated 'Buy new outfit slot' pop-up and a separate error state for insufficient slots. Slots are the unit players count and compare; an unbounded list of saved outfits removes the thing being sold."
+    },
+    "buildModeTakeover": {
+      "rule": "Placement is a MODE, not a panel. Entering replaces the normal HUD with build chrome; one button enters and one large X exits, and both sit in the same screen corner.",
+      "observed": "Bloxburg: hammer at the bottom right, 'the large X button on the bottom right of the screen' to exit; Adopt Me: a purple Edit button at the top of the screen",
+      "why": "The entry corner differs per game; the single-button, single-exit, same-corner structure does not. A build mode reachable from a submenu and exited through a different control strands players inside it, which is why both games put the door where the player last touched."
+    },
+    "catalogDock": {
+      "rule": "The item catalog is DOCKED to one screen edge for the whole session. It is never a centred modal.",
+      "observed": "Adopt Me: 'the menu on the right side of their screen'; Bloxburg: sections along the bottom with Inventory at the bottom left",
+      "why": "The thing being decorated has to stay visible while the catalog is open — a centred sheet hides the exact 3D space the player is judging. This is the clearest single difference from the simulator genre, where the shop IS a centred modal."
+    },
+    "catalogStaysOpen": {
+      "rule": "The catalog does not close after a placement, and there is an explicit control to pin it.",
+      "observed": "Adopt Me shipped a 'Lock mode to keep the furniture menu in place' specifically for 'placing large amounts of items'",
+      "why": "A studio added this after shipping, which is the strongest possible evidence that close-on-place was a real defect. Furnishing a room is tens of placements from the same category; one-shot modal behaviour multiplies that by two taps each."
+    },
+    "catalogTree": {
+      "rule": "Two levels above the items: a small number of top-level SECTIONS, then roughly 15-20 categories inside each, each category faced by one representative product image rather than an abstract icon.",
+      "observed": "Bloxburg: two sections, 'Build!' (~18 categories) and 'Decorate!' (~19); Adopt Me groups by themed collection instead of object type",
+      "why": "Bloxburg splits structure from decoration at the top because the tools and placement modes differ between them. The representative-product face matters because a player scanning for 'a sofa' recognises a sofa, not a chair glyph."
+    },
+    "ownedStockIsSeparate": {
+      "rule": "The player's owned/earned items get their own door, at the opposite end of the build chrome from the buy catalog, plus a Storage concept that survives moving house.",
+      "observed": "Bloxburg 'Inventory' at the bottom left, opposite the exit; Adopt Me Storage holds any placed item for use 'even in a different house'",
+      "why": "Mixing bought stock into a priced catalog makes every tile ambiguous — the player cannot tell what will cost money. Two doors is the cheaper answer than a badge on every tile."
+    },
+    "placementTools": {
+      "rule": "A persistent tool strip with one button per verb and a visible active state, every verb on a single-key hotkey, plus undo and redo.",
+      "verbs": "Transform (move/rotate) T, Paint F, Clone C, Scale V, Sell/Delete G; grid on/off H, grid size cycle J, collision toggle K, hide-above-floor U, floor up/down, undo Ctrl+Z, redo Ctrl+Y, overhead view on hold",
+      "why": "This is Bloxburg's actual bound set, and the verbs are what the generator has to emit as buttons. Hiding any of them in a right-click menu makes them unreachable on touch, which is most of this genre's players."
+    },
+    "placementModes": {
+      "rule": "Linear and area items (walls, fences, floors, roofs) get placement MODES cycled from the same control that selects the tool.",
+      "observed": "Bloxburg: Default, Box, Chain, Auto",
+      "why": "Placing a room's worth of wall one segment at a time is the difference between a build system and a prop spawner, and the modes live on the tool key because the player is already holding the tool."
+    },
+    "gridControl": {
+      "rule": "Grid is two controls, not one: an on/off toggle and a coarse step-size control with about three named steps. Offer per-axis handles for fine work.",
+      "observed": "Bloxburg: grid on/off (H) and grid size cycle (J); Adopt Me: Large / Medium / Small plus red, green and blue axis arrows",
+      "why": "Both games shipped a small number of named sizes rather than a continuous slider, because the useful sizes are the ones that tile. Colour-coded per-axis arrows are how Adopt Me exposes the third dimension without a numeric field."
+    },
+    "placementBudget": {
+      "rule": "State the placement budget against the house, and make the over-limit case non-punitive: refuse the placement and charge nothing.",
+      "observed": "Adopt Me: 4,000 items default, +500 per upgrade to a maximum of 8,000; over the limit 'the item will not be placed and the player will not be charged'",
+      "why": "The limit is a number the player plans around, so it has to be visible. The refund-nothing rule is the part a generator forgets, and it is the difference between a limit and a trap."
+    },
+    "propertyTileState": {
+      "rule": "A property tile's primary state is AVAILABILITY, not price: unclaimed reads green and the action is Claim. The property list doubles as the fast-travel list.",
+      "observed": "Brookhaven: unclaimed homes 'shown in green', tab does claim + teleport + enter build mode; Berry Avenue houses are claim-or-premium with no currency at all",
+      "why": "Houses in this genre are a contested shared resource rather than stock — someone else can hold the one you want, which is a state a shop tile has no slot for. Berry Avenue proves the pattern survives with no economy behind it."
+    },
+    "houseControlPanel": {
+      "rule": "House controls are a grouped toggle list that shows only the rows this property actually has. Omit inapplicable rows entirely rather than greying them out. Keep the one bulk destructive action inside the same panel as the per-item permissions.",
+      "observed": "Brookhaven's panel is dynamic per property type, groups locks/windows/cameras/garage, music/disasters, colour/sign/props/pool, and holds 'remove all placed props in the house at once'",
+      "why": "The source says the panel displays only relevant features, and a greyed row in a house panel is indistinguishable from a broken one. Keeping the bulk delete beside the permission that caused the mess is where a player looks for it."
+    },
+    "diegeticDuplicate": {
+      "rule": "A world object may open the same panel as a menu entry. If the two versions differ, the difference must be deliberate and the in-world one is the superset.",
+      "observed": "Brookhaven's wall panel carries House Fire, which 'only appears on the manual wall panel, not the main GUI'; Bloxburg's wardrobes, dressers and clothing racks open the Avatar Editor; ERLC's jobs are joined from a glowing circle in the world",
+      "why": "Diegetic entry points are half of how this genre is navigated, and an object that opens a different-looking panel from the menu teaches the player there are two systems. Where they differ, the physical one earns the riskier action because standing at it is itself the confirmation."
+    },
+    "formLayout": {
+      "rule": "A form inside a hub is a short vertical stack with the required field first and optional fields below it, submitted by one icon button pinned to the bottom edge of the container.",
+      "observed": "ERLC's 911 app: a top box for the emergency, a bottom box for location that 'may remain blank', and 'the blue paper plane button on the bottom of the phone'",
+      "why": "The submit button belongs to the phone body, not to the form, so it stays in the same place across every app. Required-first is what lets the player send without reading to the bottom."
+    },
+    "stepperNotTabs": {
+      "rule": "Two or three mutually exclusive options inside a small panel use a left/right stepper with the current value between the arrows, not a tab row.",
+      "observed": "ERLC: Police / Fire / DOT chosen 'using the 2 arrows at the top of the screen'",
+      "why": "Tabs need width this genre's phone body does not have, and a stepper keeps the label at full size. Reach for tabs only when the container is a full-screen rail panel."
+    },
+    "unreadBadge": {
+      "rule": "Unread state is a red bubble carrying a COUNT, placed against the row it belongs to inside the list — plus a separate arrival notification outside the hub.",
+      "why": "ERLC puts 'a red bubble with the amount of message they received from a player next to the player's name', and notifies separately when the phone is closed. A badge only on the app icon tells a player something arrived but not from whom, which is the whole question in a roleplay game."
+    },
+    "hardwareIsCosmetic": {
+      "rule": "If the hub is a phone, the phone body itself is a legitimate cosmetic slot — a small number of models, each with a small number of colourways.",
+      "observed": "ERLC: 5 models (950 / 1,800 / 825 / 1,490 / 1,050), 5 colours each",
+      "why": "It monetises the chrome instead of the content, which is why every app can stay free. Note the trap the wiki records: switching model loses the previous one, so the slot must be presented as a swap and not a collection."
+    },
+    "hubCanBeRevoked": {
+      "rule": "Game state can take the hub away. Design the absent case — a jailed, wanted or restricted player must see why the control is gone, not a dead button.",
+      "observed": "ERLC: every player has the phone 'except currently jailed players'; wanted players cannot join a job; equipping a job unequips a weapon",
+      "why": "Roleplay games have adversarial states that simulators do not, and the HUD is where those states are enforced. A generator that assumes the hub is always available produces a button that does nothing at the exact moment the player most wants an explanation."
+    }
+  },
+  "openQuestions": [
+    "NOT MEASURED: stroke weight, corner radius in pixels, panel fill opacity, type scale and bevel treatment for any of these games. Every source here is prose, and prose states positions, counts and behaviour but not geometry. The one numeric geometry in this file comes from Roblox's own HUD-meter tutorial, and it applies to the HUD readout only. Do not copy simulator.json's 4px stroke / 20px radius into this genre on the assumption that Roblox UI is Roblox UI — that assumption is precisely what this library exists to stop.",
+    "NOT OBSERVED: whether roleplay panels use the simulator's overhanging plaque header and overhanging red circle close at all. Not one source describes a header treatment. Treat header and close construction as unknown for this genre.",
+    "PARTIAL: Brookhaven tile state colours. 'Unclaimed homes are shown in green' is sourced; a fuller green/red/grey = available/taken/premium scheme appeared in a search summary that could not be confirmed against a page that was actually fetched, and is therefore NOT recorded as a rule.",
+    "PARTIAL: Adopt Me's grid sizes (Large / Medium / Small) and RGB axis arrows come from the Adopt Me wiki page and a third-party guide summary; the studio's own post confirms the categories, sorting, search bar, Lock mode, Storage and Free category but does not describe the axis handles.",
+    "NOT FETCHED: Livetopia and Royale High. Both are large roleplay titles and neither yielded a page describing its interface construction. Berry Avenue is represented by one third-party guide rather than a wiki, which is the weakest source in this file.",
+    "NOT RENDERED: unlike simulator.json, nothing here has been built in Studio and compared against the sources. This file is research, not a verified match, and it carries no gapsAgainstShippedTheme for that reason. The simulator file earned its ledger by rendering; this one has not."
+  ],
+  "incomplete": false,
+  "referenceCountNote": "18 references recorded, all fetched on 2026-09-20. Note for whoever maintains tests/ui-references.test.mjs: 'roleplay' is still listed in that test's PENDING set, and the test asserts that a PENDING genre with five or more references must be removed from the list. This file will fail that check until 'roleplay' is taken out of PENDING — which is the ratchet working as designed, not a defect in this file. That edit was deliberately not made here because this task was scoped to a single file in a shared tree."
+}

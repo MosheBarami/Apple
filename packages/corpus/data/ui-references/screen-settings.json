@@ -1,0 +1,395 @@
+{
+  "genre": "screen-settings",
+  "label": "Settings / Options screen (toggle rows, sliders, sectioned groups, keybind rows, close & reset affordances)",
+  "recorded": "2026-09-20",
+  "provenance": "Web research, not owner screenshots. Every row below was fetched over the network on 2026-09-20: Roblox's own creator-docs markdown read raw from github.com/Roblox/creator-docs, shipped-game community wikis read through the MediaWiki parse API (Fandom's rendered HTML is behind Cloudflare; api.php is not), and Roblox DevForum threads read directly. No image, no Luau source and no asset is copied here. Each row records where the claim was read and what construction it describes, so the claim can be checked. Where a wiki page is a fan RECREATION of a game's panel rather than a description of it, the row says so.",
+  "incomplete": false,
+  "scope": "This file describes a SCREEN, not a genre. The rules are the construction a settings screen holds to whichever genre skin is applied on top of it — a simulator settings panel and a survival settings panel differ in palette, stroke and plaque, and agree on everything recorded here: the row shape, the control vocabulary, the grouping threshold, the close/save behaviour and the platform gating.",
+  "references": [
+    {
+      "id": "official-interactive-ui-tutorial",
+      "source": "https://raw.githubusercontent.com/Roblox/creator-docs/main/content/en-us/tutorials/use-case-tutorials/ui/interactive-ui.md — Roblox's own 'Create interactive UI' tutorial, which builds a settings menu with two volume sliders. Fetched 2026-09-20. This is the only source found that states exact property values, so it carries most of the numeric rules below.",
+      "demonstrates": [
+        "the settings panel is a CENTRED LANDSCAPE modal, not a tall sheet: AnchorPoint 0.5, Position (0.5,0,0.5,0), Size (0.75,0,0.75,0) with a UIAspectRatioConstraint of 2.5 — two and a half times wider than tall",
+        "its pixel width is CLAMPED, not free: UISizeConstraint MinSize (350,0), MaxSize (800,inf) — so the panel stops growing on a monitor and stops shrinking on a phone",
+        "UICorner is given in SCALE (0.1,0), so the radius tracks the panel's own height instead of being a fixed pixel value",
+        "close is an ImageButton with AnchorPoint (1,0) at Position (1,-10,0,10) — pinned to the panel's top-right with a 10px inset — sized (0.15,0,0.15,0) and forced square by a UIAspectRatioConstraint; it is an icon, not a labelled button",
+        "a slider ROW is a transparent container at Size (0.8,0,0.1,0) — 80% of the panel wide, 10% of it tall — laid out by a UIListLayout with FillDirection Horizontal, HorizontalFlex Fill, VerticalAlignment Center and Padding (0.06,0)",
+        "the row's leading icon is an ImageLabel at Size (2.5,0,2.5,0) with a 1:1 UIAspectRatioConstraint — 250% of the row height, so the icon deliberately overflows the row's vertical band",
+        "the slider TRACK is a fully round bar: UICorner (0.5,0), UIStroke Thickness 3, and a UISizeConstraint MaxSize (inf,30) that caps its height at 30px however tall the panel gets",
+        "the FILL is a separate frame anchored (0,0.5) at Position (0,0,0.5,0), Size (0.5,0,1,0), ZIndex 2, UICorner (0.5,0) — it grows rightward from the track's left edge and is the accent colour at BackgroundTransparency 0.35",
+        "the KNOB is a circle at Size (1.2,0,1.2,0) — 120% of the track, so it OVERHANGS the track top and bottom — with a 1:1 aspect constraint, UICorner (0.5,0), a UIStroke of Thickness 8 in the accent colour, and ZIndex 3 so it sits over the fill",
+        "the accent colour appears on the fill and on the knob's stroke; the track itself stays neutral (black at BackgroundTransparency 0.75)",
+        "dragging is a UIDragDetector with DragStyle TranslateLine, ResponseStyle Scale and BoundingUI set to the track — the knob cannot leave the bar, and the value is read in scale, not pixels",
+        "open/close is asymmetric motion: open tweens Position from (0.5,0.4) to (0.5,0.5) with bounce easing over 0.5s and sets Visible true; close sets Visible false with a 0-second duration — the panel rises with an overshoot and vanishes instantly"
+      ]
+    },
+    {
+      "id": "roblox-core-escape-menu-settings",
+      "source": "https://roblox.fandom.com/wiki/In-game_menu — Roblox Wiki, read as wikitext via https://roblox.fandom.com/api.php?action=parse&page=In-game%20menu&prop=wikitext on 2026-09-20. Describes Roblox's OWN settings tab, which is the control vocabulary every player already knows.",
+      "demonstrates": [
+        "the settings surface is a TAB inside a menu ('Settings', alongside Report, Help, Record), opened with Esc and closed with an X in the corner or a Resume button — the wiki notes the X and the Resume button have co-existed across menu versions",
+        "row control types are a closed set: an on/off toggle (Shift Lock, Full screen), a named-option selector (Camera mode cycles Follow / Classic / CameraToggle / Default; Movement mode cycles Keyboard / Keyboard + Mouse / Click to Move; Graphics mode is Manual / Automatic), and a DISCRETE BAR slider",
+        "the discrete slider is counted in bars, not percent: mouse sensitivity and volume are 'one bar being the slowest, and ten bars being the fastest', and volume has a real zero — 'No bars being mute'",
+        "a row the developer has disabled is GREYED OUT and left in place, not removed: 'This option would be greyed out if the owner disabled changing camera modes' — same for movement mode",
+        "a DEPENDENT row stays visible and becomes adjustable only when its parent row allows it: graphics quality is adjustable 'as long as the graphics mode is set to manual'",
+        "typed numeric entry was removed from the sensitivity row in May 2020 — decimals like 0.25 revert to 0 on Enter, so the bar count is the only input",
+        "in 2022 the Controls list was MOVED OUT of Help and INTO the settings surface, and version readouts (Client / Server / Place / CoreScript version) were put behind an 'Advanced Settings' category at the bottom"
+      ]
+    },
+    {
+      "id": "doors-lobby-settings-panel",
+      "source": "https://doors-game.fandom.com/wiki/Lobby_Menu/Settings — DOORS Wiki, read as wikitext via api.php on 2026-09-20. The page is a fan RECREATION of the in-game panel in HTML/CSS plus per-row notes, so the proportions are the wiki editors' reading of the shipped panel, not measurements of it.",
+      "demonstrates": [
+        "the header is ONE ROW, name left and close right: a flex row with justify-content space-between, the word 'Settings' at font-size 300%, and a close-button image at the right at 45x45px",
+        "the panel in the recreation is 500px wide, border 2px solid, border-radius 8px, padding 4px 20px — a narrow radius and a thin border, i.e. the settings panel does NOT inherit the fat cartoon stroke a simulator shop panel gets",
+        "rows are grouped under ALL-CAPS section headers with no box around them — here 'VOLUME' then 'MISC' — and the rows hang directly beneath",
+        "the row markup names the control type per row, and only two types appear: 'adjust bar' (Lobby Music, Game Music) and 'toggle' carrying its default state ('toggle on' for Toggle Crouch, 'toggle off' for Reduce Motion and Hide Own Clothes)",
+        "volume is split into TWO rows by context — Lobby Music and Game Music — rather than one master volume",
+        "a row can be platform-exclusive: Toggle Crouch is described as 'a PC and Console exclusive setting'",
+        "the settings a horror game ships are reduce-effects rows, not graphics rows: Reduce Motion ('disables or enables the camera tilt when turning... for people who may experience dizziness') and Hide Own Clothes (stated as a performance/visibility setting present 'in many more Roblox games')"
+      ]
+    },
+    {
+      "id": "bedwars-settings-page",
+      "source": "https://robloxbedwars.fandom.com/wiki/Settings — BedWars Wiki (Easy.gg), read as wikitext via api.php on 2026-09-20. The clearest shipped example of per-device row gating found.",
+      "demonstrates": [
+        "the entry point is a GEAR ICON in the top HUD, reachable 'on any Device (PC, Mobile, Controller) from the Top HUD Gear Icon both in-match and in the lobby' — the same screen serves menu and match",
+        "the page states the contract outright: 'Some Options May Vary By Device'",
+        "sections are named by domain, not by control type: Audio Options, Game Options, Friends, Privacy, Controls (PC Only) — and a section may hold a single row (Friends holds only Friend Notifications)",
+        "three separate volume sliders, one per sound group: Emote Music Volume, Game Background Music Volume, Lobby Background Music Volume",
+        "a numeric range row states its bounds and its default in the UI's own terms: FOV 'is set to 80 as default. (70 - 100)'",
+        "rows are HIDDEN, not greyed, when the platform can never use them: 'Mobile Shift Lock (Mobile Only)... It is not visible on PC', and 'PC Shift Lock (PC Only)'",
+        "the whole Controls section is PC-only, and it carries a scoped reset: the listed controls 'can be Changed in the Settings Menu' and 'can also be Reset To Default'",
+        "a setting can also be a hotkey: Picture Mode 'can Also Be Turned on/off Using [F1] on PC' — so a toggle row and a keybind can name the same state",
+        "role-gated rows exist and are simply absent for everyone else: Enable Freecam 'is Only Available for Developers, Anti-Cheat Moderators, Famous Role and Roblox Star Creator'",
+        "defaults are stated per row throughout ('Turned On By Default', 'Turned Off by Default'), i.e. the screen is expected to know its own defaults"
+      ]
+    },
+    {
+      "id": "3008-settings-menu",
+      "source": "https://roblox-3008-wiki.fandom.com/wiki/Settings_Menu — Roblox 3008 Wiki, read as wikitext via api.php on 2026-09-20.",
+      "demonstrates": [
+        "when the groups pass three, they become TABS: 'The Settings Menu has 4 categories, Video, Audio, Gameplay and Controls' — each category is its own page of rows with its own screenshot",
+        "group sizes are small: Video 3 rows, Audio 5, Gameplay 6, Controls 5 — nothing approaching a twenty-row flat list",
+        "sliders are stated in normalised units with the display caveat spelled out: Master / Soundtrack / Environment Volume each default to 1, 'however, that 1 here actually means 100%'",
+        "a numeric row is not a slider: Snap to Grid Range, Rotate Amount, 'Shift' Rotate Amount and 'Ctrl' Rotate Amount are typed values with stated ranges (rotation 1-360 degrees, defaults 45 / 90 / 15) and are COMMITTED by a separate control — 'Setting this to a value and clicking the check'",
+        "a row the player cannot own is REMOVED rather than disabled: Disable Watch 'will not show in the menu if the gamepass is not owned'",
+        "KEYBINDS ARE A SEPARATE SCREEN from the settings categories — the page lists a 'Keybinds Menu (PC or Console Only)' beside a Credits Menu, outside the four category tabs",
+        "the settings surface also hosts non-settings: a Credits Menu and a Donations menu with fixed Robux amounts (15, 30, 60, 150, 300, 600, 1000, 5000)",
+        "an old row was deleted once it was subsumed: 'Mute Soundtrack... in later version, this is removed and replaced by Volumes' — a binary row loses to the slider that contains it"
+      ]
+    },
+    {
+      "id": "item-asylum-settings",
+      "source": "https://item-asylum-wiki.fandom.com/wiki/Settings — item asylum Wiki, read as wikitext via api.php on 2026-09-20. The page tabulates every row with the game's OWN in-game description string and its default.",
+      "demonstrates": [
+        "entry is a gear icon inside an existing menu UI — 'accessed via the menu UI and selecting the gear icon'",
+        "THERE IS NO SAVE BUTTON: 'Options automatically save after leaving'",
+        "every row carries a second line of copy written in the game's voice — 'Toggles the damage indicators when you hit someone', 'Disables / Tones down bright or sudden flashes' — so a row is name + description + control, not name + control",
+        "groups are Gameplay (7 rows), Visual (4), Audio (4), Gamepass (4); the Gamepass group exists only as a group, not as a per-row badge",
+        "a three-state row uses a CYCLING ARROW BUTTON, not a dropdown: Shiftlock Angle 'uniquely uses an arrow button that changes in direction based on the setting. Has three options', and the button's glyph IS the value",
+        "audio rows are 0-1 sliders with per-row defaults (0.5, 0.5, 1, 1), again split by sound group (Area Music, Death Sounds, Item Music, Emote Music)",
+        "the accessibility row is named as such and is off by default: Photosensitive Mode, alongside Screen Shake and Blood Pools / Gibs"
+      ]
+    },
+    {
+      "id": "ability-wars-settings",
+      "source": "https://abilitywars-roblox.fandom.com/wiki/Settings — Ability Wars Wiki, read as wikitext via api.php on 2026-09-20. Included because it takes the OPPOSITE choice to BedWars on platform gating, which is why the rule below records the disagreement.",
+      "demonstrates": [
+        "the launcher is a button in the BOTTOM-RIGHT of the screen, 'next to the \"shop\" button' — settings sits on the same rail as the shop rather than in a top bar",
+        "the whole screen is toggles: 'There are ten toggle-able settings as of now', grouped Music (5 rows), Mobile (3), Performance (3), Gamepass Exclusive (2)",
+        "mobile-only rows are SHOWN EVERYWHERE: 'Few settings are specifically designed for Mobile Gameplay. However, these settings still show on other devices' — the direct opposite of BedWars hiding them",
+        "music is split five ways by source (background, ability, minigame, emote, environmental), confirming that one Volume row is not the convention",
+        "the panel's corners carry INFORMATION, not controls: 'On the top left of the settings menu, you can see 2 boxes' — server age and server region — while the top right holds the Update Log and, beside it, the in-game credits",
+        "a performance row is a named preset, not a quality number: 'Low Graphics Mode - Makes all objects a simple color'"
+      ]
+    },
+    {
+      "id": "blox-fruits-settings",
+      "source": "https://blox-fruits.fandom.com/wiki/Settings — Blox Fruits Wiki, read as wikitext via api.php on 2026-09-20.",
+      "demonstrates": [
+        "settings is a HUD ENTRY sitting in the existing button cluster — 'located next to the Crew option for Pirates and the Ally option for Marines' — so its position is defined relative to the game's other launchers, and it moves with the player's faction",
+        "the same panel mixes settings with non-settings: Background Music, Ally VFX, Camera Shake, Damage Counter and Fast Mode are toggles, while Codes opens a redemption field and Update Log opens a changelog",
+        "the performance toggle is framed by what it removes and who it is for: 'Fast Mode toggles Fast Mode, which removes all textures. Enabling this can significantly improve performance and reduce lag, especially for mobile'",
+        "toggles are justified in the copy by competitive consequence ('Turning Camera Shake off is one of the best things to do before PvP'), i.e. the row label alone is not expected to carry the reason"
+      ]
+    },
+    {
+      "id": "devforum-keybind-settings-ui",
+      "source": "https://devforum.roblox.com/t/keybind-settings-and-ui/1397056 — Roblox DevForum, Scripting Support, fetched 2026-09-20.",
+      "demonstrates": [
+        "a keybind row is action name plus a BUTTON whose label is the currently bound key",
+        "clicking the button puts the row into a waiting state by replacing the label — the implementation shown uses '> <' as the listening marker — and the label becomes the new key name ('W', 'A', 'Spacebar') once captured",
+        "capture is UserInputService.InputBegan, and the shown filter accepts single-character key names, which silently excludes comma, period and semicolon — a real defect worth designing against rather than copying",
+        "duplicate bindings are rejected against a BindedKeys table before the row commits ('if not self:IsBinded(inputName)'), so the row needs a REJECTED state, not just idle and listening"
+      ]
+    },
+    {
+      "id": "devforum-horizontal-slider-tutorial",
+      "source": "https://devforum.roblox.com/t/web-design-part-3-fully-functional-horizontal-slider-useful-for-settings/368375 — DevForum Community Tutorials, 'Fully Functional Horizontal Slider (Useful for Settings)', fetched 2026-09-20.",
+      "demonstrates": [
+        "the hierarchy is track container, a bounding button defining the range of motion, and a fill frame that grows left-to-right inside it — the fill IS the value indicator",
+        "the slider is paired with an editable TextBox readout beneath it that shows the value as a rounded integer and accepts typed input, with validation rejecting non-numeric input and anything outside 0-100",
+        "the value is computed from width ratio, '100 * (size / maxSize)', so the slider's contract is a normalised 0-1 that is PRESENTED as 0-100",
+        "the mouse-driven implementation does not work on touch, and the thread's own replies say so, pointing at touch events instead — a settings slider built on mouse movement alone is broken on the majority platform"
+      ]
+    },
+    {
+      "id": "creator-docs-cross-platform",
+      "source": "https://raw.githubusercontent.com/Roblox/creator-docs/main/content/en-us/projects/cross-platform.md — Roblox creator documentation, fetched 2026-09-20.",
+      "demonstrates": [
+        "position and size by Scale, not pixels, because Scale is 'based on a percentage of the screen's X and Y bounds, not a pixel value'; AnchorPoint sets the origin so alignment survives the change of screen",
+        "the engine exposes three viewport classes to branch on — ViewportDisplaySize Small (mobile / tablet / handheld), Medium (laptops and monitors), Large (TVs) — and style queries such as @ViewportDisplaySizeSmall apply per-class rules without scripting",
+        "layouts, not hand-placed children, are the cross-device mechanism: containers should 'adjust responsively to the children elements within them' via UIListLayout and flex layouts",
+        "text needs an explicit size constraint or it becomes illegible on large displays, and actions must not be distinguished by colour alone",
+        "input hints must be rendered per detected input type (keyboard, touch, gamepad), and InputActionLabel updates them automatically",
+        "NEGATIVE FINDING, recorded so it is not invented later: this page states no minimum touch-target size, no safe-area pixel numbers and no gamepad-navigation requirement"
+      ]
+    },
+    {
+      "id": "creator-docs-input-action-system",
+      "source": "https://raw.githubusercontent.com/Roblox/creator-docs/main/content/en-us/input/input-action-system.md — Roblox creator documentation on InputAction / InputBinding / InputContext, fetched 2026-09-20.",
+      "demonstrates": [
+        "the key shown in a keybind row is read from InputAction.PreferredBinding, a read-only property that 'returns the child InputBinding best matching the player's current input device' and 'updates dynamically as the player's device configuration changes'",
+        "the row's glyph comes from InputBinding.DisplayName or InputBinding.DisplayImage, falling back to UserInputService:GetStringForKeyCode() — never a hardcoded string",
+        "InputActionLabel renders the correct binding for the current device with no scripting and 'updates instantly' when the player switches device, resolving in priority order: custom images, platform key images, custom display names, platform key strings",
+        "one action carries SEPARATE InputBinding children per device family (keyboard/mouse, gamepad, touch), so a keybind row is per-device and a controls list is not one list"
+      ]
+    },
+    {
+      "id": "creator-docs-accessibility",
+      "source": "https://raw.githubusercontent.com/Roblox/creator-docs/main/content/en-us/production/publishing/accessibility.md — Roblox creator documentation, fetched 2026-09-20.",
+      "demonstrates": [
+        "the platform already owns three player preferences a settings screen must obey rather than duplicate: PreferredTextSize (Medium to Largest), ReducedMotionEnabled, and PreferredTransparency (0 fully opaque, 1 default)",
+        "TextScaled bypasses the player's PreferredTextSize setting, and UITextSizeConstraint limits do not override it — so a settings screen that uses TextScaled everywhere silently overrules an accessibility preference",
+        "ReducedMotionEnabled is the signal to disable or reduce UI animations and tweens — which directly governs the bounce-in open animation the official tutorial teaches",
+        "separate volume controls per sound group (music, sound effects, speech) are the documented recommendation, not a stylistic choice",
+        "colour must not be the only distinguishing signal; pair it with symbols, because 'over 5% of people in the world have some form of color blindness'"
+      ]
+    },
+    {
+      "id": "devforum-settings-panel-feedback",
+      "source": "https://devforum.roblox.com/t/feedback-for-ui-settings-panel/2966453 — DevForum Creations Feedback thread on a settings panel, fetched 2026-09-20. A critique thread rather than a shipped screen; recorded for the failure modes it names.",
+      "demonstrates": [
+        "the failure the critics name first is distribution, not colour: 'there's a lot of space on the bottom and the ui items aren't spread evenly throughout the frame' — a settings panel sized for a fixed row count and then under-filled reads as broken",
+        "the panel should be SIZED TO ITS ROWS rather than the rows floated in an oversized panel ('overall panel size should be reduced')",
+        "control and label must be proportioned to each other — text sized against the toggle, not independently",
+        "visible stray outlines on the controls ('clean up the outlines I can see the white thingys') are the second thing spotted, i.e. stroke discipline on small controls is noticed at a glance"
+      ]
+    },
+    {
+      "id": "devforum-settings-menu-critique",
+      "source": "https://devforum.roblox.com/t/im-designing-a-settings-menu-any-suggestions/583697 — DevForum Art Design Support, 'I'm designing a settings menu, any suggestions?', fetched 2026-09-20. Also a critique thread, recorded for the same reason.",
+      "demonstrates": [
+        "one text size across all rows is the first correction given: 'Make sure that the button text is all the same size' and 'The text should be of one size, and the positioning could be more consistent, for example, the spacing is really odd'",
+        "borders must be uniform in weight AND direction of contrast: BorderSizePixel 2, and 'If you choose a darker colour for the border, make sure to make all the borders a darker colour for consistency'",
+        "the palette advice is explicitly narrow — 'shades of one color and white' — which matches this library's position that a settings screen is the least decorated surface in the game"
+      ]
+    }
+  ],
+  "rules": {
+    "note": "Distilled from the references above. Numeric values come from the sources that stated them — chiefly Roblox's own interactive-ui tutorial, whose property values are exact — and are marked approximate where they were read from a fan recreation instead. Units are Roblox UI units. Colour is deliberately absent except where it is structural: a settings screen takes its palette from whichever genre theme wraps it.",
+    "panelShape": {
+      "orientation": "landscape",
+      "aspect": 2.5,
+      "sizeScale": [0.75, 0.75],
+      "minWidthPx": 350,
+      "maxWidthPx": 800,
+      "cornerRadiusScale": 0.1,
+      "why": "the official tutorial's settings menu is wider than tall and clamped in pixels at both ends; a settings screen is a row list and rows are horizontal, so the tall portrait sheet a shop uses is the wrong container. The clamp is what keeps it from becoming a 1600px strip on a monitor or a 250px sliver on a phone."
+    },
+    "entryPoint": {
+      "glyph": "gear",
+      "placement": "an existing HUD launcher rail, beside the shop or inventory button",
+      "observedPositions": ["top HUD bar (BedWars)", "bottom-right beside Shop (Ability Wars)", "beside Crew/Ally in the HUD cluster (Blox Fruits)", "inside a menu UI (item asylum)"],
+      "never": "a lone floating text button labelled SETTINGS",
+      "why": "four independent shipped games put settings on the same rail as the other launchers and identify it by a gear; none of them give it its own bespoke corner"
+    },
+    "header": {
+      "layout": "single row, title flush left, close flush right",
+      "titleWeight": "largest text on the screen",
+      "closeSizePx": 45,
+      "approximate": true,
+      "why": "the DOORS recreation is a space-between flex row with a 300% title and a 45px close image; the official tutorial pins its close to the same corner. A settings screen does NOT get the overhanging plaque banner the simulator genre file mandates for shop panels — every settings reference keeps the title inside the panel."
+    },
+    "closeButton": {
+      "anchorPoint": [1, 0],
+      "insetPx": 10,
+      "sizeScaleOfPanelHeight": 0.15,
+      "aspect": 1,
+      "labelled": false,
+      "alsoBoundTo": ["Esc on desktop", "the platform back gesture"],
+      "why": "exact values from the official tutorial; it is an ImageButton with a 1:1 aspect constraint, so the close affordance is an icon in a square, never a text button in the footer"
+    },
+    "saveAffordance": {
+      "rule": "there is none — a change applies the instant the control moves, and the screen persists on close",
+      "quote": "item asylum: 'Options automatically save after leaving'",
+      "theOnlyFooterButtonThatEarnsItsPlace": "Reset to Default, and it is SCOPED to one section rather than the whole screen (BedWars scopes it to Controls)",
+      "never": "a Save / Apply / Cancel triad",
+      "why": "not one of the eight shipped references has a Save button. Save-and-Cancel is a desktop-application convention; on Roblox the control IS the commit, and a generator that emits a Save button has produced a screen no player will trust or press"
+    },
+    "grouping": {
+      "inlineHeadersUpTo": 3,
+      "tabsFrom": 4,
+      "headerStyle": "all-caps text label, no box, no stroke, rows hanging directly beneath",
+      "rowsPerGroup": { "observedMin": 1, "observedMax": 7, "typical": 4 },
+      "why": "DOORS runs two inline caps headers (VOLUME, MISC); 3008 crosses four groups and becomes four category tabs (Video, Audio, Gameplay, Controls); BedWars runs five named sections one of which holds a single row. The threshold sits between three and four. A flat twenty-row list appears nowhere."
+    },
+    "sectionNaming": {
+      "rule": "name sections by DOMAIN, not by control type",
+      "observed": ["Audio / Volume", "Video / Visual", "Gameplay", "Controls", "Privacy", "Performance", "Mobile", "Gamepass"],
+      "never": ["Toggles", "Sliders", "Options"],
+      "why": "every shipped reference groups by what the setting affects; grouping by widget is a developer's mental model, not a player's"
+    },
+    "row": {
+      "structure": "label line, optional description line beneath it in quieter text, control flush right and vertically centred across both lines",
+      "controlColumn": "right-aligned and ALIGNED ACROSS EVERY ROW in a section — one control column, not per-row positioning",
+      "descriptionLine": "written in the game's own voice, one short sentence ('Toggles the damage indicators when you hit someone')",
+      "widthScale": 0.8,
+      "heightScale": 0.1,
+      "why": "row size from the official tutorial (0.8 x 0.1 of the panel); the description line is item asylum's per-row in-game copy, and the two critique threads both name uneven spacing and mismatched text sizes as the first thing a viewer notices"
+    },
+    "rowLayout": {
+      "mechanism": "UIListLayout with FillDirection Horizontal, HorizontalFlex Fill, VerticalAlignment Center",
+      "paddingScale": 0.06,
+      "leadingIconScaleOfRowHeight": 2.5,
+      "leadingIconAspect": 1,
+      "why": "exact from the official tutorial. The leading icon at 250% of the row height deliberately breaks the row's vertical band — the icon is bigger than its row, which is what stops a settings list reading as a spreadsheet"
+    },
+    "controlVocabulary": {
+      "closedSet": [
+        "onOffToggle",
+        "discreteBarSlider",
+        "continuousSlider",
+        "cycleSelector",
+        "numericEntryWithCommit",
+        "keybindRow",
+        "actionButton"
+      ],
+      "never": "a dropdown / combobox",
+      "why": "THE STRONGEST FINDING IN THIS FILE. Across Roblox's own settings tab and seven shipped games, a multi-option setting is always a CYCLE — the control shows the current value and advances to the next on click (Camera mode cycles four values; Movement mode three; Graphics mode two; item asylum's Shiftlock Angle three, with the arrow glyph itself as the value). Not one reference opens a list. A generator that reaches for a dropdown has produced a web form, and it will also have produced a control that needs a scrolling popup layer on a 375px phone screen."
+    },
+    "cycleSelector": {
+      "rule": "the control displays the CURRENT value and advances on click; the glyph or word is the value",
+      "optionCountObserved": [2, 3, 4],
+      "why": "Graphics mode is 2, Shiftlock Angle and Movement mode are 3, Camera mode is 4. Beyond roughly four a cycle stops being usable, and no reference went beyond four"
+    },
+    "toggle": {
+      "rule": "the control carries its own state; the row's default state is a known property of the row",
+      "defaultsAreAuthored": true,
+      "why": "every shipped wiki states a default per row ('It is on by default', 'This Option is Turned On By Default', a Default column in item asylum's table). A settings screen that cannot say what default means cannot offer Reset to Default either"
+    },
+    "slider": {
+      "trackMaxHeightPx": 30,
+      "trackCornerRadiusScale": 0.5,
+      "trackStrokeThickness": 3,
+      "fillAnchorPoint": [0, 0.5],
+      "fillGrows": "left to right from the track's left edge",
+      "fillZIndex": 2,
+      "knobScaleOfTrack": 1.2,
+      "knobAspect": 1,
+      "knobStrokeThickness": 8,
+      "knobZIndex": 3,
+      "accentAppliesTo": ["fill", "knob stroke"],
+      "accentNeverAppliesTo": ["track"],
+      "drag": "UIDragDetector, DragStyle TranslateLine, ResponseStyle Scale, BoundingUI = the track",
+      "why": "all exact from the official tutorial. Three things a generator gets wrong without this: the track is CAPPED at 30px however big the panel gets, the knob is 120% of the track so it OVERHANGS it top and bottom, and the fill sits UNDER the knob (ZIndex 2 vs 3). A knob flush inside the track reads as a progress bar, not a control."
+    },
+    "sliderValueReadout": {
+      "rule": "a slider always shows its value — as a count of discrete bars, as a number beside the track, or as an editable numeric field",
+      "discreteBarCount": 10,
+      "zeroIsReachable": true,
+      "why": "Roblox's own sliders are ten bars with 'no bars being mute'; the DevForum settings-slider tutorial pairs the bar with an editable 0-100 TextBox; BedWars states FOV as '80 as default. (70 - 100)'. A bare fill with no readout appears in none of the shipped references, and a volume slider that cannot reach silence is a bug in the control, not a choice"
+    },
+    "numericEntry": {
+      "rule": "a typed numeric value is COMMITTED by a separate control, not applied per keystroke",
+      "quote": "3008: 'Setting this to a value and clicking the check'",
+      "statedBounds": true,
+      "why": "the only reference with free numeric entry gives it an explicit commit affordance and states each field's range and default (rotation 1-360, defaults 45 / 90 / 15). Roblox's own menu went the other way and REMOVED typed sensitivity entry in 2020 — so typed entry is the exception, earned by a value a slider cannot express"
+    },
+    "audioRows": {
+      "rule": "never one Volume row",
+      "minimumSplit": 2,
+      "typicalSplit": "3-4, one per sound group",
+      "observed": ["Lobby Music / Game Music (DOORS)", "Emote / Game Background / Lobby Background (BedWars)", "Master / Soundtrack / Environment (3008)", "Area / Death Sounds / Item Music / Emote (item asylum)", "five music sources (Ability Wars)"],
+      "why": "unanimous across the shipped references and independently the documented accessibility recommendation. A single master volume is the single most common tell that a settings screen was invented rather than observed"
+    },
+    "reduceEffectsCluster": {
+      "rule": "a settings screen carries a reduce-effects group, and it is not the same thing as a graphics group",
+      "observedRows": ["Reduce Motion (camera tilt)", "Camera Shake / Screen Shake", "Photosensitive Mode", "Damage Counter / Hitmarkers", "Visible Nametags", "Blood Pools / Gibs"],
+      "why": "appears in five independent shipped references. These rows are framed as comfort and competitive clarity, not as performance"
+    },
+    "performanceCluster": {
+      "rule": "a named preset that says what it REMOVES, not a quality number",
+      "observed": ["Fast Mode — 'removes all textures... especially for mobile'", "Low Graphics Mode — 'Makes all objects a simple color'", "Hide Own Clothes", "Global Shadows"],
+      "why": "three shipped references ship a performance group aimed explicitly at mobile, and each names its mechanism. Roblox's own 1-10 graphics slider already exists in the Esc menu, so a game duplicating it adds nothing"
+    },
+    "dependentRows": {
+      "greyOutWhen": "the state is temporary and the player can change it — a parent row's value, a mode, a permission the developer toggles at runtime",
+      "removeWhen": "the difference is permanent for this player or this device — wrong platform, unowned gamepass, absent role",
+      "why": "Roblox greys camera/movement mode when the developer disabled them and keeps graphics quality visible-but-inert while the mode is Automatic; 3008 HIDES the watch row when the gamepass is not owned and BedWars HIDES Mobile Shift Lock on PC. The two behaviours are not interchangeable: a greyed row teaches the player what would unlock it, a hidden row would only confuse"
+    },
+    "platformVariance": {
+      "rule": "the screen declares that it varies by device and hides rows the device can never use",
+      "quote": "BedWars: 'Some Options May Vary By Device'",
+      "hiddenOnTouch": ["the entire Controls / Keybinds section", "shift-lock-style desktop modifiers", "fullscreen"],
+      "hiddenOnDesktop": ["mobile-only movement aids (mobile shift lock, on-screen punch button, mobile crosshair)"],
+      "contested": "Ability Wars SHOWS its mobile rows on every device; BedWars, DOORS and 3008 hide platform-exclusive rows. Three of four hide, so hide — but the disagreement is real and is recorded rather than smoothed over",
+      "why": "this is the rule most likely to be missing from an invented settings screen, because an inventing model has only ever seen one platform's screenshot"
+    },
+    "keybindSection": {
+      "placement": "inside the settings surface but as its OWN tab or page, never interleaved with toggle rows",
+      "platform": "keyboard and gamepad only; absent on touch",
+      "row": "action name left, a BUTTON showing the current binding right",
+      "states": ["idle (shows the bound key)", "listening (label replaced by a waiting marker)", "rejected (the key is already bound to another action)"],
+      "resetAffordance": "Reset to Default, scoped to this section",
+      "why": "3008 keeps a separate 'Keybinds Menu (PC or Console Only)'; BedWars calls the section 'Controls (PC Only)' and gives it its own reset; Roblox moved its own Controls list into settings in 2022. The keybind row is the one row whose control is neither a toggle nor a slider, which is why it gets its own page"
+    },
+    "keybindGlyph": {
+      "rule": "the displayed key is read from the binding, never hardcoded",
+      "api": ["InputAction.PreferredBinding (read-only, updates as the device changes)", "InputBinding.DisplayName", "InputBinding.DisplayImage", "UserInputService:GetStringForKeyCode() as fallback", "InputActionLabel to render it with no script"],
+      "oneActionManyBindings": "separate InputBinding children per device family (keyboard/mouse, gamepad, touch), so a controls list is per-device and the same action shows a different glyph on each",
+      "why": "documented engine behaviour; a hardcoded 'E' is wrong the moment a controller is plugged in"
+    },
+    "aboutStrip": {
+      "rule": "reserve a corner or footer strip for the non-settings the settings panel is always asked to host — Codes, Update Log, Credits, server region and server age — visually separated so a tap there is not mistaken for a setting",
+      "observed": ["Blox Fruits: Codes and Update Log sit among the setting rows", "Ability Wars: Update Log and Credits top-right, server age and region top-left", "3008: Credits and Donations beside the categories", "Roblox's own menu: version readouts behind an Advanced Settings category at the bottom"],
+      "why": "four independent references put non-settings on this screen. Pretending they do not exist forces the generator to invent a second panel the player will never find"
+    },
+    "motion": {
+      "open": "Position tweens from (0.5, 0.4) to (0.5, 0.5) with bounce easing over 0.5s, Visible set true",
+      "close": "instant — Visible false, duration 0",
+      "suppressWhen": "ReducedMotionEnabled is true",
+      "why": "exact from the official tutorial: the panel rises a short distance with an overshoot and it does not animate out. The asymmetry is the point — an exit animation delays the player returning to play. The suppression rule is Roblox's documented accessibility signal, and it applies to exactly this tween"
+    },
+    "responsiveSizing": {
+      "rule": "Scale for position and size, AnchorPoint for origin, UISizeConstraint for the pixel clamp, layouts for the rows; branch on ViewportDisplaySize Small / Medium / Large via style queries",
+      "never": "an Offset-sized settings panel",
+      "why": "documented cross-platform guidance, and the official settings menu is built exactly this way"
+    },
+    "textSizing": {
+      "rule": "one text size for every row label on the screen, a second quieter size for description lines, and a UITextSizeConstraint rather than TextScaled",
+      "why": "both critique threads open with inconsistent text size as the first visible fault, and the accessibility documentation states that TextScaled BYPASSES the player's PreferredTextSize preference — so the settings screen, of all screens, must not use it"
+    },
+    "strokeAndRadius": {
+      "panelStrokeThickness": 2,
+      "panelCornerRadiusPx": 8,
+      "approximate": true,
+      "why": "read from the DOORS wiki's recreation, so approximate. Recorded because it CONTRADICTS the simulator genre file's 4px stroke and 20px radius: the settings screen is the least decorated panel in the game, and the critique threads confirm that stray strokes on small controls are the first thing a viewer spots. Where a genre theme mandates a heavier stroke, apply it to the panel edge only, not to every row and toggle"
+    }
+  },
+  "openQuestions": [
+    "No source examined stated a minimum touch-target size for a settings row or toggle, and Roblox's own cross-platform page explicitly does not. The only enlargement actually observed is the slider knob at 120% of a 30px-capped track — about 36px. Row height in pixels is therefore NOT recorded here, because no reference stated one.",
+    "Whether a long settings list scrolls or paginates was not settled. 3008 and BedWars both pass ten rows and both split into categories rather than describing a scroll, which is suggestive but is not an observation of a scrolling frame.",
+    "No reference described the visual construction of the on/off toggle control itself — knob-in-track vs checkbox vs filled pill. The shipped wikis name the control ('toggle on', 'toggle off') without drawing it, and the one tutorial with exact numbers builds sliders, not toggles. This is the largest remaining hole in the file.",
+    "Gamepad focus and navigation through a settings list (what is selected on open, how focus moves, whether B closes) is undocumented in the pages fetched. BedWars states controller users reach the same gear icon, which is not the same as describing navigation."
+  ],
+  "honestLimits": [
+    "Fifteen references, all fetched over the network on 2026-09-20; none supplied by the owner and none read from a screenshot.",
+    "Exactly one source states exact property values — Roblox's own interactive-ui tutorial — and most numeric rules above therefore trace to it. Where a number comes from a fan wiki's HTML recreation of a panel (DOORS: 500px wide, 2px border, 8px radius, 45px close) it is marked approximate, because the recreation is a wiki editor's reading rather than a measurement of the shipped game.",
+    "The shipped-game evidence is textual: community wikis describing what a settings screen CONTAINS and how each row BEHAVES. They are strong on row taxonomy, grouping, defaults and platform gating, and weak on pixels. That asymmetry is why the rules above are dense on structure and thin on dimensions, and why the missing toggle construction is named in openQuestions rather than guessed.",
+    "Two of the fifteen are DevForum critique threads rather than shipped screens. They are recorded as critique, and only the failure modes they name are carried into the rules.",
+    "This file has not been rendered and compared. simulator.json earned its gapsAgainstShippedTheme by installing the kit in Studio and looking at it; nothing equivalent has been done for a settings screen, so no such section is claimed here."
+  ]
+}

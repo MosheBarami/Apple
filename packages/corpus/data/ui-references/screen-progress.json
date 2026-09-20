@@ -1,0 +1,421 @@
+{
+  "genre": "screen-progress",
+  "label": "The BATTLE PASS / SEASON PASS screen, across genres — the tier track, the free and premium lanes, reward nodes and their four states, the season XP bar, the claim action, the premium upsell and its confirmation, the season timer, the mission list that feeds the track, and the HUD opener that badges it",
+  "recorded": "2026-09-20",
+  "provenance": "Researched on the open web on 2026-09-20 with WebSearch, WebFetch, the devforum JSON API and direct curl. Every row names a document or image that was actually fetched and looked at in that session; screenshots and PDFs were downloaded to a scratch directory, opened and read page by page. No image, no Luau source, no asset and no sheet of anyone's UI is stored or reproduced here. What is recorded is the construction convention read out of what was seen: anatomy, slot order, which channel each state changes, geometry, and the timer and progress formats. Proportions were read off the images by eye, not measured with a picker, and are marked approximate. Where a document's own annotation arrows or highlight boxes were drawn ON the screenshot by the publisher, they are called out as annotation and are NOT recorded as game UI.",
+  "references": [
+    {
+      "id": "jailbreak-season-pass-screen",
+      "source": "https://prod.docsiteassets.roblox.com/assets/game-design/season-pass-design/season-pass-design-0.png (Season 13, undimmed live capture) and -4/-5/-6/-7/-8.png (Season 15, publisher-annotated captures of the same screen), the figures captioned as Jailbreak on https://create.roblox.com/docs/production/game-design/season-pass-design — all six downloaded and viewed 2026-09-20.",
+      "demonstrates": [
+        "The screen is a WIDE, SHORT landscape band — roughly 2:1 — not a tall modal. A ten-tier track has to run across the screen, so the pass panel is the widest and shortest panel a game owns.",
+        "The tier track is a single thick BLACK horizontal bar running edge to edge inside the panel, with ten small rounded-square number badges sitting ON the bar at even spacing. The bar is the spine; the badges are the only thing on it.",
+        "Tier numbers are gold rounded squares with a heavy dark stroke, set in the same display face as the titles — the number is a badge, not plain text on a line.",
+        "Free rewards sit ABOVE the bar, premium rewards BELOW it, and each reward tile is joined to its tier badge by a short thin vertical LEADER LINE. The tile does not sit in a cell; it hangs off the spine.",
+        "The two lanes are OFFSET by half a step: free tiles land on even tiers, premium tiles on odd tiers, so the columns interleave instead of stacking. Nothing forces the lanes to share a column.",
+        "The premium lane is identified by a full-width coloured BAND behind it whose left end carries the lane label in two short lines; the free lane has no band at all. Band presence, not tile colour, is what separates the lanes.",
+        "Every reward tile carries a small CIRCULAR category badge overhanging its top-right corner — what kind of thing the reward is (vehicle, texture, effect) is a second glyph on the tile, not a word.",
+        "Free tiles are dark rounded squares; premium tiles are light rounded squares on the band. The tile fill flips between lanes so the tile stays legible against whatever is behind it.",
+        "The header is a full-width band across the panel top, split by a DIAGONAL cut: the left zone holds the season number in a gold outlined display face, the season name beside it in a contrasting weight, and a small all-caps instruction line beneath; the right zone holds the timer. The split is a slanted edge, not a rule or a gap.",
+        "The timer block is two lines: a small all-caps label over a large coloured figure, and it reads in coarse units (days and hours) rather than seconds until it is nearly out.",
+        "The footer is two wide buttons side by side. The left one is the upsell: a pill with a small pass icon at its left, a small italic eyebrow line naming the season above the label, the buy label large, and the price as a number followed by the hard-currency glyph. The right one is the sibling action into the mission list, or its disabled stand-in when the season has ended.",
+        "The close control is a small circle at the TOP-LEFT corner, overhanging the panel — the pass screen is the one screen that does not put close at the top-right.",
+        "A separate strip sits below the panel entirely for gifting: label, a small square avatar box, a dark text field with placeholder, and a purchase pill at the right.",
+        "When the season has ended the timer reads zero, the right footer button becomes a flat disabled block with a waiting label, and the header subtitle is swapped for a thanks-and-next-season line. The track itself is left on screen unchanged.",
+        "ANNOTATION, NOT UI: in -4 through -8 the publisher dims the whole capture and draws a light-blue-plus-violet double outline around whichever element the surrounding text is discussing. That double outline is not part of the game's UI and must not be copied as a selection style."
+      ]
+    },
+    {
+      "id": "roblox-season-passes-package-rewards-tab",
+      "source": "https://prod.docsiteassets.roblox.com/assets/resources/feature-packages/Season-Passes/Season-Passes-Intro.png (the hero on https://create.roblox.com/docs/resources/feature-packages/season-passes) and the in-context screenshot posted at https://devforum.roblox.com/t/beta-new-feature-packages-season-pass-engagement-rewards/3579550 — both downloaded and viewed 2026-09-20. Roblox's own shipped Season Passes feature package, Rewards tab.",
+      "demonstrates": [
+        "Same skeleton in a completely different visual register: dark, flat, no strokes, no bevels, no text outline. The battle-pass SHAPE is genre-independent; only the surface changes.",
+        "Two lanes of reward CARDS with a horizontal tier rail running BETWEEN them, and here the lanes are column-ALIGNED: tier N is the same x in both lanes.",
+        "A fixed left gutter column, about a seventh of the width, holds the lane identity: a small pass/ticket glyph with the lane name beneath it, vertically centred to its lane. The gutter does not scroll with the track.",
+        "The lanes are distinguished by CARD TINT, not by a band: free cards are neutral dark, premium cards a tinted dark of the same value. No divider, no label band.",
+        "The tier rail IS the progress bar. The completed run of the rail is a thick bright line; the remaining run is a thin dim line; the break between them sits at the player's current tier.",
+        "Tier chips are small flag/hexagon pills sitting ON the rail at each column boundary. Reached chips are filled light with dark text; unreached chips are dark with dim text. Same shape, inverted fill.",
+        "Card slot order is fixed: art in the top ~60%, the reward NAME in bold beneath it, then a state slot pinned at the bottom. The name never changes between states.",
+        "Four states live in that one bottom slot: claimable renders a filled accent button spanning the card's inner width; claimed renders a bare tick glyph and nothing else; unreached renders NOTHING, leaving the slot empty; premium-locked renders a padlock glyph followed by one muted word. The card is otherwise identical in all four.",
+        "Locked and unreached reward ART is drawn at full colour and full opacity. Nothing is greyed out; the state is carried entirely by the bottom slot.",
+        "The top bar is one black band: season number large at the left with the season name and the remaining time on ONE small muted line beneath it, separated by a middle dot; the tab row centred; the progress readout and close at the right.",
+        "The progress readout at the top right is a compact cluster: a small tier chip, then the XP fraction as current-over-target, then a thin rounded bar directly underneath showing that fraction filled. It is a readout, not the main track.",
+        "Tabs are plain text labels, active one bright and inactive one dim, each with a small coloured DOT to its right when that tab has something to collect. The dot is the badge.",
+        "The upsell button sits at the BOTTOM-LEFT, directly under the premium lane's gutter label, as a quiet dark rounded button with a ticket glyph, the buy label, and the price as a currency glyph then a number.",
+        "Horizontal scroll is signalled by CLIPPING: the rightmost column is cut by the panel edge mid-card rather than ending flush. A flush right edge would read as the end of the track.",
+        "Close is a bare X glyph with no button behind it — in a flat register the close chrome disappears entirely.",
+        "The HUD opener sits at the screen's right edge outside the panel: a circular art button with a small coloured badge dot at its top-right, and two caption lines beneath giving the season name and the remaining time."
+      ]
+    },
+    {
+      "id": "roblox-season-pass-ui-wireframes-state-matrix",
+      "source": "https://prod.docsiteassets.roblox.com/assets/game-design/season-pass-design/season-pass-ui.pdf — the 19-page 'Season Pass UI Wireframes' deck linked from the Resources section of https://create.roblox.com/docs/production/game-design/season-pass-design. Downloaded and read page by page 2026-09-20. Every wireframe carries the publisher's own callout arrows naming what each element is and why.",
+      "demonstrates": [
+        "The screen has three fixed regions and one scrolling one: a left INFO RAIL, a lane-label column, the scrolling tier grid, and the season XP bar between the lanes. The callout states explicitly that the info rail stays anchored while the player scrolls the tiers.",
+        "The info rail, about a sixth of the width, stacks: season title, a small time-remaining line in days/hours/minutes, a short instruction sentence, and lower down the upgrade button with the premium glyph and a one-line reason to press it.",
+        "The lane-label column is the first column of the grid, not part of the rail: a header cell reading the word tiers, then a free-lane cell and a premium-lane cell, each an icon above a two-line lane name.",
+        "Column headers are the bare tier NUMBERS in a header row above the free lane. The number is a column heading, not a chip inside the cell.",
+        "The season XP bar is a full-width strip BETWEEN the two lanes, labelled at its left end, with a small XP pennant marker. It fills left to right and the edge of the fill lands under the tier the player is on — the bar and the grid share one x-axis.",
+        "A reward cell is: icon, quantity beneath as a times-n line, then a state slot at the bottom of the cell. Every cell is the same rectangle.",
+        "The state slot matrix, stated as such across five successive wireframes: unreached = empty slot; reached-and-unclaimed = a bordered claim button; claimed = the button is REMOVED and replaced by the bare past-tense word, no box; premium-not-owned = a padlock glyph, with the premium ROW additionally carrying a different background tint from the free row.",
+        "The callout is explicit that the claimed state removes the button rather than disabling it, and that the lock means the reward cannot be claimed until the pass is bought — the lock is about ownership, not about progress.",
+        "Buying the pass changes four things at once: every padlock disappears, every already-completed premium tier immediately shows an enabled claim button, the rail's upgrade button is removed and replaced by a plain unlocked line, and the mission panel's upgrade button becomes a non-interactive upgraded label.",
+        "The final tier is drawn as a single emphasised cell with a much heavier border than every other cell and the words final reward instead of an icon and quantity. It is the only cell whose weight differs.",
+        "Tapping the final reward opens an info popup: a large square art block at the LEFT, and at the right the item name, a one-line requirement sentence, flavour text, and a stats block. Text right, art left.",
+        "A horizontal scrollbar sits under the premium lane. The callout says the bar is primarily an INDICATOR that scrolling exists and that dragging anywhere in the grid should scroll it.",
+        "One wireframe is captioned to say the UI should AUTO-SCROLL to the first unclaimed reward when the player opens the screen.",
+        "Season ended: the entire tier UI is REPLACED by a small panel with a teaser image block at the left and a next-season countdown at the right — the empty track is never left on screen with nothing to claim.",
+        "Season ended with rewards still unclaimed: a modal with a headline, a one-line explanation, an inner bordered box holding a row of the outstanding reward icons with their quantities, and ONE claim button under them.",
+        "The premium purchase confirmation is its own dialog: the premium glyph and the time-remaining line together at the top-left, the season title centred, a benefit headline plus a smaller line promising retroactive claims, the question, the price as a number followed by the hard-currency glyph, then confirm and cancel side by side. A callout says including the countdown in the dialog is deliberate.",
+        "A resized wireframe shows the same screen with only five tiers visible and the rest off the right edge, with the caption that sizing the UI so the player must scroll is a legitimate choice — the track does not have to fit."
+      ]
+    },
+    {
+      "id": "roblox-generic-season-pass-design-doc",
+      "source": "https://prod.docsiteassets.roblox.com/assets/game-design/season-pass-design/season-pass-design.pdf — the 8-page 'Generic Season Pass System' design document linked from https://create.roblox.com/docs/production/game-design/season-pass-design. Downloaded and read page by page 2026-09-20; page 4 carries the Daily Missions and Reward Tiers wireframes.",
+      "demonstrates": [
+        "Ten tiers is stated as the starting default: long enough that progress feels frequent, short enough not to be daunting at the start of a season. A generator that emits 50 or 100 tiers by default is guessing.",
+        "One month is the stated default season length, with a one-week gap before the next season — which is why the UI needs a between-seasons state at all.",
+        "The reward-tiers wireframe on page 4 puts the info rail at the left, the tier numbers as a header row, free lane above, premium lane below, and the season XP bar between them, with a horizontal scrollbar under the premium lane. The layout in the state-matrix deck is not a one-off.",
+        "In that wireframe the premium lane's cells each carry a padlock at the BOTTOM of the cell, in the same slot the free lane uses for its claim button — lock and button are the same slot, not two different places.",
+        "Rewards must be CLAIMED by a button rather than auto-granted, and the document gives the reason: an automatic grant is overlooked, and a claim drives the player back into the screen.",
+        "It is stated as best practice to BADGE the feature's HUD button when there is something to collect.",
+        "The daily-missions wireframe is a stack of rows: a square category icon at the left, a two-line description, a progress bar under the description with the fraction centred INSIDE the bar, and at the right a reward cell with a claim button under it.",
+        "The premium bonus mission in that stack is marked by a small plus badge on its category ICON and a padlock over its claim button — two marks, one on the icon and one on the action.",
+        "The missions panel's bottom band is a TIER PROGRESS strip that is a miniature of the whole pass: XP glyph, the current tier label at the left and the next tier label at the right of a bar with the fraction inside it, the season-ends line beneath, and the upgrade button at the right.",
+        "The missions title is centred with the refresh countdown as a small subtitle directly beneath it, and the close is a square inside the header row — this panel does close at the top-right.",
+        "Premium holders earn BOTH tracks' rewards on completing a tier, and a mid-season upgrade grants every premium reward for tiers already completed. The UI has to be able to show many simultaneous claimable states at once."
+      ]
+    },
+    {
+      "id": "dragon-adventures-missions-daily",
+      "source": "https://prod.docsiteassets.roblox.com/assets/game-design/season-pass-design/season-pass-design-9.png, the figure captioned as Dragon Adventures daily missions on https://create.roblox.com/docs/production/game-design/season-pass-design. Downloaded and viewed 2026-09-20.",
+      "demonstrates": [
+        "The mission list is the pass's other half and it is a tall panel, not a wide one: rounded stone panel, thick darker outer frame, lighter inner content area, and a ribbon banner header with folded tails overhanging the panel top.",
+        "Close is a red gem-shaped button with a white X, proud of the panel's top-right and clear of the header ribbon.",
+        "Under the header, a left-aligned section title with a small subtitle beneath it stating the XP value of each mission, and on the same line at the far right the refresh countdown in days/hours/minutes/seconds.",
+        "A left RAIL of three square gem tab buttons stacked vertically, then a difficulty label and a circular tier badge with its name beneath. The rail carries both the cadence tabs and the difficulty filter.",
+        "A mission row is one wide rounded rectangle containing, in order: the objective as a bold title, a small circular difficulty badge with its label beside it, then a fraction readout at the left of a VERY thin full-width progress bar. The bar is a hairline, not a chunky meter.",
+        "At the right of each row: a reward TILE — a rounded square holding the reward art with the quantity set at its bottom-right corner — and beside it a status control. The reward is a tile, the action is a pill, and they are two separate slots.",
+        "A small pin glyph sits at each row's top-right corner, for tracking that mission on the HUD.",
+        "A locked row keeps its full layout and is darkened almost to black, with a shield glyph centred over it and a single centred sentence explaining what unlocks it. Locked means dimmed plus one centred explanation, not removed.",
+        "A thin rounded scrollbar sits inside the list's right edge."
+      ]
+    },
+    {
+      "id": "dragon-adventures-missions-weekly",
+      "source": "https://prod.docsiteassets.roblox.com/assets/game-design/season-pass-design/season-pass-design-10.png, the figure captioned as Dragon Adventures weekly missions on the same page. Downloaded and viewed 2026-09-20.",
+      "demonstrates": [
+        "Identical panel, identical rail, identical row anatomy as the daily tab — the cadence tab does not change the construction.",
+        "The one thing the tab DOES change is the row FILL: daily rows are one hue, weekly rows another, against the same panel. Which tab you are on is read off the row colour, not off the tab.",
+        "The subtitle under the section title states the XP value per mission and it is larger for the weekly tab — the same slot, a different number.",
+        "The refresh countdown gains a days field on the weekly tab and keeps the same right-aligned position and the same unit order.",
+        "Reward tiles hold whatever the reward is — a currency coin with a large quantity, or a single item with a quantity of one — in the same tile at the same size. The tile does not resize for the reward."
+      ]
+    },
+    {
+      "id": "dragon-adventures-hud-season-button",
+      "source": "https://prod.docsiteassets.roblox.com/assets/game-design/season-pass-design/season-pass-design-12.png, the figure captioned as season pass HUD surfacing in Dragon Adventures on the same page. Downloaded and viewed 2026-09-20.",
+      "demonstrates": [
+        "The pass's entry point lives in the HUD's vertical icon rail at the screen's right edge, among the ordinary menu buttons, at the same tile size.",
+        "Every rail tile is art in a rounded square with a caption plate BELOW it overlapping the tile's bottom edge — a darker rounded bar carrying the label in caps.",
+        "The season tile differs from its neighbours in three ways at once: brighter art, a nameplate carrying the season NUMBER, and a second line beneath giving the days remaining. The countdown is inside the button.",
+        "That makes the season entry the only rail tile with two text lines, which is what makes it findable without enlarging it.",
+        "ANNOTATION, NOT UI: the violet outline around the season tile in this capture is the publisher's highlight box."
+      ]
+    },
+    {
+      "id": "jailbreak-available-contracts",
+      "source": "https://prod.docsiteassets.roblox.com/assets/game-design/season-pass-design/season-pass-design-13.png, the figure captioned as daily missions from Jailbreak on the same page. Downloaded and viewed 2026-09-20.",
+      "demonstrates": [
+        "The same game can render its missions as CARDS in a horizontal row rather than as rows in a list — the mission list is not required to be a vertical stack.",
+        "A contract card is stacked in bands: a solid dark header bar with the card's ordinal in white caps, then a bright body panel with the objective in dark text on it, then, on the card's own background below, the progress line, then the reward as a dark pill, then the action button.",
+        "The reward is a filled PILL reading the reward and its amount as one string — a pill, never bare text, matching the price-pill convention elsewhere in the library.",
+        "Progress is a bare fraction line with a label, centred, with no bar at all. A short mission does not need a meter.",
+        "The header is a full-width band with the screen title in an outlined display face and a smaller instruction line beneath, cut on the right by the same diagonal used on the pass screen — the two screens are the same family.",
+        "Cards run off the right edge of the frame, clipped mid-card, so the row scrolls horizontally like the tier track."
+      ]
+    },
+    {
+      "id": "devforum-community-battle-pass-2022",
+      "source": "https://devforum.roblox.com/t/feedback-for-battle-pass-ui/2030336 — thread read via its JSON, and the author's screenshot at devforum-uploads .../69ac01b272f0199790b193fb5fe00e3f4ce6aa63.png downloaded and viewed 2026-09-20. A community developer's battle pass, plus four reviewers' critiques of it.",
+      "demonstrates": [
+        "A third track layout: the tiers are PAGED, not scrolled. Six small circular numbered buttons at the top-right select the page; the active one is filled dark, the rest light. A ten-or-more tier track can be paginated instead of scrolled.",
+        "The lane divider here is a full-width coloured BAND between the two rows carrying the word premium with a star glyph, centred — the lane label can be a band across the middle rather than a gutter at the left.",
+        "Each lane sits on its own full-width coloured band, and the reward cards sit ON the bands, overhanging them top and bottom.",
+        "Cards are white rounded squares with a coloured CAPTION BAR across the bottom carrying the reward name — the caption bar is inside the card, flush to its bottom edge, and it is the caption bar that changes colour with state.",
+        "The claimable card is marked three ways at once: its caption bar switches to the accent colour, the card gains a coloured glow outline, and sparkle glyphs are placed at two opposite corners.",
+        "Locked premium cards carry a padlock glyph overhanging the card's top-right corner, half on and half off the card.",
+        "On the free lane, consecutive reward cards are joined by a horizontal CONNECTOR LINE drawn across the band between them — the free lane draws its own spine when there is no shared tier rail.",
+        "The footer is a row of four equal-height blocks: a subscription-perk info card with a logo and a paragraph, the plain premium purchase button, a bundle offer, and a spare slot.",
+        "The bundle offer is the tier-skip: a best-value tag overhanging its top-left corner, sparkles, the buy label, and a separate darker sub-band beneath the label reading the number of tiers granted. Tier-skip is sold as a second, tagged button beside the plain pass, never as the same button.",
+        "The purchase buttons are drawn as TICKETS — notched on the vertical edges — rather than as plain rounded rectangles.",
+        "Reviewer critique, recorded as critique and not as convention: the pure-black sub-band was called out as too harsh against the rest and asked to be softened toward the neighbouring surfaces; the underline under the screen title was called unnecessary; and the two-accent pairing was called out by three separate reviewers as fighting itself. The layout itself drew no complaints."
+      ]
+    },
+    {
+      "id": "roblox-season-passes-package-frame-tree",
+      "source": "https://create.roblox.com/docs/resources/feature-packages/season-passes, fetched 2026-09-20, plus its source markdown at https://raw.githubusercontent.com/Roblox/creator-docs/main/content/en-us/resources/feature-packages/season-passes.md.",
+      "demonstrates": [
+        "Roblox's own package names the parts, and the names ARE the anatomy: a description frame for the season title, description and countdown; a bottom frame holding the track information and the scrolling frame of tier rewards; a tier reward frame for one reward; a tier progress frame for progress toward the CURRENT tier; a season progress frame for progress across the WHOLE season; a purchase frame for the premium prompt; and a rewards button frame for the opener.",
+        "Current-tier progress and whole-season progress are two SEPARATE frames. The screen carries two progress readouts at different scales, which is why the package's own screen shows an XP fraction at the top right and a filling rail through the middle.",
+        "The scrolling frame wraps the tier rewards only. The track scrolls; the description, the progress and the purchase prompt do not.",
+        "The docs warn that moving any of these objects in the hierarchy breaks the code — the structure is fixed, which is itself evidence that this decomposition is the intended one rather than one arrangement among many."
+      ]
+    }
+  ],
+  "rules": {
+    "note": "Distilled from the ten references above. Units are Roblox UI units: px for stroke and radius, screen fractions for panel size, unitless for scale. Proportions were read off screenshots and wireframes by eye and are stated as approximations. Where the references disagree, the rule says which way the majority goes and what the minority case is for. Colour is deliberately absent: the same skeleton appears in a saturated cartoon register and in a flat dark one, so colour is not what makes this screen read as a battle pass.",
+    "panelShape": {
+      "aspect": "2.0-2.6 wide to tall for the track screen",
+      "widthFraction": "0.80-0.95 of screen width",
+      "heightFraction": "0.40-0.55 of screen height",
+      "approximate": true,
+      "why": "every track reference is a wide short band, because ten columns have to fit across; the single most common way a generated pass screen goes wrong is inheriting the shop's tall portrait modal and then stacking the tiers vertically to make them fit"
+    },
+    "regions": {
+      "order": [
+        "header or top bar (season identity + timer + progress readout + close)",
+        "lane gutter or lane label column (fixed, does not scroll)",
+        "free lane",
+        "tier rail / season XP bar",
+        "premium lane",
+        "footer (upsell at the left, sibling action at the right)"
+      ],
+      "scrolls": "the two lanes and the rail scroll together on one shared x-axis; the gutter, header and footer are pinned",
+      "why": "four of the references separate exactly these regions and one of them names them as fixed frames; a pass whose lane labels scroll away with the track loses which row is which as soon as the player moves"
+    },
+    "trackOrientation": {
+      "default": "horizontal, two lanes stacked, one column per tier",
+      "minority": "vertical only when the tier count is large enough that a horizontal track would need many pages; none of the references did this",
+      "never": "a single merged lane with free and premium interleaved in one row",
+      "why": "unanimous across every reference including the two official wireframe decks; the free-above/premium-below stack is the thing that makes the screen recognisable at a glance"
+    },
+    "laneOrder": {
+      "rule": "free lane ABOVE, premium lane BELOW, always",
+      "why": "all six references that show both lanes put free on top; the order carries the upsell — the player reads what they get, then what they are missing"
+    },
+    "laneIdentity": {
+      "mustCarryAtLeastOneOf": [
+        "a fixed gutter cell at the left with an icon above a short lane name",
+        "a full-width coloured band behind the premium lane whose left end carries the label",
+        "a full-width label band between the two lanes",
+        "a different card tint for the premium lane"
+      ],
+      "never": "position alone",
+      "why": "each reference picks a different one of these four and every reference picks at least one; a generator that relies on 'the bottom row is premium' produces a screen nobody can read cold"
+    },
+    "laneAlignment": {
+      "aligned": "tier N is the same x in both lanes — the default, and what a grid layout gives you free",
+      "offset": "free rewards on even tiers and premium on odd, so the lanes interleave; used when rewards are sparse and a cell-for-cell grid would be mostly empty",
+      "why": "the shipped racing-game pass offsets the lanes precisely because not every tier grants both; the flat package aligns them because every tier grants both. Sparseness decides, not taste"
+    },
+    "tierRail": {
+      "rule": "the rail between the lanes IS the season progress bar; do not draw a separate season bar elsewhere in the body",
+      "geometry": "full width of the track area, 6-10% of the panel height, running edge to edge under the free lane",
+      "fill": "the completed run is thicker and brighter; the remaining run is thinner and dimmer; the break sits under the player's current tier",
+      "why": "three independent references put the progress on the rail rather than beside it, which is what ties the number 'tier 6' to a position on screen; a pass with a progress bar in the header and an inert track makes the player do the mapping themselves"
+    },
+    "tierNode": {
+      "shape": "a small badge sitting ON the rail — rounded square, hexagon or flag pill",
+      "content": "the tier number and nothing else",
+      "sizeRelativeToRail": "1.4-1.8x the rail thickness, so the badge sits proud of the line",
+      "reachedVsUnreached": "same shape, inverted fill — reached is filled with dark text, unreached is dark or outlined with dim text",
+      "never": "a plain number floating beside the line with no badge",
+      "why": "four references badge the number and invert the fill on reach; inverting the fill is what makes the boundary between reached and unreached legible without reading a single digit"
+    },
+    "tierCount": {
+      "default": 10,
+      "range": "10 for a month-long season; more only if the track pages or scrolls",
+      "why": "both official documents name ten as the starting point and both wireframe decks draw exactly ten; the two shipped games in the references both ship ten"
+    },
+    "overflow": {
+      "preferred": "horizontal scroll, with the rightmost column CLIPPED mid-card by the panel edge so the cut signals more content",
+      "alternative": "pagination — a row of small circular numbered page buttons at the top-right, active one filled",
+      "scrollbarRole": "an indicator that scrolling exists; dragging anywhere in the track must also scroll it",
+      "autoScroll": "on open, scroll to the first UNCLAIMED reward rather than to tier 1 or to the current tier",
+      "why": "the wireframe deck states the indicator role and the auto-scroll rule in its own callouts; the clipped-column cue appears in three references and a flush right edge reads as the end of the track"
+    },
+    "rewardCell": {
+      "slotOrder": [
+        "rewardArt",
+        "rewardName (optional — dropped when the art is self-explanatory)",
+        "quantity",
+        "stateSlot"
+      ],
+      "aspect": "0.85-1.15, near square",
+      "stateSlotHeight": "~18-22% of the cell height, pinned to the bottom padding",
+      "categoryBadge": "an optional small circular glyph overhanging the cell's top-right corner, naming the KIND of reward",
+      "why": "every reference stacks art, then identity, then state, in that order and with the state against the bottom edge; the state slot is the same rectangle in every state, which is what stops the grid jumping as rewards are claimed"
+    },
+    "fourStates": {
+      "rule": "all four reward states change ONE slot at the bottom of the cell and change nothing else",
+      "unreached": "the slot is EMPTY — the absence is the state",
+      "claimable": "a filled button spanning the cell's inner width, one short verb",
+      "claimed": "the button is REMOVED and replaced by the bare past-tense word or a single tick glyph — no box, no outline, no disabled button",
+      "premiumLocked": "a padlock glyph, optionally followed by one muted word naming the track",
+      "artNeverChanges": "reward art stays at full colour and full opacity in all four states",
+      "why": "this matrix is stated explicitly in the official wireframe deck and rendered identically by the shipped package; greying the art is the most common wrong answer and it destroys the thing the upsell is selling — the player has to be able to SEE what they are locked out of"
+    },
+    "lockIsOwnershipNotProgress": {
+      "rule": "the padlock means the premium pass is not owned. It never means the tier is not yet reached",
+      "corollary": "an unreached FREE reward shows nothing at all; an unreached PREMIUM reward shows the padlock, because both facts are true and ownership is the one the screen is selling",
+      "why": "the wireframe callouts distinguish the two and the package ships them as different slot contents; a generator that locks everything ahead of the player collapses the upsell into ordinary progression"
+    },
+    "claimIsExplicit": {
+      "rule": "rewards are claimed by pressing a button, never auto-granted on tier-up",
+      "consequence": "the screen must be able to show many claimable cells at once, and the HUD opener must badge when any exist",
+      "endOfSeason": "if the season ends with anything unclaimed, deliver it in a modal — a headline, a one-line explanation, an inner bordered box holding the outstanding reward icons with quantities, and ONE claim button under them",
+      "why": "stated as best practice in the official design document with its reasoning (an automatic grant goes unnoticed, and a claim drives a return visit) and drawn as its own wireframe state"
+    },
+    "finalTier": {
+      "rule": "the last tier's cell is emphasised and is the ONLY cell whose weight differs",
+      "how": "a much heavier border, or a larger cell, carrying a label rather than an icon-and-quantity",
+      "tapOpens": "an info popup — large square art block at the LEFT, and at the right the item name, a one-line requirement sentence, flavour text, and any stats",
+      "why": "both wireframe decks draw the final cell at heavier weight and give it its own popup; the shipped racing pass ends its track on an oversized reward too. The capstone is the reason the player finishes the season and a track that ends on an ordinary cell has no ending"
+    },
+    "seasonTimer": {
+      "placement": "top-right of the header, or on its own line directly under the season name",
+      "format": "coarse units, largest two only — days and hours, dropping to hours and minutes near the end; never a bare seconds count while days remain",
+      "label": "a small all-caps label above or beside the figure, never the figure alone",
+      "alsoAppearsIn": [
+        "the HUD opener button",
+        "the mission panel's tier-progress strip",
+        "the premium purchase confirmation dialog"
+      ],
+      "why": "every reference shows the timer and three of them repeat it in the upsell path; the wireframe deck states outright that putting the countdown in the purchase dialog is deliberate"
+    },
+    "progressReadouts": {
+      "rule": "the screen carries TWO progress figures at different scales and they are different frames",
+      "currentTier": "a compact cluster at the top right — a small tier chip, the XP fraction as current-over-target, and a thin bar directly beneath showing that fraction",
+      "wholeSeason": "the tier rail itself, filling through the tier badges",
+      "why": "Roblox's own package separates a tier-progress frame from a season-progress frame; one bar cannot answer both 'how far into this tier' and 'how far through the season'"
+    },
+    "upsellPanel": {
+      "placement": "bottom-left of the screen, under the premium lane's label, or as the lower half of the left info rail",
+      "contents": [
+        "a pass or ticket glyph",
+        "a buy label",
+        "the price as a number and the hard-currency glyph",
+        "an eyebrow or sub-line naming the season, or one line of reason"
+      ],
+      "shape": "a wide pill or ticket — the ticket variant is notched on its vertical edges",
+      "never": "a bare price with no glyph, and never the only mention of the premium track on the screen",
+      "why": "five references put the buy control at the bottom-left or the rail's foot with exactly this content; the price-with-glyph rule is unanimous across the whole library"
+    },
+    "tierSkipOffer": {
+      "rule": "a tier-skip or bundle is a SECOND button beside the plain pass, never the same button",
+      "marking": "a best-value tag overhanging its top-left corner, and a separate darker sub-band beneath the label stating the number of tiers granted",
+      "why": "seen as a distinct tagged block in the community pass and called out by its reviewers; folding the skip into the pass button hides which of the two the player is buying"
+    },
+    "purchaseConfirmation": {
+      "rule": "the upsell opens a confirmation dialog before spending, it does not buy on press",
+      "contents": [
+        "the premium glyph and the time-remaining line together at the top-left",
+        "the season title centred",
+        "a benefit headline plus a smaller line promising that completed tiers are claimable retroactively",
+        "the question",
+        "the price as a number followed by the hard-currency glyph",
+        "confirm and cancel side by side"
+      ],
+      "why": "drawn as its own wireframe with callouts saying a confirmation is best practice whenever real money is spent and that the retroactive promise is what removes the penalty for waiting"
+    },
+    "afterPurchase": {
+      "rule": "buying the pass changes four things in one frame",
+      "changes": [
+        "every padlock is removed",
+        "every already-completed premium tier immediately shows an enabled claim button",
+        "the upgrade button is REMOVED and replaced by a plain unlocked line — not disabled in place",
+        "any sibling upgrade control elsewhere becomes a non-interactive upgraded label"
+      ],
+      "why": "three successive wireframes show exactly this transition; leaving a live upgrade button on a screen the player already upgraded is the defect the deck was drawn to prevent"
+    },
+    "missionRow": {
+      "slotOrder": [
+        "categoryIcon (square, left)",
+        "objective text (up to two lines)",
+        "difficulty or tier badge with its label",
+        "progress: fraction and bar",
+        "reward tile (art with the quantity at its corner)",
+        "action control"
+      ],
+      "progressBar": "either a thin full-width bar with the fraction set INSIDE or immediately left of it, or — for a short mission — a bare fraction line with no bar at all",
+      "rewardIsATile": "the reward is a tile or a filled pill; never bare text beside the button",
+      "actionIsSeparate": "the reward tile and the action control are two adjacent slots, not one combined button",
+      "trackPin": "an optional small pin glyph at the row's top-right, for surfacing that mission on the HUD",
+      "why": "three references and both wireframe decks agree on this order; the one variation is whether the bar exists, and that is decided by whether the objective has a count"
+    },
+    "missionRowStates": {
+      "available": "full-strength row fill",
+      "complete": "bar fully filled and the action enabled",
+      "claimed": "the action control removed and replaced by the bare past-tense word",
+      "locked": "the whole row darkened toward the panel's darkest value, a lock or shield glyph centred over it, and ONE centred sentence stating what unlocks it",
+      "premium": "marked twice — a small badge on the category ICON and a padlock over the action — plus a different row fill from the free rows",
+      "why": "the locked-row treatment and the double marking of premium rows are both drawn with callouts; a locked row that is merely dimmed without the sentence leaves the player with no next step"
+    },
+    "missionCadenceTabs": {
+      "rule": "daily and weekly are tabs over the SAME row anatomy; what changes is the row FILL and the per-mission XP figure, not the layout",
+      "refreshTimer": "right-aligned on the section-title line, gaining a days field for the weekly tab, same unit order",
+      "emptyState": "when every available mission is done, replace the list area with a centred congratulations line and KEEP the tier-progress strip below it",
+      "why": "the two Dragon Adventures captures are the same panel with a different row hue, and the wireframe deck draws the all-complete state as a list replacement that leaves the progress strip in place"
+    },
+    "missionPanelTierStrip": {
+      "rule": "the mission panel carries a miniature of the whole pass pinned to its bottom",
+      "contents": "XP glyph, the current tier label at the left and the next tier label at the right of a bar with the fraction inside it, the season-ends line beneath, and the upgrade control at the right",
+      "why": "drawn in both official wireframes and in the shipped package's own tab pair; it is the bridge that tells the player why the missions matter, and a mission list without it is a chore list"
+    },
+    "header": {
+      "style": "a full-width band across the panel top, not a floating plaque",
+      "split": "when the header carries both identity and timer, separate them with a DIAGONAL cut or a chevron rather than a vertical rule",
+      "contents": "season number or name large, the season's theme name beside it, a small all-caps instruction line beneath, and the timer in the right zone",
+      "tabs": "when the screen has sibling tabs, they go centred in the header, active bright and inactive dim, each carrying a small dot badge when that tab has something to collect",
+      "why": "the pass screen is too wide for the overhanging plaque the shop uses — four references run a full-width band instead, and two of them cut it diagonally"
+    },
+    "closeButton": {
+      "rule": "a circle or gem proud of a panel corner, as elsewhere in the library",
+      "corner": "top-right by default; the shipped racing pass puts it top-LEFT, which is a legitimate minority when the header's right zone is occupied by the timer",
+      "flatRegister": "in a flat dark register the chrome disappears entirely and close is a bare glyph",
+      "why": "the timer block competes for the top-right corner on this screen specifically, which is why this is the one screen where the corner is negotiable"
+    },
+    "hudOpener": {
+      "rule": "the opener lives in the ordinary HUD rail at the same tile size as its neighbours and is distinguished by CONTENT, not by size",
+      "contents": [
+        "the art tile",
+        "a caption plate with the season name or number",
+        "a second line giving the time remaining",
+        "a badge dot at the top-right when anything is claimable"
+      ],
+      "why": "two independent references put the countdown inside the button and both official documents call for badging it; an oversized special button breaks the rail's rhythm and still does not say how long is left"
+    },
+    "betweenSeasons": {
+      "rule": "when the season has ended, REPLACE the track rather than leaving an inert one on screen",
+      "contents": "a teaser image block at the left and a next-season countdown at the right, or a coming-soon headline with the countdown beneath",
+      "shippedVariant": "one shipped game instead leaves the track visible, zeroes the timer, swaps the subtitle for a thanks line and turns the sibling footer button into a disabled waiting block",
+      "why": "the official deck draws the replacement and a shipped game draws the softer variant; the failure both avoid is a live-looking track with nothing claimable and a timer at zero"
+    },
+    "surfacingBeyondTheScreen": {
+      "rule": "the pass is expected to surface in three places besides its own screen",
+      "places": [
+        "the badged HUD opener with the countdown in it",
+        "a mission row pinned to the HUD via the row's pin control",
+        "an in-world showcase of the final reward on a plinth under season signage"
+      ],
+      "why": "the official guidance lists these surfacing methods and a shipped game's own capture is of the in-world showcase rather than of any UI; a pass that exists only behind a menu button under-performs its own content"
+    },
+    "constructionNotColour": {
+      "rule": "the same skeleton must render in any theme — the references include a saturated cartoon pass, a stone-and-ribbon mission panel and a flat dark package screen, and all three are the same construction",
+      "whatCarriesTheGenre": "stroke weight, corner radius, text stroke, bevel and header treatment, taken from the genre file",
+      "whatDoesNot": "lane order, rail-as-progress, the four-state slot, the claim-not-grant rule, the final-tier emphasis, the timer's placement",
+      "why": "this file exists because a correct palette on wrong construction still looks wrong; on this screen the reverse also holds, and the flat package screen proves it by being unmistakably a battle pass with no stroke, no bevel and no outline anywhere"
+    }
+  },
+  "incomplete": false,
+  "honestLimits": [
+    "Ten references, all fetched and viewed on 2026-09-20. Four are Roblox's own published material (two wireframe decks, the feature package screen, the package's frame documentation), four are captures of two shipped games (a racing/cops-and-robbers game and a pet/creature game) published by Roblox as figures in its design guidance, one is a shipped game's mission cards, and one is a community developer's pass plus its critique thread.",
+    "Two shipped games is a narrower spread than the simulator file's. The genre mix is decent — a vehicle game, a creature-collector, a shooter-flavoured community build and a generic flat package — but no horror, tower-defence or roleplay pass was found and fetched, so a rule that would only show up in those is not here.",
+    "Fandom wikis for BedWars, Rivals and Anime Last Stand were found in search and would have given tier counts and track shapes for three more shipped games, but every request to them returned 402 or 403 and none of them was read. Nothing from them is recorded. A later pass with a working fetch path for those should raise the shipped-game count.",
+    "Proportions, stroke weights and radii are read off images and vector wireframes by eye, never sampled. Every numeric rule is marked approximate or given as a range.",
+    "The two Roblox wireframe decks are dated 2021 and are generic by design; they are strong on STATE and weak on style, which is why they carry the state matrix rules and none of the shape rules.",
+    "Several captures in the design guidance are dimmed with the publisher's own highlight boxes drawn on top. Those boxes are called out as annotation in the rows that use those images, so a later reader does not mistake a documentation highlight for a selection style."
+  ]
+}

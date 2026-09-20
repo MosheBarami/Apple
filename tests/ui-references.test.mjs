@@ -23,7 +23,12 @@ const MINIMUM = 5;
 // 'web-landing' is the public marketing site rather than a Roblox genre, and it is pending for the
 // ordinary reason: tesana.ai is measured and four more are not. It stays here until it has five,
 // and the test below makes sure it cannot stay once it does.
-const PENDING = new Set(['tycoon', 'obby', 'horror', 'racing', 'roleplay', 'survival', 'studio', 'web-landing']);
+// Seven genres left this list on 2026-09-20, when each reached the five-reference minimum. The
+// ratchet is why they had to: it fails when a pending entry outlives the gap it describes, so a
+// harvest that fills a hole and forgets the list turns main red rather than quietly disagreeing
+// with itself. 'web-landing' stays — it is the marketing site, not a Roblox genre, and nobody has
+// inspected five shipped examples for it.
+const PENDING = new Set(['web-landing']);
 
 const genreFiles = () => (existsSync(DIR) ? readdirSync(DIR).filter((f) => f.endsWith('.json')) : []);
 const load = (file) => JSON.parse(readFileSync(join(DIR, file), 'utf8'));
@@ -92,11 +97,41 @@ test('the rules say why, because a rule without a reason is a preference', () =>
 test('no reference file smuggles in an image', () => {
   // The library stores observations, not artwork. Someone else's UI art is their work; what is
   // learned from looking at it is not.
+  //
+  // A CITATION IS NOT A COPY, and this test used to be unable to tell them apart. It matched any
+  // ".png" anywhere in the file, which caught `references[].source` strings naming the exact Roblox
+  // docs screenshot an observation was read from — the provenance the README explicitly asks for:
+  // "The `source` field says where it was seen so the claim can be checked." A rule that fails on
+  // the honest behaviour is a rule somebody deletes, and deleting this one would lose the check
+  // that actually matters.
+  //
+  // So the two things it forbids are stated separately now:
+  //   - an EMBEDDED image, anywhere (a data: URI is the artwork itself, carried in the repo);
+  //   - an image path anywhere OUTSIDE a source/provenance string, which is the library starting to
+  //     carry pictures rather than notes — including any local path, which could only be a file
+  //     committed here.
   const bad = [];
+  const isSourceField = (path) => /(^|\.)source$|(^|\.)provenance$|(^|\.)sources\[\]$/.test(path);
+  const IMAGE = /\.(png|jpg|jpeg|gif|webp)\b/i;
+
+  const walk = (node, path, visit) => {
+    if (node && typeof node === 'object') {
+      if (Array.isArray(node)) node.forEach((v) => walk(v, `${path}[]`, visit));
+      else for (const [k, v] of Object.entries(node)) walk(v, path ? `${path}.${k}` : k, visit);
+    } else if (typeof node === 'string') visit(path, node);
+  };
+
   for (const file of genreFiles()) {
     const raw = readFileSync(join(DIR, file), 'utf8');
     if (/data:image\//.test(raw)) bad.push(`${file} contains an embedded image`);
-    if (/\.(png|jpg|jpeg|gif|webp)\b/i.test(raw)) bad.push(`${file} references an image file`);
+    walk(JSON.parse(raw), '', (path, value) => {
+      if (!IMAGE.test(value)) return;
+      if (!isSourceField(path)) {
+        bad.push(`${file} names an image at ${path}, which is not a provenance field`);
+      } else if (!/^https?:\/\//i.test(value.trim())) {
+        bad.push(`${file} cites a non-remote image path at ${path} — a local file would be a copy`);
+      }
+    });
   }
   assert.deepEqual(bad, [], bad.join('\n'));
 });

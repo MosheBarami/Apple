@@ -1,0 +1,348 @@
+{
+  "genre": "obby",
+  "label": "Obby / parkour — stage counters, checkpoints, skip-stage, progress bars, round timers",
+  "recorded": "2026-09-20",
+  "incomplete": false,
+  "provenance": "Unlike simulator.json, these were not owner-supplied screenshots. Every row below was fetched over the public web during this session: Roblox DevForum topics (read as JSON through the Discourse API, so the text is the post itself and not a summary of it), the community-run Obby Wiki at obby.wiki (read through its MediaWiki API as raw wikitext), and one Roblox economy API asset record. No image, no UI file and no author's Luau is copied here; what is recorded is the construction and behaviour the posts describe. Where a value is a single measurement from a single tutorial it is marked as such, because one number is a datum and not a convention.",
+  "references": [
+    {
+      "id": "player-progress-bar-tutorial",
+      "source": "https://devforum.roblox.com/t/tutorial-how-to-make-a-player-progress-bar/3466247 — DevForum community tutorial by Chukroid, fetched 2026-09-20. The one source here that states construction in engine units rather than in prose.",
+      "demonstrates": [
+        "the bar is a single Frame sitting slightly below the top edge, horizontally centred, and is extremely wide and thin — the author's own capture of it is 1702 by 178, roughly 9.6:1",
+        "UICorner is set to CornerRadius 0.2 in SCALE, not in offset — the radius is a fraction of the bar's height, so the ends stay a proportional lozenge at any screen size instead of a fixed px radius that goes square on a phone",
+        "UIStroke Thickness is 3 and the colour is black — the same near-black outline convention the simulator references use, at a thinner weight because the element is thin",
+        "a horizontal UIGradient runs the length of the bar through seven stops, dark red at 0 through red, orange, amber and olive to green at 1 — progress is read by WHERE you are along a heat ramp, not by a fill that grows",
+        "every player in the server rides the bar: one ImageLabel per player, its Image set to that player's HeadShot thumbnail, cloned from a hidden 'playersample' template and positioned by UDim2.fromScale(progress, 0.5) so the heads straddle the bar's centre line",
+        "the template ImageLabel is parented into the LocalScript so it is never visible itself, and there is a hard-coded fallback image for when the thumbnail request fails — the bar must still read with a missing avatar",
+        "progress is computed geometrically, by projecting the character's position onto a Start→End vector in the world and clamping to 0..1, not by counting stages"
+      ]
+    },
+    {
+      "id": "stage-selector-tutorial",
+      "source": "https://devforum.roblox.com/t/creating-a-stage-selector/1276462 — DevForum community tutorial by Ty_Scripts, fetched 2026-09-20. It names every instance in the widget, which is what makes it checkable.",
+      "demonstrates": [
+        "the selector is exactly three children: a TextButton named 'Left', a TextBox named 'Input', a TextButton named 'Right' — the stage NUMBER IS THE INPUT FIELD, not a label with arrows beside it",
+        "the field's text is seeded from leaderstats.Stage.Value on spawn and re-seeded on every Stage.Changed, so the widget's resting state is always the player's current stage rather than a remembered selection",
+        "typing is committed on FocusLost with enterPressed — the field is a jump-to-stage box as well as a readout",
+        "Left refuses to go below 0 and Right refuses to exceed leaderstats.Stage.Value; the refusal is silent, the number simply does not move",
+        "checkpoints are Parts named with bare sequential integers ('1', '2', '3'…) and the initial SpawnLocation is named '0', so the UI's number and the world object's name are the same string",
+        "the stat is an IntValue named exactly 'Stage' inside a Folder named 'leaderstats' — this is the name every other obby widget reads"
+      ]
+    },
+    {
+      "id": "techys-obby-system",
+      "source": "https://devforum.roblox.com/t/techys-obby-system-all-your-obby-needs-in-one-includes-stage-selector/785271 — DevForum Community Resources release by 0Techy, fetched 2026-09-20, plus its update replies. Named by the Obby Wiki as one of the two systems beginners actually install.",
+      "demonstrates": [
+        "the stage selector carries two named shortcut buttons alongside the numeric control: 'Lobby' (teleports to stage 1) and 'Last Checkpoint' (returns to the furthest stage reached) — the two destinations a player actually wants are buttons, not values to dial to",
+        "a separate 'stage teleport from input text' control exists and the author notes it is optional and can be removed because it confuses some players — the typed field is the advanced path, the arrows are the default one",
+        "skip stage is wired to a Developer Product ID, not a Game Pass ID — it is consumable and repeatable, so the button is a purchase surface that stays live after the first buy",
+        "the spectate system is bound to Q and E to change the viewed player, so the obby HUD has a camera mode that must not be occluded by the persistent strips",
+        "a permanent small on-screen watermark is part of the shipped system (noted as a con on the Obby Wiki) — free obby systems put a persistent credit line somewhere on the HUD"
+      ]
+    },
+    {
+      "id": "wolfites-obby-system",
+      "source": "https://devforum.roblox.com/t/eol-wolfites-obby-system-easily-make-an-obby/1594327 — DevForum release thread by Wolf1te (now end-of-life), fetched 2026-09-20; corroborated by the feature list on https://obby.wiki/wiki/Development:Get_Started which states it is used by games with 90M+ collective visits.",
+      "demonstrates": [
+        "the complete HUD surface of a shipped obby system is: stage selector, progress bar, stage indicator arrow, settings, skip stage and a coil/easy-mode shop — six things, and none of them is a large panel",
+        "'Reached checkpoint colour' is a first-class configurable: the checkpoint PART recolours when you have passed it, so the map itself is the progress display and the HUD only summarises it",
+        "'Checkpoint animation' is chosen from presets, so arriving at a checkpoint is an event with motion, not a silent state write",
+        "settings offered free are exactly Shadow, Blur and Hide UI — 'Hide UI' being a shipped toggle means an obby HUD is expected to be dismissable for clean runs and recording",
+        "the mobile shiftlock button is DRAGGABLE (hold 0.7s, then drag) rather than fixed — added touch controls are moved by the player because the bottom corners are already contested by Roblox's own jump and joystick",
+        "the system's version 0.8.6 update exists only to make its icons work with TopbarPlus 3.x and Roblox's new experience controls — the launcher buttons for this genre live in the TOP bar, not on a bottom-left circular rail"
+      ]
+    },
+    {
+      "id": "bloxxiqs-obby-kit",
+      "source": "https://devforum.roblox.com/t/a-very-advanced-obby-kit-bloxxiqs-obby-kit/3415091 — DevForum Creations Feedback post by thebloxxiq advertising a paid obby kit, fetched 2026-09-20. A sales list, so it names the screens a buyer expects rather than describing their pixels.",
+      "demonstrates": [
+        "'Checkpoint Reached' is its own named GUI, separate from the stage counter — arrival is announced by a transient element, and the counter merely settles at the new number",
+        "the progress bar is described as being at the TOP of the screen and carrying a percent-completed readout, so the bar and the number are one component and not two",
+        "the kit ships a Gamepass shop GUI and a separate 'Troll shop' GUI — obby monetisation is split into two storefronts with different tones, and the second one sells effects rather than advantages",
+        "friend-invite and favourite-the-game prompts fire automatically as part of the HUD, so the genre's modal layer includes social nags the core loop never asked for",
+        "the kit's pitch word for the GUI is 'fully animated' — motion on the HUD is the differentiator being sold, not layout"
+      ]
+    },
+    {
+      "id": "skip-stage-button-behaviour",
+      "source": "https://devforum.roblox.com/t/obby-skip-stage-script-help/620376 — DevForum Scripting Support thread by Professional_D3V, fetched 2026-09-20. The author is debugging a shipped button and quotes its exact label handling.",
+      "demonstrates": [
+        "the remaining-skip count lives INSIDE the button's own label, in parentheses: the text is set to 'Skip Stage (' .. Limits .. ')' and is rewritten on every use — there is no separate badge or counter beside the button",
+        "one control, two behaviours: while the count is above zero the button skips; at zero the same button calls PromptGamePassPurchase instead — it is never disabled and never greyed",
+        "the skip itself increments leaderstats.Stage by one and then moves the character to the Part whose NAME equals the new stage number, so the button's effect is expressed in the same integer the counter shows",
+        "the author's design gives three free skips before the purchase prompt appears at all, so the paywall is reached by use rather than shown up front"
+      ]
+    },
+    {
+      "id": "skip-product-ladder",
+      "source": "https://devforum.roblox.com/t/infinite-skips-gamepass/1417655 — DevForum Scripting Support thread by sagiv200421, fetched 2026-09-20, quoting the Products table of a live game's checkpoint script.",
+      "demonstrates": [
+        "skips are sold as a ladder of Developer Products at quantities 5, 25, 50, 100 and 1000 — five rising tiers of the SAME good, which is a very different shop shape from a simulator's grid of unrelated items",
+        "a separate Game Pass sits above the ladder and makes skips unlimited, so the storefront is 'five quantities plus one pass', and the pass is the row that ends the ladder",
+        "the author states the infinite-skip UI should be visible only to owners of the pass — ownership hides a control here rather than restyling it, which is the opposite of the simulator OWNED convention"
+      ]
+    },
+    {
+      "id": "stage-selector-as-shipped",
+      "source": "https://devforum.roblox.com/t/obby-stage-selector-is-buggy/2211603 and https://devforum.roblox.com/t/obby-stage-selector-that-goes-by-10-stages/2232710 — two DevForum threads by Paige8130 about the same live selector, fetched 2026-09-20; the second asks how to add the ±10 control to it.",
+      "demonstrates": [
+        "the middle element is a TextBox and the author disabled typing in it after players used it to reach stages they had not earned — shipped selectors often degrade the field to a read-only number, so the number must look the same whether or not it is editable",
+        "the step-by-ten control is added as an EXTRA pair of buttons on the same strip rather than as a mode on the existing arrows, which is why the strip reads as five cells: ±10, ±1, number, ±1, ±10",
+        "moving the selector moves the character immediately with PivotTo to the checkpoint's CFrame plus about 5 studs of vertical clearance — there is no confirm step, so the widget is a teleporter and not a form",
+        "both threads show the clamp being got wrong (values going negative) — the clamp at 0 and at the player's best stage is the part of this widget that is actually hard, and math.clamp is the accepted fix"
+      ]
+    },
+    {
+      "id": "selector-strip-proportions",
+      "source": "https://devforum.roblox.com/t/obby-teleport-to-stage-gui/817104 (2omb, difficulty chart obby) and https://devforum.roblox.com/t/obby-stage-selector-help/3247183 (ChrisDev_RBX) — two DevForum threads each showing a live selector, fetched 2026-09-20; the forum records each attachment's pixel dimensions in its own markup, which is what is used here.",
+      "demonstrates": [
+        "the first author's selector crop is 930 by 126 — about 7.4:1, a squat horizontal strip, not a panel",
+        "that selector has a double-arrow button that reverts TEN stages at a time alongside the single-step arrows, corroborating the five-cell strip",
+        "the author states it 'doesn't let you skip your current stage' — going backwards is free, going forwards past your best is refused, and that asymmetry is the rule the widget exists to express",
+        "the second author's selector labels its two step buttons 'Down' and 'Up' as plain TextButtons rather than arrow glyphs, so the control survives with no icon set at all"
+      ]
+    },
+    {
+      "id": "next-stage-world-indicator",
+      "source": "https://devforum.roblox.com/t/how-to-make-obby-arrow-for-checkpoints/1485780 (TechinalOfWizard, citing Mega Fun Obby 2500 Stages) and https://devforum.roblox.com/t/how-to-make-obby-indicator-reappear-if-progress-is-resetted/1049987 (nathanielstanle, quoting the working script) — DevForum threads fetched 2026-09-20.",
+      "demonstrates": [
+        "the 'where do I go next' affordance is a world-space object, not screen UI: a Model (a star or an arrow) cloned into Workspace and moved to the next checkpoint's position plus about 10 studs of height",
+        "the marker is per-player and follows leaderstats as it changes — it is repositioned to checkpoint (level + 1) on a loop rather than placed once",
+        "the marker is DESTROYED when the player reaches the final stage, so its absence is the game's way of saying there is nothing left ahead",
+        "no reference in this file shows a minimap or an on-screen compass for an obby; direction is always given in the world"
+      ]
+    },
+    {
+      "id": "checkpoint-plus-module",
+      "source": "https://devforum.roblox.com/t/checkpoint-a-new-way-to-make-a-checkpoint-system/2092361 — DevForum Community Resources release by ericplane, fetched 2026-09-20; its Settings table is quoted in full in the post.",
+      "demonstrates": [
+        "the module's only display setting is 'LeaderstatsEnabled' with 'LeaderstatsName' defaulting to 'Stage' — the canonical stage readout for this genre is Roblox's OWN player list, and a custom counter is an addition to it rather than a replacement",
+        "'CheckpointParticlesEnabled' is a top-level setting, so particles at the checkpoint are treated as core feedback and not as decoration",
+        "checkpoints live in one Workspace Folder named 'Checkpoints' and are addressed by name — the same integer-keyed world folder the selector and the skip button both index into"
+      ]
+    },
+    {
+      "id": "obby-wiki-development-guide",
+      "source": "https://obby.wiki/wiki/Development:Get_Started — the community-run Obby Wiki's protected development tutorial, fetched 2026-09-20 as raw wikitext through its MediaWiki API. Written by an established obby developer and locked from edits.",
+      "demonstrates": [
+        "it lists the two obby systems beginners actually install (Wolfite's and Techy's) and compares them by FEATURE LIST — stage selector, progress bar, stage indicator, skip stage, settings — confirming those are the genre's expected screens rather than one author's choices",
+        "a difficulty chart obby groups stages into difficulty bands of roughly twenty ('stages 0-20 are typically Effortless, 20-40 Easy or Very Easy, and so on'), so the stage number is always read against a band",
+        "both listed systems are installed with zero code, so their UI arrives as a fixed StarterGui tree the developer recolours — which is exactly why obby HUDs across different games share a silhouette",
+        "the guide instructs enforcing R6 avatars for the EToH kit; the genre's art direction and its UI scale sit on top of that older, blockier body"
+      ]
+    },
+    {
+      "id": "difficulty-band-colour",
+      "source": "https://obby.wiki/wiki/Difficulty_Chart_Obby and https://obby.wiki/wiki/Difficulty:Effortless — Obby Wiki articles fetched 2026-09-20 as raw wikitext.",
+      "demonstrates": [
+        "difficulty bands carry a NAME AND A COLOUR together, inherited from Eternal Towers of Hell: Effortless, Easy, Medium, Hard, Insane, Remorseless, Catastrophic, Impossible",
+        "Effortless 'was originally described as a dark green colour' and 'has grown to be depicted by most obbies as a shade of grey' — the band colours are a living community convention with drift, not a fixed table, and grey is the current reading of the easiest band",
+        "the wiki states there is now no standard and 'difficulty names and colors can pretty much be anything' past Hard — so a generator should treat the first five bands as conventional and anything beyond as the game's own invention",
+        "the ladder is the game's whole information architecture: the stage counter, the selector's sections and the level geometry are all partitioned the same way"
+      ]
+    },
+    {
+      "id": "tower-of-hell-round-timer",
+      "source": "https://obby.wiki/wiki/Tower_of_Hell — Obby Wiki article on Tower of Hell (YXceptional Studios, 2018), fetched 2026-09-20 as raw wikitext.",
+      "demonstrates": [
+        "the round-based branch of this genre replaces the stage counter with a single countdown: the timer resets to 8 minutes at the start of every round, when the tower is regenerated from 8 randomly selected sections",
+        "the timer carries a MULTIPLIER that is part of the same readout — after the first player wins, the multiplier doubles (1x to 2x) and the clock visibly counts down twice as fast for everyone still climbing",
+        "there are no checkpoints at all in this branch, so nothing in the HUD reports position within the tower; the clock is the only progress signal",
+        "winning is touching a specific world object (a glowing white door) at the top — the win condition is a place, so the win feedback belongs on the screen only after a world event"
+      ]
+    },
+    {
+      "id": "squids-obby-kit",
+      "source": "Roblox economy API record for asset 6167660526, 'Squid's Obby Kit - Checkpoints, Saving, Skip Stage' by Squidingz (https://create.roblox.com/store/asset/6167660526), fetched 2026-09-20 via https://economy.roblox.com/v2/assets/6167660526/details. A free public-domain model updated 2022.",
+      "demonstrates": [
+        "the kit's own description names its screens as 'Data Saving, Checkpoints, Stage Picker Gui, Skip Stage' — 'Stage Picker' is the same widget other sources call a stage selector, so the component has more than one common name and the generator should answer to both",
+        "checkpoints are set up by duplicating one part and renaming it to the stage number, which is why integer-named checkpoint parts are near-universal in this genre and why the UI can safely index the world by the number it displays"
+      ]
+    },
+    {
+      "id": "obby-template-walkthrough",
+      "source": "https://www.creation.dev/templates/obby-template — a third-party 'How to Build a Roblox Obby' template walkthrough, fetched 2026-09-20. Weakest source in this file: it is instructional prose about a template rather than an observation of a shipped screen, and it is recorded only for the two screens no stronger source here covers.",
+      "demonstrates": [
+        "the win state is 'a congratulatory GUI' shown at a victory platform, accompanied by particle effects and a teleport back to the lobby — the end screen is a celebration plus an exit, not a score summary",
+        "the global leaderboard for this genre ranks players by HIGHEST STAGE COMPLETED, read from the same leaderstats value, so the board and the counter never disagree",
+        "the skip-stage control is described as appearing only once the pass is owned, corroborating the ownership-hides-the-control pattern recorded above"
+      ]
+    }
+  ],
+  "rules": {
+    "note": "Distilled from the references above. Units are Roblox UI units: px for stroke and offset radius, scale (0..1) where a reference explicitly used scale, unitless for ratios. Values marked approximate were read from a single source or from a stated capture size and are not measured across the genre. The overriding structural fact: an obby HUD is made of thin persistent strips and small transient toasts, NOT of the plaque-headed modal panels that define simulator.json. Applying the simulator's panel construction to an obby's core loop is the failure this file exists to prevent.",
+    "surfaceShape": {
+      "primitive": "strip",
+      "persistentElementAspectMin": 7,
+      "panelsInCoreLoop": 0,
+      "approximate": true,
+      "why": "every persistent element observed is a wide thin horizontal bar — the progress bar capture is about 9.6:1 and two independent stage selectors are about 7.4:1 and 3.3:1 — and not one reference shows a bordered panel with a title in the always-on HUD; panels appear only in the shop and settings modals"
+    },
+    "stageStat": {
+      "container": "leaderstats",
+      "name": "Stage",
+      "type": "IntValue",
+      "worldKey": "checkpoint Parts are named with the same bare integer, in a Workspace Folder named Checkpoints",
+      "why": "five independent references read and write exactly leaderstats.Stage and index checkpoints by the stringified number; the selector, the skip button, the progress bar, the world indicator and the global leaderboard all agree on this one value, so inventing a different stat name silently breaks every other widget"
+    },
+    "stageCounter": {
+      "default": "Roblox's own player list, with the column labelled Stage",
+      "customHud": "an addition, not a replacement: a short 'Stage: N' or 'N / total' strip near the top edge",
+      "pairsWith": "difficulty band name and colour in a difficulty chart obby",
+      "why": "Checkpoint+ exposes LeaderstatsEnabled as its only display setting, and the DevForum threads that build a custom counter all describe disabling the player list first — so the counter is the one HUD element whose default is Roblox's own chrome, and a generator that omits leaderstats leaves the player with no readout at all"
+    },
+    "progressBar": {
+      "position": "top-centre, inset slightly from the top edge",
+      "aspect": 9.6,
+      "cornerRadiusScale": 0.2,
+      "strokeThickness": 3,
+      "strokeColorRole": "outline",
+      "fillStyle": "static left-to-right heat gradient, dark-red through orange and amber to green, about seven stops",
+      "marker": "one circular head-shot image per player in the server, positioned along the bar by scale, vertically centred on the bar",
+      "percentLabel": true,
+      "approximate": true,
+      "why": "measured from the one tutorial that states engine values; the two decisions that matter are that the radius is expressed in SCALE so a thin bar keeps lozenge ends on every device, and that the bar does not fill — it is a fixed rainbow track that markers travel along, which is what lets every player in the server appear on the same bar at once"
+    },
+    "progressIsSocial": {
+      "rule": "the progress bar shows EVERY player in the server, each as their own avatar head, not just the local player",
+      "never": "a private single-player fill bar",
+      "handlesMissingThumbnail": "fall back to a placeholder image; the bar must still read",
+      "why": "the reference clones one marker per player from a hidden template, keys the cache by player name and destroys the marker on PlayerRemoving; the comparison against other players is the point of the element, and it is the single clearest difference from a simulator's private progress meter"
+    },
+    "stageSelector": {
+      "layout": "one horizontal strip of five cells: -10, -1, number, +1, +10",
+      "numberCell": "a TextBox, not a TextLabel — the number is the input",
+      "aspect": 7.4,
+      "seededFrom": "leaderstats.Stage, re-seeded on every Stage.Changed and on respawn",
+      "commit": "arrows act immediately; the typed field commits on FocusLost with enterPressed",
+      "shortcuts": [
+        "Lobby",
+        "Last Checkpoint"
+      ],
+      "approximate": true,
+      "why": "three independent selectors agree on the arrows-around-an-editable-number shape and two of them carry the step-of-ten pair as extra cells rather than as a mode; the named Lobby and Last Checkpoint buttons exist because those are the two destinations players actually want, and dialling to them one arrow-press at a time is the thing the shortcuts remove"
+    },
+    "selectorClamp": {
+      "lower": 0,
+      "upper": "the player's own leaderstats.Stage — never higher",
+      "backwardsIsFree": true,
+      "feedback": "silent — the number simply does not move",
+      "why": "going back is free and going forward past your best is refused, and that asymmetry is the entire reason the widget exists; three references show the clamp being got wrong and players reaching unearned stages, so it is the part a generator must get right rather than the part it can omit"
+    },
+    "teleportOnSelect": {
+      "rule": "selecting a stage moves the character immediately to that checkpoint's CFrame plus about 5 studs of vertical clearance",
+      "never": "a confirm dialog",
+      "approximate": true,
+      "why": "both shipped selectors PivotTo on the button press with no intermediate step — the widget is a teleporter, and wrapping it in a confirmation turns a two-second traversal into a four-click form"
+    },
+    "skipButton": {
+      "labelCarriesCount": "Skip Stage (3) — the remaining count is written into the button's own text and rewritten on every use",
+      "never": "a separate count badge beside the button, or a disabled button",
+      "atZero": "the same button prompts the purchase instead of skipping",
+      "why": "observed verbatim in a live game's script; one control with two behaviours keeps the paywall in the place the player already looks, and a greyed-out button would hide the offer at exactly the moment the player wants it"
+    },
+    "skipShop": {
+      "shape": "a single column ladder of the same good at rising quantities",
+      "observedTiers": [
+        5,
+        25,
+        50,
+        100,
+        1000
+      ],
+      "terminalRow": "one Game Pass that makes skips unlimited, closing the ladder",
+      "productKind": "Developer Products for the quantities (consumable, repeatable), a Game Pass for the unlimited row",
+      "why": "taken from a live game's Products table; because every row sells the same thing, the shop is read by comparing one number down a column, which is why a simulator's four-across grid of unrelated tiles is the wrong container for it"
+    },
+    "ownedState": {
+      "rule": "owning the pass HIDES the purchase control and reveals the unlimited one",
+      "never": "leave the price visible with an OWNED tag, as the simulator genre does",
+      "why": "two references state the owner-only control is shown only to pass holders; obby monetisation is a live consumable rather than a collection, so there is no cabinet of owned items to display and a persistent OWNED tag would just be clutter on a HUD strip"
+    },
+    "checkpointFeedback": {
+      "screen": "a transient 'Checkpoint Reached' toast, separate from the counter",
+      "world": "particles at the checkpoint and a permanent colour change on the checkpoint Part itself",
+      "counterRole": "the counter does not announce; it settles at the new number",
+      "why": "the world object carries the durable state and the screen carries only the announcement — that split is why passing a checkpoint in a shipped obby never interrupts the run, and why a modal here would be wrong"
+    },
+    "nextStageIndicator": {
+      "space": "world, not screen",
+      "form": "a floating marker Model above the next checkpoint",
+      "heightStuds": 10,
+      "perPlayer": true,
+      "removedOnFinalStage": true,
+      "approximate": true,
+      "why": "two references place a star or arrow in Workspace at checkpoint (stage + 1) and reposition it as the stat changes; no reference in this file shows a minimap or a screen-edge compass, so direction in this genre is given in the world and the HUD is left to carry numbers"
+    },
+    "difficultyBand": {
+      "rule": "in a difficulty chart obby the stage number is always shown against a named, coloured band; bands run in groups of roughly twenty stages",
+      "canonicalLadder": [
+        "Effortless",
+        "Easy",
+        "Medium",
+        "Hard",
+        "Insane",
+        "Remorseless",
+        "Catastrophic",
+        "Impossible"
+      ],
+      "colourSource": "the band, not the theme — the band colour overrides the palette wherever the two meet",
+      "drift": "Effortless was originally dark green and is now usually grey; past Hard the wiki states there is no standard at all",
+      "why": "the band ladder is the whole information architecture of the sub-genre — counter, selector sections and level geometry are partitioned identically — so a stage label that is only a number throws away the one piece of context the player navigates by"
+    },
+    "roundTimer": {
+      "appliesTo": "round-based tower obbies, which have no checkpoints and therefore no stage counter",
+      "form": "one mm:ss countdown, reset at the start of every round",
+      "observedRound": "8 minutes, with the tower regenerated from 8 sections",
+      "multiplier": "part of the same readout: it doubles (1x to 2x) once a player wins, and the clock visibly runs at that rate for everyone still climbing",
+      "why": "in this branch the clock is the only progress signal the HUD carries, and the multiplier is the only thing on screen that reports another player's success — putting it anywhere but beside the digits loses the causal link between someone winning and the clock speeding up"
+    },
+    "winScreen": {
+      "content": "a congratulation plus an exit — celebration art, particles, and a return to the lobby",
+      "never": "a score summary or a stats table",
+      "trigger": "touching a specific world object (a victory platform, or a glowing door at the top of a tower)",
+      "confidence": "low — one instructional source; the round-based reference confirms only that the trigger is a place",
+      "why": "the run's whole record is already the stage counter, which persists, so an end screen that re-states it would be reporting a number the player has been watching for an hour; what the screen adds is the moment and a way out"
+    },
+    "launcherPlacement": {
+      "edge": "top bar",
+      "mechanism": "TopbarPlus icons beside Roblox's own experience controls",
+      "never": "the bottom-left circular rail that simulator.json records",
+      "why": "the one shipped system whose icon layer is documented spent a whole release migrating its icons onto TopbarPlus, and the bottom of an obby screen is already taken by the jump button, the joystick and the persistent selector strip — this is the sharpest layout divergence between the two genres and the easiest one to get wrong by reflex"
+    },
+    "touchSafety": {
+      "reservedRegion": "the bottom-right quadrant belongs to Roblox's jump button on touch devices",
+      "addedControlsAreDraggable": "a shipped system ships its extra mobile control as draggable (hold 0.7s, then drag) rather than fixed",
+      "why": "an obby is played with both thumbs on the movement controls for its entire duration, so any HUD element parked over them costs the player the run; the referenced system solved it by letting the player move the control rather than by picking a position"
+    },
+    "hideUi": {
+      "rule": "ship a Hide UI toggle in settings",
+      "companions": [
+        "Shadow",
+        "Blur"
+      ],
+      "why": "the three free settings in the most-installed obby system are exactly Shadow, Blur and Hide UI — players record and speedrun these games, so a HUD that cannot be dismissed is a HUD that gets cropped out in software instead"
+    },
+    "cornerRadius": {
+      "thinStrips": "express as SCALE (about 0.2 of the element's height), not as a px offset",
+      "modalsAndButtons": "px offset is fine, in the same large-radius family the simulator references use",
+      "approximate": true,
+      "why": "measured from the one source that states the property; a fixed px radius on an element whose height changes with the viewport goes square on a phone and pill-shaped on a monitor, and the persistent obby elements are exactly the thin ones where that shows"
+    },
+    "stroke": {
+      "thinStrips": 3,
+      "colorRole": "outline",
+      "approximate": true,
+      "why": "the one measured HUD element uses UIStroke thickness 3 in black; the near-black outline convention carries over from the simulator references, at a lighter weight because a 4px stroke on a bar 30px tall eats a quarter of it"
+    }
+  },
+  "honestLimits": [
+    "None of these references is a screenshot the recorder looked at. They are fetched DevForum posts, Obby Wiki articles and one asset record, read as text. Where an author's own capture size is quoted (the progress bar at about 1702 by 178, a selector at 930 by 126) that is the forum's own record of the attachment, not a measurement of a rendered screen.",
+    "Only ONE reference states construction in engine units: the progress bar tutorial. Every numeric value in progressBar, cornerRadius and stroke traces to it, so those are a single opinion with numbers attached rather than a convention observed across the genre. They are marked approximate and should be re-measured the first time an obby theme is rendered in Studio and looked at.",
+    "The win screen has one weak source and no shipped example. The round timer has one, and it describes behaviour (8 minutes, doubling multiplier) rather than layout — nothing here says where on the screen those digits sit or how large they are.",
+    "The Obby Wiki and the DevForum release threads describe what systems DO, in feature lists. That is strong evidence for which screens exist and what they are called, and weak evidence for how they are drawn.",
+    "Nothing here has been rendered and compared, unlike simulator.json. Until an obby theme is built and played, this file records what the web says obbies contain, not what a built one looks like beside them.",
+    "This genre is listed in PENDING in tests/ui-references.test.mjs. With more than five references recorded, that entry must now be removed or the ratchet test fails by design — which is the test working, not breaking."
+  ]
+}

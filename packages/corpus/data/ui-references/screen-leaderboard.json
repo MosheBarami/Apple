@@ -1,0 +1,386 @@
+{
+  "genre": "screen-leaderboard",
+  "label": "The LEADERBOARD screen, across genres — in-world ranking boards, podium treatment for the top three, ranked rows, avatar thumbnails, scope/time-window switching, and the player's own standing",
+  "recorded": "2026-09-20",
+  "provenance": "Web research, not owner screenshots. Every row below was read over the network on 2026-09-20: Roblox's own creator-docs were pulled as raw Markdown/YAML from raw.githubusercontent.com with curl; shipped-game community wikis were read through each Fandom's MediaWiki parse API (api.php?action=parse&prop=wikitext), because Fandom's rendered HTML sits behind Cloudflare while api.php does not; DevForum threads were fetched directly. No image, no Luau source and no asset is copied here. Each row records where the claim was read and what construction it describes, so the claim can be checked by re-fetching the same URL.",
+  "incomplete": false,
+  "references": [
+    {
+      "id": "roblox-docs-leaderboards",
+      "source": "https://raw.githubusercontent.com/Roblox/creator-docs/main/content/en-us/players/leaderboards.md — Roblox's official 'Leaderboards' documentation page, fetched with curl on 2026-09-20. This is the platform's own leaderboard, so it is the one leaderboard every Roblox player has already learned to read.",
+      "demonstrates": [
+        "the scope switch is THREE views of ONE list, not three screens: 'Here, Friends, and Global are views of that same list'. Here = 'Session rankings for players in the current server', Friends = 'Persistent rankings among a player's friends who have played the experience', Global = 'Persistent rankings across players in the experience'. The platform's axis is WHO, not WHEN.",
+        "the two halves are fed by different machinery and therefore behave differently: 'Use leaderstats to populate Here. Use an ordered data store to populate Friends and Global.' A screen that switches between a live server list and a persisted global list is switching data sources, so the empty and loading states are not shared.",
+        "column order is an explicit, authored property with three mechanisms — insertion order, a child BoolValue named IsPrimary, or a child NumberValue named Priority where 'Higher priority values appear earlier in the leaderboard' and stats without one default to 0. 'IsPrimary takes precedence over any Priority values.' Column order is never incidental.",
+        "the stat's instance Name IS the column header: 'This is exactly how the stat will appear on the leaderboard.' There is no separate label field, so a header and its key cannot drift apart",
+        "a custom leaderboard has to actively evict the built-in one, and the documented way is a LocalScript calling StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false) — the docs give this as the method 'To hide the leaderboard, such as on a menu screen or during a cutscene'",
+        "the persistent half is scoped hard: 'The initial beta supports one active persistent leaderboard per experience' and 'Only a registered, active leaderboard appears in the Friends and Global views' — so a multi-board design cannot be built on the platform surface and has to be built in-experience",
+        "one numeric score per player, keyed by user ID: 'Each player has one numeric score in that ordered data store' and 'Each key identifies one player by user ID'. Rank is derived, never stored, and ties are not addressed anywhere in the page",
+        "deactivating a board is a visibility change, not a deletion: 'Deactivating a leaderboard hides it from players but doesn't delete its ordered data store or scores'",
+        "the docs' own verification screenshot is captioned 'An in-experience persistent leaderboard showing player ranks, names, and scores' — rank, name, score is the platform's own three-field row"
+      ]
+    },
+    {
+      "id": "roblox-docs-thumbnail-enums",
+      "source": "https://raw.githubusercontent.com/Roblox/creator-docs/main/content/en-us/reference/engine/enums/ThumbnailSize.yaml and .../ThumbnailType.yaml — generated Roblox engine reference, fetched with curl on 2026-09-20. These enums are what an avatar slot in a leaderboard row is actually allowed to be.",
+      "demonstrates": [
+        "every avatar thumbnail the engine will hand you is SQUARE. The complete size list is 48x48, 60x60, 100x100, 150x150, 180x180, 352x352, 420x420 — seven values, all 1:1. A row's avatar slot that is not square is cropping or stretching somebody's face.",
+        "there are exactly three framings, and they are different pictures, not different crops: HeadShot is 'just the headshot (head and up)', AvatarBust is 'the bust (chest up)', AvatarThumbnail is 'the entire body of the user's avatar'",
+        "the full-body AvatarThumbnail is the only one that reads at podium scale; HeadShot is the only one that reads at row scale. Using one where the other belongs is the visible failure — a full body shrunk into a 40px row slot is a smudge, a headshot blown up onto a podium is a blurred crop",
+        "the enumerated sizes are the ONLY resolutions served, so a 40px row slot should request 48x48 and a 120px podium slot should request 150x150 — requesting an unlisted size is not an option the API offers"
+      ]
+    },
+    {
+      "id": "tds-lobby-leaderboards",
+      "source": "https://tds.fandom.com/wiki/Leaderboard — Tower Defense Simulator (Paradoxum Games) community wiki, fetched via https://tds.fandom.com/api.php?action=parse&page=Leaderboard&prop=wikitext on 2026-09-20.",
+      "demonstrates": [
+        "the ranked row is FOUR fields, and the wiki names them in order: 'Their avatar icon, username, level and total statistic are displayed next to their spot on the Leaderboard.' The rank number is the spot the other four sit next to — so the row is rank | avatar | name | secondary stat | primary value, and the secondary stat (level) is a real column, not decoration",
+        "the podium is a SEPARATE ASSEMBLY BESIDE THE LIST, not the first three rows of it: 'Top three players are displayed on podiums next to the Leaderboards.' The board still lists ranks 1 through 50, so the podium duplicates the top three rather than removing them",
+        "list depth is 50: 'These display the current month's total statistics for up to 50 players'",
+        "the time window is baked into the board and stated as part of what it is — 'the current month's total statistics' — rather than chosen by the player from a control",
+        "boards ship in PAIRS flanking a landmark: 'two boards can be found on the sides of the Elevators', one for total triumphs and one for total EXP. One board carries one stat; a second stat gets a second board",
+        "a different lobby gets a different pair with a different window: the Survival and Hardcore Intermission Lobbies each carry 'two large signs' showing 'the top triumphs for the current month and day' — month and day are two boards side by side, not two tabs on one board",
+        "the top three is a REWARD BRACKET with a persistent trophy, and the wiki treats that as the point of the podium: 'Any players in the top three of either two Leaderboards obtain the Champion Nametag through their Gift Box, which they will get to keep even after the month ends'",
+        "the same podium treatment is explicitly NOT given a reward on the intermission boards — 'no additional rewards are granted for placing in the top three' — so podium presentation and reward bracket are separable"
+      ]
+    },
+    {
+      "id": "sbs-leaderboards",
+      "source": "https://roblox-super-bomb-survival.fandom.com/wiki/Leaderboards — Super Bomb Survival wiki, fetched via api.php?action=parse&page=Leaderboards&prop=wikitext on 2026-09-20.",
+      "demonstrates": [
+        "the time window is signalled by the BOARD'S FRAME COLOUR, not by a tab: the 'Daily Leaderboard, which is indicated by the yellow-colored frame' sits beside the 'Global Leaderboard, which is indicated by the gray-colored frame'. Two physical boards, two frame colours, no switch",
+        "depth is ten: 'scoreboards that display 10 top players with their respective scores/wins'",
+        "one board cycles categories on its own instead of offering a category control — the Global board 'is an all-time leaderboard that cycles through multiple categories' covering Top 10 Wins, Top 10 High Scores, Top 10 Hardcore Wins and Most 5.0 Intensity Wins",
+        "rank is carried OUT of the board and onto the player: 'A ranked player will have special icons with a number corresponding to their ranking position above them.' The badge carries the NUMBER, so it is not a generic medal",
+        "the badge identifies WHICH board you ranked on, by icon: the daily board's ranks get a crown icon, the Top 10 Wins board's ranks get a star icon, and 'Other categories do not have special icons'",
+        "the reward bracket extends far past what the board renders: after v3.30.4, 'players within the top 100 will also have special icons above them. Though, they are still not listed on the boards' — rank standing and rank listing are two different depths",
+        "the daily board's reset is a stated wall-clock time, not a rolling window: scores 'reset back to 0 points at 4:00 AM (UTC +0) everyday'",
+        "the boards have a fixed home relative to a landmark: 'They can be found to the right of the area where players are normally teleported to the lobby'"
+      ]
+    },
+    {
+      "id": "bss-leaderboards-index",
+      "source": "https://bee-swarm-simulator.fandom.com/wiki/Leaderboards — Bee Swarm Simulator wiki, fetched via api.php?action=parse&page=Leaderboards&prop=wikitext on 2026-09-20. The largest shipped leaderboard system found: 64 boards.",
+      "demonstrates": [
+        "the window/page relationship, stated exactly: 'Each leaderboard displays the ranks of the top 100 players, showing ten ranks at a time.' Ten rows are rendered; the depth behind them is 100",
+        "time windows are SEPARATE BOARDS with the window in the title — 'All-Time Top Honeymakers', 'Monthly Top Honeymakers', 'Daily Top Honeymakers' are three distinct boards, not three states of one",
+        "the boards are in the world first and in a menu second: 'Out of the 64 total leaderboards, 18 are able to be viewed at various locations around the map, and the rest are available to view in the System Page.' The world board is the primary surface; the menu is the overflow",
+        "the own-score affordance is a PROXIMITY READOUT standing outside the list, not a pinned row inside it: 'Upon standing on the white pad in front of a leaderboard, it will show a message stating the player's score for the corresponding leaderboard'",
+        "freshness is honest rather than live: 'Leaderboards are usually not in real-time but update very often'",
+        "abbreviation is a change that gets made under pressure, not a style choice: on 2022-03-17 'Onett abbreviated the amount of honey for the Daily Top Honeymakers and the All-Time Top Honeymakers leaderboard due to players having massive amounts of honey'",
+        "a board is allowed to omit the value column: 'The Top Brown Bear Helpers leaderboard is the only leaderboard that does not show the player's current amount of the stated objective' — and the wiki notes the score is then reachable only from the menu or an NPC, which is recorded as an oddity",
+        "daily boards reset on one stated clock — 'All leaderboards that reset on a daily basis reset at 12:00am GMT-5' — and boards can skip a scheduled reset during events",
+        "reward tiers are attached to the window: 'On daily and monthly leaderboards, players are able to gain rewards by placing high enough in one', while all-time boards carry none"
+      ]
+    },
+    {
+      "id": "bss-single-board-page",
+      "source": "https://bee-swarm-simulator.fandom.com/wiki/All-Time_Top_Honeymakers — Bee Swarm Simulator wiki, fetched via api.php?action=parse&prop=wikitext on 2026-09-20. A single board described field by field, plus a transcription of its top ten.",
+      "demonstrates": [
+        "the ten-visible / hundred-deep rule restated for one board: 'It shows 10 leaderboard positions at one time. The player can scroll down the leaderboard to see more players, all the way to the 100th place' — the list scrolls, it does not paginate with arrows",
+        "the proximity readout has a literal sentence form — the pad prints \"You've made [x] Honey\" — a full sentence naming the stat, not a bare number, because outside the board there is no column header to read it against",
+        "the transcribed values are abbreviated to four significant digits and a magnitude suffix and are near-identical in width: 1.6219 Qn, 1.4556 Qn, 1.2474 Qn, 1.2076 Qn, 1.1917 Qn down to 1.0002 Qn. The value column is effectively fixed-width, and the leader is only 1.6x the tenth place — a leaderboard's numbers cluster, so the column must not be sized from the first row",
+        "names are raw usernames of wildly different lengths in the same column, from 'ruiream' to 'roblox_user_494351377' and 'TokenLinkPaperClip' — the name column is the one that has to flex and truncate",
+        "the paired board sits directly opposite: the all-time board 'is on the opposite side of the path in front of the hives from the Daily Top Honeymakers leaderboard' — same stat, two windows, two boards facing each other",
+        "entries are moderated out rather than struck through: 'Only legitimate players appear on the leaderboards for lengths of time (exploiters will be removed)' — there is no cheater state to render"
+      ]
+    },
+    {
+      "id": "roblox-wiki-people-list",
+      "source": "https://roblox.fandom.com/wiki/People_list — Roblox Wiki, fetched via https://roblox.fandom.com/api.php?action=parse&page=People%20list&prop=wikitext on 2026-09-20. The community's description of the platform player list as shipped.",
+      "demonstrates": [
+        "the sort key is the FIRST COLUMN, and the fallback when there is no leaderboard is alphabetical: the list shows users 'in alphabetical order of Display Names (or, if the people list has a leaderboard, the people list would display their Display Names from the highest value of the leaderboard's first column to the lowest value of the same column)'. Descending, on column one, always",
+        "the row shows the DISPLAY NAME, not the username — a distinction the platform's own list makes and a custom board has to make deliberately",
+        "the list is toggled, and by two routes: 'Users can hide the people list by activating \"More Menu\" then activating \"Leaderboard\" or by pressing Tab'",
+        "a row carries entitlement/role BADGES beside the name, in a reserved slot: the Premium logo, the game-owner ribbon (described as 'a white hammer with a coding symbol (<>)'), the administrator tilted-O, and the Video Stars shooting star. Historically this slot held the Builders Club hard hats. The slot survives every redesign even as its contents are replaced",
+        "a row is a control, not a label: from the people list users 'can also send friend requests, report other Users, and examine the Avatars of any Users in the Server'. Tapping a name opens a person, so a leaderboard row needs a press target and a press affordance",
+        "the list is not universal chrome — 'you can't see the people list if you are playing on a Phone' — so a phone layout cannot assume the platform list is there to lean on"
+      ]
+    },
+    {
+      "id": "roblox-wiki-leaderboard",
+      "source": "https://roblox.fandom.com/wiki/Leaderboard — Roblox Wiki, fetched via api.php?action=parse&page=Leaderboard&prop=wikitext on 2026-09-20.",
+      "demonstrates": [
+        "what actually gets put in the columns, from the community's own list of conventions: 'Leaderboard stats often included KOs and WOs, currency, level and experience points, time played, and rounds survived' — two to four short numeric columns, never prose",
+        "the platform leaderboard is redesigned on a multi-year cycle and the gallery dates five distinct layouts (2006–2011, mid 2011–2012, late 2012–2014, 2014–2020, 2020–Feb 2024, and the Feb 20 2024 list), so a custom board that mimics the current core one is aiming at a moving target — this is an argument for a board that looks like the game, not like the platform",
+        "the persistent Friends/Global feature is dated precisely: introduced 2026-08-27 as a beta, and it 'has default implementation for filtering the displayed scores by players currently in the server, friends of the local user, or globally across the entire experience' — filtering, i.e. one list with three filters",
+        "the caption on the current list reads 'The current player list that shows the stats of all players' — the platform list's job is all players in the server, which is exactly the job a global board does not do"
+      ]
+    },
+    {
+      "id": "devforum-leaderstats-global-system",
+      "source": "https://devforum.roblox.com/t/roblox-leaderstats-global-leaderboards-system-tab-menu-in-world-boards-top-3-avatars/4567047 — DevForum Community Resources, fetched 2026-09-20. A published system whose headline features are exactly the three parts of this screen.",
+      "demonstrates": [
+        "the podium figure is a POSED LIVE AVATAR, not a picture: 'The first three stand on the podium wearing their real Roblox avatar, playing a looping emote.' The top three are rendered as characters in the world; ranks four and down are rows",
+        "one game runs SEVERAL boards and they are deliberately not uniform: 'A cash board and a wins board can look nothing alike' — the board is themed per stat, and the resource ships three distinct board templates each with its own podium styling",
+        "value format is a per-board setting with exactly three options, named: raw (52500), comma-separated (52,500), or abbreviated (52.5K), 'selectable per board'. Abbreviation is a property of the board, because a cash board and a wins board do not need the same one",
+        "the refresh is on a stated interval AND the next refresh is shown to the player: boards are 'backed by an OrderedDataStore' and 'refresh on an interval you set', with the displayed next-refresh timing",
+        "rows are DIFFED, not rebuilt: 'A rank whose player has not changed is left alone, so only a real change costs a lookup' — the row is a persistent object keyed by rank, which is also why a rank whose occupant changes is the only place an animation belongs",
+        "the same data reaches the player twice, in two different surfaces: in-world boards for the global ranking and a 'Tab menu' leaderstats list for the server, with 'selected saved values' given 'configurable display names and ordering'"
+      ]
+    },
+    {
+      "id": "devforum-global-leaderboard-tutorial",
+      "source": "https://devforum.roblox.com/t/creating-global-leaderboards-with-gui/1841189 — DevForum Community Tutorials, 'Creating Global Leaderboards With GUI!', fetched 2026-09-20. The construction recipe, with its numbers.",
+      "demonstrates": [
+        "a row is a CLONED TEMPLATE, and the rank drives its position through layout order rather than through arithmetic: 'local new = Template:Clone()', 'new.Parent = ScrollingFrame', then 'new.LayoutOrder = Rank'",
+        "the template's three named children are exactly Rank, Name and Value — 'found:FindFirstChild(\"Rank\").Text', '...FindFirstChild(\"Name\").Text', '...FindFirstChild(\"Value\").Text' — the minimum viable row is three text fields and nothing else",
+        "the list is a ScrollingFrame with 'AutomaticCanvasSize is set to Y' and CanvasSize authored at {0,0},{0,0} — the canvas is computed from the rows, so a row count change needs no resize code. A board that hardcodes CanvasSize is the standard bug this avoids",
+        "the fetch is paged and the page size is much smaller than the depth: 'local TotalEntires = 50' with 'local EntriesPerPage = 5', calling 'DataStore:GetSortedAsync(false, EntriesPerPage)' and walking pages",
+        "the refresh loop is fifteen seconds: 'local RefreshTime = 15 -- In Seconds'",
+        "no avatar thumbnail appears anywhere in the tutorial, and ranks 1 to 3 get no special styling — the baseline every generated leaderboard starts from is a flat, unthumbnailed, unpodiumed list, which is precisely the design this file exists to push past"
+      ]
+    },
+    {
+      "id": "devforum-persistent-leaderboards-beta",
+      "source": "https://devforum.roblox.com/t/beta-add-persistent-friends-and-global-leaderboards-easily/4832224 — DevForum announcement thread for the persistent Friends/Global leaderboards beta, plus developer replies, fetched 2026-09-20.",
+      "demonstrates": [
+        "the three scopes are Global ('Rankings across all players'), Friends ('Rankings among the player's friends') and Server ('Rankings among players in the current server'), and replies refer to 'swapping between here/friends/global' — the switch is discrete and each switch costs a fetch ('there is also a lag spike when swapping between here/friends/global'), so each view needs its own loading state",
+        "the name column truncates from the wrong end and developers notice immediately: 'Seems like names are being cropped out; is there any way this could be fixed in the future'",
+        "the value column truncates from the wrong end too: a developer reports 'it's showing the tail end of the number' — a right-aligned number in a too-narrow column shows its least significant digits, which is worse than showing nothing",
+        "an unconfigured board does not collapse gracefully: the Friends/Global tabs appear 'squished when no score is configured'. The tab row's geometry has to be reserved by the tabs themselves, not derived from their contents",
+        "developers report the three views disagreeing with each other — the same player showing different scores in different tabs — so a design that puts the three side by side invites the comparison and must read from one fetch"
+      ]
+    },
+    {
+      "id": "devforum-new-leaderboard-complaints",
+      "source": "https://devforum.roblox.com/t/feedback-on-the-new-leaderboard/4776399 — DevForum Engine Features, fetched 2026-09-20. What developers said when the platform's leaderboard grew.",
+      "demonstrates": [
+        "the top-right corner is contested territory and a leaderboard that sits there WILL collide: 'it was covering my game UI so i had to move it out of the way', and it 'covers f3x uis making it harder to build u have to hide the leaderboard every time'",
+        "a leaderboard must shrink to its occupancy: 'its much bigger than the old one its literally wasting my screen space' — said 'even tho im the only person in the server' — with the explicit request to 'make the leaderboard UI smaller if im the only person in the server'",
+        "a leaderboard also occludes diagnostics that live in the same corner: it obscures 'the networkping from performance stats'",
+        "clicking a row can trap the camera: 'you cannot move your camera after pressing on someones name on the leaderboard' — a row that opens a person has to release input when it does"
+      ]
+    },
+    {
+      "id": "devforum-rank-row-colours",
+      "source": "https://devforum.roblox.com/t/how-can-i-make-certain-ranks-background-colors-on-this-leaderboard/699287 — DevForum Scripting Support, fetched 2026-09-20.",
+      "demonstrates": [
+        "the gold/silver/bronze convention is applied to the ROW BACKGROUND, not to the rank glyph or a medal icon: the accepted approach is 'when you clone the frame, check if the player's rank is for example 1 and if yes, change the BackgroundColor'",
+        "the ask is stated as a four-band rule — gold for #1, silver for #2, bronze for #3, and one neutral colour for every other rank — so it is three special rows and a default, never a gradient down the list",
+        "the branch belongs at clone time, inside the row-building loop where the Rank variable is in scope ('local newLBFrame = ReplicatedStorage:WaitForChild(\"LeaderboardFrame\"):Clone()'), not in a later pass over finished rows",
+        "no RGB values are given anywhere in the thread — the convention that is actually shared is WHICH ELEMENT is coloured and at WHICH RANKS, not the hues"
+      ]
+    },
+    {
+      "id": "devforum-roact-player-chip",
+      "source": "https://devforum.roblox.com/t/feedback-on-custom-leaderboard-ui/4527626 — DevForum Creations Feedback, a custom leaderboard rebuilt in Roact, fetched 2026-09-20. The only source found that states row proportions numerically.",
+      "demonstrates": [
+        "a player row is a wide, thin bar: PlayerChip is 'UDim2.fromScale(0.99, 0.061)' constrained by a UIAspectRatioConstraint of 11.76 — roughly 12:1 width to height, and about sixteen rows to a full-height list",
+        "a section/team header row is THINNER than a player row, not thicker: TeamChip is 'UDim2.fromScale(0.99, 0.046)' at aspect 15.474. The grouping bar reads as a divider, not as a bigger row",
+        "the columns are split roughly two-thirds to the name and one-sixth to each stat: 'PlayerName occupies 67% width, positioned left-aligned', with two parameters (Level and XP) 'each occupy 17.1% width'",
+        "rows are inset from the left by a proportional pad — 'Left padding of 4% applied via UIPadding' — rather than by a fixed pixel offset",
+        "the row surface is a translucent dark plate: black background at 0.3 transparency, white text, on both the player and the team chip",
+        "the corner radius is nearly nothing: 'UDim.new(0, 2)'. A leaderboard row is a strip in a stack, so it does not take the card radius the rest of the game's panels use",
+        "stat text is scaled but capped — TextScaled with a 'max size constraint of 25 pixels on parameters' — so a short value cannot balloon to fill its column and break the row's rhythm"
+      ]
+    },
+    {
+      "id": "devforum-gleaderboard",
+      "source": "https://devforum.roblox.com/t/new-gleaderboard-an-easy-way-to-create-your-global-leaderboard/3225447 — DevForum Community Resources, 'GLeaderboard', fetched 2026-09-20.",
+      "demonstrates": [
+        "the board is anchored to a PART: the constructor takes 'LeaderboardPart: Part' — the module's entire premise is that a global leaderboard is a thing standing in the world, and the screen GUI is not where it goes",
+        "the visible depth is a constructor argument and the shipped example passes ten: 'GLeaderboard.new(..., 10)' for 'Maximum items to show'",
+        "the refresh is an explicit external loop the developer writes — 'while task.wait(UPDATE_TIME: number) do MyBoard:UpdateBoardDisplay() end' — with 60 seconds in the example",
+        "the parts a board author is expected to restyle are exactly five, and they are all chrome rather than content: TopBar (an ImageLabel's colour), TopLine (a Frame background), Title (a TextLabel colour), TitleStroke (a UIStroke thickness) and ScrollBar (the ScrollingFrame's colour). A board is a titled, ruled, stroked, scrollable plate",
+        "large values are a known hazard the module handles for you: it advertises 'compatibility with formatting for bigger values of player's data'"
+      ]
+    },
+    {
+      "id": "devforum-leaderboard-plus-plugin",
+      "source": "https://devforum.roblox.com/t/leaderboard-create-custom-leaderboards-in-studio/1338477 — DevForum Community Resources, the 'Leaderboard+' Studio plugin, fetched 2026-09-20.",
+      "demonstrates": [
+        "the in-screen replacement for the platform player list is a fixed four-level tree: CustomLeaderboard -> LeaderboardFrame -> HoldingFrame (described as 'a scrolling frame that displays the player list') -> a sample player entry template. The template is a sibling-less child that gets cloned",
+        "the display-name-versus-username choice is exposed as an explicit toggle ('Display Names'), which matches the platform list's own use of display names",
+        "the badge slot beside the name is treated as a first-class, authorable feature: 'custom symbols for admins, premium users, and gamepass holders'",
+        "the value is addressed by a path string rather than a fixed column — the author specifies 'the \"path\" to the value you want to display in the textbox' — so a row template is generic over which stat it renders",
+        "a server leaderboard's hardest state is DEPARTURE, and this plugin gets it wrong in public: 'whenever a player leaves the leaderboard stays on'. A row keyed to a player must be destroyed on PlayerRemoving",
+        "no avatar thumbnails are offered anywhere in the plugin — the in-screen server list convention is text-only, while the in-world global board convention carries avatars"
+      ]
+    },
+    {
+      "id": "itt-spawn-pad-boards",
+      "source": "https://infinite-tower-tycoon.fandom.com/wiki/Leaderboard — Infinite Tower Tycoon wiki, fetched via api.php?action=parse&page=Leaderboard&prop=wikitext on 2026-09-20.",
+      "demonstrates": [
+        "the wiki's first line is a disambiguation between the two leaderboard surfaces, which is how strongly they are separate objects to players: 'Not too be confused with the UI Leaderboard on the top right corner of the screen'. The screen one is 'the UI Leaderboard'; the world one is 'the Leaderboard'",
+        "boards cluster at spawn in a set: 'There are 4 of them in the centre spawn pad of the map and 1 on Friend floor' — four stats, four boards, arranged as a ring on the pad the player lands on",
+        "one board in the set is horizontally paged over related stats while the others are single-stat: Board 2 'is scrollable using the arrows on top' across Kills, Crates, Keys and Codes. Arrows at the TOP of the board are the category control; the rows themselves scroll vertically",
+        "a friends-scoped board is a physically separate board in a separate room ('Friend floor'), showing the same stat as an existing global board — the scope change is a location change",
+        "staleness is disclosed on the board itself: 'Note: There is a delay between updates'"
+      ]
+    },
+    {
+      "id": "control-lobby-boards",
+      "source": "https://roblox-control-riot-control-simulator.fandom.com/wiki/Leaderboards — CONTROL: Riot Control Simulator wiki, fetched via api.php?action=parse&page=Leaderboards&prop=wikitext on 2026-09-20.",
+      "demonstrates": [
+        "the pair-at-spawn placement again, from an unrelated studio and a different genre: 'There are currently two leaderboards: the Global XP Leaderboard and the Notoriety Leaderboard. Both can be found in the lobby area, directly in front of the spawning point'",
+        "the name cell carries a RANK TITLE prefix ahead of the username — entries read 'Commissioner X aestheticminerald', 'Superintendent I creaperdead', 'Major II Sawanotsuru'. The title is derived from the score and rendered inline before the name, so the name cell is a two-part composite and is longer than a username",
+        "the transcribed top ten shows raw comma-separated integers, not abbreviations: 10,137,426 / 6,553,129 / 5,336,989 down to 2,986,413 XP — seven- and eight-digit numbers at full length, which is what forces the fixed-width right-aligned value column",
+        "the two boards measure opposite things and say so — XP is cumulative and permanent, Notoriety is a streak that 'resets on death' — so two boards side by side can have completely different volatility, and the same row template serves both"
+      ]
+    }
+  ],
+  "rules": {
+    "note": "Distilled from the references above. This is a SCREEN, not a genre: stroke weight, corner radius, bevel and text stroke come from the genre file the leaderboard is being built in (simulator.json for a cartoony game). What is here is the leaderboard's own construction — which surface it lives on, what a row is made of, how the top three differ, how scope and time window are expressed, and what the states are. Numbers are quoted from the sources named in each rule's `why`, not sampled from pixels.",
+    "surface": {
+      "primary": "a board standing in the world, on a SurfaceGui attached to a part, placed at or beside the spawn/lobby landmark",
+      "secondary": "a screen list, which is the SERVER list and a different thing from the global board",
+      "never": "a centred modal over the game — no fetched source puts a global leaderboard in one",
+      "why": "TDS flanks the elevators, Super Bomb Survival sits right of the teleport area, CONTROL sits 'directly in front of the spawning point', Infinite Tower Tycoon puts four on the centre spawn pad, Bee Swarm has 18 around the map, and the GLeaderboard module's constructor takes a Part. Five independent games and a published module agree, so the world board is the convention and the modal is the invention."
+    },
+    "boardSet": {
+      "rule": "one board renders ONE stat over ONE window; more stats and more windows mean more boards, placed as a set",
+      "typicalSetSize": "2 to 4 boards in one place",
+      "arrangement": "symmetrical — a flanking pair around a landmark, or a ring on the spawn pad",
+      "overflow": "past roughly four boards, the remainder move into a menu page and only the headline boards stay in the world",
+      "why": "TDS 'two boards ... on the sides of the Elevators', Super Bomb Survival's daily+global pair, CONTROL's two, Infinite Tower Tycoon's four on the pad, and Bee Swarm's split — '18 are able to be viewed at various locations around the map, and the rest are available to view in the System Page'"
+    },
+    "timeWindow": {
+      "rule": "the time window (daily / monthly / all-time) belongs in the board's TITLE and is fixed for that board — it is not a tab",
+      "signal": "give the paired boards different frame colours so the window is readable before the title is",
+      "pairing": "the same stat over two windows ships as two boards facing or flanking each other",
+      "resetDisclosure": "a resetting board states its reset as a wall-clock time with a zone",
+      "why": "Super Bomb Survival's 'Daily Leaderboard, which is indicated by the yellow-colored frame' beside the grey-framed Global one; Bee Swarm ships Daily / Monthly / All-Time Top Honeymakers as three separate boards and the all-time one sits 'on the opposite side of the path ... from the Daily Top Honeymakers leaderboard'; resets stated as '4:00 AM (UTC +0)' and '12:00am GMT-5'. A daily/all-time TAB was searched for and not found in any shipped game read here."
+    },
+    "scopeSwitch": {
+      "rule": "the axis that IS switched in place is WHO, not WHEN: server / friends / global, as three views of one list",
+      "count": 3,
+      "labels": ["Here", "Friends", "Global"],
+      "perViewLoading": "each view is a separate fetch and needs its own loading and empty state",
+      "reserveGeometry": "the switch's geometry is fixed by the control, never derived from its contents",
+      "why": "the platform's own leaderboard is exactly this — 'Here, Friends, and Global are views of that same list' — and the beta thread reports 'a lag spike when swapping between here/friends/global' plus tabs that go 'squished when no score is configured'. A game that wants both axes should switch scope in the UI and split the window across boards."
+    },
+    "row": {
+      "fields": ["rank number", "avatar headshot", "name", "optional secondary stat", "primary value"],
+      "order": "left to right, exactly that order",
+      "minimumViable": "rank, name, value — three text fields",
+      "aspect": "≈11.8 : 1 (width : height); about 16 rows to a full-height list",
+      "columnSplit": "name ≈67% of the row, each numeric stat ≈17%",
+      "leftInset": "≈4% of row width, as proportional padding, not a pixel offset",
+      "cornerRadius": "2px — a row is a strip in a stack and does NOT take the card radius the rest of the game uses",
+      "pressable": "a row is a control: it opens the person, and it must release camera input when it does",
+      "why": "TDS names the fields in order — 'avatar icon, username, level and total statistic ... next to their spot'; the Roact rebuild gives the numbers — PlayerChip at UDim2.fromScale(0.99, 0.061) with aspect 11.76, name 67%, two stats at 17.1% each, 4% left padding, UDim.new(0, 2) radius; the tutorial's template has exactly Rank/Name/Value; and the new-leaderboard thread reports 'you cannot move your camera after pressing on someones name'"
+    },
+    "sectionHeaderRow": {
+      "rule": "a grouping row (team, bracket, section) is THINNER than a player row, not thicker",
+      "aspect": "≈15.5 : 1",
+      "why": "TeamChip is UDim2.fromScale(0.99, 0.046) at aspect 15.474 against the player row's 11.76 — the group bar reads as a divider, and a generator's instinct to make headers bigger inverts the hierarchy"
+    },
+    "avatar": {
+      "shape": "square, always — every thumbnail the engine serves is 1:1",
+      "allowedSizes": [48, 60, 100, 150, 180, 352, 420],
+      "rowFraming": "HeadShot, requested one step above the slot's rendered size (48x48 for a ~40px slot)",
+      "podiumFraming": "AvatarThumbnail (full body) for a podium figure, or a live posed character; never a HeadShot blown up",
+      "fetch": "client-side, per row, and the row must render with a placeholder before it arrives",
+      "why": "Enum.ThumbnailSize has exactly seven square values and ThumbnailType has exactly three framings — HeadShot 'head and up', AvatarBust 'chest up', AvatarThumbnail 'the entire body'. The published system renders the top three as full characters: 'The first three stand on the podium wearing their real Roblox avatar, playing a looping emote.'"
+    },
+    "podium": {
+      "rule": "the top three are a SEPARATE ASSEMBLY BESIDE OR ABOVE THE LIST, and they are ALSO still rows 1-3 in the list — the podium duplicates them, it does not remove them",
+      "figure": "a full-body avatar (or a live posed character), not the row's headshot",
+      "why": "TDS: 'Top three players are displayed on podiums next to the Leaderboards', while the same boards still list up to 50 players; the published system's headline is 'Top-3 Avatars' as a feature distinct from the board's rows",
+      "notObserved": "no fetched source states the left-to-right order or the relative heights of 1st/2nd/3rd. The familiar centre-highest arrangement was NOT confirmed in any source read here, so a generator should treat the ordering as a choice it is making, not a convention it is following. Searched: TDS wiki, the Leaderboard+Podium open-source thread (no layout stated), the Improving Podium System feedback thread (the only critique in it is about sound volume)."
+    },
+    "topThreeMarking": {
+      "element": "the ROW BACKGROUND colour, decided at row-clone time inside the loop where the rank is in scope",
+      "bands": "exactly four — gold #1, silver #2, bronze #3, one neutral for every other rank",
+      "never": "a gradient fading down the list, and never a colour on the rank glyph alone",
+      "why": "the accepted answer in the rank-colour thread is 'when you clone the frame, check if the player's rank is for example 1 and if yes, change the BackgroundColor'; no shared RGBs exist in any source, so what is conventional is the element and the band count, not the hues"
+    },
+    "rankBadgeOutsideTheBoard": {
+      "rule": "a ranked player carries their standing out of the board and onto their character, and the badge carries the NUMBER",
+      "iconIdentifiesBoard": "a different icon per board (crown for the daily board, star for the wins board), and boards without a reward tier get no icon",
+      "standingDepth": "the badge can be granted far deeper than the board renders",
+      "why": "Super Bomb Survival: 'A ranked player will have special icons with a number corresponding to their ranking position above them', crown for the daily top 10 and star for Top 10 Wins, and after v3.30.4 'players within the top 100 will also have special icons above them. Though, they are still not listed on the boards.' TDS grants the top three a Champion Nametag they keep after the month ends."
+    },
+    "depth": {
+      "visibleRows": 10,
+      "fetchedDepth": "50 to 100",
+      "paging": "vertical scroll inside the board, not arrow pagination",
+      "why": "Bee Swarm states it exactly — 'displays the ranks of the top 100 players, showing ten ranks at a time' and 'The player can scroll down the leaderboard to see more players, all the way to the 100th place'; Super Bomb Survival shows 10; GLeaderboard's example passes 10; TDS goes to 50; the tutorial fetches TotalEntires = 50 in pages of 5. Ten visible is unanimous across four independent sources."
+    },
+    "listContainer": {
+      "rule": "a ScrollingFrame with AutomaticCanvasSize = Y and a UIListLayout; CanvasSize authored at zero",
+      "rowPlacement": "LayoutOrder = rank; never compute a Position per row",
+      "rowLifecycle": "rows are cloned from one template, keyed by rank, and DIFFED on refresh — a rank whose occupant has not changed is left untouched",
+      "why": "the tutorial: 'new.LayoutOrder = Rank', 'AutomaticCanvasSize is set to Y', CanvasSize {0,0},{0,0}; the published system: 'A rank whose player has not changed is left alone, so only a real change costs a lookup'. A hardcoded CanvasSize is the standard defect this avoids, and diffing is what makes a rank change the one place an animation belongs."
+    },
+    "valueColumn": {
+      "alignment": "right, in a FIXED width reserved before any data arrives",
+      "widthSource": "size it from the widest value the board can hold, never from the first row",
+      "format": "one of three, chosen per board: raw, comma-separated, or abbreviated to ≤4 significant digits plus a magnitude suffix",
+      "abbreviateWhen": "the board's values can exceed roughly six digits",
+      "truncation": "never — a clipped number shows its least significant digits, which is worse than showing nothing",
+      "why": "the published system offers exactly 52500 / 52,500 / 52.5K per board; Bee Swarm's Onett 'abbreviated the amount of honey ... due to players having massive amounts of honey' and its top ten reads 1.6219 Qn down to 1.0002 Qn — near-identical widths and only 1.6x between first and tenth, so the column must not be sized from the leader; CONTROL's board carries 10,137,426 at full length; and the beta thread reports a value column 'showing the tail end of the number'"
+    },
+    "nameColumn": {
+      "rule": "the name is the ONLY flexible column — rank, avatar and value are fixed, and the name absorbs the remainder",
+      "truncation": "truncate at the END with an ellipsis; never let the start be clipped",
+      "nameKind": "display name, with username as an explicit authored toggle",
+      "composite": "if the game prefixes a rank title, the name cell is a two-part composite and needs more room than a username",
+      "why": "Bee Swarm's real top ten runs from 'ruiream' to 'roblox_user_494351377' in one column; the beta thread reports 'names are being cropped out'; the platform list sorts and shows 'Display Names'; CONTROL renders 'Commissioner X aestheticminerald' — title then name, inline"
+    },
+    "badgeSlot": {
+      "rule": "reserve a slot between the avatar and the name for role/entitlement icons — developer, admin, premium, gamepass holder",
+      "why": "the platform player list has carried this slot through every redesign, its contents replaced each time (Builders Club hard hats, then Premium, then the game-owner ribbon 'a white hammer with a coding symbol (<>)', the administrator tilted-O, the Video Stars shooting star), and the Leaderboard+ plugin exposes it as an authorable feature: 'custom symbols for admins, premium users, and gamepass holders'"
+    },
+    "sorting": {
+      "rule": "descending on the FIRST column; the first column IS the sort key, so column order must be authored explicitly",
+      "mechanism": "IsPrimary (a child BoolValue) beats Priority (a child NumberValue, higher first, default 0), which beats insertion order",
+      "fallback": "with no leaderboard at all, the server list sorts alphabetically by display name",
+      "why": "the Roblox Wiki states the platform rule outright — sorted 'from the highest value of the leaderboard's first column to the lowest value of the same column' — and the docs give the three ordering mechanisms with 'IsPrimary takes precedence over any Priority values'"
+    },
+    "ownStanding": {
+      "observedForm": "a SEPARATE readout outside the ranked list — a proximity message at the board, or a value shown in a menu — written as a full sentence naming the stat, because outside the list there is no column header to read the number against",
+      "exampleForm": "\"You've made [x] Honey\"",
+      "notObserved": "a pinned own-rank row inside or beneath the list was searched for and NOT found in any source read here. Searched: the platform leaderboards doc, the persistent-leaderboards beta thread and its replies, four shipped-game wikis (Bee Swarm, Super Bomb Survival, TDS, Infinite Tower Tycoon), the global-leaderboard tutorial, GLeaderboard, Leaderboard+, and two DevForum feedback threads. A generator may still build one, but it should know it is inventing, not citing.",
+      "why": "Bee Swarm: 'Upon standing on the white pad in front of a leaderboard, it will show a message stating the player's score for the corresponding leaderboard', and the Top Brown Bear Helpers board — the one that shows no value column — pushes the player's own score into the menu or an NPC instead"
+    },
+    "refresh": {
+      "interval": "15 to 60 seconds",
+      "disclose": "show the board's staleness — a next-refresh countdown, or a stated note that updates lag",
+      "never": "claim live",
+      "why": "the tutorial's 'RefreshTime = 15 -- In Seconds'; GLeaderboard's example UPDATE_TIME of 60; the published system 'refresh on an interval you set' with next-refresh timing displayed; Bee Swarm 'usually not in real-time but update very often'; Infinite Tower Tycoon prints 'Note: There is a delay between updates' on the board"
+    },
+    "screenListPlacement": {
+      "rule": "if a leaderboard is drawn on screen, either disable the platform one or stay out of the top-right corner",
+      "mechanism": "StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false) from a LocalScript",
+      "sizeToOccupancy": "the screen list's height is computed from the number of players present, not fixed",
+      "why": "the docs give SetCoreGuiEnabled as the documented way to hide it; developers complained the platform list 'was covering my game UI', 'covers f3x uis', obscures 'the networkping from performance stats', and is 'wasting my screen space ... even tho im the only person in the server' with the request to shrink it when alone. The same critique was made of a custom board — 'when there's one player in a team, it's as big as if there were more players'."
+    },
+    "serverListVsGlobalBoard": {
+      "rule": "they are different objects with different contents, and players name them differently",
+      "serverList": "text-only rows, no avatars, sorted by the first stat, rebuilt as players join and leave",
+      "globalBoard": "avatars, podium, rank badges, persisted, refreshed on an interval",
+      "why": "the Infinite Tower Tycoon wiki opens by disambiguating them — 'Not too be confused with the UI Leaderboard on the top right corner of the screen'; the Leaderboard+ in-screen plugin offers no thumbnails at all while every in-world global board carries them"
+    },
+    "states": {
+      "loading": "render the row skeleton with the rank numbers already in place — ranks are known before names are",
+      "empty": "the columns keep their widths; an unconfigured or empty board must not collapse its tab row or its value column",
+      "playerLeaves": "a server-list row keyed to a player is DESTROYED on PlayerRemoving",
+      "removedEntry": "a moderated-out entry disappears and the ranks below close up — there is no struck-through or flagged state",
+      "why": "the beta thread's 'squished when no score is configured'; Leaderboard+'s public defect 'whenever a player leaves the leaderboard stays on'; Bee Swarm's 'Only legitimate players appear on the leaderboards for lengths of time (exploiters will be removed)'"
+    },
+    "rewardBrackets": {
+      "rule": "if a board pays out, the payout is banded by rank and the bands are far deeper than the ten rows on screen",
+      "observedBands": "top 3, top 15, top 100, top 765, top 5,000, top 10,765, top 25,765",
+      "observedInUi": false,
+      "why": "TDS grants the top three of either board a Champion Nametag; Super Bomb Survival grants icons to the top 100 who are 'still not listed on the boards'; Pet Simulator 99's Time Trials leaderboards pay out in exactly those brackets. The bands are attested in the DATA; none of the fetched sources describes how (or whether) a bracket threshold is drawn on the board itself, so this rule tells a generator the bands exist and does NOT tell it they are rendered as separators."
+    },
+    "categoryControl": {
+      "rule": "when one board must cover several related stats, the category control sits at the TOP of the board as arrows and the rows scroll vertically beneath it — or the board rotates categories on its own with no control at all",
+      "why": "Infinite Tower Tycoon's Board 2 'is scrollable using the arrows on top' across Kills/Crates/Keys/Codes; Super Bomb Survival's global board 'cycles through multiple categories' unattended. Two shipped answers, neither of which is a tab row."
+    },
+    "themePerBoard": {
+      "rule": "boards in the same game are allowed to look different from each other; the row template is shared, the chrome is not",
+      "chromeParts": ["title bar", "title stroke", "rule line under the title", "scrollbar", "frame colour"],
+      "why": "the published system states it as a selling point — 'A cash board and a wins board can look nothing alike' — and ships three board templates each with its own podium styling; GLeaderboard exposes exactly TopBar, TopLine, Title, TitleStroke and ScrollBar as the restyleable parts, all chrome"
+    }
+  },
+  "honestLimits": [
+    "No image was viewed. Every row here is read from text — official Roblox documentation, community wiki prose, and DevForum posts — so nothing in this file is a measurement off a screenshot. The only numeric geometry is the set quoted from the Roact rebuild's own source (aspect 11.76, 67%/17.1% columns, 4% padding, 2px radius) and Roblox's enumerated thumbnail sizes, both of which are stated values rather than estimates.",
+    "The podium's internal arrangement — which of 1st/2nd/3rd stands where, and how much taller the winner is — is NOT recorded, because no source read here states it. That gap is recorded inside rules.podium.notObserved rather than filled in from memory.",
+    "The pinned own-rank row named in this topic's brief was looked for in thirteen fetched sources and was not found in any of them. rules.ownStanding records what WAS found (a separate proximity readout) and names the search, so a future agent can widen it rather than repeat it.",
+    "Four of the DevForum threads were read through a fetch-and-summarise step rather than raw, so quotations from those threads are the quotes that step surfaced. Every quotation attributed to a Roblox creator-docs file or a Fandom wiki came back as raw Markdown, YAML or wikitext via curl and is verbatim.",
+    "Colour is deliberately thin here. The gold/silver/bronze convention is recorded as a rule about WHICH ELEMENT is coloured and at WHICH RANKS, because no source gave shared RGB values and this library's founding lesson is that palette was never the gap."
+  ]
+}

@@ -1,0 +1,439 @@
+{
+  "genre": "racing",
+  "label": "Arcade racing / driving / car game",
+  "recorded": "2026-09-20",
+  "provenance": "Fetched from the live web on 2026-09-20: Roblox's own UI documentation, a Roblox Staff best-practices thread, community wikis for three shipped Roblox driving games, seven Roblox DevForum threads where a developer posted a racing UI and was critiqued, and two published (non-Roblox) racing UI kits recorded separately as weaker evidence. No image, no Luau source and no asset is stored; each row records the URL that was fetched and the construction that was readable in what it said. Where a claim comes from prose describing a screen rather than from the screen itself, the row says so.",
+  "incomplete": false,
+  "references": [
+    {
+      "id": "roblox-docs-hud-meters",
+      "source": "https://create.roblox.com/docs/tutorials/use-case-tutorials/ui/create-hud-meters — Roblox's own tutorial for building a HUD meter, fetched 2026-09-20. First-party, and the only source here that gives exact property values rather than a description.",
+      "demonstrates": [
+        "the ScreenGui sets ScreenInsets to DeviceSafeInsets and a UIPadding of 16px on all four edges — a HUD is built inside an inset frame, never flush to the raw screen",
+        "the meter anchors to a screen corner by matching AnchorPoint to that corner: Position {1,0},{0,0} with AnchorPoint 1,0 pins the bar to the top-right and keeps it there at every aspect ratio",
+        "the bar is sized in SCALE, 0.35 wide by 0.05 tall, and its height is then capped by a UISizeConstraint MaxSize of (inf, 20) so a tablet does not render a fat slab",
+        "the track is a dark translucent frame (black at 0.75 transparency) with a UIStroke of 3px at 0.25 transparency — the HUD reads over a moving world because of the scrim plus stroke, not because of its fill colour",
+        "both track and fill take UICorner with CornerRadius 0.5 in SCALE, which is what produces a true capsule at any height instead of a rounded rectangle",
+        "the fill is a child frame at AnchorPoint 0,0.5 anchored to the track's left edge, resized by scale, and tweened over 0.5s with exponential easing rather than snapped",
+        "the value is coloured by a five-stop gradient red 225,50,0 → orange 255,100,0 → yellow 255,200,0 → lime 150,225,0 → green 0,225,50, so the bar's colour carries the reading independently of its length",
+        "the icon is an ImageLabel at 200% of the bar's height with a UIAspectRatioConstraint and ZIndex 2, centred ON the bar's left end so it overhangs the capsule rather than sitting beside it"
+      ]
+    },
+    {
+      "id": "roblox-staff-ui-best-practices",
+      "source": "https://devforum.roblox.com/t/designing-ui-tips-and-best-practices/3074034 — Roblox Staff post on the Developer Forum, fetched 2026-09-20",
+      "demonstrates": [
+        "size and position in scale, not offset: a frame at {0,100},{0,100} is a different object on a phone and on a 1080p monitor, and a racing HUD is the surface where that difference is worst",
+        "UICorner radius should also be expressed in scale (e.g. 0.2); an offset radius of 20 reads completely differently between devices",
+        "UIStroke supports OFFSET ONLY — there is no scale stroke — so a single stroke thickness has to be chosen that survives phone-to-desktop, and that is why stroke is the one constant across a kit",
+        "centring requires AnchorPoint 0.5,0.5 with Position {0.5,0},{0.5,0}; the countdown overlay and the race-state banner are the two racing elements that depend on this",
+        "the Roblox top bar occupies a fixed offset band at the top of the screen (36px in the post, reported as 58px in the current client) and pushes UI down in play mode",
+        "mobile virtual controls occupy the bottom-left and bottom-right of the screen, so HUD elements must be designed away from those zones",
+        "design mobile-first: mobile has the least room, and scaling a HUD up is easier than scaling one down"
+      ]
+    },
+    {
+      "id": "ultimate-driving-vehicle-gui",
+      "source": "https://ultimate-driving.fandom.com/wiki/Vehicle_GUI (read as wikitext through the site's api.php on 2026-09-20) — the community wiki for Ultimate Driving Universe, a shipped Roblox driving game, documenting ten successive generations of its in-car HUD",
+      "demonstrates": [
+        "the HUD started at the BOTTOM of the screen (gen 1), moved to the SIDE (gen 2), and settled as a corner cluster — the bottom strip was abandoned, which is evidence against centring a driving HUD along the bottom edge",
+        "speed was a BAR before it was a dial, and the bar TINTS TOWARD RED as the vehicle approaches its own top speed (gens 6 and 7) — the colour carries 'near the limit', which a bare number cannot",
+        "the speed limiter / cruise setting is drawn as a marker ON the speed bar rather than as a separate field, so the target and the current value are read in one glance",
+        "gen 5 pairs an analogue gauge with the EXACT numeric speed — the dial and the digits coexist; neither replaces the other",
+        "the fuel bar was turned VERTICAL (gen 5 v3) so it reads as a tank beside the round gauge instead of competing with the horizontal speed bar",
+        "gen 6 enlarged the speedometer and moved every auxiliary function (vehicle functions, radio) OFF the main cluster onto a sidebar and a strip beneath it — the driving HUD shrank to the driving values",
+        "gen 7 adds a boost meter that shows remaining charge and REFILLS while unused, so the meter needs a recharging state distinct from empty",
+        "gen 8 adds a tachometer reading engine RPM up to 10,000 with a per-vehicle REDLINE marked on it, plus a three-letter transmission token showing AUTO or MNL",
+        "gen 8 also adds a control-bar legend along the GUI listing which key performs which function, because the functions had just been moved from on-screen buttons to the keyboard",
+        "a metric/imperial toggle in settings changes the units on this HUD and on the weather HUD together — the unit is a setting the HUD reads, not a hard-coded suffix"
+      ]
+    },
+    {
+      "id": "driving-empire-customization-menu",
+      "source": "https://drivingempire.fandom.com/wiki/Customization (read as wikitext through the site's api.php on 2026-09-20) — the community wiki for Driving Empire, a shipped Roblox driving game, documenting the customization/garage menu option by option",
+      "demonstrates": [
+        "the menu splits at the top level into exactly two sections, APPEARANCE (cosmetic, does not change stats) and PERFORMANCE (changes stats, costs cash) — the split is by what the change does, not by part of the car",
+        "every option inside a section has its own icon and opens a SECOND-LEVEL sub-tab row rather than a new window; Rims, for example, opens into 'Paint Rims' and 'Rim Type'",
+        "a colour option is a compound control, not a swatch grid alone: a preset swatch list, a colour wheel with a brightness slider to its LEFT, a reflectance slider running 0 to 1 in 0.05 increments, and a numeric RGB entry",
+        "a performance option is a named LADDER of four tiers — Engine reads Stock / Street / Race / Drag, Brakes reads Stock / Street / Sport / Race, Tires reads Slippery / Stock / Grippier / Insane Grip",
+        "each tier row states the signed DELTA it grants against stock (+4% / +8% / +12% top speed; +17% / +39% / +62% brake power) and its price, so the player compares effect against cost inside one row",
+        "prices are shown as a MINIMUM and MAXIMUM because the cost scales with how far the vehicle already is from stock — a single price would be a lie for most cars",
+        "options unavailable to the current vehicle are simply absent (a boat has no Rims section) rather than shown disabled",
+        "suspension exposes ride height, camber and wheel offset as continuous settings whose price scales with how far they are moved — the same panel therefore has to host ladders AND sliders"
+      ]
+    },
+    {
+      "id": "vehicle-simulator-auto-tuner",
+      "source": "https://vehicle-simulator-roblox.fandom.com/wiki/Auto_Tuner_(Auto_Shop) (read as wikitext through the site's api.php on 2026-09-20) — the community wiki for Vehicle Simulator, a shipped Roblox driving game, listing the tuning shop's full option set",
+      "demonstrates": [
+        "the same two-family split as Driving Empire, named Appearance and Modifications, with the wiki stating outright that Appearance changes the look and not the specifications",
+        "the tuning panel needs only THREE control types across its whole option set: a tier list (Brakes 3, Engine 4, Horn 4, Nitrous 5, Transmission 4, Turbocharger 3), an on/off toggle (Turbo Jump, Air Thrusters, Manual, Welded Differential), and a slide-bar (Window Tint, and two slide-bars for Camber)",
+        "the tier COUNT differs per option — 2, 3, 4 and 5 all appear — so the ladder cannot be drawn as a fixed five pips; it has to size itself to the option",
+        "every modification row carries a one-line EFFECT string ('Increase Acceleration and Max Speed', 'Changes the braking power') beside its name — the panel explains each stat rather than assuming the name is self-evident",
+        "appearance controls come in triplets per surface — colour, reflectance and material for primary, secondary and rims — which is what makes the cosmetic tab a repeating three-control row rather than a list of one-offs"
+      ]
+    },
+    {
+      "id": "fantasy-racing-garage-gui",
+      "source": "https://devforum.roblox.com/t/how-to-fix-this-racing-gui/2844419 — DevForum Creations Feedback, a developer's garage GUI for a racing game called Fantasy Racing, posted with screenshots and critiqued; fetched 2026-09-20",
+      "demonstrates": [
+        "garage layout: the car-select strip runs along the BOTTOM of the screen, the action column (UPGRADE / MODIFY / SELL) sits to one side, and modification slots are a grid of equal squares",
+        "an unfilled modification slot is the SAME square at higher transparency, not a missing tile — the grid stays legible when the car is stock",
+        "the critique that landed hardest was the SELL button: rendered white, it pulled the eye away from the two buttons that matter, and the fix was to dim it and enlarge/emphasise UPGRADE",
+        "two different shades of the same accent yellow were used across the panel and read as a mistake; the fix was one accent value",
+        "thin fonts and thin icon strokes were called out as the reason the panel looked unfinished — a plus icon had to be thickened before it read as a control",
+        "controller glyphs drawn small were unreadable, and car-select text sized for desktop was flagged as a mobile failure",
+        "the accepted fix list is entirely geometry and weight: correct the offsets, resize the primary button up, centre and equalise the modification buttons, tone the destructive one down"
+      ]
+    },
+    {
+      "id": "speedometer-dial-geometry",
+      "source": "https://devforum.roblox.com/t/how-to-make-a-speedometer-wheel/2820913 — DevForum Scripting Support thread on building a needle speedometer; fetched 2026-09-20",
+      "demonstrates": [
+        "the needle sweeps from 45° to 315°, a 270° arc, with the gap at the bottom — the working range is stated in degrees, not implied",
+        "angle = minAngle + speed * (totalDegrees / maxSpeed): the dial is a linear map from the vehicle's own max speed onto that 270°",
+        "the needle is a CHILD of a centred pivot frame and the PIVOT rotates; rotating the needle itself puts the pivot in the wrong place",
+        "at zero rotation the needle should point to roughly the 7:30 position on a clock face, which is what makes 45° the resting angle",
+        "the circle itself is a frame with UICorner CornerRadius set to 1 in SCALE — a dial does not need an image to be round",
+        "the thread structures the dial as background circle → foreground circle → pivot → needle, i.e. the face and the moving part are separate layers"
+      ]
+    },
+    {
+      "id": "speedometer-reads-as-a-menu",
+      "source": "https://devforum.roblox.com/t/need-feedback-on-speedometer-gui/3026051 — DevForum Art Design Support, a developer's replacement speedometer for their racing game, critiqued and then revised; fetched 2026-09-20",
+      "demonstrates": [
+        "the central critique, verbatim in substance: it 'looks more like a menu rather than a speedometer' and reads as cramped — a driving HUD that accumulates controls stops being a HUD",
+        "the reviewer's stated goal is to 'see less menus during a game', i.e. the HUD's job is to shrink the interface, not to host it",
+        "the accepted fix was structural: move infrequently-used features (setup, camera options) into SEPARATE frames and leave only the essentials in the main display",
+        "throttle and brake were added as two thin indicator BARS — inputs are shown as bars, not as numbers or icons",
+        "top spawn menus were to be condensed into a dropdown to give the gameplay view back its area",
+        "text labels were to be replaced with icons, and UICorner added, because the sharp-edged rectangles read as a developer tool"
+      ]
+    },
+    {
+      "id": "speed-bar-construction",
+      "source": "https://devforum.roblox.com/t/speedometer-help/3300912 — DevForum Art Design Support thread on building the speed bar seen in games like Driving Empire; fetched 2026-09-20",
+      "demonstrates": [
+        "the bar is built as two stacked images, one darker and one brighter, with a CanvasGroup masking the brighter one and being resized by speed — the lit portion is a reveal, not a separately drawn shape",
+        "the simpler accepted alternative is a white image recoloured by a UIGradient driven by speed, which is how the bar changes hue as it fills",
+        "building the segments as individual frames was explicitly described as the laborious option, so a segmented look is achieved by texture rather than by element count"
+      ]
+    },
+    {
+      "id": "vehicle-stat-bars",
+      "source": "https://devforum.roblox.com/t/progress-bar-shows-vehicle-stats/2526746 — DevForum Scripting Support thread on showing vehicle stats such as handling as progress bars; fetched 2026-09-20",
+      "demonstrates": [
+        "a stat bar is a static outer track frame containing an inner fill; the outer never moves so the unfilled remainder stays visible",
+        "the fill is driven purely by scale: Bar.Size = UDim2.fromScale(percentage/100, 1) — the value is expressed as a fraction of a fixed maximum, which is what makes two cars comparable",
+        "stats are stated as percentages of best rather than raw units, so a full bar means 'best in the game' rather than 'some number'"
+      ]
+    },
+    {
+      "id": "car-select-carousel",
+      "source": "https://devforum.roblox.com/t/is-there-a-better-way-of-doing-a-carousel-ui/4145904 — DevForum Code Review thread on a selection carousel of ViewportFrames, with the author's own measurements; fetched 2026-09-20",
+      "demonstrates": [
+        "spacing between carousel items is device-dependent: about 140px on mobile and 300px on desktop",
+        "the centre item IS the selection and is scaled up — selected height around 1.0 on desktop and 0.7 on mobile, against 0.3 to 0.45 for the neighbours, so the selected item is roughly two to three times its neighbours",
+        "scale is interpolated by distance from screen centre with a smoothstep, t*t*(3-2*t), rather than snapped between two sizes",
+        "index changes tween over 0.2s with Quad easing; positions are computed as (i - selectedIndex + dragDelta/spacing) * spacing, i.e. the carousel is a tweened offset and not a ScrollingFrame",
+        "drag snaps to the nearest item on release, and a 15px movement threshold is what separates a drag from a tap on a neighbouring card",
+        "A/D, the arrow keys and the mouse wheel all change the selection, so the carousel is not mouse-drag-only"
+      ]
+    },
+    {
+      "id": "dealership-viewport-list",
+      "source": "https://devforum.roblox.com/t/simple-dealership-ui-interface/2985642 — DevForum Creations Feedback, a dealership UI prototype with per-car ViewportFrames, critiqued; fetched 2026-09-20",
+      "demonstrates": [
+        "each car entry is a row in a scrolling frame carrying a ViewportFrame of the actual model plus its price and a purchase control — the car is a live model, never a flat decal",
+        "the accepted improvement was to ROTATE the model inside its viewport so the player sees front and back before buying",
+        "selection and hover are communicated by a BORDER highlight on the entry; the author's existing highlight was criticised for being too faint to read",
+        "notification panels that expand slowly were called out — a confirmation after a purchase should appear at once rather than animating in"
+      ]
+    },
+    {
+      "id": "car-menu-bottom-strip",
+      "source": "https://devforum.roblox.com/t/car-game-menu-ui-feedback/913467 — DevForum Creations Feedback, a car-game selection menu compared by reviewers to Forza; fetched 2026-09-20",
+      "demonstrates": [
+        "car selection is a horizontally scrolling strip of CARDS along the bottom of the screen, with the rest of the screen given to the selected car",
+        "the panel overlap between cards while scrolling was flagged as inconsistent — cards in a strip must overlap identically or not at all",
+        "multiple side panels (cash-per-lap, purchase, currency) were criticised as clutter; the accepted fix was to merge them into one or two",
+        "the selected car's name should ANIMATE on change, because the strip moves and a static label makes the selection ambiguous",
+        "the ambient glow used on one promotional panel was called out as out of place — one effect used in one place reads as a mistake, not an accent"
+      ]
+    },
+    {
+      "id": "race-start-overlay-collision",
+      "source": "https://devforum.roblox.com/t/does-this-race-game-have-good-ui-style/4634195 — DevForum Creations Feedback for the Roblox racing game Downhill Rush; fetched 2026-09-20",
+      "demonstrates": [
+        "the concrete bug reported by a reviewer is that 'the main ui overlaps the race start screen every time' — the driving HUD and the race-start overlay were not mutually exclusive states",
+        "the in-race player list was rated too transparent to read, i.e. a standings list over a moving world needs a scrim rather than pure transparency"
+      ]
+    },
+    {
+      "id": "race-standings-top-five",
+      "source": "https://devforum.roblox.com/t/speed-race-leaderboard/309629 — DevForum Scripting Support thread on building an in-race standings GUI; fetched 2026-09-20",
+      "demonstrates": [
+        "the stated requirement is the TOP FIVE plus the local player's own place — the in-race board is a truncated list with the player pinned, not a full field",
+        "placement is computed from checkpoint index plus distance to the next checkpoint, so the board's row order changes continuously and every row needs a stable identity to animate between positions"
+      ]
+    },
+    {
+      "id": "minimap-render-gui",
+      "source": "https://devforum.roblox.com/t/minimap-render-gui/1995940 — DevForum Community Resources, a published minimap renderer and GUI; fetched 2026-09-20",
+      "demonstrates": [
+        "the map is pre-rendered as a grid of square tiles at a chosen pixels-per-stud and assembled in-game, so the minimap frame is square by construction",
+        "icons ROTATE so that the image's bottom always faces the player's position — orientation is carried by the icon, not by rotating the whole map",
+        "markers for players who are off the visible region are PINNED to the border rather than removed, and a second state (blinking) distinguishes one group from another",
+        "the renderer requires two anchor parts at opposite map corners rotated only in Y — a minimap whose source region is not axis-aligned puts every icon in the wrong place"
+      ]
+    },
+    {
+      "id": "racing-system-feature-set",
+      "source": "https://devforum.roblox.com/t/how-much-would-it-be-to-make-a-car-racing-system/1395316 — DevForum thread commissioning a racing system, read for the feature list a Roblox racing game is expected to show; fetched 2026-09-20. Weaker evidence than the rest: this is a specification of what to build, not an observation of a shipped screen.",
+      "demonstrates": [
+        "the expected on-screen set is stated as positions '1st, 2nd, 3rd etc', a timer, checkpoint tracking, and an end-of-race leaderboard of final times with a cash prize",
+        "the same system is expected to serve drag races and highway races, so the HUD has to degrade to a mode with no laps and no field of eight"
+      ]
+    },
+    {
+      "id": "published-racing-hud-kit",
+      "source": "https://villesep.itch.io/racing-hud-kit-free-game-ui-asset-pack — a published, free racing HUD asset pack by Ville Seppänen; fetched 2026-09-20. NOT a Roblox source: recorded for what a racing HUD kit contains, not for Roblox convention.",
+      "demonstrates": [
+        "a racing HUD kit ships 26 pieces and is described as a consistent visual SYSTEM rather than isolated assets — the same argument this library makes about stroke and radius",
+        "the element categories the pack advertises are speedometer, tachometer, fuel, nitrous and pedal — pedals (throttle/brake) are treated as first-class HUD elements, matching the throttle/brake bars added in the Roblox speedometer thread above",
+        "the companion Racing UI Kit by the same author lists buttons, panels, progress bars, icons, indicators, badges, toggles and decorative banners — badges and indicators are a distinct class from buttons in a racing kit"
+      ]
+    },
+    {
+      "id": "race-hud-polish-devlog",
+      "source": "https://eva-rubl.itch.io/group27gameproject/devlog/538883/devlog-11-polish-week-2 — a published devlog for the racing game CorporateChaos describing the HUD polish pass; fetched 2026-09-20. NOT a Roblox source: recorded for the race-start and navigation elements no Roblox source described.",
+      "demonstrates": [
+        "the polish pass made the player POSITION and LAP COUNTER larger — the two race-state values were the ones that had been sized wrong",
+        "the pre-race sequence is a centred 'Get Ready' line, after which player icons fade INTO the minimap and the race timer starts — the countdown hands the screen over to the HUD rather than sitting alongside it",
+        "the minimap sits in the bottom-right corner in the three-player layout",
+        "a warning ICON is shown when the player is travelling in the wrong direction"
+      ]
+    }
+  ],
+  "rules": {
+    "note": "Distilled from the references above. Units are Roblox UI units. Values taken from the Roblox HUD-meters documentation and the carousel thread are EXACT (they are quoted property values). Everything else is a convention read off prose describing a screen, and is stated as approximate. Where only one reference supports a rule, the why says so.",
+    "hudIsNotAPanel": {
+      "rule": "The in-race HUD is a set of corner-anchored clusters over the world. It is never a bordered panel, never centred, and never grows a second row of buttons.",
+      "maxPersistentElements": 4,
+      "movesOffHud": [
+        "camera options",
+        "vehicle setup",
+        "spawn / despawn",
+        "radio",
+        "lights and sirens",
+        "settings"
+      ],
+      "why": "The single loudest finding: a developer's speedometer was rejected as looking 'more like a menu rather than a speedometer', and Ultimate Driving's sixth-generation GUI solved the same problem by moving every auxiliary function off the cluster onto a sidebar. Two independent sources, one shipped, arriving at the same fix."
+    },
+    "screenRegions": {
+      "gaugeCluster": "bottom-right, raised clear of the mobile jump button",
+      "raceState": "top-left (position over lap)",
+      "minimap": "bottom-right when present, in which case the gauge cluster moves to bottom-left",
+      "countdownAndBanners": "screen centre, AnchorPoint 0.5,0.5",
+      "standings": "top-right or left edge, as a truncated list",
+      "insets": "ScreenInsets = DeviceSafeInsets, plus a 16px UIPadding on the root frame",
+      "why": "Roblox's own HUD tutorial sets DeviceSafeInsets with 16px padding and anchors by matching AnchorPoint to the corner; the Staff best-practices post states that mobile virtual controls own the bottom-left and bottom-right and that the top bar eats a fixed band at the top; the CorporateChaos devlog puts the minimap bottom-right, which is what forces the gauges to the other side."
+    },
+    "cornerAnchoring": {
+      "rule": "Every HUD cluster sets AnchorPoint to the corner it lives in (top-right 1,0; bottom-left 0,1; bottom-right 1,1) and positions at that corner in scale.",
+      "why": "Taken directly from Roblox's HUD tutorial, where Position {1,0},{0,0} with AnchorPoint 1,0 is what keeps a meter pinned to the top-right across aspect ratios. Positioning a corner element from the top-left is the defect this prevents."
+    },
+    "scaleNotOffset": {
+      "sizeAndPosition": "scale",
+      "cornerRadius": "scale",
+      "stroke": "offset, one value for the whole kit",
+      "heightCap": "UISizeConstraint MaxSize (inf, 20) on bar-shaped meters",
+      "why": "The Roblox Staff post states that offset sizing produces a different object on a phone and a 1080p monitor, that UICorner should be scale, and that UIStroke supports offset only so one thickness must serve every device. The HUD tutorial adds the MaxSize cap so a scale-sized bar does not become a slab on a tablet."
+    },
+    "speedReadout": {
+      "rule": "The speed is shown TWICE — as a swept gauge or a fill bar, and as an exact numeral with a unit label beside it. Neither replaces the other.",
+      "unitIsASetting": true,
+      "why": "Ultimate Driving's fifth generation pairs an analogue speedometer with the exact speed, and its metric/imperial toggle changes the suffix on the HUD from settings — so the unit is data the HUD reads, not a baked string. A gauge alone cannot be read precisely and a numeral alone cannot be read at a glance."
+    },
+    "dialGeometry": {
+      "sweepStartDeg": 45,
+      "sweepEndDeg": 315,
+      "sweepTotalDeg": 270,
+      "gapAt": "bottom",
+      "restingNeedleClockPosition": "7:30",
+      "mapping": "angle = 45 + speed * (270 / vehicleMaxSpeed)",
+      "structure": "background circle → face → centred pivot frame → needle as a child of the pivot",
+      "rotate": "the pivot, never the needle",
+      "circleFrom": "UICorner CornerRadius 1 in scale, not an image",
+      "why": "All of it is stated explicitly in the DevForum speedometer-wheel thread, including the failure it prevents: rotating the needle itself puts the pivot in the wrong place, and the 270° arc with the gap at the bottom is what makes a frame read as a gauge rather than as a circle with a line in it."
+    },
+    "speedBar": {
+      "structure": "static outer track frame + inner fill resized by scale",
+      "fillSize": "UDim2.fromScale(value / max, 1)",
+      "cornerRadius": "0.5 in scale on BOTH track and fill",
+      "trackFill": "black at ~0.75 transparency with a 3px UIStroke at ~0.25",
+      "tween": "0.5s, exponential easing",
+      "colorRamp": [
+        "red",
+        "orange",
+        "yellow",
+        "lime",
+        "green"
+      ],
+      "rampDirectionForSpeed": "reversed — the bar tints TOWARD RED as it approaches the vehicle's top speed",
+      "why": "Structure, radius, scrim, stroke, tween and the five-stop ramp are exact values from Roblox's HUD-meters tutorial; the reversal is from Ultimate Driving, whose sixth and seventh generation bars turn red near the vehicle's limit. A health meter and a speed meter share a mechanism and run their ramp in opposite directions, which is exactly the kind of thing a generator gets backwards."
+    },
+    "limiterMarker": {
+      "rule": "A cruise or limiter setting is a marker drawn ON the speed track at its target position, not a separate numeric field.",
+      "why": "Ultimate Driving drew the speed limiter as a bar on the speedometer from its sixth generation onwards, so the target and the current value are compared in one glance instead of two."
+    },
+    "tachometer": {
+      "present": "only when the vehicle has gears",
+      "range": "0 to 10,000 RPM",
+      "redline": "a marked zone on the arc, per-vehicle rather than fixed",
+      "placement": "second gauge beside the speedometer, smaller",
+      "why": "Ultimate Driving's eighth generation added exactly this — RPM to 10,000 with a redline that depends on the vehicle being driven — at the same moment it added manual transmission. A tachometer in a game with no gears is decoration."
+    },
+    "gearAndMode": {
+      "gear": "one large glyph at the centre of the dial — a number, R or N",
+      "transmissionMode": "a three-letter token, AUTO or MNL, small, adjacent to the gear",
+      "neverDuplicate": "if the speed already appears twice, the second instance becomes the gear",
+      "why": "The AUTO/MNL token is Ultimate Driving's own wording from its eighth generation. The no-duplicate rule is the one concrete critique on a posted vehicle speedometer: a reviewer told the author to replace the second MPH readout with a gear indicator because two displays of one number is wasted space."
+    },
+    "secondaryMeters": {
+      "fuel": "vertical bar beside the round gauge",
+      "boostOrNitrous": "shows remaining charge and needs a distinct RECHARGING state, because it refills while unused",
+      "throttleAndBrake": "two thin bars, not numerals or icons",
+      "why": "Ultimate Driving turned the fuel bar vertical so it stops competing with the horizontal speed bar, and its boost meter refills when not in use; the throttle/brake bars are what the critiqued speedometer added in its revision, and the published racing HUD kit lists pedals as a first-class element."
+    },
+    "controlLegend": {
+      "rule": "When functions are on the keyboard, a small key-legend strip sits along the bottom of the cluster. On touch, the same functions become tappable buttons and the legend disappears.",
+      "why": "Ultimate Driving added a control-bar legend in its eighth generation precisely because functions had just moved from on-screen buttons to keys, and restored the click buttons for emergency vehicles later. The legend and the buttons are the same information for two input methods, so a build must pick one by platform."
+    },
+    "raceState": {
+      "layout": "two rows in one strip at the top-left",
+      "rows": [
+        "POS <n> / <field>",
+        "LAP <n> / <total>"
+      ],
+      "emphasis": "the player's own ordinal is the largest glyph in the strip; the denominator is set noticeably smaller",
+      "sizing": "size these larger than instinct suggests",
+      "why": "Position and lap counter were the two elements the CorporateChaos polish pass had to ENLARGE, which is the single recorded correction to a race HUD's sizing. The ordinal/denominator split follows from both values being fractions where only the numerator changes."
+    },
+    "standingsBoard": {
+      "rows": "top 5, plus the local player's own row pinned when outside the top 5",
+      "scrim": "a translucent dark plate behind the list — never pure transparency over the world",
+      "rowIdentity": "each row keyed to a player so rows animate between places rather than re-rendering",
+      "why": "The top-five-plus-self shape is the stated requirement in the race-leaderboard thread. The scrim is the concrete critique of Downhill Rush's in-race list, which a reviewer called too transparent to read. Row identity follows from placement being recomputed continuously from checkpoint progress."
+    },
+    "countdown": {
+      "layout": "full-screen centred overlay, AnchorPoint 0.5,0.5",
+      "sequence": "a 'GET READY' line, then one numeral at a time, then GO",
+      "hudDuringCountdown": "SUPPRESSED — the driving HUD is hidden or dimmed while the overlay is up, and is handed the screen on GO",
+      "why": "The mutual exclusion is not a preference: 'the main ui overlaps the race start screen every time' is the bug a reviewer reported against a shipped Roblox racing game, and the CorporateChaos devlog describes the opposite — a countdown that hands over to the HUD as the icons fade into the minimap. Two sources, one showing the failure and one showing the pass."
+    },
+    "minimap": {
+      "shape": "square",
+      "placement": "bottom-right",
+      "playerIcon": "rotates so the icon's bottom faces the player's heading; the map itself does not rotate",
+      "offscreenMarkers": "pinned to the border rather than removed, with a second visual state distinguishing groups",
+      "constraint": "the rendered region must be square and axis-aligned or every icon drifts",
+      "why": "All from the published Roblox minimap renderer, which pre-renders square tiles at a fixed pixels-per-stud, rotates icons rather than the map, and pins out-of-region markers to the border. The square-and-axis-aligned constraint is the documented failure mode, and it is the sort of thing a generator silently gets wrong."
+    },
+    "wrongWayWarning": {
+      "rule": "A centred warning icon appears when the player is travelling against the course direction.",
+      "singleSource": true,
+      "why": "Recorded from one reference only, and a non-Roblox one — the CorporateChaos devlog. It is listed because no Roblox source described this element at all, and a rule with one source that says so is better than a gap nobody notices."
+    },
+    "carSelectCarousel": {
+      "itemSpacingDesktopPx": 300,
+      "itemSpacingMobilePx": 140,
+      "selectedScale": "≈1.0 desktop, ≈0.7 mobile",
+      "neighbourScale": "≈0.3 to 0.45",
+      "interpolation": "smoothstep t*t*(3-2*t) by distance from screen centre",
+      "tween": "0.2s, Quad",
+      "implementation": "tweened offsets, NOT a ScrollingFrame",
+      "dragSnapsToNearest": true,
+      "tapVsDragThresholdPx": 15,
+      "inputs": [
+        "drag",
+        "tap a neighbour",
+        "A/D",
+        "arrow keys",
+        "mouse wheel"
+      ],
+      "why": "Every number is the author's own from the carousel code-review thread. The two that matter most are the scale ratio — the centre item is two to three times its neighbours, which is what makes the centre READ as the selection without a highlight — and the 15px threshold, without which every attempted drag also selects a card."
+    },
+    "carPreview": {
+      "rule": "The car is a live ViewportFrame of the actual model, rotating, never a flat image.",
+      "selectionFeedback": "a border highlight on the entry, strong enough to read at a glance",
+      "why": "The dealership prototype already used viewports and was told to rotate the models so the player sees front and back before buying; the same thread's author was told their existing selection highlight was too faint. A decal of a car is the shortcut that makes a dealership look like a catalogue."
+    },
+    "statBars": {
+      "rule": "Car stats are a fixed, ordered list of labelled horizontal bars, identical rows in identical order on every car.",
+      "structure": "static outer track always at full width + inner fill sized by scale",
+      "fill": "UDim2.fromScale(value / max, 1), value expressed as a fraction of the best in the game",
+      "why": "From the vehicle-stats thread: a stat is a percentage of best, so a full bar means best in the game rather than some number, and the outer track stays visible so the unfilled remainder is part of the reading. Fixed order is what makes two cars comparable — reordering rows per car destroys the only thing the bars are for."
+    },
+    "garageLayout": {
+      "carSelect": "a horizontally scrolling strip of cards along the BOTTOM edge",
+      "subject": "the selected car large, centre screen, in a viewport",
+      "actions": "a column to one side: UPGRADE / MODIFY / SELL",
+      "modificationSlots": "a grid of equal squares; an empty slot is the same square at higher transparency, never a missing tile",
+      "cardOverlap": "cards in the strip overlap identically or not at all",
+      "selectionLabel": "the selected car's name animates on change",
+      "why": "The bottom card strip with the car above it appears in two independent Roblox garage threads. The transparent-not-absent empty slot and the identical-overlap rule are both specific defects that were caught in review, and the animated name label is the fix for a strip where a static label leaves the selection ambiguous."
+    },
+    "actionHierarchy": {
+      "primary": "UPGRADE — largest and most saturated",
+      "secondary": "MODIFY — same size family, quieter fill",
+      "destructive": "SELL — the QUIETEST of the group",
+      "accent": "one accent value, never two shades of the same hue in one panel",
+      "why": "This is the whole accepted fix list from the Fantasy Racing garage critique: a white SELL button was pulling the eye away from the two buttons that matter, and two different yellows read as a mistake. The instinct to make the destructive action loud is exactly backwards for a garage, where selling is rare and upgrading is the loop."
+    },
+    "tuningLadder": {
+      "shape": "a named ladder of tiers per option, sized to the option rather than to a fixed pip count",
+      "typicalTierCount": 4,
+      "observedTierCounts": [2, 3, 4, 5],
+      "rowContents": "tier name + the signed delta it grants against stock (+8% Top Speed, +39% Brake Power) + its price",
+      "priceRange": "show a minimum and a maximum when cost scales with distance from stock",
+      "ownedAndNext": "mark the owned tier; the next tier up is the purchasable one",
+      "otherControls": "only two others are needed — an on/off toggle and a slider",
+      "effectLine": "every option carries a one-line plain-language effect string beside its name",
+      "why": "Driving Empire's performance tables are literally this: Stock / Street / Race / Drag with percentage deltas and a min/max price per tier. Vehicle Simulator's option list proves the tier count varies (2, 3, 4 and 5 all appear) and that the whole tuning surface needs only a ladder, a toggle and a slider. The effect line is Vehicle Simulator's — the panel explains each stat rather than assuming the name is self-evident."
+    },
+    "customizationTabs": {
+      "topLevel": ["Appearance — cosmetic, no stat change", "Performance — stat change, costs cash"],
+      "secondLevel": "each option opens a sub-tab row in place, never a new window",
+      "eachOptionHasAnIcon": true,
+      "unavailableOptions": "absent, not disabled",
+      "colorControl": "preset swatch row + colour wheel with a brightness slider to its left + reflectance slider 0–1 in 0.05 steps + numeric RGB entry",
+      "surfaceTriplet": "colour, reflectance and material per surface (primary, secondary, rims)",
+      "why": "Driving Empire and Vehicle Simulator independently split their garage menus by what the change DOES rather than by part of the car, which is the decision a generator would not make on its own. The compound colour control and the 0.05 reflectance step are Driving Empire's exact published values; the colour/reflectance/material triplet is Vehicle Simulator's, and it is what turns the cosmetic tab into one repeating row instead of a list of one-offs."
+    },
+    "typographyWeight": {
+      "rule": "No thin weights anywhere in a driving HUD or a garage panel — labels, numerals and icon strokes all carry weight.",
+      "why": "Thin fonts and thin icon strokes were the first thing named in the Fantasy Racing critique as the reason the panel read as unfinished; a plus icon had to be thickened before it read as a control at all. Over a moving world this is legibility, not taste."
+    },
+    "mobileSizing": {
+      "rule": "Size the HUD and the car-select text for a phone first, keep clusters out of the bottom-left and bottom-right control zones, and allow for the top bar's fixed band.",
+      "why": "The Staff post states mobile has the least room and that virtual controls own the bottom corners; the garage critique caught car-select text sized for desktop as a mobile failure, and controller glyphs drawn small as unreadable. A racing HUD is the surface where this is worst, because the player is also steering."
+    },
+    "resultsBoard": {
+      "rows": "finishing order with each racer's final time and the reward",
+      "localPlayer": "own row highlighted",
+      "weakerEvidence": true,
+      "why": "Recorded from a commissioning thread's feature list rather than from an observed screen, and flagged as such. It is kept because an end-of-race board is unavoidable in the genre and a rule that says how thin its evidence is beats an invented reference."
+    },
+    "modeDegradation": {
+      "rule": "The HUD must degrade: a drag race has no lap counter and no field of eight, so lap and position rows are omitted rather than shown as 1/1.",
+      "why": "The same racing system is expected to serve circuit races, drag races and highway races. A HUD that always renders every row shows LAP 1/1 in a drag race, which is the tell that the layout was built for one mode and reused."
+    }
+  },
+  "notObserved": [
+    "No Roblox source found in this pass described a race-start countdown's own construction — numeral size, easing, scrim opacity. The countdown rule above is built from one Roblox bug report (the HUD overlapping the start screen) and one non-Roblox devlog, and it is the thinnest rule in this file.",
+    "No source gave a measured corner radius, stroke thickness or padding value for a racing panel specifically. The scale/offset and radius guidance here is Roblox's general UI guidance, not a racing measurement — unlike simulator.json, this file cannot state a panelStroke number honestly.",
+    "Nothing was found on split-screen or multi-vehicle HUDs on Roblox, on boat and aircraft HUD variants, or on how a racing HUD changes under a controller.",
+    "The wrong-way warning and the minimap corner rest on a single non-Roblox devlog each."
+  ]
+}

@@ -1,0 +1,320 @@
+{
+  "genre": "studio",
+  "label": "Neutral / default — a restrained Roblox UI built to core-platform convention",
+  "recorded": "2026-09-20",
+  "provenance": "Eleven public pages fetched on 2026-09-20: Roblox's own creator documentation, its UI-design curriculum for the shipped Laser Tag sample experience, and two Developer Forum posts written by Roblox staff about the core UI they ship. Every row carries the URL that was actually fetched. Nothing here is recalled from memory and no artwork is stored; each row records what the page states or describes. This genre is unusual in that its subject IS the platform's own UI, so Roblox's documentation of it is a primary source rather than commentary.",
+  "incomplete": false,
+  "references": [
+    {
+      "id": "experience-controls-shipped-core-ui",
+      "source": "https://devforum.roblox.com/t/updated-experience-controls-now-live/3215981 — Roblox announcement of the shipped in-experience controls (the topbar every player sees in every experience)",
+      "demonstrates": [
+        "icons are 44 pixels, and the post states the size was chosen to meet WCAG 2.1 target-size guidance at the AAA rating — the platform's own control row is built to an accessibility number, not to a look",
+        "the controls are left-aligned and the announcement says the right side is deliberately left for creators, so a well-behaved custom HUD puts its own chrome on the right",
+        "two parts only: a hamburger that absorbs everything secondary (report, self view, capture, leaderboard, emotes, inventory, respawn) and a persistent row of live communication toggles (text chat, microphone)",
+        "the bar's width is dynamic — it changes as features enable and disable, and on portrait mobile it can span the entire width, so no custom element may assume a fixed gap beside it",
+        "two APIs are given for adapting: TopbarSafeInsets to find the reserved space and a signal to react when its width changes",
+        "stated intent is consistency and immediate access across every experience, which is what makes this row the neutral baseline other genres decorate around"
+      ]
+    },
+    {
+      "id": "staff-designing-ui-tips",
+      "source": "https://devforum.roblox.com/t/designing-ui-tips-and-best-practices/3074034 — Roblox staff post 'Designing UI - Tips and Best Practices'",
+      "demonstrates": [
+        "the top bar is described as an offset height of 36; a community reply in the same thread updates this to 58 in current clients, so the number is disputed and must be read from the API rather than hardcoded",
+        "size and position are to be authored in scale, not offset, with a worked conversion: a 100x100 pixel frame becomes 0.257 scale on both axes",
+        "corner radius is to be set in scale (example 0.2) because an offset radius 'appears drastically different between devices' — this is the single construction habit that separates a platform-native panel from a pasted-in one",
+        "UIStroke is called out as supporting offset only, never scale, which is why stroke cannot be the load-bearing device in a responsive neutral theme",
+        "AnchorPoint conventions are stated plainly: (0,0) top-left, (0.5,0.5) centre, (1,1) bottom-right",
+        "ScreenGui.ScreenInsets is given as the mechanism for staying clear of notches, Dynamic Island and core UI",
+        "mobile virtual controls occupy the bottom-left and bottom-right corners, and the post's instruction is to design for mobile first and let desktop follow"
+      ]
+    },
+    {
+      "id": "laser-tag-hud-implementation",
+      "source": "https://create.roblox.com/docs/tutorials/curriculums/user-interface-design/implement-designs-in-studio — Roblox's UI curriculum building the HUD of its shipped Laser Tag sample experience, screen by screen",
+      "demonstrates": [
+        "a transparency ladder rather than a palette does the work: layout containers sit at BackgroundTransparency 1 and hold no fill at all, subtle backing sits at 0.15, overlays at 0.3–0.5, and a de-emphasised control at 0.65",
+        "corner radius is authored in scale throughout — roughly 0.05 to 0.2 for buttons, 0.075 for a modal container — and some elements deliberately carry no UICorner",
+        "UIListLayout padding is expressed in scale as well, 0.025 to 0.035 between horizontal items, with 2–3% margins from the screen edge",
+        "one type family across every screen (Montserrat) with weight carrying the hierarchy: Medium for standard, Bold for emphasis, Black reserved for critical alerts",
+        "text is pure white on dark surfaces with TextScaled enabled, and no text outline is used anywhere",
+        "LayoutOrder is used as z-order intent: headers at -1 so they resolve first, interactive buttons at 2",
+        "square elements (crosshair, blast button, icons) hold their shape with UIAspectRatioConstraint rather than with matched width/height values",
+        "HUD parts are sized as percentages of the screen — objective frame 50% x 13%, blaster selector 80% x 25%, player display 23% x 8% — so the layout survives any aspect ratio",
+        "a pressed state is a swapped PressedImage and a disabled state is a transparency change, not a colour change"
+      ]
+    },
+    {
+      "id": "laser-tag-wireframe-layouts",
+      "source": "https://raw.githubusercontent.com/Roblox/creator-docs/main/content/en-us/tutorials/curriculums/user-interface-design/wireframe-your-layouts.md — the wireframing chapter of the same curriculum",
+      "demonstrates": [
+        "screen regions are assigned by category and stay assigned: objective and global state at the top, the action focal point at centre, player state at the sides and periphery",
+        "the bottom-left and bottom-right are reserved because the thumbstick and jump button live there; the instruction is to put interactive elements 'near the natural resting position for thumbs' and that reaching away from those corners is 'either uncomfortable or impossible'",
+        "one adaptive design is produced for all devices rather than separate mobile and desktop layouts, and the wireframe accounts for Roblox core UI, touch controls and custom elements in the same drawing",
+        "balance and symmetry are sought between the custom UI and the system UI — the core UI is treated as part of the composition, not as an obstacle",
+        "layouts are tested against a variety of possible backgrounds for legibility, because a translucent neutral UI sits on top of whatever the world is doing"
+      ]
+    },
+    {
+      "id": "settings-menu-interactive-tutorial",
+      "source": "https://raw.githubusercontent.com/Roblox/creator-docs/main/content/en-us/tutorials/use-case-tutorials/ui/interactive-ui.md — Roblox's worked build of a settings menu with sliders, given with every property value",
+      "demonstrates": [
+        "the opener is an icon-only gear at top-centre, sized 0.1 in scale but clamped by a UISizeConstraint MaxSize of (inf, 44) — the same 44 the shipped experience controls use, reached independently",
+        "the panel is 0.75 x 0.75 in scale, constrained to AspectRatio 2.5, MaxSize 800 wide and MinSize 350 — a neutral panel is a proportion with a pixel ceiling and floor, never a fixed rectangle",
+        "the panel is translucent: a dark navy fill at BackgroundTransparency 0.25, so the world stays visible behind it",
+        "UICorner on the panel is 0.1 in scale; the slider track and its handle both use 0.5, which UICorner turns into a pill and a circle regardless of dimensions",
+        "the slider track carries a UIStroke of thickness 3, black, at transparency 0.25 — the stroke is a soft separation from whatever is behind, not a cartoon outline",
+        "close is an icon glyph anchored (1,0) at position (1,-10,0,10) — inset ten pixels INSIDE the panel's top-right corner — at ImageTransparency 0.25, sized 0.15 of the panel with a 1:1 aspect constraint",
+        "the accent colour appears exactly twice per control: the handle's stroke and the filled portion of the track; everything else is neutral",
+        "opening tweens over 0.5s and closing is instant (0s) with Visible flipped — the exit is not a mirror of the entrance",
+        "the gear rotates 45 degrees to signal the open state, so the opener is also the state indicator"
+      ]
+    },
+    {
+      "id": "ui-ux-design-principles",
+      "source": "https://raw.githubusercontent.com/Roblox/creator-docs/main/content/en-us/production/game-design/ui-ux-design.md — Roblox's UI and UX design guidance",
+      "demonstrates": [
+        "prominence is bought with size, negative space, proximity and movement before colour: 'Elements encircled by ample negative space or padding are eye-catching'",
+        "'Housing buttons in a container, such as a color surrounding the text or icon, distinguishes them from the background, making them appear interactive' — a bare label is not a button even in a restrained theme",
+        "three button states are named as the requirement: hover, depressed, and released (selected)",
+        "'Headers and titles containing significant high-level information should be larger and bolder than body text' — the header is a type-scale step, not a separate plaque object",
+        "a concrete state convention: when a player cannot afford an item, the price displays in red",
+        "icons for related stats share a palette and similar shapes so their function is recognisable as a family",
+        "consistency is required across colours, formatting, button placement, icon usage and cost display — the same decision everywhere, which is what 'restrained' actually means here"
+      ]
+    },
+    {
+      "id": "accessibility-guidelines",
+      "source": "https://raw.githubusercontent.com/Roblox/creator-docs/main/content/en-us/production/publishing/accessibility.md — Roblox accessibility guidelines",
+      "demonstrates": [
+        "players choose a PreferredTextSize of Medium (default), Large, Larger or Largest, and the UI is expected to grow with it",
+        "elements using TextScaled are NOT scaled by that setting, while AutomaticSize elements grow and TextWrapped elements re-wrap — so honouring the setting is a construction choice made when the label is built",
+        "GuiService.PreferredTransparency runs 0 (fully opaque) to 1 (the design's own transparency) and the stated technique is to MULTIPLY each element's BackgroundTransparency by it",
+        "GuiService.ReducedMotionEnabled means the player wants motion removed: set TweenInfo.Time to 0, or swap positional movement for a fade",
+        "colour may not be the only carrier of meaning — pair it with distinct symbols, the page citing colour blindness in over 5% of the population",
+        "sound may not be the only carrier either; in-game events need a visual counterpart"
+      ]
+    },
+    {
+      "id": "size-modifiers-reference",
+      "source": "https://raw.githubusercontent.com/Roblox/creator-docs/main/content/en-us/ui/size-modifiers.md — Roblox reference for UIScale, UISizeConstraint, UITextSizeConstraint, UIAspectRatioConstraint and AutomaticSize",
+      "demonstrates": [
+        "an explicit floor is stated: 'Do not use MinTextSize property values lower than 9 or the text will be difficult to read'",
+        "UITextSizeConstraint is the partner of TextScaled — it holds a scaled label between a minimum and maximum instead of letting it collapse",
+        "UISizeConstraint's worked example is MinSize (200,200) with MaxSize (400,400), and the page notes the constraint OVERRIDES a surrounding layout",
+        "UIAspectRatioConstraint likewise overrides layout, and is the stated way to keep a thumbnail or icon square",
+        "with AutomaticSize on, the Size property becomes a MINIMUM rather than the size — the element grows to its content and respects AnchorPoint while doing it",
+        "UIScale multiplies AbsoluteSize and takes children and modifiers such as UIStroke and UICorner with it, which makes it the correct handle for a hover effect"
+      ]
+    },
+    {
+      "id": "appearance-modifiers-reference",
+      "source": "https://raw.githubusercontent.com/Roblox/creator-docs/main/content/en-us/ui/appearance-modifiers.md — Roblox reference for UICorner, UIStroke, UIGradient, UIPadding and UIShadow",
+      "demonstrates": [
+        "UICorner Scale rounds by a percentage of the SHORTEST edge, so a value of 0.5 or higher is a pill whatever the element's proportions — this is why a scale radius is safe and an offset radius is not",
+        "the four corners are individually addressable (TopLeftRadius, TopRightRadius, BottomRightRadius, BottomLeftRadius), which is how a tab or a docked panel gets its flat edge",
+        "UIStroke.ApplyStrokeMode is Contextual for text outlines and Border for the object's bounds, and BorderStrokePosition (Center, Inner, Outer) decides whether a border eats into the shape or grows it",
+        "UIStroke transparency is independent of the parent's transparency, so a translucent panel can still hold a crisp edge",
+        "UIGradient defaults to Linear, with Offset measured as a percentage of the parent's width or height and TileMode defaulting to Clamp",
+        "UIShadow's BlurRadius in scale is relative to the shorter side of the parent, and the page states it does not support text",
+        "UIPadding takes UDim values on each side and accepts negative offsets"
+      ]
+    },
+    {
+      "id": "ui-styling-system",
+      "source": "https://raw.githubusercontent.com/Roblox/creator-docs/main/content/en-us/ui/styling/index.md — Roblox's UI styling system (StyleSheet, StyleRule, StyleLink, StyleDerive, tokens, themes, queries)",
+      "demonstrates": [
+        "the documented structure is a chain: a token sheet holding variables as attributes, theme sheets deriving from it and swapping token sets, a design sheet of StyleRules deriving from the theme, and a StyleLink attaching that sheet to a ScreenGui",
+        "only one StyleSheet applies per tree, so a coherent neutral UI is one sheet and not a per-element decoration pass",
+        "tokens are referenced by a $ prefix, e.g. a single colour token feeding Frame.BackgroundColor3, TextLabel.TextColor3 and UIStroke.Color at once — which is exactly how one restrained palette stays one palette",
+        "selectors match by class ('Frame'), by CollectionService tag ('.ButtonPrimary'), by instance name, by nested modifier ('::UICorner') and by GuiState such as Hover",
+        "style queries apply rules conditionally on screen size, input type or the player's accessibility settings, so responsiveness is declarable rather than scripted"
+      ]
+    },
+    {
+      "id": "screen-containers-and-insets",
+      "source": "https://create.roblox.com/docs/ui/on-screen-containers — Roblox reference for ScreenGui, ScreenInsets and layering",
+      "demonstrates": [
+        "ScreenInsets has four values and CoreUISafeInsets is the DEFAULT — out of the box a ScreenGui already keeps its descendants clear of the top bar buttons and screen cutouts",
+        "DeviceSafeInsets covers notches only, TopbarSafeInsets is the dynamic strip inside the top bar row itself, and None opts out of all of it",
+        "DisplayOrder layers whole ScreenGuis against one another, higher in front — so a modal is its own container with a higher DisplayOrder, not a high ZIndex inside the HUD",
+        "ResetOnSpawn defaults to true, which is why a persistent HUD has to say otherwise explicitly"
+      ]
+    }
+  ],
+  "rules": {
+    "note": "Distilled from the eleven references above. This genre's construction is NOT the simulator's: where the simulator identifies itself with a thick near-black stroke, an overhanging plaque and a red circle hanging off the corner, the neutral theme identifies itself with proportional sizing, translucency, generous padding and a pixel ceiling on every touch target. Numbers below are the ones the sources state; where a value is a range, the sources disagree only in degree and the range is the honest reading.",
+    "sizingUnits": {
+      "rule": "author Size and Position in SCALE; use offset only where the engine allows nothing else (UIStroke.Thickness, UIPadding, small nudges like a 10px corner inset)",
+      "clampWith": "UISizeConstraint for pixel floors and ceilings, UIAspectRatioConstraint for anything that must stay square",
+      "workedConversion": "100x100 pixels ~= 0.257 scale on both axes at the reference viewport",
+      "why": "the staff post gives the conversion and the curriculum sizes every HUD part as a percentage of the screen; a neutral UI is judged on whether it survives a phone and a 21:9 monitor, and fixed pixel rectangles are the thing that fails that test first"
+    },
+    "cornerRadius": {
+      "unit": "scale, not offset",
+      "panel": 0.075,
+      "panelRange": [0.05, 0.1],
+      "button": 0.15,
+      "buttonRange": [0.1, 0.2],
+      "pill": 0.5,
+      "why": "the staff post states an offset radius 'appears drastically different between devices' and the reference docs explain that scale measures against the shortest edge, so 0.5 is reliably a pill and a chosen scale keeps the same visual softness on every screen — this single habit is the clearest tell of platform-native construction"
+    },
+    "targetSize": {
+      "pixels": 44,
+      "appliesTo": ["icon button", "toggle", "close", "any tappable control"],
+      "howToApply": "size in scale, then cap with UISizeConstraint MaxSize (inf, 44); treat 44 as the floor on touch as well",
+      "why": "Roblox's shipped experience controls are 44px and the announcement says that number was chosen to hit WCAG 2.1 target size at AAA, and Roblox's own settings-menu tutorial independently caps its opener at MaxSize (inf, 44) — two separate Roblox sources landing on the same number makes it a platform convention rather than a preference"
+    },
+    "panelSurface": {
+      "fill": "single dark neutral",
+      "backgroundTransparency": 0.25,
+      "rule": "the panel floats over the running world and lets it show through; it is not an opaque sheet and it does not tile a texture",
+      "maxWidthPx": 800,
+      "minWidthPx": 350,
+      "aspectRatio": 2.5,
+      "why": "the settings tutorial builds exactly this (0.75 scale, AspectRatio 2.5, MaxSize 800, MinSize 350, fill at 0.25) and the wireframing chapter tells you to test legibility against varied backgrounds — translucency is how this genre stays subordinate to the game instead of covering it"
+    },
+    "transparencyLadder": {
+      "layoutContainer": 1,
+      "subtleBacking": 0.15,
+      "panelOrOverlay": 0.25,
+      "scrim": 0.4,
+      "deEmphasised": 0.65,
+      "rule": "depth is expressed as steps on this ladder; a container that only arranges children carries no fill at all",
+      "why": "the Laser Tag HUD uses precisely these values and nothing else to separate its layers, which is why that HUD reads as calm — a neutral theme that reaches for a second accent colour where a transparency step would do has already stopped being neutral"
+    },
+    "panelStroke": {
+      "thickness": 2,
+      "thicknessRange": [1, 3],
+      "colorRole": "near-black",
+      "transparency": 0.25,
+      "borderStrokePosition": "Inner",
+      "rule": "a soft separating edge, present so the surface reads against any background — never the identifying feature",
+      "why": "the settings tutorial's stroke is thickness 3 in black at 0.25 transparency and nothing in these references uses a stroke as decoration; the staff post also notes UIStroke has no scale support, so a heavy stroke authored on desktop becomes a crayon border on a phone"
+    },
+    "textStroke": {
+      "rule": "none",
+      "instead": "white text on a dark translucent surface, with contrast supplied by the surface",
+      "why": "not one of the eleven references applies an outline to text in a neutral UI, and the Laser Tag HUD gets its legibility from pure white on a 0.15–0.25 backing instead — copying the simulator's 2px text stroke into this theme is the single most likely way to make it look wrong"
+    },
+    "header": {
+      "style": "in-panel type step",
+      "overhang": false,
+      "plaque": false,
+      "rule": "the title is text inside the panel, larger and bolder than body text, separated by padding; weight carries it, not a separate object",
+      "why": "Roblox's design guidance says headers 'should be larger and bolder than body text' and the Laser Tag screens set hierarchy with Montserrat Medium/Bold/Black at LayoutOrder -1 — there is no plaque anywhere in this genre, so a generator that reaches for the simulator's overhanging banner produces a costume, not a theme"
+    },
+    "closeButton": {
+      "shape": "icon glyph, no background",
+      "position": "top-right, INSIDE the panel",
+      "insetPx": 10,
+      "overhang": false,
+      "restingTransparency": 0.25,
+      "sizeRule": "0.15 of the panel, 1:1 aspect constraint, capped at 44px",
+      "why": "the settings tutorial anchors close at (1,0) and positions it at (1,-10,0,10) with ImageTransparency 0.25 — a quiet glyph inset inside the corner is the neutral form, and the red circle proud of the corner belongs to the cartoon genres and would read as a different product entirely"
+    },
+    "spacing": {
+      "listPaddingScale": 0.03,
+      "listPaddingRange": [0.025, 0.035],
+      "screenEdgeMarginPct": 2.5,
+      "rule": "group by proximity and separate by empty space; do not draw divider lines between grouped rows",
+      "why": "the Laser Tag layouts express every gap in scale (0.025–0.035) with 2–3% screen margins, and Roblox's guidance says elements surrounded by ample negative space are the eye-catching ones — in this genre padding is the emphasis mechanism that colour is in the others"
+    },
+    "typography": {
+      "families": 1,
+      "weightLadder": ["Medium body", "Bold emphasis and headers", "Black reserved for alerts"],
+      "minTextSize": 9,
+      "rule": "one family, three weights; scale text with TextScaled plus a UITextSizeConstraint, or with AutomaticSize when the player's text-size setting must be honoured",
+      "why": "the curriculum uses one family and exactly these three weights, the size-modifiers reference states outright not to set MinTextSize below 9, and the accessibility page notes TextScaled elements do NOT respond to PreferredTextSize — so which scaling mechanism is chosen is an accessibility decision, not a styling one"
+    },
+    "buttonStates": {
+      "required": ["hover", "pressed", "selected", "disabled"],
+      "hover": "UIScale nudge and/or a GuiState Hover style rule — the modifier scales children and strokes with it",
+      "pressed": "swap the image or step the fill one rung down the transparency ladder",
+      "disabled": "BackgroundTransparency 0.65, keeping the label readable",
+      "cannotAfford": "the price text turns red",
+      "rule": "the control must be housed in a container (fill, border or background) so it reads as pressable at rest",
+      "why": "Roblox's guidance names hover, depressed and released (selected) as the requirement and states that unaffordable prices display in red; the Laser Tag buttons fade to 0.65 rather than greying out, which keeps a disabled control legible instead of turning it into a smudge"
+    },
+    "motion": {
+      "openSeconds": 0.5,
+      "closeSeconds": 0,
+      "easing": "Exponential for chrome, a single overshoot at most for the panel itself",
+      "reducedMotion": "when GuiService.ReducedMotionEnabled is true, set TweenInfo.Time to 0 or replace movement with a fade",
+      "why": "the settings tutorial opens over 0.5s and closes instantly, which is the asymmetry that makes a menu feel responsive rather than slow, and the accessibility page gives the exact reduced-motion substitution — motion that cannot be turned off is a defect in this genre"
+    },
+    "screenRegions": {
+      "top": "objective and global state",
+      "centre": "the action focal point (reticle, cast bar, prompt)",
+      "sidesAndPeriphery": "player state",
+      "topLeft": "RESERVED — Roblox experience controls, left-aligned, dynamic width, can span the full width in portrait",
+      "topRight": "the creator's own chrome, because Roblox states it left that side free",
+      "bottomLeft": "RESERVED — mobile thumbstick",
+      "bottomRight": "RESERVED — mobile jump button",
+      "why": "the wireframing chapter assigns these categories by region and the experience-controls announcement says the right side was deliberately left to creators; the three reserved corners are not style opinions, they are occupied space, and UI placed there is unreachable on a phone"
+    },
+    "safeArea": {
+      "screenInsets": "CoreUISafeInsets (the ScreenGui default) for ordinary UI; TopbarSafeInsets only for something that must live in the top bar row",
+      "topbarHeightPx": "read it at runtime from GuiService.TopbarInset or GuiService:GetInsetArea — do not hardcode",
+      "topbarHeightDisputed": "the staff post says an offset height of 36; a reply in the same thread says 58 in current clients",
+      "reactToWidth": "subscribe to the width-change signal, because the controls resize as features toggle",
+      "why": "two Roblox sources give two different top bar heights, which is the argument for reading the inset rather than trusting either number, and the default ScreenInsets already solves the common case — most 'my UI is behind the topbar' construction is undone by leaving the default alone"
+    },
+    "layering": {
+      "rule": "each modal or overlay is its own ScreenGui with a higher DisplayOrder; ZIndex and LayoutOrder order things WITHIN one container",
+      "resetOnSpawn": "set false explicitly on any persistent HUD",
+      "why": "the containers reference states DisplayOrder layers whole ScreenGuis and that ResetOnSpawn defaults to true — a HUD that vanishes on respawn is the classic symptom of neither being set"
+    },
+    "iconography": {
+      "rule": "square, held by UIAspectRatioConstraint, ScaleType Fit, authored white so a Color3 can tint them; icons in one stat family share palette and silhouette",
+      "never": "an icon carrying meaning that no symbol or label repeats",
+      "why": "the curriculum constrains every icon to 1:1 and uses white source art for runtime tinting, and the accessibility page requires symbols alongside colour because colour alone excludes over 5% of players"
+    },
+    "grid": {
+      "layout": "rows",
+      "columns": 3,
+      "rule": "a neutral list is full-width rows with an icon at the left, a label block, and the value or action at the right; when a grid is genuinely needed it is 3 across with square tiles, not 4",
+      "why": "the neutral theme's own row in ui-kit-themes.ts declares layout 'rows', and nothing in these references packs dense tile walls the way the simulator sources do — restraint here means fewer, wider, more legible rows"
+    },
+    "themeSystem": {
+      "rule": "emit one token StyleSheet (colour, radius, spacing, type), a theme sheet deriving from it, a design sheet of StyleRules, and a single StyleLink on the ScreenGui",
+      "selectors": "class, .Tag, instance name, ::UICorner modifier, GuiState (Hover), @Query for screen size / input / accessibility",
+      "why": "the styling docs state only one StyleSheet applies per tree and that a token referenced as $Name can feed BackgroundColor3, TextColor3 and UIStroke.Color at once — a restrained theme survives only if its restraint is declared in one place rather than repeated per element, which is also what makes it re-themeable later"
+    }
+  },
+  "explicitlyNotThis": [
+    "NOT a 3–4px near-black stroke on every panel, card and button — this genre's edge is 1–3px at 0.25 transparency, or absent",
+    "NOT an overhanging title plaque with its own stroke — the title is a type step inside the panel",
+    "NOT a red circle close button proud of the top-right corner — close is a quiet glyph inset 10px inside it",
+    "NOT text with an outline — contrast comes from a dark translucent surface under white text",
+    "NOT a gradient bevel on buttons — the pressable read comes from the container plus a hover and pressed state",
+    "NOT fixed pixel card heights — proportions with a UISizeConstraint ceiling and floor",
+    "NOT 4-across tile walls — rows, or 3 across at most",
+    "These seven are the simulator genre's identifying construction, recorded here as the boundary because the two files sit in the same folder and a generator that blends them produces a cartoon frame around neutral content, which is the near-miss this library exists to stop."
+  ],
+  "shippedThemeReadNotRendered": {
+    "when": "2026-09-20",
+    "how": "READ from apps/worker/src/ui-kit-themes.ts. NOT rendered in Studio and NOT compared by eye. This section is a source reading, not an observation of pixels, and must not be cited as one.",
+    "themeRowDeclares": "id 'studio', label 'Neutral', layout 'rows', radius 16, stroke 1, titleSize 28, cardHeight 144, hudSide 'right', outline '#05080b', panel '#141a20', card '#202933'",
+    "agreements": [
+      "hudSide 'right' matches Roblox reserving the right side of the topbar row for creators",
+      "layout 'rows' matches this genre's row-first convention",
+      "stroke 1 is already inside the 1–3px range these references support, unlike the simulator's 4"
+    ],
+    "unresolvedAgainstTheseRules": [
+      "radius 16 is an OFFSET pixel value; every source here authors radius in scale, so the same theme will read differently on a phone than on a monitor",
+      "cardHeight 144 is a fixed pixel height where these references use proportion plus a UISizeConstraint",
+      "outline '#05080b' is a near-black cartoon outline colour on a theme whose references call for a soft translucent separating edge",
+      "the theme row carries no transparency value at all, and the transparency ladder is the primary depth mechanism in every reference here",
+      "no target-size ceiling exists in the theme row, so nothing enforces the 44px convention both Roblox sources land on"
+    ],
+    "note": "These five are candidates for a CLOSED/OPEN ledger of the kind simulator.json carries, but that ledger is earned by rendering the theme and looking at it. Until someone does that, this stays a reading of source and is labelled as one."
+  },
+  "honestLimits": [
+    "All eleven references are Roblox's own documentation and Roblox staff posts about the core UI the platform ships. For this genre that is a primary source — the subject IS the platform's default — but it is not the same evidence as measuring five independent shipped games, and it should not be described as if it were.",
+    "No screenshots were examined. Every number here is quoted from a page that was fetched, not read off an image, so there are no proportional approximations in this file and also no measurements of a real game's panel.",
+    "The top bar height is genuinely disputed between two statements in the same thread (36 and 58); the rule records the disagreement and says to read the inset at runtime rather than picking a winner.",
+    "This genre has not been rendered in Studio and compared by eye. simulator.json earned its ledger that way and found a defect invisible in source; until the same is done here, shippedThemeReadNotRendered is deliberately not written in the CLOSED/OPEN vocabulary."
+  ]
+}

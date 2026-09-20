@@ -1,0 +1,314 @@
+{
+  "genre": "screen-rewards",
+  "label": "The DAILY REWARDS / login-streak screen, across genres — day strips and calendars, claimed vs claimable vs locked vs missed tiles, streak counters, countdown timers, the claim button and the HUD opener that badges it",
+  "recorded": "2026-09-20",
+  "provenance": "Researched on the open web on 2026-09-20 with WebSearch, WebFetch and direct curl. Every row names a page or image that was actually fetched and looked at in that session; where a row rests on a screenshot, the screenshot was downloaded to a scratch directory, viewed, and deleted. No image, no Luau source, no asset id and no sentence of anyone's UI is stored or reproduced here. What is recorded is the construction convention read out of what was seen: anatomy, slot order, which channel each state changes, geometry, and the timer and streak formats. Proportions were read off the images by eye, not measured with a picker, and are marked approximate.",
+  "references": [
+    {
+      "id": "roblox-engagement-rewards-daily-tab",
+      "source": "https://prod.docsiteassets.roblox.com/assets/resources/feature-packages/engagement/rewards.jpg — the hero screenshot on https://create.roblox.com/docs/resources/feature-packages/engagement-rewards, fetched and viewed 2026-09-20. Roblox's own shipped Engagement Rewards feature package, Daily tab.",
+      "demonstrates": [
+        "A seven-day streak is NOT necessarily one row of seven: this one runs as a 4-across grid that wraps 4 + 3, with the seventh tile simply ending the second row and no filler in the empty cells.",
+        "There is no tile card at all — no fill, no stroke, no rounded rect. Each reward is art, then a bold name under it, then a state row under that. The grid reads from the rhythm of the art and the label rows, on a body that carries a faint dotted texture.",
+        "Claimable state is a filled chip under the name: a wide flat rounded bar the width of the label, with a horizontal gradient that is lighter in the middle, a thin outline, and the single word 'Ready'.",
+        "Locked state DELETES the chip rather than dimming it. Days 4-7 have no bar at all — just a small padlock glyph followed by grey text reading 'Day 4', 'Day 5', 'Day 6', 'Day 7'. The state's absence is the state.",
+        "Locked reward art is NOT greyed, dimmed or hidden. All four locked icons are drawn at full colour and full opacity, identical in treatment to the claimable ones; only the label row beneath them differs.",
+        "The reward NAME stays white and bold in every state — the name is never the thing that changes.",
+        "Claiming is one footer action, not per tile: a full-width footer band holds a centred sentence ('Play daily to unlock rewards!') and a single primary 'Claim Rewards' button pinned to the far right in a light accent blue, with a small corner radius relative to its height, not a pill.",
+        "The header is a full-width band across the panel top, inset inside the panel rather than overhanging it, with the title centred, a bare × glyph at the far right and a thin divider under it.",
+        "Tabs are plain text labels at the LEFT of that header band ('Time', 'Daily'), the active one white and the inactive grey, each with a small coloured dot to its right. The dot is a has-something-waiting badge, not the selection indicator — both tabs carry one."
+      ]
+    },
+    {
+      "id": "roblox-engagement-rewards-time-tab-annotated",
+      "source": "https://prod.docsiteassets.roblox.com/assets/resources/feature-packages/engagement/rewards-annotated.png — the annotated customization screenshot on the same Roblox docs page, fetched and viewed 2026-09-20 (Time tab, all rewards Ready).",
+      "demonstrates": [
+        "Same screen, other tab, and the construction is identical — one grid component serves both a time-played ladder and a daily streak. The tab swaps the data and the footer sentence, nothing structural.",
+        "With every reward claimable at once, every tile carries its own 'Ready' chip and there is still exactly ONE claim button, in the footer. The per-tile chip reports state; the footer button performs the action.",
+        "A vertical scrollbar sits inside the right edge of the content area and a partial row is visibly clipped at the bottom — the reward grid scrolls under a fixed header and a fixed footer, rather than the panel growing.",
+        "Gutters are wide relative to the art: roughly a full icon's width between columns, so eight tiles fill a panel that is close to full-screen.",
+        "The footer sentence is the tab's own configured description line, sitting to the left of the claim button rather than above the grid."
+      ]
+    },
+    {
+      "id": "roblox-engagement-rewards-docs-text",
+      "source": "https://raw.githubusercontent.com/Roblox/creator-docs/main/content/en-us/resources/feature-packages/engagement-rewards.md — Roblox's own documentation source for the package, fetched 2026-09-20.",
+      "demonstrates": [
+        "The reward record that the UI renders has exactly four fields — icon (an image asset id, explicitly not a decal), displayName, quantity (defaulting to 1), and effect. A tile has four slots because the data has four fields.",
+        "Rarity is a SWAPPED BACKGROUND FRAME, not a colour tweak: marking a reward `effect = Types.RewardEffect.Valuable` 'give[s] it a different background frame in the UI', and adding a new effect means adding a whole frame to RewardItemFrames. Rarity and state therefore live in different layers and cannot collide.",
+        "The claimable look is named in the objects the docs tell you to restyle: 'FooterContentFrame.ClaimableUIGradient' — the claimable treatment is a gradient on a footer frame, which matches the gradient chips seen in the two screenshots.",
+        "A persistent HUD opener is part of the package, named 'RewardsHudButton.Background' — the rewards screen ships with its own on-screen button rather than relying on a generic menu.",
+        "The screen opens itself: `isHiddenOnJoin` defaults to false, meaning 'rewards automatically pop up when joining the game if the player has a new daily reward to claim'. Auto-open is conditional on something being claimable.",
+        "Two reset policies are offered and the difference is spelled out: `isAlignedToStreakResetTime` true means day 2 unlocks 24 hours after the day-1 claim; false means day 2 unlocks at the first midnight after it, so a player who claims at 23:00 can claim again an hour later. Day 3 onward is always 24 hours after the previous day's claimable time.",
+        "Tabs are data, not layout: `tabDisplayName` and `tabOrder` on each reward type, plus a per-tab `description` string that the footer renders."
+      ]
+    },
+    {
+      "id": "rblx-essentials-daily-streak-unclaimed",
+      "source": "https://img.itch.zone/aW1hZ2UvNDk0MDAyNi8yOTYxMTQ3My5wbmc=/794x1000/3tBfwY.png — in-Studio screenshot on the listing https://rblx-essentials.itch.io/roblox-time-rewards-system-gui (Time Rewards System kit), fetched and viewed 2026-09-20. State: day 1 claimable, nothing claimed yet.",
+      "demonstrates": [
+        "Seven day tiles in a SINGLE ROW of equal width, on a panel roughly 60% of screen width and 38% of screen height — the strip is the panel's whole purpose and it is sized to hold seven across.",
+        "The tile is a TALL portrait card, roughly 1:2 width to height, radius small relative to its size (~8px), flat dark fill, no stroke in the default state.",
+        "Tile slot order, top to bottom, is fixed: 'DAY n' label, reward icon, amount text, state chip pinned to the bottom edge. Four slots, always in that order, and the chip always touches the bottom padding.",
+        "The claimable tile changes THREE things at once: its fill becomes the accent colour, it gains a lighter stroke the default tiles do not have, and it is scaled up about 6-8% so it breaks the row's top and bottom alignment. Its chip becomes a green 'CLAIM' button with a darker bottom edge.",
+        "Locked tiles keep their full-colour art and change only the chip, which becomes a flat grey rounded rect reading 'LOCKED' in dark small caps.",
+        "The final day is colour-promoted regardless of state: day 7 is gold with an amber stroke, and its amount text is replaced by the reward's NAME in two lines ('LEGENDARY PET') while it still carries the ordinary grey LOCKED chip. Rarity and state are independent channels on the same tile.",
+        "Under the strip sits a full-width progress track — a light pill with a dark outline — with the text '0 / 7 DAYS' centred INSIDE the track, over the fill rather than beside it.",
+        "The footer is two corner-anchored lines, not a centred one: the streak counter at the left ('0 DAY STREAK', the number and word in one green outlined string) and the status at the right ('REWARD READY!').",
+        "The header is a coloured band inset across the panel's top inner edge, title left-aligned in small all-caps with an × at the band's right end — a band, not an overhanging plaque.",
+        "The opener is a small vertical stack of icon buttons pinned to the LEFT screen edge at mid-height, each with its own live countdown text directly beneath the icon, and a red badge dot on the one with something waiting."
+      ]
+    },
+    {
+      "id": "rblx-essentials-daily-streak-after-claim",
+      "source": "https://img.itch.zone/aW1hZ2UvNDk0MDAyNi8yOTYxMTQ3NS5wbmc=/794x1000/7K8Cb3.png — the same kit's panel photographed one state later, on the same itch.io listing, fetched and viewed 2026-09-20. State: day 1 claimed, streak 1.",
+      "demonstrates": [
+        "CLAIMED is the only state that touches the art. The claimed tile desaturates wholesale — fill goes to a pale neutral, the coin icon renders in muted grey-gold, the amount text goes grey — while locked tiles beside it keep full-colour art. Dimming means 'spent', never 'not yet'.",
+        "The claimed chip does not say 'CLAIMED'. It becomes a pale green rounded rect containing a green CHECK GLYPH and nothing else — the word is replaced by a mark.",
+        "The claimed tile also drops back to the row's base size, giving up the scale-up the claimable tile had, so exactly one tile in the row is ever oversized.",
+        "The progress track fills from the left with a solid accent segment covering one seventh of its length, while the '1 / 7 DAYS' text stays centred over the whole track and does not move with the fill.",
+        "The footer's right-hand slot swaps content rather than position: 'REWARD READY!' becomes 'NEXT IN 23h 59m 56s'. One slot, two messages, and the countdown only exists when nothing is claimable.",
+        "The streak counter at the footer left increments in place ('0 DAY STREAK' to '1 DAY STREAK') — it is a sentence, not a badge.",
+        "The red badge on the HUD opener disappears once the claim is taken, and the opener's countdown keeps ticking. The badge tracks claimability, not the existence of the feature."
+      ]
+    },
+    {
+      "id": "rblx-essentials-playtime-gifts",
+      "source": "https://img.itch.zone/aW1hZ2UvNDk0MDAyNi8yOTYxMTQ4MC5wbmc=/794x1000/057dUg.png and https://img.itch.zone/aW1hZ2UvNDk0MDAyNi8yOTYxMTQ3MC5wbmc=/794x1000/YGZKZe.png — the session-gift panel from the same kit, in-game and as the listing's cover art, both fetched and viewed 2026-09-20.",
+      "demonstrates": [
+        "The session/playtime sibling of the daily screen is a much SMALLER modal — roughly 30% of screen width against the daily panel's 60% — because six gifts need no strip and no streak.",
+        "3-across by 2 rows of gifts, and the tile is dropped entirely: the gift artwork IS the tile, with no card, fill or stroke behind it.",
+        "The countdown is set ON the art, centred, in large bold outlined text ('3m 54s', '05:00'), not in a chip beneath it. A per-item timer can be a label over the icon when there is no state chip competing for the space.",
+        "Tier is carried by the artwork itself — the gift boxes differ in colour per reward — rather than by a background frame or a badge.",
+        "The footer is two centred lines instead of a bar: a green call-to-action ('Get FREE rewards for playing!') over a smaller progress line in the form '0/6 Rewards claimed'. A gift set counts claims; a day strip fills a track.",
+        "The header band is the same component as the daily panel's, at the same proportion, with the title left and the × right — one header serves both panels at two different widths."
+      ]
+    },
+    {
+      "id": "knockout-daily-rewards-panel",
+      "source": "https://static.wikia.nocookie.net/knockout-roblox/images/e/e9/DailyRewards.webp — the in-game Daily Rewards screenshot on https://knockout-roblox.fandom.com/wiki/Daily_Rewards, fetched and viewed 2026-09-20. A shipped Roblox game's own screen.",
+      "demonstrates": [
+        "Six ordinary days laid out 3-across by 2 rows, with the SEVENTH day pulled out as a tall card occupying its own full-height column at the right, spanning both rows. The milestone day is given a different footprint, not just a different colour.",
+        "State lives in a button at the bottom of the tile, spanning the tile's inner width: grey 'Claimed' for days already taken, red 'Locked' for days not yet reachable. Both are the same component in different colours with a one-word label.",
+        "The tile fill encodes the REWARD, not the state: day 4 is amber because its reward is spins, while its button still reads Locked exactly like the blue tiles around it. Fill and button never say the same thing.",
+        "Locked art is fully drawn and fully saturated — the ice cubes, the chest and the wheel are all legible — so a player can see what they are waiting for.",
+        "Quantity is set over the reward art at its lower right ('x100', 'x250', 'x1000'), not on its own row, which is what lets the tile stay close to square.",
+        "The day-7 card gets a gold stroke, a coloured outer glow, a sunburst backdrop behind the character art, the reward's NAME in gold under 'Day 7' where the other tiles carry a quantity, and a proportionally much larger state button.",
+        "The countdown to the next claim is plain outlined white text sitting in the header area to the right of the title ('23h 59m 59s') with no chip or container around it.",
+        "The title overhangs the panel's top edge rather than sitting inside a band, with a calendar icon overhanging the top-LEFT corner beside it, and the close control is a large red × MARK proud of the top-right corner rather than a button with a background.",
+        "The panel chrome is themed illustration — an ice frame — rather than a flat rounded rect, while the tiles inside it stay strictly rectangular and systematic. The theme is spent on the frame; the grid stays a grid."
+      ]
+    },
+    {
+      "id": "steal-a-brainrot-advent-calendar",
+      "source": "https://techwiser.com/wp-content/uploads/2025/12/Advent-Calendar-Steal-a-Brainrot.webp — in-game screenshot in the guide https://techwiser.com/steal-a-brainrot-advent-calendar-guide-rewards/, fetched and viewed 2026-09-20. Steal a Brainrot's 25-day login calendar.",
+      "demonstrates": [
+        "Past about ten days the strip becomes a SCROLLING GRID: 5 columns of near-square tiles with a thin scrollbar inside the content area's right edge and rows continuing past the fold.",
+        "Four distinct states are visible on one screen, and each is a different chip, never a different opacity: green 'Claim' on the one claimable day; a dark chip holding a live countdown on the next day; a dark chip holding a longer relative countdown on every day after that; and a 'RECOVER' chip on days that were missed.",
+        "A missed day is not removed or crossed out — its reward art is replaced by a circular-arrow recover glyph and its chip offers the day back. One recover chip is grey (spent) and one is gold (available), so the recovery offer has its own two states.",
+        "Exactly one tile is claimable at a time, and it is the only green thing on the screen.",
+        "Every locked tile carries its OWN countdown, each one a day further out ('1d 21h', '2d 21h', '6d 21h'), rather than a single next-claim timer — the tiles share one clock and differ by offset.",
+        "The countdown format drops units as it coarsens: '21h 49m' under a day, '1d 21h' and '21d 21h' over one. Always two units, never a bare number of seconds.",
+        "Locked days HIDE the reward: a padlock glyph replaces the art entirely and the 'Day n' label greys out, because the calendar's whole draw is not knowing what is behind the door. This is the one reference of four that hides locked art, and it is the one whose rewards are meant to be a surprise.",
+        "The grand prize is lifted out of the grid into a pinned band below it, outside the scroll area, in a contrasting light fill: character art at the left, 'Day 25' large, the reward name beneath it, and a dark countdown chip right-aligned.",
+        "The streak milestones live in a SEPARATE small panel floating to the left of the calendar, with its own header band reading 'Login Streak' and a vertical stack of rows, each a fraction of days plus the reward icon and an 'xN' quantity ('1/3 Days', '1/7 Days', '1/14 Days', '1/25 Days').",
+        "The state chip's corner radius is visibly smaller than the tile's, so the chip reads as a button inside a card rather than a second card."
+      ]
+    },
+    {
+      "id": "adopt-me-star-rewards-login-popup",
+      "source": "https://static.wikia.nocookie.net/adoptme/images/e/eb/Star_Rewards_login_popup.png — the Star Rewards login popup on https://adoptme.fandom.com/wiki/Daily_Reward, fetched and viewed 2026-09-20. Adopt Me!'s shipped login screen.",
+      "demonstrates": [
+        "A login POPUP has no claim button at all — five day tiles, a goal band and a close button, and the reward is granted by the popup appearing. The claim affordance is what separates an auto-shown popup from a menu-opened panel.",
+        "Day tiles can be labelled with the ABSOLUTE streak index rather than 1-7: 'DAY 301' through 'DAY 305', with the cycle of rewards repeating underneath a number that keeps climbing.",
+        "The current day is the leftmost tile, recoloured to green, drawn slightly taller than the four ahead of it, and given a dark-on-light label where the others are light-on-dark — three changes again, on the one tile that matters.",
+        "A tile can stack two rewards vertically, each with its own 'xN' quantity label directly under its art, rather than forcing one reward per day.",
+        "The countdown sits centred between the header and the day strip as bare bold text with no container, and is formatted as a clock with colons ('22:38:29') rather than with unit suffixes.",
+        "Below the strip is a full-width goal band on its own light sheet: a small grey kicker ('YOUR GOAL'), the goal name large in the accent colour, a right-aligned progress fraction with its currency icon ('14/28'), a segmented progress bar, an italic encouragement line naming what is left, and a shop button at the band's bottom right.",
+        "The panel body carries a low-contrast diagonal stripe texture and a lighter inset border inside the outer edge.",
+        "The title sits on a darker plaque that overhangs the panel's top-LEFT corner with ribbon tails at both ends, while the close control is a red rounded SQUARE with a white ×, inside the panel at the top right — a square close button is as conventional as a circular one.",
+        "Progress toward a long-run goal is expressed in logins ('14 more daily logins and it's yours!'), which is what makes the streak feel like currency rather than a number."
+      ]
+    },
+    {
+      "id": "adopt-me-daily-reward-strip",
+      "source": "https://static.wikia.nocookie.net/adoptme/images/2/2b/Daily_Reward.png — the earlier Daily Reward panel on the same Adopt Me! wiki page, fetched and viewed 2026-09-20.",
+      "demonstrates": [
+        "The countdown can BE the title: 'Next reward in 14h 56m 55s' is the largest text on the panel, centred at the top, with no separate heading above it.",
+        "Claimed is drawn as a large white CHECK MARK stroked across the whole tile over the art, not as a small badge in a corner — at tile scale the tick is the state.",
+        "The active tile is labelled 'TODAY' instead of its day number, while the days behind it keep 'DAY 1' … 'DAY 4'. The current day is named, not numbered.",
+        "Each tile has a lighter label bar across its top holding the day name, with the art below and the amount text over the art's bottom edge ('$25', '$50', 'MYSTERY GIFT!').",
+        "The footer pairs a wide red CLOSE button with a darker bottom edge against a right-aligned streak readout, 'STREAK: 110', where the word is regular weight and the number is heavier and larger.",
+        "The streak number keeps counting past the five-tile cycle — the strip repeats, the counter does not reset, and the two are shown together so the repetition does not read as lost progress.",
+        "The panel's chrome is themed as a notepad page with a spiral binding drawn along the top edge, again spending the theme on the frame while the tiles stay systematic."
+      ]
+    }
+  ],
+  "rules": {
+    "note": "Distilled from the ten references above. Units are Roblox UI units: px for stroke and radius, screen fractions for panel size, unitless for scale. Proportions were read off screenshots by eye and are stated as approximations. Where the references disagree, the rule says which way the majority goes and what the minority case is for.",
+    "layoutByDayCount": {
+      "upTo7_wideRow": "7 equal tiles in ONE row when the panel is >= 55% of screen width",
+      "upTo7_wrapped": "4 across wrapping 4+3, or 3 across wrapping 3+3 with the 7th pulled out, when the panel is narrower or the tiles are square",
+      "10plus": "a scrolling grid 5 across, with a fixed header and a pinned grand-prize band below the scroll area",
+      "emptyCells": "leave them empty — never pad the last row with filler tiles",
+      "approximate": true,
+      "why": "all four shipped screens sized the layout to the number of days rather than to a house grid: a 7-day strip runs across in one row, a 7-day set of square tiles wraps 4+3 or 3+3, and the 25-day calendar becomes a 5-wide scroller; a generator that always emits the same column count gets the 25-day case badly wrong"
+    },
+    "dayTile": {
+      "slotOrder": [
+        "dayLabel",
+        "rewardArt",
+        "quantity",
+        "stateChip"
+      ],
+      "aspect": "0.5 (tall portrait) for a one-row strip of 7; 0.9-1.15 (near square) for a wrapped or scrolling grid",
+      "cornerRadius": 10,
+      "stroke": "none in the default state — the stroke is reserved for the promoted tile",
+      "chipTouchesBottomPadding": true,
+      "approximate": true,
+      "why": "every reference that draws a tile at all puts the day label on top, the art in the middle and the state at the bottom, in that order and with the state chip against the bottom padding; the aspect is the only thing that changes, and it changes with the layout rather than with the game"
+    },
+    "stateIsTheChip": {
+      "rule": "state changes the chip at the bottom of the tile; it does not change the reward art",
+      "chipWidth": "the tile's inner width, edge to edge inside the padding",
+      "chipHeight": "~18-20% of the tile height",
+      "chipRadius": "smaller than the tile's radius",
+      "labelLength": "one word, or one glyph",
+      "why": "Knockout, the RBLX Essentials kit and the Advent calendar all keep the artwork identical across locked and claimable and move the whole difference into a full-width chip; a chip narrower than the tile reads as a badge and loses the button affordance the player is meant to press"
+    },
+    "fourStates": {
+      "claimable": "recolour the tile fill to the accent, add a stroke the other tiles do not have, scale the tile up 6-8%, and make the chip a green button reading CLAIM",
+      "claimed": "desaturate the whole tile — fill, art and amount text — and replace the chip's word with a check glyph; drop the tile back to base size",
+      "locked": "leave the art at full colour and full opacity; the chip becomes a neutral or red rect reading LOCKED, or is deleted and replaced by a padlock glyph plus the day number",
+      "missed": "keep the tile, replace the art with a circular-arrow glyph and the chip with RECOVER; grey it when the recovery has been spent",
+      "exactlyOneClaimable": true,
+      "why": "the claimed frame of the RBLX kit desaturates while the locked tiles beside it stay saturated, and Knockout does the same with a grey Claimed against a red Locked — dimming means SPENT, never NOT YET, and a generator that greys out locked days has told the player their future rewards are already gone"
+    },
+    "claimableEmphasis": {
+      "channels": [
+        "fill",
+        "stroke",
+        "scale"
+      ],
+      "scale": 1.07,
+      "count": "one tile only",
+      "why": "three shipped screens change three things at once on the single claimable tile and nothing at all on the others, which is what makes a 7-tile strip readable at a glance; changing only the colour leaves the eye hunting"
+    },
+    "lockedArt": {
+      "rule": "show the reward at full colour",
+      "exception": "hide it behind a padlock ONLY when the rewards are meant to be a surprise, as in an advent calendar",
+      "why": "three of four shipped screens draw locked rewards fully so the player can see what they are waiting for, which is the entire retention argument for the screen; the one that hides them is a calendar whose premise is the unopened door"
+    },
+    "milestoneDay": {
+      "footprint": "give the final day a different footprint, not just a different colour — a tall card spanning both rows at the end of the grid, or a pinned full-width band below it",
+      "fill": "gold or amber with a lighter stroke and an outer glow or sunburst backdrop",
+      "label": "replace the numeric quantity with the reward's NAME in one or two lines",
+      "independentOfState": true,
+      "why": "Knockout, the RBLX kit and the Advent calendar all promote the last day, and in two of them it stops being a grid cell entirely; the promotion is applied whatever the state says, so fill encodes the prize and the chip still encodes the state"
+    },
+    "quantity": {
+      "rule": "set the quantity against the art — over its lower corner, or on the line directly beneath it",
+      "prefix": "'+' for currency amounts, 'x' for counts",
+      "never": "a bare number, and never its own full row in a square tile",
+      "why": "all five tile-drawing references prefix the number and place it against the art; giving it its own row is what forces the tile tall, and a square tile has no room for it"
+    },
+    "countdownFormat": {
+      "underAnHour": "Xm Ys",
+      "underADay": "Xh Ym Zs when it is the panel's single headline timer, Xh Ym when it is one of many",
+      "overADay": "Xd Yh",
+      "units": "two, three only for the headline timer",
+      "suffixes": "unit letters (d/h/m/s); the pure clock form HH:MM:SS is the minority variant",
+      "never": "a bare seconds count, and never a unit that is showing zero",
+      "why": "five independent screens were read and all of them drop the coarsest unit once it hits zero and carry at most three; the letter-suffix form appears in four of five, the colon form in one, so the suffix form is the default and the clock form is a choice"
+    },
+    "countdownPlacement": {
+      "nextClaimTimer": "one instance only, in the header beside the title, directly under the header, or in the footer's right-hand slot",
+      "perTileTimer": "only when each entry unlocks on its own clock, and then it goes inside that tile's state chip",
+      "overArt": "a timer may sit centred on the artwork only when the tile has no state chip",
+      "mutualExclusion": "the next-claim timer and the READY message occupy the SAME slot and never both appear",
+      "why": "the RBLX kit swaps 'REWARD READY!' for 'NEXT IN 23h 59m 56s' in one footer slot, which is the whole logic of the screen: a countdown exists precisely when nothing is claimable, and showing both at once tells the player two contradictory things"
+    },
+    "streakCounter": {
+      "rule": "a footer-anchored label and number — 'N DAY STREAK' or 'STREAK: N' — with the number heavier or brighter than the word",
+      "position": "a bottom corner, opposite the status slot",
+      "keepsCountingPastTheCycle": true,
+      "never": "leaving the streak implied by which tile is highlighted",
+      "why": "the strip repeats every 5 or 7 days while the streak does not, and Adopt Me shows 'STREAK: 110' against a five-tile cycle precisely so the repetition does not read as lost progress; a screen with no counter silently resets the player's sense of investment every week"
+    },
+    "progressTrack": {
+      "shape": "a full-width pill with an outline, spanning the strip, directly under it",
+      "textInsideTheTrack": "'N / 7 DAYS' centred over the whole track, not moving with the fill",
+      "fill": "a solid accent segment from the left, one cell's width per claimed day",
+      "alternative": "for a gift set with no day order, a plain line reading 'N/M Rewards claimed' instead of a bar",
+      "why": "the RBLX kit centres the fraction over the track so it stays legible at 1/7 and at 6/7, whereas a label that rides the fill is unreadable at both ends; the gift panel drops the bar entirely because six unordered gifts have no progress to draw"
+    },
+    "claimAction": {
+      "oneClaimableAtATime": "the claim button lives ON the claimable tile, as its state chip",
+      "manyClaimableAtOnce": "one primary button in the footer that claims everything ready, and the tiles carry read-only READY chips",
+      "loginPopup": "no claim button at all — an auto-shown popup grants the reward by appearing, and its only control is close",
+      "why": "Roblox's own package uses a single footer 'Claim Rewards' button because several Time rewards can be Ready together, while every day-strip screen puts CLAIM on the one tile — the rule follows from how many things can be claimed, not from taste"
+    },
+    "header": {
+      "style": "an inset band across the panel's top inner edge is the majority; an overhanging plaque or free-standing title is the minority",
+      "titleAlign": "left in a band, centred when the title is free-standing",
+      "carries": "the countdown or the tab row, to the side of the title",
+      "why": "the two kits and the calendar all use a full-width inset band while the two shipped games overhang the title, so unlike the simulator genre the rewards screen does NOT demand a plaque; what is constant is that the header band carries a second thing beside the title"
+    },
+    "closeButton": {
+      "shapes": [
+        "bare × glyph",
+        "red rounded square",
+        "large red × mark"
+      ],
+      "position": "top-right, in or above the header band",
+      "why": "the rewards screen is the one screen that varies here — a bare glyph on Roblox's package, a rounded square on Adopt Me, a proud red mark on Knockout — so the rule is position, not shape, and a generator should take the shape from the theme rather than hard-coding a circle"
+    },
+    "panelSize": {
+      "dayStrip": "55-65% of screen width, 35-45% of screen height",
+      "calendar": "~55% width with an internal scroll",
+      "giftSet": "~30% width",
+      "approximate": true,
+      "why": "measured by eye across four shipped panels; a six-gift panel drawn at day-strip width is mostly empty, and a 7-tile strip drawn at gift-panel width forces the tiles to wrap for no reason"
+    },
+    "hudOpener": {
+      "rule": "the screen always has a persistent on-screen opener of its own, pinned to a screen edge",
+      "carries": "a live countdown directly beneath the icon, and a red badge dot when something is claimable",
+      "badgeTracksClaimability": "the badge appears and disappears with the claim, not with the feature",
+      "why": "Roblox's package ships a named RewardsHudButton and the RBLX kit pins a countdown-bearing icon stack to the left edge; without an opener that badges itself the player only discovers a waiting reward by opening a menu on a hunch"
+    },
+    "autoOpen": {
+      "rule": "open the screen on join when a reward is claimable, and never when one is not",
+      "configurable": true,
+      "why": "Roblox's own package defaults isHiddenOnJoin to false and describes the pop-up as conditional on a new claimable daily reward; a screen that opens on every join becomes a thing the player dismisses without reading"
+    },
+    "resetPolicy": {
+      "options": [
+        "rolling 24h from the previous claim",
+        "a fixed daily reset time shared by all players"
+      ],
+      "storedAs": "a timestamp the countdown counts toward, not a day counter",
+      "documentedEdge": "under a fixed-reset policy a player who claims at 23:00 can claim again at 00:00, one hour later",
+      "why": "Roblox's docs spell out both policies and that exact edge case; a generator that counts days rather than storing the next claimable timestamp cannot render a countdown at all, which is the screen's most-looked-at element"
+    },
+    "rarityLayer": {
+      "rule": "rarity is a swapped background frame behind the tile contents, chosen by the reward's own effect field, never a tint applied to the state chip",
+      "why": "Roblox's package implements valuable rewards as a different frame added to RewardItemFrames, and Knockout's amber spin-day tile still carries an ordinary Locked button — keeping the two in separate layers is what stops a rare locked reward from looking claimable"
+    },
+    "missedDayRecovery": {
+      "rule": "keep the missed tile in place; replace its art with a recover glyph and its chip with RECOVER, and grey the chip once the recovery is spent",
+      "why": "the Advent calendar keeps missed days visible and sellable rather than deleting them, and the kit's own listing describes missing a day as pausing the cycle rather than resetting it — a strip that removes missed days loses the row's arithmetic and the offer"
+    },
+    "themeTheFrameNotTheGrid": {
+      "rule": "spend the game's theme on the panel chrome — an ice frame, a notepad spiral, a festive hat over the header — and keep the tiles inside strictly rectangular and systematic",
+      "why": "both shipped games wrap an illustrated frame around a grid that stays plain, which is what lets seven tiles read as one comparable set; theming the tiles themselves is what turns a reward strip into decoration the eye cannot scan"
+    }
+  },
+  "incomplete": false,
+  "honestLimits": [
+    "Ten references, all fetched or viewed on 2026-09-20; nine of them are images that were downloaded, looked at and deleted, and one is a documentation source file quoted from its raw Markdown.",
+    "Four are shipped games' own screens (Roblox's Engagement Rewards package in two tabs, Knockout, Steal a Brainrot, Adopt Me twice); three are a published commercial UI kit; the Adopt Me pair and the kit pair each show the same screen in two states, which is where the state rules come from and is also why the effective count of distinct SCREENS is seven rather than ten.",
+    "No proportion here was measured with a picker. Tile aspects, chip heights, the 6-8% claimable scale-up and the panel size fractions were read off screenshots by eye and are marked approximate throughout.",
+    "The claimable state was observed in the RBLX Essentials kit, in the Advent calendar and in Adopt Me's popup, but NOT in the Knockout screenshot, which was captured after the day's claim. The claimable rules therefore rest on three references, not four.",
+    "Dungeon Quest's daily reward was found to be a world object with a proximity prompt rather than a screen, and is recorded here as a note rather than as a reference, because it demonstrates no screen construction."
+  ]
+}

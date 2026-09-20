@@ -1,0 +1,330 @@
+{
+  "genre": "screen-hud",
+  "label": "The in-game HUD — currency pills, meters, the button rail, minimap, toasts and the quest tracker",
+  "recorded": "2026-09-20",
+  "incomplete": false,
+  "provenance": "Twelve sources fetched on 2026-09-20 over the live web: six Roblox first-party documentation files pulled raw from the Roblox/creator-docs repository, two Roblox Developer Forum threads read through the Discourse JSON API (one of them written by a designer on Roblox's own Engine UI team), the default theme table and feature docs of the TopbarPlus library, the README of the SimpleToasts library, and a released open-source minimap renderer. No image is stored and no source file is copied; each row records where the claim was read and what construction it states. Honest limit: this is a screen assembled mostly from FIRST-PARTY DOCUMENTATION and SHIPPED LIBRARIES rather than from screenshots of individual hit games, because the fan wikis that describe those games' HUDs (roblox.fandom.com and the per-game wikis) returned HTTP 403/402 to every fetch attempt. Documentation is a weaker witness to fashion than a screenshot is, and a stronger one to geometry — so the numbers below are trustworthy and the taste is not fully covered. Where Roblox's docs describe a specific shipped game's screen in prose, that prose is recorded as prose and nothing is inferred past it.",
+  "references": [
+    {
+      "id": "roblox-hud-meter-tutorial",
+      "source": "Roblox first-party docs, `content/en-us/tutorials/use-case-tutorials/ui/create-hud-meters.md`, fetched 2026-09-20 from https://raw.githubusercontent.com/Roblox/creator-docs/main/content/en-us/tutorials/use-case-tutorials/ui/create-hud-meters.md — the construction of the health meter in the published places 'Hazardous Space Station' and 'UI Fundamentals - HUD Meter'",
+      "demonstrates": [
+        "the whole HUD lives in ONE ScreenGui named for the job (HUDContainer), with a UIPadding of 16px on all four edges so nothing touches the physical screen edge",
+        "ScreenInsets is set to DeviceSafeInsets, not the default CoreUISafeInsets, specifically because CoreUISafeInsets 'adds a large gap between the meter and the physical top edge' — the doc calls that gap the error and the tucked-in version the success",
+        "the meter is right-aligned at the top: AnchorPoint 1,0 and Position {1,0},{0,0}, and the doc's stated reason is that right alignment is what keeps it clear of the Roblox top bar while still hugging the physical edge",
+        "meter size is expressed as scale, 35% of screen width by 5% of screen height, never as pixels",
+        "a UISizeConstraint with MaxSize `inf, 20` caps the bar at 20 pixels tall so it does not grow fat on a tablet's taller aspect ratio",
+        "the bar frame is black at BackgroundTransparency 0.75 (25% opacity) with a UIStroke of Thickness 3 at Transparency 0.25 — the dark translucent plate plus a dark outline is what makes it readable over both a bright and a dark world",
+        "corner radius is UICorner CornerRadius `0.5, 0` — a SCALE of 50%, which yields a true pill at any height, rather than a pixel radius that changes character between devices",
+        "the inner fill is a separate child Frame anchored 0,0.5 at Position {0,0},{0.5,0} filling 100%x100%, carrying its OWN UICorner at the same 0.5 scale so the fill stays pill-shaped as it shrinks",
+        "the icon is an ImageLabel sized `2,0,2,0` — 200% of the bar — pinned with AnchorPoint 0.5,0.5 at Position {0,0},{0.5,0}, so it sits centred ON the bar's left END and OVERHANGS it on both sides, held square by a UIAspectRatioConstraint and raised with ZIndex 2",
+        "fill colour is driven through a five-stop ramp — rgb(225,50,0), (255,100,0), (255,200,0), (150,225,0), (0,225,50) — interpolated by the fraction, so the meter changes hue continuously rather than switching at thresholds",
+        "the tutorial's first instruction after building the custom meter is to call StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, false), because otherwise the default Roblox meter 'will duplicate and potentially overlap the custom meter'"
+      ]
+    },
+    {
+      "id": "roblox-score-bar-tutorial",
+      "source": "Roblox first-party docs, `content/en-us/tutorials/use-case-tutorials/ui/create-a-score-bar.md`, fetched 2026-09-20 from https://raw.githubusercontent.com/Roblox/creator-docs/main/content/en-us/tutorials/use-case-tutorials/ui/create-a-score-bar.md — the gold counter of the published place 'Gold Rush'",
+      "demonstrates": [
+        "the headline counter sits TOP-CENTRE: AnchorPoint 0.5,0 and Position {0.5,0},{0.01,0} — one percent down from the top edge, not flush with it",
+        "size {0.25,0},{0.08,0}, i.e. a quarter of the screen wide, and the stated reason is to 'grab the player's attention' — the primary counter is deliberately the largest thing on the HUD",
+        "a UISizeConstraint with MinSize `0, 40` guarantees the counter never falls below 40 pixels tall on a small screen",
+        "the counter's internals are laid out by a UIListLayout set to FillDirection Horizontal with VerticalAlignment Center — icon and number are a LIST, not two hand-positioned children",
+        "the icon carries LayoutOrder 1 so it is always the leftmost item, and is sized `{1.25,0},{1,0}` with SizeConstraint RelativeYY so it scales off the bar's HEIGHT and keeps its aspect",
+        "the number's TextXAlignment is Left, explicitly 'to ensure the score text remains left-aligned near the crown icon regardless of whether the player's score is 0, 1,000, or 1,000,000' — the icon must not jump as digits are added",
+        "the plate is black at BackgroundTransparency 0.6, and the number is tinted toward the currency's own colour, rgb(255,200,100) for gold, at TextSize 30",
+        "the doc's stated reason for an icon at all is that it 'allows players to easily recognize what you're communicating without using text, which can clutter the screen'"
+      ]
+    },
+    {
+      "id": "roblox-ui-ux-design-guide",
+      "source": "Roblox first-party docs, `content/en-us/production/game-design/ui-ux-design.md`, fetched 2026-09-20 from https://raw.githubusercontent.com/Roblox/creator-docs/main/content/en-us/production/game-design/ui-ux-design.md — Roblox describing the HUDs of named shipped experiences",
+      "demonstrates": [
+        "Spellbound RPG is described as a single circular Items button carrying a book icon that, once selected, reveals three further buttons for skills, equipment and deck — the rail is COLLAPSED by default and fans open on press, and the doc credits this to small mobile screens",
+        "Super Striker League is described as swapping its action buttons by context: Sprint and Tackle while the player lacks the ball, Deke and Pass once they hold it, so 'the UI stays contextually useful, avoiding unnecessary distractions' — the same two slots, different contents",
+        "The Survival Game's HUD is described as health and hunger status plus quick access to map, inventory and tools — status meters and launcher buttons are the two element families, and the doc treats them as the minimum set",
+        "Winds of Fortune's player stats are described as icons sharing a colour palette and similar shapes so a family of stats is recognisable as a family",
+        "the listed close-button convention across Winds of Fortune, Dragon Adventures, BotClash Simulator and DOORS is an X on a button in the top-right; grey means unusable; a lock overlay means not yet unlocked",
+        "the consistency examples are stated as hard rules a game commits to: the Health stat is green in every text, icon and bar; a price the player cannot afford renders in red",
+        "buttons are made to read as pressable by 'housing buttons in a container' and by 'adding highlights or shadows to enhance their tactile appeal by suggesting 3D depth'",
+        "feedback the doc names as required includes 'a progress bar filling up as the player completes quest objectives' and a button that visibly changes on hover, press and release"
+      ]
+    },
+    {
+      "id": "roblox-screen-insets-and-core-ui",
+      "source": "Roblox first-party docs, `content/en-us/includes/ui/screen-insets.md`, `content/en-us/includes/ui/default-ui.md` and `content/en-us/ui/on-screen-containers.md`, all fetched 2026-09-20 from https://raw.githubusercontent.com/Roblox/creator-docs/main/content/en-us/ — what the platform already owns on the screen",
+      "demonstrates": [
+        "four inset modes exist and they are not interchangeable: CoreUISafeInsets (the default, clear of top bar AND cutouts, 'recommended if the ScreenGui contains interactive UI elements'), DeviceSafeInsets (clear of cutouts only), TopbarSafeInsets (the ScreenGui flexes horizontally to fill the gap BETWEEN the top bar controls and the right edge), and None (documented as suitable 'only for non-interactive content like background images')",
+        "eight core UI elements ship enabled in every experience and each can be individually turned off through SetCoreGuiEnabled: PlayerList, Health, Backpack, Chat, EmotesMenu, SelfView, Captures, AvatarSwitcher",
+        "the Health bar only appears once the Humanoid is below full health and the Backpack only appears once a Tool exists — two core elements that are invisible at design time and appear mid-session on top of whatever was drawn there",
+        "the Captures button is documented as sitting 'along the right side of the screen', so the right edge is not free even when the player list is hidden",
+        "touch devices additionally draw a virtual thumbstick and a jump button, removable only wholesale via GuiService.TouchControlsEnabled = false",
+        "multiple ScreenGui containers are the intended way to separate interfaces, layered by DisplayOrder, and a disabled ScreenGui 'will not render, process user input, or update' — so a closed menu costs nothing",
+        "ResetOnSpawn defaults to true, which silently rebuilds the HUD on every respawn unless the ScreenGui is a DIRECT child of StarterGui with ResetOnSpawn false"
+      ]
+    },
+    {
+      "id": "roblox-reserved-and-thumb-zones",
+      "source": "Roblox first-party docs, `content/en-us/ui/position-and-size.md`, section 'Cross-platform factors', fetched 2026-09-20 from https://raw.githubusercontent.com/Roblox/creator-docs/main/content/en-us/ui/position-and-size.md",
+      "demonstrates": [
+        "'On mobile devices, the default controls occupy a portion of the bottom-left and bottom-right corners of the screen. When you design a game's UI, avoid placing important info or virtual buttons in these zones.' — both bottom corners are reserved, not just one",
+        "the thumb-zone rule is stated numerically: 'A button placed 40% below the screen's top edge is reachable on a phone but almost unreachable on a tablet' — the same scale position is not the same ergonomics across devices",
+        "the recommended fix is not a scale position at all but RELATIVE positioning against the live jump button, and the doc's own sample sizes the custom button at 80% of the jump button's pixel size and offsets it 20 pixels to the jump button's left, with AnchorPoint 1,1",
+        "the sample parents the custom button to the JUMP BUTTON'S OWN PARENT and waits on `jumpButton.IsLoaded` before reading its position, so the rail follows the control rather than guessing where it is",
+        "contextual actions are documented as belonging to a proximity prompt rather than the HUD: 'it doesn't make sense to constantly show an open button on the screen'"
+      ]
+    },
+    {
+      "id": "roblox-cross-platform-counters",
+      "source": "Roblox first-party docs, `content/en-us/projects/cross-platform.md`, fetched 2026-09-20 from https://raw.githubusercontent.com/Roblox/creator-docs/main/content/en-us/projects/cross-platform.md",
+      "demonstrates": [
+        "Roblox's own worked example of HUD placement is currency: 'the UI container holding the gem/coin counters ... is positioned at an X scale of 1 (right) and Y scale of 0 (top) with an upper-right anchor point' — currency counters belong top-right, anchored 1,0",
+        "counters are described as a CONTAINER holding several counters, not as independent free-floating labels",
+        "screen size is not to be guessed from pixels; GuiService.ViewportDisplaySize categorises the viewport into exactly three buckets — Small (most tablet/mobile/handheld), Medium (most laptops and monitors), Large (most TVs or larger)",
+        "a container sized at 75% width is called out as correct on a phone and wrong on a 4K TV, so one scale figure cannot serve every bucket",
+        "the doc requires a text size constraint so HUD text 'doesn't become illegible (too small) or visually too large on larger screens like 4K TVs'",
+        "UIListLayout with flex is named as the standard way to distribute HUD children so a container still reads correctly when an item is added or removed at runtime"
+      ]
+    },
+    {
+      "id": "devforum-roblox-staff-ui-tips",
+      "source": "Roblox Developer Forum, 'Designing UI - Tips and Best Practices' by uiuxartist, 'a Designer on the Engine UI team', topic 3074034 — read 2026-09-20 in full through https://devforum.roblox.com/t/3074034.json",
+      "demonstrates": [
+        "the Roblox top bar is given an exact figure: 'an offset height size of 36 and expands as needed to access system features', and 'Roblox automatically pushes your UI down under the top bar during play mode unless you change this in the ScreenGui properties'",
+        "the post names four screen-UI patterns as distinct things with distinct rules — the HUD ('UI that's placed around the EDGE of the screen that's always available during game play'), popup/modal dialogs, full-screen dialogs, and alerts/toasts ('display for a limited time, then disappear')",
+        "the examples given for HUD content are exactly: experience or health bars, store icons, and scores",
+        "the examples given for toast content are exactly: quest progress messages, achievements, and event notices — so quest PROGRESS is a toast, distinct from a persistent tracker",
+        "chat and the leaderboard are described as user-controllable at any time, expandable or minimisable, so their footprint is not fixed and cannot be designed around by assuming a size",
+        "design mobile-first is stated as the rule: 'mobile devices have the least amount of screen space and you'll want to make sure all your UI fits there first'",
+        "a caveat that constrains construction directly: 'UIStroke does not currently support scale, only offset. So if you choose to use that, you may need to choose a stroke offset size that generally looks good on all screen sizes.'",
+        "the same caveat inverted for radius: a UICorner with an OFFSET radius of 20 'looks drastically different between devices', while a SCALE radius of 0.2 'looks much more consistent across devices'"
+      ]
+    },
+    {
+      "id": "devforum-mobile-buttons-tutorial",
+      "source": "Roblox Developer Forum, 'The Correct Way to Design Mobile Buttons' by Micamaster100, topic 2494558, 34 posts — read 2026-09-20 through https://devforum.roblox.com/t/2494558.json",
+      "demonstrates": [
+        "the two touch zones are named and treated asymmetrically: 'Mobile buttons should never be at the Thumbstick Zone' because the left thumb is committed to movement and a stray press there both misfires and stops the character",
+        "the jump button is not at a fixed place: 'there's 2 presets of size and position for the controls. The preset changes when any of the screen dimensions reach over 500 pixels' — phone and tablet get different geometry",
+        "a concrete working placement for the anchor frame is given as Position {1,-95},{1,-90} with Size {0,70},{0,70}, with the extra button then offset to {-1.1, 0},{0, 0} relative to it — i.e. one button-width plus a tenth to the LEFT, never to the right, 'don't place it on the right as it won't be fully visible on the screen'",
+        "Roblox's own control language is cited as the model: 'The jump button doesn't say jump, it just has a self-explanatory up arrow' — icon, not word, on a touch action button",
+        "legacy text-labelled mobile buttons are called out by name as the thing that 'contradicts the modern Roblox UI'",
+        "detecting mobile via UserInputService.TouchEnabled is called out as the common error, because a touchscreen PC then gets touch controls it never asked for; GetLastInputType is the stated correct test"
+      ]
+    },
+    {
+      "id": "topbarplus-default-theme",
+      "source": "TopbarPlus v3, the most widely used Roblox topbar icon library — `src/Features/Themes/Default.lua` and `docs/features.md` fetched 2026-09-20 from https://raw.githubusercontent.com/1ForeverHD/TopbarPlus/main/",
+      "demonstrates": [
+        "the icon rail's unit is a 44x44 square: Widget DesiredWidth 44, MinimumWidth 44, MinimumHeight 44 — one number, used three times, so an icon-only button is a perfect square",
+        "IconCorners CornerRadius is UDim.new(1, 0) — a full 100% scale radius, so every rail button is a CIRCLE, and it stays a circle when the widget widens to fit a label",
+        "BorderSize 4 is the gap between neighbouring icons in the rail",
+        "the glyph does not fill the button: IconImageScale 0.5, so the icon occupies half the 44px button and the other half is breathing room",
+        "the button plate is near-black rgb(18,18,21) at BackgroundTransparency 0.08 — almost opaque, so the rail reads against any world behind it",
+        "labels are BuilderSans Bold at TextSize 16, and when a label appears the widget grows horizontally with PaddingLeft 9 and PaddingRight 11 — asymmetric, slightly more air after the text than before it",
+        "the unread badge is a fixed 20x20 at Position {1,-12},{0,-1} — hung off the button's top-right corner, overlapping it by 12px horizontally, with its count at TextSize 13",
+        "the rail is explicitly a three-way alignment: icon:align('Left') is the default, with 'Center' and 'Right' as the alternatives — a rail declares which screen edge it belongs to rather than being positioned",
+        "the selected state is not a colour swap but an added lighter spot behind the glyph: IconSpot BackgroundTransparency drops 1 -> 0.7 in white with a 45-degree gradient",
+        "grouped icons come in two shapes with caps on both: a Dropdown is vertical and shows 4.5 icons before scrolling (the half is deliberate, it signals more below), a Menu is horizontal and shows 4"
+      ]
+    },
+    {
+      "id": "simpletoasts-library",
+      "source": "SimpleToasts, an open-source Roblox toast library — README fetched 2026-09-20 from https://raw.githubusercontent.com/rvila94/SimpleToasts/main/README.md, announcement read at https://devforum.roblox.com/t/4751556.json",
+      "demonstrates": [
+        "six anchor positions and no others: top-left, top-center, top-right, bottom-left, bottom-center, bottom-right — with top-right as the default",
+        "toasts stack as a PILE rather than a list: newest in front, older ones peeking behind by their edges; hovering on desktop or tapping on mobile expands the pile, and expanding shows 3",
+        "maxVisible is capped at 5 per position — beyond that the pile does not grow, it replaces",
+        "default life is 3000ms; hovering or tapping PAUSES every timer in the pile, which is the accommodation that makes a 3-second toast acceptable",
+        "there are exactly five severities — success, info, warn, error, secondary — and each owns a colour pair plus an icon plus an optional sound, so severity is carried by more than hue",
+        "the severity palette is a very pale tinted card with a saturated accent: success #F0FDF4 card against #4ADE80/#16A34A accent, warn #FFFBEB against #FBB024/#D97706, error #FEF2F2 against #F87171/#DC2626",
+        "motion is specified, not left open: slide in and out from the NEAREST screen edge plus a fade, 0.25s per phase on Quint easing, with the neighbours tweening to close the gap when one leaves",
+        "toasts live in their own ScreenGui at DisplayOrder 1000, stated outright as 'keeps toasts above game UI'",
+        "card background transparency 0.08 and body text at size 14, with the summary line using the Bold weight of the same face — one face, two weights",
+        "a toast can be sticky (never auto-dismiss) and is closable by default, so an important message is not a race against a timer"
+      ]
+    },
+    {
+      "id": "minimap-render-and-gui",
+      "source": "Roblox Developer Forum, 'Minimap Render & Gui' by Etheroit and RainyLofi, topic 1995940, released open source with a showcase place — read 2026-09-20 through https://devforum.roblox.com/t/1995940.json",
+      "demonstrates": [
+        "a shipped Roblox minimap is not a live camera: the map is pre-rendered offline by raycasting down over the place and uploaded as a GRID of image tiles, then panned under a mask at runtime",
+        "the render region is defined by placing two invisible anchored parts at opposite corners, one above the map and one below it, sharing an orientation and rotated only in Y — the map's bounds are authored objects, not code constants",
+        "resolution is a declared ratio, PPS (pixels per stud), with each tile covering a Grid of studs, so tile pixel size is Grid x PPS and quality is a dial rather than an accident",
+        "runtime settings are exactly three: the grid used at render time, the list of tile image ids, and Zoom",
+        "player blips are coloured by TEAM, and out-of-range behaviour is a per-blip decision rather than a global one — 'pinned' blips stick to the minimap's border instead of disappearing when they leave its bounds, and a blip can blink",
+        "place-of-interest markers are an icon plus a text label that COUNTER-ROTATE so the icon's bottom always faces the player's position, and hovering a marker reveals more information",
+        "the map is expected to be maximisable and zoomable at runtime, so the HUD minimap is a small view onto a bigger screen rather than a separate asset"
+      ]
+    },
+    {
+      "id": "devforum-hud-feedback-thread",
+      "source": "Roblox Developer Forum, 'Feedback on HUD UI' by Araw_Dev, topic 3090275, 8 posts — read 2026-09-20 through https://devforum.roblox.com/t/3090275.json. Thin by design: the screenshot itself cannot be recorded here, so only the reviewers' written critiques are taken",
+      "demonstrates": [
+        "the first correction raised against the posted HUD was radius consistency — that the rounding 'doesn't really match' and the health and stamina bars should be rounded out; the author's resolution was to make them pill-shaped, matching the pill radius Roblox's own meter tutorial specifies",
+        "the second correction was legibility of a coloured value over the world: make the red Bounty text bigger and 'add a black outline around it' — a dark text outline is the community's reflex fix for HUD text, not a stylistic flourish",
+        "a sibling thread on the same board (topic 3837486) records the reciprocal complaint about an illustrated HUD: health and stamina bars sitting in a corner 'without any labels' were called confusing, and the reviewer's instinct was that status meters want to be more centred or at least clearly separated from the rest of the HUD"
+      ]
+    }
+  ],
+  "rules": {
+    "note": "Distilled from the references above. Units are Roblox UI units: Scale is a 0-1 fraction of the parent, Offset is pixels, transparency is 0 opaque to 1 invisible. Figures taken verbatim from a source are exact; anything read off prose is marked approximate. This file describes a SCREEN, so the rules are about where things sit, what owns what, and how each element is assembled — a genre file supplies the palette and the chrome on top.",
+    "screenOwnership": {
+      "rule": "Treat the screen as already occupied. Roblox owns the top strip (top bar, 36px offset, expanding), the top-right (player list), the right edge (capture button), the bottom-left (thumbstick) and the bottom-right (jump button). The HUD may use the top-centre band, the left edge below the top bar, the mid-right, and the bottom-centre — everything else is borrowed and must survive the owner reappearing.",
+      "topbarOffsetPx": 36,
+      "reserved": ["top-strip", "top-right", "right-edge", "bottom-left", "bottom-right"],
+      "usable": ["top-centre", "left-edge", "mid-right", "bottom-centre"],
+      "why": "Roblox's Engine UI designer gives the top bar as offset height 36 and says it expands; the docs reserve both bottom corners for touch controls and put the capture button on the right side; the player list and chat are user-toggleable so their footprint changes mid-session. A HUD generated without this map draws its best element under a control the player cannot move."
+    },
+    "coreUiCollision": {
+      "rule": "Any custom element that duplicates a core one must disable the core one in the same breath: a custom health bar requires SetCoreGuiEnabled(Enum.CoreGuiType.Health, false), a custom hotbar requires Backpack false, a custom leaderboard requires PlayerList false.",
+      "pairs": {
+        "healthMeter": "Enum.CoreGuiType.Health",
+        "hotbar": "Enum.CoreGuiType.Backpack",
+        "leaderboard": "Enum.CoreGuiType.PlayerList",
+        "chatPanel": "Enum.CoreGuiType.Chat"
+      },
+      "why": "Roblox's own HUD tutorial shows the failure first and then fixes it — the default meter 'will duplicate and potentially overlap the custom meter'. The trap is that Health and Backpack are INVISIBLE at design time and only appear once the player takes damage or picks up a tool, so the collision never shows up in Studio and always shows up in play."
+    },
+    "screenInsets": {
+      "rule": "Interactive HUD goes in a ScreenGui at CoreUISafeInsets. Use DeviceSafeInsets only for an element that must hug the physical edge AND is aligned away from the top bar. Never use None for anything the player touches.",
+      "interactiveDefault": "CoreUISafeInsets",
+      "edgeHuggingException": "DeviceSafeInsets",
+      "forbiddenForInteractive": "None",
+      "why": "The docs recommend CoreUISafeInsets 'if the ScreenGui contains interactive UI elements' and restrict None to 'non-interactive content like background images'. The HUD meter tutorial takes the exception deliberately and states the trade: CoreUISafeInsets is correct but 'adds a large gap between the meter and the physical top edge', and the right-aligned meter can afford DeviceSafeInsets because its alignment already keeps it clear of the Roblox controls."
+    },
+    "edgePadding": {
+      "rule": "Put a UIPadding of 16px on all four edges of the HUD container, once, rather than nudging each child away from the edge.",
+      "paddingPx": 16,
+      "why": "The first-party HUD tutorial applies exactly `0, 16` to all four edges of the ScreenGui so contents are pushed off the screen edge 'for a cleaner appearance and to prevent them from being clipped'. Applied on the container it survives every child being repositioned later; applied per child it is forgotten on the next one added."
+    },
+    "slotMap": {
+      "rule": "Elements have assigned homes and a generator should not improvise them. Currency counters: top-right, AnchorPoint 1,0, Position {1,0},{0,0}, as a single container holding all counters. Primary score or objective count: top-centre, AnchorPoint 0.5,0, Position {0.5,0},{0.01,0}. Status meters (health, stamina, hunger): upper area opposite the currency, or grouped under it, never scattered into separate corners. Launcher rail: one edge, left or the top bar. Toasts: top-right stack unless currency already fills it, then top-centre. Touch action buttons: relative to the jump button only.",
+      "currency": { "anchor": [1, 0], "position": "{1,0},{0,0}" },
+      "primaryScore": { "anchor": [0.5, 0], "position": "{0.5,0},{0.01,0}", "size": "{0.25,0},{0.08,0}" },
+      "meters": { "anchor": [1, 0], "position": "{1,0},{0,0}", "sizeScale": [0.35, 0.05] },
+      "why": "Every one of these numbers is a first-party figure, not a taste: Roblox's cross-platform guide places 'the gem/coin counters' at X scale 1 and Y scale 0 with an upper-right anchor point, the score bar tutorial positions the headline counter at {0.5,0},{0.01,0} at a quarter of screen width, and the HUD meter tutorial anchors the meter 1,0 at 35% by 5%. Scattering the same information into different corners is what the 'Trying to make a HUD like this' reviewer called confusing."
+    },
+    "meterConstruction": {
+      "rule": "A meter is a pill plate plus a pill fill plus an overhanging icon. Plate: black at BackgroundTransparency 0.75, UIStroke Thickness 3 at Transparency 0.25, UICorner CornerRadius {0.5,0}. Fill: a child Frame anchored 0,0.5 at {0,0},{0.5,0}, size {1,0},{1,0}, with its OWN UICorner at {0.5,0}. Icon: ImageLabel at 200% of the bar, AnchorPoint 0.5,0.5 at {0,0},{0.5,0}, UIAspectRatioConstraint, ZIndex 2. Cap the height with UISizeConstraint MaxSize inf,20.",
+      "plate": { "backgroundTransparency": 0.75, "strokeThickness": 3, "strokeTransparency": 0.25, "cornerRadius": "0.5 scale" },
+      "iconScaleOfBar": 2,
+      "maxHeightPx": 20,
+      "why": "Read verbatim off Roblox's HUD meter tutorial, which gives every one of these values and explains each: the dark translucent plate plus dark outline is so the meter 'stands out better on both light and dark backgrounds', the 0.5 SCALE radius 'ensures a fully rounded curve no matter how tall or wide the container becomes', and the 20px cap exists because 5% height 'may look slightly too tall on tablet screens'. The overhanging oversized icon is the detail a generator invents wrongly — it is not inside the bar, it is centred on the bar's left end at twice the bar's height."
+    },
+    "meterColourRamp": {
+      "rule": "A meter's fill colour interpolates continuously across five stops rather than switching at thresholds: rgb(225,50,0), rgb(255,100,0), rgb(255,200,0), rgb(150,225,0), rgb(0,225,50), indexed by the fill fraction.",
+      "stops": [[225, 50, 0], [255, 100, 0], [255, 200, 0], [150, 225, 0], [0, 225, 50]],
+      "why": "The first-party tutorial ships exactly this five-keypoint sequence and a fraction-to-colour function rather than if/elseif thresholds. A three-step red/yellow/green switch is the common reinvention and it reads as a state machine; the continuous ramp reads as a quantity draining."
+    },
+    "counterConstruction": {
+      "rule": "A counter is a horizontal UIListLayout — icon first at LayoutOrder 1, number second with TextXAlignment Left — never two hand-positioned children. Size the icon with SizeConstraint RelativeYY so it scales off the row height. Floor the row with UISizeConstraint MinSize 0,40. Tint the number toward its own currency's colour.",
+      "layout": "UIListLayout Horizontal, VerticalAlignment Center",
+      "iconLayoutOrder": 1,
+      "numberAlignment": "Left",
+      "minHeightPx": 40,
+      "why": "Roblox's score bar tutorial gives the reason in one sentence — left-aligning the number keeps the icon still 'regardless of whether the player's score is 0, 1,000, or 1,000,000'. A centred number makes the icon jump sideways every time the player earns anything, which is precisely when the player is looking at it."
+    },
+    "buttonRail": {
+      "rule": "The launcher rail is one stack of equal circular icon buttons on one declared edge. Unit 44x44, fully round (CornerRadius scale 1.0), 4px between neighbours, glyph at 50% of the button, plate near-black rgb(18,18,21) at BackgroundTransparency 0.08. If a button carries a label the widget grows horizontally with PaddingLeft 9 / PaddingRight 11 and the label is Bold at TextSize 16. Cap a vertical group at 4.5 visible icons and a horizontal one at 4.",
+      "buttonPx": 44,
+      "gapPx": 4,
+      "cornerRadius": "1.0 scale",
+      "glyphScale": 0.5,
+      "labelTextSize": 16,
+      "maxVisible": { "vertical": 4.5, "horizontal": 4 },
+      "why": "Every figure is the shipped default theme of TopbarPlus, the library most Roblox games use for this rail, so these are the proportions players have been trained on. The 4.5 cap is the interesting one: the half-icon is deliberate, it is how a scrollable group tells the player there is more below without adding a scrollbar."
+    },
+    "railBadge": {
+      "rule": "An unread or claimable count on a rail button is a fixed 20x20 badge hung off the button's TOP-RIGHT corner at Position {1,-12},{0,-1}, overlapping the button, with the count at TextSize 13. The badge does not resize with the count.",
+      "sizePx": 20,
+      "position": "{1,-12},{0,-1}",
+      "countTextSize": 13,
+      "why": "Taken from the TopbarPlus default theme. Fixed size matters: a badge that grows to fit '12' changes the silhouette of the rail, and a rail whose shape changes when a quest completes is a rail that reads as broken rather than as notifying."
+    },
+    "railSelectedState": {
+      "rule": "A selected rail button is marked by adding a lighter spot behind the glyph — white at BackgroundTransparency 0.7 with a 45-degree gradient — not by recolouring the button.",
+      "why": "TopbarPlus's default Selected state changes only IconSpot, leaving the plate colour, size and radius untouched. Recolouring the whole button is the obvious move and it breaks the rail's read as one family, which the Roblox UX guide names as the point of a consistent visual language."
+    },
+    "touchButtonPlacement": {
+      "rule": "Custom touch action buttons are positioned RELATIVE to the live jump button, not by scale. Size them at 80% of the jump button's pixel size, AnchorPoint 1,1, offset to its LEFT (the docs' sample uses -20px; the community tutorial uses one button-width plus a tenth), parented to the jump button's own parent, after waiting on jumpButton.IsLoaded. Never place a button in the thumbstick zone.",
+      "sizeFractionOfJumpButton": 0.8,
+      "offsetDirection": "left",
+      "offsetPx": 20,
+      "forbiddenZone": "bottom-left thumbstick",
+      "why": "The jump button moves: 'there's 2 presets of size and position for the controls. The preset changes when any of the screen dimensions reach over 500 pixels.' A scale position that lands beside it on a phone lands far from it on a tablet, and the docs give the ergonomics directly — 'a button placed 40% below the screen's top edge is reachable on a phone but almost unreachable on a tablet'. The thumbstick side is barred because the left thumb is committed to movement."
+    },
+    "touchButtonLabelling": {
+      "rule": "A touch action button carries an icon, not a word. Reserve text for a caption on press or hover.",
+      "why": "The community tutorial states the platform's own logic — 'The jump button doesn't say jump, it just has a self-explanatory up arrow' — and names text-labelled mobile buttons as the legacy pattern that 'contradicts the modern Roblox UI'. TopbarPlus reaches the same place from the other direction by defaulting every icon to label-less and growing the widget only when a label is explicitly set."
+    },
+    "toasts": {
+      "rule": "Toasts are a stacked pile at one of six anchors, top-right by default: newest in front, older ones peeking behind, at most 5 per anchor, expanding to 3 on hover or tap. Default life 3000ms, timers PAUSE while the pile is hovered or tapped, every toast closable, important ones sticky. Motion is a slide from the nearest screen edge plus a fade, 0.25s per phase on Quint, with neighbours tweening to close the gap. Put them in their own ScreenGui at a DisplayOrder above the HUD.",
+      "positions": ["top-left", "top-center", "top-right", "bottom-left", "bottom-center", "bottom-right"],
+      "defaultPosition": "top-right",
+      "maxVisible": 5,
+      "expandedCount": 3,
+      "lifeMs": 3000,
+      "animationSeconds": 0.25,
+      "easing": "Quint",
+      "displayOrder": 1000,
+      "why": "All figures are the shipped defaults of the SimpleToasts library, and Roblox's own UI-pattern taxonomy puts quest progress, achievements and event notices in this bucket specifically because they 'display for a limited time, then disappear'. The pause-on-hover is the rule a generator omits and it is what makes a 3-second lifetime defensible: without it a 3-second toast is a test of reflexes."
+    },
+    "toastSeverity": {
+      "rule": "Exactly five severities — success, info, warn, error, secondary — and each carries a colour PAIR plus an icon, never colour alone. The card is a very pale tint of the accent and the accent does the work: success #F0FDF4 card with #4ADE80 / #16A34A, warn #FFFBEB with #FBB024 / #D97706, error #FEF2F2 with #F87171 / #DC2626.",
+      "severities": ["success", "info", "warn", "error", "secondary"],
+      "why": "The SimpleToasts theme table gives five and only five, each with colours, an icon and an optional sound. Roblox's accessibility guidance requires that nothing rely solely on colour to distinguish an outcome, which is exactly what the paired icon buys; and the pale-card/saturated-accent split is what keeps body text legible on a card that still reads as green or red at a glance."
+    },
+    "minimap": {
+      "rule": "A minimap is a pre-rendered image tile grid panned under a mask, not a live ViewportFrame. Author the map bounds as two invisible anchored parts at opposite corners sharing a Y-only rotation, render at a declared pixels-per-stud so each tile is Grid x PPS, and expose exactly three runtime settings: grid, tile ids, zoom. Blips are coloured by team; a blip that leaves the view is PINNED to the border rather than deleted; place markers counter-rotate so the icon's bottom always faces the player.",
+      "runtimeSettings": ["grid", "tileIds", "zoom"],
+      "outOfRangeBlips": "pin-to-border",
+      "markerRotation": "counter-rotate toward player",
+      "why": "Taken from a released open-source minimap renderer with a public showcase place. The pin-to-border rule is the one a generator would not invent and the one players feel: a teammate blip that vanishes at the edge tells you nothing, and a blip that sticks to the rim tells you which way to turn. NOT EVIDENCED by these sources: which screen corner a minimap belongs in — no source fetched stated it, so a generator should take the corner from the genre file or the request, not from this rule."
+    },
+    "questTracker": {
+      "rule": "Split quests across two surfaces. Progress EVENTS are toasts ('objective complete', 'stage 2 of 4'), transient and timed. Current objective STATE is a persistent tracker that lives on a screen edge and is built from the counter and meter rules — a line of text plus a progress bar that fills, not a number alone.",
+      "eventSurface": "toast",
+      "stateSurface": "persistent edge panel with a fill bar",
+      "why": "Roblox's Engine UI designer lists 'quest progress messages' under alerts/toasts — the transient pattern — while the UX guide separately names 'a progress bar filling up as the player completes quest objectives' as required feedback. Those are two different elements and collapsing them into one is why trackers either nag or go unnoticed. NOT EVIDENCED: the tracker's exact edge, width or row height — no fetched source gave figures, and this rule deliberately stops short of inventing them."
+    },
+    "contextualSlots": {
+      "rule": "Keep the number of visible HUD buttons fixed and change their CONTENTS with context, or collapse the secondary ones behind one button that fans open on press. Do not grow the rail to cover every case.",
+      "why": "Roblox documents both shapes with named shipped games: Super Striker League swaps the same two action slots between Sprint/Tackle and Deke/Pass depending on whether the player has the ball, and Spellbound RPG keeps a single circular Items button that reveals skills, equipment and deck only once pressed — which the doc attributes directly to small mobile screens getting 'overwhelmed with excessive buttons'."
+    },
+    "scaleVersusOffset": {
+      "rule": "Position and size in Scale; bound the result in pixels with UISizeConstraint. Set UICorner radius in SCALE. Set UIStroke thickness in pixels, choosing a value that survives every screen, because stroke has no scale option. Add a text size constraint so HUD type cannot go illegible on a phone or absurd on a TV.",
+      "cornerRadiusUnit": "scale",
+      "strokeUnit": "offset",
+      "why": "Roblox's Engine UI designer measured both: a UICorner at offset 20 'looks drastically different between devices' while the same corner at scale 0.2 'looks much more consistent', and 'UIStroke does not currently support scale, only offset'. This is the single most mechanical rule in the file and the one that silently ruins a HUD that looked right in the Studio viewport."
+    },
+    "deviceBuckets": {
+      "rule": "Adapt to GuiService.ViewportDisplaySize, which has three values and only three — Small (phones, tablets, handhelds), Medium (laptops and monitors), Large (TVs and above). Do not branch on pixel width.",
+      "buckets": ["Small", "Medium", "Large"],
+      "why": "Roblox provides the categorisation precisely because 'attempting to predict screen size by pixels often leads to misinterpretation', and gives the failure case: a container at 75% width is right on a phone and enormous on a 4K TV. Designing mobile-first is the stated order — 'mobile devices have the least amount of screen space and you'll want to make sure all your UI fits there first'."
+    },
+    "textLegibility": {
+      "rule": "Every HUD value drawn over the 3D world carries a dark outline, and sits on its own tinted plate rather than directly on the world. A coloured value (a bounty, a debuff, a warning) needs the outline more than a white one, not less.",
+      "why": "The community's first two corrections on a posted HUD were exactly this — 'add a black outline around it' for the red bounty text, and round the bars to pills — and Roblox's own tutorials never place a HUD number on bare world: the score bar sits on black at transparency 0.6 and the meter on black at 0.75 with a stroke. A HUD value that is legible over grass and invisible over snow is the default outcome without both."
+    },
+    "layering": {
+      "rule": "One ScreenGui per surface, layered by DisplayOrder: the HUD lowest, modals above it, toasts highest. Toggle a surface with ScreenGui.Enabled rather than hiding children. Set ResetOnSpawn false on the HUD and make it a DIRECT child of StarterGui.",
+      "order": ["hud", "modal", "toast"],
+      "why": "The docs state a disabled ScreenGui 'will not render, process user input, or update in response to changes', so a closed menu costs nothing, and that ResetOnSpawn only stays false for a DIRECT child of StarterGui — a HUD tucked inside a Folder silently rebuilds on every respawn, losing its animation state and any runtime wiring, which is a bug that only appears the first time the player dies."
+    },
+    "hierarchyOfInformation": {
+      "rule": "Rank HUD elements before placing them: the single most decision-relevant number gets the top-centre slot and the largest size; resources the player spends get the top-right group; status the player reacts to gets a meter; everything else is a button, and anything contextual is a proximity prompt rather than a permanent button.",
+      "why": "Roblox's UX guide builds the whole chapter on the Hierarchy of Information and names the questions — what is the player doing, what is the most important thing to be aware of, how frequently will they make this choice. Its own tutorial follows it literally, sizing the score bar at a quarter of the screen 'to grab the player's attention', and it moves one-off actions off the HUD entirely because 'it doesn't make sense to constantly show an open button on the screen'."
+    },
+    "consistencyContract": {
+      "rule": "Fix the per-stat associations once and hold them across every HUD element: a stat's colour is the same in its icon, its bar and its text; an unaffordable price renders red; grey means unusable; a lock overlay means not yet unlocked; close is an X at the top-right.",
+      "why": "Roblox lists these as the worked examples of UI consistency and of convention, drawn across Winds of Fortune, Dragon Adventures, BotClash Simulator, DOORS and Arcane Odyssey. They are cheap to honour and they are what lets a player read a HUD they have never seen; breaking one of them costs more than the whole visual style is worth."
+    }
+  },
+  "gapsAgainstShippedTheme": [
+    "OPEN: this file is documentation-led. The fan wikis and game pages that would have given per-game HUD screenshots returned HTTP 403 and 402 to every fetch, so the numbers here are first-party and library-default figures rather than measurements of a specific hit game's HUD.",
+    "OPEN: minimap PLACEMENT is unevidenced — no fetched source named a corner. The construction rules are safe to apply; the corner is not.",
+    "OPEN: quest tracker geometry (edge, width, row height, how many objectives are listed at once) is unevidenced. Only the two-surface split is supported.",
+    "OPEN: nothing here has been rendered in Studio and compared, unlike simulator.json. Until it has, every figure is read rather than seen."
+  ]
+}

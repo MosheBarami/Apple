@@ -1,0 +1,320 @@
+{
+  "genre": "survival",
+  "label": "Survival / crafting — hotbars, needs meters, crafting panes, base-building placement",
+  "recorded": "2026-09-20",
+  "incomplete": false,
+  "provenance": "Eleven public web pages fetched on 2026-09-20: Roblox Developer Forum feedback and community-resource threads, one open-source survival framework on GitHub, and one shipped-game player wiki. Each row below names a page that was actually retrieved and read. No image is stored, no Luau source is copied, and no asset is reproduced; what is recorded is construction — what sits where, what shape it is, what changes when state changes.",
+  "evidentiaryLimit": "THIS FILE IS WEAKER EVIDENCE THAN simulator.json AND SAYS SO. simulator.json's rows were read off screenshots of shipped games; these rows were read off TEXT — authors and reviewers describing their own interfaces, and module authors publishing their defaults. That is strong for layout, hierarchy, state and behaviour, and for the numbers that are literally published as defaults (1-stud grid, 15-degree rotation, 3.6 degrees per percent, 9 hotbar slots). It is WEAK for pixel geometry: no stroke weight, corner radius or bar height below was measured off an image, so every such value is given as a RATIO between two things that were described, never as an invented px, and is flagged. Three Fandom wikis that describe the HUDs of shipped survival games (Booga Booga, The Survival Game, Survive the Cold) refused every fetch with HTTP 402/403, so nothing from them is recorded here even though search previews of them were visible. A preview is not a fetch.",
+  "references": [
+    {
+      "id": "devforum-survival-hud-feedback",
+      "source": "https://devforum.roblox.com/t/feedback-on-ui-for-survival-game/1164623 — Creations Feedback thread, fetched 2026-09-20. Author 'Askavix' posts a survival HUD; CrazedBrick1 and Oak282 critique it.",
+      "demonstrates": [
+        "the HUD is a SET of stacked bars — health, stamina, hunger, thirst, and a level bar — read and judged as one component, not as five independent widgets",
+        "the first critique in the thread is a PARITY failure: health and stamina had a colour 'leak'/glow treatment and hunger and thirst did not, and a reviewer noticed the two missing ones before anything else",
+        "the fix accepted by the reviewer was not to remove the glow but to give the missing bars the same treatment, rendered pixelated to match the game's art register",
+        "five tool slots numbered 1-5 sit at the bottom; two MENU buttons numbered 6-7 sit beside them but deliberately OFFSET from the row",
+        "a reviewer asked why 6 and 7 were misaligned — the author had to explain the offset was intentional and that icons would be added, which is the proof that an unoffset, unlabelled neighbour reads as a sixth and seventh item slot",
+        "the stated success criterion is legibility under stress: 'easy to read' during high-pressure play, not attractiveness at rest"
+      ]
+    },
+    {
+      "id": "devforum-hotbar-emphasis-rule",
+      "source": "https://devforum.roblox.com/t/my-hotbar-design/228982/7 — Art Design Support thread, reply 7 by buildthomas, fetched 2026-09-20.",
+      "demonstrates": [
+        "the governing rule for slot typography, stated explicitly: emphasis is proportional to how often a value CHANGES — 'the slot numbers should have less emphasis than the counter because the former is the information that changes the least often'",
+        "so the keybind digit is small and pushed to a corner, and the stack count is the large glyph on the tile",
+        "three shipped comparisons are named to support it: World of Warcraft puts keybinds in a corner with minimal emphasis and item counts prominently at the bottom of the slot; Minecraft omits slot numbers entirely; TERA sets slot and item numbers at similar size but gives the centre of the box to the value that moves (cooldown/reload)",
+        "the corollary a generator must apply: the slot's centre belongs to the item, the corner to the static keybind, and the largest type to whatever is counting down or counting up"
+      ]
+    },
+    {
+      "id": "devforum-hotbar-placement-and-orphan-bar",
+      "source": "https://devforum.roblox.com/t/hotbar-ui-design/614081 — Creations Feedback thread, fetched 2026-09-20. A custom hotbar replacing the default Roblox backpack bar.",
+      "demonstrates": [
+        "the redesign MOVED the hotbar from bottom-left to bottom-CENTRE, and that relocation is presented as the improvement, not as a preference",
+        "a stamina bar tucked beside the hotbar drew repeated complaints for being unlabelled — multiple reviewers could not identify what it measured",
+        "the bar's thinness was itself cited as the reason it could not be labelled, so a meter too short to carry an icon or a word is a construction error, not a styling one",
+        "the bar's hue (purple-pink) against the hotbar's fill was called 'hard to see or uncomfortable to look at', i.e. a meter's colour must be chosen against its NEIGHBOUR, not in isolation",
+        "'out of the way' was used as a criticism — a meter separated from the other meters loses its meaning even when it is perfectly drawn"
+      ]
+    },
+    {
+      "id": "devforum-survival-three-pane",
+      "source": "https://devforum.roblox.com/t/survival-game-ui/3090458 — Creations Feedback thread, fetched 2026-09-20. A complete survival UI posted for critique with hotbar, backpack and hand-crafting.",
+      "demonstrates": [
+        "the survival screen is THREE simultaneous regions, not one modal: hotbar along the bottom, 'Backpack' panel on the LEFT, 'Hand Crafting' panel on the RIGHT",
+        "the two panels carry literal word titles ('Backpack', 'Hand Crafting') rather than icons alone",
+        "item counts are written on the tile in the form 'Wood x 1', and a bare stack number '999' is the other form used",
+        "reviewers asked for the count text to be plain white and the panel titles to be a lighter tint of the panel material with a drop shadow — the numeral and the title are deliberately different treatments",
+        "multiple independent reviewers asked for a SEARCH field in the crafting pane, which is the recurring demand once a recipe list grows past what one screen shows",
+        "the material register reviewers pushed toward is dark and brown — they named Raft and Muck by title — not the saturated candy palette of the simulator genre",
+        "the author's own check was cross-monitor legibility: it looked cramped at Studio size and read correctly at 27-inch and 15-inch play sizes"
+      ]
+    },
+    {
+      "id": "devforum-crafting-menu-two-pane",
+      "source": "https://devforum.roblox.com/t/crafting-menu-ui/3006528 — Art Design Support thread, fetched 2026-09-20. A crafting menu iterated across several revisions under community critique.",
+      "demonstrates": [
+        "final layout is two-pane: a scrollable LIST of craftable items on the left, a detail pane on the right",
+        "reading order inside the detail pane was deliberately changed to name-above-requirements, with ingredients read left to right",
+        "the requirement block is a GRID of ingredient chips, not a single line of text, specifically so a recipe with many ingredients does not overflow one line",
+        "the label was shortened from 'Materials Needed:' to 'Requires:' to buy space while staying explicit — the word was kept, not replaced by an icon",
+        "for positional recipes the selected recipe paints TRANSPARENT ghost ingredients into the empty crafting slots, described by the author as 'a bit like in Minecraft'",
+        "critique that shaped it: list rows were 'quite thick', and both text size and inter-row padding were reduced",
+        "the stated accessibility principle is that every section carries an explicit title because 'players don't know what to do without guides' — nothing in a crafting pane may be discoverable only by trial"
+      ]
+    },
+    {
+      "id": "devforum-discrete-meter-pips",
+      "source": "https://devforum.roblox.com/t/health-and-hunger-ui/3195281 — Art Design Support thread, fetched 2026-09-20. Texture sheet for health and hunger meters.",
+      "demonstrates": [
+        "the meter is a ROW OF PIPS with discrete art states rather than a continuously filling track",
+        "hunger runs Full / Half / Empty — three states per pip, so a pip is worth two units of resolution, not one",
+        "health does NOT reuse hunger's states: it runs Intact / Cracked / Broken, i.e. damage is drawn as damage to the icon rather than as absence of the icon",
+        "the depleted state is drawn (a minimal or broken glyph), never simply hidden — the row's length is constant as the value falls",
+        "colour carries the state alongside the drawing: vibrant when full, desaturated as it empties, so the meter survives being read in peripheral vision"
+      ]
+    },
+    {
+      "id": "devforum-radial-meter-construction",
+      "source": "https://devforum.roblox.com/t/circle-hunger-bar/2044407 — Art Design Support thread, fetched 2026-09-20. Building a circular hunger meter, referenced to Subnautica.",
+      "demonstrates": [
+        "the radial meter is the survival genre's alternative to a bar, and it is built, not drawn: two half-circle frames with ClipDescendants and a rotating UIGradient",
+        "the mapping is exact and reusable: each degree of rotation equals 3.6 units of a 0-100 value, i.e. 3.6 degrees per percent",
+        "the two halves are driven by clamped expressions — the right half by math.min(valueInDegrees, -180), the left by math.max(valueInDegrees + 180, 0) — so one value drives both without a seam",
+        "the rejected alternative is on record: 99 duplicated pizza-slice images rotated 3.6 degrees each, which works and is dismissed as the heavy way",
+        "a reviewer called the un-eased transition 'rough'; the accepted fix is to TWEEN the driving value rather than to set it, so a radial meter that jumps is a defect",
+        "the ring's radius never changes — only the gradient's rotation does"
+      ]
+    },
+    {
+      "id": "placing-service-defaults",
+      "source": "https://devforum.roblox.com/t/opensource-placing-system-placing-service/3822456 — Community Resources thread for PlacingService, a client-side preview/snap/rotate/validate module, fetched 2026-09-20. Values below are the module's published defaults.",
+      "demonstrates": [
+        "placement is a MODE with its own input map, not a click: R rotates (Enum.KeyCode.R), X cancels (Enum.KeyCode.X)",
+        "rotation is quantised — RotationUnit defaults to 15 degrees per press, about any axis",
+        "the grid snap is GridUnit, defaulting to 1 stud",
+        "the preview does not teleport to the cursor: LerpSpeed defaults to 25, so the ghost eases toward the snapped target every frame",
+        "validity is expressed by TINTING THE WHOLE PREVIEW one colour — this module ships Color3.fromRGB(255,255,255) for placeable and Color3.fromRGB(255,165,0) for blocked",
+        "a per-frame 'Rendered' signal hands out the target CFrame, the preview instance and a boolean validity, i.e. the validity colour is expected to be recomputed every frame rather than on click",
+        "overlap tolerance is a setting (CanOverlapWithOtherParts), so 'blocked' is a game rule the UI must render, not a physics fact"
+      ]
+    },
+    {
+      "id": "snappit-grid-visualisation",
+      "source": "https://devforum.roblox.com/t/snap-a-grid-based-placement-class-preview/2726438 — Creations Feedback thread for Snappit, a grid-based plot placement class, fetched 2026-09-20.",
+      "demonstrates": [
+        "the grid itself is made visible during placement as discrete POINT markers (green dots at each grid point), and that visualisation is switchable off",
+        "valid and invalid placement are separately configurable colour sets (validPlacementColors / invalidPlacementColors), confirming the two-state tint as the genre convention rather than one module's idea",
+        "movement is a choice between Lerp and Snap with a configurable smooth factor — the ghost either eases or steps, and that is a deliberate feel decision",
+        "the ghost resolves to the grid point CLOSEST TO THE CURSOR, so the preview is a snapped position and the cursor is only the hint",
+        "two further visuals are named as separate features: a BoundingBoxVisual showing the piece's footprint and a HighlightVisual — footprint and validity are drawn by different objects",
+        "rotation stays consistent relative to the plot at any plot orientation, so the placement UI is expressed in PLOT space, not world space"
+      ]
+    },
+    {
+      "id": "survivorcore-hud-inventory",
+      "source": "https://github.com/TemujinCalidius/SurvivorCore — public repository README for a creator-extensible Roblox survival framework, fetched 2026-09-20.",
+      "demonstrates": [
+        "the meter set a survival framework considers complete is SEVEN values on one HUD: health, energy, hunger, thirst, fatigue, blood, poison",
+        "they are described as living on 'a clean restyleable HUD' — one surface, one treatment, restyled together",
+        "the hotbar is NINE slots",
+        "the inventory is governed by two limits at once, 'slots + carry-weight', not by slot count alone",
+        "the inventory/crafting menu is TABBED and DRAG-AND-DROP",
+        "the UI is 'real Instances driven by attributes, and every default is overridable' — the framework treats the HUD as restylable structure rather than as a fixed picture"
+      ]
+    },
+    {
+      "id": "westwood-remake-player-guide",
+      "source": "https://westwoodremake.wiki/guides/beginner/ — beginner guide for the shipped Roblox game WEST WOOD: REMAKE, fetched 2026-09-20. A player-facing description of the live HUD.",
+      "demonstrates": [
+        "four survival bars are visible in play: health, stamina, hunger, thirst — stamina bound to sprinting, the others to environment and item use",
+        "the inventory is slot-based WITH A WEIGHT LIMIT, and the guide tells players to read the weight limit BEFORE collecting, i.e. the capacity readout is consulted as a number, not felt as a failure",
+        "hotbar assignment is a player action with tactical consequence — the guide's instruction is to 'keep a light accessible, not hidden behind inventory sorting' and to 'put one recovery item on a reachable slot'",
+        "the menu is tabbed, and its tabs are content categories rather than UI categories: food recipes, achievements, books",
+        "tools, a light source, food, drink and medical supplies are the item classes that reach the hotbar",
+        "the guide will not state HUD positions and says exact layouts require in-game verification — recorded here as a gap, not filled in"
+      ]
+    },
+    {
+      "id": "devforum-day-time-readout",
+      "source": "https://devforum.roblox.com/t/how-can-i-create-a-day-and-time-gui/1818359 — Scripting Support thread, fetched 2026-09-20. Building the in-game day and time display.",
+      "demonstrates": [
+        "the shipped answer is a TEXT readout in the form 'Sun 12:00 PM' — abbreviated day name, zero-padded 12-hour clock, AM/PM",
+        "it is driven by Lighting:GetMinutesAfterMidnight() converted to hours and minutes, not by an independent timer",
+        "the 12-hour conversion is explicit: below 12 is AM, 12 and above is PM, and hour 0 displays as 12",
+        "the format string is string.format('%02d:%02d %s', hours, minutes, period), with the day name from os.date('%a')",
+        "the readout updates continuously in a loop rather than on an event",
+        "NEGATIVE OBSERVATION, recorded because it is the trap: no icon, no dial and no progress bar appear in this implementation. It is text."
+      ]
+    }
+  ],
+  "alsoFetchedAndYieldedLittle": [
+    "https://devforum.roblox.com/t/gridplacer-highly-featured-module-for-part-placement-rotation-and-snapping-to-grid/2096210 — fetched; the post defers all UI detail to a user manual that is not in the page, so nothing is recorded from it.",
+    "https://devforum.roblox.com/t/open-sourced-inventory-and-hotbar-system/1780963 — fetched; confirms a custom hotbar with stackable items and ViewportFrame item previews, but states no slot count, size or layout, so it is not a reference.",
+    "https://devforum.roblox.com/t/feedback-survival-builder/4446946 — fetched; a survival builder with 'very basic survival gages' praised as clean, with no described construction.",
+    "Fandom wikis for Booga Booga, The Survival Game and Survive the Cold refused every fetch (HTTP 402 via the fetch tool, HTTP 403 via curl). Their HUD descriptions are therefore NOT in this file."
+  ],
+  "rules": {
+    "note": "Units: px for pixel geometry, studs for world placement, degrees for rotation, and RATIOS where no image was measured. Every value here is either (a) a published default from a fetched module, marked measured:true, or (b) a relationship stated by an author or reviewer, expressed as a ratio and marked derived:true. Nothing is a remembered pixel. Colour is not construction and is deliberately almost absent; the one colour rule below is about legibility against a neighbour, not about a palette.",
+    "meterStack": {
+      "layout": "one vertical stack of horizontal tracks, all the same length, in ONE screen corner",
+      "order": ["health", "stamina", "hunger", "thirst", "temperature"],
+      "gapToTrackHeightRatio": 0.4,
+      "derived": true,
+      "why": "every fetched survival HUD presents the needs meters as a single component and is criticised as one: the feedback thread's bars are judged together, and a stamina bar that sat apart from its siblings was called 'out of the way' and became unreadable despite being correctly drawn. Scattering meters across the screen is the genre's most common construction failure."
+    },
+    "meterTreatmentParity": {
+      "rule": "whatever treatment one meter has — glow, bevel, outline, texture, end cap — EVERY meter in the stack has, identically",
+      "never": "giving health and stamina a finished treatment and leaving hunger and thirst plain",
+      "derived": true,
+      "why": "this exact asymmetry was the first thing a reviewer named in the survival HUD thread, before layout or colour, and the accepted fix was to add the missing treatment rather than to strip the existing one. An odd meter out does not read as restraint, it reads as unfinished."
+    },
+    "meterIdentity": {
+      "rule": "every meter carries its own icon or word at the leading end of the track, outside the fill; hue alone never identifies a meter",
+      "minTrackHeightForIcon": "a track too short to seat an icon or a label is too short, full stop",
+      "derived": true,
+      "why": "an unlabelled stamina bar drew repeated 'what is that' replies, and the author's own excuse was that the bar was too thin to label — which makes the thinness the defect. Two meters in the same HUD differ by one glyph, not by two hues a player must learn."
+    },
+    "meterColourAgainstNeighbour": {
+      "rule": "a meter's fill is chosen against the surface it sits on and the meters beside it, not from a palette in isolation",
+      "derived": true,
+      "why": "the one colour critique that survived review was relational: purple-pink over a bright orange-yellow hotbar was called hard to see and uncomfortable, and the suggested replacement was picked for contrast against that neighbour. This is the only colour rule in this file because colour is otherwise not construction."
+    },
+    "meterDepletion": {
+      "rule": "the track's LENGTH is constant; only the fill inside it changes. The empty remainder stays drawn as a darker trough",
+      "never": "shrinking the whole widget as the value falls",
+      "derived": true,
+      "why": "holds across all three meter forms observed: the bar keeps its track, the pip row keeps every pip and draws the empty ones as minimal or broken glyphs, and the radial keeps its full ring and rotates a gradient inside it. A widget that shrinks stops being comparable against itself a second later."
+    },
+    "radialMeter": {
+      "construction": "two half-circle frames with ClipDescendants, one rotating UIGradient each, driven by a single 0-100 value",
+      "degreesPerPercent": 3.6,
+      "rightHalf": "math.min(valueInDegrees, -180)",
+      "leftHalf": "math.max(valueInDegrees + 180, 0)",
+      "easing": "tween the driving value, never set it",
+      "measured": true,
+      "why": "this is the published working construction for the genre's circular hunger/oxygen meter, and the 3.6-degrees-per-percent mapping plus the two clamped halves are quoted from it. The un-tweened version was called 'rough' by a reviewer, so the easing is part of the construction rather than a polish pass."
+    },
+    "discreteMeter": {
+      "rule": "when the meter is a row of pips, each pip has THREE states and the depleted state is drawn, not hidden",
+      "hungerStates": ["full", "half", "empty"],
+      "healthStates": ["intact", "cracked", "broken"],
+      "never": "reusing one pip artwork for both meters",
+      "derived": true,
+      "why": "taken from a posted texture sheet where hunger empties and health BREAKS — damage is drawn as damage to the glyph, not as absence of it. Half states double a pip row's resolution, which is why ten pips can stand in for a hundred-point value."
+    },
+    "hotbar": {
+      "position": "bottom-centre, anchored at (0.5, 1)",
+      "slots": 9,
+      "slotAspect": 1,
+      "why": "nine slots is the count a published survival framework ships; bottom-centre is the relocation a hotbar redesign made and presented as the fix, replacing bottom-left. Square slots are what every tiled hotbar in the fetched threads uses, and a non-square slot immediately reads as a list row."
+    },
+    "hotbarLabelWeight": {
+      "keybind": "small, in a corner of the slot",
+      "stackCount": "the large glyph, in the opposite corner",
+      "centre": "belongs to the item, or to whatever is counting",
+      "countToKeybindHeightRatio": 1.8,
+      "derived": true,
+      "why": "the explicit stated rule is that emphasis is proportional to how often a value changes: the keybind never changes and the count changes constantly. Three shipped games were named in support — keybinds in corners with minimal emphasis, counts prominent, and in one case slot numbers omitted altogether. The ratio is the smallest that makes the relationship visible rather than a measured value."
+    },
+    "hotbarNeighbours": {
+      "rule": "menu or utility buttons placed beside the hotbar must be separated by a gap of at least one slot width AND carry an icon rather than a number",
+      "never": "continuing the numbering (…5, 6, 7) into buttons that are not item slots",
+      "derived": true,
+      "why": "a survival HUD did exactly that and the first reviewer question was why buttons 6 and 7 were misaligned — meaning the offset alone did not stop them reading as slots six and seven. The number is what makes a tile an item slot; take the number away and add the icon."
+    },
+    "panelTriad": {
+      "layout": "three simultaneous regions — hotbar bottom-centre, inventory/backpack on one side, crafting on the other",
+      "never": "collapsing inventory and crafting into one centred modal",
+      "titles": "each panel carries a word title, not an icon alone",
+      "why": "this is where the survival genre parts company with the simulator genre, which centres a single modal over the world. A shipped survival UI put 'Backpack' left and 'Hand Crafting' right with the hotbar between them, because crafting is a transfer between two open surfaces and a modal hides the one you are dragging from."
+    },
+    "inventoryCapacity": {
+      "rule": "the inventory header shows the capacity as a readable number, and when the game weighs items it shows BOTH the slot count and the carry weight",
+      "placement": "in the panel header, always visible, never only on failure",
+      "why": "a survival framework governs its inventory by 'slots + carry-weight' together, and a shipped game's own player guide instructs players to read the weight limit BEFORE collecting. A capacity a player learns about by being refused is a capacity the UI failed to show."
+    },
+    "itemCountFormat": {
+      "onTile": "the count sits on the item tile itself, not in a separate column",
+      "forms": ["999", "Wood x 1"],
+      "treatment": "plain light numerals; the panel TITLE gets the decorated treatment, the numeral does not",
+      "why": "both forms were used in a shipped survival UI, and reviewers asked specifically for white count text while pushing the panel titles toward a tinted, shadowed treatment — the number is for reading fast and the title is for finding the panel, so they are deliberately not the same object."
+    },
+    "craftingLayout": {
+      "panes": 2,
+      "left": "scrollable list of recipe rows",
+      "right": "detail pane: name on top, then the requirement block, then the craft action",
+      "rowDensity": "tight — list rows were explicitly thinned and their padding reduced under review",
+      "why": "the two-pane list-plus-detail arrangement is where an iterated crafting menu landed after critique, and the reading order was deliberately rearranged to put the name above the requirements. A grid of recipe cards was not what survived review; a list was."
+    },
+    "ingredientRequirement": {
+      "rule": "requirements are a GRID of ingredient chips, each chip an icon plus a have/need pair, under a short explicit label",
+      "label": "Requires:",
+      "never": "a single line of comma-separated text",
+      "why": "the grid was adopted precisely so a recipe with many ingredients does not overflow one line, and the label was shortened from 'Materials Needed:' to buy space while keeping the word — the author's stated principle is that every section is explicitly titled because players will not discover a crafting pane by trial."
+    },
+    "recipeGhostHint": {
+      "rule": "for a positional recipe, paint transparent ghost ingredients into the empty crafting slots of the selected recipe",
+      "never": "leaving the slots blank and expecting the player to know the arrangement",
+      "why": "described by the menu's author as the fix that made positional crafting teachable, 'a bit like in Minecraft'. The ghost is the only thing in the pane that says where an ingredient goes, and without it a positional grid is a guessing game."
+    },
+    "recipeSearch": {
+      "rule": "a crafting pane whose list is longer than one screen gets a search field in its header",
+      "why": "multiple independent reviewers of the same shipped survival UI asked for it, and the author's only reason for deferring was scripting time, not disagreement. It is the one crafting feature that was requested by more than one person in the same thread."
+    },
+    "placementMode": {
+      "rule": "building is a MODE with its own input map and its own on-screen key hints, entered from the build menu and exited explicitly",
+      "rotate": "R",
+      "cancel": "X",
+      "measured": true,
+      "why": "these are the published defaults of an open-source placement module, and they are invisible without a hint strip. The crafting thread's own accessibility finding — that players do not discover functionality without being told — applies with more force here, because a placement mode with hidden keys traps the player in it."
+    },
+    "placementPreview": {
+      "ghost": "a translucent clone of the object, snapped to the grid, eased toward the cursor rather than teleported",
+      "lerpSpeed": 25,
+      "validityChannel": "tint the ENTIRE preview one colour, recomputed every frame",
+      "twoStates": ["placeable", "blocked"],
+      "footprint": "drawn by a separate bounding-box object, not by the tint",
+      "measured": true,
+      "why": "the lerp speed and the two-colour tint are published module defaults, and a second independent placement class exposes the same pair as configurable validPlacementColors / invalidPlacementColors — two modules agreeing makes it a convention rather than one author's habit. Validity as a tint and footprint as a box are separate visuals in both."
+    },
+    "placementGrid": {
+      "gridUnit": 1,
+      "unit": "studs",
+      "rotationUnit": 15,
+      "rotationUnitUnit": "degrees",
+      "gridVisualisation": "point markers at each grid node, shown during placement and switchable off",
+      "space": "plot-relative, not world-relative",
+      "measured": true,
+      "why": "1 stud and 15 degrees are the published defaults of a fetched placement module; the point-marker visualisation and the plot-relative rotation come from a second one, which keeps snapping correct on rotated and inverted plots. Quantised rotation is what stops a base looking hand-thrown."
+    },
+    "dayNightReadout": {
+      "form": "text",
+      "format": "abbreviated day name, then a zero-padded 12-hour clock with AM/PM — e.g. 'Sun 12:00 PM'",
+      "formatString": "string.format('%02d:%02d %s', hours, minutes, period)",
+      "source": "Lighting:GetMinutesAfterMidnight(), converted — never an independent timer",
+      "update": "continuous",
+      "measured": true,
+      "why": "this is the implementation that answered the question in the fetched thread, and the negative half matters more than the positive: it has NO icon, NO dial and NO progress bar. A generator's reflex is to invent a sun-and-moon arc; nothing observed here does that, and driving the label from Lighting rather than a separate timer is what keeps the readout from disagreeing with the sky."
+    },
+    "materialRegister": {
+      "rule": "survival panels read as MATERIAL — dark, desaturated, wood and earth — while the simulator genre reads as candy. Same construction discipline, different substance",
+      "derived": true,
+      "why": "the only art-direction note that reviewers of a shipped survival UI converged on, naming Raft and Muck as the target. Recorded as a register rather than as a palette, because this library's founding lesson is that getting the colours right while getting the construction wrong produces the near-miss that started it."
+    },
+    "legibilityUnderStress": {
+      "rule": "the survival HUD's acceptance test is reading it mid-fight at play size, not admiring it at rest in Studio",
+      "why": "stated by a reviewer as the compliment that mattered — 'easy to read' in high-stress situations — and independently by an author who found the same UI cramped at Studio scale and correct at 15-inch and 27-inch play sizes. A survival HUD is checked while something is chasing you or nothing about it has been checked."
+    }
+  },
+  "gapsAgainstShippedTheme": [
+    "OPEN: the shipped survival theme (apps/worker/src/ui-kit-themes.ts) is a COLOUR row only — panel #24352f, card #354b3f, accent #e3c587, radius 9, stroke 2, cardHeight 236, hudSide left. Every structural rule above is unimplemented, because the theme system has no concept of a meter stack, a hotbar, a crafting pane or a placement mode.",
+    "OPEN: cardHeight 236 is the same tall-card defect simulator.json records as OPEN — survival tiles are square hotbar and inventory slots, aspect 1.",
+    "OPEN: hudSide 'left' places the HUD opposite the convention this file records for the hotbar, which is bottom-centre with the meter stack in a corner.",
+    "OPEN: no meter primitive exists at all — no bar track, no pip row, no radial ring — so none of meterStack, meterTreatmentParity, discreteMeter or radialMeter can be applied yet.",
+    "OPEN: no placement mode exists, so the two-state validity tint, the 1-stud grid, the 15-degree rotation and the R/X key hints have nothing to attach to.",
+    "OPEN: nothing in this file has been RENDERED AND COMPARED. simulator.json earned its numbers by being installed in Studio and looked at; this file has not been through that loop, and its text-derived ratios are the weakest rows in it until it has."
+  ]
+}

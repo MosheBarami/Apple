@@ -1,0 +1,362 @@
+{
+  "genre": "horror",
+  "label": "Horror / survival-horror — vitals and sanity meters, flashlight budgets, objective trackers, jumpscare overlays, lobby vote screens",
+  "recorded": "2026-09-20",
+  "provenance": "Researched on the live web on 2026-09-20. Every source below was fetched, not recalled: two official non-Fandom game wikis (the official DOORS wiki at doorsgame.wiki and the official Pressure wiki at urbanshade.org), nine Roblox DevForum threads, and one Flee the Facility guide. Fandom mirrors and namu.wiki returned 402/403 and were NOT used, so nothing here rests on a page that could not be opened. No image is stored; each row records where it was seen and what it demonstrates. Where a source documents an ABSENCE, that is recorded as an absence in the source rather than as a fact about the game.",
+  "references": [
+    {
+      "id": "doors-hotbar",
+      "source": "Official DOORS Wiki, Inventory page — https://doorsgame.wiki/wiki/Inventory (fetched 2026-09-20)",
+      "demonstrates": [
+        "the bar caps at six UNIQUE non-essential items, and run-critical items (keys, fuses) bypass the cap instead of competing for it — the bar holds two classes of thing at once",
+        "each slot carries four pieces of information simultaneously: the item icon, the keyboard number that equips it, a stack count when the item stacks, and a meter of remaining uses or usage time drawn INSIDE the slot",
+        "the two classes are distinguished inside the same row rather than by a second container: run-critical items get smaller icons with striped lines under them",
+        "slot count is a mode parameter, not a constant — 5 in PARTY MODE, 6 in Battle Mode, 10 in SUPER HARD MODE — so the bar must lay out for a variable count",
+        "the wiki names a 'Bar' element separately from the slot variants (normal slot, item-skin slot, buddy slot), so the bar is a frame the slots sit in, not merely the slots side by side"
+      ]
+    },
+    {
+      "id": "doors-death-sequence",
+      "source": "Official DOORS Wiki, Death Screen page — https://doorsgame.wiki/wiki/Death_Screen (fetched 2026-09-20)",
+      "demonstrates": [
+        "death is a three-phase SEQUENCE, not a panel: the entity jumpscare (eyes filling the screen with sound), then a narrated interstitial, then the run overview",
+        "the interstitial is a dark flooded field with one speaker's symbol emitting coloured light at the top — blue for Moonlight, yellow for Starlight — and the text is click-to-advance so the player can skip it",
+        "a third speaker (Glitch, in Visions) renders as white uppercase text on black with glitch treatment: speaker identity is carried by type treatment and light colour, never by a name plate",
+        "the tone of the interstitial changes with repeat failure — Starlight becomes 'more frustrated' on repeated deaths to the same entity — so the copy slot is stateful",
+        "the overview is sectioned rows: run info (doors escaped, whether the run succeeded, which entity killed you, or 'Unknown'), then currency, then up to seven further statistic rows",
+        "the currency section shows its ARITHMETIC as separate itemised lines — 1 per room survived, 50 per floor escaped, 1 per 20 gold, a 500% boost multiplier, 10% per friend, modifiers — rather than one total",
+        "a penalty is stated as a rule in the same block: dying in the first five rooms cancels all currency gain",
+        "the buttons are Return to Lobby and Play Again, and Play Again carries a 30-second countdown on the button itself",
+        "a hide-menu control is present so the death screen can be dismissed to spectate without leaving the run"
+      ]
+    },
+    {
+      "id": "doors-heartbeat-minigame",
+      "source": "Official DOORS Wiki, Heartbeat Control Minigame page — https://doorsgame.wiki/wiki/Heartbeat_Control_Minigame (fetched 2026-09-20)",
+      "demonstrates": [
+        "the tension minigame is ONE ICON, not a bar: a heart splits into two halves and the player times each half flying back into it",
+        "failure is signalled by recolouring that same icon — the heart turns red on a missed beat — rather than by a separate error message or a shake",
+        "the minigame accelerates as the failure window closes, so pacing IS the difficulty curve and no numeric timer is drawn",
+        "the same minigame is re-laid out for touch rather than being shown with keyboard prompts a phone cannot press",
+        "a single miss is terminal, so the widget has no partial-progress state to draw"
+      ]
+    },
+    {
+      "id": "doors-hiding-overlay",
+      "source": "Official DOORS Wiki, Hiding page — https://doorsgame.wiki/wiki/Hiding (fetched 2026-09-20)",
+      "demonstrates": [
+        "approaching a hiding spot raises a small icon prompt keyed to the device (E on PC, a hiding button on touch, a face button on console)",
+        "while hidden the state is communicated by a FULL-SCREEN treatment — a black vignette image over the whole view — not by a panel, badge or corner icon",
+        "exiting is a movement input (walk forward) on PC with an explicit exit button only on touch, so the overlay must not itself capture the whole screen as a button on desktop"
+      ]
+    },
+    {
+      "id": "pressure-vitals-cluster",
+      "source": "Official Pressure Wiki (Urbanshade: Hadal Division), Health page — https://urbanshade.org/wiki/Health and Oxygen page — https://urbanshade.org/wiki/Oxygen (both fetched 2026-09-20)",
+      "demonstrates": [
+        "the vitals cluster lives at the BOTTOM-LEFT of the screen, with the oxygen meter sitting beside the health indicator — not centred, not along the top",
+        "health is icon-led rather than numeric: it becomes 'increasingly redder in color' as damage accumulates and a skull becomes progressively more visible inside it",
+        "a regenerating state RECOLOURS the same meter yellow rather than adding a second indicator, at 1 HP every 8 seconds",
+        "temporary/artificial health (AHP) draws as a layer ON TOP of real health and is consumed first, so the meter is layered rather than duplicated",
+        "an empty oxygen meter does not kill: it opens a named coughing state that drains 1 HP rapidly, so zero on a survival meter is a new state with its own feedback rather than an end",
+        "low-health feedback is spread beyond the bar into the avatar and the world — bleeding at 60 HP, larger blood at 20, altered idle and walk animation at 28, and the diving mask visibly cracking in proportion to damage taken"
+      ]
+    },
+    {
+      "id": "pressure-flashlight-budget",
+      "source": "Official Pressure Wiki, Flashlight page — https://urbanshade.org/wiki/Flashlight (fetched 2026-09-20)",
+      "demonstrates": [
+        "the light source is budgeted in SECONDS and stated as a number in the item's stats: 127 seconds of charge, with a single battery adding 50% for roughly 63 more seconds",
+        "the page documents unequipping as turning the light off faster than the normal toggle, so the charge is spent by equip state as much as by the on/off control",
+        "the page documents NO on-screen battery bar, percentage or flicker warning anywhere in its text — recorded here as an absence in the source, not as a claim that the game has no indicator; it is evidence that a seconds-budgeted light can be documented purely as a stat"
+      ]
+    },
+    {
+      "id": "devforum-flashlight-battery-gui",
+      "source": "Roblox DevForum, '[SOLVED] Flashlight GUI System usage for all Players, MUST be conducted by Client' — https://devforum.roblox.com/t/solved-flashlight-gui-system-usage-for-all-players-must-be-conducted-by-client/2865841 (fetched 2026-09-20)",
+      "demonstrates": [
+        "the battery readout is owned by the TOOL, not by the persistent HUD: the ScreenGui is enabled on equip (BatteryGui.Enabled = true) and hidden otherwise",
+        "the value is presented as a numeric TextLabel inside a small named frame (BatteryFrame containing BatteryText), so the baseline form is a number rather than a bar",
+        "the display refreshes on the drain tick rather than every frame — the poster's rate is 1.5 seconds per step, so the number visibly steps down instead of animating smoothly"
+      ]
+    },
+    {
+      "id": "devforum-horror-hud-critique",
+      "source": "Roblox DevForum, Creations Feedback, '[Feedback] Horror Game UI' — https://devforum.roblox.com/t/feedback-horror-game-ui/2431931 (fetched 2026-09-20)",
+      "demonstrates": [
+        "a BRIGHT OUTLINE on the HUD was the single thing that made the interface read as a mobile game rather than a horror game — reviewers said it 'looks a bit out of place'",
+        "the fix asked for repeatedly was transparency — 'make it a bit more transparent' — not a different palette",
+        "green was rejected for a stamina bar specifically because 'green is commonly used for health': hue carries a fixed meaning and a second meter must take another",
+        "the bar in question was a vertical bar pinned to the left side, and solid fills with minimal transparency were named as part of the mobile-game read",
+        "reviewers pointed at Amnesia as the construction reference for atmosphere rather than at any Roblox game"
+      ]
+    },
+    {
+      "id": "devforum-menu-panel-values",
+      "source": "Roblox DevForum, Creations Feedback, 'Thoughts on horror game UI' — https://devforum.roblox.com/t/thoughts-on-horror-game-ui/2177546 (fetched 2026-09-20)",
+      "demonstrates": [
+        "concrete values a reviewer asked for on a horror menu: black semi-transparent backgrounds at 0.5 transparency and a slight UICorner bevel around 0.15 scale",
+        "bare text on a background does not read as a button — the critique was that the buttons 'lack visual button-like qualities' and each needs its own backing plate",
+        "text placement was criticised for floating: the advice was to shift it and anchor it rather than leave it centred by default",
+        "the reviewer's expected menu inventory was play, settings/options, credits and leave — a horror menu is expected to be a full menu, not two labels"
+      ]
+    },
+    {
+      "id": "devforum-title-screen-critique",
+      "source": "Roblox DevForum, Creations Feedback, 'Feedback on this horror game UI' — https://devforum.roblox.com/t/feedback-on-this-horror-game-ui/878400 (fetched 2026-09-20)",
+      "demonstrates": [
+        "the game title must be the most prominent thing on the menu; the submitted title was judged too small and lost against the artwork",
+        "default Roblox fonts were called out by more than one reviewer — 'It just screams default to me' — and the recommended fix was to author the title as an image asset and place it as an ImageLabel",
+        "a flat black background was judged insufficient for horror: reviewers asked for static behind the title, or something slowly orbiting the motif",
+        "one strong focal motif (a pair of red eyes) was the one element every reviewer approved — a horror menu wants a single motif, not scattered decoration",
+        "the motif was expected to be ALIVE: blinking and rotation were the improvements asked for, and a commenter supplied blink code"
+      ]
+    },
+    {
+      "id": "devforum-horror-gui-improvement",
+      "source": "Roblox DevForum, Art Design Support, 'How would I improve my GUIs for my horror game?' — https://devforum.roblox.com/t/how-would-i-improve-my-guis-for-my-horror-game/807561 (fetched 2026-09-20)",
+      "demonstrates": [
+        "reviewers pushed the developer off TextLabel/TextButton onto ImageLabel with ImageButton for horror interfaces, explicitly to escape the 'blocky/studio produced interface' look",
+        "red ink on a red field was called out directly — 'Red on Red isn't very effective' — and a contrast chart was recommended, because horror palettes collapse into themselves",
+        "the counsel on reds was 'smaller, red and deep reds' rather than large bright red areas",
+        "rounding is CONTESTED in this genre: reviewers recommended UICorner while the developer questioned whether rounded edges suited horror at all, so radius is a live decision here and not a default",
+        "the existing strength was a dark room rendered behind the menu by camera manipulation rather than a static backdrop",
+        "custom lettering generated as an image was recommended over any built-in font"
+      ]
+    },
+    {
+      "id": "devforum-menu-motion-critique",
+      "source": "Roblox DevForum, Creations Feedback, '[Horror Game UI & Builds] Feedback needed!' — https://devforum.roblox.com/t/horror-game-ui-builds-feedback-needed/2710573 (fetched 2026-09-20)",
+      "demonstrates": [
+        "a gradient on the loading wheel was singled out as not fitting the style; 'something more solid' was preferred over the crimson-maroon gradient",
+        "hover zoom on menu images was called 'a little bit too strong' and asked to be slowed down or reduced in amplitude",
+        "hover and click sounds must belong to one family — the specific advice was to make the hover sound a pitched-down version of the click sound",
+        "a reviewer reported screens that were 'way too dark to see anything', appearing as black boxes: horror darkness has a floor below which the UI stops being readable at all"
+      ]
+    },
+    {
+      "id": "devforum-map-vote-panel",
+      "source": "Roblox DevForum, Creations Feedback, 'Map voting menu gui' — https://devforum.roblox.com/t/map-voting-menu-gui/3628839 (fetched 2026-09-20)",
+      "demonstrates": [
+        "the confirm/main button should sit OUTSIDE the card frame so it stands out from the cards it acts on",
+        "default arrow glyphs for paging between maps were flagged; custom icons were asked for to stop the panel feeling generic",
+        "every element of the voting panel must appear on the SAME BEAT as its backdrop — the reported defect was that the 'VOTE A MAP' heading and the black buttons arrived after the white background",
+        "a close button is expected so a player can opt out of voting rather than being held in the panel",
+        "map thumbnail quality was a named defect: a vote card is carried by its image, and a poor capture sinks the card"
+      ]
+    },
+    {
+      "id": "flee-the-facility-lobby-vote",
+      "source": "Flee the Facility map layout guide — https://fleethefacility.online/maps/flee-the-facility-map-layout (fetched 2026-09-20)",
+      "demonstrates": [
+        "the lobby vote offers four randomly presented map options during a 30-second intermission in the lobby",
+        "the vote is cast by standing on physical plates in the lobby rather than through a screen panel — the vote interface can be DIEGETIC, part of the world rather than an overlay",
+        "the tie-break is deterministic and stated as a rule: the leftmost option wins a tie",
+        "a no-vote fallback exists (the previously played map repeats, even if it is not among the options), so the panel can never produce an empty result",
+        "the round itself opens with a fixed hold — the antagonist is held for 15 seconds before spawning — which is a second timer the HUD has to carry"
+      ]
+    },
+    {
+      "id": "devforum-task-tracker-empty-state",
+      "source": "Roblox DevForum, Creations Feedback, 'Feedback: Simple task system for my horror game' — https://devforum.roblox.com/t/feedback-simple-task-system-for-my-horror-game/2842431 (fetched 2026-09-20)",
+      "demonstrates": [
+        "the tracker shows one active objective at a time with a 'New Task' announcement label above it, rather than a checklist of everything in the chapter",
+        "the entire reported defect was the EMPTY STATE: with no task the 'New Task' label disappears, the remaining text goes oversized and off-centre, and the panel reads broken — 'it looks very wonky'",
+        "the concrete lesson recorded by the thread is that an objective panel must reserve its layout and anchoring for zero tasks, because the zero case is the one players see between beats"
+      ]
+    },
+    {
+      "id": "devforum-jumpscare-overlay",
+      "source": "Roblox DevForum, Community Tutorials, 'Beginner Tutorial #2: How To Make A Jumpscare!' — https://devforum.roblox.com/t/beginner-tutorial-2-how-to-make-a-jumpscare/2805079 (fetched 2026-09-20)",
+      "demonstrates": [
+        "the jumpscare is its OWN ScreenGui (named JumpscareGui) containing a single ImageLabel, held with Visible false and toggled on",
+        "the audio is triggered on the same frame as the image becoming visible, with no offset between them",
+        "the hold is a fixed short duration — task.wait(3) in the tutorial — after which Visible goes false: it is a timed overlay, not a state the player dismisses",
+        "the baseline image is static; no animation is part of the construction, so the impact is carried entirely by the cut and the sound"
+      ]
+    }
+  ],
+  "rules": {
+    "note": "Distilled from the references above. Units are Roblox UI units: px for stroke and radius, seconds for holds, unitless scale where a source gave a scale. Values marked approximate are read from descriptions rather than sampled. This genre inverts most of simulator.json: where the simulator kit says thick stroke, big radius and saturated fills, horror says hairline or none, small radius and translucent black. Do not inherit the simulator rules here.",
+    "panelFill": {
+      "color": "black",
+      "backgroundTransparency": 0.5,
+      "never": "an opaque saturated panel",
+      "why": "the one numeric value a reviewer actually handed a horror developer was black backgrounds at 0.5 transparency, and a separate thread's whole critique of a horror HUD resolved to 'make it a bit more transparent' — translucency is what lets the scene stay the subject"
+    },
+    "panelStroke": {
+      "thickness": 1,
+      "transparency": 0.6,
+      "colorRole": "outline",
+      "never": "a bright outline, and never the simulator's thick near-black stroke",
+      "why": "a bright outline on the HUD was named as the single thing that made a horror interface read as a mobile game; separation in this genre comes from the translucent dark fill, not from an edge, which is the exact opposite of the simulator rule"
+    },
+    "cornerRadius": {
+      "panel": 6,
+      "card": 4,
+      "button": 4,
+      "scaleAlternative": 0.15,
+      "contested": true,
+      "why": "a reviewer's concrete suggestion was a slight UICorner bevel around 0.15 scale, which on a standard button height lands near 4-6px; the same threads show developers questioning whether rounding belongs in horror at all, so this is recorded as a small value that is a live decision rather than as a house default"
+    },
+    "vitalsCluster": {
+      "anchor": "bottom-left",
+      "pairing": "the second meter sits BESIDE the first, further meters stack above",
+      "never": "centred along the bottom, and never along the top",
+      "why": "Pressure documents health at the bottom left with the oxygen meter beside it; the corner keeps the centre of the screen clear for the thing the player is afraid of, which is the whole point of the genre"
+    },
+    "meterState": {
+      "mechanism": "the meter changes its own appearance instead of gaining a number",
+      "damaged": "progressively redder as the value falls",
+      "regenerating": "the same meter recolours (yellow), no second indicator is added",
+      "overlayIcon": "a skull fades up inside the meter as it empties",
+      "never": "a percentage label bolted beside the bar",
+      "why": "Pressure's health readout reddens and reveals a skull as HP drops and turns yellow while regenerating — one element carrying three states, which is why a horror meter can be read at a glance in the dark where a number cannot"
+    },
+    "temporaryHealth": {
+      "rule": "a shield or temporary value draws as a LAYER on top of the real meter and depletes first",
+      "never": "a second separate bar next to the real one",
+      "why": "Pressure's artificial HP displays on top of actual health and is consumed before it, so the player reads one meter with a cap that moved rather than two competing quantities"
+    },
+    "emptyMeterIsAState": {
+      "rule": "zero on a survival meter opens a NAMED state with its own feedback rather than ending the run",
+      "example": "empty oxygen starts a coughing state draining roughly 1 HP rapidly, which the player can still escape",
+      "why": "Pressure's oxygen at zero begins suffocation rather than death, so the last few seconds of a meter are playable; a meter that kills at zero removes the only moment it was built to create"
+    },
+    "vitalsFeedbackLeavesTheHUD": {
+      "rule": "low vitals also change the avatar and the view, not only the bar",
+      "examples": "bleeding thresholds, altered idle and walk animation, a cracked visor over the camera",
+      "why": "Pressure ties bleeding to 60 HP, larger blood to 20, changed animation to 28 and progressive mask cracking to cumulative damage — the bar is a confirmation of something the player already feels, which is why horror vitals do not need to be large"
+    },
+    "hotbar": {
+      "anchor": "bottom-centre",
+      "slots": 6,
+      "slotShape": "square",
+      "slotContents": [
+        "item icon",
+        "the keyboard number that equips it",
+        "stack count when the item stacks",
+        "a remaining-uses or remaining-time meter drawn INSIDE the slot"
+      ],
+      "criticalItemTreatment": "smaller icon with striped hatching under it, and exempt from the slot cap",
+      "variableCount": "lay out for a count that changes by mode (5, 6 and 10 all ship in the same game)",
+      "why": "the DOORS inventory packs four values into every slot and distinguishes run-critical items inside the same bar by icon size plus hatching, which is how one row carries two classes of item without a second container"
+    },
+    "batteryDisplay": {
+      "ownedBy": "the tool, not the persistent HUD",
+      "visibility": "enabled on equip, hidden on unequip",
+      "form": "numeric text in a small frame",
+      "refresh": "on the drain tick, not per frame",
+      "tickSeconds": 1.5,
+      "alsoValid": "no indicator at all, with the budget stated in seconds and the pressure carried by the light itself",
+      "why": "a working DevForum system enables the battery ScreenGui on equip and steps a TextLabel once per 1.5s drain tick, while Pressure documents a 127-second flashlight charge as a stat with no on-screen meter described — so the meter is optional but the tool-scoped visibility is not"
+    },
+    "objectiveTracker": {
+      "rule": "one active objective at a time with a 'New Task' announcement label above it",
+      "never": "a full checklist of the chapter",
+      "emptyState": "reserve the panel's height and keep the text anchored when there are zero tasks",
+      "why": "the entire reported defect in a shipped horror task system was the zero case — the announcement label vanishes, the remaining text goes oversized and off-centre and the panel reads broken — and the zero case is what players stare at between beats"
+    },
+    "jumpscare": {
+      "container": "its own ScreenGui above everything else",
+      "content": "a single full-bleed ImageLabel, held Visible false and toggled on",
+      "audio": "fires on the same frame as Visible becomes true, with no offset",
+      "holdSeconds": 3,
+      "dismissal": "timed, never player-dismissed",
+      "animated": false,
+      "why": "the canonical construction is a static full-screen image toggled on with its sound on the same frame and hidden after a fixed short hold — the impact is the cut and the audio, so animating the image or letting the player click it away removes the only thing it does"
+    },
+    "deathScreen": {
+      "phases": [
+        "jumpscare",
+        "narrated interstitial",
+        "run overview"
+      ],
+      "interstitial": "a dark field with one speaker, that speaker's symbol emitting coloured light at the top, click-to-advance text, and copy that changes with repeat failure",
+      "speakerIdentity": "carried by type treatment and light colour, never by a name plate",
+      "overview": "sectioned rows — run info, then the reward arithmetic ITEMISED line by line, then up to seven further statistic rows",
+      "buttons": [
+        "Return to Lobby",
+        "Play Again"
+      ],
+      "countdownOnPrimary": 30,
+      "spectate": "a hide-menu control that dismisses the screen without leaving the run",
+      "never": "a single panel reading You Died with one button",
+      "why": "the DOORS death screen spends three screens on a failure and shows its currency as per-room, per-floor, conversion, multiplier and per-friend lines rather than a total — the run summary is the reward, which is why players replay, and a one-panel death screen throws that away"
+    },
+    "fullScreenState": {
+      "rule": "a player state that changes the camera's relationship to the world — hiding, suffocating, losing sanity — is drawn as a FULL-SCREEN overlay, typically a black vignette, not as a panel, badge or corner icon",
+      "prompt": "entering the state is offered by a small device-keyed icon prompt near the interactable, not by a panel",
+      "exit": "a movement input on desktop, with an explicit exit button only on touch",
+      "why": "DOORS communicates hiding with a black vignette over the entire view while the entry prompt stays a small icon — the state is something the player is inside, and a panel would make it a thing they are looking at instead"
+    },
+    "tensionMinigame": {
+      "form": "a single icon that splits and re-converges",
+      "failureSignal": "the same icon recolours red on a miss",
+      "difficulty": "the widget accelerates as the window closes; no numeric timer is drawn",
+      "partialProgress": "none — a single miss is terminal, so there is no progress state to render",
+      "touch": "re-lay the same widget out for touch rather than showing key prompts a phone cannot press",
+      "never": "a progress bar with a moving marker and a target zone",
+      "why": "the DOORS heartbeat minigame is one heart splitting into halves that fly back in, turning red on a miss and speeding up as the failure window closes — a bar with a target zone would turn a felt rhythm into a read task"
+    },
+    "lobbyVote": {
+      "options": 4,
+      "intermissionSeconds": 30,
+      "tieBreak": "the leftmost option wins",
+      "noVoteFallback": "the previous map repeats, so the panel can never produce an empty result",
+      "confirmButton": "outside the card frame, so it stands out from the cards it acts on",
+      "closeButton": true,
+      "entranceTiming": "every element animates in on the same beat as the backdrop — staggered arrival was reported as a defect",
+      "pagingIcons": "custom, never the default arrow glyphs",
+      "cardImage": "the card is carried by its map image; a poor capture sinks the card",
+      "diegeticAlternative": "physical voting plates in the lobby instead of a panel",
+      "roundOpeningHold": 15,
+      "why": "Flee the Facility votes four maps over a 30-second intermission on world plates with a leftmost tie-break and a previous-map fallback, and a DevForum voting panel's whole critique was the confirm button sitting inside the frame, default arrows, and elements arriving off the backdrop's beat"
+    },
+    "colorSemantics": {
+      "reserved": {
+        "green": "health"
+      },
+      "rule": "a second meter must take another hue — stamina and sanity do not get green",
+      "accent": "small areas of deep red rather than large areas of bright red",
+      "contrast": "never red ink on a red field; check contrast, because horror palettes collapse into themselves",
+      "readabilityFloor": "there is a darkness below which the UI stops being readable, and reviewers report it as black boxes",
+      "why": "a stamina bar was rejected for being green specifically because green already means health, and a separate thread called out red on red directly while recommending smaller deep reds — in a genre with one narrow palette, hue is the only semantic channel left"
+    },
+    "typography": {
+      "rule": "the title is authored as an image asset and placed as an ImageLabel, not set in a built-in font",
+      "bodyText": "plain text is acceptable in the HUD; it is titles and buttons that must be authored",
+      "hierarchy": "the game title is the most prominent element on the menu",
+      "why": "default Roblox fonts were the most-cited tell across two independent threads — 'it just screams default to me' — and both landed on generating the lettering as an image instead, which makes this a convention rather than one reviewer's taste"
+    },
+    "controlsAreImages": {
+      "rule": "buttons are ImageButtons on authored plates, not TextButtons with a flat fill",
+      "minimum": "if a control must stay text, it still gets its own backing plate — bare text on a background does not read as a button",
+      "why": "reviewers pushed a horror developer off TextLabel and TextButton onto ImageLabel and ImageButton explicitly to escape the blocky studio-produced look, and a separate thread's complaint was that the buttons lacked visual button-like qualities"
+    },
+    "backdrop": {
+      "rule": "a flat black field is not a horror background",
+      "options": [
+        "static or film grain behind the content",
+        "a dark scene rendered live behind the menu by camera manipulation"
+      ],
+      "motif": "one strong focal motif, alive — blinking, drifting or slowly rotating — rather than scattered decoration",
+      "why": "a plain black menu background was judged insufficient by every reviewer on the thread, who asked for static behind the title and for the single approved motif to move, while another thread's named strength was a dark room rendered behind the menu by a camera"
+    },
+    "motion": {
+      "hoverScale": "subtle — a strong zoom on hover was the specific complaint",
+      "loaders": "solid fills, not gradients",
+      "sound": "the hover sound is a pitched-down version of the click sound, one family",
+      "why": "all three were concrete critiques on one horror menu — the gradient loading wheel did not fit the style, the hover zoom was too strong, and the hover and click sounds did not belong together, which is the difference between a menu that feels authored and one that feels assembled"
+    }
+  },
+  "incomplete": false,
+  "honestLimits": [
+    "Nothing here was measured with a colour picker or an inspector. The px values in panelStroke, cornerRadius and panelFill come from values reviewers named in text (0.5 transparency, 0.15 UICorner scale) or from proportional reading of descriptions, and are stated as approximations.",
+    "No screenshot of a shipped horror game was inspected directly. The two shipped games here (DOORS, Pressure) are read through their OFFICIAL wikis, which describe placement, behaviour and state changes but rarely stroke weights or radii. Geometry is therefore the thinnest part of this file and the part most worth re-measuring in Studio.",
+    "Fandom mirrors (specter.fandom.com, piggy.fandom.com, roblox-3008-wiki.fandom.com) and namu.wiki returned 402/403 to every fetch. Sanity meters specifically are UNDER-EVIDENCED here as a result: the Specter sanity board and sanity-bar gamepass were surfaced by search but the page could not be opened, so no sanity-specific rule is recorded and 'sanity' appears only inside fullScreenState, where DOORS supplies the full-screen-overlay convention directly. A sanityMeter rule should not be invented until a sanity UI is actually observed.",
+    "The Roblox Creator Store is a client-rendered application and returned an empty document, so no UI-kit listing contributed to this file; builtbybit returned 403. Every rule here therefore comes from shipped-game wikis or DevForum threads.",
+    "Several DevForum references are CRITIQUES of work in progress rather than shipped screens. They are recorded because a reviewer saying 'the bright outline makes this read as a mobile game' is an observation about a convention, but they carry less weight than the two shipped games and are labelled as threads in every source field."
+  ],
+  "ratchetNote": "This file now holds 16 references, which is above the five-reference minimum, so 'horror' MUST be removed from the PENDING set in tests/ui-references.test.mjs. That test fails in both directions by design: a pending genre that has reached five references fails so the list of known holes cannot outlive the holes. Removing it is a one-line edit to a file this agent was scoped out of and is left to whoever integrates these genres."
+}

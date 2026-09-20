@@ -1,0 +1,337 @@
+{
+  "genre": "screen-codes",
+  "label": "Code redemption — the one-field screen: where it hides, the text box, the confirm button, and what the game says back",
+  "recorded": "2026-09-20",
+  "provenance": "Public web pages fetched on 2026-09-20: five Roblox DevForum threads, the Roblox Creator Hub TextBox reference, a published Codes-System kit listing, a published UI-framework thread, four shipped-game redemption guides on pcgamesn.com, one game wiki, and one beginner tutorial. Every `source` below is a URL that was actually fetched in this session, and every claim is quoted or paraphrased out of the page named. No image, no markup, no Luau source and no asset is copied here; what is recorded is what was learned about construction. Like tycoon.json and unlike simulator.json, these are TEXT sources — nobody measured a screenshot — so this file states shapes, order, states, timing and copy, and refuses to invent stroke weights and corner radii it cannot see. See `unmeasured` at the bottom.",
+  "incomplete": false,
+  "references": [
+    {
+      "id": "devforum-code-gui-tutorial",
+      "source": "https://devforum.roblox.com/t/how-to-make-a-code-gui-for-beginners/1730502 — DevForum Community Tutorials, 'How to make a Code GUI (for beginners)'",
+      "demonstrates": [
+        "the whole screen is five instances and no more: a Frame named 'Background' holding a Title TextLabel, a Description TextLabel, one TextBox and one TextButton, plus a UICorner — a codes screen that grows a sixth element has stopped being a codes screen",
+        "the opener is a SEPARATE TextButton ('CodesButton') living on the HUD, outside the panel, and it TOGGLES the panel rather than opening it: `background.Visible = not background.Visible`, so the same button closes it again",
+        "there is a line of instruction text between the title and the field — the field is not left to explain itself",
+        "sizes are authored in Scale with Offset pinned at zero ('0.1, 0, 0.1, 0', and the reader is told 'don't edit the 2nd and 4th values'), so the panel rescales rather than staying a fixed pixel box",
+        "three distinct replies, not two: 'Valid code', 'Already redeemed', 'Incorrect code' — 'already redeemed' is broken out from 'incorrect' at the very first tutorial level",
+        "codes are one-time-use PER PLAYER, checked against a per-player folder, so the already-redeemed reply is a normal outcome and not an error"
+      ]
+    },
+    {
+      "id": "devforum-redeem-code-system",
+      "source": "https://devforum.roblox.com/t/redeem-code-system/1342240 — DevForum Community Resources, 'Redeem Code System'",
+      "demonstrates": [
+        "the single most transferable construction decision in this whole file: the RESULT IS WRITTEN INTO THE FIELD'S OWN PlaceholderText, not into a separate status label — the TextBox clears on submit and its placeholder becomes the answer, so the player's eye never has to move off the box it was already on",
+        "the placeholder is recoloured per outcome: success green (Color3 0.333333, 1, 0.498039), failure red (Color3 1, 0.313725, 0.313725), resting grey (Color3 0.698039, 0.698039, 0.698039)",
+        "exact strings used: resting 'Type Here', success 'Code Redeemed', failure 'Invalid Code', third state 'Code Already Redeemed' — all title case, two or three words, no punctuation, no apology",
+        "the recoloured message is TRANSIENT: it displays for a beat and then resets to the default grey placeholder, so the screen returns to a resting state ready for the next code instead of holding an accusation on screen",
+        "the panel carries the player's currency readouts (Coins, Gems) live inside it, so the reward lands visibly in the same frame the player is looking at",
+        "three separate sounds are wired: a button click, an error sound for invalid/already-redeemed, and a distinct redeem sound for success — the audio carries the same three-way split as the colour",
+        "the panel has BOTH a close button of its own and the external toggle button; either dismisses it"
+      ]
+    },
+    {
+      "id": "devforum-feedback-codes-ui-2022",
+      "source": "https://devforum.roblox.com/t/feedback-on-codes-ui/1769537 — DevForum Creations Feedback, 'Feedback on Codes UI' (a beginner's codes panel being critiqued)",
+      "demonstrates": [
+        "the critique that repeats three times in one thread is about the close control, not the layout: 'make the X more thick so that it is more visible', 'make the X to close the UI a little bit thicker', 'the X is kinda small' — on a one-field modal the X is the second most-used control and gets built too small by default",
+        "'add a border to the \"Redeem\" button, so It will cover up the distortion against the background' — the confirm button needs its own stroke, because a green fill sitting directly on a coloured panel has no edge",
+        "'make everything bigger (buttons and text)' — a codes panel authored at desktop-cursor scale is too small the moment it is touched",
+        "'blur it a little bit, so the text is more visible' — the world behind the modal is blurred or dimmed rather than left sharp",
+        "a replier draws the genre line explicitly: a flat minimal treatment is 'too simple' for a cartoony game and 'simple is better for more realistic games and horror games' — the codes screen inherits the game's construction language, it does not have one of its own"
+      ]
+    },
+    {
+      "id": "devforum-feedback-my-codes-ui-2024",
+      "source": "https://devforum.roblox.com/t/feedback-on-my-codes-ui/3054845 — DevForum Art Design Support, 'Feedback on my Codes UI'",
+      "demonstrates": [
+        "the panel is built as a frame inside a frame: an outermost coloured border frame with a grey body frame inset within it, rather than a single frame carrying a UIStroke",
+        "the concrete geometry rule for that construction: 'The cornering on the outermost blue border does not go with the cornering of the gray background' — the fix given is to measure the gap between the two frames and ADD it to the inner radius to get the outer radius, otherwise the two curves diverge at the corners",
+        "'The text in the TextBox and \"Redeem\" button are noticeable closer to the top in each box' — centred text rides high in several Roblox fonts and needs a UIPadding correction; a codes screen is two boxes of centred text, so the defect shows twice",
+        "the same two elements are named as the whole screen again: the TextBox and the Redeem button"
+      ]
+    },
+    {
+      "id": "grow-a-garden-settings-row",
+      "source": "https://www.pcgamesn.com/grow-a-garden/codes — shipped game, Grow a Garden, redemption walkthrough",
+      "demonstrates": [
+        "the codes UI is NOT a panel here: it is a SECTION inside the settings menu — 'Tap the Settings button (the cog) in the top-left corner', then 'Scroll down the settings menu until you see the \"Redeem Codes\" section'",
+        "in that inline form the field and the button share one ROW: the field on the left, 'the green Claim button on the right'",
+        "the placeholder is a lowercase invitation with an ellipsis: 'Type code here…' — not a label, not all-caps, and it sits inside the field",
+        "the confirm word is 'Claim', not 'Redeem' — the verb varies by game while the colour (green) does not",
+        "the codes affordance is reached in two taps from the HUD, and the HUD icon it hides behind is a gear in the top-left corner"
+      ]
+    },
+    {
+      "id": "pet-sim-99-store-banner",
+      "source": "https://www.pcgamesn.com/pet-simulator-99/codes — shipped game, Pet Simulator 99, redemption walkthrough",
+      "demonstrates": [
+        "the codes entry point is buried inside the SHOP, at the very bottom of it: open the store from the shopping cart icon, scroll to the bottom, and find 'a banner with a Redeem button in the corner'",
+        "so the affordance is a full-width BANNER row with the action button tucked into its corner — the same band construction the shop uses for a featured offer, reused for codes",
+        "tapping that banner's Redeem opens the actual entry surface, where the code is typed 'into the box' — two stages: an advertisement row, then the field",
+        "the confirm control is described by size and colour before it is described by label: 'the big green \"Redeem!\" button' — big, green, exclamation mark",
+        "the word 'Redeem' is used for BOTH the banner's opener and the confirm inside; the repetition is the shipped behaviour"
+      ]
+    },
+    {
+      "id": "blox-fruits-present-icon",
+      "source": "https://www.pcgamesn.com/blox-fruits/codes — shipped game, Blox Fruits, redemption walkthrough",
+      "demonstrates": [
+        "the opener is a standalone HUD icon with no menu around it: 'Click the Present icon near the compass' — one tap from play to the field",
+        "the icon is a GIFT/PRESENT, and it is placed next to an unrelated HUD element (the compass) rather than in a tidy rail — codes affordances colonise whatever HUD corner is free",
+        "the confirm control is labelled 'Redeem'",
+        "this game previously used the Twitter-bird icon for the same job; the bird has been replaced by a present, so a generator that hard-codes a bird is reproducing a retired convention"
+      ]
+    },
+    {
+      "id": "blade-ball-extra-checkmark",
+      "source": "https://www.pcgamesn.com/blade-ball/codes — shipped game, Blade Ball, redemption walkthrough",
+      "demonstrates": [
+        "the opener is a generic overflow button — 'the \"Extra\" button in the top-left corner' — and Codes is one item inside it, alongside whatever else did not earn its own HUD slot",
+        "the confirm control carries NO WORD AT ALL: 'Click the green check mark' — an icon-only green tick sitting beside the field",
+        "that is the floor of the convention: the confirm may lose its label, but it does not lose its green"
+      ]
+    },
+    {
+      "id": "anime-vanguards-profile-subscreen",
+      "source": "https://www.pcgamesn.com/anime-vanguards/codes — shipped game, Anime Vanguards, redemption walkthrough",
+      "demonstrates": [
+        "codes is a SUB-SCREEN of an unrelated screen: 'Click the Profile button' on the right side of the screen, then 'Click the Codes button' in the top-left corner of the profile screen",
+        "so the nesting is HUD icon → big screen → corner button → field, three taps deep, and the codes button inside the profile sits in the panel's own top-left corner rather than in a tab row",
+        "the confirm reads 'Redeem Code' — the two-word form"
+      ]
+    },
+    {
+      "id": "find-the-needle-codes-tab",
+      "source": "https://findtheneedlee.wiki/codes/how-to-redeem/ — game wiki, 'How to Redeem Codes'",
+      "demonstrates": [
+        "the entry point is described as a class rather than one button — 'a shop, gift, or Twitter-style button' on the HUD, on 'the left or top' of the screen — which is the convention stated generically by someone who has seen many of them",
+        "when the game has a multi-panel menu, codes is a TAB inside it: open the panel and 'switch to the Codes tab if multiple panels exist'",
+        "the failure taxonomy a player is warned about, in the player's own words: 'Invalid / Unknown' (typos or expired keys), 'Already redeemed' (code used on account), 'Expired' (wave closed) — three distinguishable refusals, not one",
+        "mobile placement defect stated outright: 'the code box is easy to miss behind the jump button' — the bottom-right of a touch screen is occupied and a codes field placed there is unreachable",
+        "'if no Codes tab exists, a public wave has not shipped yet' — the absence of the screen is itself meaningful; a game with no codes does not carry a dead Codes button"
+      ]
+    },
+    {
+      "id": "rblx-essentials-codes-kit",
+      "source": "https://rblx-essentials.itch.io/roblox-codes-system-gui — published asset listing, 'Roblox Codes System Kit - GUI'",
+      "demonstrates": [
+        "the kit's own description of the screen is exactly three parts: 'a HUD button for access', a text input box, and response messages for outcomes — nothing else is listed",
+        "the refusal taxonomy is EIGHT named reasons, each with its own message: Empty, NoSuchCode, AlreadyRedeemed, Expired, CodeDisabled, TooFast, NoData, GrantFailed — 'TooFast' is a rate-limit refusal and 'GrantFailed' is a reward-side failure, both of which a generator writing one 'Invalid code' string will never produce",
+        "'Case and spaces do not matter' — the shipped kit normalises the input rather than making the player match capitalisation",
+        "each code carries an individual expiration date, so 'Expired' is a first-class state and not a variant of invalid",
+        "custom rewards 'appear by name in the menu' — the screen names what a code granted rather than reporting a bare success"
+      ]
+    },
+    {
+      "id": "general-ui-kit-panel-rail",
+      "source": "https://devforum.roblox.com/t/general-ui-kit-complete-roblox-ui-framework-for-roblox-games-tag-based-no-script-editing/4533783 — DevForum Community Resources, 'General UI Kit'",
+      "demonstrates": [
+        "codes is not part of the base framework; the Codes System is a separate pack that 'brings its own panel and HUD button and takes its place on the same rail' — the codes opener joins the existing launcher rail rather than inventing a new position",
+        "panel exclusivity is a framework-level rule: 'Opening a panel closes the other open ones, unless you say otherwise' — opening codes must dismiss the shop",
+        "panels are identified by a tag and a PanelId with 'no hardcoded names, no fragile paths', and the framework 'doesn't impose a fixed visual style. It only handles behaviour' — the codes panel takes the game's look, the framework supplies only the open/close contract"
+      ]
+    },
+    {
+      "id": "textbox-engine-reference",
+      "source": "https://create.roblox.com/docs/reference/engine/classes/TextBox — Roblox Creator Hub, TextBox class reference",
+      "demonstrates": [
+        "the properties that make the field behave: PlaceholderText and PlaceholderColor3 (which is what the transient feedback convention drives), TextEditable, MultiLine, CursorPosition, ClearTextOnFocus",
+        "submission has two paths, not one: the FocusLost event carries an `enterPressed` boolean, so Enter must submit as well as the button",
+        "touch submission is a separate event, ReturnPressedFromOnScreenKeyboard — a codes screen wired only to the button ignores the way most players finish typing",
+        "MultiLine must be false for a code field; a code is one line and a field that accepts a newline accepts a broken paste"
+      ]
+    },
+    {
+      "id": "ios-keyboard-covers-textbox",
+      "source": "https://devforum.roblox.com/t/ios-textbox-input-hidden-by-on-screen-keyboard/2338293 — DevForum Engine Bugs, 'iOS TextBox input hidden by On Screen Keyboard'",
+      "demonstrates": [
+        "the constraint that decides where the panel sits vertically: 'TextBoxes on iOS will be covered by the on screen keyboard' — the keyboard claims the bottom of the screen the instant the field is focused",
+        "the reporter's diagnosis names a real offset in the geometry: 'iOS isn't accounting for the 36 pixel topbar offset'",
+        "the engine-side properties that exist for this — OnScreenKeyboardPosition, OnScreenKeyboardSize, OnScreenKeyboardVisible — were reported to 'not work as expected either', so a generated screen cannot rely on reading the keyboard rect and must place the field high by construction",
+        "Roblox shipped a fix for this specific report in October 2023, but the shape of the hazard is unchanged: the lower half of a touch screen is keyboard territory while a code is being typed"
+      ]
+    },
+    {
+      "id": "bloxcreators-chat-feedback",
+      "source": "https://www.bloxcreators.com/beginner-tutorials/how-i-create-the-simple-code-redeem-system-in-roblox-studio/ — beginner tutorial, 'How I create the simple code redeem system in Roblox Studio?'",
+      "demonstrates": [
+        "the minimum viable pair, named plainly: a TextBox named 'CodeInputBox' and a TextButton named 'SubmitCodeButton' parented straight to a ScreenGui",
+        "this tutorial routes the result to the CHAT instead of the panel — SetCore('ChatMakeSystemMessage') with 'Code redeemed!' in green (RGB 0,255,0) and 'Invalid code!' — recorded here as the WEAKER convention it is: the answer lands somewhere the player is not looking, and the panel that just took the input says nothing",
+        "even in the chat form the green/red split and the two-word message hold, which is how consistent that part of the convention is",
+        "the tutorial ships no placeholder text and no styling defaults — a bare TextBox is the thing a generator produces when it has no reference, and it is what this file exists to prevent"
+      ]
+    }
+  ],
+  "rules": {
+    "note": "Distilled from the references above. Sources are TEXT, so these rules state placement, order, proportion, state and copy. Stroke weights and corner radii are NOT stated here — the codes screen inherits those from the game's genre file (see simulator.json rules.panelStroke, rules.cornerRadius). Where a value is reasoned rather than read, it says so.",
+    "entryPoint": {
+      "rule": "codes is always behind ONE affordance; it is never a field sitting open on the HUD",
+      "observedForms": [
+        "own icon on the HUD launcher rail (present/gift, legacy Twitter-or-X bird)",
+        "a section inside the Settings panel, reached from the gear",
+        "a banner at the bottom of the Shop panel, with its Redeem button in the banner's corner",
+        "a tab inside a multi-panel menu",
+        "a corner button inside an unrelated big screen (Profile)",
+        "an item inside a generic overflow button ('Extra')"
+      ],
+      "defaultForGeneration": "own circular icon on the same launcher rail as shop and settings, top-left or left edge",
+      "edge": "left or top — never bottom-right",
+      "why": "five shipped games in this file put it in five different places, but never on the right-hand thumb side and never loose on the HUD; find-the-needle-codes-tab states the class as 'a shop, gift, or Twitter-style button' on 'the left or top'"
+    },
+    "existenceCondition": {
+      "rule": "only generate this screen when the game actually has a code source; do not ship a Codes button with nothing behind it",
+      "why": "'if no Codes tab exists, a public wave has not shipped yet' — the absence is the signal, and a dead Codes button trains players to distrust the menu"
+    },
+    "panelExclusivity": {
+      "rule": "opening codes closes any other open panel",
+      "why": "stated as the framework-level contract in the General UI Kit thread; two stacked panels over a one-field form is never the shipped behaviour"
+    },
+    "elementCount": {
+      "max": 5,
+      "elements": [
+        "title",
+        "one line of instruction",
+        "one TextBox",
+        "one confirm button",
+        "one close control"
+      ],
+      "forbidden": [
+        "a list of available codes",
+        "a scrolling frame",
+        "a second field",
+        "tabs inside the codes panel itself"
+      ],
+      "why": "every reference that enumerates the screen enumerates the same handful; the tutorial, the kit listing and both critique threads independently name only the field and the button"
+    },
+    "panelProportion": {
+      "widthFractionOfViewport": [0.30, 0.36],
+      "heightFractionOfViewport": [0.26, 0.34],
+      "minPx": [360, 220],
+      "shape": "wider than tall",
+      "why": "simulator.json's codes-modal reference reads the width as 'roughly a third of the screen — a one-field dialog does not become a full sheet'; the height follows from the five-element cap"
+    },
+    "verticalPlacement": {
+      "rule": "the field's centre sits ABOVE the vertical midline of the viewport — target 0.38-0.45 of screen height, never below 0.5",
+      "reasoned": true,
+      "why": "'TextBoxes on iOS will be covered by the on screen keyboard', and the engine's OnScreenKeyboardSize was reported not to work as expected, so the field cannot be repositioned reactively and must be placed clear by construction. Separately, 'the code box is easy to miss behind the jump button' rules out the bottom of the screen on touch even before the keyboard opens."
+    },
+    "stackOrder": {
+      "order": ["title", "instruction line", "field", "confirm", "feedback"],
+      "rule": "feedback occupies the field's own placeholder or a line immediately under the confirm — it is never above the title and never off-panel",
+      "why": "the tutorial builds Title, Description, TextBox, TextButton in that order; the redeem-code-system puts the answer in the field itself"
+    },
+    "inlineRowVariant": {
+      "whenEmbedded": "inside Settings or Shop rather than as its own modal",
+      "layout": "field left, confirm right, one row, button width roughly a quarter of the row",
+      "why": "'the green Claim button on the right' in Grow a Garden; the modal stacks, the embedded row does not"
+    },
+    "field": {
+      "lines": 1,
+      "multiLine": false,
+      "clearTextOnFocus": false,
+      "fill": "near-white, lighter than the panel",
+      "widestElement": true,
+      "textAlign": "centre, with UIPadding correcting the vertical rise",
+      "placeholderExamples": ["Type code here…", "Type Here", "Enter Code"],
+      "placeholderColor": "grey, visibly quieter than entered text",
+      "why": "ClearTextOnFocus must be false because every shipped guide tells players to paste rather than type ('copy and paste the code directly'), and a field that wipes on a mis-tap destroys the paste. Centred text 'noticeable closer to the top in each box' is the named defect and UIPadding is the named fix."
+    },
+    "submitPaths": {
+      "required": ["the confirm button", "FocusLost with enterPressed true", "ReturnPressedFromOnScreenKeyboard"],
+      "why": "the TextBox reference exposes all three; a screen wired only to the button ignores how desktop and touch players actually finish typing"
+    },
+    "inputNormalisation": {
+      "rule": "trim, case-fold and strip internal spaces before matching",
+      "why": "the shipped kit states 'Case and spaces do not matter'; every guide that documents case sensitivity documents it as a warning to the player, which is a defect being worked around, not a feature"
+    },
+    "confirmButton": {
+      "colorRole": "success/green",
+      "labels": ["Redeem", "Redeem!", "Redeem Code", "Claim", "Try", "(icon-only green check)"],
+      "position": "directly under the field in the modal form; to the RIGHT of the field in the embedded row form",
+      "widthRelativeToField": "noticeably narrower than the field — roughly 0.4-0.55 of its width in the modal form",
+      "ownStroke": true,
+      "why": "green is the only element of this screen that never varies across the references — the label may vanish entirely down to a bare check mark and the colour stays. 'add a border to the \"Redeem\" button, so It will cover up the distortion against the background' is why it carries its own stroke. simulator.json's codes-modal independently reads the confirm as 'green, chunky, and noticeably smaller than the field above it'."
+    },
+    "feedback": {
+      "primaryForm": "rewrite the field's own PlaceholderText and recolour it",
+      "clearFieldOnSubmit": true,
+      "colors": {
+        "success": "green",
+        "failure": "red",
+        "resting": "grey"
+      },
+      "transient": true,
+      "resetsToRestingPlaceholder": true,
+      "never": [
+        "a chat system message as the only response",
+        "a toast in a screen corner away from the panel",
+        "a second modal confirming the first",
+        "silence"
+      ],
+      "why": "the strongest single finding in this file. The shipped redeem system writes 'Code Redeemed' green / 'Invalid Code' red / 'Code Already Redeemed' red straight into the placeholder the player is already staring at, clears the entry, then reverts to grey 'Type Here'. The chat-message form is recorded in bloxcreators-chat-feedback and is the weaker convention: it answers where the player is not looking."
+    },
+    "resultCopy": {
+      "length": "one to three words",
+      "register": "flat and factual, title case or sentence case",
+      "observed": ["Valid code", "Code Redeemed", "Incorrect code", "Invalid Code", "Already redeemed", "Code Already Redeemed", "Expired"],
+      "never": ["error codes", "'Something went wrong, please try again later'", "apologies", "full sentences", "stack traces"],
+      "why": "unanimous across the tutorial, the shipped system and the kit; nothing on this screen is longer than three words"
+    },
+    "refusalStates": {
+      "minimum": 4,
+      "minimumSet": ["empty input", "unknown code", "already redeemed", "expired"],
+      "full": ["Empty", "NoSuchCode", "AlreadyRedeemed", "Expired", "CodeDisabled", "TooFast", "NoData", "GrantFailed"],
+      "rule": "each state gets its OWN message; 'already redeemed' must never be collapsed into 'invalid'",
+      "why": "the published kit ships eight named refusals and the beginner tutorial already splits three. 'Already redeemed' is the one that changes what the player does next — it tells them to stop retyping — and it is the one a generator writing a single failure string destroys. 'TooFast' (rate limit) and 'GrantFailed' (reward side failed after a valid code) are states a generator will never invent unprompted."
+    },
+    "successDetail": {
+      "rule": "name what was granted, not just that it worked",
+      "why": "the kit lists custom rewards so they 'appear by name in the menu'; the shipped redeem system keeps live Coins and Gems readouts inside the codes panel so the increment is visible where the code was typed"
+    },
+    "closeButton": {
+      "shape": "circle",
+      "colorRole": "danger",
+      "position": "top-right",
+      "overhang": true,
+      "minTapPx": 44,
+      "strokeWeightRelativeToPanel": "not thinner than the panel's own stroke",
+      "why": "shape and position inherit from the library convention (simulator.json rules.closeButton). The size and weight floor is here because one critique thread said it three separate times — 'make the X more thick', 'a little bit thicker', 'the X is kinda small' — on a panel where the X is the second most-used control."
+    },
+    "nestedFrameRadius": {
+      "rule": "when the panel is an outer border frame containing an inset body frame, outerRadius = innerRadius + gapBetweenFrames",
+      "why": "'The cornering on the outermost blue border does not go with the cornering of the gray background' — the named fix is exactly this arithmetic, and a generator that gives both frames the same radius produces visibly diverging curves at all four corners"
+    },
+    "backdrop": {
+      "rule": "blur or dim the world behind the modal",
+      "why": "'blur it a little bit, so the text is more visible' — a one-field form over a moving game world loses its text otherwise"
+    },
+    "touchSizing": {
+      "rule": "author in Scale with Offset at zero, and size buttons and text for a thumb before a cursor",
+      "why": "'make everything bigger (buttons and text)' as a critique, and the tutorial's insistence on Scale sizing with the Offset values left alone"
+    },
+    "audio": {
+      "cues": ["button click", "error", "redeem success"],
+      "rule": "success and failure get DIFFERENT sounds, matching the colour split",
+      "optional": true,
+      "why": "three distinct sounds wired in the shipped redeem system; it is the same three-way state machine expressed a second way"
+    },
+    "inheritsFromGenre": {
+      "rule": "stroke weight, corner radius, header/plaque treatment, button bevel and text stroke are NOT decided by this screen — take them from the game's genre file",
+      "why": "'simple is better for more realistic games and horror games' and 'too simple' for a cartoony one, said about the same panel in one thread: the codes screen has a fixed skeleton and a borrowed skin"
+    }
+  },
+  "unmeasured": [
+    "No stroke thickness, corner radius, padding value or font size in this file was measured from an image. Every source here is text. Where a number appears (panel width fraction, field centre height, min tap px, confirm width ratio) it is either quoted from a source, carried over from simulator.json, or marked `reasoned: true`.",
+    "The exact pixel geometry of the embedded-row variant (field-to-button gap, row height) was not stated by any source fetched; only the left/right ordering and the relative widths are recorded.",
+    "No source fetched stated the dwell time before transient feedback reverts to the resting placeholder. The behaviour is recorded; the duration is not, and must not be invented as if observed.",
+    "The Blox Fruits success/failure wording ('Success' in green, 'invalid') surfaced only in search-result text summarising a wiki page that returned HTTP 402 when fetched. It is therefore NOT recorded as a reference above — the green/red split is carried instead by devforum-redeem-code-system, which was fetched."
+  ],
+  "notFetched": [
+    "https://blox-fruits.fandom.com/wiki/Codes — HTTP 402",
+    "https://www.beeswarmguide.wiki/codes/redeem-codes — HTTP 402",
+    "https://www.mrguider.org/roblox/blox-fruits-codes-updated/ — HTTP 403",
+    "https://devforum.roblox.com/t/feedback-on-code-redeem-gui/1542869 — fetched, but the original post was deleted by its author ('[old post removed by author]'), leaving only replies about gradient and 'a larger outline stroke'; too thin to record as a reference",
+    "https://gfxcomet.gumroad.com/l/simulator — fetched, returned only the title with no frame list"
+  ]
+}

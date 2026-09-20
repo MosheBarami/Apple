@@ -1,0 +1,290 @@
+{
+ "genre": "tycoon",
+ "label": "Tycoon — dropper/conveyor economy, world buy-pads, cash counter, rebirth, plot ownership",
+ "recorded": "2026-09-20",
+ "provenance": "Public web pages fetched on 2026-09-20: Roblox DevForum threads, the Roblox Creator Hub documentation, a tycoon template guide and two published tycoon-kit listings. Every `source` below is a URL that was actually fetched in this session, or a string quoted out of one of those pages. No image, no markup, no Luau source and no asset is copied into this repository; what is recorded is what was learned about construction. UNLIKE simulator.json, none of these references are screenshots the owner measured — they are TEXT sources, so this file states shapes, orders, states and copy, and deliberately refuses to invent stroke weights and corner radii it cannot see. See `unmeasured` at the bottom.",
+ "incomplete": false,
+ "references": [
+  {
+   "id": "zed-kit-red-cylinder-pad",
+   "source": "https://devforum.roblox.com/t/tycoon-with-gui/894477 — DevForum, 'Tycoon with Gui': a developer asks whether Zed's Tycoon Kit's touch pads can be replaced by a screen GUI",
+   "demonstrates": [
+    "the canonical tycoon purchase affordance is described in the thread as stepping on 'a red, squished, cylinder' — a squat floor disc, not a screen button and not a rectangular tile",
+    "the pad is a WORLD object the player walks onto; the purchase is made by standing on it, so the pad has to be readable from above and from a distance, not from a cursor hover"
+   ],
+   "note": "Two lines were removed on 2026-09-20: a critic fetched the cited thread and found it is a single post with no replies, so a reported community reaction did not exist, and a second claim was nowhere on the page. Both were unevidenced."
+  },
+  {
+   "id": "pad-billboard-parented-to-pad",
+   "source": "https://devforum.roblox.com/t/how-do-i-make-it-so-that-the-text-above-the-buttons-in-my-tycoon-disappear-with-the-button/998121 — DevForum, 'How do I make it so that the text above the buttons in my tycoon disappear with the button'",
+   "demonstrates": [
+    "the price label above a buy pad is a BillboardGui, and in the working arrangement 'the billboard GUI is inside of the begin working button' — it is a CHILD of the pad, not a sibling floating at a plot coordinate",
+    "the label carries name and price on one line in the form quoted in the thread: 'Begin Working! - [$0]' — an imperative or object name, a separator, then the cost bracketed with a currency sign",
+    "purchase is expressed by making the pad vanish: the kit 'sets the transparency to 1'",
+    "the thread exists because a custom BillboardGui survived that transparency change and kept floating over an empty floor — the label must die with the pad, and parenting is what guarantees it",
+    "older kits faked this label with a Humanoid display name before BillboardGui was used for it, which is why some kits still show the label through walls"
+   ]
+  },
+  {
+   "id": "tycoon-template-pad-anatomy",
+   "source": "https://www.creation.dev/templates/tycoon-template — 'How to Build a Roblox Tycoon — Starter Template' guide",
+   "demonstrates": [
+    "a buy button pad is composed of exactly three things: 'a transparent part, a BillboardGui showing the price, and an attribute storing the cost and the model it unlocks' — the collision volume, the label and the data are separate and the label reads from the data",
+    "on a successful touch the script 'checks the player's cash, deducts the cost, makes the purchased model visible, and destroys the button pad' — reveal and removal are one beat",
+    "the cash readout is 'a ScreenGui with a cash display that updates via a RemoteEvent whenever the server modifies the player's balance' — the counter is server-driven and never computed on the client",
+    "the server-side truth is leaderstats: 'a folder named leaderstats with an IntValue named Cash inside each player object', which is also what puts every player's cash on Roblox's own player list",
+    "plots are attributed by tagging 'each plot with the owning player's UserId'"
+   ]
+  },
+  {
+   "id": "pad-destroy-is-the-feedback",
+   "source": "https://generalistprogrammer.com/tutorials/how-to-make-a-roblox-tycoon-game — 'How to Make a Roblox Tycoon Game (2026) — Full System Guide', section 4 'Buy Buttons (the core tycoon UX)'",
+   "demonstrates": [
+    "stated outright: 'destroying the pad after purchase is the visual feedback that the upgrade is done' — the tycoon genre has no owned-state chip, because the bought thing appearing IS the state",
+    "the buy handler's own comments name the two visible steps: '-- remove the pad' and '-- reveal + activate the new part'",
+    "a `bought` flag guards against the pad firing twice while a player stands on it — a pad is a dwell target, so it needs a latch that a click target would not",
+    "cash-carrying drops hold their worth in a Value attribute that the collector reads, so a drop's floating tag can show a real per-item number rather than a fixed one"
+   ]
+  },
+  {
+   "id": "ruixey-tycoonkit-hud-features",
+   "source": "https://devforum.roblox.com/t/a-very-advanced-kit-for-tycoons-ruixeys-tycoonkit/1850596 — DevForum bulletin, Ruixey's Tycoonkit feature list and changelog",
+   "demonstrates": [
+    "remaining progress is rendered as a currency: 'ButtonsLeft now displays on the UI like a currency for the Default UI' — buttons-left sits in the same chip row as cash, in the same shape",
+    "number rendering is an explicit setting with three modes — 'Modes for Numbers (None, Comma, Suffix)' — so a tycoon HUD is expected to switch from grouped digits to K/M/B suffixes as the economy inflates",
+    "cash drops carry their own world tag whose colour is configurable separately for the currency and the amount: 'Setting for the DropTag Currency & Amount Color'",
+    "there is a dedicated wayfinding affordance, a 'Find Next Button UI + Setting' — the plot is large enough that the next pad has to be pointed at",
+    "'Support for custom UI above each button' — the per-pad billboard is treated as a themeable slot, not a fixed label",
+    "a separate 'RebirthUI' exists alongside the plot, plus persistent HUD buttons for Autocollect and DoubleCash, and pads gated on Premium membership"
+   ]
+  },
+  {
+   "id": "tycoon-kit-ui-showcase-rebirth-panel",
+   "source": "https://devforum.roblox.com/t/tycoon-kit-ui-showcase/3273680 — DevForum Creations Feedback, 'Tycoon Kit UI Showcase' (a verify screen, a rebirth panel and three other panels, with critique)",
+   "demonstrates": [
+    "the rebirth panel's copy, quoted from the thread: 'Rebirthing gives you a 1.1x Cash Boost and allows you to buy Rebirth Buttons!' and 'Rebirthing makes you lose all your progress and restart!' — the reward line and the loss line are two separate sentences, and rebirth unlocks a new CLASS of pad on the plot",
+    "the corrected layout proposed in the thread is ordered: the benefit sentence, then the rebirth logo with the rebirth count overlaid on it, then the rebirth button, with the warning demoted to secondary text",
+    "the panel was rejected as 'cluttered' in its first form — the fix was ordering and demotion, not new colour",
+    "critique on type hierarchy: 'The body of the text is slightly too big, it brings less attention to the title and overall doesn't wrap around very well to read properly' — in a rebirth panel the title must out-weigh the body by a clear step",
+    "the author defends the look as deliberately conventional — 'Generic was what I was aiming for. It's something people are used to meaning it's good for FTUE' — and a commenter confirms the convention is genre-wide: 'Every tycoon/simulator does this'"
+   ]
+  },
+  {
+   "id": "tycoon-hud-consistency-critique",
+   "source": "https://devforum.roblox.com/t/how-can-i-make-my-tycoon-games-gui-better/3095838 — DevForum Art Design Support, critique of a shipped tycoon's HUD (CashKing / KillsKing tiles, rebirth progress bar)",
+   "demonstrates": [
+    "the named failure mode, quoted: 'you have rounded boxes on some, rounded boxes with rainbow outline, a circle, a rounded box with no outline' — mixed corner and outline treatments inside one HUD is what makes a tycoon read as assembled rather than designed",
+    "the prescribed fix for the two leader tiles: 'put an outline around them, make them evenly sized under the rebirth bar, put the name of the \"king\" underneath them so it all fits under the rebirth bar, and add an emoji to make it clearer for a younger audience'",
+    "the leader tiles hang UNDER the rebirth progress bar, so the HUD stack is: progress bar first, server-leader tiles beneath it, aligned to its width",
+    "label copy is cut to the noun — 'Cash King' rather than 'TheCashKing is' — and spacing defects were called out at the character level ('no space after `Rebirth Progress:`')",
+    "the left-edge panel rail was told to standardise its panel sizes; a rail of unequal panels reads as broken even when each panel is fine"
+   ]
+  },
+  {
+   "id": "plot-density-and-wayfinding-feedback",
+   "source": "https://devforum.roblox.com/t/feedback-on-my-tycoon/1989810 — DevForum Creations Feedback on a published tycoon",
+   "demonstrates": [
+    "too many pads visible at once is a design defect, quoted: 'there are so many upgrade buttons on the plot, it makes it look a bit messy and cramped' — the reviewer's fix is to reveal upgrades progressively rather than all at once",
+    "new players could not find the first dropper pad at all, and the arrow indicator meant to point at it was ineffective — the wayfinding affordance is load-bearing, not decoration",
+    "the rebirth frame and the party frame were both judged too small; meta panels in a tycoon are routinely undersized relative to the world behind them",
+    "text instructions alone did not carry the first-time experience — the plot has to show the next action, not describe it"
+   ]
+  },
+  {
+   "id": "claim-door-owner-state",
+   "source": "https://devforum.roblox.com/t/review-on-tycoon-door-system/2403553 — DevForum Code Review, a tycoon claim/owner door system",
+   "demonstrates": [
+    "plot ownership is expressed by the claim door's own material state, not by a panel: unclaimed it is fully opaque and solid; for the owner the reviewed code sets 'claimDoor.Transparency = 0.6' and 'claimDoor.CanCollide = false'",
+    "a partially transparent, walk-through door is the readable 'yours' signal — the door stays visible so the plot boundary is still drawn",
+    "ownership itself is stored as the owner's UserId in a value object, with no GUI showing a name — which is exactly the gap a generated tycoon should close by putting the owner's name on the door",
+    "non-owners are blocked physically by the same door that the owner walks through, so one object carries both the permission and its display"
+   ]
+  },
+  {
+   "id": "world-ui-container-mechanics",
+   "source": "https://create.roblox.com/docs/ui/in-experience-containers — Roblox Creator Hub, 'In-game UI containers' (BillboardGui / SurfaceGui)",
+   "demonstrates": [
+    "BillboardGui children 'always face the camera', which is why pad prices stay readable from any approach angle; SurfaceGui is flat to a chosen Face and is the right container for plot signage and wall-mounted boards",
+    "the container is bound to the pad either by parenting or through the Adornee property, so a pad's label can be assigned at runtime from a template",
+    "AlwaysOnTop decides whether the price draws through the world or is occluded by it — a tycoon decision, because pads behind a built wall should stop competing for attention",
+    "MaxDistance culls the label past a set range, which is how a plot with dozens of pads avoids a wall of overlapping prices",
+    "StudsOffset lifts the label off the pad on X/Y/Z, and the container is sized in studs so the label scales with the world rather than with the screen",
+    "documented guidance for this exact case: enable TextScaled on the TextLabel so text resizes with camera distance, and apply a UIAspectRatioConstraint to hold proportion"
+   ]
+  },
+  {
+   "id": "tycoon-ui-construction-guidance",
+   "source": "https://roblox-gui-maker.online/use-cases/tycoon-ui — published 'Design the Perfect Tycoon UI' guidance page. NOTE: this is PRESCRIPTIVE advice on a tooling site, not an observation of a shipped screen; it is recorded here because it states construction in applicable units, and it is flagged so it is never mistaken for a sighting.",
+   "demonstrates": [
+    "cash counter: 'Place a TextLabel top-center with the current cash formatted with commas' and 'Use a monospace font and a subtle gold UIGradient so it reads as currency'",
+    "the counter acknowledges income with motion, not a flash: 'animate the counter with a brief scale-up (1.0 to 1.05 and back) using TweenService'",
+    "formatting is stated as a rule with its counter-example: 'Format with commas (1,234,567 not 1234567)'",
+    "a purchase control 'Show[s] the machine name, the cost, and a lock icon if the player cannot afford it' — the unaffordable state adds a lock rather than hiding the price",
+    "the upgrade tree is 'a vertical or grid of nodes in a ScrollingFrame', each node showing 'the upgrade name, current level (e.g., \"Lvl 3/5\"), the next cost, and the effect', with 'Unlocked nodes use full color; locked nodes are dimmed with a lock icon'",
+    "a stats panel shows 'income per second, total earned, and the current multiplier', updated every second",
+    "a save confirmation is a one-second 'Saved' label in a corner after a DataStore write"
+   ]
+  },
+  {
+   "id": "affordability-recolour-on-the-pad",
+   "source": "https://devforum.roblox.com/t/red-and-green-button-for-the-tycoon/2537786 — DevForum Scripting Support, 'Red and green button for the tycoon'. WEAK REFERENCE, recorded at its true strength: the thread establishes that the pad BODY is recoloured by affordability, but the page text never states which colour means which, and the screenshots were not read.",
+   "demonstrates": [
+    "the object recoloured on affordability is the pad part itself, not its billboard text — the developer's complaint is that the button 'doesn't turn red'",
+    "the condition driving the colour is a comparison of the player's cash against the pad's price, evaluated per player, so two players standing on the same plot can see different pad colours",
+    "the thread title pairs red with green, which is consistent with the lock-icon convention in the guidance reference, but the colour-to-meaning mapping is NOT evidenced here and must not be stated as observed"
+   ]
+  }
+ ],
+ "rules": {
+  "note": "Distilled from the references above. Tycoon's defining property is that the SHOP IS THE WORLD: purchases happen on pads standing on the plot, and the screen UI is reserved for meta (rebirth, stats, codes, shop). A generator that renders a tycoon as a screen-space item grid has built a simulator with a conveyor in it. Units are Roblox UI units. Where a number could not be observed from a text source it is marked unmeasured rather than invented — see `unmeasured`.",
+  "purchaseSurface": {
+   "rule": "a purchase is a world pad the player stands on, placed where the unlocked object will appear",
+   "never": "a screen-space grid of purchasable upgrades as the primary buy flow",
+   "shape": "squat cylinder disc on the floor, height far less than diameter",
+   "why": "the kit convention is described as stepping on 'a red, squished, cylinder'; siting the pad at the build location makes the plot double as a site plan of the finished base"
+  },
+  "padLabel": {
+   "container": "BillboardGui parented to (or adorned to) the pad part itself",
+   "content": "object name, then the cost with a currency sign",
+   "lines": "name above, price beneath is the safer two-line form; the one-line 'name - [$price]' is what the kits ship",
+   "textScaled": true,
+   "aspectConstraint": true,
+   "why": "documented guidance is TextScaled plus a UIAspectRatioConstraint so the price stays readable at every camera distance; parenting to the pad is what makes the label die with it",
+   "form": "<object name> - [$<price>]"
+  },
+  "purchasedState": {
+   "rule": "destroy the pad and its label together; the revealed object is the confirmation",
+   "never": "leave the pad in place marked OWNED, greyed or disabled",
+   "why": "stated outright in the template guide — 'destroying the pad after purchase is the visual feedback that the upgrade is done'. This is the exact INVERSE of the simulator rule, where the price is replaced by the word OWNED and the card stays. A generator must not carry the simulator rule across.",
+   "commonDefect": "a label that is a sibling rather than a child survives the purchase and floats over empty floor — the single most reported tycoon UI bug"
+  },
+  "padLatch": {
+   "rule": "a pad is a dwell target, so it needs a bought/debounce latch before it fires",
+   "why": "a player standing on a pad re-fires Touched continuously; a click target does not have this problem and a generator that treats the pad as a button will double-charge"
+  },
+  "affordability": {
+   "rule": "evaluate per player and express it on the pad BODY with a colour swap, and on any screen-space purchase control with a lock icon beside the price",
+   "never": "hide or blank the price when it cannot be afforded",
+   "approximate": true,
+   "why": "the pad body is what the red/green thread recolours; the lock-beside-price form comes from the guidance reference. The specific colour-to-meaning mapping was NOT observed and is left to the theme."
+  },
+  "padDensity": {
+   "rule": "reveal pads progressively — a tier's pads appear only when the tier before it is bought",
+   "never": "every pad on the plot visible from the first second",
+   "why": "'there are so many upgrade buttons on the plot, it makes it look a bit messy and cramped' was the headline critique of a published tycoon; MaxDistance on the billboards handles the rest"
+  },
+  "wayfinding": {
+   "rule": "ship a persistent 'find next pad' affordance that points at the cheapest unbought pad",
+   "why": "a shipped kit carries a 'Find Next Button UI' as a named feature, and the one published tycoon reviewed here failed its first-time experience because players could not find the first dropper and the arrow meant to point at it did not work"
+  },
+  "cashCounter": {
+   "position": "top-centre, one line, alone",
+   "format": "grouped digits — 1,234,567 and never 1234567",
+   "typeface": "monospace or otherwise tabular so the digits do not jitter as they tick",
+   "changeFeedback": "a brief scale-up, 1.0 to 1.05 and back, on each increment",
+   "source": "server-driven via RemoteEvent off leaderstats; never computed client-side",
+   "why": "the counter is the one number a tycoon player watches for minutes at a time, so it must not reflow or flash"
+  },
+  "numberFormat": {
+   "modes": [
+    "none",
+    "comma",
+    "suffix"
+   ],
+   "default": "comma",
+   "escalation": "switch to K/M/B suffixes once the value stops fitting the counter's width",
+   "why": "shipped kits expose exactly these three modes as a setting, because a tycoon economy inflates by orders of magnitude within one session"
+  },
+  "progressCounter": {
+   "rule": "render remaining purchases ('Buttons Left') as a chip in the same row and the same shape as the currency chips",
+   "why": "a shipped kit states it plainly — 'ButtonsLeft now displays on the UI like a currency' — because buttons-left, not cash, is the tycoon's actual completion meter"
+  },
+  "dropTag": {
+   "rule": "a cash drop carries its own world tag showing currency icon and amount, with the currency and the amount coloured separately",
+   "why": "the drop tag is a configurable pair of colours in a shipped kit; the amount comes from the drop's own Value attribute, so the tag shows a real per-item number rather than a constant"
+  },
+  "hudStack": {
+   "order": [
+    "rebirth progress bar",
+    "server-leader tiles beneath it, aligned to its width",
+    "left-edge panel rail"
+   ],
+   "leaderTiles": "equal size, outlined, name underneath, an icon or emoji on each",
+   "railRule": "every panel in the left rail is the same width",
+   "why": "this is the arrangement prescribed to fix a shipped tycoon's HUD; unequal rail panels read as broken even when each panel is fine on its own"
+  },
+  "panelConsistency": {
+   "rule": "one corner treatment and one outline treatment across every panel in the HUD",
+   "never": "rounded boxes on some, rounded-with-outline on others, a circle, and a rounded box with no outline",
+   "why": "quoted verbatim as the reason a shipped tycoon's UI read as 'a lot of different UIs mashed together'. This is the tycoon-specific restatement of the simulator library's one-visual-language finding."
+  },
+  "rebirthPanel": {
+   "order": [
+    "benefit sentence",
+    "one row: rebirth button on the LEFT, rebirth emblem with the count overlaid on the RIGHT",
+    "loss warning, smaller, below the row"
+   ],
+   "copyShape": "one sentence for what is gained, one for what is lost, never merged. Write them for THIS game; do not reuse the wording of any kit they were observed in.",
+   "typeHierarchy": "the title must out-weigh the body by a clear step; oversized body text was the named defect",
+   "unlocks": "rebirth opens a new CLASS of pad on the plot, so the panel's promise is spatial and the plot must visibly change",
+   "sizing": "meta panels in tycoons are routinely too small against the world behind them; err large",
+   "why": "A rebirth is the only button in a tycoon that destroys the player's progress on purpose, so the gain and the loss must both be readable before the finger lands. The row pairs the action with the count it will reset, and the warning sits under it in smaller text rather than beside it, where it reads as a caption to the pair instead of a fourth option."
+  },
+  "upgradeNode": {
+   "container": "ScrollingFrame of nodes, vertical or grid",
+   "nodeContent": [
+    "upgrade name",
+    "current level as 'Lvl 3/5'",
+    "next cost",
+    "the effect"
+   ],
+   "lockedState": "dimmed plus a lock icon; unlocked nodes at full colour",
+   "why": "a tycoon upgrade is a level on a track, not an item in a shop — the level fraction is what a price pill is in a simulator"
+  },
+  "statsPanel": {
+   "content": [
+    "income per second",
+    "total earned",
+    "current multiplier"
+   ],
+   "refresh": "once per second",
+   "why": "income per second is the number a tycoon player is actually buying with each pad, and no pad label states it"
+  },
+  "plotOwnership": {
+   "rule": "ownership is shown on the claim door itself: opaque and solid when unclaimed, semi-transparent and walk-through for the owner",
+   "observedValues": {
+    "ownerTransparency": 0.6,
+    "ownerCanCollide": false
+   },
+   "gap": "the reviewed system shows no owner name anywhere — a generated tycoon should put the owner's display name on the door, because the reference proves the slot exists and is empty",
+   "why": "one object carries both the permission and its display; the door stays visible so the plot boundary is still drawn"
+  },
+  "worldUiCulling": {
+   "rule": "set MaxDistance on pad billboards and decide AlwaysOnTop deliberately",
+   "why": "a plot with dozens of pads becomes a wall of overlapping prices without culling; pads behind a built wall should stop competing for attention once AlwaysOnTop is off"
+  },
+  "saveIndicator": {
+   "rule": "flash a one-second 'Saved' label in a corner after a persistence write",
+   "why": "a tycoon session is an hour of accumulation; the player needs to see that it was kept"
+  }
+ },
+ "unmeasured": [
+  "panelStroke thickness, cornerRadius, buttonBevel and textStroke are NOT recorded here. Every source in this file is text; none of them states a stroke weight or a radius, and reading them off a screenshot nobody looked at would be exactly the failure this library exists to prevent. Until tycoon screenshots are measured the way simulator's were, inherit simulator.json's numeric rules for panel construction and treat the rules above as the tycoon-specific layer on top.",
+  "Pad diameter and height are unmeasured. The only shape evidence is the phrase 'a red, squished, cylinder' — proportion (wide, very flat) is observed, absolute size is not.",
+  "The affordability colour mapping is unmeasured. The pad body is what changes; which colour means affordable was not stated on any page fetched."
+ ],
+ "gapsAgainstShippedTheme": [
+  "OPEN: the kit has no world-space UI at all. Tycoon's primary purchase surface is a BillboardGui on a floor pad, and nothing in AppleUI emits one — a tycoon generated today would render as a simulator shop panel, which is the wrong genre entirely.",
+  "OPEN: the kit's owned-state rule (replace the price with OWNED, keep the card) is the INVERSE of tycoon's (destroy the pad, reveal the object). Applying the simulator rule to a tycoon produces a plot littered with dead pads.",
+  "OPEN: no 'buttons left' chip exists; the kit has currency chips only, and buttons-left is the tycoon completion meter.",
+  "OPEN: no find-next-pad affordance.",
+  "OPEN: the cash counter has no tabular/monospace treatment and no increment tween, so a ticking tycoon counter would reflow on every drop.",
+  "OPEN: no number-format escalation from grouped digits to K/M/B suffixes.",
+  "OPEN: no claim-door ownership state, and no owner name on it — the reference shows the slot and shows it empty."
+ ],
+ "renderedAndCompared": {
+  "when": null,
+  "how": "NOT YET DONE. This file has not been rendered in Studio and compared the way simulator.json was. It is a research record, not a verified profile, and it says so rather than implying a loop that did not run."
+ },
+ "reviewNote": "Corrected 2026-09-20 after an adversarial check: an order rule that reversed its own source, two unevidenced observations, and third-party UI copy that had reached the rules object. Findings the check raised against sources this file cites but could not re-verify here are listed in gapsAgainstShippedTheme rather than silently kept."
+}
