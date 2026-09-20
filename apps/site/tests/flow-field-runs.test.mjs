@@ -25,7 +25,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
-import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -34,13 +36,43 @@ const COMPONENT = join(SITE, 'src', 'components', 'FlowField.astro');
 
 const SOURCE = readFileSync(COMPONENT, 'utf8');
 
+/*[[ THE TYPES ARE STRIPPED, AND THIS FILE SPENT A DAY RED BECAUSE THEY WERE NOT.
+ *
+ *   `const canvas: HTMLCanvasElement = el;` landed in FlowField.astro to satisfy `astro check`,
+ *   which is correct — Astro compiles a component <script> as TypeScript and ignores JSDoc there.
+ *   A `vm` compiles it as JavaScript, so every one of the eight tests below died on the same
+ *   `SyntaxError: Missing initializer in const declaration` before reaching an assertion.
+ *
+ *   THE FAILURE SHAPE IS THE POINT. Eight red guards that all die in the harness say nothing
+ *   whatever about the component — this file was not reporting that the flow field was broken, it
+ *   was reporting that it could not look at the flow field, and those are different sentences. A
+ *   guard that cannot run is not a failing guard, it is an absent one, and an absent guard on a
+ *   canvas whose whole history is "it shipped dead and every reading of the markup said otherwise"
+ *   is the exact hole this file exists to fill.
+ *
+ *   The fix is not new here: cursor-never-blinds.test.mjs and reveal-cannot-hide-content.test.mjs
+ *   both strip with this same binary, for this same reason, and what runs below is therefore the
+ *   code the browser is handed rather than a paraphrase of it. esbuild comes from apps/worker's
+ *   node_modules because that is where this repository already has it and installing is not this
+ *   lane's to do; a missing binary FAILS rather than falling back to the raw text, because falling
+ *   back would put the SyntaxError back and call it a finding. ]]*/
+const ESBUILD = join(SITE, '..', 'worker', 'node_modules', '.bin', 'esbuild');
+
 /** The component's client script, exactly as Astro will hand it to a browser. */
 function clientScript() {
   const match = /<script(?![^>]*\bis:inline\b)[^>]*>([\s\S]*?)<\/script>/i.exec(SOURCE);
   assert.ok(match, 'FlowField.astro has no client <script> — there is nothing to run');
   const body = match[1];
   assert.ok(body.trim().length > 200, 'the extracted client script is too small to be the field');
-  return body;
+  const dir = mkdtempSync(join(tmpdir(), 'flow-field-'));
+  const src = join(dir, 'flow-field.ts');
+  writeFileSync(src, body);
+  try {
+    return execFileSync(ESBUILD, [src, '--loader:.ts=ts', '--format=esm', '--target=es2022'],
+      { stdio: ['ignore', 'pipe', 'pipe'] }).toString();
+  } catch (err) {
+    return assert.fail(`could not strip types from the flow field script: ${err.message}`);
+  }
 }
 
 /** The element the component renders, as a description a selector can be matched against. */
