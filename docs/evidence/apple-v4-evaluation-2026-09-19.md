@@ -94,3 +94,46 @@ specialised Apple adapter can only ever be an ADDED lane on a Llama-3.2-3B base,
 replacement for the models the product runs on today. Whether a 3B adapter that is better at tool
 calling and no better at logic earns a lane is a product decision, and this document does not make
 it.
+
+## The 0/8 was re-measured on 2026-09-20, because two identical zeroes prove nothing on their own
+
+Game logic came back `0 / 8` for the base and `0 / 8` for the adapter. Those two figures have two
+possible causes and the totals cannot tell them apart: either both models genuinely fail, or
+`scoreGameLogic` cannot report a pass at all. A scorer that always says no produces exactly this
+table. Until it had been seen going green, the zero was not evidence of anything about training —
+it was a number whose meaning had not been established.
+
+`packages/training/src/score-eval.test.mjs` settles it, on the real curriculum rather than a
+fixture. Every one of the eight held-out examples' **own reference source**, fenced exactly as a
+model emits it, scores `ok`. A pass is reachable. The `0 / 8` is the models.
+
+The same test was then attacked twice, and each mutation was caught by the assertion aimed at it:
+
+| mutation | what it imitates | result |
+|---|---|---|
+| `scoreGameLogic` returns `{ ok: true }` unconditionally | a scorer that cannot say no | 2 tests RED — the refusal-reachability pair |
+| the harness wrapper binds `candidate = nil` | a harness that cannot see a pass — the `0/8` lookalike | 1 test RED — the reference-source assertion |
+
+Both reverted; the suite is green on the unmutated file. So the conclusion in the section above —
+*it got better at ONE of the two things it was trained on* — is now measured from both sides rather
+than read off a total.
+
+**What the misses look like up close, which the counts hide.** apple-v4 on `honest-percent`:
+
+```luau
+local function finite(value)
+    return type(value) == "number" and value == value and math.abs(value) < math.huge
+end
+return function(value, maximum)
+    if not finite(value) or not finite(maximum) or maximum <= 0 then return nil end
+    return math.min(100, math.max(0, (value - 0) / (maximum - 0) * 99))
+end
+```
+
+The house style is learned completely — the finite guard, the nil refusal, the clamp, the returned
+closure. The arithmetic is wrong by one constant. On `remap-range` it is worse than a constant: the
+function takes four parameters where the contract has five, so there is no input value to remap and
+the body cannot be right at any constant. That is the shape of the remaining gap. The training
+taught the model what these modules LOOK like and not what they must COMPUTE, which is consistent
+with 80 authored examples and a 3B base, and it says where the next dataset has to push: the
+checks, not the silhouette.
