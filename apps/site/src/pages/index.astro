@@ -166,11 +166,118 @@ const activity = [
   { text: 'inspect_visually score 6/10 · 3 defects   ok' },
 ];
 
+/* ---------------------------------------------------------------------------
+ * THE FOUR CAPABILITIES, EACH WITH A SMALL WORKING THING RATHER THAN A PARAGRAPH.
+ *
+ * WHAT WAS HERE AND WHY IT WENT. Four `.card`s: a 16:9 tile holding one 40px line drawing at
+ * --faint, then a title, then a muted sentence. Every claim on the page's most product-specific
+ * section was a sentence asking to be believed, and the tile above it was an empty grey rectangle
+ * with an icon in the middle of it. The owner's instruction is quoted in the ledger and is not
+ * ambiguous: "Stop presenting major capabilities as plain text cards. Every important feature
+ * should receive a small interactive experience of its own."
+ *
+ * SO EACH ONE IS NOW AN OBJECT YOU OPERATE, and `glyph` is gone because there is no glyph left.
+ * The titles and the bodies below are UNCHANGED, to the character. Only what sits above them
+ * moved. The copy on this page has been fought over and passed scripts/check-copy.mjs; a
+ * restructure that also rewrites the sentences is two changes wearing one commit message.
+ *
+ * WHAT EACH STAGE IS ALLOWED TO CLAIM. This is the whole difficulty of the section and it is why
+ * the heads exist. A widget on a marketing page is read as the product's behaviour — the status
+ * dot that used to sit in the composer is the precedent, and it was removed for exactly that. So:
+ *
+ *   tree  — the ORDER OF OPERATIONS, driven by the reader. Reading a node prints the read; the
+ *           write gate stays shut until three are read. That order is real: apps/worker walks the
+ *           tree and takes a checkpoint before a write, and the gate here is that rule, not a
+ *           connection to anybody's Studio.
+ *   eye   — the SHAPE OF THE CRITIQUE. A score out of ten and named defects, which is what
+ *           inspect_visually returns. The scene is drawn here and the three defects are written
+ *           here; neither is a live render, and the head says the stage is a sample.
+ *   code  — the SHAPE OF THE OUTPUT AND OF THE REFUSAL. Two asks produce Luau, the third produces
+ *           the refusal by name. The refusal is the point of the stage and is the one thing on it
+ *           that is quoted from the plugin rather than composed for the page.
+ *   cube  — A MESH YOU CAN TURN. It is authored here. It does not claim to have been generated,
+ *           and the head calls it a sample so that nothing else has to.
+ *
+ * `demo` is the hook the script in this file switches on. `stage` is the label above each one.
+ * --------------------------------------------------------------------------- */
 const capabilities = [
-  { title: 'Reads before it writes', body: 'It walks your instance tree and scripts first, then proposes the change — and takes a checkpoint before touching anything.', glyph: 'tree' },
-  { title: 'Checks its own work', body: 'It renders the scene from inside Studio and scores the picture against a visual gate, with named defects rather than a verdict.', glyph: 'eye' },
-  { title: 'Builds in Luau, not pseudocode', body: 'Scripts land in your place through Studio’s own editor APIs, and it refuses to write code that loads assets or calls the network.', glyph: 'code' },
-  { title: 'Generates real geometry', body: 'Text-to-3D runs through Roblox’s own generation service, and a descendant scan refuses anything that arrives carrying code.', glyph: 'cube' },
+  { title: 'Reads before it writes', body: 'It walks your instance tree and scripts first, then proposes the change — and takes a checkpoint before touching anything.', demo: 'tree', stage: 'Try it · read order' },
+  { title: 'Checks its own work', body: 'It renders the scene from inside Studio and scores the picture against a visual gate, with named defects rather than a verdict.', demo: 'eye', stage: 'Sample critique' },
+  { title: 'Builds in Luau, not pseudocode', body: 'Scripts land in your place through Studio’s own editor APIs, and it refuses to write code that loads assets or calls the network.', demo: 'code', stage: 'Try it · ask for three things' },
+  { title: 'Generates real geometry', body: 'Text-to-3D runs through Roblox’s own generation service, and a descendant scan refuses anything that arrives carrying code.', demo: 'cube', stage: 'Sample mesh · drag to turn' },
+];
+
+/* THE INSTANCE TREE THE FIRST STAGE READS.
+ * Four services and the children that make the read meaningful, in the order Studio's own Explorer
+ * shows them. `kids` is what the read reports back, so the log line has a fact in it rather than a
+ * tick. Nothing here is anybody's place: it is the empty-baseplate shape every new Studio file
+ * opens with, which is the one tree a reader of this page can check against their own screen. */
+const readTree = [
+  { path: 'Workspace', kids: 2, depth: 0 },
+  { path: 'Baseplate', kids: 0, depth: 1 },
+  { path: 'SpawnLocation', kids: 1, depth: 1 },
+  { path: 'ServerScriptService', kids: 1, depth: 0 },
+  { path: 'Main', kids: 0, depth: 1 },
+  { path: 'ReplicatedStorage', kids: 0, depth: 0 },
+];
+
+/* THE THREE DEFECTS THE SECOND STAGE NAMES.
+ * `at` is the marker's position on the 220x124 render as a percentage, so the marker and the list
+ * item cannot drift apart: one array drives both. The wording is the visual gate's own register —
+ * a defect names a thing that is wrong, not a grade. */
+const defects = [
+  { id: 'd1', at: [22, 68], text: 'Floor is one flat slab — no material break' },
+  { id: 'd2', at: [58, 34], text: 'Two towers share an edge and read as one' },
+  { id: 'd3', at: [82, 72], text: 'Nothing marks where a player spawns' },
+];
+
+/* THE THREE ASKS AND WHAT COMES BACK.
+ * The first two are Luau. The third is the refusal, and its wording is the plugin's: writes that
+ * fetch across the network are refused by name and with a reason. `refused` is what colours it. */
+const asks = [
+  {
+    label: 'A leaderstat',
+    lines: [
+      'local Players = game:GetService("Players")',
+      '',
+      'Players.PlayerAdded:Connect(function(player)',
+      '  local stats = Instance.new("Folder")',
+      '  stats.Name = "leaderstats"',
+      '  local coins = Instance.new("IntValue")',
+      '  coins.Name = "Coins"',
+      '  coins.Parent = stats',
+      '  stats.Parent = player',
+      'end)',
+    ],
+  },
+  {
+    label: 'Save what a player buys',
+    lines: [
+      'local DataStoreService = game:GetService("DataStoreService")',
+      'local store = DataStoreService:GetDataStore("Purchases")',
+      '',
+      'local function save(userId, owned)',
+      '  local ok, err = pcall(function()',
+      '    store:SetAsync("u_" .. userId, owned)',
+      '  end)',
+      '  if not ok then warn("save failed: " .. tostring(err)) end',
+      'end',
+    ],
+  },
+  {
+    label: 'Fetch a script from a URL',
+    refused: true,
+    lines: [
+      'refused  edit_script',
+      '',
+      '  A script that calls out to the network is not',
+      '  written. The reason is given rather than the',
+      '  request being dropped: code fetched at runtime',
+      '  cannot be reviewed before it runs in your place.',
+      '',
+      '  Nothing was written.',
+    ],
+  },
 ];
 ---
 
@@ -427,18 +534,118 @@ const capabilities = [
           <h2 id="cap-title" class="section-title">What it is good at</h2>
           <p class="section-sub">Four things it does end to end today.</p>
         </div>
-        <div class="cards">
+        {/* FOUR OPERABLE OBJECTS, NOT FOUR TILES. The frontmatter above says what each stage is
+            allowed to claim and why the heads exist; this is only the markup.
+
+            THE STAGE IS FINISHED BEFORE THE SCRIPT ARRIVES, in all four cases, and that is the
+            same requirement the reveal pass is held to on this page. With scripting blocked the
+            tree is a tree, the critique shows its score and its three named defects, the code
+            panel shows the first ask's Luau, and the mesh shows the still frame its <noscript>
+            fallback draws. Nothing here starts empty waiting to be filled in — a front page that
+            renders four blank rectangles to a reader whose bundle failed is worse than a front
+            page with no demos at all, and this page has shipped exactly that failure once.
+
+            EVERY CONTROL IS A <button>. Keyboard reaches all of them in source order, the state
+            lives in aria-pressed rather than in a class, and each stage's readout is a live region
+            so the change is announced rather than only drawn. */}
+        <div class="demos">
           {capabilities.map((c, i) => (
-            <article class="card" data-reveal data-reveal-delay={String(i * 70)}>
-              <div class="card-media" aria-hidden="true">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
-                  {c.glyph === 'tree' && <><path d="M5 4v14a2 2 0 0 0 2 2h4" /><path d="M5 12h6" /><rect x="13" y="2" width="6" height="5" rx="1" /><rect x="13" y="10" width="6" height="5" rx="1" /><rect x="13" y="17" width="6" height="5" rx="1" /></>}
-                  {c.glyph === 'eye' && <><path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6Z" /><circle cx="12" cy="12" r="2.6" /></>}
-                  {c.glyph === 'code' && <><path d="m9 8-5 4 5 4" /><path d="m15 8 5 4-5 4" /></>}
-                  {c.glyph === 'cube' && <><path d="M12 2.6 20.5 7v10L12 21.4 3.5 17V7Z" /><path d="M3.5 7 12 11.6 20.5 7" /><path d="M12 11.6v9.8" /></>}
-                </svg>
+            <article class="demo" data-demo={c.demo} data-reveal data-reveal-delay={String(i * 70)}>
+              <div class="demo-stage">
+                <p class="micro demo-head">{c.stage}</p>
+
+                {c.demo === 'tree' && (
+                  <div class="rd">
+                    <ul class="rd-tree" role="list">
+                      {readTree.map((n) => (
+                        <li class="rd-row" style={`--depth:${n.depth}`}>
+                          <button type="button" class="rd-node" data-path={n.path} data-kids={String(n.kids)} aria-pressed="false">
+                            <span class="rd-dot" aria-hidden="true"></span>{n.path}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                    <div class="rd-side">
+                      <p class="rd-log" role="status" aria-live="polite">Read a node. That is the first thing it does.</p>
+                      <p class="rd-gate" data-read="0">0 of 3 read · writes still shut</p>
+                    </div>
+                  </div>
+                )}
+
+                {c.demo === 'eye' && (
+                  <div class="cw">
+                    <div class="cw-render">
+                      {/* The scene. Flat shapes in the page's own ink at low alpha — a render is
+                          not being imitated, a subject is being given to the three defects so they
+                          have somewhere to point. */}
+                      <svg class="cw-scene" viewBox="0 0 220 124" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+                        <rect class="cw-floor" x="0" y="74" width="220" height="50" />
+                        <rect class="cw-block" x="36" y="40" width="34" height="34" />
+                        <rect class="cw-block" x="112" y="26" width="26" height="48" />
+                        <rect class="cw-block" x="138" y="34" width="26" height="40" />
+                        <rect class="cw-block" x="176" y="56" width="20" height="18" />
+                        <path class="cw-edge" d="M0 74 H220" />
+                      </svg>
+                      {defects.map((d) => (
+                        <button type="button" class="cw-mark" data-defect={d.id} style={`left:${d.at[0]}%;top:${d.at[1]}%`} aria-label={d.text}></button>
+                      ))}
+                    </div>
+                    <div class="cw-side">
+                      <p class="cw-score"><span class="cw-score-n">6</span><span class="cw-score-d">/10</span></p>
+                      <ul class="cw-defects" role="list">
+                        {defects.map((d) => (
+                          <li>
+                            <button type="button" class="cw-defect" data-defect={d.id} aria-pressed="false">{d.text}</button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+
+                {c.demo === 'code' && (
+                  <div class="lu">
+                    <div class="lu-asks" role="group" aria-label="Ask for one of three things">
+                      {/* THE ANSWER TRAVELS ON THE BUTTON THAT ASKS FOR IT. Both come off one
+                          array in the frontmatter, so the code shown cannot disagree with the
+                          label pressed, and the script holds no copy of either. A newline is legal
+                          inside an HTML attribute value, so the lines need no separator of their
+                          own and nothing has to be un-escaped on the way out. */}
+                      {asks.map((a, n) => (
+                        <button
+                          type="button"
+                          class="lu-ask"
+                          data-ask={String(n)}
+                          data-lines={a.lines.join('\n')}
+                          data-refused={a.refused ? 'true' : 'false'}
+                          aria-pressed={n === 0 ? 'true' : 'false'}
+                        >{a.label}</button>
+                      ))}
+                    </div>
+                    {/* The first ask's answer is in the markup, so the panel is never an empty
+                        box. The script replaces the lines; it does not create them. */}
+                    <pre class="lu-out" role="status" aria-live="polite"><code>{asks[0].lines.join('\n')}</code></pre>
+                  </div>
+                )}
+
+                {c.demo === 'cube' && (
+                  <div class="gm">
+                    <canvas class="gm-canvas" role="img" aria-label="A low-polygon mesh drawn as a wireframe, turning slowly."></canvas>
+                    {/* The still frame. It is real markup rather than a <noscript>, because the
+                        failure this covers is a bundle that loads and throws, which <noscript>
+                        does not cover. The script hides it once the canvas has drawn a frame. */}
+                    <svg class="gm-still" viewBox="-60 -60 120 120" aria-hidden="true">
+                      <g fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round">
+                        <path d="M-34 14 L0 -6 L34 14 L0 34 Z" />
+                        <path d="M-34 -14 L0 -34 L34 -14 L0 6 Z" />
+                        <path d="M-34 -14 V14 M34 -14 V14 M0 6 V34" />
+                      </g>
+                    </svg>
+                  </div>
+                )}
               </div>
-              <div class="card-body">
+
+              <div class="demo-body">
                 <h3>{c.title}</h3>
                 <p>{c.body}</p>
               </div>
@@ -504,5 +711,288 @@ const capabilities = [
       </div>
     </div>
   </footer>
+
+<script>
+  /*
+   * THE FOUR CAPABILITY STAGES. One script, four independent set-ups, no dependencies.
+   *
+   * `document.querySelector`, NEVER `document.currentScript`. Astro bundles a page's <script> as a
+   * module and `currentScript` is null in every module script by specification. That exact spelling
+   * shipped a completely dead hero effect on this page, with the element, the class and the bundle
+   * all present in the served HTML and not one pixel moving. tests/capability-demos-run.test.mjs
+   * runs this file's script against a recording DOM for the same reason horizon-runs.test.mjs does:
+   * reading the markup cannot tell a live widget from a dead one.
+   *
+   * ONE STAGE CANNOT TAKE THE OTHER THREE DOWN WITH IT. Four set-ups in one module means one
+   * `TypeError` in the first leaves the remaining three unbuilt while every reading of the page
+   * still shows four stages. `safely` is three lines and buys independence, which is the only
+   * reason it is here — there is no other try/catch in this file.
+   *
+   * EVERY STAGE IS ALREADY FINISHED WHEN THIS RUNS. Nothing below creates content; it only
+   * responds. See the note above the markup.
+   */
+  /* THE PARAMETER DEFAULTS THROUGHOUT THIS SCRIPT ARE FOR `astro check`, NOT FOR CALLERS.
+     `astro check` runs over a page's client script under `strict`, so an untyped parameter is
+     ts(7006) and a build error — and a hero effect held all of CI red on this exact file earlier
+     today for precisely that. A default gives the checker a type to infer while the file stays
+     plain JavaScript, which matters because tests/capability-demos-run.test.mjs executes this text
+     directly in a `vm` and TypeScript annotations would not parse there. Horizon.astro takes the
+     same approach for the same two reasons. */
+  const safely = (name = '', fn = () => {}) => {
+    try { fn(); } catch (err) { console.error('capability stage failed: ' + name, err); }
+  };
+
+  /* --------------------------------------------------------------- reads before it writes --- */
+
+  /* THE GATE IS THE CLAIM. Three reads open it, and until they land the readout says writes are
+     shut. That order is the product's — apps/worker walks the tree and takes a checkpoint before a
+     write — and this stage is that order, driven by the reader, not a connection to any Studio. */
+  safely('tree', () => {
+    const root = document.querySelector('[data-demo="tree"]');
+    if (!root) return;
+    const log = root.querySelector('.rd-log');
+    const gate = root.querySelector('.rd-gate');
+    const nodes = root.querySelectorAll('.rd-node');
+    if (!log || !gate || !nodes.length) return;
+
+    const NEEDED = 3;
+    const read = new Set();
+
+    for (const node of nodes) {
+      node.addEventListener('click', () => {
+        const path = node.getAttribute('data-path') || '';
+        const kids = node.getAttribute('data-kids') || '0';
+        read.add(path);
+        node.setAttribute('aria-pressed', 'true');
+
+        // `game.` is prepended here rather than stored six times in the markup: one spelling.
+        log.textContent = 'get_tree  game.' + path + '  ok \u00b7 ' + kids + ' ' + (kids === '1' ? 'child' : 'children');
+
+        const n = read.size;
+        gate.setAttribute('data-read', String(Math.min(n, NEEDED)));
+        gate.textContent = n >= NEEDED
+          ? 'checkpoint taken \u00b7 a write may now be proposed'
+          : n + ' of ' + NEEDED + ' read \u00b7 writes still shut';
+      });
+    }
+  });
+
+  /* ------------------------------------------------------------------- checks its own work --- */
+
+  /* A DEFECT AND ITS MARKER ARE ONE THING SELECTED TWO WAYS. Both carry the same data-defect, so
+     the list and the render cannot point at different problems — there is no index arithmetic here
+     to get wrong, and adding a fourth defect to the frontmatter array needs no change in this
+     block. Hovering is a convenience; clicking and focusing are the ones that must work. */
+  safely('eye', () => {
+    const root = document.querySelector('[data-demo="eye"]');
+    if (!root) return;
+    const marks = root.querySelectorAll('.cw-mark');
+    const items = root.querySelectorAll('.cw-defect');
+    if (!marks.length || !items.length) return;
+
+    const select = (id = '') => {
+      for (const m of marks) m.classList.toggle('is-on', m.getAttribute('data-defect') === id);
+      for (const b of items) b.setAttribute('aria-pressed', String(b.getAttribute('data-defect') === id));
+    };
+
+    for (const el of [...marks, ...items]) {
+      // `?? ''` rather than a cast: getAttribute returns `string | null`, and an element that
+      // somehow lost the attribute should select NOTHING rather than match every other element
+      // whose attribute is also missing. It fails closed and it satisfies the checker.
+      const id = el.getAttribute('data-defect') ?? '';
+      el.addEventListener('click', () => select(id));
+      el.addEventListener('mouseenter', () => select(id));
+      el.addEventListener('focus', () => select(id));
+    }
+  });
+
+  /* ----------------------------------------------------------- builds in Luau, not pseudocode --- */
+
+  /* THE THIRD ASK IS THE POINT OF THE STAGE. Two produce Luau; the third produces the refusal, by
+     name and with its reason, which is what the plugin does. The answers are read out of the
+     markup rather than duplicated here — `data-lines` is written by the page from the same array
+     that rendered the buttons, so the code shown can never disagree with the label pressed. */
+  safely('code', () => {
+    const root = document.querySelector('[data-demo="code"]');
+    if (!root) return;
+    const asks = root.querySelectorAll('.lu-ask');
+    const out = root.querySelector('.lu-out');
+    const code = out && out.querySelector('code');
+    if (!asks.length || !out || !code) return;
+
+    for (const ask of asks) {
+      ask.addEventListener('click', () => {
+        for (const other of asks) other.setAttribute('aria-pressed', String(other === ask));
+        code.textContent = ask.getAttribute('data-lines') || '';
+        out.classList.toggle('refused', ask.getAttribute('data-refused') === 'true');
+      });
+    }
+  });
+
+  /* ------------------------------------------------------------------ generates real geometry --- */
+
+  /* A WIREFRAME YOU TURN. Eighteen edges over nine vertices, projected by hand: a dependency for
+     this would be a 3D library on a page whose whole point is that it ships almost nothing, and
+     scripts/check-landing-budget.mjs has a tripwire for exactly that import.
+     THE STILL FRAME IS REMOVED ONLY AFTER A FRAME IS DRAWN. If the context is refused, or this
+     block throws before its first paint, the SVG behind the canvas is what a reader sees and the
+     stage is still a picture of a mesh rather than an empty rectangle.
+     REDUCED MOTION STOPS THE SPIN AND KEEPS THE DRAG. "Fewer effects" is not "fewer controls": the
+     object is still there and still turns under a finger, it simply does not turn on its own. */
+  safely('cube', () => {
+    const root = document.querySelector('[data-demo="cube"]');
+    if (!root) return;
+    const canvas = root.querySelector('canvas.gm-canvas');
+    if (!(canvas instanceof HTMLCanvasElement)) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const fallback = root.querySelector('.gm-still');
+
+    // A cube with a pyramid on it. It is a house, which is the first thing anybody builds in
+    // Studio, and it is legible at 120px in a way an abstract solid is not.
+    const V = [
+      [-1, -1, -1], [1, -1, -1], [1, -1, 1], [-1, -1, 1],
+      [-1, 1, -1], [1, 1, -1], [1, 1, 1], [-1, 1, 1],
+      [0, 2.15, 0],
+    ];
+    const E = [
+      [0, 1], [1, 2], [2, 3], [3, 0],
+      [4, 5], [5, 6], [6, 7], [7, 4],
+      [0, 4], [1, 5], [2, 6], [3, 7],
+      [4, 8], [5, 8], [6, 8], [7, 8],
+    ];
+
+    /* TWO REASONS NOT TO SPIN, AND THE SECOND ONE IS THE PHONE.
+       `reduced` is the reader's own setting. `small` is the 767px breakpoint landing.css uses for
+       the whole phone layout, quoted here so the "fewer effects on a phone" rule is decided by ONE
+       number rather than by a stylesheet and a script that can drift apart. A rAF loop redrawing
+       sixteen stroked lines behind a scrolling finger is the most expensive thing on this page.
+       BOTH STOP THE SPIN AND NEITHER STOPS THE DRAG. Fewer effects is not fewer controls: the mesh
+       is still there and still turns under a finger. `still()` is what both are asked. */
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const small = window.matchMedia('(max-width: 767px)');
+    const still = () => reduced.matches || small.matches;
+    let w = 0;
+    let h = 0;
+    let ry = 0.6;
+    let rx = -0.22;
+    let spin = 0;
+    let painted = false;
+    let raf = 0;
+
+    const size = () => {
+      const box = canvas.getBoundingClientRect();
+      // 2 is the cap. A 3x phone otherwise pays nine times the pixels to draw a 1px line.
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      w = Math.max(1, Math.round(box.width));
+      h = Math.max(1, Math.round(box.height));
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+
+    const ink = () => {
+      const v = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+      return v || '#00d492';
+    };
+
+    const draw = () => {
+      ctx.clearRect(0, 0, w, h);
+      const cx = w / 2;
+      // THE MODEL IS CENTRED ON ITS OWN CENTROID, NOT ON ITS ORIGIN. Its y runs -1 to 2.15, so the
+      // origin sits well below the middle of the shape and centring on it parked the roof 8px from
+      // the top edge of the panel while leaving 60px of empty floor underneath.
+      const S = Math.min(w, h) * 0.215;
+      const cy = h / 2 + 0.575 * S;
+      const cy1 = Math.cos(ry + spin);
+      const sy1 = Math.sin(ry + spin);
+      const cx1 = Math.cos(rx);
+      const sx1 = Math.sin(rx);
+
+      const at = (p = [0, 0, 0]) => {
+        const x = p[0] * cy1 + p[2] * sy1;
+        const z0 = -p[0] * sy1 + p[2] * cy1;
+        const y = p[1] * cx1 - z0 * sx1;
+        const z = p[1] * sx1 + z0 * cx1;
+        const k = 5.2 / (5.2 + z);
+        return [cx + x * S * k, cy - y * S * k, k];
+      };
+
+      const pts = V.map(at);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      for (const [a, b] of E) {
+        const p = pts[a];
+        const q = pts[b];
+        // Depth is spent on alpha and width, so the far edges read as far rather than as the same
+        // wire drawn twice. It is the only shading a wireframe gets.
+        const k = (p[2] + q[2]) / 2;
+        ctx.globalAlpha = Math.max(0.16, Math.min(1, (k - 0.72) * 3.1));
+        ctx.lineWidth = 0.7 + k * 0.85;
+        ctx.strokeStyle = ink();
+        ctx.beginPath();
+        ctx.moveTo(p[0], p[1]);
+        ctx.lineTo(q[0], q[1]);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+
+      if (!painted) {
+        painted = true;
+        if (fallback) fallback.remove();
+      }
+    };
+
+    const frame = () => {
+      spin += 0.0052;
+      draw();
+      raf = window.requestAnimationFrame(frame);
+    };
+
+    const start = () => { if (!raf) raf = window.requestAnimationFrame(frame); };
+    const stop = () => { if (raf) { window.cancelAnimationFrame(raf); raf = 0; } };
+
+    // A pointer drag turns it. `setPointerCapture` keeps the drag alive past the edge of the
+    // canvas, which is where a 120px object is otherwise lost on the first gesture.
+    let dragging = false;
+    let lastX = 0;
+    let lastY = 0;
+    canvas.addEventListener('pointerdown', (e) => {
+      dragging = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      canvas.setPointerCapture(e.pointerId);
+    });
+    canvas.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      ry += (e.clientX - lastX) * 0.009;
+      rx += (e.clientY - lastY) * 0.007;
+      rx = Math.max(-1.1, Math.min(1.1, rx));
+      lastX = e.clientX;
+      lastY = e.clientY;
+      // The drag must move the object even when the loop is stopped — which is the usual case
+      // on a phone, and the only case for a reader who has asked for less motion.
+      if (!raf) draw();
+    });
+    const release = () => { dragging = false; };
+    canvas.addEventListener('pointerup', release);
+    canvas.addEventListener('pointercancel', release);
+
+    // A background tab burning a core is the usual price of a loop like this and is avoidable.
+    // Rotating a phone crosses the breakpoint, so whether the mesh spins has to be re-decided
+    // rather than fixed at load. This is the one place that decides it.
+    const sync = () => { if (still()) stop(); else start(); };
+
+    // A background tab burning a core is the usual price of a loop like this and is avoidable.
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) stop(); else sync();
+    });
+    window.addEventListener('resize', () => { size(); draw(); sync(); });
+
+    size();
+    draw();
+    sync();
+  });
+</script>
 
 </Landing>

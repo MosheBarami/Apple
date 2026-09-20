@@ -921,26 +921,205 @@ p, li, dd, dt, figcaption, blockquote { text-wrap: pretty; }
 
 /* ---------------------------------------------------------- capabilities */
 
-/* A CARD ON THE BAR IS A TILE WITH WORDS UNDER IT, AND NOTHING ELSE.
-   Measured: a 10px-radius panel with no border and no shadow, then 8px, then a 20px/30px title,
-   then 8px, then a 14px/20px muted line — the text sitting on the page next to its neighbours
-   rather than inside a box with them — and the grid runs at a 32px gap. Ours drew a border, filled
-   the entire card and padded the text by 18px, which turns four short descriptions into four framed
-   objects and spends a hairline on each one. Four hairlines in a row is a fence, and a reader
-   counts fence posts instead of reading what is behind them.
-   THE TILE IS 16:9 AT EVERY WIDTH. The bar uses a 296:460 portrait where it has a screenshot and a
-   16:9 landscape where it has a game; ours holds a single 40px line drawing, and the portrait was
-   already found to make 77% of a card an empty rectangle the moment the grid collapsed. 16:9 is the
-   bar's own landscape tile, and it is the one that fits what is actually inside ours. */
-.cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; }
-.card { background: none; }
-/* --faint's one job. It measures 4.00:1 on --ground, which is under the 4.5:1 that TEXT needs and
-   comfortably over the 3:1 that a non-text graphic needs — so it pays for the 1.2px line drawing
-   inside this tile and for nothing that has to be read. */
-.card-media { position: relative; aspect-ratio: 16 / 9; display: grid; place-items: center; border-radius: var(--r); background: var(--card); color: var(--faint); overflow: hidden; }
-.card-body { padding: 0; }
-.card-body h3 { margin: 8px 0 0; font-size: 20px; font-weight: 400; letter-spacing: -0.012em; line-height: 30px; }
-.card-body p { margin: 8px 0 0; color: var(--muted); font-size: 14px; line-height: 20px; }
+/*[[ THE CAPABILITY TILES ARE NOW STAGES, AND THE TILE RULE IS GONE.
+ *
+ *   WHAT THE OLD RULE SAID, AND WHY IT STOPPED BEING THE ANSWER. It was measured off the reference
+ *   bar: a 16:9 panel with one 40px line drawing at --faint, then a 20/30 title, then a 14/20 muted
+ *   line, at a 32px gap. It was a correct reading of a page that has SCREENSHOTS OF GAMES in those
+ *   tiles. Ours had a 40px icon in an otherwise empty rectangle, which is the same composition with
+ *   the content removed — and it made the page's most product-specific section four sentences
+ *   asking to be believed. The owner's standing instruction is quoted in index.astro above the
+ *   array: every important capability gets a small interactive experience of its own.
+ *
+ *   SO THE GRID IS TWO-UP, NOT FOUR-UP, and that follows from what is inside rather than from a
+ *   different reading of the bar. A four-up at a 1024px shell gives each object 232px, and none of
+ *   these four is operable at 232px: the tree loses its indent, the critique's render drops under
+ *   130px wide, the code panel wraps every Luau line, and the mesh is a smudge. Two-up gives 496px,
+ *   which is where all four were measured.
+ *
+ *   THE OBJECT IS A PANEL AGAIN, WHICH THE OLD RULE DELIBERATELY REMOVED. The note it replaced said
+ *   four hairlines in a row is a fence. That is true of four short descriptions and false of four
+ *   things you press: a control surface with no edge has no boundary to be inside, and the four
+ *   stages would read as one unbroken field of widgets. It takes the SAME panel recipe as .truth —
+ *   --pillar, --pillar-line, --pillar-sheen, var(--r) — rather than inventing a fifth surface.
+ *
+ *   THE TITLE AND THE LINE UNDER IT ARE UNCHANGED at 20/30 and 14/20. Only what sits above them
+ *   moved, and .demo-body keeps the exact type the old .card-body carried. ]]*/
+.demos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; }
+.demo { display: flex; flex-direction: column; }
+
+/* THE STAGE. `overflow: hidden` is load-bearing twice over: it clips the two ambient bands that
+   used to be clipped by .card-media, and it is what stops a dragged mesh or a long Luau line
+   escaping the panel. The height is a floor rather than a fixed value — the four stages are
+   within 20px of each other at 496px, and pinning them to one number would crop whichever one a
+   translation makes taller. */
+.demo-stage {
+  position: relative;
+  overflow: hidden;
+  /* THE STAGE IS THE ROW'S HEIGHT, NOT ITS OWN — the same rule .truth carries and for the same
+     reason, one step further along. `flex: 1` inside a stretched grid item is what makes it: the
+     row is as tall as its tallest stage, and every .demo-body in the row therefore starts on one
+     line. Without it the Luau panel (ten lines of code) stood 58px taller than the mesh beside it
+     and the two titles under them sat at different heights, which is the rag the four-up tiles
+     were built to avoid and the two-up reintroduced. 316 is the measured floor: the leaderstat
+     snippet is the tallest content any stage holds, at 10 lines x 19px inside 12px of padding
+     under a 42px head and 32px of stage padding. */
+  min-height: 316px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--pillar-line);
+  border-radius: var(--r);
+  background-color: var(--pillar);
+  background-image: var(--pillar-sheen);
+  transition: border-color var(--t-fast) ease-out;
+}
+/* The same acknowledgement .truth gives a cursor, and no more: the rim comes up to the composer's
+   strength. No transform and no shadow — a panel that jumps under the pointer is a panel that was
+   not sitting still, and these ones have things inside them that the reader is aiming at. */
+.demo:hover .demo-stage { border-color: var(--line-strong); }
+
+/* The head names what the stage IS. It is the only thing standing between a widget on a marketing
+   page and a reader taking it for the product's live state — which is exactly how the composer's
+   old "connected" dot came to be telling people their Studio was attached before they had one. It
+   takes .sequence-figure .figure-head's construction, because it is the same object. */
+.demo-head { position: relative; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+
+.demo-body { padding: 0; }
+.demo-body h3 { margin: 16px 0 0; font-size: 20px; font-weight: 400; letter-spacing: -0.012em; line-height: 30px; }
+.demo-body p { margin: 8px 0 0; color: var(--muted); font-size: 14px; line-height: 20px; }
+
+/* ---- stage one: the read order -------------------------------------------------------------- */
+
+/* Two columns because the log has to be BESIDE the thing it is logging. Stacked, the reader clicks
+   a node at the top and the line about it appears below the fold of the panel. */
+/* The side column is the wider of the two: the tree's longest row is `ServerScriptService` at
+   132px in this monospace, and the log's longest line is the read of that same node at 244px. */
+.rd { flex: 1; display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 16px; padding: 16px; align-items: start; }
+.rd-tree { list-style: none; margin: 0; padding: 0; }
+/* The indent is data, not markup: --depth comes off the row and one rule covers every level. */
+.rd-row { margin-left: calc(var(--depth, 0) * 14px); }
+.rd-node {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; height: 26px; padding: 0 8px;
+  border: 0; border-radius: var(--r-sm);
+  background: none; color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px; line-height: 26px; text-align: left; white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--t-fast) ease-out, color var(--t-fast) ease-out;
+}
+.rd-node:hover { background: var(--control-fill); color: var(--ink-secondary); }
+/* A READ NODE IS BRIGHTER, NOT COLOURED. Hierarchy below the fold on this page is carried by how
+   light a thing is; the single accent is spent on the dot, which is a 5px non-text graphic and so
+   is not being asked to carry a contrast ratio it cannot meet. */
+.rd-node[aria-pressed='true'] { color: var(--ink); }
+.rd-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: 0.4; flex: none; }
+.rd-node[aria-pressed='true'] .rd-dot { background: var(--accent); opacity: 1; }
+
+.rd-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.rd-log {
+  margin: 0; padding: 10px 12px;
+  border-radius: var(--r-sm); background: var(--raised);
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11.5px; line-height: 18px;
+  overflow-wrap: anywhere;
+}
+.rd-gate { margin: 0; color: var(--faint); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11.5px; line-height: 18px; }
+/* The gate open is the one state on this stage worth the accent: it is the moment the claim in the
+   title becomes true, and it is a short line rather than a paragraph, so --accent-ink carries it. */
+.rd-gate[data-read='3'] { color: var(--accent-ink); }
+
+/* ---- stage two: the critique ----------------------------------------------------------------- */
+
+.cw { flex: 1; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; padding: 16px; align-items: start; }
+.cw-render { position: relative; border-radius: var(--r-sm); overflow: hidden; background: var(--raised); aspect-ratio: 220 / 124; }
+.cw-scene { position: absolute; inset: 0; width: 100%; height: 100%; }
+/* The subject is drawn in the page's own ink at low alpha rather than in colour. A render that
+   looks like a photograph would be claiming to be one. */
+.cw-floor { fill: color-mix(in srgb, var(--ink) 5%, transparent); }
+.cw-block { fill: color-mix(in srgb, var(--ink) 10%, transparent); stroke: color-mix(in srgb, var(--ink) 15%, transparent); stroke-width: 1; }
+.cw-edge { stroke: color-mix(in srgb, var(--accent) 30%, transparent); stroke-width: 1; fill: none; }
+/* A MARKER IS A TAP TARGET AS WELL AS A DOT. The visible ring is 14px; the button is 26px and
+   centred on it through the negative margin, so a finger has something to hit. */
+.cw-mark {
+  position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px;
+  padding: 0; border: 0; background: none; cursor: pointer;
+}
+.cw-mark::after {
+  content: ''; position: absolute; inset: 6px;
+  border-radius: 50%;
+  border: 1px solid var(--accent-ring);
+  background: var(--accent-glow);
+  transition: transform var(--t-fast) ease-out, background-color var(--t-fast) ease-out;
+}
+.cw-mark.is-on::after { transform: scale(1.7); background: color-mix(in srgb, var(--accent) 34%, transparent); }
+
+.cw-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+/* The score is the only large number below the fold, and it is the figure the gate returns. */
+.cw-score { margin: 0; font-size: 28px; line-height: 32px; letter-spacing: -0.02em; color: var(--ink); }
+.cw-score-d { color: var(--faint); font-size: 16px; letter-spacing: -0.01em; }
+.cw-defects { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.cw-defect {
+  display: block; width: 100%; padding: 5px 8px 5px 10px;
+  border: 0; border-left: 1px solid var(--line); border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  background: none; color: var(--muted);
+  font-size: 12px; line-height: 17px; text-align: left;
+  cursor: pointer;
+  transition: color var(--t-fast) ease-out, border-color var(--t-fast) ease-out, background-color var(--t-fast) ease-out;
+}
+.cw-defect:hover { color: var(--ink-secondary); }
+.cw-defect[aria-pressed='true'] { color: var(--ink); border-left-color: var(--accent); background: var(--control-fill); }
+
+/* ---- stage three: the Luau and the refusal --------------------------------------------------- */
+
+.lu { flex: 1; display: flex; flex-direction: column; gap: 12px; padding: 16px; min-width: 0; }
+.lu-asks { display: flex; flex-wrap: wrap; gap: 6px; }
+/* --h-xs, the smallest of the four measured control heights, because three of these sit on one row
+   inside a 496px panel. */
+.lu-ask {
+  height: var(--h-xs); padding: 0 10px;
+  border: 1px solid var(--line); border-radius: var(--r-sm);
+  background: none; color: var(--muted);
+  font-size: 12px; line-height: 1; cursor: pointer;
+  transition: color var(--t-fast) ease-out, border-color var(--t-fast) ease-out, background-color var(--t-fast) ease-out;
+}
+.lu-ask:hover { color: var(--ink-secondary); border-color: var(--line-strong); }
+/* The pressed chip takes the composer model chip's own family — the accent at 12%, the lighter tint
+   at 38% for the rim — because it is the same object doing the same job: naming the thing that is
+   currently selected. */
+.lu-ask[aria-pressed='true'] { color: var(--ink); background: var(--accent-soft); border-color: var(--accent-ring); }
+.lu-out {
+  flex: 1; margin: 0; padding: 12px 14px;
+  border-radius: var(--r-sm); background: var(--raised);
+  overflow: auto;
+}
+.lu-out code {
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11.5px; line-height: 19px;
+  color: var(--muted); white-space: pre;
+}
+/* THE REFUSAL IS THE BRIGHTEST THING IN THE PANEL AND NOT A DIFFERENT HUE, which is the rule
+   .activity-line.refused already sets on this page and for the reason recorded there: a warm
+   warning colour is what a reader has learned means a mistake they made, and what this reports is
+   the product protecting them. */
+.lu-out.refused code { color: var(--ink); }
+
+/* ---- stage four: the mesh -------------------------------------------------------------------- */
+
+.gm { flex: 1; position: relative; display: grid; place-items: center; padding: 16px; }
+/* `touch-action: none` or the first drag on a phone scrolls the page instead of turning the mesh. */
+.gm-canvas { display: block; width: 100%; height: 190px; touch-action: none; cursor: grab; }
+.gm-canvas:active { cursor: grabbing; }
+/* The still frame sits exactly where the canvas draws and is removed by the script after its first
+   painted frame — so a bundle that loads and throws leaves a drawn mesh rather than a blank panel.
+   It is not a <noscript>, because <noscript> does not cover a script that runs and fails. */
+.gm-still { position: absolute; width: 150px; height: 150px; color: var(--accent); opacity: 0.66; pointer-events: none; }
+/* NO SECOND LABEL. A `DRAG TO TURN IT` line inside the panel said what the head above it already
+   says, in the same type at the same size, 220px lower down. One of the two had to go and the head
+   is the one every other stage has. */
 
 /* --------------------------------------------------------------- plans */
 
@@ -1222,29 +1401,42 @@ p, li, dd, dt, figcaption, blockquote { text-wrap: pretty; }
 .u-stratum, .stratum { animation: stratum-drift 46s ease-in-out infinite alternate; }
 .stratum { animation-delay: calc(var(--i, 0) * -1.7s); }
 
-/* SHIMMER and BORDER-TRAVEL — the capability tiles. Both rest OFF THE EDGE of their tile rather
-   than at zero opacity, so a cancelled animation leaves a clean panel instead of an invisible band
-   parked across the middle of one. `overflow: hidden` on .card-media is what clips them. */
-.card-media::before {
+/*[[ SHIMMER and BORDER-TRAVEL — RE-AIMED FROM .card-media ONTO .demo-stage, NOT DELETED.
+ *
+ *   These two were the capability tiles' ambient layer. The tile is gone; the panel it was inside
+ *   is still there, is still the same object in the same place on the page, and still clips its own
+ *   children — so the two bands move across the stage instead of across the icon box. Deleting them
+ *   would have been the easy way to keep the sheet consistent and would have quietly removed two of
+ *   the running animations this page is explicitly briefed to carry.
+ *
+ *   BOTH REST OFF THE EDGE rather than at zero opacity, which is unchanged and is the point: a
+ *   cancelled animation returns to the declared value, so a band declared at opacity 0 in the
+ *   middle of the panel would be sitting there invisible under reduced motion, waiting for one
+ *   `opacity` rule elsewhere to expose it. Off the edge, `overflow: hidden` on .demo-stage is what
+ *   makes the still state clean.
+ *
+ *   THE BAND STAYS ABOVE THE CONTROLS AND OUT OF THEIR WAY. `pointer-events: none` was already on
+ *   both and now matters for a second reason: the panel underneath is full of buttons. ]]*/
+.demo-stage::before {
   content: ''; position: absolute; top: 0; left: 0;
   width: 30%; height: 1px;
   background: linear-gradient(90deg, transparent, var(--accent-light), transparent);
   transform: translateX(-100%);
   opacity: 0.55; pointer-events: none;
 }
-.card-media::after {
+.demo-stage::after {
   content: ''; position: absolute; top: -20%; left: 0;
   width: 42%; height: 140%;
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
   transform: translateX(-160%) skewX(-18deg);
   pointer-events: none;
 }
-.u-border-travel, .card-media::before { animation: border-travel 7.2s ease-in-out infinite; }
-.u-shimmer, .card-media::after { animation: shimmer 6.4s ease-in-out infinite; }
-/* Four tiles moving in lockstep is one tile moving four times, so the ladder offsets them. */
-.cards .card:nth-child(2) .card-media::before, .cards .card:nth-child(2) .card-media::after { animation-delay: 1.6s; }
-.cards .card:nth-child(3) .card-media::before, .cards .card:nth-child(3) .card-media::after { animation-delay: 3.2s; }
-.cards .card:nth-child(4) .card-media::before, .cards .card:nth-child(4) .card-media::after { animation-delay: 4.8s; }
+.u-border-travel, .demo-stage::before { animation: border-travel 7.2s ease-in-out infinite; }
+.u-shimmer, .demo-stage::after { animation: shimmer 6.4s ease-in-out infinite; }
+/* Four panels moving in lockstep is one panel moving four times, so the ladder offsets them. */
+.demos .demo:nth-child(2) .demo-stage::before, .demos .demo:nth-child(2) .demo-stage::after { animation-delay: 1.6s; }
+.demos .demo:nth-child(3) .demo-stage::before, .demos .demo:nth-child(3) .demo-stage::after { animation-delay: 3.2s; }
+.demos .demo:nth-child(4) .demo-stage::before, .demos .demo:nth-child(4) .demo-stage::after { animation-delay: 4.8s; }
 
 /* SCAN-LINE — a single soft band travelling down the activity log, which is the one figure on this
    page that depicts something happening over time. It rests above the panel's top edge and is
@@ -1301,7 +1493,9 @@ p, li, dd, dt, figcaption, blockquote { text-wrap: pretty; }
    sections rather than as a caption relationship. */
 @media (max-width: 1023px) {
   .truths { grid-template-columns: repeat(2, 1fr); }
-  .cards { grid-template-columns: repeat(2, 1fr); }
+  /* .demos is ALREADY two-up at every width above the phone block; there is nothing for this
+     breakpoint to do to it. A `repeat(2, 1fr)` here would be a rule restating what it inherits,
+     which is how two numbers that had no reason to differ end up disagreeing. */
   .sequence { grid-template-columns: minmax(0, 1fr); gap: 16px; }
   .footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
@@ -1420,8 +1614,30 @@ p, li, dd, dt, figcaption, blockquote { text-wrap: pretty; }
   .step h3 { line-height: 1.5; letter-spacing: -0.012em; }
   .step p { font-size: 14px; line-height: 20px; }
   .truths { grid-template-columns: 1fr; }
-  .cards { grid-template-columns: 1fr; }
+  .demos { grid-template-columns: 1fr; gap: 28px; }
   .model-grid { grid-template-columns: 1fr; }
+  /*[[ FEWER EFFECTS ON A PHONE, NOT THE SAME EFFECTS MADE CHEAP — the owner's words, and this is
+   *   the block that has to mean them for the four stages.
+   *
+   *   MEASURED AT 375px INSIDE A 16px GUTTER: the panel is 343px wide. Every one of the four stages
+   *   is a two-column grid at desktop and not one of them survives being halved:
+   *     the tree's side column lands at 155px, and `get_tree  game.ServerScriptService  ok` is
+   *       244px in this monospace at 11.5px, so the log wraps to four lines or clips;
+   *     the critique's render lands at 178x100, at which the three markers are 26px targets sitting
+   *       14px apart and cannot be hit separately;
+   *   so both stack, and the two that were already single-column keep their shape.
+   *
+   *   THE MESH LOSES ITS SPIN AND KEEPS ITS DRAG. A requestAnimationFrame loop redrawing sixteen
+   *   stroked lines is the most expensive thing on this page, and on a phone it is running behind a
+   *   finger that is scrolling. Dropping the loop is fewer effects; dropping the object would be
+   *   less product. The script reads this same media query through matchMedia, so the still frame
+   *   and the drag are decided in ONE place rather than here and there.
+   *
+   *   THE TWO AMBIENT BANDS STAY. They are two compositing layers with no script behind them and
+   *   they are what keeps four stacked panels from reading as a list of forms. ]]*/
+  .rd, .cw { grid-template-columns: minmax(0, 1fr); }
+  .cw-render { aspect-ratio: 220 / 110; }
+  .gm-canvas { height: 168px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
