@@ -35,7 +35,29 @@
  * `body` — so a route that renders no mono text at all is correct, and listing it would fail pages
  * for not containing metadata they have no reason to contain.
  */
-export const APPROVED_FONT_STACKS = ['Archivo', 'Figtree'];
+/*[[ RE-AIMED 2026-09-21. THIS LIST NAMED TWO FACES THE SITE HAD ALREADY STOPPED SHIPPING.
+ *
+ *   Archivo and Figtree were retired by the warm-dark pass on 2026-09-19, which replaced both with
+ *   the system stack in global.css and landing.css. This list outlived them, and the rule that
+ *   reads it — check-pixels rule 2 — has therefore been failing EVERY frame ever since: measured on
+ *   2026-09-21, 74 of 74 frames across 19 routes at two viewports in both schemes, each reported as
+ *   "falls back to a bare system font", when what the body resolves to is the approved stack's own
+ *   first family. A rule that fires on every frame is not a strict rule; it is one nobody can read.
+ *
+ *   §7 of the working rules: every hand-written list in this repository has outlived what it lists.
+ *   This is the fourth.
+ *
+ *   THE RULE STILL HAS TEETH, AND THAT IS WHY THIS IS A CORRECTION RATHER THAN A DELETION. What it
+ *   exists to catch is a page whose stylesheet never arrived: with no CSS, `body` resolves to the
+ *   user agent's own default — `Times` on Chromium — and check-pixels' SYSTEM_STACKS still matches
+ *   `Times`, `serif`, `sans-serif`, `Arial` and `Helvetica`. Only the one family the design system
+ *   actually asks for is approved here.
+ *
+ *   IT IS THE FIRST FAMILY, not the stack. check-pixels compares `fontFamily.split(',')[0]`, which
+ *   is what the browser reports whether or not that family resolved to anything, so a longer entry
+ *   here could never match. The decision behind the stack, and why there is no webfont to fall back
+ *   FROM, is docs/DESIGN-TYPE.md. ]]*/
+export const APPROVED_FONT_STACKS = ['-apple-system'];
 
 /**
  * Prefixes that identify a design-system custom property.
@@ -101,4 +123,16 @@ export const DISPLAY_STRETCH = '118%';
  * half-reverted migration would reintroduce it silently on seventeen routes. The landing suite
  * already fails on it by name; this extends that to every page check-pixels sweeps.
  */
+/*[[ NOTHING READS THIS LIST, AND IF ANYTHING STARTED IT WOULD FAIL EVERY ROUTE ON THE SITE.
+ *
+ *   Found on 2026-09-21 while correcting APPROVED_FONT_STACKS above. `grep -rn RETIRED_FONT_FAMILIES`
+ *   over scripts/, packages/ and apps/ returns exactly one hit: this line. It is exported and
+ *   imported nowhere — check-pixels reads APPROVED_FONT_STACKS and TOKEN_PREFIXES and not this.
+ *
+ *   AND IT NAMES 'Inter', WHICH IS IN THE APPROVED STACK. global.css and landing.css both declare
+ *     -apple-system, BlinkMacSystemFont, 'Inter', system-ui, 'Segoe UI', Roboto, …
+ *   so the moment a checker starts reading this list and testing it against a computed stack, every
+ *   page on the site is "a design that has been lost". The value is left exactly as it is rather
+ *   than edited on a guess about what a future reader will want it to mean — but it is a trap with
+ *   no tripwire, so it gets a note where the next person will meet it instead of a silent fix. ]]*/
 export const RETIRED_FONT_FAMILIES = ['Fraunces', 'Inter', 'JetBrains Mono'];
