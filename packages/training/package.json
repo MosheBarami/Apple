@@ -15,6 +15,9 @@
     "pilot-evaluation-gap-audit": "node src/pilot-evaluation-gap-audit.mjs",
     "pilot-probe-replay": "node src/pilot-probe-replay.mjs",
     "saved-pilot-probe-audit": "node src/saved-pilot-probe-audit.mjs",
-    "worker2-pilot-evidence-audit": "node src/worker2-pilot-evidence-audit.mjs"
+    "worker2-pilot-evidence-audit": "node src/worker2-pilot-evidence-audit.mjs",
+    "eval-ui": "node src/eval-ui-generation.mjs",
+    "eval-production": "node src/eval-production.mjs",
+    "rescore-ui": "node src/rescore-ui.mjs"
   }
 }

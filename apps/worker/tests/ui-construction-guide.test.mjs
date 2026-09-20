@@ -87,3 +87,78 @@ test('no image, asset or third-party source rides along in the bundle', () => {
   assert.ok(!/data:image\//.test(raw), 'an embedded image would be a reproduction of somebody else\'s work');
   assert.ok(!/\bgame\.Workspace\b|\bInstance\.new\(/.test(raw), 'Luau source does not belong in a corpus of observations');
 });
+
+// ---------------------------------------------------------------------------
+// THE DOOR AND THE KEY TAPED TO IT.
+//
+// Everything above this line passed on 2026-09-20 while four of the thirteen advertised genres were
+// unreachable by their own names. The suite only ever asked for `simulator`, which is one of the
+// nine ids with no underscore in it, so it had no way to see the defect. These are the cases that
+// would have.
+// ---------------------------------------------------------------------------
+
+test('EVERY advertised id resolves to itself — the tool description is not a list of dead keys', () => {
+  // tools.ts builds this tool's description by interpolating UI_CONSTRUCTION_GENRE_IDS verbatim, and
+  // get_genre_kit constrains the same vocabulary with a JSON-schema enum, so the model is TOLD to
+  // say "tower_defense" and could not spell it any other way. Before the fix, `tower_defense`,
+  // `fps_arena`, `anime_battle` and `pet_simulator` each answered "Nobody has inspected shipped
+  // Roblox UI for it" when asked by the exact string the tool advertises.
+  const advertised = [...UI_CONSTRUCTION_GENRE_IDS, ...UI_CONSTRUCTION_SCREEN_IDS];
+  const dead = advertised.filter((id) => {
+    const a = getUIConstruction({ id });
+    return !(a.found === true && a.id === id);
+  });
+  assert.deepEqual(dead, [], `advertised ids that do not find their own row: ${dead.join(', ')}`);
+});
+
+test('underscore, hyphen and space are the same character on both sides', () => {
+  const underscored = UI_CONSTRUCTION_GENRE_IDS.filter((g) => g.includes('_'));
+  if (!underscored.length) return; // nothing to prove if the corpus stops using underscores
+  for (const id of underscored) {
+    for (const spelling of [id, id.replace(/_/g, '-'), id.replace(/_/g, ' '), id.toUpperCase()]) {
+      const a = getUIConstruction({ id: spelling });
+      assert.equal(a.found, true, `"${spelling}" should reach ${id}`);
+      assert.equal(a.id, id);
+    }
+  }
+});
+
+test('a meaningless fragment gets a MISS, not a confident sourced answer for something else', () => {
+  // The old fallback was `rows.find(r => r.genre.includes(want))` — unranked, first row in readdir
+  // order. Measured: "sim" returned pet_simulator rather than simulator, "er" returned
+  // tower_defense, "a" returned anime_battle, "in" returned racing. Each answered found:true with
+  // real sources attached, which is this module's contract broken in the direction that does more
+  // damage: the model cannot tell a confident wrong answer from a right one.
+  for (const junk of ['a', 'er', 'or', 'in', 'ing', 'sim']) {
+    const a = getUIConstruction({ id: junk });
+    assert.equal(a.found, false, `"${junk}" returned ${a.id} as a confident hit`);
+  }
+});
+
+test('a fragment that IS a whole word of an id reaches it, and says how it got there', () => {
+  if (!UI_CONSTRUCTION_GENRE_IDS.includes('tower_defense')) return;
+  const a = getUIConstruction({ id: 'tower' });
+  assert.equal(a.found, true);
+  assert.equal(a.id, 'tower_defense');
+  assert.equal(a.resolvedFrom, 'token', 'a non-verbatim hit must say it was non-verbatim');
+  // …while a verbatim hit says nothing, because there is nothing to disclose.
+  assert.equal(getUIConstruction({ id: 'tower_defense' }).resolvedFrom, undefined);
+});
+
+test('the British spelling finds the American row', () => {
+  if (!UI_CONSTRUCTION_GENRE_IDS.includes('tower_defense')) return;
+  const a = getUIConstruction({ id: 'tower_defence' });
+  assert.equal(a.found, true, 'tower_defence must reach tower_defense');
+  assert.equal(a.id, 'tower_defense');
+});
+
+test('resolution is deterministic, not a function of directory listing order', () => {
+  const once = getUIConstruction({ id: 'shop' });
+  const twice = getUIConstruction({ id: 'shop' });
+  assert.equal(once.id, twice.id);
+  // "simulator" must reach the genre named simulator, never pet_simulator, which is what the
+  // unranked fallback did for the prefix "sim".
+  if (UI_CONSTRUCTION_GENRE_IDS.includes('simulator')) {
+    assert.equal(getUIConstruction({ id: 'simulator' }).id, 'simulator');
+  }
+});
