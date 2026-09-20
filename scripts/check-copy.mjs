@@ -116,10 +116,20 @@ const SHAPES = [
  *
  * Measured across the four: revix.tech runs an 81.6px uppercase H1, superbullet.ai 60px with no
  * web font at all, and promptblox.ai — the most restrained of them — 40px at desktop and 27px at
- * 500px wide with no horizontal overflow at any width. The cap is set from the one that reads
- * best, not from the biggest.
+ * 500px wide with no horizontal overflow at any width. The cap was set from the one that reads
+ * best, not from the biggest, and it was 3.4rem.
+ *
+ * RAISED TO 3.5rem ON 2026-09-20, and the reason is a fifth reference rather than a preference.
+ * The owner named tesana.ai as the bar and instructed that the product match it; measured with
+ * getComputedStyle over its live DOM, its H1 is 56px at weight 400 with a 64px line box and
+ * -1.12px of tracking. 56px is 3.5rem, so the old cap forbade the exact number the chosen
+ * reference uses — and a cap that forbids the bar is a cap measured against the wrong set.
+ *
+ * The rule itself does not move: a display size is still capped, still measured off shipped pages
+ * rather than chosen, and 60px and 81.6px are still failures. What changed is which pages the
+ * measurement comes from. Lower it again the day the bar changes again, and say which page.
  */
-const MAX_DISPLAY_REM = 3.4;
+const MAX_DISPLAY_REM = 3.5;
 
 /** Every file a reader's words can come out of. */
 function pages() {

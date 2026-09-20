@@ -36,19 +36,38 @@
    `align-items:stretch` and `gap:0` undo the centred icon strip: rows own their own height and
    their own spacing now, and a flex gap applied over the top of that puts air between a group
    label and the rows it labels. */
-.gx-shell .studio-dock { width:var(--gx-dock-w); align-items:stretch; gap:0; padding:18px 12px 14px; background:var(--surface); backdrop-filter:none; animation:dock-arrive var(--t-slow) var(--ease-out) both; }
+/* THE RAIL IS THE PAGE, NOT A PANEL ON IT — measured, not judged. The reference declares two
+   `body` background rules and the one that wins is its sidebar token, so its rail ground and its
+   page ground are the same colour: rgb(20,19,18), which is our --paper exactly. The rail was
+   --surface (rgb 35,34,33), two steps above our page, so it read as a slab bolted to the side of
+   the window and every row on it had to shout over that lift. Dropping to --paper leaves the
+   hairline to do the separating, which is the one thing the lock says separation is for.
+   The padding follows the same measurement: the reference clears its 36px controls by 12px inside
+   a 60px bar, and 12px is its control gutter as well, so one number sets both edges of the rail.
+   18/14 were neither on its 4px grid nor in its gap vocabulary. */
+.gx-shell .studio-dock { width:var(--gx-dock-w); align-items:stretch; gap:0; padding:12px; background:var(--paper); backdrop-filter:none; animation:dock-arrive var(--t-slow) var(--ease-out) both; }
 /* system.css repaints the rail under the light theme with a hard-coded `#f0f0f0d9`, at a higher
-   specificity than the rule above and from a later file. Answered rather than argued with. */
-:root[data-theme='light'] .gx-shell .studio-dock { background:var(--surface); }
+   specificity than the rule above and from a later file. Answered rather than argued with, and
+   with the same token: the reference's light sidebar is #f8f8f8 against a white page — a rail a
+   shade BELOW its content, which is what our light --paper (#fafafa) already is. */
+:root[data-theme='light'] .gx-shell .studio-dock { background:var(--paper); }
 
 /* THE MARK IS IDENTITY, NOT A NAV ITEM. It links home like the Projects row does, but it never
    wears the accent: two green things on one screen means neither is the answer, and the row is the
    one that answers "where am I". Its own hover is a surface step, same as every other control. */
-.gx-shell .studio-dock .studio-dock__brand { display:flex; align-items:center; gap:10px; width:auto; height:auto; padding:8px 10px; margin-bottom:16px; border-radius:var(--r-md); color:var(--ink); text-decoration:none; transition:background-color var(--t-fast) var(--ease-out); }
-.gx-shell .studio-dock .studio-dock__brand:hover { background:var(--surface-2); }
-.gx-shell .studio-dock .studio-dock__brand:active { background:var(--surface-3); }
+.gx-shell .studio-dock .studio-dock__brand { display:flex; align-items:center; gap:8px; width:auto; height:auto; padding:8px 12px; margin-bottom:16px; border-radius:var(--r-md); color:var(--ink); text-decoration:none; transition:background-color var(--t-fast) var(--ease-out); }
+/* The beds step with the rail's new ground rather than from where it used to be. On --paper the
+   reference's quiet hover bed measures as its ink at 6% — rgb(33,32,31), which is --surface to
+   within two points — and its next step up is rgb(51,50,49), which is --surface-2 exactly. */
+.gx-shell .studio-dock .studio-dock__brand:hover { background:var(--surface); }
+.gx-shell .studio-dock .studio-dock__brand:active { background:var(--surface-2); }
 .gx-shell .studio-dock .studio-dock__brand .model-signature { width:24px; height:24px; }
-.gx-shell .studio-dock__wordmark { font-size:15px; letter-spacing:-.01em; color:var(--ink); white-space:nowrap; }
+/* 15px IS NOT A STEP ON THE REFERENCE. Its scale runs 10, 11, 12, 14, 16, 20, 28, 32, 40, 56, and
+   the wordmark was sitting in the gap between two of them with a line box to match. 16/24 is the
+   step above the rows, and it puts the brand block at 40px — a height the reference uses for the
+   one control it sizes above a row. A size invented between two measured ones is the thing that
+   makes a rail look drawn rather than built. */
+.gx-shell .studio-dock__wordmark { font-size:16px; line-height:24px; letter-spacing:-.01em; color:var(--ink); white-space:nowrap; }
 
 /* The rows scroll and the account does not, so a short viewport loses conversations before it
    loses the way out. The inline padding is the focus ring's clearance: `outline-offset:4px` plus a
@@ -60,19 +79,55 @@
    tracking the rest of the type uses closes the counters up and the word becomes a smudge.
    `aria-hidden` in the markup, because the group already carries this word as its accessible
    name — the eye needs it repeated, a screen reader does not. */
-.gx-shell .studio-dock__group-label { margin:0 0 6px; padding-inline:10px; font-size:10px; line-height:1.4; letter-spacing:.018em; text-transform:uppercase; color:var(--faint); }
+/* Measured against the reference's own micro-label, of which it has twenty-one: 10px, line box
+   15px, +0.18px of tracking, uppercase, weight 400, rgb(170,170,170). We matched it on every axis
+   but the line box, which was 1.4 — 14px, a pixel short, which is enough to sit a label half a
+   step closer to its group than the reference sits its own. The gutter follows the rows to 12px so
+   the label starts on the same text edge as the words it names.
+   THE MARGIN IS 4px BECAUSE THE GROUP NOW CARRIES A 4px GAP, and the two add up. Left at the old
+   6px the label sat 10px off its first row — a number the reference never uses, arrived at by two
+   rules that were each defensible alone. 4 and 4 make 8px, which is the interval the reference
+   reaches for 82 times, and it is the same 8px the row below uses between its icon and its word,
+   so the label stands off its group by exactly the distance the group stands off itself. */
+.gx-shell .studio-dock__group-label { margin:0 0 4px; padding-inline:12px; font-size:10px; line-height:15px; letter-spacing:.018em; text-transform:uppercase; color:var(--faint); }
+/* THE ROWS WERE TOUCHING. The rail had `gap:0` and rows with no margin, so five destinations
+   rendered as one unbroken column and the hover bed of one row met the hover bed of the next with
+   no ground between them. The reference sets its own 36px rows 4px apart, and 4px is the gap it
+   reaches for more than any other (167 elements against 82 for the next). */
+.gx-shell .studio-dock__group { display:grid; gap:4px; }
 
 /* A ROW IS AN ICON, A WORD, AND WHATEVER TRAILS IT. `min-height` rather than a fixed height: the
    account row carries two lines and must be allowed to grow, and a row that clips its own second
    line is worse than a rail that is one row taller. Colour is `--muted` at rest so that the single
-   accented row is visibly the answer and not merely a different shade of the same emphasis. */
+   accented row is visibly the answer and not merely a different shade of the same emphasis.
+   THE LINE-HEIGHT IS WHY THE ROW WAS THE WRONG HEIGHT, and it was missing rather than wrong. With
+   no line-height of its own the row inherited the root's 1.55 prose leading, so a 14px label drew
+   a 21.7px line box and 8px of padding either side made the row 38px. The reference sets every one
+   of its 141 fourteen-pixel nodes at a 20px line box, which is what makes its control exactly
+   36px — the height it uses for twenty of them, more than any other. Declaring the leading here
+   fixes the height and the rhythm in the same number instead of padding around the symptom, and it
+   keeps the account row free to grow to two lines because the constraint is still a min-height.
+   The 12px gutter and the 8px gap are the reference's as well: every 36px control it draws is
+   padded 0 12px, and the ones that lead with an icon and a word set them 8px apart. 10px was in
+   neither vocabulary. */
 .gx-shell .studio-dock .studio-dock__row,
-.gx-shell .studio-dock .studio-navigation { position:relative; display:flex; align-items:center; gap:10px; width:100%; min-height:38px; padding:8px 10px; border:0; border-radius:var(--r-md); background:transparent; color:var(--muted); font-size:14px; letter-spacing:-.01em; text-align:start; text-decoration:none; transition:background-color var(--t-fast) var(--ease-out),color var(--t-fast) var(--ease-out); }
-.gx-shell .studio-dock :is(.studio-dock__row,.studio-navigation) > svg { flex:none; width:17px; height:17px; }
+.gx-shell .studio-dock .studio-navigation { position:relative; display:flex; align-items:center; gap:8px; width:100%; min-height:36px; padding:8px 12px; border:0; border-radius:var(--r-md); background:transparent; color:var(--muted); font-size:14px; line-height:20px; letter-spacing:-.01em; text-align:start; text-decoration:none; transition:background-color var(--t-fast) var(--ease-out),color var(--t-fast) var(--ease-out); }
+/* 17px WAS BIGGER THAN ANY ICON ON THE REFERENCE BUT TWO. Across its whole landing page 175 of 185
+   icons render at 16px or under, the square ones at exactly 16, and the ones riding its 36px rows
+   at 14–15px wide. An icon a pixel or two over the mark is not noticed on its own; it is noticed as
+   a rail whose glyphs sit heavier than its words, which is the opposite of the intended reading. */
+.gx-shell .studio-dock :is(.studio-dock__row,.studio-navigation) > svg { flex:none; width:16px; height:16px; }
 /* Hover and press are a surface step and nothing else. A row that grows, moves or changes weight
-   under the cursor makes the whole rail twitch as the pointer crosses it. */
-.gx-shell .studio-dock :is(.studio-dock__row,.studio-navigation):hover { background:var(--surface-2); color:var(--ink); }
-.gx-shell .studio-dock :is(.studio-dock__row,.studio-navigation):active { background:var(--surface-3); color:var(--ink); }
+   under the cursor makes the whole rail twitch as the pointer crosses it.
+   BOTH STEPS DROP ONE, because the ground under them dropped two. The reference's quiet bed is its
+   ink at 6% alpha and it is the second most common background on its page (81 elements); over
+   rgb(20,19,18) that composites to rgb(33,32,31), which is --surface to within two points. The
+   step above it is rgb(51,50,49), which is --surface-2 exactly. Holding the old --surface-2 hover
+   over the new --paper rail would have made a merely-hovered row as loud as the current one — they
+   were in fact the same bed before this, which is a rail that forgets where you are for as long as
+   the pointer is on it. */
+.gx-shell .studio-dock :is(.studio-dock__row,.studio-navigation):hover { background:var(--surface); color:var(--ink); }
+.gx-shell .studio-dock :is(.studio-dock__row,.studio-navigation):active { background:var(--surface-2); color:var(--ink); }
 /* The rail has no row that can be disabled today. Declared anyway, because the global
    `button:disabled` rule only dims — it does not stop the hover ground above from lighting up
    under a control that cannot be used, which reads as an invitation. */
@@ -100,7 +155,9 @@
 /* The marker grows out of the row rather than appearing beside it, which is what makes moving
    between two destinations read as one movement instead of two blinks. It lives on every row so
    there is something to animate FROM; at rest it has no height and therefore no presence. */
-.gx-shell .studio-dock .studio-dock__row::before { content:''; position:absolute; inset-block:9px; inset-inline-start:0; width:2px; border-radius:var(--r-pill); background:var(--accent); transform:scaleY(0); transition:transform var(--t-base) var(--ease-out); }
+/* 8px rather than 9px, because the row's own block padding is 8px now: the marker is exactly as
+   tall as the 20px line box it stands beside instead of being a pixel short of it at each end. */
+.gx-shell .studio-dock .studio-dock__row::before { content:''; position:absolute; inset-block:8px; inset-inline-start:0; width:2px; border-radius:var(--r-pill); background:var(--accent); transform:scaleY(0); transition:transform var(--t-base) var(--ease-out); }
 .gx-shell .studio-dock .studio-dock__row[aria-current='page']::before { transform:scaleY(1); }
 
 /* The drawer is open: the control that opened it holds its ground so the reader can see what the
@@ -118,18 +175,29 @@
 
 /* Pinned by `margin-top:auto` rather than by being last in the source, so a short viewport
    scrolls the destinations above and never the way to your own account. */
-.gx-shell .studio-dock__foot { margin-top:auto; padding-top:14px; border-top:1px solid var(--line); display:grid; gap:2px; }
+/* 12px and 4px are the reference's; 14px and 2px were nobody's. Its spacing runs on a 4px grid it
+   declares as a token, 14 is not on it, and 2px appears exactly once on its entire page against
+   167 uses of 4px. The foot now breathes at the same interval as the group above it, so the
+   hairline reads as a division in one list rather than the seam between two. */
+.gx-shell .studio-dock__foot { margin-top:auto; padding-top:12px; border-top:1px solid var(--line); display:grid; gap:4px; }
 /* system.css gives this row `margin-top:auto`, a two-stop white gradient and an inset box-shadow —
    raw hex, and a shadow on something that does not float. The foot owns the pinning now, and
    separation here is the hairline above. */
 .gx-shell .studio-dock .studio-dock__account { margin-top:0; background:transparent; box-shadow:none; min-height:44px; }
-.gx-shell .studio-dock .studio-dock__account:hover { background:var(--surface-2); }
+.gx-shell .studio-dock .studio-dock__account:hover { background:var(--surface); }
+/* The avatar climbs to --surface-2 so it stays an object on the row rather than dissolving into
+   the row's own --surface hover bed. Same two measured steps, one on top of the other. */
 .gx-shell .studio-dock__avatar { flex:none; display:grid; place-items:center; width:24px; height:24px; border-radius:var(--r-xs); background:var(--surface-2); color:var(--muted); font-size:11px; letter-spacing:0; }
 .gx-shell .studio-dock__stack { flex:1; min-width:0; display:grid; }
 .gx-shell .studio-dock__stack > * { min-width:0; }
 /* Metadata, so `--faint`: it says which account this is, and it is never the thing you came to
-   read. It truncates rather than wrapping — an address is recognised from its start. */
-.gx-shell .studio-dock__who { font-size:10px; line-height:1.4; color:var(--faint); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+   read. It truncates rather than wrapping — an address is recognised from its start.
+   10px WAS BELOW THE REFERENCE'S FLOOR FOR A LOWERCASE WORD. Its 10px step exists only as an
+   uppercase micro-label with positive tracking; the smallest thing it sets in lowercase is
+   12px on an 18px line box with -0.12px of tracking, and it does that nineteen times. An address
+   set two pixels under a scale's smallest step reads as a caption the product is embarrassed by,
+   and it was carrying -0.14px of tracking inherited from a 14px parent on top of that. */
+.gx-shell .studio-dock__who { font-size:12px; line-height:18px; letter-spacing:-.01em; color:var(--faint); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
 
 /* ----------------------------------------------------- drawer: the mark --- */
 
@@ -141,7 +209,10 @@
 
 /* The row is space-between with a shortcut badge at its end. The label takes the middle and
    truncates there, rather than letting a long translation shove the badge off the rail. */
-.gx-rail .gx-new__label { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:14px; letter-spacing:-.01em; }
+/* The line box is declared here for the same reason it is declared on the rail's rows: a 14px
+   label with no leading of its own inherits the root's 1.55 and draws a 21.7px box, so the drawer
+   and the rail beside it set the same word at two different heights. 14/20 on both. */
+.gx-rail .gx-new__label { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:14px; line-height:20px; letter-spacing:-.01em; }
 /* It had no hover and no press treatment at all: a link that does not answer the cursor reads as a
    heading, which is what a row set between two hairlines already looks like. The 8-and-back-8 is
    the drawer's shared gutter, explained under conversations below — it is what keeps this label on
@@ -161,7 +232,10 @@
    the two is exactly what a focused row needs — `outline-offset:4px` plus a 2px ring — because an
    overflow container clips at its padding box and would otherwise slice the ring in half. */
 .gx-rail .gx-rail__scroll { padding-inline:14px; margin-inline:-14px; }
-.gx-rail .gx-rail__label { font-size:10px; line-height:1.4; letter-spacing:.018em; text-transform:uppercase; color:var(--faint); }
+/* The drawer's section label is the rail's section label; the reference's micro-label is 10px on a
+   15px box, and two labels doing the same job at two different leadings is how a panel starts to
+   look like it was added later. */
+.gx-rail .gx-rail__label { font-size:10px; line-height:15px; letter-spacing:.018em; text-transform:uppercase; color:var(--faint); }
 .gx-rail .gx-conv { padding-inline:8px; margin-inline:-8px; border-radius:var(--r-md); color:var(--muted); transition:background-color var(--t-fast) var(--ease-out),color var(--t-fast) var(--ease-out); }
 .gx-rail .gx-conv:hover { background:var(--surface-2); color:var(--ink); }
 .gx-rail .gx-conv:active { background:var(--surface-3); color:var(--ink); }
@@ -177,7 +251,10 @@
    name it is about. Scoped to the sibling so it only applies when a pin is actually there. */
 .gx-rail .gx-conv__pin + .gx-conv__name { flex:1; }
 
-.gx-rail .gx-viewall { padding:9px 8px; margin-inline:-8px; border-radius:var(--r-md); color:var(--muted); transition:background-color var(--t-fast) var(--ease-out),color var(--t-fast) var(--ease-out); }
+/* 8px rather than 9px: the reference's spacing is a declared 4px grid and 9 is not on it. The
+   inline 8-and-back-8 is untouched, because that arithmetic is what holds the drawer's one text
+   edge and it is explained above. */
+.gx-rail .gx-viewall { padding:8px; margin-inline:-8px; border-radius:var(--r-md); color:var(--muted); transition:background-color var(--t-fast) var(--ease-out),color var(--t-fast) var(--ease-out); }
 .gx-rail .gx-viewall:hover { background:var(--surface-2); color:var(--ink); }
 .gx-rail .gx-viewall:active { background:var(--surface-3); color:var(--ink); }
 
@@ -188,7 +265,7 @@
    product's answer to "did it work" was the same picture in all three cases.
    The skeleton stands in the slot three rows would occupy, at the row's own height and gutter, so
    the list does not visibly change shape the moment the real ones arrive. */
-.gx-rail .gx-rail__loading { display:grid; gap:9px; padding:12px 8px; margin-inline:-8px; }
+.gx-rail .gx-rail__loading { display:grid; gap:8px; padding:12px 8px; margin-inline:-8px; }
 .gx-rail .gx-rail__skeleton { display:block; height:11px; border-radius:var(--r-xs); background:var(--surface-2); animation:rail-skeleton 1.4s var(--ease-in-out) infinite; }
 .gx-rail .gx-rail__skeleton:nth-child(2) { width:82%; animation-delay:.12s; }
 .gx-rail .gx-rail__skeleton:nth-child(3) { width:64%; animation-delay:.24s; }
@@ -196,11 +273,16 @@
    the sentence rather than on the button, because tinting both would make the retry look like the
    dangerous option rather than the way out. */
 .gx-rail .gx-rail__failed { padding:12px 8px; margin-inline:-8px; border-bottom:1px solid var(--line); }
-.gx-rail .gx-rail__failed-text { margin:0 0 10px; color:var(--bad); font-size:13px; line-height:1.5; letter-spacing:-.01em; }
-.gx-rail .gx-rail__retry { padding:7px 12px; font-size:12px; }
+/* 13px IS NOT A STEP. The reference's scale goes 12 then 14 with nothing between them, and a
+   sentence set at 13 is a sentence that matches nothing else on the screen it appears on. 14/20 is
+   the step these two states belong to — they are sentences a reader has to act on, not captions.
+   The retry button follows the reference's own compact control: 28px tall, 12px type on an 18px
+   box, 0 8px of padding, 6px radius. 7px of block padding was off the 4px grid. */
+.gx-rail .gx-rail__failed-text { margin:0 0 8px; color:var(--bad); font-size:14px; line-height:20px; letter-spacing:-.01em; }
+.gx-rail .gx-rail__retry { min-height:28px; padding:0 8px; border-radius:var(--r-xs); font-size:12px; line-height:18px; letter-spacing:-.01em; }
 /* The empty state stands in the slot a row would occupy — same padding, same hairline — so the
    list does not visibly change shape the moment the first chat arrives. */
-.gx-rail .gx-rail__none { margin:0 -8px; padding:12px 8px; border-bottom:1px solid var(--line); color:var(--muted); font-size:13px; line-height:1.5; letter-spacing:-.01em; }
+.gx-rail .gx-rail__none { margin:0 -8px; padding:12px 8px; border-bottom:1px solid var(--line); color:var(--muted); font-size:14px; line-height:20px; letter-spacing:-.01em; }
 
 /* ------------------------------------------------------ drawer: checkpoints --- */
 
@@ -235,7 +317,9 @@
    every width. `title` is what a pointer user gets back. */
 @media(max-width:1000px) {
   .gx-shell { --gx-dock-w:76px; }
-  .gx-shell .studio-dock { padding-inline:10px; }
+  /* The rail keeps one gutter at every width. 10px was off the 4px grid the reference declares and
+     it meant the collapsed rail sat its icons on a different margin than the full one did. */
+  .gx-shell .studio-dock { padding-inline:12px; }
   /* Every selector in both breakpoint blocks carries `.studio-dock` even where the class alone
      would match, so that a `display` here can never lose to a three-class base rule above it — a
      media query adds no specificity, and a rule that is later but lighter simply does not apply.
@@ -248,8 +332,12 @@
   .gx-shell .studio-dock .studio-dock__brand,
   .gx-shell .studio-dock .studio-dock__row,
   .gx-shell .studio-dock .studio-navigation { justify-content:center; padding-inline:0; gap:0; }
+  /* 44px, not 42px. With the words hidden the row is a target rather than a label, and 44 is the
+     height the reference gives its own targets fifteen times over — as well as the pointer minimum
+     every platform agrees on. 42 was neither, and it left an icon-only rail whose rows were
+     shorter than the touch they were waiting for. */
   .gx-shell .studio-dock .studio-dock__row,
-  .gx-shell .studio-dock .studio-navigation { min-height:42px; }
+  .gx-shell .studio-dock .studio-navigation { min-height:44px; }
   .gx-shell .studio-dock .studio-dock__brand { margin-bottom:12px; }
   .gx-shell .studio-dock__foot { gap:4px; }
 }

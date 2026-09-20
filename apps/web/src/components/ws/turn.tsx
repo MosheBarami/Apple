@@ -11,6 +11,7 @@
 import { useMemo, useState } from 'react';
 import type { UIDocument } from '../../lib/generative-ui/schema';
 import { Markdown } from '../../lib/markdown';
+import { splitSpilledPayload } from '../../lib/spilled-payload';
 import { extractUIFence, parseDocument } from '../../lib/generative-ui';
 import { GenerativeUI } from '../../lib/generative-ui/render';
 import { panelFromTool } from '../../lib/panels';
@@ -92,6 +93,9 @@ export function Turn({
     if (item.role !== 'assistant' || !item.content) return { json: null as string | null, rest: item.content };
     return extractUIFence(item.content);
   }, [item.role, item.content]);
+
+  // Split before anything is rendered, so the payload never reaches the markdown renderer at all.
+  const spilled = useMemo(() => splitSpilledPayload(parsed.rest ?? ''), [parsed.rest]);
 
   const fenceDoc = useMemo(() => {
     if (!parsed.json) return null;
@@ -269,7 +273,20 @@ export function Turn({
         {item.content && (
           // The reply answers in the user's language, so it takes its direction from itself too.
           <div className="gx-prose" dir="auto">
-            <Markdown source={parsed.rest} />
+            {/* THE WIRE FORMAT IS NOT PROSE. The renderer's rule was "anything that is not a UI
+                fence is a message", so when the model wrote a `create_instances` payload as text —
+                which is what it does when it runs out of output tokens mid-structure — the customer
+                got several screens of {'{'}"t":"Vector3"{'}'} where their game should have been.
+                Nothing is deleted: it is collapsed, because somebody quoting it to support must
+                still be able to, and because hiding output the model really produced is how a
+                product starts lying about what happened. */}
+            <Markdown source={spilled.prose} />
+            {spilled.collapsed && (
+              <details className="gx-turn__spill">
+                <summary>Apple wrote out part of a build instruction instead of running it. Show it</summary>
+                <pre>{spilled.collapsed}</pre>
+              </details>
+            )}
           </div>
         )}
 

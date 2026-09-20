@@ -373,8 +373,12 @@ function Rail({ name, email, isAdmin, quota, quotaPending, quotaFailed, width, o
           </div>
         )}
 
+        {/* "describe it and it will build it" is the sentence every competitor on this market uses
+            — check-copy names four of them — and it promises a passivity this product does not
+            have: Apple reads the place, asks, and stops at three steps on the free lane. The empty
+            state says what to DO, which is the one thing an empty state is for. */}
         {projects.isSuccess && chats.length === 0 && (
-          <p className="gx-rail__none">No chats yet — describe a game and Apple will build it.</p>
+          <p className="gx-rail__none">No chats yet. Open a project and tell Apple what to change.</p>
         )}
 
         <Link to="/" className="gx-viewall">
