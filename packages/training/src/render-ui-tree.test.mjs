@@ -1,0 +1,114 @@
+/**
+ * THE RENDERER MUST NOT DRAW A SCREEN THE SCRIPT DOES NOT SHOW.
+ *
+ * These guards exist because the first real showcase run produced a picture that libelled the
+ * model. The tycoon shop it generated was correct — `Backdrop.Visible = false`, opened by a click —
+ * and the renderer drew the backdrop's descendants anyway, because it checked `Visible` on each
+ * node of a flat list instead of up the ancestor chain. The resulting PNG showed a shop standing
+ * open with its confirm dialog overlapping the product grid, which reads as a layout defect the
+ * model never committed.
+ *
+ * A renderer that invents content is worse than no renderer: the whole point of showing the owner
+ * a picture is that the picture is evidence. So the inherited-visibility rule is pinned here, in
+ * both directions, along with the two other places this renderer could quietly invent something.
+ */
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { renderTreeToSvg } from './render-ui-tree.mjs';
+
+/** Build the node shape `indexTree` produces: props in harness form, plus a `parentNode` link. */
+function node(id, cls, props, parentNode = null) {
+  const n = { id, class: cls, props, children: [], parentNode };
+  if (parentNode) parentNode.children.push(n);
+  return n;
+}
+const bool = (v) => ({ k: 'bool', v });
+const str = (v) => ({ k: 'str', v });
+const color = (r, g, b) => ({ k: 'Color3', r, g, b });
+
+const VIEWPORT = { w: 800, h: 600 };
+
+/** A ScreenGui -> hidden Frame -> child Frame + child TextLabel, the shape that produced the bug. */
+function hiddenParentScene() {
+  const gui = node(1, 'ScreenGui', { Name: str('Screen') });
+  const backdrop = node(2, 'Frame', { Name: str('Backdrop'), Visible: bool(false), BackgroundColor3: color(0, 0, 0) }, gui);
+  const sheet = node(3, 'Frame', { Name: str('Sheet'), BackgroundColor3: color(1, 0, 0) }, backdrop);
+  const label = node(4, 'TextLabel', { Name: str('Title'), Text: str('SHOP'), TextColor3: color(1, 1, 1), BackgroundTransparency: { k: 'num', v: 1 } }, sheet);
+  const rects = new Map([
+    [2, { x: 0, y: 0, w: 800, h: 600 }],
+    [3, { x: 100, y: 100, w: 400, h: 300 }],
+    [4, { x: 120, y: 120, w: 200, h: 40 }],
+  ]);
+  return { guiNodes: [backdrop, sheet, label], rects };
+}
+
+test('a descendant of an invisible frame is not painted', () => {
+  const { guiNodes, rects } = hiddenParentScene();
+  const out = renderTreeToSvg({ guiNodes, rects, viewport: VIEWPORT });
+
+  assert.equal(out.painted, 0, 'nothing under a Visible=false ancestor may be painted');
+  assert.equal(out.textNodes, 0, 'a label inside a hidden panel is not on screen');
+  assert.equal(out.hidden, 3, 'all three nodes are hidden: the backdrop itself and the two beneath it');
+  assert.ok(!out.svg.includes('SHOP'), 'the hidden title must not reach the SVG');
+});
+
+test('forceVisible draws the hidden screen and says how much of it was forced', () => {
+  const { guiNodes, rects } = hiddenParentScene();
+  const out = renderTreeToSvg({ guiNodes, rects, viewport: VIEWPORT, forceVisible: true });
+
+  assert.equal(out.forcedVisible, 3, 'every hidden node that got drawn must be counted as forced');
+  assert.ok(out.svg.includes('SHOP'), 'the forced render is the whole point: the screen becomes visible');
+  assert.ok(out.painted > 0, 'the forced render paints');
+});
+
+test('a visible subtree is unaffected by the ancestor rule', () => {
+  const gui = node(1, 'ScreenGui', { Name: str('Screen') });
+  const panel = node(2, 'Frame', { Name: str('Panel'), BackgroundColor3: color(0.2, 0.2, 0.3) }, gui);
+  const label = node(3, 'TextLabel', { Name: str('T'), Text: str('READY'), TextColor3: color(1, 1, 1) }, panel);
+  const rects = new Map([
+    [2, { x: 10, y: 10, w: 200, h: 100 }],
+    [3, { x: 20, y: 20, w: 100, h: 30 }],
+  ]);
+  const out = renderTreeToSvg({ guiNodes: [panel, label], rects, viewport: VIEWPORT });
+
+  assert.equal(out.hidden, 0, 'nothing here is hidden');
+  assert.equal(out.painted, 2, 'the panel and the label background both paint');
+  assert.ok(out.svg.includes('READY'));
+});
+
+test('a ScreenGui with Enabled=false renders nothing', () => {
+  const gui = node(1, 'ScreenGui', { Name: str('Screen'), Enabled: bool(false) });
+  const panel = node(2, 'Frame', { Name: str('Panel'), BackgroundColor3: color(1, 1, 1) }, gui);
+  const rects = new Map([[2, { x: 0, y: 0, w: 100, h: 100 }]]);
+  const out = renderTreeToSvg({ guiNodes: [panel], rects, viewport: VIEWPORT });
+
+  assert.equal(out.painted, 0, 'a disabled ScreenGui is not on screen at all');
+  assert.equal(out.hidden, 1);
+});
+
+/**
+ * An ImageLabel names an asset this process has never fetched. Painting anything that LOOKS like
+ * artwork there would turn "the model referenced an asset" into "the model produced this artwork".
+ */
+test('an image is never drawn as artwork, only as a marked reference to its id', () => {
+  const gui = node(1, 'ScreenGui', { Name: str('Screen') });
+  const img = node(2, 'ImageLabel', { Name: str('Icon'), Image: str('rbxassetid://1234567890'), BackgroundTransparency: { k: 'num', v: 1 } }, gui);
+  const rects = new Map([[2, { x: 0, y: 0, w: 200, h: 200 }]]);
+  const out = renderTreeToSvg({ guiNodes: [img], rects, viewport: VIEWPORT });
+
+  assert.equal(out.imagePlaceholders, 1, 'the reference must be counted so a caption can disclose it');
+  assert.ok(out.svg.includes('rbxassetid://1234567890'), 'the id is printed, so the reference reads as a reference');
+  assert.ok(out.svg.includes('url(#apple-unfetched)'), 'it is hatched, not filled with invented art');
+  assert.ok(!out.svg.includes('<image'), 'no <image> element may ever be emitted: nothing was fetched');
+});
+
+/** A panel positioned off screen is one of the defects the geometry pass exists to catch. */
+test('an off-screen node is counted, not quietly dropped', () => {
+  const gui = node(1, 'ScreenGui', { Name: str('Screen') });
+  const off = node(2, 'Frame', { Name: str('Off'), BackgroundColor3: color(1, 0, 0) }, gui);
+  const rects = new Map([[2, { x: -500, y: 0, w: 100, h: 100 }]]);
+  const out = renderTreeToSvg({ guiNodes: [off], rects, viewport: VIEWPORT });
+
+  assert.equal(out.offscreen, 1);
+  assert.equal(out.painted, 0);
+});
