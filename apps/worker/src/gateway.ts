@@ -127,7 +127,16 @@ export const DEFAULT_MODELS: Record<string, ModelCfg> = {
   //   COST: 5.3 Flash is dearer per token than 4.7 Flash and Cloudflare requires a paid plan or
   //   prepaid AI Gateway credits for it. The daily and monthly neuron caps remain the spend gate;
   //   this raises the price of a MAX step, not the ceiling on the bill. ]]
-  stone: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: true, maxTokens: 5600, ctx: 1_310_720, temperature: 0.25, reasoningEffort: 'low' },
+  //[[ 5600 -> 6500: THE SAME MODEL WAS GIVEN TWO DIFFERENT CEILINGS.
+  //   `stone` and `rune` below are both @cf/zai-org/glm-5.3-flash. rune is sized at 6500 and stone
+  //   was sized at 5600, and nothing in this file explains the difference. Observed in production
+  //   on 2026-09-20: a 16-step Agent build on stone at high effort died on step 1 with "the model
+  //   reached its output limit", having spent 30 Credits. This is not claimed to be the whole cure
+  //   — it is 900 tokens, about 18% — but a lane serving the identical model with less room than
+  //   its sibling is a difference with no reason behind it. The paragraph above already states the
+  //   principle: these ceilings are not the spend gate, the neuron reservation is, and a 6500-token
+  //   reply reserves roughly 400 neurons against MAX_NEURONS_PER_REQUEST of 1,200. ]]
+  stone: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: true, maxTokens: 6500, ctx: 1_310_720, temperature: 0.25, reasoningEffort: 'low' },
   rune: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: true, maxTokens: 6500, ctx: 1_310_720, temperature: 0.25, reasoningEffort: 'low' },
 
   memory: { id: '@cf/qwen/qwen3-30b-a3b-fp8', nativeTools: false, maxTokens: 800, ctx: 32_768, temperature: 0.2 },

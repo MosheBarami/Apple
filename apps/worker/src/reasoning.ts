@@ -285,7 +285,37 @@ export function chooseEffort(s: ReasoningSignals): ReasoningChoice {
  * passes it explicitly; the policy never selects it.
  */
 export function tokensForEffort(base: number, effort: Effort): number {
-  const scale = effort === 'high' ? 1.25 : effort === 'medium' ? 2.5 : 1;
+  //[[ `high` USED TO GET LESS ROOM THAN `medium`, AND IT KILLED REAL RUNS.
+  //
+  //   The scale was `high ? 1.25 : medium ? 2.5 : 1`. On mode `stone` that is 4400 x 1.25 = 5500
+  //   against a gateway ceiling of 6500 — a thousand tokens of the model's own configured output
+  //   left unasked for, on the effort tier chosen for the HARDEST steps. Observed in production on
+  //   2026-09-20: a 16-step tower-defence build, "Reasoning effort: high", died on step 1 of 16
+  //   with "The model reached its output limit before finishing this step", and the run was
+  //   charged 30 Credits for nothing the customer could use.
+  //
+  //   The 1.25 was not arbitrary. The comment above it records the measurement it came from —
+  //   `high` used 882 output tokens against `low`'s 858 on a design probe — and 1.25 is generous
+  //   headroom over 882. The error was generalising one prompt's appetite into a policy for every
+  //   prompt. A design probe answers in prose; a build step emits a complete Luau tool call, and
+  //   a reasoning model spends its budget on thinking FIRST, so the step that thinks hardest is
+  //   the one most likely to run out before it writes anything.
+  //
+  //   It also contradicted the ceiling directly above it in gateway.ts, which was raised to 6500
+  //   expressly "so this ceiling can no longer be the thing that truncates a tool call". It was
+  //   not the ceiling truncating the call. It was this line.
+  //
+  //   ASKING PAST THE CEILING IS FREE, and that is what makes this safe rather than expensive.
+  //   gateway.ts clamps with `Math.min(req.maxTokens ?? cfg.maxTokens, cfg.maxTokens)` at line 363
+  //   and reserves neurons from the CLAMPED value at line 385 — clamp first, reserve second. So a
+  //   request of 2x the base resolves to exactly the model's configured ceiling for every mode and
+  //   reserves precisely what that ceiling costs, no more. `high` now means "everything this model
+  //   will give me", which is what the tier was always supposed to mean.
+  //
+  //   That ordering is load-bearing. If gateway.ts is ever changed to estimate from the asked-for
+  //   value instead of the clamped one, this doubles every reservation on the hardest steps — so a
+  //   test asserts the clamp still precedes the estimate. ]]
+  const scale = effort === 'high' ? 2 : effort === 'medium' ? 2.5 : 1;
   return Math.round(base * scale);
 }
 
