@@ -32,14 +32,14 @@
 <text x="362.70" y="650.27" text-anchor="middle" font-size="13.0" fill="rgb(240,235,220)" fill-opacity="1.000">CARGO DROP ZONE</text>
 <rect x="346.98" y="223.66" width="31.45" height="31.73" fill="url(#apple-unfetched)"/>
 <rect x="637.66" y="199.85" width="25.16" height="28.56" rx="25.16" ry="25.16" fill="rgb(255,214,92)" fill-opacity="1.000"/>
-<text x="650.24" y="249.27" text-anchor="middle" font-size="11.0" fill="rgb(255,240,200)" fill-opacity="1.000">BANK DEPOSIT
-142 studs</text>
+<clipPath id="wrap-68"><rect x="585.24" y="230.42" width="130.00" height="30.00"/></clipPath><g clip-path="url(#wrap-68)"><text x="650.24" y="249.27" text-anchor="middle" font-size="11.0" fill="rgb(255,240,200)" fill-opacity="1.000">BANK DEPOSIT
+142 studs</text></g>
 <rect x="350.12" y="631.44" width="25.16" height="28.56" rx="25.16" ry="25.16" fill="rgb(255,214,92)" fill-opacity="1.000"/>
-<text x="362.70" y="680.85" text-anchor="middle" font-size="11.0" fill="rgb(255,240,200)" fill-opacity="1.000">CARGO DROP
-310 studs</text>
+<clipPath id="wrap-71"><rect x="297.70" y="662.00" width="130.00" height="30.00"/></clipPath><g clip-path="url(#wrap-71)"><text x="362.70" y="680.85" text-anchor="middle" font-size="11.0" fill="rgb(255,240,200)" fill-opacity="1.000">CARGO DROP
+310 studs</text></g>
 <rect x="925.20" y="225.24" width="25.16" height="28.56" rx="25.16" ry="25.16" fill="rgb(255,214,92)" fill-opacity="1.000"/>
-<text x="937.78" y="274.65" text-anchor="middle" font-size="11.0" fill="rgb(255,240,200)" fill-opacity="1.000">MIRA'S CAR WASH
-265 studs</text>
+<clipPath id="wrap-74"><rect x="872.78" y="255.80" width="130.00" height="30.00"/></clipPath><g clip-path="url(#wrap-74)"><text x="937.78" y="274.65" text-anchor="middle" font-size="11.0" fill="rgb(255,240,200)" fill-opacity="1.000">MIRA'S CAR WASH
+265 studs</text></g>
 <rect x="1124.48" y="125.28" width="274.56" height="634.68" rx="8.00" ry="8.00" fill="rgb(26,32,28)" fill-opacity="1.000"/>
 <text x="1261.76" y="145.53" text-anchor="middle" font-size="15.0" fill="rgb(212,175,92)" fill-opacity="1.000">LEGEND &amp; LAYERS</text>
 <rect x="1138.21" y="161.28" width="247.10" height="26.00" rx="6.00" ry="6.00" fill="rgb(34,42,36)" fill-opacity="1.000"/>
@@ -58,6 +58,6 @@
 <rect x="1146.21" y="295.28" width="14.00" height="14.00" rx="14.00" ry="14.00" fill="rgb(96,160,84)" fill-opacity="1.000"/>
 <text x="1174.21" y="306.48" text-anchor="start" font-size="12.0" fill="rgb(225,220,205)" fill-opacity="1.000">Central park hub</text>
 <rect x="238.40" y="771.00" width="1123.20" height="40.00" rx="6.00" ry="6.00" fill="rgb(16,20,18)" fill-opacity="1.000"/>
-<text x="800.00" y="794.85" text-anchor="middle" font-size="11.0" fill="rgb(180,175,160)" fill-opacity="1.000">Map is fixed north-up; your arrow rotates with your avatar instead. Change this in Options &gt; Map Rotation.</text>
+<clipPath id="wrap-103"><rect x="238.40" y="771.00" width="1123.20" height="40.00"/></clipPath><g clip-path="url(#wrap-103)"><text x="800.00" y="794.85" text-anchor="middle" font-size="11.0" fill="rgb(180,175,160)" fill-opacity="1.000">Map is fixed north-up; your arrow rotates with your avatar instead. Change this in Options &gt; Map Rotation.</text></g>
 <text x="800.00" y="806.20" text-anchor="middle" font-size="12.0" fill="rgb(160,155,140)" fill-opacity="1.000">Press M to close · hold Tab to peek</text>
 </svg>

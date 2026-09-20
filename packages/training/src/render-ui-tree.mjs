@@ -179,6 +179,7 @@ export function renderTreeToSvg({ guiNodes, rects, viewport, background = '#1010
   let textNodes = 0;
   let hidden = 0;
   let forcedVisible = 0;
+  let wrappedText = 0;
 
   parts.push(
     `<svg xmlns="http://www.w3.org/2000/svg" width="${viewport.w}" height="${viewport.h}" ` +
@@ -277,14 +278,40 @@ export function renderTreeToSvg({ guiNodes, rects, viewport, background = '#1010
             : yAlign === 'Bottom'
               ? rect.y + rect.h - size * 0.25
               : rect.y + rect.h / 2 + size * 0.35;
-        parts.push(
+        const el =
           `<text x="${tx.toFixed(2)}" y="${ty.toFixed(2)}" text-anchor="${anchor}" ` +
-            `font-size="${size.toFixed(1)}" fill="${color}" fill-opacity="${(1 - tTrans).toFixed(3)}">${esc(text)}</text>`,
-        );
+          `font-size="${size.toFixed(1)}" fill="${color}" fill-opacity="${(1 - tTrans).toFixed(3)}">${esc(text)}</text>`;
+
+        //[[ A WRAPPED LABEL STAYS IN ITS BOX, AND DRAWING IT SPILLING OUT LIBELS THE MODEL.
+        //
+        //   MEASURED, 2026-09-20, on a generated tycoon inventory. Its item description set
+        //   `TextWrapped = true` and the renderer, which lays out no line breaks, drew the whole
+        //   string on one line — straight through the right edge of the detail panel and off the
+        //   card. It read as a text-overflow bug in the model's layout. In Roblox that label wraps
+        //   and stays inside its rectangle, so the picture was wrong and the model was right.
+        //
+        //   Laying the line breaks out properly needs a font metric this process does not have, and
+        //   score-ui.mjs refuses to invent one ("a frame that sizes itself from its text cannot be
+        //   resolved without a font metric"). Clipping to the node's own rect invents nothing: it
+        //   asserts only what the engine guarantees, that wrapped text does not leave its box.
+        //   `wrappedText` counts them so a caption can say which strings are drawn unbroken.
+        //
+        //   TextWrapped = false is the opposite case and is deliberately NOT clipped: such a label
+        //   really does run past its edge in Roblox, and that overflow is a finding worth seeing. ]]
+        if (boolProp(node, 'TextWrapped', false)) {
+          wrappedText += 1;
+          const cid = `wrap-${node.id}`;
+          parts.push(
+            `<clipPath id="${cid}"><rect x="${x}" y="${y}" width="${w}" height="${h}"/></clipPath>` +
+              `<g clip-path="url(#${cid})">${el}</g>`,
+          );
+        } else {
+          parts.push(el);
+        }
       }
     }
   }
 
   parts.push('</svg>');
-  return { svg: parts.join('\n'), painted, offscreen, imagePlaceholders, scaledText, textNodes, hidden, forcedVisible };
+  return { svg: parts.join('\n'), painted, offscreen, imagePlaceholders, scaledText, textNodes, hidden, forcedVisible, wrappedText };
 }

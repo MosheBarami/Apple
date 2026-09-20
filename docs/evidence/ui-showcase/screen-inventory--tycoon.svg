@@ -80,7 +80,7 @@
 <text x="1112.48" y="360.52" text-anchor="middle" font-size="48.0" fill="rgb(240,180,60)" fill-opacity="1.000">⚙</text>
 <text x="1112.48" y="458.83" text-anchor="middle" font-size="20.0" fill="rgb(240,240,250)" fill-opacity="1.000">Golden Dropper</text>
 <text x="1112.48" y="492.21" text-anchor="middle" font-size="15.0" fill="rgb(240,180,60)" fill-opacity="1.000">Legendary</text>
-<text x="971.17" y="524.58" text-anchor="start" font-size="14.0" fill="rgb(180,185,205)" fill-opacity="1.000">Golden Dropper — a dependable piece of your factory line. Upgrade it at the workbench to boost output.</text>
+<clipPath id="wrap-139"><rect x="965.17" y="511.28" width="294.62" height="108.11"/></clipPath><g clip-path="url(#wrap-139)"><text x="971.17" y="524.58" text-anchor="start" font-size="14.0" fill="rgb(180,185,205)" fill-opacity="1.000">Golden Dropper — a dependable piece of your factory line. Upgrade it at the workbench to boost output.</text></g>
 <text x="971.17" y="643.21" text-anchor="start" font-size="14.0" fill="rgb(180,185,205)" fill-opacity="1.000">Owned: x1</text>
 <text x="971.17" y="670.24" text-anchor="start" font-size="14.0" fill="rgb(240,180,60)" fill-opacity="1.000">🔒 Locked</text>
 <rect x="965.17" y="700.47" width="137.49" height="43.24" rx="6.00" ry="6.00" fill="rgb(90,130,240)" fill-opacity="1.000"/>

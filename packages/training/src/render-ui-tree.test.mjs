@@ -159,3 +159,34 @@ test('a surface with no part, or a part with no Size, refuses rather than guessi
   const sizeless = { id: 1, class: 'Part', props: {}, children: [] };
   assert.equal(surfaceCanvas({ id: 2, class: 'SurfaceGui', props: {}, children: [] }, sizeless), null);
 });
+
+test('a TextWrapped label is clipped to its box, because in Roblox it wraps and stays inside', () => {
+  const gui = node(1, 'ScreenGui', { Name: str('Screen') });
+  const panel = node(2, 'Frame', { Name: str('Detail'), BackgroundColor3: color(0.1, 0.1, 0.12) }, gui);
+  const desc = node(
+    3,
+    'TextLabel',
+    { Name: str('Desc'), Text: str('Golden Dropper — a dependable piece of your factory line.'), TextWrapped: bool(true), TextColor3: color(1, 1, 1) },
+    panel,
+  );
+  const rects = new Map([
+    [2, { x: 0, y: 0, w: 300, h: 200 }],
+    [3, { x: 10, y: 10, w: 120, h: 40 }],
+  ]);
+  const out = renderTreeToSvg({ guiNodes: [panel, desc], rects, viewport: VIEWPORT });
+
+  assert.equal(out.wrappedText, 1, 'the approximation must be counted so a caption can disclose it');
+  assert.ok(out.svg.includes('clipPath id="wrap-3"'), 'the label is clipped to its own rectangle');
+  assert.ok(out.svg.includes('clip-path="url(#wrap-3)"'), 'and the text sits inside that clip');
+});
+
+test('a label that does NOT wrap is left to overflow, because in Roblox it really does', () => {
+  const gui = node(1, 'ScreenGui', { Name: str('Screen') });
+  const label = node(2, 'TextLabel', { Name: str('Cash'), Text: str('$1,482,300'), TextColor3: color(0, 1, 0) }, gui);
+  const rects = new Map([[2, { x: 0, y: 0, w: 60, h: 20 }]]);
+  const out = renderTreeToSvg({ guiNodes: [label], rects, viewport: VIEWPORT });
+
+  assert.equal(out.wrappedText, 0);
+  assert.ok(!out.svg.includes('clipPath'), 'clipping an unwrapped label would hide a real overflow defect');
+  assert.ok(out.svg.includes('$1,482,300'));
+});

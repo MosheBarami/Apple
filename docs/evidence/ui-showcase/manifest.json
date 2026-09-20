@@ -52,7 +52,8 @@
         "luau": "screen-codes--tycoon.luau",
         "svg": "screen-codes--tycoon.svg",
         "openedSvg": "screen-codes--tycoon--opened.svg"
-      }
+      },
+      "wrappedText": 0
     },
     {
       "target": "screen-crafting",
@@ -76,7 +77,8 @@
       "files": {
         "luau": "screen-crafting--tycoon.luau",
         "svg": "screen-crafting--tycoon.svg"
-      }
+      },
+      "wrappedText": 0
     },
     {
       "target": "screen-gacha",
@@ -106,7 +108,8 @@
         "luau": "screen-gacha--tycoon.luau",
         "svg": "screen-gacha--tycoon.svg",
         "openedSvg": "screen-gacha--tycoon--opened.svg"
-      }
+      },
+      "wrappedText": 0
     },
     {
       "target": "screen-hud",
@@ -130,7 +133,8 @@
       "files": {
         "luau": "screen-hud--tycoon.luau",
         "svg": "screen-hud--tycoon.svg"
-      }
+      },
+      "wrappedText": 0
     },
     {
       "target": "screen-inventory",
@@ -154,7 +158,8 @@
       "files": {
         "luau": "screen-inventory--tycoon.luau",
         "svg": "screen-inventory--tycoon.svg"
-      }
+      },
+      "wrappedText": 1
     },
     {
       "target": "screen-leaderboard",
@@ -193,7 +198,8 @@
       "files": {
         "luau": "screen-leaderboard--tycoon.luau",
         "svg": "screen-leaderboard--tycoon.svg"
-      }
+      },
+      "wrappedText": 0
     },
     {
       "target": "screen-lobby",
@@ -217,7 +223,8 @@
       "files": {
         "luau": "screen-lobby--tycoon.luau",
         "svg": "screen-lobby--tycoon.svg"
-      }
+      },
+      "wrappedText": 0
     },
     {
       "target": "screen-map",
@@ -247,7 +254,8 @@
         "luau": "screen-map--tycoon.luau",
         "svg": "screen-map--tycoon.svg",
         "openedSvg": "screen-map--tycoon--opened.svg"
-      }
+      },
+      "wrappedText": 4
     },
     {
       "target": "screen-notification",
@@ -271,7 +279,8 @@
       "files": {
         "luau": "screen-notification--tycoon.luau",
         "svg": "screen-notification--tycoon.svg"
-      }
+      },
+      "wrappedText": 3
     },
     {
       "target": "screen-onboarding",
@@ -301,7 +310,8 @@
         "luau": "screen-onboarding--tycoon.luau",
         "svg": "screen-onboarding--tycoon.svg",
         "openedSvg": "screen-onboarding--tycoon--opened.svg"
-      }
+      },
+      "wrappedText": 2
     },
     {
       "target": "screen-progress",
@@ -331,7 +341,8 @@
         "luau": "screen-progress--tycoon.luau",
         "svg": "screen-progress--tycoon.svg",
         "openedSvg": "screen-progress--tycoon--opened.svg"
-      }
+      },
+      "wrappedText": 0
     },
     {
       "target": "screen-rewards",
@@ -355,7 +366,8 @@
       "files": {
         "luau": "screen-rewards--tycoon.luau",
         "svg": "screen-rewards--tycoon.svg"
-      }
+      },
+      "wrappedText": 0
     },
     {
       "target": "screen-settings",
@@ -379,7 +391,8 @@
       "files": {
         "luau": "screen-settings--tycoon.luau",
         "svg": "screen-settings--tycoon.svg"
-      }
+      },
+      "wrappedText": 0
     },
     {
       "target": "screen-shop",
@@ -409,7 +422,8 @@
         "luau": "screen-shop--tycoon.luau",
         "svg": "screen-shop--tycoon.svg",
         "openedSvg": "screen-shop--tycoon--opened.svg"
-      }
+      },
+      "wrappedText": 0
     },
     {
       "target": "screen-social",
@@ -446,7 +460,10 @@
         "luau": "screen-trading--tycoon.luau",
         "svg": "screen-trading--tycoon.svg",
         "openedSvg": "screen-trading--tycoon--opened.svg"
-      }
+      },
+      "wrappedText": 0
     }
-  ]
+  ],
+  "renderedAt": "2026-09-20T21:12:32.908Z",
+  "renderNote": "SVGs redrawn from the saved Luau by rerender-showcase.mjs; no completion was spent and no answer changed."
 }
