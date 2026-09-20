@@ -20,6 +20,7 @@
     "eval-production": "node src/eval-production.mjs",
     "rescore-ui": "node src/rescore-ui.mjs",
     "measure-knowledge-reach": "node src/measure-knowledge-reach.mjs",
+    "measure-hf-corpus": "node src/measure-hf-corpus.mjs",
     "measure-need-index": "node src/measure-need-index.mjs",
     "measure-retrieval-hybrid": "node src/measure-retrieval-hybrid.mjs",
     "measure-embedding-retrieval": "node src/measure-embedding-retrieval.mjs",
