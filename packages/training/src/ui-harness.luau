@@ -34,7 +34,7 @@
       anyway — the script reached its update loop, which is a finished build, not a fault.
 ]]
 
-local LOOP_MARKER = "__GOLEM_LOOP_GUARD__"
+local LOOP_MARKER = "__APPLE_LOOP_GUARD__"
 local LOOP_BUDGET = 64
 local waits = 0
 -- What the build asked the RENDERER for. Nothing in this process has any of it: absolute geometry
@@ -143,7 +143,50 @@ UDim2 = {
 	fromOffset = function(x, y) return udim2(0, x, 0, y) end,
 }
 Vector2 = { new = vec2, zero = vec2(0, 0), one = vec2(1, 1) }
-Vector3 = { new = function(x, y, z) return setmetatable({ __k = "Vector3", X = x or 0, Y = y or 0, Z = z or 0 }, {}) end }
+
+-- VECTOR3 ARITHMETIC, BECAUSE WITHOUT IT THE SHIM BLAMES THE MODEL FOR THE SHIM'S GAP.
+--
+-- Vector3 used to be a bare table with an EMPTY metatable, so `pos + Vector3.new(0, 0.5, 0)` —
+-- which is how every Roblox map script in existence offsets a part from an anchor — threw
+-- "attempt to perform arithmetic". Measured on the first generated tycoon map (2026-09-20): the
+-- model's Luau was correct and idiomatic, and the run was recorded as `runtime_error`.
+--
+-- score-ui.mjs already names this exact hazard: "a throw can mean the model used an API this shim
+-- does not implement — which is my gap, not the model's mistake, and must not be counted as one".
+-- This is that gap, closed. Every operation below is the engine's own definition; `Magnitude` and
+-- `Unit` are included because a map script uses them to space things evenly along a direction.
+local vec3
+vec3 = function(x, y, z)
+	local self = { __k = "Vector3", X = x or 0, Y = y or 0, Z = z or 0 }
+	return setmetatable(self, {
+		__index = function(t, k)
+			if k == "Magnitude" then return math.sqrt(t.X ^ 2 + t.Y ^ 2 + t.Z ^ 2) end
+			if k == "Unit" then
+				local m = math.sqrt(t.X ^ 2 + t.Y ^ 2 + t.Z ^ 2)
+				if m == 0 then return vec3(0, 0, 0) end
+				return vec3(t.X / m, t.Y / m, t.Z / m)
+			end
+			return nil
+		end,
+		__add = function(a, b) return vec3(a.X + b.X, a.Y + b.Y, a.Z + b.Z) end,
+		__sub = function(a, b) return vec3(a.X - b.X, a.Y - b.Y, a.Z - b.Z) end,
+		__unm = function(a) return vec3(-a.X, -a.Y, -a.Z) end,
+		-- Roblox multiplies componentwise by another Vector3 and uniformly by a number, and the
+		-- number can be on either side.
+		__mul = function(a, b)
+			if type(a) == "number" then return vec3(a * b.X, a * b.Y, a * b.Z) end
+			if type(b) == "number" then return vec3(a.X * b, a.Y * b, a.Z * b) end
+			return vec3(a.X * b.X, a.Y * b.Y, a.Z * b.Z)
+		end,
+		__div = function(a, b)
+			if type(b) == "number" then return vec3(a.X / b, a.Y / b, a.Z / b) end
+			return vec3(a.X / b.X, a.Y / b.Y, a.Z / b.Z)
+		end,
+		__eq = function(a, b) return a.X == b.X and a.Y == b.Y and a.Z == b.Z end,
+		__tostring = function(t) return string.format("%g, %g, %g", t.X, t.Y, t.Z) end,
+	})
+end
+Vector3 = { new = vec3, zero = vec3(0, 0, 0), one = vec3(1, 1, 1), xAxis = vec3(1, 0, 0), yAxis = vec3(0, 1, 0), zAxis = vec3(0, 0, 1) }
 Color3 = {
 	new = color3,
 	fromRGB = function(r, g, b) return color3((r or 0) / 255, (g or 0) / 255, (b or 0) / 255) end,
@@ -469,6 +512,11 @@ local function value(v)
 		if k == "UDim2" then return '{"k":"UDim2","xs":' .. num(v.X.Scale) .. ',"xo":' .. num(v.X.Offset) .. ',"ys":' .. num(v.Y.Scale) .. ',"yo":' .. num(v.Y.Offset) .. "}" end
 		if k == "UDim" then return '{"k":"UDim","s":' .. num(v.Scale) .. ',"o":' .. num(v.Offset) .. "}" end
 		if k == "Vector2" then return '{"k":"Vector2","x":' .. num(v.X) .. ',"y":' .. num(v.Y) .. "}" end
+		-- Vector3 was already CONSTRUCTIBLE here (see the Vector3 table above) but fell through to
+		-- {"k":"other","s":"Vector3"}, which threw away X/Y/Z. Nothing in the UI scorer reads a
+		-- Vector3 — AnchorPoint is a Vector2 — so emitting it is additive for every existing caller,
+		-- and it is what lets a MAP build (Part.Size, Part.Position) be measured rather than guessed.
+		if k == "Vector3" then return '{"k":"Vector3","x":' .. num(v.X) .. ',"y":' .. num(v.Y) .. ',"z":' .. num(v.Z) .. "}" end
 		if k == "Color3" then return '{"k":"Color3","r":' .. num(v.R) .. ',"g":' .. num(v.G) .. ',"b":' .. num(v.B) .. "}" end
 		if k == "EnumItem" then return '{"k":"Enum","e":' .. q(v.EnumType) .. ',"n":' .. q(v.Name) .. "}" end
 		local nd = nodeOf(v)
@@ -497,7 +545,7 @@ local function emit(status, detail)
 		put("}}")
 	end
 	put("]}")
-	realPrint("__GOLEM_UI_TREE__")
+	realPrint("__APPLE_UI_TREE__")
 	realPrint(table.concat(buf))
 end
 
