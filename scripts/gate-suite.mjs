@@ -148,6 +148,15 @@ const parts = [
   // The three numbers a visitor is invited to check. One of them was false on both halves
   // while a comment above it named a test that had never been written.
   { label: 'check-proof-figures', ...run('node', ['scripts/check-proof-figures.mjs']) },
+  //[[ TWENTY-THREE TOOLS WERE POINTED AT THE PRE-RENAME WORKER.
+  //   `.env` held API_BASE=golem.moshe-barami111.workers.dev, and infra/e2e.mjs, infra/smoke.mjs,
+  //   infra/checkpoint-test.mjs, packages/evals/src/run.mjs and eighteen others read it — so the
+  //   E2E suite, the smoke test and the eval harness were all exercising the OLD deployment while
+  //   reporting on "the product". It hides because the legacy host's page routes 308 to the
+  //   canonical origin and /api/* deliberately does not: the site looks current and the admin calls
+  //   land somewhere else. It cost four deploys on 2026-09-20 chasing a 500 that only the old
+  //   worker returned. ]]
+  { label: 'check-api-base', ...run('node', ['scripts/check-api-base.mjs']) },
   //[[ check-harvest-licences WENT WITH ITS SUBJECT, and this note is what is left of it.
   //
   //   It predicted, in seconds, what fraction of an asset ingest `validateProvenance` was going to
