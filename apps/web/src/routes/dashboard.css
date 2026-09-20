@@ -292,7 +292,12 @@
    and this is the only thing on the shelf that qualifies. The stagger is capped at six steps: the
    index is the truth but a shelf of forty must not take two seconds to finish appearing, and after
    the sixth card the eye has already read the pattern. */
-.shelf .card-grid > .project-card { animation:shelf-card-in var(--t-slow) var(--ease-out) both; animation-delay:calc(min(var(--card-i,0),6) * 45ms); }
+/* 35ms, not 45, and the ceiling is what makes it safe. Measured guidance for a staggered grid puts
+   the per-item delay at 20-40ms and warns that anything past ~100ms total reads as sluggish; at 45ms
+   the seventh card was arriving 270ms after the first, which is long enough to notice as waiting
+   rather than as arriving. The same guidance rules OUT an overshoot ease here — back.out reads as
+   sloppy on informational cards — so the existing ease-out stays. */
+.shelf .card-grid > .project-card { animation:shelf-card-in var(--t-slow) var(--ease-out) both; animation-delay:calc(min(var(--card-i,0),6) * 35ms); }
 @keyframes shelf-card-in { from { opacity:0; transform:translate3d(0,10px,0); } to { opacity:1; transform:none; } }
 
 /* ------------------------------------------------------------- the card menu --- */
