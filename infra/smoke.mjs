@@ -83,10 +83,28 @@ const SPEND_CEILING_NEURONS = 500; // §12.5, the owner's number; there is no ma
 if (!NO_MODEL) {
   const shared = readFileSync(root + '/packages/shared/src/index.ts', 'utf8');
   const pricing = readFileSync(root + '/apps/worker/src/pricing.ts', 'utf8');
-  const perCredit = Number(pricing.match(/NEURONS_PER_CREDIT\s*=\s*(\d+)/)?.[1]);
+  //[[ THE CONSTANT MOVED AND THIS HARNESS DIED WITHOUT SAYING SO.
+  //
+  //   This read NEURONS_PER_CREDIT out of apps/worker/src/pricing.ts. pricing.ts no longer declares
+  //   it — it re-exports it from @golem/shared (`export { NEURONS_PER_CREDIT } from '@golem/shared'`)
+  //   — so the regex matched nothing, perCredit was NaN, and the guard below refused every run.
+  //
+  //   The refusal is correct and stays: failing open on a spend guard is the one direction that
+  //   costs money. What was wrong is that "the price moved" and "the price is unreadable" printed
+  //   the same sentence, so a dead harness looked exactly like a careful one. Measured 2026-09-20:
+  //   this had been refusing to run for as long as the re-export has existed, and nobody noticed
+  //   because the message it prints is the message a working guard would print.
+  //
+  //   So both files are searched, the declaration is preferred over the re-export, and the error
+  //   below now names which files were read. ]]
+  const DECL = /export const NEURONS_PER_CREDIT\s*=\s*(\d+)/;
+  const perCredit = Number((shared.match(DECL) ?? pricing.match(DECL) ?? [])[1]);
   const typical = shared.match(new RegExp(`\\b${MODE}:\\s*\\{[^}]*typicalCredits:\\s*'([^']+)'`))?.[1];
   if (!Number.isFinite(perCredit) || !typical) {
     console.error(`smoke: cannot derive the cost of --mode ${MODE} (perCredit=${perCredit}, typicalCredits=${typical}).`);
+    console.error('  searched packages/shared/src/index.ts and apps/worker/src/pricing.ts for '
+      + '`export const NEURONS_PER_CREDIT = <n>`, and the mode\'s typicalCredits in shared. If a '
+      + 'constant has moved again, re-aim this read rather than typing the number in here.');
     console.error('Refusing to run a model turn against an unknown price. This is deliberate: a spend guard that cannot read the prices must not fall back to permitting the spend.');
     process.exit(2);
   }
