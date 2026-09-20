@@ -110,15 +110,39 @@ test('each snapshot refusal names its own cause, with only the numbers Studio se
   };
 
   // Bounded walk stopped early. Quotes the plugin's own counters, never a cap this side invented.
+  //
+  // RE-AIMED 2026-09-21, and the history matters. These two assertions used to require the literal
+  // "too large for one checkpoint", and they were right to until the day the sentence was measured
+  // against the real plugin: `truncated` is raised by FOUR ceilings — objects, nesting depth, script
+  // bytes, one parent's children — and a place of thirteen objects with a deep folder chain was
+  // being told it was too large, with "(it reached 13 objects)" printed beside the claim. The
+  // property was never the spelling; it is that a stopped walk is refused, says the walk stopped,
+  // quotes only Studio's own counters, and does not attribute a cause Studio never reported. These
+  // fixtures send no `truncatedBy`, which is exactly what every plugin build before 2026-09-21 puts
+  // on the wire, so the no-cause sentence is the correct answer for them. The cause-naming itself is
+  // measured against the real plugin in tests/checkpoint-evidence-live-plugin.test.mjs.
   const tooLarge = await refusal({ truncated: true, nodeCount: 800, sourceChars: 600123 });
-  assert.match(tooLarge, /too large for one checkpoint/);
+  assert.match(tooLarge, /larger or deeper than one checkpoint can carry/);
+  assert.doesNotMatch(tooLarge, /nests objects deeper|more objects than|more script than|more children than/);
   assert.match(tooLarge, /reached 800 objects and 600123 characters of script/);
   assert.match(tooLarge, /Studio's own undo/);
 
   // A count Studio did not send is not reported as zero.
   const tooLargeQuiet = await refusal({ truncated: true, nodeCount: 0, sourceChars: 0 });
-  assert.match(tooLargeQuiet, /too large for one checkpoint/);
+  assert.match(tooLargeQuiet, /larger or deeper than one checkpoint can carry/);
   assert.doesNotMatch(tooLargeQuiet, /reached/);
+
+  // When Studio DOES say which ceiling it hit, the sentence is that ceiling's and no other. Depth is
+  // the case that made this necessary: its remedy is to flatten, and "too large" sends the owner to
+  // delete content that was never the problem.
+  const nested = await refusal({ truncated: true, truncatedBy: 'depth', nodeCount: 13, sourceChars: 0 });
+  assert.match(nested, /nests objects deeper/);
+  assert.doesNotMatch(nested, /larger or deeper|more objects than/);
+  assert.match(nested, /reached 13 objects/);
+
+  // An unrecognised value is an unrecognised value, not a licence to guess the nearest cause.
+  const garbled = await refusal({ truncated: true, truncatedBy: 'constructor', nodeCount: 13, sourceChars: 0 });
+  assert.match(garbled, /larger or deeper than one checkpoint can carry/);
 
   // Unserialisable objects: named, most frequent first, so support can act on the class.
   const named = await refusal({ restorable: false, skipped: { Terrain: 1, MeshPart: 3 } });

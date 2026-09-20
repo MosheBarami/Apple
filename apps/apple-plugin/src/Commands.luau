@@ -1685,9 +1685,26 @@ local function protectedContainerIdentity(inst: any): boolean
 	return classNameOf(parentOf(inst)) == "StarterPlayer"
 end
 
+-- WHY THE BOUNDED WALK STOPPED, NOT MERELY THAT IT DID.
+--
+-- `truncated` was one boolean for four different ceilings, and the worker turned it into one
+-- sentence: "this project is too large for one checkpoint". Measured 2026-09-21, a place of
+-- THIRTEEN objects with one deep folder chain produced exactly that sentence, quoting its own
+-- "it reached 13 objects" in the same breath. Three of the four ceilings have nothing to do with
+-- size and each has its own remedy -- flatten the deepest branch, split a script, move children
+-- out of one parent -- so a shared sentence sends the owner to delete content that was never the
+-- problem. The FIRST ceiling to fire is the one recorded: a walk that stops for depth then keeps
+-- meeting the same depth is still a depth stop, and overwriting it would report the last symptom
+-- instead of the cause.
+local function truncate(state: any, cause: string)
+	state.complete = false
+	state.truncated = true
+	if state.truncatedBy == nil then state.truncatedBy = cause end
+end
+
 local function snapshotNode(self: any, inst: any, depth: number, state: any): (any?, string?)
-	if state.nodes >= MAX_SNAPSHOT_NODES then state.complete = false; state.truncated = true; return nil end
-	if depth > MAX_SNAPSHOT_DEPTH then state.complete = false; state.truncated = true; return nil end
+	if state.nodes >= MAX_SNAPSHOT_NODES then truncate(state, "objects"); return nil end
+	if depth > MAX_SNAPSHOT_DEPTH then truncate(state, "depth"); return nil end
 	local className = classNameOf(inst)
 	-- Engine-owned identities are recorded separately so restore can prove the same protected object
 	-- still exists without deleting/recreating it. An instance with one of these classes in any other
@@ -1740,7 +1757,7 @@ local function snapshotNode(self: any, inst: any, depth: number, state: any): (a
 			local source, sourceErr = scriptSourceWithin(self.editor, inst, "snapshot source")
 			if not source then return nil, sourceErr end
 			state.sourceChars += #source
-			if state.sourceChars > MAX_SNAPSHOT_SOURCE then state.complete = false; state.truncated = true; return nil end
+			if state.sourceChars > MAX_SNAPSHOT_SOURCE then truncate(state, "script"); return nil end
 			node.source = source
 			node.sourceChars = #source
 			node.baseHash = hashSource(source)
@@ -1752,8 +1769,7 @@ local function snapshotNode(self: any, inst: any, depth: number, state: any): (a
 	for _, child in children do
 		childCount += 1
 		if childCount > MAX_SNAPSHOT_CHILDREN then
-			state.complete = false
-			state.truncated = true
+			truncate(state, "children")
 			break
 		end
 		local childNode, childErr = snapshotNode(self, child, depth + 1, state)
@@ -2954,6 +2970,9 @@ local function handleSnapshot(self: any, op: any): (any?, string?, string?)
 		wholePlaceComplete = root == self.game and exact,
 		coverage = coverage,
 		truncated = state.truncated,
+		-- Absent when nothing stopped the walk. A plugin build older than 2026-09-21 never sends it,
+		-- and the worker answers that absence with a sentence that claims neither cause.
+		truncatedBy = state.truncatedBy,
 		skipped = state.skipped,
 		protected = state.protected,
 	}, nil

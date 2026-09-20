@@ -34,7 +34,7 @@ export function checkpointEvidence(value: unknown, checkpointId: string): Admiss
   // apps/apple-plugin/src/Commands.luau:2927, and `checkpointEligible` is `restorable` AND identity,
   // so testing the narrowest cause last is what makes the named cause the actual one.
   if (data.truncated !== false) {
-    return refuse(`this project is too large for one checkpoint — Studio stopped early${snapshotReach(data)}. Apple still edits it normally; Studio's own undo is the rollback for a place this size.`);
+    return refuse(`${truncationCause(data.truncatedBy)} — Studio stopped early${snapshotReach(data)}. Apple still edits it normally; Studio's own undo is the rollback until that changes.`);
   }
   if (data.restorable !== true) {
     return refuse(`Studio read the project but could not capture ${omittedObjects(data.skipped)}, so a restore would not put it back as it is.`);
@@ -62,6 +62,33 @@ export function checkpointEvidence(value: unknown, checkpointId: string): Admiss
   }
   if (!data.node || typeof data.node !== 'object' || Array.isArray(data.node)) return refuse('snapshot tree is missing.');
   return { ok: true, coverage, preservedObjects };
+}
+
+/**
+ * ONE BOOLEAN, FOUR CEILINGS. `truncated` is raised by the plugin's object budget, its depth limit,
+ * its script-byte budget and its per-parent child limit, and until 2026-09-21 this file answered all
+ * four with "this project is too large for one checkpoint". MEASURED that day, real plugin through
+ * real admission (apps/worker/tests/checkpoint-evidence-live-plugin.test.mjs): a place of THIRTEEN
+ * objects with one deep folder chain was given that sentence with its own `(it reached 13 objects)`
+ * attached — a claim refuted by the number printed beside it, prescribing a remedy (delete things)
+ * that could never have fixed it. Depth, script bytes and fan-out each have a different remedy.
+ *
+ * A Map, not an object literal, because `truncatedBy` is a string from an untrusted client:
+ * `({} as never)['constructor']` is not undefined, and a plain lookup would have interpolated a
+ * function into this sentence. Anything unrecognised — including every plugin build older than the
+ * field, which is all of them until this one ships — falls back to a sentence that names NO cause,
+ * because a worker that cannot see which ceiling fired must not choose one for it.
+ */
+const TRUNCATION_CAUSE = new Map<string, string>([
+  ['objects', 'this project holds more objects than one checkpoint can carry'],
+  ['depth', 'this project nests objects deeper than one checkpoint can follow, so flattening the deepest branch is what makes it saveable rather than deleting anything'],
+  ['script', 'this project holds more script than one checkpoint can carry'],
+  ['children', 'one object in this project has more children than one checkpoint can carry'],
+]);
+
+function truncationCause(by: unknown): string {
+  return (typeof by === 'string' ? TRUNCATION_CAUSE.get(by) : undefined)
+    ?? 'this project is larger or deeper than one checkpoint can carry';
 }
 
 /** How far the bounded walk actually got, from the plugin's own counters. Silent about any it omitted. */
