@@ -1562,11 +1562,35 @@ export function creditRangeForRuns(mode: GolemMode, runs: number): { low: number
 //
 // The internal specialist axis (GolemMode: clay/stone/rune) is deliberately
 // preserved exactly as it is, on the wire and in storage. `ClientMsg.chat`
-// still carries `mode: AppleMode`, the session DO still persists it, and the
+// still carries `mode: GolemMode`, the session DO still persists it, and the
 // Credits ledger still accounts against it — so sessions written before this
 // mapping existed keep replaying correctly and no budget record changes meaning.
 // Clay, Stone and Rune are internal specialist identities, not user-facing
 // brands: nothing in normal product UI should name them.
+//
+// The name AppleMode DOES NOT EXIST, and this comment used to say it twice. That is worse
+// than a stale name: the sentence exists to tell the next person WHICH DECLARATION
+// is load-bearing, and it named one they could not find, so the warning could not be
+// acted on. The declaration is `GolemMode` at the top of this file.
+//
+// WHY THE TYPE STILL CARRIES THE OLD NAME, measured 2026-09-20 rather than assumed:
+//   WIRE     — `ClientMsg.chat` and `edit_resend` carry `mode` over the live session
+//              socket, and the browser and the installed Studio plugin both send it.
+//   PERSISTED— apps/worker/src/do/session.ts declares `create table if not exists
+//              messages(... mode text ...)` in the Durable Object's own SQLite and
+//              `insert into messages(id, role, mode, content, created_at)` writes the raw
+//              value. Deliberately cited by CONTENT: that file is edited often enough that a
+//              line number in this comment would be wrong within the week, and a citation that
+//              cannot be checked is the failure this whole note is about. Every stored
+//              transcript holds 'clay' / 'stone' / 'rune' today.
+//   NOT      — infra/supabase/migrations/0001_init.sql also carries
+//   THE PG     `mode text check (mode in ('clay','stone','rune'))` on public.messages, and
+//   CONSTRAINT that one is DEAD: no `from('messages')` and no `rest/v1/messages` exists in
+//              apps/worker or apps/web, so nothing writes the table the constraint guards. It
+//              is cited in the backlog as the blocker for this rename and it is not one.
+// So the rename is a MIGRATION, not an edit: widen what the DO accepts on read, write
+// the new spelling, backfill, then narrow. Renaming this type on its own would compile,
+// pass, and silently stop matching the strings already in storage.
 //
 // Translate at the edge (product mode in, specialist out) and nothing below the
 // edge has to know the product ever gained a new vocabulary.
@@ -1598,7 +1622,8 @@ export const PRODUCT_MODES_OFFERED: readonly ProductMode[] = ['plan', 'agent'];
  * builder, which is Stone. Super Agent is long-horizon autonomy, which is Rune.
  *
  * Do not "improve" this mapping: it is what keeps a stored session's
- * `mode: AppleMode` meaning the same thing it meant when it was written.
+ * `mode: GolemMode` meaning the same thing it meant when it was written. (The type
+ * is `GolemMode`, declared above; this comment named a non-existent AppleMode.)
  */
 export const PRODUCT_MODE_TO_SPECIALIST: Record<ProductMode, GolemMode> = {
   plan: 'clay',
@@ -1975,7 +2000,16 @@ export const PLAN_COPY: Record<PlanId, PlanCopy> = {
     name: 'Builder',
     blurb: 'For building most days.',
     priceUsdMonthly: 12,
-    highlights: ['About 5× the Free allowance', 'Buy credits when you need more', 'Priority during busy periods'],
+    //[[ 'Priority during busy periods' IS GONE, and it was the third reason to pay $12.
+    //
+    //   No plan buys a place in the queue — docs/credits-and-limits says so in the product's own
+    //   documentation, two clicks from the pricing card that was selling it. Paying changes your
+    //   allowance, not your turn. A buyer comparing the card to the docs finds the contradiction;
+    //   a buyer who does not compare pays for it and never gets it.
+    //
+    //   Owner's decision, 2026-09-20: remove the claim rather than build the feature. Selling a
+    //   thing that does not exist is the defect; a shorter honest card is not. ]]
+    highlights: ['About 5× the Free allowance', 'Buy credits when you need more', 'Everything in Free'],
   },
   studio: {
     id: 'studio',

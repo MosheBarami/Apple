@@ -121,7 +121,7 @@ async function fetchProfile(userId: string): Promise<ProfileRow | null> {
   if (MOCK_MODE) return mockProfile;
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, display_name, plan, is_admin, training_opt_in')
+    .select('id, display_name, plan, is_admin')
     .eq('id', userId)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -1349,18 +1349,6 @@ export function SettingsPage() {
     onError: (e: Error) => toast(`Couldn't save: ${e.message}`, 'error'),
   });
 
-  const setOptIn = useMutation({
-    mutationFn: async (optIn: boolean) => {
-      const { error } = await supabase.from('profiles').update({ training_opt_in: optIn }).eq('id', userId);
-      if (error) throw new Error(error.message);
-      return optIn;
-    },
-    onSuccess: (optIn) => {
-      void qc.invalidateQueries({ queryKey: ['profile', userId] });
-      toast(optIn ? 'Thanks for contributing.' : 'Opted out — your work stays fully private.', 'success');
-    },
-    onError: (e: Error) => toast(`Couldn't update: ${e.message}`, 'error'),
-  });
 
   const submitName = (e: FormEvent) => {
     e.preventDefault();
@@ -1830,27 +1818,16 @@ export function SettingsPage() {
       </Section>
 
 
-      <Section title="Privacy" visible={sectionShows('training-opt-in', 'analytics-opt-out', 'download-my-data')}>
-        <Row id="training-opt-in" visible={shows('training-opt-in')}>
-          {/* The claim this row is really about, in ink and at the sub-heading's size. It was a
-              <strong> inside a body paragraph, which under a design where nothing is bolder than
-              400 is a sentence indistinguishable from the one under it. */}
-          <p className="settings-lead">Your projects are private. Training contribution is off by default.</p>
-          <label className="switch-row">
-            <input
-              type="checkbox"
-              name="trainingOptIn"
-              id="training-opt-in"
-              checked={profile.data?.training_opt_in ?? false}
-              onChange={(e) => setOptIn.mutate(e.target.checked)}
-              disabled={profile.isPending || setOptIn.isPending}
-            />
-            <span>
-              Contribute anonymised snippets to improve Apple
-              <span className="field-hint"> — optional, off by default, revocable any time.</span>
-            </span>
-          </label>
-        </Row>
+      <Section title="Privacy" visible={sectionShows('analytics-opt-out', 'download-my-data')}>
+        {/* THE TOGGLE IS GONE, AND THE PROMISE IS THE REASON.
+            Both published privacy pages say Apple never trains on a customer's projects — the
+            policy states outright that no opt-in programme exists. This row offered exactly that
+            opt-in, in the account settings of the same product. A careful reader could not
+            reconcile the two, and whichever they believed, one of them was lying to them.
+            Owner's decision, 2026-09-20: the promise is the true one. The stronger commitment is
+            the one worth keeping, so the switch goes rather than the sentence. `training_opt_in`
+            stays in the database untouched — dropping a column is a migration, and nothing reads
+            it now. */}
 
         {/* THE REQUEST LOG CARRIED EVERY ACCOUNT ID AND NOTHING COULD TURN IT OFF.
             The number below is the real retention window from apps/worker/src/retention.ts, and
