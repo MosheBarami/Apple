@@ -23,7 +23,16 @@ const ESBUILD = new URL('../../../apps/worker/node_modules/.bin/esbuild', import
 
 const SRC = new URL('../../../apps/worker/src/reasoning.ts', import.meta.url).pathname;
 const out = join(mkdtempSync(join(tmpdir(), 'golem-reasoning-')), 'reasoning.mjs');
-execFileSync(ESBUILD, [SRC, '--format=esm', '--outfile=' + out], { stdio: 'pipe' });
+// `--bundle` and the explicit `--main-fields`: reasoning.ts gained its first VALUE import from
+// @golem/shared (the product-mode display names, so the effort explanation shown to a person stops
+// saying "clay"). Transpile-only left that import unresolved at run time. `--platform=neutral`
+// defaults mainFields to EMPTY, so a workspace package whose entry comes from `main` cannot be
+// resolved without naming them — the same trap the comment above records.
+execFileSync(
+  ESBUILD,
+  [SRC, '--bundle', '--format=esm', '--platform=neutral', '--main-fields=main,module', '--target=es2022', '--outfile=' + out],
+  { stdio: 'pipe', cwd: new URL('../../../apps/worker/', import.meta.url).pathname },
+);
 const { chooseEffort, classifyRequest, tokensForEffort, higher, MAX_HIGH_EFFORT_STEPS } = await import(out);
 
 /** A step with no escalation signals set. */
@@ -79,9 +88,16 @@ test('the high-effort budget falls back to low, never to medium', () => {
 });
 
 test('the reason string records the baseline and every escalation applied', () => {
+  // This pinned `/^clay baseline/` — the INTERNAL specialist spelling. The string is rendered to a
+  // person, so the guard was holding the product to Golem-era vocabulary: renaming it correctly
+  // turned this red. Re-aimed at what the test actually meant — that the reason opens with the
+  // mode's baseline and then lists each escalation.
   const r = chooseEffort(base('clay', { visualDesignTask: true, multiSystemTask: true }));
-  assert.match(r.reason, /^clay baseline/);
+  assert.match(r.reason, /^Plan baseline/);
   assert.match(r.reason, /visual or spatial design work/);
+  // NOT `multiple interacting systems`: `raise()` records a reason only when it actually raises the
+  // tier, and the visual signal had already reached `high`. The list is escalations APPLIED, not
+  // signals present — asserting otherwise would pin a behaviour the policy does not have.
 });
 
 test('classifyRequest recognises design work', () => {
@@ -170,5 +186,65 @@ test('the late half of a long MAX run is not the cheap half', () => {
 
 test('the reason string names the floor, so the admin trace says why', () => {
   const choice = chooseEffort(base('clay', { productModel: 'apple-max' }));
-  assert.match(choice.reason, /apple-max floor/);
+  assert.match(choice.reason, /Apple MAX floor/);
+});
+
+/* ------------------------------------ the approval that switched thinking off ---- */
+//
+// classifyRequest runs ONCE in startRun and its verdict is spread into every later step. That is
+// correct for "hi" and wrong for "ok": an approval is how a person ACCEPTS a plan, so the run that
+// follows it is a build — and it was pinned to `low` for all sixteen steps by a verdict about a
+// two-letter message, with the early return firing before the entitlement floor so Apple MAX could
+// not lift it either.
+
+test('"ok" is still talk when nothing has happened yet', () => {
+  const traits = classifyRequest('ok');
+  assert.equal(traits.conversational, true, 'precondition: a bare approval classifies as talk');
+  assert.equal(chooseEffort(base('stone', { ...traits, step: 1 })).effort, 'low');
+});
+
+test('the Hebrew approvals classify the same way — the owner writes in Hebrew', () => {
+  for (const word of ['בסדר', 'אוקיי', 'יופי', 'מעולה', 'תודה']) {
+    assert.equal(classifyRequest(word).conversational, true, `${word} should classify as talk`);
+  }
+});
+
+test('an approval that turned into a build stops being talk — step 2 onward', () => {
+  const traits = classifyRequest('ok');
+  assert.equal(chooseEffort(base('stone', { ...traits, step: 2 })).effort, 'high');
+});
+
+test('an approval that already changed the project stops being talk immediately', () => {
+  const traits = classifyRequest('ok');
+  assert.equal(chooseEffort(base('stone', { ...traits, step: 1, mutated: true })).effort, 'high');
+});
+
+test('the MAX floor survives an approval, which is the case the owner paid for', () => {
+  const traits = classifyRequest('ok');
+  const run = base('clay', { ...traits, step: 2, productModel: 'apple-max' });
+  assert.equal(chooseEffort(run).effort, 'high');
+});
+
+test('a real greeting is still cheap, on both tiers — the shortcut was not deleted', () => {
+  for (const model of [undefined, 'apple', 'apple-max']) {
+    const run = base('stone', { ...classifyRequest('hi'), step: 1, productModel: model });
+    assert.equal(chooseEffort(run).effort, 'low', `greeting on ${model ?? 'no entitlement'}`);
+  }
+});
+
+/* --------------------------------------- the reason string a person reads ---- */
+
+test('the effort explanation speaks product language, not Golem specialist names', () => {
+  const reasons = [
+    chooseEffort(base('clay')).reason,
+    chooseEffort(base('stone')).reason,
+    chooseEffort(base('rune')).reason,
+    chooseEffort(base('clay', { productModel: 'apple-max' })).reason,
+  ].join(' | ');
+  for (const dead of ['clay', 'stone', 'rune']) {
+    assert.ok(!reasons.includes(dead), `"${dead}" is Golem-era vocabulary and reached the UI: ${reasons}`);
+  }
+  assert.match(chooseEffort(base('clay')).reason, /Plan baseline/);
+  assert.match(chooseEffort(base('stone')).reason, /Agent baseline/);
+  assert.match(chooseEffort(base('clay', { productModel: 'apple-max' })).reason, /Apple MAX floor/);
 });

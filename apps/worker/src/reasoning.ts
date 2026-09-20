@@ -19,6 +19,7 @@
 // task) that consumes the whole output budget before it writes a word. `high` reasons briefly and
 // decisively — 161 characters — and costs 2.8% more than `low` while returning a better answer.
 // So escalating to `high` is nearly free, and `medium` is a trap.
+import { PRODUCT_MODE_INFO, SPECIALIST_TO_PRODUCT_MODE } from '@golem/shared';
 import type { GolemMode, ProductModel } from '@golem/shared';
 
 /** `medium` exists in the provider's API but is never selected — see the table above. */
@@ -52,6 +53,11 @@ export interface ReasoningSignals {
   highEffortUsed: number;
   /** the previous step errored, or a tool reported failure */
   priorStepFailed?: boolean;
+  /**
+   * This run has already changed the project. Together with `step` it is what falsifies a stale
+   * `conversational` verdict — see the early return in chooseEffort.
+   */
+  mutated?: boolean;
   /** a visual critique came back failing, or carrying blocking/major defects */
   visualDefectsFound?: boolean;
   /** the task is about how something LOOKS, or how a space is laid out */
@@ -191,18 +197,39 @@ export function chooseEffort(s: ReasoningSignals): ReasoningChoice {
   // Talk costs `low`, in every mode, with no escalation path. A greeting has nothing to deliberate
   // about, and the signals below would otherwise raise it: `ambiguousRequest` used to fire on any
   // text under 25 characters, which is most greetings. This returns before any of them run.
-  if (s.conversational && !s.priorStepFailed) {
+  //[[ THE CLASSIFICATION IS OF THE OPENING MESSAGE; THE PIN WAS OF THE WHOLE RUN.
+  //
+  //   `classifyRequest` runs ONCE, in startRun, and the verdict is stored on `agent.traits` and
+  //   spread into every later step. CONVERSATIONAL_RE matches bare approvals — "ok", "sure",
+  //   "yes", and the Hebrew "בסדר", "אוקיי", "יופי" — because on their own they ARE talk.
+  //
+  //   But "ok" is also how a person accepts a plan. Apple proposes, the user replies "ok", and
+  //   Apple builds: sixteen steps of real work, every one of them pinned to `low` by a verdict
+  //   about a two-letter message, with this return firing before the entitlement floor below so
+  //   Apple MAX could not lift it either. The user paid for judgement and the approval itself
+  //   switched it off.
+  //
+  //   A run that has taken a second step, or has already changed the project, has falsified the
+  //   guess by its own behaviour. Past that point the opening word is not evidence about what is
+  //   happening now, so the shortcut expires rather than persisting. A genuine greeting still
+  //   answers in one step without mutating, and still costs `low`. ]]
+  const stillJustTalk = !s.mutated && (s.step ?? 1) <= 1;
+  if (s.conversational && !s.priorStepFailed && stillJustTalk) {
     return { effort: 'low', reason: 'conversational: reply, do not build' };
   }
 
   let effort = BASELINE[s.mode];
-  const reasons: string[] = [`${s.mode} baseline`];
+  // Product language, not the internal specialist. This string is rendered to the person in the
+  // Thinking card, and it used to read "clay baseline" — the Golem-era vocabulary, in the UI of a
+  // product whose modes are called Plan and Agent.
+  const spoken = PRODUCT_MODE_INFO[SPECIALIST_TO_PRODUCT_MODE[s.mode]].name;
+  const reasons: string[] = [`${spoken} baseline`];
 
   // The entitlement floor, applied before the signals so a signal can still raise it further.
   const floor = s.productModel ? ENTITLEMENT_FLOOR[s.productModel] : undefined;
   if (floor !== undefined && RANK[floor] > RANK[effort]) {
     effort = floor;
-    reasons.push(`${s.productModel} floor`);
+    reasons.push(`${s.productModel === 'apple-max' ? 'Apple MAX' : 'Apple'} floor`);
   }
 
   const raise = (to: Effort, why: string) => {

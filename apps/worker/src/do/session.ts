@@ -3133,6 +3133,9 @@ export class SessionDO extends DurableObject<Env> {
       step: agent.step,
       highEffortUsed: agent.highEffortUsed ?? 0,
       priorStepFailed: agent.priorStepFailed,
+      // What the run has actually DONE, which is what expires a stale `conversational` verdict
+      // taken from the opening message. `traits` is spread below and carries that verdict.
+      mutated: agent.mutated,
       visualDefectsFound: agent.visualDefectsFound,
       ...(agent.traits ?? {}),
     });
