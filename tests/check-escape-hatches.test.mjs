@@ -41,8 +41,32 @@ function scratch() {
   return dir;
 }
 
+//[[ A TIMEOUT IS NOT A VERDICT.
+//
+//   spawnSync sets `status` to null when it kills the child, and every assertion in this file
+//   compares `exit` to 1. So a checker that merely ran out of wall clock was reported as a checker
+//   that RAN and FAILED TO CATCH a planted defect — `actual: null, expected: 1`, printed under a
+//   test name that says the opposite of what happened.
+//
+//   It cost a gate-suite run on 2026-09-20: 8,621 tests passed, one "failed", and that one was
+//   this test timing out at 120,078 ms while seven other agents had the machine. The suite went
+//   SUITE RED and named a defect that did not exist; run alone the same file passes 474/474.
+//
+//   Two changes, because the budget and the reporting are separate faults. The checker walks the
+//   whole tree and this file spawns it more than thirty times, so 120 s is simply too tight under
+//   any parallel load. And a run that does not finish now THROWS, naming the timeout, instead of
+//   handing back a null that the next line turns into somebody else's failure. ]]
+const RUN_TIMEOUT_MS = 300_000;
+
 function runRaw(dir) {
-  const proc = spawnSync('node', [join(dir, CHECKER)], { cwd: dir, encoding: 'utf8', timeout: 120_000 });
+  const proc = spawnSync('node', [join(dir, CHECKER)], { cwd: dir, encoding: 'utf8', timeout: RUN_TIMEOUT_MS });
+  if (proc.error || proc.signal) {
+    throw new Error(
+      `the checker did not finish: ${proc.error?.message ?? `killed by ${proc.signal}`} after ${RUN_TIMEOUT_MS} ms. `
+      + 'That is a timeout, not a verdict — nothing was measured here, so do not read it as the '
+      + 'checker having missed the planted defect.',
+    );
+  }
   return { exit: proc.status, out: `${proc.stdout ?? ''}${proc.stderr ?? ''}` };
 }
 
