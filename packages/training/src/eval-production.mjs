@@ -48,7 +48,25 @@ const DEFAULT_SYSTEM =
 //   multiplier in reasoning.ts, which is what a real build asks for.
 const PRODUCTION_BUDGET = { clay: 6500, stone: 5500, rune: 6500 };
 
-const model = arg('model', 'stone');
+//[[ A GATEWAY NAME IS NOT A LANE, AND REPORTING ONE AS THE OTHER IS A LIE.
+//
+//   /api/admin/model-test takes a GATEWAY CONFIG name and calls it directly, so `--model clay`
+//   measures qwen3-30b whatever the product does with it. After the free lane was routed off clay
+//   on 2026-09-20 this script still printed "clay: 1/12" — a true statement about a config that no
+//   customer reaches any more, and a false impression of the free tier.
+//
+//   `--lane apple` and `--lane apple-max` resolve the gateway name the way gatewayModelFor in
+//   apps/worker/src/do/session.ts does, so the number describes what a PERSON gets. Keep them in
+//   step: apps/worker/tests/product-model-entitlement.test.mjs drives the real SessionDO and pins
+//   the same mapping, so a drift here shows up there.
+const LANE_TO_GATEWAY = { apple: 'stone', 'apple-max': 'stone' };
+
+const lane = arg('lane', null);
+if (lane && !LANE_TO_GATEWAY[lane]) {
+  console.error(`unknown lane "${lane}" — use ${Object.keys(LANE_TO_GATEWAY).join(' or ')}`);
+  process.exit(2);
+}
+const model = lane ? LANE_TO_GATEWAY[lane] : arg('model', 'stone');
 const n = Number(arg('n', '12'));
 const systemFile = arg('system-file', null);
 const system = systemFile ? readFileSync(systemFile, 'utf8') : DEFAULT_SYSTEM;
@@ -83,12 +101,15 @@ const reasons = {};
 for (const r of rows) if (!r.ok) reasons[r.reason] = (reasons[r.reason] ?? 0) + 1;
 const out = {
   measuredAt: new Date().toISOString(),
-  what: 'the DEPLOYED model, through the real gateway, scored by execution',
+  what: lane
+    ? `the ${lane} LANE as a customer reaches it, through the real gateway, scored by execution`
+    : 'a gateway CONFIG called directly — not necessarily a lane any customer reaches',
+  lane: lane ?? null,
   model, system, maxTokens: Number(arg('max-tokens', PRODUCTION_BUDGET[model] ?? 5500)), n: rows.length, ok, pct: rows.length ? Math.round((ok / rows.length) * 100) : 0,
   neurons, reasons, rows,
 };
-const path = `packages/training/runs/eval-production-${model}.json`;
+const path = `packages/training/runs/eval-production-${lane ?? model}.json`;
 writeFileSync(path, JSON.stringify(out, null, 1) + '\n');
-console.log(`\n${model}: ${ok}/${rows.length} (${out.pct}%)  neurons ${neurons}`);
+console.log(`\n${lane ? `${lane} lane (via ${model})` : `${model} config`}: ${ok}/${rows.length} (${out.pct}%)  neurons ${neurons}`);
 console.log('failures:', JSON.stringify(reasons));
 console.log('->', path);
