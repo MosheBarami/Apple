@@ -20,7 +20,7 @@
 // SAFETY. Statically imported so esbuild embeds it: no filesystem read, no fetch, no external code.
 // Every line is source this repository wrote — see packages/training/src/build-game-logic.mjs.
 import bundle from '../../../packages/corpus/data/verified-modules.json';
-import { searchVerifiedModulesByNeed } from './need-index-search';
+import { rankByNeed, searchVerifiedModulesByNeed } from './need-index-search';
 
 export interface VerifiedModule {
   id: string;
@@ -154,6 +154,58 @@ export function getVerifiedModule(id: string): VerifiedModule | null {
   return DATA.find((m) => m.id.toLowerCase() === want) ?? null;
 }
 
+/**
+ * HOW FAR AHEAD OF THE RUNNER-UP THE TOP HIT IS, AS A FRACTION OF ITSELF.
+ *
+ * RELATIVE, AND THE "RELATIVE" IS THE WHOLE POINT. A BM25 total is a sum over the query's terms, so
+ * it grows with the length of the query. Measured, by packages/training/src/measure-library-abstention.mjs:
+ * the sixteen engine-facing tasks in roblox-frontier-tasks.mjs — DataStores, RemoteEvents, tweens,
+ * none of which this library has a module for — have a HIGHER median top-1 score (20.0) than the
+ * eighty requests it DOES cover (18.9), purely because they are longer. An absolute floor would
+ * therefore wave through exactly the requests it exists to stop. Dividing by the top score removes
+ * the length dependence and the two populations separate.
+ */
+function confidenceOf(ranked: readonly { score: number }[]): number {
+  const top1 = ranked[0]?.score ?? 0;
+  const top2 = ranked[1]?.score ?? 0;
+  if (!(top1 > 0)) return 0;
+  return (top1 - top2) / top1;
+}
+
+/**
+ * BELOW THIS, THE DOOR SAYS IT DOES NOT KNOW INSTEAD OF NAMING FIVE MODULES.
+ *
+ * WHAT THIS FIXES. Until now a need search returned five candidates and no confidence of any kind,
+ * so a request the library cannot answer got five confident wrong modules — which is the outcome
+ * the comment at the top of this file already calls the worst one available, because nothing
+ * downstream checks what the model installs.
+ *
+ * THE COST OF BEING WRONG IS NOT SYMMETRIC, AND IT WAS MEASURED, NOT ASSUMED. Strike a request's
+ * answer out of the ranking, hand over whatever the door returns instead, and RUN it against that
+ * request's own exhaustive checks: 0 of 80 pass. A near-miss from this library is never an answer,
+ * so withholding it costs the customer nothing and offering it costs them logic that is silently
+ * wrong forever.
+ *
+ * WHY 0.15 AND NOT A STRICTER NUMBER — the honest version. The two populations overlap; there is no
+ * clean separating value, and the sweep is over the same eighty queries it is scored on, so the
+ * best cell in it is a measurement of the grid. What decides the number is the FALLBACK: an
+ * abstention sends the model back to writing the module itself, and on this curriculum the SHIPPED
+ * prompt writes it correctly 66% of the time against the door's 91%. Joined prompt by prompt
+ * against the recorded arms, the abstaining policy beats today's always-hand-over door only while
+ * the floor stays at or under 0.20 (75/80 against 73/80); above that the lost hand-overs cost more
+ * than the avoided wrong ones and it drops to 68/80 by 0.40. With three worked examples in the
+ * fallback — not shipped — the whole band 0.10 to 0.40 wins instead.
+ *
+ * So 0.15 is the middle of the only window that is an improvement TODAY, and the way to raise it is
+ * to make the fallback better first. Re-run measure-library-abstention.mjs whenever the library or
+ * the ranker changes; the table it prints is what this constant is read off.
+ *
+ * At 0.15, measured: the door still answers 63 of the 73 requests it gets right, hands over on 39
+ * of 80 requests whose answer was removed (down from 80), and on 6 of the 16 engine-facing tasks
+ * (down from 16).
+ */
+export const CONFIDENCE_FLOOR = 0.15;
+
 export interface VerifiedModuleAnswer {
   found: boolean;
   id?: string;
@@ -186,8 +238,9 @@ export function askVerifiedModule(input: { id?: string; need?: string }): Verifi
   }
   const need = String(input.need ?? '').trim();
   if (!need) return { found: false, note: 'Give an id, or describe what the logic must do.' };
-  const hits = searchVerifiedModules(need, 5);
-  if (!hits.length) {
+  const ranked = rankByNeed(need);
+  const hits = ranked.slice(0, 5).map((r) => r.m);
+  if (!hits.length || confidenceOf(ranked) < CONFIDENCE_FLOOR) {
     return {
       found: false,
       note: `Nothing in the verified library covers "${need}". Write it yourself — and say to the customer that this part is not one of the checked modules.`,
