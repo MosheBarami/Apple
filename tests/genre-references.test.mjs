@@ -22,6 +22,11 @@ const THIN = new Map([
   ['roleplay', 3],
   ['tower_defense', 4],
   ['anime_battle', 3],
+  // Added to the taxonomy on 2026-09-20 because the UI harvest had inspected shipped examples of it
+  // and the catalogue did not carry the genre at all. It has NO external references here yet, which
+  // is a known hole stated out loud: the ratchet fails the day it reaches five and this entry is
+  // still here, so the list cannot outlive the gap.
+  ['pet_simulator', 0],
 ]);
 
 const refsFor = (genreId) => catalogue.externalReferences.filter((r) => (r.genreIds ?? []).includes(genreId));
@@ -98,10 +103,22 @@ test('the UI reference library and the genre catalogue do not disagree about a g
   // 'studio' was exempted here for as long as this test has existed and HAS NO FILE — the old
   // spelling `id !== 'studio'` could not tell an exemption in use from one left behind, so nobody
   // found out. It is gone; if a studio.json is ever written, add it back deliberately.
-  const NON_GENRE_SURFACES = new Set(['web-landing']);
+  //
+  // A SECOND AXIS ARRIVED ON 2026-09-20. The library now also covers SCREEN TYPES — shop, inventory,
+  // rewards, codes, leaderboard, settings, HUD, battle pass — because a shop is built the same way
+  // whether the game is a tycoon or a pet simulator, and the screen question is the one the model is
+  // actually asked. A screen is not a genre and must never be added to the genre taxonomy; matching
+  // the prefix is right here where listing each one would turn every new screen into a red build for
+  // no reason. `studio` is the plugin panel, which the comment above invited adding back
+  // deliberately once a file existed for it — one now does.
+  const NON_GENRE_SURFACES = new Set(['web-landing', 'studio']);
+  const isScreen = (id) => id.startsWith('screen-');
   const files = readdirSync(uiDir).filter((f) => f.endsWith('.json')).map((f) => f.replace(/\.json$/, ''));
   const stale = [...NON_GENRE_SURFACES].filter((id) => !files.includes(id));
   assert.deepEqual(stale, [], `exempted surfaces with no file: ${stale.join(', ')}`);
-  const orphans = files.filter((id) => !known.has(id) && !NON_GENRE_SURFACES.has(id));
+  // Non-vacuity: if the prefix ever matched everything, the genre half of this check would quietly
+  // stop running while still reporting green.
+  assert.ok(files.some((id) => !isScreen(id)), 'every file looks like a screen — the genre half of this check is dead');
+  const orphans = files.filter((id) => !known.has(id) && !NON_GENRE_SURFACES.has(id) && !isScreen(id));
   assert.deepEqual(orphans, [], `these UI reference genres are not in the genre taxonomy: ${orphans.join(', ')}`);
 });

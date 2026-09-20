@@ -4,7 +4,7 @@
  "generatedBy": "scripts/build-ui-construction.mjs",
  "genres": [
   {
-   "genre": "anime-fighting",
+   "genre": "anime_battle",
    "label": "Anime fighting / battlegrounds — move bar with cooldowns, combo counter, quest list, boss bar, ability gacha",
    "kind": "genre",
    "incomplete": false,
@@ -754,7 +754,7 @@
    }
   },
   {
-   "genre": "pet-simulator",
+   "genre": "pet_simulator",
    "label": "Pet simulator / collection — pet inventory grids, rarity borders, egg-hatching screens, index books, equip slots",
    "kind": "genre",
    "incomplete": false,
@@ -2160,7 +2160,7 @@
    }
   },
   {
-   "genre": "tower-defense",
+   "genre": "tower_defense",
    "label": "Tower defense / unit-placement defense (TD, anime-TD, wave defense)",
    "kind": "genre",
    "incomplete": false,
