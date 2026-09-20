@@ -188,8 +188,11 @@
     {
      "id": "f-0d7b0e67",
      "name": "Code blocks",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "apps/web/tests/code-presentation.test.mjs:67 — \"the tokens reproduce the source exactly, in every language, on every sample\" calls tokenize/normaliseLanguage from apps/web/src/lib/highlight.ts over every declared language.",
+     "disposition": "BOOKKEEPING-FLIP",
+     "dispositionPass": 2,
+     "dispositionCitation": "apps/web/tests/code-presentation.test.mjs:67 — \"the tokens reproduce the source exactly, in every language, on every sample\" calls tokenize/normaliseLanguage from apps/web/src/lib/highlight.ts over every declared language."
     },
     {
      "id": "f-5c6e1d67",
@@ -200,8 +203,11 @@
     {
      "id": "f-7e1f24ab",
      "name": "Copy code",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "apps/web/tests/code-presentation.test.mjs:253 — \"there is a copy control, and it copies the code rather than the rendered text\", with :257 refusing a copy control on a fence that has not closed.",
+     "disposition": "BOOKKEEPING-FLIP",
+     "dispositionPass": 2,
+     "dispositionCitation": "apps/web/tests/code-presentation.test.mjs:253 — \"there is a copy control, and it copies the code rather than the rendered text\", with :257 refusing a copy control on a fence that has not closed."
     },
     {
      "id": "f-72deecfa",
@@ -308,14 +314,20 @@
     {
      "id": "f-cadffc24",
      "name": "JSON export",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "apps/worker/tests/export-integrity-live.test.mjs:111 — \"THE JSON FILE CARRIES ITS OWN CHECK, so it can be verified after it leaves this origin\" drives the JSON export route through the built worker.",
+     "disposition": "BOOKKEEPING-FLIP",
+     "dispositionPass": 2,
+     "dispositionCitation": "apps/worker/tests/export-integrity-live.test.mjs:111 — \"THE JSON FILE CARRIES ITS OWN CHECK, so it can be verified after it leaves this origin\" drives the JSON export route through the built worker."
     },
     {
      "id": "f-597f5ff6",
      "name": "Markdown export",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "apps/worker/tests/export-integrity-live.test.mjs:122 — \"the markdown export is still markdown, and still an attachment\" executes the markdown export route and checks its content type and disposition.",
+     "disposition": "BOOKKEEPING-FLIP",
+     "dispositionPass": 2,
+     "dispositionCitation": "apps/worker/tests/export-integrity-live.test.mjs:122 — \"the markdown export is still markdown, and still an attachment\" executes the markdown export route and checks its content type and disposition."
     },
     {
      "id": "f-8cf5aa97",
@@ -326,8 +338,11 @@
     {
      "id": "f-0e97b69c",
      "name": "Prompt templates",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "apps/web/tests/composer-templates.test.mjs:38 — \"the composer offers every template that has a prompt, and only those\" calls insertableTemplates/PROJECT_TEMPLATES from apps/web/src/lib/project-templates.ts.",
+     "disposition": "BOOKKEEPING-FLIP",
+     "dispositionPass": 2,
+     "dispositionCitation": "apps/web/tests/composer-templates.test.mjs:38 — \"the composer offers every template that has a prompt, and only those\" calls insertableTemplates/PROJECT_TEMPLATES from apps/web/src/lib/project-templates.ts."
     },
     {
      "id": "f-0b02f0c8",
@@ -410,8 +425,11 @@
     {
      "id": "f-ea8bced2",
      "name": "Critic mode",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "apps/worker/tests/critic-completeness.test.mjs:74 — \"A PANEL WHOSE LENSES ALL FAILED CANNOT READ LIKE A CLEAN ONE\" runs the critic panel from the bundled module so a lens that did not run cannot read as a lens that found nothing.",
+     "disposition": "BOOKKEEPING-FLIP",
+     "dispositionPass": 2,
+     "dispositionCitation": "apps/worker/tests/critic-completeness.test.mjs:74 — \"A PANEL WHOSE LENSES ALL FAILED CANNOT READ LIKE A CLEAN ONE\" runs the critic panel from the bundled module so a lens that did not run cannot read as a lens that found nothing."
     },
     {
      "id": "f-b6010485",
@@ -767,14 +785,20 @@
     {
      "id": "f-f00daf28",
      "name": "Memory agent",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "apps/worker/tests/memory.test.mjs:43 — \"the same fact twice becomes one\" runs the memory distiller over model-written facts; 55 assertions cover dedupe, normalisation and correction.",
+     "disposition": "BOOKKEEPING-FLIP",
+     "dispositionPass": 2,
+     "dispositionCitation": "apps/worker/tests/memory.test.mjs:43 — \"the same fact twice becomes one\" runs the memory distiller over model-written facts; 55 assertions cover dedupe, normalisation and correction."
     },
     {
      "id": "f-8e347526",
      "name": "Critic agent",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "apps/worker/tests/critic-wiring.test.mjs:52 — \"the critic SHIPS — the deployed entry point bundles it\" proves the critic is reachable from a product path rather than only from the eval harness.",
+     "disposition": "BOOKKEEPING-FLIP",
+     "dispositionPass": 2,
+     "dispositionCitation": "apps/worker/tests/critic-wiring.test.mjs:52 — \"the critic SHIPS — the deployed entry point bundles it\" proves the critic is reachable from a product path rather than only from the eval harness."
     },
     {
      "id": "f-01b4226e",
@@ -851,8 +875,11 @@
     {
      "id": "f-669fb5a6",
      "name": "Agent permissions",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "apps/web/tests/tool-permissions.test.mjs:72 — \"EVERY TOOL OFFERED EXISTS — a typo here is a checkbox that saves nothing\" checks the permission surface against the worker’s own tool table.",
+     "disposition": "BOOKKEEPING-FLIP",
+     "dispositionPass": 2,
+     "dispositionCitation": "apps/web/tests/tool-permissions.test.mjs:72 — \"EVERY TOOL OFFERED EXISTS — a typo here is a checkbox that saves nothing\" checks the permission surface against the worker’s own tool table."
     },
     {
      "id": "f-18c920ee",
@@ -1211,8 +1238,11 @@
     {
      "id": "f-4882bed0",
      "name": "Live Studio connection",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "apps/web/tests/studio-connection.test.mjs:27 — \"connected requires the bridge signal, and nothing else does it\" drives the Studio connection state machine, with :36 pinning that an unanswered socket is never reported as not-connected.",
+     "disposition": "BOOKKEEPING-FLIP",
+     "dispositionPass": 2,
+     "dispositionCitation": "apps/web/tests/studio-connection.test.mjs:27 — \"connected requires the bridge signal, and nothing else does it\" drives the Studio connection state machine, with :36 pinning that an unanswered socket is never reported as not-connected."
     },
     {
      "id": "f-806f29c7",
@@ -2222,8 +2252,11 @@
     {
      "id": "f-9db3d8fb",
      "name": "Max token control",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "packages/evals/src/base-gate-controls.test.mjs:15 — \"transport sends the registered maxTokens and retains the provider finish reason\", with :65 refusing an invalid maxTokens before any request is made.",
+     "disposition": "BOOKKEEPING-FLIP",
+     "dispositionPass": 2,
+     "dispositionCitation": "packages/evals/src/base-gate-controls.test.mjs:15 — \"transport sends the registered maxTokens and retains the provider finish reason\", with :65 refusing an invalid maxTokens before any request is made."
     },
     {
      "id": "f-887f3f6b",
@@ -2264,8 +2297,11 @@
     {
      "id": "f-7953f384",
      "name": "Reasoning budget",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "packages/evals/src/reasoning.test.mjs:166 — \"an escalated Clay step still respects the high-effort budget\" drives chooseEffort against the step-count ceiling.",
+     "disposition": "BOOKKEEPING-FLIP",
+     "dispositionPass": 2,
+     "dispositionCitation": "packages/evals/src/reasoning.test.mjs:166 — \"an escalated Clay step still respects the high-effort budget\" drives chooseEffort against the step-count ceiling."
     },
     {
      "id": "f-a1d202e2",
@@ -3710,8 +3746,11 @@
     {
      "id": "f-ddf46906",
      "name": "Project memory",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "apps/worker/tests/memory-store.test.mjs:76 — \"precedence is org < user < project, and an unknown scope throws rather than losing quietly\"; the file exists to falsify \"one project cannot read another’s memory\". 60 assertions.",
+     "disposition": "BOOKKEEPING-FLIP",
+     "dispositionPass": 2,
+     "dispositionCitation": "apps/worker/tests/memory-store.test.mjs:76 — \"precedence is org < user < project, and an unknown scope throws rather than losing quietly\"; the file exists to falsify \"one project cannot read another’s memory\". 60 assertions."
     },
     {
      "id": "f-fbb16096",
@@ -4410,8 +4449,11 @@
     {
      "id": "f-d437387a",
      "name": "3D viewport",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "apps/web/tests/playtest-viewport.test.mjs:89 — \"a running playtest with an old frame is NEVER described as live\" drives the playtest viewport card over stale and fresh frames.",
+     "disposition": "BOOKKEEPING-FLIP",
+     "dispositionPass": 2,
+     "dispositionCitation": "apps/web/tests/playtest-viewport.test.mjs:89 — \"a running playtest with an old frame is NEVER described as live\" drives the playtest viewport card over stale and fresh frames."
     },
     {
      "id": "f-520f4d12",
@@ -4728,8 +4770,11 @@
     {
      "id": "f-392302d7",
      "name": "Search tool",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "apps/worker/tests/creator-skills-tools.test.mjs:54 — \"the registered search and read handlers preserve ranking, bounds and unknown-id behavior\" executes the registered search tool handler.",
+     "disposition": "BOOKKEEPING-FLIP",
+     "dispositionPass": 2,
+     "dispositionCitation": "apps/worker/tests/creator-skills-tools.test.mjs:54 — \"the registered search and read handlers preserve ranking, bounds and unknown-id behavior\" executes the registered search tool handler."
     },
     {
      "id": "f-f10f721f",
@@ -4794,8 +4839,11 @@
     {
      "id": "f-7556d28b",
      "name": "Screenshot tool",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "apps/worker/tests/webtools.test.mjs:357 — \"screenshot_page captures a page and hands the pixels to the surface, not to the model\" executes the screenshot tool handler.",
+     "disposition": "BOOKKEEPING-FLIP",
+     "dispositionPass": 2,
+     "dispositionCitation": "apps/worker/tests/webtools.test.mjs:357 — \"screenshot_page captures a page and hands the pixels to the surface, not to the model\" executes the screenshot tool handler."
     },
     {
      "id": "f-841d65c2",
@@ -5918,8 +5966,11 @@
     {
      "id": "f-83b48244",
      "name": "Token budgets",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "packages/evals/src/reasoning.test.mjs:131 — \"token budgets: low is unchanged, and high is never given less room than low\" calls tokensForEffort from apps/worker/src/reasoning.ts.",
+     "disposition": "BOOKKEEPING-FLIP",
+     "dispositionPass": 2,
+     "dispositionCitation": "packages/evals/src/reasoning.test.mjs:131 — \"token budgets: low is unchanged, and high is never given less room than low\" calls tokensForEffort from apps/worker/src/reasoning.ts."
     },
     {
      "id": "f-02edc28f",

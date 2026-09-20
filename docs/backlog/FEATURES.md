@@ -84,13 +84,13 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [ ] מחיקת חשבון
 - [x] מצב Offline
 
-### צ׳אט AI — 82 items  (done 11, partial 4)
+### צ׳אט AI — 82 items  (done 17, partial 4)
 
 - [x] Chat streaming — apps/worker/src/do/session.ts broadcast deltas; verified live
 - [ ] Markdown
-- [ ] Code blocks
+- [x] Code blocks
 - [ ] Syntax highlighting
-- [ ] Copy code
+- [x] Copy code
 - [ ] Edit message
 - [ ] Regenerate response
 - [x] Stop generation — stop-signal.ts requestStop
@@ -108,10 +108,10 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [ ] Conversation folders
 - [ ] Conversation tags
 - [ ] Conversation export
-- [ ] JSON export
-- [ ] Markdown export
+- [x] JSON export
+- [x] Markdown export
 - [ ] PDF export
-- [ ] Prompt templates
+- [x] Prompt templates
 - [ ] System prompt editor
 - [ ] Developer prompt editor
 - [ ] Context window indicator
@@ -125,7 +125,7 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [ ] Multi-model comparison
 - [ ] Side-by-side answers
 - [ ] Debate mode
-- [ ] Critic mode
+- [x] Critic mode
 - [ ] Judge mode
 - [ ] Ensemble mode
 - [ ] Self-reflection mode
@@ -169,7 +169,7 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [ ] Execution preview
 - [ ] Final verification report
 
-### Agent מערכת — 50 items  (done 5, partial 0)
+### Agent מערכת — 50 items  (done 8, partial 0)
 
 - [ ] Planner agent
 - [ ] Researcher agent
@@ -186,8 +186,8 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [ ] Reviewer agent
 - [ ] Judge agent
 - [ ] Router agent
-- [ ] Memory agent
-- [ ] Critic agent
+- [x] Memory agent
+- [x] Critic agent
 - [ ] Parallel agents
 - [ ] Agent delegation
 - [ ] Agent hierarchy
@@ -200,7 +200,7 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [x] Agent timeouts — STEP_STALE_MS + 30s op timeout
 - [x] Agent budgets — MAX_NEURONS_PER_REQUEST + BudgetDO
 - [ ] Agent priorities
-- [ ] Agent permissions
+- [x] Agent permissions
 - [x] Agent tool restrictions — router.ts toolsForMode — Plan is read-only
 - [ ] Agent sandbox
 - [ ] Agent snapshots
@@ -222,7 +222,7 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [ ] Durable workflows
 - [ ] Human-in-the-loop workflows
 
-### Roblox Integration — 101 items  (done 10, partial 3)
+### Roblox Integration — 101 items  (done 11, partial 3)
 
 - [ ] Roblox OAuth
 - [ ] Roblox account linking
@@ -262,7 +262,7 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [x] Explorer tree snapshot — snapshot tool root:'game'
 - [ ] Selection sync
 - [x] Studio plugin sync — HTTP long-poll, now idle-parked (37c42eb)
-- [ ] Live Studio connection
+- [x] Live Studio connection
 - [ ] Play-test connection
 - [ ] Test server connection
 - [ ] Client/server separation
@@ -381,7 +381,7 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [ ] Test timeline
 - [ ] Viewport annotations
 
-### AI Models — 74 items  (done 5, partial 1)
+### AI Models — 74 items  (done 7, partial 1)
 
 - [x] Model catalog — providers/workers-ai.ts WORKERS_AI_MODELS; commit 10c1f31
 - [ ] Model search
@@ -434,14 +434,14 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [ ] Temperature control
 - [ ] Top-p control
 - [ ] Top-k control
-- [ ] Max token control
+- [x] Max token control
 - [ ] Repetition penalty
 - [ ] Seed control
 - [ ] Stop sequences
 - [ ] JSON schema control
 - [ ] Grammar constraints
 - [ ] Tool choice control
-- [ ] Reasoning budget
+- [x] Reasoning budget
 - [ ] Response style control
 - [x] Prompt caching — x-session-affinity prefix caching, providers/workers-ai.ts
 - [ ] KV caching
@@ -635,7 +635,7 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [x] Promotion gates
 - [x] Rollback gates
 
-### Knowledge and RAG — 54 items  (done 16, partial 0)
+### Knowledge and RAG — 54 items  (done 17, partial 0)
 
 - [ ] Document ingestion
 - [ ] Website crawling
@@ -687,7 +687,7 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [ ] Episodic memory
 - [ ] Semantic memory
 - [x] User preferences
-- [ ] Project memory
+- [x] Project memory
 - [ ] Build memory
 - [ ] Failure memory
 - [ ] Successful pattern memory
@@ -744,7 +744,7 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [ ] Comment generation
 - [ ] Changelog generation
 
-### 3D and Creative — 79 items  (done 11, partial 1)
+### 3D and Creative — 79 items  (done 12, partial 1)
 
 - [~] Text-to-3D — generate_model reaches GenerationService but result does not persist as a Roblox asset
 - [ ] Image-to-3D
@@ -807,7 +807,7 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [x] Asset LOD generation
 - [x] Asset collision generation
 - [ ] Asset preview
-- [ ] 3D viewport
+- [x] 3D viewport
 - [ ] Orbit camera
 - [ ] Pan camera
 - [ ] Zoom camera
@@ -861,10 +861,10 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [ ] Export MP3
 - [ ] Export OGG
 
-### Automation and Tools — 43 items  (done 11, partial 0)
+### Automation and Tools — 43 items  (done 13, partial 0)
 
 - [x] Browser tool
-- [ ] Search tool
+- [x] Search tool
 - [x] Web fetch
 - [x] GitHub tool
 - [x] Git tool
@@ -875,7 +875,7 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [x] Node sandbox
 - [x] Luau sandbox
 - [x] Roblox test sandbox
-- [ ] Screenshot tool
+- [x] Screenshot tool
 - [x] OCR tool
 - [ ] Image analysis
 - [ ] Video analysis
@@ -1028,7 +1028,7 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [ ] Incident response
 - [ ] Security alerts
 
-### Infrastructure — 54 items  (done 11, partial 0)
+### Infrastructure — 54 items  (done 12, partial 0)
 
 - [x] Multi-provider routing — providers/ registry with 4 adapters
 - [x] Provider health checks — providers/registry.ts providerAvailability
@@ -1065,7 +1065,7 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [x] Hard spending caps — BudgetDO reserve/settle, guard now provably fails (60407f0)
 - [ ] Usage alerts
 - [ ] Cost forecasts
-- [ ] Token budgets
+- [x] Token budgets
 - [ ] Time budgets
 - [ ] Concurrency limits
 - [ ] Timeout limits
