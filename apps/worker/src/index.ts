@@ -34,6 +34,7 @@ import {
   BILLING_AUTHORITY_WORKER,
   BILLING_REPLICA_WORKER,
   BillingAuthorityError,
+  billingWiring,
   deliverBillingMutation,
   invokeBillingAuthority,
 } from './billing-origin-authority';
@@ -3789,6 +3790,28 @@ app.get('/api/admin/billing-reconcile', async (c) => {
   }
   return c.json({ ...reconcileReport(rows), truncated });
 });
+
+/**
+ * CAN THIS DEPLOYMENT TAKE MONEY, AND WOULD IT LAND IN BOTH STORES?
+ *
+ * Every refusal on the paying path is deliberately mute. `/api/billing/webhook` answers 503
+ * `billing not configured` or 400 `invalid signature` without saying which half was wrong, because
+ * anyone on the internet can POST to it and a prober must not be able to learn the shape of the
+ * secret. `/api/billing/config` answers `{"checkout": false}` identically whether there is no API
+ * key, no webhook secret, or a TEST key correctly refused in production. `/api/admin/billing-
+ * reconcile` refuses with the same one sentence. All of that is right facing the internet and
+ * useless facing the owner of the business, who is entitled to know why nobody can buy anything.
+ *
+ * Settling that question on 2026-09-20 took reading two wrangler files and calling Cloudflare's
+ * script-settings API for the deployed binding list, because the product says nothing. This is the
+ * read that answers it, and `billingWiring` computes the verdict from the SAME conditions the
+ * webhook checks, in the same order, so the report and the route cannot drift apart.
+ *
+ * BEHIND ADMIN_KEY, and it names no secret. Every field is a boolean or a closed enum; no value,
+ * prefix or length leaves this route. `stripeApiKey: 'test' | 'live'` is the one shape-derived
+ * field and it is the one the production guard turns on.
+ */
+app.get('/api/admin/billing-wiring', async (c) => c.json(billingWiring(c.env)));
 
 /** Emergency stop. Flips a flag the gateway checks before every single inference call. */
 /** Tune the hard caps without a redeploy. Lowering takes effect on the very next call. */

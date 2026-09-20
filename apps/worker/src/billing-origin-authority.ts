@@ -53,6 +53,109 @@ export interface CreditsMutation {
   credits: number;
 }
 
+/**
+ * WHY NOBODY CAN BE UPGRADED, IN ONE READ.
+ *
+ * THE FAILURE THIS EXISTS FOR. Establishing whether a Stripe event could reach BOTH quota stores
+ * took four hours and a Cloudflare API call against the deployed script's binding list, because
+ * nothing the product serves says anything about it. `/api/billing/config` answers
+ * `{"checkout": false}` for three completely different situations — no webhook secret, no API key,
+ * or a TEST key refused in production — and the webhook's own two refusals are deliberately mute
+ * so a prober cannot learn which half of a forgery was wrong. Every one of those refusals is
+ * correct facing the internet and useless facing the owner, who is entitled to know why his
+ * product cannot take money.
+ *
+ * `golem` was ALSO found answering the webhook with 503 `billing not configured` — correct, it
+ * holds no webhook secret and is the replica, not the authority — and there was no way to tell
+ * that from a misconfiguration without reading two wrangler files.
+ *
+ * PURE, AND IT NAMES NO SECRET. Every field is a boolean or a closed enum derived from presence
+ * and shape; no value, prefix or length of any secret leaves this function. It is pure so the
+ * decision can be falsified in a unit test rather than against a deployment.
+ *
+ * `mutationWouldApplyToBoth` is the question the migration actually turns on: a subscription
+ * bought today has to land in the canonical QuotaDO *and* in golem's, or one of the two stores is
+ * silently wrong about what the customer paid for. It is computed from the same four conditions
+ * the webhook route itself checks, in the same order, so the report and the route cannot disagree.
+ */
+export type StripeKeyState = 'absent' | 'test' | 'live';
+
+export interface BillingWiring {
+  /** The deployment identity from `vars`, never from the request Host. */
+  worker: string | null;
+  canonicalAuthority: typeof BILLING_AUTHORITY_WORKER;
+  isAuthority: boolean;
+  /** The compatibility namespace must be bound for a mutation to reach the old store. */
+  replicaBound: boolean;
+  replicaWorker: typeof BILLING_REPLICA_WORKER;
+  webhookSecret: boolean;
+  stripeApiKey: StripeKeyState;
+  production: boolean;
+  priceIds: { builder: boolean; studio: boolean };
+  /** Could a signature-verified subscription event be applied to BOTH stores right now? */
+  mutationWouldApplyToBoth: boolean;
+  /**
+   * The FIRST condition that is not met, in the order the webhook checks them, or null when every
+   * one is. One reason rather than a list: the route stops at the first, and a report that named
+   * later ones too would describe a code path nothing takes.
+   */
+  why:
+    | 'webhook_secret_missing'
+    | 'not_the_billing_authority'
+    | 'replica_binding_missing'
+    | 'stripe_api_key_missing'
+    | 'stripe_api_key_is_a_test_key_in_production'
+    | null;
+}
+
+export function billingWiring(env: Env): BillingWiring {
+  const e = env as unknown as {
+    STRIPE_WEBHOOK_SECRET?: unknown;
+    STRIPE_SECRET_KEY?: unknown;
+    STRIPE_PRICE_BUILDER?: unknown;
+    STRIPE_PRICE_STUDIO?: unknown;
+    ENVIRONMENT?: unknown;
+  };
+  const present = (v: unknown): boolean => typeof v === 'string' && v.trim().length > 0;
+  const worker = typeof env.BILLING_WORKER_NAME === 'string' ? env.BILLING_WORKER_NAME : null;
+  const isAuthority = worker === BILLING_AUTHORITY_WORKER;
+  const replicaBound = Boolean(env.LEGACY_QUOTA_DO);
+  const webhookSecret = present(e.STRIPE_WEBHOOK_SECRET);
+  const production = e.ENVIRONMENT === 'production';
+  // The same prefix SHAPE `checkoutConfigured` matches, and for the same reason: Stripe mints
+  // restricted keys too, so `rk_test_` is as much a test key as `sk_test_`. An unrecognised live
+  // form stays 'live', because refusing what we do not recognise would report a working
+  // deployment as broken.
+  const key = present(e.STRIPE_SECRET_KEY) ? String(e.STRIPE_SECRET_KEY).trim() : null;
+  const stripeApiKey: StripeKeyState = key === null ? 'absent' : /^[a-z]+_test_/.test(key) ? 'test' : 'live';
+
+  const why: BillingWiring['why'] = !webhookSecret
+    ? 'webhook_secret_missing'
+    : !isAuthority
+      ? 'not_the_billing_authority'
+      : !replicaBound
+        ? 'replica_binding_missing'
+        : stripeApiKey === 'absent'
+          ? 'stripe_api_key_missing'
+          : stripeApiKey === 'test' && production
+            ? 'stripe_api_key_is_a_test_key_in_production'
+            : null;
+
+  return {
+    worker,
+    canonicalAuthority: BILLING_AUTHORITY_WORKER,
+    isAuthority,
+    replicaBound,
+    replicaWorker: BILLING_REPLICA_WORKER,
+    webhookSecret,
+    stripeApiKey,
+    production,
+    priceIds: { builder: present(e.STRIPE_PRICE_BUILDER), studio: present(e.STRIPE_PRICE_STUDIO) },
+    mutationWouldApplyToBoth: why === null,
+    why,
+  };
+}
+
 export class BillingAuthorityError extends Error {
   constructor(
     public readonly code: string,
