@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import Nav from '../components/Nav.astro';
 import Footer from '../components/Footer.astro';
+import Horizon from '../components/Horizon.astro';
 import InterfaceSound from './InterfaceSound.astro';
 
 interface Props {
@@ -99,6 +100,23 @@ const ogImage = new URL('/og.png', site);
   </head>
   <body>
     <a href="#main" class="skip-link">Skip to content</a>
+
+    {/* THE ATMOSPHERE, ON EVERY ROUTE THAT IS NOT THE LANDING.
+        Until now index.astro was the only page in the product with a living background: it mounts
+        this same component and carries 26 @keyframes, while global.css — which dresses /pricing,
+        /changelog, /status, /404, the two legal routes and all eleven /docs pages — declared ZERO
+        keyframes and no canvas. Eighteen of nineteen routes were literally motionless, which is
+        the owner's "everything looks broken, like it's only HTML" in one measurement.
+
+        The SAME component, not a second one, so there is one atmosphere in the product and one
+        harness proving it runs. It is quieter here: global.css sets --horizon-veil: 0.45 because
+        these are pages of running text. LegalLayout and DocsLayout both wrap this file, so this
+        single mount is every route.
+
+        It renders BEFORE <Nav> and outside <main> on purpose — it is `position: fixed` at
+        `z-index: -1`, it is aria-hidden, and it takes no pointer events, so its position in the
+        document affects nothing but the reading order it is already excluded from. */}
+    <Horizon />
 
     {!bare && <Nav />}
 

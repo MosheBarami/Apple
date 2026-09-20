@@ -17,6 +17,21 @@
   --faint: #656565;
   --text: var(--ink);
   --bg: var(--paper);
+  /* THE ATMOSPHERE READS THESE. `<Horizon />` paints its bottom wash in --ground so the floor
+     arrives out of the page's own colour rather than a hardcoded near-black, and scales its whole
+     opacity by --horizon-veil. The landing imports landing.css and never this file, so its own
+     full-strength atmosphere is untouched by either value; these are the CONTENT routes. 0.45
+     because a hero can carry a grid at full strength and a page of running text cannot.
+
+     --ground REPEATS --paper's literal instead of saying `var(--paper)`, and that is deliberate.
+     tests/theme-on-every-route.test.mjs asserts --theme-color and the base surface agree by
+     comparing the DECLARED text, so an indirection reads to it as "#f5f5f5 over a var(--paper)
+     page" and it refuses — correctly, because it cannot resolve a reference and must not pretend
+     it can. The literal keeps that guard meaningful; a second guard in
+     tests/animation-actually-wins.test.mjs pins --ground to --paper in every theme block so the
+     two spellings of one colour cannot drift apart. */
+  --ground: #f5f5f5;
+  --horizon-veil: 0.45;
   --accent: #292929;
   --accent-soft: rgba(0, 0, 0, 0.06);
   --accent-ink: #ffffff;
@@ -106,6 +121,8 @@
     --faint: #a09d99;
     --text: var(--ink);
     --bg: var(--paper);
+  --ground: #141312;
+  --horizon-veil: 0.45;
     --accent: #f4f3f2;
     --accent-soft: rgba(255, 255, 255, 0.08);
     --accent-ink: #141312;
@@ -157,6 +174,8 @@
   --faint: #a09d99;
   --text: var(--ink);
   --bg: var(--paper);
+  --ground: #141312;
+  --horizon-veil: 0.45;
   --accent: #f4f3f2;
   --accent-soft: rgba(255, 255, 255, 0.08);
   --accent-ink: #141312;
@@ -198,10 +217,27 @@
   box-sizing: border-box;
 }
 
+/* NO `background` HERE, AND THAT ABSENCE IS LOAD-BEARING — it is the whole reason the atmosphere
+   on these routes is visible at all.
+
+   The root element's background is propagated to the viewport canvas and painted at the very
+   bottom of the paint order. When `html` declares one, `body`'s is NOT propagated, so body paints
+   as an ordinary in-flow block background — which in the root stacking context comes AFTER
+   negative-z descendants. `<Horizon />` sits at `z-index: -1`, so a background on `html` plus one
+   on `body` covers it completely.
+
+   THIS IS NOT HYPOTHETICAL: both declarations were here, and mounting the canvas under them
+   produced a page that was byte-for-byte "correct" — the <canvas> in the HTML, the bundle loaded,
+   the script running, `horizon-runs.test.mjs` green — and visually identical to the dead page,
+   because every pixel the canvas drew was painted over. That is the same shape as the two defects
+   this suite already exists for. `tests/animation-actually-wins.test.mjs` now asserts this rule
+   directly so it cannot be undone by someone tidying the stylesheet.
+
+   landing.css has always had it right (no background on `html`, `--ground` on `body`); this file
+   simply did not, because until now it had nothing behind the page to reveal. */
 html {
   min-width: 320px;
   scroll-behavior: smooth;
-  background: var(--paper);
 }
 
 body {

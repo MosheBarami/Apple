@@ -295,3 +295,161 @@ test('no keyframe is declared with an empty body', () => {
     .map(([name]) => name);
   assert.deepEqual(hollow, [], `these keyframes have no frame block at all: ${hollow.join(', ')}`);
 });
+
+/* ============================================================================================
+ * AN ATMOSPHERE THAT RUNS, DRAWS, AND IS PAINTED OVER.
+ *
+ * Everything above this line asks whether a keyframe WINS THE CASCADE. These ask the other half of
+ * the same question for the canvas layer, because the landing's atmosphere was extended to the rest
+ * of the site on 2026-09-20 and the extension had a defect of exactly the shape this file exists
+ * for — one that every check in the repository passed straight through.
+ *
+ * WHAT HAPPENED. `<Horizon />` is `position: fixed; z-index: -1`. A negative-z child paints after
+ * the root element's background but BEFORE the in-flow background of `body`. The root's background
+ * is special: it is propagated to the viewport canvas, and when `html` declares one, `body`'s is
+ * NOT propagated and paints as an ordinary block background instead — on top of the negative-z
+ * layer. landing.css has always declared a background on `body` and none on `html`, which is why
+ * the hero works. global.css, which dresses the OTHER eighteen routes, declared one on BOTH.
+ *
+ * Mounting the canvas under global.css therefore produced a page where:
+ *   - the <canvas> was in the served HTML                        (a grep says yes)
+ *   - the bundle loaded and the script reached its element       (horizon-runs.test.mjs says yes)
+ *   - requestAnimationFrame fired and the context took draw calls(horizon-runs.test.mjs says yes)
+ *   - and not one of those pixels was ever visible to anybody.
+ *
+ * That is the third member of a family this repository has now shipped three times: the hero effect
+ * whose script never executed, `fade-in-soft` losing the cascade, and this. In all three the
+ * obvious check was green and the page had not moved.
+ *
+ * WHAT THESE ASSERT, deliberately as a RULE about the stylesheet rather than a rendering:
+ * a route whose layout mounts the atmosphere must use a sheet that leaves the root's background
+ * alone. It is a static check, so it runs in CI with no browser; the companion browser proof that
+ * the thing genuinely moves is `tests/atmosphere-on-every-route.spec.ts`, and neither replaces the
+ * other — this one cannot see a pixel, and that one cannot run without a server.
+ * ========================================================================================== */
+
+const GLOBAL_CSS = readFileSync(join(SITE, 'src', 'styles', 'global.css'), 'utf8');
+const BASE_LAYOUT = readFileSync(join(SITE, 'src', 'layouts', 'Base.astro'), 'utf8');
+
+/** The `html { ... }` / `body { ... }` blocks of a sheet, comments stripped, at the top level. */
+function elementBlock(css, element) {
+  for (const rule of flatRules(stripComments(css))) {
+    if (rule.inAt) continue;
+    const sels = rule.selector.split(',').map((s) => s.trim());
+    if (sels.includes(element)) return rule.body;
+  }
+  return null;
+}
+
+const declaresBackground = (body) =>
+  body !== null && /(?:^|[;{\s])background(?:-color|-image)?\s*:/.test(body);
+
+test('the atmosphere is mounted on the routes that were motionless, not just on the landing', () => {
+  // The whole point of the change this guards. If the mount is removed, every one of /pricing,
+  // /changelog, /status, /404, /privacy, /terms and the eleven /docs pages silently goes back to
+  // being a page with zero keyframes and zero canvas, which is the state the owner called "static".
+  assert.match(BASE_LAYOUT, /<Horizon\s*\/>/,
+    'Base.astro no longer mounts <Horizon />. LegalLayout and DocsLayout both wrap Base, so this '
+    + 'one mount is the atmosphere for every route that is not the landing; without it eighteen '
+    + 'of the nineteen routes have no motion of any kind.');
+  assert.match(BASE_LAYOUT, /import\s+Horizon\s+from/,
+    'Base.astro renders <Horizon /> without importing it — Astro would emit the literal tag');
+});
+
+test('the sheet behind the atmosphere does not paint over it', () => {
+  // THE ACTUAL DEFECT. Asserted for both sheets, because the rule is a property of "a sheet used by
+  // a route that mounts a negative-z atmosphere", not a fact about one file.
+  for (const [name, css] of [['global.css', GLOBAL_CSS], ['landing.css', CSS]]) {
+    const html = elementBlock(css, 'html');
+    const body = elementBlock(css, 'body');
+
+    // NOT VACUOUS. `declaresBackground(null)` is false, so a matcher that silently stopped finding
+    // the `html` block would PASS the real assertion below while checking nothing at all — the
+    // precise failure mode this file is named after. Both blocks must actually have been located.
+    assert.ok(html !== null, `${name}: the harness found no top-level \`html\` rule, so the check `
+      + 'below would pass without reading anything. Fix the matcher, do not trust the green.');
+    assert.ok(body !== null, `${name}: the harness found no top-level \`body\` rule, so the check `
+      + 'below would pass without reading anything. Fix the matcher, do not trust the green.');
+
+    assert.ok(!declaresBackground(html),
+      `${name} declares a background on \`html\`. <Horizon /> sits at z-index: -1, and the root's `
+      + "background is propagated to the viewport canvas — so declaring one here stops `body`'s "
+      + 'from propagating and paints the atmosphere out of existence. The canvas still runs, still '
+      + 'draws, and is invisible: every other check in this repository stays green. Put the page '
+      + 'colour on `body` and leave `html` without one.');
+
+    assert.ok(declaresBackground(body),
+      `${name} declares no background on \`body\`. With none on \`html\` either, the viewport `
+      + 'canvas falls back to the UA default (white) and the atmosphere is drawn against it.');
+  }
+});
+
+test('the veil that quiets the atmosphere over running text is real and bounded', () => {
+  // --horizon-veil scales the whole layer. A missing token silently becomes the fallback (1) and
+  // the content routes get the full hero grid behind their body copy; a zero is an atmosphere that
+  // is mounted, runs, and cannot be seen — the same invisible-but-green failure by another route.
+  const veil = /--horizon-veil:\s*([0-9.]+)\s*;/.exec(GLOBAL_CSS);
+  assert.ok(veil, 'global.css no longer defines --horizon-veil, so the content routes silently '
+    + 'fall back to the hero\'s full strength behind their running text');
+  const value = Number(veil[1]);
+  assert.ok(value > 0.05 && value <= 1,
+    `--horizon-veil is ${value}; at or below 0.05 the layer is mounted and effectively invisible, `
+    + 'which is indistinguishable from not shipping it');
+
+  assert.match(readFileSync(join(SITE, 'src', 'components', 'Horizon.astro'), 'utf8'),
+    /opacity:\s*var\(--horizon-veil,\s*1\)/,
+    'Horizon.astro no longer reads --horizon-veil with a fallback of 1. The fallback is what keeps '
+    + 'the landing at full strength: landing.css does not define the property at all.');
+});
+
+test('--ground resolves on the content routes, so the floor is not drawn against a guessed black', () => {
+  // Horizon falls back to #050807 when --ground is absent. That is the LANDING's ground; on a
+  // content route it would paint a near-black wash over a #141312 page — a visible band with no
+  // error anywhere. The token must exist in the sheet those routes actually load.
+  assert.match(GLOBAL_CSS, /--ground:\s*[^;]+;/,
+    'global.css no longer defines --ground; Horizon will wash the bottom of every content route '
+    + "in its hardcoded fallback instead of the page's own colour");
+});
+
+test('--ground and --paper are the same colour in every theme block, so neither can drift', () => {
+  // THE COST OF A LITERAL. global.css names its base surface --paper; Horizon reads --ground. The
+  // token therefore repeats the value rather than saying `var(--paper)`, because
+  // theme-on-every-route.test.mjs compares DECLARED text and an indirection reads to it as a
+  // disagreement. A repeated constant is a thing that drifts, so it is pinned here: change --paper
+  // without changing --ground and the canvas washes the foot of every content route in the OLD
+  // page colour — a band across the bottom of eighteen routes with no error anywhere.
+  //
+  // Each theme block is read separately: light (:root) and the two dark spellings, which are the
+  // prefers-color-scheme block and the explicit [data-theme='dark'] override.
+  const blocks = [
+    [':root (light)', /:root\s*\{/],
+    ['@media (prefers-color-scheme: dark)', /@media \(prefers-color-scheme: dark\)\s*\{\s*:root:not\(\[data-theme='light'\]\)\s*\{/],
+    [":root[data-theme='dark']", /:root\[data-theme='dark'\]\s*\{/],
+  ];
+
+  let checked = 0;
+  for (const [name, selector] of blocks) {
+    const at = GLOBAL_CSS.search(selector);
+    assert.notEqual(at, -1, `${name}: block not found in global.css — this guard would pass over a `
+      + 'drift it can no longer see. Fix the selector rather than trusting the green.');
+    // Brace-balanced from the first `{` of the match to its close.
+    const open = GLOBAL_CSS.indexOf('{', at);
+    let depth = 0;
+    let end = GLOBAL_CSS.length;
+    for (let i = open; i < GLOBAL_CSS.length; i++) {
+      if (GLOBAL_CSS[i] === '{') depth++;
+      else if (GLOBAL_CSS[i] === '}') { depth--; if (!depth) { end = i; break; } }
+    }
+    const block = GLOBAL_CSS.slice(open + 1, end);
+    const read = (token) => (new RegExp(`(?:^|[;{\\s])${token}\\s*:\\s*([^;}]+)`).exec(block) ?? [, null])[1];
+    const paper = read('--paper');
+    const ground = read('--ground');
+    assert.ok(paper, `${name}: no --paper declared, so there is nothing to pin --ground to`);
+    assert.ok(ground, `${name}: no --ground declared, so Horizon falls back to the landing's black`);
+    assert.equal(ground.trim().toLowerCase(), paper.trim().toLowerCase(),
+      `${name}: --ground is ${ground.trim()} but the page surface --paper is ${paper.trim()}. The `
+      + 'canvas would wash the foot of every content route in a colour the page is not.');
+    checked += 1;
+  }
+  assert.equal(checked, 3, `only ${checked} theme blocks were checked; expected all three`);
+});

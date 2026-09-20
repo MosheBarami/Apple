@@ -100,12 +100,22 @@
        and not on drifting dust. The floor is not masked: its own falloff is drawn. */
     mask-image: linear-gradient(180deg, transparent 0%, #000 24%);
     -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 24%);
+    /* ONE COMPOSITION, TWO STRENGTHS. The hero this was drawn for can carry the grid at full
+       weight; /pricing, /docs and the legal routes are pages of running text, and the same
+       composition behind them at full strength competes with the words. global.css sets
+       --horizon-veil: 0.45 for exactly those routes. landing.css does not define the property at
+       all, so the fallback keeps the hero at 1 and no landing pixel moves. Scaling the element
+       rather than every alpha inside the draw call keeps the proportions of the composition
+       intact — a veil, not a different picture. */
+    opacity: var(--horizon-veil, 1);
   }
 
   /* The still frame is the same composition, quieter. A motionless field at full strength reads as
-     a texture somebody forgot to finish. */
+     a texture somebody forgot to finish. The veil still applies: this multiplies it rather than
+     replacing it, so a content route under reduced motion does not come back BRIGHTER than it is
+     with motion on — which is what a flat `opacity: 0.58` here would have done. */
   @media (prefers-reduced-motion: reduce) {
-    .horizon { opacity: 0.58; }
+    .horizon { opacity: calc(var(--horizon-veil, 1) * 0.58); }
   }
 </style>
 
