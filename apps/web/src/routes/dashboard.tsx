@@ -15,6 +15,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
+import { ProjectSignature } from '../components/project-signature';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Failure } from '../components/failure';
 import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '@golem/shared';
@@ -1140,6 +1141,9 @@ export function DashboardPage() {
               style={{ '--card-i': i } as CSSProperties}
               onPointerMove={trackPointer}
             >
+              {/* The mark comes FIRST in the card and full-bleed across its top, because the job
+                  it does is recognition before reading — see components/project-signature.tsx. */}
+              <ProjectSignature id={p.id} />
               <div className="project-card-top">
                 {/* The pin is drawn on the card, not only in the menu. Without it the top card is
                     simply somewhere the user did not put it, and the only way to find out why is

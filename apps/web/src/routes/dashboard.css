@@ -535,3 +535,68 @@
   .shelf .project-card:hover,
   .shelf .project-card:focus-visible { transform:none; }
 }
+
+/*[[ THE PROJECT'S OWN MARK.
+ *
+ *   The owner sent a screenshot of this shelf and said, correctly, that it is not beautiful: six
+ *   flat rectangles in a dark field, two of them named the same thing, nothing on any card telling
+ *   you which project it is except text you have to read. Recognition is what a shelf is for, and
+ *   this one had none.
+ *
+ *   components/project-signature.tsx draws a mark seeded from the project id — deterministic,
+ *   claiming nothing about the contents, in the same flowing-contour language as the landing's
+ *   hero, so the front door and the product look like one company made both.
+ *
+ *   FULL-BLEED, which means breaking out of the card's own 20px padding with a negative margin
+ *   rather than restructuring the card: the three content rows below it are laid out by a flex
+ *   column that works, and the mark is the only child that wants to touch the edges.
+ *
+ *   IT IS BEHIND THE HOVER SHEEN AND ABOVE NOTHING. z-index 1 puts it in the same rank as the
+ *   content rows, and document order keeps it underneath them — it is the first child, so the
+ *   name, description and metadata all paint after it. That is deliberate: the rule three hundred
+ *   lines up lifts `.project-card > *` to z-index 1 and settles equal rank by order, and this
+ *   element is first precisely so it can never cover a word. ]]*/
+.shelf .project-sig {
+  display: block;
+  width: calc(100% + 40px);
+  height: 104px;
+  margin: -20px -20px 16px;
+  border-start-start-radius: var(--r-lg);
+  border-start-end-radius: var(--r-lg);
+  overflow: hidden;
+  /* The mark is an identity, not a picture. It sits under the card's own surface brightness so a
+     shelf of twenty reads as a grid of cards rather than a grid of images. */
+  opacity: 0.85;
+  transition: opacity var(--t-base) var(--ease-out);
+}
+
+.shelf .project-card:hover .project-sig,
+.shelf .project-card:focus-visible .project-sig { opacity: 1; }
+
+.shelf .project-sig__line {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1;
+  stroke-linecap: round;
+  opacity: var(--sig-o, 0.2);
+  vector-effect: non-scaling-stroke;
+}
+
+/* EXACTLY ONE LINE PER MARK IS THE ACCENT, chosen by the seed. This is the same discipline the
+   landing's reference file records from four measured sites: one saturated colour, used once. A
+   mark where every line was green would make twenty green cards, which is the defect the hover
+   rule above this block was written to undo. */
+.shelf .project-sig__line.is-accent { stroke: var(--accent); stroke-width: 1.25; }
+
+.shelf .project-sig__glow-in { stop-color: color-mix(in srgb, var(--accent) 13%, transparent); }
+.shelf .project-sig__glow-out { stop-color: transparent; }
+
+:root[data-theme='light'] .shelf .project-sig { opacity: 0.7; }
+:root[data-theme='light'] .shelf .project-sig__glow-in { stop-color: color-mix(in srgb, var(--accent) 9%, transparent); }
+
+@media (max-width: 720px) {
+  .shelf .project-sig { width: calc(100% + 36px); margin: -18px -18px 14px; height: 84px; }
+}
+
+/* The mark is drawn once and never animates, so reduced motion has nothing to stop here — but the
+   hover brightening is a transition, and the block at the foot of this file already kills those. */
