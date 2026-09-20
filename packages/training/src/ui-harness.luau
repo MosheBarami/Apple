@@ -477,6 +477,26 @@ local localPlayer = newInstance("Player", Players, "LocalPlayer")
 newInstance("PlayerGui", localPlayer, "PlayerGui")
 newInstance("PlayerScripts", localPlayer, "PlayerScripts")
 nodeOf(Players).props.LocalPlayer = localPlayer
+
+--[[ THE LOCAL PLAYER'S IDENTITY, AND WHY THESE THREE ARE SAFE TO ANSWER.
+
+     MEASURED, 2026-09-20, on a generated tycoon leaderboard. Its data table ended with the row
+     `{ name = player.DisplayName, userId = player.UserId, value = 412600 }` — the standard way to
+     put "you" in a leaderboard — and every row built a headshot URL with
+     `"rbxthumb://type=AvatarHeadShot&id=" .. entry.userId`. `UserId` was nil, the concatenation
+     threw, and a 240-line leaderboard counted as the model's runtime error.
+
+     The DEFAULTS table above deliberately answers nil for an unknown property, because inventing a
+     value would make the measured geometry describe the shim. These three are the exception and the
+     reason is that NONE of them is a geometry input: an id and a name change no rectangle. The
+     instance already carries a shim-chosen Name ("LocalPlayer"), so the precedent is set.
+
+     BE AWARE WHEN READING A RENDER: a screen that prints "Player1" got that string from HERE, not
+     from the model. The value is deliberately the obvious placeholder Roblox itself uses rather
+     than something that could be mistaken for content the model wrote. ]]
+nodeOf(localPlayer).props.UserId = 1
+nodeOf(localPlayer).props.DisplayName = "Player1"
+nodeOf(localPlayer).props.CharacterAppearanceId = 1
 for _, svc in ipairs({ "ReplicatedStorage", "StarterGui", "StarterPlayer", "Lighting", "TweenService", "RunService", "UserInputService", "TextService", "GuiService", "ContextActionService", "SoundService", "ServerStorage", "CollectionService", "HttpService", "Debris", "MarketplaceService", "ContentProvider" }) do
 	newInstance(svc, dataModel, svc)
 end

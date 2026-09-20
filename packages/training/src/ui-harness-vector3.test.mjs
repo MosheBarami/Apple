@@ -159,3 +159,24 @@ gui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
   assert.equal(built.status, 'ok', `harness threw: ${built.detail}`);
   assert.ok(built.nodes.some((n) => n.class === 'ScreenGui' && n.props?.Name?.v === 'Hud'), 'the HUD after the call still builds');
 });
+
+test('the local player has an identity, because "you" is a row in every leaderboard', () => {
+  const built = buildUiTree(`
+local player = game:GetService("Players").LocalPlayer
+local gui = Instance.new("ScreenGui")
+gui.Parent = player:WaitForChild("PlayerGui")
+local row = Instance.new("TextLabel")
+row.Name = "You"
+row.Text = player.DisplayName .. " — rank #4"
+row.Parent = gui
+local thumb = Instance.new("ImageLabel")
+thumb.Name = "Head"
+thumb.Image = "rbxthumb://type=AvatarHeadShot&id=" .. player.UserId .. "&w=100&h=100"
+thumb.Parent = gui
+`);
+  assert.equal(built.status, 'ok', `harness threw: ${built.detail}`);
+  const label = built.nodes.find((n) => n.props?.Name?.v === 'You');
+  assert.match(label.props.Text.v, /rank #4$/);
+  const head = built.nodes.find((n) => n.props?.Name?.v === 'Head');
+  assert.match(head.props.Image.v, /id=1&/, 'UserId must be a number the script can concatenate');
+});

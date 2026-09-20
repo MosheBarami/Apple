@@ -14,7 +14,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { renderTreeToSvg } from './render-ui-tree.mjs';
+import { renderTreeToSvg, surfaceCanvas } from './render-ui-tree.mjs';
 
 /** Build the node shape `indexTree` produces: props in harness form, plus a `parentNode` link. */
 function node(id, cls, props, parentNode = null) {
@@ -111,4 +111,51 @@ test('an off-screen node is counted, not quietly dropped', () => {
 
   assert.equal(out.offscreen, 1);
   assert.equal(out.painted, 0);
+});
+
+/**
+ * A UI THAT HANGS ON A WALL IS NOT A FAILED SCREEN.
+ *
+ * Asked for a tycoon leaderboard, the model built a board beside spawn — a Part carrying a
+ * SurfaceGui — which is how a tycoon leaderboard usually works. The showcase looked only under
+ * PlayerGui and filed it as `no_screengui_in_playergui`: a true sentence and a false verdict. The
+ * canvas of such a UI is its part's face in studs times PixelsPerStud, and which face is `Face`.
+ */
+const v3 = (x, y, z) => ({ k: 'Vector3', x, y, z });
+const enumv = (e, n) => ({ k: 'Enum', e, n });
+const num = (v) => ({ k: 'num', v });
+
+test('a SurfaceGui canvas comes from its part face and PixelsPerStud', () => {
+  const part = { id: 1, class: 'Part', props: { Size: v3(20, 10, 1) }, children: [] };
+  const gui = { id: 2, class: 'SurfaceGui', props: {}, children: [], parentNode: part };
+  const canvas = surfaceCanvas(gui, part);
+
+  assert.equal(canvas.face, 'Front', 'the engine default face is Front');
+  assert.equal(canvas.w, 1000, '20 studs wide at the default 50 px/stud');
+  assert.equal(canvas.h, 500, '10 studs tall');
+  assert.equal(canvas.pixelsPerStud, 50);
+});
+
+test('the Left and Top faces use the other two dimensions of the part', () => {
+  const part = { id: 1, class: 'Part', props: { Size: v3(20, 10, 4) }, children: [] };
+  const left = surfaceCanvas({ id: 2, class: 'SurfaceGui', props: { Face: enumv('NormalId', 'Left') }, children: [] }, part);
+  assert.equal(left.w, 200, 'a Left face is Z wide');
+  assert.equal(left.h, 500, 'and Y tall');
+
+  const top = surfaceCanvas({ id: 3, class: 'SurfaceGui', props: { Face: enumv('NormalId', 'Top') }, children: [] }, part);
+  assert.equal(top.w, 1000, 'a Top face is X wide');
+  assert.equal(top.h, 200, 'and Z deep');
+});
+
+test('PixelsPerStud set by the model is used, not the default', () => {
+  const part = { id: 1, class: 'Part', props: { Size: v3(10, 5, 1) }, children: [] };
+  const canvas = surfaceCanvas({ id: 2, class: 'SurfaceGui', props: { PixelsPerStud: num(100) }, children: [] }, part);
+  assert.equal(canvas.w, 1000);
+  assert.equal(canvas.h, 500);
+});
+
+test('a surface with no part, or a part with no Size, refuses rather than guessing a canvas', () => {
+  assert.equal(surfaceCanvas({ id: 2, class: 'SurfaceGui', props: {}, children: [] }, null), null);
+  const sizeless = { id: 1, class: 'Part', props: {}, children: [] };
+  assert.equal(surfaceCanvas({ id: 2, class: 'SurfaceGui', props: {}, children: [] }, sizeless), null);
 });

@@ -38,8 +38,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { mkdtempSync } from 'node:fs';
-import { buildUiTree, indexTree, resolveLayout, guiDescendants, screenGuisInPlayerGui, fencedLuau } from './score-ui.mjs';
-import { renderTreeToSvg } from './render-ui-tree.mjs';
+import { buildUiTree, indexTree, resolveLayout, guiDescendants, screenGuisInPlayerGui, descendants, fencedLuau } from './score-ui.mjs';
+import { renderTreeToSvg, surfaceCanvas } from './render-ui-tree.mjs';
 import { mergeResults } from './showcase-manifest.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -203,12 +203,51 @@ async function runTarget({ target, genreId, model, maxTokens, lib, outDir, viewp
 
   const tree = indexTree(built.nodes);
   const guis = screenGuisInPlayerGui(tree);
-  if (!guis.length) {
-    return { target, genre: genreId, id: construction.id, outcome: 'no_screengui_in_playergui', detail: 'the build ran but nothing reached PlayerGui', codeChars: code.length };
+
+  //[[ A UI THAT LIVES IN THE WORLD IS NOT A FAILED SCREEN.
+  //
+  //   In a tycoon the leaderboard is usually a BOARD BESIDE SPAWN — a Part carrying a SurfaceGui —
+  //   and the model builds exactly that. Looking only under PlayerGui and reporting
+  //   `no_screengui_in_playergui` filed a correct world leaderboard as a failure. So when nothing
+  //   reached the screen, look for a SurfaceGui or BillboardGui that has something in it, and
+  //   render it at its own canvas: the part's face in studs times PixelsPerStud.
+  //
+  //   `surface` travels in the result so a caption can say this hangs on a wall rather than
+  //   implying it fills the player's screen. ]]
+  let root = guis[0] ?? null;
+  let viewportUsed = viewport;
+  let surface = null;
+  if (!root) {
+    const worldGuis = tree.roots
+      .flatMap((r) => descendants(r, [r]))
+      .filter((n) => (n.class === 'SurfaceGui' || n.class === 'BillboardGui') && guiDescendants(n).length > 0);
+    const hit = worldGuis.find((n) => surfaceCanvas(n, n.parentNode));
+    if (hit) {
+      const canvas = surfaceCanvas(hit, hit.parentNode);
+      root = hit;
+      viewportUsed = { id: 'surface', w: Math.min(3000, canvas.w), h: Math.min(3000, canvas.h) };
+      surface = {
+        kind: hit.class,
+        face: canvas.face,
+        pixelsPerStud: canvas.pixelsPerStud,
+        partStuds: canvas.studs,
+        adornee: hit.parentNode?.props?.Name?.v ?? hit.parentNode?.class ?? null,
+      };
+    }
+  }
+  if (!root) {
+    return {
+      target,
+      genre: genreId,
+      id: construction.id,
+      outcome: 'nothing_on_screen_or_on_a_surface',
+      detail: 'the build ran, but no ScreenGui reached PlayerGui and no SurfaceGui or BillboardGui held anything',
+      codeChars: code.length,
+    };
   }
 
-  const root = guis[0];
-  const { rects } = resolveLayout(root, viewport);
+  const viewport_ = viewportUsed;
+  const { rects } = resolveLayout(root, viewport_);
   const guiNodes = guiDescendants(root);
 
   // TWO PICTURES, BECAUSE A MODAL SCREEN HAS TWO HONEST ANSWERS.
@@ -219,13 +258,13 @@ async function runTarget({ target, genreId, model, maxTokens, lib, outDir, viewp
   // hidden nodes, and the manifest carries `forcedVisible` so no caption can claim the script
   // opened it by itself. Collapsing these two into one picture is how the first run of this script
   // produced a shop that appeared to have a layout bug it did not have.
-  const asScripted = renderTreeToSvg({ guiNodes, rects, viewport });
+  const asScripted = renderTreeToSvg({ guiNodes, rects, viewport: viewport_ });
   writeFileSync(join(outDir, `${base}.svg`), asScripted.svg);
 
   const files = { luau: `${base}.luau`, svg: `${base}.svg` };
   let opened = null;
   if (asScripted.hidden > 0) {
-    opened = renderTreeToSvg({ guiNodes, rects, viewport, forceVisible: true });
+    opened = renderTreeToSvg({ guiNodes, rects, viewport: viewport_, forceVisible: true });
     writeFileSync(join(outDir, `${base}--opened.svg`), opened.svg);
     files.openedSvg = `${base}--opened.svg`;
   }
@@ -238,6 +277,8 @@ async function runTarget({ target, genreId, model, maxTokens, lib, outDir, viewp
     codeChars: code.length,
     ms: res.ms,
     screenGuis: guis.length,
+    surface,
+    viewport: viewport_,
     guiNodes: guiNodes.length,
     asScripted: {
       painted: asScripted.painted,

@@ -116,6 +116,39 @@ function isVisible(node, { forceVisible }) {
 }
 
 /**
+ * THE CANVAS OF A UI THAT LIVES IN THE WORLD, NOT ON THE SCREEN.
+ *
+ * MEASURED, 2026-09-20. Asked for a tycoon leaderboard, the model built the RIGHT thing: a physical
+ * board beside spawn — a Part in workspace carrying a SurfaceGui. The showcase looked only for a
+ * ScreenGui under PlayerGui, found none, and recorded `no_screengui_in_playergui`. The sentence was
+ * true and the verdict was false: a correct world leaderboard was filed as a failed screen. In a
+ * tycoon the leaderboard is USUALLY a board on a wall, so this was not an edge case, it was the
+ * common case being marked wrong.
+ *
+ * A SurfaceGui's canvas is its part's face, in studs, times PixelsPerStud. Which face depends on
+ * `Face`, and the engine's default is Front — the part's X by Y. Everything here is read off
+ * properties the model set; when the part has no Size there is nothing to derive and the function
+ * says so rather than picking a number.
+ */
+export function surfaceCanvas(gui, part) {
+  if (!part) return null;
+  const size = part.props?.Size;
+  if (!size || size.k !== 'Vector3') return null;
+  const face = enumProp(gui, 'Face') ?? 'Front';
+  const studs =
+    face === 'Left' || face === 'Right'
+      ? { w: size.z, h: size.y }
+      : face === 'Top' || face === 'Bottom'
+        ? { w: size.x, h: size.z }
+        : { w: size.x, h: size.y };
+  const pps = numProp(gui, 'PixelsPerStud', 50);
+  const w = Math.round(studs.w * pps);
+  const h = Math.round(studs.h * pps);
+  if (!(w > 0 && h > 0)) return null;
+  return { w, h, face, pixelsPerStud: pps, studs: { w: studs.w, h: studs.h } };
+}
+
+/**
  * Paint order. Roblox draws siblings by ZIndex then by the order they were parented; `nodes` from
  * the harness is already in creation order, so a stable sort on ZIndex alone reproduces it.
  */
