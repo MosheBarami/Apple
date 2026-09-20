@@ -236,9 +236,29 @@ test('REFACTOR PROOF: provider refactor preserves transport outside model-specif
     assert.deepEqual(a.seen.runs.length, 1, `${name}: exactly one inference call`);
     // Reasoning controls are provider-model schema, and the product now intentionally routes
     // different foundations. Compare the transport payload after removing only those model-specific
-    // knobs; messages, tools, token ceiling and temperature must remain byte-for-byte equivalent.
+    // knobs; messages, tools and temperature must remain byte-for-byte equivalent.
+    //
+    // RE-AIMED 2026-09-20: `max_tokens` moved out of the comparison, for the SAME reason model id
+    // and neurons were already excluded twenty lines below — it is configuration, and configuration
+    // is the thing that is allowed to move. It is not an independent fact about the transport:
+    // gateway.ts:372 computes it as `min(req.maxTokens ?? cfg.maxTokens, cfg.maxTokens)`, so it is
+    // read straight out of DEFAULT_MODELS. The baseline is a frozen pre-refactor revision, so its
+    // DEFAULT_MODELS is frozen too, and comparing the two compared old configuration against new.
+    //
+    // What actually reversed: 600ab00 found that `stone` and `rune` are the SAME model
+    // (@cf/zai-org/glm-5.3-flash) carrying different ceilings — 5600 and 6500 — with nothing in the
+    // file explaining why, and raised stone to 6500. That is the deliberate decision this assertion
+    // had been defending against, and it turned a real fix red: the owner's 16-step build died on
+    // step 1 having been charged 30 Credits for nothing usable. Leaving `max_tokens` here would
+    // forbid ever correcting a model's ceiling on pain of a red suite — the identical argument the
+    // file already makes for neurons ("pinning them here would forbid ever changing the model").
+    //
+    // The property this test exists for is untouched: the providers refactor did not change the
+    // TRANSPORT — same number of calls, same messages, same tools, same temperature, same AI
+    // Gateway options. The token ceiling is covered on its own terms by the clamp-before-reserve
+    // ordering asserted in apps/worker/tests/effort-output-budget.test.mjs.
     const stablePayload = (payload) => {
-      const { reasoning, reasoning_effort, ...rest } = payload;
+      const { reasoning, reasoning_effort, max_tokens, ...rest } = payload;
       return rest;
     };
     assert.deepEqual(stablePayload(a.seen.runs[0].payload), stablePayload(b.seen.runs[0].payload), `${name}: same transport payload`);

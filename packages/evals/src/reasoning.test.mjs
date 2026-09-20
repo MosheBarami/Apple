@@ -128,11 +128,31 @@ test("'hi' is conversation, not an under-specified build request", () => {
   assert.equal(t.ambiguousRequest, false);
 });
 
-test('token budgets: high gets modest headroom, low is unchanged', () => {
-  // measured: high produced 882 output tokens against low's 858 on the same prompt, so a large
-  // multiplier would only over-reserve budget
-  assert.equal(tokensForEffort(2400, 'low'), 2400);
-  assert.equal(tokensForEffort(2400, 'high'), 3000);
+test('token budgets: low is unchanged, and high is never given less room than low', () => {
+  // RE-AIMED 2026-09-20. This asserted `tokensForEffort(2400, 'high') === 3000` — the 1.25x scale —
+  // on the grounds that "high produced 882 output tokens against low's 858 on the same prompt, so a
+  // large multiplier would only over-reserve budget".
+  //
+  // That reasoning was refuted in 600ab00 and the decision genuinely reversed. The measurement was
+  // real but taken on a DESIGN PROBE, which answers in prose; it was then generalised into a policy
+  // for every prompt, including a build step that has to emit a complete Luau tool call. The tier
+  // chosen for the hardest work ended up with the second-smallest budget, and a reasoning model
+  // spends its budget on thinking FIRST — so the step that thinks hardest was the one most likely
+  // to run out before writing anything. The owner's 16-step tower-defence build died on step 1 of
+  // 16 with "the model reached its output limit before finishing this step", 30 Credits charged for
+  // nothing usable. `high` now asks 2x the base.
+  //
+  // So the literal is gone and what remains is the PROPERTY the literal was a stale instance of:
+  // low passes through untouched, and high is never rationed below low. The exact ceiling that
+  // `high` reaches is asserted on its own terms, against every mode, in
+  // apps/worker/tests/effort-output-budget.test.mjs ("high effort asks for at least every model
+  // ceiling, in every mode") — pinning a second copy of the number here is what made this test go
+  // red for a fix rather than for a regression.
+  assert.equal(tokensForEffort(2400, 'low'), 2400, 'low passes the base through unscaled');
+  assert.ok(
+    tokensForEffort(2400, 'high') > tokensForEffort(2400, 'low'),
+    'high must not be rationed below low — the defect 600ab00 fixed',
+  );
   // medium is scaled generously only as a safety net for an explicit caller; it is never selected
   assert.ok(tokensForEffort(2400, 'medium') > tokensForEffort(2400, 'high'));
 });
