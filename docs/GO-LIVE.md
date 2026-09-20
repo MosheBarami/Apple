@@ -90,6 +90,34 @@ $ npx wrangler secret list --config wrangler.apple.jsonc
 Choose Builder and Choose Studio, and two real Stripe Checkout Sessions were created at $12.00 and
 $40.00 with payable URLs. See `docs/evidence/payments-live-2026-09-19.md`.
 
+### A defect on this path that was found and fixed on 2026-09-20
+
+Worth recording here rather than in a commit nobody reads before go-live, because it would have
+surfaced on the **first real payment** and not before.
+
+`/api/billing/webhook` requires the legacy `golem` worker. `apps/worker/src/index.ts:2503` returns
+503 when `LEGACY_QUOTA_DO` is absent, and every billing mutation is delivered to that replica as
+well as to the authority. The comment on the catch is explicit: *"never answer success before both
+stores acknowledge"* — a replica that fails makes the webhook answer 503, and Stripe then retries
+an event that can never succeed.
+
+golem's QuotaDO still carried the pre-rename `ledger` schema: a `sparks` column and no `credits`
+one, so `state()` threw `no such column: credits` and every admin call to it answered 500. The
+migration written for the authority had only been deployed to `apple`.
+
+Deployed to golem and verified, same command against both hosts:
+
+```
+golem  ledgerColumns ["id","day","kind","sparks","created_at","credits"]  200   (was 500)
+apple  ledgerColumns ["id","day","kind","credits","created_at"]           200
+```
+
+`sparks` is retained and `credits` was added and populated from it, so the ledger's history carried
+over rather than reading as an account that had never spent.
+
+**So golem must not be deleted.** It looks like a leftover from the rename and it is a live
+dependency of the payments path.
+
 ### The blocker is not technical, and it does not have a workaround
 
 **The owner is 15.** Stripe — and every comparable card processor — requires the account holder to
