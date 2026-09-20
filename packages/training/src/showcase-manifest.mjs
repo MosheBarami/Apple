@@ -27,10 +27,19 @@ export function mergeResults(outDir, fresh) {
     return fresh; // an unreadable manifest is replaced, not silently merged into
   }
   if (!Array.isArray(prior.results)) return fresh;
-  // Both row shapes are keyed here. A UI row carries a screen id AND a genre, because the same shop
-  // built for horror and for tycoon are two different results. A MAP row carries only a genre —
-  // there is one map per genre — so its screen half is empty and the genre alone identifies it.
-  const key = (r) => `${r.id ?? r.target ?? ''}--${r.genre ?? ''}`;
+  //[[ THE KEY IS WHAT WAS ASKED FOR, NOT WHAT CAME BACK.
+  //
+  //   MEASURED. The key used to read `r.id ?? r.target`, and `id` is the LIBRARY's resolved id,
+  //   which only a row that got as far as the library carries. A failed row fell back to `target`
+  //   and, worse, carried no `genre` at all — so one screen keyed as `screen-gacha--tycoon` when it
+  //   built and `screen-gacha--` when it failed. Sixteen screens produced twenty rows, and
+  //   screen-gacha appeared TWICE: built, from a stale run, beside runtime_error from the current
+  //   one — with the stale run's PNG still on disk for the gallery to show. A reader would have
+  //   seen a picture of a screen that no longer builds.
+  //
+  //   `target` and `genre` are what the caller asked for, every row carries both now, and they are
+  //   the identity. `id` is a result, and a result must never be part of a key. ]]
+  const key = (r) => `${r.target ?? r.id ?? ''}--${r.genre ?? ''}`;
   const byKey = new Map(prior.results.map((r) => [key(r), r]));
   for (const r of fresh) byKey.set(key(r), r);
   return [...byKey.values()];

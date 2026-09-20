@@ -84,3 +84,35 @@ test('map rows, which carry only a genre, merge one per genre', () =>
     assert.equal(merged.find((r) => r.genre === 'tycoon').parts, 102);
     assert.equal(merged.find((r) => r.genre === 'obby').parts, 84);
   }));
+
+/**
+ * The key must be what was ASKED FOR. `id` is the library's resolved id and only a row that reached
+ * the library carries it, so keying on it made one screen key two different ways depending on
+ * whether it succeeded — and the manifest then held a stale "built" row beside a fresh failure for
+ * the same screen, with the stale PNG still on disk for the gallery to show.
+ */
+test('a fresh failure replaces the built row for the same screen, not sits beside it', () =>
+  withDir((dir) => {
+    write(dir, [{ target: 'screen-gacha', id: 'screen-gacha', genre: 'tycoon', outcome: 'built', guiNodes: 53 }]);
+    const merged = mergeResults(dir, [
+      { target: 'screen-gacha', genre: 'tycoon', id: 'screen-gacha', outcome: 'runtime_error', detail: 'index nil' },
+    ]);
+
+    assert.equal(merged.length, 1, 'one screen in one genre is exactly one row, whatever the outcome');
+    assert.equal(merged[0].outcome, 'runtime_error');
+  }));
+
+test('a bare target name and its resolved library id are the same row', () =>
+  withDir((dir) => {
+    // The library resolves bare names: asking for "shop" returns the entry "screen-shop". So a row
+    // that FAILED before reaching the library carries target "shop" and no id, while the row that
+    // built carries target "shop" AND id "screen-shop". Keying on the resolved id forks those into
+    // two rows for one screen, which is how a stale success ended up beside a fresh failure.
+    write(dir, [{ target: 'shop', genre: 'tycoon', outcome: 'request_failed', detail: 'timeout' }]);
+    const merged = mergeResults(dir, [
+      { target: 'shop', id: 'screen-shop', genre: 'tycoon', outcome: 'built', guiNodes: 57 },
+    ]);
+
+    assert.equal(merged.length, 1, 'the resolved id must not fork the identity of one request');
+    assert.equal(merged[0].outcome, 'built');
+  }));

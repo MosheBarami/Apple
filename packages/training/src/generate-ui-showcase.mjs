@@ -175,7 +175,7 @@ async function complete({ model, system, prompt, maxTokens, timeoutMs = 180_000,
 async function runTarget({ target, genreId, model, maxTokens, lib, outDir, viewport }) {
   const construction = lib.construction.getUIConstruction({ id: target, totalChars: 3400 });
   if (!construction.found) {
-    return { target, outcome: 'not_in_library', detail: construction.notCovered };
+    return { target, genre: genreId, outcome: 'not_in_library', detail: construction.notCovered };
   }
   const genrePayload = (() => {
     const g = lib.genre.getGenreReferenceGuide({ genre: genreId });
@@ -186,25 +186,25 @@ async function runTarget({ target, genreId, model, maxTokens, lib, outDir, viewp
   const prompt = buildPrompt({ target, label, constructionPayload: construction, genrePayload, genreId });
 
   const res = await complete({ model, system: SYSTEM, prompt, maxTokens });
-  if (!res.ok) return { target, outcome: 'request_failed', detail: res.error };
+  if (!res.ok) return { target, genre: genreId, outcome: 'request_failed', detail: res.error };
 
   const code = fencedLuau(res.text);
   if (!code) {
-    return { target, outcome: 'no_code_block', detail: `answer was ${res.text.length} chars of prose`, answerChars: res.text.length };
+    return { target, genre: genreId, outcome: 'no_code_block', detail: `answer was ${res.text.length} chars of prose`, answerChars: res.text.length };
   }
 
   const built = buildUiTree(code);
   const base = `${construction.id}--${genreId}`;
   writeFileSync(join(outDir, `${base}.luau`), code);
 
-  if (!built.ran) return { target, id: construction.id, outcome: 'harness_did_not_run', detail: built.reason, codeChars: code.length };
-  if (built.compiled === false) return { target, id: construction.id, outcome: 'does_not_compile', detail: built.detail, codeChars: code.length };
-  if (built.status === 'error') return { target, id: construction.id, outcome: 'runtime_error', detail: built.detail, codeChars: code.length };
+  if (!built.ran) return { target, genre: genreId, id: construction.id, outcome: 'harness_did_not_run', detail: built.reason, codeChars: code.length };
+  if (built.compiled === false) return { target, genre: genreId, id: construction.id, outcome: 'does_not_compile', detail: built.detail, codeChars: code.length };
+  if (built.status === 'error') return { target, genre: genreId, id: construction.id, outcome: 'runtime_error', detail: built.detail, codeChars: code.length };
 
   const tree = indexTree(built.nodes);
   const guis = screenGuisInPlayerGui(tree);
   if (!guis.length) {
-    return { target, id: construction.id, outcome: 'no_screengui_in_playergui', detail: 'the build ran but nothing reached PlayerGui', codeChars: code.length };
+    return { target, genre: genreId, id: construction.id, outcome: 'no_screengui_in_playergui', detail: 'the build ran but nothing reached PlayerGui', codeChars: code.length };
   }
 
   const root = guis[0];
@@ -281,7 +281,7 @@ async function main() {
     try {
       r = await runTarget({ target, genreId, model, maxTokens, lib, outDir, viewport });
     } catch (e) {
-      r = { target, outcome: 'threw', detail: e instanceof Error ? e.message : String(e) };
+      r = { target, genre: genreId, outcome: 'threw', detail: e instanceof Error ? e.message : String(e) };
     }
     results.push(r);
     console.log(
