@@ -29,7 +29,10 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATA = join(ROOT, 'packages', 'corpus', 'data');
-const PAGE = join(ROOT, 'apps', 'site', 'src', 'pages', 'index.astro');
+//[[ A GUARD NOBODY HAS SEEN GO RED IS NOT A GUARD.
+//   The page path is overridable so this file can be pointed at a deliberately broken copy and
+//   watched to fail. The default is the real page, which is what the gate suite runs. ]]
+const PAGE = process.argv[2] || join(ROOT, 'apps', 'site', 'src', 'pages', 'index.astro');
 
 /* ------------------------------------------------------------------- the figures, computed --- */
 
@@ -77,8 +80,32 @@ const page = readFileSync(PAGE, 'utf8');
 //   Numbers inside the frontmatter, in class names, in SVG path data and in aria attributes are not
 //   claims to a reader; only text a visitor can read is. ]]
 if (!page.includes('const proof = [')) {
-  const template = page.slice(page.indexOf('---', page.indexOf('---') + 3) + 3);
-  const prose = template
+  //[[ THE TEMPLATE HAS TO BE FOUND, NOT GUESSED.
+  //
+  //   This read `page.indexOf('---', page.indexOf('---') + 3)`, which finds the first run of three
+  //   dashes ANYWHERE after the opening fence. On 2026-09-20 that was a `/* ------ */ ` banner
+  //   comment on line 83 of index.astro — 92 lines above the real fence on line 175. Everything
+  //   between the two was then scanned as if a visitor could read it, so the design commentary
+  //   ("y(t) = 0.38*t + 0.62*t^2.8"), the stratum constants and SVG path data inside a template
+  //   literal were all reported as typed claims. Twenty-six of them; a visitor can see none.
+  //
+  //   That is this repository's recurring failure in its exact shape: the checker could not locate
+  //   the template, and rendered that inability as a finding. The fence is now matched anchored to
+  //   the start of the file and to a line start, and a page whose fence cannot be found EXITS
+  //   NON-ZERO saying so — neither a pass nor a list of imaginary claims.
+  //
+  //   Style and script blocks are stripped with the same justification already written below for
+  //   the frontmatter: a CSS length or a JS constant is not something a visitor reads. ]]
+  const fence = page.match(/^---\r?\n[\s\S]*?\r?\n---[ \t]*\r?\n/);
+  if (!fence) {
+    console.error('PROOF FIGURES UNREADABLE — apps/site/src/pages/index.astro has no closing `---`\n'
+      + 'frontmatter fence at the start of a line, so this checker cannot tell its code from its page\n'
+      + 'text. It has verified nothing. Fix the page or this parser; do not read this as a pass.');
+    process.exit(2);
+  }
+  const prose = page.slice(fence[0].length)
+    .replace(/<!--[\s\S]*?-->/g, ' ')                  // authoring notes, never rendered
+    .replace(/<(style|script)\b[\s\S]*?<\/\1>/g, ' ')  // CSS lengths and JS constants are not claims
     .replace(/<svg[\s\S]*?<\/svg>/g, ' ')
     .replace(/\{[\s\S]*?\}/g, ' ')          // any expression: derived values are the point
     .replace(/<[^>]+>/g, ' ')                 // attributes, classes, ids
