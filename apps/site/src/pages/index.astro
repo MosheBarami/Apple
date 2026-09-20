@@ -157,7 +157,20 @@ const truths = [
 // figure and needs its own element to carry colour, and a string with markup spliced into it is
 // how that ends up unparseable.
 const activity = [
-  { text: 'get_tree         game.Workspace           ok' },
+  //[[ `get_project_tree`, NOT `get_tree`. THIS LINE NAMED A TOOL THAT DOES NOT EXIST.
+  //
+  //   `get_tree` is the plugin's wire op — what apps/worker/src/tools.ts sends down the socket for
+  //   the tool called `get_project_tree` (`studioOps: ['get_tree']`). No tool is registered under
+  //   it, the workspace activity log cannot print it, and no user has ever seen it. The other six
+  //   lines of this figure name real tools, which is precisely why it survived: five correct names
+  //   and one internal protocol verb look identical to anyone not holding the registry open.
+  //
+  //   The column is unchanged. `get_tree` was padded to seventeen characters and
+  //   `get_project_tree` is sixteen plus its single space, so the second column does not move.
+  //
+  //   tests/site-names-real-tools.test.mjs now compares every tool-shaped word on every built page
+  //   against the names the worker advertises, so the next one is caught the day it is written.
+  { text: 'get_project_tree game.Workspace           ok' },
   { text: 'create_instances 4 parts                  refused', refused: true },
   { text: '  writes require explicit edit consent', refused: true },
   { text: 'create_instances 4 parts                  ok' },
