@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" font-family="'Gotham SSm','Montserrat','Helvetica Neue',Arial,sans-serif">
+<defs><pattern id="apple-unfetched" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="12" height="12" fill="#1b1b22"/><line x1="0" y1="0" x2="0" y2="12" stroke="#3a3a46" stroke-width="3"/></pattern></defs>
+<rect width="1600" height="900" fill="#101014"/>
+<text x="831.00" y="74.40" text-anchor="middle" font-size="24.0" fill="rgb(255,196,60)" fill-opacity="1.000">$</text>
+<rect x="12.00" y="0.12" width="352.00" height="150.00" rx="10.00" ry="10.00" fill="rgb(24,26,34)" fill-opacity="0.800"/>
+<rect x="12.00" y="0.12" width="352.00" height="150.00" rx="10.00" ry="10.00" fill="none" stroke="rgb(120,200,255)" stroke-width="2" stroke-opacity="0.600"/>
+<text x="30.00" y="25.67" text-anchor="start" font-size="13.0" fill="rgb(120,200,255)" fill-opacity="1.000">DAILY CONTRACTS</text>
+<text x="18.00" y="49.32" text-anchor="start" font-size="12.0" fill="rgb(235,235,240)" fill-opacity="1.000">Collect 500 from the Diner</text>
+<rect x="12.00" y="56.12" width="332.00" height="6.00" rx="3.00" ry="3.00" fill="rgb(50,54,66)" fill-opacity="1.000"/>
+<rect x="12.00" y="56.12" width="212.48" height="6.00" rx="3.00" ry="3.00" fill="rgb(255,196,60)" fill-opacity="1.000"/>
+<text x="338.00" y="47.62" text-anchor="end" font-size="10.0" fill="rgb(160,165,180)" fill-opacity="1.000">320 / 500</text>
+<text x="18.00" y="87.32" text-anchor="start" font-size="12.0" fill="rgb(235,235,240)" fill-opacity="1.000">Hire 3 Staff Members</text>
+<rect x="12.00" y="94.12" width="332.00" height="6.00" rx="3.00" ry="3.00" fill="rgb(50,54,66)" fill-opacity="1.000"/>
+<rect x="12.00" y="94.12" width="222.44" height="6.00" rx="3.00" ry="3.00" fill="rgb(255,196,60)" fill-opacity="1.000"/>
+<text x="338.00" y="85.62" text-anchor="end" font-size="10.0" fill="rgb(160,165,180)" fill-opacity="1.000">2 / 3</text>
+<text x="18.00" y="125.32" text-anchor="start" font-size="12.0" fill="rgb(235,235,240)" fill-opacity="1.000">Upgrade Pizza Oven to Lv.2</text>
+<rect x="12.00" y="132.12" width="332.00" height="6.00" rx="3.00" ry="3.00" fill="rgb(50,54,66)" fill-opacity="1.000"/>
+<rect x="12.00" y="132.12" width="332.00" height="6.00" rx="3.00" ry="3.00" fill="rgb(90,220,120)" fill-opacity="1.000"/>
+<text x="338.00" y="123.62" text-anchor="end" font-size="10.0" fill="rgb(160,165,180)" fill-opacity="1.000">Done</text>
+<rect x="1332.00" y="378.00" width="256.00" height="144.00" rx="12.00" ry="12.00" fill="rgb(30,34,44)" fill-opacity="0.900"/>
+<rect x="1332.00" y="378.00" width="256.00" height="144.00" rx="12.00" ry="12.00" fill="none" stroke="rgb(120,200,255)" stroke-width="2" stroke-opacity="0.600"/>
+<rect x="1340.00" y="386.00" width="240.00" height="128.00" rx="8.00" ry="8.00" fill="rgb(46,62,50)" fill-opacity="1.000"/>
+<rect x="1424.00" y="430.80" width="72.00" height="38.40" rx="20.00" ry="20.00" fill="rgb(90,170,90)" fill-opacity="1.000"/>
+<rect x="1354.40" y="393.68" width="43.20" height="23.04" rx="4.00" ry="4.00" fill="rgb(200,150,90)" fill-opacity="1.000"/>
+<rect x="1498.40" y="393.68" width="43.20" height="23.04" rx="4.00" ry="4.00" fill="rgb(200,150,90)" fill-opacity="1.000"/>
+<rect x="1354.40" y="470.48" width="43.20" height="23.04" rx="4.00" ry="4.00" fill="rgb(150,150,200)" fill-opacity="1.000"/>
+<rect x="1498.40" y="470.48" width="43.20" height="23.04" rx="4.00" ry="4.00" fill="rgb(200,120,120)" fill-opacity="1.000"/>
+<text x="1460.00" y="369.85" text-anchor="middle" font-size="11.0" fill="rgb(200,210,225)" fill-opacity="1.000">PIER DISTRICT</text>
+<rect x="810.00" y="838.00" width="110.00" height="40.00" rx="10.00" ry="10.00" fill="rgb(90,160,255)" fill-opacity="0.750"/>
+<rect x="810.00" y="838.00" width="110.00" height="40.00" rx="10.00" ry="10.00" fill="none" stroke="rgb(90,160,255)" stroke-width="1" stroke-opacity="0.800"/>
+<text x="865.00" y="863.25" text-anchor="middle" font-size="15.0" fill="rgb(255,255,255)" fill-opacity="1.000">UPGRADES</text>
+<rect x="930.00" y="838.00" width="110.00" height="40.00" rx="10.00" ry="10.00" fill="rgb(90,220,120)" fill-opacity="0.750"/>
+<rect x="930.00" y="838.00" width="110.00" height="40.00" rx="10.00" ry="10.00" fill="none" stroke="rgb(90,220,120)" stroke-width="1" stroke-opacity="0.800"/>
+<text x="985.00" y="863.25" text-anchor="middle" font-size="15.0" fill="rgb(255,255,255)" fill-opacity="1.000">STAFF</text>
+<rect x="1050.00" y="838.00" width="110.00" height="40.00" rx="10.00" ry="10.00" fill="rgb(255,196,60)" fill-opacity="0.750"/>
+<rect x="1050.00" y="838.00" width="110.00" height="40.00" rx="10.00" ry="10.00" fill="none" stroke="rgb(255,196,60)" stroke-width="1" stroke-opacity="0.800"/>
+<text x="1105.00" y="863.25" text-anchor="middle" font-size="15.0" fill="rgb(255,255,255)" fill-opacity="1.000">SHOP</text>
+<rect x="1170.00" y="838.00" width="110.00" height="40.00" rx="10.00" ry="10.00" fill="rgb(230,90,120)" fill-opacity="0.750"/>
+<rect x="1170.00" y="838.00" width="110.00" height="40.00" rx="10.00" ry="10.00" fill="none" stroke="rgb(230,90,120)" stroke-width="1" stroke-opacity="0.800"/>
+<text x="1225.00" y="863.25" text-anchor="middle" font-size="15.0" fill="rgb(255,255,255)" fill-opacity="1.000">REBIRTH</text>
+<rect x="560.00" y="100.00" width="480.00" height="34.00" rx="8.00" ry="8.00" fill="rgb(28,30,38)" fill-opacity="0.900"/>
+<rect x="560.00" y="100.00" width="480.00" height="34.00" rx="8.00" ry="8.00" fill="none" stroke="rgb(255,196,60)" stroke-width="1" stroke-opacity="0.800"/>
+<text x="800.00" y="121.55" text-anchor="middle" font-size="13.0" fill="rgb(255,196,60)" fill-opacity="1.000">Diner produced $120 while you were away</text>
+<rect x="560.00" y="140.00" width="480.00" height="34.00" rx="8.00" ry="8.00" fill="rgb(28,30,38)" fill-opacity="0.900"/>
+<rect x="560.00" y="140.00" width="480.00" height="34.00" rx="8.00" ry="8.00" fill="none" stroke="rgb(90,220,120)" stroke-width="1" stroke-opacity="0.800"/>
+<text x="800.00" y="161.55" text-anchor="middle" font-size="13.0" fill="rgb(90,220,120)" fill-opacity="1.000">Pizza Oven upgraded to Level 2</text>
+<rect x="12.00" y="868.00" width="288.00" height="18.00" rx="9.00" ry="9.00" fill="rgb(28,30,38)" fill-opacity="0.850"/>
+<rect x="12.00" y="868.00" width="288.00" height="18.00" rx="9.00" ry="9.00" fill="none" stroke="rgb(230,90,90)" stroke-width="2" stroke-opacity="0.600"/>
+<rect x="15.00" y="871.00" width="282.00" height="12.00" rx="7.00" ry="7.00" fill="rgb(90,220,120)" fill-opacity="1.000"/>
+</svg>

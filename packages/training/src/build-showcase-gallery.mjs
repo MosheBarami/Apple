@@ -14,7 +14,7 @@
  *
  *   node packages/training/src/build-showcase-gallery.mjs --out docs/evidence/showcase.html
  */
-import { readFileSync, writeFileSync, existsSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -48,14 +48,13 @@ const OUTCOME_WORDS = {
   does_not_compile: 'the Luau did not compile',
   runtime_error: 'the build threw while running',
   harness_did_not_run: 'the test harness could not run it',
+  nothing_on_screen_or_on_a_surface: 'nothing reached the screen or a world surface',
   no_screengui_in_playergui: 'nothing reached the player’s screen',
   nothing_placeable: 'no part had both a size and a position',
   not_in_library: 'no construction recorded for this id',
   request_failed: 'the request to the model failed',
   threw: 'the pipeline itself threw',
 };
-
-const kb = (path) => (existsSync(path) ? `${Math.round(statSync(path).size / 1024)} KB` : null);
 
 function screenCard(r, uiDir, prefix) {
   const ok = r.outcome === 'built';
@@ -82,10 +81,18 @@ function screenCard(r, uiDir, prefix) {
 
   const a = r.asScripted ?? {};
   const o = r.opened;
+  const s = r.surface;
+  // A world UI and a full-screen UI are different things, and a caption that implied the board
+  // filled the player's screen would misdescribe what the model built.
+  const tag = s
+    ? `on a ${s.partStuds.w} × ${s.partStuds.h} stud board in the world, not on the screen`
+    : o
+      ? 'shown opened — the script starts it hidden'
+      : null;
   return `<article class="card">
     <figure class="shot">
       <img src="${esc(prefix + png)}" alt="${esc(name)} screen built by the model" loading="lazy" width="3200" height="1800">
-      ${o ? '<figcaption class="shot__tag">shown opened — the script starts it hidden</figcaption>' : ''}
+      ${tag ? `<figcaption class="shot__tag">${esc(tag)}</figcaption>` : ''}
     </figure>
     <div class="card__body">
       <h3 class="card__title">${esc(name)}</h3>
@@ -96,6 +103,7 @@ function screenCard(r, uiDir, prefix) {
         ${o ? `<div><dt>hidden until opened</dt><dd class="mono">${o.forcedVisible}</dd></div>` : ''}
         ${a.offscreen ? `<div class="warn"><dt>off screen</dt><dd class="mono">${a.offscreen}</dd></div>` : ''}
         ${r.imagePlaceholders ? `<div class="warn"><dt>asset refs not fetched</dt><dd class="mono">${r.imagePlaceholders}</dd></div>` : ''}
+        ${s ? `<div><dt>canvas</dt><dd class="mono">${r.viewport?.w ?? '?'} × ${r.viewport?.h ?? '?'} px @ ${s.pixelsPerStud}/stud</dd></div>` : ''}
         <div><dt>references behind it</dt><dd class="mono">${r.sources ?? 0} shipped games</dd></div>
         <div><dt>luau written</dt><dd class="mono">${(r.codeChars ?? 0).toLocaleString()} chars</dd></div>
       </dl>
@@ -282,7 +290,7 @@ function page({ ui, uiDir, maps, mapDir, uiPrefix, mapPrefix }) {
     <h2>What these pictures are, exactly</h2>
     <ul>
       <li><strong>The model is the live one.</strong> Every screen is an HTTP call to the deployed
-        Worker at <span class="mono">${esc((ui?.base ?? maps?.base ?? '').replace(/^https?:\\/\\//, ''))}</span>. No local model, no cached answer.</li>
+        Worker at <span class="mono">${esc(String(ui?.base ?? maps?.base ?? '').replace('https://', ''))}</span>. No local model, no cached answer.</li>
       <li><strong>The library is the product's own.</strong> The exact payload
         <span class="mono">get_ui_construction</span> and <span class="mono">get_genre_kit</span> return was put in
         the prompt. The model was <em>given</em> its library — on this endpoint it cannot ask for it,

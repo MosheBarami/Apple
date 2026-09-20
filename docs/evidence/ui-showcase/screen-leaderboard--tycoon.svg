@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="450" viewBox="0 0 600 450" font-family="'Gotham SSm','Montserrat','Helvetica Neue',Arial,sans-serif">
+<defs><pattern id="apple-unfetched" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="12" height="12" fill="#1b1b22"/><line x1="0" y1="0" x2="0" y2="12" stroke="#3a3a46" stroke-width="3"/></pattern></defs>
+<rect width="600" height="450" fill="#101014"/>
+<rect x="0.00" y="0.00" width="600.00" height="450.00" rx="18.00" ry="18.00" fill="rgb(38,30,52)" fill-opacity="1.000"/>
+<rect x="0.00" y="0.00" width="600.00" height="450.00" rx="18.00" ry="18.00" fill="none" stroke="rgb(255,196,66)" stroke-width="4" stroke-opacity="1.000"/>
+<text x="300.00" y="47.72" text-anchor="middle" font-size="33.5" fill="rgb(255,214,102)" fill-opacity="1.000">ALL-TIME TOP EARNERS</text>
+<text x="300.00" y="81.38" text-anchor="middle" font-size="13.9" fill="rgb(190,180,210)" fill-opacity="1.000">Cash earned across every tycoon plot — updates at the end of each season</text>
+<rect x="24.00" y="94.50" width="552.00" height="58.50" rx="12.00" ry="12.00" fill="rgb(52,42,72)" fill-opacity="1.000"/>
+<rect x="24.00" y="94.50" width="552.00" height="58.50" rx="12.00" ry="12.00" fill="none" stroke="rgb(255,214,102)" stroke-width="3" stroke-opacity="1.000"/>
+<text x="51.60" y="136.44" text-anchor="middle" font-size="36.3" fill="rgb(255,214,102)" fill-opacity="1.000">#1</text>
+<rect x="90.24" y="100.94" width="49.68" height="45.63" rx="45.63" ry="45.63" fill="rgb(30,24,44)" fill-opacity="1.000"/>
+<text x="162.48" y="122.25" text-anchor="start" font-size="19.9" fill="rgb(245,240,255)" fill-opacity="1.000">MintyBuilds</text>
+<text x="162.48" y="145.21" text-anchor="start" font-size="14.5" fill="rgb(255,214,102)" fill-opacity="1.000">$4,812,300 earned</text>
+<rect x="24.00" y="159.75" width="552.00" height="58.50" rx="12.00" ry="12.00" fill="rgb(52,42,72)" fill-opacity="1.000"/>
+<rect x="24.00" y="159.75" width="552.00" height="58.50" rx="12.00" ry="12.00" fill="none" stroke="rgb(200,205,220)" stroke-width="3" stroke-opacity="1.000"/>
+<text x="51.60" y="201.69" text-anchor="middle" font-size="36.3" fill="rgb(200,205,220)" fill-opacity="1.000">#2</text>
+<rect x="90.24" y="166.19" width="49.68" height="45.63" rx="45.63" ry="45.63" fill="rgb(30,24,44)" fill-opacity="1.000"/>
+<text x="162.48" y="187.50" text-anchor="start" font-size="19.9" fill="rgb(245,240,255)" fill-opacity="1.000">DrPixelPaws</text>
+<text x="162.48" y="210.46" text-anchor="start" font-size="14.5" fill="rgb(200,205,220)" fill-opacity="1.000">$3,905,775 earned</text>
+<rect x="24.00" y="225.00" width="552.00" height="58.50" rx="12.00" ry="12.00" fill="rgb(52,42,72)" fill-opacity="1.000"/>
+<rect x="24.00" y="225.00" width="552.00" height="58.50" rx="12.00" ry="12.00" fill="none" stroke="rgb(205,133,90)" stroke-width="3" stroke-opacity="1.000"/>
+<text x="51.60" y="266.94" text-anchor="middle" font-size="36.3" fill="rgb(205,133,90)" fill-opacity="1.000">#3</text>
+<rect x="90.24" y="231.44" width="49.68" height="45.63" rx="45.63" ry="45.63" fill="rgb(30,24,44)" fill-opacity="1.000"/>
+<text x="162.48" y="252.75" text-anchor="start" font-size="19.9" fill="rgb(245,240,255)" fill-opacity="1.000">QueenOfConveyor</text>
+<text x="162.48" y="275.71" text-anchor="start" font-size="14.5" fill="rgb(205,133,90)" fill-opacity="1.000">$2,640,120 earned</text>
+<rect x="24.00" y="297.00" width="552.00" height="24.75" rx="8.00" ry="8.00" fill="rgb(46,37,64)" fill-opacity="1.000"/>
+<text x="46.08" y="314.75" text-anchor="middle" font-size="15.3" fill="rgb(170,160,195)" fill-opacity="1.000">#4</text>
+<text x="85.20" y="314.75" text-anchor="start" font-size="15.3" fill="rgb(225,218,240)" fill-opacity="1.000">BrickLord99</text>
+<text x="553.44" y="314.75" text-anchor="end" font-size="15.3" fill="rgb(255,214,102)" fill-opacity="1.000">$1,877,450</text>
+<rect x="24.00" y="324.90" width="552.00" height="24.75" rx="8.00" ry="8.00" fill="rgb(46,37,64)" fill-opacity="1.000"/>
+<text x="46.08" y="342.65" text-anchor="middle" font-size="15.3" fill="rgb(170,160,195)" fill-opacity="1.000">#5</text>
+<text x="85.20" y="342.65" text-anchor="start" font-size="15.3" fill="rgb(225,218,240)" fill-opacity="1.000">SprocketSage</text>
+<text x="553.44" y="342.65" text-anchor="end" font-size="15.3" fill="rgb(255,214,102)" fill-opacity="1.000">$1,204,980</text>
+<rect x="24.00" y="352.80" width="552.00" height="24.75" rx="8.00" ry="8.00" fill="rgb(46,37,64)" fill-opacity="1.000"/>
+<text x="46.08" y="370.55" text-anchor="middle" font-size="15.3" fill="rgb(170,160,195)" fill-opacity="1.000">#6</text>
+<text x="85.20" y="370.55" text-anchor="start" font-size="15.3" fill="rgb(225,218,240)" fill-opacity="1.000">TinyTycoonTina</text>
+<text x="553.44" y="370.55" text-anchor="end" font-size="15.3" fill="rgb(255,214,102)" fill-opacity="1.000">$942,610</text>
+<rect x="24.00" y="380.70" width="552.00" height="24.75" rx="8.00" ry="8.00" fill="rgb(46,37,64)" fill-opacity="1.000"/>
+<text x="46.08" y="398.45" text-anchor="middle" font-size="15.3" fill="rgb(170,160,195)" fill-opacity="1.000">#7</text>
+<text x="85.20" y="398.45" text-anchor="start" font-size="15.3" fill="rgb(225,218,240)" fill-opacity="1.000">GearsAndGreed</text>
+<text x="553.44" y="398.45" text-anchor="end" font-size="15.3" fill="rgb(255,214,102)" fill-opacity="1.000">$733,205</text>
+<rect x="24.00" y="408.60" width="552.00" height="24.75" rx="8.00" ry="8.00" fill="rgb(46,37,64)" fill-opacity="1.000"/>
+<text x="46.08" y="426.35" text-anchor="middle" font-size="15.3" fill="rgb(170,160,195)" fill-opacity="1.000">#8</text>
+<text x="85.20" y="426.35" text-anchor="start" font-size="15.3" fill="rgb(225,218,240)" fill-opacity="1.000">PlotBaronVex</text>
+<text x="553.44" y="426.35" text-anchor="end" font-size="15.3" fill="rgb(255,214,102)" fill-opacity="1.000">$588,040</text>
+<rect x="24.00" y="420.75" width="552.00" height="24.75" rx="8.00" ry="8.00" fill="rgb(64,50,30)" fill-opacity="1.000"/>
+<rect x="24.00" y="420.75" width="552.00" height="24.75" rx="8.00" ry="8.00" fill="none" stroke="rgb(255,196,66)" stroke-width="2" stroke-opacity="1.000"/>
+<text x="300.00" y="438.50" text-anchor="middle" font-size="15.3" fill="rgb(255,226,150)" fill-opacity="1.000">YOU — Rank #23 · $412,880 earned · 37 ranks to the top 10</text>
+</svg>

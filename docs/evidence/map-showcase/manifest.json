@@ -1,0 +1,173 @@
+{
+  "generatedAt": "2026-09-20T20:50:05.757Z",
+  "base": "https://apple.moshe-barami111.workers.dev",
+  "model": "rune",
+  "lane": "Apple MAX",
+  "libraryDelivery": "injected",
+  "promptConstraint": "The prompt asks for .Position/.Orientation rather than CFrame, because ui-harness.luau models CFrame as opaque and a CFrame-placed part would have no coordinates to draw. This narrows style, not ability.",
+  "uploads": "none — every part is geometry and a Color3; nothing was sent to any Roblox account",
+  "renderer": "packages/training/src/render-map-plan.mjs — plan view, rotation not modelled",
+  "ranThisInvocation": [
+    "tycoon",
+    "obby"
+  ],
+  "counts": {
+    "genres": 6,
+    "built": 6,
+    "byOutcome": {
+      "built": 6
+    }
+  },
+  "results": [
+    {
+      "genre": "tycoon",
+      "outcome": "built",
+      "codeChars": 7023,
+      "ms": 40944,
+      "parts": 87,
+      "spawns": 1,
+      "unplaceable": 0,
+      "unsized": 0,
+      "unknownColour": 0,
+      "bounds": {
+        "minX": -201,
+        "maxX": 201,
+        "minZ": -201,
+        "maxZ": 201,
+        "minY": 0,
+        "maxY": 18.5,
+        "studsWide": 402,
+        "studsDeep": 402
+      },
+      "files": {
+        "luau": "map--tycoon.luau",
+        "svg": "map--tycoon.svg"
+      }
+    },
+    {
+      "genre": "obby",
+      "outcome": "built",
+      "codeChars": 8549,
+      "ms": 48128,
+      "parts": 63,
+      "spawns": 1,
+      "unplaceable": 0,
+      "unsized": 0,
+      "unknownColour": 0,
+      "bounds": {
+        "minX": -30,
+        "maxX": 500,
+        "minZ": -360,
+        "maxZ": 360,
+        "minY": -6,
+        "maxY": 59,
+        "studsWide": 530,
+        "studsDeep": 720
+      },
+      "files": {
+        "luau": "map--obby.luau",
+        "svg": "map--obby.svg"
+      }
+    },
+    {
+      "genre": "horror",
+      "outcome": "built",
+      "codeChars": 13444,
+      "ms": 109577,
+      "parts": 218,
+      "spawns": 1,
+      "unplaceable": 0,
+      "unsized": 0,
+      "unknownColour": 0,
+      "bounds": {
+        "minX": -216,
+        "maxX": 216,
+        "minZ": -200,
+        "maxZ": 200,
+        "minY": -1,
+        "maxY": 51,
+        "studsWide": 432,
+        "studsDeep": 400
+      },
+      "files": {
+        "luau": "map--horror.luau",
+        "svg": "map--horror.svg"
+      }
+    },
+    {
+      "genre": "tower_defense",
+      "outcome": "built",
+      "codeChars": 7802,
+      "ms": 46687,
+      "parts": 90,
+      "spawns": 1,
+      "unplaceable": 0,
+      "unsized": 0,
+      "unknownColour": 0,
+      "bounds": {
+        "minX": -122,
+        "maxX": 122,
+        "minZ": -122,
+        "maxZ": 122,
+        "minY": -1,
+        "maxY": 30,
+        "studsWide": 244,
+        "studsDeep": 244
+      },
+      "files": {
+        "luau": "map--tower_defense.luau",
+        "svg": "map--tower_defense.svg"
+      }
+    },
+    {
+      "genre": "fps_arena",
+      "outcome": "built",
+      "codeChars": 10223,
+      "ms": 59641,
+      "parts": 87,
+      "spawns": 2,
+      "unplaceable": 0,
+      "unsized": 0,
+      "unknownColour": 0,
+      "bounds": {
+        "minX": -152.5,
+        "maxX": 152.5,
+        "minZ": -152.5,
+        "maxZ": 152.5,
+        "minY": -1,
+        "maxY": 24.5,
+        "studsWide": 305,
+        "studsDeep": 305
+      },
+      "files": {
+        "luau": "map--fps_arena.luau",
+        "svg": "map--fps_arena.svg"
+      }
+    },
+    {
+      "genre": "racing",
+      "outcome": "built",
+      "codeChars": 8682,
+      "ms": 45972,
+      "parts": 133,
+      "spawns": 1,
+      "unplaceable": 0,
+      "unsized": 0,
+      "unknownColour": 0,
+      "bounds": {
+        "minX": -300,
+        "maxX": 300,
+        "minZ": -300,
+        "maxZ": 300,
+        "minY": -2,
+        "maxY": 18.5,
+        "studsWide": 600,
+        "studsDeep": 600
+      },
+      "files": {
+        "luau": "map--racing.luau",
+        "svg": "map--racing.svg"
+      }
+    }
+  ]
+}

@@ -1,0 +1,452 @@
+{
+  "generatedAt": "2026-09-20T21:10:33.026Z",
+  "base": "https://apple.moshe-barami111.workers.dev",
+  "model": "rune",
+  "lane": "Apple MAX",
+  "genre": "tycoon",
+  "viewport": {
+    "id": "desktop",
+    "w": 1600,
+    "h": 900
+  },
+  "libraryDelivery": "injected",
+  "libraryDeliveryMeaning": "The get_ui_construction / get_genre_kit payloads were placed in the prompt verbatim. The model was GIVEN its library; it did not choose to ask for it. /api/admin/model-test wires no real tools.",
+  "renderer": "packages/training/src/render-ui-tree.mjs over resolveLayout — geometry, not a Studio screenshot",
+  "ranThisInvocation": [
+    "screen-leaderboard--tycoon"
+  ],
+  "counts": {
+    "targets": 16,
+    "built": 15,
+    "byOutcome": {
+      "built": 15,
+      "no_code_block": 1
+    }
+  },
+  "results": [
+    {
+      "target": "screen-codes",
+      "id": "screen-codes",
+      "genre": "tycoon",
+      "outcome": "built",
+      "codeChars": 5484,
+      "ms": 37893,
+      "screenGuis": 1,
+      "guiNodes": 9,
+      "asScripted": {
+        "painted": 1,
+        "textNodes": 0,
+        "hidden": 7,
+        "offscreen": 0
+      },
+      "opened": {
+        "painted": 5,
+        "textNodes": 4,
+        "forcedVisible": 7,
+        "offscreen": 0
+      },
+      "scaledText": 0,
+      "imagePlaceholders": 0,
+      "sources": 11,
+      "files": {
+        "luau": "screen-codes--tycoon.luau",
+        "svg": "screen-codes--tycoon.svg",
+        "openedSvg": "screen-codes--tycoon--opened.svg"
+      }
+    },
+    {
+      "target": "screen-crafting",
+      "id": "screen-crafting",
+      "genre": "tycoon",
+      "outcome": "built",
+      "codeChars": 7819,
+      "ms": 58249,
+      "screenGuis": 1,
+      "guiNodes": 31,
+      "asScripted": {
+        "painted": 13,
+        "textNodes": 15,
+        "hidden": 0,
+        "offscreen": 0
+      },
+      "opened": null,
+      "scaledText": 0,
+      "imagePlaceholders": 0,
+      "sources": 11,
+      "files": {
+        "luau": "screen-crafting--tycoon.luau",
+        "svg": "screen-crafting--tycoon.svg"
+      }
+    },
+    {
+      "target": "screen-gacha",
+      "id": "screen-gacha",
+      "genre": "tycoon",
+      "outcome": "built",
+      "codeChars": 8500,
+      "ms": 47725,
+      "screenGuis": 1,
+      "guiNodes": 39,
+      "asScripted": {
+        "painted": 13,
+        "textNodes": 22,
+        "hidden": 3,
+        "offscreen": 0
+      },
+      "opened": {
+        "painted": 14,
+        "textNodes": 24,
+        "forcedVisible": 3,
+        "offscreen": 0
+      },
+      "scaledText": 24,
+      "imagePlaceholders": 0,
+      "sources": 10,
+      "files": {
+        "luau": "screen-gacha--tycoon.luau",
+        "svg": "screen-gacha--tycoon.svg",
+        "openedSvg": "screen-gacha--tycoon--opened.svg"
+      }
+    },
+    {
+      "target": "screen-hud",
+      "id": "screen-hud",
+      "genre": "tycoon",
+      "outcome": "built",
+      "codeChars": 9892,
+      "ms": 55327,
+      "screenGuis": 1,
+      "guiNodes": 41,
+      "asScripted": {
+        "painted": 22,
+        "textNodes": 15,
+        "hidden": 0,
+        "offscreen": 0
+      },
+      "opened": null,
+      "scaledText": 0,
+      "imagePlaceholders": 0,
+      "sources": 3,
+      "files": {
+        "luau": "screen-hud--tycoon.luau",
+        "svg": "screen-hud--tycoon.svg"
+      }
+    },
+    {
+      "target": "screen-inventory",
+      "id": "screen-inventory",
+      "genre": "tycoon",
+      "outcome": "built",
+      "codeChars": 17569,
+      "ms": 100203,
+      "screenGuis": 1,
+      "guiNodes": 75,
+      "asScripted": {
+        "painted": 41,
+        "textNodes": 43,
+        "hidden": 0,
+        "offscreen": 0
+      },
+      "opened": null,
+      "scaledText": 0,
+      "imagePlaceholders": 0,
+      "sources": 15,
+      "files": {
+        "luau": "screen-inventory--tycoon.luau",
+        "svg": "screen-inventory--tycoon.svg"
+      }
+    },
+    {
+      "target": "screen-leaderboard",
+      "id": "screen-leaderboard",
+      "genre": "tycoon",
+      "outcome": "built",
+      "codeChars": 7602,
+      "ms": 202,
+      "screenGuis": 0,
+      "surface": {
+        "kind": "SurfaceGui",
+        "face": "Front",
+        "pixelsPerStud": 50,
+        "partStuds": {
+          "w": 12,
+          "h": 9
+        },
+        "adornee": "LeaderboardBoard_Cash"
+      },
+      "viewport": {
+        "id": "surface",
+        "w": 600,
+        "h": 450
+      },
+      "guiNodes": 40,
+      "asScripted": {
+        "painted": 13,
+        "textNodes": 27,
+        "hidden": 0,
+        "offscreen": 0
+      },
+      "opened": null,
+      "scaledText": 27,
+      "imagePlaceholders": 0,
+      "sources": 12,
+      "files": {
+        "luau": "screen-leaderboard--tycoon.luau",
+        "svg": "screen-leaderboard--tycoon.svg"
+      }
+    },
+    {
+      "target": "screen-lobby",
+      "id": "screen-lobby",
+      "genre": "tycoon",
+      "outcome": "built",
+      "codeChars": 9873,
+      "ms": 55807,
+      "screenGuis": 1,
+      "guiNodes": 38,
+      "asScripted": {
+        "painted": 14,
+        "textNodes": 28,
+        "hidden": 0,
+        "offscreen": 0
+      },
+      "opened": null,
+      "scaledText": 0,
+      "imagePlaceholders": 0,
+      "sources": 13,
+      "files": {
+        "luau": "screen-lobby--tycoon.luau",
+        "svg": "screen-lobby--tycoon.svg"
+      }
+    },
+    {
+      "target": "screen-map",
+      "id": "screen-map",
+      "genre": "tycoon",
+      "outcome": "built",
+      "codeChars": 12215,
+      "ms": 72732,
+      "screenGuis": 1,
+      "guiNodes": 51,
+      "asScripted": {
+        "painted": 5,
+        "textNodes": 1,
+        "hidden": 43,
+        "offscreen": 0
+      },
+      "opened": {
+        "painted": 32,
+        "textNodes": 18,
+        "forcedVisible": 43,
+        "offscreen": 0
+      },
+      "scaledText": 0,
+      "imagePlaceholders": 3,
+      "sources": 13,
+      "files": {
+        "luau": "screen-map--tycoon.luau",
+        "svg": "screen-map--tycoon.svg",
+        "openedSvg": "screen-map--tycoon--opened.svg"
+      }
+    },
+    {
+      "target": "screen-notification",
+      "id": "screen-notification",
+      "genre": "tycoon",
+      "outcome": "built",
+      "codeChars": 7085,
+      "ms": 31413,
+      "screenGuis": 1,
+      "guiNodes": 21,
+      "asScripted": {
+        "painted": 9,
+        "textNodes": 11,
+        "hidden": 0,
+        "offscreen": 0
+      },
+      "opened": null,
+      "scaledText": 0,
+      "imagePlaceholders": 0,
+      "sources": 11,
+      "files": {
+        "luau": "screen-notification--tycoon.luau",
+        "svg": "screen-notification--tycoon.svg"
+      }
+    },
+    {
+      "target": "screen-onboarding",
+      "id": "screen-onboarding",
+      "genre": "tycoon",
+      "outcome": "built",
+      "codeChars": 7410,
+      "ms": 41341,
+      "screenGuis": 1,
+      "guiNodes": 26,
+      "asScripted": {
+        "painted": 10,
+        "textNodes": 15,
+        "hidden": 2,
+        "offscreen": 0
+      },
+      "opened": {
+        "painted": 11,
+        "textNodes": 16,
+        "forcedVisible": 2,
+        "offscreen": 0
+      },
+      "scaledText": 0,
+      "imagePlaceholders": 0,
+      "sources": 10,
+      "files": {
+        "luau": "screen-onboarding--tycoon.luau",
+        "svg": "screen-onboarding--tycoon.svg",
+        "openedSvg": "screen-onboarding--tycoon--opened.svg"
+      }
+    },
+    {
+      "target": "screen-progress",
+      "id": "screen-progress",
+      "genre": "tycoon",
+      "outcome": "built",
+      "codeChars": 9045,
+      "ms": 61795,
+      "screenGuis": 1,
+      "guiNodes": 50,
+      "asScripted": {
+        "painted": 29,
+        "textNodes": 39,
+        "hidden": 4,
+        "offscreen": 0
+      },
+      "opened": {
+        "painted": 32,
+        "textNodes": 42,
+        "forcedVisible": 4,
+        "offscreen": 0
+      },
+      "scaledText": 0,
+      "imagePlaceholders": 0,
+      "sources": 2,
+      "files": {
+        "luau": "screen-progress--tycoon.luau",
+        "svg": "screen-progress--tycoon.svg",
+        "openedSvg": "screen-progress--tycoon--opened.svg"
+      }
+    },
+    {
+      "target": "screen-rewards",
+      "id": "screen-rewards",
+      "genre": "tycoon",
+      "outcome": "built",
+      "codeChars": 7518,
+      "ms": 41429,
+      "screenGuis": 1,
+      "guiNodes": 44,
+      "asScripted": {
+        "painted": 18,
+        "textNodes": 32,
+        "hidden": 0,
+        "offscreen": 1
+      },
+      "opened": null,
+      "scaledText": 32,
+      "imagePlaceholders": 0,
+      "sources": 10,
+      "files": {
+        "luau": "screen-rewards--tycoon.luau",
+        "svg": "screen-rewards--tycoon.svg"
+      }
+    },
+    {
+      "target": "screen-settings",
+      "id": "screen-settings",
+      "genre": "tycoon",
+      "outcome": "built",
+      "codeChars": 8636,
+      "ms": 42752,
+      "screenGuis": 1,
+      "guiNodes": 12,
+      "asScripted": {
+        "painted": 3,
+        "textNodes": 6,
+        "hidden": 0,
+        "offscreen": 0
+      },
+      "opened": null,
+      "scaledText": 1,
+      "imagePlaceholders": 0,
+      "sources": 10,
+      "files": {
+        "luau": "screen-settings--tycoon.luau",
+        "svg": "screen-settings--tycoon.svg"
+      }
+    },
+    {
+      "target": "screen-shop",
+      "id": "screen-shop",
+      "genre": "tycoon",
+      "outcome": "built",
+      "codeChars": 9968,
+      "ms": 44810,
+      "screenGuis": 1,
+      "guiNodes": 38,
+      "asScripted": {
+        "painted": 1,
+        "textNodes": 1,
+        "hidden": 37,
+        "offscreen": 0
+      },
+      "opened": {
+        "painted": 20,
+        "textNodes": 25,
+        "forcedVisible": 37,
+        "offscreen": 0
+      },
+      "scaledText": 25,
+      "imagePlaceholders": 0,
+      "sources": 11,
+      "files": {
+        "luau": "screen-shop--tycoon.luau",
+        "svg": "screen-shop--tycoon.svg",
+        "openedSvg": "screen-shop--tycoon--opened.svg"
+      }
+    },
+    {
+      "target": "screen-social",
+      "genre": "tycoon",
+      "outcome": "no_code_block",
+      "detail": "answer was 15908 chars of prose",
+      "answerChars": 15908
+    },
+    {
+      "target": "screen-trading",
+      "id": "screen-trading",
+      "genre": "tycoon",
+      "outcome": "built",
+      "codeChars": 11605,
+      "ms": 70624,
+      "screenGuis": 1,
+      "guiNodes": 55,
+      "asScripted": {
+        "painted": 19,
+        "textNodes": 29,
+        "hidden": 9,
+        "offscreen": 0
+      },
+      "opened": {
+        "painted": 26,
+        "textNodes": 36,
+        "forcedVisible": 9,
+        "offscreen": 0
+      },
+      "scaledText": 0,
+      "imagePlaceholders": 0,
+      "sources": 12,
+      "files": {
+        "luau": "screen-trading--tycoon.luau",
+        "svg": "screen-trading--tycoon.svg",
+        "openedSvg": "screen-trading--tycoon--opened.svg"
+      }
+    }
+  ]
+}

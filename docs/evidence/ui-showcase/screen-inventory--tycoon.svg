@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" font-family="'Gotham SSm','Montserrat','Helvetica Neue',Arial,sans-serif">
+<defs><pattern id="apple-unfetched" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="12" height="12" fill="#1b1b22"/><line x1="0" y1="0" x2="0" y2="12" stroke="#3a3a46" stroke-width="3"/></pattern></defs>
+<rect width="1600" height="900" fill="#101014"/>
+<rect x="0.00" y="0.00" width="1600.00" height="900.00" fill="rgb(10,12,18)" fill-opacity="0.500"/>
+<rect x="304.00" y="99.00" width="992.00" height="702.00" rx="10.00" ry="10.00" fill="rgb(28,30,40)" fill-opacity="1.000"/>
+<rect x="304.00" y="99.00" width="992.00" height="702.00" rx="10.00" ry="10.00" fill="none" stroke="rgb(70,74,96)" stroke-width="2" stroke-opacity="1.000"/>
+<rect x="304.00" y="99.00" width="992.00" height="84.24" rx="10.00" ry="10.00" fill="rgb(38,41,56)" fill-opacity="1.000"/>
+<text x="339.76" y="148.82" text-anchor="start" font-size="22.0" fill="rgb(240,240,250)" fill-opacity="1.000">TYCOON INVENTORY</text>
+<text x="1260.24" y="148.12" text-anchor="end" font-size="20.0" fill="rgb(120,220,140)" fill-opacity="1.000">$1,482,300</text>
+<rect x="1236.48" y="115.85" width="49.60" height="50.54" rx="6.00" ry="6.00" fill="rgb(200,70,70)" fill-opacity="1.000"/>
+<text x="1261.28" y="147.42" text-anchor="middle" font-size="18.0" fill="rgb(255,255,255)" fill-opacity="1.000">X</text>
+<rect x="304.00" y="183.24" width="992.00" height="56.16" fill="rgb(28,30,40)" fill-opacity="1.000"/>
+<rect x="520.00" y="194.47" width="127.40" height="33.70" rx="6.00" ry="6.00" fill="rgb(90,130,240)" fill-opacity="1.000"/>
+<text x="583.70" y="216.57" text-anchor="middle" font-size="15.0" fill="rgb(235,235,245)" fill-opacity="1.000">All</text>
+<rect x="655.40" y="194.47" width="127.40" height="33.70" rx="6.00" ry="6.00" fill="rgb(48,52,70)" fill-opacity="1.000"/>
+<text x="719.10" y="216.57" text-anchor="middle" font-size="15.0" fill="rgb(235,235,245)" fill-opacity="1.000">Tools</text>
+<rect x="790.80" y="194.47" width="127.40" height="33.70" rx="6.00" ry="6.00" fill="rgb(48,52,70)" fill-opacity="1.000"/>
+<text x="854.50" y="216.57" text-anchor="middle" font-size="15.0" fill="rgb(235,235,245)" fill-opacity="1.000">Droppers</text>
+<rect x="926.20" y="194.47" width="127.40" height="33.70" rx="6.00" ry="6.00" fill="rgb(48,52,70)" fill-opacity="1.000"/>
+<text x="989.90" y="216.57" text-anchor="middle" font-size="15.0" fill="rgb(235,235,245)" fill-opacity="1.000">Upgrades</text>
+<rect x="1061.60" y="194.47" width="127.40" height="33.70" rx="6.00" ry="6.00" fill="rgb(48,52,70)" fill-opacity="1.000"/>
+<text x="1125.30" y="216.57" text-anchor="middle" font-size="15.0" fill="rgb(235,235,245)" fill-opacity="1.000">Pets</text>
+<text x="506.00" y="216.57" text-anchor="end" font-size="15.0" fill="rgb(160,165,190)" fill-opacity="1.000">Sort: Rarity ▾</text>
+<rect x="323.84" y="246.42" width="615.04" height="435.24" rx="8.00" ry="8.00" fill="rgb(24,26,36)" fill-opacity="1.000"/>
+<rect x="331.84" y="254.42" width="60.00" height="60.00" rx="6.00" ry="6.00" fill="rgb(44,48,66)" fill-opacity="1.000"/>
+<rect x="331.84" y="254.42" width="60.00" height="60.00" rx="6.00" ry="6.00" fill="none" stroke="rgb(90,130,240)" stroke-width="2" stroke-opacity="1.000"/>
+<rect x="331.84" y="310.42" width="60.00" height="4.00" fill="rgb(240,180,60)" fill-opacity="1.000"/>
+<text x="361.84" y="286.82" text-anchor="middle" font-size="24.0" fill="rgb(240,180,60)" fill-opacity="1.000">⚙</text>
+<rect x="331.84" y="254.42" width="60.00" height="14.00" fill="rgb(90,130,240)" fill-opacity="1.000"/>
+<text x="361.84" y="264.57" text-anchor="middle" font-size="9.0" fill="rgb(255,255,255)" fill-opacity="1.000">EQUIPPED</text>
+<text x="339.04" y="267.32" text-anchor="start" font-size="12.0" fill="#ffffff" fill-opacity="1.000">🔒</text>
+<rect x="396.84" y="254.42" width="60.00" height="60.00" rx="6.00" ry="6.00" fill="rgb(44,48,66)" fill-opacity="1.000"/>
+<rect x="396.84" y="310.42" width="60.00" height="4.00" fill="rgb(80,140,250)" fill-opacity="1.000"/>
+<text x="426.84" y="286.82" text-anchor="middle" font-size="24.0" fill="rgb(80,140,250)" fill-opacity="1.000">⚙</text>
+<text x="452.04" y="267.32" text-anchor="end" font-size="12.0" fill="rgb(235,235,245)" fill-opacity="1.000">x4</text>
+<rect x="461.84" y="254.42" width="60.00" height="60.00" rx="6.00" ry="6.00" fill="rgb(44,48,66)" fill-opacity="1.000"/>
+<rect x="461.84" y="310.42" width="60.00" height="4.00" fill="rgb(170,90,240)" fill-opacity="1.000"/>
+<text x="491.84" y="286.82" text-anchor="middle" font-size="24.0" fill="rgb(170,90,240)" fill-opacity="1.000">⚙</text>
+<rect x="526.84" y="254.42" width="60.00" height="60.00" rx="6.00" ry="6.00" fill="rgb(44,48,66)" fill-opacity="1.000"/>
+<rect x="526.84" y="310.42" width="60.00" height="4.00" fill="rgb(150,155,170)" fill-opacity="1.000"/>
+<text x="556.84" y="286.82" text-anchor="middle" font-size="24.0" fill="rgb(150,155,170)" fill-opacity="1.000">⚙</text>
+<text x="582.04" y="267.32" text-anchor="end" font-size="12.0" fill="rgb(235,235,245)" fill-opacity="1.000">x7</text>
+<rect x="591.84" y="254.42" width="60.00" height="60.00" rx="6.00" ry="6.00" fill="rgb(44,48,66)" fill-opacity="1.000"/>
+<rect x="591.84" y="310.42" width="60.00" height="4.00" fill="rgb(150,155,170)" fill-opacity="1.000"/>
+<text x="621.84" y="286.82" text-anchor="middle" font-size="24.0" fill="rgb(150,155,170)" fill-opacity="1.000">⚙</text>
+<text x="647.04" y="267.32" text-anchor="end" font-size="12.0" fill="rgb(235,235,245)" fill-opacity="1.000">x3</text>
+<rect x="656.84" y="254.42" width="60.00" height="60.00" rx="6.00" ry="6.00" fill="rgb(44,48,66)" fill-opacity="1.000"/>
+<rect x="656.84" y="310.42" width="60.00" height="4.00" fill="rgb(170,90,240)" fill-opacity="1.000"/>
+<text x="686.84" y="286.82" text-anchor="middle" font-size="24.0" fill="rgb(170,90,240)" fill-opacity="1.000">⚙</text>
+<text x="712.04" y="267.32" text-anchor="end" font-size="12.0" fill="rgb(235,235,245)" fill-opacity="1.000">x2</text>
+<rect x="721.84" y="254.42" width="60.00" height="60.00" rx="6.00" ry="6.00" fill="rgb(44,48,66)" fill-opacity="1.000"/>
+<rect x="721.84" y="310.42" width="60.00" height="4.00" fill="rgb(80,140,250)" fill-opacity="1.000"/>
+<text x="751.84" y="286.82" text-anchor="middle" font-size="24.0" fill="rgb(80,140,250)" fill-opacity="1.000">⚙</text>
+<rect x="786.84" y="254.42" width="60.00" height="60.00" rx="6.00" ry="6.00" fill="rgb(44,48,66)" fill-opacity="1.000"/>
+<rect x="786.84" y="310.42" width="60.00" height="4.00" fill="rgb(150,155,170)" fill-opacity="1.000"/>
+<text x="816.84" y="286.82" text-anchor="middle" font-size="24.0" fill="rgb(150,155,170)" fill-opacity="1.000">⚙</text>
+<text x="842.04" y="267.32" text-anchor="end" font-size="12.0" fill="rgb(235,235,245)" fill-opacity="1.000">x5</text>
+<rect x="851.84" y="254.42" width="60.00" height="60.00" rx="6.00" ry="6.00" fill="rgb(44,48,66)" fill-opacity="1.000"/>
+<rect x="851.84" y="310.42" width="60.00" height="4.00" fill="rgb(240,180,60)" fill-opacity="1.000"/>
+<text x="881.84" y="286.82" text-anchor="middle" font-size="24.0" fill="rgb(240,180,60)" fill-opacity="1.000">⚙</text>
+<text x="859.04" y="267.32" text-anchor="start" font-size="12.0" fill="#ffffff" fill-opacity="1.000">🔒</text>
+<rect x="331.84" y="319.42" width="60.00" height="60.00" rx="6.00" ry="6.00" fill="rgb(44,48,66)" fill-opacity="1.000"/>
+<rect x="331.84" y="375.42" width="60.00" height="4.00" fill="rgb(170,90,240)" fill-opacity="1.000"/>
+<text x="361.84" y="351.82" text-anchor="middle" font-size="24.0" fill="rgb(170,90,240)" fill-opacity="1.000">⚙</text>
+<rect x="396.84" y="319.42" width="60.00" height="60.00" rx="6.00" ry="6.00" fill="rgb(44,48,66)" fill-opacity="1.000"/>
+<rect x="396.84" y="375.42" width="60.00" height="4.00" fill="rgb(150,155,170)" fill-opacity="1.000"/>
+<text x="426.84" y="351.82" text-anchor="middle" font-size="24.0" fill="rgb(150,155,170)" fill-opacity="1.000">⚙</text>
+<text x="452.04" y="332.32" text-anchor="end" font-size="12.0" fill="rgb(235,235,245)" fill-opacity="1.000">x9</text>
+<rect x="461.84" y="319.42" width="60.00" height="60.00" rx="6.00" ry="6.00" fill="rgb(44,48,66)" fill-opacity="1.000"/>
+<rect x="461.84" y="375.42" width="60.00" height="4.00" fill="rgb(80,140,250)" fill-opacity="1.000"/>
+<text x="491.84" y="351.82" text-anchor="middle" font-size="24.0" fill="rgb(80,140,250)" fill-opacity="1.000">⚙</text>
+<text x="517.04" y="332.32" text-anchor="end" font-size="12.0" fill="rgb(235,235,245)" fill-opacity="1.000">x2</text>
+<rect x="323.84" y="695.70" width="615.04" height="91.26" rx="8.00" ry="8.00" fill="rgb(24,26,36)" fill-opacity="1.000"/>
+<text x="342.14" y="746.23" text-anchor="start" font-size="14.0" fill="rgb(160,165,190)" fill-opacity="1.000">EQUIPPED</text>
+<rect x="459.15" y="711.33" width="60.00" height="60.00" rx="6.00" ry="6.00" fill="rgb(44,48,66)" fill-opacity="1.000"/>
+<rect x="459.15" y="711.33" width="60.00" height="60.00" rx="6.00" ry="6.00" fill="none" stroke="rgb(240,180,60)" stroke-width="2" stroke-opacity="1.000"/>
+<text x="489.15" y="749.73" text-anchor="middle" font-size="24.0" fill="rgb(240,180,60)" fill-opacity="1.000">⚙</text>
+<text x="526.65" y="746.58" text-anchor="start" font-size="15.0" fill="rgb(240,240,250)" fill-opacity="1.000">Golden Dropper — $12,500/min</text>
+<rect x="948.80" y="246.42" width="327.36" height="540.54" rx="8.00" ry="8.00" fill="rgb(24,26,36)" fill-opacity="1.000"/>
+<text x="1112.48" y="360.52" text-anchor="middle" font-size="48.0" fill="rgb(240,180,60)" fill-opacity="1.000">⚙</text>
+<text x="1112.48" y="458.83" text-anchor="middle" font-size="20.0" fill="rgb(240,240,250)" fill-opacity="1.000">Golden Dropper</text>
+<text x="1112.48" y="492.21" text-anchor="middle" font-size="15.0" fill="rgb(240,180,60)" fill-opacity="1.000">Legendary</text>
+<text x="971.17" y="524.58" text-anchor="start" font-size="14.0" fill="rgb(180,185,205)" fill-opacity="1.000">Golden Dropper — a dependable piece of your factory line. Upgrade it at the workbench to boost output.</text>
+<text x="971.17" y="643.21" text-anchor="start" font-size="14.0" fill="rgb(180,185,205)" fill-opacity="1.000">Owned: x1</text>
+<text x="971.17" y="670.24" text-anchor="start" font-size="14.0" fill="rgb(240,180,60)" fill-opacity="1.000">🔒 Locked</text>
+<rect x="965.17" y="700.47" width="137.49" height="43.24" rx="6.00" ry="6.00" fill="rgb(90,130,240)" fill-opacity="1.000"/>
+<text x="1033.91" y="727.70" text-anchor="middle" font-size="16.0" fill="rgb(255,255,255)" fill-opacity="1.000">Equip</text>
+<rect x="1122.30" y="700.47" width="137.49" height="43.24" rx="6.00" ry="6.00" fill="rgb(200,70,70)" fill-opacity="1.000"/>
+<text x="1191.05" y="727.70" text-anchor="middle" font-size="16.0" fill="rgb(255,255,255)" fill-opacity="1.000">Delete</text>
+<text x="1112.48" y="766.84" text-anchor="middle" font-size="12.0" fill="rgb(200,120,120)" fill-opacity="1.000">Deleting is permanent — click Delete twice to confirm.</text>
+</svg>

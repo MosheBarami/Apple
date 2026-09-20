@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" font-family="'Gotham SSm','Montserrat','Helvetica Neue',Arial,sans-serif">
+<defs><pattern id="apple-unfetched" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="12" height="12" fill="#1b1b22"/><line x1="0" y1="0" x2="0" y2="12" stroke="#3a3a46" stroke-width="3"/></pattern></defs>
+<rect width="1600" height="900" fill="#101014"/>
+<rect x="464.00" y="12.00" width="672.00" height="44.00" rx="8.00" ry="8.00" fill="rgb(28,30,38)" fill-opacity="1.000"/>
+<rect x="464.00" y="12.00" width="672.00" height="44.00" rx="8.00" ry="8.00" fill="none" stroke="rgb(255,170,40)" stroke-width="2" stroke-opacity="1.000"/>
+<text x="488.00" y="41.70" text-anchor="middle" font-size="22.0" fill="rgb(255,170,40)" fill-opacity="1.000">!</text>
+<text x="514.00" y="39.25" text-anchor="start" font-size="15.0" fill="rgb(240,240,245)" fill-opacity="1.000">SERVER EVENT: Double cash droppers for the next 15 minutes!</text>
+<text x="18.00" y="879.90" text-anchor="start" font-size="14.0" fill="rgb(235,235,240)" fill-opacity="1.000">[SYSTEM] MegaMall_Tycoon just hit 10,000 total cash earned!</text>
+<rect x="1288.00" y="648.00" width="300.00" height="64.00" rx="8.00" ry="8.00" fill="rgb(24,26,34)" fill-opacity="1.000"/>
+<rect x="1288.00" y="648.00" width="300.00" height="64.00" rx="8.00" ry="8.00" fill="none" stroke="rgb(90,200,120)" stroke-width="2" stroke-opacity="1.000"/>
+<rect x="1288.00" y="648.00" width="4.00" height="64.00" rx="2.00" ry="2.00" fill="rgb(90,200,120)" fill-opacity="1.000"/>
+<text x="1308.00" y="670.25" text-anchor="start" font-size="15.0" fill="rgb(90,200,120)" fill-opacity="1.000">Dropper Upgraded</text>
+<text x="1308.00" y="688.35" text-anchor="start" font-size="13.0" fill="rgb(220,220,228)" fill-opacity="1.000">Gold Dropper Lv. 4 now earns $120 per drop.</text>
+<rect x="1288.00" y="720.00" width="300.00" height="96.00" rx="8.00" ry="8.00" fill="rgb(24,26,34)" fill-opacity="1.000"/>
+<rect x="1288.00" y="720.00" width="300.00" height="96.00" rx="8.00" ry="8.00" fill="none" stroke="rgb(255,170,40)" stroke-width="2" stroke-opacity="1.000"/>
+<rect x="1288.00" y="720.00" width="4.00" height="96.00" rx="2.00" ry="2.00" fill="rgb(255,170,40)" fill-opacity="1.000"/>
+<text x="1308.00" y="742.25" text-anchor="start" font-size="15.0" fill="rgb(255,170,40)" fill-opacity="1.000">Daily Collector Bonus</text>
+<text x="1308.00" y="760.35" text-anchor="start" font-size="13.0" fill="rgb(220,220,228)" fill-opacity="1.000">Your collector is full. Claim 2,500 cash now?</text>
+<rect x="1302.00" y="780.00" width="132.00" height="28.00" rx="6.00" ry="6.00" fill="rgb(255,200,80)" fill-opacity="1.000"/>
+<text x="1368.00" y="798.90" text-anchor="middle" font-size="14.0" fill="rgb(18,18,22)" fill-opacity="1.000">CLAIM $2,500</text>
+<rect x="1442.00" y="780.00" width="132.00" height="28.00" rx="6.00" ry="6.00" fill="rgb(120,124,136)" fill-opacity="1.000"/>
+<text x="1508.00" y="798.90" text-anchor="middle" font-size="14.0" fill="rgb(18,18,22)" fill-opacity="1.000">LATER</text>
+<rect x="1288.00" y="824.00" width="300.00" height="64.00" rx="8.00" ry="8.00" fill="rgb(24,26,34)" fill-opacity="1.000"/>
+<rect x="1288.00" y="824.00" width="300.00" height="64.00" rx="8.00" ry="8.00" fill="none" stroke="rgb(90,160,255)" stroke-width="2" stroke-opacity="1.000"/>
+<rect x="1288.00" y="824.00" width="4.00" height="64.00" rx="2.00" ry="2.00" fill="rgb(90,160,255)" fill-opacity="1.000"/>
+<text x="1308.00" y="846.25" text-anchor="start" font-size="15.0" fill="rgb(90,160,255)" fill-opacity="1.000">Offline Earnings</text>
+<text x="1308.00" y="864.35" text-anchor="start" font-size="13.0" fill="rgb(220,220,228)" fill-opacity="1.000">While you were away your mall earned $8,430.</text>
+</svg>

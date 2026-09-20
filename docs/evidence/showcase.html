@@ -1,0 +1,589 @@
+<title>What Apple MAX Built</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --ground: #f6f6f3;
+    --panel: #ffffff;
+    --panel-2: #eeeeea;
+    --line: #dedcd5;
+    --ink: #17191a;
+    --muted: #5f6669;
+    --accent: #0f8a4d;
+    --accent-soft: rgba(15,138,77,.10);
+    --warn: #a56a12;
+    --fail: #b23c30;
+    --fail-soft: rgba(178,60,48,.07);
+    --shot-ground: #101014;
+    --radius: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0d0f10;
+      --panel: #151819;
+      --panel-2: #1c2022;
+      --line: #262b2d;
+      --ink: #e8eaea;
+      --muted: #8d9599;
+      --accent: #35d17e;
+      --accent-soft: rgba(53,209,126,.12);
+      --warn: #e0a33a;
+      --fail: #e0685a;
+      --fail-soft: rgba(224,104,90,.09);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0d0f10; --panel: #151819; --panel-2: #1c2022; --line: #262b2d;
+    --ink: #e8eaea; --muted: #8d9599; --accent: #35d17e; --accent-soft: rgba(53,209,126,.12);
+    --warn: #e0a33a; --fail: #e0685a; --fail-soft: rgba(224,104,90,.09);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: Archivo, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 72px; }
+  .mono { font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; font-variant-numeric: tabular-nums; }
+
+  .eyebrow {
+    font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--accent); font-weight: 600; margin: 0 0 12px;
+  }
+  h1 { font-size: clamp(28px, 5vw, 44px); line-height: 1.08; margin: 0 0 14px; text-wrap: balance; font-weight: 700; letter-spacing: -.02em; }
+  .lede { font-size: 17px; line-height: 1.55; color: var(--muted); max-width: 62ch; margin: 0 0 28px; }
+
+  .tally { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 30px; }
+  .tally span {
+    font-size: 13px; padding: 7px 12px; border-radius: 999px;
+    background: var(--panel); border: 1px solid var(--line); color: var(--ink);
+  }
+  .tally b { font-weight: 600; }
+
+  .truth {
+    border: 1px solid var(--line); border-left: 3px solid var(--accent);
+    background: var(--panel); border-radius: var(--radius);
+    padding: 20px 22px; margin-bottom: 44px;
+  }
+  .truth h2 { font-size: 13px; letter-spacing: .1em; text-transform: uppercase; margin: 0 0 14px; color: var(--muted); font-weight: 600; }
+  .truth ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 11px; }
+  .truth li { font-size: 14.5px; line-height: 1.5; padding-left: 18px; position: relative; color: var(--ink); }
+  .truth li::before { content: ""; position: absolute; left: 0; top: .6em; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  .truth strong { font-weight: 600; }
+
+  h2.section { font-size: 20px; margin: 0 0 6px; font-weight: 700; letter-spacing: -.01em; }
+  .section-note { font-size: 14px; color: var(--muted); margin: 0 0 22px; max-width: 62ch; line-height: 1.5; }
+
+  .grid { display: grid; gap: 22px; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); margin-bottom: 52px; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    overflow: hidden; display: flex; flex-direction: column;
+  }
+  .card--failed { background: var(--fail-soft); border-color: var(--fail); flex-direction: row; align-items: stretch; }
+  .card__stripe { width: 3px; background: var(--fail); flex: 0 0 3px; }
+  .shot { margin: 0; background: var(--shot-ground); position: relative; }
+  .shot img { display: block; width: 100%; height: auto; max-width: 100%; }
+  .shot__tag {
+    position: absolute; left: 10px; bottom: 10px;
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px; letter-spacing: .02em;
+    background: rgba(8,9,11,.82); color: #cfd4d8; padding: 5px 9px; border-radius: 5px;
+  }
+  .card__body { padding: 16px 18px 18px; flex: 1; }
+  .card__title { margin: 0 0 12px; font-size: 16px; font-weight: 600; text-transform: capitalize; letter-spacing: -.005em; }
+  .card__verdict { margin: 0 0 8px; font-size: 14.5px; color: var(--fail); font-weight: 600; }
+  .card__detail {
+    margin: 0 0 12px; font-size: 12.5px; line-height: 1.5; color: var(--muted);
+    font-family: "IBM Plex Mono", monospace; word-break: break-word;
+  }
+
+  .stats { margin: 0; display: grid; gap: 0; }
+  .stats > div {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 14px;
+    padding: 6px 0; border-top: 1px solid var(--line);
+  }
+  .stats > div:first-child { border-top: 0; }
+  .stats dt { font-size: 12.5px; color: var(--muted); }
+  .stats dd { margin: 0; font-size: 13px; font-weight: 500; }
+  .stats .warn dt, .stats .warn dd { color: var(--warn); }
+
+  footer { border-top: 1px solid var(--line); padding-top: 20px; font-size: 13px; color: var(--muted); line-height: 1.6; }
+  footer code { font-family: "IBM Plex Mono", monospace; font-size: 12px; background: var(--panel-2); padding: 1px 5px; border-radius: 4px; }
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">Generated 2026-09-20 · lane Apple MAX</p>
+  <h1>Roblox screens and maps, built by the model from its own library</h1>
+  <p class="lede">
+    Every picture below came out of the deployed product. The model was handed the construction
+    library the product ships — what a shop is made of, how a tycoon plot reads — and asked to build
+    the thing. What it wrote was then compiled and executed, and these are the shapes that came out.
+  </p>
+
+  <div class="tally">
+    <span><b>15</b> of 16 screens built</span>
+    <span><b>6</b> of 6 maps built</span>
+    <span><b>570</b> interface objects</span>
+    <span><b>678</b> map parts placed</span>
+  </div>
+
+  <div class="truth">
+    <h2>What these pictures are, exactly</h2>
+    <ul>
+      <li><strong>The model is the live one.</strong> Every screen is an HTTP call to the deployed
+        Worker at <span class="mono">apple.moshe-barami111.workers.dev</span>. No local model, no cached answer.</li>
+      <li><strong>The library is the product's own.</strong> The exact payload
+        <span class="mono">get_ui_construction</span> and <span class="mono">get_genre_kit</span> return was put in
+        the prompt. The model was <em>given</em> its library — on this endpoint it cannot ask for it,
+        so nothing here shows that it would have chosen to.</li>
+      <li><strong>These are not Studio screenshots.</strong> The model's Luau was executed and its
+        instance tree resolved to real rectangles. Fonts, text wrapping and safe-area insets are not
+        modelled, so treat this as an accurate plan rather than a photograph.</li>
+      <li><strong>No artwork was invented.</strong> Where the model pointed at an image asset, the
+        box is hatched and prints the id. Nothing was downloaded and
+        <strong>nothing was uploaded to any Roblox account.</strong></li>
+      <li><strong>The failures are here too</strong>, at the same size as the successes, with the
+        reason each one gives.</li>
+    </ul>
+  </div>
+
+  <h2 class="section">Interface screens</h2>
+  <p class="section-note">
+    One screen per type the library covers, all for a tycoon game. A screen that opens from a button
+    starts hidden, so it is shown opened and labelled as such.
+  </p>
+  <div class="grid"><article class="card">
+    <figure class="shot">
+      <img src="ui-showcase/screen-codes--tycoon--opened.png" alt="codes screen built by the model" loading="lazy" width="3200" height="1800">
+      <figcaption class="shot__tag">shown opened — the script starts it hidden</figcaption>
+    </figure>
+    <div class="card__body">
+      <h3 class="card__title">codes</h3>
+      <dl class="stats">
+        <div><dt>instances on screen</dt><dd class="mono">9</dd></div>
+        <div><dt>gui objects built</dt><dd class="mono">9</dd></div>
+        <div><dt>written labels</dt><dd class="mono">4</dd></div>
+        <div><dt>hidden until opened</dt><dd class="mono">7</dd></div>
+        
+        
+        
+        <div><dt>references behind it</dt><dd class="mono">11 shipped games</dd></div>
+        <div><dt>luau written</dt><dd class="mono">5,484 chars</dd></div>
+      </dl>
+    </div>
+  </article>
+<article class="card">
+    <figure class="shot">
+      <img src="ui-showcase/screen-crafting--tycoon.png" alt="crafting screen built by the model" loading="lazy" width="3200" height="1800">
+      
+    </figure>
+    <div class="card__body">
+      <h3 class="card__title">crafting</h3>
+      <dl class="stats">
+        <div><dt>instances on screen</dt><dd class="mono">28</dd></div>
+        <div><dt>gui objects built</dt><dd class="mono">31</dd></div>
+        <div><dt>written labels</dt><dd class="mono">15</dd></div>
+        
+        
+        
+        
+        <div><dt>references behind it</dt><dd class="mono">11 shipped games</dd></div>
+        <div><dt>luau written</dt><dd class="mono">7,819 chars</dd></div>
+      </dl>
+    </div>
+  </article>
+<article class="card">
+    <figure class="shot">
+      <img src="ui-showcase/screen-gacha--tycoon--opened.png" alt="gacha screen built by the model" loading="lazy" width="3200" height="1800">
+      <figcaption class="shot__tag">shown opened — the script starts it hidden</figcaption>
+    </figure>
+    <div class="card__body">
+      <h3 class="card__title">gacha</h3>
+      <dl class="stats">
+        <div><dt>instances on screen</dt><dd class="mono">38</dd></div>
+        <div><dt>gui objects built</dt><dd class="mono">39</dd></div>
+        <div><dt>written labels</dt><dd class="mono">24</dd></div>
+        <div><dt>hidden until opened</dt><dd class="mono">3</dd></div>
+        
+        
+        
+        <div><dt>references behind it</dt><dd class="mono">10 shipped games</dd></div>
+        <div><dt>luau written</dt><dd class="mono">8,500 chars</dd></div>
+      </dl>
+    </div>
+  </article>
+<article class="card">
+    <figure class="shot">
+      <img src="ui-showcase/screen-hud--tycoon.png" alt="hud screen built by the model" loading="lazy" width="3200" height="1800">
+      
+    </figure>
+    <div class="card__body">
+      <h3 class="card__title">hud</h3>
+      <dl class="stats">
+        <div><dt>instances on screen</dt><dd class="mono">37</dd></div>
+        <div><dt>gui objects built</dt><dd class="mono">41</dd></div>
+        <div><dt>written labels</dt><dd class="mono">15</dd></div>
+        
+        
+        
+        
+        <div><dt>references behind it</dt><dd class="mono">3 shipped games</dd></div>
+        <div><dt>luau written</dt><dd class="mono">9,892 chars</dd></div>
+      </dl>
+    </div>
+  </article>
+<article class="card">
+    <figure class="shot">
+      <img src="ui-showcase/screen-inventory--tycoon.png" alt="inventory screen built by the model" loading="lazy" width="3200" height="1800">
+      
+    </figure>
+    <div class="card__body">
+      <h3 class="card__title">inventory</h3>
+      <dl class="stats">
+        <div><dt>instances on screen</dt><dd class="mono">84</dd></div>
+        <div><dt>gui objects built</dt><dd class="mono">75</dd></div>
+        <div><dt>written labels</dt><dd class="mono">43</dd></div>
+        
+        
+        
+        
+        <div><dt>references behind it</dt><dd class="mono">15 shipped games</dd></div>
+        <div><dt>luau written</dt><dd class="mono">17,569 chars</dd></div>
+      </dl>
+    </div>
+  </article>
+<article class="card">
+    <figure class="shot">
+      <img src="ui-showcase/screen-leaderboard--tycoon.png" alt="leaderboard screen built by the model" loading="lazy" width="3200" height="1800">
+      <figcaption class="shot__tag">on a 12 × 9 stud board in the world, not on the screen</figcaption>
+    </figure>
+    <div class="card__body">
+      <h3 class="card__title">leaderboard</h3>
+      <dl class="stats">
+        <div><dt>instances on screen</dt><dd class="mono">40</dd></div>
+        <div><dt>gui objects built</dt><dd class="mono">40</dd></div>
+        <div><dt>written labels</dt><dd class="mono">27</dd></div>
+        
+        
+        
+        <div><dt>canvas</dt><dd class="mono">600 × 450 px @ 50/stud</dd></div>
+        <div><dt>references behind it</dt><dd class="mono">12 shipped games</dd></div>
+        <div><dt>luau written</dt><dd class="mono">7,602 chars</dd></div>
+      </dl>
+    </div>
+  </article>
+<article class="card">
+    <figure class="shot">
+      <img src="ui-showcase/screen-lobby--tycoon.png" alt="lobby screen built by the model" loading="lazy" width="3200" height="1800">
+      
+    </figure>
+    <div class="card__body">
+      <h3 class="card__title">lobby</h3>
+      <dl class="stats">
+        <div><dt>instances on screen</dt><dd class="mono">42</dd></div>
+        <div><dt>gui objects built</dt><dd class="mono">38</dd></div>
+        <div><dt>written labels</dt><dd class="mono">28</dd></div>
+        
+        
+        
+        
+        <div><dt>references behind it</dt><dd class="mono">13 shipped games</dd></div>
+        <div><dt>luau written</dt><dd class="mono">9,873 chars</dd></div>
+      </dl>
+    </div>
+  </article>
+<article class="card">
+    <figure class="shot">
+      <img src="ui-showcase/screen-map--tycoon--opened.png" alt="map screen built by the model" loading="lazy" width="3200" height="1800">
+      <figcaption class="shot__tag">shown opened — the script starts it hidden</figcaption>
+    </figure>
+    <div class="card__body">
+      <h3 class="card__title">map</h3>
+      <dl class="stats">
+        <div><dt>instances on screen</dt><dd class="mono">50</dd></div>
+        <div><dt>gui objects built</dt><dd class="mono">51</dd></div>
+        <div><dt>written labels</dt><dd class="mono">18</dd></div>
+        <div><dt>hidden until opened</dt><dd class="mono">43</dd></div>
+        
+        <div class="warn"><dt>asset refs not fetched</dt><dd class="mono">3</dd></div>
+        
+        <div><dt>references behind it</dt><dd class="mono">13 shipped games</dd></div>
+        <div><dt>luau written</dt><dd class="mono">12,215 chars</dd></div>
+      </dl>
+    </div>
+  </article>
+<article class="card">
+    <figure class="shot">
+      <img src="ui-showcase/screen-notification--tycoon.png" alt="notification screen built by the model" loading="lazy" width="3200" height="1800">
+      
+    </figure>
+    <div class="card__body">
+      <h3 class="card__title">notification</h3>
+      <dl class="stats">
+        <div><dt>instances on screen</dt><dd class="mono">20</dd></div>
+        <div><dt>gui objects built</dt><dd class="mono">21</dd></div>
+        <div><dt>written labels</dt><dd class="mono">11</dd></div>
+        
+        
+        
+        
+        <div><dt>references behind it</dt><dd class="mono">11 shipped games</dd></div>
+        <div><dt>luau written</dt><dd class="mono">7,085 chars</dd></div>
+      </dl>
+    </div>
+  </article>
+<article class="card">
+    <figure class="shot">
+      <img src="ui-showcase/screen-onboarding--tycoon--opened.png" alt="onboarding screen built by the model" loading="lazy" width="3200" height="1800">
+      <figcaption class="shot__tag">shown opened — the script starts it hidden</figcaption>
+    </figure>
+    <div class="card__body">
+      <h3 class="card__title">onboarding</h3>
+      <dl class="stats">
+        <div><dt>instances on screen</dt><dd class="mono">27</dd></div>
+        <div><dt>gui objects built</dt><dd class="mono">26</dd></div>
+        <div><dt>written labels</dt><dd class="mono">16</dd></div>
+        <div><dt>hidden until opened</dt><dd class="mono">2</dd></div>
+        
+        
+        
+        <div><dt>references behind it</dt><dd class="mono">10 shipped games</dd></div>
+        <div><dt>luau written</dt><dd class="mono">7,410 chars</dd></div>
+      </dl>
+    </div>
+  </article>
+<article class="card">
+    <figure class="shot">
+      <img src="ui-showcase/screen-progress--tycoon--opened.png" alt="progress screen built by the model" loading="lazy" width="3200" height="1800">
+      <figcaption class="shot__tag">shown opened — the script starts it hidden</figcaption>
+    </figure>
+    <div class="card__body">
+      <h3 class="card__title">progress</h3>
+      <dl class="stats">
+        <div><dt>instances on screen</dt><dd class="mono">74</dd></div>
+        <div><dt>gui objects built</dt><dd class="mono">50</dd></div>
+        <div><dt>written labels</dt><dd class="mono">42</dd></div>
+        <div><dt>hidden until opened</dt><dd class="mono">4</dd></div>
+        
+        
+        
+        <div><dt>references behind it</dt><dd class="mono">2 shipped games</dd></div>
+        <div><dt>luau written</dt><dd class="mono">9,045 chars</dd></div>
+      </dl>
+    </div>
+  </article>
+<article class="card">
+    <figure class="shot">
+      <img src="ui-showcase/screen-rewards--tycoon.png" alt="rewards screen built by the model" loading="lazy" width="3200" height="1800">
+      
+    </figure>
+    <div class="card__body">
+      <h3 class="card__title">rewards</h3>
+      <dl class="stats">
+        <div><dt>instances on screen</dt><dd class="mono">50</dd></div>
+        <div><dt>gui objects built</dt><dd class="mono">44</dd></div>
+        <div><dt>written labels</dt><dd class="mono">32</dd></div>
+        
+        <div class="warn"><dt>off screen</dt><dd class="mono">1</dd></div>
+        
+        
+        <div><dt>references behind it</dt><dd class="mono">10 shipped games</dd></div>
+        <div><dt>luau written</dt><dd class="mono">7,518 chars</dd></div>
+      </dl>
+    </div>
+  </article>
+<article class="card">
+    <figure class="shot">
+      <img src="ui-showcase/screen-settings--tycoon.png" alt="settings screen built by the model" loading="lazy" width="3200" height="1800">
+      
+    </figure>
+    <div class="card__body">
+      <h3 class="card__title">settings</h3>
+      <dl class="stats">
+        <div><dt>instances on screen</dt><dd class="mono">9</dd></div>
+        <div><dt>gui objects built</dt><dd class="mono">12</dd></div>
+        <div><dt>written labels</dt><dd class="mono">6</dd></div>
+        
+        
+        
+        
+        <div><dt>references behind it</dt><dd class="mono">10 shipped games</dd></div>
+        <div><dt>luau written</dt><dd class="mono">8,636 chars</dd></div>
+      </dl>
+    </div>
+  </article>
+<article class="card">
+    <figure class="shot">
+      <img src="ui-showcase/screen-shop--tycoon--opened.png" alt="shop screen built by the model" loading="lazy" width="3200" height="1800">
+      <figcaption class="shot__tag">shown opened — the script starts it hidden</figcaption>
+    </figure>
+    <div class="card__body">
+      <h3 class="card__title">shop</h3>
+      <dl class="stats">
+        <div><dt>instances on screen</dt><dd class="mono">45</dd></div>
+        <div><dt>gui objects built</dt><dd class="mono">38</dd></div>
+        <div><dt>written labels</dt><dd class="mono">25</dd></div>
+        <div><dt>hidden until opened</dt><dd class="mono">37</dd></div>
+        
+        
+        
+        <div><dt>references behind it</dt><dd class="mono">11 shipped games</dd></div>
+        <div><dt>luau written</dt><dd class="mono">9,968 chars</dd></div>
+      </dl>
+    </div>
+  </article>
+<article class="card card--failed">
+      <div class="card__stripe" aria-hidden="true"></div>
+      <div class="card__body">
+        <h3 class="card__title">social</h3>
+        <p class="card__verdict">answered in prose instead of code</p>
+        <p class="card__detail">answer was 15908 chars of prose</p>
+        <dl class="stats">
+          <div><dt>outcome</dt><dd class="mono">no_code_block</dd></div>
+          
+        </dl>
+      </div>
+    </article>
+<article class="card">
+    <figure class="shot">
+      <img src="ui-showcase/screen-trading--tycoon--opened.png" alt="trading screen built by the model" loading="lazy" width="3200" height="1800">
+      <figcaption class="shot__tag">shown opened — the script starts it hidden</figcaption>
+    </figure>
+    <div class="card__body">
+      <h3 class="card__title">trading</h3>
+      <dl class="stats">
+        <div><dt>instances on screen</dt><dd class="mono">62</dd></div>
+        <div><dt>gui objects built</dt><dd class="mono">55</dd></div>
+        <div><dt>written labels</dt><dd class="mono">36</dd></div>
+        <div><dt>hidden until opened</dt><dd class="mono">9</dd></div>
+        
+        
+        
+        <div><dt>references behind it</dt><dd class="mono">12 shipped games</dd></div>
+        <div><dt>luau written</dt><dd class="mono">11,605 chars</dd></div>
+      </dl>
+    </div>
+  </article></div>
+
+  <h2 class="section">Maps</h2>
+  <p class="section-note">
+    Whole playable maps, one per genre, built out of parts with real sizes and positions — no asset,
+    no upload. Drawn looking straight down, shaded by height, spawns circled.
+  </p>
+  <div class="grid"><article class="card">
+    <figure class="shot shot--plan">
+      <img src="map-showcase/map--tycoon.png" alt="tycoon map plan" loading="lazy" width="3200" height="1800">
+      <figcaption class="shot__tag">plan view — looking straight down, rotation not modelled</figcaption>
+    </figure>
+    <div class="card__body">
+      <h3 class="card__title">tycoon</h3>
+      <dl class="stats">
+        <div><dt>parts placed</dt><dd class="mono">87</dd></div>
+        <div><dt>footprint</dt><dd class="mono">402 × 402 studs</dd></div>
+        <div><dt>height range</dt><dd class="mono">0 to 19</dd></div>
+        <div><dt>spawns</dt><dd class="mono">1</dd></div>
+        
+        
+        <div><dt>luau written</dt><dd class="mono">7,023 chars</dd></div>
+      </dl>
+    </div>
+  </article>
+<article class="card">
+    <figure class="shot shot--plan">
+      <img src="map-showcase/map--obby.png" alt="obby map plan" loading="lazy" width="3200" height="1800">
+      <figcaption class="shot__tag">plan view — looking straight down, rotation not modelled</figcaption>
+    </figure>
+    <div class="card__body">
+      <h3 class="card__title">obby</h3>
+      <dl class="stats">
+        <div><dt>parts placed</dt><dd class="mono">63</dd></div>
+        <div><dt>footprint</dt><dd class="mono">530 × 720 studs</dd></div>
+        <div><dt>height range</dt><dd class="mono">-6 to 59</dd></div>
+        <div><dt>spawns</dt><dd class="mono">1</dd></div>
+        
+        
+        <div><dt>luau written</dt><dd class="mono">8,549 chars</dd></div>
+      </dl>
+    </div>
+  </article>
+<article class="card">
+    <figure class="shot shot--plan">
+      <img src="map-showcase/map--horror.png" alt="horror map plan" loading="lazy" width="3200" height="1800">
+      <figcaption class="shot__tag">plan view — looking straight down, rotation not modelled</figcaption>
+    </figure>
+    <div class="card__body">
+      <h3 class="card__title">horror</h3>
+      <dl class="stats">
+        <div><dt>parts placed</dt><dd class="mono">218</dd></div>
+        <div><dt>footprint</dt><dd class="mono">432 × 400 studs</dd></div>
+        <div><dt>height range</dt><dd class="mono">-1 to 51</dd></div>
+        <div><dt>spawns</dt><dd class="mono">1</dd></div>
+        
+        
+        <div><dt>luau written</dt><dd class="mono">13,444 chars</dd></div>
+      </dl>
+    </div>
+  </article>
+<article class="card">
+    <figure class="shot shot--plan">
+      <img src="map-showcase/map--tower_defense.png" alt="tower defense map plan" loading="lazy" width="3200" height="1800">
+      <figcaption class="shot__tag">plan view — looking straight down, rotation not modelled</figcaption>
+    </figure>
+    <div class="card__body">
+      <h3 class="card__title">tower defense</h3>
+      <dl class="stats">
+        <div><dt>parts placed</dt><dd class="mono">90</dd></div>
+        <div><dt>footprint</dt><dd class="mono">244 × 244 studs</dd></div>
+        <div><dt>height range</dt><dd class="mono">-1 to 30</dd></div>
+        <div><dt>spawns</dt><dd class="mono">1</dd></div>
+        
+        
+        <div><dt>luau written</dt><dd class="mono">7,802 chars</dd></div>
+      </dl>
+    </div>
+  </article>
+<article class="card">
+    <figure class="shot shot--plan">
+      <img src="map-showcase/map--fps_arena.png" alt="fps arena map plan" loading="lazy" width="3200" height="1800">
+      <figcaption class="shot__tag">plan view — looking straight down, rotation not modelled</figcaption>
+    </figure>
+    <div class="card__body">
+      <h3 class="card__title">fps arena</h3>
+      <dl class="stats">
+        <div><dt>parts placed</dt><dd class="mono">87</dd></div>
+        <div><dt>footprint</dt><dd class="mono">305 × 305 studs</dd></div>
+        <div><dt>height range</dt><dd class="mono">-1 to 25</dd></div>
+        <div><dt>spawns</dt><dd class="mono">2</dd></div>
+        
+        
+        <div><dt>luau written</dt><dd class="mono">10,223 chars</dd></div>
+      </dl>
+    </div>
+  </article>
+<article class="card">
+    <figure class="shot shot--plan">
+      <img src="map-showcase/map--racing.png" alt="racing map plan" loading="lazy" width="3200" height="1800">
+      <figcaption class="shot__tag">plan view — looking straight down, rotation not modelled</figcaption>
+    </figure>
+    <div class="card__body">
+      <h3 class="card__title">racing</h3>
+      <dl class="stats">
+        <div><dt>parts placed</dt><dd class="mono">133</dd></div>
+        <div><dt>footprint</dt><dd class="mono">600 × 600 studs</dd></div>
+        <div><dt>height range</dt><dd class="mono">-2 to 19</dd></div>
+        <div><dt>spawns</dt><dd class="mono">1</dd></div>
+        
+        
+        <div><dt>luau written</dt><dd class="mono">8,682 chars</dd></div>
+      </dl>
+    </div>
+  </article></div>
+
+  <footer>
+    Sources: <code>docs/evidence/ui-showcase/manifest.json</code> and
+    <code>docs/evidence/map-showcase/manifest.json</code>. The Luau behind every card sits beside them.
+    Rebuild with <code>packages/training/src/generate-ui-showcase.mjs</code> and
+    <code>generate-map-showcase.mjs</code>.
+  </footer>
+</div>

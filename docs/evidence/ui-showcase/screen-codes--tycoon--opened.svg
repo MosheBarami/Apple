@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" font-family="'Gotham SSm','Montserrat','Helvetica Neue',Arial,sans-serif">
+<defs><pattern id="apple-unfetched" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="12" height="12" fill="#1b1b22"/><line x1="0" y1="0" x2="0" y2="12" stroke="#3a3a46" stroke-width="3"/></pattern></defs>
+<rect width="1600" height="900" fill="#101014"/>
+<rect x="0.00" y="261.00" width="88.00" height="378.00" rx="12.00" ry="12.00" fill="rgb(28,30,38)" fill-opacity="0.850"/>
+<rect x="0.00" y="261.00" width="88.00" height="378.00" rx="12.00" ry="12.00" fill="none" stroke="rgb(70,74,90)" stroke-width="2" stroke-opacity="1.000"/>
+<rect x="528.00" y="333.00" width="544.00" height="234.00" rx="14.00" ry="14.00" fill="rgb(24,26,34)" fill-opacity="1.000"/>
+<rect x="528.00" y="333.00" width="544.00" height="234.00" rx="14.00" ry="14.00" fill="none" stroke="rgb(255,214,102)" stroke-width="2" stroke-opacity="1.000"/>
+<text x="800.00" y="379.54" text-anchor="middle" font-size="26.0" fill="rgb(255,214,102)" fill-opacity="1.000">Redeem a Code</text>
+<text x="800.00" y="420.15" text-anchor="middle" font-size="15.0" fill="rgb(200,204,218)" fill-opacity="1.000">Type a code below and press Redeem to claim your reward.</text>
+<rect x="582.40" y="445.32" width="435.20" height="46.80" rx="8.00" ry="8.00" fill="rgb(38,42,54)" fill-opacity="1.000"/>
+<rect x="582.40" y="445.32" width="435.20" height="46.80" rx="8.00" ry="8.00" fill="none" stroke="rgb(70,74,90)" stroke-width="2" stroke-opacity="1.000"/>
+<rect x="664.00" y="506.16" width="272.00" height="42.12" rx="8.00" ry="8.00" fill="rgb(88,178,92)" fill-opacity="1.000"/>
+<text x="800.00" y="534.22" text-anchor="middle" font-size="20.0" fill="rgb(255,255,255)" fill-opacity="1.000">Redeem</text>
+<rect x="987.84" y="347.04" width="76.16" height="32.76" rx="32.76" ry="32.76" fill="rgb(200,62,62)" fill-opacity="1.000"/>
+<text x="1025.92" y="369.72" text-anchor="middle" font-size="18.0" fill="rgb(255,255,255)" fill-opacity="1.000">✕</text>
+</svg>

@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" font-family="'Gotham SSm','Montserrat','Helvetica Neue',Arial,sans-serif">
+<defs><pattern id="apple-unfetched" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="12" height="12" fill="#1b1b22"/><line x1="0" y1="0" x2="0" y2="12" stroke="#3a3a46" stroke-width="3"/></pattern></defs>
+<rect width="1600" height="900" fill="#101014"/>
+<rect x="0.00" y="630.00" width="352.00" height="270.00" rx="8.00" ry="8.00" fill="rgb(24,30,26)" fill-opacity="1.000"/>
+<rect x="0.00" y="630.00" width="352.00" height="270.00" rx="8.00" ry="8.00" fill="none" stroke="rgb(212,175,92)" stroke-width="2" stroke-opacity="1.000"/>
+<rect x="0.00" y="630.00" width="352.00" height="270.00" fill="url(#apple-unfetched)"/>
+<text x="176.00" y="769.00" text-anchor="middle" font-size="11" fill="#8a8a99">rbxassetid://0</text>
+<rect x="144.32" y="740.70" width="63.36" height="48.60" rx="48.60" ry="48.60" fill="rgb(96,160,84)" fill-opacity="1.000"/>
+<rect x="231.44" y="704.92" width="15.84" height="12.15" rx="12.15" ry="12.15" fill="rgb(230,90,90)" fill-opacity="1.000"/>
+<rect x="111.76" y="818.32" width="15.84" height="12.15" rx="12.15" ry="12.15" fill="rgb(90,140,230)" fill-opacity="1.000"/>
+<rect x="160.16" y="785.25" width="31.68" height="24.30" fill="url(#apple-unfetched)"/>
+<rect x="0.00" y="630.00" width="352.00" height="20.00" fill="rgb(16,20,18)" fill-opacity="0.750"/>
+<text x="176.00" y="644.55" text-anchor="middle" font-size="13.0" fill="rgb(235,225,200)" fill-opacity="1.000">BAYSIDE TYCOON  ·  click map for full view</text>
+<rect x="176.00" y="81.00" width="1248.00" height="738.00" rx="12.00" ry="12.00" fill="rgb(20,26,22)" fill-opacity="1.000"/>
+<rect x="176.00" y="81.00" width="1248.00" height="738.00" rx="12.00" ry="12.00" fill="none" stroke="rgb(212,175,92)" stroke-width="2" stroke-opacity="1.000"/>
+<rect x="176.00" y="81.00" width="1248.00" height="36.00" fill="rgb(14,18,16)" fill-opacity="1.000"/>
+<text x="800.00" y="106.00" text-anchor="middle" font-size="20.0" fill="rgb(235,225,200)" fill-opacity="1.000">BAYSIDE TYCOON — WORLD MAP</text>
+<rect x="200.96" y="125.28" width="898.56" height="634.68" rx="8.00" ry="8.00" fill="rgb(46,72,50)" fill-opacity="1.000"/>
+<rect x="636.76" y="157.01" width="26.96" height="571.21" fill="rgb(150,132,96)" fill-opacity="1.000"/>
+<rect x="245.89" y="433.10" width="808.70" height="19.04" fill="rgb(150,132,96)" fill-opacity="1.000"/>
+<rect x="439.08" y="169.71" width="26.96" height="266.57" fill="rgb(150,132,96)" fill-opacity="1.000"/>
+<rect x="834.44" y="448.97" width="26.96" height="266.57" fill="rgb(150,132,96)" fill-opacity="1.000"/>
+<rect x="578.36" y="391.85" width="143.77" height="101.55" rx="101.55" ry="101.55" fill="rgb(96,160,84)" fill-opacity="1.000"/>
+<text x="650.24" y="446.82" text-anchor="middle" font-size="12.0" fill="rgb(20,34,20)" fill-opacity="1.000">CENTRAL PARK &amp; POND</text>
+<rect x="254.87" y="176.05" width="215.65" height="126.94" rx="6.00" ry="6.00" fill="rgb(70,110,150)" fill-opacity="1.000"/>
+<text x="362.70" y="244.07" text-anchor="middle" font-size="13.0" fill="rgb(240,235,220)" fill-opacity="1.000">YOUR LOT — Pier Diner</text>
+<rect x="829.95" y="176.05" width="215.65" height="126.94" rx="6.00" ry="6.00" fill="rgb(150,70,70)" fill-opacity="1.000"/>
+<text x="937.78" y="244.07" text-anchor="middle" font-size="13.0" fill="rgb(240,235,220)" fill-opacity="1.000">MIRA'S LOT — Car Wash</text>
+<rect x="829.95" y="582.25" width="215.65" height="126.94" rx="6.00" ry="6.00" fill="rgb(60,66,60)" fill-opacity="1.000"/>
+<text x="937.78" y="650.27" text-anchor="middle" font-size="13.0" fill="rgb(240,235,220)" fill-opacity="1.000">EXPANSION SPACE</text>
+<rect x="254.87" y="582.25" width="215.65" height="126.94" rx="6.00" ry="6.00" fill="rgb(120,100,60)" fill-opacity="1.000"/>
+<text x="362.70" y="650.27" text-anchor="middle" font-size="13.0" fill="rgb(240,235,220)" fill-opacity="1.000">CARGO DROP ZONE</text>
+<rect x="346.98" y="223.66" width="31.45" height="31.73" fill="url(#apple-unfetched)"/>
+<rect x="637.66" y="199.85" width="25.16" height="28.56" rx="25.16" ry="25.16" fill="rgb(255,214,92)" fill-opacity="1.000"/>
+<text x="650.24" y="249.27" text-anchor="middle" font-size="11.0" fill="rgb(255,240,200)" fill-opacity="1.000">BANK DEPOSIT
+142 studs</text>
+<rect x="350.12" y="631.44" width="25.16" height="28.56" rx="25.16" ry="25.16" fill="rgb(255,214,92)" fill-opacity="1.000"/>
+<text x="362.70" y="680.85" text-anchor="middle" font-size="11.0" fill="rgb(255,240,200)" fill-opacity="1.000">CARGO DROP
+310 studs</text>
+<rect x="925.20" y="225.24" width="25.16" height="28.56" rx="25.16" ry="25.16" fill="rgb(255,214,92)" fill-opacity="1.000"/>
+<text x="937.78" y="274.65" text-anchor="middle" font-size="11.0" fill="rgb(255,240,200)" fill-opacity="1.000">MIRA'S CAR WASH
+265 studs</text>
+<rect x="1124.48" y="125.28" width="274.56" height="634.68" rx="8.00" ry="8.00" fill="rgb(26,32,28)" fill-opacity="1.000"/>
+<text x="1261.76" y="145.53" text-anchor="middle" font-size="15.0" fill="rgb(212,175,92)" fill-opacity="1.000">LEGEND &amp; LAYERS</text>
+<rect x="1138.21" y="161.28" width="247.10" height="26.00" rx="6.00" ry="6.00" fill="rgb(34,42,36)" fill-opacity="1.000"/>
+<rect x="1146.21" y="167.28" width="14.00" height="14.00" fill="rgb(255,255,255)" fill-opacity="1.000"/>
+<text x="1174.21" y="178.48" text-anchor="start" font-size="12.0" fill="rgb(225,220,205)" fill-opacity="1.000">You (arrow, faces heading)</text>
+<rect x="1138.21" y="193.28" width="247.10" height="26.00" rx="6.00" ry="6.00" fill="rgb(34,42,36)" fill-opacity="1.000"/>
+<rect x="1146.21" y="199.28" width="14.00" height="14.00" rx="14.00" ry="14.00" fill="rgb(230,90,90)" fill-opacity="1.000"/>
+<text x="1174.21" y="210.48" text-anchor="start" font-size="12.0" fill="rgb(225,220,205)" fill-opacity="1.000">Beeb — rival owner</text>
+<rect x="1138.21" y="225.28" width="247.10" height="26.00" rx="6.00" ry="6.00" fill="rgb(34,42,36)" fill-opacity="1.000"/>
+<rect x="1146.21" y="231.28" width="14.00" height="14.00" rx="14.00" ry="14.00" fill="rgb(90,140,230)" fill-opacity="1.000"/>
+<text x="1174.21" y="242.48" text-anchor="start" font-size="12.0" fill="rgb(225,220,205)" fill-opacity="1.000">Mira — rival owner</text>
+<rect x="1138.21" y="257.28" width="247.10" height="26.00" rx="6.00" ry="6.00" fill="rgb(34,42,36)" fill-opacity="1.000"/>
+<rect x="1146.21" y="263.28" width="14.00" height="14.00" rx="14.00" ry="14.00" fill="rgb(255,214,92)" fill-opacity="1.000"/>
+<text x="1174.21" y="274.48" text-anchor="start" font-size="12.0" fill="rgb(225,220,205)" fill-opacity="1.000">System waypoint</text>
+<rect x="1138.21" y="289.28" width="247.10" height="26.00" rx="6.00" ry="6.00" fill="rgb(34,42,36)" fill-opacity="1.000"/>
+<rect x="1146.21" y="295.28" width="14.00" height="14.00" rx="14.00" ry="14.00" fill="rgb(96,160,84)" fill-opacity="1.000"/>
+<text x="1174.21" y="306.48" text-anchor="start" font-size="12.0" fill="rgb(225,220,205)" fill-opacity="1.000">Central park hub</text>
+<rect x="238.40" y="771.00" width="1123.20" height="40.00" rx="6.00" ry="6.00" fill="rgb(16,20,18)" fill-opacity="1.000"/>
+<text x="800.00" y="794.85" text-anchor="middle" font-size="11.0" fill="rgb(180,175,160)" fill-opacity="1.000">Map is fixed north-up; your arrow rotates with your avatar instead. Change this in Options &gt; Map Rotation.</text>
+<text x="800.00" y="806.20" text-anchor="middle" font-size="12.0" fill="rgb(160,155,140)" fill-opacity="1.000">Press M to close · hold Tab to peek</text>
+</svg>
