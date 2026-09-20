@@ -533,3 +533,21 @@ customer. One test caller and no product caller is not a gap to close — it is 
 entry exists so the next person reading the dead-end report does not "fix" it by wiring it in.
 
 If the benchmark itself is ever deleted, this goes with it in the same commit.
+
+## `apps/worker/src/embedding-retrieval.ts` — STRUCTURALLY-BLOCKED
+
+Imported by nothing in the tree, and that is the decision rather than an oversight.
+
+It is the LOSING ARM of the retrieval bake-off. `docs/retrieval-bakeoff.md` records the row:
+precomputed Workers AI embeddings scored **70/80 — 87%** at one embed call per query, against the
+need-index ranker's 73/80 at zero model calls. The same document records why the gap is wider than
+those numbers make it look: the embedding index was **already stale within an hour**, because eight
+new screen files landed in the corpus and nothing re-embedded them. A retrieval path that silently
+stops covering new knowledge is worse than a slightly weaker one that cannot go stale, and it costs
+a model call per customer question to be worse.
+
+So `searchVerifiedModules` delegates to `need-index-search.ts` and this file has no caller. It is
+kept rather than deleted because the measurement behind it is real and the next person to propose
+embeddings should read the arm that was already built and already beaten, not rebuild it. If the
+staleness problem is ever solved — an index rebuilt on corpus change rather than on a schedule —
+this becomes a WIRE and this entry goes.

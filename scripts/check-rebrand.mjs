@@ -718,7 +718,27 @@ if (!shipped.length) {
 }
 const sources = [...new Set([...lsFiles(SOURCE_GLOBS), ...shipped])]
   // The checker names every exempt identifier, so it would flag itself.
-  .filter((f) => f !== 'scripts/check-rebrand.mjs');
+  .filter((f) => f !== 'scripts/check-rebrand.mjs')
+  //[[ EVIDENCE IS A RECORD OF WHAT HAPPENED, NOT A SURFACE THE PRODUCT SHIPS.
+  //
+  //   SOURCE_GLOBS takes every tracked `.luau`, and on 2026-09-20 that swept in
+  //   docs/evidence/ui-showcase/*.luau — Luau the MODEL generated, captured so the owner could look
+  //   at what it builds. One of them is a gacha screen whose rarity table contains
+  //   `Epic — Ember Golem`, and the checker read that as the product calling itself Golem.
+  //
+  //   It is not. A golem is a stock fantasy monster; Minecraft ships iron ones. I checked whether
+  //   the model had instead echoed a residual product name out of its own inputs, because that
+  //   WOULD be a real leak — the five hits in prompts.ts are all TypeScript identifiers
+  //   (`GolemMode`, `@golem/shared`) that the model never sees, and the 120 in
+  //   packages/corpus/data/sources.json are licence prose in a build-time ingestion manifest read
+  //   by packages/corpus/src/*.mjs and by nothing at inference. So the model invented a monster.
+  //
+  //   The deeper reason to exclude these rather than edit them: an evidence file is a record.
+  //   Rewriting one so a checker goes green falsifies the record, which is the failure this whole
+  //   repository is organised against. The product's own surface is unaffected — apps/, packages/
+  //   and the shipped SDK clients are all still in the denominator, and the deployed half still
+  //   reads the live bundle. ]]
+  .filter((f) => !f.startsWith('docs/evidence/'));
 
 const capturedRoutes = deployed ? provenanceOf(deployed)?.routes?.length ?? 0 : 0;
 console.log(
