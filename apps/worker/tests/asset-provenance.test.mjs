@@ -115,3 +115,71 @@ test('NOTHING WAIVES A VERIFICATION ASSERTION ANY MORE', () => {
   assert.match(TOOLS, /  insert_asset: \{/, 'insert_asset itself is gone — these assertions prove nothing');
   assert.match(TOOLS, /verifyCreatorStoreAsset\(ctx\.env, assetId/, 'insert_asset no longer verifies at all');
 });
+
+//[[ THE REFUSAL A CUSTOMER READS MAY NAME ONLY ROUTES THAT STILL EXIST.
+//
+//   MEASURED 2026-09-21. `verifyCreatorStoreAsset`'s provenance refusal told the customer an id
+//   "must come from a Creator Store search response or the curated library" — ten months after the
+//   curated library was deleted, and three files away from `PROVENANCE_SOURCE`, which records in
+//   so many words that `library` "went with the catalogue on 2026-09-20". The doc comment above
+//   the function said it too.
+//
+//   This is not cosmetic. The message is the one instruction a blocked customer gets, and it sent
+//   them looking for a route the product no longer has. The owner's standing requirement is one
+//   consistent production truth across docs, admin UI, model registry and telemetry; a refusal
+//   string is the most-read documentation in the product.
+//
+//   THE ASSERTION IS DERIVED, NOT TYPED. The routes named are checked against
+//   `AssetProvenanceSource` itself, so deleting or adding a provenance kind breaks this test
+//   rather than leaving another sentence to outlive its subject. ]]
+
+const ASSETS = readFileSync(join(HERE, '..', 'src', 'assets.ts'), 'utf8');
+const ASSET_POLICY = readFileSync(join(HERE, '..', 'src', 'asset-policy.ts'), 'utf8');
+
+/** The provenance refusal's reason string, as the customer receives it. */
+const provenanceRefusalText = () => {
+  const m = /has provenance '\$\{provenance\}' — ([^`]*)/.exec(ASSETS);
+  assert.ok(m, 'the provenance refusal string has moved — this test cannot check what it cannot find');
+  return m[1];
+};
+
+test('the provenance refusal names only sources the product still has', () => {
+  const text = provenanceRefusalText();
+
+  // The union is the product's own list of where an id can come from. Read, not remembered.
+  const union = /export type AssetProvenanceSource =([^;]+);/.exec(ASSETS);
+  assert.ok(union, 'AssetProvenanceSource has moved');
+  const kinds = [...union[1].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+  assert.deepEqual(
+    [...kinds].sort(),
+    ['model_output', 'search_result', 'unknown', 'user_supplied'],
+    'a provenance kind was added or removed — the refusal text below has to be re-read against it',
+  );
+
+  // The two that can pass the gate are search_result and user_supplied, and the message must
+  // offer both of them: telling a customer only about search would hide the id they already own.
+  assert.match(text, /Creator Store search/, 'search_result is a route and must be offered');
+  assert.match(text, /supplied yourself/, 'user_supplied is a route and must be offered');
+  assert.match(text, /never inserted/, 'the refusal must still say what will not happen');
+});
+
+test('THE STALE SENTENCE — no customer-facing string offers the deleted curated library', () => {
+  assert.doesNotMatch(
+    provenanceRefusalText(),
+    /curated library|catalogue/i,
+    'the curated library was deleted on 2026-09-20; a refusal that names it sends the customer nowhere',
+  );
+
+  // The claim above rests on the library being gone. If it ever comes back, this test is wrong
+  // and must be re-aimed rather than deleted — so the evidence is asserted, not assumed.
+  assert.match(
+    ASSET_POLICY,
+    /went with the catalogue on 2026-09-20/,
+    'asset-policy.ts no longer records that the library source was removed — re-check before trusting the assertion above',
+  );
+  assert.doesNotMatch(
+    ASSETS,
+    /^export type AssetProvenanceSource =.*'library'/m,
+    'a library provenance exists again — the refusal string must offer it and this test must be re-aimed',
+  );
+});

@@ -708,8 +708,13 @@ export function judgeAssetDetails(assetId: number, entry: unknown, opts: VerifyO
  * Resolve an asset id to a structured, auditable verdict.
  *
  * Step 0 is the provenance gate: an id that appears in a model's output text and nowhere else is
- * refused **before** a request is made. Discovery must come from `searchCreatorStore()` or the
- * curated library; an id cannot be conjured.
+ * refused **before** a request is made. Discovery must come from `searchCreatorStore()`, or the
+ * id must be one the customer supplied themselves; an id cannot be conjured.
+ *
+ * IT USED TO SAY "or the curated library". That route was deleted with the catalogue on
+ * 2026-09-20 — see `PROVENANCE_SOURCE` in asset-policy.ts, which records that `library` "went
+ * with the catalogue", and `AssetProvenanceSource`, which has only the four values this gate
+ * branches on. The sentence outlived the thing it described.
  *
  * Never throws. Network failure is `fail_network`, which is a refusal like any other.
  *
@@ -739,7 +744,7 @@ export async function verifyCreatorStoreAsset(env: AssetEnv, assetId: number, op
     const v = blankVerdict(assetId, now);
     v.verdict = 'fail_bad_provenance';
     v.reasons = [
-      `asset id ${assetId} has provenance '${provenance}' — an id must come from a Creator Store search response or the curated library. An id that only ever appeared in generated text is never inserted.`,
+      `asset id ${assetId} has provenance '${provenance}' — an id must come from a Creator Store search response, or be one you supplied yourself. An id that only ever appeared in generated text is never inserted.`,
     ];
     return v;
   }
