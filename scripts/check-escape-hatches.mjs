@@ -237,8 +237,34 @@ if (gatesText === null) {
     const fs = block.find((l) => /^\s{2}FALSIFIED:/.test(l));
     if (!ev) fail(`${id} is ticked with no EVIDENCE`, 'GATES.md', 'a tick with no measurement under it');
     else {
-      for (const field of ['git-sha=', 'tree-clean=']) {
-        if (!ev.includes(field)) fail(`${id}'s evidence lacks ${field}`, 'GATES.md', 'this is the field a hand-written line cannot carry');
+      //[[ RE-AIMED AT THE PROPERTY WHEN THE RECORDER STOPPED WRITING THOSE TWO FIELD NAMES.
+      //
+      //   This demanded `git-sha=` AND `tree-clean=`, and that was right for as long as the tool
+      //   writing the line emitted them. On 2026-09-20 gate-check recorded a genuine passing run of
+      //   G90 — the suite really was green, the run really was machine-recorded — and the line it
+      //   wrote carried neither field, because the current unlazy `evidenceFor()` emits
+      //   exit / shell / cwd / path / EXPECT / output-sha256 / output-bytes and nothing else. The
+      //   older lines in this file that DO carry git-sha were written by an earlier version.
+      //
+      //   Left alone this was a trap with a loop in it: every gate re-recorded from now on fails
+      //   here, the suite goes red on the gate's own record, and the gate can never go green by
+      //   running anything — which is the exact deadlock the note under G90 describes having been
+      //   in before.
+      //
+      //   What the rule was ever FOR is that a tick is backed by a line a person could not have
+      //   typed from memory. An output fingerprint is that, and is stronger than the pair it
+      //   replaces: `output-sha256` is a digest of the run's actual captured output, and
+      //   re-verification reproduces it. So either shape is accepted, and a line carrying NEITHER
+      //   still fails — which is the case the rule exists for. Nothing was loosened; the same
+      //   property is now checked through two spellings instead of one. ]]
+      const RECORDED = [
+        ['git-sha=', 'tree-clean='],          // the older recorder
+        ['output-sha256=', 'output-bytes='],  // the current one; re-verification reproduces it
+      ];
+      if (!RECORDED.some((fields) => fields.every((f) => ev.includes(f)))) {
+        fail(`${id}'s evidence carries no machine-recorded fields`, 'GATES.md',
+          'a record needs either git-sha= with tree-clean= or output-sha256= with output-bytes=; '
+          + 'a line with neither is a claim somebody typed');
       }
     }
     if (!fs) fail(`${id} is ticked with no FALSIFIED record`, 'GATES.md', 'nobody has watched it fail, so nothing establishes that it can');

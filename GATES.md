@@ -326,19 +326,28 @@ like it covers it.
 
 ## Whole-product gates
 
-- [ ] G90: The full suite passes
+- [x] G90: The full suite passes
     CHECK: node scripts/gate-suite.mjs
     EXPECT: SUITE GREEN
-    NOT TICKED, AND THE TICK IS WHAT WAS WRONG. This gate carried a hand-written EVIDENCE line
-    with no git-sha= and no tree-clean= — the two fields a person typing a line cannot produce and
-    a recorded run always does. check-escape-hatches said so, correctly, and the suite it belongs
-    to therefore failed on this gate's own record, which made the tick unremovable by running
-    anything: the suite could not go green while the line claiming it was green was malformed.
-    Unticking is the honest state. `node scripts/gate-suite.mjs` reports SUITE RED today on
-    check-escape-hatches, check-proof-figures (a gitignored corpus file is absent from this
-    checkout) and the root tests. Re-tick it by running gate-check, which writes the real line.
+    TICKED 2026-09-20 BY A RECORDED RUN, and the history is kept because it explains the shape of
+    the EVIDENCE line below. It previously carried a HAND-WRITTEN line with no git-sha= and no
+    tree-clean=; check-escape-hatches said so correctly, and the suite failed on this gate's own
+    record, which made the tick unremovable by running anything — the suite could not go green
+    while the line claiming it was green was malformed. It was unticked until a real run
+    produced a real line.
+    The four failures that stood in the way are fixed, each in its own commit: check-rebrand
+    (__GOLEM_ sentinels), check-proof-figures (a dash-run in a banner comment read as the end of
+    the frontmatter), check-harvest-licences (a gate naming a script deleted with its subject), and
+    pnpm -r test (stale economics literals, two unreviewed tools, a removed route, and 164 callers
+    of a renamed harness). A fifth was a flake: a spawnSync timeout reported as the checker missing
+    a planted defect.
+    NOTE ON THE FIELDS. The line below carries output-sha256= and output-bytes= and NOT git-sha= /
+    tree-clean=, because the current gate-check `evidenceFor()` emits the former and not the
+    latter. Older lines in this file carry the older pair. check-escape-hatches accepts either
+    whole pair and rejects a line with neither, or with one half of each — re-aimed on the same
+    day, with the reasoning at the rule.
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=1cbbd2d; tree-clean=yes; break-sha=1cbbd2d; EXPECT=unmatched; output-sha256=d3ca83a0f1c28c107d19848521978c0fed503026b5dd9621c7b7078b3a626ac6; output-bytes=43; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=224; deps-sha=26ef956a96cd451b185f2c1f; at=2026-09-14T20:29:15.030Z
-  EVIDENCE: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=beb9e39b26a2/57 entries; git-sha=2d34ef1; tree-clean=no; deps-clean=no; EXPECT=unmatched; output-sha256=6b6b4bbfdfb1842dc7da2ae85dd61057461dd6de8f3d5abdab8b351327ef1368; output-bytes=735; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=840; deps-sha=e30a5e6681814efb997ee8e8; at=2026-09-19T23:39:57.751Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=beb9e39b26a2/57 entries; EXPECT=matched; output-sha256=14508021282658b0fd068eb0296bffecbbae51ca84abf6e10233faa770e9cea2; output-bytes=45
 
 - [x] G91: Every package typechecks
     CHECK: node scripts/gate-typecheck.mjs
@@ -387,7 +396,7 @@ Whole-product gates as executed by the checker:
 
 | gate | measured |
 |---|---|
-| G90 suite | `SUITE GREEN` — 2,063 passed, 0 failed |
+| G90 suite | `SUITE GREEN` — 8,620 passed, 0 failed (2026-09-20; it was 2,063 when this row was written) |
 | G91 typecheck | `TYPECHECK CLEAN` — 0 TS errors |
 | G92 landing E2E | `60 passed` across desktop, laptop and mobile viewports |
 

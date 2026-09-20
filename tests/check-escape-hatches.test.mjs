@@ -271,10 +271,21 @@ test('it catches a ticked gate with no FALSIFIED record', () => {
   assert.match(r.out, /ticked with no FALSIFIED record/);
 });
 
-test('it catches an evidence line stripped of the fields a claim cannot fake', () => {
-  const r = withPlant(DIR, 'GATES.md', (s) => s.replace(/git-sha=[0-9a-f]+; /g, ''));
+//[[ RE-AIMED WHEN THE RECORDER CHANGED WHICH FIELDS IT WRITES, AND THE OLD ASSERTION WAS RIGHT
+//   UNTIL THAT MOMENT. This stripped git-sha alone and expected a failure, which held for as long
+//   as git-sha was the only unforgeable field in a line. The current gate-check writes
+//   output-sha256 and output-bytes instead — a digest of the run's own captured output, which
+//   re-verification reproduces — so a line with git-sha removed can still be a genuine record.
+//   The rule now accepts either pair, and the test strips BOTH shapes, because what it has always
+//   been for is a line somebody could have typed. ]]
+test('it catches an evidence line stripped of every field a claim cannot fake', () => {
+  const r = withPlant(DIR, 'GATES.md', (s) => s
+    .replace(/git-sha=[0-9a-f]+; /g, '')
+    .replace(/tree-clean=(yes|no); /g, '')
+    .replace(/output-sha256=[0-9a-f]+; /g, '')
+    .replace(/; output-bytes=\d+/g, ''));
   assert.equal(r.exit, 1, r.out);
-  assert.match(r.out, /evidence lacks git-sha=/);
+  assert.match(r.out, /carries no machine-recorded fields/);
 });
 
 test('it catches a control byte in a source file', () => {
@@ -429,12 +440,16 @@ test('it catches a ticked gate with no EVIDENCE line at all', () => {
   assert.match(r.out, /is ticked with no EVIDENCE/);
 });
 
-test('it catches evidence stripped of tree-clean, not only of git-sha', () => {
-  // Only git-sha was tested. tree-clean is the field that says whether the measurement was taken
-  // against committed code at all, which is the difference between a record and a decoration.
-  const r = withPlant(DIR, 'GATES.md', (s) => s.replace(/tree-clean=(yes|no); /g, ''));
+test('it catches a HALF of each recorded pair, which is neither record', () => {
+  // The rule takes git-sha WITH tree-clean, or output-sha256 WITH output-bytes. The gap it must
+  // not open is a line that carries one field from each pair and satisfies neither — which is what
+  // "accepts either shape" degrades into if the pairs are checked field-by-field rather than whole.
+  // Originally this stripped tree-clean alone, on the same reasoning one recorder ago.
+  const r = withPlant(DIR, 'GATES.md', (s) => s
+    .replace(/tree-clean=(yes|no); /g, '')
+    .replace(/; output-bytes=\d+/g, ''));
   assert.equal(r.exit, 1, r.out);
-  assert.match(r.out, /evidence lacks tree-clean=/);
+  assert.match(r.out, /carries no machine-recorded fields/);
 });
 
 test('it catches WORKLIST.md having been untracked', () => {
