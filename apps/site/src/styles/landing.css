@@ -117,6 +117,30 @@
   --pillar-hi: #121a15;
   --line-strong: #2c3a33;
 
+  /*[[ THE TYPE SYSTEM, AS TOKENS, BECAUSE HALF THE SITE ALREADY HAD ONE AND THIS FILE DID NOT.
+   *
+   *   global.css — which dresses /docs, /pricing, /changelog, /status and the legal routes — has
+   *   declared --font-display, --font-body, --font-sans and --font-mono since the warm-dark pass.
+   *   This file does not import it (see the note at line 174) and had therefore SPELLED THE SAME
+   *   TWO STACKS OUT NINE TIMES: the sans once on `body`, the mono eight times, on the activity
+   *   log, the step figures and the four capability stages. Nine literals is not a typography
+   *   system; it is a typography system on one half of a site and nine chances to drift on the
+   *   other. The values below are character-identical to global.css's, so nothing renders
+   *   differently — this is where the stacks are named, not a new decision about which they are.
+   *
+   *   THE STACK ITSELF IS THE DECISION AND IT IS FINAL. It is recorded in docs/DESIGN-TYPE.md with
+   *   the arithmetic: a self-hosted variable display face is one more request and a flash of
+   *   unstyled text on a page whose payload budget is already exceeded, to replace a stack that
+   *   resolves to SF on the owner's own machine. The owner's one standing instruction about type
+   *   is to KEEP OURS, in the same sentence as the instruction to delete everything else.
+   *
+   *   --font-display and --font-body are the same stack today, exactly as they are in global.css.
+   *   Both names exist so that the day they differ, every heading moves and no body text does. ]]*/
+  --font-display: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-sans: var(--font-body);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
   --shell: 1024px;
   --gutter: 32px;
   /* The hero is full-bleed with its own gutter: the bar's nav sits in a 1280px container with 32px
@@ -250,7 +274,7 @@ body {
   margin: 0;
   background: var(--ground);
   color: var(--ink);
-  font-family: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--font-body);
   font-weight: 400;
   font-size: 14px;
   /* 1.5, NOT 20px. The bar's body is "14px/400/normal body at a 1.5 line height" and ours was
@@ -883,7 +907,7 @@ p, li, dd, dt, figcaption, blockquote { text-wrap: pretty; }
    It was the last token in the ramp with no reader, having lost its only one when the primary
    button stopped being a white slab with --raised ink on it. */
 .activity { padding: 20px 24px; overflow-x: auto; background: var(--raised); }
-.activity-line { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; line-height: 26px; white-space: pre; }
+.activity-line { color: var(--muted); font-family: var(--font-mono); font-size: 13px; line-height: 26px; white-space: pre; }
 /* THE REFUSAL IS THE BRIGHTEST LINE, NOT A DIFFERENT HUE.
    Every element below the fold on the bar was tested for a saturated colour and not one was found:
    hierarchy there is carried entirely by how light a thing is against the page. This line was
@@ -1004,7 +1028,7 @@ p, li, dd, dt, figcaption, blockquote { text-wrap: pretty; }
   width: 100%; height: 26px; padding: 0 8px;
   border: 0; border-radius: var(--r-sm);
   background: none; color: var(--muted);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 12px; line-height: 26px; text-align: left; white-space: nowrap;
   cursor: pointer;
   transition: background-color var(--t-fast) ease-out, color var(--t-fast) ease-out;
@@ -1022,11 +1046,11 @@ p, li, dd, dt, figcaption, blockquote { text-wrap: pretty; }
   margin: 0; padding: 10px 12px;
   border-radius: var(--r-sm); background: var(--raised);
   color: var(--muted);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 11.5px; line-height: 18px;
   overflow-wrap: anywhere;
 }
-.rd-gate { margin: 0; color: var(--faint); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11.5px; line-height: 18px; }
+.rd-gate { margin: 0; color: var(--faint); font-family: var(--font-mono); font-size: 11.5px; line-height: 18px; }
 /* The gate open is the one state on this stage worth the accent: it is the moment the claim in the
    title becomes true, and it is a short line rather than a paragraph, so --accent-ink carries it. */
 .rd-gate[data-read='3'] { color: var(--accent-ink); }
@@ -1097,7 +1121,7 @@ p, li, dd, dt, figcaption, blockquote { text-wrap: pretty; }
 }
 .lu-out code {
   display: block;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 11.5px; line-height: 19px;
   color: var(--muted); white-space: pre;
 }
@@ -1787,7 +1811,7 @@ html:not(.no-js) [data-reveal].is-in {
 .proof-ask {
   margin: 0; padding: 14px 16px;
   border: 1px solid var(--line); border-radius: var(--r); background: var(--raised);
-  color: var(--ink); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--ink); font-family: var(--font-mono);
   font-size: 13px; line-height: 22px;
 }
 .proof-ask-label { display: block; margin-bottom: 6px; color: var(--faint); }
@@ -1802,13 +1826,13 @@ html:not(.no-js) [data-reveal].is-in {
 .proof-state { color: var(--faint); text-wrap: balance; }
 .proof-answer { margin: 10px 0 0; color: var(--ink); font-size: 14px; line-height: 21px; }
 .proof-log,
-.proof-outcome { margin: 10px 0 0; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; line-height: 22px; }
+.proof-outcome { margin: 10px 0 0; color: var(--muted); font-family: var(--font-mono); font-size: 13px; line-height: 22px; }
 /* The Explorer read-back. `white-space: pre` keeps the box-drawing aligned, and the scroll is on
    the block rather than the page so a narrow screen never gives the whole document a sideways
    shove. */
 .proof-tree {
   margin: 10px 0 0; overflow-x: auto;
-  color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--muted); font-family: var(--font-mono);
   font-size: 13px; line-height: 22px; white-space: pre;
 }
 .proof-disclosure { margin: 0; color: var(--muted); font-size: 13px; line-height: 20px; }
