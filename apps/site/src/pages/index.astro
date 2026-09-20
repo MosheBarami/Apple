@@ -825,7 +825,15 @@ const asks = [
         node.setAttribute('aria-pressed', 'true');
 
         // `game.` is prepended here rather than stored six times in the markup: one spelling.
-        log.textContent = 'get_tree  game.' + path + '  ok \u00b7 ' + kids + ' ' + (kids === '1' ? 'child' : 'children');
+        //
+        // `get_project_tree`, AND THE SECOND HALF OF THE SAME DEFECT. The activity figure above
+        // this page's frontmatter printed `get_tree` \u2014 the plugin's wire op, not a registered tool
+        // \u2014 and so did this line, which is the string a visitor sees when they click a node in the
+        // read-the-tree demo. Fixing the figure and leaving this was possible because
+        // tests/site-names-real-tools.test.mjs strips <script> before it scans, exactly as the
+        // site's other copy guards do, and a name a page WRITES at runtime is as visible as one it
+        // ships in its markup. The guard now reads the string literals inside inline scripts too.
+        log.textContent = 'get_project_tree  game.' + path + '  ok \u00b7 ' + kids + ' ' + (kids === '1' ? 'child' : 'children');
 
         const n = read.size;
         gate.setAttribute('data-read', String(Math.min(n, NEEDED)));

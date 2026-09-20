@@ -69,12 +69,36 @@ const visible = (html) =>
  */
 const TOOLISH = /\b([a-z][a-z0-9]*(?:_[a-z0-9]+)+)\b/g;
 
+/**
+ * A NAME A PAGE WRITES AT RUNTIME IS AS VISIBLE AS ONE IT SHIPS IN ITS MARKUP, and the first
+ * version of this file could not see it. It stripped `<script>` — correctly, because the site's
+ * other copy guards do, and for the right reason: a bundle is not prose. But the landing's
+ * read-the-tree demo builds its readout in JavaScript, `'get_tree  game.' + path + '  ok'`, and a
+ * visitor who clicks a node reads that string off the page. So the wire op was fixed in the figure
+ * and shipped in the demo on the same commit, and this guard reported the site clean.
+ *
+ * The scan is over STRING LITERALS inside those scripts, not over the code: identifiers, property
+ * names and minified locals are not copy, and a scan that could not tell them apart would be a
+ * guard nobody could keep green. Measured across the twenty built pages: exactly one snake_case
+ * token appears inside any inline-script literal, and it is a tool name.
+ */
+function literalsIn(html) {
+  const out = [];
+  for (const [, body] of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)) {
+    for (const m of body.matchAll(/'([^'\\\n]*)'|"([^"\\\n]*)"|`([^`\\\n]*)`/g)) out.push(m[1] ?? m[2] ?? m[3]);
+  }
+  return out.join('\n');
+}
+
 const built = existsSync(DIST) ? pages() : [];
 const found = new Map();
 for (const file of built) {
-  for (const [, token] of visible(readFileSync(join(DIST, file), 'utf8')).matchAll(TOOLISH)) {
-    if (!found.has(token)) found.set(token, new Set());
-    found.get(token).add(file);
+  const html = readFileSync(join(DIST, file), 'utf8');
+  for (const source of [visible(html), literalsIn(html)]) {
+    for (const [, token] of source.matchAll(TOOLISH)) {
+      if (!found.has(token)) found.set(token, new Set());
+      found.get(token).add(file);
+    }
   }
 }
 
