@@ -1,4 +1,8 @@
-# Handoff: two defects in the agent tool loop that I could not fix myself
+# Handoff: three defects in the agent tool loop that I could not fix myself
+
+<!-- A and B were written 2026-09-20; C was added 2026-09-21 by a later lane that found
+     session.ts still held. The count in this title is the count of sections below. -->
+
 
 `apps/worker/src/do/session.ts` was being edited by another lane while this was written, so it was
 read and measured but **not touched**. Both defects below are in that file. Everything here is
@@ -275,3 +279,132 @@ marked `apps/plugin` NOT THE PRODUCT and named `apps/apple-plugin` as what ships
 `checkpointEligible`, `truncated`, `skipped`, `protected`, `coverage` and `wholePlaceComplete` —
 every field `checkpoint-evidence.ts` demands. There is no missing-field bug. The worker-side half of
 that item (one sentence for three causes) was real and is fixed in commit `ac4a7b1`.
+
+---
+
+# Addendum, 2026-09-21: a third defect in the same file
+
+Added by a later lane. `apps/worker/src/do/session.ts` was **still dirty** when this was written —
+89 uncommitted lines from the rate-limit lane, `git status --porcelain` checked before and after —
+so it was again read and measured but **not touched**. Line numbers are from that working tree and
+**will have moved. Anchor on the quoted code.**
+
+## C. A refusal ends the run on the server and says nothing about it on the wire
+
+### What the code does
+
+`session.ts:1401`:
+
+```ts
+  private refuseOne(origin: WebSocket | undefined, msg: ServerMsg) {
+    if (origin === undefined) {
+      this.broadcast(msg);
+      return;
+    }
+    try {
+      origin.send(JSON.stringify(msg));
+    } catch {
+      /* closed */
+    }
+  }
+```
+
+One frame, then return. Every caller that refuses a *start* returns immediately after it:
+
+| line | code | situation |
+|------|------|-----------|
+| 2987 | `busy` | `startGate` rejected the attempt |
+| 3004 | `busy` | a live run is under `STEP_STALE_MS` |
+| 3009 | `forbidden` | `runAccessVerdict` said stop |
+| 3014 | `product_model_unavailable` | `productModelVerdict` refused the model |
+| 2743, 2817, 2822, 2827, 2832 | `bad_product_model`, `bad_mode`, `product_model_unavailable`, `busy` | the edit-message path |
+
+No `msg_end`, no `run_state`, no terminal event of any kind. `grep -n "type: 'msg_end'\|type: 'run_state'"`
+over the file returns exactly three emitters — 1805, 2722 and 4441 — and none of them is on a
+refusal path.
+
+### Measured
+
+`infra/e2e.mjs` waited the full 150 seconds on a `product_model_unavailable` and then reported
+`chat timeout after 150s`. That harness has since been fixed to reject at once and name the refusal
+(commit `ffc25b3`, guarded by `tests/e2e-refusal-diagnosis.test.mjs`) — **which is the harness half,
+not this one.** Its new rejection message, `refused with no terminal event: <code>`, is the standing
+measurement of this defect: when the worker starts emitting a terminal event, that rejection stops
+firing on its own, because `msg_end` will arrive first.
+
+The browser half is also already fixed and is **not** a reason to close this. `apps/web/src/lib/use-project-socket.ts:873`
+now clears `running` on any `error` frame, and its own comment says so explicitly: *"The worker
+should also emit a terminal event after refusing … a client that stays busy because a server forgot
+one message is a defect on its own, and this is the half that does not need the other half to be
+right."* What remains open is every consumer that is not that one browser build — the e2e harness,
+`infra/real-chat.mjs`, the Discord path, automations, and any future client — all of which are
+entitled to believe a run that started has not ended until the wire says so.
+
+### The patch
+
+Do not invent a message type. `run_state` already exists, the client already handles it
+(`use-project-socket.ts:738`), and `runSnapshot()` at `session.ts:2617` **already returns `null`
+when there is no live run** — so one frame is correct in both directions:
+
+- refused because something else is running (`busy`) → the snapshot is the live run, and the person
+  who was refused finally learns what is actually running, which today they are never told;
+- refused before anything started (`forbidden`, `product_model_unavailable`, `bad_mode`,
+  `bad_product_model`) → `run: null`, which is the terminal event, and `use-project-socket.ts:742`
+  clears `running` on it.
+
+`runSnapshot` is async and `refuseOne` is not, so `refuseOne` has to become async and every call
+site has to `await` it. That is the whole of the change:
+
+```ts
+  /** … existing comment … */
+  private async refuseOne(origin: WebSocket | undefined, msg: ServerMsg) {
+    const frames: ServerMsg[] = [msg];
+    // A REFUSAL IS THE END OF THAT REQUEST, AND THE WIRE HAS TO SAY SO.
+    //
+    // Every caller below returns straight after this, so without a terminal frame a client that
+    // optimistically showed "thinking" has nothing that ever contradicts it. `run_state` is the
+    // right frame rather than `msg_end` because there is no message to end: `msg_end` carries a
+    // msgId, a stopReason and a settled credit figure, and a request refused before `startRunInner`
+    // got past its verdicts has none of the three. `runSnapshot()` returns null when nothing is
+    // running, which IS the terminal answer, and returns the live run for a `busy` refusal — which
+    // also happens to tell the refused person what is actually running, which today nothing does.
+    //
+    // MEASURED 2026-09-20: infra/e2e.mjs sat 150s on `product_model_unavailable` and then blamed a
+    // timeout. See docs/backlog/HANDOFF-SESSION-AGENT-LOOP.md section C.
+    if (msg.type === 'error' && msg.code !== 'role_changed') {
+      frames.push({ type: 'run_state', run: await this.runSnapshot() } satisfies ServerMsg);
+    }
+    if (origin === undefined) {
+      for (const frame of frames) this.broadcast(frame);
+      return;
+    }
+    for (const frame of frames) {
+      try {
+        origin.send(JSON.stringify(frame));
+      } catch {
+        /* closed */
+      }
+    }
+  }
+```
+
+`role_changed` is excluded by name: `session.ts` ~3859 sends it through a plain `ws.send`, not
+through `refuseOne`, so today it cannot reach this branch — the exclusion is there so that it stays
+true if someone routes it here later. It refuses nothing and announcing "no run" on it would end a
+run that is still going, which is this defect's mirror image.
+
+### Falsification this patch must survive
+
+There is no existing test that drives `refuseOne`, which is why it shipped. The guard must be
+behavioural, not a source assertion: refuse a start (a `product_model_unavailable` is the cheapest —
+`productModelVerdict` refuses before any paid call), and assert the socket received a `run_state`
+after the `error`. Watch it RED by deleting the `frames.push`. A source-shape assertion that only
+greps for `run_state` near `refuseOne` would pass over a frame sent to the wrong socket, which is
+the failure mode `refuseOne` exists to prevent in the first place.
+
+### What is NOT claimed
+
+That this is what the owner saw. His browser has been clearing on `error` since
+`use-project-socket.ts:873` landed, so the "always thinking" symptom he reported is addressed on
+his screen. This is the protocol half, and its cost today is paid by every non-browser consumer and
+by the next client anyone writes.
