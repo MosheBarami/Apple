@@ -219,6 +219,46 @@ class FixtureDeclarations(ScannerHarness):
         self.assertIn("history only", r.stdout)
         self.assertEqual(self.scan().returncode, 0, self.scan().stdout)
 
+    def test_a_real_accepted_exposure_is_never_recorded_as_a_fixture(self):
+        """The two registers must not overlap, and the first --with-history run proved they
+        would. known-exposures.json holds a real account password that lived in five infra
+        scripts. Sweeping history would have re-filed it as "fabricated" behind a hash."""
+        self.commit("infra/loadtest.mjs", f"const K = '{ANTHROPIC}';\n")
+        blob = subprocess.run(
+            ["git", "rev-parse", "HEAD:infra/loadtest.mjs"],
+            cwd=self.root, capture_output=True, text=True, check=True).stdout.strip()
+        self.commit("infra/loadtest.mjs", "const K = process.env.K;\n", "remove")
+        (self.root / "scripts" / "known-exposures.json").write_text(json.dumps({
+            "note": "test",
+            "accepted": [{"blob": blob, "pattern": "Anthropic key", "path": "infra/loadtest.mjs"}],
+        }))
+
+        r = self.scan("--record-fixtures", "--with-history")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("on the exposure register", r.stdout)
+        written = (self.root / "scripts" / "known-fixtures.json").read_text()
+        self.assertNotIn(sha256_of(ANTHROPIC), written,
+                         "an accepted real exposure was re-filed as a fixture")
+
+    def test_a_declaration_covering_an_accepted_exposure_fails_the_scan(self):
+        """Hand-written, inherited, or carried forward by --record-fixtures — however the line
+        got there, a value on the exposure register cannot also be declared fabricated. The
+        record-time guard alone could not fix a register that already held the bad line."""
+        self.commit("infra/loadtest.mjs", f"const K = '{ANTHROPIC}';\n")
+        blob = subprocess.run(
+            ["git", "rev-parse", "HEAD:infra/loadtest.mjs"],
+            cwd=self.root, capture_output=True, text=True, check=True).stdout.strip()
+        (self.root / "scripts" / "known-exposures.json").write_text(json.dumps({
+            "note": "test",
+            "accepted": [{"blob": blob, "pattern": "Anthropic key", "path": "infra/loadtest.mjs"}],
+        }))
+        self.declare([("infra/loadtest.mjs", "Anthropic key", ANTHROPIC)])
+
+        r = self.scan()
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("ON BOTH REGISTERS".title().upper()[:10], r.stdout.upper())
+        self.assertIn("COVERS AN ACCEPTED REAL EXPOSURE", r.stdout)
+
     def test_recording_is_refused_in_ci(self):
         """A blessing minted by a robot is a rubber stamp."""
         self.commit("tests/a.test.mjs", f"const KEY = '{ANTHROPIC}';\n")

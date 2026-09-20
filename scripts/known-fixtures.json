@@ -1,0 +1,170 @@
+{
+  "note": "Fabricated, credential-shaped strings that a test feeds to the thing meant to catch them. Keyed by (path, sha256 of the matched value); holds no value bytes. A NEW credential-shaped string in one of these files is a new hash and still fails the build \u2014 this is a value declaration, not a path exemption. Every line here is a human claim that the value is not real; the control is that it is in the diff.",
+  "declared": [
+    {
+      "path": "apps/web/tests/sentry-wiring.test.mjs",
+      "pattern": "AWS access key id",
+      "value_sha256": "1a5d44a2dca19669d72edf4c4f1c27c4c1ca4b4408fbb17f6ce4ad452d78ddb3"
+    },
+    {
+      "path": "apps/web/tests/sentry-wiring.test.mjs",
+      "pattern": "Anthropic key",
+      "value_sha256": "da3938fb9750bab76baac2ea4dddaace703f34c78ada9e3998dcde979147d346"
+    },
+    {
+      "path": "apps/web/tests/sentry-wiring.test.mjs",
+      "pattern": "GitHub token",
+      "value_sha256": "03aafb028d538b06c4341bf8cf2a692a3c6d1f36e34e0e0b376f407c6117a246"
+    },
+    {
+      "path": "apps/web/tests/sentry-wiring.test.mjs",
+      "pattern": "Google API key",
+      "value_sha256": "5e8a6a8b9d10a937179bda8192ed390733120e7b5478608152094a09b4975ec8"
+    },
+    {
+      "path": "apps/web/tests/sentry-wiring.test.mjs",
+      "pattern": "JWT",
+      "value_sha256": "2129124b5d4e26d8de2f5258f1c8c0a9b4756e6248371fec46e5837a46736531"
+    },
+    {
+      "path": "apps/web/tests/sentry-wiring.test.mjs",
+      "pattern": "Slack token",
+      "value_sha256": "4745a77d543ceb25253ff4d5232c6710ded7365202dee1613d1c2907e8c4b7a3"
+    },
+    {
+      "path": "apps/web/tests/sentry.test.mjs",
+      "pattern": "JWT",
+      "value_sha256": "f30c5633d3948d52c0f8fc9273317a1074cde984b8cc95603d70d441ab3cee17"
+    },
+    {
+      "path": "apps/web/tests/share-link.test.mjs",
+      "pattern": "Assigned secret literal",
+      "value_sha256": "a9367edad465cc9e056c087c56c0902a5c5d556038bdb1dc66ed891d2ff3c6d4"
+    },
+    {
+      "path": "apps/web/tests/share-links.test.mjs",
+      "pattern": "Assigned secret literal",
+      "value_sha256": "a9367edad465cc9e056c087c56c0902a5c5d556038bdb1dc66ed891d2ff3c6d4"
+    },
+    {
+      "path": "apps/web/tests/support-dialog.test.mjs",
+      "pattern": "Assigned secret literal, unquoted",
+      "value_sha256": "a824beda7d5cf543a2222e63a7d3d584619fe98f31658fa418e8b4981476744c"
+    },
+    {
+      "path": "apps/worker/tests/billing-webhook-authority.test.mjs",
+      "pattern": "Assigned secret literal",
+      "value_sha256": "1a4fa2b28975a84ce3b8b28d8d12b9c763d0dcb140a81f8227e4c81306486d4b"
+    },
+    {
+      "path": "apps/worker/tests/creator-routes-live.test.mjs",
+      "pattern": "Assigned secret literal",
+      "value_sha256": "34c704cfb49a6465874eae319a3d99d599b47f600b01fd0516ccee38b98cfecb"
+    },
+    {
+      "path": "apps/worker/tests/credential-expiry.test.mjs",
+      "pattern": "Assigned secret literal",
+      "value_sha256": "dd16498cf316797fe499edc40cc7525c8b41f6facb6fb2dee592d82256314573"
+    },
+    {
+      "path": "apps/worker/tests/membership-access-scheduled-live.test.mjs",
+      "pattern": "Assigned secret literal",
+      "value_sha256": "b544d54c617a5741834fdf32266bc2645a4cfd837835ad949dcb5fce98d6b92b"
+    },
+    {
+      "path": "apps/worker/tests/memory-store.test.mjs",
+      "pattern": "Anthropic key",
+      "value_sha256": "a9d037aa0c811b90467b8e2a1a36ce918369bbaa4f9ec3909462be053f6dfd9d"
+    },
+    {
+      "path": "apps/worker/tests/memory-store.test.mjs",
+      "pattern": "JWT",
+      "value_sha256": "3202d96069c0d15abbdd1d270519e946d722b567f083eb8e1ab4f47d7b4e775f"
+    },
+    {
+      "path": "apps/worker/tests/memory.test.mjs",
+      "pattern": "JWT",
+      "value_sha256": "3202d96069c0d15abbdd1d270519e946d722b567f083eb8e1ab4f47d7b4e775f"
+    },
+    {
+      "path": "apps/worker/tests/roblox-integration.test.mjs",
+      "pattern": "Assigned secret literal",
+      "value_sha256": "56215d7e960de46af4dc25f510029826146fd694701c052df1766a37c66a8642"
+    },
+    {
+      "path": "apps/worker/tests/secret-redaction.test.mjs",
+      "pattern": "AWS access key id",
+      "value_sha256": "1a5d44a2dca19669d72edf4c4f1c27c4c1ca4b4408fbb17f6ce4ad452d78ddb3"
+    },
+    {
+      "path": "apps/worker/tests/secret-redaction.test.mjs",
+      "pattern": "Anthropic key",
+      "value_sha256": "da3938fb9750bab76baac2ea4dddaace703f34c78ada9e3998dcde979147d346"
+    },
+    {
+      "path": "apps/worker/tests/secret-redaction.test.mjs",
+      "pattern": "JWT",
+      "value_sha256": "2129124b5d4e26d8de2f5258f1c8c0a9b4756e6248371fec46e5837a46736531"
+    },
+    {
+      "path": "apps/worker/tests/secret-redaction.test.mjs",
+      "pattern": "OpenAI key",
+      "value_sha256": "977b7ec104fb56cc781bf9316d207e203520660807d7a5c10e4894455c43c0e1"
+    },
+    {
+      "path": "apps/worker/tests/secret-redaction.test.mjs",
+      "pattern": "Slack token",
+      "value_sha256": "cc6589719cb48effb43e7b4b43e06cac0333e3bb108f722723df664e7eb94179"
+    },
+    {
+      "path": "apps/worker/tests/sentry-live.test.mjs",
+      "pattern": "JWT",
+      "value_sha256": "f30c5633d3948d52c0f8fc9273317a1074cde984b8cc95603d70d441ab3cee17"
+    },
+    {
+      "path": "apps/worker/tests/sentry.test.mjs",
+      "pattern": "Assigned secret literal",
+      "value_sha256": "8de0d21d481576238e626fe475e9f2b7832d07b29c33ac07e993cc468612f1a6"
+    },
+    {
+      "path": "apps/worker/tests/sentry.test.mjs",
+      "pattern": "JWT",
+      "value_sha256": "f30c5633d3948d52c0f8fc9273317a1074cde984b8cc95603d70d441ab3cee17"
+    },
+    {
+      "path": "apps/worker/tests/support-requests.test.mjs",
+      "pattern": "Assigned secret literal, unquoted",
+      "value_sha256": "a824beda7d5cf543a2222e63a7d3d584619fe98f31658fa418e8b4981476744c"
+    },
+    {
+      "path": "apps/worker/tests/support-requests.test.mjs",
+      "pattern": "JWT",
+      "value_sha256": "7f75367e7881255134e1375e723d1dea8ad5f6a4fdb79d938df1f1754a830606"
+    },
+    {
+      "path": "apps/worker/tests/support-routes-live.test.mjs",
+      "pattern": "Assigned secret literal, unquoted",
+      "value_sha256": "a824beda7d5cf543a2222e63a7d3d584619fe98f31658fa418e8b4981476744c"
+    },
+    {
+      "path": "apps/worker/tests/support-routes-live.test.mjs",
+      "pattern": "JWT",
+      "value_sha256": "2129124b5d4e26d8de2f5258f1c8c0a9b4756e6248371fec46e5837a46736531"
+    },
+    {
+      "path": "apps/worker/tests/user-credentials.test.mjs",
+      "pattern": "Assigned secret literal",
+      "value_sha256": "dd16498cf316797fe499edc40cc7525c8b41f6facb6fb2dee592d82256314573"
+    },
+    {
+      "path": "docs/GO-LIVE.md",
+      "pattern": "AWS access key id",
+      "value_sha256": "1a5d44a2dca19669d72edf4c4f1c27c4c1ca4b4408fbb17f6ce4ad452d78ddb3"
+    },
+    {
+      "path": "docs/GO-LIVE.md",
+      "pattern": "Slack token",
+      "value_sha256": "9fb28bb8e51420ccd832c43840319f26625fabde26e8765cfd0472d169fe8bbc"
+    }
+  ]
+}

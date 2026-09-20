@@ -283,6 +283,8 @@ def main() -> int:
     # rotation task but does not hold the build hostage forever.
     live = head_blobs()
     fixtures = load_fixtures()
+    exposures = set(load_register())
+    conflicts: set[tuple[str, str]] = set()
     objects = sh("git", "rev-list", "--all", "--objects").splitlines()
     findings: dict[str, list[tuple[str, str]]] = collections.defaultdict(list)
     declared: dict[str, list[tuple[str, str]]] = collections.defaultdict(list)
@@ -325,6 +327,14 @@ def main() -> int:
                     # at that PATH, so a different credential in the same file is still a
                     # finding, and the same value at a new path is a finding too.
                     if (text_path, value_sha) in fixtures:
+                        # NON-OVERLAP IS CHECKED ON EVERY RUN, not only when recording. The
+                        # record-time guard below cannot clean up a register that already holds
+                        # a bad line: --record-fixtures carries forward entries that still match,
+                        # which is correct for a declaration and meant my own first mistake
+                        # survived three regenerations. An invariant enforced only at write time
+                        # is an invariant that outlives its own fix.
+                        if sha.decode() in exposures:
+                            conflicts.add((text_path, name))
                         matched_fixtures.add((text_path, value_sha))
                         declared[name].append(hit)
                         continue
@@ -337,6 +347,15 @@ def main() -> int:
         paths = sorted({p for hits in declared.values() for p, _, _, _, _ in hits})
         print(f"declared fixtures matched: {n} hit(s) in {len(paths)} file(s) "
               f"(scripts/{FIXTURES_PATH.name})")
+
+    if conflicts:
+        print("\nRESULT: A FIXTURE DECLARATION COVERS AN ACCEPTED REAL EXPOSURE")
+        print("scripts/known-exposures.json says a human looked at these bytes and accepted them")
+        print("as a real credential pending rotation. A fixture declaration cannot overrule that.")
+        print("Delete the offending line(s) from scripts/known-fixtures.json.")
+        for pth, n in sorted(conflicts):
+            print(f"::error::[{n}] {pth} is on BOTH registers")
+        return 1
 
     if "--record-fixtures" in sys.argv:
         # A blessing is a human act. A robot that can mint one turns the register from a
@@ -361,10 +380,26 @@ def main() -> int:
         #   is not in the tree takes a second, deliberate flag. Blessing something you cannot
         #   currently see should cost a keystroke and print a list. ]]
         with_history = "--with-history" in sys.argv
+        #[[ THE TWO REGISTERS MUST NOT OVERLAP, and this guard exists because the first run of
+        #   --with-history walked straight into the hole.
+        #
+        #   known-exposures.json holds SIX accepted entries: a real twenty-character account
+        #   password that lived in five committed infra scripts for weeks. They are history-only,
+        #   so --with-history swept them up and offered to re-file them as fabricated fixtures —
+        #   downgrading a credential a human had looked at and accepted as pending rotation into
+        #   "not a credential", in one keystroke, with no diff to read but a hash.
+        #
+        #   A value on the exposure register is a thing someone decided was real. Nothing in this
+        #   tool may decide otherwise. ]]
+        accepted_blobs = set(load_register())
+        skipped_real = sorted({
+            (p, n) for n, hits in findings.items() for p, _, in_tree, b, _ in hits
+            if not in_tree and b in accepted_blobs
+        })
         rows = sorted(
             ({"path": p, "pattern": n, "value_sha256": v, "in_tree": in_tree}
-             for n, hits in findings.items() for p, _, in_tree, _, v in hits
-             if in_tree or with_history),
+             for n, hits in findings.items() for p, _, in_tree, b, v in hits
+             if in_tree or (with_history and b not in accepted_blobs)),
             key=lambda e: (e["path"], e["pattern"], e["value_sha256"]),
         )
         buried = [e for e in rows if not e["in_tree"]]
@@ -394,6 +429,12 @@ def main() -> int:
         print(f"\ndeclared {len(merged)} fixture(s) in {FIXTURES_PATH.name}")
         for a, b, _ in merged:
             print(f"   [{b}] {a}")
+        if skipped_real:
+            print(f"\nNOT RECORDED — {len(skipped_real)} finding(s) are on the exposure register.")
+            print("Someone accepted those as real credentials pending rotation. A fixture")
+            print("declaration cannot overrule that; see scripts/known-exposures.json.")
+            for pth, n in skipped_real:
+                print(f"   [{n}] {pth}")
         if buried:
             print(f"\n{len(buried)} of these are NOT in the current tree. You are declaring that a")
             print("value you cannot see in the working copy was fabricated. Check each one:")
