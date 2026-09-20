@@ -113,12 +113,16 @@ export interface TrimReport {
 }
 
 export function trimTranscriptReport(llm: GatewayMessage[], maxChars: number): TrimReport {
-  const before = transcriptChars(llm);
+  // The repair runs on EVERY step, not only on a step that is over budget, because the defect it
+  // answers has nothing to do with size — see `answerOnlyWhatRan`. `before` is measured after it so
+  // that `droppedChars` keeps meaning exactly one thing: what the group trim below removed.
+  const answered = answerOnlyWhatRan(llm);
+  const before = transcriptChars(answered);
   if (before <= maxChars) {
-    return { llm, before, after: before, maxChars, droppedGroups: 0, droppedChars: 0 };
+    return { llm: answered, before, after: before, maxChars, droppedGroups: 0, droppedChars: 0 };
   }
 
-  const { head, groups } = turnGroups(llm);
+  const { head, groups } = turnGroups(answered);
   let first = 0; // oldest group still kept
   const size = () => transcriptChars(head) + groups.slice(first).reduce((n, g) => n + transcriptChars(g), 0);
 
@@ -173,4 +177,70 @@ export function unansweredToolCalls(llm: GatewayMessage[]): string[] {
   const unanswered: string[] = [];
   for (const m of llm) for (const c of m.toolCalls ?? []) if (!answered.has(c.id)) unanswered.push(c.id);
   return unanswered;
+}
+
+/**
+ * Return a transcript in which every assistant tool call has a `tool` message answering it, by
+ * removing the calls that nothing answered.
+ *
+ * WHY THIS LIVES HERE AND NOT WHERE THE DEFECT IS CAUSED. `do/session.ts` records the assistant
+ * turn with EVERY tool call the model emitted — `agent.llm.push({ role: 'assistant', ..., toolCalls:
+ * res.toolCalls })` — and then executes `res.toolCalls.slice(0, 4)`. A turn of five calls leaves the
+ * fifth with no result, and both live encoders (`providers/workers-ai.ts`, `providers/openai.ts`)
+ * render `m.toolCalls` verbatim, so that unanswered call goes to the provider. Measured 2026-09-20
+ * against the real openai encoder: `UNANSWERED tool_call ids : tc_5`.
+ *
+ * THAT IS STILL A DEFECT IN THE LOOP AND THIS DOES NOT CLOSE IT. A run should not silently discard
+ * the model's fifth call in the first place; the fix for that is `docs/backlog/
+ * HANDOFF-SESSION-AGENT-LOOP.md` §A, in a file another lane holds. What this closes is a DIFFERENT
+ * invariant, and it is this module's own to keep: whatever the loop records, what leaves here is a
+ * well-formed transcript. Both are needed. If §A lands, this becomes a guard that never fires —
+ * which is the correct end state for it, not a reason to delete it.
+ *
+ * Three decisions worth stating, because each one is a way this could have lied:
+ *
+ *   * It removes the CALL, never the assistant's prose. A turn that said something and then
+ *     overflowed keeps what it said; only the claim to have called a tool goes.
+ *   * An assistant message left with no calls AND nothing to say is dropped whole, because an
+ *     assistant turn with empty content and no tool calls is not a record of anything, and some
+ *     providers reject it outright.
+ *   * It is NOT reported through `TrimReport`. The context_budget event tells a builder what their
+ *     conversation lost; this removes a record of work that never happened, which is not a loss
+ *     they took. Counting it there would describe context truncation that did not occur — the same
+ *     reasoning the caller in do/session.ts already applies to `collapseArtDirection`.
+ *
+ * Returns the INPUT ARRAY UNCHANGED when there is nothing to repair, so the common path allocates
+ * nothing and `trimTranscript(fits, huge) === fits` stays true.
+ */
+export function answerOnlyWhatRan(llm: GatewayMessage[]): GatewayMessage[] {
+  const unanswered = new Set(unansweredToolCalls(llm));
+  if (unanswered.size === 0) return llm;
+  const out: GatewayMessage[] = [];
+  for (const m of llm) {
+    if (!m.toolCalls?.length) {
+      out.push(m);
+      continue;
+    }
+    const kept = m.toolCalls.filter((c) => !unanswered.has(c.id));
+    if (kept.length === m.toolCalls.length) {
+      out.push(m);
+      continue;
+    }
+    if (kept.length > 0) {
+      out.push({ ...m, toolCalls: kept });
+      continue;
+    }
+    // No calls survived. Keep the turn only if it carries prose or is pinned, and drop the
+    // `toolCalls` key entirely rather than setting it to undefined — the encoders read the field,
+    // and a present-but-undefined key is one more shape for them to have to be right about.
+    if (isEmptyContent(m.content) && !m.pinned) continue;
+    const { toolCalls: _removed, ...rest } = m;
+    out.push(rest);
+  }
+  return out;
+}
+
+/** Whether a message says nothing at all — either form `content` can take. */
+function isEmptyContent(content: GatewayMessage['content']): boolean {
+  return typeof content === 'string' ? content.trim() === '' : content.length === 0;
 }
