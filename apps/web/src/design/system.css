@@ -194,7 +194,23 @@ a.gx-sr:focus { z-index:1000; top:10px; inset-inline-start:10px; width:auto; hei
  *   moves across the whole field on a different period so the two never line up into a visible
  *   loop. Nothing here is faster than before — a page that hurries feels cheap, and this is
  *   supposed to be weather, not an animation. ]]*/
-.studio-atmosphere__mesh { position:absolute; width:118%; height:100%; inset-inline-start:-9%; bottom:-5%; fill:none; stroke:var(--accent); stroke-width:.8; opacity:.2; animation:ambient-drift 24s ease-in-out infinite alternate; mask-image:linear-gradient(transparent 22%,#000 78%); }
+.studio-atmosphere__mesh { position:absolute; width:118%; height:100%; inset-inline-start:-9%; bottom:-5%; fill:none; stroke:var(--accent); stroke-width:.8; opacity:.2; animation:ambient-drift 24s ease-in-out infinite alternate; mask-image:linear-gradient(transparent 6%,#000 38%,#000 58%,transparent 86%); }
+/*[[ WHERE THE MESH IS ALLOWED TO BE LOUD.
+ *
+ *   The mask above used to read `linear-gradient(transparent 22%,#000 78%)` — transparent at the
+ *   top, reaching FULL STRENGTH at 78% down and holding it to the floor. The composer floats in
+ *   the bottom quarter of the workspace on a 0.08-alpha surface, so the accent mesh was at its
+ *   densest directly behind the one control the whole screen exists to serve, and showed through
+ *   it. In a screenshot it does not read as atmosphere; it reads as a green texture leaking in at
+ *   the bottom corner and being sliced by the composer's edge, which is what the owner saw.
+ *
+ *   Four stops instead of two: the mesh now rises through the upper-middle of the workspace, holds
+ *   between 38% and 58% where there is nothing but thread, and is gone again by 86% — above the
+ *   composer rather than behind it. The layer is unchanged; only where it is permitted to be seen.
+ *
+ *   NOT a reduction in opacity, which was the other way to fix this and the wrong one: a dimmer
+ *   mesh everywhere would have made the atmosphere weaker in the empty middle of the screen, where
+ *   it is the only thing keeping a mostly-blank column from looking unfinished. ]]*/
 
 /* The aurora. One element, no image, composited transform only — it never touches layout. 41s
    against the mesh's 24s and the beam's 14s: three periods with no common multiple a person will
