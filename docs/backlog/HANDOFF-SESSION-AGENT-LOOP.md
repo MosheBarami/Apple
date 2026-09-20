@@ -1,7 +1,9 @@
-# Handoff: three defects in the agent tool loop that I could not fix myself
+# Handoff: four defects in the agent tool loop that I could not fix myself
 
-<!-- A and B were written 2026-09-20; C was added 2026-09-21 by a later lane that found
-     session.ts still held. The count in this title is the count of sections below. -->
+<!-- A and B were written 2026-09-20. C and D were added 2026-09-21 by a later lane that found
+     session.ts still held by the rate-limit lane. D is the only one of the four measured against
+     production rather than read out of the source. The count in this title is the count of
+     sections below; if you add one, change it. -->
 
 
 `apps/worker/src/do/session.ts` was being edited by another lane while this was written, so it was
@@ -408,3 +410,85 @@ That this is what the owner saw. His browser has been clearing on `error` since
 `use-project-socket.ts:873` landed, so the "always thinking" symptom he reported is addressed on
 his screen. This is the protocol half, and its cost today is paid by every non-browser consumer and
 by the next client anyone writes.
+
+---
+
+## D. The free lane gets three steps, and a one-part build spends all three
+
+Added 2026-09-21 from a live run, not from reading. `session.ts` was dirty again when this was
+written — `git status --porcelain` checked — so it was measured and not touched.
+
+### Measured against production
+
+`infra/e2e.mjs` against `https://apple.moshe-barami111.workers.dev`, free account, simulated Studio,
+2026-09-20T23:20:14Z. Full transcript in `docs/evidence/2026-09-21-live-agent-probe.md`.
+
+The request was *"Create a glowing neon blue anchored part named BeaconTower … **Then confirm what
+you created.**"* What came back:
+
+```
+   tool: ✓ create_instances
+   tool: ✓ get_instance · game.Workspace.BeaconTower
+   tool: ✓ run_luau
+   → stopReason done
+   → reply: I reached the step limit for this run. Progress so far is saved — send another message to continue.
+```
+
+Three tool calls, all three of them real work, and then the product's step-limit sentence
+(`session.ts:3400`) in place of the confirmation the customer asked for. `stopReason` is `done`, so
+nothing downstream treats this as a failure.
+
+### What the code does
+
+`session.ts:494`:
+
+```ts
+function maxStepsFor(mode: GolemMode, productModel?: ProductModel): number {
+  return productModel === 'apple' ? Math.min(STEP_LIMITS[mode], STEP_LIMITS.clay) : STEP_LIMITS[mode];
+}
+```
+
+with `session.ts:370`:
+
+```ts
+const STEP_LIMITS: Record<GolemMode, number> = { clay: 3, stone: 16, rune: 24 };
+```
+
+`'apple'` is the free lane and every free build is therefore capped at **3**, Plan's budget. Plan is
+a conversation; a build is a loop. Three steps is not a smaller build, it is a build that stops in
+the middle and says so.
+
+This is the same shape as the defect already documented at `session.ts:378` — *"the free lane's
+budget was below the floor its own model needs to answer at all"* — which was measured and fixed for
+**tokens** on 2026-09-20. The **step** budget was never measured against a real build. The comment at
+`session.ts:484` describes the cap as the honest axis of tier difference, *"same brain, less of it"*;
+what the measurement above shows is less brain than the simplest build consumes.
+
+### Why this is not patched here
+
+Two reasons, and neither is uncertainty about the defect.
+
+1. `maxStepsFor` is in this file, which another lane holds.
+2. **The number is a spending decision, not a correctness one.** It sets how much inference the free
+   tier may consume, on an AI Gateway account with uncapped overage where BudgetDO is the only guard.
+   Whoever changes it should change it in a commit that carries the cost arithmetic — free runs per
+   day × steps × neurons against the daily allowance — not in passing.
+
+### What the patch has to establish, whatever number it picks
+
+The floor is not a matter of taste; it is measurable the same way the token floor was. Drive the
+free lane at 3, 4, 5, 6 steps against the same one-part build prompt and record how many finish with
+a confirmation rather than the step-limit sentence — `infra/e2e.mjs` step 6 now runs the free lane
+end to end and is the harness for it. Pick the first number that completes the product's simplest
+advertised action, and write the table into the comment beside it, as `session.ts:378` did for
+tokens.
+
+If the answer is that the free tier is not meant to complete a build at all, then the sentence at
+`session.ts:3400` is the wrong sentence: it tells the customer to *"send another message to
+continue"*, which spends their next run's credits on the same wall.
+
+### Falsification the patch must survive
+
+A test that runs a free-lane (`productModel: 'apple'`) build to its step ceiling and asserts the run
+ends with a confirmation rather than `session.ts:3400`'s sentence. Watch it RED by putting
+`Math.min(STEP_LIMITS[mode], STEP_LIMITS.clay)` back.
