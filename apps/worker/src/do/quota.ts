@@ -699,8 +699,21 @@ export class QuotaDO extends DurableObject<Env> {
       // The ledger's own column names ride along. When this route answered 500 with
       // `no such column: credits` there was no way to see what the table actually had, and two
       // deploys were spent guessing at it from the error string alone.
+      //[[ THE DIAGNOSTIC HAS TO SURVIVE THE FAILURE IT IS DIAGNOSING.
+      //   The first version of this line put `ledgerColumns` in the same object literal as
+      //   `await this.state()`. state() is exactly what throws here, so the response was never
+      //   built and the columns never reached anybody — a diagnostic that reports only when
+      //   nothing is wrong. It cost a deploy. The read now happens first and state() is allowed
+      //   to fail into the payload rather than out of it. ]]
       const columns = this.sql.exec(`select name from pragma_table_info('ledger')`).toArray().map((r) => String(r.name));
-      return Response.json({ ok: true, cleared: target, ledgerColumns: columns, state: await this.state() });
+      let state: QuotaState | null = null;
+      let stateError: string | null = null;
+      try {
+        state = await this.state();
+      } catch (e) {
+        stateError = e instanceof Error ? e.message : String(e);
+      }
+      return Response.json({ ok: stateError === null, cleared: target, ledgerColumns: columns, state, stateError });
     }
     /*
      * THE INDIVIDUAL CHARGES, for the person who has to answer "what was this?".
