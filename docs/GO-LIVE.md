@@ -104,9 +104,19 @@ issue that actually arrived — `APPLE-WORKER-6`, a real 500 caught within a min
 triggered. Reading its stack trace is what revealed that the failure was on the legacy `golem`
 worker rather than on the product, which four deploys had failed to establish.
 
-What remains open here is the SPA half: `VITE_SENTRY_DSN` for `apple-web`
-(`https://e337712f5961370a37d54b0fb0c58131@o4511972015276032.ingest.us.sentry.io/4512107888246784`)
-still has to reach the web bundle's build environment.
+The SPA half is closed too, same night. `VITE_SENTRY_DSN` is in `apps/web/.env.local` (gitignored,
+and the DSN is public by design — it ships inside the browser bundle), the bundle was rebuilt and
+deployed, and the probe is the served bytes rather than the build output:
+
+```
+$ curl -s https://apple.moshe-barami111.workers.dev/app/assets/index-BQuYYOhY.js | grep -c 4512107888246784
+1
+```
+
+All five assets the deployed `/app` references return 200. A caution for whoever probes this next:
+the HTML references `/app/assets/...`, and a pattern matching `/assets/...` will match that as a
+substring, strip the prefix, and return 404s for URLs that never existed. That looks exactly like a
+broken deploy and is not one.
 
 <details><summary>The original section, kept because the instructions in it are still the right
 ones for the SPA half</summary>
