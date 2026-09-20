@@ -29,6 +29,7 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { buildUiTree, indexTree, descendants, fencedLuau } from './score-ui.mjs';
 import { collectParts, renderMapPlan } from './render-map-plan.mjs';
+import { mergeResults } from './showcase-manifest.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, '../../..');
@@ -76,21 +77,45 @@ const SYSTEM = [
   'circulation between them. No update loop, no while-true.',
 ].join(' ');
 
-async function complete({ model, system, prompt, maxTokens }) {
-  const res = await fetch(`${BASE}/api/admin/model-test`, {
-    method: 'POST',
-    headers: { 'X-Admin-Key': ADMIN, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model, prompt, system, maxTokens }),
-  });
-  const text = await res.text();
-  let json;
-  try {
-    json = JSON.parse(text);
-  } catch {
-    return { ok: false, error: `non-JSON response ${res.status}: ${text.slice(0, 300)}` };
+/**
+ * ONE COMPLETION, WITH A DEADLINE.
+ *
+ * THE DEFECT THIS ANSWERS, measured 2026-09-20. `fetch` has no default timeout, and a request to
+ * the gateway hung. The run sat on `screen-crafting` for twenty-five minutes with no output and no
+ * error while the endpoint itself answered an unrelated probe in 812ms — so the pipeline was not
+ * slow, it was stopped, and nothing said so. A silent stall is the worst shape a failure can take
+ * here: it looks exactly like work in progress.
+ *
+ * A timed-out attempt is retried once, because a single hung socket is not evidence the model
+ * cannot build the screen. A second timeout is reported as `request_failed` with the word timeout
+ * in it, never as a failure of the model.
+ */
+async function complete({ model, system, prompt, maxTokens, timeoutMs = 180_000, attempts = 2 }) {
+  let last = 'no attempt was made';
+  for (let i = 1; i <= attempts; i += 1) {
+    try {
+      const res = await fetch(`${BASE}/api/admin/model-test`, {
+        method: 'POST',
+        headers: { 'X-Admin-Key': ADMIN, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model, prompt, system, maxTokens }),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      const text = await res.text();
+      let json;
+      try {
+        json = JSON.parse(text);
+      } catch {
+        return { ok: false, error: `non-JSON response ${res.status}: ${text.slice(0, 300)}` };
+      }
+      if (!res.ok || json.ok === false) return { ok: false, error: json.error || `HTTP ${res.status}` };
+      return { ok: true, text: String(json.text ?? ''), ms: json.ms };
+    } catch (e) {
+      const why = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
+      last = `attempt ${i}/${attempts} ${why}`;
+      if (i === attempts) return { ok: false, error: `timeout or network failure — ${last}` };
+    }
   }
-  if (!res.ok || json.ok === false) return { ok: false, error: json.error || `HTTP ${res.status}` };
-  return { ok: true, text: String(json.text ?? ''), ms: json.ms };
+  return { ok: false, error: last };
 }
 
 async function runGenre({ genreId, model, maxTokens, genreMod, outDir, size }) {
@@ -175,6 +200,7 @@ async function main() {
     );
   }
 
+  const merged = mergeResults(outDir, results);
   writeFileSync(
     join(outDir, 'manifest.json'),
     `${JSON.stringify(
@@ -188,12 +214,13 @@ async function main() {
           'The prompt asks for .Position/.Orientation rather than CFrame, because ui-harness.luau models CFrame as opaque and a CFrame-placed part would have no coordinates to draw. This narrows style, not ability.',
         uploads: 'none — every part is geometry and a Color3; nothing was sent to any Roblox account',
         renderer: 'packages/training/src/render-map-plan.mjs — plan view, rotation not modelled',
+        ranThisInvocation: results.map((r) => r.genre),
         counts: {
-          genres: results.length,
-          built: results.filter((r) => r.outcome === 'built').length,
-          byOutcome: results.reduce((a, r) => ({ ...a, [r.outcome]: (a[r.outcome] ?? 0) + 1 }), {}),
+          genres: merged.length,
+          built: merged.filter((r) => r.outcome === 'built').length,
+          byOutcome: merged.reduce((a, r) => ({ ...a, [r.outcome]: (a[r.outcome] ?? 0) + 1 }), {}),
         },
-        results,
+        results: merged,
       },
       null,
       2,

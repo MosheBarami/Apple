@@ -13,7 +13,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { mergeResults } from './generate-ui-showcase.mjs';
+import { mergeResults } from './showcase-manifest.mjs';
 
 const withDir = (fn) => {
   const dir = mkdtempSync(join(tmpdir(), 'showcase-manifest-'));
@@ -69,4 +69,18 @@ test('a failure replacing a success is kept as a failure, never quietly preferre
     const merged = mergeResults(dir, [{ id: 'screen-map', genre: 'tycoon', outcome: 'no_code_block' }]);
     assert.equal(merged.length, 1);
     assert.equal(merged[0].outcome, 'no_code_block', 'the newest measurement wins in both directions');
+  }));
+
+test('map rows, which carry only a genre, merge one per genre', () =>
+  withDir((dir) => {
+    write(dir, [
+      { genre: 'tycoon', outcome: 'runtime_error', detail: 'arithmetic' },
+      { genre: 'obby', outcome: 'built', parts: 84 },
+      { genre: 'horror', outcome: 'built', parts: 182 },
+    ]);
+    const merged = mergeResults(dir, [{ genre: 'tycoon', outcome: 'built', parts: 102 }]);
+
+    assert.equal(merged.length, 3, 'a one-genre re-run keeps the other two maps');
+    assert.equal(merged.find((r) => r.genre === 'tycoon').parts, 102);
+    assert.equal(merged.find((r) => r.genre === 'obby').parts, 84);
   }));

@@ -40,6 +40,7 @@ import { tmpdir } from 'node:os';
 import { mkdtempSync } from 'node:fs';
 import { buildUiTree, indexTree, resolveLayout, guiDescendants, screenGuisInPlayerGui, fencedLuau } from './score-ui.mjs';
 import { renderTreeToSvg } from './render-ui-tree.mjs';
+import { mergeResults } from './showcase-manifest.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, '../../..');
@@ -55,30 +56,6 @@ const arg = (name, fallback = null) => {
 const BASE = process.env.API_BASE || 'https://apple.moshe-barami111.workers.dev';
 const ADMIN = process.env.GOLEM_ADMIN_KEY;
 
-/**
- * A RE-RUN OF ONE SCREEN MUST NOT ERASE THE RECORD OF THE OTHER FIFTEEN.
- *
- * The manifest is the only place that says which screens exist, what they cost and which ones
- * failed. Overwriting it with the results of a one-target run would delete the evidence for
- * everything the run did not touch, and the gallery built from it would silently shrink — a
- * failure to observe presenting as an observation. Results are keyed by screen+genre, and a fresh
- * result replaces the row of the same key while every other row survives.
- */
-export function mergeResults(outDir, fresh) {
-  const path = join(outDir, 'manifest.json');
-  if (!existsSync(path)) return fresh;
-  let prior;
-  try {
-    prior = JSON.parse(readFileSync(path, 'utf8'));
-  } catch {
-    return fresh; // an unreadable manifest is replaced, not silently merged into
-  }
-  if (!Array.isArray(prior.results)) return fresh;
-  const key = (r) => `${r.id ?? r.target}--${r.genre ?? ''}`;
-  const byKey = new Map(prior.results.map((r) => [key(r), r]));
-  for (const r of fresh) byKey.set(key(r), r);
-  return [...byKey.values()];
-}
 
 /**
  * The Worker's own library modules, bundled out of `apps/worker/src` so what is injected is what
@@ -148,21 +125,45 @@ function buildPrompt({ target, label, constructionPayload, genrePayload, genreId
   return blocks.join('\n');
 }
 
-async function complete({ model, system, prompt, maxTokens }) {
-  const res = await fetch(`${BASE}/api/admin/model-test`, {
-    method: 'POST',
-    headers: { 'X-Admin-Key': ADMIN, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model, prompt, system, maxTokens }),
-  });
-  const text = await res.text();
-  let json;
-  try {
-    json = JSON.parse(text);
-  } catch {
-    return { ok: false, error: `non-JSON response ${res.status}: ${text.slice(0, 300)}` };
+/**
+ * ONE COMPLETION, WITH A DEADLINE.
+ *
+ * THE DEFECT THIS ANSWERS, measured 2026-09-20. `fetch` has no default timeout, and a request to
+ * the gateway hung. The run sat on `screen-crafting` for twenty-five minutes with no output and no
+ * error while the endpoint itself answered an unrelated probe in 812ms — so the pipeline was not
+ * slow, it was stopped, and nothing said so. A silent stall is the worst shape a failure can take
+ * here: it looks exactly like work in progress.
+ *
+ * A timed-out attempt is retried once, because a single hung socket is not evidence the model
+ * cannot build the screen. A second timeout is reported as `request_failed` with the word timeout
+ * in it, never as a failure of the model.
+ */
+async function complete({ model, system, prompt, maxTokens, timeoutMs = 180_000, attempts = 2 }) {
+  let last = 'no attempt was made';
+  for (let i = 1; i <= attempts; i += 1) {
+    try {
+      const res = await fetch(`${BASE}/api/admin/model-test`, {
+        method: 'POST',
+        headers: { 'X-Admin-Key': ADMIN, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model, prompt, system, maxTokens }),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      const text = await res.text();
+      let json;
+      try {
+        json = JSON.parse(text);
+      } catch {
+        return { ok: false, error: `non-JSON response ${res.status}: ${text.slice(0, 300)}` };
+      }
+      if (!res.ok || json.ok === false) return { ok: false, error: json.error || `HTTP ${res.status}` };
+      return { ok: true, text: String(json.text ?? ''), ms: json.ms };
+    } catch (e) {
+      const why = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
+      last = `attempt ${i}/${attempts} ${why}`;
+      if (i === attempts) return { ok: false, error: `timeout or network failure — ${last}` };
+    }
   }
-  if (!res.ok || json.ok === false) return { ok: false, error: json.error || `HTTP ${res.status}` };
-  return { ok: true, text: String(json.text ?? ''), ms: json.ms };
+  return { ok: false, error: last };
 }
 
 /**
