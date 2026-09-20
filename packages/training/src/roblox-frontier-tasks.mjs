@@ -694,7 +694,53 @@ export const HOUSE_RULES_SYSTEM =
   + 'Answer with ONE fenced luau code block and nothing else — no prose before or after it. '
   + 'Write the complete script that was asked for, ready to paste into Studio.';
 
+/**
+ * The HOUSE-RULES-PLUS arm: production's rules, unchanged, PLUS the four this benchmark's own work
+ * queue says are missing. It is an intervention, not a mirror, and nothing in production sends it.
+ *
+ * WHY THESE FOUR AND NOT FOUR OTHERS. Measured 2026-09-21, three samples of `house-rules` and two
+ * independent samples of `neutral` (a third was discarded as a byte-identical gateway replay).
+ * Five of the sixteen items failed in EVERY sample of BOTH arms — deterministic failure, not
+ * sampling noise:
+ *
+ *     pet-rename/text-is-filtered            player text reaching other players, unfiltered
+ *     save-survives-throttle/retries-...     pcall with no retry, so a throttle is silent data loss
+ *     atomic-add/concurrent-adds-both-land   GetAsync/SetAsync on a contended value
+ *     failed-load-no-wipe/failed-load-...    a default written over a key whose read failed
+ *     shop-debit/legit-purchase-works        (case-sensitivity, NOT an authority lapse — see below)
+ *
+ * HOUSE_RULES_SYSTEM speaks to none of the first four. What it does speak to — task.*, RemoteEvent
+ * placement, client distrust — is the `modern-api` axis, which both arms already pass 5/5 and 6/6.
+ * So the live prompt's Roblox guidance lands where the model is already right and is silent where
+ * it is reliably wrong. Each sentence below is one failing check's `cite`, compressed, and NO
+ * sentence is added for a check that passes: an arm that adds ten rules and gains a point has not
+ * told anybody which rule did it.
+ *
+ * shop-debit is deliberately NOT addressed. Its two failing checks fail because the model keys its
+ * item table on "Sword" and the probe fires the prompt's own spelling, "sword"; it passes both
+ * checks on that item that are actually about server authority. A rule written to fix it would be
+ * a rule about matching strings, and this arm would then be measuring the benchmark's phrasing.
+ */
+export const HOUSE_RULES_PLUS_SYSTEM = HOUSE_RULES_SYSTEM.replace(
+  '\n\nAnswer with ONE fenced',
+  '\n- Player-authored text that another player will see goes through TextService:FilterStringAsync\n'
+  + '  before it is stored, replicated or shown. Filtering is a platform requirement, not a style choice.\n'
+  + '- DataStore calls THROW. pcall is the floor, not the plan: retry a failed read or write a bounded\n'
+  + '  number of times with a pause between attempts, and treat a call that never succeeded as unsaved.\n'
+  + '- A value two servers can change at once — currency, inventory, a shared counter — is written with\n'
+  + '  UpdateAsync and a transform that reads the CURRENT value. A GetAsync/SetAsync pair silently loses\n'
+  + "  the other server's write.\n"
+  + '- A failed load is not an empty account. Never write a default over a key whose read failed; skip\n'
+  + '  saving that session instead.'
+  + '\n\nAnswer with ONE fenced',
+);
+
 export const ARMS = Object.freeze({
   neutral: { id: 'neutral', system: NEUTRAL_SYSTEM, what: 'the model on its own — no Roblox guidance in the prompt' },
   'house-rules': { id: 'house-rules', system: HOUSE_RULES_SYSTEM, what: "production's own written code rules, verbatim from prompts.ts IDENTITY" },
+  'house-rules-plus': {
+    id: 'house-rules-plus',
+    system: HOUSE_RULES_PLUS_SYSTEM,
+    what: "production's rules PLUS the four rules the work queue says are missing — an intervention, not production",
+  },
 });

@@ -180,3 +180,31 @@ test('tally counts a non-compiling answer as a failure and excludes a harness th
   assert.equal(inflated.pct, 100, 'a board of one pass and three harness faults is the case that MAY read 100%');
   assert.equal(inflated.excluded, 3);
 });
+
+//[[ THE INTERVENTION ARM MUST DIFFER FROM ITS CONTROL BY THE INTERVENTION AND NOTHING ELSE.
+//
+//   `house-rules-plus` exists to answer one question: do four added rules move the five items that
+//   failed in every sample of both existing arms? That question is only answerable if the arm is
+//   its control plus the four sentences — if the answer format, the voice or the opening block also
+//   moved, a difference in score has more than one candidate cause and the run measures nothing.
+//   So this reads both strings and proves the difference is exactly additive.
+test('house-rules-plus is house-rules plus four sentences, and nothing else moved', () => {
+  const base = ARMS['house-rules'].system;
+  const plus = ARMS['house-rules-plus'].system;
+  const [baseRules, baseFormat] = base.split('\n\nAnswer with ONE fenced');
+  const [plusRules, plusFormat] = plus.split('\n\nAnswer with ONE fenced');
+  assert.equal(baseFormat, plusFormat, 'the answer-format half must be identical in both arms');
+  assert.ok(plusRules.startsWith(baseRules), 'the plus arm must OPEN with its control, byte for byte');
+
+  const added = plusRules.slice(baseRules.length);
+  const bullets = added.split('\n').filter((l) => l.startsWith('- '));
+  assert.equal(bullets.length, 4, 'four rules were added for four permanently-failing checks; a fifth has no check behind it');
+  // Each added rule names the API or the hazard of the check it was written for. A rule with no
+  // failing check behind it is a rule nobody can attribute a gain to.
+  for (const needle of ['FilterStringAsync', 'retry', 'UpdateAsync', 'failed load']) {
+    assert.ok(added.includes(needle), `the added block does not mention "${needle}", so one failing check has no rule`);
+  }
+  // And it must NOT quietly address shop-debit, whose failure is a string-matching artefact of the
+  // probe rather than a Roblox lapse. A rule about that would measure the benchmark's phrasing.
+  assert.ok(!/case|lower|upper|spelling/i.test(added), 'the added block addresses shop-debit, which is a phrasing artefact and not a Roblox failure');
+});
