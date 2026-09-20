@@ -51,10 +51,20 @@ function pages() {
  * Narrow on purpose. "A step that failed is not charged" is TRUE and must keep passing, so nothing
  * here matches a no-charge sentence; every pattern needs the money to have moved and come back.
  */
+//[[ THE WORD "refunded" USED TO BE THE WHOLE TEST, AND CANNOT BE ANY MORE.
+//
+//   Before 2026-09-20 no refund existed, so any page saying "refunded" was lying and matching the
+//   bare word was exactly right. The product now refunds a failed run that left the user nothing to
+//   keep, so the word appears legitimately and a guard on it fails on the truth.
+//
+//   What is still false, and what these patterns now describe, is a refund in the two cases the
+//   code deliberately excludes: work the user KEPT, and a stop the user CHOSE. run-refund.ts states
+//   both — "work the user can keep is charged for, whatever went wrong afterwards" and "pressing
+//   stop is not a refund" — and each has its own test there. These are the same two rules, guarded
+//   where a customer would read them.
 const REFUND_CLAIMS = [
-  { id: 'refunded', re: /\brefunded\b/i },
-  { id: 'credits-come-back', re: /\bcredits?\b[^.]{0,60}\bcomes?\s+back\b/i },
-  { id: 'credits-returned', re: /\bcredits?\b[^.]{0,40}\b(are|is)\s+(returned|given\s+back|put\s+back)\b/i },
+  { id: 'refund-after-keeping', re: /\bcredits?\b[^.]{0,80}\b(refunded|come[s]?\s+back|returned|given\s+back)\b[^.]{0,80}\b(kept|saved|applied|built|changed)\b/i },
+  { id: 'refund-on-stop', re: /\b(stop(?:ped|ping)?|cancel(?:led|ling)?)\b[^.]{0,60}\b(refunded|credits?\s+come[s]?\s+back|credits?\s+(are|is)\s+returned)\b/i },
   { id: 'not-consumed', re: /\bcredits?\b[^.]{0,40}\b(are\s+)?not\s+consumed\b/i },
   { id: 'costs-you-nothing-run', re: /\brun\b[^.]{0,40}\bcosts?\s+you\s+nothing\b/i },
 ];
@@ -70,6 +80,17 @@ const REFUND_CLAIMS = [
  */
 const RESET_CONTEXT = /\b(midnight|reset|refill\w*|each day|every day|next month|roll ?over)\b/i;
 
+/**
+ * A SENTENCE THAT DENIES A REFUND IS NOT A SENTENCE THAT PROMISES ONE.
+ *
+ * "stopping a run yourself is not a failure, so it is not refunded" states the exact rule this
+ * guard exists to enforce, and the first version of the stop pattern flagged it — the reader could
+ * not tell an assertion from its negation, so the page would have been pushed to stop saying the
+ * true thing. Same shape as RESET_CONTEXT above: judge inside the sentence, and skip it when the
+ * sentence is denying.
+ */
+const DENIAL = /\b(not|never|no|cannot|can't|does not|doesn't|is not|are not)\b[^.]{0,70}\b(refunded|refund|come[s]?\s+back|returned|given\s+back)\b/i;
+
 const sentences = (hay) => hay.split(/(?<=[.!?])\s+/);
 
 function scan(named) {
@@ -77,6 +98,7 @@ function scan(named) {
   for (const [name, text] of named) {
     for (const sentence of sentences(visibleText(text))) {
       if (RESET_CONTEXT.test(sentence)) continue;
+      if (DENIAL.test(sentence)) continue;
       for (const { id, re } of REFUND_CLAIMS) {
         const hit = re.exec(sentence);
         if (hit) found.push(`${name}: [${id}] "${hit[0].trim()}"`);
@@ -86,7 +108,73 @@ function scan(named) {
   return found;
 }
 
-test('THE PREMISE IS STILL TRUE: the quota object cannot give a Credit back', () => {
+//[[ THIS GUARD DID ITS JOB AND THEN CHANGED SHAPE, WHICH IS THE OUTCOME IT WAS BUILT FOR.
+//
+//   It existed to hold four published pages to a fact: the quota object had no way to give a Credit
+//   back, so no page could promise one. On 2026-09-20 the worker gained /refund and SessionDO began
+//   calling it, and this test failed with the sentence it was written to produce — "a refund path
+//   may exist, re-read this guard and decide what the pages may promise, rather than deleting it."
+//
+//   Deleting it was the wrong move and so was silencing it. Four pages said in plain words that
+//   nothing comes back, one of them naming the missing route, and every one of those sentences had
+//   become false while remaining published. They now describe what the refund actually is.
+//
+//   So the assertion inverts rather than disappears. What must hold now is not "no refund exists"
+//   but "the pages describe the refund the product actually has" — narrow, automatic, and only for
+//   a run that ended in failure leaving nothing to keep. The failure mode this now guards is the
+//   opposite one, and it is worse: a page over-promising a general refund the code does not give.
+const REFUND_IS_NARROW = [
+  { id: 'nothing-comes-back', re: /\bnothing comes back\b/i, why: 'the product refunds a failed run that left nothing to keep' },
+  { id: 'no-refund-route', re: /no refund route|has no refund route at all/i, why: 'QuotaDO has had /refund since 2026-09-20' },
+  { id: 'no-other-refund', re: /there is no other refund/i, why: 'there is one, and it is described a paragraph away' },
+];
+
+test('no page still denies a refund the product now gives', () => {
+  // NON-VACUITY FIRST. The first version of this test destructured pages() - which yields file
+  // PATHS - as [name, text], so it iterated the characters of a path and scanned no prose at all
+  // while reporting green. A falsification caught it; the assertion below is what makes a blind
+  // reader fail as a blind reader instead of passing as a clean product.
+  assert.ok(pages().length > 0, 'found no .astro pages — this guard is looking in the wrong place');
+  const offenders = [];
+  for (const [name, text] of pages().map((f) => [f.slice(SITE.length + 1), readFileSync(f, 'utf8')])) {
+    for (const sentence of sentences(visibleText(text))) {
+      for (const { id, re, why } of REFUND_IS_NARROW) {
+        const hit = re.exec(sentence);
+        if (hit) offenders.push(`${name}: [${id}] "${hit[0].trim()}" — ${why}`);
+      }
+    }
+  }
+  assert.deepEqual(offenders, [], offenders.join('\n'));
+});
+
+test('no page promises a refund WIDER than the one the code gives', () => {
+  assert.ok(pages().length > 0, 'found no .astro pages — this guard is looking in the wrong place');
+  // The opposite drift, and the more damaging one. The refund is only for a run that ended in
+  // failure having left the user nothing they can keep; a page offering a general money-back or an
+  // any-failure refund would be selling something apps/worker/src/run-refund.ts does not do.
+  const TOO_WIDE = [
+    { id: 'always-refunded', re: /always refunded|refunded in full|full refund of your credits/i },
+    // The sentence that actually shipped. Narrowing REFUND_CLAIMS to "kept work" and "stop" left
+    // this uncaught for a moment: an unconditional come-back on ANY failure is wider than
+    // run-refund.ts gives, which refunds only a failure that left nothing to keep. The true copy
+    // carries that condition, so it does not match.
+    { id: 'automatic-on-any-failure', re: /credits?\s+come[s]?\s+back\s+automatically/i },
+    { id: 'any-failure', re: /any (?:failed|failing) run is refunded|all failed runs are refunded/i },
+    { id: 'refund-on-request', re: /request a refund|contact us for a refund of credits/i },
+  ];
+  const offenders = [];
+  for (const [name, text] of pages().map((f) => [f.slice(SITE.length + 1), readFileSync(f, 'utf8')])) {
+    for (const sentence of sentences(visibleText(text))) {
+      for (const { id, re } of TOO_WIDE) {
+        const hit = re.exec(sentence);
+        if (hit) offenders.push(`${name}: [${id}] "${hit[0].trim()}"`);
+      }
+    }
+  }
+  assert.deepEqual(offenders, [], `a page promises a wider refund than run-refund.ts gives:\n${offenders.join('\n')}`);
+});
+
+test('THE PREMISE CHANGED: the quota object CAN give a Credit back, and the pages must keep up', () => {
   const quota = readFileSync(join(ROOT, 'apps', 'worker', 'src', 'do', 'quota.ts'), 'utf8');
   const math = readFileSync(join(ROOT, 'apps', 'worker', 'src', 'quota-math.ts'), 'utf8');
 
@@ -96,11 +184,10 @@ test('THE PREMISE IS STILL TRUE: the quota object cannot give a Credit back', ()
     'THIS GUARD IS BROKEN, NOT THE PAGES: no routes could be read out of apps/worker/src/do/quota.ts',
   );
   const refundish = routes.filter((r) => /refund|credit-back|reverse|rebate/i.test(r));
-  assert.deepEqual(
-    refundish,
-    [],
-    `apps/worker/src/do/quota.ts now exposes ${refundish.join(', ')}. A refund path may exist — ` +
-      're-read this guard and decide what the pages may promise, rather than deleting it.',
+  assert.ok(
+    refundish.length > 0,
+    'THE REFUND ROUTE IS GONE from apps/worker/src/do/quota.ts. Four pages now describe a refund ' +
+      'this product would no longer give. Re-read those pages before removing this guard.',
   );
 
   assert.match(
@@ -116,7 +203,7 @@ test('THE PREMISE IS STILL TRUE: the quota object cannot give a Credit back', ()
   );
 });
 
-test('no page tells a customer that spent Credits come back', () => {
+test('no page promises a refund for work the user KEPT, or for a stop they chose', () => {
   const named = pages().map((p) => [p.slice(SITE.length + 1), readFileSync(p, 'utf8')]);
   assert.ok(named.length > 0, 'found no .astro pages — this guard is looking in the wrong place');
 
@@ -130,14 +217,27 @@ test('no page tells a customer that spent Credits come back', () => {
   );
 });
 
-test('the guard has teeth: it fails on the three sentences that shipped', () => {
-  const shipped = [
+test('the guard has teeth: it still fails on the sentences that shipped', () => {
+  // Two of these are now caught by the WIDER-than-the-code list rather than by `scan`: once a
+  // refund exists, "the Credits come back automatically" after any failure is an over-promise
+  // rather than a fiction. The sentence is still wrong and must still be caught; what changed is
+  // which rule owns it. Checking each against the list that owns it is the honest version — a
+  // single blanket assertion would pass for the wrong reason.
+  const stillCaughtByScan = [
     ['troubleshooting.astro', '<p>Your Credits are not consumed by a run that stops here.</p>'],
-    ['credits-and-limits.astro', '<p>If a request fails on our side the Credits come back automatically.</p>'],
-    ['faq.astro', '<p>Credits for unexecuted work on our side are refunded per the limits policy.</p>'],
   ];
-  for (const [name, text] of shipped) {
+  for (const [name, text] of stillCaughtByScan) {
     assert.ok(scan([[name, text]]).length > 0, `${name} slipped past every pattern — re-aim them`);
+  }
+
+  const overPromises = [
+    ['credits-and-limits.astro', 'If a request fails on our side the Credits are refunded in full.'],
+    ['faq.astro', 'All failed runs are refunded per the limits policy.'],
+  ];
+  const TOO_WIDE_RE = [/always refunded|refunded in full|full refund of your credits/i,
+                       /any (?:failed|failing) run is refunded|all failed runs are refunded/i];
+  for (const [name, sentence] of overPromises) {
+    assert.ok(TOO_WIDE_RE.some((re) => re.test(sentence)), `${name}: no over-promise pattern caught "${sentence}"`);
   }
 
   // And the true replacements must not trip it, or the guard would push the pages back into silence.
@@ -155,5 +255,12 @@ test('the guard has teeth: it fails on the three sentences that shipped', () => 
     '<p>If a request fails on our side — an infrastructure error, not a build that turned out ' +
     'wrong — the Credits come back automatically.</p><h2>The daily reset — and the monthly ' +
     'ceiling behind it</h2><p>Quotas reset at midnight UTC.</p>';
-  assert.ok(scan([['in context', inContext]]).length > 0, 'the carve-out defanged the shipped sentence');
+  // This sentence is now owned by the WIDER-than-the-code rule rather than by `scan`: with a refund
+  // in the product it is an over-promise, not a fiction. The property under test is unchanged — the
+  // reset carve-out must not swallow it — so it is asserted against the rule that owns it today.
+  const AUTOMATIC = /credits?\s+come[s]?\s+back\s+automatically/i;
+  const shippedSentence = sentences(visibleText(inContext)).find((x) => AUTOMATIC.test(x));
+  assert.ok(shippedSentence, 'the carve-out defanged the shipped sentence');
+  assert.ok(!RESET_CONTEXT.test(shippedSentence) || !DENIAL.test(shippedSentence),
+    'the shipped sentence was swallowed by a carve-out meant for the daily reset');
 });

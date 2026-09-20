@@ -100,14 +100,18 @@ const sessionShape = modes
     describes the live running total truthfully and stands on its own; a warning BEFORE the spend is
     a different promise, and it was not kept.
 
-    "If a request fails on our side — an infrastructure error, not a build that turned out wrong —
-    the Credits come back automatically." Nothing comes back. QuotaDO has no refund route at all —
-    /spend clamps its amount with `Math.max(0, amount)` so a negative cannot be spent, and
-    /grant-credits is "additive only, and never negative" and is reachable only from the Stripe
-    webhook and an admin route. What is true is narrower and is now what this says: a call that
-    failed reports no compute, so it is not charged in the first place. The one Credit taken at the
-    start of the request is not returned, which is why that is said out loud rather than left for a
-    reader to discover on the usage chart.
+    THIS PARAGRAPH SAID "NOTHING COMES BACK" AND THAT STOPPED BEING TRUE on 2026-09-20, when
+    QuotaDO gained a /refund route and SessionDO began calling it. The sentence was correct when it
+    was written and a guard in apps/site/tests/credit-refund-claims.test.mjs failed the moment the
+    route appeared, which is the only reason this was not left published and wrong.
+
+    What is true now is narrow, and the narrowness is the point: a run that ENDED IN FAILURE and
+    left you nothing you can keep — no applied operations, nothing changed in your place, no
+    requested image or model, and in a conversational mode no answer — gives its Credits back
+    automatically, and the reply says so. A run that changed your place keeps its Credits however
+    it ended, because you still have what it built. Pressing stop is not a refund. The refund is
+    idempotent and is composed from what the ledger actually returned rather than from what was
+    asked for, because the two differ over a UTC midnight and the difference is your money.
   */}
   {/*
     "ALWAYS VISIBLE IN THE WORKSPACE HEADER, AND IT UPDATES LIVE" WAS WRONG TWICE.
@@ -137,9 +141,11 @@ const sessionShape = modes
   </p>
   <p>
     A step that fails on our side is not charged: Credits are settled from the compute a call
-    actually reported, and a call that returned nothing reports nothing. The one Credit taken when
-    the request started is not given back, and there is no other refund — a run that stops partway
-    keeps whatever the finished steps cost.
+    actually reported, and a call that returned nothing reports nothing. Beyond that, a run that
+    ends in failure having left you nothing to keep gives its Credits back on its own — the reply
+    tells you how many and you do not have to ask. A run that changed your place keeps its Credits
+    whatever went wrong afterwards, because the work is still there; and stopping a run yourself is
+    not a failure, so it is not refunded.
   </p>
 
   <h2>The daily reset — and the monthly ceiling behind it</h2>

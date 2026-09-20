@@ -29,11 +29,11 @@ const general = [
     a: `<p>Apple works on the place open in the paired Studio window. In Team Create sessions its edits appear to teammates like any collaborator's edits. One pairing belongs to one Studio window; teammates who want their own Apple chats should use their own accounts and projects.</p>`,
   },
   {
-    // "Credits for unexecuted work on our side are refunded" was not true and could not become
-    // true: the quota object has no refund route, /spend clamps its amount at zero so a negative
-    // cannot be spent, and the only additive route is reachable from the Stripe webhook and an
-    // admin key. Nothing is refunded because nothing needs to be — work that never ran reports no
-    // compute and is never charged. That is the narrower claim, and it is the one that holds.
+    // This comment used to say a refund "was not true and could not become true". It became true on
+    // 2026-09-20: QuotaDO gained /refund and SessionDO calls it. The answer below still does not
+    // promise one, and that is correct rather than stale — closing Studio mid-build pauses the run,
+    // which is not a failure that left you nothing, so it is not the case the refund covers. Work
+    // that never ran is still never charged, which remains the reason this answer holds.
     q: 'What happens if I close Studio mid-build?',
     a: `<p>The agent notices it lost its hands and pauses the run with a clear message. Work that never ran is never charged — Credits settle against the compute a call actually reported, and a call that did not happen reports nothing. Reopen the place, reconnect, and ask Apple to continue — the plan and history are still in the project.</p>`,
   },

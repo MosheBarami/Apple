@@ -158,9 +158,11 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     The claim was scoped to the RUN while the mechanism is per-STEP — the same distinction the
     "model dropped that step" paragraph above already draws correctly. One Credit is taken at
     admission before the shared budget is ever consulted, and every completed step settles its own
-    measured usage before the step that hits the ceiling throws. There is no refund route in the
-    quota object to undo any of it, so those Credits stay on the ledger and come back to the
-    customer as the run's own total on the finished message.
+    measured usage before the step that hits the ceiling throws, so those Credits are on the ledger
+    and come back to the customer as the run's own total on the finished message. Since 2026-09-20
+    there is also a refund route, and a run that ends in failure having left nothing to keep gives
+    its Credits back automatically — but a run stopped by the ceiling after it has already changed
+    the place is not that run, because the work it did is still there.
 
     The in-app messages were never wrong about this: they claim only that the project and
     checkpoints are untouched. The untruth lived on this page alone, which is why nothing in the
