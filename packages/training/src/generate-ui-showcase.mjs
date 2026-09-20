@@ -56,6 +56,31 @@ const BASE = process.env.API_BASE || 'https://apple.moshe-barami111.workers.dev'
 const ADMIN = process.env.GOLEM_ADMIN_KEY;
 
 /**
+ * A RE-RUN OF ONE SCREEN MUST NOT ERASE THE RECORD OF THE OTHER FIFTEEN.
+ *
+ * The manifest is the only place that says which screens exist, what they cost and which ones
+ * failed. Overwriting it with the results of a one-target run would delete the evidence for
+ * everything the run did not touch, and the gallery built from it would silently shrink — a
+ * failure to observe presenting as an observation. Results are keyed by screen+genre, and a fresh
+ * result replaces the row of the same key while every other row survives.
+ */
+export function mergeResults(outDir, fresh) {
+  const path = join(outDir, 'manifest.json');
+  if (!existsSync(path)) return fresh;
+  let prior;
+  try {
+    prior = JSON.parse(readFileSync(path, 'utf8'));
+  } catch {
+    return fresh; // an unreadable manifest is replaced, not silently merged into
+  }
+  if (!Array.isArray(prior.results)) return fresh;
+  const key = (r) => `${r.id ?? r.target}--${r.genre ?? ''}`;
+  const byKey = new Map(prior.results.map((r) => [key(r), r]));
+  for (const r of fresh) byKey.set(key(r), r);
+  return [...byKey.values()];
+}
+
+/**
  * The Worker's own library modules, bundled out of `apps/worker/src` so what is injected is what
  * the tool returns rather than a second copy that can drift. Bundled into a temp dir the run
  * deletes: this is a read of the product, not a build artifact anybody should ship.
@@ -265,6 +290,7 @@ async function main() {
     );
   }
 
+  const merged = mergeResults(outDir, results);
   const manifest = {
     generatedAt: new Date().toISOString(),
     base: BASE,
@@ -276,16 +302,20 @@ async function main() {
     libraryDeliveryMeaning:
       'The get_ui_construction / get_genre_kit payloads were placed in the prompt verbatim. The model was GIVEN its library; it did not choose to ask for it. /api/admin/model-test wires no real tools.',
     renderer: 'packages/training/src/render-ui-tree.mjs over resolveLayout — geometry, not a Studio screenshot',
+    ranThisInvocation: results.map((r) => `${r.id ?? r.target}--${r.genre ?? ''}`),
     counts: {
-      targets: results.length,
-      built: results.filter((r) => r.outcome === 'built').length,
-      byOutcome: results.reduce((a, r) => ({ ...a, [r.outcome]: (a[r.outcome] ?? 0) + 1 }), {}),
+      targets: merged.length,
+      built: merged.filter((r) => r.outcome === 'built').length,
+      byOutcome: merged.reduce((a, r) => ({ ...a, [r.outcome]: (a[r.outcome] ?? 0) + 1 }), {}),
     },
-    results,
+    results: merged,
   };
   writeFileSync(join(outDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
   lib.cleanup();
-  console.log(`\n${manifest.counts.built}/${results.length} built -> ${outDir}`);
+  console.log(
+    `\n${results.filter((r) => r.outcome === 'built').length}/${results.length} built this run; ` +
+      `${manifest.counts.built}/${merged.length} in the manifest -> ${outDir}`,
+  );
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) await main();
