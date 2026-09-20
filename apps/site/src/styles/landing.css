@@ -1614,7 +1614,20 @@ p, li, dd, dt, figcaption, blockquote { text-wrap: pretty; }
   .step h3 { line-height: 1.5; letter-spacing: -0.012em; }
   .step p { font-size: 14px; line-height: 20px; }
   .truths { grid-template-columns: 1fr; }
-  .demos { grid-template-columns: 1fr; gap: 28px; }
+  /*[[ `minmax(0, 1fr)` AND NOT `1fr`, AND THE DIFFERENCE WAS 17px OFF THE SCREEN.
+   *
+   *   A bare `1fr` is `minmax(auto, 1fr)`, and `auto` as a track MINIMUM is min-content. Three of
+   *   these four stages hold something that refuses to wrap — `.rd-node` is `white-space: nowrap`
+   *   and `.lu-out code` is `white-space: pre` — so the track floored at their min-content instead
+   *   of at the 343px the gutter leaves. Measured in Chromium at 375px before this line was
+   *   corrected: `.demos` 343px wide at x16, and every `.demo-stage` inside it 360px wide running
+   *   to x376, one pixel past the viewport's own edge.
+   *
+   *   The e2e guard did not catch it and was right not to: it allows 1px of document overflow, and
+   *   this was exactly 1px at the document level while being 17px at the panel's right edge. The
+   *   desktop rule above has always said `minmax(0, 1fr)`; this one was written `1fr` and lost it.
+   *   tests/demo-stages-fit.test.mjs measures the containment itself now. ]]*/
+  .demos { grid-template-columns: minmax(0, 1fr); gap: 28px; }
   .model-grid { grid-template-columns: 1fr; }
   /*[[ FEWER EFFECTS ON A PHONE, NOT THE SAME EFFECTS MADE CHEAP — the owner's words, and this is
    *   the block that has to mean them for the four stages.
