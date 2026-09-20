@@ -466,6 +466,22 @@ p, li, dd, dt, figcaption, blockquote { text-wrap: pretty; }
    wordmark and this — two items, which is what `space-between` on the shell expects. Adding the
    toggle as a third flow child instead pushed it into the centre, under the nav. */
 .header-actions { display: flex; align-items: center; gap: 6px; }
+/* SIGN IN, IN THE ACCOUNT CLUSTER RATHER THAN THE DESTINATIONS ROW. It keeps the nav item's exact
+   spec — 32px box, 6px radius, 12px/700/+1.2px uppercase, --ink-secondary to --ink on hover — so
+   moving it changed where it sits and not what it looks like. Reference claim 16: variants differ
+   by border and text colour, not fill, and this is the quietest of them: no fill, no border, the
+   same --control-fill on hover the nav links use. It stands immediately left of the one accented
+   control on the page, which is the quiet-to-loud ordering claim 19 records. */
+.header-signin {
+  display: inline-flex; align-items: center;
+  height: var(--h-sm); padding: 0 10px;
+  border-radius: var(--r-sm);
+  color: var(--ink-secondary);
+  font-size: 12px; font-weight: 700; line-height: 18px; letter-spacing: 1.2px; text-transform: uppercase;
+  white-space: nowrap;
+  transition: color var(--t-color) var(--ease-hard), background-color var(--t-fast) ease-out;
+}
+.header-signin:hover { background: var(--control-fill); color: var(--ink); }
 /* A square instance of the same 36px control, so the icon is optically centred rather than sitting
    in a button padded for a word. `currentColor` inherits --ink from .pill-quiet, which is how one
    pair of glyphs works in both themes. */
@@ -1333,9 +1349,14 @@ p, li, dd, dt, figcaption, blockquote { text-wrap: pretty; }
 }
 
 @media (max-width: 640px) {
-  /* 8px of side padding rather than 12: five 32px link objects with 12px each side come to 310px
-     before the gaps, against the 343px a 375px phone has. Eight fits with room to spare and keeps
-     every link a tap target rather than a word. */
+  /* 8px of side padding rather than 12, so every link stays a tap target rather than a word.
+     THE NUMBER THAT USED TO BE HERE WAS WRONG. It read "five 32px link objects with 12px each side
+     come to 310px before the gaps ... fits with room to spare", and the row was measured in
+     Chromium at 375px instead: scrollWidth 395 against clientWidth 343, overflowing by 52. The five
+     boxes were 56 + 76 + 105 + 71 + 71 = 379, plus four 4px gaps = 395. "Sign in" was the fifth and
+     it landed at x 340->411, entirely past the edge, hidden behind a scrollbar this block removes.
+     Four links now: 56 + 76 + 105 + 71 = 308, plus three gaps = 320, against 343. That fits, and it
+     fits because the row is shorter rather than because the padding is smaller. */
   .site-nav a { padding: 0 8px; }
   /* The CONTAINER gutter halves on a phone and the HERO gutter does not. Measured at 390px: the
      bar's nav row is padded 16px and its hero content 24px — the two numbers that are 32 and 24 at
@@ -1362,6 +1383,21 @@ p, li, dd, dt, figcaption, blockquote { text-wrap: pretty; }
      measured dead air on the screen where the composer is most of the fold. */
   .composer-field { min-height: 59px; font-size: 14px; line-height: 21px; }
   .composer-typed { height: 21px; }
+}
+
+/* THE SMALLEST PHONE THIS SITE CLAIMS TO SUPPORT, WHICH IS 320 AND NOT 375.
+   `never scrolls horizontally at any supported size` has listed 320x568 for as long as it has
+   existed, so 320 is a promise the suite already makes. The row still did not fit there after
+   "Sign in" moved out of it: measured in Chromium at 320x568, the four remaining links came to
+   56 + 76 + 105 + 71 = 308 with three 4px gaps = 320, against the 288 a 320px viewport leaves
+   inside a 16px gutter — 32px over, with "Status" 16px past the right edge.
+   32px is exactly what four links give back when their side padding goes 8 -> 4, and the gap
+   closing to 2 buys the margin that stops the last link ending flush on the edge: 48 + 68 + 97 +
+   63 = 276, plus three 2px gaps = 282 against 288. The HEIGHT does not move — the 32px box is what
+   makes these tap targets, and it is untouched here; only the space either side of the words is. */
+@media (max-width: 360px) {
+  .site-nav { gap: 2px; }
+  .site-nav a { padding: 0 4px; }
 }
 
 /* THE BAR'S OWN PHONE BREAKPOINT IS 768, AND EVERYTHING THAT MOVES, MOVES THERE.

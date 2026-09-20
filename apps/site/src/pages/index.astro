@@ -187,16 +187,26 @@ const capabilities = [
         <a href="/pricing">Pricing</a>
         <a href="/changelog">Changelog</a>
         <a href="/status">Status</a>
-        {/* SIGN IN WAS NOWHERE ON THIS PAGE, at any width. "Open Apple" does land on the sign-in
-            screen, but nothing said so — a returning customer had to guess. Every other page on
-            this site carries a Sign in; the front door did not. */}
-        <a href="/app/login">Sign in</a>
       </nav>
       {/* THE ONE CONTROL THIS PAGE WAS MISSING. Every other route carries a theme toggle in Nav.astro;
           the landing has its own header and had none, so a reader who chose light elsewhere on the
           site could not see or change that choice on the front page. It lands on one of the four
           control heights the reference quantises to (claim 10), like everything beside it. */}
       <div class="header-actions">
+      {/* SIGN IN WAS NOWHERE ON THIS PAGE, at any width. "Open Apple" does land on the sign-in
+          screen, but nothing said so — a returning customer had to guess. Every other page on
+          this site carries a Sign in; the front door did not.
+          IT SAT IN THE DESTINATIONS ROW UNTIL IT WAS MEASURED ON A PHONE, and there it was not
+          merely cramped, it was unreachable: at 375px `nav.site-nav` ran scrollWidth 395 against
+          clientWidth 343, and this link's own box was x 340->411 — 36px past the right edge, with
+          `scrollbar-width: none` above removing the only hint that the row scrolls at all. The
+          block at the 640px breakpoint predicted "310px ... fits with room to spare"; the
+          measurement says 395, so that arithmetic was wrong rather than outgrown.
+          It moves here because that is what it IS. Docs, Pricing, Changelog and Status are
+          destinations; signing in is an account action, and it belongs beside the other one
+          rather than at the end of a list of pages. Removing it returns 75px (71px box + the 4px
+          gap) to a row that overflowed by 52, which is what makes the four that remain fit. */}
+      <a class="header-signin" href="/app/login">Sign in</a>
       <button class="pill pill-quiet pill-icon" type="button" data-theme-toggle aria-pressed="true" aria-label="Switch to light theme">
         <svg class="icon-sun" viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
           <circle cx="12" cy="12" r="4.2" fill="currentColor"></circle>

@@ -119,6 +119,57 @@ test('never scrolls horizontally at any supported size', async ({ page }) => {
   expect(bad, `horizontal scroll:\n${bad.join('\n')}`).toEqual([]);
 });
 
+test('every header control is reachable on a phone', async ({ page }) => {
+  // WHY THE TEST ABOVE CANNOT SEE THIS, which is the whole reason this one exists.
+  //
+  // `never scrolls horizontally` measures `document.documentElement.scrollWidth` — the PAGE. The
+  // nav row carries `overflow-x: auto` with `scrollbar-width: none` at the phone breakpoint, so
+  // when its contents outgrew it the row clipped INTERNALLY and the document never scrolled by a
+  // pixel. The page-level guard stayed green for the entire time the defect existed.
+  //
+  // What it cost, measured in Chromium at 375x812 before the fix: `nav.site-nav` ran scrollWidth
+  // 395 against clientWidth 343, and the "Sign in" link's own box was x 340->411 — 36px past the
+  // right edge of the viewport, with the scrollbar suppressed so nothing on screen suggested the
+  // row could be swiped. A returning customer on a phone could not see or reach the way back in,
+  // and "Status" was cut mid-word beside it, which reads as breakage rather than as an affordance.
+  //
+  // So this asserts the PROPERTY rather than the mechanism: every link in the header has its whole
+  // box inside the viewport. It does not care whether that is achieved by moving a control,
+  // shortening a word, or wrapping the row — only that nothing in the header is unreachable. A
+  // future translation that lengthens these words fails here, which is the point.
+  const sizes = [
+    { width: 375, height: 812 },
+    { width: 390, height: 844 },
+    { width: 320, height: 568 },
+  ];
+  const bad: string[] = [];
+
+  for (const size of sizes) {
+    await page.setViewportSize(size);
+    await page.goto('/');
+    const clipped = await page.evaluate(() => {
+      const vw = document.documentElement.clientWidth;
+      return [...document.querySelectorAll('header a, header button')]
+        .map((el) => {
+          const r = el.getBoundingClientRect();
+          return {
+            label: (el.textContent || el.getAttribute('aria-label') || '?').trim().slice(0, 20),
+            past: Math.round(r.right - vw),
+            left: Math.round(r.left),
+          };
+        })
+        // A control with zero area is hidden by a breakpoint rather than clipped, and that is a
+        // layout decision, not a defect. Only painted controls are judged.
+        .filter((c) => c.past > 1 || c.left < -1);
+    });
+    for (const c of clipped) {
+      bad.push(`${size.width}x${size.height}: "${c.label}" is ${c.past > 1 ? `${c.past}px past the right edge` : `${-c.left}px past the left edge`}`);
+    }
+  }
+
+  expect(bad, `header controls clipped out of reach:\n${bad.join('\n')}`).toEqual([]);
+});
+
 test('holds the approved composition', async ({ page }) => {
   await page.goto('/');
 
