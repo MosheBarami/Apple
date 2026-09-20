@@ -120,8 +120,27 @@ export function requestsLeftLine(spendable: number, low: number, high: number, p
   const most = Math.floor(spendable / low);
   const fewest = Math.floor(spendable / high);
   if (most === 0) return `not enough left ${window} for one`;
+
+  //[[ PAST A POINT THE COUNT STOPS BEING INFORMATION.
+  //
+  //   Seen on the live Usage page on an account holding a large credit grant: "about 500,000,169
+  //   more today", and beside it "between 55,555,574 and 250,000,084 more". Every one of those
+  //   digits is arithmetically correct and the sentence is nonsense to read. The line exists to
+  //   answer one question — can I afford the thing I am about to do — and once the answer is
+  //   overwhelmingly yes, the figure is noise standing where an answer should be. A nine-digit
+  //   number in a sentence about your next request reads as a bug even when it is not one.
+  //
+  //   The ceiling is set at what a person could plausibly spend in the window rather than at a
+  //   round number: nobody makes five hundred requests in a day or five thousand in a month, so
+  //   above that the honest statement is qualitative. It is deliberately NOT "unlimited" — the
+  //   balance is finite and is printed in full directly above this line. This says only that the
+  //   count has stopped being the useful form of the answer. ]]
+  const CEILING = period === 'month' ? 5000 : 500;
+  if (fewest >= CEILING) return `far more than you can use ${window}`;
+
   if (fewest === most) return `about ${formatNumber(most)} more ${window}`;
   if (fewest === 0) return `up to ${formatNumber(most)} more ${window}`;
+  if (most >= CEILING) return `at least ${formatNumber(fewest)} more ${window}`;
   return `between ${formatNumber(fewest)} and ${formatNumber(most)} more ${window}`;
 }
 

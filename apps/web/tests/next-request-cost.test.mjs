@@ -138,3 +138,57 @@ test('the credits card renders the figure and what is left, beside the balance',
   assert.match(card, /\{c\.published\} Credits/, 'the published figure has to reach the screen');
   assert.match(card, /requestsLeftLine\(view\.allowanceRemaining \+ view\.credits/, 'what is left must include purchased credits');
 });
+
+/*
+ * SEEN ON THE LIVE PAGE, WHICH IS WHY THESE NUMBERS ARE THE ONES THEY ARE.
+ *
+ * The Usage page of an account holding a large credit grant read "about 500,000,169 more today"
+ * and, beside it, "between 55,555,574 and 250,000,084 more". Every digit was correct. Nothing was
+ * broken. It was unreadable, and a nine-digit figure in a sentence about your next request reads
+ * as a bug whether or not it is one — which is the whole reason the owner asked to be shown the
+ * screen rather than the test results.
+ *
+ * The cases below pin the boundary from BOTH sides, because a ceiling that swallows ordinary
+ * numbers is a worse defect than the one it fixes: somebody with fourteen runs left needs to be
+ * told fourteen.
+ */
+test('a count that has stopped being information is not printed as one', () => {
+  // The live values. 1,000,000,338 spendable against a 2-credit Plan request.
+  assert.equal(requestsLeftLine(1_000_000_338, 2, 2, 'day'), 'far more than you can use today');
+  assert.equal(requestsLeftLine(1_000_000_338, 4, 18, 'day'), 'far more than you can use today');
+  assert.equal(requestsLeftLine(1_000_000_338, 4, 18, 'month'), 'far more than you can use this month');
+});
+
+test('the ceiling does not swallow a number somebody actually needs', () => {
+  // Ordinary balances still report exactly, and the eight cases above this block prove the common
+  // shapes are untouched. These sit just under the boundary on purpose.
+  assert.equal(requestsLeftLine(998, 2, 2, 'day'), 'about 499 more today');
+  assert.equal(requestsLeftLine(231, 4, 18, 'day'), 'between 12 and 57 more today');
+  assert.equal(requestsLeftLine(9998, 2, 2, 'month'), 'about 4,999 more this month');
+});
+
+test('a spread that straddles the ceiling reports the floor rather than a nine-digit top', () => {
+  // The dear end is still countable, the cheap end is not. Answering "between 200 and 1,000" is
+  // fine; the shape to avoid is a countable floor paired with a top nobody can read.
+  //
+  // THE FIRST VERSION OF THIS CASE WAS WRONG AND THE TEST CAUGHT IT: it used 6,000,000 against a
+  // 10,000-credit high end, which is 600 at the FEWEST — already over the ceiling, so the whole
+  // line collapsed to "far more than you can use today" and the branch under test never ran. The
+  // fix is arithmetic in the test, not a loosened assertion in the code.
+  const line = requestsLeftLine(2_000, 2, 10, 'day');
+  assert.equal(line, 'at least 200 more today');
+  assert.doesNotMatch(line, /\d{4,}/, 'an unreadable count came back on the high end of a spread');
+});
+
+test('every line this function can produce is short enough to read', () => {
+  const cases = [[0,4,18],[1,2,2],[10,4,18],[231,4,18],[998,2,2],[6_000_000,1,10_000],
+    [1_000_000_338,2,2],[1_000_000_338,4,18],[Number.NaN,2,2]];
+  for (const period of ['day','month']) {
+    for (const [s,l,h] of cases) {
+      const line = requestsLeftLine(s,l,h,period);
+      assert.doesNotMatch(line, /\d{7,}/,
+        `"${line}" carries a seven-digit number; no sentence about your next request should`);
+      assert.ok(line.length <= 46, `"${line}" is ${line.length} characters — too long for the line it sits on`);
+    }
+  }
+});
