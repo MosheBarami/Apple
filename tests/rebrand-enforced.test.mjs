@@ -151,6 +151,17 @@ test('the shipped SDK clients are inside the denominator', () => {
   }
   const expected = new Set([...lsFiles(['*.ts', '*.tsx', '*.astro', '*.luau']), ...shipped]);
   expected.delete('scripts/check-rebrand.mjs');
+  //[[ EVIDENCE IS EXCLUDED FROM THE DENOMINATOR, AND THIS MODELS THAT RATHER THAN IGNORING IT.
+  //   docs/evidence/ui-showcase/*.luau is Luau the MODEL generated, captured for the owner to look
+  //   at. The `*.luau` glob swept it in with the product and check-rebrand read a generated gacha
+  //   monster — "Epic — Ember Golem" — as the product naming itself. An evidence file is a record;
+  //   rewriting one so a checker goes green falsifies the record.
+  //
+  //   This test's own subject is unchanged and is the reason it must be kept in step: it asks
+  //   whether the checker scans the set it DECLARES, so that a shipped client cannot silently drop
+  //   out of the denominator. The four clients a stranger is handed are still named by path above
+  //   and asserted present, which is the part a count alone could never do. ]]
+  for (const f of [...expected]) if (f.startsWith('docs/evidence/')) expected.delete(f);
 
   const p = spawnSync('node', [join(ROOT, 'scripts/check-rebrand.mjs'), '--offline'], { cwd: ROOT, encoding: 'utf8', timeout: 120_000 });
   const out = `${p.stdout ?? ''}${p.stderr ?? ''}`;
