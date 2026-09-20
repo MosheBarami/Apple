@@ -35,10 +35,19 @@
   // spelling silently resolved to undefined and the whole effect no-opped while the <canvas> element
   // still shipped. The page looked identical to the one before this file existed, which is exactly
   // the failure that is impossible to see by reading the served HTML for the element.
-  const canvas = document.querySelector('canvas.flow');
-  if (canvas instanceof HTMLCanvasElement) {
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
+  //
+  // The two bindings below are declared NON-NULLABLE rather than narrowed in place. `astro check`
+  // resets control-flow narrowing inside a hoisted `function` declaration — a declaration can be
+  // called from anywhere, so TypeScript will not carry `canvas instanceof HTMLCanvasElement` into
+  // `resize`, `step` or `boot`. That produced 26 errors here and held the whole CI typecheck red
+  // while the effect itself was correct. Widening the guard and re-binding once fixes every one of
+  // them without touching a line of the drawing code.
+  const el = document.querySelector('canvas.flow');
+  const context = el instanceof HTMLCanvasElement ? el.getContext('2d') : null;
+  if (el instanceof HTMLCanvasElement && context) {
+    const canvas: HTMLCanvasElement = el;
+    {
+      const ctx: CanvasRenderingContext2D = context;
       const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
       // Read the accent off the page rather than hardcoding it, so the field follows the theme and
       // a token change cannot leave one green on the page and a different green in the hero.
@@ -47,7 +56,7 @@
 
       let w = 0, h = 0, dpr = 1;
       const COUNT = 700;
-      const pts = [];
+      const pts: { x: number; y: number; life: number }[] = [];
       const pointer = { x: -9999, y: -9999, on: false };
 
       function resize() {
@@ -69,7 +78,7 @@
       }
 
       /** Cheap smooth field. Two sines crossed is enough structure to read as flow and costs nothing. */
-      function angleAt(x, y, t) {
+      function angleAt(x: number, y: number, t: number) {
         return (
           Math.sin(x * 0.0021 + t * 0.00013) * 1.9 +
           Math.cos(y * 0.0026 - t * 0.00017) * 1.6 +
@@ -77,7 +86,7 @@
         );
       }
 
-      function step(t) {
+      function step(t: number) {
         // The trail: wash the previous frame toward the page ground rather than clearing it.
         ctx.globalCompositeOperation = 'destination-out';
         ctx.fillStyle = 'rgba(0,0,0,0.034)';
@@ -120,7 +129,7 @@
       }
 
       let raf = 0;
-      const loop = (t) => { step(t); raf = requestAnimationFrame(loop); };
+      const loop = (t: number) => { step(t); raf = requestAnimationFrame(loop); };
       const start = () => { if (!raf && !reduced.matches) raf = requestAnimationFrame(loop); };
       const stop = () => { if (raf) { cancelAnimationFrame(raf); raf = 0; } };
 
