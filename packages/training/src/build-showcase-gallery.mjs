@@ -45,6 +45,9 @@ const readManifest = (dir) => {
 const OUTCOME_WORDS = {
   built: 'built',
   no_code_block: 'answered in prose instead of code',
+  // OURS, NOT THE MODEL'S — the answer stopped inside an open code block because the run's own
+  // token ceiling cut it off. Worded so a reader cannot mistake it for the model refusing.
+  truncated_code_block: 'we cut the answer off mid-code — our token limit, not the model',
   does_not_compile: 'the Luau did not compile',
   runtime_error: 'the build threw while running',
   harness_did_not_run: 'the test harness could not run it',

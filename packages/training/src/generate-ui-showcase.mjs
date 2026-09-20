@@ -98,6 +98,27 @@ const SYSTEM = [
   'Do not write an update loop, a while-true, or a RunService binding: build the screen and stop.',
 ].join(' ');
 
+/**
+ * WHY `fencedLuau` FOUND NOTHING — the two answers are opposite and only one is the model's fault.
+ *
+ * `fencedLuau` matches ```` ```luau ```` … ```` ``` ````, closing fence required. Two very
+ * different answers fail it identically:
+ *
+ *   - the model wrote an essay and never opened a fence          -> `no_code_block`, its own doing
+ *   - the model opened a fence and the token ceiling cut the     -> `truncated_code_block`, OURS
+ *     answer off before the closing one
+ *
+ * Only the caller knows the ceiling, so this returns the name and the caller attaches the number.
+ * Exported so the distinction can be tested without a completion — see
+ * generate-ui-showcase.test.mjs. Called only when `fencedLuau` has already returned null.
+ */
+export function classifyNoLuau(text) {
+  // An OPENING fence is a run of backticks, an optional language word, then a newline. The closing
+  // fence has no newline requirement, which is exactly why a truncated answer matches the first
+  // pattern and not fencedLuau's whole pattern.
+  return /```(?:luau|lua)?[^\S\n]*\n/.test(String(text ?? '')) ? 'truncated_code_block' : 'no_code_block';
+}
+
 /** The prompt carries the library verbatim, under headings that say what each block is. */
 function buildPrompt({ target, label, constructionPayload, genrePayload, genreId }) {
   const blocks = [];
@@ -188,13 +209,42 @@ async function runTarget({ target, genreId, model, maxTokens, lib, outDir, viewp
   const res = await complete({ model, system: SYSTEM, prompt, maxTokens });
   if (!res.ok) return { target, genre: genreId, outcome: 'request_failed', detail: res.error };
 
+  const base = `${construction.id}--${genreId}`;
   const code = fencedLuau(res.text);
   if (!code) {
-    return { target, genre: genreId, outcome: 'no_code_block', detail: `answer was ${res.text.length} chars of prose`, answerChars: res.text.length };
+    //[[ "NO CODE BLOCK" IS TWO OPPOSITE FINDINGS AND THIS REPORTED ONLY THE WRONG ONE.
+    //
+    //   MEASURED 2026-09-20. screen-social was filed `no_code_block`, detail "answer was 15908
+    //   chars of prose" — a claim about the answer's CONTENT that nothing had looked at. All the
+    //   code knew was that `fencedLuau`'s regex, which requires a CLOSING ```, had not matched.
+    //   An answer cut off by the token ceiling part-way through a perfectly good Luau block fails
+    //   that regex in exactly the same way a genuine essay does, and the two are opposite
+    //   findings: one is the model declining to write code, the other is this harness's own
+    //   budget stopping it mid-word. Reporting the second as the first is a failure of the
+    //   instrument rendered as a failure of the model — which is the thing this repository is
+    //   most careful about, and it stood for a day because the evidence was thrown away.
+    //
+    //   So: a fence that opens and never closes is `truncated_code_block`, and it names the
+    //   ceiling that cut it. The raw answer is written beside the other artefacts EITHER WAY,
+    //   because a one-line assertion about an answer nobody kept is not a finding anyone can
+    //   check. ]]
+    const openedFence = classifyNoLuau(res.text) === 'truncated_code_block';
+    writeFileSync(join(outDir, `${base}--answer.txt`), res.text);
+    return {
+      target,
+      genre: genreId,
+      id: construction.id,
+      outcome: openedFence ? 'truncated_code_block' : 'no_code_block',
+      detail: openedFence
+        ? `a luau fence opened and never closed — the answer stopped inside the code block after ${res.text.length} chars, at maxTokens=${maxTokens}`
+        : `no code fence of any kind in ${res.text.length} chars`,
+      answerChars: res.text.length,
+      maxTokens,
+      files: { answer: `${base}--answer.txt` },
+    };
   }
 
   const built = buildUiTree(code);
-  const base = `${construction.id}--${genreId}`;
   writeFileSync(join(outDir, `${base}.luau`), code);
 
   if (!built.ran) return { target, genre: genreId, id: construction.id, outcome: 'harness_did_not_run', detail: built.reason, codeChars: code.length };
@@ -291,6 +341,8 @@ async function runTarget({ target, genreId, model, maxTokens, lib, outDir, viewp
       : null,
     scaledText: (opened ?? asScripted).scaledText,
     imagePlaceholders: (opened ?? asScripted).imagePlaceholders,
+    richTextNodes: (opened ?? asScripted).richTextNodes,
+    richTextBreaks: (opened ?? asScripted).richTextBreaks,
     sources: construction.sources?.length ?? 0,
     files,
   };

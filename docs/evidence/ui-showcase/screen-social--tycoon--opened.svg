@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" font-family="'Gotham SSm','Montserrat','Helvetica Neue',Arial,sans-serif">
+<defs><pattern id="apple-unfetched" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="12" height="12" fill="#1b1b22"/><line x1="0" y1="0" x2="0" y2="12" stroke="#3a3a46" stroke-width="3"/></pattern></defs>
+<rect width="1600" height="900" fill="#101014"/>
+<rect x="304.00" y="99.00" width="992.00" height="702.00" rx="10.00" ry="10.00" fill="rgb(20,22,30)" fill-opacity="1.000"/>
+<rect x="304.00" y="99.00" width="992.00" height="4.00" fill="rgb(60,130,246)" fill-opacity="1.000"/>
+<text x="326.00" y="136.00" text-anchor="start" font-size="20.0" fill="rgb(235,238,245)" fill-opacity="1.000">Social Hub — Brickyard Tycoon</text>
+<text x="326.00" y="158.55" text-anchor="start" font-size="13.0" fill="rgb(150,158,175)" fill-opacity="1.000">Friends, party, clan and chat in one place</text>
+<rect x="316.00" y="171.00" width="968.00" height="34.00" rx="8.00" ry="8.00" fill="rgb(26,29,40)" fill-opacity="1.000"/>
+<rect x="319.00" y="175.00" width="187.60" height="26.00" rx="6.00" ry="6.00" fill="rgb(60,130,246)" fill-opacity="1.000"/>
+<text x="412.80" y="192.55" text-anchor="middle" font-size="13.0" fill="rgb(255,255,255)" fill-opacity="1.000">Friends</text>
+<rect x="512.60" y="175.00" width="187.60" height="26.00" rx="6.00" ry="6.00" fill="rgb(38,42,56)" fill-opacity="1.000"/>
+<text x="606.40" y="192.55" text-anchor="middle" font-size="13.0" fill="rgb(255,255,255)" fill-opacity="1.000">Party</text>
+<rect x="706.20" y="175.00" width="187.60" height="26.00" rx="6.00" ry="6.00" fill="rgb(38,42,56)" fill-opacity="1.000"/>
+<text x="800.00" y="192.55" text-anchor="middle" font-size="13.0" fill="rgb(255,255,255)" fill-opacity="1.000">Clan</text>
+<rect x="899.80" y="175.00" width="187.60" height="26.00" rx="6.00" ry="6.00" fill="rgb(38,42,56)" fill-opacity="1.000"/>
+<text x="993.60" y="192.55" text-anchor="middle" font-size="13.0" fill="rgb(255,255,255)" fill-opacity="1.000">Ranks</text>
+<rect x="1093.40" y="175.00" width="187.60" height="26.00" rx="6.00" ry="6.00" fill="rgb(38,42,56)" fill-opacity="1.000"/>
+<text x="1187.20" y="192.55" text-anchor="middle" font-size="13.0" fill="rgb(255,255,255)" fill-opacity="1.000">Chat</text>
+<rect x="316.00" y="213.00" width="968.00" height="572.00" rx="8.00" ry="8.00" fill="rgb(24,26,36)" fill-opacity="1.000"/>
+<text x="334.00" y="237.90" text-anchor="start" font-size="14.0" fill="rgb(150,158,175)" fill-opacity="1.000">Friends not already in your party or clan</text>
+<text x="334.00" y="255.20" text-anchor="start" font-size="12.0" fill="rgb(110,118,135)" fill-opacity="1.000">Party and clan members are hidden here — find them on their own tabs.</text>
+<rect x="326.00" y="263.00" width="948.00" height="516.00" rx="8.00" ry="8.00" fill="rgb(28,31,44)" fill-opacity="1.000"/>
+<rect x="334.00" y="271.00" width="932.00" height="52.00" rx="6.00" ry="6.00" fill="rgb(36,40,56)" fill-opacity="1.000"/>
+<rect x="346.00" y="292.00" width="10.00" height="10.00" rx="5.00" ry="5.00" fill="rgb(80,220,120)" fill-opacity="1.000"/>
+<text x="370.00" y="294.25" text-anchor="start" font-size="15.0" fill="rgb(235,238,245)" fill-opacity="1.000">MintBuilder99</text>
+<text x="370.00" y="311.20" text-anchor="start" font-size="12.0" fill="rgb(150,158,175)" fill-opacity="1.000">In match — Brickyard Tycoon</text>
+<rect x="1162.00" y="281.00" width="92.00" height="32.00" rx="6.00" ry="6.00" fill="rgb(80,220,120)" fill-opacity="1.000"/>
+<text x="1208.00" y="301.55" text-anchor="middle" font-size="13.0" fill="rgb(15,30,20)" fill-opacity="1.000">Spectate</text>
+<rect x="1062.00" y="281.00" width="92.00" height="32.00" rx="6.00" ry="6.00" fill="rgb(38,42,56)" fill-opacity="1.000"/>
+<text x="1108.00" y="301.55" text-anchor="middle" font-size="13.0" fill="rgb(255,255,255)" fill-opacity="1.000">Invite</text>
+<rect x="334.00" y="329.00" width="932.00" height="52.00" rx="6.00" ry="6.00" fill="rgb(36,40,56)" fill-opacity="1.000"/>
+<rect x="346.00" y="350.00" width="10.00" height="10.00" rx="5.00" ry="5.00" fill="rgb(150,158,175)" fill-opacity="1.000"/>
+<text x="370.00" y="352.25" text-anchor="start" font-size="15.0" fill="rgb(235,238,245)" fill-opacity="1.000">PixelForge_Lia</text>
+<text x="370.00" y="369.20" text-anchor="start" font-size="12.0" fill="rgb(150,158,175)" fill-opacity="1.000">In lobby</text>
+<rect x="1162.00" y="339.00" width="92.00" height="32.00" rx="6.00" ry="6.00" fill="rgb(60,130,246)" fill-opacity="1.000"/>
+<text x="1208.00" y="359.55" text-anchor="middle" font-size="13.0" fill="rgb(255,255,255)" fill-opacity="1.000">Message</text>
+<rect x="1062.00" y="339.00" width="92.00" height="32.00" rx="6.00" ry="6.00" fill="rgb(38,42,56)" fill-opacity="1.000"/>
+<text x="1108.00" y="359.55" text-anchor="middle" font-size="13.0" fill="rgb(255,255,255)" fill-opacity="1.000">Invite</text>
+<rect x="334.00" y="387.00" width="932.00" height="52.00" rx="6.00" ry="6.00" fill="rgb(36,40,56)" fill-opacity="1.000"/>
+<rect x="346.00" y="408.00" width="10.00" height="10.00" rx="5.00" ry="5.00" fill="rgb(150,158,175)" fill-opacity="1.000"/>
+<text x="370.00" y="410.25" text-anchor="start" font-size="15.0" fill="rgb(235,238,245)" fill-opacity="1.000">StacksOnStacks</text>
+<text x="370.00" y="427.20" text-anchor="start" font-size="12.0" fill="rgb(150,158,175)" fill-opacity="1.000">In another experience</text>
+<rect x="1062.00" y="397.00" width="92.00" height="32.00" rx="6.00" ry="6.00" fill="rgb(38,42,56)" fill-opacity="1.000"/>
+<text x="1108.00" y="417.55" text-anchor="middle" font-size="13.0" fill="rgb(255,255,255)" fill-opacity="1.000">Invite</text>
+<rect x="334.00" y="445.00" width="932.00" height="52.00" rx="6.00" ry="6.00" fill="rgb(36,40,56)" fill-opacity="1.000"/>
+<rect x="346.00" y="466.00" width="10.00" height="10.00" rx="5.00" ry="5.00" fill="rgb(150,158,175)" fill-opacity="1.000"/>
+<text x="370.00" y="468.25" text-anchor="start" font-size="15.0" fill="rgb(235,238,245)" fill-opacity="1.000">ConveyorKing</text>
+<text x="370.00" y="485.20" text-anchor="start" font-size="12.0" fill="rgb(150,158,175)" fill-opacity="1.000">Online — studio</text>
+<rect x="1162.00" y="455.00" width="92.00" height="32.00" rx="6.00" ry="6.00" fill="rgb(60,130,246)" fill-opacity="1.000"/>
+<text x="1208.00" y="475.55" text-anchor="middle" font-size="13.0" fill="rgb(255,255,255)" fill-opacity="1.000">Message</text>
+<rect x="1062.00" y="455.00" width="92.00" height="32.00" rx="6.00" ry="6.00" fill="rgb(38,42,56)" fill-opacity="1.000"/>
+<text x="1108.00" y="475.55" text-anchor="middle" font-size="13.0" fill="rgb(255,255,255)" fill-opacity="1.000">Invite</text>
+<rect x="316.00" y="213.00" width="968.00" height="572.00" rx="8.00" ry="8.00" fill="rgb(24,26,36)" fill-opacity="1.000"/>
+<text x="334.00" y="239.60" text-anchor="start" font-size="16.0" fill="rgb(235,238,245)" fill-opacity="1.000">Your Party — 2 / 4</text>
+<rect x="326.00" y="253.00" width="948.00" height="48.00" rx="6.00" ry="6.00" fill="rgb(36,40,56)" fill-opacity="1.000"/>
+<text x="344.00" y="274.25" text-anchor="start" font-size="15.0" fill="rgb(235,238,245)" fill-opacity="1.000">You (LocalPlayer)</text>
+<text x="344.00" y="291.20" text-anchor="start" font-size="12.0" fill="rgb(150,158,175)" fill-opacity="1.000">Party leader</text>
+<rect x="326.00" y="307.00" width="948.00" height="48.00" rx="6.00" ry="6.00" fill="rgb(36,40,56)" fill-opacity="1.000"/>
+<text x="344.00" y="328.25" text-anchor="start" font-size="15.0" fill="rgb(235,238,245)" fill-opacity="1.000">MintBuilder99</text>
+<text x="344.00" y="345.20" text-anchor="start" font-size="12.0" fill="rgb(150,158,175)" fill-opacity="1.000">Member — in your tycoon</text>
+<rect x="1192.00" y="316.00" width="70.00" height="30.00" rx="6.00" ry="6.00" fill="rgb(200,70,70)" fill-opacity="1.000"/>
+<text x="1227.00" y="335.55" text-anchor="middle" font-size="13.0" fill="rgb(255,255,255)" fill-opacity="1.000">Kick</text>
+<rect x="326.00" y="373.00" width="948.00" height="36.00" rx="6.00" ry="6.00" fill="rgb(60,130,246)" fill-opacity="1.000"/>
+<text x="800.00" y="395.55" text-anchor="middle" font-size="13.0" fill="rgb(255,255,255)" fill-opacity="1.000">Invite friends (opens Roblox prompt)</text>
+<rect x="326.00" y="417.00" width="948.00" height="36.00" rx="6.00" ry="6.00" fill="rgb(200,70,70)" fill-opacity="1.000"/>
+<text x="800.00" y="439.55" text-anchor="middle" font-size="13.0" fill="rgb(255,255,255)" fill-opacity="1.000">Leave party</text>
+<rect x="316.00" y="213.00" width="968.00" height="572.00" rx="8.00" ry="8.00" fill="rgb(24,26,36)" fill-opacity="1.000"/>
+<text x="334.00" y="239.60" text-anchor="start" font-size="16.0" fill="rgb(235,238,245)" fill-opacity="1.000">Clan: Conveyor Cartel — Level 12</text>
+<rect x="326.00" y="253.00" width="948.00" height="44.00" rx="6.00" ry="6.00" fill="rgb(36,40,56)" fill-opacity="1.000"/>
+<text x="344.00" y="279.90" text-anchor="start" font-size="14.0" fill="rgb(235,238,245)" fill-opacity="1.000">ConveyorKing</text>
+<text x="673.28" y="279.55" text-anchor="start" font-size="13.0" fill="rgb(120,200,255)" fill-opacity="1.000">Chief</text>
+<text x="900.80" y="279.55" text-anchor="start" font-size="13.0" fill="rgb(150,158,175)" fill-opacity="1.000">12,400 / min</text>
+<rect x="326.00" y="303.00" width="948.00" height="44.00" rx="6.00" ry="6.00" fill="rgb(36,40,56)" fill-opacity="1.000"/>
+<text x="344.00" y="329.90" text-anchor="start" font-size="14.0" fill="rgb(235,238,245)" fill-opacity="1.000">PixelForge_Lia</text>
+<text x="673.28" y="329.55" text-anchor="start" font-size="13.0" fill="rgb(120,200,255)" fill-opacity="1.000">Officer</text>
+<text x="900.80" y="329.55" text-anchor="start" font-size="13.0" fill="rgb(150,158,175)" fill-opacity="1.000">9,850 / min</text>
+<rect x="326.00" y="353.00" width="948.00" height="44.00" rx="6.00" ry="6.00" fill="rgb(36,40,56)" fill-opacity="1.000"/>
+<text x="344.00" y="379.90" text-anchor="start" font-size="14.0" fill="rgb(235,238,245)" fill-opacity="1.000">You (LocalPlayer)</text>
+<text x="673.28" y="379.55" text-anchor="start" font-size="13.0" fill="rgb(120,200,255)" fill-opacity="1.000">Member</text>
+<text x="900.80" y="379.55" text-anchor="start" font-size="13.0" fill="rgb(150,158,175)" fill-opacity="1.000">6,200 / min</text>
+<rect x="326.00" y="403.00" width="948.00" height="44.00" rx="6.00" ry="6.00" fill="rgb(36,40,56)" fill-opacity="1.000"/>
+<text x="344.00" y="429.90" text-anchor="start" font-size="14.0" fill="rgb(235,238,245)" fill-opacity="1.000">DropperDan</text>
+<text x="673.28" y="429.55" text-anchor="start" font-size="13.0" fill="rgb(120,200,255)" fill-opacity="1.000">Member</text>
+<text x="900.80" y="429.55" text-anchor="start" font-size="13.0" fill="rgb(150,158,175)" fill-opacity="1.000">4,780 / min</text>
+<rect x="326.00" y="459.00" width="948.00" height="32.00" rx="6.00" ry="6.00" fill="rgb(38,42,56)" fill-opacity="1.000"/>
+<text x="800.00" y="479.55" text-anchor="middle" font-size="13.0" fill="rgb(255,255,255)" fill-opacity="1.000">Clan tag: [CARTL] — shown next to your chat name</text>
+<rect x="316.00" y="213.00" width="968.00" height="572.00" rx="8.00" ry="8.00" fill="rgb(24,26,36)" fill-opacity="1.000"/>
+<text x="334.00" y="239.60" text-anchor="start" font-size="16.0" fill="rgb(235,238,245)" fill-opacity="1.000">Global Income Ladder — this week</text>
+<rect x="326.00" y="253.00" width="948.00" height="44.00" rx="6.00" ry="6.00" fill="rgb(36,40,56)" fill-opacity="1.000"/>
+<text x="344.00" y="280.25" text-anchor="start" font-size="15.0" fill="rgb(255,210,90)" fill-opacity="1.000">#1</text>
+<text x="464.72" y="279.90" text-anchor="start" font-size="14.0" fill="rgb(235,238,245)" fill-opacity="1.000">ConveyorKing</text>
+<text x="957.68" y="279.55" text-anchor="start" font-size="13.0" fill="rgb(150,158,175)" fill-opacity="1.000">1,204,500 cash earned</text>
+<rect x="326.00" y="303.00" width="948.00" height="44.00" rx="6.00" ry="6.00" fill="rgb(36,40,56)" fill-opacity="1.000"/>
+<text x="344.00" y="330.25" text-anchor="start" font-size="15.0" fill="rgb(255,210,90)" fill-opacity="1.000">#2</text>
+<text x="464.72" y="329.90" text-anchor="start" font-size="14.0" fill="rgb(235,238,245)" fill-opacity="1.000">PixelForge_Lia</text>
+<text x="957.68" y="329.55" text-anchor="start" font-size="13.0" fill="rgb(150,158,175)" fill-opacity="1.000">986,220 cash earned</text>
+<rect x="326.00" y="353.00" width="948.00" height="44.00" rx="6.00" ry="6.00" fill="rgb(36,40,56)" fill-opacity="1.000"/>
+<text x="344.00" y="380.25" text-anchor="start" font-size="15.0" fill="rgb(255,210,90)" fill-opacity="1.000">#3</text>
+<text x="464.72" y="379.90" text-anchor="start" font-size="14.0" fill="rgb(235,238,245)" fill-opacity="1.000">DropperDan</text>
+<text x="957.68" y="379.55" text-anchor="start" font-size="13.0" fill="rgb(150,158,175)" fill-opacity="1.000">871,040 cash earned</text>
+<rect x="326.00" y="403.00" width="948.00" height="44.00" rx="6.00" ry="6.00" fill="rgb(46,52,74)" fill-opacity="1.000"/>
+<text x="344.00" y="430.25" text-anchor="start" font-size="15.0" fill="rgb(255,210,90)" fill-opacity="1.000">#41</text>
+<text x="464.72" y="429.90" text-anchor="start" font-size="14.0" fill="rgb(235,238,245)" fill-opacity="1.000">You (LocalPlayer)</text>
+<text x="957.68" y="429.55" text-anchor="start" font-size="13.0" fill="rgb(150,158,175)" fill-opacity="1.000">312,880 cash earned</text>
+<rect x="316.00" y="213.00" width="968.00" height="572.00" rx="8.00" ry="8.00" fill="rgb(24,26,36)" fill-opacity="1.000"/>
+<rect x="326.00" y="223.00" width="70.00" height="28.00" rx="6.00" ry="6.00" fill="rgb(60,130,246)" fill-opacity="1.000"/>
+<text x="361.00" y="241.55" text-anchor="middle" font-size="13.0" fill="rgb(255,255,255)" fill-opacity="1.000">All</text>
+<rect x="404.00" y="223.00" width="70.00" height="28.00" rx="6.00" ry="6.00" fill="rgb(38,42,56)" fill-opacity="1.000"/>
+<text x="439.00" y="241.55" text-anchor="middle" font-size="13.0" fill="rgb(255,255,255)" fill-opacity="1.000">Clan</text>
+<rect x="482.00" y="223.00" width="70.00" height="28.00" rx="6.00" ry="6.00" fill="rgb(38,42,56)" fill-opacity="1.000"/>
+<text x="517.00" y="241.55" text-anchor="middle" font-size="13.0" fill="rgb(255,255,255)" fill-opacity="1.000">Party</text>
+<rect x="326.00" y="259.00" width="948.00" height="462.00" rx="8.00" ry="8.00" fill="rgb(28,31,44)" fill-opacity="1.000"/>
+<text x="340.00" y="278.55" text-anchor="start" font-size="13.0" fill="rgb(235,238,245)" fill-opacity="1.000"><tspan xml:space="preserve" fill="#78C8FF">[CARTL]</tspan><tspan xml:space="preserve"> </tspan><tspan xml:space="preserve" font-weight="bold">ConveyorKing:</tspan><tspan xml:space="preserve"> upgraded my second dropper, income is 12k/min now</tspan></text>
+<text x="340.00" y="300.55" text-anchor="start" font-size="13.0" fill="rgb(235,238,245)" fill-opacity="1.000"><tspan xml:space="preserve" fill="#78C8FF">[PARTY]</tspan><tspan xml:space="preserve"> </tspan><tspan xml:space="preserve" font-weight="bold">MintBuilder99:</tspan><tspan xml:space="preserve"> meet at the central park, we can merge plots</tspan></text>
+<text x="340.00" y="322.55" text-anchor="start" font-size="13.0" fill="rgb(235,238,245)" fill-opacity="1.000"><tspan xml:space="preserve" font-weight="bold">DropperDan:</tspan><tspan xml:space="preserve"> anyone selling the golden conveyor skin?</tspan></text>
+<text x="340.00" y="344.55" text-anchor="start" font-size="13.0" fill="rgb(235,238,245)" fill-opacity="1.000"><tspan xml:space="preserve" fill="#78C8FF">[CARTL]</tspan><tspan xml:space="preserve"> </tspan><tspan xml:space="preserve" font-weight="bold">PixelForge_Lia:</tspan><tspan xml:space="preserve"> clan cashout in 20 minutes, get your income up</tspan></text>
+<rect x="326.00" y="735.00" width="858.00" height="34.00" rx="6.00" ry="6.00" fill="rgb(36,40,56)" fill-opacity="1.000"/>
+<rect x="1190.00" y="735.00" width="84.00" height="34.00" rx="6.00" ry="6.00" fill="rgb(60,130,246)" fill-opacity="1.000"/>
+<text x="1232.00" y="756.55" text-anchor="middle" font-size="13.0" fill="rgb(255,255,255)" fill-opacity="1.000">Send</text>
+<rect x="316.00" y="757.00" width="968.00" height="34.00" rx="8.00" ry="8.00" fill="rgb(26,29,40)" fill-opacity="1.000"/>
+<text x="332.00" y="778.20" text-anchor="start" font-size="12.0" fill="rgb(150,158,175)" fill-opacity="1.000">Hold a name to report:</text>
+<rect x="645.12" y="762.00" width="70.00" height="24.00" rx="6.00" ry="6.00" fill="rgb(200,70,70)" fill-opacity="1.000"/>
+<text x="680.12" y="778.55" text-anchor="middle" font-size="13.0" fill="rgb(255,255,255)" fill-opacity="1.000">Report</text>
+<rect x="723.12" y="762.00" width="70.00" height="24.00" rx="6.00" ry="6.00" fill="rgb(120,60,60)" fill-opacity="1.000"/>
+<text x="758.12" y="778.55" text-anchor="middle" font-size="13.0" fill="rgb(255,255,255)" fill-opacity="1.000">Block</text>
+<rect x="801.12" y="762.00" width="84.00" height="24.00" rx="6.00" ry="6.00" fill="rgb(120,60,60)" fill-opacity="1.000"/>
+<text x="843.12" y="778.55" text-anchor="middle" font-size="13.0" fill="rgb(255,255,255)" fill-opacity="1.000">Mute chat</text>
+</svg>

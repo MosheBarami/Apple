@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-20T21:10:33.026Z",
+  "generatedAt": "2026-09-20T23:13:00.987Z",
   "base": "https://apple.moshe-barami111.workers.dev",
   "model": "rune",
   "lane": "Apple MAX",
@@ -13,14 +13,13 @@
   "libraryDeliveryMeaning": "The get_ui_construction / get_genre_kit payloads were placed in the prompt verbatim. The model was GIVEN its library; it did not choose to ask for it. /api/admin/model-test wires no real tools.",
   "renderer": "packages/training/src/render-ui-tree.mjs over resolveLayout — geometry, not a Studio screenshot",
   "ranThisInvocation": [
-    "screen-leaderboard--tycoon"
+    "screen-social--tycoon"
   ],
   "counts": {
     "targets": 16,
-    "built": 15,
+    "built": 16,
     "byOutcome": {
-      "built": 15,
-      "no_code_block": 1
+      "built": 16
     }
   },
   "results": [
@@ -53,7 +52,9 @@
         "svg": "screen-codes--tycoon.svg",
         "openedSvg": "screen-codes--tycoon--opened.svg"
       },
-      "wrappedText": 0
+      "wrappedText": 0,
+      "richTextNodes": 0,
+      "richTextBreaks": 0
     },
     {
       "target": "screen-crafting",
@@ -78,7 +79,9 @@
         "luau": "screen-crafting--tycoon.luau",
         "svg": "screen-crafting--tycoon.svg"
       },
-      "wrappedText": 0
+      "wrappedText": 0,
+      "richTextNodes": 0,
+      "richTextBreaks": 0
     },
     {
       "target": "screen-gacha",
@@ -109,7 +112,9 @@
         "svg": "screen-gacha--tycoon.svg",
         "openedSvg": "screen-gacha--tycoon--opened.svg"
       },
-      "wrappedText": 0
+      "wrappedText": 0,
+      "richTextNodes": 0,
+      "richTextBreaks": 0
     },
     {
       "target": "screen-hud",
@@ -134,7 +139,9 @@
         "luau": "screen-hud--tycoon.luau",
         "svg": "screen-hud--tycoon.svg"
       },
-      "wrappedText": 0
+      "wrappedText": 0,
+      "richTextNodes": 0,
+      "richTextBreaks": 0
     },
     {
       "target": "screen-inventory",
@@ -159,7 +166,9 @@
         "luau": "screen-inventory--tycoon.luau",
         "svg": "screen-inventory--tycoon.svg"
       },
-      "wrappedText": 1
+      "wrappedText": 1,
+      "richTextNodes": 0,
+      "richTextBreaks": 0
     },
     {
       "target": "screen-leaderboard",
@@ -199,7 +208,9 @@
         "luau": "screen-leaderboard--tycoon.luau",
         "svg": "screen-leaderboard--tycoon.svg"
       },
-      "wrappedText": 0
+      "wrappedText": 0,
+      "richTextNodes": 0,
+      "richTextBreaks": 0
     },
     {
       "target": "screen-lobby",
@@ -224,7 +235,9 @@
         "luau": "screen-lobby--tycoon.luau",
         "svg": "screen-lobby--tycoon.svg"
       },
-      "wrappedText": 0
+      "wrappedText": 0,
+      "richTextNodes": 0,
+      "richTextBreaks": 0
     },
     {
       "target": "screen-map",
@@ -255,7 +268,9 @@
         "svg": "screen-map--tycoon.svg",
         "openedSvg": "screen-map--tycoon--opened.svg"
       },
-      "wrappedText": 4
+      "wrappedText": 4,
+      "richTextNodes": 0,
+      "richTextBreaks": 0
     },
     {
       "target": "screen-notification",
@@ -280,7 +295,9 @@
         "luau": "screen-notification--tycoon.luau",
         "svg": "screen-notification--tycoon.svg"
       },
-      "wrappedText": 3
+      "wrappedText": 3,
+      "richTextNodes": 0,
+      "richTextBreaks": 0
     },
     {
       "target": "screen-onboarding",
@@ -311,7 +328,9 @@
         "svg": "screen-onboarding--tycoon.svg",
         "openedSvg": "screen-onboarding--tycoon--opened.svg"
       },
-      "wrappedText": 2
+      "wrappedText": 2,
+      "richTextNodes": 0,
+      "richTextBreaks": 0
     },
     {
       "target": "screen-progress",
@@ -342,7 +361,9 @@
         "svg": "screen-progress--tycoon.svg",
         "openedSvg": "screen-progress--tycoon--opened.svg"
       },
-      "wrappedText": 0
+      "wrappedText": 0,
+      "richTextNodes": 0,
+      "richTextBreaks": 0
     },
     {
       "target": "screen-rewards",
@@ -367,7 +388,9 @@
         "luau": "screen-rewards--tycoon.luau",
         "svg": "screen-rewards--tycoon.svg"
       },
-      "wrappedText": 0
+      "wrappedText": 0,
+      "richTextNodes": 0,
+      "richTextBreaks": 0
     },
     {
       "target": "screen-settings",
@@ -392,7 +415,9 @@
         "luau": "screen-settings--tycoon.luau",
         "svg": "screen-settings--tycoon.svg"
       },
-      "wrappedText": 0
+      "wrappedText": 0,
+      "richTextNodes": 0,
+      "richTextBreaks": 0
     },
     {
       "target": "screen-shop",
@@ -423,14 +448,48 @@
         "svg": "screen-shop--tycoon.svg",
         "openedSvg": "screen-shop--tycoon--opened.svg"
       },
-      "wrappedText": 0
+      "wrappedText": 0,
+      "richTextNodes": 0,
+      "richTextBreaks": 0
     },
     {
       "target": "screen-social",
+      "id": "screen-social",
       "genre": "tycoon",
-      "outcome": "no_code_block",
-      "detail": "answer was 15908 chars of prose",
-      "answerChars": 15908
+      "outcome": "built",
+      "codeChars": 14537,
+      "ms": 76720,
+      "screenGuis": 1,
+      "surface": null,
+      "viewport": {
+        "id": "desktop",
+        "w": 1600,
+        "h": 900
+      },
+      "guiNodes": 101,
+      "asScripted": {
+        "painted": 29,
+        "textNodes": 28,
+        "hidden": 59,
+        "offscreen": 0
+      },
+      "opened": {
+        "painted": 53,
+        "textNodes": 71,
+        "forcedVisible": 59,
+        "offscreen": 0
+      },
+      "scaledText": 0,
+      "imagePlaceholders": 0,
+      "sources": 11,
+      "files": {
+        "luau": "screen-social--tycoon.luau",
+        "svg": "screen-social--tycoon.svg",
+        "openedSvg": "screen-social--tycoon--opened.svg"
+      },
+      "wrappedText": 0,
+      "richTextNodes": 4,
+      "richTextBreaks": 0
     },
     {
       "target": "screen-trading",
@@ -461,9 +520,11 @@
         "svg": "screen-trading--tycoon.svg",
         "openedSvg": "screen-trading--tycoon--opened.svg"
       },
-      "wrappedText": 0
+      "wrappedText": 0,
+      "richTextNodes": 0,
+      "richTextBreaks": 0
     }
   ],
-  "renderedAt": "2026-09-20T21:12:32.908Z",
+  "renderedAt": "2026-09-20T23:15:03.489Z",
   "renderNote": "SVGs redrawn from the saved Luau by rerender-showcase.mjs; no completion was spent and no answer changed."
 }

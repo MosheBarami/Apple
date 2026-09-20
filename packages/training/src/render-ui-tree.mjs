@@ -81,6 +81,144 @@ function textSize(node, rect) {
 }
 
 const TEXT_CLASSES = new Set(['TextLabel', 'TextButton', 'TextBox']);
+
+// ---------------------------------------------------------------------------------------------
+// RICH TEXT
+//
+// THE DEFECT THIS EXISTS FOR, measured 2026-09-21 on the generated tycoon social screen. The model
+// wrote a chat log the way shipped Roblox games write one:
+//
+//     t.RichText = true
+//     t.Text = '<font color="#78C8FF">[CARTL]</font> <b>ConveyorKing:</b> upgraded my second dropper'
+//
+// That is correct, idiomatic engine code. This renderer knew nothing about RichText, drew the
+// string it found, and produced a chat window full of visible `<font color="#78C8FF">` and `</b>`.
+// A reader looking at that picture concludes the model emits broken markup into its labels. It
+// does not — in Roblox those four lines render as a blue clan tag and a bold username. The picture
+// was the thing that was wrong, and it was the ELEVENTH time in this pipeline that a gap in the
+// harness was recorded as a failure of the model.
+//
+// The tag list below is read off Roblox/creator-docs `content/en-us/ui/rich-text.md`, not
+// remembered. Three groups:
+//
+//   STYLED   b, i, u, s, font(color|size|transparency), uppercase/uc  — change the drawing
+//   STRIPPED stroke, mark, smallcaps/sc, font(face|family|weight)     — the tag goes, the words stay
+//   DROPPED  <!-- comments -->                                        — the engine removes them
+//
+// A STRIPPED tag is not modelled and must not be pretended: small caps are drawn as ordinary
+// letters and a stroke is not drawn at all. What matters is that the WORDS are right and the
+// markup is not visible, because that is the difference between "the model wrote a chat line" and
+// "the model wrote garbage".
+//
+// MALFORMED MARKUP IS RETURNED UNPARSED, ON PURPOSE. The reference requires both tags and reverse
+// -order nesting; Studio shows the raw source when that is violated, which is a real and visible
+// defect in a model's output. Inventing a repair here would hide it. `parseRichText` returns null
+// and the caller draws the raw string, exactly as it did before.
+// ---------------------------------------------------------------------------------------------
+
+/** The five documented escape forms, applied to text runs only — never to tag attributes. */
+const unescapeEntities = (s) =>
+  String(s)
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+    // LAST, and it has to be: `&amp;lt;` must end as the literal text `&lt;`, so unescaping the
+    // ampersand before the others would turn it into a `<` the reader never wrote.
+    .replace(/&amp;/g, '&');
+
+/** `#FF7800` or `rgb(255,125,0)` — the two spellings the reference gives for a colour attribute. */
+function richColor(value) {
+  const v = String(value ?? '').trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(v)) return v;
+  const m = /^rgb\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)$/.exec(v);
+  if (!m) return null;
+  const c = m.slice(1, 4).map((n) => Math.max(0, Math.min(255, Number(n))));
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+
+const STYLED_TAGS = new Set(['b', 'i', 'u', 's', 'font', 'uppercase', 'uc']);
+const STRIPPED_TAGS = new Set(['stroke', 'mark', 'smallcaps', 'sc']);
+
+/**
+ * Rich text markup as a flat list of styled runs, or null when the markup does not parse.
+ *
+ * @returns {{runs:{text:string,bold:boolean,italic:boolean,underline:boolean,strike:boolean,
+ *            color:string|null,size:number|null,transparency:number|null}[], breaks:number}|null}
+ */
+export function parseRichText(source) {
+  const src = String(source ?? '');
+  if (!/[<&]/.test(src)) return null; // nothing to interpret; the caller's plain path is correct
+  const runs = [];
+  const stack = [];
+  let breaks = 0;
+  let i = 0;
+  let plain = '';
+
+  const style = () => {
+    const s = { bold: false, italic: false, underline: false, strike: false, color: null, size: null, transparency: null };
+    for (const f of stack) {
+      if (f.tag === 'b') s.bold = true;
+      else if (f.tag === 'i') s.italic = true;
+      else if (f.tag === 'u') s.underline = true;
+      else if (f.tag === 's') s.strike = true;
+      else if (f.tag === 'font') {
+        if (f.color) s.color = f.color;
+        if (f.size != null) s.size = f.size;
+        if (f.transparency != null) s.transparency = f.transparency;
+      }
+    }
+    return s;
+  };
+  const upper = () => stack.some((f) => f.tag === 'uppercase' || f.tag === 'uc');
+  const flush = () => {
+    if (!plain) return;
+    const text = unescapeEntities(plain);
+    runs.push({ text: upper() ? text.toUpperCase() : text, ...style() });
+    plain = '';
+  };
+
+  while (i < src.length) {
+    const lt = src.indexOf('<', i);
+    if (lt === -1) { plain += src.slice(i); break; }
+    plain += src.slice(i, lt);
+
+    if (src.startsWith('<!--', lt)) {
+      const end = src.indexOf('-->', lt + 4);
+      if (end === -1) return null; // an unterminated comment is malformed markup
+      i = end + 3;
+      continue;
+    }
+    const gt = src.indexOf('>', lt);
+    if (gt === -1) return null; // `<` with no `>`: the engine treats the whole string as literal
+    const inner = src.slice(lt + 1, gt).trim();
+    const closing = inner.startsWith('/');
+    const body = closing ? inner.slice(1).trim() : inner.replace(/\/$/, '').trim();
+    const name = (body.split(/[\s=]/, 1)[0] ?? '').toLowerCase();
+
+    if (name === 'br') { flush(); breaks += 1; plain = ' '; i = gt + 1; continue; }
+    if (!STYLED_TAGS.has(name) && !STRIPPED_TAGS.has(name)) return null; // not a tag: literal text
+
+    flush();
+    if (closing) {
+      if (stack.pop()?.tag !== name) return null; // closed out of order — malformed
+    } else if (!inner.endsWith('/')) {
+      const frame = { tag: name };
+      if (name === 'font') {
+        const attrs = [...body.matchAll(/([a-zA-Z]+)\s*=\s*"([^"]*)"/g)];
+        for (const [, k, v] of attrs) {
+          const key = k.toLowerCase();
+          if (key === 'color') frame.color = richColor(v);
+          else if (key === 'size') frame.size = Number(v) || null;
+          else if (key === 'transparency') frame.transparency = Number(v);
+        }
+      }
+      stack.push(frame);
+    }
+    i = gt + 1;
+  }
+  flush();
+  if (stack.length) return null; // a tag left open — malformed
+  return runs.length ? { runs, breaks } : null;
+}
 const IMAGE_CLASSES = new Set(['ImageLabel', 'ImageButton']);
 
 /**
@@ -180,6 +318,8 @@ export function renderTreeToSvg({ guiNodes, rects, viewport, background = '#1010
   let hidden = 0;
   let forcedVisible = 0;
   let wrappedText = 0;
+  let richTextNodes = 0;
+  let richTextBreaks = 0;
 
   parts.push(
     `<svg xmlns="http://www.w3.org/2000/svg" width="${viewport.w}" height="${viewport.h}" ` +
@@ -278,9 +418,42 @@ export function renderTreeToSvg({ guiNodes, rects, viewport, background = '#1010
             : yAlign === 'Bottom'
               ? rect.y + rect.h - size * 0.25
               : rect.y + rect.h / 2 + size * 0.35;
+        //[[ RICH TEXT IS MARKUP OR IT IS CHARACTERS, AND ONLY THE NODE SAYS WHICH.
+        //
+        //   `RichText = false` means the angle brackets ARE the label — drawing them is correct,
+        //   and that is the unchanged path below. `RichText = true` means they are instructions,
+        //   and drawing them libels the model. See the RICH TEXT note above TEXT_CLASSES for the
+        //   chat screen this was measured on. Markup that does not parse falls back to the raw
+        //   string, because Studio shows the raw string too and hiding that would be a repair
+        //   nobody asked for. ]]
+        const rich = boolProp(node, 'RichText', false) ? parseRichText(text) : null;
+        if (rich) {
+          richTextNodes += 1;
+          richTextBreaks += rich.breaks;
+        }
+        const body = rich
+          ? rich.runs
+              .map((r) => {
+                const a = [];
+                if (r.bold) a.push('font-weight="bold"');
+                if (r.italic) a.push('font-style="italic"');
+                if (r.underline && r.strike) a.push('text-decoration="underline line-through"');
+                else if (r.underline) a.push('text-decoration="underline"');
+                else if (r.strike) a.push('text-decoration="line-through"');
+                if (r.color) a.push(`fill="${r.color}"`);
+                if (r.size) a.push(`font-size="${r.size.toFixed(1)}"`);
+                if (r.transparency != null && Number.isFinite(r.transparency)) {
+                  a.push(`fill-opacity="${Math.max(0, Math.min(1, 1 - r.transparency)).toFixed(3)}"`);
+                }
+                // xml:space keeps the single spaces BETWEEN runs, which is where a chat line's
+                // "tag name: message" spacing lives.
+                return `<tspan xml:space="preserve"${a.length ? ` ${a.join(' ')}` : ''}>${esc(r.text)}</tspan>`;
+              })
+              .join('')
+          : esc(text);
         const el =
           `<text x="${tx.toFixed(2)}" y="${ty.toFixed(2)}" text-anchor="${anchor}" ` +
-          `font-size="${size.toFixed(1)}" fill="${color}" fill-opacity="${(1 - tTrans).toFixed(3)}">${esc(text)}</text>`;
+          `font-size="${size.toFixed(1)}" fill="${color}" fill-opacity="${(1 - tTrans).toFixed(3)}">${body}</text>`;
 
         //[[ A WRAPPED LABEL STAYS IN ITS BOX, AND DRAWING IT SPILLING OUT LIBELS THE MODEL.
         //
@@ -313,5 +486,5 @@ export function renderTreeToSvg({ guiNodes, rects, viewport, background = '#1010
   }
 
   parts.push('</svg>');
-  return { svg: parts.join('\n'), painted, offscreen, imagePlaceholders, scaledText, textNodes, hidden, forcedVisible, wrappedText };
+  return { svg: parts.join('\n'), painted, offscreen, imagePlaceholders, scaledText, textNodes, hidden, forcedVisible, wrappedText, richTextNodes, richTextBreaks };
 }

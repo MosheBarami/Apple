@@ -71,6 +71,11 @@ function redraw(dir, r) {
     scaledText: (opened ?? asScripted).scaledText,
     wrappedText: (opened ?? asScripted).wrappedText,
     imagePlaceholders: (opened ?? asScripted).imagePlaceholders,
+    // Rich text markup the renderer interpreted rather than drew, and the line breaks inside it
+    // that this renderer flattens to a space. Recorded so a caption can say which labels were
+    // read as markup, and how many second lines are not laid out.
+    richTextNodes: (opened ?? asScripted).richTextNodes,
+    richTextBreaks: (opened ?? asScripted).richTextBreaks,
   };
 }
 
