@@ -46,6 +46,13 @@ export const UI_CONSTRUCTION_SCREEN_IDS: readonly string[] = DATA.screens.map((s
 /** Budgeted like the genre guide: enough to be usable, small enough not to crowd the step. */
 export const UI_CONSTRUCTION_DEFAULT_CHARS = 2600;
 
+/**
+ * The whole ANSWER's budget, not the guide's. It exists so this function cannot hand runTool
+ * something runTool will cut; the real cap is passed in by the caller that owns it, and this is
+ * only the floor for a direct call that names none. See fitToBudget.
+ */
+export const UI_CONSTRUCTION_DEFAULT_TOTAL_CHARS = 3000;
+
 const all = (): UIConstructionEntry[] => [...DATA.genres, ...DATA.screens];
 
 /**
@@ -162,6 +169,8 @@ export interface UIConstructionAnswer {
    * and the model is entitled to know which it got.
    */
   resolvedFrom?: UIConstructionMatch;
+  /** Present only when evidence was shed to fit the budget. Absent means nothing was dropped. */
+  sourcesTrimmed?: string;
   /** Present when NOT found — and it is a sentence, not an empty result. */
   notCovered?: string;
   available?: { genres: readonly string[]; screens: readonly string[] };
@@ -175,8 +184,62 @@ export interface UIConstructionAnswer {
  * "what a model does with no signal is proceed as though it knew". So an unknown id comes back with
  * the fact that it is unknown and the list of what does exist.
  */
-export function getUIConstruction(input: { id?: string; maxChars?: number }): UIConstructionAnswer {
+//[[ THE GUIDE WAS BUDGETED AND THE ENVELOPE AROUND IT WAS NOT.
+//
+//   `render(entry, maxChars)` has always kept the guide inside its budget, and it does: measured
+//   across all 29 entries the guide runs 2,300–2,533 serialized characters against a 2,600 cap.
+//   `sources` was appended in full underneath it, and sources run 702–6,043 characters — up to
+//   two and a half times the guide it is evidence for.
+//
+//   So every single one of the 29 answers left this function larger than `MAX_RESULT_CHARS` in
+//   tools.ts, whose runTool does `str.slice(0, 3000)` with no knowledge of what it is cutting.
+//   Measured: 29 of 29 over the cap, the largest `screen-crafting` at 8,623 characters, of which
+//   the model receives 35%. The guide itself survived in all 29 — it is serialized before
+//   `sources` — so this did not destroy the answer. What it destroyed, every time, was two things:
+//
+//     the JSON. What arrives is a string cut mid-token with `...[truncated N chars]` welded on. It
+//     does not parse, in any of the 29.
+//
+//     the citations. Every source, in all 29. That matters for THIS tool more than most: its whole
+//     claim is that the construction was read off interfaces that actually shipped rather than
+//     invented, and the evidence for that claim is the part that never arrived. The budget was
+//     being spent shipping something that could not be delivered.
+//
+//   So the budget now governs the WHOLE answer, and the caller passes the real cap down rather
+//   than this file keeping a second copy of it. Evidence is shed before the answer is, because a
+//   guide with fewer citations is still a guide and a citation with no guide is nothing — and
+//   whatever is shed is COUNTED in the reply rather than vanishing. ]]
+function fitToBudget(answer: UIConstructionAnswer, totalChars: number): UIConstructionAnswer {
+  const size = () => JSON.stringify(answer).length;
+  if (size() <= totalChars) return answer;
+
+  const full = answer.sources ?? [];
+  // The URL is the citation; the sentence after the em dash explains it. Drop the prose first.
+  answer.sources = full.map((src) => src.split(' — ')[0]);
+  let dropped = 0;
+  while (size() > totalChars && (answer.sources?.length ?? 0) > 0) { answer.sources!.pop(); dropped++; }
+  answer.sourcesTrimmed = `${answer.sources?.length ?? 0} of ${full.length} sources, URLs only, to fit the tool-result budget`;
+  // Adding that sentence can itself push back over, so shed until it holds WITH the note attached.
+  while (size() > totalChars && (answer.sources?.length ?? 0) > 0) {
+    answer.sources!.pop(); dropped++;
+    answer.sourcesTrimmed = `${answer.sources?.length ?? 0} of ${full.length} sources, URLs only, to fit the tool-result budget`;
+  }
+
+  //[[ AND IF THE GUIDE ALONE STILL DOES NOT FIT, SAY SO RATHER THAN LET runTool CUT IT.
+  //   No entry does today. If one ever does, a guide cut by this function announces itself in a
+  //   field the model can read; a guide cut by the generic slicer is indistinguishable from a
+  //   guide that simply ended. ]]
+  if (size() > totalChars && typeof answer.guide === 'string') {
+    const over = size() - totalChars;
+    const note = `\n...[the guide was cut to fit the tool-result budget; ask for a narrower id]`;
+    answer.guide = answer.guide.slice(0, Math.max(0, answer.guide.length - over - note.length)) + note;
+  }
+  return answer;
+}
+
+export function getUIConstruction(input: { id?: string; maxChars?: number; totalChars?: number }): UIConstructionAnswer {
   const maxChars = Number.isFinite(input.maxChars) ? Math.max(600, Math.min(3200, Number(input.maxChars))) : UI_CONSTRUCTION_DEFAULT_CHARS;
+  const totalChars = Number.isFinite(input.totalChars) ? Math.max(800, Number(input.totalChars)) : UI_CONSTRUCTION_DEFAULT_TOTAL_CHARS;
   const id = typeof input.id === 'string' ? input.id : '';
   const hit = id ? find(id) : null;
   if (!hit) {
@@ -189,7 +252,7 @@ export function getUIConstruction(input: { id?: string; maxChars?: number }): UI
     };
   }
   const entry = hit.entry;
-  return {
+  return fitToBudget({
     found: true,
     id: entry.genre,
     kind: entry.kind,
@@ -197,5 +260,5 @@ export function getUIConstruction(input: { id?: string; maxChars?: number }): UI
     guide: render(entry, maxChars),
     sources: entry.sources,
     ...(hit.how === 'exact' ? {} : { resolvedFrom: hit.how }),
-  };
+  }, totalChars);
 }

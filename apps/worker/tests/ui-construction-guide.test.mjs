@@ -162,3 +162,50 @@ test('resolution is deterministic, not a function of directory listing order', (
     assert.equal(getUIConstruction({ id: 'simulator' }).id, 'simulator');
   }
 });
+
+/**
+ * EVERY ANSWER HAS TO SURVIVE THE PIPE IT IS SENT DOWN.
+ *
+ * THE DEFECT THIS PINS, measured 2026-09-20 against the Worker's own bundle. `render()` budgets the
+ * guide and always did — 2,300 to 2,533 serialized characters against its 2,600 cap. `sources` was
+ * appended underneath it unbudgeted, and sources run 702 to 6,043 characters. So all 29 entries
+ * left getUIConstruction larger than `MAX_RESULT_CHARS`, and runTool's `str.slice(0, 3000)` cut
+ * every one of them mid-token. The guide survived in all 29 because it is serialized first; what
+ * did not survive was the JSON — none of the 29 parsed — and two thirds of the citations. Across
+ * the whole library 46 complete source URLs reached the model where 147 do now.
+ *
+ * The cap is READ FROM tools.ts rather than restated here. A checker that keeps its own copy of the
+ * rule it checks drifts from it silently, which is how a deleted licence checker once reported
+ * 107,019 healthy rows as refused.
+ */
+test('no answer this tool can give is large enough for runTool to cut', () => {
+  const toolsSrc = readFileSync(join(WORKER, 'src', 'tools.ts'), 'utf8');
+  const m = toolsSrc.match(/MAX_RESULT_CHARS\s*=\s*([0-9_]+)/);
+  assert.ok(m, 'MAX_RESULT_CHARS could not be read out of tools.ts — this test knows no cap, so it '
+    + 'has verified nothing. Do not read a pass here as a pass.');
+  const cap = Number(m[1].replace(/_/g, ''));
+
+  const ids = [...UI_CONSTRUCTION_GENRE_IDS, ...UI_CONSTRUCTION_SCREEN_IDS];
+  assert.ok(ids.length >= 29, `only ${ids.length} ids to check; the library shrank or the bundle is empty`);
+
+  const over = [];
+  for (const id of ids) {
+    const serialized = JSON.stringify(getUIConstruction({ id, totalChars: cap }));
+    if (serialized.length > cap) over.push(`${id} (${serialized.length})`);
+    // Valid JSON is the point: an answer runTool has cut is a string that no longer parses, and a
+    // model handed a broken object cannot tell that from an object whose fields simply ended.
+    assert.doesNotThrow(() => JSON.parse(serialized), `${id} does not serialize to parseable JSON`);
+  }
+  assert.deepEqual(over, [], `answers larger than the ${cap}-char tool-result cap: ${over.join(', ')}`);
+});
+
+test('what was shed to fit is stated, not silently dropped', () => {
+  // The failure one level up from being cut is being cut QUIETLY. If evidence is dropped the reply
+  // has to say how much, or the model reports a construction as fully sourced when it is not.
+  const full = getUIConstruction({ id: 'screen-shop', totalChars: 100_000 });
+  const fitted = getUIConstruction({ id: 'screen-shop', totalChars: 3000 });
+  assert.ok(full.sources.length > fitted.sources.length,
+    'screen-shop no longer needs trimming at 3,000 chars — re-point this at one that does, or drop it');
+  assert.match(fitted.sourcesTrimmed ?? '', new RegExp(`${fitted.sources.length} of ${full.sources.length} sources`));
+  assert.equal(full.sourcesTrimmed, undefined, 'an answer that fits must not claim it was trimmed');
+});

@@ -374,7 +374,11 @@ function round2(n: number): string {
   return Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100);
 }
 
-const MAX_RESULT_CHARS = 3000; // tool output is re-sent every later step, so keep it tight
+//[[ EXPORTED SO THAT NOTHING HAS TO KEEP A SECOND COPY OF IT.
+//   A tool that must fit inside this cap is passed the cap, and the test that proves it fits reads
+//   it from here. The deleted check-harvest-licences learned the same lesson the expensive way: its
+//   first version restated the rules it was checking and got one wrong immediately. ]]
+export const MAX_RESULT_CHARS = 3000; // tool output is re-sent every later step, so keep it tight
 
 /** Errors before warnings before anything else, so a size cap never truncates away the errors. */
 function severityRank(severity: string): number {
@@ -2990,7 +2994,9 @@ export const TOOLS: Record<string, ToolImpl> = {
     studio: false,
     run: async (_ctx, a) => {
       if (typeof a.id !== 'string') return { error: 'id must be a string naming a screen type or a genre' };
-      return getUIConstruction({ id: a.id });
+      // The cap is handed down rather than guessed: every one of the 29 entries used to leave this
+      // call larger than MAX_RESULT_CHARS and be cut mid-JSON by the slicer below.
+      return getUIConstruction({ id: a.id, totalChars: MAX_RESULT_CHARS });
     },
   },
   //[[ THE LOGIC WE HAVE WATCHED PASS, instead of the logic the model re-derives.
