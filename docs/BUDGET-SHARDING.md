@@ -80,35 +80,37 @@ once the day's neurons are gone, so the object's maximum daily workload is a fun
 ceiling:
 
 ```
-daily ceiling = FREE_NEURONS_PER_DAY 10,000 + BILLABLE_NEURONS_PER_DAY 15,000 = 25,000 neurons
+daily ceiling = FREE_NEURONS_PER_DAY 10,000 + BILLABLE_NEURONS_PER_DAY 90,000 = 100,000 neurons
 ```
 
 | step cost | max steps/day the ledger will admit | BudgetDO requests/day |
 |---|---|---|
-| 145 neurons (MEASURED, gated-build step) | 172 | 344 |
-| 37 neurons (MEASURED, cheapest Clay question) | 675 | 1,350 |
-| 1 neuron (docs-search embedding, the floor) | 25,000 | 50,000 |
+| 145 neurons (MEASURED, gated-build step) | 689 | 1,378 |
+| 37 neurons (MEASURED, cheapest Clay question) | 2,702 | 5,404 |
+| 1 neuron (docs-search embedding, the floor) | 100,000 | 200,000 |
 
 Even the pathological case is bounded. And the pathological case is not reachable by one actor:
 every path into `BudgetDO` is preceded by a per-user Credit debit in that user's own `QuotaDO`
 (`SessionDO.quotaSpend` for agent runs, `/api/docs/search` for embeddings). At 1 Credit per search
-and 60 Credits/day on Free, driving 25,000 embeddings in a day needs **417 distinct users** — about
-14× the largest concurrency actually tested (30 users, zero inference errors).
+and 231 Credits/day on Free (`PLAN_LIMITS.free.creditsPerDay`), driving 100,000 embeddings in a day
+needs **433 distinct users** — about 14× the largest concurrency actually tested (30 users, zero
+inference errors). The fourfold rise in the ceiling was very nearly cancelled by the same-day rise
+in the free allowance, which is why this line reads almost as it did before.
 
 The realistic burst is the interesting figure. If an entire day's allowance were consumed inside a
 single minute at the measured 145 neurons/step:
 
 ```
-172 steps/minute = 2.9 steps/second = 5.7 BudgetDO requests/second
+689 steps/minute = 11.5 steps/second = 23 BudgetDO requests/second
 ```
 
-That is **35× below** even the pessimistic 200 req/s estimate — and it is a burst that, by
+That is **8.7× below** even the pessimistic 200 req/s estimate — and it is a burst that, by
 construction, cannot repeat until the next UTC day.
 
 ### Conclusion
 
 The order of binding constraints is: **spend ceiling → provider rate limit → Durable Object.**
-The DO is third by a factor of 35–200×. Nothing about the current traffic shape argues for sharding.
+The DO is third by a factor of 8.7–200×. Nothing about the current traffic shape argues for sharding.
 
 ### What *would* degrade first, and it is not throughput
 
@@ -190,17 +192,24 @@ A lease must be at least `maxNeuronsPerRequest`, or a shard cannot admit even on
 request. So the floor on budget committed to shards is `N × maxNeuronsPerRequest`, and any of it
 sitting on an idle shard is stranded for the rest of the day.
 
-With today's constants (`ceiling = 25,000`, `maxNeuronsPerRequest = 1,200`):
+With today's constants (`ceiling = 100,000`, `maxNeuronsPerRequest = 1,200`):
 
 ```
-ceiling / maxNeuronsPerRequest = 20.8
-worst-case fragmentation at N=4:  4 × 1,200 / 25,000 = 19% of the day stranded
-worst-case fragmentation at N=8:  8 × 1,200 / 25,000 = 38% of the day stranded
+ceiling / maxNeuronsPerRequest = 83.3
+worst-case fragmentation at N=4:  4 × 1,200 / 100,000 = 4.8% of the day stranded
+worst-case fragmentation at N=8:  8 × 1,200 / 100,000 = 9.6% of the day stranded
 ```
 
-**Sharding a ceiling that is only ~21 maximum-size requests wide throws away a fifth to two-fifths
-of the budget to buy throughput headroom of 35–200×.** That is not a trade-off; it is a loss on
-both sides. This is an independent, arithmetic reason not to shard, and it converts into a hard
+**Sharding a ceiling that is only ~83 maximum-size requests wide throws away a twentieth to a tenth
+of the budget to buy throughput headroom of 8.7–200×.** That is not a trade-off; it is a loss on
+both sides.
+
+THIS IS THE ARGUMENT THE 2026-09-20 REPRICING WEAKENED MOST, and saying so is the point of
+re-deriving it rather than restating the conclusion. At the old 25,000 ceiling the waste was 19–38%
+and the case was overwhelming; at 100,000 it is 4.8–9.6% and the case now rests on the headroom
+being unneeded rather than on the waste being ruinous. It is still a loss on both sides — 8.7×
+spare throughput is not a shortage — but it is a fourfold smaller one, and the next person to raise
+the ceiling should re-read this paragraph rather than quote it. This is an independent, arithmetic reason not to shard, and it converts into a hard
 precondition in §7.
 
 Refill policy, when the precondition is eventually met: hold one active lease and request the next
@@ -367,11 +376,16 @@ billable          = 240,000 − 10,000 free = 230,000 neurons/day
 ```
 
 **Sharding is arithmetically unjustifiable until the monthly ceiling exceeds roughly $77/month** —
-about 7.6× today's hard maximum of $10.06. Today's ratio is `25,000 / 1,200 = 20.8`, against a
-required 200. It fails by ~10×.
+about 3.1× today's hard maximum of $24.80. Today's ratio is `100,000 / 1,200 = 83.3`, against a
+required 200. It fails by ~2.4×.
 
-The hard monthly ceiling is $10.06 and is not moving. **T1 therefore cannot be satisfied today, and
-that settles the question without needing T2 or T3.**
+The hard monthly ceiling is $24.80, and unlike every earlier version of this sentence it is not
+claimed to be immovable: it moved on 2026-09-20, from $10.06, when the old cap turned out to refuse
+every build the live product was asked for. `HARD_MAX_USD_PER_MONTH` in
+`packages/evals/src/economics.mjs` is the one place it is derived, and the gate is what must not
+move, not its value. **T1 therefore still cannot be satisfied today, and that settles the question
+without needing T2 or T3 — but it now fails by 2.4× rather than 10×, so a second ceiling rise of
+this size would put it within sight.**
 
 ### T2 — Queueing, not saturation (the real signal)
 
@@ -397,11 +411,11 @@ grew — check that before doing anything structural.
 
 | Signal | Threshold | Today |
 |---|---|---|
-| T1 `ceiling / maxNeuronsPerRequest` | ≥ 200 (for N=2) | **20.8** — fails by ~10× |
-| T1 monthly ceiling | ≥ ~$77/month | **$10.06/month** (hard, not moving) |
+| T1 `ceiling / maxNeuronsPerRequest` | ≥ 200 (for N=2) | **83.3** — fails by ~2.4× |
+| T1 monthly ceiling | ≥ ~$77/month | **$24.80/month** (hard; raised once, 2026-09-20) |
 | T2 p95 `budget_reserve_ms` | > 250 ms, low DO CPU | **not instrumented** (Phase 0) |
 | T3 BudgetDO request rate | > 100/s sustained | **~1.0/s** at the measured provider ceiling |
-| Realistic worst-case burst | — | **5.7/s** (a whole day's allowance inside one minute) |
+| Realistic worst-case burst | — | **23/s** (a whole day's allowance inside one minute) |
 
 **The number to watch is T2's `budget_reserve_ms`.** Everything else is already answered.
 

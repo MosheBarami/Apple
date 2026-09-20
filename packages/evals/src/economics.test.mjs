@@ -521,17 +521,26 @@ test('report() renders and is labelled an internal model', () => {
 const HARD_MAX_DOC_EXEMPT_DIRS = ['docs/evidence/', 'docs/audit/'];
 
 /**
- * Documents whose $10.06 figures sit INSIDE an arithmetic argument rather than stating the current
+ * Documents whose figures sit INSIDE an arithmetic argument rather than stating the current
  * ceiling, and which therefore need their author rather than a find-and-replace.
  *
- * docs/BUDGET-SHARDING.md:370 reads "about 7.6x today's hard maximum of $10.06" and :401 tabulates
- * "T1 monthly ceiling >= ~$77/month | $10.06/month". Both ratios move with the number (77/24.80 is
- * 3.1, not 7.6) and so does the neighbouring "25,000 / 1,200 = 20.8", which was the old daily
- * ceiling and is now 100,000 / 1,200. The document's CONCLUSION survives — T1 still cannot be
- * satisfied — but rewriting four derived figures in someone else's argument without re-reading it
- * is how a document becomes confidently wrong. Delete this entry when it has been re-derived.
+ * EMPTY, AND THAT IS THE POINT — it held docs/BUDGET-SHARDING.md, with the instruction "delete this
+ * entry when it has been re-derived". It has been. Every figure the 2026-09-20 repricing moved was
+ * re-derived from the constants rather than replaced: the daily ceiling 25,000 -> 100,000, the
+ * ledger's admitted steps/day 172/675/25,000 -> 689/2,702/100,000, the realistic burst 5.7 -> 23
+ * BudgetDO req/s, T1's ratio 20.8 -> 83.3 and its shortfall ~10x -> ~2.4x, and §4.3's stranded
+ * fraction 19-38% -> 4.8-9.6%.
+ *
+ * The document's CONCLUSION survives — T1 still cannot be satisfied, so do not shard — but §4.3's
+ * argument is FOUR TIMES WEAKER than it was, and the re-derivation says so in the document instead
+ * of quietly leaving the old adjectives on the new numbers. That is the whole reason this was left
+ * to an author rather than done with sed.
+ *
+ * Keep this set rather than deleting it: the next cap change will need somewhere to record a
+ * deferral, and an empty set with its history is a cheaper thing to find than this comment is to
+ * write twice.
  */
-const HARD_MAX_DOC_EXEMPTIONS = new Set(['docs/BUDGET-SHARDING.md']);
+const HARD_MAX_DOC_EXEMPTIONS = new Set([]);
 
 /** Any sentence claiming a hard monthly maximum or ceiling in dollars. */
 const HARD_MAX_CLAIM =

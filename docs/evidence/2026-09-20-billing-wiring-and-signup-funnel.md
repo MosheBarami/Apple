@@ -238,6 +238,15 @@ document's author rather than a find-and-replace. The file is exempted BY NAME i
 that reason written out, so the staleness is owned rather than hidden. Its conclusion — that T1
 cannot be satisfied today — survives the correction.
 
+> **CLOSED 2026-09-21.** The paragraph above is left exactly as it was written, because this file
+> records what was true on 2026-09-20 and rewriting it would falsify the record. What changed since:
+> `docs/BUDGET-SHARDING.md` was re-derived — daily ceiling 25,000 → 100,000, admitted steps/day
+> 172/675/25,000 → 689/2,702/100,000, realistic burst 5.7 → 23 BudgetDO req/s, T1 ratio 20.8 → 83.3
+> failing by ~2.4× rather than ~10×, §4.3 stranded fraction 19–38% → 4.8–9.6%, hard maximum $10.06 →
+> $24.80 — and `HARD_MAX_DOC_EXEMPTIONS` is now empty, so that document is scanned like every other.
+> The conclusion did survive; §4.3's argument is four times weaker than it was and the document now
+> says so.
+
 ### Residue worth someone's decision
 
 `https://golem.moshe-barami111.workers.dev/app/**` is still on the allow list.
