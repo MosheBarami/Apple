@@ -196,6 +196,29 @@ class FixtureDeclarations(ScannerHarness):
         self.assertIn("FIXTURE DECLARATION MATCHES NOTHING", r.stdout)
         self.assertIn("never-existed", r.stdout)
 
+    def test_a_fixture_that_leaves_the_tree_needs_the_explicit_flag(self):
+        """Deleting a fixture file must not push anyone toward --record-exposures.
+
+        The value is fabricated and there is nothing to rotate, so filing it in the
+        exposure register would be a false label. It is declarable — but declaring
+        something you cannot see in the working copy costs a second flag.
+        """
+        self.commit("tests/a.test.mjs", f"const KEY = '{ANTHROPIC}';\n")
+        self.commit("tests/a.test.mjs", "const KEY = process.env.KEY;\n", "drop the fixture")
+
+        r = self.scan()
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("NOBODY HAS ACCEPTED", r.stdout)
+
+        r = self.scan("--record-fixtures")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertEqual(self.scan().returncode, 1, "plain --record-fixtures must not reach history")
+
+        r = self.scan("--record-fixtures", "--with-history")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("history only", r.stdout)
+        self.assertEqual(self.scan().returncode, 0, self.scan().stdout)
+
     def test_recording_is_refused_in_ci(self):
         """A blessing minted by a robot is a rubber stamp."""
         self.commit("tests/a.test.mjs", f"const KEY = '{ANTHROPIC}';\n")

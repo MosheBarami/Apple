@@ -65,6 +65,7 @@ to run when CI is set in the environment, so a blessing can never be minted by a
 
 Record the current state after rotating with:  secret-scan.py --record-exposures
 Declare the current in-tree fixtures with:     secret-scan.py --record-fixtures
+Include fixtures that survive only in history:  ... --record-fixtures --with-history
 """
 from __future__ import annotations
 
@@ -345,11 +346,29 @@ def main() -> int:
             print("A declaration is a claim that a value is fabricated. Make it locally,")
             print("commit it, and let the reviewer see the line.")
             return 1
+        #[[ IN-TREE BY DEFAULT, HISTORY ONLY WHEN ASKED.
+        #
+        #   A fixture file that is deleted, renamed, or rewritten leaves its fabricated value
+        #   behind in history, where the scanner's rule is "an unaccepted historical credential
+        #   fails until someone rotates it". For a fabricated value there is nothing to rotate,
+        #   and the only remedy on offer would be --record-exposures, which files it in
+        #   known-exposures.json under the words "pending rotation". That is a false label, and
+        #   filing a false label to turn a build green is how a register stops meaning anything.
+        #   Rewriting docs/GO-LIVE.md produced exactly this case within the hour.
+        #
+        #   So a declaration covers the value at that path whether it is in the tree or only in
+        #   history — the fixture check above does not consult liveness — but RECORDING one that
+        #   is not in the tree takes a second, deliberate flag. Blessing something you cannot
+        #   currently see should cost a keystroke and print a list. ]]
+        with_history = "--with-history" in sys.argv
         rows = sorted(
-            ({"path": p, "pattern": n, "value_sha256": v}
-             for n, hits in findings.items() for p, _, in_tree, _, v in hits if in_tree),
+            ({"path": p, "pattern": n, "value_sha256": v, "in_tree": in_tree}
+             for n, hits in findings.items() for p, _, in_tree, _, v in hits
+             if in_tree or with_history),
             key=lambda e: (e["path"], e["pattern"], e["value_sha256"]),
         )
+        buried = [e for e in rows if not e["in_tree"]]
+        rows = [{k: v for k, v in e.items() if k != "in_tree"} for e in rows]
         seen, fresh = set(), []
         for r in rows:
             key = (r["path"], r["value_sha256"])
@@ -375,6 +394,11 @@ def main() -> int:
         print(f"\ndeclared {len(merged)} fixture(s) in {FIXTURES_PATH.name}")
         for a, b, _ in merged:
             print(f"   [{b}] {a}")
+        if buried:
+            print(f"\n{len(buried)} of these are NOT in the current tree. You are declaring that a")
+            print("value you cannot see in the working copy was fabricated. Check each one:")
+            for e in sorted({(e["path"], e["pattern"]) for e in buried}):
+                print(f"   [{e[1]}] {e[0]}   (history only)")
         print("\nCOMMIT THIS FILE. Each line is a claim that the value is fabricated.")
         return 0
     if not findings:
