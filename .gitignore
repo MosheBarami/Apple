@@ -40,6 +40,10 @@ packages/corpus/raw/*
 # Authored, inspected reference metadata is required by the Worker runtime import and is not
 # reproducible harvested media. Keep the manifest available in a fresh checkout.
 !packages/corpus/data/genre-references.json
+# Built by scripts/build-ui-construction.mjs from ui-references/. It is COMMITTED because
+# ui-construction-guide.ts imports it statically — esbuild embeds it in the Worker bundle, and a
+# Worker has no filesystem to read the source directory from at runtime.
+!packages/corpus/data/ui-construction.json
 # The harvest artefacts, and the split between them is about REPRODUCIBILITY, not size.
 #
 # Tracked: the sources that are scraped or that publish no versioned index. cgbookcase reads a

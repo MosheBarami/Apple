@@ -29,6 +29,7 @@ import {
 import { searchAssetLibrary } from './asset-library';
 import { GENRE_KIT_IDS, getGenreKit, admitToKit } from './genre-kits';
 import { getGenreReferenceGuide, GENRE_REFERENCE_GUIDE_ASPECT_IDS } from './genre-reference-guide';
+import { getUIConstruction, UI_CONSTRUCTION_GENRE_IDS, UI_CONSTRUCTION_SCREEN_IDS } from './ui-construction-guide';
 import {
   applyEdits,
   checkSyntax,
@@ -3001,6 +3002,40 @@ export const TOOLS: Record<string, ToolImpl> = {
         return { error: 'genre and aspect must be canonical string identifiers' };
       }
       return getGenreReferenceGuide({ genre: a.genre, aspect: a.aspect, maxChars: 2700 });
+    },
+  },
+  //[[ WHAT AN INTERFACE IS SHAPED LIKE, as opposed to what colour it is.
+  //
+  //   ui-references/README.md records why this is a separate question: the simulator theme already
+  //   had the right PALETTE — saturated blue panel, near-white cards, green accent — and rendering
+  //   it in Studio still did not look like the references. The palette was never the gap. The gap
+  //   was construction: no thick dark stroke, no banner overhanging the panel, flat buttons with no
+  //   bevel, a close button that was a small square instead of a red circle hanging off the corner.
+  //
+  //   get_genre_kit answers colour and content. This answers shape, and the two are not
+  //   substitutes: getting one right and the other wrong produces exactly the near-miss that sent
+  //   the reference library into existence.
+  //
+  //   It covers SCREENS as well as genres, because a shop is built the same way whether the game is
+  //   a tycoon or a pet simulator, and the model needs the screen answer far more often than the
+  //   genre one. ]]
+  get_ui_construction: {
+    def: {
+      name: 'get_ui_construction',
+      description:
+        'How a Roblox interface is BUILT — stroke weights, corner radii, how a header overhangs its panel, how many tiles a grid runs, what replaces a price when an item is owned. Read off interfaces that actually shipped, not invented. Ask by screen type ('
+        + UI_CONSTRUCTION_SCREEN_IDS.join(', ')
+        + ') or by genre ('
+        + UI_CONSTRUCTION_GENRE_IDS.join(', ')
+        + '). Call this before building ANY interface: get_genre_kit gives you the colours, this gives you the shape, and a design with the right palette and the wrong construction is the exact near-miss this library exists to stop. An id nobody has inspected answers so out loud rather than returning nothing.',
+      parameters: S({
+        id: { type: 'string', description: 'A screen type such as "shop" or "inventory", or a genre such as "tycoon". Bare screen names resolve: "shop" finds "screen-shop".' },
+      }, ['id']),
+    },
+    studio: false,
+    run: async (_ctx, a) => {
+      if (typeof a.id !== 'string') return { error: 'id must be a string naming a screen type or a genre' };
+      return getUIConstruction({ id: a.id });
     },
   },
   get_genre_kit: {
