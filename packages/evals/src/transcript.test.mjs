@@ -128,3 +128,59 @@ test('carried-over history is droppable but the pinned request is not', () => {
   assert.equal(llm.filter((m) => m.pinned).length, 1);
   assert.ok(llm.filter((m) => m.content.startsWith('H')).length < history.length, 'history should have been evicted');
 });
+
+// THE OTHER HALF OF THE INVARIANT, AND THE DEFECT IT WAS BLIND TO.
+//
+// `orphanedToolMessages` checks tool messages against calls. Its comment used to claim it also
+// checked calls against results; it never did, and that is precisely the direction in which
+// do/session.ts breaks the transcript. session.ts records the assistant turn with EVERY tool call
+// the model emitted and then executes `res.toolCalls.slice(0, 4)`, so a turn of five calls leaves
+// the fifth with no `tool` message answering it — and both live encoders render `m.toolCalls`
+// verbatim, so that unanswered call goes to the provider. Measured 2026-09-20 against the real
+// providers/openai.ts encoder: `UNANSWERED tool_call ids : tc_5`.
+//
+// The fix belongs in session.ts, which another lane owns; see
+// docs/backlog/HANDOFF-SESSION-AGENT-LOOP.md. What belongs HERE is the instrument, because a
+// checker that cannot see the failure is the reason nobody saw it.
+
+/** Exactly what session.ts builds when the model emits more calls than the loop executes. */
+function overflowingStep(n, emitted, executed) {
+  const toolCalls = Array.from({ length: emitted }, (_, k) => ({ id: `call_${n}_${k}`, name: 'run_luau', arguments: '{}' }));
+  return [
+    { role: 'assistant', content: '', toolCalls }, // session.ts pushes the WHOLE list
+    ...toolCalls.slice(0, executed).map((c) => ({ role: 'tool', content: 'ok', toolCallId: c.id, name: c.name })),
+  ];
+}
+
+test('a well-formed run has no unanswered tool calls, at every length and after trimming', () => {
+  for (const steps of [2, 5, 16, 24]) {
+    assert.deepEqual(T.unansweredToolCalls(runFor(steps)), [], `unanswered calls appeared after ${steps} steps`);
+  }
+});
+
+test('the instrument SEES the slice(0, 4) overflow that orphanedToolMessages cannot', () => {
+  const llm = [sys, request, ...overflowingStep(0, 5, 4)];
+  // The blind half reports nothing — this is not a criticism of it, it is the point.
+  assert.deepEqual(T.orphanedToolMessages(llm), []);
+  // The half added for this reports the call the loop never ran.
+  assert.deepEqual(T.unansweredToolCalls(llm), ['call_0_4']);
+
+  // Every overflow width, so a fix that widens the slice instead of trimming the record still fails.
+  for (const emitted of [5, 6, 9]) {
+    const over = [sys, request, ...overflowingStep(1, emitted, 4)];
+    assert.equal(T.unansweredToolCalls(over).length, emitted - 4, `emitted=${emitted}`);
+  }
+  // And nothing is reported when the record matches what ran, which is what the fix produces.
+  assert.deepEqual(T.unansweredToolCalls([sys, request, ...overflowingStep(2, 4, 4)]), []);
+});
+
+test('trimming never introduces an unanswered call — turn groups move whole', () => {
+  // A transcript that already overflows keeps exactly its own unanswered calls through a trim:
+  // the trim must not be blamed for, or credited with, what the loop recorded.
+  let llm = [sys, request];
+  for (let i = 0; i < 8; i++) {
+    llm = T.trimTranscript(llm, MAX);
+    llm = [...llm, ...step(i)];
+  }
+  assert.deepEqual(T.unansweredToolCalls(T.trimTranscript(llm, MAX)), []);
+});

@@ -134,9 +134,13 @@ export function trimTranscriptReport(llm: GatewayMessage[], maxChars: number): T
 }
 
 /**
- * Every `tool` message must be answering an assistant turn that is still present, and every
- * assistant tool call must have its result. Used by the tests, and cheap enough to assert in
- * development if this ever needs debugging again.
+ * A `tool` message answering an assistant turn that is no longer present. Used by the tests, and
+ * cheap enough to assert in development if this ever needs debugging again.
+ *
+ * ONE HALF OF THE INVARIANT. This comment used to claim the other half too — "and every assistant
+ * tool call must have its result" — while checking only this direction, which is the shape of
+ * defect this repository exists to refuse: a check that reports what it did not look at. The
+ * missing half is `unansweredToolCalls` below, and it was missing for a reason that cost something.
  */
 export function orphanedToolMessages(llm: GatewayMessage[]): string[] {
   const liveCallIds = new Set<string>();
@@ -144,4 +148,29 @@ export function orphanedToolMessages(llm: GatewayMessage[]): string[] {
   return llm
     .filter((m) => m.role === 'tool' && m.toolCallId && !liveCallIds.has(m.toolCallId))
     .map((m) => m.toolCallId!);
+}
+
+/**
+ * The other half: an assistant tool call with no `tool` message answering it.
+ *
+ * WHAT IT IS FOR, MEASURED 2026-09-20. `do/session.ts` records the assistant turn with every tool
+ * call the model emitted and then executes `res.toolCalls.slice(0, 4)`. Only an executed call gets
+ * a reply, so a turn of five calls leaves the fifth unanswered — and both encoders on the live path
+ * (`providers/workers-ai.ts`, `providers/openai.ts`) put the whole list on the wire, because they
+ * render `m.toolCalls` verbatim. `orphanedToolMessages` returns `[]` for that transcript: it
+ * collects call ids and tests messages against them, so a call nothing answers is invisible to it
+ * by construction.
+ *
+ * Kept separate from `orphanedToolMessages` rather than folded into it, because the two failures
+ * have different causes — that one is trimming losing an assistant turn, this one is the loop
+ * recording work it did not do — and a single list would say which ids, never which defect.
+ *
+ * Returns the unanswered call ids, in the order they appear.
+ */
+export function unansweredToolCalls(llm: GatewayMessage[]): string[] {
+  const answered = new Set<string>();
+  for (const m of llm) if (m.role === 'tool' && m.toolCallId) answered.add(m.toolCallId);
+  const unanswered: string[] = [];
+  for (const m of llm) for (const c of m.toolCalls ?? []) if (!answered.has(c.id)) unanswered.push(c.id);
+  return unanswered;
 }
