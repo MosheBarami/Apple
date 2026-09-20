@@ -22,7 +22,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { MODEL_PRICES, neuronsFor } from '../src/pricing.ts';
+import { BILLABLE_NEURONS_PER_DAY, MODEL_PRICES, neuronsFor } from '../src/pricing.ts';
 
 const SOURCE = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'pricing.ts'), 'utf8');
 
@@ -42,7 +42,24 @@ function capRationale() {
 test('the slice is the rationale, so nothing below passes vacuously', () => {
   const text = capRationale();
   assert.ok(text.length > 300, `sliced only ${text.length} chars of comment`);
-  assert.match(text, /DELIBERATELY UNCHANGED/, 'and it is still the comment explaining why the cap did not move');
+  //[[ RE-AIMED 2026-09-20. THIS LINE USED TO REQUIRE THE LITERAL PHRASE "DELIBERATELY UNCHANGED".
+  //
+  //   That was a fair anchor for as long as the ceiling sat at 15,000: the rationale's whole
+  //   subject was why it had NOT moved. On 2026-09-20 it moved, to 90,000, because the product was
+  //   refusing every build at $0.165 a day. The phrase then described a reversed decision, and the
+  //   guard required it to survive: deleting the now-false paragraph — the correct cleanup — would
+  //   have turned this red, and keeping it means the file opens its explanation of a raised cap
+  //   with the words "deliberately unchanged".
+  //
+  //   The history is not deleted; the aim moved. What a rationale must do is account for the value
+  //   the file actually exports, so that is what is asserted, read FROM the constant rather than
+  //   restated. It re-aims itself on the next change. ]]
+  const ceiling = BILLABLE_NEURONS_PER_DAY;
+  const spellings = [ceiling.toLocaleString('en-US'), String(ceiling), String(ceiling).replace(/\B(?=(\d{3})+$)/g, '_')];
+  assert.ok(
+    spellings.some((n) => text.includes(n)),
+    `the rationale never names the ceiling it explains (${spellings.join(' / ')})`,
+  );
 });
 
 test('the migration this ceiling survived really did make the paid lane dearer', () => {

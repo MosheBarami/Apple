@@ -278,7 +278,7 @@ local function refuseAssetRefs(name: string, ids: { number }): string?
 		if not (policy and policy.allow[id]) then table.insert(blocked, tostring(id)) end
 	end
 	if #blocked == 0 then return nil end
-	return ("%s: asset %s is not verified in this session, so it will not be referenced. An asset id reaches a place only through insert_asset, which checks its type, licence and script-freedom first — find one with search_asset_library or find_verified_asset, insert it, then set %s. With no verified id, build the geometry from Parts instead."):format(
+	return ("%s: asset %s is not verified in this session, so it will not be referenced. An asset id reaches a place only through insert_asset, which checks its type, licence and script-freedom first — find one with find_verified_asset, insert it, then set %s. With no verified id, build the geometry from Parts instead."):format(
 		name,
 		table.concat(blocked, ", "),
 		name

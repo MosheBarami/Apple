@@ -789,9 +789,33 @@ if (!problems.length) {
   // TWO DIFFERENT SENTENCES, because they are two different claims. The offline one does not say
   // "the deployed" anything: the whole defect being closed here is a headline that covered ground
   // the program had not walked.
+  //[[ THIS READS THE WORKING TREE. CI CHECKS OUT THE COMMIT.
+  //
+  //   On 2026-09-20 this printed REBRAND COMPLETE four times over a fix that was never staged.
+  //   frontier-harness.luau carried __APPLE_FRONTIER_LOOP__ on disk and __GOLEM_FRONTIER_LOOP__ in
+  //   HEAD, and assets.ts the same. Locally green for hours; CI red every run, with the two
+  //   verdicts worded identically. It was reported as done in a checkpoint report.
+  //
+  //   The verdict now carries how many of the files it just read differ from HEAD. It does not
+  //   FAIL on that — a dirty tree is the normal state of this repository and several lanes are
+  //   editing it right now — but nobody can quote a green from here without seeing whether the
+  //   green describes bytes that exist in any commit. ]]
+  let uncommitted = 0;
+  try {
+    const { execFileSync } = await import('node:child_process');
+    const out = execFileSync('git', ['diff', '--name-only', 'HEAD', '--', ...sources.map((f) => (typeof f === 'string' ? f : f.path))],
+      { cwd: ROOT, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
+    uncommitted = out.split('\n').filter(Boolean).length;
+  } catch {
+    uncommitted = -1; // no git, or a path list git would not take. Reported as unknown, not as zero.
+  }
+  const tree = uncommitted === 0 ? 'and every one of them matches HEAD'
+    : uncommitted > 0 ? `BUT ${uncommitted} of them differ from HEAD — this verdict describes the working tree, and CI checks out the commit`
+      : 'and whether they match HEAD could not be determined';
+
   console.log(OFFLINE
-    ? `REBRAND COMPLETE IN SOURCE — ${sources.length} tracked files carry no user-visible Golem. THE DEPLOYED SITE WAS NOT CHECKED (--offline).`
-    : `REBRAND COMPLETE — ${sources.length} source files, the deployed bundle and ${capturedRoutes} rendered route(s) carry no user-visible Golem`);
+    ? `REBRAND COMPLETE IN SOURCE — ${sources.length} tracked files carry no user-visible Golem, ${tree}. THE DEPLOYED SITE WAS NOT CHECKED (--offline).`
+    : `REBRAND COMPLETE — ${sources.length} source files, the deployed bundle and ${capturedRoutes} rendered route(s) carry no user-visible Golem, ${tree}`);
   process.exit(0);
 }
 
