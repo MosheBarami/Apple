@@ -271,6 +271,23 @@ rebuilds the bundle, the UI half of this index goes stale and must be rebuilt wi
   should stay that way.** `askVerifiedModule` and `getUIConstruction` are untouched; production
   behaviour is unchanged. The module lane lost to `need-index-search.ts`, 69/80 against 73/80. Three other approaches to the same defect were being built in parallel and
   the point was that all four could be measured on the same 80 queries before one is chosen.
+- **CONFIRMED 2026-09-21: "nothing is wired in" now means "not in the deployed bundle".** Checked
+  rather than inferred — every export of `apps/worker/src/embedding-retrieval.ts`
+  (`searchModulesByVector`, `suggestUIByVector`, `resolveUIByIdentity`, `EMBEDDING_MODEL`, …) appears
+  in that file and its own test and nowhere else in `apps/worker/src`, so esbuild drops it. The bytes
+  Cloudflare serves for `apple` at `buildSha 3236f91-dirty`, fetched from the account's own
+  `workers/scripts/apple/content/v2`, contain **0** occurrences of `EMBEDDING_MODEL` — against 2 for
+  `CONFIDENCE_FLOOR`, a symbol added the same day that IS wired, which is the instrument check that
+  makes the 0 mean something. The file is live source only in the sense that git holds it.
+- **The UI lane is a TRADE, not the win it can be read as.** `layered` (the shipped
+  `getUIConstruction` first, embedding only on its miss) at floor 0.6 answers 29 of the 34
+  label-covered queries against the shipped route's 27 — and it does so by answering **4** queries
+  that are not covered at all, where the shipped route's `falseConfidence` is **0**. On the module
+  lane the same session measured what a confident wrong answer is worth: a near-miss handed over
+  from the verified library passes the request's own executed checks **0 times in 80**
+  (`docs/frontier-for-roblox.md` §7.1). Two more right answers bought with four confident wrong ones
+  is the wrong side of that trade, and it is the reason this lane stays unwired too — a reason, now,
+  rather than an omission.
 - **No in-Worker deploy.** The 141 ms is measured on the deployed build's *existing* embedding path,
   with a smaller model. A like-for-like figure for `bge-m3` needs this module deployed.
 - **No fallback path is written.** `embedQuery` returns `null` on a provider fault and the caller is
