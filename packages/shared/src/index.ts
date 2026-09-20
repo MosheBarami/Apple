@@ -1517,10 +1517,51 @@ export interface GatewayResponse {
  * learn a vocabulary that means nothing about what they get. Apple and Apple Max say which is
  * bigger, which is the only thing the picker has to communicate.
  */
-export const MODE_INFO: Record<GolemMode, { name: string; blurb: string; typicalCredits: string }> = {
-  clay: { name: 'Apple', blurb: 'Fast answers and small edits', typicalCredits: '2' },
-  stone: { name: 'Apple Max', blurb: 'Builds features across your project', typicalCredits: '4-18' },
-  rune: { name: 'Apple Max Auto', blurb: 'Plans, builds, tests and fixes autonomously', typicalCredits: '10-30' },
+/*
+ * AND `entryUnit`, WHICH IS THE PIECE OF WORK THE LOW END OF `typicalCredits` WAS MEASURED ON.
+ *
+ * The pricing page published `Apple Max · 4 credits · "Builds features across your project" ·
+ * ~57 requests a free day` about a hundred lines under `One build costs about 77 Credits`, which
+ * the plan cards turn into three builds a free day. Both numbers are right and they are not about
+ * the same work: the 4 is `ceil(111 / 30)` from COST-MODEL's *Stone, targeted edit + read-back
+ * verify in Studio*, and the 77 is `ceil(2300 / 30)` from BUILD_NEURONS.qualityGated. A reader who
+ * takes the blurb at face value divides and finds the page 19x apart with itself on the one
+ * question the owner actually asked — what will this cost me in a month.
+ *
+ * `blurb` is what the MODE does; it is rendered by the composer's model picker and is right there.
+ * `entryUnit` is what the ENTRY PRICE bought, and the pricing table needs that one, because a cost
+ * column and a per-day column mean nothing without the unit between them.
+ *
+ * The words come from the COST-MODEL row each figure is derived from, so there is one measurement
+ * and one sentence about it. `check-credit-figures.mjs` fails when an offered mode's entryUnit
+ * claims a build at a price that is not CREDITS_PER_BUILD — which is the drift above, stated as an
+ * assertion. `rune` says build at 10 Credits on purpose and is not checked, because it is withdrawn
+ * from PRODUCT_MODES_OFFERED: COST-MODEL measures its build at 297 neurons and BUILD_NEURONS
+ * measures the quality-gated one at 2,300, and re-offering the mode has to reconcile those two
+ * before it can publish either. The guard firing on that day is the point of writing it this way.
+ */
+export const MODE_INFO: Record<
+  GolemMode,
+  { name: string; blurb: string; typicalCredits: string; entryUnit: string }
+> = {
+  clay: {
+    name: 'Apple',
+    blurb: 'Fast answers and small edits',
+    typicalCredits: '2',
+    entryUnit: 'one question, with Studio attached',
+  },
+  stone: {
+    name: 'Apple Max',
+    blurb: 'Builds features across your project',
+    typicalCredits: '4-18',
+    entryUnit: 'one targeted edit, read back and verified',
+  },
+  rune: {
+    name: 'Apple Max Auto',
+    blurb: 'Plans, builds, tests and fixes autonomously',
+    typicalCredits: '10-30',
+    entryUnit: 'one build, verified and playtested',
+  },
 };
 
 /**

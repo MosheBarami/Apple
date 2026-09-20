@@ -8,6 +8,7 @@ import {
   PLAN_SUPPORT,
   PRICE_CURRENCY,
   buildsPerMonth,
+  buildsPerDay,
   formatMoney,
   CREDITS_PER_BUILD,
   NEURONS_PER_CREDIT,
@@ -237,6 +238,16 @@ const modeRows = PRODUCT_MODES_OFFERED.map((m) => {
     cost,
     extra: EXTRA[m],
     does: MODE_INFO[PRODUCT_MODE_TO_SPECIALIST[m]].blurb,
+    /*
+     * WHAT THAT PRICE BOUGHT, beside the price.
+     *
+     * The cost column and the per-day column are useless to a buyer without the unit between them,
+     * and leaving it out is how this table came to say "Apple Max builds features across your
+     * project · 4 credits · ~57 a free day" on a page whose plan cards say a build is 77 Credits
+     * and three a free day. The blurb describes the MODE; this describes the REQUEST that was
+     * measured. See MODE_INFO.entryUnit in packages/shared.
+     */
+    unit: MODE_INFO[PRODUCT_MODE_TO_SPECIALIST[m]].entryUnit,
     perDayPrefix: PREFIX[m],
   };
 }).map((r) => ({ ...r, perDay: perFreeDay(r.cost, r.perDayPrefix) }));
@@ -589,6 +600,7 @@ const limitFaq = [
                   </td>
                   <td>
                     <code>{r.cost}</code>
+                    <span class="tx">for {r.unit}</span>
                     {r.extra && <span class="tx">{r.extra}</span>}
                   </td>
                   <td>{r.does}</td>
@@ -604,6 +616,23 @@ const limitFaq = [
         An Agent request settles against the work it actually did, so a long build costs more than
         the entry price above — metered live, so you always see where you stand. Apple&rsquo;s own
         housekeeping does not count against your quota.
+      </p>
+
+      {/*[[ THE TWO UNITS, RECONCILED WHERE THE READER MEETS THEM.
+           The table prices a request and the plan cards price a build, and one free day divides
+           into 57 of the first and 3 of the second. Both are true. Published a
+           hundred lines apart with no unit attached, they read as one figure contradicting itself
+           by more than an order of magnitude — on exactly the question the owner asked, which was
+           what this will cost in a month. The sentence is DERIVED from CREDITS_PER_BUILD and
+           PLAN_LIMITS, never typed, so it cannot be the copy that is left behind next time.
+           check-credit-figures.mjs fails if it goes missing or if an offered mode ever prices a
+           build at something other than CREDITS_PER_BUILD. ]]*/}
+      <p class="tfoot" data-reveal>
+        <strong>A request is not a build.</strong> The counts above are requests at the entry price.
+        A whole quality-gated build — read the tree, edit the scripts, create the instances, then
+        render it and critique the picture — is about {CREDITS_PER_BUILD} Credits, which is{' '}
+        {buildsPerDay('free')} of them a free day and {buildsPerMonth('free')} a free month. That is
+        the figure the plan cards above are counted in.
       </p>
     </div>
   </section>

@@ -392,6 +392,93 @@ if (!rangeFn || rangeFn === shared) {
   }
 }
 
+//[[ A REQUEST IS NOT A BUILD, AND THE PAGE PUBLISHED BOTH AS IF THEY WERE.
+//
+//   /pricing carried `Apple Max · 4 credits · "Builds features across your project" ·
+//   ~57 requests a free day` about a hundred lines under `One build costs about 77 Credits`, which
+//   the plan cards turn into three builds a free day and thirty a month. Both figures are measured
+//   and neither is wrong: the 4 is ceil(111/30) from COST-MODEL's *Stone, targeted edit +
+//   read-back verify in Studio*, and the 77 is ceil(2300/30) from BUILD_NEURONS.qualityGated. What
+//   was wrong was publishing them in the same unit-less breath, so a buyer dividing the free
+//   allowance got 57 builds a day where the product delivers 3 — 19x, on the one question the
+//   owner actually asked ("the exact expected monthly bill at low, medium and heavy usage").
+//
+//   THE PROPERTY, not the wording: the per-request table and the one-build figure must not imply
+//   two different daily counts for the same work. A mode may price a request at anything it likes
+//   as long as it SAYS what that request was; the moment its declared unit is a build, its price
+//   has to be the build price, or the page is publishing 231/cost builds a day and 231/77 builds a
+//   day at once.
+//
+//   ONLY OFFERED MODES. `rune` declares a build at 10 Credits and is deliberately not checked
+//   here, because it is withdrawn from PRODUCT_MODES_OFFERED. COST-MODEL measures its build at 297
+//   neurons and BUILD_NEURONS measures the quality-gated one at 2,300; whoever re-offers that mode
+//   has to reconcile those before publishing either, and this guard going red on that day is the
+//   reason it is written against the offered list rather than against all three.
+//
+//   READ OFF THE STRIPPED SOURCE. The comment that explains this defect in packages/shared names
+//   every string below — "claims a build", "CREDITS_PER_BUILD" — and a prose-reading scanner would
+//   report the explanation of the fix as the defect. That has happened four times in this
+//   repository already. ]]
+const creditsPerBuild = Number(/CREDITS_PER_BUILD = (\d+)/.exec(shared)?.[1]);
+if (!creditsPerBuild) {
+  console.error(
+    'check-credit-figures: could not read CREDITS_PER_BUILD from packages/shared/src/index.ts. '
+    + 'It moved; follow it rather than letting the request-vs-build check pass vacuously.',
+  );
+  process.exit(1);
+}
+const buildsFreeDay = Math.floor(freeDay / creditsPerBuild);
+/** Modes whose declared entry unit was actually parsed. Not "not missing". */
+let unitsChecked = 0;
+for (const { mode, specialist } of MODES) {
+  const unit = new RegExp(`${specialist}: \\{[^}]*entryUnit: '([^']+)'`).exec(shared)?.[1];
+  if (unit === undefined) {
+    problems.push(
+      `MODE_INFO.${specialist} has no entryUnit — the ${mode} row publishes a Credit cost and a `
+      + 'requests-per-day count with no statement of what one request is, which is the shape that '
+      + `let "${mode} builds features" sit beside a per-request price`,
+    );
+    continue;
+  }
+  unitsChecked += 1;
+  const neurons = neuronsFor(ROW_FOR[specialist]);
+  if (neurons === null) continue;
+  const cost = creditsFor(neurons);
+  // `\bbuild` catches build, builds, building. A mode that says it builds at its entry price is
+  // making the same daily-count claim CREDITS_PER_BUILD makes, and the two must agree.
+  if (/\bbuild/i.test(unit) && cost !== creditsPerBuild) {
+    problems.push(
+      `MODE_INFO.${specialist}.entryUnit says "${unit}" at ${cost} Credits, so the per-request `
+      + `table implies ${Math.floor(freeDay / cost)} builds a free day while CREDITS_PER_BUILD `
+      + `(${creditsPerBuild}) implies ${buildsFreeDay}. Price the build at ${creditsPerBuild}, or `
+      + 'name the smaller piece of work the entry price was measured on.',
+    );
+  }
+}
+if (unitsChecked === 0) {
+  problems.push('no entryUnit was parsed for any offered mode, so the request-vs-build check is vacuous');
+}
+
+// AND THE PAGE HAS TO CARRY BOTH. A unit that exists in packages/shared and is not rendered is a
+// field, not a disclosure; a build figure the reader has to scroll a hundred lines to find is the
+// defect above with an extra step. Both are DERIVED — a typed "3 builds a day" is the literal that
+// gets left behind by the next repricing, which is how "30 / 15 / up to 6" survived a fourfold
+// change to the free tier.
+const pageSrc = stripComments(page);
+if (!/MODE_INFO\[PRODUCT_MODE_TO_SPECIALIST\[m\]\]\.entryUnit/.test(pageSrc)) {
+  problems.push('pricing.astro does not read MODE_INFO.entryUnit — the per-request table states a price and a per-day count with no unit between them');
+}
+if (!/\{r\.unit\}/.test(pageSrc)) {
+  problems.push('pricing.astro reads entryUnit and never renders it — the disclosure ships to nobody');
+}
+if (!/buildsPerDay\('free'\)/.test(pageSrc) || !/CREDITS_PER_BUILD/.test(pageSrc)) {
+  problems.push(
+    'pricing.astro does not derive builds-per-free-day from CREDITS_PER_BUILD beside the '
+    + 'per-request table — the reader is left to reconcile requests and builds themselves, which '
+    + 'is the arithmetic that came out 19x wrong',
+  );
+}
+
 const roadmapSrc = stripComments(read('apps/worker/src/roadmap.ts'));
 if (/creditsLow:/.test(roadmapSrc) && !/creditRangeForRuns\(/.test(roadmapSrc)) {
   problems.push('apps/worker/src/roadmap.ts sets a milestone credit figure without going through creditRangeForRuns');
@@ -442,4 +529,10 @@ if (!meterIsRendered) {
 console.log(
   `  requests/free day: ${derived} of ${MODES.length} derived from PLAN_LIMITS at build time, ` +
   `${stated} stated and checked against ${freeDay} Credits/day`,
+);
+// Printed rather than assumed: a request-vs-build check that parsed no unit has checked nothing,
+// and the count is the only thing that tells the two apart from the outside.
+console.log(
+  `  request vs build: ${unitsChecked} of ${MODES.length} offered modes declare what their entry ` +
+  `price bought; a whole build is ${creditsPerBuild} Credits, ${buildsFreeDay} a free day`,
 );
