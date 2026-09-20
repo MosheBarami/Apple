@@ -122,7 +122,9 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <h2 id="model-failures">The model failed part-way</h2>
   <p>
     Three different things are meant by “it stopped on its own”, and they need different responses.
-    The chat says which one happened; this is what each means, and what it costs.
+    The chat says which one happened; this is what each means, and what it costs. One rule covers
+    all three: a run that ends this way having left you nothing to keep has its Credits put back
+    automatically, and the reply tells you how many.
   </p>
 
   <h3>“The model dropped that step”</h3>
@@ -147,8 +149,10 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     spend in a day, and it protects the free tier from a single runaway build. The message says when
     it resets — midnight UTC, the same instant for everyone. The step that stops here is not
     charged, because the capacity check happens before the call runs and a call that never ran
-    reports no compute. Credits already spent on the steps that finished stay spent — a run stopped
-    at step twelve has paid for eleven — and the total is on the message. Your project and
+    reports no compute. What the steps that did finish cost depends on what they left you: if the
+    run changed nothing in your place, every Credit it used is put back automatically and the reply
+    says how many; if it had already built something, those Credits stay spent, because the work is
+    still there. Either way the total is on the message, and your project and
     checkpoints are exactly where you left them. See
     <a href="/docs/credits-and-limits">Credits &amp; limits</a> for the difference between the two.
   </p>
@@ -167,6 +171,18 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     The in-app messages were never wrong about this: they claim only that the project and
     checkpoints are untouched. The untruth lived on this page alone, which is why nothing in the
     worker changed to fix it.
+
+    AND THEN THE FIX SHIPPED ITS OWN MIRROR IMAGE, which is why this note is longer than the
+    paragraph it explains. The replacement read "Credits already spent on the steps that finished
+    stay spent — a run stopped at step twelve has paid for eleven", which describes only the run
+    that KEPT its work and publishes it as what happens. A capacity stop calls
+    finishRun(agent, 'quota') (do/session.ts, the BudgetError and CAPACITY_EXHAUSTED branches), and
+    'quota' is in REFUNDABLE_REASONS — so the ordinary case, a run killed early having changed
+    nothing, gets every Credit back and was being told on this page that it had paid for eleven.
+    One falsehood about a customer's money was corrected into its opposite, and both were live.
+
+    The paragraph now carries BOTH halves of the rule run-refund.ts actually encodes, and
+    credit-refund-claims.test.mjs fails any page that carries only the half that keeps the money.
   */}
 
   <div class="callout">

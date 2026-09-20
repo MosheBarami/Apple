@@ -147,6 +147,75 @@ test('no page still denies a refund the product now gives', () => {
   assert.deepEqual(offenders, [], offenders.join('\n'));
 });
 
+//[[ REFUND_IS_NARROW IS A LIST OF THE THREE SENTENCES THAT WERE FIXED, NOT THE PROPERTY.
+//
+//   It caught "Your Credits are not consumed by a run that stops here", and the page was corrected.
+//   The correction read:
+//
+//     "Credits already spent on the steps that finished stay spent — a run stopped at step twelve
+//      has paid for eleven"
+//
+//   which is the same falsehood facing the other way, matches none of the three patterns, and was
+//   live on /docs/troubleshooting. A capacity stop calls finishRun(agent, 'quota'), 'quota' is in
+//   REFUNDABLE_REASONS, and a run that changed nothing gets every Credit back — so the ordinary
+//   case was being told on the page it lands on that it had paid for eleven steps it did not keep.
+//
+//   THE PROPERTY, not the wording: a page may say that Credits already taken stay spent — that is
+//   true of a run that kept its work — but not WITHOUT the half that gives them back, because the
+//   two halves are one rule and a customer reading only the first is being told the wrong thing
+//   about their own money. Judged inside the sentence, exactly as RESET_CONTEXT and DENIAL are:
+//   a character window would reach into a neighbouring paragraph and let the bare claim through.
+//
+//   A NEGATED CLAIM IS NOT A CLAIM. "those Credits do not stay spent" is the refund being stated,
+//   not denied, so a sentence that negates the money-keeping half is skipped the way DENIAL skips
+//   the negation of the money-returning one. ]]
+const MONEY_STAYS = /\b(stays?|remains?)\s+spent\b|\bhas\s+paid\s+for\b|\bkeeps?\s+(its|their|your)\s+credits?\b/i;
+const MONEY_RETURNS = /\bput\s+back\b|\bcomes?\s+back\b|\brefund\w*\b|\bgiven\s+back\b|\breturned\b/i;
+const NOT_KEPT = /\b(not|never|no longer|does not|doesn't|do not|don't)\b[^.]{0,40}\b(stays?|remains?)\s+spent\b/i;
+
+test('no page says Credits stay spent without the half that gives them back', () => {
+  assert.ok(pages().length > 0, 'found no .astro pages — this guard is looking in the wrong place');
+  // NON-VACUITY, for the reason the test above already learned the hard way: a scan that matches
+  // nothing anywhere is indistinguishable from a scan that is looking at the wrong text. Two
+  // shipped sentences state both halves — the capacity paragraph on /docs/troubleshooting and
+  // "a run that changed your place keeps its Credits… so it is not refunded" on
+  // /docs/credits-and-limits — so the allowed branch is exercised by real copy, not a fixture.
+  //
+  // WHAT THIS COUNTER DOES NOT DO, measured rather than assumed. Deleting the /docs/troubleshooting
+  // disclosure outright was tried and this test stayed green, because /docs/credits-and-limits
+  // alone keeps the counter above zero. That is correct for what is being guarded — a page that
+  // says nothing about what a failed run costs is silent, not lying, and this guard is about the
+  // lie. A page going quiet on the question is a completeness rule and would need its own test
+  // against a named page; it is not claimed here.
+  let bothHalves = 0;
+  const offenders = [];
+  for (const [name, text] of pages().map((f) => [f.slice(SITE.length + 1), readFileSync(f, 'utf8')])) {
+    for (const sentence of sentences(visibleText(text))) {
+      if (!MONEY_STAYS.test(sentence)) continue;
+      if (NOT_KEPT.test(sentence)) continue;
+      if (MONEY_RETURNS.test(sentence)) {
+        bothHalves += 1;
+        continue;
+      }
+      offenders.push(`${name}: "${sentence.trim().slice(0, 180)}"`);
+    }
+  }
+  assert.deepEqual(
+    offenders,
+    [],
+    'a page tells a customer their Credits stay spent and never says when they come back. '
+      + 'run-refund.ts gives every Credit back to a run that ended in failure leaving nothing to '
+      + `keep, and 'quota' — the capacity stop — is one of those endings:\n${offenders.join('\n')}`,
+  );
+  assert.ok(
+    bothHalves > 0,
+    'not one shipped sentence pairs "these Credits stay spent" with "these come back", so the '
+      + 'allowed branch above was never taken and this run verified only that nothing matched. '
+      + 'Either both disclosures were rewritten out of the docs or this scan is reading the wrong '
+      + 'text — go and look before trusting the green.',
+  );
+});
+
 test('no page promises a refund WIDER than the one the code gives', () => {
   assert.ok(pages().length > 0, 'found no .astro pages — this guard is looking in the wrong place');
   // The opposite drift, and the more damaging one. The refund is only for a run that ended in
