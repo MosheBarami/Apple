@@ -1,0 +1,490 @@
+{
+  "generated_at": "2026-09-20T20:19:53.684Z",
+  "generator": "packages/training/src/screen-row-licences.mjs",
+  "method": "For every dataset the queue calls acquirable: read its columns from the dataset-viewer /info endpoint, and where a per-row licence column exists, read that column’s value frequencies from /statistics. Per-row licence evidence outranks the repository tag. An unrecognised licence value is never counted as permissive.",
+  "permissive_values_recognised": [
+    "apache 2.0",
+    "apache-2.0",
+    "apache2.0",
+    "bsd-2-clause",
+    "bsd-3-clause",
+    "bsl-1.0",
+    "cc0",
+    "cc0-1.0",
+    "isc",
+    "mit",
+    "mit-0",
+    "permissive",
+    "unlicense",
+    "zlib"
+  ],
+  "summary": {
+    "datasets_screened": 18,
+    "datasets_not_screened": 0,
+    "per_row_licence": 2,
+    "per_row_source_only": 4,
+    "no_provenance": 12,
+    "rows_claimed_by_repository_tag": 2069435,
+    "rows_with_per_row_licence_measured": 882618,
+    "rows_permissive_by_per_row_evidence": 74534,
+    "rows_permissive_distinct_after_collapsing_overlap": 37267,
+    "rows_rejected_by_per_row_evidence": 808084,
+    "rows_resting_on_repository_tag_alone": 1186817
+  },
+  "datasets": [
+    {
+      "id": "Pinkstack/luau-pretrain-corpus-unfiltered",
+      "screened": true,
+      "config": "default",
+      "split": "train",
+      "columns": [
+        "repo_path",
+        "repo_id",
+        "commit_id",
+        "file_path",
+        "language",
+        "content",
+        "readme",
+        "size_bytes",
+        "license_type",
+        "detected_licenses",
+        "luau_syntax_score",
+        "roblox_api_score",
+        "from_roblox_flagged_repo",
+        "admission_reason",
+        "file_type"
+      ],
+      "licence_columns": [
+        "license_type",
+        "detected_licenses"
+      ],
+      "provenance_columns": [
+        "repo_path",
+        "repo_id",
+        "commit_id",
+        "file_path"
+      ],
+      "tier": "per_row_licence",
+      "multiple_configs": null,
+      "licence_column_used": "license_type",
+      "rows_total": 845351,
+      "rows_permissive": 37267,
+      "rows_not_permissive": 808084,
+      "values_not_counted_as_permissive": {
+        "no_license": 808084
+      },
+      "note": "per-row licence measured from the dataset-viewer statistics endpoint",
+      "repository_tag": "odc-by",
+      "rows_claimed_by_queue": 845351
+    },
+    {
+      "id": "jayras/roblox-luau-dataset",
+      "screened": true,
+      "config": "default",
+      "split": "train",
+      "columns": [
+        "instruction",
+        "input",
+        "output"
+      ],
+      "licence_columns": [],
+      "provenance_columns": [],
+      "tier": "no_provenance",
+      "multiple_configs": null,
+      "rows_total": null,
+      "rows_permissive": null,
+      "rows_not_permissive": null,
+      "note": "no per-row licence and no per-row source: the repository tag is the only evidence there is",
+      "repository_tag": "mit",
+      "rows_claimed_by_queue": 565760
+    },
+    {
+      "id": "PatoFlamejanteTV/RobloxCodeXL",
+      "screened": true,
+      "config": "default",
+      "split": "train",
+      "columns": [
+        "repo",
+        "language",
+        "file_path",
+        "content"
+      ],
+      "licence_columns": [],
+      "provenance_columns": [
+        "repo",
+        "file_path"
+      ],
+      "tier": "per_row_source_only",
+      "multiple_configs": null,
+      "rows_total": null,
+      "rows_permissive": null,
+      "rows_not_permissive": null,
+      "note": "rows trace back to a source file but carry no licence: the repository tag is still the only licence evidence",
+      "repository_tag": "mit",
+      "rows_claimed_by_queue": 259342
+    },
+    {
+      "id": "PatoFlamejanteTV/RobloxCodeLarge2UNFILTRED-Lua-Luau",
+      "screened": true,
+      "config": "default",
+      "split": "train",
+      "columns": [
+        "name",
+        "path",
+        "extension",
+        "size_bytes",
+        "content"
+      ],
+      "licence_columns": [],
+      "provenance_columns": [
+        "path"
+      ],
+      "tier": "per_row_source_only",
+      "multiple_configs": null,
+      "rows_total": null,
+      "rows_permissive": null,
+      "rows_not_permissive": null,
+      "note": "rows trace back to a source file but carry no licence: the repository tag is still the only licence evidence",
+      "repository_tag": "mit",
+      "rows_claimed_by_queue": 82813
+    },
+    {
+      "id": "PatoFlamejanteTV/robloxdb-large",
+      "screened": true,
+      "config": "default",
+      "split": "train",
+      "columns": [
+        "repo",
+        "language",
+        "file_path",
+        "content"
+      ],
+      "licence_columns": [],
+      "provenance_columns": [
+        "repo",
+        "file_path"
+      ],
+      "tier": "per_row_source_only",
+      "multiple_configs": null,
+      "rows_total": null,
+      "rows_permissive": null,
+      "rows_not_permissive": null,
+      "note": "rows trace back to a source file but carry no licence: the repository tag is still the only licence evidence",
+      "repository_tag": "mit",
+      "rows_claimed_by_queue": 60235
+    },
+    {
+      "id": "PatoFlamejanteTV/RobloxLargeV2-Lua-Luau",
+      "screened": true,
+      "config": "default",
+      "split": "train",
+      "columns": [
+        "name",
+        "path",
+        "extension",
+        "size_bytes",
+        "content"
+      ],
+      "licence_columns": [],
+      "provenance_columns": [
+        "path"
+      ],
+      "tier": "per_row_source_only",
+      "multiple_configs": null,
+      "rows_total": null,
+      "rows_permissive": null,
+      "rows_not_permissive": null,
+      "note": "rows trace back to a source file but carry no licence: the repository tag is still the only licence evidence",
+      "repository_tag": "mit",
+      "rows_claimed_by_queue": 46403
+    },
+    {
+      "id": "Pinkstack/luau-pretrain-corpus-filtered",
+      "screened": true,
+      "config": "default",
+      "split": "train",
+      "columns": [
+        "repo_path",
+        "repo_id",
+        "commit_id",
+        "file_path",
+        "language",
+        "content",
+        "readme",
+        "size_bytes",
+        "license_type",
+        "detected_licenses",
+        "luau_syntax_score",
+        "roblox_api_score",
+        "from_roblox_flagged_repo",
+        "admission_reason",
+        "file_type"
+      ],
+      "licence_columns": [
+        "license_type",
+        "detected_licenses"
+      ],
+      "provenance_columns": [
+        "repo_path",
+        "repo_id",
+        "commit_id",
+        "file_path"
+      ],
+      "tier": "per_row_licence",
+      "multiple_configs": null,
+      "licence_column_used": "license_type",
+      "rows_total": 37267,
+      "rows_permissive": 37267,
+      "rows_not_permissive": 0,
+      "values_not_counted_as_permissive": {},
+      "note": "per-row licence measured from the dataset-viewer statistics endpoint",
+      "repository_tag": "odc-by",
+      "rows_claimed_by_queue": 37267
+    },
+    {
+      "id": "Roblox/luau_corpus",
+      "screened": true,
+      "config": "default",
+      "split": "train",
+      "columns": [
+        "prompt",
+        "completion"
+      ],
+      "licence_columns": [],
+      "provenance_columns": [],
+      "tier": "no_provenance",
+      "multiple_configs": null,
+      "rows_total": null,
+      "rows_permissive": null,
+      "rows_not_permissive": null,
+      "note": "no per-row licence and no per-row source: the repository tag is the only evidence there is",
+      "repository_tag": "mit",
+      "rows_claimed_by_queue": 27602
+    },
+    {
+      "id": "Pinkstack/roblox-luau-corpus-text",
+      "screened": true,
+      "config": "default",
+      "split": "train",
+      "columns": [
+        "text"
+      ],
+      "licence_columns": [],
+      "provenance_columns": [],
+      "tier": "no_provenance",
+      "multiple_configs": null,
+      "rows_total": null,
+      "rows_permissive": null,
+      "rows_not_permissive": null,
+      "note": "no per-row licence and no per-row source: the repository tag is the only evidence there is",
+      "repository_tag": "mit",
+      "rows_claimed_by_queue": 27602
+    },
+    {
+      "id": "darwinkernelpanic/luau_corpus_axolotl",
+      "screened": true,
+      "config": "default",
+      "split": "train",
+      "columns": [
+        "completion",
+        "text"
+      ],
+      "licence_columns": [],
+      "provenance_columns": [],
+      "tier": "no_provenance",
+      "multiple_configs": null,
+      "rows_total": null,
+      "rows_permissive": null,
+      "rows_not_permissive": null,
+      "note": "no per-row licence and no per-row source: the repository tag is the only evidence there is",
+      "repository_tag": "mit",
+      "rows_claimed_by_queue": 27602
+    },
+    {
+      "id": "TorpedoSoftware/Roblox-Luau-Reasoning-v1.0",
+      "screened": true,
+      "config": "default",
+      "split": "train",
+      "columns": [
+        "code",
+        "prompt",
+        "chain_of_thought",
+        "explanation"
+      ],
+      "licence_columns": [],
+      "provenance_columns": [],
+      "tier": "no_provenance",
+      "multiple_configs": null,
+      "rows_total": null,
+      "rows_permissive": null,
+      "rows_not_permissive": null,
+      "note": "no per-row licence and no per-row source: the repository tag is the only evidence there is",
+      "repository_tag": "mit",
+      "rows_claimed_by_queue": 18595
+    },
+    {
+      "id": "487798RGW/Roblox-Luau-Reasoning-v1.0",
+      "screened": true,
+      "config": "default",
+      "split": "train",
+      "columns": [
+        "code",
+        "prompt",
+        "chain_of_thought",
+        "explanation"
+      ],
+      "licence_columns": [],
+      "provenance_columns": [],
+      "tier": "no_provenance",
+      "multiple_configs": null,
+      "rows_total": null,
+      "rows_permissive": null,
+      "rows_not_permissive": null,
+      "note": "no per-row licence and no per-row source: the repository tag is the only evidence there is",
+      "repository_tag": "mit",
+      "rows_claimed_by_queue": 18595
+    },
+    {
+      "id": "khtsly/Luau-Coder-1.0-Preview-SFT",
+      "screened": true,
+      "config": "default",
+      "split": "train",
+      "columns": [
+        "task_types",
+        "difficulty",
+        "conversations",
+        "processed"
+      ],
+      "licence_columns": [],
+      "provenance_columns": [],
+      "tier": "no_provenance",
+      "multiple_configs": null,
+      "rows_total": null,
+      "rows_permissive": null,
+      "rows_not_permissive": null,
+      "note": "no per-row licence and no per-row source: the repository tag is the only evidence there is",
+      "repository_tag": "apache-2.0",
+      "rows_claimed_by_queue": 17119
+    },
+    {
+      "id": "Pinkstack/luaucoder-instructions-v3-SFT",
+      "screened": true,
+      "config": "default",
+      "split": "train",
+      "columns": [
+        "system_prompt",
+        "input_1",
+        "reasoning_1",
+        "output_1",
+        "input_2",
+        "reasoning_2",
+        "output_2"
+      ],
+      "licence_columns": [],
+      "provenance_columns": [],
+      "tier": "no_provenance",
+      "multiple_configs": null,
+      "rows_total": null,
+      "rows_permissive": null,
+      "rows_not_permissive": null,
+      "note": "no per-row licence and no per-row source: the repository tag is the only evidence there is",
+      "repository_tag": "mit",
+      "rows_claimed_by_queue": 12500
+    },
+    {
+      "id": "8BitStudio/Roblox-luau-coding_L1",
+      "screened": true,
+      "config": "default",
+      "split": "train",
+      "columns": [
+        "instruction",
+        "input",
+        "output"
+      ],
+      "licence_columns": [],
+      "provenance_columns": [],
+      "tier": "no_provenance",
+      "multiple_configs": null,
+      "rows_total": null,
+      "rows_permissive": null,
+      "rows_not_permissive": null,
+      "note": "no per-row licence and no per-row source: the repository tag is the only evidence there is",
+      "repository_tag": "apache-2.0",
+      "rows_claimed_by_queue": 12306
+    },
+    {
+      "id": "Pinkstack/LuauDev-instructions-SFT-preview",
+      "screened": true,
+      "config": "default",
+      "split": "train",
+      "columns": [
+        "conversations"
+      ],
+      "licence_columns": [],
+      "provenance_columns": [],
+      "tier": "no_provenance",
+      "multiple_configs": null,
+      "rows_total": null,
+      "rows_permissive": null,
+      "rows_not_permissive": null,
+      "note": "no per-row licence and no per-row source: the repository tag is the only evidence there is",
+      "repository_tag": "mit",
+      "rows_claimed_by_queue": 7645
+    },
+    {
+      "id": "TorpedoSoftware/LuauLeetcode",
+      "screened": true,
+      "config": "default",
+      "split": "train",
+      "columns": [
+        "question_id",
+        "task_id",
+        "estimated_date",
+        "difficulty",
+        "tags",
+        "problem_description",
+        "entry_point",
+        "starter_code",
+        "solution",
+        "test"
+      ],
+      "licence_columns": [],
+      "provenance_columns": [],
+      "tier": "no_provenance",
+      "multiple_configs": null,
+      "rows_total": null,
+      "rows_permissive": null,
+      "rows_not_permissive": null,
+      "note": "no per-row licence and no per-row source: the repository tag is the only evidence there is",
+      "repository_tag": "apache-2.0",
+      "rows_claimed_by_queue": 2566
+    },
+    {
+      "id": "Hash0x/Luau-roblox",
+      "screened": true,
+      "config": "default",
+      "split": "train",
+      "columns": [
+        "instruction",
+        "input",
+        "output"
+      ],
+      "licence_columns": [],
+      "provenance_columns": [],
+      "tier": "no_provenance",
+      "multiple_configs": null,
+      "rows_total": null,
+      "rows_permissive": null,
+      "rows_not_permissive": null,
+      "note": "no per-row licence and no per-row source: the repository tag is the only evidence there is",
+      "repository_tag": "mit",
+      "rows_claimed_by_queue": 132
+    }
+  ],
+  "limits": [
+    "A dataset with no licence column is not thereby clean; it is unscreened, and its repository tag remains the only evidence.",
+    "Value frequencies come from the viewer’s own statistics; they were not recomputed from the rows.",
+    "A per-row licence recorded by a scraper is that scraper’s detection result, not a licence audit.",
+    "Overlapping permissive subsets are collapsed by equal row count, which would also collapse two distinct corpora that happened to agree to the row."
+  ]
+}

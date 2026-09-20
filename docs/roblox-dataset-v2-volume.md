@@ -88,13 +88,54 @@ excluded because the obligation would reach the weights and the service. The reg
 
 | rows | disposition |
 | ---: | --- |
-| 2,069,435 | permissively licensed across 21 datasets (MIT, Apache-2.0, ODC-By, CC-BY-4.0) |
-| 1,995,636 | of those, after collapsing suspected re-uploads of one corpus |
+| 2,069,435 | carry a permissive licence tag **on the repository**, across 21 datasets |
 | 568,645 | no grant at all — licence "not stated", "other" or "unknown" |
 | 5,351 | share-alike, excluded by policy |
 
-So the ceiling for acquisition is about **2.0M permissively-declared rows**, against the 55,331 v1
-shipped. The word "declared" is load-bearing and is the subject of the next section.
+That first row is a tag, not a finding, and the next section is what happened when it was checked
+against the data.
+
+## The tag was covering a corpus that is 95.6% unlicensed
+
+Most of these corpora are scrapes. The uploader tags the compilation; the files inside came from
+thousands of third parties who never saw that tag. So every dataset the queue called acquirable was
+screened for per-row licence evidence — `node packages/training/src/screen-row-licences.mjs`,
+artifact `runs/row-licence-screening.json`, guarded by `src/row-licence-screening.test.mjs`.
+
+The case that forced it: **`Pinkstack/luau-pretrain-corpus-unfiltered`**, tagged `odc-by`, 845,351
+rows, the single largest entry in the queue. It ships a per-row `license_type` column, so the
+question is answerable from the data. The answer, from the dataset-viewer's own statistics:
+
+| rows | `license_type` |
+| ---: | --- |
+| 808,084 | `no_license` |
+| 37,267 | `permissive` |
+
+Its card says so plainly — it is the companion to the *filtered* release and "additionally includes
+files where no license was detected at all". And those 37,267 permissive rows are exactly
+`luau-pretrain-corpus-filtered`, which **v1 already holds**.
+
+Across all 18 measurable datasets:
+
+| rows | what is actually known about them |
+| ---: | --- |
+| 37,267 | permissive **by per-row evidence** — and already in v1, so net-new is zero |
+| 808,084 | measured `no_license`; never acquirable |
+| 448,793 | trace to a source repo (`repo`, `file_path`) but carry no licence |
+| 738,024 | no per-row licence and no per-row source: the repository tag is all there is |
+
+**So the licence-clean, net-new yield from Hugging Face Luau corpora is 0 rows.** The volume is
+real and the rights are not. An earlier section of this same file said the ceiling was "about 2.0M
+permissively-declared rows"; that sentence was written before the per-row screening and it is
+corrected here rather than removed.
+
+### What would actually unblock it
+
+The 448,793 source-traceable rows are the ones worth wanting: each names the repository and file it
+came from, so each could be resolved against that repository's real licence. That needs the GitHub
+API — the same credential the 4,269 unprobed repos need, and the same one that is broken on this
+machine. **One working GitHub token converts ~449K rows from "tagged" to "cleared", and is the
+highest-value single unblock in the dataset track.** It is not worked around here.
 
 ## Declared is not cleared
 
