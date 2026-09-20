@@ -254,6 +254,24 @@ const PACKAGE_ROOTS = currentFiles('package.json', '*/package.json', '*/*/packag
 
 /** Resolve a specifier to a repo path, trying the extensions this repo actually uses. */
 function resolveSpecifier(fromRel, spec, { virtualBase = false } = {}) {
+  //[[ A VITE QUERY SUFFIX IS PART OF THE IMPORT MECHANISM, NOT PART OF THE PATH.
+  //
+  //   `apps/site/src/layouts/InterfaceSound.astro` imports `../sound/interface-sound.js?raw` — the
+  //   Vite/Astro form that hands a module's TEXT to the importer instead of its exports, which is
+  //   how the sound system is emitted into an inline <script> rather than shipped as a bundle. The
+  //   file is right there on disk. This resolver compared the whole string, suffix and all, found
+  //   nothing, and reported a working import as broken.
+  //
+  //   That matters more than one false entry in a list. The unresolved COUNT is asserted, so a
+  //   resolver hole either fails the suite for a healthy repository — which teaches people to raise
+  //   the threshold — or, once raised, hides a genuinely broken import inside the slack. Vite
+  //   defines `?raw`, `?url`, `?inline`, `?worker` and friends; every one of them names a real file
+  //   with a real path, so the path is what this resolver should see.
+  //
+  //   Found on 2026-09-20 by this check going red on an import that was correct. ]]
+  const q = spec.indexOf('?');
+  if (q > 0) spec = spec.slice(0, q);
+
   // A workspace import counts as an import. It is how one package reaches another, and treating it
   // as unresolvable makes every shared module look dead.
   if (WORKSPACE.has(spec)) return WORKSPACE.get(spec);
