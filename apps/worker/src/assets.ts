@@ -1375,7 +1375,7 @@ export function scanScriptSource(path: string, className: string, source: string
   findings.push({
     code: 'script_present',
     severity: 'medium',
-    message: `${className} at ${path} carries ${lines.length} line(s) of Luau. Golem never auto-inserts an asset containing code, whatever the code says.`,
+    message: `${className} at ${path} carries ${lines.length} line(s) of Luau. Apple never auto-inserts an asset containing code, whatever the code says.`,
     line: lines.length ? 1 : null,
     excerpt: excerptOf(lines.find((l) => l.trim().length) ?? ''),
   });

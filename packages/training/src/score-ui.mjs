@@ -54,7 +54,7 @@ import { analyzeLuau, blankStringContents, stripComments } from '../../evals/src
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const HARNESS = resolve(HERE, 'ui-harness.luau');
-const TREE_MARKER = '__GOLEM_UI_TREE__';
+const TREE_MARKER = '__APPLE_UI_TREE__';
 
 /** The screens the build is resolved on. Desktop, the commonest laptop, and a notched phone. */
 export const VIEWPORTS = Object.freeze([

@@ -31,7 +31,7 @@ import { analyzeLuau } from '../../evals/src/roblox-antipatterns.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const HARNESS_PATH = resolve(HERE, 'frontier-harness.luau');
-const OUT_MARKER = '__GOLEM_FRONTIER__';
+const OUT_MARKER = '__APPLE_FRONTIER__';
 
 /** Pull the first fenced Luau block, or null. A model that wrote prose scores as a miss. */
 export function fencedLuau(answer) {
@@ -65,10 +65,10 @@ end)
 local __pok, __perr = pcall(function()
 ${probe ?? ''}
 end)
-if not __pok then __GOLEM.fact("__probeError", tostring(__perr)) end
-if __ok then __GOLEM_EMIT("ok", "")
-elseif tostring(__err):find(__GOLEM.LOOP_MARKER, 1, true) then __GOLEM_EMIT("loop", "reached its update loop")
-else __GOLEM_EMIT("error", tostring(__err)) end
+if not __pok then __APPLE.fact("__probeError", tostring(__perr)) end
+if __ok then __APPLE_EMIT("ok", "")
+elseif tostring(__err):find(__APPLE.LOOP_MARKER, 1, true) then __APPLE_EMIT("loop", "reached its update loop")
+else __APPLE_EMIT("error", tostring(__err)) end
 `;
 }
 

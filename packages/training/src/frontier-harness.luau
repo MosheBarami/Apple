@@ -47,8 +47,8 @@
        whether it survives. That is the lost update, mechanically.
 ]]
 
-local LOOP_MARKER = "__GOLEM_FRONTIER_LOOP__"
-local OUT_MARKER = "__GOLEM_FRONTIER__"
+local LOOP_MARKER = "__APPLE_FRONTIER_LOOP__"
+local OUT_MARKER = "__APPLE_FRONTIER__"
 local LOOP_BUDGET = 96
 
 local yields = 0
@@ -833,7 +833,7 @@ local function findValueNamed(name)
 	return nil
 end
 
-__GOLEM = {
+__APPLE = {
 	LOOP_MARKER = LOOP_MARKER,
 	calls = calls, created = created, services = services, globals = globalCalls,
 	storeOps = storeOps, stores = stores, unresolved = unresolved, handlerErrors = handlerErrors,
@@ -983,7 +983,7 @@ function encode(v, depth)
 	return '"<' .. t .. '>"'
 end
 
-function __GOLEM_EMIT(status, detail)
+function __APPLE_EMIT(status, detail)
 	local callList = {}
 	for _, c in ipairs(calls) do callList[#callList + 1] = { target = c.target, name = c.name, method = c.method, phase = c.phase } end
 	local nodeList = {}
