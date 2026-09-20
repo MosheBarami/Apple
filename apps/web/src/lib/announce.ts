@@ -41,11 +41,27 @@ export interface AnnouncableTurn {
   error?: string;
 }
 
-/** How a run that did not simply succeed is described. Mirrors the copy on the turn itself. */
+/**
+ * How a run that did not simply succeed is described. Mirrors the copy on the turn itself.
+ *
+ * "MIRRORS" IS A PROMISE THIS TABLE ONCE BROKE. `quota` read "That used the last of today’s
+ * Credits." here and on the turn, and both were fixed to say so — except this one, which was a
+ * second literal nobody grepped for. It was found in the BUILT BUNDLE, not in the source: the
+ * source change looked complete because the sentence had been deleted from the file that owns it.
+ *
+ * The sentence is false for the same reason it was false there. do/session.ts sends `quota` from
+ * four endings, two of them the SERVICE's shared budget — one being an administrator pausing
+ * generation — where nothing of the listener's ran out; and `quota` is in REFUNDABLE_REASONS, so a
+ * run that ended there having kept nothing has every Credit put back. A listener has less chance
+ * than a reader of catching the contradiction, because the reply that states the refund has already
+ * been spoken and gone.
+ *
+ * apps/web/tests/failed-run-money-claims.test.mjs holds BOTH tables to the same rule.
+ */
 const OUTCOME_SPEECH: Record<string, string> = {
   stopped: 'Apple stopped.',
   incomplete: 'That run finished without changing anything.',
-  quota: 'That used the last of today’s Credits.',
+  quota: 'That run stopped before it finished. Everything up to there is saved.',
   error: 'Something went wrong partway through.',
 };
 

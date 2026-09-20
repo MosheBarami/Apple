@@ -37,6 +37,7 @@ const REFUND = read('apps', 'worker', 'src', 'run-refund.ts');
 const SESSION = read('apps', 'worker', 'src', 'do', 'session.ts');
 const GATEWAY = read('apps', 'worker', 'src', 'gateway.ts');
 const ADMIN = read('apps', 'web', 'src', 'routes', 'admin.tsx');
+const ANNOUNCE = read('apps', 'web', 'src', 'lib', 'announce.ts');
 
 /**
  * The outcome model, bundled the way run-outcome.test.mjs bundles it — the sentence under test is
@@ -126,6 +127,45 @@ test('the quota outcome line names no owner and no amount', () => {
     /\bcredits?\b/i,
     `the quota outcome line makes a claim about Credits it cannot support: "${line.text}". `
       + 'The reply above it owns the money, because it is the only side that knows the number.',
+  );
+});
+
+/**
+ * THE SENTENCE EXISTS TWICE, and the first fix only reached one of them.
+ *
+ * `lib/announce.ts` keeps its own OUTCOME_SPEECH table for the live region — deliberately, because
+ * a bare "Stopped." read aloud has no subject. That is a second literal, and it still said "That
+ * used the last of today’s Credits." after the visible one had been corrected. It was caught by
+ * grepping the BUILT BUNDLE, not the source, which is why this assertion exists: a rule enforced
+ * against one file passes over the copy in the next one.
+ *
+ * Read out of the source rather than by importing: the table is module-private on purpose, and
+ * exporting it to make it testable would widen the module for the test's convenience.
+ */
+test('the SPOKEN quota line is held to the same rule as the visible one', () => {
+  const table = /const OUTCOME_SPEECH: Record<string, string> = \{([\s\S]*?)\n\};/.exec(ANNOUNCE);
+  assert.ok(table, 'THIS GUARD IS STALE: OUTCOME_SPEECH could not be read out of apps/web/src/lib/announce.ts');
+  const spoken = /\n\s*quota: '([^']*)'/.exec(table[1]);
+  assert.ok(spoken, `THIS GUARD IS STALE: OUTCOME_SPEECH has no quota entry to check:\n${table[1]}`);
+  const text = spoken[1];
+
+  assert.doesNotMatch(text, /\byour\b/i, `the spoken quota line addresses the listener's own allowance: "${text}"`);
+  assert.doesNotMatch(text, /\bcapacit\w*|\badministrator\b/i, `the spoken quota line names a service ending: "${text}"`);
+  assert.doesNotMatch(
+    text,
+    /\bcredits?\b/i,
+    `the spoken quota line makes a claim about Credits it cannot support: "${text}". A listener has `
+      + 'less chance than a reader of catching it — the reply that states the refund has already been '
+      + 'spoken and gone.',
+  );
+
+  // The two tables must not drift APART on this either: whatever the turn shows, the live region
+  // must not be the only one carrying a money claim.
+  const visible = outcomeLine('quota', undefined).text;
+  assert.equal(
+    /\bcredits?\b/i.test(text),
+    /\bcredits?\b/i.test(visible),
+    `the spoken and visible quota lines disagree about whether Credits are mentioned at all:\n  spoken:  "${text}"\n  visible: "${visible}"`,
   );
 });
 
