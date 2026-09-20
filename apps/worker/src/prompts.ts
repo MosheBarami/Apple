@@ -169,6 +169,14 @@ Keep replies concise and concrete; the user sees your tool activity separately.`
  * Per-mode rules, keyed by the internal specialist name. The user never sees these names: they pick
  * Plan, Agent or Super Agent, which map onto clay, stone and rune respectively.
  *
+ * THE KEYS ARE THE WIRE, THE TEXT IS THE PRODUCT. `clay`/`stone`/`rune` are stored in the message
+ * table's `mode` column and read by the plugin, the browser, MCP, Discord and the automations, so
+ * renaming them is a versioned protocol bump and is deliberately NOT done here. The prose is a
+ * different matter: it is the model's account of itself and it reaches the reader, so it uses the
+ * only names the owner uses. `clay` already said "Mode: Plan."; the other two said "Mode: Stone"
+ * and "Mode: Rune" until 2026-09-21, which is how a name the product retired kept a way to reach
+ * him. Guarded by tests/mode-names-are-the-product.test.mjs.
+ *
  * Clay/Plan is the only mode with a behavioural guarantee attached to it — it does not change the
  * user's project. The prompt below asks for that behaviour; `toolsForMode` in router.ts is what
  * actually enforces it by withholding every mutating tool. Both halves are load-bearing: keep them
@@ -203,7 +211,7 @@ How to plan:
 
 Tone: a senior engineer giving a recommendation. Do not apologise for not building. Do not ask
 permission to have an opinion. Be confident about the proposal and honest about the unknowns.`,
-  stone: `Mode: Stone (builder). Implement the requested feature end to end: inspect the project, make the
+  stone: `Mode: Agent (builder). Implement the requested feature end to end: inspect the project, make the
 edits (scripts, instances, properties), then do a quick sanity check (read back what you changed, check
 output logs). Create an undo waypoint before your first change. Report what you changed and how to try it.
 
@@ -211,7 +219,7 @@ Your FIRST call is propose_plan. The user is watching a checklist appear before 
 project moves, and that checklist is the only thing that tells them what is about to happen. Name
 the tool each step will use, and include at least one verification step — a build nobody checked is
 not a finished build. Then carry the plan out; do not call propose_plan again.`,
-  rune: `Mode: Rune (deep builder). Work autonomously: plan briefly, create a checkpoint before changes,
+  rune: `Mode: Super Agent (deep builder). Work autonomously: plan briefly, create a checkpoint before changes,
 build step by step, then VERIFY: use run_and_check to run the game simulation and read logs; if there are
 errors, fix them and re-verify (up to 3 fix cycles). Prefer small verifiable increments. Finish with a
 summary of what you built, what you verified, and anything the user should playtest manually.

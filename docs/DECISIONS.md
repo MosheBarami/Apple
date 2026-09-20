@@ -691,3 +691,27 @@ decision with a date and a trigger where he previously found leftovers.
 
 **Not claimed.** That the names are gone. They are not. That the product says them to anyone — it
 does not.
+
+**Correction, 2026-09-21, later the same night.** That last sentence was wrong, and it was wrong in
+the way this repository is least willing to be wrong: it was a claim about something nobody had
+looked at. The product DID say them, to the one reader guaranteed to repeat them. `MODE_RULES` in
+`apps/worker/src/prompts.ts` opened the Agent prompt with `Mode: Stone (builder).` and the Super
+Agent prompt with `Mode: Rune (deep builder).` — measured over the real `systemPrompt`, matching
+`/\b(Stone|Clay|Rune|Golem)\b/` across the whole ~15,000-character prompt: `clay` 0 hits (it already
+said "Mode: Plan."), `stone` 1, `rune` 1, with and without the art-direction brief. The system prompt
+is the model's account of itself; a model told it is "Stone" writes "Stone" into the reply the owner
+reads.
+
+The hold above stands unchanged and is still right: the KEYS are the wire. `clay`/`stone`/`rune`
+remain the stored and transmitted values, and renaming them is still a versioned protocol bump plus
+a backfill. What changed is the PROSE, which is not the wire, costs no migration, and is the only
+part that ever reaches a person. The two labels now read `Mode: Agent (builder).` and
+`Mode: Super Agent (deep builder).`, matching ADR-018's customer names.
+
+Guarded by `apps/worker/tests/mode-names-are-the-product.test.mjs`, which asserts the `Mode:` line
+names the product and that no legacy specialist name survives anywhere in the prompt, in any mode,
+with or without the brief. Watched RED by putting `Mode: Rune` back: both assertions fail.
+
+**Still not claimed.** That the wire is renamed — it is not, by decision. That the owner has seen the
+change: it ships with the worker deploy carrying this commit, and no run has been captured from the
+site showing a reply that names its own mode either way.
