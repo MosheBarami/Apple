@@ -599,3 +599,116 @@ test('COST-MODEL.md is the document that states it, and states it in full', () =
   assert.ok(text.includes(`$${WORKERS_PAID_USD_PER_MONTH.toFixed(2)}`),
     'COST-MODEL.md does not show the platform fee the ceiling is added to');
 });
+
+//[[ HE ASKED FOR FOUR NUMBERS AND ONLY ONE OF THEM WAS GUARDED.
+//
+//   "Show me the exact expected monthly bill at low, medium, and heavy usage, and the exact hard
+//   maximum bill your safeguards allow." The maximum is held by the two tests above. The three
+//   USAGE rows — the part of the question he asked first — are a markdown table of literals in
+//   docs/COST-MODEL.md, and literals in a table are exactly what was $10.06 in four documents on
+//   2026-09-20 while the safeguards allowed $24.80.
+//
+//   Every cell in that table is DERIVABLE, which is what makes this checkable rather than a matter
+//   of opinion about what "medium" means. Only the leftmost figure is an assumption — how many
+//   neurons a day that scenario burns — and the other three follow from it by one rule:
+//
+//     billable/day  = clamp(daily - FREE_NEURONS_PER_DAY, 0, BILLABLE_NEURONS_PER_DAY)
+//     AI cost/month = min(billable/day x SIM_DAYS_PER_MONTH, BILLABLE_NEURONS_PER_MONTH)
+//                     x USD_PER_NEURON
+//     total bill    = AI cost/month + WORKERS_PAID_USD_PER_MONTH
+//
+//   The `min` is not decoration. At the daily cap the arithmetic gives $29.70 a month and the
+//   monthly backstop stops it at $19.80 — the heavy row is the ONE row where the two gates
+//   disagree, and a guard that multiplied the daily figure by thirty would demand the wrong number
+//   there and be quietly right everywhere else.
+//
+//   THE SCENARIO ASSUMPTIONS ARE NOT CHECKED and cannot be: whether "medium" is 15 builds a day is
+//   a judgement about demand, not arithmetic. What is checked is that the bill published beside
+//   each assumption is the bill those constants produce for it. Same limitation
+//   check-credit-figures states about COST-MODEL being representative, in the same words: a guard
+//   that says "these agree" is not a guard that says "this is true".  ]]
+test('the three usage rows are the bill those constants actually produce', () => {
+  const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+  const text = readFileSync(join(repoRoot, 'docs/COST-MODEL.md'), 'utf8').replace(/<!--[\s\S]*?-->/g, ' ');
+
+  /** "~10,000" / "100,000 (capped)" / "**$5.00**" -> 10000 / 100000 / 5 */
+  const num = (cell) => {
+    const m = /-?\$?([0-9][0-9,]*(?:\.[0-9]+)?)/.exec(cell.replace(/\*/g, ''));
+    return m ? Number(m[1].replace(/,/g, '')) : null;
+  };
+
+  const rows = [];
+  for (const line of text.split('\n')) {
+    const m = /^\|\s*\*\*(Low|Medium|Heavy)\*\*\s*—([^|]*)\|(.*)$/.exec(line);
+    if (!m) continue;
+    const cells = m[3].split('|').map((c) => c.trim());
+    rows.push({ name: m[1], line: line.trim(), cells });
+  }
+  assert.equal(
+    rows.length,
+    3,
+    `found ${rows.length} usage rows in docs/COST-MODEL.md's bill table, not 3. The table moved or `
+      + 'changed shape, so this test has checked nothing — follow it rather than reading a pass.',
+  );
+
+  const wrong = [];
+  for (const { name, line, cells } of rows) {
+    const [dailyCell, billableCell, aiCell, totalCell] = cells;
+    const daily = num(dailyCell);
+    const statedBillable = num(billableCell);
+    const statedAi = num(aiCell);
+    const statedTotal = num(totalCell);
+    if ([daily, statedBillable, statedAi, statedTotal].some((v) => v === null)) {
+      wrong.push(`${name}: a cell in "${line}" is not a number this can read — it is unchecked, not agreed`);
+      continue;
+    }
+    const billable = Math.min(Math.max(0, daily - FREE_NEURONS_PER_DAY_ACCOUNT_WIDE), BILLABLE_NEURONS_PER_DAY);
+    const ai = Math.min(billable * SIM_DAYS_PER_MONTH, BILLABLE_NEURONS_PER_MONTH) * USD_PER_NEURON;
+    const total = ai + WORKERS_PAID_USD_PER_MONTH;
+    if (statedBillable !== billable) {
+      wrong.push(`${name}: billable/day published as ${statedBillable}; ${daily} - ${FREE_NEURONS_PER_DAY_ACCOUNT_WIDE} free, capped at ${BILLABLE_NEURONS_PER_DAY}, is ${billable}`);
+    }
+    if (statedAi.toFixed(2) !== ai.toFixed(2)) {
+      wrong.push(`${name}: AI cost/month published as $${statedAi.toFixed(2)}; the constants give $${ai.toFixed(2)}`);
+    }
+    if (statedTotal.toFixed(2) !== total.toFixed(2)) {
+      wrong.push(`${name}: total bill published as $${statedTotal.toFixed(2)}; $${ai.toFixed(2)} of AI plus $${WORKERS_PAID_USD_PER_MONTH.toFixed(2)} Workers Paid is $${total.toFixed(2)}`);
+    }
+  }
+
+  // THE HEAVY ROW AND THE HARD MAXIMUM ARE THE SAME NUMBER, and the owner asked for both in one
+  // sentence. If they ever differ, one of the two answers he was given is wrong and neither test
+  // on its own can say which.
+  const heavy = rows.find((r) => r.name === 'Heavy');
+  const heavyDaily = num(heavy.cells[0]);
+  const heavyTotal = num(heavy.cells[3]);
+  if (heavyDaily !== DAILY_NEURON_CEILING) {
+    wrong.push(`Heavy is published at ${heavyDaily} neurons/day; the daily ceiling is ${DAILY_NEURON_CEILING}`);
+  }
+  if (heavyTotal.toFixed(2) !== HARD_MAX_USD_PER_MONTH.toFixed(2)) {
+    wrong.push(`Heavy's bill is $${heavyTotal.toFixed(2)} and the hard maximum is $${HARD_MAX_USD_PER_MONTH.toFixed(2)} — the two answers to one question disagree`);
+  }
+
+  assert.deepEqual(wrong, [], `docs/COST-MODEL.md publishes an expected bill the safeguards do not produce:\n${wrong.join('\n')}`);
+});
+
+test('the day the monthly backstop overtakes the daily one is stated, and is the day it does', () => {
+  // The heavy row's $19.80 only makes sense with this sentence beside it: thirty days at the daily
+  // cap is $29.70 and the month stops at $19.80, so the cap bites part-way through. That crossover
+  // moved from "nearly unreachable" to day 20 when the caps were raised, and the paragraph
+  // explaining the heavy row is where a reader goes to understand why it is not $29.70.
+  const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+  const text = readFileSync(join(repoRoot, 'docs/COST-MODEL.md'), 'utf8').replace(/<!--[\s\S]*?-->/g, ' ');
+  const day = Math.floor(BILLABLE_NEURONS_PER_MONTH / BILLABLE_NEURONS_PER_DAY);
+  const stated = /cap is reached on \*\*day (\d+)\*\*/.exec(text);
+  assert.ok(
+    stated,
+    'docs/COST-MODEL.md no longer says which day the monthly cap is reached on. Without it the '
+      + `heavy row's $${HARD_MAX_USD_PER_MONTH.toFixed(2)} is a number with its derivation removed.`,
+  );
+  assert.equal(
+    Number(stated[1]),
+    day,
+    `the document says day ${stated[1]}; ${BILLABLE_NEURONS_PER_MONTH} / ${BILLABLE_NEURONS_PER_DAY} is day ${day}`,
+  );
+});
