@@ -79,3 +79,16 @@ test('the reasoning lane is identified by its model id, not by its name', () => 
   assert.ok(reasoning.length > 0,
     'no lane matched the reasoning-model pattern — if the models changed, re-measure the floor rather than deleting this');
 });
+
+test('no lane routes a BUILD to a model measured unable to emit code', () => {
+  // The free lane sent every mode to qwen3-30b. Measured on the deployed gateway, same twelve
+  // prompts, each lane at its own production budget: glm-5.3-flash 11/12 for 125 neurons, qwen3
+  // 1/12 for 718 — ten of its twelve returned no code at all. A build mode may not be pointed at a
+  // model that cannot produce a module; Plan may, because Plan inspects and proposes.
+  const routing = /function gatewayModelFor\([^)]*\)[^{]*\{([\s\S]*?)\n\}/.exec(SESSION);
+  assert.ok(routing, 'gatewayModelFor is no longer one function — re-read this guard');
+  const free = /productModel === 'apple'\) return ([^;]+);/.exec(routing[1]);
+  assert.ok(free, "the free lane's routing line could not be found");
+  assert.match(free[1], /'stone'/,
+    'the free lane points at clay again; clay is qwen3-30b, measured at 1/12 for 718 neurons against stone 11/12 for 125');
+});

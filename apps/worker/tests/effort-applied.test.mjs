@@ -57,15 +57,29 @@ function payloadFor(modelId) {
   return payload;
 }
 
-test('the adapter really does drop the effort on the free lane\'s model, and really does send it on the paid one', () => {
-  const free = G.DEFAULT_MODELS[S.gatewayModelFor('stone', 'apple')];
-  const paid = G.DEFAULT_MODELS[S.gatewayModelFor('stone', 'apple-max')];
-  assert.equal(
-    'reasoning_effort' in payloadFor(free.id),
-    false,
-    `the fixture is wrong: ${free.id} now accepts reasoning_effort and this defect no longer exists`,
-  );
-  assert.equal('reasoning_effort' in payloadFor(paid.id), true, `${paid.id} must still be told how hard to think`);
+test('BOTH lanes are now told how hard to think — the defect this file documented is gone', () => {
+  //[[ THIS ASSERTED THE DEFECT, AND SAID SO ITSELF.
+  //
+  //   It read: the adapter really does DROP the effort on the free lane's model, and really does
+  //   send it on the paid one — with a failure message naming the day this would stop being true:
+  //   "the fixture is wrong: <model> now accepts reasoning_effort and this defect no longer exists".
+  //
+  //   That day is 2026-09-20. The free lane moved off @cf/qwen/qwen3-30b-a3b-fp8 because it was
+  //   measured at 1/12 for 718 neurons against glm-5.3-flash's 11/12 for 125, and both lanes now
+  //   run a model that accepts the field. So a free-tier run is finally told how hard to think, and
+  //   the reasoning tier the thinking panel displays is one the request actually carried — which
+  //   was its own separate defect: a status line reporting a setting the run never used.
+  //
+  //   Re-aimed rather than deleted, because the property worth guarding did not disappear, it
+  //   inverted: every lane a person can reach must receive the effort the policy chose for it.
+  for (const productModel of ['apple', 'apple-max']) {
+    const cfg = G.DEFAULT_MODELS[S.gatewayModelFor('stone', productModel)];
+    assert.equal(
+      'reasoning_effort' in payloadFor(cfg.id),
+      true,
+      `${productModel} runs ${cfg.id}, which drops reasoning_effort — its thinking panel would report a tier the request never carried`,
+    );
+  }
 });
 
 test('the predicate the UI path consults agrees with what the adapter actually sends', async () => {

@@ -390,7 +390,12 @@ const MAX_NUDGES = 2;
 //
 //   stone and rune are unchanged. They route to glm-5.3-flash, which is not a reasoning model,
 //   answered 4 of 4 at the old budget, and did it for 65 neurons where clay spent 200 for none. ]]
-const MODE_BASE_TOKENS: Record<GolemMode, number> = { clay: 5200, stone: 4400, rune: 5200 };
+//   4400, not 5200: `clay` is a MODE and can reach two different models. On the free and paid lanes
+//   it now routes to stone, whose gateway ceiling is 5600, so 5200 x 1.25 = 6500 would be silently
+//   clamped and our own arithmetic would be the thing shortening the reply. 4400 x 1.25 = 5500 fits
+//   stone's ceiling, sits under clay's own 6500, and is well clear of the 3200 that qwen was
+//   measured needing before it will emit anything at all.
+const MODE_BASE_TOKENS: Record<GolemMode, number> = { clay: 4400, stone: 4400, rune: 5200 };
 
 /**
  * The runtime mode allowlist. `GolemMode` is a COMPILE-TIME type and `JSON.parse(raw) as ClientMsg`
@@ -444,9 +449,31 @@ function effectiveProductModel(mode: GolemMode, requested?: ProductModel): Produ
   return requested ?? (mode === 'clay' ? 'apple' : 'apple-max');
 }
 
-/** Apple uses the existing limited Clay gateway configuration while retaining Stone's tools. */
+//[[ THE FREE LANE'S MODEL WAS WORSE AND FIVE TIMES DEARER, MEASURED.
+//
+//   This routed every free-tier mode to the clay gateway — @cf/qwen/qwen3-30b-a3b-fp8 — on the
+//   reasoning that a free tier should use "the existing limited configuration". It is not the
+//   cheaper configuration. Same twelve prompts, both lanes, each at its own production budget,
+//   scored by executing the module against its own checks:
+//
+//     stone  glm-5.3-flash    11/12    125 neurons
+//     clay   qwen3-30b-a3b     1/12    718 neurons
+//
+//   Five and a half times the spend for a eleventh of the result, because a reasoning model burns
+//   its output budget thinking and returns nothing: ten of those twelve came back with no code at
+//   all. A free tier that cannot answer is not cheap for us and is worthless to the person using it.
+//
+//   The first fix here made the free lane mode-dependent — clay for Plan, stone for builds — and
+//   product-model-entitlement.test.mjs refused it, correctly. Its principle is that the foundation
+//   is chosen by WHAT A PERSON PAYS FOR and never by which autonomy mode they clicked, which is the
+//   version a customer can actually be told. Honouring it and the measurement at once means the free
+//   lane simply gets the better model everywhere, because the better model is also the cheaper one.
+//
+//   The tiers still differ, and by the honest axis: maxStepsFor caps the free lane at Plan's step
+//   limit and the daily allowance is smaller. Same brain, less of it — rather than a brain that
+//   cannot answer. ]]
 export function gatewayModelFor(mode: GolemMode, productModel?: ProductModel): string {
-  if (productModel === 'apple') return 'clay';
+  if (productModel === 'apple') return 'stone';
   if (productModel === 'apple-max') return mode === 'clay' ? 'stone' : mode;
   return mode;
 }

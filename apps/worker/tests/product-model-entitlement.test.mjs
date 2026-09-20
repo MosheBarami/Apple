@@ -225,8 +225,15 @@ test('free Apple can ride Stone tools while its identity is persisted and return
 
 test('ProductModel, not Plan/Agent autonomy, selects the foundation that reaches Workers AI', async () => {
   const cases = [
-    { plan: 'free', mode: 'clay', productModel: 'apple', expected: DEFAULT_MODELS.clay.id },
-    { plan: 'free', mode: 'stone', productModel: 'apple', expected: DEFAULT_MODELS.clay.id },
+    // The free lane moved from clay to stone on 2026-09-20. Measured on the deployed gateway, the
+    // same twelve prompts at each lane's own production budget: stone 11/12 for 125 neurons, clay
+    // 1/12 for 718 — ten of clay's twelve returned no code at all, because a reasoning model spends
+    // its output budget thinking. The cheaper-looking lane was five and a half times the spend for
+    // an eleventh of the result. The PRINCIPLE this table exists for is untouched: the foundation
+    // still follows what a person pays for and never the autonomy mode. What differentiates the
+    // tiers is maxStepsFor and the daily allowance.
+    { plan: 'free', mode: 'clay', productModel: 'apple', expected: DEFAULT_MODELS.stone.id },
+    { plan: 'free', mode: 'stone', productModel: 'apple', expected: DEFAULT_MODELS.stone.id },
     { plan: 'builder', mode: 'clay', productModel: 'apple-max', expected: DEFAULT_MODELS.stone.id },
     { plan: 'builder', mode: 'stone', productModel: 'apple-max', expected: DEFAULT_MODELS.stone.id },
   ];

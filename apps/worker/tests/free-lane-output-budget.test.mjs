@@ -113,5 +113,8 @@ test('Plan mode asks for enough that its model can answer at all', () => {
   // And still bounded: the request must not exceed what the gateway configures for that model, or
   // our own arithmetic becomes the thing that truncates the reply.
   assert.ok(asked <= 6500, `Plan mode asks for ${asked}, past the 6500 the gateway sizes clay at`);
-  assert.equal(budget('clay', 'apple', 'high'), asked, 'the free lane must get what Plan mode asks for');
+  // The free lane routes Plan to stone now, so what actually reaches the provider is the MINIMUM
+  // of the request and stone's ceiling. Asserting equality with the request would pass only while
+  // the two happened to agree; what must hold is that the clamp is not what shortens the reply.
+  assert.equal(budget('clay', 'apple', 'high'), asked, 'the gateway clamp, not Plan mode, is deciding the budget');
 });
