@@ -32,6 +32,22 @@ const DIST = join(ROOT, 'apps', 'site', 'dist');
  *  A prefix rather than an exact path because /app is a SPA — see the header. */
 const SERVED_ELSEWHERE = {
   '/app': 'the web app and every route under it, served by apps/worker — see index.ts',
+  //[[ AN EXEMPTION THAT IS EARNED, NOT A HOLE.
+  //
+  //   /showcase is sixteen interface screens and six maps the deployed model built, assembled into
+  //   one page by packages/training/src/build-showcase-gallery.mjs and PUBLISHED — page and PNGs —
+  //   into the worker's D1 static store by infra/deploy-showcase.mjs. Nothing under
+  //   apps/site/src/pages builds it, so it is absent from dist and present in production, exactly
+  //   like /app.
+  //
+  //   The reason it had to be written down on 2026-09-21 is that the landing started linking to it.
+  //   It had been live and reachable since the day before with NOTHING pointing at it, which made
+  //   the best evidence this product has visible only to somebody who already knew the URL.
+  //
+  //   The publisher's existence is not taken on trust here: apps/site/tests/built-screen-is-evidence
+  //   .test.mjs asserts infra/deploy-showcase.mjs is in the repository and still names the prefix.
+  //   An exemption whose justification has been deleted is a hole. ]]
+  '/showcase': 'the model-output gallery, published into the worker by infra/deploy-showcase.mjs',
 };
 
 const servedElsewhere = (p) =>

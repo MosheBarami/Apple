@@ -1,0 +1,210 @@
+---
+/**
+ * THE FRONT PAGE FINALLY SHOWS SOMETHING THE MODEL MADE.
+ *
+ * <ConsentProof /> under the hero shows the PRODUCT: the plugin's panel inside a real Studio, and
+ * one request refused then allowed. That answers "is it safe to point at my place". This band
+ * answers the question the owner keeps asking instead, which is show me what it builds.
+ *
+ * Everything else on this page that looks like output is drawn by this site. The four demos in
+ * "What it is good at" are honest illustrations of a mechanism — a tree you can read, a critique
+ * with three named defects, a Luau panel, a turning wireframe — and not one of them came out of the
+ * model. Meanwhile /showcase had been live since 2026-09-20 carrying sixteen interface screens and
+ * six maps the deployed model actually built, and the landing neither showed one nor linked to it.
+ *
+ * NOT ONE NUMBER OR CAVEAT HERE IS WRITTEN BY THIS FILE. Every figure names a field in
+ * docs/evidence/ui-showcase/manifest.json — a record the run itself emitted — and
+ * tests/built-screen-is-evidence.test.mjs resolves that field and compares. The two caveat
+ * sentences are quoted verbatim out of the same manifest. The heading, the small labels and the
+ * arrow are the only English on this band that is ours.
+ *
+ * THE PICTURE IS THE EVIDENCE FILE, BYTE FOR BYTE. public/assets/proof/model-screen-inventory-… is
+ * a straight copy of docs/evidence/ui-showcase/screen-inventory--tycoon.svg — the artefact the
+ * renderer wrote, not a rasterisation of it and not a crop of one. The guard compares the two files
+ * byte for byte. Nothing was cleaned up, and it shows: the cash figure in the header clips against
+ * the close button and the item grid fills two rows of a panel built for more. Those stay.
+ *
+ * WHY IT IS A COMPONENT rather than markup in index.astro — the same reason ConsentProof.astro is:
+ * a seventy-line insertion into a file another lane may be holding is how one lane's commit
+ * swallows another's. It also means this band carries its own door to /showcase, which matters
+ * more than usual here: on the day this shipped the only link to that gallery anywhere in the
+ * committed tree was none.
+ *
+ * NO `data-reveal` ON THE FIGURE ITSELF, only on the head and the body blocks. The reveal pass is
+ * held to "the stage is finished before the script arrives" everywhere on this page; an <img> is
+ * finished when the bytes land, and hiding it behind a class the script may never add would put
+ * the one piece of real output on this page behind the failure mode that
+ * tests/reveal-cannot-hide-content.test.mjs exists for.
+ */
+import { BUILT_SCREEN } from '../data/showcase-proof';
+
+/* Seconds, from the manifest's milliseconds. Derived here rather than written down, so the page
+   cannot state a duration the run did not take. One decimal: the run took a minute and a half and
+   rounding it to "100 s" would be a different number than the record holds. */
+const seconds = (BUILT_SCREEN.ms.value / 1000).toFixed(1);
+---
+
+<section class="band" id="built" aria-labelledby="built-title">
+  <div class="shell">
+    <div class="band-head" data-reveal>
+      <h2 id="built-title" class="section-title">One screen, as the model wrote it</h2>
+      <p class="section-sub">
+        Not a mock-up of the product and not a drawing by this page: the model was given the
+        construction library the product ships, asked for a tycoon inventory screen, and this is
+        what its Luau put on the screen when it was run.
+      </p>
+    </div>
+
+    <figure class="built-shot">
+      {/* NOT lazy, and no `data-reveal`. This is the only picture of output on the page; a reader
+          who scrolls to it and meets an empty box because a class never arrived has met the exact
+          failure the reveal guard was written for. `width`/`height` are the render's own viewport,
+          so the row reserves its box before the file lands. */}
+      <img
+        src={BUILT_SCREEN.capture.src}
+        alt={BUILT_SCREEN.capture.alt}
+        width={BUILT_SCREEN.capture.width}
+        height={BUILT_SCREEN.capture.height}
+        decoding="async"
+      />
+      <figcaption class="micro built-caption">
+        <span>{BUILT_SCREEN.screenId} · {BUILT_SCREEN.capturedLabel}</span>
+        <span>{BUILT_SCREEN.hidden.value} {BUILT_SCREEN.hidden.label} — this is the screen the script leaves behind</span>
+      </figcaption>
+    </figure>
+
+    <ul class="built-figures" role="list" data-reveal>
+      {BUILT_SCREEN.figures.map((f) => (
+        <li class="built-figure">
+          <span class="built-n">{f.value.toLocaleString('en-GB')}</span>
+          <span class="micro built-label">{f.label}</span>
+        </li>
+      ))}
+    </ul>
+
+    <p class="built-more" data-reveal>
+      <span class="built-took">{seconds} seconds of model time, once.</span>
+      <a href={BUILT_SCREEN.gallery}>
+        All {BUILT_SCREEN.galleryScreens.value} {BUILT_SCREEN.galleryScreens.label} and {BUILT_SCREEN.galleryMaps.value} {BUILT_SCREEN.galleryMaps.label}, with the failures at the same size &rarr;
+      </a>
+    </p>
+
+    <p class="micro built-source">
+      {BUILT_SCREEN.renderer.text}. {BUILT_SCREEN.library.text} Record: {BUILT_SCREEN.manifest}
+    </p>
+  </div>
+</section>
+
+<style>
+  /* This band's own rules live here rather than in landing.css for the reason ConsentProof.astro
+     gives: that file has been carrying another lane's in-flight work for most of a night, and a
+     section is not worth committing somebody else's half-finished stylesheet to ship. Every colour,
+     radius and border below is an existing custom property from landing.css — nothing new is
+     invented, so the band inherits both themes for free. */
+
+  .built-shot {
+    margin: 0;
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    overflow: hidden;
+    background: var(--raised);
+  }
+
+  /* The render's own background is a near-black; on the light theme it would otherwise sit on the
+     page as an unexplained dark rectangle with a hairline round it. It is a screenshot of a game
+     interface, so it is allowed to be dark — the inset shadow is what makes it read as a screen
+     rather than as a hole. */
+  .built-shot img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .built-caption {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 18px;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-top: 1px solid var(--line);
+    color: var(--faint);
+  }
+
+  .built-figures {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+    margin: 24px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .built-figure {
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    background: var(--raised);
+  }
+
+  .built-n {
+    display: block;
+    font-size: 26px;
+    line-height: 32px;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .built-label {
+    display: block;
+    margin-top: 6px;
+    color: var(--faint);
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
+    text-wrap: pretty;
+  }
+
+  .built-more {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    align-items: baseline;
+    justify-content: space-between;
+    margin: 18px 0 0;
+    font-size: 13.5px;
+    line-height: 21px;
+  }
+
+  .built-took { color: var(--muted); }
+
+  /* `a` is `color: inherit; text-decoration: none` site-wide on the landing, so an unstyled anchor
+     here would be invisible as a link. Same four declarations ConsentProof.astro needs. */
+  .built-more a {
+    color: var(--ink);
+    text-decoration: underline;
+    text-decoration-color: var(--line-strong);
+    text-underline-offset: 3px;
+  }
+
+  .built-more a:hover { text-decoration-color: var(--ink); }
+
+  .built-source {
+    margin: 24px 0 0;
+    color: var(--faint);
+    letter-spacing: 0.6px;
+    text-transform: none;
+    font-weight: 400;
+    font-size: 12px;
+    line-height: 19px;
+    overflow-wrap: anywhere;
+  }
+
+  /* 760px is where .proof drops to one column in landing.css; the two bands sit next to each other
+     on the page and changing shape at different widths would read as a mistake. Two columns rather
+     than one below it, because a single column of four tiles is a column of numbers nobody scans. */
+  @media (max-width: 760px) {
+    .built-figures { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .built-more { justify-content: flex-start; }
+  }
+</style>

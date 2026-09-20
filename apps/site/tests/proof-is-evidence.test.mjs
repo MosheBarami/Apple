@@ -41,6 +41,7 @@ import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CONSENT_PROOF, CONSENT_PROOF_QUOTES } from '../src/data/consent-proof.ts';
+import { BUILT_SCREEN } from '../src/data/showcase-proof.ts';
 import { visibleCopy } from './lib/visible-copy.mjs';
 
 const SITE = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -149,6 +150,21 @@ test('every image on the landing is a declared capture — nothing undeclared, n
   // Property 4. The old rule in asset-wall.test.mjs was "no <img> at all", which was the right
   // shape for a page that had no evidence to show and the wrong shape once it did. This is the
   // narrower rule that survives: an image is allowed exactly when something can answer for it.
+  //
+  //[[ IT READ TWO FILES UNTIL 2026-09-21, AND THE LANDING HAD GROWN A THIRD.
+  //
+  //   This scanned index.astro and ConsentProof.astro by name, and asserted that exactly one
+  //   capture was declared. Both were true when it was written and both stopped being true the
+  //   moment components/BuiltScreen.astro shipped the screen the model built: a second <img> on
+  //   the front page, in a file this guard did not open. The property is "no undeclared image on
+  //   the LANDING", and a guard scoped to a list of filenames enforces it only until somebody adds
+  //   a file — which is the same shape as the failure recorded in asset-wall.test.mjs, where an
+  //   assertion went on printing green because the thing it watched for moved one file over.
+  //
+  //   The component list is now discovered from the page the way asset-wall.test.mjs discovers it,
+  //   by matching any `../components/*.astro` path in index.astro, and the declared captures come
+  //   from the data modules rather than from a count written here. Adding a third band with a
+  //   picture is then a red test until its capture is declared, which is the point. ]]
   //[[ COMMENTS COME OUT FIRST, AND THIS GUARD LEARNED THAT ABOUT ITSELF ON ITS FIRST RUN.
   //   The band's own header comment explains why the picture is there, and it does so by writing
   //   the words `<img>` and `<video>` — so the scan matched its own explanation and reported a
@@ -156,24 +172,52 @@ test('every image on the landing is a declared capture — nothing undeclared, n
   //   recurring failure in miniature: the instrument could not tell the page from the note beside
   //   it, and rendered that inability as a finding. tests/lib/visible-copy.mjs is the shared
   //   stripper six other guards in this directory already use for exactly this. ]]
-  const declared = new Set([CONSENT_PROOF.capture.src]);
-  for (const source of [visibleCopy(page), visibleCopy(band)]) {
+  /** Every capture the landing is allowed to render, and the expression that must carry it. */
+  const declared = new Map([
+    ['CONSENT_PROOF.capture.src', CONSENT_PROOF.capture.src],
+    ['BUILT_SCREEN.capture.src', BUILT_SCREEN.capture.src],
+  ]);
+
+  // The same finder asset-wall.test.mjs uses, and the same reason for it: a path, not an import
+  // statement, so quote style and import shape cannot silently narrow the scan.
+  const sources = [['src/pages/index.astro', visibleCopy(page)]];
+  for (const rel of new Set([...page.matchAll(/\.\.\/components\/([A-Za-z0-9_-]+\.astro)/g)].map((m) => m[1]))) {
+    const file = join(SITE, 'src', 'components', rel);
+    assert.ok(existsSync(file), `index.astro names components/${rel}, which is not on disk`);
+    sources.push([`src/components/${rel}`, visibleCopy(readFileSync(file, 'utf8'))]);
+  }
+  // A LOOP OVER NOTHING IS NOT A CHECK. The landing has rendered .astro components since before
+  // this rule existed; a finder that matches none of them has broken, not found a page without any.
+  assert.ok(sources.length >= 3,
+    `only ${sources.length - 1} component(s) of the landing were found to scan — the finder in this`
+    + ' test has stopped matching index.astro, so the rules below have read almost nothing');
+
+  const seen = new Set();
+  for (const [name, source] of sources) {
     for (const tag of source.matchAll(/<img\b[^>]*>/gi)) {
       const literal = tag[0].match(/\bsrc\s*=\s*["']([^"']+)["']/i);
       assert.ok(!literal,
-        `an <img> on the landing hard-codes src="${literal?.[1]}". Every image must come from`
-        + ' src/data/consent-proof.ts so its provenance is checkable.');
+        `${name} has an <img> that hard-codes src="${literal?.[1]}". Every image must come from a`
+        + ' data module so its provenance is checkable.');
       const bound = tag[0].match(/\bsrc\s*=\s*\{([^}]+)\}/);
-      assert.ok(bound, `an <img> on the landing has no src at all:\n  ${tag[0]}`);
-      assert.match(bound[1], /CONSENT_PROOF\.capture\.src/,
-        `an <img> on the landing takes its src from \`${bound[1].trim()}\`, which is not a declared`
-        + ' capture');
-      assert.match(tag[0], /\balt=/, `an <img> on the landing has no alt attribute:\n  ${tag[0]}`);
-      assert.match(tag[0], /\bwidth=/, `an <img> on the landing has no width, so it reflows the page on load`);
-      assert.match(tag[0], /\bheight=/, `an <img> on the landing has no height, so it reflows the page on load`);
+      assert.ok(bound, `an <img> on the landing has no src at all, in ${name}:\n  ${tag[0]}`);
+      const expr = bound[1].trim();
+      assert.ok(declared.has(expr),
+        `${name} has an <img> whose src is \`${expr}\`, which is not a declared capture. Known`
+        + ` captures: ${[...declared.keys()].join(', ')}`);
+      seen.add(expr);
+      assert.match(tag[0], /\balt=/, `an <img> on the landing has no alt attribute, in ${name}:\n  ${tag[0]}`);
+      assert.match(tag[0], /\bwidth=/, `an <img> in ${name} has no width, so it reflows the page on load`);
+      assert.match(tag[0], /\bheight=/, `an <img> in ${name} has no height, so it reflows the page on load`);
     }
   }
-  assert.equal(declared.size, 1, 'more captures are declared than this guard enumerates');
+
+  // Both declared captures must actually be rendered. A capture declared and then dropped from the
+  // markup is an evidence file the page claims to show and does not.
+  for (const expr of declared.keys()) {
+    assert.ok(seen.has(expr),
+      `${expr} is declared as a capture of the landing but no <img> on it renders that expression`);
+  }
 });
 
 test('the record names the day the capture claims, so the two cannot drift apart', () => {

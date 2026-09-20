@@ -5,6 +5,11 @@ import { PLAN_LIMITS, PRODUCT_MODELS, PRODUCT_MODEL_INFO } from '@golem/shared';
 import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE, STUDIO_PLUGIN_STORE_REFUSAL } from '../lib/studio-plugin';
 import Horizon from '../components/Horizon.astro';
 import ConsentProof from '../components/ConsentProof.astro';
+/* The one piece of MODEL OUTPUT on this page. Everything in "What it is good at" above it is drawn
+   by this site; this band is a screen the deployed model built, shipped byte-identical from
+   docs/evidence, and the door to the other fifteen and the six maps at /showcase. Its own header
+   carries the reasons. */
+import BuiltScreen from '../components/BuiltScreen.astro';
 
 /*
  * RESTRUCTURED 2026-09-20 AGAINST THE ROSEBUD MEASUREMENT.
@@ -713,6 +718,11 @@ const asks = [
         </div>
       </div>
     </section>
+
+    {/* AFTER the four demos, not before them: the demos say what it does, and this says what came
+        out. See components/BuiltScreen.astro for why it is a component and why the picture is the
+        evidence file rather than a prettier crop of it. */}
+    <BuiltScreen />
 
     <section class="band" id="models" aria-labelledby="plans-title">
       <div class="shell">
