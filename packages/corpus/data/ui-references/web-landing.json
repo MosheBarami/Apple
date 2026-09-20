@@ -25,7 +25,80 @@
         "Its wordmark is a light serif against a sans UI. That pairing is theirs; ours has its own mark and must not borrow the gesture wholesale.",
         "Accent use is a single system green on one pill. Copying the exact hue would be copying a brand decision rather than a design rule; the rule is 'one saturated colour, used once'."
       ],
-      "licence": { "status": "unverified_reference_only", "copyPermission": false }
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false
+      }
+    },
+    {
+      "id": "chatgpt-overview-motion",
+      "source": "https://chatgpt.com/overview/ — measured in a real browser on 2026-09-20 by walking the live DOM: document.getAnimations() for motion actually running, getComputedStyle over every element for transition-duration, a scan of every reachable stylesheet for @keyframes rules, and a direct count of <canvas> (with its resolved context type) and <video>. Numbers only; no markup, stylesheet, image or sentence is copied. Named by the owner as a site whose motion to match.",
+      "demonstrates": [
+        "ZERO canvas elements, ZERO <video>, ZERO SVG <animate>. The page the owner pointed at as the example of modern AI-product motion has no ambient animation technique of any kind on it.",
+        "138 @keyframes rules are declared, and document.getAnimations() returns 0 while the page sits idle. Every one of those keyframes is a STATE — a toast opening, a skeleton shimmering, a dot pulsing, a sidebar floating in — and none of them is decoration that runs on its own.",
+        "Named keyframes read as a catalogue of interaction states rather than scenery: toast-open, toast-close, float-sidebar-in, float-sidebar-out, shimmer-skeleton, pulse-dot, loading-results-shimmer, icon-shimmer, blink, add-top-shadow.",
+        "Transition durations cluster in two bands with almost nothing between them: a fast band at 0.1-0.15s (12 elements at 0.15s) for anything under the finger, and a slow band at 0.72s (14 elements) for surfaces that move on their own.",
+        "Only 16 elements carry will-change. Compositor hinting is applied to the few things that actually move, not sprayed across the page."
+      ],
+      "cautions": [
+        "This is the strongest single correction to the brief this file was written under. \"Make it feel like ChatGPT\" cannot mean \"add a background animation\", because ChatGPT does not have one. It means the opposite: spend the motion budget on what happens when somebody touches something."
+      ],
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false
+      }
+    },
+    {
+      "id": "cloudflare-home-motion",
+      "source": "https://www.cloudflare.com/ — measured in a real browser on 2026-09-20 by walking the live DOM: document.getAnimations() for motion actually running, getComputedStyle over every element for transition-duration, a scan of every reachable stylesheet for @keyframes rules, and a direct count of <canvas> (with its resolved context type) and <video>. Numbers only; no markup, stylesheet, image or sentence is copied. Named by the owner as a site whose motion to match.",
+      "demonstrates": [
+        "ONE webgl2 canvas, sized 977x485 in the layout, plus ONE autoplaying looping muted <video>. The ambient motion budget is spent on exactly two objects on the whole page.",
+        "233 animations were running at the moment of measurement — by far the highest of the five references — against 101 declared @keyframes rules.",
+        "A single house transition duration carries the page: 0.2s on 147 separate elements. The next most common is 2s on 26 elements, which is a different job entirely (ambient drift, not response).",
+        "A keyframe named canvas-fade-in exists, so the WebGL layer is faded in after it is ready rather than appearing at first paint. The expensive layer is never what the first frame depends on.",
+        "Only 13 elements carry will-change, on a page with thousands of elements.",
+        "marquee and infinite-scroll keyframes: some of the perceived liveness is continuously scrolling content, not per-element animation."
+      ],
+      "cautions": [
+        "Its canvas backing buffer read 300x150 (the spec default) while its layout box read 977x485, because the measuring tab was not focused and requestAnimationFrame never fired. That is a fact about the MEASUREMENT, not about their page — and it is the same artefact that hid a completely dead canvas in our own hero. Recorded here because it is the exact trap."
+      ],
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false
+      }
+    },
+    {
+      "id": "grok-home-motion",
+      "source": "https://grok.com/ — measured in a real browser on 2026-09-20 by walking the live DOM: document.getAnimations() for motion actually running, getComputedStyle over every element for transition-duration, a scan of every reachable stylesheet for @keyframes rules, and a direct count of <canvas> (with its resolved context type) and <video>. Numbers only; no markup, stylesheet, image or sentence is copied. Named by the owner as a site whose motion to match.",
+      "demonstrates": [
+        "ZERO canvas, ZERO video, 18 @keyframes rules, 4 animations running. It is the QUIETEST of the five references by a wide margin.",
+        "23 of 709 elements carry any transition at all — 3.2%, the lowest ratio measured. Its fast band is 0.1s (9 elements) and 0.15s (5).",
+        "A product page can be perceived as modern and expensive while being almost completely still. Stillness is a legitimate position, not a failure state."
+      ],
+      "cautions": [
+        "It is a signed-out product surface, not a marketing page, so it is a fair reference for our app shell and a weak one for our landing."
+      ],
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false
+      }
+    },
+    {
+      "id": "gemini-deepmind-motion",
+      "source": "https://deepmind.google/models/gemini/ — measured in a real browser on 2026-09-20 by walking the live DOM: document.getAnimations() for motion actually running, getComputedStyle over every element for transition-duration, a scan of every reachable stylesheet for @keyframes rules, and a direct count of <canvas> (with its resolved context type) and <video>. Numbers only; no markup, stylesheet, image or sentence is copied. Named by the owner as a site whose motion to match.",
+      "demonstrates": [
+        "TWENTY-NINE <video> elements on one page, and ZERO canvas. Its liveness is moving CONTENT, not a moving background — the page is alive because the product is shown working, over and over, down the length of it.",
+        "Only 10 @keyframes rules on a 3,315-element page. Almost no bespoke animation is authored at all.",
+        "183 elements carry a transition (5.5%), in two bands: 0.2s on 74 and 0.3s on 54.",
+        "The technique that makes this page feel expensive is reach, not sophistication: a long page, and something demonstrating the product in every section of it."
+      ],
+      "cautions": [
+        "Twenty-nine videos is a production budget, not a CSS decision. The transferable rule is \"every section shows the thing working\", and that is satisfiable with a recording of our own product, not with decoration."
+      ],
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false
+      }
     }
   ],
   "rules": [
@@ -52,12 +125,33 @@
     {
       "rule": "Never ship a section whose content we cannot fill truthfully.",
       "why": "Not a rule from the bar — a rule against it. Half its structure is social proof, and an empty or invented version of that is worse than omitting the section."
+    },
+    {
+      "rule": "Spend the motion budget on RESPONSE first and scenery last.",
+      "why": "Measured across all four sites the owner named as the bar: ChatGPT has 138 keyframes and zero ambient animation; Grok has 18 keyframes and no canvas or video at all. Not one of the four treats a moving background as the thing that makes a page feel alive, and two of them do not have one."
+    },
+    {
+      "rule": "One house transition duration, applied widely, beats several tuned ones applied narrowly.",
+      "why": "Cloudflare runs 0.2s on 147 elements; Gemini runs 0.2s on 74 and 0.3s on 54. The consistency is what reads as craft. A page with six durations on twenty elements reads as unfinished even when every individual choice is defensible."
+    },
+    {
+      "rule": "Two bands only: 0.1-0.16s for anything under the finger, 0.2-0.3s for anything that moves on its own. Nothing in between.",
+      "why": "Every one of the four references separates these cleanly, and none of them uses a mid-range duration for a hover state."
+    },
+    {
+      "rule": "Fade an expensive layer IN after it is ready; never let first paint depend on it.",
+      "why": "Cloudflare declares a canvas-fade-in keyframe for exactly this. Our own hero shipped a canvas that never ran at all, and because the CSS atmosphere underneath it was independent, the page still rendered a composition instead of a blank panel."
+    },
+    {
+      "rule": "A long page whose every section shows the product working beats a short page with an effect on top of it.",
+      "why": "Gemini carries 29 videos and 10 keyframes. It is the least animated page of the five by authored motion and among the most alive to look at, because the motion is the product rather than the decoration."
     }
   ],
   "gapsAgainstShippedTheme": [
-    "apps/site ships a LIGHT theme (--paper #f5f5f5, --ink #080808) in Arial. Every value above is a gap until the tokens change.",
-    "The shipped type scale has no 96px step and no micro-label step.",
-    "Nothing in the shipped site uses a four-step surface ramp; it uses paper/surface pairs.",
-    "Only one reference is measured. Five is the standing minimum, so this file is one opinion with numbers attached and says so."
+    "The one-reference gap this file recorded is now closed: five references are measured, which is the standing minimum.",
+    "MEASURED AGAINST THE SHIPPED SITE on 2026-09-20: apps/site declares 6 @keyframes rules and puts a transition on 27 of its 241 elements (11.2%). Per element that ratio is the HIGHEST of the five references (Gemini 5.5%, Cloudflare ~5.5%, Grok 3.2%) — so the shipped page is not short of per-element response, and any plan that starts from \"add more hover transitions\" is aimed at the wrong thing.",
+    "THE REAL GAP IS REACH, NOT DENSITY. Gemini is 3,315 elements with 29 videos; Cloudflare is ~4,000 elements with WebGL and a video. The shipped landing is 241 elements, and below the hero nothing moves, reveals, or demonstrates anything. It is not under-animated. It is short.",
+    "CORRECTED 2026-09-20, having first been written here in the wrong direction. This line read \"no scroll-driven motion of any kind is shipped\", and that was false: `.step` already carried a native scroll-driven animation — `animation: step-focus; animation-timeline: view()` — fading each step from 0.5 to 1 across its entry. The probe that produced these numbers counted document.getAnimations(), @keyframes rules, <canvas> and <video>, and a view()-timeline animation is invisible to all four of those when the measuring tab is not scrolled: it is declared, not running. The real gap was narrower — ONE element had scroll-driven motion and the other twelve sections had none — and an [data-reveal] pass added on 2026-09-20 covers those, deliberately excluding `.step` so two mechanisms never contend for one opacity.",
+    "Nothing on the landing shows the product actually working. There is no recording, no replay, no live demonstration — which is the single technique Gemini uses 29 times."
   ]
 }

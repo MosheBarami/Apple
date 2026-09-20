@@ -129,5 +129,54 @@ const ogImage = new URL('/og.png', site);
         paintBand();
       })();
     </script>
+
+    <script is:inline>
+      /*
+       * SCROLL REVEAL — the driver for the [data-reveal] rules in landing.css.
+       *
+       * Inline and at the end of <body> on purpose, matching the theme script above: this route's
+       * whole point is that it ships essentially nothing, and a hoisted module for twenty lines
+       * would be a bundle request to do less than this does. It also means the DOM above it is
+       * already parsed, so there is no readiness dance and no `document.currentScript` — the
+       * spelling that shipped a completely dead hero effect on this very page today, because
+       * `currentScript` is null in every module script by specification.
+       *
+       * EVERY BRANCH ENDS WITH THE CONTENT VISIBLE. That is the only hard requirement here. A front
+       * page that hides its own copy waiting for a class that never arrives is far worse than a
+       * front page that does not animate, so the failure is made impossible four times over — see
+       * the long note above the rules in landing.css. The failsafe below is the fourth: whatever
+       * else happens, everything is revealed shortly after load.
+       */
+      (function () {
+        var nodes = [].slice.call(document.querySelectorAll('[data-reveal]'));
+        if (!nodes.length) return;
+
+        function show(el) {
+          var d = el.getAttribute('data-reveal-delay');
+          if (d) el.style.setProperty('--reveal-delay', d + 'ms');
+          el.classList.add('is-in');
+        }
+        function showAll() {
+          for (var i = 0; i < nodes.length; i++) show(nodes[i]);
+        }
+
+        if (!('IntersectionObserver' in window)) { showAll(); return; }
+
+        var io = new IntersectionObserver(function (entries) {
+          for (var i = 0; i < entries.length; i++) {
+            if (!entries[i].isIntersecting) continue;
+            show(entries[i].target);
+            io.unobserve(entries[i].target);
+          }
+        }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+
+        for (var i = 0; i < nodes.length; i++) io.observe(nodes[i]);
+
+        /* The failsafe. An observer that never fires — a zero-height parent, a threshold a short
+           section can never satisfy, a browser quirk — would leave copy invisible forever. After
+           this beat, nothing is hidden regardless of what the observer did or did not do. */
+        setTimeout(function () { io.disconnect(); showAll(); }, 2600);
+      })();
+    </script>
   </body>
 </html>

@@ -1,0 +1,154 @@
+---
+/**
+ * THE HERO THAT ANSWERS THE POINTER.
+ *
+ * The atmosphere behind this hero was already animating — an SVG drifting on a 38-second cycle at
+ * 0.16 opacity, and ridges breathing between 0.4 and 0.68. All of it correct, none of it
+ * perceptible, so the page read as a screenshot. The owner said so repeatedly and he was right.
+ *
+ * This is a flow field: a few hundred particles advected through a curl-like noise field, trailed
+ * by drawing over the previous frame with a low-alpha wash instead of clearing it. It is the same
+ * technique the hero on a modern AI product page uses, and it is about 60 lines rather than a
+ * library.
+ *
+ * WHY CANVAS AND NOT MORE CSS. CSS can move a gradient; it cannot make the movement RESPOND. The
+ * thing that separates a live page from a decorated one is that the pointer changes what happens,
+ * and this field bends toward the cursor within a radius and relaxes back when it leaves.
+ *
+ * WHAT IT COSTS, AND THE THREE WAYS IT GIVES UP:
+ *   - prefers-reduced-motion: one still frame is drawn and the loop never starts. Not a blank box —
+ *     the composition is the same, it simply does not move.
+ *   - a hidden tab: the loop stops on visibilitychange. A background tab burning a core is the
+ *     most common cost of an effect like this and it is entirely avoidable.
+ *   - no 2D context at all: the canvas stays empty and the CSS atmosphere behind it is untouched,
+ *     so the hero degrades to exactly what shipped before this file existed.
+ *
+ * It is decorative and carries aria-hidden; nothing here is content, and a screen reader is told
+ * nothing about it.
+ */
+---
+<canvas class="flow" aria-hidden="true"></canvas>
+
+<script>
+  // NOT `document.currentScript`. Astro hoists a component's <script> into a bundled
+  // `<script type="module">`, and `currentScript` is null in every module script by spec — so that
+  // spelling silently resolved to undefined and the whole effect no-opped while the <canvas> element
+  // still shipped. The page looked identical to the one before this file existed, which is exactly
+  // the failure that is impossible to see by reading the served HTML for the element.
+  const canvas = document.querySelector('canvas.flow');
+  if (canvas instanceof HTMLCanvasElement) {
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+      // Read the accent off the page rather than hardcoding it, so the field follows the theme and
+      // a token change cannot leave one green on the page and a different green in the hero.
+      const accent = () =>
+        getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#00d492';
+
+      let w = 0, h = 0, dpr = 1;
+      const COUNT = 700;
+      const pts = [];
+      const pointer = { x: -9999, y: -9999, on: false };
+
+      function resize() {
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const r = canvas.getBoundingClientRect();
+        w = Math.max(1, Math.round(r.width));
+        h = Math.max(1, Math.round(r.height));
+        canvas.width = Math.round(w * dpr);
+        canvas.height = Math.round(h * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, w, h);
+      }
+
+      function seed() {
+        pts.length = 0;
+        for (let i = 0; i < COUNT; i++) {
+          pts.push({ x: Math.random() * w, y: Math.random() * h, life: Math.random() * 220 });
+        }
+      }
+
+      /** Cheap smooth field. Two sines crossed is enough structure to read as flow and costs nothing. */
+      function angleAt(x, y, t) {
+        return (
+          Math.sin(x * 0.0021 + t * 0.00013) * 1.9 +
+          Math.cos(y * 0.0026 - t * 0.00017) * 1.6 +
+          Math.sin((x + y) * 0.0009 + t * 0.00009) * 0.9
+        );
+      }
+
+      function step(t) {
+        // The trail: wash the previous frame toward the page ground rather than clearing it.
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.fillStyle = 'rgba(0,0,0,0.034)';
+        ctx.fillRect(0, 0, w, h);
+        ctx.globalCompositeOperation = 'source-over';
+
+        ctx.strokeStyle = accent();
+        ctx.lineWidth = 1.05;
+        ctx.beginPath();
+        for (const p of pts) {
+          const a = angleAt(p.x, p.y, t);
+          let vx = Math.cos(a) * 1.35;
+          let vy = Math.sin(a) * 1.35;
+
+          if (pointer.on) {
+            const dx = p.x - pointer.x;
+            const dy = p.y - pointer.y;
+            const d2 = dx * dx + dy * dy;
+            if (d2 < 34000) {
+              const f = (1 - d2 / 34000) * 1.7;
+              vx += (dx / (Math.sqrt(d2) || 1)) * f;
+              vy += (dy / (Math.sqrt(d2) || 1)) * f;
+            }
+          }
+
+          ctx.moveTo(p.x, p.y);
+          p.x += vx;
+          p.y += vy;
+          ctx.lineTo(p.x, p.y);
+
+          if (--p.life < 0 || p.x < -20 || p.x > w + 20 || p.y < -20 || p.y > h + 20) {
+            p.x = Math.random() * w;
+            p.y = Math.random() * h;
+            p.life = 160 + Math.random() * 200;
+          }
+        }
+        ctx.globalAlpha = 0.62;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+
+      let raf = 0;
+      const loop = (t) => { step(t); raf = requestAnimationFrame(loop); };
+      const start = () => { if (!raf && !reduced.matches) raf = requestAnimationFrame(loop); };
+      const stop = () => { if (raf) { cancelAnimationFrame(raf); raf = 0; } };
+
+      function boot() {
+        resize();
+        seed();
+        if (reduced.matches) {
+          // A still composition, not an empty box: advance the field far enough to draw structure,
+          // then stop. Somebody who asked for less motion still gets the design.
+          for (let i = 0; i < 90; i++) step(i * 16);
+          stop();
+        } else {
+          start();
+        }
+      }
+
+      addEventListener('resize', () => { const running = !!raf; stop(); boot(); if (!running) stop(); }, { passive: true });
+      addEventListener('pointermove', (e) => {
+        const r = canvas.getBoundingClientRect();
+        pointer.x = e.clientX - r.left;
+        pointer.y = e.clientY - r.top;
+        pointer.on = true;
+      }, { passive: true });
+      addEventListener('pointerleave', () => { pointer.on = false; }, { passive: true });
+      document.addEventListener('visibilitychange', () => (document.hidden ? stop() : start()));
+      reduced.addEventListener?.('change', () => { stop(); boot(); });
+
+      boot();
+    }
+  }
+</script>

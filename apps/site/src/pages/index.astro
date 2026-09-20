@@ -3,6 +3,7 @@ import Landing from '../layouts/Landing.astro';
 import AppleMark from '../components/AppleMark.astro';
 import { PLAN_LIMITS, PRODUCT_MODELS, PRODUCT_MODEL_INFO } from '@golem/shared';
 import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE, STUDIO_PLUGIN_STORE_REFUSAL } from '../lib/studio-plugin';
+import FlowField from '../components/FlowField.astro';
 
 /*
  * REBUILT 2026-09-19 AGAINST A MEASURED BAR, AND THE HERO RE-MEASURED AGAINST IT ON 2026-09-20.
@@ -140,6 +141,7 @@ const capabilities = [
     <section class="hero" aria-labelledby="hero-title">
       <div class="atmosphere" aria-hidden="true">
         <div class="light-column"></div>
+        <FlowField />
         <svg viewBox="0 0 1600 760" preserveAspectRatio="xMidYMin slice">
           {Array.from({ length: 18 }, (_, i) => (
             <path d={`M-80 ${330 + i * 22} C 420 ${190 + i * 16}, 1060 ${560 - i * 9}, 1840 ${250 + i * 20}`} />
@@ -211,13 +213,13 @@ const capabilities = [
 
     <section class="band" id="inside" aria-labelledby="truths-title">
       <div class="shell">
-        <div class="band-head">
+        <div class="band-head" data-reveal>
           <h2 id="truths-title" class="section-title">What it will and will not do</h2>
           <p class="section-sub">Every line here is a rule in the plugin, not a promise in a brochure.</p>
         </div>
         <div class="truths">
-          {truths.map((t) => (
-            <article class="truth">
+          {truths.map((t, i) => (
+            <article class="truth" data-reveal data-reveal-delay={String(i * 70)}>
               <p class="micro">{t.label}</p>
               <h3>{t.title}</h3>
               <p>{t.body}</p>
@@ -229,12 +231,12 @@ const capabilities = [
 
     <section class="band" aria-labelledby="sequence-title">
       <div class="shell">
-        <div class="band-head">
+        <div class="band-head" data-reveal>
           <h2 id="sequence-title" class="section-title">How a run actually goes</h2>
           <p class="section-sub">Three steps, in order, with the third one being the point.</p>
         </div>
         <div class="sequence">
-          <figure class="sequence-figure">
+          <figure class="sequence-figure" data-reveal>
             <figcaption class="figure-head micro">Studio · activity</figcaption>
             <div class="activity">
               {activity.map((line) => <div class={line.refused ? 'activity-line refused' : 'activity-line'}>{line.text}</div>)}
@@ -266,7 +268,7 @@ const capabilities = [
 
     <section class="band" aria-labelledby="cap-title">
       <div class="shell">
-        <div class="band-head">
+        <div class="band-head" data-reveal>
           <h2 id="cap-title" class="section-title">What it is good at</h2>
           <p class="section-sub">Four things it does end to end today.</p>
         </div>
@@ -293,7 +295,7 @@ const capabilities = [
 
     <section class="band" id="models" aria-labelledby="plans-title">
       <div class="shell">
-        <div class="band-head">
+        <div class="band-head" data-reveal>
           <h2 id="plans-title" class="section-title">Two ways to work</h2>
           <p class="section-sub">Apple is free to use today. Paid checkout is not open yet, and the pricing page says so too.</p>
         </div>
@@ -311,7 +313,7 @@ const capabilities = [
       </div>
     </section>
 
-    <section class="closing">
+    <section class="closing" data-reveal>
       <div class="shell">
         <h2 class="statement">Start with one place and one idea.</h2>
         <a class="pill" href="/app/signup">Create a free account</a>

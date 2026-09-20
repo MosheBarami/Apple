@@ -111,8 +111,49 @@ test('the hero has an accessible CSS atmosphere and no script or banner canvas',
     'the atmosphere has no wave SVG layer');
   assert.match(html, /aria-hidden=["']true["']/,
     'decorative atmosphere is not hidden from assistive technology');
-  assert.doesNotMatch(PAGE, /<canvas\b|<script\b/i,
-    'the root route contains a script/canvas animation instead of the zero-JavaScript CSS field');
+  //[[ RE-AIMED, AND IT WAS BLIND BEFORE IT WAS WRONG.
+  //
+  //   This line used to read `assert.doesNotMatch(PAGE, /<canvas\b|<script\b/i)` with the reason
+  //   "the root route contains a script/canvas animation instead of the zero-JavaScript CSS field".
+  //
+  //   TWO SEPARATE THINGS WERE WRONG WITH IT, and the second is the one worth remembering.
+  //
+  //   1. The decision it defended is reversed. Zero-JavaScript was a choice this file made on the
+  //      landing's behalf; the owner has said repeatedly, over weeks, that the page reads as a
+  //      screenshot and asked for motion that answers the pointer. CSS cannot do that. So a canvas
+  //      on the root route is now correct, and a guard forbidding one defends a decision nobody
+  //      holds any more.
+  //
+  //   2. IT NEVER WENT RED ANYWAY. A canvas and a script DID ship to the root route — they simply
+  //      shipped inside `components/FlowField.astro`, and this assertion reads the text of
+  //      index.astro only. Moving the markup one file away did not make the guard fail; it made the
+  //      guard BLIND, and blind reads exactly like compliant. It was green over the very thing it
+  //      forbade, on the same deploy in which that thing was also completely broken.
+  //
+  //   So what is asserted now is the property that actually survives the reversal: the CSS
+  //   atmosphere must still carry the hero ON ITS OWN. The canvas is ADDITIVE. If its script throws,
+  //   is blocked, or never reaches its element — which is exactly what happened in production — the
+  //   layers below it are still a composition rather than a blank panel. That is checked directly
+  //   above (light-column, wave SVG, their keyframes), and pinned here against the component too, so
+  //   the next piece of markup that moves out of this file cannot go unobserved the same way.
+  //
+  //   Whether the field DRAWS is a different question and not answerable from source text at all.
+  //   `tests/flow-field-runs.test.mjs` executes the script and counts strokes; that is the guard
+  //   that would have caught the shipped defect, and it is red without this one's help.
+  const FIELD = readFileSync(join(SITE, 'src', 'components', 'FlowField.astro'), 'utf8');
+  if (/<FlowField\b/.test(html)) {
+    assert.match(FIELD, /<canvas\b[^>]*aria-hidden=["']true["']/i,
+      'the hero canvas is not hidden from assistive technology; it is decoration and announces itself');
+    assert.match(FIELD, /prefers-reduced-motion/,
+      'the hero canvas has no reduced-motion path, so it moves for somebody who asked it not to');
+    assert.match(FIELD, /visibilitychange/,
+      'the hero canvas never stops on a hidden tab, so a background tab keeps burning a core');
+  }
+  // The atmosphere must not become the canvas alone. These layers are what a visitor sees when the
+  // script does not run, and the shipped defect is the proof that "does not run" is a real state.
+  assert.match(html, /class=["']light-column["']/,
+    'the JavaScript field has replaced the CSS atmosphere rather than being layered over it');
+
   assert.doesNotMatch(PAGE, /BuildStage|asset[-_]?wall|ap[-_]wall/i,
     'the removed build/banner surface has returned to the root route');
 });

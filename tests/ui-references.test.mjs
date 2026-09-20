@@ -28,7 +28,13 @@ const MINIMUM = 5;
 // harvest that fills a hole and forgets the list turns main red rather than quietly disagreeing
 // with itself. 'web-landing' stays — it is the marketing site, not a Roblox genre, and nobody has
 // inspected five shipped examples for it.
-const PENDING = new Set(['web-landing']);
+// EMPTY, and that is the point. `web-landing` sat here because it carried one measured
+// reference against a five-reference minimum, and the file said so about itself. On 2026-09-20
+// four more were measured — chatgpt.com, cloudflare.com, grok.com and deepmind.google — so the
+// hole it named is closed and the note describing it must not survive it. The ratchet below
+// fails in both directions, so an empty set is not a relaxation: every genre file now has to
+// carry five references, with nothing exempt.
+const PENDING = new Set([]);
 
 const genreFiles = () => (existsSync(DIR) ? readdirSync(DIR).filter((f) => f.endsWith('.json')) : []);
 const load = (file) => JSON.parse(readFileSync(join(DIR, file), 'utf8'));
