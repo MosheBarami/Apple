@@ -19,7 +19,7 @@
 // task) that consumes the whole output budget before it writes a word. `high` reasons briefly and
 // decisively — 161 characters — and costs 2.8% more than `low` while returning a better answer.
 // So escalating to `high` is nearly free, and `medium` is a trap.
-import type { GolemMode } from '@golem/shared';
+import type { GolemMode, ProductModel } from '@golem/shared';
 
 /** `medium` exists in the provider's API but is never selected — see the table above. */
 export type Effort = 'low' | 'medium' | 'high';
@@ -36,6 +36,16 @@ export const MAX_HIGH_EFFORT_STEPS = 8;
 
 export interface ReasoningSignals {
   mode: GolemMode;
+  /**
+   * The model entitlement the account SELECTED for this request, which is a different axis from
+   * `mode` and was missing here entirely.
+   *
+   * `gatewayModelFor`, `maxStepsFor` and `baseTokensFor` in do/session.ts all branch on it; this
+   * policy did not, so the one thing a person buys when they choose Apple MAX — a better answer —
+   * was the one thing it could not affect. Picking MAX and Plan together produced `low`, because
+   * Plan maps to `clay` and `clay` baselines to `low` no matter who is asking.
+   */
+  productModel?: ProductModel;
   /** 1-based step index within the current run */
   step: number;
   /** how many high-effort steps this run has already spent */
@@ -157,6 +167,26 @@ export function classifyRequest(
  */
 const BASELINE: Record<GolemMode, Effort> = { clay: 'low', stone: 'high', rune: 'high' };
 
+/**
+ * THE FLOOR APPLE MAX BUYS, AND WHY IT IS A FLOOR RATHER THAN A BASELINE.
+ *
+ * `BASELINE` is keyed on the SPECIALIST (clay/stone/rune). The entitlement a person selects is a
+ * different axis, and until this it reached `gatewayModelFor`, `maxStepsFor` and `baseTokensFor`
+ * and stopped there. So the combination a paying customer is most likely to try first —
+ * Apple MAX in Plan mode — asked the bigger gateway model to think at `low`, because Plan is
+ * `clay` and `clay` baselines to `low`.
+ *
+ * The cost argument in the table at the top of this file is what makes a floor safe: on the design
+ * probe `high` cost 40.8 neurons against `low`'s 39.7, about 3%. Buying the better answer for
+ * everyone who paid for the better answer is close to free, so the floor does not need to be
+ * rationed the way a genuinely expensive tier would.
+ *
+ * It is a FLOOR, not an override: the escalation signals below can still raise a MAX run, and the
+ * conversational early-return below still wins over it, because a greeting has nothing to
+ * deliberate about no matter what the account is entitled to.
+ */
+const ENTITLEMENT_FLOOR: Record<ProductModel, Effort> = { apple: 'low', 'apple-max': 'high' };
+
 export function chooseEffort(s: ReasoningSignals): ReasoningChoice {
   // Talk costs `low`, in every mode, with no escalation path. A greeting has nothing to deliberate
   // about, and the signals below would otherwise raise it: `ambiguousRequest` used to fire on any
@@ -167,6 +197,13 @@ export function chooseEffort(s: ReasoningSignals): ReasoningChoice {
 
   let effort = BASELINE[s.mode];
   const reasons: string[] = [`${s.mode} baseline`];
+
+  // The entitlement floor, applied before the signals so a signal can still raise it further.
+  const floor = s.productModel ? ENTITLEMENT_FLOOR[s.productModel] : undefined;
+  if (floor !== undefined && RANK[floor] > RANK[effort]) {
+    effort = floor;
+    reasons.push(`${s.productModel} floor`);
+  }
 
   const raise = (to: Effort, why: string) => {
     if (RANK[to] > RANK[effort]) {
@@ -187,7 +224,12 @@ export function chooseEffort(s: ReasoningSignals): ReasoningChoice {
 
   // Budget guard: past the cap, fall back to low rather than compounding. `medium` is never a
   // fallback — it is both slower and more expensive than the tier it would be replacing.
-  if (effort === 'high' && s.highEffortUsed >= MAX_HIGH_EFFORT_STEPS) {
+  // The cap is a backstop against a pathological run, not an economy — `high` measures within 3%
+  // of `low`. On Apple MAX it is skipped: a 16-step Agent run would otherwise spend steps 1-8 at
+  // `high` and steps 9-16 at `low`, so the longest and usually hardest half of a run a person
+  // specifically paid to have thought about would be the cheap half. That is the defect this
+  // floor exists to remove, and re-introducing it at step 9 would remove it only for short runs.
+  if (effort === 'high' && s.highEffortUsed >= MAX_HIGH_EFFORT_STEPS && s.productModel !== 'apple-max') {
     effort = 'low';
     reasons.push(`high-effort budget spent (${MAX_HIGH_EFFORT_STEPS} steps)`);
   }

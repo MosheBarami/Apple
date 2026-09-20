@@ -3126,6 +3126,10 @@ export class SessionDO extends DurableObject<Env> {
     // outcome — visual design, recovery from failure, anything irreversible.
     const choice = chooseEffort({
       mode: agent.mode,
+      // The entitlement travels WITH the mode. gatewayModelFor/maxStepsFor/baseTokensFor below
+      // already branch on it; the thinking policy did not, which is how Apple MAX in Plan mode
+      // came to think at `low`.
+      productModel: agent.productModel,
       step: agent.step,
       highEffortUsed: agent.highEffortUsed ?? 0,
       priorStepFailed: agent.priorStepFailed,

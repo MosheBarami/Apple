@@ -130,3 +130,45 @@ test('higher() picks the more expensive tier', () => {
 test('an escalated Clay step still respects the high-effort budget', () => {
   assert.equal(chooseEffort(base('clay', { priorStepFailed: true, highEffortUsed: MAX_HIGH_EFFORT_STEPS })).effort, 'low');
 });
+
+/* ------------------------------------------------- the entitlement floor ---- */
+//
+// Apple MAX reached gatewayModelFor, maxStepsFor and baseTokensFor in do/session.ts and stopped
+// there. It never reached this policy, so the thing a person buys when they pick MAX — a better
+// answer — was the one thing selecting it could not change. The combination a new paying customer
+// is most likely to try first, MAX in Plan mode, asked the bigger model to think at `low`.
+//
+// These tests are written so that deleting the floor turns them red, and so that they name the
+// user-visible combination rather than the internal specialist.
+
+test('Apple MAX in Plan mode does not think at low — the combination the owner hit', () => {
+  // Plan is `clay`, whose baseline is deliberately `low` for lookups.
+  assert.equal(chooseEffort(base('clay')).effort, 'low', 'precondition: clay still baselines low');
+  assert.equal(chooseEffort(base('clay', { productModel: 'apple-max' })).effort, 'high');
+});
+
+test('the floor is a floor, not an override: free Apple keeps the adaptive policy', () => {
+  assert.equal(chooseEffort(base('clay', { productModel: 'apple' })).effort, 'low');
+  assert.equal(chooseEffort(base('stone', { productModel: 'apple' })).effort, 'high');
+  // and an unset entitlement behaves exactly as it did before the floor existed
+  assert.equal(chooseEffort(base('clay')).effort, 'low');
+  assert.equal(chooseEffort(base('stone')).effort, 'high');
+});
+
+test('a greeting still costs low on MAX — the entitlement is not a reason to deliberate', () => {
+  const talk = base('clay', { productModel: 'apple-max', conversational: true });
+  assert.equal(chooseEffort(talk).effort, 'low');
+});
+
+test('the late half of a long MAX run is not the cheap half', () => {
+  // A 16-step Agent run: without the exemption, steps past the cap fall back to `low`, so the
+  // longest and usually hardest half of a paid run would be the half that stopped thinking.
+  const spent = { highEffortUsed: MAX_HIGH_EFFORT_STEPS, step: MAX_HIGH_EFFORT_STEPS + 1 };
+  assert.equal(chooseEffort(base('stone', spent)).effort, 'low', 'precondition: the cap still bites without MAX');
+  assert.equal(chooseEffort(base('stone', { ...spent, productModel: 'apple-max' })).effort, 'high');
+});
+
+test('the reason string names the floor, so the admin trace says why', () => {
+  const choice = chooseEffort(base('clay', { productModel: 'apple-max' }));
+  assert.match(choice.reason, /apple-max floor/);
+});
