@@ -277,3 +277,54 @@ A pasted credential is not a working feature. Each probe above is the smallest t
 distinguishes *configured* from *working*, and the difference between them has cost this product
 real time before: a deploy that printed `done` while serving a year-old page, and a health endpoint
 that named a build four commits behind.
+
+---
+
+## 5. The secret scanner fails on its own test fixtures, and I did not weaken it to make CI green
+
+**Measured 2026-09-20.** `python3 scripts/secret-scan.py` exits 1 with `RESULT: CREDENTIALS IN THE
+CURRENT TREE` — 32 hits across nine patterns, in exactly three files:
+
+```
+apps/web/tests/sentry-wiring.test.mjs
+apps/worker/tests/secret-redaction.test.mjs
+apps/worker/tests/memory-store.test.mjs
+```
+
+Every value is fabricated: `AKIAIOSFODNN7EXAMPLE` is AWS's own published example key,
+`sk-ant-api03-abcdefghij` and `ghp_abcdefghijkl…` are the alphabet, `xoxb-1234567890-` and
+`AIzaSyA123456789` are sequential digits. All three files exist to prove the redactor catches
+credential-shaped text. `secret-redaction.test.mjs` says so in its header:
+
+> EVERY GUARD HERE IS FED THE THING IT IS SUPPOSED TO CATCH. A redactor tested on a clean string
+> proves that one string survived; it says nothing about whether a JWT would.
+
+### Why this is not a five-minute fix
+
+The scanner's premise is *"anything present in the CURRENT tree fails the build, because that is
+fixable by editing a file"*. For a redaction test that premise is false — the file must contain
+credential-shaped strings or the test proves nothing.
+
+Its `ALLOW` list (`example|fake|placeholder|SENTINEL|…`) deliberately **cannot** suppress a
+`HARD_SIGNATURE`, and AWS / OpenAI / Anthropic / Google / GitHub / Slack keys and JWTs are all hard
+signatures. That is correct: a real AWS key looks exactly like a real AWS key. The register is
+history-only by design and refuses to record while anything is in-tree.
+
+So the three available moves are:
+
+1. **Weaken the fixtures** so they stop matching — which guts the tests that protect every
+   outbound request and error log.
+2. **Add an in-tree path exemption** to the scanner — a new hole in a security control, and the
+   standard way scanners get quietly neutered.
+3. **Teach the scanner that a fixture is a fixture** in a way that a real leak cannot imitate.
+
+Option 3 is the right one and it is a design decision, not a patch. **I did not take options 1 or 2
+to turn a badge green at the end of a long night.**
+
+### State
+
+**OPEN.** CI's "Scan full history for secrets" step stays red until this is designed. It is
+pre-existing — `tail -4` on an earlier run showed me only the last pattern's output, which is how I
+first read this as three hits rather than thirty-two.
+
+Nothing here is a live credential. No rotation is required.
