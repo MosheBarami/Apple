@@ -33,9 +33,27 @@ const BY_STOP: Record<string, OutcomeLine> = {
     text: 'That run finished without changing anything. Try telling me more specifically what to build.',
   },
   stopped: { tone: 'note', text: 'Stopped.' },
+  //[[ 'quota' IS FOUR ENDINGS AND ONLY TWO OF THEM ARE THE READER'S CREDITS.
+  //
+  //   This read "That used the last of today’s Credits. They reset tomorrow." The worker sends
+  //   `quota` from four places in do/session.ts: the user's own allowance running out at a step
+  //   boundary and again mid-settlement — where that sentence was true — and ALSO from a BudgetError
+  //   and from CAPACITY_EXHAUSTED, which are the SERVICE's shared building budget and, on one of
+  //   BudgetError's own branches, an administrator pausing generation. Nothing of the reader's ran
+  //   out on either, and the reply this line sits under says so in the worker's own words.
+  //
+  //   AND IT WAS WRONG ABOUT THE MONEY ON ALL FOUR. 'quota' is in REFUNDABLE_REASONS
+  //   (apps/worker/src/run-refund.ts), so a run that ended here having left nothing to keep has
+  //   every Credit put back — and `finishRun` appends `refundSentence` to the reply directly above
+  //   this line, stating the number. "That used the last of today’s Credits" then contradicted the
+  //   product's own signed sentence about the reader's money, one line apart, which is the exact
+  //   thing the header of this file forbids.
+  //
+  //   So it says the one thing true of all four and claims nothing about Credits. The reply owns
+  //   the money because it is the only side that knows what the ledger actually returned.
   quota: {
     tone: 'note',
-    text: 'That used the last of today’s Credits. They reset tomorrow.',
+    text: 'That run stopped before it finished. Everything up to there is saved.',
   },
   error: { tone: 'bad', text: 'Something went wrong partway through.' },
 };

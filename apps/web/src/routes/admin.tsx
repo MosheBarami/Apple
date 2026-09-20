@@ -162,8 +162,17 @@ function SpendPanel({ adminKey }: { adminKey: string }) {
               onConfirm={() => void perform('kill')}
               onClose={() => setPending(null)}
             >
+              {/* "and nothing is refunded automatically" WAS TRUE WHEN IT WAS WRITTEN AND IS NOT NOW.
+                  Pausing raises a BudgetError with reason 'killed', which do/session.ts turns into
+                  finishRun(agent, 'quota'); 'quota' is in REFUNDABLE_REASONS in
+                  apps/worker/src/run-refund.ts, so a paused run that had not yet changed anything
+                  has every Credit it used put back automatically and the reply says how many. The
+                  half that survived is the other branch — a run that had already built something
+                  delivered, so it is charged. Stating only the first half told the owner his own
+                  kill switch was more expensive to his customers than it is. */}
               Every build running right now stops where it is. Resuming later does not resume them — anyone mid-build
-              loses the steps they were on and the Credits those steps cost, and nothing is refunded automatically.
+              loses the steps they were on. A run that had already built something is charged for it; a run that had
+              not yet changed anything has its Credits put back automatically.
             </ConfirmDialog>
           )}
 
