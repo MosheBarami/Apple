@@ -13,6 +13,11 @@
  * first line of the error.
  *
  *   node packages/training/src/build-showcase-gallery.mjs --out docs/evidence/showcase.html
+ *
+ * `--corpus <file>` overrides the ui-construction.json the library section is counted from. It
+ * exists for showcase-gallery.test.mjs: on the real corpus a DERIVED count and a TYPED one render
+ * the same bytes, so without a second corpus no test can tell the difference — which is exactly
+ * what a mutation replacing `${lib.screens}` with a literal `16` demonstrated by staying green.
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
@@ -40,6 +45,34 @@ const readManifest = (dir) => {
     return null;
   }
 };
+
+/**
+ * THE LIBRARY, COUNTED RATHER THAN DESCRIBED.
+ *
+ * The owner asked for "every kind of Roblox UI that exists today", extracted into the model's own
+ * library, "so the model almost never authors a UI from scratch". Half of that shipped and half of
+ * it cannot, and the section built from this function is where he is told which half is which —
+ * see `librarySection`. Every number there is read out of the corpus file the Worker serves, so
+ * the page cannot drift from the library the way the asset refusal string drifted from the
+ * catalogue for ten months.
+ *
+ * Returns null when the corpus is not on disk: the gallery still builds, and simply does not make
+ * a claim it cannot support.
+ */
+function readLibrary(path = join(REPO, 'packages/corpus/data/ui-construction.json')) {
+  try {
+    const d = JSON.parse(readFileSync(path, 'utf8'));
+    const all = [...(d.genres ?? []), ...(d.screens ?? [])];
+    return {
+      screens: (d.screens ?? []).length,
+      genres: (d.genres ?? []).length,
+      sources: new Set(all.flatMap((e) => e.sources ?? [])).size,
+      note: String(d.note ?? ''),
+    };
+  } catch {
+    return null;
+  }
+}
 
 /** Plain words for an outcome, because the owner does not read enum names. */
 const OUTCOME_WORDS = {
@@ -114,6 +147,80 @@ function screenCard(r, uiDir, prefix) {
   </article>`;
 }
 
+/**
+ * THE HALF THAT SHIPPED AND THE HALF THAT CANNOT — told to him, not filed in docs/.
+ *
+ * LEDGER ROW `extract-every-roblox-ui-genre`. What he asked for, verbatim:
+ *
+ *   "אני דורש עליך לשלוף ui לכל סוג אפשרי שעולה היום ברובלוקס מהאנטנט כל סוג אפשרי מסוגו ואתה מכל
+ *    אחד תחלץ כל מה שצריך לנכס מוכן ועובד לידע וספרייה הפנימית של המודל"
+ *
+ * — pull every kind of Roblox UI there is, and extract from each one everything needed for a
+ * READY, WORKING ASSET in the model's own library. The first half is built and the pictures above
+ * it are the proof. The second half — a store of ready-made assets the model drops in — is not,
+ * and the reason is not effort.
+ *
+ * WHY IT CANNOT BE, measured and recorded in apps/worker/src/assets.ts where `library` was deleted
+ * from ASSET_SOURCES on 2026-09-20: that catalogue held 511,208 provenance rows, and on the day it
+ * was measured 0 of them were insertable. Every route from a file to a usable Roblox asset ends in
+ * an upload into a real Roblox account; Roblox will not archive an Image or a Decal, so each upload
+ * is permanent in HIS account, and the catalogue also carried rows named after other companies'
+ * characters under one blanket licence claim. He removed it himself.
+ *
+ * THIS IS A STATEMENT, NOT A QUESTION. He has granted blanket autonomous authority and asked not to
+ * be made to choose. So the page says which half exists, what it does instead, and what it would
+ * take to change — and does not ask him to pick.
+ *
+ * IN BOTH LANGUAGES. He writes Hebrew and he is fifteen; this is the one section of the page whose
+ * whole purpose is that he understands it. The Hebrew block carries its own `dir` and `lang` — see
+ * apps/web/tests/bidi-content.test.mjs for why an RTL paragraph that inherits the document's
+ * direction renders its punctuation in the wrong place.
+ */
+function librarySection(lib, ui) {
+  if (!lib) return '';
+  const built = ui?.counts?.built ?? 0;
+  const targets = ui?.results?.length ?? 0;
+  return `
+  <h2 class="section">What the library actually is</h2>
+  <div class="truth truth--library">
+    <ul>
+      <li><strong>It is real, and the model can ask for it.</strong> ${lib.screens} kinds of screen
+        and ${lib.genres} genres, distilled from ${lib.sources.toLocaleString()} cited sources, served by two
+        tools the model calls by name: <span class="mono">get_ui_construction</span> and
+        <span class="mono">get_genre_kit</span>. ${built} of ${targets} screens above were built out of it.</li>
+      <li><strong>It holds no files.</strong> No images, no meshes, no asset ids — the corpus says so
+        itself: “${esc(lib.note)}” It holds how a screen is <em>put together</em>, and the model
+        writes the Luau. That is what every picture on this page is.</li>
+      <li><strong>There is no store of ready-made assets, and there will not be one.</strong> The
+        catalogue that tried held 511,208 rows and <strong>0 of them could be inserted</strong> on
+        the day it was measured. Every way of turning a file into a usable Roblox asset ends in an
+        upload to a real account, Roblox will not archive an Image or a Decal, so every one of them
+        would be permanent in <em>your</em> account — and some of those rows were other companies’
+        characters under a single licence claim. You deleted it on 20 September. It stays deleted.</li>
+      <li><strong>What that costs you:</strong> nothing on this page. A screen built from
+        construction notes is a screen that compiles, runs and belongs to you. What it cannot do is
+        hand you someone else’s finished artwork.</li>
+    </ul>
+    <div class="he" dir="rtl" lang="he">
+      <p><strong>בעברית, בלי לייפות.</strong></p>
+      <ul>
+        <li><strong>הספרייה קיימת והמודל באמת קורא לה.</strong> ${lib.screens} סוגי מסך ו-${lib.genres} ז׳אנרים,
+          מתוך ${lib.sources.toLocaleString()} מקורות מצוטטים. ${built} מתוך ${targets} המסכים כאן נבנו ממנה.</li>
+        <li><strong>אין בה קבצים.</strong> לא תמונות, לא מודלים, לא מזהי אססט — רק איך מסך בנוי,
+          והמודל כותב את הקוד בעצמו. זה מה שרואים בכל התמונות בעמוד הזה.</li>
+        <li><strong>מחסן של אססטים מוכנים לא קיים, ולא יהיה.</strong> הקטלוג שניסה הכיל 511,208 שורות,
+          ו-0 מהן היו ניתנות להכנסה ביום שבו נמדד. כל דרך להפוך קובץ לאססט עובד ברובלוקס מסתיימת
+          בהעלאה לחשבון אמיתי, רובלוקס לא מוחקת תמונה או דיקאל, וכל העלאה כזאת נשארת לצמיתות
+          <em>בחשבון שלך</em>. חלק מהשורות היו דמויות של חברות אחרות תחת טענת רישיון אחת גורפת.
+          מחקת את זה ב-20 בספטמבר, וזה נשאר מחוק.</li>
+        <li><strong>מה זה עולה לך:</strong> כלום ממה שכאן. מסך שנבנה מהספרייה מתקמפל, רץ, ושייך לך.
+          מה שהוא לא יכול — לתת לך גרפיקה מוכנה של מישהו אחר.</li>
+      </ul>
+    </div>
+  </div>
+`;
+}
+
 function mapCard(r, mapDir, prefix) {
   const ok = r.outcome === 'built';
   const name = String(r.genre).replace(/_/g, ' ');
@@ -150,7 +257,7 @@ function mapCard(r, mapDir, prefix) {
   </article>`;
 }
 
-function page({ ui, uiDir, maps, mapDir, uiPrefix, mapPrefix }) {
+function page({ ui, uiDir, maps, mapDir, uiPrefix, mapPrefix, library }) {
   const uiResults = ui?.results ?? [];
   const mapResults = maps?.results ?? [];
   const uiBuilt = uiResults.filter((r) => r.outcome === 'built').length;
@@ -231,6 +338,14 @@ function page({ ui, uiDir, maps, mapDir, uiPrefix, mapPrefix }) {
   .truth li { font-size: 14.5px; line-height: 1.5; padding-left: 18px; position: relative; color: var(--ink); }
   .truth li::before { content: ""; position: absolute; left: 0; top: .6em; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
   .truth strong { font-weight: 600; }
+  /* The library section carries the same panel, and a Hebrew half beneath it. The direction is set
+     on the element, never inherited: an RTL list inside an LTR document puts its bullets and its
+     full stops on the wrong side — see apps/web/tests/bidi-content.test.mjs. */
+  .truth--library { margin-top: 30px; }
+  .truth .he { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
+  .truth .he p { margin: 0 0 11px; font-size: 14.5px; color: var(--ink); }
+  .truth .he li { padding-left: 0; padding-right: 18px; }
+  .truth .he li::before { left: auto; right: 0; }
 
   h2.section { font-size: 20px; margin: 0 0 6px; font-weight: 700; letter-spacing: -.01em; }
   .section-note { font-size: 14px; color: var(--muted); margin: 0 0 22px; max-width: 62ch; line-height: 1.5; }
@@ -323,6 +438,8 @@ function page({ ui, uiDir, maps, mapDir, uiPrefix, mapPrefix }) {
   </p>
   <div class="grid">${mapResults.map((r) => mapCard(r, mapDir, mapPrefix)).join('\n')}</div>
 
+  ${librarySection(library, ui)}
+
   <footer>
     Sources: <code>docs/evidence/ui-showcase/manifest.json</code> and
     <code>docs/evidence/map-showcase/manifest.json</code>. The Luau behind every card sits beside them.
@@ -350,6 +467,7 @@ function main() {
     mapDir,
     uiPrefix: arg('ui-prefix', 'ui-showcase/'),
     mapPrefix: arg('map-prefix', 'map-showcase/'),
+    library: readLibrary(arg('corpus', undefined)),
   });
   writeFileSync(out, html);
   console.log(`${out}  (${Math.round(html.length / 1024)} KB)`);

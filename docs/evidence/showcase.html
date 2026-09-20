@@ -70,6 +70,14 @@
   .truth li { font-size: 14.5px; line-height: 1.5; padding-left: 18px; position: relative; color: var(--ink); }
   .truth li::before { content: ""; position: absolute; left: 0; top: .6em; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
   .truth strong { font-weight: 600; }
+  /* The library section carries the same panel, and a Hebrew half beneath it. The direction is set
+     on the element, never inherited: an RTL list inside an LTR document puts its bullets and its
+     full stops on the wrong side — see apps/web/tests/bidi-content.test.mjs. */
+  .truth--library { margin-top: 30px; }
+  .truth .he { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
+  .truth .he p { margin: 0 0 11px; font-size: 14.5px; color: var(--ink); }
+  .truth .he li { padding-left: 0; padding-right: 18px; }
+  .truth .he li::before { left: auto; right: 0; }
 
   h2.section { font-size: 20px; margin: 0 0 6px; font-weight: 700; letter-spacing: -.01em; }
   .section-note { font-size: 14px; color: var(--muted); margin: 0 0 22px; max-width: 62ch; line-height: 1.5; }
@@ -122,9 +130,9 @@
   </p>
 
   <div class="tally">
-    <span><b>15</b> of 16 screens built</span>
+    <span><b>16</b> of 16 screens built</span>
     <span><b>6</b> of 6 maps built</span>
-    <span><b>570</b> interface objects</span>
+    <span><b>671</b> interface objects</span>
     <span><b>678</b> map parts placed</span>
   </div>
 
@@ -433,18 +441,26 @@
       </dl>
     </div>
   </article>
-<article class="card card--failed">
-      <div class="card__stripe" aria-hidden="true"></div>
-      <div class="card__body">
-        <h3 class="card__title">social</h3>
-        <p class="card__verdict">answered in prose instead of code</p>
-        <p class="card__detail">answer was 15908 chars of prose</p>
-        <dl class="stats">
-          <div><dt>outcome</dt><dd class="mono">no_code_block</dd></div>
-          
-        </dl>
-      </div>
-    </article>
+<article class="card">
+    <figure class="shot">
+      <img src="ui-showcase/screen-social--tycoon--opened.png" alt="social screen built by the model" loading="lazy" width="3200" height="1800">
+      <figcaption class="shot__tag">shown opened — the script starts it hidden</figcaption>
+    </figure>
+    <div class="card__body">
+      <h3 class="card__title">social</h3>
+      <dl class="stats">
+        <div><dt>instances on screen</dt><dd class="mono">124</dd></div>
+        <div><dt>gui objects built</dt><dd class="mono">101</dd></div>
+        <div><dt>written labels</dt><dd class="mono">71</dd></div>
+        <div><dt>hidden until opened</dt><dd class="mono">59</dd></div>
+        
+        
+        
+        <div><dt>references behind it</dt><dd class="mono">11 shipped games</dd></div>
+        <div><dt>luau written</dt><dd class="mono">14,537 chars</dd></div>
+      </dl>
+    </div>
+  </article>
 <article class="card">
     <figure class="shot">
       <img src="ui-showcase/screen-trading--tycoon--opened.png" alt="trading screen built by the model" loading="lazy" width="3200" height="1800">
@@ -579,6 +595,46 @@
       </dl>
     </div>
   </article></div>
+
+  
+  <h2 class="section">What the library actually is</h2>
+  <div class="truth truth--library">
+    <ul>
+      <li><strong>It is real, and the model can ask for it.</strong> 16 kinds of screen
+        and 13 genres, distilled from 384 cited sources, served by two
+        tools the model calls by name: <span class="mono">get_ui_construction</span> and
+        <span class="mono">get_genre_kit</span>. 16 of 16 screens above were built out of it.</li>
+      <li><strong>It holds no files.</strong> No images, no meshes, no asset ids — the corpus says so
+        itself: “Project-authored construction observations distilled from shipped Roblox UI. No image, asset or third-party source is reproduced here.” It holds how a screen is <em>put together</em>, and the model
+        writes the Luau. That is what every picture on this page is.</li>
+      <li><strong>There is no store of ready-made assets, and there will not be one.</strong> The
+        catalogue that tried held 511,208 rows and <strong>0 of them could be inserted</strong> on
+        the day it was measured. Every way of turning a file into a usable Roblox asset ends in an
+        upload to a real account, Roblox will not archive an Image or a Decal, so every one of them
+        would be permanent in <em>your</em> account — and some of those rows were other companies’
+        characters under a single licence claim. You deleted it on 20 September. It stays deleted.</li>
+      <li><strong>What that costs you:</strong> nothing on this page. A screen built from
+        construction notes is a screen that compiles, runs and belongs to you. What it cannot do is
+        hand you someone else’s finished artwork.</li>
+    </ul>
+    <div class="he" dir="rtl" lang="he">
+      <p><strong>בעברית, בלי לייפות.</strong></p>
+      <ul>
+        <li><strong>הספרייה קיימת והמודל באמת קורא לה.</strong> 16 סוגי מסך ו-13 ז׳אנרים,
+          מתוך 384 מקורות מצוטטים. 16 מתוך 16 המסכים כאן נבנו ממנה.</li>
+        <li><strong>אין בה קבצים.</strong> לא תמונות, לא מודלים, לא מזהי אססט — רק איך מסך בנוי,
+          והמודל כותב את הקוד בעצמו. זה מה שרואים בכל התמונות בעמוד הזה.</li>
+        <li><strong>מחסן של אססטים מוכנים לא קיים, ולא יהיה.</strong> הקטלוג שניסה הכיל 511,208 שורות,
+          ו-0 מהן היו ניתנות להכנסה ביום שבו נמדד. כל דרך להפוך קובץ לאססט עובד ברובלוקס מסתיימת
+          בהעלאה לחשבון אמיתי, רובלוקס לא מוחקת תמונה או דיקאל, וכל העלאה כזאת נשארת לצמיתות
+          <em>בחשבון שלך</em>. חלק מהשורות היו דמויות של חברות אחרות תחת טענת רישיון אחת גורפת.
+          מחקת את זה ב-20 בספטמבר, וזה נשאר מחוק.</li>
+        <li><strong>מה זה עולה לך:</strong> כלום ממה שכאן. מסך שנבנה מהספרייה מתקמפל, רץ, ושייך לך.
+          מה שהוא לא יכול — לתת לך גרפיקה מוכנה של מישהו אחר.</li>
+      </ul>
+    </div>
+  </div>
+
 
   <footer>
     Sources: <code>docs/evidence/ui-showcase/manifest.json</code> and
