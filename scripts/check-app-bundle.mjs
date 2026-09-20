@@ -38,8 +38,23 @@ const DIST = 'apps/web/dist';
 // so the next person weighing it starts from the measurement.
 const ENTRY_BUDGET_GZIP = 70_000;
 const EAGER_BUDGET_GZIP = 230_000;
-/** Routes that must stay in a chunk of their own. */
-const MUST_BE_SPLIT = ['ui-lab', 'admin'];
+/** Routes that must stay in a chunk of their own, reachable but never downloaded up front. */
+const MUST_BE_SPLIT = ['admin'];
+
+//[[ AND THE STRONGER CASE: a route that is not in the production build at all.
+//
+//   `ui-lab` was in MUST_BE_SPLIT, and this check had begun reporting "it has been folded back
+//   into the bundle everyone downloads" — which was false. app.tsx gates the specimen book behind
+//   `import.meta.env.DEV`, so in production the component is `() => null`, the dynamic import is
+//   unreachable and no chunk is emitted. That is STRICTLY BETTER than splitting it: splitting
+//   stopped every customer downloading an internal review page, gating also stops them opening it.
+//
+//   A guard aimed at a decision that has since been reversed for a good reason teaches people to
+//   ignore the guard, so it is re-aimed at the property rather than deleted. The property is the
+//   one ui-lab.css already claims in its own header: `grep -r 'ui-lab' dist/` finds nothing. It
+//   cannot pass vacuously — fold the route back in and its module path and its thirteen class
+//   names both reappear, in the JS and in the CSS respectively. ]]
+const MUST_BE_ABSENT = ['ui-lab'];
 
 if (!existsSync(DIST)) {
   console.error(`no build found at ${DIST} — run \`pnpm --filter @golem/web build\` first`);
@@ -70,6 +85,19 @@ if (eagerGzip > EAGER_BUDGET_GZIP) {
   problems.push(`the eager graph is ${eagerGzip} B gzipped across ${referenced.size} files, over ${EAGER_BUDGET_GZIP} B`);
 }
 
+for (const route of MUST_BE_ABSENT) {
+  const hits = [];
+  for (const f of assets) {
+    const body = readFileSync(join(DIST, 'assets', f));
+    if (body.includes(route)) hits.push(f);
+  }
+  if (html.includes(route)) hits.push('index.html');
+  if (hits.length > 0) {
+    problems.push(`/${route} is gated out of production builds and yet "${route}" appears in `
+      + `${hits.join(', ')} — it is back in a bundle a customer downloads`);
+  }
+}
+
 for (const route of MUST_BE_SPLIT) {
   const chunk = assets.find((f) => f.startsWith(`${route}-`) && f.endsWith('.js'));
   if (!chunk) {
@@ -90,5 +118,5 @@ if (problems.length > 0) {
 const kb = (n) => `${(n / 1024).toFixed(1)} kB`;
 console.log(
   `check-app-bundle: entry ${kb(entryGzip)} gzipped, eager graph ${kb(eagerGzip)} across ${referenced.size} files; ` +
-    `${MUST_BE_SPLIT.join(' and ')} are split out`,
+    `${MUST_BE_SPLIT.join(' and ')} split out, ${MUST_BE_ABSENT.join(' and ')} absent entirely`,
 );
