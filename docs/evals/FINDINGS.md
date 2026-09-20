@@ -20,7 +20,7 @@ through `/api/admin/model-test`, 1 neuron each:
 | gateway key | reached by | served by, live |
 |---|---|---|
 | `stone` | Agent, **and every mode on the free Apple lane** | `@cf/zai-org/glm-5.3-flash` |
-| `rune` | Super Agent on Apple MAX | `@cf/zai-org/glm-5.3-flash` |
+| `rune` | Super Agent on Apple MAX — **and Super Agent is not offered**, see below | `@cf/zai-org/glm-5.3-flash` |
 | `clay` | Plan | `@cf/qwen/qwen3-30b-a3b-fp8` |
 | `vision` | screenshot critique | `@cf/zai-org/glm-5.3-flash` |
 
@@ -33,6 +33,12 @@ settles it is what a call to the deployed worker comes back served by.
 Cloudflare's paid-billing-required list, so on the Workers Free plan every call returned HTTP 403 /
 error 5035, and a product that must cost nothing recurring could not be built on it. That constraint
 is what moved production off GLM. It moved back when the account did.
+
+**No customer reaches `rune` at all.** `PRODUCT_MODES_OFFERED` in `packages/shared/src/index.ts` is
+`['plan', 'agent']`; `super` exists in `PRODUCT_MODES` because stored runs and bills must still
+describe it, and the composer dropped it. So of the two modes a person can actually choose, **Agent
+resolves both lanes to `stone` and only Plan differs** — Apple gets clay's 4400 tokens at effort
+`low`, Apple MAX gets 6500 at `high`.
 
 **`stone` and `rune` are the same model, and since 2026-09-20 they also have the same ceiling**
 (6500, commit `8b61c91`) and the same effort floor on a paid lane. So per single call, Apple and

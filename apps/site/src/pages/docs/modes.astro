@@ -34,12 +34,25 @@ const free = PLAN_LIMITS.free;
   <h2>How Credits work</h2>
   <p>There is no guaranteed fixed charge per message. Actual usage and the plan limits determine the charge. See <a href="/docs/credits-and-limits">Credits and limits</a>; review the result in Studio before treating a build as complete.</p>
   {/*
-    "They currently share a foundation model" was true when it was written and is not true now.
-    The worker's gateway maps Apple to one third-party model and Apple MAX to another; they have
-    been different since MAX moved lanes. The sentence was doing honest work — denying that either
-    is a bespoke Roblox model — so it is corrected rather than deleted, and the test beside this
-    page reads both model ids out of the gateway so the correction cannot go stale the same way.
+    THIS SENTENCE HAS NOW BEEN WRONG IN BOTH DIRECTIONS, so the history stays here.
+
+      2026-08  "They currently share a foundation model."   true, then not.
+      2026-09  "they run on different third-party foundation models"   true, then not.
+      2026-09-21  same model again, and asked of the deployed Worker rather than read off a table:
+                  one call per gateway key through /api/admin/model-test at buildSha 3236f91-dirty
+                  returned @cf/zai-org/glm-5.3-flash for BOTH `stone` (every Apple request) and
+                  `rune` (Apple MAX in Super Agent). Commit 8b61c91 then gave the two keys the same
+                  6500 ceiling as well, so per single call the lanes are now identical.
+
+    The guard beside this page was supposed to stop the second one going stale and did not, because
+    it compared gateway key `clay` against `stone` — Plan against Agent — while calling that
+    comparison Apple against Apple MAX. Apple is `stone` in every mode. It is re-aimed now and
+    refuses whichever of the two sentences the gateway contradicts, rather than defending one.
+
+    What the sentence is FOR has not changed through any of this: deny that either lane is a model
+    we trained, and do not let a reader believe a paid lane buys a better brain per request. What it
+    buys is steps and allowance, and that is what it now says.
   */}
   <h2>Training status</h2>
-  <p>Apple and Apple MAX are separate product choices with different access and working limits, and they run on different third-party foundation models — neither is a model we trained. Custom Roblox training is in development; a completed independently trained frontier model is not available.</p>
+  <p>Apple and Apple MAX are separate product choices with different access and working limits. They currently run on the same third-party foundation model — neither is a model we trained — so what Apple MAX buys is a longer chain of steps in one request and a larger allowance, not a different or larger model. Custom Roblox training is in development; a completed independently trained frontier model is not available.</p>
 </DocsLayout>

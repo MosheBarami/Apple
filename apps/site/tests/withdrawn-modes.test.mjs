@@ -207,6 +207,13 @@ test('and neither does any page source, comments and code excluded', () => {
     if (rel === HISTORY.src) continue; // exempt, and HISTORY.why says why
     const copy = readFileSync(file, 'utf8')
       .replace(/^---[\s\S]*?\n---\n/, ' ')
+      //[[ 2026-09-21: Astro has TWO comment forms and this stripped one of them. `{/* … */}` is the
+      //   form used inside a template — it is what modes.astro, this page's main subject, writes its
+      //   explanations in — and it was reaching the scanner as visible copy. The failure message
+      //   below has always promised "this reads neither comments nor frontmatter"; for the commoner
+      //   of the two comment forms that promise was false, and the first comment to explain the
+      //   withdrawal inside one was reported as a page naming a withdrawn mode to a customer.
+      .replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ')
       .replace(/<!--[\s\S]*?-->/g, ' ')
       .replace(/<style[\s\S]*?<\/style>/gi, ' ')
       .replace(/<script[\s\S]*?<\/script>/gi, ' ');

@@ -90,29 +90,57 @@ test('the Free offer states the per-request step ceiling', () => {
   }
 });
 
-test('no page claims Apple and Apple MAX share a foundation model', () => {
-  const model = (lane) => {
-    const m = new RegExp(`\\b${lane}: \\{ id: '([^']+)'`).exec(gateway);
-    assert.ok(m, `THIS GUARD IS BROKEN, NOT THE PAGES: the ${lane} model id is no longer readable from gateway.ts`);
+//[[ 2026-09-21 — THIS GUARD READ THE WRONG TWO ROWS AND SO IT NEVER FIRED.
+//
+//   It took Apple to be gateway key `clay` and Apple MAX to be `stone`, found two different model
+//   ids, and passed. `clay` is the PLAN-MODE specialist; it is not the Apple lane. `gatewayModelFor`
+//   in session.ts pins Apple to `stone` in every mode and lets Apple MAX reach `stone` or `rune`.
+//   So the comparison it was making was Plan-vs-Agent, and the comparison it was named for — the
+//   free lane against the paid one — was never made. production-settings.mjs records the identical
+//   class of mistake from the other side: "The same table also pinned Apple MAX to `stone`, which
+//   hid the one mode where MAX differs from the free lane."
+//
+//   The cost was exactly what the guard existed to prevent. On 2026-09-20 commit 8b61c91 gave
+//   `stone` and `rune` the same ceiling; they were already the same model id; /docs/modes went on
+//   telling readers the two lanes "run on different third-party foundation models" and this test
+//   went on agreeing.
+//
+//   Re-aimed at the property rather than at either sentence: work out which model ids each lane can
+//   actually reach, then refuse whichever claim the ids contradict. It is now a guard against the
+//   page being wrong in EITHER direction, which is what makes it survive the product moving again.
+test('no page claims a difference between Apple and Apple MAX that the gateway does not make', () => {
+  const idOf = (key) => {
+    const m = new RegExp(`\\b${key}: \\{ id: '([^']+)'`).exec(gateway);
+    assert.ok(m, `THIS GUARD IS BROKEN, NOT THE PAGES: the ${key} model id is no longer readable from gateway.ts`);
     return m[1];
   };
-  const apple = model('clay');
-  const appleMax = model('stone');
 
-  if (apple === appleMax) {
-    // Not a failure of the page — a change in the product. Say so loudly rather than pass quietly,
-    // because the corrected sentence would then be the false one.
-    assert.fail(
-      `Apple and Apple MAX now both run ${apple}. /docs/modes says they run on different foundation ` +
-        'models, which has stopped being true. Fix the page, then re-aim this test.',
-    );
-  }
+  //[[ The lane -> gateway-key mapping is READ, not retyped. If gatewayModelFor stops being
+  //   recognisable the guard says so about itself instead of quietly comparing the wrong keys,
+  //   which is the whole reason this test had to be rewritten.
+  const fn = /export function gatewayModelFor\([^)]*\)[^{]*\{([\s\S]*?)\n\}/.exec(session);
+  assert.ok(fn, 'THIS GUARD IS BROKEN, NOT THE PAGES: gatewayModelFor is no longer readable from session.ts');
+  const body = fn[1];
+  assert.match(body, /'apple'.*?return 'stone'/s, 'THIS GUARD IS BROKEN: Apple is no longer pinned to one gateway key');
+  assert.match(body, /'apple-max'/, 'THIS GUARD IS BROKEN: gatewayModelFor no longer mentions apple-max');
+
+  const appleIds = new Set([idOf('stone')]);
+  // Apple MAX reaches `stone` in Plan and its own specialist elsewhere: stone or rune.
+  const maxIds = new Set([idOf('stone'), idOf('rune')]);
+  const sameModel = appleIds.size === maxIds.size && [...appleIds].every((id) => maxIds.has(id));
+
+  const claimsShared = /\bshares?\s+(a|the|one)\s+(foundation|base|underlying)\s+model\b/i;
+  const claimsDifferent = /\b(different|separate|distinct)\s+(third-party\s+)?(foundation|base|underlying)\s+models?\b/i;
+  const forbidden = sameModel ? claimsDifferent : claimsShared;
+  const because = sameModel
+    ? `both lanes run ${[...appleIds].join(', ')}`
+    : `Apple runs ${[...appleIds].join(', ')} and Apple MAX runs ${[...maxIds].join(', ')}`;
 
   for (const [name, src] of [['docs/modes.astro', modes], ['pricing.astro', pricing]]) {
     assert.doesNotMatch(
       visibleText(src),
-      /\bshares?\s+(a|the|one)\s+(foundation|base|underlying)\s+model\b/i,
-      `${name} says Apple and Apple MAX share a model; the gateway runs ${apple} and ${appleMax}.`,
+      forbidden,
+      `${name} claims ${sameModel ? 'different models' : 'a shared model'}, but ${because}.`,
     );
   }
 });
@@ -128,8 +156,12 @@ test('the guard has teeth', () => {
   assert.doesNotMatch(visibleText(shippedCard), states, 'the shipped card would have passed — re-aim this');
   assert.match(visibleText('<li>Up to 3 steps per request</li>'), states, 'the replacement does not satisfy its own check');
 
-  // The model claim: the sentence as it shipped.
-  const shippedSentence = 'They currently share a foundation model.';
-  assert.match(visibleText(shippedSentence), /\bshares?\s+(a|the|one)\s+(foundation|base|underlying)\s+model\b/i,
-    'the shipped sentence slipped past the pattern — re-aim it');
+  //[[ The model claim: BOTH sentences this page has shipped, because the guard now refuses whichever
+  //   one the gateway contradicts and a pattern that only catches one of them is half a guard.
+  assert.match(visibleText('They currently share a foundation model.'),
+    /\bshares?\s+(a|the|one)\s+(foundation|base|underlying)\s+model\b/i,
+    'the 2026-08 sentence slipped past the shared-model pattern — re-aim it');
+  assert.match(visibleText('they run on different third-party foundation models — neither is a model we trained'),
+    /\b(different|separate|distinct)\s+(third-party\s+)?(foundation|base|underlying)\s+models?\b/i,
+    'the 2026-09 sentence slipped past the different-model pattern — re-aim it');
 });
