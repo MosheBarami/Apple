@@ -89,6 +89,31 @@ export class QuotaDO extends DurableObject<Env> {
       } catch {
         /* already migrated */
       }
+      //[[ THE CURRENCY WAS RENAMED AND THE LIVE TABLES WERE NOT.
+      //
+      //   `ledger` shipped in fa9ee14 as `sparks integer not null`. The product's currency later
+      //   became Credits and the CREATE above was rewritten to say `credits` — but
+      //   `create table if not exists` does nothing at all to a table that already exists, so every
+      //   QuotaDO created before that rename still has a `sparks` column and no `credits` one.
+      //
+      //   For those users `state()` throws `no such column: credits`, and `state()` is on the hot
+      //   path: /state, the charge path and every refund call it. So the failure is not cosmetic —
+      //   a user whose DO predates the rename cannot spend a Credit. Found in production on
+      //   2026-09-20 through Sentry APPLE-WORKER-6, on a real account.
+      //
+      //   RENAME, NOT ADD. `add column credits` would leave every historical row reading 0 and the
+      //   user's whole spend history would silently become "never spent" — the account would look
+      //   fresh and be billed as fresh. The rename carries the rows over.
+      //
+      //   Attempted on every start and thrown away once applied, exactly like the alter above: on a
+      //   DO created fresh with `credits` there is no `sparks` to rename and this throws
+      //   immediately. The same drift was already known and handled on the Supabase side — see the
+      //   `credits:sparks` retry in account-export.ts — and never here. ]]
+      try {
+        this.sql.exec(`alter table ledger rename column sparks to credits`);
+      } catch {
+        /* already migrated, or created fresh with `credits` */
+      }
     });
   }
 
