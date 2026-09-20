@@ -65,8 +65,11 @@
     {
      "id": "f-11bc1e71",
      "name": "Tags",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "apps/web/tests/tags.test.mjs:38 — \"one tag, one spelling\" calls normaliseTag/addTag/removeTag/tagUniverse from apps/web/src/lib/tags.ts; 24 assertions cover normalisation, the cap and the chip universe.",
+     "disposition": "BOOKKEEPING-FLIP",
+     "dispositionPass": 1,
+     "dispositionCitation": "apps/web/tests/tags.test.mjs:38 — \"one tag, one spelling\" calls normaliseTag/addTag/removeTag/tagUniverse from apps/web/src/lib/tags.ts; 24 assertions cover normalisation, the cap and the chip universe."
     },
     {
      "id": "f-7ea938e3",
@@ -89,14 +92,20 @@
     {
      "id": "f-42a83355",
      "name": "Activity log",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "apps/web/tests/activity-model.test.mjs:56 — \"an empty log produces no phases, no terminal and no upcoming\" drives the activity state machine over out-of-order and duplicated events; 47 assertions.",
+     "disposition": "BOOKKEEPING-FLIP",
+     "dispositionPass": 1,
+     "dispositionCitation": "apps/web/tests/activity-model.test.mjs:56 — \"an empty log produces no phases, no terminal and no upcoming\" drives the activity state machine over out-of-order and duplicated events; 47 assertions."
     },
     {
      "id": "f-5e2b6881",
      "name": "Notifications",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "apps/worker/tests/notifications.test.mjs:75 — \"every kind has a spec, and every spec names a target with a route behind it\" runs the notification policy from the esbuild-bundled module.",
+     "disposition": "BOOKKEEPING-FLIP",
+     "dispositionPass": 1,
+     "dispositionCitation": "apps/worker/tests/notifications.test.mjs:75 — \"every kind has a spec, and every spec names a target with a route behind it\" runs the notification policy from the esbuild-bundled module."
     },
     {
      "id": "f-b9ae9cb5",
@@ -137,8 +146,11 @@
     {
      "id": "f-ca7f39ab",
      "name": "Export account data",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "apps/worker/tests/account-data-routes-live.test.mjs:220 — \"the account export is a downloadable file that carries its own digest\" executes the export route end to end and verifies the digest travels with the file.",
+     "disposition": "BOOKKEEPING-FLIP",
+     "dispositionPass": 1,
+     "dispositionCitation": "apps/worker/tests/account-data-routes-live.test.mjs:220 — \"the account export is a downloadable file that carries its own digest\" executes the export route end to end and verifies the digest travels with the file."
     },
     {
      "id": "f-b0af6a9d",
@@ -149,8 +161,11 @@
     {
      "id": "f-171d4f2a",
      "name": "מצב Offline",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "apps/web/tests/connectivity.test.mjs:36 — \"THE BROWSER SAYING IT IS ONLINE IS NOT EVIDENCE OF ANYTHING\" calls reachability/reachNotice from apps/web/src/lib/connectivity.ts.",
+     "disposition": "BOOKKEEPING-FLIP",
+     "dispositionPass": 1,
+     "dispositionCitation": "apps/web/tests/connectivity.test.mjs:36 — \"THE BROWSER SAYING IT IS ONLINE IS NOT EVIDENCE OF ANYTHING\" calls reachability/reachNotice from apps/web/src/lib/connectivity.ts."
     }
    ]
   },
@@ -605,8 +620,11 @@
     {
      "id": "f-636987b2",
      "name": "Error explanation",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "apps/web/tests/error-taxonomy.test.mjs:48 — \"EVERY failure is classified — none falls through to a shrug\" runs explainFailure over the product’s error surface from the bundled module.",
+     "disposition": "BOOKKEEPING-FLIP",
+     "dispositionPass": 1,
+     "dispositionCitation": "apps/web/tests/error-taxonomy.test.mjs:48 — \"EVERY failure is classified — none falls through to a shrug\" runs explainFailure over the product’s error surface from the bundled module."
     },
     {
      "id": "f-90a04a93",
@@ -1655,8 +1673,11 @@
     {
      "id": "f-7f2937fa",
      "name": "Stop",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "apps/worker/tests/stop-signal.test.mjs:61 — \"a stop survives the run writing the agent blob after it\" calls requestStop/stopRequested from apps/worker/src/stop-signal.ts against the two-writer race.",
+     "disposition": "BOOKKEEPING-FLIP",
+     "dispositionPass": 1,
+     "dispositionCitation": "apps/worker/tests/stop-signal.test.mjs:61 — \"a stop survives the run writing the agent blob after it\" calls requestStop/stopRequested from apps/worker/src/stop-signal.ts against the two-writer race."
     },
     {
      "id": "f-eacab33b",
@@ -2891,8 +2912,11 @@
     {
      "id": "f-25d142e1",
      "name": "PII scan",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "apps/worker/tests/secret-redaction.test.mjs:185 — \"email, SSN and IPv4 are detected, and redaction removes the value\" calls apps/worker/src/redaction.ts on strings that contain the PII it must catch.",
+     "disposition": "BOOKKEEPING-FLIP",
+     "dispositionPass": 1,
+     "dispositionCitation": "apps/worker/tests/secret-redaction.test.mjs:185 — \"email, SSN and IPv4 are detected, and redaction removes the value\" calls apps/worker/src/redaction.ts on strings that contain the PII it must catch."
     },
     {
      "id": "f-83233324",
@@ -3677,8 +3701,11 @@
     {
      "id": "f-fb347237",
      "name": "User preferences",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "apps/worker/tests/preferences.test.mjs:79 — \"a MISSING allowlist refuses the key rather than accepting it unchecked\" runs the preference validator from the bundled module.",
+     "disposition": "BOOKKEEPING-FLIP",
+     "dispositionPass": 1,
+     "dispositionCitation": "apps/worker/tests/preferences.test.mjs:79 — \"a MISSING allowlist refuses the key rather than accepting it unchecked\" runs the preference validator from the bundled module."
     },
     {
      "id": "f-ddf46906",
@@ -3953,8 +3980,11 @@
     {
      "id": "f-516969ab",
      "name": "Code review",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "apps/worker/tests/luau-review.test.mjs:135 — \"edit_script REFUSES a body that does not parse, and no write reaches Studio\" drives the review path from apps/worker/src/luau-review.ts at the product seam.",
+     "disposition": "BOOKKEEPING-FLIP",
+     "dispositionPass": 1,
+     "dispositionCitation": "apps/worker/tests/luau-review.test.mjs:135 — \"edit_script REFUSES a body that does not parse, and no write reaches Studio\" drives the review path from apps/worker/src/luau-review.ts at the product seam."
     },
     {
      "id": "f-73d654bb",
@@ -5232,8 +5262,11 @@
     {
      "id": "f-27e84d69",
      "name": "Dependency graph",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "packages/evals/src/luau-graph.test.mjs:41 — \"yielding propagates transitively through the call graph, and stops where it should\" builds the dependency graph and checks unresolved edges are listed rather than invented.",
+     "disposition": "BOOKKEEPING-FLIP",
+     "dispositionPass": 1,
+     "dispositionCitation": "packages/evals/src/luau-graph.test.mjs:41 — \"yielding propagates transitively through the call graph, and stops where it should\" builds the dependency graph and checks unresolved edges are listed rather than invented."
     },
     {
      "id": "f-332e482e",
@@ -5346,8 +5379,11 @@
     {
      "id": "f-d795bb60",
      "name": "MFA",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "apps/web/tests/mfa.test.mjs:57 — \"A FAILED READ IS NOT 'OFF' — the sentence that invites a second enrolment\" calls the MFA state reducer from apps/web/src/lib/mfa.ts.",
+     "disposition": "BOOKKEEPING-FLIP",
+     "dispositionPass": 1,
+     "dispositionCitation": "apps/web/tests/mfa.test.mjs:57 — \"A FAILED READ IS NOT 'OFF' — the sentence that invites a second enrolment\" calls the MFA state reducer from apps/web/src/lib/mfa.ts."
     },
     {
      "id": "f-eddbc447",
@@ -5370,8 +5406,11 @@
     {
      "id": "f-5afe35cb",
      "name": "API key rotation",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "apps/worker/tests/api-key-rotation.test.mjs:54 — \"INHERIT EXACTLY: the replacement carries the old grant and nothing more\" rotates a key through the bundled module. The test header names this row id.",
+     "disposition": "BOOKKEEPING-FLIP",
+     "dispositionPass": 1,
+     "dispositionCitation": "apps/worker/tests/api-key-rotation.test.mjs:54 — \"INHERIT EXACTLY: the replacement carries the old grant and nothing more\" rotates a key through the bundled module. The test header names this row id."
     },
     {
      "id": "f-892f895f",
@@ -5532,8 +5571,11 @@
     {
      "id": "f-9465c75b",
      "name": "Destructive action confirmation",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "apps/web/tests/confirm-model.test.mjs:30 — \"deleting something the user made, forever, asks them to type its name\" calls canConfirm/confirmationFor/confirmMatches from apps/web/src/lib/confirm-model.ts.",
+     "disposition": "BOOKKEEPING-FLIP",
+     "dispositionPass": 1,
+     "dispositionCitation": "apps/web/tests/confirm-model.test.mjs:30 — \"deleting something the user made, forever, asks them to type its name\" calls canConfirm/confirmationFor/confirmMatches from apps/web/src/lib/confirm-model.ts."
     },
     {
      "id": "f-9bb8d4ec",
@@ -5544,8 +5586,11 @@
     {
      "id": "f-0934c6af",
      "name": "Rollback",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "tests/rollback-rules.test.mjs:57 — \"a manifest whose counts do not reconcile is refused\" executes the rollback rules against manifests that violate each one (docs/FAILURES.md F-62).",
+     "disposition": "BOOKKEEPING-FLIP",
+     "dispositionPass": 1,
+     "dispositionCitation": "tests/rollback-rules.test.mjs:57 — \"a manifest whose counts do not reconcile is refused\" executes the rollback rules against manifests that violate each one (docs/FAILURES.md F-62)."
     },
     {
      "id": "f-6c773523",
@@ -5592,8 +5637,11 @@
     {
      "id": "f-624a203a",
      "name": "GDPR export",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "apps/worker/tests/account-data-routes-live.test.mjs:236 — \"every table the spec declares appears in the file, and the rows are the caller’s own\" drives GET /api/account/export through the built worker and checks the exported file against the declared table spec. apps/worker/src/user-export.ts names this row id.",
+     "disposition": "BOOKKEEPING-FLIP",
+     "dispositionPass": 1,
+     "dispositionCitation": "apps/worker/tests/account-data-routes-live.test.mjs:236 — \"every table the spec declares appears in the file, and the rows are the caller’s own\" drives GET /api/account/export through the built worker and checks the exported file against the declared table spec. apps/worker/src/user-export.ts names this row id."
     },
     {
      "id": "f-bce65f93",

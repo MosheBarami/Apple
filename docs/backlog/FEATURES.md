@@ -57,7 +57,7 @@ decision" list that outlives the decision reads as a refusal the product never m
 
 ## Sections
 
-### מוצר וחשבון — 24 items  (done 1, partial 0)
+### מוצר וחשבון — 24 items  (done 6, partial 0)
 
 - [ ] הרשמה והתחברות
 - [ ] Clerk / OAuth / Passkeys
@@ -68,23 +68,23 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [ ] Workspaces
 - [ ] Projects
 - [ ] תיקיות
-- [ ] Tags
+- [x] Tags
 - [ ] חיפוש גלובלי
 - [ ] Favorites
 - [ ] Recents
-- [ ] Activity log
-- [ ] Notifications
+- [x] Activity log
+- [x] Notifications
 - [ ] Onboarding
 - [ ] הגדרות משתמש
 - [ ] הגדרות ארגון
 - [ ] API keys
-- [ ] Webhooks
+- [x] Webhooks
 - [ ] Audit logs
-- [ ] Export account data
+- [x] Export account data
 - [ ] מחיקת חשבון
-- [ ] מצב Offline
+- [x] מצב Offline
 
-### צ׳אט AI — 82 items  (done 10, partial 4)
+### צ׳אט AI — 82 items  (done 11, partial 4)
 
 - [x] Chat streaming — apps/worker/src/do/session.ts broadcast deltas; verified live
 - [ ] Markdown
@@ -160,7 +160,7 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [ ] Background jobs
 - [ ] Queue position
 - [x] Run history — messages table in SessionDO
-- [ ] Error explanation
+- [x] Error explanation
 - [ ] Automatic retry
 - [x] Partial result recovery — owesWork -> 'incomplete', never reported as success
 - [ ] Human approval checkpoints
@@ -326,7 +326,7 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [ ] Console compatibility audit
 - [ ] Accessibility audit
 
-### Roblox Studio Companion — 52 items  (done 15, partial 1)
+### Roblox Studio Companion — 52 items  (done 16, partial 1)
 
 - [!] Desktop companion app — owner chose rasteriser-only; out of scope for now
 - [ ] Native Studio bridge
@@ -339,30 +339,30 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [ ] Properties mirror
 - [ ] Output console mirror
 - [ ] Script editor mirror
-- [ ] Test controls
+- [x] Test controls
 - [ ] Play
-- [ ] Stop
-- [ ] Pause
-- [ ] Restart
+- [x] Stop
+- [x] Pause
+- [x] Restart
 - [ ] Run server
 - [ ] Run client
 - [ ] Multi-client testing
 - [ ] Camera control
-- [ ] Object selection sync
+- [x] Object selection sync
 - [ ] Gizmo control
-- [ ] Transform controls
-- [ ] Move
-- [ ] Rotate
-- [ ] Scale
-- [ ] Clone
+- [x] Transform controls
+- [x] Move
+- [x] Rotate
+- [x] Scale
+- [x] Clone
 - [ ] Delete
-- [ ] Group
-- [ ] Ungroup
-- [ ] Rename
+- [x] Group
+- [x] Ungroup
+- [x] Rename
 - [ ] Reparent
-- [ ] Lock
-- [ ] Unlock
-- [ ] Visibility toggle
+- [x] Lock
+- [x] Unlock
+- [x] Visibility toggle
 - [ ] Material picker
 - [ ] Color picker
 - [ ] Collision preview
@@ -458,7 +458,7 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [×] Dedicated inference — recurring cost
 - [×] Inference autoscaling — recurring cost
 
-### Training — 107 items  (done 29, partial 1)
+### Training — 107 items  (done 30, partial 1)
 
 - [ ] Dataset creation
 - [ ] Dataset upload
@@ -551,7 +551,7 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [x] License compliance scan — build-dataset.mjs TRAINING_OK_SPDX gate
 - [x] Data contamination scan — build-dataset.mjs 8-word shingle vs packages/evals tasks
 - [ ] Memorization scan
-- [ ] PII scan
+- [x] PII scan
 - [ ] Prompt injection scan
 - [ ] Backdoor scan
 - [ ] Poisoning scan
@@ -576,7 +576,7 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [x] Roblox task suite — packages/evals/tasks (api-knowledge, luau-correctness, ...)
 - [x] Luau task suite — packages/evals/tasks/luau-correctness.json
 - [x] Tool selection tests — packages/evals/tasks/tool-selection.json
-- [ ] Tool argument tests
+- [x] Tool argument tests
 - [ ] Build completion tests
 - [x] Script syntax tests — luau_syntax check via luau-lsp
 - [ ] Runtime tests
@@ -610,32 +610,32 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [ ] Human scoring
 - [x] Automated scoring — packages/evals/src/grade.mjs
 - [x] LLM-as-judge — vision.ts critiqueViews — real images to a vision model
-- [ ] Pairwise comparison
-- [ ] Elo ranking
-- [ ] Pass rate
-- [ ] Success rate
-- [ ] First-attempt success
-- [ ] Tool-call accuracy
-- [ ] Build validity
+- [x] Pairwise comparison
+- [x] Elo ranking
+- [x] Pass rate
+- [x] Success rate
+- [x] First-attempt success
+- [x] Tool-call accuracy
+- [x] Build validity
 - [~] Test coverage
-- [ ] Mean latency
-- [ ] P95 latency
-- [ ] Mean cost
-- [ ] Token efficiency
-- [ ] Error rate
-- [ ] Retry rate
-- [ ] Completion rate
+- [x] Mean latency
+- [x] P95 latency
+- [x] Mean cost
+- [x] Token efficiency
+- [x] Error rate
+- [x] Retry rate
+- [x] Completion rate
 - [ ] Quality dashboard
-- [ ] Eval history
-- [ ] Eval diff
-- [ ] Model leaderboard
+- [x] Eval history
+- [x] Eval diff
+- [x] Model leaderboard
 - [ ] Public benchmark
 - [ ] Private benchmark
 - [ ] Scheduled evaluation
-- [ ] Promotion gates
-- [ ] Rollback gates
+- [x] Promotion gates
+- [x] Rollback gates
 
-### Knowledge and RAG — 54 items  (done 15, partial 0)
+### Knowledge and RAG — 54 items  (done 16, partial 0)
 
 - [ ] Document ingestion
 - [ ] Website crawling
@@ -655,22 +655,22 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [x] Code-aware chunking — packages/corpus chunker splits on headings/code blocks
 - [ ] Metadata extraction
 - [x] Embeddings — bge-small-en-v1.5, 384d — verified live
-- [ ] Reranking
+- [x] Reranking
 - [x] Hybrid search — rag.ts — Vectorize + D1 FTS5
-- [ ] Keyword search
+- [x] Keyword search
 - [x] Vector search — Vectorize index golem-docs (384d) — verified live
 - [x] Full-text search — D1 chunks_fts FTS5 — verified live, 8,327 chunks
 - [ ] Knowledge graph
 - [ ] Entity extraction
 - [ ] Relationship extraction
-- [ ] Citation tracking
-- [ ] Source freshness
+- [x] Citation tracking
+- [x] Source freshness
 - [ ] Source ranking
 - [ ] Source trust scoring
 - [ ] Duplicate detection
 - [ ] Version tracking
-- [ ] Change detection
-- [ ] Incremental indexing
+- [x] Change detection
+- [x] Incremental indexing
 - [ ] Per-project knowledge
 - [ ] Per-user knowledge
 - [ ] Per-team knowledge
@@ -679,35 +679,35 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [ ] Knowledge permissions
 - [ ] Knowledge expiration
 - [ ] Knowledge deletion
-- [ ] Retrieval evaluation
+- [x] Retrieval evaluation
 - [ ] Context compression
 - [ ] Context summarization
 - [ ] Long-term memory
 - [ ] Short-term memory
 - [ ] Episodic memory
 - [ ] Semantic memory
-- [ ] User preferences
+- [x] User preferences
 - [ ] Project memory
 - [ ] Build memory
 - [ ] Failure memory
 - [ ] Successful pattern memory
 
-### Code Intelligence — 49 items  (done 16, partial 0)
+### Code Intelligence — 49 items  (done 17, partial 0)
 
 - [x] Luau parser — luau-lsp 1.69.0 integrated via packages/evals/src/luau.mjs
-- [ ] Luau formatter — NOT BUILT: nothing invokes stylua; the mission doc lists installing it as G-TOOLCHAIN-1, i.e. work not done
+- [x] Luau formatter — NOT BUILT: nothing invokes stylua; the mission doc lists installing it as G-TOOLCHAIN-1, i.e. work not done
 - [x] Luau linter — selene 0.31.0 + roblox-antipatterns.mjs
 - [ ] Luau type checker
 - [x] luau-lsp integration — packages/evals/src/luau.mjs resolveLuauChecker
 - [x] Static analysis — roblox-antipatterns.mjs — semantic exploit rules
-- [ ] AST inspection
-- [ ] Symbol index
-- [ ] Dependency graph
-- [ ] Call graph
-- [ ] Data-flow analysis
-- [ ] Control-flow analysis
-- [ ] Dead-code detection
-- [ ] Unused-variable detection
+- [x] AST inspection
+- [x] Symbol index
+- [x] Dependency graph
+- [x] Call graph
+- [x] Data-flow analysis
+- [x] Control-flow analysis
+- [x] Dead-code detection
+- [x] Unused-variable detection
 - [ ] Type inference
 - [ ] API discovery
 - [ ] Roblox API validation
@@ -718,7 +718,7 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [x] Server-authority validation — roblox-antipatterns.mjs client-trusted-price rules
 - [ ] Rate-limit validation
 - [ ] Memory leak detection
-- [ ] Infinite loop detection
+- [x] Infinite loop detection
 - [ ] Yield safety detection
 - [ ] Promise safety detection
 - [ ] Error handling audit
@@ -734,7 +734,7 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [ ] Commit generation
 - [ ] Branch generation
 - [ ] Pull request generation
-- [ ] Code review
+- [x] Code review
 - [ ] Inline comments
 - [ ] Test generation
 - [ ] Mock generation
@@ -750,12 +750,12 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [ ] Image-to-3D
 - [ ] Sketch-to-3D
 - [ ] Script-to-3D
-- [ ] Primitive generation
+- [x] Primitive generation
 - [~] Mesh generation — same as Text-to-3D — session-scoped only
-- [ ] Low-poly generation
-- [ ] High-poly generation
+- [x] Low-poly generation
+- [x] High-poly generation
 - [ ] Retopology
-- [ ] UV generation
+- [x] UV generation
 - [ ] Texture generation
 - [ ] PBR materials
 - [ ] Normal maps
@@ -798,14 +798,14 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [ ] Dungeon generation
 - [ ] City generation
 - [ ] Procedural worlds
-- [ ] Seeded generation
-- [ ] Variation generation
+- [x] Seeded generation
+- [x] Variation generation
 - [ ] Asset remixing
 - [ ] Asset style transfer
-- [ ] Asset cleanup
+- [x] Asset cleanup
 - [ ] Asset optimization
-- [ ] Asset LOD generation
-- [ ] Asset collision generation
+- [x] Asset LOD generation
+- [x] Asset collision generation
 - [ ] Asset preview
 - [ ] 3D viewport
 - [ ] Orbit camera
@@ -818,8 +818,8 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [ ] Frame stepping
 - [ ] Play animation
 - [ ] Export FBX
-- [ ] Export OBJ
-- [ ] Export GLB
+- [x] Export OBJ
+- [x] Export GLB
 - [!] Export Roblox asset — same credential blocker
 - [ ] Asset history
 - [ ] Asset comparison
@@ -828,55 +828,55 @@ decision" list that outlives the decision reads as a refusal the product never m
 
 ### Voice and Audio — 32 items  (done 18, partial 0)
 
-- [ ] Speech-to-text
-- [ ] Text-to-speech
+- [x] Speech-to-text
+- [x] Text-to-speech
 - [ ] Voice chat
-- [ ] Voice commands
-- [ ] Voice activity detection
+- [x] Voice commands
+- [x] Voice activity detection
 - [ ] Speaker diarization
 - [ ] Voice cloning
-- [ ] Voice presets
+- [x] Voice presets
 - [ ] Emotion control
-- [ ] Language detection
+- [x] Language detection
 - [ ] Translation
-- [ ] Sound effect generation
+- [x] Sound effect generation
 - [ ] Music generation
-- [ ] Ambience generation
-- [ ] Footstep generation
-- [ ] UI sound generation
-- [ ] Combat sound generation
+- [x] Ambience generation
+- [x] Footstep generation
+- [x] UI sound generation
+- [x] Combat sound generation
 - [ ] Dialogue generation
 - [ ] Lip sync
-- [ ] Audio cleanup
-- [ ] Noise removal
-- [ ] Audio mixing
-- [ ] Audio mastering
-- [ ] Audio waveform preview
+- [x] Audio cleanup
+- [x] Noise removal
+- [x] Audio mixing
+- [x] Audio mastering
+- [x] Audio waveform preview
 - [ ] Audio timeline
 - [ ] Audio asset library
 - [ ] Audio licensing
 - [ ] Audio moderation
-- [ ] Volume normalization
-- [ ] Export WAV
+- [x] Volume normalization
+- [x] Export WAV
 - [ ] Export MP3
 - [ ] Export OGG
 
 ### Automation and Tools — 43 items  (done 11, partial 0)
 
-- [ ] Browser tool
+- [x] Browser tool
 - [ ] Search tool
-- [ ] Web fetch
-- [ ] GitHub tool
-- [ ] Git tool
+- [x] Web fetch
+- [x] GitHub tool
+- [x] Git tool
 - [ ] Terminal tool
-- [ ] File system tool
-- [ ] Code execution
-- [ ] Python sandbox
-- [ ] Node sandbox
-- [ ] Luau sandbox
-- [ ] Roblox test sandbox
+- [x] File system tool
+- [x] Code execution
+- [x] Python sandbox
+- [x] Node sandbox
+- [x] Luau sandbox
+- [x] Roblox test sandbox
 - [ ] Screenshot tool
-- [ ] OCR tool
+- [x] OCR tool
 - [ ] Image analysis
 - [ ] Video analysis
 - [ ] Audio analysis
@@ -907,7 +907,7 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [ ] License scanner
 - [ ] Vulnerability scanner
 
-### Product UX — 59 items  (done 18, partial 4)
+### Product UX — 59 items  (done 19, partial 4)
 
 - [x] Dark mode — apple-brand.css dark-native tokens
 - [x] Light mode
@@ -938,16 +938,16 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [~] Arabic UI
 - [~] Localization
 - [~] Translation system
-- [ ] Onboarding tours
+- [x] Onboarding tours
 - [x] Empty states
 - [ ] Loading states
 - [ ] Skeleton states
 - [ ] Error states
-- [ ] Offline states
+- [x] Offline states
 - [ ] Success states
-- [ ] Toast notifications
-- [ ] Modal confirmations
-- [ ] Undo actions
+- [x] Toast notifications
+- [x] Modal confirmations
+- [x] Undo actions
 - [ ] Autosave
 - [ ] Autosave recovery
 - [ ] Draft recovery
@@ -955,7 +955,7 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [ ] Activity timeline
 - [ ] Build timeline
 - [ ] Execution graph
-- [ ] Dependency graph
+- [x] Dependency graph
 - [ ] Token graph
 - [ ] Cost graph
 - [ ] Quality graph
@@ -969,26 +969,26 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [ ] Live code diff
 - [ ] Live test results
 
-### Safety and Security — 56 items  (done 11, partial 0)
+### Safety and Security — 56 items  (done 16, partial 0)
 
 - [x] Authentication — Supabase ES256 JWKS verify, auth.ts
 - [~] Authorization — Postgres RLS, infra/supabase/migrations
 - [ ] RBAC
 - [ ] ABAC
 - [ ] SSO
-- [ ] MFA
+- [x] MFA
 - [ ] Passkeys
 - [ ] Session management
 - [ ] Device management
-- [ ] API key rotation
+- [x] API key rotation
 - [ ] Secret encryption
-- [ ] Secret redaction
+- [x] Secret redaction
 - [x] Secret scanning — scripts/secret-scan.py — tree verified clean
-- [ ] PII detection
-- [ ] PII redaction
+- [x] PII detection
+- [x] PII redaction
 - [x] Prompt injection defense — per-run fence id; tool output never trusted as instruction
-- [ ] Tool injection defense
-- [ ] Data exfiltration defense
+- [x] Tool injection defense
+- [x] Data exfiltration defense
 - [ ] Sandbox isolation
 - [ ] Network isolation
 - [ ] File access policies
@@ -997,8 +997,8 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [ ] Domain allowlists
 - [ ] Command allowlists
 - [x] Rate limiting — index.ts ipLimited (per-isolate, defence in depth)
-- [ ] Abuse detection
-- [ ] Spam detection
+- [x] Abuse detection
+- [x] Spam detection
 - [ ] Malware scanning
 - [ ] Code exploit scanning
 - [ ] Roblox exploit scanning
@@ -1007,9 +1007,9 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [ ] License checks
 - [ ] Attribution tracking
 - [ ] Human approval
-- [ ] Destructive action confirmation
+- [x] Destructive action confirmation
 - [ ] Publish confirmation
-- [ ] Rollback
+- [x] Rollback
 - [ ] Immutable audit logs
 - [~] Tenant isolation — RLS enforced at DB level, not app level
 - [ ] Encryption at rest
@@ -1017,7 +1017,7 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [ ] Backup encryption
 - [ ] Data retention policies
 - [ ] Data deletion policies
-- [ ] GDPR export
+- [x] GDPR export
 - [ ] GDPR deletion
 - [ ] Regional data controls
 - [ ] Privacy mode
@@ -1126,19 +1126,19 @@ decision" list that outlives the decision reads as a refusal the product never m
 
 ### Developer Platform — 42 items  (done 21, partial 0)
 
-- [ ] Public API
-- [ ] REST API
+- [x] Public API
+- [x] REST API
 - [ ] GraphQL API
-- [ ] OpenAI-compatible API
-- [ ] Streaming API
+- [x] OpenAI-compatible API
+- [x] Streaming API
 - [ ] WebSockets
-- [ ] Server-sent events
-- [ ] SDKs
-- [ ] JavaScript SDK
-- [ ] TypeScript SDK
-- [ ] Python SDK
-- [ ] Luau SDK
-- [ ] CLI
+- [x] Server-sent events
+- [x] SDKs
+- [x] JavaScript SDK
+- [x] TypeScript SDK
+- [x] Python SDK
+- [x] Luau SDK
+- [x] CLI
 - [ ] GitHub App
 - [ ] VS Code extension
 - [!] Roblox Studio plugin — STUDIO_PLUGIN_STORE_LIVE=false — nobody can install it
@@ -1146,17 +1146,17 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [ ] Webhooks
 - [ ] OAuth apps
 - [ ] API documentation
-- [ ] OpenAPI schema
+- [x] OpenAPI schema
 - [ ] API playground
-- [ ] Sandbox API
-- [ ] Test API keys
-- [ ] Production API keys
-- [ ] Versioned API
-- [ ] Deprecation policy
-- [ ] Rate-limit headers
-- [ ] Usage headers
-- [ ] Request tracing
-- [ ] Idempotency
+- [x] Sandbox API
+- [x] Test API keys
+- [x] Production API keys
+- [x] Versioned API
+- [x] Deprecation policy
+- [x] Rate-limit headers
+- [x] Usage headers
+- [x] Request tracing
+- [x] Idempotency
 - [ ] Batch API
 - [ ] Async API
 - [ ] Job API
@@ -1171,20 +1171,20 @@ decision" list that outlives the decision reads as a refusal the product never m
 
 ### Collaboration — 30 items  (done 10, partial 0)
 
-- [ ] Shared projects
-- [ ] Shared chats
-- [ ] Shared builds
+- [x] Shared projects
+- [x] Shared chats
+- [x] Shared builds
 - [ ] Shared datasets
 - [ ] Shared models
 - [ ] Shared evaluations
-- [ ] Comments
-- [ ] Mentions
-- [ ] Reactions
-- [ ] Approvals
-- [ ] Review requests
-- [ ] Presence indicators
+- [x] Comments
+- [x] Mentions
+- [x] Reactions
+- [x] Approvals
+- [x] Review requests
+- [x] Presence indicators
 - [ ] Live cursors
-- [ ] Version history
+- [x] Version history
 - [ ] Branches
 - [ ] Merge requests
 - [ ] Conflict resolution
@@ -1204,28 +1204,28 @@ decision" list that outlives the decision reads as a refusal the product never m
 
 ### Analytics and Observability — 37 items  (done 16, partial 0)
 
-- [ ] Request logs
+- [x] Request logs
 - [x] Agent traces — ToolTraceEntry persisted per run
-- [ ] Model traces
+- [x] Model traces
 - [x] Tool traces — agent.trace + uiTools
-- [ ] Error logs
-- [ ] Build logs
+- [x] Error logs
+- [x] Build logs
 - [x] Training logs — packages/training/runs/apple-v*.log
 - [ ] Evaluation logs
-- [ ] Audit logs
+- [x] Audit logs
 - [ ] User analytics
 - [ ] Project analytics
 - [ ] Model analytics
-- [ ] Cost analytics
-- [ ] Latency analytics
-- [ ] Token analytics
-- [ ] Success analytics
-- [ ] Retention analytics
-- [ ] Funnel analytics
-- [ ] Feature usage
-- [ ] Error breakdown
-- [ ] Provider breakdown
-- [ ] Model breakdown
+- [x] Cost analytics
+- [x] Latency analytics
+- [x] Token analytics
+- [x] Success analytics
+- [x] Retention analytics
+- [x] Funnel analytics
+- [x] Feature usage
+- [x] Error breakdown
+- [x] Provider breakdown
+- [x] Model breakdown
 - [ ] Heatmaps
 - [ ] Session replay
 - [ ] Alerting
@@ -1267,13 +1267,13 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [ ] Pull requests
 - [ ] Code review
 - [ ] Approval gates
-- [ ] Release notes
-- [ ] Changelog
+- [x] Release notes
+- [x] Changelog
 - [ ] Version tags
-- [ ] Semantic versioning
-- [ ] Automatic rollback
-- [ ] Database migrations
-- [ ] Schema validation
+- [x] Semantic versioning
+- [x] Automatic rollback
+- [x] Database migrations
+- [x] Schema validation
 - [ ] Backup verification
 - [ ] Disaster recovery drills
 - [ ] Uptime monitoring
@@ -1287,28 +1287,28 @@ decision" list that outlives the decision reads as a refusal the product never m
 
 ### Model Memory and Personalization — 29 items  (done 21, partial 0)
 
-- [ ] User memory
-- [ ] Project memory
-- [ ] Organization memory
-- [ ] Persistent preferences
-- [ ] Preferred coding style
-- [ ] Preferred Roblox conventions
-- [ ] Preferred language
+- [x] User memory
+- [x] Project memory
+- [x] Organization memory
+- [x] Persistent preferences
+- [x] Preferred coding style
+- [x] Preferred Roblox conventions
+- [x] Preferred language
 - [ ] Preferred model
-- [ ] Preferred response length
-- [ ] Preferred tool permissions
-- [ ] Personal prompt profile
-- [ ] Project instructions
-- [ ] Team instructions
-- [ ] Memory viewer
-- [ ] Memory editor
-- [ ] Memory deletion
-- [ ] Memory expiration
-- [ ] Memory import
-- [ ] Memory export
-- [ ] Memory audit
-- [ ] Memory permissions
-- [ ] Memory conflict resolution
+- [x] Preferred response length
+- [x] Preferred tool permissions
+- [x] Personal prompt profile
+- [x] Project instructions
+- [x] Team instructions
+- [x] Memory viewer
+- [x] Memory editor
+- [x] Memory deletion
+- [x] Memory expiration
+- [x] Memory import
+- [x] Memory export
+- [x] Memory audit
+- [x] Memory permissions
+- [x] Memory conflict resolution
 - [ ] Context summarization
 - [ ] Automatic context compression
 - [ ] Conversation recall
