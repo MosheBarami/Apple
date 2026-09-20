@@ -3828,7 +3828,7 @@ export async function runTool(
     // build is not what needs protecting — a 24KB cap sized for re-sent tool results is.
     const detail = ctx.uiDetail !== undefined ? capUiDetail(ctx.uiDetail) : detailForUi(result);
     ctx.uiDetail = undefined;
-    return { summary: summarize(name, args, failed), resultForLlm: str, ok: !failed, detail };
+    return { summary: summarize(name, args, failed, failed ? (result as Record<string, unknown>).error : undefined), resultForLlm: str, ok: !failed, detail };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     /* §1: provider and model identity are implementation details and must not
@@ -3870,8 +3870,39 @@ export function scrubEngineIdentity(msg: string): string {
     .slice(0, 300);
 }
 
-function summarize(name: string, args: Record<string, unknown>, failed: boolean): string {
+/**
+ * The row one line long: what ran, on what, and — when it failed — WHY.
+ *
+ * The reason used to be missing, and the omission was not visible from here. MEASURED against
+ * production 2026-09-20T23:38Z, the first tool row of a real run read `✗ propose_plan` and carried
+ * no `detail`; the sentence `readProposedPlan` had written for exactly this moment ("step 2 names
+ * the tool \"edit_scripts\", which does not exist") went into `resultForLlm`, which only the model
+ * reads. The person watching the Thinking card was shown that something failed and told nothing
+ * about what — an observation-shaped rendering of a failure to observe, which is the defect class
+ * this repository exists to refuse.
+ *
+ * SCRUBBED, because part of this string is now chosen by the model. Tool refusals quote their own
+ * arguments back ("names the tool X"), so a model that puts an engine id in an argument would put
+ * it in front of a user; `scrubEngineIdentity` is on this path for that reason and not as ceremony.
+ *
+ * BOUNDED AS A WHOLE, not just the reason. `tool_end.summary` is rendered verbatim on one line in
+ * apps/web's activity panel, and the length of a refusal is partly the model's to choose.
+ *
+ * NOT extended to `runTool`'s catch branch on purpose. That text is an unexpected exception rather
+ * than a sentence written for a reader, and the comment there records what it cost to learn that
+ * raw exception text must not cross this boundary.
+ */
+const MAX_SUMMARY_CHARS = 200;
+
+function summarize(name: string, args: Record<string, unknown>, failed: boolean, reason?: unknown): string {
   const target = (args.path ?? args.query ?? args.root ?? args.label ?? args.fact ?? '') as string;
   const t = typeof target === 'string' && target ? ` · ${target.slice(0, 60)}` : '';
-  return `${failed ? '✗' : '✓'} ${name}${t}`;
+  const head = `${failed ? '✗' : '✓'} ${name}${t}`;
+  if (!failed || typeof reason !== 'string') return head;
+  const why = scrubEngineIdentity(reason).replace(/\s+/g, ' ').trim();
+  // A reason with no room left to be read is worse than none: it would end mid-word and still push
+  // the subject off the row.
+  const room = MAX_SUMMARY_CHARS - head.length - 3;
+  if (!why || room < 24) return head;
+  return `${head} — ${why.length > room ? why.slice(0, room - 1) + '…' : why}`;
 }

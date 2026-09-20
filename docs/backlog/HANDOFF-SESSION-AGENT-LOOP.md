@@ -6,6 +6,12 @@
      sections below; if you add one, change it. -->
 
 
+> **Line numbers in this file drift, because the files it cites are being edited by other lanes while
+> it sits here.** Every citation below was re-checked on 2026-09-21 and three were wrong. Treat a line
+> number as a hint and the quoted code as the anchor: `grep -n` the quoted text before believing the
+> number. The two `session.ts` anchors that matter most were still exact on that date — `refuseOne` at
+> `1401` and `res.toolCalls.slice(0, 4)` at `3887`.
+
 `apps/worker/src/do/session.ts` was being edited by another lane while this was written, so it was
 read and measured but **not touched**. Both defects below are in that file. Everything here is
 either quoted from the file or measured by a command written out in full, so whoever owns the file
@@ -108,7 +114,7 @@ and `orphanedToolMessages(llm)` over the same array returns `[]`.
 **What that measurement does and does not establish.** It establishes that this repository puts an
 unanswered `tool_call` on the wire — that is code in this tree, and it is now reproduced above.
 It does **not** establish what the provider does with it. An OpenAI-shaped chat API documents a
-rejection for exactly this shape, and `session.ts:3330` already has a `/inference failed/` branch
+rejection for exactly this shape, and `session.ts:3331` already has a `/inference failed/` branch
 that ends the run `'error'`/`dropped_step`. Whether `@cf/zai-org/glm-5.3-flash` behind Workers AI
 rejects it, tolerates it, or silently mis-reads the turn **was not probed** — doing so means a live
 paid call, which CI must never make and which was not made here. Treat the provider's reaction as
@@ -277,10 +283,22 @@ prompt change for it on a guess. The patch above bounds the cost of the loop; it
 The brief that produced this file said the Studio plugin "appears to send no `checkpointEligible`
 and no `restorable` at all". That is true of `apps/plugin/src` and irrelevant: commit `f6ad60a`
 marked `apps/plugin` NOT THE PRODUCT and named `apps/apple-plugin` as what ships.
-`apps/apple-plugin/src/Commands.luau:2932` emits `format`, `checkpointId`, `restorable`,
-`checkpointEligible`, `truncated`, `skipped`, `protected`, `coverage` and `wholePlaceComplete` —
-every field `checkpoint-evidence.ts` demands. There is no missing-field bug. The worker-side half of
-that item (one sentence for three causes) was real and is fixed in commit `ac4a7b1`.
+`apps/apple-plugin/src/Commands.luau:2953` emits `format`, `checkpointId`, `restorable`,
+`checkpointEligible`, `truncated`, `truncatedBy`, `skipped`, `protected`, `coverage` and
+`wholePlaceComplete` — every field `checkpoint-evidence.ts` demands. There is no missing-field bug.
+The worker-side half of that item (one sentence for three causes) was real and is fixed in commit
+`ac4a7b1`.
+
+**Corrected 2026-09-21.** That citation was `:2932` and `truncatedBy` was not in the list, because
+neither was true any more: commit `03457b3` added twenty lines above the emitter and a field to it.
+The paragraph above also understated the defect. Running the real plugin through the real admission
+for the first time — nothing had ever done it, `checkpointEvidence` had no test of any kind — showed
+that `truncated` is ONE boolean raised by FOUR ceilings (objects 800, depth 12, script bytes 600000,
+children per parent 400), and the worker answered all four with *"this project is too large for one
+checkpoint"*. A place of THIRTEEN objects with a deep folder chain got that sentence with its own
+*"(it reached 13 objects)"* printed beside it. Fixed in `03457b3`; guarded end to end, real plugin
+through real admission, in `apps/worker/tests/checkpoint-evidence-live-plugin.test.mjs`; and
+asserted against the deployed worker in `infra/e2e.mjs` steps 6b–6d (`8963208`).
 
 ---
 
@@ -390,7 +408,8 @@ site has to `await` it. That is the whole of the change:
   }
 ```
 
-`role_changed` is excluded by name: `session.ts` ~3859 sends it through a plain `ws.send`, not
+`role_changed` is excluded by name: `session.ts:1379` (`~3859` when this was written; re-find it
+with `grep -n role_changed`) sends it through a plain `ws.send`, not
 through `refuseOne`, so today it cannot reach this branch — the exclusion is there so that it stays
 true if someone routes it here later. It refuses nothing and announcing "no run" on it would end a
 run that is still going, which is this defect's mirror image.
