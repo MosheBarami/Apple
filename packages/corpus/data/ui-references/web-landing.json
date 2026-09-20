@@ -99,6 +99,38 @@
         "status": "unverified_reference_only",
         "copyPermission": false
       }
+    },
+    {
+      "id": "rosebud-ai-design-language",
+      "source": "https://rosebud.ai/ , /pricing and /play — measured on 2026-09-20 by walking the live DOM in a real browser: getComputedStyle over every element for surface colours weighted by painted area, the type scale as actually used, radii and shadows by frequency, every button's full box spec, document.getAnimations() and a stylesheet scan for @keyframes, and the resource timing list for audio and background assets. NAMED BY THE OWNER AS THE BAR, with an explicit instruction to follow it closely in our own accent and to keep our own typeface.",
+      "demonstrates": [
+        "THE WHOLE INTERFACE IS MONOSPACE — Source Code Pro on every node, headings included. It is the single most distinctive decision on the page and the one we are explicitly NOT taking, because the owner asked for our typeface to be kept. Everything else below is structure, and structure survives a typeface change; the type SCALE does not survive it unaltered, and the caution at the foot of this row says why.",
+        "ZERO @keyframes. ZERO running animations. ZERO <canvas>. Measured on the front page, which is the page whose look was called beautiful. Its liveness is not motion at all — it is art direction plus fast transitions. That is now the third independent measurement (with chatgpt.com and grok.com) saying the same thing, against an assumption that a beautiful AI product page needs an animated background.",
+        "The entire atmosphere is ONE fixed raster image: a single div at position:fixed, 100lvw by 100lvh, z-index -1, carrying a background-image and nothing else. No gradient stack, no layers, no parallax, no second element. One piece of art direction doing the work that five separate CSS mechanisms were doing on ours. The asset is deliberately not named here — it is their artwork, this library stores notes rather than pictures, and the guard in tests/ui-references.test.mjs is right that a filename outside a provenance field is the library starting to carry art.",
+        "A FOUR-STEP SURFACE RAMP, all of it tinted toward the accent hue rather than neutral grey: page rgb(0,0,0), raised rgb(21,18,26), deep rgb(10,8,12), card rgb(34,29,46) / rgb(36,30,48), with a hairline at rgba(255,255,255,0.08) and a heavier divider at rgb(68,58,80). The tint is what stops a black page reading as cheap.",
+        "TEXT IS THREE OPACITIES OF WHITE AND NOTHING ELSE: rgb(255,255,255) for primary, rgba(255,255,255,0.78) for secondary, rgba(255,255,255,0.55) for tertiary. No grey tokens, no second hue.",
+        "The accent is a family of three, not one colour: rgb(203,82,251) for fills and focus, rgb(236,146,251) — a lighter tint — for BORDERS on accented controls, and rgb(143,0,200) — a darker shade — for the primary button fill. A single accent used for all three jobs is what makes an accented button look flat.",
+        "ELEVATION IS A GLOW, NOT A DROP SHADOW. The accented chip carries `rgba(203,82,251,0.14) 0 0 12px` and focus is `rgb(203,82,251) 0 0 0 1px` plus a wider low-alpha halo. The only conventional shadow on the page is on the primary button, and it is an INSET plus a 2px lift: `rgba(0,0,0,0.18) 0 0 0 1px inset, rgba(0,0,0,0.22) 0 2px`.",
+        "RADII ARE TIGHT AND THERE ARE TWO: 8px on 23 elements (cards, panels), 6px on 11 (every control). Nothing is a pill. A 6px control against an 8px card is the whole radius system.",
+        "CONTROLS COME IN FOUR HEIGHTS AND NO MORE: 28px for a bare text button, 32px for a chip or nav item, 36px for a chrome button and the primary action, 50px for a large step CTA. Padding tracks the height — 7.2px 16px at 32, 0 8px at 36 chrome, 0 16px at 36 primary, 12px 24px at 50.",
+        "TWO TRANSITION BANDS AND A SIGNATURE CURVE. Colour-only changes run 0.26s on cubic-bezier(0.32,0.72,0,1) — a hard ease-out that arrives fast and settles; everything else (background, border, transform) runs 0.15s ease-out, with 0.2s reserved for the largest controls. Nothing on the page takes longer than 0.26s.",
+        "NAV AND LABELS ARE UPPERCASE WITH POSITIVE TRACKING, body is not: 12px/700/1.2px on nav items, 12px/700 with 1.2px on labels, against 14px/400/normal body at a 1.5 line height. The uppercase micro-label is how a monospace page gets hierarchy without a second family.",
+        "THE MODEL CHIP IS THE MOST COPYABLE OBJECT ON THE PAGE: a 32px, 6px-radius chip reading \"rosie\", filled rgba(accent,0.12), bordered rgba(accent-light,0.38), and glowing rgba(accent,0.14) 0 0 12px. It sits inside the composer next to the attachment control and names the model that will answer — which is exactly what our own composer already does and does not look like.",
+        "A 1024px container, 32px section padding, and short pages: the front page is 2450px tall, pricing 1336px. Nothing is padded to fill a scroll.",
+        "THE PRICING CARD IS A BORDERED PANEL WITH NO PADDING OF ITS OWN: 8px radius, 1px rgba(255,255,255,0.08) border, rgb(34,29,46) fill, and its internal bands — a title block, a highlighted bonus strip, a full-width primary button, then a dotted feature list — supply their own spacing. The strip is the only accented thing in the card.",
+        "The /play gallery is filter chips over horizontally-scrolling rows of thumbnail cards, each card being image, title, then two micro-stats. It is directly the shape our project shelf wants.",
+        "NO AUDIO ASSET IS FETCHED ANYWHERE ON THE PAGE — the resource timing list contains no mp3, wav, ogg, m4a or webm — while AudioContext is available. The keypress sound the owner singled out is therefore SYNTHESISED at interaction time, not a downloaded sample. That is the cheaper technique and the one to use: a click costs no bytes and cannot fail to load."
+      ],
+      "cautions": [
+        "THE TYPE SCALE DOES NOT TRANSFER UNCHANGED. Their hero is 32px/48px with 1.6px tracking — small for a hero — and it reads as large only because a monospace face at 32px occupies far more width per character than a proportional one. Taking 32px into our typeface would produce a timid hero. The RULES transfer (one family, weight 700 reserved for heads, positive tracking on uppercase micro-labels, 1.5 body line height); the absolute sizes must be re-derived.",
+        "Its accent is purple across three tints. Ours is green, and the tints must be re-derived rather than hue-rotated: a naive rotation of rgb(143,0,200) lands on a green no dark UI should carry.",
+        "Their front page is a marketing surface for a consumer game gallery and carries social proof — play counts, hearts, a populated gallery — that we do not have. The repository refuses invented numbers, so the /play pattern is a shape to borrow for the project shelf, where the counts are the customer's own and true.",
+        "Nothing here is copied: no markup, no stylesheet, no image, no font file, no sentence. What is recorded is a set of measurements, which are facts about a page rather than its expression, and the background image in particular is THEIR art and must not be fetched or reproduced — ours has to be our own."
+      ],
+      "licence": {
+        "status": "unverified_reference_only",
+        "copyPermission": false
+      }
     }
   ],
   "rules": [
@@ -145,6 +177,38 @@
     {
       "rule": "A long page whose every section shows the product working beats a short page with an effect on top of it.",
       "why": "Gemini carries 29 videos and 10 keyframes. It is the least animated page of the five by authored motion and among the most alive to look at, because the motion is the product rather than the decoration."
+    },
+    {
+      "rule": "Tint every surface step toward the accent hue instead of using neutral grey.",
+      "why": "Measured on the bar: rgb(21,18,26), rgb(10,8,12), rgb(34,29,46) — red and blue above green at every step, on a purple-accented page. A pure-grey ramp under a saturated accent is what makes a dark interface read as a default theme rather than a designed one."
+    },
+    {
+      "rule": "Carry three tints of the accent: a fill, a lighter one for borders, a darker one for the primary button.",
+      "why": "rgb(203,82,251) fills and focuses, rgb(236,146,251) borders, rgb(143,0,200) is the primary button. One accent doing all three jobs is why an accented button looks flat."
+    },
+    {
+      "rule": "Elevate with a glow, and keep the one real shadow inset.",
+      "why": "The only box-shadows on the bar are an accent halo on the chip and, on the primary button alone, `0 0 0 1px inset` plus a 2px lift. Everything else separates with a hairline."
+    },
+    {
+      "rule": "Two radii: 8px for panels, 6px for controls. No pills.",
+      "why": "23 elements at 8px, 11 at 6px, and nothing rounder anywhere on the page."
+    },
+    {
+      "rule": "Four control heights — 28, 32, 36, 50 — and padding that tracks the height.",
+      "why": "Every button on the bar lands on one of those four. A fifth height is how a control bar stops looking machined."
+    },
+    {
+      "rule": "Nothing takes longer than 0.26s, and colour-only changes use a hard ease-out.",
+      "why": "cubic-bezier(0.32,0.72,0,1) at 0.26s for colour, 0.15s ease-out for everything else. Measured across every interactive element on the page."
+    },
+    {
+      "rule": "Buy the atmosphere with one piece of art direction, not with a stack of layers.",
+      "why": "The entire background is a single fixed webp at z-index -1, on a page with zero keyframes and zero canvases. Ours was an SVG mesh, a light column, a dust layer, an aurora and a flow field — five mechanisms to do one job, and the owner still called the result static."
+    },
+    {
+      "rule": "Synthesise interaction sound; never ship an audio file for a click.",
+      "why": "The bar fetches no audio asset at all and its keypress sound is generated through AudioContext. A synthesised click costs no bytes, has no load state, and cannot be the reason a button feels late."
     }
   ],
   "gapsAgainstShippedTheme": [
@@ -152,6 +216,8 @@
     "MEASURED AGAINST THE SHIPPED SITE on 2026-09-20: apps/site declares 6 @keyframes rules and puts a transition on 27 of its 241 elements (11.2%). Per element that ratio is the HIGHEST of the five references (Gemini 5.5%, Cloudflare ~5.5%, Grok 3.2%) — so the shipped page is not short of per-element response, and any plan that starts from \"add more hover transitions\" is aimed at the wrong thing.",
     "THE REAL GAP IS REACH, NOT DENSITY. Gemini is 3,315 elements with 29 videos; Cloudflare is ~4,000 elements with WebGL and a video. The shipped landing is 241 elements, and below the hero nothing moves, reveals, or demonstrates anything. It is not under-animated. It is short.",
     "CORRECTED 2026-09-20, having first been written here in the wrong direction. This line read \"no scroll-driven motion of any kind is shipped\", and that was false: `.step` already carried a native scroll-driven animation — `animation: step-focus; animation-timeline: view()` — fading each step from 0.5 to 1 across its entry. The probe that produced these numbers counted document.getAnimations(), @keyframes rules, <canvas> and <video>, and a view()-timeline animation is invisible to all four of those when the measuring tab is not scrolled: it is declared, not running. The real gap was narrower — ONE element had scroll-driven motion and the other twelve sections had none — and an [data-reveal] pass added on 2026-09-20 covers those, deliberately excluding `.step` so two mechanisms never contend for one opacity.",
-    "Nothing on the landing shows the product actually working. There is no recording, no replay, no live demonstration — which is the single technique Gemini uses 29 times."
+    "Nothing on the landing shows the product actually working. There is no recording, no replay, no live demonstration — which is the single technique Gemini uses 29 times.",
+    "DIRECTION SET BY THE OWNER ON 2026-09-20: follow rosebud.ai closely in our own green, keep our typeface, and replace the current visual language wherever the two disagree. That makes most of the gaps recorded above obsolete as written — they described a site that is being replaced rather than corrected.",
+    "Concretely still false of the shipped site on the day this was written: the surface ramp is neutral rather than accent-tinted; the accent is one colour rather than three tints; elevation is a wash and a hairline rather than a glow; control heights are not quantised to four values; the landing carries five separate atmosphere mechanisms where the bar carries one image; and no interaction on the product makes a sound."
   ]
 }

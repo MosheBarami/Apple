@@ -75,11 +75,65 @@ test('landing.css has a light ramp, not one ramp', () => {
   }
 });
 
-test('both stylesheets define --theme-color for every theme they define', () => {
-  assert.match(landingCss, /--theme-color: #141312/);
-  assert.match(landingCss, /--theme-color: #f4f3f2/);
-  assert.match(globalCss, /--theme-color: #f5f5f5/);
-  assert.match(globalCss, /--theme-color: #141312/);
+//[[ RE-AIMED, NOT RELAXED, AND THE OLD SPELLING IS WHY.
+//
+//   This asserted four literal hexes — #141312, #f4f3f2, #f5f5f5, #141312. Every one of them was
+//   the RIGHT value on the day it was written and none of them was the point. The point is stated
+//   in this test's own name and again in landing.css: the browser's address-bar band is part of
+//   the page, and it must not be a different colour from the page under it. A literal hex cannot
+//   express that; it only says "do not change this", and on the day the palette was deliberately
+//   rebuilt against rosebud.ai it failed for the one reason that is never interesting.
+//
+//   What is asserted now is the RELATION: in every theme block of both stylesheets, --theme-color
+//   and --ground resolve to the same colour. That is strictly stronger than the old rule — it
+//   caught nothing about agreement before, only about identity with a remembered constant — and it
+//   survives any future repaint, which the old one provably did not.
+const THEME_BLOCKS = [
+  { name: 'landing.css :root', css: () => landingCss, selector: /:root\s*\{/ },
+  { name: "landing.css :root[data-theme='light']", css: () => landingCss, selector: /:root\[data-theme='light'\]\s*\{/ },
+  { name: 'global.css :root', css: () => globalCss, selector: /:root\s*\{/ },
+  { name: "global.css dark", css: () => globalCss, selector: /:root\[data-theme='dark'\]\s*\{/ },
+];
+
+/** The declaration block that starts at `selector`, brace-balanced. */
+function blockFor(css, selector) {
+  const at = css.search(selector);
+  if (at === -1) return null;
+  const open = css.indexOf('{', at);
+  let depth = 0;
+  for (let i = open; i < css.length; i++) {
+    if (css[i] === '{') depth++;
+    else if (css[i] === '}') { depth--; if (!depth) return css.slice(open + 1, i); }
+  }
+  return null;
+}
+
+const declared = (block, token) => {
+  const m = new RegExp(`(?:^|[;{\\s])${token}\\s*:\\s*([^;}]+)`).exec(block);
+  return m ? m[1].trim() : null;
+};
+
+test('the address bar cannot disagree with the page, in any theme of either stylesheet', () => {
+  let checked = 0;
+  for (const { name, css, selector } of THEME_BLOCKS) {
+    const block = blockFor(css(), selector);
+    if (!block) continue;                       // a stylesheet need not declare every theme
+    // The two stylesheets name their base surface differently and both names are correct in their
+    // own file: landing.css calls it --ground, global.css calls it --paper. The RELATION is what is
+    // under test, so the guard asks for whichever one the block declares rather than insisting on a
+    // shared spelling — and fails loudly if a block declares a band with no surface at all.
+    const ground = declared(block, '--ground') ?? declared(block, '--paper');
+    const band = declared(block, '--theme-color');
+    if (ground === null && band === null) continue;
+    assert.ok(ground, `${name} sets --theme-color with no base surface (--ground or --paper) to agree with`);
+    assert.ok(band, `${name} declares a --ground and no --theme-color, so the band falls back to another theme's colour`);
+    assert.equal(band.toLowerCase(), ground.toLowerCase(),
+      `${name}: the address bar is ${band} over a ${ground} page — a visible seam across the top of every route`);
+    checked += 1;
+  }
+  assert.ok(checked >= 3,
+    `only ${checked} theme block(s) were checked; the selectors have drifted from the stylesheets and `
+    + 'this guard would pass over a mismatch it can no longer see');
 });
 
 test('the manifest no longer carries a third black nobody maintains', () => {
