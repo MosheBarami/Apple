@@ -179,8 +179,27 @@ test('the queue is rebuilt from the registers rather than trusted', () => {
 
 test('the artifact keeps saying what it does not know', () => {
   const text = report.limits.join(' ');
-  assert.match(text, /4,269/, 'the unprobed GitHub repositories dropped out of the limits');
-  assert.match(text, /gh auth/, 'the reason those repositories are unprobed dropped out of the limits');
+  // RE-AIMED 2026-09-21. This assertion used to require the literal string `gh auth`, because on
+  // 2026-09-20 the 4,269 GitHub leads were unread for exactly one reason: gh auth was broken on
+  // this machine and unauthenticated GitHub allows 60 requests an hour. The owner supplied a
+  // token, probe-github-leads.mjs read all 4,269, and read-github-trees.mjs opened the 1,063
+  // relevant ones. The pin then fired — and the code under it had got BETTER, which is the
+  // direction that must never be answered by deleting the assertion.
+  //
+  // The property it was always defending: this artifact grades six sources and a Hugging Face
+  // queue, the GitHub corpus is not in it, and a reader must be told that and told where the
+  // GitHub verdicts actually live. Pinned to that instead of to the obsolete reason.
+  assert.match(text, /4,269/, 'the GitHub corpus dropped out of the limits entirely');
+  assert.match(
+    text,
+    /github-probed\.jsonl|github-trees\.jsonl|repos\.jsonl/,
+    'the limits no longer say where the GitHub rights verdicts live, so their absence here reads as ignorance',
+  );
+  assert.doesNotMatch(
+    text,
+    /never read|were never looked at|licences were never/i,
+    'the limits still claim the GitHub leads are unread; they were probed 2026-09-20 and tree-read 2026-09-21',
+  );
   assert.match(
     text,
     /does not mean the publisher held the rights/,

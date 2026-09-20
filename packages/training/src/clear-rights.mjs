@@ -381,7 +381,11 @@ async function main() {
       'A cleared source means the publisher’s licence text was retrieved and read. It does not mean the publisher held the rights they granted.',
       'Per-row provenance inside a compiled corpus is not established by a repository-level licence.',
       'Suspected mirrors are grouped by identical row count, which is a heuristic and can group unrelated datasets.',
-      'The 4,269 unprobed GitHub repositories in discovery/v2/github.jsonl are absent here: gh auth on this machine is broken and their licences were never read.',
+      // Was true on 2026-09-20 and is not any more. Kept as a corrected line rather than deleted,
+      // because "absent here" is still true of this artifact and a reader needs to know WHY —
+      // the GitHub corpus is graded in its own file, not silently missing from this one.
+      'The GitHub corpus is absent from this artifact by scope, not by ignorance. The 4,269 leads were probed on 2026-09-20 (discovery/v2/github-probed.jsonl) and the 1,063 relevant, licence-verified repositories were tree-read on 2026-09-21 (discovery/v2/github-trees.jsonl). Their rights verdicts, including the sha256 of every LICENSE text that was read, live in data/*/repos.jsonl written by acquire-github-luau.mjs. This file grades the six sources v1 shipped from and the Hugging Face acquisition queue.',
+      'Four of the six sources — every Hugging Face one — cap at publisher_declaration_only because none ships a licence FILE at its pinned revision. That is a measured ceiling, not pending work: the tree listing at each pinned revision was checked on 2026-09-21 and returned no LICENSE. Only the two GitHub sources reach licence_text.',
     ],
   };
 
