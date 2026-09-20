@@ -223,3 +223,12 @@ handoff/
 # it — a cached answer must never be the reason a repository stays in the library.
 .cache/
 .screens/
+
+# Python bytecode. Fourteen .pyc files were tracked, which is how `git status` came to show
+# `M scripts/__pycache__/secret-scan.cpython-39.pyc` every time anyone ran the secret scanner —
+# a tracked file that rewrites itself on use makes every working tree permanently dirty, and a
+# permanently dirty tree is how an unstaged fix gets mistaken for a committed one. They are also
+# compiled copies of source the scanner already reads, so they doubled the credential surface
+# for nothing. Deleting them costs a recompile.
+__pycache__/
+*.pyc
