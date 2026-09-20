@@ -289,9 +289,31 @@ export async function importAsset(env: ImportEnv, rec: AssetProvenance, userId?:
     // that redirects to another host (including a private address) is not the file we admitted,
     // so fail closed instead of letting fetch follow it. Fixed resolver URLs retain their existing
     // behaviour; they are not sourced from the expanded row's free-form file metadata.
+    //
+    // `manual`, NOT `error`, and the difference was worth 6,835 assets.
+    //
+    // Cloudflare's Request documentation lists `follow`, `error` and `manual`. The workerd fetch()
+    // this Worker actually runs on accepts only `follow` and `manual`, and answers `error` by
+    // THROWING `Invalid redirect value, must be one of "follow" or "manual"`. So the control never
+    // ran: every OpenGameArt row with a direct download URL threw here, was caught below, and came
+    // back as "download failed without following redirects" — a message that reads like the remote
+    // host misbehaving when the caller was the one holding it wrong. Measured against the deployed
+    // Worker on 2026-09-20: 6/6 sampled rows, every one of the 6,835.
+    //
+    // `manual` hands the 3xx back as an ordinary response instead of following it, so refusing it
+    // here enforces exactly the property `error` was reaching for, on the runtime we have rather
+    // than the one the documentation describes.
     file = directOpenGameArt
-      ? await fetch(resolved.url, { redirect: 'error' })
+      ? await fetch(resolved.url, { redirect: 'manual' })
       : await fetch(resolved.url);
+    if (directOpenGameArt && file.status >= 300 && file.status < 400) {
+      const to = file.headers.get('location') ?? '(no Location header)';
+      return {
+        id: rec.id,
+        ok: false,
+        error: `refusing a redirect: the catalogue admitted ${resolved.url} and it answered ${file.status} to ${to.slice(0, 120)}`,
+      };
+    }
   } catch (e) {
     if (directOpenGameArt) {
       return { id: rec.id, ok: false, error: `download failed without following redirects: ${String((e as Error)?.message ?? e).slice(0, 200)}` };
