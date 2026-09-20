@@ -630,7 +630,10 @@ const asks = [
 
                 {c.demo === 'cube' && (
                   <div class="gm">
-                    <canvas class="gm-canvas" role="img" aria-label="A low-polygon mesh drawn as a wireframe, turning slowly."></canvas>
+                    {/* `data-cursor` is the one case the tag cannot express: a <canvas> is not a
+                        control, and components/Cursor.astro would otherwise read it as page. The
+                        label is what the cursor says while it is over this. */}
+                    <canvas class="gm-canvas" role="img" data-cursor="drag" data-cursor-label="turn" aria-label="A low-polygon mesh drawn as a wireframe, turning slowly."></canvas>
                     {/* The still frame. It is real markup rather than a <noscript>, because the
                         failure this covers is a bundle that loads and throws, which <noscript>
                         does not cover. The script hides it once the canvas has drawn a frame. */}

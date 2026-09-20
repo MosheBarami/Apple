@@ -1,6 +1,7 @@
 ---
 import '../styles/landing.css';
 import InterfaceSound from './InterfaceSound.astro';
+import Cursor from '../components/Cursor.astro';
 import SoundDock from './SoundDock.astro';
 
 interface Props {
@@ -95,6 +96,11 @@ const ogImage = new URL('/og.png', site);
     */}
     <SoundDock />
     <InterfaceSound />
+    {/* LAST IN THE BODY ON PURPOSE. It is a fixed overlay at the top of the stacking order and it
+        must be painted over everything, including the dock above it. It renders nothing a reader
+        can reach — aria-hidden, pointer-events: none — and it hides the native pointer only from
+        inside its own running loop, never from a stylesheet. See the note in the component. */}
+    <Cursor />
 
     <script is:inline>
       // The landing's own theme wiring. It is inline and tiny rather than a module because this

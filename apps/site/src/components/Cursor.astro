@@ -1,0 +1,325 @@
+---
+/**
+ * THE CURSOR. A dot that is exactly where the pointer is, and a ring that has to catch up.
+ *
+ * WHY IT EXISTS. `data-cursor="link"` has been sitting on Nav.astro's wordmark and
+ * `data-cursor="drag"` / `data-cursor-label="drag"` on CreditMeter.astro's two handles for weeks,
+ * with NOTHING ANYWHERE THAT READS THEM. A reader of those files would reasonably conclude a cursor
+ * system exists. It did not. The choice was to build the renderer or delete the attributes, and the
+ * owner's instruction is explicit and repeated: a custom cursor with contextual states, hover
+ * physics, subtle glow and depth, and restrained parallax.
+ *
+ * THE ATTRIBUTES ARE AN OVERRIDE, NOT A REQUIREMENT, and that is the difference between a cursor
+ * system and a cursor system that covers three elements. State is read off what the pointer is
+ * actually over — an <a>, a <button>, a text field — so every control on the site has a state on
+ * the day this lands. `data-cursor` is consulted FIRST, for the cases the tag cannot express: a
+ * canvas you drag, a handle that is a <div>.
+ *
+ * ================================ THE ONE WAY THIS COULD BE A DISASTER
+ *
+ * `cursor: none` is how a custom cursor replaces the real one, and it is a page-wide, irreversible
+ * instruction to the operating system. If it is written as a static rule and the script then fails
+ * to run — a bundle that 404s, a throw before the first frame, a browser that refuses — the reader
+ * is left on a site with NO POINTER AT ALL. They cannot see what they are aiming at, and there is
+ * nothing on screen to tell them why.
+ *
+ * That is not a hypothetical on this page. A hero effect shipped here whose script never executed
+ * while the element, the class and the bundle were all in the served HTML.
+ *
+ * So `cursor: none` is applied by the SCRIPT, from inside the running loop, by putting a class on
+ * <html> — and it is applied AFTER the first frame has been painted, not before. Every failure
+ * path, including the ones nobody has thought of, leaves the native cursor exactly where it was.
+ * tests/cursor-never-blinds.test.mjs asserts that the rule is reachable only under that class and
+ * that the class is only ever added by the script.
+ *
+ * ================================ WHO DOES NOT GET IT, AND WHY THAT IS THE POINT
+ *
+ *   - a coarse pointer. There is no cursor on a phone to replace, and the ring would be a smear
+ *     chasing taps. `(hover: hover) and (pointer: fine)` is the test, and it is asked again on
+ *     every change rather than once at load, because a tablet with a trackpad attached crosses it.
+ *   - prefers-reduced-motion. The whole object is a lag. There is no version of it with the motion
+ *     removed that is still worth the reader's native cursor, so the answer is the native cursor.
+ *     "Fewer effects, not the same effects made cheap" is the owner's own instruction for a phone
+ *     and it reads the same way here.
+ *
+ * ================================ WHAT "HOVER PHYSICS" IS, EXACTLY
+ *
+ * The ring chases the pointer with a critically-damped spring rather than a `transition`, so it
+ * overshoots nothing and always settles. Over a control it does a second thing: it eases toward
+ * that control's CENTRE instead of the pointer, by 34% — so the ring visibly sticks to the button
+ * you are about to press and slides off it when you leave. That is the whole physics. It is one
+ * lerp with a target that moves, and it is the reason the ring is a separate element from the dot:
+ * the dot must stay exactly under the pointer, because a dot that lags is a cursor that lies about
+ * where the click will land.
+ */
+---
+
+{/* aria-hidden and inert to the pointer. It is a picture of the pointer; it must never be a thing
+    the pointer can hit, or every hover target on the site is this element. */}
+<div class="cursor" aria-hidden="true">
+  <div class="cursor-ring"><span class="cursor-label"></span></div>
+  <div class="cursor-dot"></div>
+</div>
+
+<style>
+  /* Hidden until the script says otherwise. `opacity` rather than `display`, because the first
+     frame has to be painted at a real position before it is shown — a cursor that appears at 0,0
+     and flies to the pointer is the first thing a reader sees on the page. */
+  .cursor {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 2147483000;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.18s ease-out;
+  }
+  :root.has-cursor .cursor { opacity: 1; }
+
+  /* THE RULE THAT HIDES THE NATIVE POINTER IS SCOPED TO THE CLASS THE SCRIPT ADDS.
+     There is deliberately no unscoped `cursor: none` anywhere in this repository's stylesheets.
+     See the note in the frontmatter: a static one turns every failure of this component into a
+     page with no pointer. */
+  :root.has-cursor,
+  :root.has-cursor * { cursor: none !important; }
+
+  .cursor-dot,
+  .cursor-ring {
+    position: absolute;
+    top: 0;
+    left: 0;
+    border-radius: 999px;
+    will-change: transform;
+  }
+
+  /* The dot is exactly under the pointer and never lags. --ink so it is legible on both ramps. */
+  .cursor-dot {
+    width: 6px;
+    height: 6px;
+    margin: -3px 0 0 -3px;
+    background: var(--ink);
+  }
+
+  /* The ring is the one that has physics. The glow is the page's own elevation vocabulary — rule
+     13 of the reference: elevate with a glow, keep the one real shadow inset — at the smallest
+     scale anything on the site uses it. */
+  .cursor-ring {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    margin: -15px 0 0 -15px;
+    border: 1px solid var(--accent-ring);
+    box-shadow: 0 0 12px var(--accent-glow);
+    /* Only the SHAPE transitions. The position is driven by the spring in the script, and putting
+       a transition on transform as well would be two mechanisms easing one property — which is
+       exactly how this page's steps ended up half-lit. */
+    transition: width 0.15s var(--ease-hard), height 0.15s var(--ease-hard),
+      margin 0.15s var(--ease-hard), border-radius 0.15s var(--ease-hard),
+      background-color 0.15s ease-out, border-color 0.15s ease-out;
+  }
+
+  /* --------------------------------------------------------------- the states */
+
+  /* A CONTROL. The ring opens and fills faintly, and the dot gets out of the way: over a button
+     the ring IS the cursor, and a dot in the middle of it reads as a target reticle. */
+  .cursor[data-state='link'] .cursor-ring {
+    width: 44px;
+    height: 44px;
+    margin: -22px 0 0 -22px;
+    background: var(--accent-soft);
+  }
+  .cursor[data-state='link'] .cursor-dot { opacity: 0; }
+
+  /* TEXT. A caret is what a reader expects where text can be selected, so the ring becomes one
+     rather than inventing a third idea. */
+  .cursor[data-state='text'] .cursor-ring {
+    width: 2px;
+    height: 26px;
+    margin: -13px 0 0 -1px;
+    border-radius: 1px;
+    background: var(--ink);
+    border-color: transparent;
+    box-shadow: none;
+  }
+  .cursor[data-state='text'] .cursor-dot { opacity: 0; }
+
+  /* SOMETHING YOU DRAG. Wider than it is tall, which is the shape of the gesture, and it is the
+     one state that can carry a word — `data-cursor-label` on the element supplies it. */
+  .cursor[data-state='drag'] .cursor-ring {
+    width: 56px;
+    height: 28px;
+    margin: -14px 0 0 -28px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+  }
+  .cursor[data-state='drag'] .cursor-dot { opacity: 0; }
+
+  .cursor-label {
+    color: var(--ink);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    opacity: 0;
+    transition: opacity 0.15s ease-out;
+    white-space: nowrap;
+  }
+  .cursor[data-state='drag'] .cursor-label { opacity: 1; }
+
+  /* THE PRESS. It contracts, which is the same acknowledgement `press-in` gives a button on this
+     site, at the same 0.15s band. A cursor that does nothing on mousedown is a cursor that is a
+     decoration rather than a control surface. */
+  .cursor.is-press .cursor-ring { transform: scale(0.82); }
+  .cursor.is-press .cursor-dot { transform: scale(1.5); }
+
+  /* The pointer left the window. Not `display: none` — the spring keeps running and the ring must
+     be where the pointer re-enters, not where it left. */
+  .cursor.is-out { opacity: 0; }
+
+  /* The belt to the script's braces. If a reader's setting changes after load the script stops and
+     removes the class; this makes the same page correct even if it somehow does not. */
+  @media (prefers-reduced-motion: reduce) {
+    :root.has-cursor,
+    :root.has-cursor * { cursor: auto !important; }
+    .cursor { display: none; }
+  }
+  @media (hover: none), (pointer: coarse) {
+    :root.has-cursor,
+    :root.has-cursor * { cursor: auto !important; }
+    .cursor { display: none; }
+  }
+</style>
+
+<script>
+  /* NOT `document.currentScript` — Astro makes every component script a module script and that
+     spelling is null in one by specification. It shipped a dead hero effect on this site. */
+  const root = document.querySelector('.cursor');
+
+  if (root instanceof HTMLElement) {
+    const ring = root.querySelector('.cursor-ring');
+    const dot = root.querySelector('.cursor-dot');
+    const label = root.querySelector('.cursor-label');
+    const html = document.documentElement;
+
+    /* NARROWED WITH `instanceof`, NOT CAST. `querySelector` returns `Element`, which has no
+       `.style`, and a cast would silence the checker while leaving a real null unguarded. This is
+       the same guard Horizon.astro puts on its canvas, and it is what makes the whole block below
+       type-check as plain JavaScript. */
+    if (ring instanceof HTMLElement && dot instanceof HTMLElement && label instanceof HTMLElement) {
+      /* ASKED ON EVERY CHANGE, NOT ONCE AT LOAD. A tablet with a trackpad attached crosses the
+         first of these, and a reader turning motion down in system settings crosses the second,
+         without reloading anything. */
+      const fine = window.matchMedia('(hover: hover) and (pointer: fine)');
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+      const wanted = () => fine.matches && !reduced.matches;
+
+      /* THE ANNOTATIONS BELOW ARE TYPESCRIPT, AND THAT IS DELIBERATE RATHER THAN CARELESS.
+         Astro compiles a component's <script> as TypeScript, so JSDoc types are ignored in it —
+         written as JSDoc these two parameters were still ts(7006) `implicitly has an 'any' type`
+         and `astro check` stayed red, which is a build error in this repository and held all of CI
+         red on this very site earlier today. A parameter DEFAULT, which is how Horizon.astro
+         solves the same problem, cannot be used here: the argument is an event's `target` and its
+         type is `EventTarget | null`, which no default can express.
+         tests/cursor-never-blinds.test.mjs strips the types with esbuild before running this, the
+         way tests/reveal-cannot-hide-content.test.mjs already does for both layouts. */
+
+      /** Which of the four states an element asks for. `data-cursor` wins; the tag answers if not.
+          The `instanceof` is the real guard, not a formality: a pointer event's target can be the
+          document, which has no `closest`. */
+      const stateOf = (el: EventTarget | null) => {
+        if (!(el instanceof Element)) return '';
+        const marked = el.closest('[data-cursor]');
+        if (marked) return marked.getAttribute('data-cursor') || '';
+        if (el.closest('a,button,summary,[role="button"],label,select')) return 'link';
+        if (el.closest('input,textarea,[contenteditable="true"]')) return 'text';
+        return '';
+      };
+
+      /** The element the state came from, so the ring can be pulled toward its centre. */
+      const sourceOf = (el: EventTarget | null) => {
+        if (!(el instanceof Element)) return null;
+        return el.closest('[data-cursor]') || el.closest('a,button,summary,[role="button"],label,select');
+      };
+
+      let px = window.innerWidth / 2;   // the pointer
+      let py = window.innerHeight / 2;
+      let rx = px;                      // the ring, chasing it
+      let ry = py;
+      let magnet: Element | null = null;
+      let raf = 0;
+      let shown = false;
+
+      const frame = () => {
+        // The target is the pointer, pulled 34% of the way toward the hovered control's centre.
+        // That is the whole of the hover physics: one lerp whose target moves.
+        let tx = px;
+        let ty = py;
+        if (magnet) {
+          const b = magnet.getBoundingClientRect();
+          tx = px + (b.left + b.width / 2 - px) * 0.34;
+          ty = py + (b.top + b.height / 2 - py) * 0.34;
+        }
+        // 0.18 per frame: it settles inside about six frames and overshoots nothing, because a
+        // lerp toward a fixed point cannot. A spring with a stiffness and a damping would be two
+        // numbers to get wrong for a ring that travels thirty pixels.
+        rx += (tx - rx) * 0.18;
+        ry += (ty - ry) * 0.18;
+        ring.style.transform = `translate3d(${rx}px, ${ry}px, 0)`;
+        dot.style.transform = `translate3d(${px}px, ${py}px, 0)`;
+
+        /* THE NATIVE POINTER IS HIDDEN HERE AND NOWHERE ELSE, and only after a frame has been
+           painted at a real position. Every path that does not reach this line — a throw, a
+           bundle that never loads, a browser that refuses — leaves the reader's own cursor alone.
+           See the frontmatter. */
+        if (!shown) {
+          shown = true;
+          html.classList.add('has-cursor');
+        }
+        raf = window.requestAnimationFrame(frame);
+      };
+
+      const start = () => { if (!raf) raf = window.requestAnimationFrame(frame); };
+      const stop = () => {
+        if (raf) { window.cancelAnimationFrame(raf); raf = 0; }
+        shown = false;
+        html.classList.remove('has-cursor');
+      };
+
+      document.addEventListener('pointermove', (e) => {
+        if (e.pointerType === 'touch') return;
+        px = e.clientX;
+        py = e.clientY;
+        root.classList.remove('is-out');
+      });
+
+      /* `pointerover` rather than a hit test on every move: the browser already knows what the
+         pointer entered, and `elementFromPoint` on every frame is a forced layout per frame. */
+      document.addEventListener('pointerover', (e) => {
+        const state = stateOf(e.target);
+        if (state) root.setAttribute('data-state', state);
+        else root.removeAttribute('data-state');
+        magnet = state === 'link' ? sourceOf(e.target) : null;
+        const from = sourceOf(e.target);
+        label.textContent = (from && from.getAttribute('data-cursor-label')) || '';
+      });
+
+      document.addEventListener('pointerdown', () => root.classList.add('is-press'));
+      document.addEventListener('pointerup', () => root.classList.remove('is-press'));
+      // The pointer leaving the window and the window losing focus are different events and both
+      // strand a ring in the middle of the page.
+      document.addEventListener('pointerleave', () => root.classList.add('is-out'));
+      window.addEventListener('blur', () => root.classList.add('is-out'));
+
+      const sync = () => { if (wanted()) start(); else stop(); };
+      for (const mq of [fine, reduced]) {
+        if (mq.addEventListener) mq.addEventListener('change', sync);
+      }
+      // A background tab running a spring is a core spent on a ring nobody is looking at.
+      document.addEventListener('visibilitychange', () => { if (document.hidden) stop(); else sync(); });
+
+      sync();
+    }
+  }
+</script>

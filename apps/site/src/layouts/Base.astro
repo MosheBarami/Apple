@@ -4,6 +4,7 @@ import Nav from '../components/Nav.astro';
 import Footer from '../components/Footer.astro';
 import Horizon from '../components/Horizon.astro';
 import InterfaceSound from './InterfaceSound.astro';
+import Cursor from '../components/Cursor.astro';
 
 interface Props {
   title: string;
@@ -132,6 +133,9 @@ const ogImage = new URL('/og.png', site);
         wired to every button and link-as-button by one delegated listener, and the landing renders
         the SAME component rather than a second copy that would drift from this one. */}
     <InterfaceSound />
+    {/* The same overlay every other route gets. A cursor that changes at the edge of the landing
+        page is worse than no cursor: it reads as one of the two pages being broken. */}
+    <Cursor />
 
     <script>
       // ---------------------------------------------------------------
