@@ -18,6 +18,17 @@
     "worker2-pilot-evidence-audit": "node src/worker2-pilot-evidence-audit.mjs",
     "eval-ui": "node src/eval-ui-generation.mjs",
     "eval-production": "node src/eval-production.mjs",
-    "rescore-ui": "node src/rescore-ui.mjs"
+    "rescore-ui": "node src/rescore-ui.mjs",
+    "measure-knowledge-reach": "node src/measure-knowledge-reach.mjs",
+    "measure-need-index": "node src/measure-need-index.mjs",
+    "measure-retrieval-hybrid": "node src/measure-retrieval-hybrid.mjs",
+    "measure-embedding-retrieval": "node src/measure-embedding-retrieval.mjs",
+    "measure-library-yield": "node src/measure-library-yield.mjs",
+    "lexical-retrieval-bench": "node src/lexical-retrieval-bench.mjs",
+    "roblox-frontier-bench": "node src/roblox-frontier-bench.mjs",
+    "report-roblox-frontier": "node src/report-roblox-frontier.mjs",
+    "generation-arms": "node src/generation-arms.mjs",
+    "compare-generation-arms": "node src/compare-generation-arms.mjs",
+    "analyze-dataset-v1": "node src/roblox-dataset-v1/analyze.mjs"
   }
 }

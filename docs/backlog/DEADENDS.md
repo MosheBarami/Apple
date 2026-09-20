@@ -510,3 +510,26 @@ itself.
 **Structurally blocked on:** nothing in the product should import it. Its correct state is exactly
 this — no product caller, one test caller, and an entry here saying why that is deliberate. If a
 product path ever needs to read a ZIP again, this becomes a WIRE and this entry goes.
+
+## `packages/training/src/roblox-frontier-controls.mjs` — STRUCTURALLY-BLOCKED
+
+Imported only by `packages/training/src/roblox-frontier.test.mjs`, and that is its correct and
+permanent state.
+
+It is the FALSIFICATION CONTROL SET for the Roblox frontier benchmark: hand-written Luau whose only
+job is to prove the benchmark's checks can fail. For each check id it carries an answer that MUST
+fail that check, and a `pass` answer that must clear every check on the item. Its own header states
+why it exists, and states it as a finding rather than a principle: two checks in the benchmark's
+first draft were unfalsifiable, and they were caught here rather than by a wrong number in a report
+later.
+
+That is this repository's own failure shape written into a benchmark — a check that cannot fail
+measures nothing while looking exactly like a check that passes, and a suite where everything
+passes reads as good news. A fifty-check suite is the easiest possible place to commit it.
+
+**Structurally blocked on:** nothing in the product may import it, ever. These are deliberately
+broken Luau samples. A product path that could reach them is a path that could serve one to a
+customer. One test caller and no product caller is not a gap to close — it is the design, and this
+entry exists so the next person reading the dead-end report does not "fix" it by wiring it in.
+
+If the benchmark itself is ever deleted, this goes with it in the same commit.
