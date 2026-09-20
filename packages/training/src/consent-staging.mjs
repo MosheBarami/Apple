@@ -68,6 +68,30 @@ export const LIMITS = Object.freeze({
 });
 export const DEFAULT_MAX_CONSENT_AGE_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * CUSTOMER WORK IS NOT TRAINED ON, AND THIS IS THE SWITCH THAT MAKES THAT TRUE IN CODE.
+ *
+ * Both published privacy pages promise Apple never trains on a customer's projects, and the policy
+ * states outright that no opt-in programme exists. On 2026-09-20 the owner confirmed the promise is
+ * the true one, and the settings switch that offered exactly that opt-in was removed.
+ *
+ * Removing the switch alone would have been a REGRESSION, and a security review caught it: the copy
+ * beside it said "revocable any time", and this pipeline treats `profiles.training_opt_in = true` as
+ * permission. Anyone already opted in would have lost the only way to opt out while the gate that
+ * reads their consent kept working. (Measured the same day: 0 of 32 profiles were opted in, so no
+ * real person was stranded — but "nobody happens to be affected" is not a design.)
+ *
+ * So the gate is closed here instead, at the point of processing. With this false, no envelope is
+ * ever staged whatever any profile row says, which makes withdrawal moot rather than impossible:
+ * there is no processing to withdraw from. The column stays in the database untouched — dropping it
+ * is a migration, and a column nothing reads is harmless.
+ *
+ * Turning this on is a product decision that requires the opt-in surface, the policy wording and
+ * this constant to change together. tests/promises-match-the-product.test.mjs holds the three to
+ * each other so one cannot move alone.
+ */
+export const CUSTOMER_WORK_TRAINING_ENABLED = false;
+
 const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000;
 const SHA256 = /^(?:sha256:)?[0-9a-f]{64}$/i;
 const SAFE_VERSION = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
@@ -405,7 +429,26 @@ function validateProvenance(provenance, errors, run, clock) {
 }
 
 /** Validate the explicit envelope without returning any input payload. */
-export function validateEnvelope(envelope, { now = undefined, maxConsentAgeMs = DEFAULT_MAX_CONSENT_AGE_MS } = {}) {
+export function validateEnvelope(envelope, { now = undefined, maxConsentAgeMs = DEFAULT_MAX_CONSENT_AGE_MS, allowCustomerWorkTraining = CUSTOMER_WORK_TRAINING_ENABLED } = {}) {
+  // Fails CLOSED and first: before any shape checking, before any consent proof is read. A refusal
+  // that depended on parsing the envelope would be a refusal with a way around it.
+  //
+  // `allowCustomerWorkTraining` exists so the consent machinery below stays EXERCISED rather than
+  // dead. The rules it encodes — proof must be current, rechecked after the run finished, matching
+  // policy version — are what make an opt-in meaningful, and a product that shipped them untested
+  // and then enabled training would be trusting code nobody had run. The tests pass it explicitly;
+  // nothing in the product does, so production refuses.
+  if (!allowCustomerWorkTraining) {
+    return {
+      ok: false,
+      errors: [{
+        code: 'training_on_customer_work_disabled',
+        path: 'product',
+        message: 'Apple does not train on customer work. No envelope can be staged while that promise is published, whatever profiles.training_opt_in holds.',
+      }],
+      counts: { messages: 0, toolSteps: 0 },
+    };
+  }
   const errors = [];
   if (!isRecord(envelope)) {
     return { ok: false, errors: [error('envelope_required', '$', 'a plain JSON envelope is required')], bytes: null };

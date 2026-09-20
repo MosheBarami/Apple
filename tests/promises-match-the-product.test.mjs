@@ -102,3 +102,16 @@ test('the promise itself is still published — removing the switch must not rem
   const text = privacy.map((f) => readFileSync(f, 'utf8')).join('\n');
   assert.match(text, /train/i, 'the privacy pages no longer say anything about training');
 });
+
+test('the training gate is closed while the promise is published and the switch is gone', () => {
+  // THREE THINGS MUST AGREE, and this is the only place that holds them to each other:
+  //   the published promise ("never trains on your work"),
+  //   the absence of an opt-in control in the app,
+  //   and the processing gate in the training pipeline.
+  // Removing the control while leaving the gate open is exactly the regression a security review
+  // caught here on 2026-09-20: the copy said "revocable any time" and the pipeline still read
+  // profiles.training_opt_in = true as permission, so anyone opted in had no way out.
+  const gate = readFileSync(join(ROOT, 'packages/training/src/consent-staging.mjs'), 'utf8');
+  assert.match(gate, /export const CUSTOMER_WORK_TRAINING_ENABLED = false;/,
+    'the pipeline may train on customer work again while the product promises it never will');
+});

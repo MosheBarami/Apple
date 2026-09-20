@@ -5,6 +5,17 @@
 // Supabase row or prove that a caller did not fabricate the booleans. A production owner-scoped
 // exporter is still required before any real transcript can enter this staging format.
 import test from 'node:test';
+
+// EVERY CALL BELOW PASSES `allowCustomerWorkTraining: true` ON PURPOSE.
+//
+// The product does not train on customer work: consent-staging.mjs fails closed by default, so
+// nothing is staged whatever a profile row holds. That gate would also make this entire suite
+// vacuous — every assertion would pass against the same blanket refusal, and the consent rules
+// these tests exist to pin would stop being exercised.
+//
+// So the suite opts in explicitly to test the machinery, and `the gate is closed by default` below
+// pins the production behaviour. The two must both hold: the rules are correct, AND they are not
+// reached.
 import assert from 'node:assert/strict';
 
 import {
@@ -99,7 +110,7 @@ function codes(result) {
 }
 
 test('a complete, current, structured fixture is accepted only as staging', () => {
-  const result = stageEnvelope(envelope(), { now: NOW });
+  const result = stageEnvelope(envelope(), { now: NOW, allowCustomerWorkTraining: true });
   assert.equal(result.ok, true);
   assert.equal(result.record.schemaVersion, STAGING_SCHEMA_VERSION);
   assert.equal(result.record.stagingOnly, true);
@@ -124,7 +135,7 @@ test('missing, withdrawn, or stale consent fails closed without returning a reco
     ['old verification', { consent: { verifiedAt: '2026-08-01T12:00:00.000Z', proof: { checkedAt: '2026-08-01T12:00:00.000Z' } } }, 'consent_stale'],
   ];
   for (const [label, patch, expected] of cases) {
-    const result = stageEnvelope(envelope(patch), { now: NOW });
+    const result = stageEnvelope(envelope(patch), { now: NOW, allowCustomerWorkTraining: true });
     assert.equal(result.ok, false, label);
     assert.equal(result.record, undefined, `${label}: invalid input must not produce a partial record`);
     assert.ok(codes(result).has(expected) || (expected === 'consent_stale' && codes(result).has('consent_timestamp_stale')), `${label}: ${[...codes(result)]}`);
@@ -133,12 +144,12 @@ test('missing, withdrawn, or stale consent fails closed without returning a reco
 
 test('current means the proof is fresh and checked after the run, not merely a boolean', () => {
   const old = envelope({ consent: { verifiedAt: '2026-09-17T10:00:00.000Z', proof: { checkedAt: '2026-09-17T10:00:00.000Z' } } });
-  const validation = validateEnvelope(old, { now: NOW });
+  const validation = validateEnvelope(old, { now: NOW, allowCustomerWorkTraining: true });
   assert.equal(validation.ok, false);
   assert.ok(codes(validation).has('consent_timestamp_stale'));
 
   const beforeRun = envelope({ consent: { verifiedAt: '2026-09-18T10:30:00.000Z', proof: { checkedAt: '2026-09-18T10:30:00.000Z' } } });
-  assert.ok(codes(validateEnvelope(beforeRun, { now: NOW })).has('consent_not_current'));
+  assert.ok(codes(validateEnvelope(beforeRun, { now: NOW, allowCustomerWorkTraining: true })).has('consent_not_current'));
 });
 
 test('incomplete, unverified, failed, or unobserved runs never become samples', () => {
@@ -152,7 +163,7 @@ test('incomplete, unverified, failed, or unobserved runs never become samples', 
     ['missing structured result', { toolTrace: [{ index: 0, name: 'get_tree', arguments: {}, ok: true, observed: true }] }, 'tool_result_missing'],
   ];
   for (const [label, patch, expected] of cases) {
-    const result = stageEnvelope(envelope(patch), { now: NOW });
+    const result = stageEnvelope(envelope(patch), { now: NOW, allowCustomerWorkTraining: true });
     assert.equal(result.ok, false, label);
     assert.ok(codes(result).has(expected), `${label}: ${[...codes(result)]}`);
   }
@@ -179,7 +190,7 @@ test('PII, credentials, and identifiers are redacted recursively while the input
     outcome: { evidence: { contact: 'alice@example.com', token: 'sk_test_12345678901234567890' } },
   });
   const before = JSON.stringify(input);
-  const result = stageEnvelope(input, { now: NOW });
+  const result = stageEnvelope(input, { now: NOW, allowCustomerWorkTraining: true });
   assert.equal(result.ok, true);
   assert.equal(JSON.stringify(input), before, 'sanitizing must not mutate the source envelope');
 
@@ -199,23 +210,23 @@ test('PII, credentials, and identifiers are redacted recursively while the input
 });
 
 test('unsafe tool names, malformed provenance, and empty outcome evidence are refused', () => {
-  const unsafe = stageEnvelope(envelope({ toolTrace: [{ index: 0, name: 'run_code', arguments: {}, result: {}, ok: true, observed: true }] }), { now: NOW });
+  const unsafe = stageEnvelope(envelope({ toolTrace: [{ index: 0, name: 'run_code', arguments: {}, result: {}, ok: true, observed: true }] }), { now: NOW, allowCustomerWorkTraining: true });
   assert.equal(unsafe.ok, false);
   assert.ok(codes(unsafe).has('unsafe_tool'));
 
   const noEvidenceInput = envelope();
   noEvidenceInput.outcome.evidence = {};
-  const noEvidence = stageEnvelope(noEvidenceInput, { now: NOW });
+  const noEvidence = stageEnvelope(noEvidenceInput, { now: NOW, allowCustomerWorkTraining: true });
   assert.equal(noEvidence.ok, false);
   assert.ok(codes(noEvidence).has('outcome_evidence_missing'));
 
-  const noHash = stageEnvelope(envelope({ provenance: { traceHash: 'not-a-hash' } }), { now: NOW });
+  const noHash = stageEnvelope(envelope({ provenance: { traceHash: 'not-a-hash' } }), { now: NOW, allowCustomerWorkTraining: true });
   assert.equal(noHash.ok, false);
   assert.ok(codes(noHash).has('provenance_hash'));
 });
 
 test('batch staging excludes invalid rows and remains explicitly non-promotable', () => {
-  const batch = stageEnvelopes([envelope(), envelope({ run: { complete: false } })], { now: NOW });
+  const batch = stageEnvelopes([envelope(), envelope({ run: { complete: false } })], { now: NOW, allowCustomerWorkTraining: true });
   assert.equal(batch.ok, false);
   assert.deepEqual(batch.counts, { accepted: 1, rejected: 1 });
   assert.equal(batch.records.length, 1);
@@ -232,13 +243,34 @@ test('batch staging excludes invalid rows and remains explicitly non-promotable'
 test('bounded JSON-only inputs fail closed for cycles and unsafe values', () => {
   const cyclic = envelope();
   cyclic.toolTrace[0].arguments.cycle = cyclic.toolTrace[0].arguments;
-  const result = stageEnvelope(cyclic, { now: NOW });
+  const result = stageEnvelope(cyclic, { now: NOW, allowCustomerWorkTraining: true });
   assert.equal(result.ok, false);
   assert.ok(codes(result).has('envelope_unserializable') || codes(result).has('cycle'));
 
   const nonFinite = envelope();
   nonFinite.toolTrace[0].arguments.value = Number.NaN;
-  const invalid = stageEnvelope(nonFinite, { now: NOW });
+  const invalid = stageEnvelope(nonFinite, { now: NOW, allowCustomerWorkTraining: true });
   assert.equal(invalid.ok, false);
   assert.ok(codes(invalid).has('nonfinite_number'));
+});
+
+test('the gate is closed by default, so no envelope is staged in production', () => {
+  // The security review that produced this: removing the settings opt-in switch left a pipeline
+  // that still read `profiles.training_opt_in = true` as permission, and the copy beside the switch
+  // had promised "revocable any time". Anyone already opted in would have had no way out. Closing
+  // the gate at the point of PROCESSING makes withdrawal moot rather than impossible — there is no
+  // processing to withdraw from.
+  const result = stageEnvelope(envelope(), { now: NOW });
+  assert.equal(result.ok, false, 'a valid, fully consented envelope must still be refused');
+  assert.ok(codes(result).has('training_on_customer_work_disabled'));
+  assert.equal(result.trainingReady, false);
+});
+
+test('the refusal does not depend on the envelope being well formed', () => {
+  // A gate that had to parse its input first would be a gate with a way around it.
+  for (const junk of [null, undefined, 42, 'nonsense', {}, { consent: { proof: { value: true, current: true } } }]) {
+    const r = validateEnvelope(junk, { now: NOW });
+    assert.equal(r.ok, false);
+    assert.ok(codes(r).has('training_on_customer_work_disabled'), `junk input leaked past the gate: ${JSON.stringify(junk)}`);
+  }
 });
