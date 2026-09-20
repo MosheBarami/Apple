@@ -63,6 +63,41 @@ log('   code single-use ✓');
 
 // ---- simulated Studio plugin ------------------------------------------------
 const FAKE_TREE = { services: [{ name: 'Workspace', class: 'Workspace', children: [{ name: 'Baseplate', class: 'Part', pos: [0, -8, 0], size: [2048, 16, 2048] }] }], nodeCount: 3 };
+
+// THE FAKE PLUGIN USED TO ANSWER `snapshot` WITH A STUDIO THAT NO LONGER EXISTS.
+//
+// It returned `{ v: 1, containers: [], scripts: [], scriptCount: 0, instanceCount: 3 }` — a payload
+// with no `format` field at all. `checkpointEvidence` (apps/worker/src/checkpoint-evidence.ts) keeps
+// a legacy branch for snapshots that predate `apple-studio-snapshot-v1`, and that branch returns
+// `{ ok: true }` without reading ONE of the flags a current plugin sends. So every green E2E run
+// since the v1 format landed has said nothing whatsoever about checkpointing: the admission was
+// reached, took the compatibility path, and agreed. A mock that models a client nobody ships is the
+// exact failure `apps/apple-plugin/tests/studio-mock.mjs` warns about in its own header.
+//
+// These two payloads are the shapes the REAL plugin emits — verified field by field, from the real
+// Commands.luau through the real admission, in apps/worker/tests/checkpoint-evidence-live-plugin.test.mjs.
+// That test is what keeps these honest; this one is what proves the same bytes survive the network,
+// the Durable Object and the HTTP boundary between them.
+let snapshotMode = 'healthy';
+function fakeSnapshot(op) {
+  const node = { className: 'DataModel', name: 'game', protectedIdentity: true, props: {}, attributes: {}, children: [{ className: 'Workspace', name: 'Workspace', props: {}, attributes: {}, children: [] }] };
+  const protectedObjects = ['Camera', 'Terrain', 'ChatWindowConfiguration', 'ChatInputBarConfiguration', 'ChannelTabsConfiguration', 'BubbleChatConfiguration']
+    .map((className) => ({ path: `game.Workspace.${className}`, className, name: className, childCount: 0, descendantCount: 0, structureHash: '00000000' }));
+  const base = {
+    format: 'apple-studio-snapshot-v1', checkpointId: op.checkpointId, scope: 'place', root: 'game',
+    node, instanceCount: 2, scriptCount: 0, sourceChars: 0,
+    sourceHashAlgorithm: 'fnv1a32', includeScripts: op.includeScripts !== false,
+    skipped: {}, protected: protectedObjects,
+  };
+  if (snapshotMode === 'depth') {
+    // A place of THIRTEEN objects whose walk stopped on nesting depth, not on size. Until
+    // 2026-09-21 the worker answered this with "this project is too large for one checkpoint".
+    return { ...base, nodeCount: 13, complete: false, wholePlaceComplete: false, restorable: false,
+      checkpointEligible: false, coverage: 'incomplete', truncated: true, truncatedBy: 'depth' };
+  }
+  return { ...base, nodeCount: 15, complete: false, wholePlaceComplete: false, restorable: true,
+    checkpointEligible: true, coverage: 'supported-subset', truncated: false };
+}
 let pluginRunning = false;
 let opsHandled = [];
 async function pluginLoop() {
@@ -89,7 +124,7 @@ async function pluginLoop() {
       else if (op.op === 'list_scripts') result.data = { scripts: [] };
       else if (op.op === 'create_instances') result.data = { created: (op.items ?? []).map((i) => `game.Workspace.${i.name}`) };
       else if (op.op === 'edit_script') result.data = { path: op.path, mode: 'replace', lines: 10 };
-      else if (op.op === 'snapshot') result.data = { v: 1, containers: [], scripts: [], scriptCount: 0, instanceCount: 3 };
+      else if (op.op === 'snapshot') result.data = fakeSnapshot(op);
       else if (op.op === 'get_logs') result.data = { entries: [], total: 0 };
       else if (op.op === 'run_mode') result.data = { started: op.action === 'start', stopped: op.action === 'stop' };
       else if (op.op === 'read_script') result.data = { path: op.path, source: '-- empty' };
@@ -191,6 +226,40 @@ log('6. starting fake plugin loop + stone chat…');
 pluginLoop();
 await new Promise((r) => setTimeout(r, 2500)); // let first poll register
 const stone = await wsChat('Create a glowing neon blue anchored part named BeaconTower, 4x30x4 studs, at position (10, 15, 10) in the workspace. Then confirm what you created.', 'stone', { expectTools: true, productModel: 'apple' });
+
+// 6b. CHECKPOINTING, OVER THE WIRE, WITH THE ADMISSION LIVE.
+//
+// The fake plugin is still polling here on purpose — `pluginRunning = false` is deliberately below
+// this block, because `createCheckpoint` refuses outright when no plugin is connected and a refusal
+// for the wrong reason would look exactly like a pass.
+const checkpointPost = (label) => fetch(`${BASE}/api/projects/${project.id}/checkpoints`, {
+  method: 'POST', headers: { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' },
+  body: JSON.stringify({ label, description: 'e2e' }),
+}).then((r) => r.json());
+
+const saved = await checkpointPost('e2e healthy');
+if (saved.error) fail('a healthy current-format snapshot was refused: ' + saved.error);
+if (saved.coverage !== 'supported-subset') fail('checkpoint lost the coverage Studio reported: ' + JSON.stringify(saved));
+if (saved.preservedObjects !== 6) fail('checkpoint lost the protected-object count: ' + JSON.stringify(saved));
+log('6b. checkpoint saved', saved.id, '| coverage', saved.coverage, '| preserved', saved.preservedObjects);
+
+// The refusal half. This is the assertion the whole cause-naming exists for, and it is made against
+// the deployed worker rather than against the function in this repository. If this worker predates
+// 2026-09-21 it will say "too large" about a thirteen-object place and this step will say so.
+snapshotMode = 'depth';
+const refused = await checkpointPost('e2e nested');
+snapshotMode = 'healthy';
+if (!refused.error) fail('a truncated snapshot was saved as a checkpoint: ' + JSON.stringify(refused));
+if (!/nests objects deeper/.test(refused.error)) fail('a depth-bounded walk was not named as one: ' + refused.error);
+if (/too large|more objects than/.test(refused.error)) fail('a thirteen-object place was called too large: ' + refused.error);
+log('6c. nested place refused by its own cause ✓');
+
+const listed = await (await fetch(`${BASE}/api/projects/${project.id}/checkpoints`, { headers: { Authorization: `Bearer ${jwt}` } })).json();
+const rows = listed.checkpoints ?? listed;
+if (!Array.isArray(rows) || !rows.some((row) => row.id === saved.id)) fail('saved checkpoint is not in the listing: ' + JSON.stringify(listed).slice(0, 300));
+if (rows.some((row) => row.label === 'e2e nested')) fail('a refused checkpoint was listed anyway');
+log('6d. listing holds the saved checkpoint and not the refused one ✓');
+
 pluginRunning = false;
 log('   → stopReason', stone.stopReason, '| studio ops handled by fake plugin:', JSON.stringify(opsHandled));
 log('   → reply:', stone.finalText.slice(0, 200).replace(/\n/g, ' '));
