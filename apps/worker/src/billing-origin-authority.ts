@@ -75,8 +75,36 @@ export interface CreditsMutation {
  *
  * `mutationWouldApplyToBoth` is the question the migration actually turns on: a subscription
  * bought today has to land in the canonical QuotaDO *and* in golem's, or one of the two stores is
- * silently wrong about what the customer paid for. It is computed from the same four conditions
- * the webhook route itself checks, in the same order, so the report and the route cannot disagree.
+ * silently wrong about what the customer paid for.
+ *
+ * WHAT IT IS COMPUTED FROM, STATED EXACTLY, because this comment used to say "the same four
+ * conditions the webhook route itself checks, in the same order, so the report and the route cannot
+ * disagree" — and that was the reason to trust `why`, and it was not true.
+ *
+ * THREE of the conditions are the route's own, and their order against the route is asserted in
+ * apps/worker/tests/billing-wiring-report.test.mjs: the webhook secret, the authority identity and
+ * the replica binding. Those really are refusals, and `why` really does name the one the route
+ * would stop at.
+ *
+ * THE TWO STRIPE-KEY CONDITIONS ARE NOT REFUSALS THE ROUTE MAKES. Nothing on the webhook path
+ * tests a key for a test/live prefix at all — `checkoutConfigured` does that, and it guards
+ * CHECKOUT (billing.ts), not this. `resolveBillingAuthorityMutation` reads the key only through
+ * `stripeKey`, which refuses an absent or empty one and admits every other. So:
+ *
+ *   * with a TEST key in production, a subscription event is not refused here. It is attempted, and
+ *     Stripe answers for a subscription that key cannot see, which becomes a 502
+ *     `stripe_subscription_unavailable` and a 503 to Stripe — a failure Stripe will retry, not a
+ *     configuration refusal. The outcome for the customer is the same (no entitlement) and the
+ *     shape is not, which is worth knowing before reading a retry storm as a fault.
+ *   * a CREDITS mutation never reads the key at all: `resolveBillingAuthorityMutation` returns the
+ *     credits mutation before `stripeKey` is called. Both key conditions are simply irrelevant to
+ *     it. No such event can arrive today only because `checkoutConfigured` refuses to mint the
+ *     checkout session that would produce one — a DIFFERENT guard, in a different file.
+ *
+ * So `mutationWouldApplyToBoth: false` with a key reason is a correct bottom line reached partly
+ * through a condition this function imposes and the route does not. It is deliberate — the owner
+ * asking "can my product take money" is owed "no", and a test key in production means no — and it
+ * is stated here rather than implied, so nobody reads `why` as a line of the route's source.
  */
 export type StripeKeyState = 'absent' | 'test' | 'live';
 

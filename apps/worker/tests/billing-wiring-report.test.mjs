@@ -151,3 +151,70 @@ test('the route checks the same prerequisites, in the same order, that the repor
   assert.ok(authorityCheck < replicaCheck || Math.abs(authorityCheck - replicaCheck) < 200,
     'the authority and replica checks are no longer the same guard; billingWiring folds them into one order and would name the wrong reason');
 });
+
+//[[ AND THE TWO CONDITIONS THE ROUTE DOES *NOT* CHECK.
+//
+//   The order test above pins THREE prerequisites. `billingWiring` reports FIVE, and the header of
+//   billing-origin-authority.ts used to claim all five were "the same conditions the webhook route
+//   itself checks, in the same order, so the report and the route cannot disagree". They are not,
+//   and that sentence was the reason to trust `why`.
+//
+//   The two key conditions are the report's own policy, not a line of the route. That is a
+//   deliberate choice — the owner asking "can my product take money" is owed "no", and a test key
+//   in production means no — but an undocumented divergence in a money diagnostic becomes a
+//   misreading later: `why: 'stripe_api_key_is_a_test_key_in_production'` reads as "the route would
+//   refuse this", when the route ATTEMPTS it and fails at Stripe, which Stripe then retries.
+//
+//   Asserted, not described, so the divergence cannot quietly become something else. Each assertion
+//   names its own staleness: if the route GAINS a test-key refusal, or the credits path starts
+//   reading the key, these fail saying the header must be rewritten — which is the right outcome,
+//   because at that point the report really would mirror the route and should say so. ]]
+
+test('the two Stripe-key reasons are the REPORT\'s policy — the webhook path refuses on neither', () => {
+  const strip = (src) => src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  const index = strip(readFileSync(join(WORKER, 'src', 'index.ts'), 'utf8'));
+  //[[ SLICE THE HANDLER, NOT EVERYTHING UNTIL THE NEXT ROUTE I HAPPENED TO NAME.
+  //   The first version ended this slice at `app.get('/api/providers'` — copied from the order test
+  //   above, where it is harmless because that test only `search`es for the FIRST hit of each
+  //   pattern. Here it is not: the slice ran 11,928 characters and swallowed
+  //   /api/billing/customer-details and both /api/billing/invoices routes, all three of which
+  //   legitimately call `checkoutConfigured` — so the test reported the webhook as discriminating a
+  //   test key, on the strength of three lines belonging to other handlers. The handler ends at the
+  //   next top-level `app.` registration, and it is 3,573 characters. ]]
+  const start = index.indexOf("app.post('/api/billing/webhook'");
+  assert.ok(start > 0, 'the webhook route is gone from index.ts — this test has verified nothing');
+  const after = index.slice(start + 10).search(/\napp\.(get|post|put|delete|all)\(/);
+  assert.ok(after > 0, 'no route follows the webhook handler — the slice would run to end of file');
+  const route = index.slice(start, start + 10 + after);
+  assert.ok(route.length > 500, 'the webhook route could not be sliced out of index.ts — this test has verified nothing');
+  // The slice really is the handler and only the handler.
+  assert.ok(route.includes('invokeBillingAuthority'), 'the slice does not reach the authority call — it is too short');
+  assert.ok(route.length < 6000, `the slice is ${route.length} characters and has run past the handler into its neighbours`);
+
+  // NO TEST/LIVE DISCRIMINATION ON THE WEBHOOK PATH. `checkoutConfigured` is the only thing in the
+  // worker that knows the difference, and it guards checkout, not this.
+  assert.equal(
+    /_test_|checkoutConfigured/.test(route),
+    false,
+    'the webhook route now discriminates a test key. billingWiring reports that as a refusal it '
+      + 'invents; if the route really refuses it now, rewrite the header of billing-origin-authority.ts '
+      + 'and fold this condition into the order test above.',
+  );
+
+  const authority = strip(readFileSync(join(WORKER, 'src', 'billing-origin-authority.ts'), 'utf8'));
+  const resolve = authority.slice(authority.indexOf('export async function resolveBillingAuthorityMutation'));
+  assert.ok(resolve.length > 500, 'resolveBillingAuthorityMutation could not be sliced out — this test has verified nothing');
+
+  // THE CREDITS MUTATION NEVER READS THE KEY. Its early return sits ABOVE the first stripeKey call,
+  // so both key reasons are irrelevant to a credits top-up — it is `checkoutConfigured`, elsewhere,
+  // that stops one being minted at all today.
+  const creditsReturn = resolve.indexOf('kind: \'credits\'');
+  const firstKeyRead = resolve.indexOf('stripeKey(env)');
+  assert.ok(creditsReturn > 0, 'the credits branch is gone from resolveBillingAuthorityMutation');
+  assert.ok(firstKeyRead > 0, 'resolveBillingAuthorityMutation no longer reads the Stripe key at all');
+  assert.ok(
+    creditsReturn < firstKeyRead,
+    'a credits mutation now reads the Stripe API key before it is returned, so the key reasons DO '
+      + 'apply to it. Rewrite the header of billing-origin-authority.ts, which states the opposite.',
+  );
+});
