@@ -21,6 +21,7 @@
     "rescore-ui": "node src/rescore-ui.mjs",
     "measure-knowledge-reach": "node src/measure-knowledge-reach.mjs",
     "measure-hf-corpus": "node src/measure-hf-corpus.mjs",
+    "probe-github-leads": "node src/probe-github-leads.mjs",
     "clear-rights": "node src/clear-rights.mjs",
     "screen-row-licences": "node src/screen-row-licences.mjs",
     "sweep-hub-coverage": "node src/sweep-hub-coverage.mjs",
