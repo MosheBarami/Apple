@@ -1,0 +1,148 @@
+{
+  "generated_at": "2026-09-20T23:50:45.188Z",
+  "generator": "packages/training/src/measure-failure-coverage.mjs",
+  "documented_failures": 61,
+  "documented_by_format": {
+    "heading": 57,
+    "bullet": 4
+  },
+  "test_files_searched": 662,
+  "failures_cited_by_a_test": 22,
+  "failures_not_cited_by_any_test": 39,
+  "coverage_percent": 36.1,
+  "covered": {
+    "F-11": [
+      "apps/benchmark/crystal-canyon/tests/manifest.test.mjs"
+    ],
+    "F-21": [
+      "packages/evals/src/plugin-lifecycle.test.mjs"
+    ],
+    "F-30": [
+      "packages/evals/src/plugin-lifecycle.test.mjs"
+    ],
+    "F-35": [
+      "packages/evals/src/preserved.test.mjs"
+    ],
+    "F-37": [
+      "packages/evals/src/design-checks.test.mjs"
+    ],
+    "F-38": [
+      "packages/evals/src/design-checks.test.mjs"
+    ],
+    "F-43": [
+      "packages/corpus/src/intake/domain.test.mjs"
+    ],
+    "F-47": [
+      "apps/worker/tests/retrieval.test.mjs",
+      "packages/corpus/src/intake/pipeline-data.test.mjs"
+    ],
+    "F-48": [
+      "packages/corpus/src/index-plan.test.mjs"
+    ],
+    "F-49": [
+      "packages/evals/src/roblox-antipatterns.test.mjs"
+    ],
+    "F-52": [
+      "packages/evals/src/roblox-antipatterns.test.mjs"
+    ],
+    "F-54": [
+      "packages/design/src/checks.test.mjs"
+    ],
+    "F-55": [
+      "packages/evals/src/roblox-antipatterns.test.mjs"
+    ],
+    "F-57": [
+      "apps/worker/tests/collab-migration.test.mjs",
+      "apps/worker/tests/membership-migration.test.mjs",
+      "apps/worker/tests/membership-roster.test.mjs",
+      "packages/evals/src/grade.test.mjs"
+    ],
+    "F-58": [
+      "apps/worker/tests/abuse-detection.test.mjs",
+      "apps/worker/tests/injection-defence.test.mjs",
+      "apps/worker/tests/membership-roster.test.mjs",
+      "apps/worker/tests/run-access.test.mjs",
+      "packages/corpus/src/index-plan.test.mjs"
+    ],
+    "F-59": [
+      "apps/worker/tests/search.test.mjs",
+      "apps/worker/tests/secret-redaction.test.mjs",
+      "packages/training/src/runs.test.mjs"
+    ],
+    "F-61": [
+      "tests/tree-fingerprint.test.mjs"
+    ],
+    "F-62": [
+      "tests/deploy-showcase.test.mjs",
+      "tests/migration-runner.test.mjs",
+      "tests/rollback-rules.test.mjs",
+      "tests/rollback-static.test.mjs"
+    ],
+    "F-63": [
+      "tests/rollback-static.test.mjs"
+    ],
+    "F-64": [
+      "apps/web/tests/account-recovery.test.mjs",
+      "apps/web/tests/api-keys.test.mjs",
+      "apps/web/tests/auth-flows.test.mjs",
+      "apps/web/tests/lost-authenticator-exit.test.mjs",
+      "apps/web/tests/prefs.test.mjs",
+      "apps/web/tests/registration-entry.test.mjs",
+      "apps/web/tests/secure-email-change.test.mjs",
+      "apps/web/tests/settings-search.test.mjs",
+      "apps/worker/tests/notification-emitters.test.mjs",
+      "apps/worker/tests/recovery-requests.test.mjs"
+    ],
+    "F-65": [
+      "apps/web/tests/billing-status.test.mjs",
+      "apps/web/tests/studio-link.test.mjs"
+    ],
+    "F-66": [
+      "apps/worker/tests/billing-subscription.test.mjs",
+      "apps/worker/tests/luau-review.test.mjs"
+    ]
+  },
+  "uncovered": [
+    "F-08",
+    "F-09",
+    "F-10",
+    "F-12",
+    "F-13",
+    "F-14",
+    "F-15",
+    "F-16",
+    "F-17",
+    "F-18",
+    "F-19",
+    "F-20",
+    "F-22",
+    "F-23",
+    "F-24",
+    "F-25",
+    "F-26",
+    "F-27",
+    "F-28",
+    "F-29",
+    "F-31",
+    "F-32",
+    "F-33",
+    "F-34",
+    "F-36",
+    "F-39",
+    "F-40",
+    "F-41",
+    "F-42",
+    "F-44",
+    "F-45",
+    "F-46",
+    "F-50",
+    "F-51",
+    "F-53",
+    "F-56",
+    "F-60",
+    "F-67",
+    "F-68"
+  ],
+  "what_this_counts": "a failure is counted as covered when at least one tracked test file NAMES its id. That is a citation, not a proof that the test would catch the failure again.",
+  "what_this_does_not_do": "it does not add an F-id to any eval task. Which eval task was born from which failure is an authoring judgement, and deriving it from surface similarity would fabricate provenance."
+}

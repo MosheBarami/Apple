@@ -26,6 +26,7 @@
     "acquire-github-luau": "node src/acquire-github-luau.mjs",
     "summarise-github-corpus": "node src/summarise-github-corpus.mjs",
     "measure-ui-yield": "node src/measure-ui-yield.mjs",
+    "measure-failure-coverage": "node src/measure-failure-coverage.mjs",
     "generate-ui-showcase": "node src/generate-ui-showcase.mjs",
     "generate-map-showcase": "node src/generate-map-showcase.mjs",
     "rasterise-showcase": "node src/rasterise-showcase.mjs",
