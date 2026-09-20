@@ -48,6 +48,10 @@ const ROOT = join(SITE, '..', '..');
 // build below rather than trusted.
 const ROUTES = [
   '/',
+  // A route is added to this list the day it is built, not the day somebody notices it is missing.
+  // /proof is a page of quotations from a run log, which is the shape most likely to strand a word:
+  // long monospace lines the wrapper cannot break, beside prose columns it can.
+  '/proof/',
   '/pricing/',
   '/changelog/',
   '/status/',

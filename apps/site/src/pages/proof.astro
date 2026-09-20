@@ -1,0 +1,462 @@
+---
+/**
+ * /proof — ONE RUN, RECORDED, WITH THE FIVE THINGS THAT WERE WRONG WITH IT LEFT IN.
+ *
+ * WHY THIS PAGE EXISTS. Measured against the live origin on 2026-09-21 the deployed site carried
+ * one image and no recording of the product doing anything. The owner's instruction is "do not
+ * make claims when we can demonstrate them", and a run of this product had been recorded three
+ * weeks earlier — transcript, a separate runtime verification, and a write-up of what was wrong —
+ * sitting in docs/evidence where nobody who is not in this repository will ever see it.
+ *
+ * NOT ONE SENTENCE OF THE EVIDENCE IS WRITTEN HERE. Every quoted string comes out of
+ * src/data/recorded-run.ts, which names the file it was taken from, and
+ * tests/recorded-run-is-evidence.test.mjs re-reads those files and fails if a quote is not in the
+ * one it names. The English that IS ours — the headings, the six step labels, the notes beside
+ * each block — names the structure. None of it asserts a result; the log is the result.
+ *
+ * IT IS A SEPARATE ROUTE RATHER THAN A BAND ON THE LANDING, and that is a constraint rather than a
+ * preference. The landing's markup, its header and its footer are all in src/pages/index.astro,
+ * which another lane was holding open in this shared checkout while this was written; a section
+ * inserted into a file someone else is rewriting is how one lane's commit swallows another's. The
+ * route is reachable from the site navigation and from the proof band on the landing, which is a
+ * component this lane owns.
+ *
+ * THERE IS NO JAVASCRIPT ON THIS PAGE. The six moments are a radio group: the labels are the
+ * chips, `:checked` chooses the block, and arrow keys move between them because they are real
+ * radios. With no CSS at all every block renders, one after another, in order — a proof page whose
+ * evidence is behind a bundle that failed is a proof page with nothing on it.
+ *
+ * WHY THE DEFECTS ARE HERE. Five things were wrong with what this run produced. The record calls
+ * them "the point of the exercise" and it is right: a page that showed the transcript and omitted
+ * them would be the same claim in better clothes.
+ */
+import Base from '../layouts/Base.astro';
+import { RECORDED_RUN } from '../data/recorded-run';
+
+const { request, moments, landed, ran, defects, dateLabel, sources } = RECORDED_RUN;
+---
+
+<Base
+  title="Proof — one recorded run — Apple"
+  description="The whole log of one real run inside Roblox Studio: what it read, what it wrote, what the running game reported afterwards, and the five things that were wrong with the result."
+>
+  <section class="section" aria-labelledby="proof-title">
+    <div class="wrap proof-wrap">
+      <p class="eyebrow">Proof</p>
+      <h1 id="proof-title" class="carved">One run, recorded.</h1>
+      <p class="lede">
+        Not a demo reel. This is the whole log of one request sent to Apple on {dateLabel}, inside a
+        real Roblox Studio place — what it read, what it wrote, what the game reported when someone
+        played it afterwards, and the five things that were wrong with the result.
+      </p>
+
+      <figure class="ask">
+        <figcaption class="micro">The sentence that was sent</figcaption>
+        <blockquote>{request.text}</blockquote>
+      </figure>
+
+      {/* THE LOG, IN SIX MOMENTS. Radios and labels, no script. The first is checked in the markup
+          so the page has a chosen moment before anything runs. */}
+      <h2 id="log-title" class="sub">Two hundred and twelve seconds</h2>
+      <p class="muted-line">
+        Every line below is the run's own log. Step through it, or read all six with the page's
+        styles off — nothing here is drawn by a script.
+      </p>
+
+      {/* THE RADIOS ARE DIRECT CHILDREN OF `.run`, NOT WRAPPED IN THE ROW THEY DRAW.
+          `:checked ~ .run-frames` is a sibling selector: put the inputs inside a fieldset or a
+          chip-row div and the frames stop being their siblings, the rule silently matches nothing,
+          and the page ships with every block shown at once — which looks deliberate. The row is
+          made by `.run` wrapping instead, with `.run-frames` taking a full line of its own. */}
+      <div class="run">
+        {
+          moments.map((m, i) => (
+            <>
+              <input
+                class="visually-hidden run-pick"
+                type="radio"
+                name="moment"
+                id={`m-${m.id}`}
+                value={m.id}
+                checked={i === 0}
+              />
+              <label class="run-chip" for={`m-${m.id}`}>
+                <span class="run-at">{m.at}</span>
+                <span class="run-label">{m.label}</span>
+              </label>
+            </>
+          ))
+        }
+
+        <div class="run-frames">
+          {
+            moments.map((m) => (
+              <article class="run-frame" data-moment={m.id}>
+                <p class="run-note">{m.note}</p>
+                <pre class="run-log">{m.lines.map((l) => l.text).join('\n')}</pre>
+                {m.caveat && (
+                  <div class="run-caveat">
+                    <p class="micro">What that does and does not show</p>
+                    <p>{m.caveat.lead}</p>
+                    <blockquote>{m.caveat.quote.text}</blockquote>
+                  </div>
+                )}
+              </article>
+            ))
+          }
+        </div>
+      </div>
+
+      <h2 class="sub">What was in the place afterwards</h2>
+      <table class="landed">
+        <caption class="visually-hidden">Object and script counts in the Studio place, before and after the run</caption>
+        <thead>
+          <tr>
+            <th scope="col">&nbsp;</th>
+            <th scope="col">Before</th>
+            <th scope="col">After</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            landed.map((row) => (
+              <tr>
+                <th scope="row">{row.label}</th>
+                <td>{row.before}</td>
+                <td class="landed-after">{row.after}</td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+
+      <h2 class="sub">Then somebody played it</h2>
+      <p class="muted-line">
+        A model reporting its own success is not evidence of it. The place was put into Play in a
+        different session, a character was walked onto each pad by hand, and these are the readings
+        that came back. <em>{ran.separate.text}.</em>
+      </p>
+      <ul class="readings" role="list">
+        {ran.readings.map((line) => <li>{line.text}</li>)}
+      </ul>
+
+      <h2 class="sub">And five things were wrong with it</h2>
+      <p class="muted-line">
+        {defects.framing.text} All five are in what the run produced — {defects.found.text}, and none
+        is repaired on this page.
+      </p>
+      <ol class="defects">
+        {
+          defects.items.map((item) => (
+            <li>
+              <p class="defect-title">{item.title.text}</p>
+              <p class="defect-detail">{item.detail.text}</p>
+            </li>
+          ))
+        }
+      </ol>
+
+      <p class="sources micro">
+        Record: {sources.join(' · ')}
+      </p>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .proof-wrap {
+    max-width: 760px;
+  }
+
+  .sub {
+    margin: 3.4rem 0 0.4rem;
+    font-family: var(--font-display);
+    font-size: 1.35rem;
+    font-weight: 500;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+  }
+
+  .muted-line {
+    margin: 0 0 1.4rem;
+    color: var(--muted);
+    max-width: 62ch;
+  }
+
+  .micro {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  /* THE ASK IS THE ONE PIECE OF ENGLISH ON THE PAGE A VISITOR CAN IMAGINE TYPING, so it is set at
+     reading size and given the page's only left rule, rather than being shrunk into a code block
+     with the machine output. */
+  .ask {
+    margin: 2.6rem 0 0;
+    padding-left: 1.1rem;
+    border-left: 2px solid var(--line-strong);
+  }
+
+  .ask blockquote {
+    margin: 0.5rem 0 0;
+    font-size: 1.05rem;
+    line-height: 1.6;
+    color: var(--ink-2);
+  }
+
+  .run {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 1.2rem;
+  }
+
+  .run-chip {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.45rem;
+    padding: 0.42rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: var(--r-pill);
+    background: var(--paper-2);
+    color: var(--muted);
+    cursor: pointer;
+    transition: border-color 140ms ease-out, color 140ms ease-out, background-color 140ms ease-out;
+  }
+
+  .run-at {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--faint);
+  }
+
+  .run-label {
+    font-size: 0.86rem;
+    font-weight: 500;
+  }
+
+  .run-chip:hover {
+    border-color: var(--line-strong);
+    color: var(--ink);
+  }
+
+  /* The chosen chip and the chosen block are selected by the same mechanism, one rule apart, so
+     they cannot disagree about which moment is open. */
+  .run-pick:checked + .run-chip {
+    border-color: var(--accent);
+    background: var(--surface);
+    color: var(--ink);
+  }
+
+  /* FOCUS IS DRAWN ON THE CHIP, NOT ON THE RADIO. The radio is visually hidden, so without this a
+     keyboard user moving through the group would see nothing move at all. */
+  .run-pick:focus-visible + .run-chip {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /*[[ `min-width: 0`, AND THE PAGE WAS 1,173px WIDE ON A 375px PHONE WITHOUT IT.
+   *
+   *   Measured in a real browser at 375: `document.documentElement.scrollWidth` 1173 against a
+   *   clientWidth of 375, so the whole document scrolled sideways and every heading on it sat in
+   *   the left third of a three-screen-wide page. The cause is not the log block — that has
+   *   `overflow-x: auto` and was doing its job. It is that a flex item's `min-width` defaults to
+   *   `auto`, which means "never shrink below your content", and the longest line in this run's
+   *   transcript is about a thousand pixels of monospace. `flex: 0 0 100%` set the basis and the
+   *   minimum overrode it.
+   *
+   *   Both levels need it: the frames box is the flex item, and the frame inside it is the block
+   *   that would otherwise pass its content's width straight back up. ]]*/
+  .run-frames {
+    flex: 0 0 100%;
+    min-width: 0;
+    margin-top: 1rem;
+  }
+
+  .run-frame {
+    min-width: 0;
+    border: 1px solid var(--line);
+    border-radius: var(--r-card);
+    background: var(--surface);
+    padding: 1.1rem 1.2rem 1.2rem;
+  }
+
+  /* EVERY FRAME RENDERS UNTIL A RULE HIDES IT, never the other way round. If this stylesheet does
+     not arrive the page is six blocks of log in order, which is the whole document; if it were
+     written as `display:none` by default and shown by `:checked`, the same failure would leave a
+     page with a heading and nothing under it. */
+  .run-frame + .run-frame {
+    margin-top: 0.6rem;
+  }
+
+  .run-note {
+    margin: 0 0 0.9rem;
+    color: var(--ink-2);
+    max-width: 58ch;
+  }
+
+  .run-log {
+    margin: 0;
+    padding: 0.85rem 0.95rem;
+    border-radius: var(--r-sm);
+    background: var(--paper-2);
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    line-height: 1.75;
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  .run-caveat {
+    margin: 0.9rem 0 0;
+    color: var(--faint);
+    font-size: 0.86rem;
+    max-width: 58ch;
+  }
+
+  .run-caveat p {
+    margin: 0.25rem 0 0;
+  }
+
+  .run-caveat blockquote {
+    margin: 0.4rem 0 0;
+    padding-left: 0.8rem;
+    border-left: 1px solid var(--line);
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  /*[[ `min-width: 0` UNDOES global.css's `table { min-width: 620px }`, WHICH THIS TABLE IS NOT FOR.
+   *
+   *   That rule is right for the tables it was written for: the docs compare options in cells of
+   *   running prose, and squeezing those into a phone produces a column of single words. This one
+   *   is three labels and six integers. Left at 620px it was 639px wide inside a 337px column at
+   *   375px, and it — not the log block, which scrolls on purpose — was the last thing dragging the
+   *   whole document sideways after the flex minimum was fixed. Measured both times in a browser
+   *   at 375px: scrollWidth 1173 → 639 → 375. ]]*/
+  .landed {
+    width: 100%;
+    min-width: 0;
+    margin: 0.6rem 0 0;
+    border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .landed th,
+  .landed td {
+    padding: 0.62rem 0.2rem;
+    border-bottom: 1px solid var(--hairline);
+    text-align: right;
+    font-weight: 400;
+    color: var(--muted);
+  }
+
+  .landed thead th {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  .landed tbody th {
+    text-align: left;
+    color: var(--ink-2);
+  }
+
+  .landed-after {
+    color: var(--ink);
+  }
+
+  .readings {
+    margin: 0;
+    padding: 0.85rem 0.95rem;
+    border: 1px solid var(--line);
+    border-radius: var(--r-card);
+    background: var(--surface);
+    list-style: none;
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    line-height: 1.85;
+    color: var(--muted);
+    overflow-x: auto;
+  }
+
+  .readings li {
+    white-space: pre;
+  }
+
+  .defects {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: defect;
+  }
+
+  .defects li {
+    counter-increment: defect;
+    padding: 0.95rem 0 0.95rem 2.2rem;
+    border-bottom: 1px solid var(--hairline);
+    position: relative;
+  }
+
+  .defects li::before {
+    content: counter(defect);
+    position: absolute;
+    left: 0;
+    top: 1rem;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--faint);
+  }
+
+  .defect-title {
+    margin: 0 0 0.3rem;
+    color: var(--ink);
+    font-weight: 500;
+  }
+
+  .defect-detail {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.9rem;
+    line-height: 1.6;
+    max-width: 62ch;
+    overflow-wrap: anywhere;
+  }
+
+  .sources {
+    margin-top: 2.6rem;
+    overflow-wrap: anywhere;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  @media (min-width: 720px) {
+    /* The switching only happens where there is room for a row of chips above a block. Below that
+       width the chips still choose, and every block stays on the page, which is the better reading
+       of a log on a phone anyway: one column, in order, no state to lose track of. */
+    .run-frame {
+      display: none;
+    }
+
+    .run-frame + .run-frame {
+      margin-top: 0;
+    }
+
+    #m-read:checked ~ .run-frames [data-moment='read'],
+    #m-checkpoint:checked ~ .run-frames [data-moment='checkpoint'],
+    #m-write:checked ~ .run-frames [data-moment='write'],
+    #m-playtest:checked ~ .run-frames [data-moment='playtest'],
+    #m-look:checked ~ .run-frames [data-moment='look'],
+    #m-stop:checked ~ .run-frames [data-moment='stop'] {
+      display: block;
+    }
+  }
+</style>

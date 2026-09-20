@@ -89,6 +89,42 @@ import { CONSENT_PROOF } from '../data/consent-proof';
       </div>
     </div>
 
+    {/* THE WAY OUT OF THE BAND, AND THE REASON IT IS HERE RATHER THAN IN THE PAGE'S OWN HEADER.
+        This band is one refused operation and one granted one. /proof is a whole run: the log
+        minute by minute, the object counts before and after it, what the game reported when a
+        person played the result, and the five things that were wrong with it. A visitor who is
+        persuaded by this band has nowhere else to go, and the site has no other route to that page
+        from the landing — src/pages/index.astro, which owns this page's header and footer, was
+        held open by another lane while this was written, and /showcase spent a night deployed with
+        nothing linking to it for exactly that reason. A component this lane owns can carry its own
+        door. */}
+    <p class="proof-more">
+      <a href="/proof">The whole log of one run, and the five defects it left behind &rarr;</a>
+    </p>
+
     <p class="micro proof-source">{CONSENT_PROOF.limit.text} Record: {CONSENT_PROOF.record}</p>
   </div>
 </section>
+
+<style>
+  /* Four declarations in their own block rather than a sixth rule in landing.css: that file was
+     carrying another lane's uncommitted work at the time, and a link is not worth committing
+     somebody else's half-finished stylesheet to ship. `a` is `color: inherit; text-decoration:
+     none` site-wide on the landing, so an unstyled anchor here would be invisible as a link. */
+  .proof-more {
+    margin: 18px 0 0;
+    font-size: 13.5px;
+    line-height: 21px;
+  }
+
+  .proof-more a {
+    color: var(--ink);
+    text-decoration: underline;
+    text-decoration-color: var(--line-strong);
+    text-underline-offset: 3px;
+  }
+
+  .proof-more a:hover {
+    text-decoration-color: var(--ink);
+  }
+</style>
