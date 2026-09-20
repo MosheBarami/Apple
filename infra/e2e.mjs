@@ -115,7 +115,40 @@ function wsChat(text, mode, { expectTools } = {}) {
       }
       if (msg.type === 'delta') finalText += msg.text;
       if (msg.type === 'tool_end') log(`   tool: ${msg.summary}`);
-      if (msg.type === 'error') log('   ws error msg:', msg.code, msg.message);
+      if (msg.type === 'error') {
+        log('   ws error msg:', msg.code, msg.message);
+        // A REFUSAL IS AN ANSWER. REPORTING IT AS A TIMEOUT IS A FAILURE TO OBSERVE DRESSED AS AN
+        // OBSERVATION, WHICH IS THE ONE THING THIS HARNESS MUST NOT DO.
+        //
+        // `refuseOne` in apps/worker/src/do/session.ts sends one `error` frame and returns: no
+        // `msg_end`, no `run_state`, no terminal event of any kind. Every refusal on the start path
+        // does this (busy at ~2987 and ~3004, forbidden at ~3009, product_model_unavailable at
+        // ~3014). So the server HAD answered, promptly and clearly, and this harness sat for the
+        // full 150 seconds and then blamed a timeout — naming the wrong defect, and charging 150
+        // seconds for the privilege. Measured 2026-09-20: a free account asking for Apple MAX gets
+        // `product_model_unavailable` and the run never terminates on the wire.
+        //
+        // THIS DOES NOT WEAKEN THE ASSERTION, and must not be relaxed into one that does. A chat
+        // that ends without a terminal event is still a FAILURE and still rejects here; the only
+        // thing that changed is that the rejection now says what actually happened and says it at
+        // once. When the worker starts emitting a terminal event after a refusal, this rejection
+        // stops firing on its own, because `msg_end` will arrive first.
+        //
+        // `role_changed` is excluded because it is the one INFORMATIONAL use of the error channel
+        // (apps/worker/src/do/session.ts, broadcastRoleChange): it tells a viewer their permissions
+        // moved and refuses nothing. Treating it as fatal would invent a failure. Every other code
+        // the worker can send here — busy, forbidden, quota, capacity, edit, restore, checkpoint,
+        // bad_mode, bad_product_model, product_model_unavailable — is a refusal of this request.
+        if (msg.code !== 'role_changed') {
+          clearTimeout(timer);
+          ws.close();
+          reject(new Error(
+            `refused with no terminal event: ${msg.code} — ${msg.message}` +
+            ` (events: ${events.map((e) => e.type).join(',')})`,
+          ));
+          return;
+        }
+      }
       if (msg.type === 'msg_end') {
         clearTimeout(timer);
         ws.close();
