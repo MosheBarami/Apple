@@ -165,6 +165,14 @@ const slug = (route, vp, scheme) =>
 /* ------------------------------------------------------------------ capture --- */
 
 const ALL_ROUTES = routes();
+
+/*
+ * The colour histogram for RULE 1, allocated ONCE. 2^24 entries covers every packed RGB exactly.
+ * `touched` records which entries a frame used so the array can be cleared in O(colours present)
+ * rather than by zeroing 16.7M slots between frames.
+ */
+const histogram = new Uint32Array(1 << 24);
+const touched = [];
 const ROUTES = flags.routes ? ALL_ROUTES.filter((r) => flags.routes.includes(r)) : ALL_ROUTES;
 if (flags.routes && !ROUTES.length) {
   console.error(`check-pixels: --routes matched none of the ${ALL_ROUTES.length} routes that exist`);
@@ -184,18 +192,43 @@ let captured = 0;
 let compared = 0;
 
 /** Decode a PNG to {w,h,data} using the browser, which already has a correct decoder. */
+/*[[ THE PIXELS COME BACK AS BYTES, NOT AS A JSON ARRAY OF FOUR MILLION NUMBERS.
+ *
+ *   This returned `Array.from(d.data)`. `d.data` is a Uint8ClampedArray of width x height x 4 —
+ *   4,096,000 entries for one 1280x800 frame — and returning it from `page.evaluate` serialises
+ *   every entry as JSON over the CDP bridge, then rebuilds a plain JS Array of four million boxed
+ *   numbers on this side. That is tens of megabytes of protocol traffic and about a hundred seconds
+ *   PER FRAME.
+ *
+ *   It went unnoticed for as long as the sweep was small and the pages were flat. On 2026-09-20 the
+ *   four tests in tests/check-pixels.test.mjs that exercise this checker took 1,106,191ms,
+ *   1,057,355ms, 1,008,163ms and 977,133ms — seventeen minutes each — and timed out rather than
+ *   failed. The whole root suite stopped finishing, and the symptom read like a hang in a test
+ *   rather than like a transport cost in a helper.
+ *
+ *   Base64 of the raw RGBA buffer crosses the bridge as ONE string and decodes here in one call.
+ *   The returned shape is unchanged — `{ w, h, data }` with `data` indexable exactly as before — so
+ *   every rule above reads it the same way. Nothing about what is measured changes; only how the
+ *   bytes travel. ]]*/
 async function decode(page, buf) {
-  return page.evaluate(async (b64) => {
+  const { w, h, b64 } = await page.evaluate(async (src) => {
     const img = new Image();
-    img.src = `data:image/png;base64,${b64}`;
+    img.src = `data:image/png;base64,${src}`;
     await img.decode();
     const c = document.createElement('canvas');
     c.width = img.naturalWidth; c.height = img.naturalHeight;
     const ctx = c.getContext('2d');
     ctx.drawImage(img, 0, 0);
     const d = ctx.getImageData(0, 0, c.width, c.height);
-    return { w: c.width, h: c.height, data: Array.from(d.data) };
+    // Chunked so a 4MB buffer does not blow the argument limit of String.fromCharCode.
+    let s = '';
+    const CH = 0x8000;
+    for (let i = 0; i < d.data.length; i += CH) {
+      s += String.fromCharCode.apply(null, d.data.subarray(i, i + CH));
+    }
+    return { w: c.width, h: c.height, b64: btoa(s) };
   }, buf.toString('base64'));
+  return { w, h, data: new Uint8Array(Buffer.from(b64, 'base64')) };
 }
 
 try {
@@ -225,9 +258,33 @@ try {
 
   for (const vp of VIEWPORTS) {
     for (const scheme of SCHEMES) {
+      /*[[ REDUCED MOTION, AND IT IS NOT A PERFORMANCE TWEAK — IT IS WHAT MAKES A BASELINE POSSIBLE.
+       *
+       *   On 2026-09-20 the landing gained a permanently-running canvas (Horizon.astro) and 27
+       *   keyframes, 72 of which are animating at any moment. A pixel baseline over an animated page
+       *   does not have a stable subject: every capture differs from every other capture, and the
+       *   four tests in tests/check-pixels.test.mjs that exercise this checker went from seconds to
+       *   SEVENTEEN MINUTES EACH — 1,106,191ms, 1,057,355ms, 1,008,163ms, 977,133ms — and timed out
+       *   rather than failed. The root suite went from minutes to unfinishable with them in it.
+       *
+       *   `reducedMotion: 'reduce'` is the honest fix rather than a wait-and-hope, because this
+       *   product's own components are built to answer it: Horizon.astro draws ONE still frame at a
+       *   fixed phase and never starts its loop, landing.css neutralises every keyframe, and the
+       *   reveal machinery shows its final frame. So what this checker photographs under reduction
+       *   is a real, complete, deterministic composition — the exact thing a visitor who asked for
+       *   less motion sees — rather than a frame frozen mid-flight.
+       *
+       *   `animations: 'disabled'` on the screenshot below covers the rest: Playwright fast-forwards
+       *   CSS animations and transitions to their end state, so anything the media query does not
+       *   reach still lands somewhere defined instead of somewhere random.
+       *
+       *   A consequence worth stating: this checker no longer sees the page as a visitor with motion
+       *   enabled sees it. That is a real narrowing and the right trade — a baseline that cannot be
+       *   reproduced catches nothing at all, and the alternative was a checker that never finishes. ]]*/
       const ctx = await browser.newContext({
         viewport: { width: vp.width, height: vp.height },
         colorScheme: scheme,
+        reducedMotion: 'reduce',
       });
       const page = await ctx.newPage();
       const decoder = await ctx.newPage();
@@ -244,21 +301,48 @@ try {
         }
         if (!res) { fail(`${route} returned no response`, url, 'navigation produced nothing'); continue; }
 
-        const buf = await page.screenshot({ fullPage: false });
+        const buf = await page.screenshot({ fullPage: false, animations: 'disabled' });
         const file = join(OUT, slug(route, vp.name, scheme));
         writeFileSync(file, buf);
         captured += 1;
 
         const img = await decode(decoder, buf);
 
-        // RULE 1 — a frame that is overwhelmingly one colour did not render.
-        const counts = new Map();
+        //[[ RULE 1 — a frame that is overwhelmingly one colour did not render.
+        //
+        //   THE COUNT IS EXACT AND THE STRUCTURE CHANGED, for a reason that is a lesson about this
+        //   checker rather than about this rule. It used to be `counts.set(k, (counts.get(k) ?? 0)
+        //   + 1)` once per pixel — a Map keyed by packed RGB, 1,024,000 `set` calls per frame at
+        //   1280x800. That was fast for years because the pages it photographed were nearly flat:
+        //   a handful of distinct colours meant a Map with a handful of entries.
+        //
+        //   On 2026-09-20 the landing gained a canvas drawing a horizon gradient with a glow band,
+        //   which is on the order of a MILLION distinct colours in one frame. The Map went from a
+        //   dozen entries to a million, per frame, and `Math.max(...counts.values())` then spread a
+        //   million-element iterator into a call. The four tests exercising this checker went to
+        //   SEVENTEEN MINUTES EACH and timed out, and the root suite stopped finishing at all.
+        //
+        //   Nothing was wrong with the rule. The data changed shape underneath a structure chosen
+        //   for the old shape — which is worth writing down, because the failure looked like a hang
+        //   and read like a broken test rather than like a page that got richer.
+        //
+        //   A flat Uint32Array indexed by the packed colour is O(1) per pixel with no hashing and
+        //   no allocation per distinct colour. It is 64MB, allocated ONCE for the whole run rather
+        //   than per frame, and only the entries actually touched are reset between frames — so the
+        //   cost is proportional to the colours present, not to the 16.7M the array can hold.
+        //   The count stays EXACT: no quantisation, no bucketing, so a page that is 92% of one
+        //   almost-uniform gradient is still not mistaken for a blank one. ]]
+        const total = img.w * img.h;
+        let top = 0;
+        touched.length = 0;
         for (let i = 0; i < img.data.length; i += 4) {
           const k = (img.data[i] << 16) | (img.data[i + 1] << 8) | img.data[i + 2];
-          counts.set(k, (counts.get(k) ?? 0) + 1);
+          const n = histogram[k] + 1;
+          if (n === 1) touched.push(k);
+          histogram[k] = n;
+          if (n > top) top = n;
         }
-        const total = img.w * img.h;
-        const top = Math.max(...counts.values());
+        for (const k of touched) histogram[k] = 0;
         const share = top / total;
         if (share > 0.92) {
           fail(`${route} is ${(share * 100).toFixed(1)}% one colour at ${vp.name}/${scheme}`, file, 'the page did not render, or rendered empty');
