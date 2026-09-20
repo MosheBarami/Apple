@@ -108,6 +108,29 @@ const VIEWPORTS = [
 ];
 const SCHEMES = ['light', 'dark'];
 
+/**
+ * The localStorage key the site's own pre-paint theme script reads, READ OUT OF THAT SCRIPT.
+ *
+ * A literal here would agree with itself and with nothing else, and the failure it would cause is
+ * the one this key exists to end: a sweep that sets a key nobody reads, renders the default theme
+ * for both schemes, and reports eighty frames of which forty are duplicates. So a rename in the
+ * layout turns this RED rather than quiet. Both layouts must agree, because a sweep that drives the
+ * landing's switch and not the chrome routes' would be half-blind in a new way.
+ */
+const THEME_KEY = (() => {
+  const layouts = ['Landing.astro', 'Base.astro'].map((f) => join(ROOT, 'apps', 'site', 'src', 'layouts', f));
+  const keys = layouts.map((p) => {
+    const src = existsSync(p) ? readFileSync(p, 'utf8') : '';
+    return (/localStorage\.getItem\(\s*['"]([^'"]+)['"]\s*\)/.exec(src) ?? [])[1] ?? null;
+  });
+  if (keys.some((k) => k === null) || new Set(keys).size !== 1) {
+    console.error('check-pixels: cannot read one agreed theme key out of Landing.astro and Base.astro');
+    console.error(`  found ${JSON.stringify(keys)} — the light half of every sweep would silently photograph the dark page`);
+    process.exit(1);
+  }
+  return keys[0];
+})();
+
 /* -------------------------------------------------------- the design system --- */
 
 /**
@@ -173,6 +196,9 @@ const ALL_ROUTES = routes();
  */
 const histogram = new Uint32Array(1 << 24);
 const touched = [];
+
+/** Mean luminance per `route|viewport|scheme`, for RULE 5. */
+const luminance = new Map();
 const ROUTES = flags.routes ? ALL_ROUTES.filter((r) => flags.routes.includes(r)) : ALL_ROUTES;
 if (flags.routes && !ROUTES.length) {
   console.error(`check-pixels: --routes matched none of the ${ALL_ROUTES.length} routes that exist`);
@@ -286,6 +312,33 @@ try {
         colorScheme: scheme,
         reducedMotion: 'reduce',
       });
+      /*[[ THE SITE'S OWN SWITCH, BECAUSE `colorScheme` ALONE PHOTOGRAPHED THE DARK PAGE TWICE.
+       *
+       *   This file's header has said "in both colour schemes" since it was written, and it has
+       *   never once captured the light one. Both layouts hard-code `data-theme="dark"` on <html>
+       *   and their pre-paint script changes it ONLY for a stored choice — `prefers-color-scheme` is
+       *   not read anywhere in the boot path — so a Playwright context with `colorScheme: 'light'`
+       *   renders the identical dark page. Forty of the eighty frames in every sweep this checker
+       *   has ever run were duplicates of the other forty, under filenames asserting otherwise.
+       *
+       *   IT WAS INVISIBLE BECAUSE NOTHING COMPARED THE HALVES. Found by swapping a committed
+       *   `--light` baseline frame for its `--dark` twin and re-running: the diff came back under
+       *   the 2% threshold, which is not a thing that can happen between a near-white page and a
+       *   near-black one. The four intrinsic rules all passed on both copies, because a dark page
+       *   IS a valid page — it was simply the wrong one, twice.
+       *
+       *   THE FIX DRIVES THE CONTROL A VISITOR DRIVES rather than changing the product to follow
+       *   the OS. Dark is this brand's default by decision and the toggle is the real choice, so
+       *   the honest capture is "a visitor who picked light", which is a value in localStorage the
+       *   inline script reads before first paint. `addInitScript` runs before page scripts on every
+       *   navigation, which is exactly the window that script occupies. `colorScheme` stays set as
+       *   well: it costs nothing and is correct on the day the boot path does read the query.
+       *
+       *   The key is read from the layout rather than typed here, so a rename cannot leave this
+       *   silently photographing dark twice again — which is the whole defect, repeating. ]]*/
+      await ctx.addInitScript((choice) => {
+        try { localStorage.setItem(choice.key, choice.scheme); } catch { /* private mode */ }
+      }, { key: THEME_KEY, scheme });
       const page = await ctx.newPage();
       const decoder = await ctx.newPage();
       await decoder.setContent('<html><body></body></html>');
@@ -334,15 +387,21 @@ try {
         //   almost-uniform gradient is still not mistaken for a blank one. ]]
         const total = img.w * img.h;
         let top = 0;
+        // Mean luminance, accumulated in the pass rule 1 is already making. RULE 5 below is the
+        // only reader; it costs one add and one divide per frame and is what tells a light page
+        // from a dark one without a second decode.
+        let sum = 0;
         touched.length = 0;
         for (let i = 0; i < img.data.length; i += 4) {
           const k = (img.data[i] << 16) | (img.data[i + 1] << 8) | img.data[i + 2];
+          sum += 0.2126 * img.data[i] + 0.7152 * img.data[i + 1] + 0.0722 * img.data[i + 2];
           const n = histogram[k] + 1;
           if (n === 1) touched.push(k);
           histogram[k] = n;
           if (n > top) top = n;
         }
         for (const k of touched) histogram[k] = 0;
+        luminance.set(`${route}|${vp.name}|${scheme}`, sum / total);
         const share = top / total;
         if (share > 0.92) {
           fail(`${route} is ${(share * 100).toFixed(1)}% one colour at ${vp.name}/${scheme}`, file, 'the page did not render, or rendered empty');
@@ -458,6 +517,49 @@ if (flags.writeBaseline) {
   }
   writeFileSync(PROVENANCE, `${JSON.stringify({ origin: BASE, sha, frames: captured }, null, 2)}\n`);
   console.log(`BASELINE PROVENANCE written — origin ${BASE}, sha ${sha.slice(0, 7)}, ${captured} frame(s)`);
+}
+
+//[[ RULE 5 — THE TWO SCHEMES ARE TWO PICTURES, AND NOTHING CHECKED THAT FOR AS LONG AS THIS FILE
+//   HAS EXISTED.
+//
+//   Every rule above is applied to a frame on its own, and a dark page passes all four. So when
+//   `colorScheme: 'light'` turned out to render the dark page — the site's boot path never reads
+//   the query — the sweep reported eighty clean frames of which forty were duplicates, and the
+//   filenames were the only thing claiming otherwise. Nothing in the output was false. It was
+//   simply an answer to a narrower question than the one being asked.
+//
+//   This is the cheapest possible cross-frame rule and it is the one that closes that hole: a page
+//   photographed in light and in dark must differ in MEAN LUMINANCE by more than a rounding error.
+//   The threshold is 12 of 255, which is far below the ~150 this site's two palettes are apart and
+//   far above the drift a canvas of randomly placed particles contributes.
+//
+//   IT FIRES ON THE SWEEP, NOT ON THE PAGE, and the message says so — the defect it catches is in
+//   the capture, and telling somebody their design regressed when their camera was pointed the
+//   wrong way is how a checker teaches people to ignore it. A route that genuinely has one palette
+//   in both schemes would be a real finding here too, which is correct: this site has a toggle on
+//   every route and a page that ignores it is a page whose toggle does nothing. ]]
+const SCHEME_LUMINANCE_FLOOR = 12;
+if (SCHEMES.includes('light') && SCHEMES.includes('dark')) {
+  const same = [];
+  for (const vp of VIEWPORTS) {
+    for (const route of ROUTES) {
+      const light = luminance.get(`${route}|${vp.name}|light`);
+      const dark = luminance.get(`${route}|${vp.name}|dark`);
+      if (light === undefined || dark === undefined) continue;
+      if (Math.abs(light - dark) < SCHEME_LUMINANCE_FLOOR) {
+        same.push(`${route} ${vp.name} (${light.toFixed(1)} vs ${dark.toFixed(1)})`);
+      }
+    }
+  }
+  if (same.length) {
+    fail(
+      `${same.length} route/viewport pair(s) look identical in light and dark`,
+      'check-pixels',
+      `mean luminance differs by less than ${SCHEME_LUMINANCE_FLOOR}/255 — the sweep is photographing one `
+      + `scheme twice, so half these frames are duplicates under filenames that say otherwise: ${same.slice(0, 4).join('; ')}`
+      + `${same.length > 4 ? ` and ${same.length - 4} more` : ''}`,
+    );
+  }
 }
 
 if (crossBuild.length) {
