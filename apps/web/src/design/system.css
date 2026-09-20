@@ -230,7 +230,9 @@ a.gx-sr:focus { z-index:1000; top:10px; inset-inline-start:10px; width:auto; hei
 pre { overflow:auto; border:1px solid var(--line); padding:18px; background:var(--surface-2); font-size:13px; } code { font-size:.87em; }
 .gx-outcome__retry { border:0; border-bottom:1px solid var(--line); border-radius:0; font-size:12px; padding:4px 0; }
 .gx-think { margin-bottom:10px; } .gx-think__head { display:flex; align-items:center; gap:8px; }
-.gx-think__toggle .model-mark { width:18px; height:18px; }
+/* model-mark.tsx emits `model-signature`, never `model-mark`, so the 18px cap never applied and
+   the header glyph rendered at its intrinsic size beside 14px text. */
+.gx-think__toggle .model-signature { width:18px; height:18px; }
 .gx-result-details { margin-block:12px; font-size:13px; color:var(--muted); }
 .gx-result-details > summary { cursor:pointer; width:fit-content; padding:5px 0; }
 .gx-result-details[open] > summary { margin-bottom:12px; }
@@ -242,12 +244,20 @@ pre { overflow:auto; border:1px solid var(--line); padding:18px; background:var(
 .gx-cp__note { color:var(--muted); font-size:13px; margin-top:6px; }
 .gx-think__toggle { display:flex; align-items:center; text-align:start; gap:10px; flex:1; min-width:0; border:0; padding:10px 0; background:transparent; }
 .gx-think__toggle:hover:not(:disabled) { background:transparent; }
-.gx-think.is-live .gx-think__word { background:linear-gradient(100deg,#a0a0a0 20%,#ffffff 50%,#a0a0a0 80%); background-size:220% 100%; color:#f1f1f1; background-clip:text; -webkit-text-fill-color:transparent; animation:thinking-light 2.8s ease-in-out infinite; }
+/* TOKENS, NOT HEX. This was `linear-gradient(100deg,#a0a0a0,#ffffff,#a0a0a0)` over `color:#f1f1f1`
+   — three values that only ever made sense on the dark ramp. On the light ramp (--paper:#fafafa)
+   the midpoint is white on near-white: 1.04:1, against the 4.5:1 this file holds itself to at the
+   top. The sweep crosses that midpoint twice per cycle, so the leading letters of the line telling
+   you what Apple is doing right now were erased, twice every 2.8s, for the whole wait. At rest —
+   reduced motion, hidden tab — the tail sits ~85% toward the bright stop and stays faded.
+   --muted -> --ink -> --muted is the same shimmer and flips with the ramp, which is what
+   .apple-max-name two rules up already does correctly. */
+.gx-think.is-live .gx-think__word { background:linear-gradient(100deg,var(--muted) 20%,var(--ink) 50%,var(--muted) 80%); background-size:220% 100%; color:var(--muted); background-clip:text; -webkit-text-fill-color:transparent; animation:thinking-light 2.8s ease-in-out infinite; }
 .gx-think.is-reduced .gx-think__word,.gx-think.is-page-hidden .gx-think__word { animation:none; }
 @keyframes thinking-light { 0%,100% { background-position:100% 0; } 50% { background-position:0% 0; } }
 .gx-think__word { font-size:14px; font-weight:400; } .gx-think__hint { color:var(--faint); font-size:12px; margin-inline-start:auto; } .gx-think__chev { display:flex; } .gx-think__sound { border:0; padding:5px; font-size:12px; }
 .gx-think__body { display:none; } .gx-think__body.is-open { display:block; animation:type-arrive 200ms ease-out; } .gx-think__inner { padding:0 0 18px 38px; }
-.gx-think__compact { padding:0 0 14px 38px; } .gx-think__compact-list,.gx-timeline,.gx-plan,.gx-act__steps,.gx-act__phases { list-style:none; padding:0; margin:0; }
+.gx-think__compact { padding:0 0 14px 38px; } .gx-think__compact-list,.gx-timeline,.gx-plan,.gx-act__steps,.gx-act,.gx-act__phases { list-style:none; padding:0; margin:0; }
 .gx-think__compact-step { display:flex; gap:10px; align-items:start; margin-top:5px; font-size:12px; color:var(--muted); } .gx-think__compact-copy { display:grid; } .gx-think__compact-kicker { text-transform:uppercase; letter-spacing:.1em; font-size:9px; } .gx-think__compact-mark { padding-top:3px; }
 .gx-think__compact-ring { display:block; width:12px; height:3px; margin-top:5px; background:var(--accent); animation:working-line 1.1s ease-in-out infinite; }
 .gx-think.is-terminal .gx-think__compact-ring,.gx-think.is-reduced .gx-think__compact-ring,.gx-think.is-page-hidden .gx-think__compact-ring { animation:none; }
@@ -371,11 +381,20 @@ pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
    takes the warn ink and never the bad one, and it is the only coloured thing in the row. At 12px
    it stays subordinate to the phase name it qualifies. */
 .gx-act__repaired { font-size:12px; color:var(--warn); }
-.gx-act__pip { width:5px; height:5px; background:var(--faint); border-radius:50%; }
+/* `display:inline-block` — activity.tsx renders the pip as a <span>, and width/height do not apply
+   to an inline box, so the phase marker has never drawn and the live-phase accent halo had nothing
+   to sit on. */
+.gx-act__pip { display:inline-block; width:5px; height:5px; background:var(--faint); border-radius:50%; }
 .gx-act__phase.is-active .gx-act__pip { background:var(--accent); box-shadow:0 0 0 3px var(--acc-ember-soft); }
-.gx-act__terminal { border-block-start:1px solid var(--line); margin-block-start:12px; padding-block:12px; font-size:13px; }
+/* activity.tsx:205 renders `gx-stage-row gx-term is-<kind>`; this rule said `.gx-act__terminal`. */
+.gx-term { border-block-start:1px solid var(--line); margin-block-start:12px; padding-block:12px; font-size:13px; }
 .gx-ev { border:1px solid var(--line); margin-block:10px; padding:14px; } .gx-ev__bar { height:3px; background:var(--accent); }
 .gx-ring__track { stroke:var(--line); } .gx-ring__spin { stroke-dasharray:20 12; transform-origin:center; }
+/* The `prefers-reduced-motion` block below already sets `.gx-ring__spin { animation:none }` — it was
+   switching off an animation no rule ever switched on, which is why an in-flight step's ring sat
+   still and a slow step was indistinguishable from a frozen page. `is-moving` comes from
+   activity-model.ts:759 and is swapped for `is-still` when the user prefers reduced motion. */
+.gx-act.is-moving .gx-ring__spin { animation:status-turn 1.2s linear infinite; }
 .gx-hollow { width:16px; height:16px; fill:none; stroke:var(--faint); } .gx-hollow--dashed { stroke-dasharray:2 3; }
 .st--good { color:var(--good); } .st--bad { color:var(--bad); } .st--warn { color:var(--warn); } .st--info { color:var(--info); } .st--muted { color:var(--faint); } .st--future { color:var(--future); }
 .st--spin { animation:status-turn 1.2s linear infinite; } @keyframes status-turn { to { transform:rotate(360deg); } }
