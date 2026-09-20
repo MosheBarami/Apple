@@ -423,7 +423,30 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
     //
     // The adapter decides which failures are free to retry (`retryable`), and for Workers AI that
     // is the exact regex this loop used before the provider layer existed.
-    const MAX_RATE_LIMIT_WAITS = 3;
+    //[[ THE LADDER LANDED INSIDE THE RECOVERY DISTRIBUTION INSTEAD OF PAST IT.
+    //
+    //   It was 3 waits of 1200/2400/3600 ms — four attempts spanning 7.2 s of waiting, 7.6-7.7 s
+    //   wall clock. Measured against this worker's own model_call log on 2026-09-20, every run
+    //   that died that day died on exactly that ladder, and in the SAME window the SAME refusal
+    //   class cleared at 1.9 s, 5.0 s, 6.2 s, 6.3 s, 12.1 s and 60.6 s. So the ladder sat in the
+    //   middle of the distribution of recovery times, and whether a customer's run survived was
+    //   decided by which side of 7.6 s the provider happened to fall on.
+    //
+    //   Run 7cf4690c is the whole thing inside one run: it recovered from this refusal twice, then
+    //   on the third occurrence exhausted four attempts in 7.6 s and the run was terminated —
+    //   throwing away two already-settled steps the customer had paid for.
+    //
+    //   Waiting longer is free in the only currency that matters here. The request never reached
+    //   the model, the refusal returns in 134-526 ms, nothing is billed, and the reservation is
+    //   held. The alternative to waiting is discarding billed work. So the ladder now spans PAST
+    //   the observed distribution rather than into it: 1/2/4/8/16/32 s, 63 s of waiting over seven
+    //   attempts, which covers every recovery time that was actually measured including 60.6 s.
+    //
+    //   What this does NOT fix is the thing one layer up: when the ladder is finally exhausted,
+    //   the run is ended and its already-billed steps are discarded. That is session.ts, which is
+    //   being edited by another lane right now and is not mine to touch tonight. It stays open. ]]
+    const RATE_LIMIT_WAITS_MS = [1_000, 2_000, 4_000, 8_000, 16_000, 32_000];
+    const MAX_RATE_LIMIT_WAITS = RATE_LIMIT_WAITS_MS.length;
     let lastErr: unknown = null;
     for (let attempt = 0; attempt <= MAX_RATE_LIMIT_WAITS; attempt++) {
       const started = Date.now();
@@ -453,16 +476,24 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
         });
         if (!cls.retryable || attempt === MAX_RATE_LIMIT_WAITS) break;
         // no tokens were spent; hold the reservation and wait for the window to roll
-        await new Promise((r) => setTimeout(r, 1200 * (attempt + 1)));
+        await new Promise((r) => setTimeout(r, RATE_LIMIT_WAITS_MS[attempt]!));
       }
     }
     if (lastErr) {
       await release(env, reserved);
       const msg = lastErr instanceof Error ? lastErr.message : String(lastErr);
-      if (/4006|daily free allocation|neurons/i.test(msg)) {
+      //[[ `neurons` ON ITS OWN MATCHED ANY MESSAGE CONTAINING THE WORD.
+      //   Workers AI writes "neurons" in messages that are not the daily cap, and this branch tells
+      //   the customer their allowance is spent and that waiting will not help. A transient
+      //   reported as an exhausted quota is the worse of the two errors: it tells somebody to stop
+      //   trying when trying again would have worked. 4006 is the code that means it. ]]
+      if (/\b4006\b|daily free allocation/i.test(msg)) {
         throw new BudgetError('daily_cap', BUDGET_MESSAGES.daily_cap!);
       }
-      if (/\b3021\b|rate limit|too many requests/i.test(msg)) {
+      // `capacity temporarily` is classified RETRYABLE by WORKERS_AI_RETRYABLE and was missing
+      // here, so that one class exhausted the ladder and then fell through to the raw
+      // `inference failed (model): ...` below — a transient, shown to a customer as a crash.
+      if (/\b3021\b|rate limit|too many requests|capacity temporarily/i.test(msg)) {
         throw new RateLimitedError(
           'Apple is handling a burst of requests right now. Nothing was charged — try that again in a moment.',
         );

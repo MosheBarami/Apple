@@ -215,7 +215,7 @@ function fitToBudget(answer: UIConstructionAnswer, totalChars: number): UIConstr
 
   const full = answer.sources ?? [];
   // The URL is the citation; the sentence after the em dash explains it. Drop the prose first.
-  answer.sources = full.map((src) => src.split(' — ')[0]);
+  answer.sources = full.map((src) => src.split(' — ')[0] ?? src);
   let dropped = 0;
   while (size() > totalChars && (answer.sources?.length ?? 0) > 0) { answer.sources!.pop(); dropped++; }
   answer.sourcesTrimmed = `${answer.sources?.length ?? 0} of ${full.length} sources, URLs only, to fit the tool-result budget`;
