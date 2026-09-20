@@ -71,7 +71,7 @@ const DEFAULT_SYSTEM =
 const MODE_BASE_TOKENS = { clay: 4400, stone: 4400, rune: 5200 };
 const BASELINE_EFFORT = { clay: 'low', stone: 'high', rune: 'high' };
 const ENTITLEMENT_FLOOR = { apple: 'low', 'apple-max': 'high' };
-const EFFORT_SCALE = { low: 1, medium: 2.5, high: 1.25 };
+const EFFORT_SCALE = { low: 1, medium: 2.5, high: 2 };
 const RANK = { low: 0, medium: 1, high: 2 };
 
 //[[ THE CEILING IS PART OF THE SETTINGS, BECAUSE IT CAN SILENTLY REPLACE THEM.
@@ -79,10 +79,10 @@ const RANK = { low: 0, medium: 1, high: 2 };
 //   gateway.ts line 363: `const maxTokens = Math.min(req.maxTokens ?? cfg.maxTokens, cfg.maxTokens)`.
 //   The budget that reaches the provider is the MINIMUM of what the lane asks for and what the
 //   config allows. The free lane in Super Agent asks for 6500 (rune's base at high) and is routed
-//   to `stone`, whose ceiling is 5600 — so it receives 5600, and a script that reported 6500 would
+//   to `stone`, whose ceiling is 6500 — so it receives 6500, and a script that reported another number would
 //   be naming a number the provider never saw. Both are recorded below and the run says which one
 //   was binding.
-const GATEWAY_CEILING = { clay: 6500, stone: 5600, rune: 6500, vision: 4000, memory: 800 };
+const GATEWAY_CEILING = { clay: 6500, stone: 6500, rune: 6500, vision: 4000, memory: 800 };
 
 /** Product vocabulary in, internal specialist out. A person picks Plan/Agent/Super Agent. */
 const MODE_ALIASES = {

@@ -71,7 +71,7 @@ const KEY = () => process.env.GOLEM_ADMIN_KEY;
 //   shipped configuration is not a baseline, it is a sixth arm nobody asked for.
 const GATEWAY = 'stone';          // apple lane, agent mode -> gatewayModelFor('stone','apple')
 const REQUESTED_TOKENS = 5500;    // tokensForEffort(MODE_BASE_TOKENS.stone=4400, effort 'high'=1.25)
-const GATEWAY_CEILING = 5600;     // gateway.ts stone ceiling; 5500 < 5600 so nothing is clamped
+const GATEWAY_CEILING = 6500;     // gateway.ts stone ceiling; high effort now asks 8800 and is clamped to this
 const EFFECTIVE_TOKENS = Math.min(REQUESTED_TOKENS, GATEWAY_CEILING);
 
 const BASELINE_SYSTEM =

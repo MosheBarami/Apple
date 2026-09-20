@@ -61,7 +61,12 @@ test('the effort multipliers and entitlement floor match apps/worker/src/reasoni
     { high: Number(scale[1]), medium: Number(scale[2]), low: Number(scale[3]) },
     { high: EFFORT_SCALE.high, medium: EFFORT_SCALE.medium, low: EFFORT_SCALE.low },
   );
-  assert.equal(tokensForEffort(4400, 'high'), 5500);
+  //[[ 5500 -> 8800. `high` used to scale by 1.25 and now scales by 2, so it asks PAST every
+  //   model ceiling and gateway.ts clamps it down. That is free: the clamp runs before the
+  //   neuron reservation, so the request resolves to exactly what the model will give. The old
+  //   1.25 made the hardest effort tier ask for less room than `medium`, and a 16-step build
+  //   died on step 1 at "the model reached its output limit". ]]
+  assert.equal(tokensForEffort(4400, 'high'), 8800);
 });
 
 test('the gateway ceilings and model ids match apps/worker/src/gateway.ts', () => {
@@ -80,10 +85,10 @@ test('an Apple MAX Agent request resolves to the settings the worker would send'
   assert.equal(s.modelId, '@cf/zai-org/glm-5.3-flash');
   assert.equal(s.effort, 'high');
   assert.equal(s.baseTokens, 4400);
-  assert.equal(s.requestedTokens, 5500);          // 4400 x 1.25
-  assert.equal(s.gatewayCeiling, 5600);
-  assert.equal(s.effectiveTokens, 5500);          // under the ceiling, so nothing is clamped
-  assert.equal(s.clampedByCeiling, false);
+  assert.equal(s.requestedTokens, 8800);          // 4400 x 2
+  assert.equal(s.gatewayCeiling, 6500);
+  assert.equal(s.effectiveTokens, 6500);          // asked past the ceiling; the clamp resolves it
+  assert.equal(s.clampedByCeiling, true);
   assert.equal(s.effortIsAFloor, true);
 });
 
@@ -94,8 +99,8 @@ test('the free lane in Super Agent is clamped by the ceiling, and the run says s
   const s = resolveSettings({ lane: 'apple', mode: 'super-agent' });
   assert.equal(s.gateway, 'stone');
   assert.equal(s.requestedTokens, tokensForEffort(MODE_BASE_TOKENS.rune, effortFor('rune', 'apple')));
-  assert.equal(s.requestedTokens, 6500);
-  assert.equal(s.effectiveTokens, 5600);
+  assert.equal(s.requestedTokens, 10400);         // 5200 x 2
+  assert.equal(s.effectiveTokens, 6500);
   assert.equal(s.clampedByCeiling, true);
 });
 

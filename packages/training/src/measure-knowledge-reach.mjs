@@ -144,7 +144,7 @@ function loadWorkerBits() {
 /** Mirrors baseTokensFor/MODE_BASE_TOKENS in apps/worker/src/do/session.ts. */
 const MODE_BASE_TOKENS = { clay: 4400, stone: 4400, rune: 5200 };
 /** Mirrors the gateway ceiling in apps/worker/src/gateway.ts DEFAULT_MODELS; also read live below. */
-const GATEWAY_CEILING = { clay: 6500, stone: 5600, rune: 6500 };
+const GATEWAY_CEILING = { clay: 6500, stone: 6500, rune: 6500 };
 /** Mirrors gatewayModelFor in apps/worker/src/do/session.ts. */
 //[[ `none` means the request omits productModel entirely — the legacy path. session.ts then reads
 //   effectiveProductModel(mode, undefined) = 'apple-max' for gating but leaves agent.productModel

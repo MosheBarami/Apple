@@ -33,11 +33,18 @@ export const MODE_BASE_TOKENS = Object.freeze({ clay: 4400, stone: 4400, rune: 5
 /** apps/worker/src/reasoning.ts — BASELINE, ENTITLEMENT_FLOOR, and the effort multipliers. */
 export const BASELINE_EFFORT = Object.freeze({ clay: 'low', stone: 'high', rune: 'high' });
 export const ENTITLEMENT_FLOOR = Object.freeze({ apple: 'low', 'apple-max': 'high' });
-export const EFFORT_SCALE = Object.freeze({ low: 1, medium: 2.5, high: 1.25 });
+
+//   2026-09-20: high moved from 1.25 to 2, and stone's ceiling from 5600 to 6500. The worker's
+//   `high` tier was asking for LESS room than `medium` — 4400 x 1.25 = 5500 on the tier chosen for
+//   the hardest steps — and a 16-step build died on step 1 with "the model reached its output
+//   limit". Asking past the ceiling is free because gateway.ts clamps before it reserves, so high
+//   now resolves to whatever the model will give. stone and rune are the same model and were given
+//   different ceilings; they now match.
+export const EFFORT_SCALE = Object.freeze({ low: 1, medium: 2.5, high: 2 });
 const RANK = Object.freeze({ low: 0, medium: 1, high: 2 });
 
 /** apps/worker/src/gateway.ts — DEFAULT_MODELS: the per-call ceiling and the model behind each key. */
-export const GATEWAY_CEILING = Object.freeze({ clay: 6500, stone: 5600, rune: 6500, vision: 4000, memory: 800 });
+export const GATEWAY_CEILING = Object.freeze({ clay: 6500, stone: 6500, rune: 6500, vision: 4000, memory: 800 });
 export const GATEWAY_MODEL_ID = Object.freeze({
   clay: '@cf/qwen/qwen3-30b-a3b-fp8',
   stone: '@cf/zai-org/glm-5.3-flash',
