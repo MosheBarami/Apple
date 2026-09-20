@@ -270,6 +270,13 @@ jobs:
         # the deploy path.
         run: node scripts/check-rebrand.mjs --offline
 
+      - name: Every script CI invokes exists
+        # This checker was written for the rename that missed .github and left main red for five
+        # days (04d3800, runs 34934918501 / 35002022585 / 35474815515). It was reachable only from
+        # scripts/gate-suite.mjs, which no workflow calls — so the guard against CI referencing a
+        # file that is not there was itself not in CI. A guard that does not run is a comment.
+        run: node scripts/check-ci-references.mjs
+
       - name: Formatting drift (report only)
         # PINNED. `prettier@3` resolves the newest 3.x from npm on every run, including
         # every fork PR — unpinned remote code execution, in a workflow whose other two
@@ -297,6 +304,13 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
+
+      - name: The secret scanner's own tests
+        # The scanner gained a suppression mechanism (scripts/known-fixtures.json) and had no
+        # test of any kind. A suppression mechanism with no test is how a scanner becomes
+        # decoration: the step below would still print a green tick with the register keyed by
+        # path, which is the one design that lets a real key ride in beside a fixture.
+        run: python3 scripts/test_secret_scan.py
 
       - name: Scan full history for secrets
         run: python3 scripts/secret-scan.py

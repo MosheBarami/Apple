@@ -15,10 +15,13 @@
 //
 //   node scripts/check-ci-references.mjs
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+// The env override exists so tests/check-ci-references.test.mjs can point this at a throwaway
+// repository. Nothing else sets it.
+const ROOT = process.env.CI_REFERENCES_ROOT ?? join(dirname(fileURLToPath(import.meta.url)), '..');
 const WORKFLOWS = join(ROOT, '.github', 'workflows');
 
 if (!existsSync(WORKFLOWS)) {
@@ -41,13 +44,42 @@ if (files.length === 0) {
 //   how a checker stops being read. ]]
 const REF = /(?:^|[\s'"])((?:scripts|infra)\/[A-Za-z0-9_.\-/]+\.(?:mjs|js|sh|py))/g;
 
+//[[ TRACKED, not merely PRESENT — and the difference is the whole point of this checker.
+//
+//   This used to be `existsSync`, and it printed "every one of them is in the tree" on the
+//   strength of a stat() against the working directory. Those are not the same claim. A script
+//   that exists locally and was never `git add`ed passes here and is absent on the runner, which
+//   is the identical failure this file was written for, arriving from the other direction: the
+//   rename left CI pointing at a file that was gone; an untracked new script leaves CI pointing at
+//   a file that never arrived. Both are green locally and red on main.
+//
+//   The bar is the INDEX rather than HEAD, because a script staged in the same commit as the
+//   workflow that calls it is correct and must not be reported as a defect. A checker that forces
+//   you to commit twice gets run once. ]]
+let tracked = null;
+try {
+  tracked = new Set(
+    execFileSync('git', ['ls-files', '-z'], { cwd: ROOT, maxBuffer: 64 * 1024 * 1024 })
+      .toString('utf8').split('\0').filter(Boolean),
+  );
+} catch {
+  // Not a git checkout, or git is unavailable. Say so rather than silently falling back to the
+  // weaker check and reporting its result in the stronger check's words.
+  console.error('CI REFERENCES UNVERIFIED — `git ls-files` did not run in ' + ROOT + ', so whether '
+    + 'CI\'s scripts are tracked could not be established. A stat() against this working directory '
+    + 'answers a different question and must not be reported as this one.');
+  process.exit(2);
+}
+
 const missing = [];
+const untracked = [];
 let seen = 0;
 for (const f of files) {
   const body = readFileSync(join(WORKFLOWS, f), 'utf8');
   for (const [, path] of body.matchAll(REF)) {
     seen++;
-    if (!existsSync(join(ROOT, path))) missing.push({ workflow: f, path });
+    if (!tracked.has(path)) untracked.push({ workflow: f, path });
+    else if (!existsSync(join(ROOT, path))) missing.push({ workflow: f, path });
   }
 }
 
@@ -59,10 +91,14 @@ if (seen === 0) {
   process.exit(2);
 }
 
-if (missing.length) {
-  console.error('CI CALLS SCRIPTS THAT DO NOT EXIST\n');
+if (untracked.length || missing.length) {
+  console.error('CI CALLS SCRIPTS THAT WILL NOT BE ON THE RUNNER\n');
+  for (const m of untracked) {
+    console.error(`  ${m.workflow} runs ${m.path}, which git does not track. The runner checks out `
+      + 'the commit, not this directory, so it will not be there.');
+  }
   for (const m of missing) {
-    console.error(`  ${m.workflow} runs ${m.path}, which is not in the tree.`);
+    console.error(`  ${m.workflow} runs ${m.path}, which git tracks and which is not on disk.`);
   }
   console.error('\nEvery run touching that job fails, and it fails on the runner rather than here, so '
     + 'a green local suite says nothing about it. If the script was renamed, re-point the workflow.');
@@ -70,4 +106,4 @@ if (missing.length) {
 }
 
 console.log(`CI REFERENCES OK — ${seen} scripts/ and infra/ path(s) across ${files.length} workflow `
-  + 'file(s), and every one of them is in the tree.');
+  + 'file(s), and git tracks every one of them.');
