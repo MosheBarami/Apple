@@ -67,10 +67,10 @@ import { designBrief } from '../design-brief';
 import { TOOLS, toolDefs, toolNames, targetOf, runTool, type AgentCtx, type PlaytestBus } from '../tools';
 import { MCP_TOOL_NAMES } from '../mcp';
 import { planFromDetail, planDetail, settlePlan, type RunPlan } from '../run-plan';
+import { refundSentence, refundVerdict } from '../run-refund';
 import { critiqueToText } from '../vision';
 import { toolsForMode } from '../router';
 import { recoverToolCall } from '../tool-recovery';
-import { assetLibraryAvailable } from '../asset-library';
 import { notify } from '../notify';
 import { usageBand } from '../notifications';
 import { dayKey } from '../quota-math';
@@ -190,6 +190,20 @@ interface AgentState {
   step: number;
   maxSteps: number;
   creditsSpent: number;
+  /**
+   * HOW those Credits were taken, split the way QuotaDO took them: renewable allowance first, then
+   * purchased balance. Kept on the run because a refund has to reverse the same two ledgers in the
+   * same proportions — put a spent free allowance back as purchased balance and the product has
+   * quietly turned a rate into money.
+   *
+   * Both optional: a run persisted by a deploy that predates the refund path deserialises with
+   * neither, and `refundRun` treats that as "the split is unknown" rather than guessing one. A
+   * refund nobody can apportion is not applied, and the reply does not claim one.
+   */
+  creditsFromAllowance?: number;
+  creditsFromCredits?: number;
+  /** What was actually put back at the end of the run, once. Its presence is also the "done" mark. */
+  creditsRefunded?: number;
   /** neurons this run has consumed, so Credits round once per run instead of once per call */
   neuronsUsed?: number;
   trace: ToolTraceEntry[];
@@ -239,8 +253,6 @@ interface AgentState {
    * Stored as arrays because AgentState is JSON-serialised into DO storage and a Set is not.
    */
   discoveredAssetIds?: number[];
-  /** The subset of the above that came from the curated library rather than the Creator Store. */
-  libraryAssetIds?: number[];
   /**
    * The tool permissions in force for this run, already layered org-then-user-then-project.
    *
@@ -351,8 +363,34 @@ const MUTATING_TOOLS = new Set([
 ]);
 /** How many times one run may be steered back to work after replying without acting. */
 const MAX_NUDGES = 2;
-/** Output token budget per step before the effort multiplier — matches the gateway model config. */
-const MODE_BASE_TOKENS: Record<GolemMode, number> = { clay: 1600, stone: 4400, rune: 5200 };
+//[[ THE FREE LANE'S BUDGET WAS BELOW THE FLOOR ITS OWN MODEL NEEDS TO ANSWER AT ALL.
+//
+//   `clay` routes to @cf/qwen/qwen3-30b-a3b-fp8, a REASONING model: it spends output budget
+//   thinking before it writes. At 1600 it does not return a short answer — it returns NOTHING.
+//   Measured against the deployed gateway on 2026-09-20, same prompt, same system message:
+//
+//     maxTokens 1600 -> finishReason "length", 0 characters, 50 neurons
+//     maxTokens 2000 -> 1 of 3 prompts answered
+//     maxTokens 3200 -> 2 of 3 answered
+//     maxTokens 3000 -> a complete, correctly fenced module, 79 neurons
+//
+//   So every free-tier request needing real output burned neurons on reasoning and returned an
+//   empty answer, and the customer was charged for compute that produced nothing. That is the
+//   owner's "runs fail constantly and still take credits", and its cause was this number.
+//
+//   The gateway already sizes clay at 6500 and says so: "Plan mode still asks for 2,000
+//   (MODE_BASE_TOKENS.clay × high)". The ceiling was right and the REQUEST was the problem — the
+//   assumption that 2,000 was enough was never measured against the model that receives it.
+//
+//   5200 × the 1.25 high multiplier lands exactly on the gateway's 6500 ceiling, so high effort
+//   asks for precisely what the model is configured to give and cannot be truncated by our own
+//   arithmetic. The cost of answering is measured rather than feared: 79 neurons for a real answer
+//   against 50 for an empty one, and the gateway's own note puts a full 6,500-token reply at ~198
+//   neurons against a 1,200 ceiling per request.
+//
+//   stone and rune are unchanged. They route to glm-5.3-flash, which is not a reasoning model,
+//   answered 4 of 4 at the old budget, and did it for 65 neurons where clay spent 200 for none. ]]
+const MODE_BASE_TOKENS: Record<GolemMode, number> = { clay: 5200, stone: 4400, rune: 5200 };
 
 /**
  * The runtime mode allowlist. `GolemMode` is a COMPILE-TIME type and `JSON.parse(raw) as ClientMsg`
@@ -1393,18 +1431,42 @@ export class SessionDO extends DurableObject<Env> {
   private studioAnnouncedConnected = false;
 
   /**
+   * Whether THIS instance has already sent the `connected:false`, so it is said once.
+   *
+   * IT IS A SECOND FIELD BECAUSE ONE FIELD COULD NOT SURVIVE AN EVICTION, AND THAT IS THE WHOLE
+   * DEFECT. `studioAnnouncedConnected` means "a tab may believe the link is up". It is set from
+   * things this instance DID — a poll it answered, a hello it sent — so a Durable Object that was
+   * evicted while a hibernated socket stayed open comes back with it `false`, meaning "nothing to
+   * correct", when the truth is "a green pill has been on that screen for ten minutes and the
+   * object that painted it is gone". The guard then returned on its first line forever and the
+   * disconnect was never announced at all. That is this repository's own observation-failure
+   * pattern: a failure to REMEMBER rendered as an observation that there was nothing to say.
+   *
+   * The durable evidence is `pluginLastSeen`, which the constructor loads. A plugin that has ever
+   * polled is a pairing that has, at some point, painted something green; saying `connected:false`
+   * once per instance to correct it is at worst redundant and is never wrong. What must not happen
+   * is saying it on every ping, which is what this field — not the other one — now prevents.
+   */
+  private studioSilenceAnnounced = false;
+
+  /**
    * Announce a plugin that stopped polling, ONCE, to everyone watching.
    *
-   * Guarded on what was last announced rather than on a raw poll of the state, so this cannot
-   * become a `studio_status` per ping per tab. Synchronous on purpose: `pluginConnectedNow()` is
-   * the same rule `pluginConnected()` applies, minus a storage read the constructor has already
+   * Guarded on whether the disconnect was already SAID rather than on whether this instance
+   * happens to remember saying "connected", so this cannot become a `studio_status` per ping per
+   * tab and cannot fall silent across an eviction. Synchronous on purpose: `pluginConnectedNow()`
+   * is the same rule `pluginConnected()` applies, minus a storage read the constructor has already
    * done, so there is no second rule here to drift.
    */
   private noticeStudioSilence(): void {
-    if (!this.studioAnnouncedConnected) return;
+    if (this.studioSilenceAnnounced) return;
     if (this.pluginConnectedNow()) return;
-    this.studioAnnouncedConnected = false;
     const last = Math.max(this.lastSeenWrittenAt, this.pluginLastSeenMs);
+    // Never paired, or explicitly revoked (which clears the heartbeat): there is no green pill
+    // anywhere to correct, and an unprompted `connected:false` would be noise on a fresh project.
+    if (!this.studioAnnouncedConnected && last <= 0) return;
+    this.studioSilenceAnnounced = true;
+    this.studioAnnouncedConnected = false;
     this.broadcast({
       type: 'studio_status',
       connected: false,
@@ -1415,6 +1477,57 @@ export class SessionDO extends DurableObject<Env> {
       place: this.boundPlace,
       placeMismatch: null,
     });
+  }
+
+  /**
+   * The instant the current heartbeat stops counting as a live link.
+   *
+   * The same arithmetic as `connectedGiven`, named once so the watchdog below cannot schedule
+   * itself against a second rule. Zero means "no plugin has ever polled", which is not a deadline.
+   */
+  private studioStaleAt(): number {
+    const last = Math.max(this.lastSeenWrittenAt, this.pluginLastSeenMs);
+    if (!last) return 0;
+    return Math.max(this.pollDueBy, last + POLL_WAIT_IDLE_MS + POLL_STALE_GRACE_MS);
+  }
+
+  /**
+   * PUT A CLOCK ON THE GREEN PILL, because the browser's own clock is not one.
+   *
+   * `noticeStudioSilence` can only run when something wakes this object, and until now the only
+   * thing that woke an idle one was the tab's 25-second ping. Three things were measured wrong
+   * with that. A backgrounded tab has its timers throttled to roughly one a minute, so the ping is
+   * not a 25-second bound, it is a browser-policy bound — 57s and 117s were both measured on the
+   * deployed product for the identical action. An evicted object wakes with no memory of having
+   * said "connected" (see `studioSilenceAnnounced`). And a socket that is merely OPEN sends
+   * nothing at all, so a perfectly healthy WebSocket can carry six ping/pong round trips over 150
+   * seconds without the disconnect ever being computed.
+   *
+   * An alarm is the only thing in this runtime that fires when nobody does anything. Set at the
+   * moment the heartbeat expires, it turns "eventually, if the tab feels like pinging" into a
+   * bound of POLL_WAIT_IDLE_MS + POLL_STALE_GRACE_MS + one alarm — about thirteen seconds — with
+   * no dependence on the browser at all.
+   *
+   * WHY IT DOES NOT FIGHT THE RUN LOOP. It only ever moves the alarm EARLIER, and `alarm()`
+   * re-arms it on every entry, so the sequence is self-healing: the run loop's `now + 10ms`
+   * overwrites this deadline, that alarm fires, and the first thing it does is set this one again.
+   * The run loop wins the race and loses nothing, because a step that runs is a step that also
+   * re-arms the watchdog.
+   *
+   * It is armed only while a tab is actually watching. A pill nobody can see is not a lie worth
+   * waking a Durable Object for, and this is the difference between an alarm every thirteen
+   * seconds per WATCHED project and one per PAIRED project forever.
+   */
+  private async armStudioWatchdog(): Promise<void> {
+    if (!this.pluginConnectedNow()) return;
+    if (this.ctx.getWebSockets('client').length === 0) return;
+    // A quarter second past the deadline, so the alarm cannot land in the same millisecond the
+    // link is still nominally alive and then have to be re-armed for one more tick.
+    const at = this.studioStaleAt() + 250;
+    if (at <= 0) return;
+    const existing = await this.ctx.storage.getAlarm();
+    if (existing !== null && existing <= at) return;
+    await this.ctx.storage.setAlarm(Math.max(Date.now() + 1, at));
   }
 
   /**
@@ -1557,7 +1670,11 @@ export class SessionDO extends DurableObject<Env> {
       // the sentence we are actually sending is what makes `noticeStudioSilence` able to correct a
       // pill that was painted green by a hello rather than by a poll.
       const studioConnected = await this.pluginConnected();
-      if (studioConnected) this.studioAnnouncedConnected = true;
+      if (studioConnected) {
+        this.studioAnnouncedConnected = true;
+        // A fresh green pill is a fresh thing to correct later, whatever an earlier instance said.
+        this.studioSilenceAnnounced = false;
+      }
       server.send(
         JSON.stringify({
           type: 'hello',
@@ -2316,6 +2433,7 @@ export class SessionDO extends DurableObject<Env> {
       // Already said, so `noticeStudioSilence` must not say it a second time when the next ping
       // arrives and finds the heartbeat cleared.
       this.studioAnnouncedConnected = false;
+      this.studioSilenceAnnounced = true;
       this.broadcast({ type: 'studio_status', connected: false, lastSeenAt: null, queuedOps: this.opQueue.length, place: null, placeMismatch: null });
       // A poll parked in the long hold is released at once, so the plugin learns within a
       // round trip instead of after the hold expires.
@@ -2365,6 +2483,7 @@ export class SessionDO extends DurableObject<Env> {
       const stillConnected = await this.pluginConnected();
       // This frame IS what the tabs were last told, so `noticeStudioSilence` must not repeat it.
       this.studioAnnouncedConnected = stillConnected;
+      this.studioSilenceAnnounced = !stillConnected;
       this.broadcast({
         type: 'studio_status',
         connected: stillConnected,
@@ -2455,6 +2574,10 @@ export class SessionDO extends DurableObject<Env> {
     // quiet since we last said otherwise, this is where everyone watching finds out — there is no
     // other event that fires when a plugin simply stops. See `noticeStudioSilence`.
     this.noticeStudioSilence();
+    // A tab that is talking is also a tab worth waking this object for later. The ping is no
+    // longer the bound — see `armStudioWatchdog` — but it is a free chance to notice that the
+    // watchdog is missing, which is exactly the state an eviction leaves behind.
+    await this.armStudioWatchdog();
 
     //[[ WHAT THIS SOCKET MAY DO, ASKED PER MESSAGE.
     //
@@ -2915,7 +3038,6 @@ export class SessionDO extends DurableObject<Env> {
     const sys = systemPrompt({
       mode,
       studioConnected,
-      assetLibraryAvailable: await assetLibraryAvailable(this.env),
       placeName: pluginState?.placeName ?? null,
       projectName: bind.projectName,
       //[[ MEMORY OFF MEANS OFF ON THE READ SIDE TOO.
@@ -2964,6 +3086,13 @@ export class SessionDO extends DurableObject<Env> {
       step: 0,
       maxSteps: maxStepsFor(mode, selectedProductModel),
       creditsSpent: 1,
+      // The admission charge above, apportioned exactly as QuotaDO took it. Spread rather than
+      // assigned so an older QuotaDO that reports no split leaves both fields ABSENT — which is the
+      // signal `refundRun` needs to decline instead of guessing. `?? {}` would write zeroes and
+      // claim a run took nothing from either ledger, which is a different and false statement.
+      ...(typeof quota.fromAllowance === 'number' && typeof quota.fromCredits === 'number'
+        ? { creditsFromAllowance: quota.fromAllowance, creditsFromCredits: quota.fromCredits }
+        : {}),
       trace: [],
       finalText: '',
       startedAt: Date.now(),
@@ -3047,6 +3176,10 @@ export class SessionDO extends DurableObject<Env> {
     // Cheap, and it catches the case the ping cannot: Studio closed mid-run, while the run loop is
     // the thing waking this object.
     this.noticeStudioSilence();
+    // And re-arm, FIRST, before any of the early returns below. This is the link in the chain that
+    // makes the watchdog self-sustaining: whatever else this alarm was set for, leaving it without
+    // a successor is how the bound goes back to "whenever the tab next pings".
+    await this.armStudioWatchdog();
     const agent = await this.ctx.storage.get<AgentState>('agent');
     if (!agent) return;
     if (agent.status === 'idle') return;
@@ -3324,16 +3457,12 @@ export class SessionDO extends DurableObject<Env> {
       creditsSpent: agent.creditsSpent,
     });
 
-    // Whether the curated library exists here. Read once per isolate — it changes at most once per
-    // deployment, and the whole point is to stop paying for a tool call that cannot succeed.
-    const hasAssetLibrary = await assetLibraryAvailable(this.env);
-
     const res = await llmChat(
       this.env,
       {
         model: gatewayModel,
         messages: agent.llm,
-        tools: toolDefs(studioConnected, offeredAllowed, { assetLibrary: hasAssetLibrary }),
+        tools: toolDefs(studioConnected, offeredAllowed),
         reasoningEffort: choice.effort,
         maxTokens: tokensForEffort(baseTokensFor(agent.mode), choice.effort),
       },
@@ -3417,7 +3546,22 @@ export class SessionDO extends DurableObject<Env> {
     const owed = creditsForNeurons(agent.neuronsUsed) - agent.creditsSpent;
     if (owed > 0) {
       const settle = await this.quotaSpend(agent.userId, owed, `usage_${agent.mode}`);
-      agent.creditsSpent += owed;
+      //[[ ONLY A SPEND THAT HAPPENED IS ADDED TO WHAT THE RUN COST.
+      //
+      //   This was `agent.creditsSpent += owed` unconditionally, on both sides of the branch below.
+      //   So a settlement REFUSED for want of Credits still moved the figure: the ledger took
+      //   nothing, and the transcript row, `msg_end.creditsSpent` and the run-complete notification
+      //   all reported the full amount as charged. Money the user still had, shown as money they
+      //   had spent — the product's own failure shape pointed at a balance.
+      //
+      //   It matters twice over now. `refundVerdict` reads this number, so an inflated one would
+      //   ask the ledger for Credits it never took and the reply would then explain the shortfall
+      //   with a reason that never happened. ]]
+      if (settle.ok) agent.creditsSpent += owed;
+      // Accumulated per settlement, not derived at the end: allowance can run out MID-RUN, so one
+      // run's Credits are genuinely split across both ledgers and only the charges themselves know
+      // where the boundary fell. See AgentState.creditsFromAllowance.
+      this.recordSpendSplit(agent, settle);
       if (!settle.ok) {
         // they have run out mid-run: finish this step's work, then stop cleanly
         agent.finalText =
@@ -3457,12 +3601,24 @@ export class SessionDO extends DurableObject<Env> {
     // the response the run ended on.
     agent.lastFinishReason = finishReason;
     if (!res.toolCalls.length && finishReason !== 'stop') {
+      //[[ "EVERYTHING COMPLETED BEFORE THE CUTOFF IS SAVED" IS A CLAIM, AND IT NEEDS A SUBJECT.
+      //
+      //   It was printed on every truncated run, including the ones where nothing had been applied
+      //   at all. Vacuously true and read as reassurance: the user is told their work is safe by a
+      //   run that did no work, and goes looking in the place for something that was never put
+      //   there. The run already knows which case it is in — the trace and `mutated` are the same
+      //   evidence `refundVerdict` reads a few lines later — so the clause is only stated when
+      //   there is something for it to be about. ]]
+      const kept = agent.mutated === true || agent.trace.some((t) => t.ok);
+      const savedClause = kept ? ' Everything completed before it stopped is saved.' : '';
       const providerNote =
-        finishReason === 'length'
-          ? 'The model reached its output limit before finishing this step. Everything completed before the cutoff is saved. Send another message and Apple will continue from here.'
+        (finishReason === 'length'
+          ? 'The model reached its output limit before finishing this step.'
           : finishReason === 'error'
-            ? 'The model could not complete this step. Everything completed before it stopped is saved. Send another message and Apple will continue from here.'
-            : 'The model response did not confirm that this step completed. Everything completed before that response is saved. Send another message and Apple will continue from here.';
+            ? 'The model could not complete this step.'
+            : 'The model response did not confirm that this step completed.') +
+        savedClause +
+        ' Send another message and Apple will continue from here.';
       const artifactNote = artifact.missing
         ? artifact.tool === 'generate_image'
           ? 'No image was generated in this run. There is no new image to view or download.'
@@ -3493,7 +3649,7 @@ export class SessionDO extends DurableObject<Env> {
     if (!res.toolCalls.length) {
       agent.llm.push({ role: 'assistant', content: res.text });
       if (artifact.missing) {
-        const available = toolDefs(studioConnected, allowed, { assetLibrary: hasAssetLibrary })
+        const available = toolDefs(studioConnected, allowed)
           .some((tool) => tool.name === artifact.tool);
         if (!artifact.attempted && available && (agent.nudges ?? 0) < MAX_NUDGES && agent.step < agent.maxSteps) {
           agent.nudges = (agent.nudges ?? 0) + 1;
@@ -3877,7 +4033,6 @@ export class SessionDO extends DurableObject<Env> {
   private captureProvenance(agent: AgentState, ctx: AgentCtx): void {
     const CAP = 200;
     if (ctx.discoveredAssetIds?.size) agent.discoveredAssetIds = [...ctx.discoveredAssetIds].slice(-CAP);
-    if (ctx.libraryAssetIds?.size) agent.libraryAssetIds = [...ctx.libraryAssetIds].slice(-CAP);
   }
 
   /**
@@ -4037,6 +4192,66 @@ export class SessionDO extends DurableObject<Env> {
           'there is nothing to undo — ask me again and I will build it.'
         : agent.finalText || (reason === 'stopped' ? 'Stopped.' : 'Done.')
     );
+
+    //[[ AND THE RUN STOPS BILLING FOR WORK IT DID NOT DO.
+    //
+    //   The product settles Credits from measured compute after every model call — honest, and
+    //   until now the only arithmetic it had. So a run that hit the provider's output ceiling, or
+    //   errored, or ran out of steps, charged for every neuron and then said "send another message
+    //   and Apple will continue from here", which starts a second run and charges again. One build,
+    //   paid for twice, and every sentence involved individually true.
+    //
+    //   `refundVerdict` is narrow on purpose: only a run that left the user with NOTHING they can
+    //   keep — no applied ops, nothing mutated, no requested artifact, and in a conversational mode
+    //   no answer — and only on an ending that is a failure. A user who pressed stop is not
+    //   refunded, which is the rule the stop check above already states.
+    //
+    //   ORDERED BEFORE THE ROW IS WRITTEN so `credits_spent` on the message, the `creditsSpent` on
+    //   msg_end and the sentence in the reply are all the same number. It was previously possible
+    //   for the transcript and the meter to disagree about one run; that must not become true again
+    //   through the refund door.
+    //
+    //   The SENTENCE is composed from what the ledger RETURNED, never from what was asked for.
+    //   They differ over a UTC midnight and the difference is the user's money. ]]
+    const verdict = refundVerdict({
+      reason,
+      buildOutcome,
+      mode: agent.mode,
+      opsApplied: agent.trace.filter((t) => t.ok).length,
+      mutated: agent.mutated === true,
+      artifactRequested: artifact.tool !== null,
+      artifactMissing: artifact.missing,
+      // The model's OWN prose, not the product's failure note. `finalText` is overwritten by the
+      // truncation branch with the composed terminal text, so `contentOverride` — which that branch
+      // is the only caller to pass — is not evidence of a model answer either. What survives both
+      // is: did the model stream anything of its own during this run?
+      textDelivered: typeof agent.streamedText === 'string' && agent.streamedText.trim().length > 0 && !contentOverride,
+      creditsSpent: agent.creditsSpent,
+    });
+    let refundNote: string | null = null;
+    if (verdict.refund && agent.creditsRefunded === undefined) {
+      const { attempted, asked, returned } = await this.refundRun(agent, verdict.credits);
+      if (attempted) {
+        agent.creditsRefunded = returned;
+        agent.creditsSpent = Math.max(0, agent.creditsSpent - returned);
+        refundNote = refundSentence(asked, returned);
+      }
+      this.sql.exec(
+        `insert into oplog(op_id, kind, ok, summary, created_at, failure, run_id) values(?,?,?,?,?,?,?)`,
+        `${agent.msgId}-refund`,
+        'credits_refunded',
+        returned > 0 ? 1 : 0,
+        (attempted
+          ? `run produced no usable output (${buildOutcome ?? reason}); asked ${asked}, returned ${returned}`
+          : `run produced no usable output (${buildOutcome ?? reason}); asked ${verdict.credits}, the ledger did not answer`
+        ).slice(0, 200),
+        Date.now(),
+        returned > 0 ? null : attempted ? 'refund_not_applied' : 'refund_unknown',
+        agent.msgId,
+      );
+    }
+    const contentWithRefund = refundNote ? `${content}\n\n${refundNote}` : content;
+
     // THE PRODUCT'S OWN WORDS, ADDED AFTER THE MODEL'S. Not an override, because the model's text
     // usually also contains something true about what it tried; and not a silent replacement,
     // because the user should be able to see both and believe the one that is signed.
@@ -4046,8 +4261,8 @@ export class SessionDO extends DurableObject<Env> {
     // fabrication — is worse than one. What was removed is written to the oplog rather than to the
     // reply: the user needs the truth, not a note about their assistant's imagination, and the next
     // person debugging this needs to know a replacement happened at all.
-    const fiction = replacedFiction(content, agent.refusalRemedy);
-    const withRemedy = replyWithRemedy(content, agent.refusalRemedy);
+    const fiction = replacedFiction(contentWithRefund, agent.refusalRemedy);
+    const withRemedy = replyWithRemedy(contentWithRefund, agent.refusalRemedy);
     if (fiction) {
       this.sql.exec(
         `insert into oplog(op_id, kind, ok, summary, created_at, failure, run_id) values(?,?,?,?,?,?,?)`,
@@ -4330,7 +4545,6 @@ export class SessionDO extends DurableObject<Env> {
   private agentCtx(agent?: AgentState): AgentCtx {
     return {
       discoveredAssetIds: new Set(agent?.discoveredAssetIds ?? []),
-      libraryAssetIds: new Set(agent?.libraryAssetIds ?? []),
       env: this.env,
       projectId: this.boundProjectId ?? undefined,
       assetSources: this.pinnedPrefs?.asset_sources ?? undefined,
@@ -4720,6 +4934,87 @@ export class SessionDO extends DurableObject<Env> {
     });
   }
 
+  /**
+   * WRITE THE PLACE ONTO THE PROJECT ROW, because that is where the shelf reads it.
+   *
+   * The owner's definition of done says a project is "name, description, when updated, WHICH
+   * PLACE". Three of those four were on every card. The fourth was a column — `projects.place_name`
+   * — that this worker knew the value of on every single poll and never once wrote: the place lived
+   * in Durable Object storage, where only the workspace's own socket could see it. So every card on
+   * the shelf read "No place name yet", including cards for projects that were paired to a named
+   * place at that moment, and the app's own pairing dialog carried a comment saying as much.
+   *
+   * IT IS WRITTEN HERE AND NOT ON EVERY POLL. `bind` and a `match` that CHANGED are the only two
+   * moments the answer is new — a pairing, or a place renamed or re-saved — which is a handful of
+   * writes per project per lifetime rather than one every two seconds.
+   *
+   * BEST EFFORT, AND HONESTLY SO. The only credential this object holds is a member's own JWT,
+   * kept in memory from their socket, exactly as the memory mirror above uses it; there is no
+   * service key here and adding one to reach a user's row is not a trade this file should make.
+   * So the write lands when the owner has the workspace open, which is precisely when pairing
+   * happens, and a failure changes nothing that was already true. What it must never do is throw:
+   * a Studio poll that 500s because a registry PATCH was refused would turn a cosmetic gap into a
+   * broken link.
+   *
+   * An UNVERIFIED place never reaches here — `placeAdmission` returns `unverified` for a place
+   * Roblox cannot identify and this branch is not taken — but `placeId 0` and an empty name are
+   * still normalised to null rather than written as "0" and "", which would read on the card as a
+   * place called nothing.
+   */
+  /**
+   * What was last successfully mirrored, so a poll every two seconds is not a PATCH every two
+   * seconds. `undefined` means "not read from storage yet" and is distinct from `null`, which means
+   * "read, and nothing has ever been mirrored".
+   */
+  private placeMirrored: string | null | undefined = undefined;
+  /** When the last attempt was made, so a refused write retries slowly rather than per poll. */
+  private placeMirrorTriedAt = 0;
+  /** What that attempt was FOR. A new fact is never made to wait behind an old failure. */
+  private placeMirrorTriedKey: string | null = null;
+
+  private async mirrorPlaceToRegistry(place: StudioPlace | null): Promise<void> {
+    if (!place) return;
+    const jwt = this.liveJwt;
+    if (!jwt) return;
+    const name = place.placeName.trim();
+    const key = `${place.placeId}:${name}`;
+    if (this.placeMirrored === undefined) {
+      this.placeMirrored = (await this.ctx.storage.get<string>('placeMirrored')) ?? null;
+    }
+    if (this.placeMirrored === key) return;
+    // A member whose JWT cannot write this row — a viewer — would otherwise attempt one PATCH per
+    // poll forever. The owner's next tab fixes it; a minute of waiting costs nothing.
+    const now = Date.now();
+    if (this.placeMirrorTriedKey === key && now - this.placeMirrorTriedAt < 60_000) return;
+    this.placeMirrorTriedKey = key;
+    this.placeMirrorTriedAt = now;
+    const bind = await this.bind();
+    if (!bind) return;
+    try {
+      const res = await fetch(`${this.env.SUPABASE_URL}/rest/v1/projects?id=eq.${bind.projectId}`, {
+        method: 'PATCH',
+        headers: {
+          apikey: this.env.SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${jwt}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          place_name: name.length > 0 ? name : null,
+          place_id: place.placeId > 0 ? place.placeId : null,
+        }),
+      });
+      // Marked only on success. RLS answers a viewer's PATCH with a refusal, and recording that as
+      // "mirrored" would mean the owner's own tab never retried — the card would stay empty for the
+      // life of the pairing because somebody else looked at the project first.
+      if (res.ok) {
+        this.placeMirrored = key;
+        await this.ctx.storage.put('placeMirrored', key);
+      }
+    } catch {
+      /* the pairing is what matters; the shelf's copy of its name is not worth failing a poll for */
+    }
+  }
+
   private async handlePluginPoll(
     body: PluginPollRequest,
     reported: { version: string | null; protocol: number | null } = { version: null, protocol: null },
@@ -4741,6 +5036,9 @@ export class SessionDO extends DurableObject<Env> {
     // is armed here rather than only on the `!wasConnected` transition below, which a warm object
     // that has been polling since before this deploy would never take.
     this.studioAnnouncedConnected = true;
+    // The link is up again as of this instant, so a disconnect said earlier is spent: the NEXT
+    // silence is a new fact and has to be announceable.
+    this.studioSilenceAnnounced = false;
     if (now - this.lastSeenWrittenAt > 4000) {
       this.lastSeenWrittenAt = now;
       await this.ctx.storage.put('pluginLastSeen', now);
@@ -4780,6 +5078,10 @@ export class SessionDO extends DurableObject<Env> {
       this.boundPlace = admission.place;
       await this.ctx.storage.put<StudioPlace>('pluginPlace', admission.place);
     }
+    // NOT inside the branch above. That branch fires only when the binding is NEW, which would have
+    // left every project paired before this shipped reading "No place name yet" until its owner
+    // happened to rename the place. The mirror decides for itself whether there is anything to say.
+    await this.mirrorPlaceToRegistry(this.boundPlace);
     this.placeMismatch = admission.verdict === 'mismatch' ? admission : null;
     if (!servesOps(admission) && admission.verdict === 'mismatch') {
       // The link is alive and the plugin is welcome to keep polling — the user may simply switch
@@ -4814,6 +5116,8 @@ export class SessionDO extends DurableObject<Env> {
     }
 
     if (!wasConnected) {
+      // A link that has just come up is a green pill that now needs a deadline on it.
+      await this.armStudioWatchdog();
       const st = body.state ?? (await this.ctx.storage.get<StudioEventState>('pluginState'));
       this.broadcast({
         type: 'studio_status',
@@ -5341,11 +5645,84 @@ export class SessionDO extends DurableObject<Env> {
     return { ok: true, fidelity, ...(coverageNote ? { note: coverageNote } : {}) };
   }
 
-  private async quotaSpend(userId: string, credits: number, kind: string): Promise<{ ok: boolean; state: QuotaState }> {
+  private async quotaSpend(
+    userId: string,
+    credits: number,
+    kind: string,
+  ): Promise<{ ok: boolean; state: QuotaState; fromAllowance?: number; fromCredits?: number }> {
     const stub = this.env.QUOTA_DO.get(this.env.QUOTA_DO.idFromName(userId));
     const res = await stub.fetch('https://do/spend', { method: 'POST', body: JSON.stringify({ credits, kind }) });
-    const data = (await res.json()) as { ok: boolean; state: QuotaState };
+    const data = (await res.json()) as { ok: boolean; state: QuotaState; fromAllowance?: number; fromCredits?: number };
     return data;
+  }
+
+  /**
+   * Remember which ledger a charge came out of.
+   *
+   * ONLY ON A CHARGE THAT SUCCEEDED, and only when QuotaDO actually reported a split. A refused
+   * spend moved nothing, and a response with no split at all is one from a worker/DO pair mid-roll:
+   * leaving the fields undefined there is what makes `refundRun` decline rather than invent a
+   * proportion. Undefined and zero are different facts and are kept different.
+   */
+  private recordSpendSplit(agent: AgentState, settle: { ok: boolean; fromAllowance?: number; fromCredits?: number }): void {
+    if (!settle.ok) return;
+    if (typeof settle.fromAllowance !== 'number' || typeof settle.fromCredits !== 'number') return;
+    agent.creditsFromAllowance = (agent.creditsFromAllowance ?? 0) + Math.max(0, settle.fromAllowance);
+    agent.creditsFromCredits = (agent.creditsFromCredits ?? 0) + Math.max(0, settle.fromCredits);
+  }
+
+  /**
+   * PUT THE CREDITS BACK when the run had nothing to show for them.
+   *
+   * Called exactly once, from `finishRun`, and guarded three ways: `refundVerdict` decides whether
+   * this ending qualifies at all, `agent.creditsRefunded` stops a second attempt inside this
+   * isolate, and QuotaDO's `applied_refunds` stops one across isolates. The run id is the refund
+   * id, so all three agree on what "this refund" means.
+   *
+   * RETURNS WHAT CAME BACK, NOT WHAT WAS ASKED FOR. The caller writes a sentence from it, and the
+   * two numbers differ over a UTC midnight — see the doc comment on `/refund`. Reporting the ask
+   * would be a refund that was not observed rendered as one.
+   */
+  private async refundRun(agent: AgentState, credits: number): Promise<{ attempted: boolean; asked: number; returned: number }> {
+    //[[ `attempted` IS THE POINT OF THIS RETURN TYPE, and it is this repository's own rule applied
+    //   to a payment. "Nothing came back" and "we never found out" are the same 0 and are not the
+    //   same fact: the first earns the sentence about yesterday's allowance, the second earns
+    //   SILENCE, because a refund nobody observed must not be rendered as a refund that failed for
+    //   a stated reason. The caller writes a note only when `attempted` is true. ]]
+    const unknown = { attempted: false, asked: 0, returned: 0 };
+    const fromAllowance = agent.creditsFromAllowance;
+    const fromCredits = agent.creditsFromCredits;
+    // The split is only unknown on a run started by a deploy that predates it. Refusing here — and
+    // saying nothing to the user — is the honest failure: the alternative is to guess which ledger
+    // to credit, and the cheap guess ("all purchased") turns a free allowance into money.
+    if (typeof fromAllowance !== 'number' || typeof fromCredits !== 'number') return unknown;
+    if (fromAllowance + fromCredits <= 0) return unknown;
+    // Never refund more than the verdict allows, and keep the same allowance-first proportions the
+    // charge used: trim the purchased half first, because that is the half the user paid for and
+    // the half we want to leave them holding if anything is trimmed at all.
+    const askAllowance = Math.min(fromAllowance, credits);
+    const askCredits = Math.max(0, Math.min(fromCredits, credits - askAllowance));
+    const stub = this.env.QUOTA_DO.get(this.env.QUOTA_DO.idFromName(agent.userId));
+    try {
+      const res = await stub.fetch('https://do/refund', {
+        method: 'POST',
+        body: JSON.stringify({ fromAllowance: askAllowance, fromCredits: askCredits, kind: `usage_${agent.mode}`, refundId: agent.msgId }),
+      });
+      const data = (await res.json()) as { ok?: boolean; returned?: unknown; state?: QuotaState };
+      // A ledger that answered without a `returned` figure is one that predates this route. It did
+      // not refuse, and it did not refund; it did not understand the question.
+      if (data?.ok !== true || !Number.isSafeInteger(data.returned)) return unknown;
+      if (data.state) this.broadcast({ type: 'quota', quota: data.state });
+      // `asked` is what was actually REQUESTED of the ledger, which can be less than the verdict
+      // when the run's recorded split is smaller than its recorded cost. The sentence is written
+      // from this pair, so it can never say "the rest could not be returned" about Credits that
+      // were never taken in the first place.
+      return { attempted: true, asked: askAllowance + askCredits, returned: Math.max(0, data.returned as number) };
+    } catch {
+      // A ledger that cannot be reached has not refunded anything, and the reply must not say it
+      // did — nor that it could not. The run still ends and the Credits stay as they were.
+      return unknown;
+    }
   }
 
   private async quotaState(userId: string): Promise<QuotaState> {

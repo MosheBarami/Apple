@@ -91,9 +91,27 @@ test('the free and paid Agent lanes are no longer asymmetric in output room', ()
   assert.ok(free >= paid * 0.9, `the free lane (${free}) is still far short of the paid lane (${paid})`);
 });
 
-test('raising the clay ceiling did not raise what Plan mode asks for', () => {
-  // The ceiling is a clamp, not a request: `min(requested, cfg.maxTokens)`. Plan mode's request is
-  // unchanged, so this fix cannot have made a Plan answer more expensive.
-  assert.equal(R.tokensForEffort(S.baseTokensFor('clay'), 'high'), 2000);
-  assert.equal(budget('clay', 'apple', 'high'), 2000);
+test('Plan mode asks for enough that its model can answer at all', () => {
+  //[[ THIS ASSERTED 2000 AND THE PREMISE UNDER IT WAS NEVER MEASURED.
+  //
+  //   It read: "the ceiling is a clamp, not a request — Plan mode's request is unchanged, so this
+  //   fix cannot have made a Plan answer more expensive." Keeping a request small to keep an answer
+  //   cheap is a sound instinct, and the number was chosen without asking what the model on the
+  //   other end does with it.
+  //
+  //   Measured on the deployed gateway, 2026-09-20: clay runs @cf/qwen/qwen3-30b-a3b-fp8, a
+  //   REASONING model that spends output budget thinking before it writes. At 1600 it returns
+  //   finishReason "length" and ZERO characters for 50 neurons. At 2000, one prompt in three is
+  //   answered. At 3000 it answers completely for 79 neurons.
+  //
+  //   So 2000 was not cheap. It was paying for compute and receiving nothing, which is the most
+  //   expensive thing a budget can do. The instinct this test defends — do not let Plan mode become
+  //   costly — is kept; what changes is the floor beneath it, which is now a measured number rather
+  //   than an assumed one.
+  const asked = R.tokensForEffort(S.baseTokensFor('clay'), 'high');
+  assert.ok(asked >= 3200, `Plan mode asks for ${asked}; below 3200 its model was measured returning nothing`);
+  // And still bounded: the request must not exceed what the gateway configures for that model, or
+  // our own arithmetic becomes the thing that truncates the reply.
+  assert.ok(asked <= 6500, `Plan mode asks for ${asked}, past the 6500 the gateway sizes clay at`);
+  assert.equal(budget('clay', 'apple', 'high'), asked, 'the free lane must get what Plan mode asks for');
 });

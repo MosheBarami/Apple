@@ -37,6 +37,17 @@ const DEFAULT_SYSTEM =
   + 'The module must return the function described, handle every invalid input the contract names, and must not '
   + 'read a clock, mutate shared state, or require anything.';
 
+//[[ ASK FOR WHAT PRODUCTION ASKS FOR, OR THIS MEASURES A PRODUCT NOBODY SHIPS.
+//
+//   The first version of this script hardcoded maxTokens 1100 — below even the old free-lane budget
+//   — so its headline numbers described the model under conditions production never uses. On a
+//   reasoning lane that is not a small error: qwen3 returns ZERO characters below ~3200, so the
+//   free lane scored 0/12 against a budget that was the script's, not the product's.
+//
+//   These mirror MODE_BASE_TOKENS in apps/worker/src/do/session.ts times the high-effort
+//   multiplier in reasoning.ts, which is what a real build asks for.
+const PRODUCTION_BUDGET = { clay: 6500, stone: 5500, rune: 6500 };
+
 const model = arg('model', 'stone');
 const n = Number(arg('n', '12'));
 const systemFile = arg('system-file', null);
@@ -49,7 +60,7 @@ async function ask(prompt) {
   const r = await fetch(`${BASE}/api/admin/model-test`, {
     method: 'POST',
     headers: { 'X-Admin-Key': KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model, prompt, system, maxTokens: 1100 }),
+    body: JSON.stringify({ model, prompt, system, maxTokens: Number(arg('max-tokens', PRODUCTION_BUDGET[model] ?? 5500)) }),
   });
   if (!r.ok) return { error: `HTTP ${r.status}` };
   return r.json();
@@ -73,7 +84,7 @@ for (const r of rows) if (!r.ok) reasons[r.reason] = (reasons[r.reason] ?? 0) + 
 const out = {
   measuredAt: new Date().toISOString(),
   what: 'the DEPLOYED model, through the real gateway, scored by execution',
-  model, system, n: rows.length, ok, pct: rows.length ? Math.round((ok / rows.length) * 100) : 0,
+  model, system, maxTokens: Number(arg('max-tokens', PRODUCTION_BUDGET[model] ?? 5500)), n: rows.length, ok, pct: rows.length ? Math.round((ok / rows.length) * 100) : 0,
   neurons, reasons, rows,
 };
 const path = `packages/training/runs/eval-production-${model}.json`;
