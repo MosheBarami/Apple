@@ -235,6 +235,7 @@ test('an empty report is refused with a sentence, and nothing is written', async
 
 test('a session token in the page a report was filed from is never stored', async () => {
   reset();
+  // the access_token below is a fake JWT; this asserts it never reaches the store
   await call('/api/feedback', {
     method: 'POST',
     body: { kind: 'bug', content: 'broke right after I signed in', page: '/app/project/9b1d#access_token=eyJhbGciOiJIUzI1NiJ9.abc.def' },

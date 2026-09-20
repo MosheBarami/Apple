@@ -83,7 +83,7 @@ test('the default category is the one the column defaults to', () => {
 /* --------------------------------------------------------------------- the page --- */
 
 test('the page filed with a report is a path, never the credential in the URL', () => {
-  // The real shape after a magic link.
+  // The real shape after a magic link. The JWT below is fake — three dots, no payload.
   assert.equal(
     M.supportPageOf({ pathname: '/app/project/9b1d', search: '', hash: '#access_token=eyJhbGciOiJIUzI1NiJ9.a.b&type=recovery' }),
     '/app/project/9b1d',

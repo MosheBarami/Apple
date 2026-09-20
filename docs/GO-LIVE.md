@@ -8,10 +8,7 @@ Do not mark one done because a value was pasted somewhere.
 
 ---
 
-## 0. Signing up — nobody outside the project team can create an account
-
-**This was not in this file until 2026-09-20, and it is the first thing in the funnel.** Payments,
-the plugin and Discord are all downstream of an account that cannot be created.
+## 0. Signing up — the auth config pointed at localhost, and my first diagnosis of this was wrong
 
 **Measured, 2026-09-20:**
 
@@ -20,58 +17,69 @@ select count(*), count(email_confirmed_at), min(created_at), max(created_at) fro
 -- 32 | 32 | 2026-08-30 16:50:15 | 2026-08-30 17:21:54
 ```
 
-Thirty-two accounts, every one of them created inside a single 31-minute window on 30 August, and
-**not one account in the twenty-one days since**. The owner reported the reason himself:
+Thirty-two accounts, every one created inside a single 31-minute window on 30 August, and **not one
+account in the twenty-one days since**. The owner reported the reason he saw:
 
 > אני לא מצליח להכנס בlogin/signup כי שליחת אימיין אימות מעולם לא מופיעה לי בinbox
 
-### The cause was researched weeks ago and written down
+### What I wrote here first, and why it was wrong
 
-`docs/research/supabase-auth-worker.md` §3, already in this repository:
+This section originally said the cause was Supabase's default mail service — which delivers only to
+project team members and is capped at 2/hour — and told the owner to switch **Confirm email** off.
+That reasoning came from `docs/research/supabase-auth-worker.md` and from `grep` finding no SMTP
+anywhere. Both of those facts are true. The conclusion did not follow, because nobody had read the
+live configuration.
 
-> Emails are only delivered to pre-authorized addresses — **members of the project's team**. Random
-> end-user signups will NOT receive confirmation emails on the default service.
+Read through the Management API on 2026-09-20:
 
-No custom SMTP is configured anywhere — `grep -ri smtp apps/ infra/ scripts/ supabase/` returns
-nothing — so Supabase's built-in sender is in use. It is capped at **2 emails per hour**, is
-explicitly "not meant for production use", and delivers only to project team members. With "Confirm
-email" switched on, that is not a degraded signup. It is no signup.
-
-### The fix, and it is one toggle
-
-The same research names the practical path for this product:
-
-> **Yes, if you disable "Confirm email"** in Auth settings — users sign up and get a session
-> immediately, no email is ever sent. This is the practical Free-tier path.
-
-**Owner action, about one minute:**
-
-1. Open <https://supabase.com/dashboard/project/npqvyijsvzkuwddyhtpm/auth/providers>
-2. Under **Email**, switch **Confirm email** OFF.
-3. Save.
-
-**Probe** — run this afterwards and paste the number back:
-
-```bash
-node -e "console.log(new Date().toISOString())" # note the time, then sign up at /app/signup
 ```
+mailer_autoconfirm: true          <- confirmation was ALREADY off; no mail is sent on signup
+disable_signup:     false         <- signup is enabled
+smtp_host:          null          <- no custom SMTP, as found
+site_url:           "http://localhost:3000"
+uri_allow_list:     ""
+```
+
+**`site_url` was Supabase's factory default.** Every redirect the auth service generates — password
+recovery, magic link, OAuth callback, and the confirmation link if it is ever turned on — was
+pointing at `http://localhost:3000`, which on a customer's machine is nothing at all. And
+`uri_allow_list` was empty, so the `emailRedirectTo` the app sends
+(`https://apple.moshe-barami111.workers.dev/app/confirm`) was not an allowed destination and fell
+back to that same localhost.
+
+A toggle I asked the owner to flip was already in the position I asked for. The instruction cost him
+nothing but it was wrong, and the reason it was wrong is worth keeping: a documented cause and a
+matching symptom are not a diagnosis until the live configuration has been read.
+
+### Fixed
+
+```
+site_url:       https://apple.moshe-barami111.workers.dev/app
+uri_allow_list: https://apple.moshe-barami111.workers.dev/app/**, .../app, .../**,
+                https://golem.moshe-barami111.workers.dev/app/**
+```
+
+Applied by PATCH and confirmed by re-reading the config back.
+
+### Still open, and NOT claimed fixed
+
+With `mailer_autoconfirm: true` a signup returns a session directly and sends no mail, so the
+redirect fix does not by itself explain twenty-one days of zero signups. **Nobody has completed a
+real signup since the change.** That probe needs a person with a browser and an email address, and
+it is the only thing that closes this section.
+
+**Owner action:** open <https://apple.moshe-barami111.workers.dev/app/signup>, create an account,
+and say whether it works. Then:
 
 ```sql
 select email, created_at from auth.users order by created_at desc limit 3;
 ```
 
-A row newer than the timestamp is the proof. A signup that still fails is a different defect and
-this section stays open.
+A row newer than the attempt is the proof.
 
-### Why not custom SMTP instead
-
-It is the better end state and it is not available today: Resend has **no verified domain** on this
-account (`list-domains` → none), and a sender domain has to be one the owner controls. The product
-runs on `*.workers.dev`, which is Cloudflare's domain, not his. So custom SMTP is blocked behind
-buying a domain; the toggle is not blocked behind anything.
-
-Password reset stays broken either way until custom SMTP exists — it always needs mail. That is a
-smaller hole than "nobody can sign up" and it stays OPEN rather than being called fixed.
+**Password reset stays broken** until custom SMTP exists — it always needs mail, and mail needs a
+sender domain the owner controls. The product runs on `*.workers.dev`, which is Cloudflare's. That
+is a smaller hole than "nobody can sign up" and it stays OPEN.
 
 ---
 

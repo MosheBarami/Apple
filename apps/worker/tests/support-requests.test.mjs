@@ -169,6 +169,7 @@ test('the page a report was filed from keeps its path and loses its credentials'
   const v = ok({
     kind: 'bug',
     content: 'it broke right after I signed in',
+    // fake JWT; the point is that it is stripped
     page: '/app/project/9b1d#access_token=eyJhbGciOiJIUzI1NiJ9.abc.def&type=recovery',
   });
   assert.equal(v.page, '/app/project/9b1d');
