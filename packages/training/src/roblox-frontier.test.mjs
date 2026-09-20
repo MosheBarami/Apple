@@ -22,7 +22,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { FRONTIER_ITEMS, ALL_CHECK_IDS, AXES, ARMS } from './roblox-frontier-tasks.mjs';
 import { CONTROLS } from './roblox-frontier-controls.mjs';
-import { scoreFrontierItem } from './score-roblox-frontier.mjs';
+import { scoreFrontierItem, tally } from './score-roblox-frontier.mjs';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
 
 const fence = (luau) => `\`\`\`luau\n${luau}\n\`\`\``;
 
@@ -113,4 +118,65 @@ test('the two prompt arms differ only in Roblox guidance, and the neutral one ca
   // The house-rules arm must actually be production's text, not a paraphrase of it.
   assert.ok(house.includes('never the deprecated global wait/spawn'));
   assert.ok(house.includes('never trust the client on the server'));
+});
+
+//[[ THE HOUSE-RULES ARM CLAIMS TO BE PRODUCTION'S TEXT. READ PRODUCTION AND CHECK.
+//
+//   `ARMS['house-rules'].what` says "production's own written code rules, verbatim from prompts.ts
+//   IDENTITY". The whole point of the arm is that the gap between it and `neutral` is the part of
+//   the score bought by PROMPTING rather than by the weights — which is only true if the prompt is
+//   the one production actually sends. The guard that stood here checked for two phrases inside the
+//   arm's own string, so it could not notice prompts.ts moving underneath it: a mirror whose test
+//   never opens the original is a copy with a certificate, not a mirror. The settings mirror in
+//   production-settings.mjs is tested by reading apps/worker/src; this now is too.
+test('the house-rules arm is a verbatim block of the system prompt production sends', () => {
+  const identity = readFileSync(resolve(HERE, '..', '..', '..', 'apps', 'worker', 'src', 'prompts.ts'), 'utf8');
+  const house = ARMS['house-rules'].system;
+  // The arm is the Roblox-rules block plus a shared answer-format instruction the product does not
+  // need (production streams into tools; the bench needs one fenced block). Only the first part
+  // claims to be production's, so only the first part is compared — and it is compared whole.
+  const [rules] = house.split('\n\nAnswer with ONE fenced luau code block');
+  assert.ok(rules.length > 400, 'the block being compared is too short to be the rules block');
+  assert.ok(
+    identity.includes(rules),
+    'the house-rules arm is no longer a verbatim substring of apps/worker/src/prompts.ts. Either '
+    + 'production\'s IDENTITY changed and the arm must be re-copied, or the arm was edited. Until '
+    + 'they match, the arm measures a prompt no customer receives and the neutral-vs-house gap is '
+    + 'not the gap it is reported as.',
+  );
+});
+
+//[[ A SYNTAX ERROR IS A SCORE, NOT A MISSING MEASUREMENT.
+//
+//   The first run of this benchmark that produced any number at all reported 9/13 (69.2%) over
+//   sixteen items, having dropped two answers the Luau compiler rejected out of the denominator.
+//   Both were the model's own bytes. `tally` is what decides this, so `tally` is what is tested:
+//   an answer that does not compile must LOWER the percentage, and a throw under the harness must
+//   not, because a throw can be the shim's gap.
+test('tally counts a non-compiling answer as a failure and excludes a harness throw', () => {
+  const items = [
+    { id: 'a', axis: AXES[0] }, { id: 'b', axis: AXES[0] },
+    { id: 'c', axis: AXES[0] }, { id: 'd', axis: AXES[0] },
+  ];
+  const board = tally(items, [
+    { outcome: 'checked', ok: true, checks: [{ id: 'x', pass: true }] },
+    { outcome: 'does_not_compile', ok: false, checks: [] },
+    { outcome: 'no_code_block', ok: false, checks: [] },
+    { outcome: 'runtime_error', ok: false, checks: [] },
+  ]);
+  assert.equal(board.measured, 3, 'the two verdicts that are the MODEL\'s must be in the denominator');
+  assert.equal(board.passed, 1);
+  assert.equal(board.excluded, 1, 'the harness throw must be excluded and counted');
+  assert.equal(board.pct, 33.3, 'one pass out of three scored answers is 33.3%, not 100%');
+
+  // The negative control for this guard: if every non-`checked` outcome left the denominator again,
+  // this same board would read 1/1 = 100%. That is the exact regression, written out.
+  const inflated = tally(items, [
+    { outcome: 'checked', ok: true, checks: [{ id: 'x', pass: true }] },
+    { outcome: 'runtime_error', ok: false, checks: [] },
+    { outcome: 'harness_unavailable', ok: false, checks: [] },
+    { outcome: 'runtime_error', ok: false, checks: [] },
+  ]);
+  assert.equal(inflated.pct, 100, 'a board of one pass and three harness faults is the case that MAY read 100%');
+  assert.equal(inflated.excluded, 3);
 });

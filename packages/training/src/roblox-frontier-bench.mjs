@@ -250,6 +250,11 @@ const out = {
   passed: board.passed,
   pct: board.pct,
   notMeasured: errors.length,
+  //[[ THE DENOMINATOR, PRINTED RATHER THAN IMPLIED.
+  //   `measured` now includes the answers the Luau compiler rejected, because that verdict is the
+  //   model's. `excludedFromDenominator` is the other kind — a throw the harness may have caused —
+  //   and it is carried so a reader can see how many items the percentage is NOT over.
+  excludedFromDenominator: board.excluded,
   errors,
   outcomes: board.outcomes,
   byAxis: board.byAxis,
@@ -266,8 +271,9 @@ const slug = `${lane}-${modeArg}-${armId}${tag ? `-${tag}` : ''}`;
 const path = resolve(RUNS_DIR, `roblox-frontier-${slug}.json`);
 writeFileSync(path, JSON.stringify(out, null, 1) + '\n');
 
-console.log(`\n  ${board.passed}/${board.measured} items fully correct (${board.pct}%) of the ${board.measured} that RAN; `
-  + `${errors.length} not measured, ${board.attempted - board.measured - errors.length} did not run`);
+console.log(`\n  ${board.passed}/${board.measured} items fully correct (${board.pct}%) of the ${board.measured} SCORED `
+  + `(a syntax error IS a score); ${errors.length} never answered, ${board.excluded} excluded because the harness `
+  + `could not run them`);
 for (const axis of AXES) {
   const a = board.byAxis[axis];
   if (!a) continue;

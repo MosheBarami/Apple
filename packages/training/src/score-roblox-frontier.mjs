@@ -17,6 +17,12 @@
  *   checks            the script ran, the probe fired its handlers, and the recording was read.
  *                     Only here does a number mean something about Roblox competence.
  *
+ * WHICH OF THOSE COUNT AGAINST THE MODEL is decided in `tally` at the bottom of this file, and the
+ * comment there is the one to read: `checked`, `does_not_compile` and `no_code_block` are the
+ * model's verdict and are in the denominator; `runtime_error` and `harness_unavailable` may be the
+ * harness's fault and stay out of it. Until 2026-09-21 the arithmetic kept all four out, which
+ * contradicted the two paragraphs above and raised every headline this file has ever printed.
+ *
  * A check may also answer `null`, meaning UNRESOLVED: the probe could not establish the fact (the
  * handler was never connected, the module returned nothing, the harness read something it has no
  * honest answer for). An unresolved check is neither a pass nor a fail and is counted separately.
@@ -194,11 +200,42 @@ export function scoreFrontierItem(item, answer, opts = {}) {
   };
 }
 
+//[[ WHICH OUTCOMES BELONG IN THE DENOMINATOR, AND WHY EXACTLY THESE THREE.
+//
+//   2026-09-21: the first run of this benchmark that ever produced a number scored `9/13 items
+//   fully correct (69.2%)` over sixteen items. Two of the three missing items were answers that
+//   the Luau compiler REJECTED — `Players.PlayerRemoving:(function(player)` with no `Connect`, and
+//   `HttpService:CreateRequestHeadersAndEncodeData and ...`, which is not an expression. Both are
+//   the model's own bytes; the harness prologue ends at line 1013 and both errors are past line
+//   1029. A customer who pastes either into Studio gets a red underline and no game.
+//
+//   `tally` counted `measured` as `outcome === 'checked'` alone, so those two left the denominator
+//   and the headline rose. That inverts this repository's own rule: a failure to observe must not
+//   render as an observation, and its mirror — an observation must not render as a failure to
+//   observe. "It does not compile" is the most decidable verdict a code benchmark can reach.
+//
+//   This file's own header already said so and the arithmetic disagreed with it: `fencedLuau`'s
+//   doc comment says "a model that wrote prose scores as a miss", `does_not_compile` is described
+//   as "a syntax failure", and only the `runtime_error` paragraph claims exclusion. So the three
+//   scored outcomes are the ones whose verdict is the model's:
+//
+//     checked           it ran and the recording was read.
+//     does_not_compile  luau-compile rejected the model's own text. A failure, and a decidable one.
+//     no_code_block     the answer was prose. The product parses a fence out of an answer too.
+//
+//   `runtime_error` and `harness_unavailable` stay OUT, unchanged and for the unchanged reason: a
+//   throw can mean the model reached for an API this shim does not implement, which is the
+//   harness's gap. In this same run `look-raycast` threw `attempt to index nil with 'Connect'` on
+//   `mouse.Button1Down`, which the shim genuinely does not provide. Counting that against the
+//   model would score the harness. `excluded` is returned beside `measured` so the denominator is
+//   printed rather than implied.
+export const SCORED_OUTCOMES = Object.freeze(['checked', 'does_not_compile', 'no_code_block']);
+
 /** Roll a list of per-item results into the scoreboard the report prints. */
 export function tally(items, results) {
   const byAxis = {};
   const byCheck = {};
-  let measured = 0, passed = 0;
+  let measured = 0, passed = 0, excluded = 0;
   const outcomes = {};
   for (const [i, item] of items.entries()) {
     const r = results[i];
@@ -206,7 +243,8 @@ export function tally(items, results) {
     outcomes[r.outcome] = (outcomes[r.outcome] ?? 0) + 1;
     byAxis[item.axis] ??= { measured: 0, passed: 0, attempted: 0, checksPassed: 0, checksTotal: 0 };
     byAxis[item.axis].attempted += 1;
-    const scoreable = r.outcome === 'checked';
+    const scoreable = SCORED_OUTCOMES.includes(r.outcome);
+    if (!scoreable) excluded += 1;
     if (scoreable) {
       measured += 1;
       byAxis[item.axis].measured += 1;
@@ -225,6 +263,7 @@ export function tally(items, results) {
     attempted: items.length,
     measured,
     passed,
+    excluded,
     pct: measured ? Math.round((passed / measured) * 1000) / 10 : 0,
     outcomes,
     byAxis,
