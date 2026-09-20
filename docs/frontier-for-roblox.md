@@ -36,6 +36,20 @@ curriculum, all through `/api/admin/model-test` at the production resolution for
 Agent mode**: gateway `stone`, served `@cf/zai-org/glm-5.3-flash`, effort `high` (a floor), base
 4400, requested 5500, ceiling 5600, nothing clamped.
 
+> **Those five fields were production on 2026-09-20 and three of them are not production now.**
+> Commit `8b61c91` moved `high` from ×1.25 to ×2 and stone's ceiling from 5600 to 6500, so the
+> product sends requested **8800**, ceiling **6500**, effective **6500**, **clamped**. Every number
+> in §4 and §5 was taken at effective 5500 and is left at 5500, because a table that silently
+> restates itself under new settings is worse than a dated one.
+>
+> **How much of the table that can move, measured rather than estimated.** `maxTokens` is binding
+> only when a call stops at `length`. Across all 560 arm-prompts in the seven runs that happened 6
+> times, and in the four SINGLE-CALL arms — `baseline`, `fewshot`, `fewshotcustomer`,
+> `fewshotrandom`, 320 prompts — it happened **zero** times. So the budget change cannot move those
+> four rows at all, and can touch at most 3 of 560 elsewhere. The harness no longer carries the
+> numbers by hand: it derives them from `production-settings.mjs`, which
+> `production-settings.test.mjs` holds against `apps/worker/src` field by field.
+
 | arm | what it does | model calls |
 |---|---|---|
 | `baseline` | the shipped system prompt, one call | 1 |
@@ -289,9 +303,10 @@ the model's cheapest useful contribution is to not be called.
 Stated as gaps rather than left for a reader to infer:
 
 - **Coverage.** All eighty curriculum requests have a verified module, so retrieve-then-hand-over is
-  measured only where it can win. Its score on a request the library does not cover is zero, and
-  nothing here measures how often that happens in real traffic. This is the single largest missing
-  number on this page.
+  measured only where it can win. How often a real request falls outside the library is still
+  unmeasured and is still the single largest missing number on this page. What is no longer
+  unmeasured is the *other* half of that sentence — "its score on a request the library does not
+  cover is zero" was an assertion when this was written, and §7 now reports it as 0/80, executed.
 - **The Apple MAX lane.** Every arm ran the **apple** lane in Agent mode — gateway `stone`, 5,500
   tokens. MAX in Agent/Super Agent resolves to `rune` at 6,500. None of these arms were run there,
   so nothing here supports or refutes any claim about MAX, including the recorded observation in
@@ -309,3 +324,122 @@ Stated as gaps rather than left for a reader to infer:
 - **A quantisation evaluation of the local adapters.** Out of scope here and still open; see
   `docs/model-serving-reality.md` for why no locally-trained adapter can reach the production model
   at all.
+
+---
+
+## 7. THE POLICY THIS TABLE IMPLIES, AND THE TWO NUMBERS IT WAS MISSING
+
+**Measured 2026-09-21.** `packages/training/src/measure-library-abstention.mjs`, written for this
+section, run against `apple.moshe-barami111.workers.dev` at `buildSha 3236f91-dirty`. **Zero model
+calls** — everything below is the shipped ranker plus the local Luau interpreter.
+
+### 7.1 "Its score on an uncovered request is zero" was an assertion. It is 0/80.
+
+§4.4 rests on retrieve-then-hand-over scoring 73/80, and §6 conceded that on a request the library
+does not cover it "is zero". Nobody had run that. The run is simple: strike a request's own answer
+out of the ranking — the library no longer contains it — hand over whatever the door returns
+instead, and EXECUTE that module against the request's own exhaustive checks.
+
+**0 of 80 pass.** All eighty came back `fails_own_checks`, which is a verdict the interpreter
+produced. That distinction is load-bearing: a missing `luau` binary would have produced the identical
+headline having executed nothing, so the test reads the *reasons*, not the count, and a mutation that
+replaces the execution with an unavailable-harness stub turns that test red while leaving the 0/80
+untouched. Being unable to look is not the same as having looked.
+
+### 7.2 The door cannot tell a request it covers from one it does not — and now it can
+
+`askVerifiedModule({need})` returned five candidates and no confidence of any kind. So on a request
+outside the library it returned five confident wrong modules, which `verified-modules.ts`'s own
+comment already calls the worst outcome available. The only reason its "an uncovered need SAYS so"
+test passed is that its query, *render a volumetric cloud shader*, happens to score zero hits. Ask
+for a DataStore save and BM25F returns five logic modules with a straight face: on the sixteen
+engine-facing tasks in `roblox-frontier-tasks.mjs` — DataStores, RemoteEvents, tweens, mobile UI,
+none of which this library has a module for — **16 of 16 were handed one**.
+
+**The separating statistic is RELATIVE, and that is the finding, not a detail.**
+
+| set | n | median top-1 SCORE | median relative margin |
+|---|---|---|---|
+| covered, top-1 right | 73 | 18.9 | **0.45** |
+| covered, top-1 wrong | 7 | 10.4 | 0.07 |
+| uncovered (answer struck out) | 80 | 8.8 | 0.15 |
+| off-corpus (16 engine-facing tasks) | 16 | **20.1** | 0.11 |
+
+Read the third column against the fourth. A BM25 total is a sum over the query's terms, so it grows
+with the length of the query — and those sixteen uncovered prompts score **higher** on it than the
+eighty the library actually covers. **Any policy keyed on the absolute score waves through exactly
+the requests it exists to stop.** `(top1 − top2) / top1` divides the length out and the populations
+separate. This is the trap a reasonable engineer walks into, so it is stated before the result.
+
+### 7.3 The hybrid, joined prompt by prompt against the recorded arms
+
+Hand over iff the relative margin clears `t`, otherwise generate. Every abstained prompt is scored by
+what that arm's recorded run **actually did on that prompt** — never an average multiplied by a count.
+
+| `t` | covered: hands / right | uncovered handed | off-corpus handed | with `baseline` (shipped fallback) | with `fewshotrandom` (not shipped) |
+|---|---|---|---|---|---|
+| **0.00 — the door as it ships** | 80 / 73 | **80/80** | **16/16** | **73/80** | **73/80** |
+| 0.10 | 70 / 67 | 50/80 | 9/16 | 75/80 | 76/80 |
+| **0.15 — shipped today** | 66 / 63 | 39/80 | 6/16 | **75/80** | **76/80** |
+| 0.20 | 63 / 61 | 29/80 | 5/16 | 75/80 | 76/80 |
+| 0.25 | 58 / 56 | 23/80 | 2/16 | 71/80 | 74/80 |
+| 0.40 | 46 / 46 | 9/80 | 0/16 | 68/80 | 76/80 |
+| 1.00 — never hand over | 0 / 0 | 0/80 | 0/16 | 53/80 | 67/80 |
+
+The `t = 1.00` row is an anchor, not a candidate: it must reproduce each arm's own total, and it does
+— 53 / 74 / 68 / 67 / 62 / 58 / 63, the seven numbers in §4.1. A mutation that credited every
+abstention as a success reddened nothing until that row was added, which is how it came to exist.
+
+**0.15 is shipped, and it is not the best cell in the grid.** The two populations overlap; there is
+no clean separating value, and the sweep is over the same eighty queries it is scored on, so its peak
+is a measurement of the grid. What sets the number is the **fallback**. An abstention sends the model
+back to writing the module, and the *shipped* prompt writes it right 66% of the time against the
+door's 91% — so abstaining pays only while the floor stays at or under 0.20, and by 0.40 the lost
+hand-overs cost more than the avoided wrong ones. With three worked examples in the fallback the
+whole band 0.10–0.40 wins instead. **The way to raise this floor is to make the fallback better
+first**, which is §4.2's result waiting to be shipped.
+
+### 7.4 What §4.4 becomes
+
+§4.4 concluded that the best thing the product can do is not generate at all. That holds **on the
+covered curriculum**, and 7.1 shows it is worth exactly zero off it. The policy that survives both is
+neither pure arm:
+
+> Retrieve. If the top hit is clearly ahead of the runner-up, hand it over — 0 model calls, and it is
+> right. If it is not, say so and generate, because the runner-up passes 0 of 80.
+
+That is what ships. It beats the always-hand-over door on the covered set (75/80 against 73/80 with
+today's fallback) and, unlike the door, it does not collapse to zero on a request the library has
+never seen.
+
+### 7.5 How much of §4 is resampling — the number §4.5 said it did not have
+
+Re-recording the shipped baseline at today's budget produced a paired re-run of an **identical arm**:
+same 24 prompts, byte-identical system prompt, same model, same gateway, and `finishReason: stop` on
+all 24 in both runs, so the budget was never binding in either and nothing but sampling differed.
+
+**16/24 → 14/24. Four of twenty-four prompts flipped, +1 / −3.** Exact McNemar p = 0.625, so the
+*difference* is noise — but the *size* of the noise is the finding. Scaled to n=80 that is roughly 13
+discordant pairs from resampling alone, which puts `specrepair`'s +8/−3 (p = 0.2266) inside the null
+and `secondpass`'s +14/−5 (p = 0.0636) at its edge. It does not touch `fewshot` (+24/−3, p < 0.0001)
+or `fewshotrandom` (+17/−3, p = 0.0026).
+
+This also retires §3's third consequence — "an arm is deterministic on replay, so the differences
+between arms are differences in the answers the model produced, not resampling noise". The cache is
+real but short-lived; across an hour it is not, and §4.5 already said so. One paired re-run at n=24
+is a crude estimate of the noise floor and is labelled as one; the honest reading is that any flip
+count in §4.1 below roughly ±13 should be treated as indistinguishable from nothing.
+
+### 7.6 Still not measured after this section
+
+- **How often real traffic falls outside the library.** Unchanged, and still the largest hole. 7.1
+  fixes the *severity* of an uncovered request (zero), not its *frequency*.
+- **The eighty customer phrasings** remain one session's judgement, by `customer-queries.mjs`'s own
+  admission. The threshold is read off them.
+- **The sixteen off-corpus prompts are in contract voice and are long.** That makes them the stress
+  case for an absolute-score policy, which is why they are here, but they are not a register-matched
+  sample of how a person asks.
+- **Whether the floor helps a real build.** It is verified live in the deployed bundle
+  (`CONFIDENCE_FLOOR = 0.15` is in the bytes Cloudflare serves) but `get_verified_module` is
+  deliberately excluded from the MCP surface, so nothing short of a full agent run with a connected
+  Studio exercises it end to end. That run has not been done.

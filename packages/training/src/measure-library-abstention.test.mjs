@@ -26,6 +26,28 @@ test('the confidence is a relative margin, so multiplying every score leaves it 
 });
 
 /**
+ * THE ONE INEQUALITY THAT MAKES "RELATIVE" A MEASUREMENT RATHER THAN A PREFERENCE.
+ *
+ * If uncovered requests simply scored lower, a floor on the raw BM25 total would do the job and the
+ * ratio would be decoration. They do not. The sixteen engine-facing tasks the library has no module
+ * for out-score the eighty it covers, because BM25 sums over the query's terms and those prompts are
+ * long. Pinned here so that a future ranker change which quietly removes the length dependence — a
+ * good change — shows up as this test going red and gets the ratio reconsidered, rather than leaving
+ * a constant in verified-modules.ts justified by a fact that stopped being true.
+ */
+test('an uncovered request out-scores a covered one on the raw total, which is why the floor is a ratio', () => {
+  const { coveredRight, offCorpus, uncoveredLoo, coveredWrong } = out.medians;
+  assert.ok(
+    offCorpus.top1Score > coveredRight.top1Score,
+    `off-corpus median top-1 ${offCorpus.top1Score} no longer exceeds covered ${coveredRight.top1Score} — an absolute floor may now be viable, re-read the sweep`,
+  );
+  // And on the ratio the order is the one a policy needs.
+  assert.ok(coveredRight.confidence > uncoveredLoo.confidence, 'the ratio no longer separates covered from uncovered');
+  assert.ok(coveredRight.confidence > offCorpus.confidence, 'the ratio no longer separates covered from off-corpus');
+  assert.ok(coveredRight.confidence > coveredWrong.confidence, 'the ratio no longer separates a right top-1 from a wrong one');
+});
+
+/**
  * THE HARNESS REPRODUCES THE TWO NUMBERS THAT ARE ALREADY ON RECORD.
  *
  * 73/80 is the shipped door's top-1 in docs/frontier-for-roblox.md §4.1, and 80/80 is the library

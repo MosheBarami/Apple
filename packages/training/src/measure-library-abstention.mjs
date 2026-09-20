@@ -132,6 +132,26 @@ export function confidence(ranked) {
   return (top1 - top2) / top1;
 }
 
+/**
+ * The two raw scores travel with every row, because the ABSOLUTE score is half the finding.
+ *
+ * Recording only the ratio would leave the claim "an absolute floor waves through exactly the wrong
+ * requests" resting on a number no committed artifact holds. It rests on these: the median top-1 of
+ * the sixteen off-corpus prompts is HIGHER than the median top-1 of the eighty the library covers.
+ */
+const scoresOf = (ranked) => ({
+  top1Score: Number((ranked[0]?.score ?? 0).toFixed(4)),
+  top2Score: Number((ranked[1]?.score ?? 0).toFixed(4)),
+});
+
+const median = (values) => {
+  if (!values.length) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = sorted.length >> 1;
+  const m = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  return Number(m.toFixed(4));
+};
+
 const fenced = (source) => '```luau\n' + source + '\n```';
 
 export async function measure() {
@@ -162,6 +182,7 @@ export async function measure() {
       top1: ranked[0]?.m.id ?? null,
       correct: ranked[0]?.m.id === ex.id,
       confidence: confidence(ranked),
+      ...scoresOf(ranked),
       hits: ranked.length,
     });
 
@@ -173,6 +194,7 @@ export async function measure() {
       id: ex.id,
       handedOver: handed?.id ?? null,
       confidence: confidence(struck),
+      ...scoresOf(struck),
       passedAnyway: outcome.ok,
       reason: outcome.ok ? null : outcome.reason,
     });
@@ -180,7 +202,7 @@ export async function measure() {
 
   const offCorpus = FRONTIER_ITEMS.map((item) => {
     const ranked = ni.rankByNeed(item.prompt);
-    return { id: item.id, top1: ranked[0]?.m.id ?? null, confidence: confidence(ranked), hits: ranked.length };
+    return { id: item.id, top1: ranked[0]?.m.id ?? null, confidence: confidence(ranked), ...scoresOf(ranked), hits: ranked.length };
   });
 
   //[[ The generation fallback is joined PER PROMPT out of the recorded arms, so a row that the arm
@@ -226,6 +248,15 @@ export async function measure() {
     modelCalls: 0,
     librarySanity: `${sanity}/${ALL_GAME_LOGIC_CURRICULUM.length} verified modules pass the curriculum\'s own checks when executed`,
     statistic: 'relative margin (top1 - top2) / top1 over rankByNeed()',
+    //[[ The one comparison that decides RELATIVE over ABSOLUTE, kept as a field rather than left in
+    //   prose: if offCorpus.top1Score is not below coveredRight.top1Score, a score floor is safe and
+    //   this whole approach is unnecessary. It is not below it. It is above it.
+    medians: {
+      coveredRight: { top1Score: median(covered.filter((r) => r.correct).map((r) => r.top1Score)), confidence: median(covered.filter((r) => r.correct).map((r) => r.confidence)) },
+      coveredWrong: { top1Score: median(covered.filter((r) => !r.correct).map((r) => r.top1Score)), confidence: median(covered.filter((r) => !r.correct).map((r) => r.confidence)) },
+      uncoveredLoo: { top1Score: median(loo.map((r) => r.top1Score)), confidence: median(loo.map((r) => r.confidence)) },
+      offCorpus: { top1Score: median(offCorpus.map((r) => r.top1Score)), confidence: median(offCorpus.map((r) => r.confidence)) },
+    },
     shippedDoorTop1: `${covered.filter((r) => r.correct).length}/${covered.length}`,
     armTotals,
     uncoveredHandOverPassedAnyway: `${loo.filter((r) => r.passedAnyway).length}/${loo.length}`,

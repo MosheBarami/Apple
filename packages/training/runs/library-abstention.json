@@ -1,9 +1,27 @@
 {
- "measuredAt": "2026-09-20T23:15:21.068Z",
+ "measuredAt": "2026-09-20T23:21:29.303Z",
  "what": "Can the verified-module door tell a request it covers from one it does not? Zero model calls; every hand-over is EXECUTED against the request's own checks.",
  "modelCalls": 0,
  "librarySanity": "80/80 verified modules pass the curriculum's own checks when executed",
  "statistic": "relative margin (top1 - top2) / top1 over rankByNeed()",
+ "medians": {
+  "coveredRight": {
+   "top1Score": 18.9146,
+   "confidence": 0.4482
+  },
+  "coveredWrong": {
+   "top1Score": 10.4104,
+   "confidence": 0.0742
+  },
+  "uncoveredLoo": {
+   "top1Score": 8.8273,
+   "confidence": 0.1465
+  },
+  "offCorpus": {
+   "top1Score": 20.1315,
+   "confidence": 0.1139
+  }
+ },
  "shippedDoorTop1": "73/80",
  "armTotals": {
   "baseline": 53,
@@ -304,6 +322,8 @@
    "top1": "purchase-transaction",
    "correct": true,
    "confidence": 0.5085175637373665,
+   "top1Score": 28.2124,
+   "top2Score": 13.8659,
    "hits": 78
   },
   {
@@ -311,6 +331,8 @@
    "top1": "bounded-reward",
    "correct": true,
    "confidence": 0.09660956792342229,
+   "top1Score": 12.1717,
+   "top2Score": 10.9958,
    "hits": 58
   },
   {
@@ -318,6 +340,8 @@
    "top1": "cooldown-clock",
    "correct": true,
    "confidence": 0.1282903431737718,
+   "top1Score": 11.4135,
+   "top2Score": 9.9493,
    "hits": 28
   },
   {
@@ -325,6 +349,8 @@
    "top1": "ordered-checkpoints",
    "correct": true,
    "confidence": 0.6949620745745431,
+   "top1Score": 26.6218,
+   "top2Score": 8.1207,
    "hits": 76
   },
   {
@@ -332,6 +358,8 @@
    "top1": "inventory-capacity",
    "correct": true,
    "confidence": 0.11850005323641133,
+   "top1Score": 16.0308,
+   "top2Score": 14.1312,
    "hits": 54
   },
   {
@@ -339,6 +367,8 @@
    "top1": "round-transitions",
    "correct": true,
    "confidence": 0.4839279340847704,
+   "top1Score": 18.3133,
+   "top2Score": 9.451,
    "hits": 31
   },
   {
@@ -346,6 +376,8 @@
    "top1": "level-from-xp",
    "correct": true,
    "confidence": 0.1715790935751041,
+   "top1Score": 7.6446,
+   "top2Score": 6.333,
    "hits": 41
   },
   {
@@ -353,6 +385,8 @@
    "top1": "unlock-prerequisites",
    "correct": true,
    "confidence": 0.42476908745076564,
+   "top1Score": 12.3406,
+   "top2Score": 7.0987,
    "hits": 71
   },
   {
@@ -360,6 +394,8 @@
    "top1": "finite-normalization",
    "correct": true,
    "confidence": 0.022586837511004456,
+   "top1Score": 14.6344,
+   "top2Score": 14.3038,
    "hits": 70
   },
   {
@@ -367,6 +403,8 @@
    "top1": "stable-leaderboard",
    "correct": true,
    "confidence": 0.11698411281632674,
+   "top1Score": 19.9218,
+   "top2Score": 17.5912,
    "hits": 49
   },
   {
@@ -374,6 +412,8 @@
    "top1": "weighted-selection",
    "correct": true,
    "confidence": 0.2663466757511492,
+   "top1Score": 16.5269,
+   "top2Score": 12.125,
    "hits": 47
   },
   {
@@ -381,6 +421,8 @@
    "top1": "validate-action-payload",
    "correct": false,
    "confidence": 0.0741891014731605,
+   "top1Score": 6.2936,
+   "top2Score": 5.8267,
    "hits": 47
   },
   {
@@ -388,6 +430,8 @@
    "top1": "merge-ranges",
    "correct": true,
    "confidence": 0.6664123783130306,
+   "top1Score": 22.4321,
+   "top2Score": 7.4831,
    "hits": 73
   },
   {
@@ -395,6 +439,8 @@
    "top1": "dependency-order",
    "correct": true,
    "confidence": 0.24093297708071193,
+   "top1Score": 10.9589,
+   "top2Score": 8.3185,
    "hits": 61
   },
   {
@@ -402,6 +448,8 @@
    "top1": "crafting-batches",
    "correct": true,
    "confidence": 0.4341471415616233,
+   "top1Score": 18.7338,
+   "top2Score": 10.6006,
    "hits": 68
   },
   {
@@ -409,6 +457,8 @@
    "top1": "seeded-shuffle",
    "correct": true,
    "confidence": 0.7048899115878323,
+   "top1Score": 22.4063,
+   "top2Score": 6.6123,
    "hits": 48
   },
   {
@@ -416,6 +466,8 @@
    "top1": "quest-step",
    "correct": false,
    "confidence": 0.15067549130345892,
+   "top1Score": 10.2663,
+   "top2Score": 8.7194,
    "hits": 46
   },
   {
@@ -423,6 +475,8 @@
    "top1": "honest-percent",
    "correct": false,
    "confidence": 0.3206063794927756,
+   "top1Score": 12.5761,
+   "top2Score": 8.5441,
    "hits": 28
   },
   {
@@ -430,6 +484,8 @@
    "top1": "route-cost",
    "correct": true,
    "confidence": 0.3609572262256532,
+   "top1Score": 32.5171,
+   "top2Score": 20.7798,
    "hits": 33
   },
   {
@@ -437,6 +493,8 @@
    "top1": "team-balance",
    "correct": true,
    "confidence": 0.4541033639707708,
+   "top1Score": 17.3758,
+   "top2Score": 9.4854,
    "hits": 19
   },
   {
@@ -444,6 +502,8 @@
    "top1": "fit-ui-aspect",
    "correct": true,
    "confidence": 0.44773140884789964,
+   "top1Score": 24.322,
+   "top2Score": 13.4323,
    "hits": 38
   },
   {
@@ -451,6 +511,8 @@
    "top1": "visible-ui-rows",
    "correct": true,
    "confidence": 0.546378408140367,
+   "top1Score": 21.8304,
+   "top2Score": 9.9027,
    "hits": 58
   },
   {
@@ -458,6 +520,8 @@
    "top1": "ui-grid-columns",
    "correct": true,
    "confidence": 0.3384789856944535,
+   "top1Score": 20.56,
+   "top2Score": 13.6009,
    "hits": 34
   },
   {
@@ -465,6 +529,8 @@
    "top1": "escape-ui-richtext",
    "correct": true,
    "confidence": 0.45934093707383955,
+   "top1Score": 23.147,
+   "top2Score": 12.5146,
    "hits": 36
   },
   {
@@ -472,6 +538,8 @@
    "top1": "session-window",
    "correct": true,
    "confidence": 0.4193007877274597,
+   "top1Score": 19.2809,
+   "top2Score": 11.1964,
    "hits": 48
   },
   {
@@ -479,6 +547,8 @@
    "top1": "dense-sample-mean",
    "correct": true,
    "confidence": 0.32931208757191127,
+   "top1Score": 9.2681,
+   "top2Score": 6.216,
    "hits": 71
   },
   {
@@ -486,6 +556,8 @@
    "top1": "parse-hex-colour",
    "correct": false,
    "confidence": 0.37827403976963997,
+   "top1Score": 19.2847,
+   "top2Score": 11.9898,
    "hits": 18
   },
   {
@@ -493,6 +565,8 @@
    "top1": "compact-under-ceiling",
    "correct": true,
    "confidence": 0.1258000467534531,
+   "top1Score": 13.071,
+   "top2Score": 11.4267,
    "hits": 73
   },
   {
@@ -500,6 +574,8 @@
    "top1": "radial-damage-falloff",
    "correct": true,
    "confidence": 0.6592656421117054,
+   "top1Score": 23.2969,
+   "top2Score": 7.9381,
    "hits": 41
   },
   {
@@ -507,6 +583,8 @@
    "top1": "due-respawns",
    "correct": true,
    "confidence": 0.09876760866976204,
+   "top1Score": 18.9146,
+   "top2Score": 17.0465,
    "hits": 49
   },
   {
@@ -514,6 +592,8 @@
    "top1": "rating-bracket",
    "correct": true,
    "confidence": 0.7571478870380198,
+   "top1Score": 20.0944,
+   "top2Score": 4.88,
    "hits": 20
   },
   {
@@ -521,6 +601,8 @@
    "top1": "loot-budget",
    "correct": true,
    "confidence": 0.2251252678329067,
+   "top1Score": 10.5141,
+   "top2Score": 8.1471,
    "hits": 34
   },
   {
@@ -528,6 +610,8 @@
    "top1": "stamina-regen",
    "correct": true,
    "confidence": 0.3662798386489562,
+   "top1Score": 24.9945,
+   "top2Score": 15.8395,
    "hits": 49
   },
   {
@@ -535,6 +619,8 @@
    "top1": "hunger-drain",
    "correct": true,
    "confidence": 0.46146923919881166,
+   "top1Score": 10.0045,
+   "top2Score": 5.3877,
    "hits": 37
   },
   {
@@ -542,6 +628,8 @@
    "top1": "prestige-conversion",
    "correct": true,
    "confidence": 0.6894589391374053,
+   "top1Score": 23.0673,
+   "top2Score": 7.1634,
    "hits": 63
   },
   {
@@ -549,6 +637,8 @@
    "top1": "progress-segments",
    "correct": false,
    "confidence": 0.01194321575647719,
+   "top1Score": 12.2226,
+   "top2Score": 12.0766,
    "hits": 57
   },
   {
@@ -556,6 +646,8 @@
    "top1": "ability-charges",
    "correct": true,
    "confidence": 0.6236161777290616,
+   "top1Score": 21.5858,
+   "top2Score": 8.1245,
    "hits": 43
   },
   {
@@ -563,6 +655,8 @@
    "top1": "projectile-lead",
    "correct": true,
    "confidence": 0.7340462604273296,
+   "top1Score": 32.7927,
+   "top2Score": 8.7213,
    "hits": 30
   },
   {
@@ -570,6 +664,8 @@
    "top1": "grid-snap",
    "correct": true,
    "confidence": 0.4172411417349293,
+   "top1Score": 15.0073,
+   "top2Score": 8.7457,
    "hits": 16
   },
   {
@@ -577,6 +673,8 @@
    "top1": "grid-route-cost",
    "correct": true,
    "confidence": 0.3526971226367207,
+   "top1Score": 28.4551,
+   "top2Score": 18.4191,
    "hits": 37
   },
   {
@@ -584,6 +682,8 @@
    "top1": "stack-into-slots",
    "correct": true,
    "confidence": 0.2963975099151607,
+   "top1Score": 23.1899,
+   "top2Score": 16.3165,
    "hits": 45
   },
   {
@@ -591,6 +691,8 @@
    "top1": "trade-offer-check",
    "correct": true,
    "confidence": 0.4482056840744767,
+   "top1Score": 18.35,
+   "top2Score": 10.1255,
    "hits": 45
   },
   {
@@ -598,6 +700,8 @@
    "top1": "auction-bid",
    "correct": true,
    "confidence": 0.7920291855557213,
+   "top1Score": 31.7483,
+   "top2Score": 6.6027,
    "hits": 25
   },
   {
@@ -605,6 +709,8 @@
    "top1": "token-bucket-spend",
    "correct": true,
    "confidence": 0.4772355565913712,
+   "top1Score": 11.3368,
+   "top2Score": 5.9265,
    "hits": 18
   },
   {
@@ -612,6 +718,8 @@
    "top1": "speed-audit",
    "correct": true,
    "confidence": 0.7101034424486096,
+   "top1Score": 16.5257,
+   "top2Score": 4.7908,
    "hits": 30
   },
   {
@@ -619,6 +727,8 @@
    "top1": "seat-assignment",
    "correct": true,
    "confidence": 0.6149386285852385,
+   "top1Score": 19.9317,
+   "top2Score": 7.6749,
    "hits": 11
   },
   {
@@ -626,6 +736,8 @@
    "top1": "elevator-next-floor",
    "correct": true,
    "confidence": 0.5582976835424747,
+   "top1Score": 15.5071,
+   "top2Score": 6.8495,
    "hits": 32
   },
   {
@@ -633,6 +745,8 @@
    "top1": "day-night-phase",
    "correct": true,
    "confidence": 0.5511601460073219,
+   "top1Score": 14.0673,
+   "top2Score": 6.314,
    "hits": 20
   },
   {
@@ -640,6 +754,8 @@
    "top1": "wave-difficulty",
    "correct": true,
    "confidence": 0.42258119032562347,
+   "top1Score": 12.4968,
+   "top2Score": 7.2159,
    "hits": 39
   },
   {
@@ -647,6 +763,8 @@
    "top1": "combo-multiplier",
    "correct": true,
    "confidence": 0.6624389638621146,
+   "top1Score": 23.4393,
+   "top2Score": 7.9122,
    "hits": 47
   },
   {
@@ -654,6 +772,8 @@
    "top1": "leaderboard-insert",
    "correct": true,
    "confidence": 0.4402728234909243,
+   "top1Score": 14.2353,
+   "top2Score": 7.9679,
    "hits": 44
   },
   {
@@ -661,6 +781,8 @@
    "top1": "spawn-clearance",
    "correct": true,
    "confidence": 0.2158177960881698,
+   "top1Score": 11.0142,
+   "top2Score": 8.6371,
    "hits": 77
   },
   {
@@ -668,6 +790,8 @@
    "top1": "chest-respawn",
    "correct": true,
    "confidence": 0.21043242788695565,
+   "top1Score": 15.2348,
+   "top2Score": 12.0289,
    "hits": 26
   },
   {
@@ -675,6 +799,8 @@
    "top1": "tool-durability",
    "correct": true,
    "confidence": 0.7938925868872635,
+   "top1Score": 26.5808,
+   "top2Score": 5.4785,
    "hits": 25
   },
   {
@@ -682,6 +808,8 @@
    "top1": "buff-stacks",
    "correct": true,
    "confidence": 0.5493300105086114,
+   "top1Score": 19.2136,
+   "top2Score": 8.659,
    "hits": 48
   },
   {
@@ -689,6 +817,8 @@
    "top1": "abbreviate-counter",
    "correct": true,
    "confidence": 0.7468715029586088,
+   "top1Score": 14.7831,
+   "top2Score": 3.742,
    "hits": 42
   },
   {
@@ -696,6 +826,8 @@
    "top1": "day-night-phase",
    "correct": false,
    "confidence": 0.06193675845382868,
+   "top1Score": 10.4104,
+   "top2Score": 9.7656,
    "hits": 49
   },
   {
@@ -703,6 +835,8 @@
    "top1": "ordinal-suffix",
    "correct": true,
    "confidence": 0.6069492337154049,
+   "top1Score": 26.1348,
+   "top2Score": 10.2723,
    "hits": 74
   },
   {
@@ -710,6 +844,8 @@
    "top1": "truncate-display-name",
    "correct": true,
    "confidence": 0.5155313417466509,
+   "top1Score": 22.1164,
+   "top2Score": 10.7147,
    "hits": 23
   },
   {
@@ -717,6 +853,8 @@
    "top1": "wrap-label-text",
    "correct": true,
    "confidence": 0.5925185113801563,
+   "top1Score": 21.8635,
+   "top2Score": 8.909,
    "hits": 22
   },
   {
@@ -724,6 +862,8 @@
    "top1": "paginate-list",
    "correct": true,
    "confidence": 0.3919944788562696,
+   "top1Score": 15.4952,
+   "top2Score": 9.4212,
    "hits": 48
   },
   {
@@ -731,6 +871,8 @@
    "top1": "grid-cell-position",
    "correct": true,
    "confidence": 0.15943723637412333,
+   "top1Score": 17.6656,
+   "top2Score": 14.8491,
    "hits": 70
   },
   {
@@ -738,6 +880,8 @@
    "top1": "scrollbar-thumb",
    "correct": true,
    "confidence": 0.028092965087216384,
+   "top1Score": 8.9377,
+   "top2Score": 8.6866,
    "hits": 12
   },
   {
@@ -745,6 +889,8 @@
    "top1": "anchor-inside-bounds",
    "correct": true,
    "confidence": 0.3381608884153333,
+   "top1Score": 13.9328,
+   "top2Score": 9.2213,
    "hits": 34
   },
   {
@@ -752,6 +898,8 @@
    "top1": "progress-segments",
    "correct": true,
    "confidence": 0.4332332444093887,
+   "top1Score": 15.2623,
+   "top2Score": 8.6501,
    "hits": 47
   },
   {
@@ -759,6 +907,8 @@
    "top1": "finite-normalization",
    "correct": false,
    "confidence": 0.026707701274337078,
+   "top1Score": 4.9319,
+   "top2Score": 4.8001,
    "hits": 40
   },
   {
@@ -766,6 +916,8 @@
    "top1": "remap-range",
    "correct": true,
    "confidence": 0.5655170584163319,
+   "top1Score": 12.7471,
+   "top2Score": 5.5384,
    "hits": 68
   },
   {
@@ -773,6 +925,8 @@
    "top1": "smoothstep-between",
    "correct": true,
    "confidence": 0.05573834884922031,
+   "top1Score": 11.5674,
+   "top2Score": 10.9227,
    "hits": 65
   },
   {
@@ -780,6 +934,8 @@
    "top1": "parse-hex-colour",
    "correct": true,
    "confidence": 0.7683642106770933,
+   "top1Score": 27.5355,
+   "top2Score": 6.3782,
    "hits": 41
   },
   {
@@ -787,6 +943,8 @@
    "top1": "deep-table-equality",
    "correct": true,
    "confidence": 0.5703089693482013,
+   "top1Score": 19.3659,
+   "top2Score": 8.3214,
    "hits": 39
   },
   {
@@ -794,6 +952,8 @@
    "top1": "merge-settings",
    "correct": true,
    "confidence": 0.2497144700348984,
+   "top1Score": 16.8212,
+   "top2Score": 12.6207,
    "hits": 24
   },
   {
@@ -801,6 +961,8 @@
    "top1": "validate-action-payload",
    "correct": true,
    "confidence": 0.06527126007606564,
+   "top1Score": 8.68,
+   "top2Score": 8.1134,
    "hits": 52
   },
   {
@@ -808,6 +970,8 @@
    "top1": "filter-by-search",
    "correct": true,
    "confidence": 0.6755742624229517,
+   "top1Score": 23.0492,
+   "top2Score": 7.4777,
    "hits": 32
   },
   {
@@ -815,6 +979,8 @@
    "top1": "sort-inventory-rows",
    "correct": true,
    "confidence": 0.5379668710089874,
+   "top1Score": 20.6176,
+   "top2Score": 9.526,
    "hits": 29
   },
   {
@@ -822,6 +988,8 @@
    "top1": "tooltip-placement",
    "correct": true,
    "confidence": 0.6508612370974836,
+   "top1Score": 30.5429,
+   "top2Score": 10.6637,
    "hits": 25
   },
   {
@@ -829,6 +997,8 @@
    "top1": "zoom-notches",
    "correct": true,
    "confidence": 0.6828691245805328,
+   "top1Score": 21.223,
+   "top2Score": 6.7305,
    "hits": 16
   },
   {
@@ -836,6 +1006,8 @@
    "top1": "snap-slider-value",
    "correct": true,
    "confidence": 0.6627434291480175,
+   "top1Score": 16.2723,
+   "top2Score": 5.4879,
    "hits": 14
   },
   {
@@ -843,6 +1015,8 @@
    "top1": "notification-queue",
    "correct": true,
    "confidence": 0.6211986675935318,
+   "top1Score": 21.2288,
+   "top2Score": 8.0415,
    "hits": 71
   },
   {
@@ -850,6 +1024,8 @@
    "top1": "project-client-fields",
    "correct": true,
    "confidence": 0.43722293156679043,
+   "top1Score": 23.5723,
+   "top2Score": 13.2659,
    "hits": 43
   },
   {
@@ -857,6 +1033,8 @@
    "top1": "distribute-column-widths",
    "correct": true,
    "confidence": 0.30494976396598666,
+   "top1Score": 21.171,
+   "top2Score": 14.7149,
    "hits": 38
   }
  ],
@@ -865,6 +1043,8 @@
    "id": "purchase-transaction",
    "handedOver": "token-bucket-spend",
    "confidence": 0.20487311992783067,
+   "top1Score": 13.8659,
+   "top2Score": 11.0252,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -872,6 +1052,8 @@
    "id": "bounded-reward",
    "handedOver": "notification-queue",
    "confidence": 0.2580258303013501,
+   "top1Score": 10.9958,
+   "top2Score": 8.1586,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -879,6 +1061,8 @@
    "id": "cooldown-clock",
    "handedOver": "token-bucket-spend",
    "confidence": 0.3194099165223043,
+   "top1Score": 9.9493,
+   "top2Score": 6.7714,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -886,6 +1070,8 @@
    "id": "ordered-checkpoints",
    "handedOver": "turn-rotation",
    "confidence": 0.09786846782125541,
+   "top1Score": 8.1207,
+   "top2Score": 7.3259,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -893,6 +1079,8 @@
    "id": "inventory-capacity",
    "handedOver": "stack-into-slots",
    "confidence": 0.23100747061476717,
+   "top1Score": 14.1312,
+   "top2Score": 10.8668,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -900,6 +1088,8 @@
    "id": "round-transitions",
    "handedOver": "due-respawns",
    "confidence": 0.20090879667574496,
+   "top1Score": 9.451,
+   "top2Score": 7.5522,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -907,6 +1097,8 @@
    "id": "level-from-xp",
    "handedOver": "prestige-conversion",
    "confidence": 0.1519490356083986,
+   "top1Score": 6.333,
+   "top2Score": 5.3707,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -914,6 +1106,8 @@
    "id": "unlock-prerequisites",
    "handedOver": "cooldown-clock",
    "confidence": 0.08991140981733847,
+   "top1Score": 7.0987,
+   "top2Score": 6.4604,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -921,6 +1115,8 @@
    "id": "finite-normalization",
    "handedOver": "remap-range",
    "confidence": 0.024214915853956936,
+   "top1Score": 14.3038,
+   "top2Score": 13.9575,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -928,6 +1124,8 @@
    "id": "stable-leaderboard",
    "handedOver": "leaderboard-insert",
    "confidence": 0.424792999814317,
+   "top1Score": 17.5912,
+   "top2Score": 10.1186,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -935,6 +1133,8 @@
    "id": "weighted-selection",
    "handedOver": "compact-under-ceiling",
    "confidence": 0.14739147918414702,
+   "top1Score": 12.125,
+   "top2Score": 10.3379,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -942,6 +1142,8 @@
    "id": "interval-overlap",
    "handedOver": "validate-action-payload",
    "confidence": 0.0741891014731605,
+   "top1Score": 6.2936,
+   "top2Score": 5.8267,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -949,6 +1151,8 @@
    "id": "merge-ranges",
    "handedOver": "stack-into-slots",
    "confidence": 0.02891365073635937,
+   "top1Score": 7.4831,
+   "top2Score": 7.2667,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -956,6 +1160,8 @@
    "id": "dependency-order",
    "handedOver": "quest-step",
    "confidence": 0.04916919094818554,
+   "top1Score": 8.3185,
+   "top2Score": 7.9095,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -963,6 +1169,8 @@
    "id": "crafting-batches",
    "handedOver": "ui-grid-columns",
    "confidence": 0.19112566495385788,
+   "top1Score": 10.6006,
+   "top2Score": 8.5745,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -970,6 +1178,8 @@
    "id": "seeded-shuffle",
    "handedOver": "compact-under-ceiling",
    "confidence": 0.04758562308910784,
+   "top1Score": 6.6123,
+   "top2Score": 6.2977,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -977,6 +1187,8 @@
    "id": "turn-rotation",
    "handedOver": "quest-step",
    "confidence": 0.15067549130345892,
+   "top1Score": 10.2663,
+   "top2Score": 8.7194,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -984,6 +1196,8 @@
    "id": "damage-mitigation",
    "handedOver": "honest-percent",
    "confidence": 0.3206063794927756,
+   "top1Score": 12.5761,
+   "top2Score": 8.5441,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -991,6 +1205,8 @@
    "id": "route-cost",
    "handedOver": "grid-route-cost",
    "confidence": 0.5963928964864467,
+   "top1Score": 20.7798,
+   "top2Score": 8.3869,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -998,6 +1214,8 @@
    "id": "team-balance",
    "handedOver": "seat-assignment",
    "confidence": 0.14309166666125397,
+   "top1Score": 9.4854,
+   "top2Score": 8.1281,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1005,6 +1223,8 @@
    "id": "fit-ui-aspect",
    "handedOver": "ui-grid-columns",
    "confidence": 0.03881677438788468,
+   "top1Score": 13.4323,
+   "top2Score": 12.9109,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1012,6 +1232,8 @@
    "id": "visible-ui-rows",
    "handedOver": "scrollbar-thumb",
    "confidence": 0.049844143086287776,
+   "top1Score": 9.9027,
+   "top2Score": 9.4091,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1019,6 +1241,8 @@
    "id": "ui-grid-columns",
    "handedOver": "distribute-column-widths",
    "confidence": 0.3088597033804532,
+   "top1Score": 13.6009,
+   "top2Score": 9.4001,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1026,6 +1250,8 @@
    "id": "escape-ui-richtext",
    "handedOver": "wrap-label-text",
    "confidence": 0.11952882976894948,
+   "top1Score": 12.5146,
+   "top2Score": 11.0188,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1033,6 +1259,8 @@
    "id": "session-window",
    "handedOver": "stamina-regen",
    "confidence": 0.19467302759895613,
+   "top1Score": 11.1964,
+   "top2Score": 9.0168,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1040,6 +1268,8 @@
    "id": "dense-sample-mean",
    "handedOver": "purchase-transaction",
    "confidence": 0.5349048605519487,
+   "top1Score": 6.216,
+   "top2Score": 2.891,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1047,6 +1277,8 @@
    "id": "meter-band",
    "handedOver": "parse-hex-colour",
    "confidence": 0.5514194749254973,
+   "top1Score": 19.2847,
+   "top2Score": 8.6507,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1054,6 +1286,8 @@
    "id": "compact-under-ceiling",
    "handedOver": "due-respawns",
    "confidence": 0.03923981606862491,
+   "top1Score": 11.4267,
+   "top2Score": 10.9783,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1061,6 +1295,8 @@
    "id": "radial-damage-falloff",
    "handedOver": "damage-mitigation",
    "confidence": 0.024447799487377287,
+   "top1Score": 7.9381,
+   "top2Score": 7.744,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1068,6 +1304,8 @@
    "id": "due-respawns",
    "handedOver": "chest-respawn",
    "confidence": 0.32317069464492243,
+   "top1Score": 17.0465,
+   "top2Score": 11.5376,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1075,6 +1313,8 @@
    "id": "rating-bracket",
    "handedOver": "unlock-prerequisites",
    "confidence": 0.012352771284579343,
+   "top1Score": 4.88,
+   "top2Score": 4.8197,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1082,6 +1322,8 @@
    "id": "loot-budget",
    "handedOver": "weighted-selection",
    "confidence": 0.0345501894998497,
+   "top1Score": 8.1471,
+   "top2Score": 7.8657,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1089,6 +1331,8 @@
    "id": "stamina-regen",
    "handedOver": "ability-charges",
    "confidence": 0.4034654770093133,
+   "top1Score": 15.8395,
+   "top2Score": 9.4488,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1096,6 +1340,8 @@
    "id": "hunger-drain",
    "handedOver": "notification-queue",
    "confidence": 0.19064222995148078,
+   "top1Score": 5.3877,
+   "top2Score": 4.3606,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1103,6 +1349,8 @@
    "id": "prestige-conversion",
    "handedOver": "honest-percent",
    "confidence": 0.009267976892813482,
+   "top1Score": 7.1634,
+   "top2Score": 7.097,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1110,6 +1358,8 @@
    "id": "quest-step",
    "handedOver": "progress-segments",
    "confidence": 0.01824995153781297,
+   "top1Score": 12.2226,
+   "top2Score": 11.9996,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1117,6 +1367,8 @@
    "id": "ability-charges",
    "handedOver": "cooldown-clock",
    "confidence": 0.15909468615455225,
+   "top1Score": 8.1245,
+   "top2Score": 6.832,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1124,6 +1376,8 @@
    "id": "projectile-lead",
    "handedOver": "tool-durability",
    "confidence": 0.12094767408482913,
+   "top1Score": 8.7213,
+   "top2Score": 7.6665,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1131,6 +1385,8 @@
    "id": "grid-snap",
    "handedOver": "grid-route-cost",
    "confidence": 0.3745851423972948,
+   "top1Score": 8.7457,
+   "top2Score": 5.4697,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1138,6 +1394,8 @@
    "id": "grid-route-cost",
    "handedOver": "ui-grid-columns",
    "confidence": 0.4231262690055657,
+   "top1Score": 18.4191,
+   "top2Score": 10.6255,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1145,6 +1403,8 @@
    "id": "stack-into-slots",
    "handedOver": "inventory-capacity",
    "confidence": 0.3865114457955888,
+   "top1Score": 16.3165,
+   "top2Score": 10.01,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1152,6 +1412,8 @@
    "id": "trade-offer-check",
    "handedOver": "validate-action-payload",
    "confidence": 0.23330167238329916,
+   "top1Score": 10.1255,
+   "top2Score": 7.7632,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1159,6 +1421,8 @@
    "id": "auction-bid",
    "handedOver": "interval-overlap",
    "confidence": 0.07625799776270185,
+   "top1Score": 6.6027,
+   "top2Score": 6.0992,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1166,6 +1430,8 @@
    "id": "token-bucket-spend",
    "handedOver": "projectile-lead",
    "confidence": 0.1456398620599547,
+   "top1Score": 5.9265,
+   "top2Score": 5.0633,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1173,6 +1439,8 @@
    "id": "speed-audit",
    "handedOver": "projectile-lead",
    "confidence": 0.19009531741357139,
+   "top1Score": 4.7908,
+   "top2Score": 3.8801,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1180,6 +1448,8 @@
    "id": "seat-assignment",
    "handedOver": "grid-snap",
    "confidence": 0.3544787777017701,
+   "top1Score": 7.6749,
+   "top2Score": 4.9543,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1187,6 +1457,8 @@
    "id": "elevator-next-floor",
    "handedOver": "ability-charges",
    "confidence": 0.18369506500791474,
+   "top1Score": 6.8495,
+   "top2Score": 5.5913,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1194,6 +1466,8 @@
    "id": "day-night-phase",
    "handedOver": "progress-segments",
    "confidence": 0.0720879706677164,
+   "top1Score": 6.314,
+   "top2Score": 5.8588,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1201,6 +1475,8 @@
    "id": "wave-difficulty",
    "handedOver": "dense-sample-mean",
    "confidence": 0.11146875662829414,
+   "top1Score": 7.2159,
+   "top2Score": 6.4115,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1208,6 +1484,8 @@
    "id": "combo-multiplier",
    "handedOver": "remap-range",
    "confidence": 0.07254930310766179,
+   "top1Score": 7.9122,
+   "top2Score": 7.3382,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1215,6 +1493,8 @@
    "id": "leaderboard-insert",
    "handedOver": "compact-under-ceiling",
    "confidence": 0.003438295772375611,
+   "top1Score": 7.9679,
+   "top2Score": 7.9405,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1222,6 +1502,8 @@
    "id": "spawn-clearance",
    "handedOver": "grid-route-cost",
    "confidence": 0.2703561319116923,
+   "top1Score": 8.6371,
+   "top2Score": 6.302,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1229,6 +1511,8 @@
    "id": "chest-respawn",
    "handedOver": "token-bucket-spend",
    "confidence": 0.0808941415981125,
+   "top1Score": 12.0289,
+   "top2Score": 11.0558,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1236,6 +1520,8 @@
    "id": "tool-durability",
    "handedOver": "crafting-batches",
    "confidence": 0.03896234095391156,
+   "top1Score": 5.4785,
+   "top2Score": 5.265,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1243,6 +1529,8 @@
    "id": "buff-stacks",
    "handedOver": "inventory-capacity",
    "confidence": 0.1452717034908278,
+   "top1Score": 8.659,
+   "top2Score": 7.4011,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1250,6 +1538,8 @@
    "id": "abbreviate-counter",
    "handedOver": "stable-leaderboard",
    "confidence": 0.019698194265836817,
+   "top1Score": 3.742,
+   "top2Score": 3.6683,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1257,6 +1547,8 @@
    "id": "format-duration",
    "handedOver": "day-night-phase",
    "confidence": 0.06193675845382868,
+   "top1Score": 10.4104,
+   "top2Score": 9.7656,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1264,6 +1556,8 @@
    "id": "ordinal-suffix",
    "handedOver": "leaderboard-insert",
    "confidence": 0.19849154746956058,
+   "top1Score": 10.2723,
+   "top2Score": 8.2333,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1271,6 +1565,8 @@
    "id": "truncate-display-name",
    "handedOver": "wrap-label-text",
    "confidence": 0.2868415316771178,
+   "top1Score": 10.7147,
+   "top2Score": 7.6413,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1278,6 +1574,8 @@
    "id": "wrap-label-text",
    "handedOver": "grid-snap",
    "confidence": 0.11547911582305123,
+   "top1Score": 8.909,
+   "top2Score": 7.8802,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1285,6 +1583,8 @@
    "id": "paginate-list",
    "handedOver": "stack-into-slots",
    "confidence": 0.20027600746256297,
+   "top1Score": 9.4212,
+   "top2Score": 7.5344,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1292,6 +1592,8 @@
    "id": "grid-cell-position",
    "handedOver": "ui-grid-columns",
    "confidence": 0.30851773111278097,
+   "top1Score": 14.8491,
+   "top2Score": 10.2679,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1299,6 +1601,8 @@
    "id": "scrollbar-thumb",
    "handedOver": "grid-snap",
    "confidence": 0.39972981359665044,
+   "top1Score": 8.6866,
+   "top2Score": 5.2143,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1306,6 +1610,8 @@
    "id": "anchor-inside-bounds",
    "handedOver": "tooltip-placement",
    "confidence": 0.0369003127622759,
+   "top1Score": 9.2213,
+   "top2Score": 8.881,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1313,6 +1619,8 @@
    "id": "progress-segments",
    "handedOver": "quest-step",
    "confidence": 0.08588501598507924,
+   "top1Score": 8.6501,
+   "top2Score": 7.9072,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1320,6 +1628,8 @@
    "id": "honest-percent",
    "handedOver": "finite-normalization",
    "confidence": 0.026707701274337078,
+   "top1Score": 4.9319,
+   "top2Score": 4.8001,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1327,6 +1637,8 @@
    "id": "remap-range",
    "handedOver": "parse-hex-colour",
    "confidence": 0.03033580532925716,
+   "top1Score": 5.5384,
+   "top2Score": 5.3704,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1334,6 +1646,8 @@
    "id": "smoothstep-between",
    "handedOver": "remap-range",
    "confidence": 0.43340017198091074,
+   "top1Score": 10.9227,
+   "top2Score": 6.1888,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1341,6 +1655,8 @@
    "id": "parse-hex-colour",
    "handedOver": "ordinal-suffix",
    "confidence": 0.3516126344130479,
+   "top1Score": 6.3782,
+   "top2Score": 4.1356,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1348,6 +1664,8 @@
    "id": "deep-table-equality",
    "handedOver": "unlock-prerequisites",
    "confidence": 0.003985682584077829,
+   "top1Score": 8.3214,
+   "top2Score": 8.2882,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1355,6 +1673,8 @@
    "id": "merge-settings",
    "handedOver": "deep-table-equality",
    "confidence": 0.48922022564314627,
+   "top1Score": 12.6207,
+   "top2Score": 6.4464,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1362,6 +1682,8 @@
    "id": "validate-action-payload",
    "handedOver": "fit-ui-aspect",
    "confidence": 0.14344452776879432,
+   "top1Score": 8.1134,
+   "top2Score": 6.9496,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1369,6 +1691,8 @@
    "id": "filter-by-search",
    "handedOver": "compact-under-ceiling",
    "confidence": 0.06363066839537461,
+   "top1Score": 7.4777,
+   "top2Score": 7.0019,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1376,6 +1700,8 @@
    "id": "sort-inventory-rows",
    "handedOver": "stable-leaderboard",
    "confidence": 0.15418263483070097,
+   "top1Score": 9.526,
+   "top2Score": 8.0573,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1383,6 +1709,8 @@
    "id": "tooltip-placement",
    "handedOver": "paginate-list",
    "confidence": 0.21646424818078652,
+   "top1Score": 10.6637,
+   "top2Score": 8.3554,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1390,6 +1718,8 @@
    "id": "zoom-notches",
    "handedOver": "smoothstep-between",
    "confidence": 0.12582956141348148,
+   "top1Score": 6.7305,
+   "top2Score": 5.8836,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1397,6 +1727,8 @@
    "id": "snap-slider-value",
    "handedOver": "grid-snap",
    "confidence": 0.12176922535192217,
+   "top1Score": 5.4879,
+   "top2Score": 4.8197,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1404,6 +1736,8 @@
    "id": "notification-queue",
    "handedOver": "cooldown-clock",
    "confidence": 0.02707872379954974,
+   "top1Score": 8.0415,
+   "top2Score": 7.8238,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1411,6 +1745,8 @@
    "id": "project-client-fields",
    "handedOver": "validate-action-payload",
    "confidence": 0.6089897208964353,
+   "top1Score": 13.2659,
+   "top2Score": 5.1871,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   },
@@ -1418,6 +1754,8 @@
    "id": "distribute-column-widths",
    "handedOver": "ui-grid-columns",
    "confidence": 0.3226858233061041,
+   "top1Score": 14.7149,
+   "top2Score": 9.9666,
    "passedAnyway": false,
    "reason": "fails_own_checks"
   }
@@ -1427,96 +1765,128 @@
    "id": "anim-emote",
    "top1": "trade-offer-check",
    "confidence": 0.08849118530303866,
+   "top1Score": 13.1073,
+   "top2Score": 11.9474,
    "hits": 70
   },
   {
    "id": "round-countdown",
    "top1": "format-duration",
    "confidence": 0.037720848534720804,
+   "top1Score": 14.8413,
+   "top2Score": 14.2815,
    "hits": 77
   },
   {
    "id": "platform-mover",
    "top1": "smoothstep-between",
    "confidence": 0.1517226017632473,
+   "top1Score": 19.4594,
+   "top2Score": 16.5069,
    "hits": 79
   },
   {
    "id": "chat-system-message",
    "top1": "truncate-display-name",
    "confidence": 0.22086595461865052,
+   "top1Score": 20.0096,
+   "top2Score": 15.5902,
    "hits": 74
   },
   {
    "id": "ui-slide-in",
    "top1": "anchor-inside-bounds",
    "confidence": 0.11562924780307572,
+   "top1Score": 22.5674,
+   "top2Score": 19.958,
    "hits": 75
   },
   {
    "id": "look-raycast",
    "top1": "spawn-clearance",
    "confidence": 0.07115711712663046,
+   "top1Score": 16.0367,
+   "top2Score": 14.8955,
    "hits": 75
   },
   {
    "id": "shop-debit",
    "top1": "purchase-transaction",
    "confidence": 0.08824691644379194,
+   "top1Score": 31.1132,
+   "top2Score": 28.3676,
    "hits": 76
   },
   {
    "id": "client-quantity",
    "top1": "purchase-transaction",
    "confidence": 0.11217711587628894,
+   "top1Score": 25.8234,
+   "top2Score": 22.9266,
    "hits": 78
   },
   {
    "id": "admin-command",
    "top1": "due-respawns",
    "confidence": 0.24741168574794695,
+   "top1Score": 20.2534,
+   "top2Score": 15.2425,
    "hits": 80
   },
   {
    "id": "reward-cooldown",
    "top1": "token-bucket-spend",
    "confidence": 0.1267565466241206,
+   "top1Score": 20.9572,
+   "top2Score": 18.3008,
    "hits": 78
   },
   {
    "id": "pet-rename",
    "top1": "project-client-fields",
    "confidence": 0.22905068017812666,
+   "top1Score": 18.4384,
+   "top2Score": 14.215,
    "hits": 75
   },
   {
    "id": "save-survives-throttle",
    "top1": "project-client-fields",
    "confidence": 0.3472932080177655,
+   "top1Score": 20.6963,
+   "top2Score": 13.5086,
    "hits": 77
   },
   {
    "id": "atomic-add",
    "top1": "compact-under-ceiling",
    "confidence": 0.008049336664811287,
+   "top1Score": 19.2732,
+   "top2Score": 19.1181,
    "hits": 80
   },
   {
    "id": "save-with-analytics",
    "top1": "trade-offer-check",
    "confidence": 0.037784031661628366,
+   "top1Score": 16.9458,
+   "top2Score": 16.3055,
    "hits": 76
   },
   {
    "id": "shutdown-save",
    "top1": "project-client-fields",
    "confidence": 0.2876665281977708,
+   "top1Score": 23.2299,
+   "top2Score": 16.5474,
    "hits": 76
   },
   {
    "id": "failed-load-no-wipe",
    "top1": "merge-settings",
    "confidence": 0.06386560687056445,
+   "top1Score": 24.0336,
+   "top2Score": 22.4986,
    "hits": 79
   }
  ]

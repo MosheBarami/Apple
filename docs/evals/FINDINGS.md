@@ -6,23 +6,46 @@
 > type the old runs never faced (see [SCRIPTING-CURRICULUM.md](../SCRIPTING-CURRICULUM.md)). A
 > future overall score is **not** comparable to the 98.9% below; re-baseline before comparing.
 
-## Historical: `@cf/zai-org/glm-5.3-flash` was production from 2026-08-30
+## `@cf/zai-org/glm-5.3-flash` IS production again — asked of the deployed worker, 2026-09-21
 
-**THIS IS NO LONGER THE PRODUCTION MODEL, AND THIS HEADING SAID IT WAS.** Corrected 2026-09-15.
+**A CORRECTION THAT WENT STALE IS STILL A WRONG ANSWER.** This heading said GLM was production;
+on 2026-09-15 that was corrected to say it was not; GLM then came back, and the correction became
+the stale paragraph. Both are recorded below, because a document that quietly rewrites itself
+teaches nobody why it was wrong.
 
-GLM is on Cloudflare's paid-billing-required list: on the Workers Free plan every call returns
-HTTP 403 / error 5035, so a product that must cost nothing recurring cannot be built on it. The
-gateway records the reasoning at `apps/worker/src/gateway.ts:85-92` — "every mode USED TO resolve
-to `@cf/zai-org/glm-5.3-flash`". What ships today is `@cf/openai/gpt-oss-20b` and
-`@cf/openai/gpt-oss-120b`, with `@cf/meta/llama-3.2-11b-vision-instruct` for vision.
+**What the deployed worker answers today.** Not read out of `gateway.ts` — asked of
+`https://apple.moshe-barami111.workers.dev` at `buildSha 3236f91-dirty`, one call per gateway key
+through `/api/admin/model-test`, 1 neuron each:
 
-GLM remains in the price table at `apps/worker/src/pricing.ts:28`, which is why a grep finds it and
-why "is it referenced" was the wrong question to ask of it.
+| gateway key | reached by | served by, live |
+|---|---|---|
+| `stone` | Agent, **and every mode on the free Apple lane** | `@cf/zai-org/glm-5.3-flash` |
+| `rune` | Super Agent on Apple MAX | `@cf/zai-org/glm-5.3-flash` |
+| `clay` | Plan | `@cf/qwen/qwen3-30b-a3b-fp8` |
+| `vision` | screenshot critique | `@cf/zai-org/glm-5.3-flash` |
+
+`@cf/openai/gpt-oss-20b` and `@cf/openai/gpt-oss-120b` are still *available* on the account — they
+appear in `/api/admin/model-routing` — but nothing routes to them. "Is it referenced" was the wrong
+question to ask of a model id in 2026-09-15 and it is still the wrong question: the only answer that
+settles it is what a call to the deployed worker comes back served by.
+
+**Why the 2026-09-15 paragraph said otherwise, kept verbatim so the reasoning survives:** GLM is on
+Cloudflare's paid-billing-required list, so on the Workers Free plan every call returned HTTP 403 /
+error 5035, and a product that must cost nothing recurring could not be built on it. That constraint
+is what moved production off GLM. It moved back when the account did.
+
+**`stone` and `rune` are the same model, and since 2026-09-20 they also have the same ceiling**
+(6500, commit `8b61c91`) and the same effort floor on a paid lane. So per single call, Apple and
+Apple MAX now resolve identically in Agent **and** Super Agent, and differ only in Plan mode. What
+Apple MAX still buys is not a bigger or different brain per call: it is `maxStepsFor` (the free lane
+is capped at Plan's step limit), exemption from the 8-step high-effort budget in `reasoning.ts`, and
+a larger daily allowance. That is the honest axis and it is the one a customer can be told. Anything
+in the product, the pricing page or a telemetry assumption that implies MAX gets a better model per
+call is describing a world that ended on 2026-09-20.
 
 The comparison below is kept because it is real and dated — it is how the choice was made at the
 time, and deleting it would lose the reasoning. It is not a statement about what runs now. The
-blockquote above already warns that the SUITE has changed; this warns that the MODEL has too, which
-is the larger of the two and was the one not written down.
+blockquote above already warns that the SUITE has changed.
 
 Measured on the 56-task Roblox suite, **same corrected grader for both models**:
 
