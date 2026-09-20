@@ -26,7 +26,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -35,24 +37,69 @@ const LAYOUT = readFileSync(join(SITE, 'src', 'layouts', 'Landing.astro'), 'utf8
 const CSS = readFileSync(join(SITE, 'src', 'styles', 'landing.css'), 'utf8');
 const PAGE = readFileSync(join(SITE, 'src', 'pages', 'index.astro'), 'utf8');
 
-/** The reveal script as it will be served: the inline block that drives [data-reveal]. */
-function revealScript() {
-  const blocks = [...LAYOUT.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1]);
-  const hit = blocks.filter((b) => /data-reveal/.test(b) && /classList/.test(b));
-  assert.equal(hit.length, 1,
-    `expected exactly one reveal script in Landing.astro, found ${hit.length}`);
-  return hit[0];
+/**
+ * EVERY layout that hides content behind a class, not just the one somebody remembered.
+ *
+ * This file was written for Landing.astro. Base.astro — which serves /docs, /changelog and
+ * /pricing — hides its content exactly the same way through global.css, and had NO failsafe: the
+ * branch for a missing IntersectionObserver was there, and nothing covered an observer that is
+ * present and simply never fires. That was found by reading the deployed /changelog, where two of
+ * three reveal targets sat at opacity 0, and not by this test, because this test was only ever
+ * looking at one file.
+ *
+ * So the layouts are discovered from the directory rather than named. A third layout added later
+ * that hides content this way is covered on the day it lands.
+ */
+const LAYOUT_DIR = join(SITE, 'src', 'layouts');
+const LAYOUTS = readdirSync(LAYOUT_DIR)
+  .filter((f) => f.endsWith('.astro'))
+  .map((f) => ({ name: f, source: readFileSync(join(LAYOUT_DIR, f), 'utf8') }))
+  .filter((l) => /data-reveal|\.kinetic/.test(l.source) && /classList/.test(l.source));
+
+/**
+ * The reveal script as it will be served, for one layout.
+ *
+ * Astro lets a component's <script> be TypeScript and compiles it on the way out, and Base.astro's
+ * uses that — `querySelectorAll<HTMLElement>(...)` and `entry.target as HTMLElement`. Running the
+ * raw text throws `Unexpected identifier 'as'`, which is a fact about the harness rather than the
+ * page, so the types are stripped with the same esbuild binary the rest of this repository's tests
+ * already use. What is executed below is the code the browser will run, not a paraphrase of it.
+ */
+function revealScript(source, name) {
+  const blocks = [...source.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1]);
+  const hit = blocks.filter((b) => /data-reveal|\.kinetic/.test(b) && /classList/.test(b));
+  assert.equal(hit.length, 1, `expected exactly one reveal script in ${name}, found ${hit.length}`);
+  return stripTypes(hit[0], name);
+}
+
+const ESBUILD = join(SITE, '..', 'worker', 'node_modules', '.bin', 'esbuild');
+function stripTypes(code, name) {
+  if (!/:\s*(?:HTMLElement|Element|string|number)\b|\bas\s+HTML|<HTMLElement>/.test(code)) return code;
+  const dir = mkdtempSync(join(tmpdir(), 'reveal-'));
+  const src = join(dir, 'reveal.ts');
+  writeFileSync(src, code);
+  try {
+    return execFileSync(ESBUILD, [src, '--loader:.ts=ts', '--format=esm', '--target=es2022'],
+      { stdio: ['ignore', 'pipe', 'pipe'] }).toString();
+  } catch (err) {
+    assert.fail(`could not strip types from ${name}'s reveal script: ${err.message}`);
+  }
 }
 
 /** Run the real script against a DOM stub, with the environment dialled per branch. */
-function run({ observer = true, fireEntries = true, nodes = 6 } = {}) {
+function run({ observer = true, fireEntries = true, nodes = 6, script } = {}) {
   const made = [];
   for (let i = 0; i < nodes; i++) {
     const classes = new Set();
     const attrs = { 'data-reveal': '', ...(i === 2 ? { 'data-reveal-delay': '140' } : {}) };
+    // BOTH SPELLINGS, because the two layouts read the delay differently and both are correct:
+    // Landing.astro uses getAttribute('data-reveal-delay'), Base.astro uses dataset.revealDelay.
+    // A node offering only one of them would fail the layout that uses the other, and the failure
+    // would look like a missing feature rather than a missing stub.
     made.push({
       classList: { add: (c) => classes.add(c), contains: (c) => classes.has(c) },
       getAttribute: (k) => (k in attrs ? attrs[k] : null),
+      dataset: { revealDelay: attrs['data-reveal-delay'] },
       style: { props: {}, setProperty(k, v) { this.props[k] = v; } },
       _classes: classes,
     });
@@ -63,11 +110,50 @@ function run({ observer = true, fireEntries = true, nodes = 6 } = {}) {
   let timerFn = null;
   let timerMs = null;
 
+    const src = script ?? revealScript(LAYOUT, 'Landing.astro');
+
+  /*
+   * Base.astro's single <script> carries the theme wiring and a sound toggle alongside the reveals,
+   * so running it needs more of a browser than Landing's does. Everything below exists only to let
+   * the REAL script run to completion. None of it is under test: if a stub is missing the script
+   * throws and the reveal assertions fail loudly, which is the behaviour to want — a harness that
+   * swallowed the error would report a failsafe as present on a script that never reached it.
+   */
+  const noopEl = {
+    classList: { add() {}, remove() {}, contains: () => false, toggle() {} },
+    setAttribute() {}, getAttribute: () => null, addEventListener() {}, removeEventListener() {},
+    style: { setProperty() {} }, dataset: {}, querySelectorAll: () => [], querySelector: () => null,
+    closest: () => null, focus() {}, click() {}, appendChild() {}, remove() {},
+  };
+
   const sandbox = {
     console,
-    document: { querySelectorAll: (sel) => (/\[data-reveal\]/.test(sel) ? made : []) },
+    document: {
+      querySelectorAll: (sel) => (/\[data-reveal\]|\.kinetic/.test(sel) ? made : []),
+      querySelector: () => noopEl,
+      getElementById: () => noopEl,
+      createElement: () => noopEl,
+      documentElement: noopEl,
+      body: noopEl,
+      hidden: false,
+      addEventListener() {}, removeEventListener() {},
+    },
     setTimeout: (fn, ms) => { timerFn = fn; timerMs = ms; return 1; },
     clearTimeout: () => {},
+    matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {}, addListener() {} }),
+    getComputedStyle: () => ({ getPropertyValue: () => '' }),
+    localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
+    sessionStorage: { getItem: () => null, setItem() {}, removeItem() {} },
+    requestAnimationFrame: (fn) => { fn(0); return 1; },
+    cancelAnimationFrame: () => {},
+    addEventListener() {}, removeEventListener() {},
+    AudioContext: function AudioContext() {
+      return {
+        createOscillator: () => ({ connect() {}, start() {}, stop() {}, frequency: { value: 0, setValueAtTime() {} }, type: '' }),
+        createGain: () => ({ connect() {}, gain: { value: 0, setValueAtTime() {}, exponentialRampToValueAtTime() {} } }),
+        destination: {}, currentTime: 0, resume() {}, state: 'running',
+      };
+    },
   };
   if (observer) {
     sandbox.IntersectionObserver = class {
@@ -90,7 +176,7 @@ function run({ observer = true, fireEntries = true, nodes = 6 } = {}) {
       constructor(cb, opts) { super(cb, opts); instance = this; }
     };
   }
-  vm.runInContext(revealScript(), sandbox, { timeout: 5000, filename: 'Landing.astro' });
+  vm.runInContext(src, sandbox, { timeout: 5000, filename: 'layout' });
 
   if (observer && fireEntries && instance) instance.fire(made);
 
@@ -208,4 +294,45 @@ function blockAt(text, open) {
     else if (text[i] === '}') { depth--; if (!depth) return text.slice(open + 1, i); }
   }
   return '';
+}
+
+/* ===========================================================================================
+ * AND NOW FOR EVERY LAYOUT, because the guarantee belongs to the mechanism rather than to one file.
+ * =========================================================================================== */
+
+test('every layout that hides content this way was found, so the loop below is not empty', () => {
+  assert.ok(LAYOUTS.length >= 2,
+    `only ${LAYOUTS.length} layout(s) drive [data-reveal]. Landing.astro and Base.astro both do, so `
+    + 'the discovery has drifted and the per-layout checks would silently cover less than they say.');
+  assert.ok(LAYOUTS.some((l) => l.name === 'Base.astro'),
+    'Base.astro was not discovered — it serves /docs, /changelog and /pricing, all of which hide '
+    + 'their content at opacity 0');
+});
+
+for (const layout of LAYOUTS) {
+  test(`${layout.name}: an observer that never fires cannot hide the page`, () => {
+    const script = revealScript(layout.source, layout.name);
+    const r = run({ observer: true, fireEntries: false, script });
+    assert.equal(r.shown(), 0, 'the harness is not actually withholding the observer callback');
+    assert.ok(r.failsafeMs() > 0 && r.failsafeMs() <= 5000,
+      `${layout.name} schedules its failsafe at ${r.failsafeMs()}ms — too late to be one`);
+    r.runFailsafe();
+    assert.equal(r.hidden(), 0,
+      `${layout.name} leaves copy invisible when its observer stays silent. On /changelog that is a `
+      + 'release history rendered to nobody.');
+    assert.ok(r.disconnected(), `${layout.name} leaves the observer connected after the failsafe`);
+  });
+
+  test(`${layout.name}: with no IntersectionObserver everything is shown at once`, () => {
+    const script = revealScript(layout.source, layout.name);
+    const r = run({ observer: false, script });
+    assert.equal(r.hidden(), 0, `${layout.name} renders its copy invisible without IntersectionObserver`);
+  });
+
+  test(`${layout.name}: the ordinary path reveals and stops observing`, () => {
+    const script = revealScript(layout.source, layout.name);
+    const r = run({ observer: true, fireEntries: true, script });
+    assert.equal(r.hidden(), 0, `${layout.name} left sections hidden on the ordinary path`);
+    assert.equal(r.observedCount(), 0, `${layout.name} keeps observing elements it already revealed`);
+  });
 }
