@@ -42,9 +42,11 @@
  *   3. THE BOTTOM WASH, in --ground. Without it the near rungs terminate against the edge of the
  *      viewport in a hard bright bar. With it the floor arrives out of the page's own colour.
  *
- *   4. THE SKY. Ninety particles, above the horizon only, lit by the band — alpha strongest near
- *      it, falling to a quarter at the top of the frame — drifting up and across, and carrying a
- *      little parallax off the vanishing point so the sky leans when the floor does.
+ *   4. THE SKY. A hundred and ten particles (`SKY` below; this line read "ninety" for as long as
+ *      the constant did not), above the horizon only, lit by the band — alpha strongest near it,
+ *      falling to a quarter at the top of the frame — drifting up and across, and carrying a little
+ *      parallax off the vanishing point so the sky leans when the floor does. ON A PHONE THERE IS
+ *      NO SKY AT ALL; see "the four ways it gives up" below.
  *
  * ================================ THE DECORATION YIELDS, AND HERE IS THE ARITHMETIC
  *
@@ -55,8 +57,13 @@
  * 0.65h. The only thing this file paints in that band is the upper tail of the glow and a scattering
  * of 1px dots, which is the thinnest part of the composition by construction rather than by luck.
  *
- * ================================ THE THREE WAYS IT GIVES UP
+ * ================================ THE FOUR WAYS IT GIVES UP
  *
+ *   - a phone (max-width: 767px): the SKY is not seeded and the vanishing point does not chase the
+ *     pointer. Two layers are gone rather than every layer being made cheaper — the band, the floor
+ *     and the wash are drawn exactly as they are at 1440px. The note beside `const phone` below
+ *     carries the measurement that made this necessary and the reason thinning the floor would have
+ *     been the wrong answer.
  *   - prefers-reduced-motion: ONE frame is drawn at a fixed phase and the loop never starts. Not a
  *     blank box — the grid, the band, the wash and the whole sky are all there, they simply do not
  *     move. The still frame is a finished composition, which is the only version of "less motion"
@@ -131,6 +138,35 @@
     // it is exactly what a visitor sees.
     if (ctx) {
       const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+      /*[[ THE PHONE, AND IT IS A QUERY RATHER THAN A WIDTH READ ONCE.
+       *
+       *   THE OWNER'S WORDS ARE "fewer effects", NOT "the same effects made cheap", and until this
+       *   line existed this file did neither. Measured on the live origin on 2026-09-21, the
+       *   backing store on a 375x812 phone at dpr 2 was 750x1624 = 1.22 megapixels against
+       *   1425x900 = 1.28 on a 1440px desktop — the phone was repainting 95% of the DESKTOP's
+       *   pixel count, every frame, forever, on the device with the smaller battery and the
+       *   slower GPU. Nothing in this file had ever looked at the width.
+       *
+       *   SO TWO WHOLE LAYERS GO, AND NOTHING IS THINNED. `seed` and the pointer handler below are
+       *   the only two readers:
+       *     the sky   — 110 motes, three context calls each, 330 of the ~560 operations this
+       *                 frame issues. It is the single most expensive thing here and it is 1px
+       *                 dots on a near-black field behind a headline.
+       *     the lean  — the vanishing point chasing a pointing device a phone does not have.
+       *                 `pointermove` DOES fire for a finger, so this was not merely idle there:
+       *                 dragging the page sideways swung the horizon, which is a horizon behaving
+       *                 like a mobile.
+       *   The band, the floor and the wash — the art direction — are untouched and full strength.
+       *   Making the rails or the rungs sparser would be the same picture drawn worse, which is
+       *   the half of the instruction that is easy to miss.
+       *
+       *   NO `change` LISTENER, AND THAT IS NOT AN OMISSION. A width query cannot change without a
+       *   resize, and the resize handler below already stops the loop and re-boots, which re-seeds.
+       *   `reduced` has its own listener because a preference CAN change with the viewport still.
+       *   The breakpoint is 767 because that is landing.css's phone breakpoint, and the mesh in the
+       *   capability stage already reads the same number through matchMedia for the same reason —
+       *   one number, read in both places, rather than two that can drift. ]]*/
+      const phone = window.matchMedia('(max-width: 767px)');
       const TAU = Math.PI * 2;
 
       /* ---------------------------------------------------------------- the theme, read not typed */
@@ -224,7 +260,10 @@
         vpy = h * HORIZON;
       };
 
-      const seed = () => { dust = Array.from({ length: SKY }, mote); };
+      // An EMPTY sky on a phone, not a smaller one. `dust` is replaced rather than emptied in
+      // place, which is the same contract the line above it has always had, so the `for..of` in
+      // the frame simply issues no operations and the layer costs nothing at all.
+      const seed = () => { dust = phone.matches ? [] : Array.from({ length: SKY }, mote); };
 
       /* -------------------------------------------------------------------------------- the frame */
 
@@ -347,6 +386,11 @@
         resize();
         readTheme();
         seed();
+        // A desktop window dragged narrow crosses the breakpoint with `pointer.on` already true and
+        // a coordinate from the wide layout still in it. Clearing it here is what makes the lean
+        // stop on the frame the phone rule starts applying, rather than on the next pointer event
+        // that a phone will never send.
+        if (phone.matches) { pointer.on = false; }
         if (reduced.matches) {
           // ONE still frame, at a phase chosen so the rungs are mid-stride rather than stacked on
           // the edges of the floor. Everything is present; nothing moves again.
@@ -366,6 +410,9 @@
       }, { passive: true });
 
       addEventListener('pointermove', (e) => {
+        // Read fresh on every event rather than gated at registration, so a window dragged across
+        // the breakpoint in either direction gets the right behaviour without a second listener.
+        if (phone.matches) return;
         const r = canvas.getBoundingClientRect();
         pointer.x = e.clientX - r.left;
         pointer.y = e.clientY - r.top;

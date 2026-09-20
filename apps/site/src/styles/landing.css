@@ -1749,6 +1749,29 @@ p, li, dd, dt, figcaption, blockquote { text-wrap: pretty; }
   .rd, .cw { grid-template-columns: minmax(0, 1fr); }
   .cw-render { aspect-ratio: 220 / 110; }
   .gm-canvas { height: 168px; }
+
+  /*[[ THE SKY MOVES AS ONE OBJECT ON A PHONE INSTEAD OF AS TWENTY-SEVEN.
+   *
+   *   MEASURED ON THE LIVE ORIGIN, 2026-09-21, with `document.getAnimations()`: 375x812 ran 56
+   *   animations and 1440x900 ran 72, and TWENTY-SIX of the phone's were `stratum-drift` — the
+   *   identical count the desktop runs. The block above this one has said "fewer effects on a
+   *   phone, not the same effects made cheap" since it was written, and it meant it for the four
+   *   capability stages; the atmosphere behind them was never looked at. Twenty-six independently
+   *   phased transforms is twenty-six composited layers, and at 375px the bands they move are
+   *   0.45px strokes at 0.34 opacity behind a headline.
+   *
+   *   WHAT STAYS, WHICH IS THE POINT. `.atmosphere svg` keeps `drift` and `.light-column` keeps
+   *   `column-breathe`, so the sky still moves and the composer is still lit — one moving layer
+   *   each, which is what "fewer" means as against "none". The bands themselves are still PAINTED
+   *   at full grade: this removes a motion, not a picture, and a phone that rotates past 768px
+   *   gets all twenty-seven back with no script involved.
+   *
+   *   `animation: none` rather than a paused state or a zero duration, for the reason the
+   *   reduced-motion block at the foot of this file gives: a near-zero animation still RUNS and
+   *   jumps to its end transform, which would leave every band 64px off where the still art puts
+   *   it. Both rules live INSIDE this @media, so living-background.test.mjs — which reads
+   *   top-level rules only, to prove the page has live animations at all — is untouched by them. ]]*/
+  .strata, .stratum { animation: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
