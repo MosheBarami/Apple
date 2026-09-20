@@ -39,9 +39,21 @@ import { MANDATORY_REASON, eventEnabled, toggledEvents } from '../../lib/notific
 
 const CODING_STYLES = ['idiomatic', 'minimal', 'commented', 'strict-typed', 'oop', 'functional'] as const;
 const RESPONSE_LENGTHS = ['brief', 'normal', 'detailed'] as const;
+//[[ HEBREW IS NOT OFFERED, ON THE OWNER'S DECISION OF 2026-09-20.
+//
+//   An audit drove a Hebrew prompt through the real product and the result was not a translation
+//   gap, it was silent data loss: "אובי עם לבה ו3 שלבים" came back as a skill query for an obby
+//   with a collectible HEART — לבה (lava) had become לב (heart) — and the run_intent for it
+//   returned an empty checklist, empty questions and empty assumptions where the identical English
+//   prompt was fully populated. The person is not told any of that; they get a build missing the
+//   thing they asked for.
+//
+//   Offering a language chip is a promise that the product works in that language. It did not, so
+//   the chip goes rather than the promise being quietly wrong. This is a removal of a CLAIM, not of
+//   text handling: `dir="auto"`, the bidi tests and the RTL layout work all stay, because a person
+//   who types Hebrew anyway must still see their own words rendered the right way round. ]]
 const LANGUAGES: { tag: string; label: string }[] = [
   { tag: 'en', label: 'English' },
-  { tag: 'he', label: 'עברית' },
   { tag: 'es', label: 'Español' },
   { tag: 'pt-BR', label: 'Português (BR)' },
   { tag: 'fr', label: 'Français' },

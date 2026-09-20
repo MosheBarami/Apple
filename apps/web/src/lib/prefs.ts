@@ -60,7 +60,6 @@ export const REGIONS = [
   'ja-JP',
   'ko-KR',
   'zh-CN',
-  'he-IL',
 ] as const;
 export type Region = (typeof REGIONS)[number];
 
@@ -77,7 +76,9 @@ export const REGION_NAMES: Readonly<Record<Region, string>> = {
   'ja-JP': 'Japanese (Japan)',
   'ko-KR': 'Korean (Korea)',
   'zh-CN': 'Chinese (China)',
-  'he-IL': 'Hebrew (Israel)',
+  // 'he-IL' was removed on 2026-09-20 with the Hebrew language chip: a Hebrew prompt was measured
+  // losing a word silently (לבה -> לב, lava -> heart) and returning an empty run intent. Offering a
+  // locale is a claim that the product works in it.
 };
 
 // A "default project view" preference was drafted here and REMOVED before it shipped, which is

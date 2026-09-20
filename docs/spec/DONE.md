@@ -16,7 +16,7 @@ looks right" is not a pass. A clause nobody could measure is UNMEASURED, never P
 | A1 | Lands on the site and within three seconds knows what this is and why it beats writing code alone | first screen at 1280 and 375 carries a one-line answer above the fold |
 | A2 | Signs up with an email. No card, no questionnaire | the sign-up path asks for email only |
 | A3 | Sees a composer with an example sentence in it | the empty composer shows a real example, not a bare placeholder |
-| A4 | Types "an obby with lava and 3 stages" and it is understood | Hebrew and English short prompts both start a build |
+| A4 | Types "an obby with lava and 3 stages" and it is understood | a short English prompt starts a build. HEBREW WAS REMOVED on 2026-09-20: a Hebrew prompt was measured losing a word silently (לבה -> לב, lava -> heart) and returning an empty run intent, so the product no longer offers it |
 | A5 | Watches the model think — real stages, not a spinner: what it understood, the plan, what it is building now | the thinking panel names understood / plan / current action |
 | A6 | Gets a game, opens it in Studio, it works | a run produces a place a person can open |
 | A7 | Never gets stuck. Never reads documentation | no dead end in the first-run path |
@@ -25,7 +25,7 @@ looks right" is not a pass. A clause nobody could measure is UNMEASURED, never P
 
 | id | clause |
 |---|---|
-| B1 | The composer takes Hebrew and English, including a short careless sentence |
+| B1 | The composer takes English, including a short careless sentence. Text a person types in any script still renders the right way round — that is correctness, not a claim of support |
 | B2 | Plan (looks and proposes) or Agent (builds) is chosen by the person |
 | B3 | Apple or Apple MAX is chosen by the person, and MAX actually thinks harder |
 | B4 | An image can be attached with "make it like this" |
