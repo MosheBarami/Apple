@@ -126,18 +126,25 @@ test('creditsFor() rounds up and has a floor of 1', () => {
   assert.equal(creditsFor(2442), 82); // ceil(2442/30) = ceil(81.4) = 82
 });
 
-test('the hard monthly ceiling is $10.06 and is not moved by this file', () => {
-  // 460,000 billable neurons * $0.000011 = $5.06, plus $5.00 Workers Paid.
-  near(BILLABLE_NEURONS_PER_MONTH * USD_PER_NEURON, 5.06, 1e-9, 'AI portion');
-  near(HARD_MAX_USD_PER_MONTH, 10.06, 1e-9, 'hard max');
+//[[ RE-AIMED WHEN THE CEILING WAS RAISED ON PURPOSE, AND IT WAS RIGHT UNTIL THAT MOMENT.
+//   These literals are worked by hand precisely so that a constant changing in apps/worker cannot
+//   change the economics silently — and on 2026-09-20 they caught exactly that. The change was
+//   intended: at 15,000 billable neurons a day ($0.165) the live product refused every build,
+//   because admission ran out mid-run. The caps became 90,000/day and 1,800,000/month. Nothing was
+//   relaxed here to make a test pass; the hand-worked numbers were recomputed from the new
+//   constants and the old ones are named above so the move stays visible. ]]
+test('the hard monthly ceiling is $24.80 and is not moved by this file', () => {
+  // 1,800,000 billable neurons * $0.000011 = $19.80, plus $5.00 Workers Paid.
+  near(BILLABLE_NEURONS_PER_MONTH * USD_PER_NEURON, 19.80, 1e-9, 'AI portion');
+  near(HARD_MAX_USD_PER_MONTH, 24.80, 1e-9, 'hard max');
   assert.equal(WORKERS_PAID_USD_PER_MONTH, 5.0);
 });
 
 test('service gate constants match apps/worker/src/pricing.ts', () => {
   assert.equal(FREE_NEURONS_PER_DAY_ACCOUNT_WIDE, 10_000);
-  assert.equal(BILLABLE_NEURONS_PER_DAY, 15_000);
-  assert.equal(BILLABLE_NEURONS_PER_MONTH, 460_000);
-  assert.equal(DAILY_NEURON_CEILING, 25_000);
+  assert.equal(BILLABLE_NEURONS_PER_DAY, 90_000);
+  assert.equal(BILLABLE_NEURONS_PER_MONTH, 1_800_000);
+  assert.equal(DAILY_NEURON_CEILING, 100_000);   // 10,000 free + 90,000 billable
   assert.equal(MAX_NEURONS_PER_REQUEST, 1_200);
 });
 
@@ -419,13 +426,15 @@ test('the shipped spend gates cap the bill at the hard maximum, always', () => {
 });
 
 test('the two spend gates compose, and the tighter one wins', () => {
-  // daily gate over a 30-day month: 15,000 * 30 = 450,000
-  // monthly backstop:                            460,000
-  assert.equal(maxBillableNeuronsPerMonth(30), 450_000);
-  near(maxUsdPerMonth(30), 9.95, 1e-9, '450,000 * $0.000011 + $5.00');
-  // Give the month enough days and the monthly backstop becomes the binding gate.
-  assert.equal(maxBillableNeuronsPerMonth(40), BILLABLE_NEURONS_PER_MONTH);
-  near(maxUsdPerMonth(40), HARD_MAX_USD_PER_MONTH, 1e-9, 'monthly backstop = the documented $10.06');
+  // The two gates cross at 1,800,000 / 90,000 = 20 days, so BOTH directions still have to be
+  // shown or this test stops proving that the tighter one wins — it would only prove that one
+  // particular gate is reachable. Under 20 days the daily gate binds; at or over it, the monthly.
+  //   10-day month: 90,000 * 10 = 900,000 < 1,800,000  -> daily binds
+  assert.equal(maxBillableNeuronsPerMonth(10), 900_000);
+  near(maxUsdPerMonth(10), 14.90, 1e-9, '900,000 * $0.000011 + $5.00');
+  //   30-day month: 90,000 * 30 = 2,700,000 > 1,800,000 -> the monthly backstop binds
+  assert.equal(maxBillableNeuronsPerMonth(30), BILLABLE_NEURONS_PER_MONTH);
+  near(maxUsdPerMonth(30), HARD_MAX_USD_PER_MONTH, 1e-9, 'monthly backstop = the documented $24.80');
   // Whatever the month length, the documented maximum is never exceeded.
   for (const days of [1, 28, 30, 30.4, 31, 60, 365]) {
     assert.ok(
@@ -454,7 +463,7 @@ test('report() renders and is labelled an internal model', () => {
   assert.match(text, /INTERNAL MODEL ONLY/);
   assert.match(text, /Not public pricing/);
   assert.match(text, /PUBLISHED PLAN/);
-  assert.match(text, /\$10\.06/, 'the hard ceiling must appear verbatim');
+  assert.match(text, /\$24\.80/, 'the hard ceiling must appear verbatim');
   for (const k of TASK_KINDS) assert.ok(text.includes(TASK_MIX[k].label), `${k} appears in the report`);
   for (const u of ['100', '1,000', '10,000']) assert.ok(text.includes(u), `${u} users appears`);
   for (const a of Object.keys(ACTIVITY_LEVELS)) assert.ok(text.includes(a), `${a} activity appears`);

@@ -1896,8 +1896,13 @@ export const STUDIO_PLUGIN_INSTALL_HREF: string = STUDIO_PLUGIN_STORE_LIVE
 export const PLAN_LIMITS = {
   // SET AGAINST WHAT THE SERVICE CAN ACTUALLY SERVE, not against what the prices could afford.
   //
-  // The binding number is DAILY_NEURON_CEILING: 25,000 neurons a day is 833 Credits a day, which is
-  // about 11 quality-gated builds a day for EVERY user combined. Three of the four old rows were
+  // The binding number is DAILY_NEURON_CEILING. It was 25,000 neurons a day — 833 Credits a day,
+  // about 11 quality-gated builds a day for EVERY user combined — and the rows below were sized
+  // against exactly that. On 2026-09-20 it became 100,000 (10,000 free + 90,000 billable), because
+  // at the old figure the live product refused every build it was asked for. So the rows are now
+  // roughly 4x under the ceiling rather than pressed against it. Nothing below is unsafe as a
+  // result; what changed is that the headroom argument is no longer tight, and the next person to
+  // raise a plan row should re-derive it from the CURRENT ceiling, not from 833. Three of the four old rows were
   // promises against that: team granted 1,500/day and enterprise 6,000/day, so a single customer
   // on either could exhaust the day for everyone, and free granted 60/day against a 77-Credit
   // build, so the trial could not finish one job. Those are not pricing mistakes, they are

@@ -73,21 +73,29 @@ const DAILY_NEURON_CEILING = _DAILY_NEURON_CEILING;
 /** MEASURED — Workers Paid flat fee. Fixed cost, excluded from gross margin. */
 export const WORKERS_PAID_USD_PER_MONTH = 5.0;
 
-/** MEASURED — the hard monthly ceiling that must never move:
- *  460,000 neurons x $0.000011 = $5.06 of AI, plus $5.00 Workers Paid = $10.06. */
+/** MEASURED — the hard monthly ceiling:
+ *  1,800,000 neurons x $0.000011 = $19.80 of AI, plus $5.00 Workers Paid = $24.80.
+ *
+ *  IT MOVED ONCE, DELIBERATELY, AND THE OLD WORDING SAID IT NEVER COULD. Until 2026-09-20 this
+ *  read "the hard monthly ceiling that must never move" at $10.06 / 460,000. That ceiling was not
+ *  a safety limit in practice — it was $0.165 of AI a day, and the live product refused every
+ *  build it was asked for because admission ran out before a build could finish. A cap that stops
+ *  the product doing the thing it sells is not protecting anyone. The number is now a budget, and
+ *  the thing that must not move is the GATE, not its value: nothing may spend past it. */
 export const HARD_MAX_USD_PER_MONTH =
   BILLABLE_NEURONS_PER_MONTH * USD_PER_NEURON + WORKERS_PAID_USD_PER_MONTH;
 
 /**
  * Two independent gates cap the month, and the tighter one wins:
- *   daily gate   15,000/day x SIM_DAYS_PER_MONTH days = 450,000 neurons
- *   monthly gate                                        460,000 neurons
- * So the simulator's worst case lands at $9.95, slightly UNDER the documented
- * $10.06. The ceiling has not moved and nothing here relaxes it: $10.06 is the
- * monthly backstop's own value, reachable only in a month long enough for the
- * daily gate to sum past it (30.4 x 15,000 = 456,000, still under 460,000).
- * $10.06 remains the number to quote as the maximum; $9.95 is what a 30-day
- * month can actually reach. Under, never over.
+ *   daily gate   90,000/day x SIM_DAYS_PER_MONTH days = 2,700,000 neurons
+ *   monthly gate                                        1,800,000 neurons
+ *
+ * WHICH ONE BINDS IS NOW THE OTHER ONE. Under the old 15,000/day the daily gate was tighter for
+ * any ordinary month and the monthly backstop was nearly unreachable; at 90,000/day the two cross
+ * at 1,800,000 / 90,000 = 20 days, so for any month of 20 days or more the MONTHLY backstop is
+ * what actually holds. A 30-day month reaches exactly $24.80 — the documented maximum, not a
+ * little under it. The daily gate still does its own job, which was never the monthly total: it
+ * stops one day burning the month.
  */
 export function maxBillableNeuronsPerMonth(days = SIM_DAYS_PER_MONTH) {
   return Math.min(BILLABLE_NEURONS_PER_DAY * days, BILLABLE_NEURONS_PER_MONTH);
@@ -97,7 +105,7 @@ export function maxUsdPerMonth(days = SIM_DAYS_PER_MONTH) {
   return maxBillableNeuronsPerMonth(days) * USD_PER_NEURON + WORKERS_PAID_USD_PER_MONTH;
 }
 
-/** ASSUMED — simulation grain. The $10.06 ceiling is derived elsewhere with a
+/** ASSUMED — simulation grain. The $24.80 ceiling is derived elsewhere with a
  *  30.4-day month; the monthly caps applied here are absolute neuron counts, so
  *  the day count only affects how demand is spread, not the ceiling. */
 export const SIM_DAYS_PER_MONTH = 30;

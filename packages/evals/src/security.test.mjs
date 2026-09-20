@@ -875,6 +875,24 @@ const TOOL_ARGS = {
   // A real genre, not a made-up one: an unknown name returns the error branch, which emits no
   // palette, no lighting and no sound ids — so the egress scan below would inspect a refusal and
   // report that a tool leaking asset ids is clean.
+  //[[ THE TWO KNOWLEDGE TOOLS, EGRESS REVIEWED 2026-09-20 — which is what this enumeration is for.
+  //
+  //   Both take `_ctx` and never read it: no `env.<BINDING>`, no `fetch(`, no URL literal, no
+  //   `useRobloxCredential` anywhere in apps/worker/src/ui-construction-guide.ts or
+  //   verified-modules.ts. Each imports one statically bundled JSON file under packages/corpus/data
+  //   and answers out of it. There is no network for a secret to leave by and no binding for one to
+  //   come from, so the credential scan below is over a payload that is a slice of a file committed
+  //   to this repository.
+  //
+  //   The arguments reach the BODY rather than an early return, which is the whole difficulty here:
+  //   `get_verified_module` refuses a non-string and returns a SHORTLIST for `need` but SOURCE for
+  //   `id`, and the source path is the larger egress of the two — so the fixture asks for source by
+  //   id. `screen-shop` is a real entry (16 screens, none marked incomplete), so the UI call
+  //   returns a real construction record rather than the "nobody has inspected this id" answer,
+  //   which would satisfy the enumeration while scanning almost nothing. ]]
+  get_ui_construction: { id: 'screen-shop' },
+  get_verified_module: { id: 'cooldown-clock' },
+
   get_genre_kit: { genre: 'horror' },
   find_verified_asset: { query: 'oak tree' },
   insert_asset: { assetId: 424242, parent: 'game.Workspace' },
@@ -1838,7 +1856,15 @@ test('A4 /api/providers is NOT an admin route and IS behind user auth', async ()
   //   /api/health       — no data, no side effect
   //   /api/studio/claim — a short-lived pairing code IS the credential
   //   /api/studio/poll  — the plugin's X-Golem-Token is the credential
-  //   /api/waitlist     — write-only, rate-limited, holds an email and nothing else
+  //   /api/waitlist     — REMOVED 2026-09-20, and the line above is the reason it had to be. It read
+  //     "write-only, rate-limited, holds an email and nothing else", which is a review of a route
+  //     that does not exist: there is no such handler in index.ts and no caller in apps/site or
+  //     apps/web, and measured live it 404s while a sibling unknown /api/* path 401s — the
+  //     exemption itself being observed. Nothing was broken for a user, and that was the risk. An
+  //     entry describing nothing costs nothing right up until somebody adds the handler, which then
+  //     ships already exempt with a signed-off comment attached and no second look. This list only
+  //     ever grew before; a removal narrows the unauthenticated surface, and it belongs in the
+  //     diff for the same reason an addition does.
   //   /api/billing/webhook — Stripe is not a user and has no JWT. It signs the body with a shared
   //     secret, and the route refuses with 503 when that secret is absent rather than trusting the
   //     payload. Asserted below so the exemption cannot outlive the verification.
@@ -1884,7 +1910,6 @@ test('A4 /api/providers is NOT an admin route and IS behind user auth', async ()
       '/api/recovery-request',
       '/api/studio/claim',
       '/api/studio/poll',
-      '/api/waitlist',
     ],
     'the unauthenticated route list changed — every entry needs its own review',
   );
