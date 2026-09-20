@@ -102,7 +102,7 @@
     },
     {
       "id": "rosebud-ai-design-language",
-      "source": "https://rosebud.ai/ , /pricing and /play — measured on 2026-09-20 by walking the live DOM in a real browser: getComputedStyle over every element for surface colours weighted by painted area, the type scale as actually used, radii and shadows by frequency, every button's full box spec, document.getAnimations() and a stylesheet scan for @keyframes, and the resource timing list for audio and background assets. NAMED BY THE OWNER AS THE BAR, with an explicit instruction to follow it closely in our own accent and to keep our own typeface.",
+      "source": "https://rosebud.ai/ , /pricing and /play — measured on 2026-09-20 by walking the live DOM in a real browser: getComputedStyle over every element for surface colours weighted by painted area, the type scale as actually used, radii and shadows by frequency, every button's full box spec, document.getAnimations() and a stylesheet scan for @keyframes, and the resource timing list for audio and background assets. NAMED BY THE OWNER AS THE BAR, with an explicit instruction to follow it closely in our own accent and to keep our own typeface. A second pass on a game page (/p/<game>) read every button on the action bar, which is where the full variant set is visible at once.",
       "demonstrates": [
         "THE WHOLE INTERFACE IS MONOSPACE — Source Code Pro on every node, headings included. It is the single most distinctive decision on the page and the one we are explicitly NOT taking, because the owner asked for our typeface to be kept. Everything else below is structure, and structure survives a typeface change; the type SCALE does not survive it unaltered, and the caution at the foot of this row says why.",
         "ZERO @keyframes. ZERO running animations. ZERO <canvas>. Measured on the front page, which is the page whose look was called beautiful. Its liveness is not motion at all — it is art direction plus fast transitions. That is now the third independent measurement (with chatgpt.com and grok.com) saying the same thing, against an assumption that a beautiful AI product page needs an animated background.",
@@ -119,7 +119,11 @@
         "A 1024px container, 32px section padding, and short pages: the front page is 2450px tall, pricing 1336px. Nothing is padded to fill a scroll.",
         "THE PRICING CARD IS A BORDERED PANEL WITH NO PADDING OF ITS OWN: 8px radius, 1px rgba(255,255,255,0.08) border, rgb(34,29,46) fill, and its internal bands — a title block, a highlighted bonus strip, a full-width primary button, then a dotted feature list — supply their own spacing. The strip is the only accented thing in the card.",
         "The /play gallery is filter chips over horizontally-scrolling rows of thumbnail cards, each card being image, title, then two micro-stats. It is directly the shape our project shelf wants.",
-        "NO AUDIO ASSET IS FETCHED ANYWHERE ON THE PAGE — the resource timing list contains no mp3, wav, ogg, m4a or webm — while AudioContext is available. The keypress sound the owner singled out is therefore SYNTHESISED at interaction time, not a downloaded sample. That is the cheaper technique and the one to use: a click costs no bytes and cannot fail to load."
+        "NO AUDIO ASSET IS FETCHED ANYWHERE ON THE PAGE — the resource timing list contains no mp3, wav, ogg, m4a or webm — while AudioContext is available. The keypress sound the owner singled out is therefore SYNTHESISED at interaction time, not a downloaded sample. That is the cheaper technique and the one to use: a click costs no bytes and cannot fail to load.",
+        "FIVE BUTTON VARIANTS AND THEY DIFFER ONLY BY BORDER AND TEXT COLOUR — the fill is almost never the thing that changes. All are 6px radius. CHROME: rgba(255,255,255,0.06) fill, 1px rgba(255,255,255,0.18) border, rgba(255,255,255,0.78) text. ACCENTED OUTLINE: NO fill at all, 1px rgba(accent-light,0.38) border, accent-light text. QUIET/UNAVAILABLE: no fill, 1px rgba(255,255,255,0.12) border, rgba(255,255,255,0.38) text. ICON-ONLY: fully transparent including the border, sized square at 28 or 32. PRIMARY: the accent-deep fill, used once per screen.",
+        "AN UNAVAILABLE CONTROL KEEPS ITS SHAPE AND LOSES ITS CONTRAST. Their 'Tip' button is the same 32px, same 6px radius, same padding and same tracking as the live 'Remix' beside it — only the border drops from 0.38 to 0.12 alpha and the label from full accent to 38% white. It is not greyed out, not hidden, and not a different object; it is the same object turned down. That is the answer to the two dead controls in our own composer, which currently read as breakage rather than as 'not yet'.",
+        "Control padding is tied to height and is not round: 0 8.8px at 32px with 12px/1.2px uppercase text, 0 8px at 36px chrome, 0 16px at 36px primary, 12px 24px at 50px. Icon-only buttons take no padding and are square instead.",
+        "A framed stage: the game sits in a bordered panel with its own header strip (a back link and a fullscreen control) and a footer bar carrying the title on the left and the action row on the right. The actions are ordered quiet-to-loud left to right, with the one accented action — Remix, their equivalent of 'make this yours' — sitting furthest from the title."
       ],
       "cautions": [
         "THE TYPE SCALE DOES NOT TRANSFER UNCHANGED. Their hero is 32px/48px with 1.6px tracking — small for a hero — and it reads as large only because a monospace face at 32px occupies far more width per character than a proportional one. Taking 32px into our typeface would produce a timid hero. The RULES transfer (one family, weight 700 reserved for heads, positive tracking on uppercase micro-labels, 1.5 body line height); the absolute sizes must be re-derived.",
@@ -209,6 +213,14 @@
     {
       "rule": "Synthesise interaction sound; never ship an audio file for a click.",
       "why": "The bar fetches no audio asset at all and its keypress sound is generated through AudioContext. A synthesised click costs no bytes, has no load state, and cannot be the reason a button feels late."
+    },
+    {
+      "rule": "Turn an unavailable control DOWN; never grey it out into a different object.",
+      "why": "Measured on the bar: their unavailable action keeps the same height, radius, padding and tracking as the live one beside it, and differs only by border alpha 0.38 -> 0.12 and label 100% -> 38%. Our composer currently carries two controls that read as broken rather than as not-yet, and this is the shape that fixes them without hiding a roadmap."
+    },
+    {
+      "rule": "Differentiate buttons by border and text colour, not by fill.",
+      "why": "Four of the bar's five variants have no fill at all; only the single primary button per screen is filled. A page where every button is a filled rectangle has no hierarchy left to spend."
     }
   ],
   "gapsAgainstShippedTheme": [
