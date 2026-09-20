@@ -139,7 +139,7 @@ jobs:
         # charges ceil(neurons / 30) and Clay measures 37-43, so it is 2 and 30. Stone
         # and Rune were right, which is what made it an arithmetic slip rather than a
         # different pricing model — and nothing connected the page to the arithmetic.
-        run: node scripts/check-spark-figures.mjs
+        run: node scripts/check-credit-figures.mjs
 
       - name: Heading hierarchy and landmarks
         # Structure is invisible until someone navigates by it. The landing shipped with

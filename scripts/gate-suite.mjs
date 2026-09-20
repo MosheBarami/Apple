@@ -157,6 +157,13 @@ const parts = [
   //   land somewhere else. It cost four deploys on 2026-09-20 chasing a 500 that only the old
   //   worker returned. ]]
   { label: 'check-api-base', ...run('node', ['scripts/check-api-base.mjs']) },
+  //[[ CI CALLED A SCRIPT THAT HAD BEEN RENAMED, AND WAS RED FOR FIVE DAYS.
+  //   04d3800 renamed check-spark-figures.mjs to check-credit-figures.mjs on 2026-09-15 and did not
+  //   update .github/workflows. Every run on main failed from that day. Nobody saw it because a
+  //   rename is the change that looks finished: grepping the OLD name comes back empty, which reads
+  //   as "no references left" and is actually "none in the places I grepped". .github is outside
+  //   apps/, packages/ and scripts/. A local suite cannot catch it by RUNNING; it has to read. ]]
+  { label: 'check-ci-references', ...run('node', ['scripts/check-ci-references.mjs']) },
   //[[ check-harvest-licences WENT WITH ITS SUBJECT, and this note is what is left of it.
   //
   //   It predicted, in seconds, what fraction of an asset ingest `validateProvenance` was going to
