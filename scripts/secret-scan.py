@@ -29,13 +29,50 @@ tracked and therefore diffable: a new line in it is a reviewable event. The tool
 makes a new leak VISIBLE and blocks it until someone signs off in the diff; it
 cannot tell whether that sign-off was earned.
 
+DECLARED FIXTURES, and why this is not a path exemption. Sixteen test files feed the
+redactor and the egress gate the very things they exist to catch — a JWT, an AWS access
+key id, a Slack token — because a redactor tested on a clean string proves only that one
+string survived. Every one of those values is fabricated, and every one is a
+HARD_SIGNATURE that the ALLOW list below deliberately cannot suppress. So the scanner
+failed on its own fixtures and the build stayed red.
+
+The three available moves were: weaken the fixtures until they stop matching, which guts
+the tests; exempt the paths, which is the standard way a scanner gets quietly neutered,
+because from then on ANY credential dropped into an exempt file is invisible; or make a
+fixture declare itself in a way a real leak cannot inherit.
+
+The third is what is implemented, in scripts/known-fixtures.json. An entry is keyed by
+(path, sha256 of the matched value) and holds no value bytes. That keying is the whole
+control:
+
+  - A NEW credential-shaped string in an ALREADY-DECLARED file is a new value hash, so it
+    is not covered and the build fails. This is the case a path exemption cannot see, and
+    it is the case that matters.
+  - The SAME value in a different path is not covered either, so a fixture cannot be
+    lifted out of tests/ into production source without a new, visible line.
+  - Ordinary edits to a declared file — comments, new cases, refactors — do not disturb
+    the entry, because the blob sha is not what is keyed. The register only churns when a
+    credential-shaped literal actually changes, which is exactly when a human should look.
+  - An entry that stops matching anything fails the run, like the exposure register above,
+    so a declaration cannot outlive the fixture it describes.
+
+WHAT IT STILL CANNOT DO, said plainly because the same caveat applies to the register
+above: it is an ALLOWLIST, not an attestation. Anyone who can commit can add a line
+blessing a real credential. The control is that the line is in the diff and the build
+blocks until someone writes it. The tool makes a new credential-shaped string a
+REVIEWABLE EVENT; it cannot tell whether the review happened. `--record-fixtures` refuses
+to run when CI is set in the environment, so a blessing can never be minted by a robot.
+
 Record the current state after rotating with:  secret-scan.py --record-exposures
+Declare the current in-tree fixtures with:     secret-scan.py --record-fixtures
 """
 from __future__ import annotations
 
 import base64
 import collections
+import hashlib
 import json
+import os
 import pathlib
 import re
 import subprocess
@@ -156,12 +193,45 @@ SKIP_EXT = (b".glb", b".png", b".jpg", b".jpeg", b".webp", b".woff", b".woff2",
 # that were reviewed and nothing else. Holds no credential values.
 REGISTER_PATH = pathlib.Path(__file__).resolve().parent / "known-exposures.json"
 
+# Fabricated, credential-shaped strings a test feeds to the thing that is supposed to catch
+# them. Keyed by (path, sha256 of the matched value); holds no value bytes. See the module
+# docstring for why this is keyed by value rather than by path or by blob.
+FIXTURES_PATH = pathlib.Path(__file__).resolve().parent / "known-fixtures.json"
+
 
 def load_register() -> dict:
     if not REGISTER_PATH.exists():
         return {}
     data = json.loads(REGISTER_PATH.read_text())
     return {e["blob"]: e for e in data.get("accepted", [])}
+
+
+def load_fixtures() -> dict:
+    """Declared fixtures, keyed by (path, value sha256)."""
+    if not FIXTURES_PATH.exists():
+        return {}
+    data = json.loads(FIXTURES_PATH.read_text())
+    return {(e["path"], e["value_sha256"]): e for e in data.get("declared", [])}
+
+
+def report_stale_fixtures(fixtures: dict, matched: set) -> bool:
+    """True (and printed) if any declaration matched nothing on any ref.
+
+    ONE implementation, called from both exits. There were two copies for a while — the
+    empty-findings branch and the main one — and a mutation that disabled the main copy
+    left every stale test green, because the only test covering it happened to reach the
+    other branch. Two copies of a check are one check and one blind spot.
+    """
+    stale = [k for k in fixtures if k not in matched]
+    if not stale:
+        return False
+    print("\nRESULT: A FIXTURE DECLARATION MATCHES NOTHING")
+    print("A declaration that outlives its fixture is a comment pretending to be a review.")
+    print("Re-declare with:  python3 scripts/secret-scan.py --record-fixtures")
+    for pth, vsha in sorted(stale)[:10]:
+        e = fixtures[(pth, vsha)]
+        print(f"::error::[{e['pattern']}] stale fixture declaration for {pth}  value {vsha[:12]}")
+    return True
 
 
 def sh(*args: str) -> bytes:
@@ -184,10 +254,24 @@ def jwt_role(token: bytes) -> str | None:
         return None
 
 
-def head_blobs() -> set[str]:
-    """Blob shas reachable from the current commit."""
-    out = sh("git", "ls-tree", "-r", "HEAD", "--format=%(objectname)").split()
-    return {b.decode() for b in out}
+def head_blobs() -> dict[str, list[str]]:
+    """Blob shas in the current commit, each mapped to EVERY path it occupies.
+
+    Not a set of shas. Git stores content once, so two files with identical bytes are one
+    blob, and `git rev-list --objects` then reports that blob under ONE of its paths —
+    whichever it walked first. Keying an exemption by path while reading the path from
+    rev-list therefore lets a fixture duplicated into production source be reported under
+    the test path and inherit the test's declaration. Found by
+    test_declaration_does_not_travel_to_another_path, which went green for the wrong
+    reason until this returned every path.
+    """
+    out = sh("git", "ls-tree", "-r", "HEAD", "--format=%(objectname) %(path)")
+    paths: dict[str, list[str]] = collections.defaultdict(list)
+    for line in out.splitlines():
+        sha, _, path = line.partition(b" ")
+        if path:
+            paths[sha.decode()].append(path.decode("utf8", "replace"))
+    return paths
 
 
 def main() -> int:
@@ -197,8 +281,11 @@ def main() -> int:
     # file; anything that survives only in history is reported loudly as a
     # rotation task but does not hold the build hostage forever.
     live = head_blobs()
+    fixtures = load_fixtures()
     objects = sh("git", "rev-list", "--all", "--objects").splitlines()
     findings: dict[str, list[tuple[str, str]]] = collections.defaultdict(list)
+    declared: dict[str, list[tuple[str, str]]] = collections.defaultdict(list)
+    matched_fixtures: set[tuple[str, str]] = set()
     scanned = 0
 
     for line in objects:
@@ -221,17 +308,78 @@ def main() -> int:
                     continue
                 if name == "JWT" and jwt_role(value) == "anon":
                     continue  # publishable by design; see jwt_role
-                findings[name].append(
-                    (
-                        path.decode("utf8", "replace"),
+                value_sha = hashlib.sha256(value).hexdigest()
+                in_tree_paths = live.get(sha.decode())
+                # One hit per path the blob occupies in HEAD; falling back to rev-list's
+                # single path only for a blob that is history-only. See head_blobs().
+                for text_path in (in_tree_paths or [path.decode("utf8", "replace")]):
+                    hit = (
+                        text_path,
                         value[:16].decode("utf8", "replace"),
-                        sha.decode() in live,
+                        bool(in_tree_paths),
                         sha.decode(),
+                        value_sha,
                     )
-                )
+                    # A declared fixture is reported, never failed on. The key is the VALUE
+                    # at that PATH, so a different credential in the same file is still a
+                    # finding, and the same value at a new path is a finding too.
+                    if (text_path, value_sha) in fixtures:
+                        matched_fixtures.add((text_path, value_sha))
+                        declared[name].append(hit)
+                        continue
+                    findings[name].append(hit)
 
     print(f"blobs scanned across full history: {scanned}")
+
+    if declared:
+        n = sum(len(h) for h in declared.values())
+        paths = sorted({p for hits in declared.values() for p, _, _, _, _ in hits})
+        print(f"declared fixtures matched: {n} hit(s) in {len(paths)} file(s) "
+              f"(scripts/{FIXTURES_PATH.name})")
+
+    if "--record-fixtures" in sys.argv:
+        # A blessing is a human act. A robot that can mint one turns the register from a
+        # reviewable event into a rubber stamp, so CI is refused outright.
+        if os.environ.get("CI"):
+            print("\nREFUSING TO RECORD: --record-fixtures is not for CI.")
+            print("A declaration is a claim that a value is fabricated. Make it locally,")
+            print("commit it, and let the reviewer see the line.")
+            return 1
+        rows = sorted(
+            ({"path": p, "pattern": n, "value_sha256": v}
+             for n, hits in findings.items() for p, _, in_tree, _, v in hits if in_tree),
+            key=lambda e: (e["path"], e["pattern"], e["value_sha256"]),
+        )
+        seen, fresh = set(), []
+        for r in rows:
+            key = (r["path"], r["value_sha256"])
+            if key in seen:
+                continue
+            seen.add(key)
+            fresh.append(r)
+        kept = [e for (pth, vsha), e in sorted(fixtures.items()) if (pth, vsha) in matched_fixtures]
+        merged = sorted(
+            {(e["path"], e["pattern"], e["value_sha256"]) for e in kept + fresh},
+        )
+        FIXTURES_PATH.write_text(json.dumps({
+            "note": "Fabricated, credential-shaped strings that a test feeds to the thing "
+                    "meant to catch them. Keyed by (path, sha256 of the matched value); "
+                    "holds no value bytes. A NEW credential-shaped string in one of these "
+                    "files is a new hash and still fails the build \u2014 this is a value "
+                    "declaration, not a path exemption. Every line here is a human claim "
+                    "that the value is not real; the control is that it is in the diff.",
+            "declared": [
+                {"path": a, "pattern": b, "value_sha256": c} for a, b, c in merged
+            ],
+        }, indent=2) + "\n")
+        print(f"\ndeclared {len(merged)} fixture(s) in {FIXTURES_PATH.name}")
+        for a, b, _ in merged:
+            print(f"   [{b}] {a}")
+        print("\nCOMMIT THIS FILE. Each line is a claim that the value is fabricated.")
+        return 0
     if not findings:
+        if "--record-fixtures" not in sys.argv and report_stale_fixtures(fixtures, matched_fixtures):
+            return 1
         # Not an early return. A register whose every entry has stopped matching is
         # exactly the case this reports, and returning here made the docstring's
         # "a register entry that stops matching anything fails the run" false in the
@@ -265,7 +413,7 @@ def main() -> int:
             return 1
         accepted = sorted(
             ({"blob": b, "pattern": n, "path": p} for n, hits in history_only.items()
-             for p, _, _, b in hits),
+             for p, _, _, b, _ in hits),
             key=lambda e: (e["path"], e["pattern"], e["blob"]),
         )
         REGISTER_PATH.write_text(json.dumps({
@@ -283,7 +431,7 @@ def main() -> int:
         print("\nHISTORY ONLY — not in the current tree, so nothing to delete.")
         print("These cannot be un-leaked by a commit. ROTATE THEM.")
         for name, hits in history_only.items():
-            paths = sorted({p for p, _, _, _ in hits})
+            paths = sorted({p for p, _, _, _, _ in hits})
             new = [h for h in hits if h[3] not in register]
             state = "known" if not new else f"{len(new)} UNREGISTERED"
             print(f"::warning::[{name}] {len(hits)} historical hit(s) in {', '.join(paths[:5])} ({state})")
@@ -292,15 +440,18 @@ def main() -> int:
 
     # An acceptance for bytes that no longer exist is a comment pretending to be a
     # review. It fails rather than lingering.
-    seen_blobs = {b for hits in findings.values() for _, _, _, b in hits}
+    seen_blobs = {b for hits in findings.values() for _, _, _, b, _ in hits}
     stale = [b for b in register if b not in seen_blobs]
 
     if in_tree:
         print("\nRESULT: CREDENTIALS IN THE CURRENT TREE")
         for name, hits in in_tree.items():
             print(f"::error::[{name}] {len(hits)} hit(s)")
-            for path, fragment, _, _ in sorted(set(hits))[:10]:
+            for path, fragment, _, _, _ in sorted(set(hits))[:10]:
                 print(f"   {path}  ~  {fragment}...")
+        return 1
+
+    if report_stale_fixtures(fixtures, matched_fixtures):
         return 1
 
     if unregistered:
@@ -309,7 +460,7 @@ def main() -> int:
         print("record the exposure with:  python3 scripts/secret-scan.py --record-exposures")
         for name, hits in unregistered.items():
             print(f"::error::[{name}] {len(hits)} unregistered historical hit(s)")
-            for path, fragment, _, blob in sorted(set(hits))[:10]:
+            for path, fragment, _, blob, _ in sorted(set(hits))[:10]:
                 print(f"   {path}  ~  {fragment}...  blob {blob[:12]}")
         return 1
 

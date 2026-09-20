@@ -57,12 +57,82 @@ test('the landing has no asset banner, image wall, or remote image dependency', 
   // The new root is a conversation invitation, not a gallery. These are structural tripwires for
   // the old wall/banner returning under a new sentence: a landing image, a wall data import, a
   // wall class, or a remote image URL would all present an asset result the route did not produce.
+  //
+  //[[ THE BLANKET `<img>` BAN WAS RE-AIMED ON 2026-09-21, AND DELIBERATELY NOT DELETED.
+  //
+  //   What stood here was `assert.doesNotMatch(PAGE, /<(?:img|picture|source)\b/i)` — no image on
+  //   the landing, ever. That was the correct shape for a page with nothing honest to show: the
+  //   wall it replaced presented stock thumbnails as if they were an asset result the route had
+  //   produced, which is the failure this whole file exists for.
+  //
+  //   It stopped being the correct shape once the page had real evidence. The owner's standing
+  //   instruction for this site is "do not make claims when we can demonstrate them", and measured
+  //   against the live origin that morning the deployed landing carried `<img>` 0 and `<video>` 0
+  //   — so every sentence on it, including the product's central safety promise, was a claim. The
+  //   band that now sits under the hero shows one screenshot of the shipped plugin's own panel
+  //   inside a real Roblox Studio, pinned by sha256 to the evidence file it was cropped from.
+  //
+  //   THE PROPERTY WAS NEVER "NO IMAGES". It was "no image a reader would take for a result that
+  //   nothing can answer for", and that is what is enforced now — here, by the two rules below,
+  //   and in tests/proof-is-evidence.test.mjs, which checks that every image the landing renders
+  //   is declared in src/data/consent-proof.ts, is bundled locally, carries alt and intrinsic
+  //   size, and is a crop of a docs/evidence file that still hashes to its pin.
+  //
+  //   IT READS THE COMPONENTS NOW, WHICH IS THE HALF THAT MATTERS. The old assertion looked only
+  //   at index.astro, so the picture would have passed it untouched simply by being rendered from
+  //   components/ConsentProof.astro — a guard that goes on printing green because the thing it
+  //   watches for moved one file over is worse than no guard, because it looks like coverage. ]]
   assert.doesNotMatch(PAGE, /asset[-_]?wall|assetWall|ap[-_]wall|wall__card/i,
     'index.astro still wires the removed asset wall into the landing');
+
+  // index.astro's OWN markup still carries no image element. A section that earns a picture earns
+  // a component and the provenance checks that come with one; a banner dropped straight into the
+  // page is how the wall arrived the first time.
   assert.doesNotMatch(PAGE, /<(?:img|picture|source)\b/i,
-    'index.astro contains an image banner/gallery element; the redesigned root has no banner');
+    'index.astro contains an image element directly. Render it from a component whose images are'
+    + ' declared in src/data/consent-proof.ts, so tests/proof-is-evidence.test.mjs can answer for it.');
+
+  // The page's own rule is unchanged and stays absolute: not one http(s) URL anywhere in
+  // index.astro, comments included. It has passed that way since the wall was removed and there is
+  // no reason for the front page's markup to name a remote host at all.
   assert.doesNotMatch(PAGE, /https?:\/\//i,
     'index.astro contains a remote URL; the landing must not depend on a remote image/banner');
+
+  // The components it pulls in get the narrower, attribute-scoped form of the same rule rather than
+  // the absolute one. An SVG namespace URI — `xmlns="http://www.w3.org/2000/svg"`, which
+  // components/AppleMark.astro carries — is a constant string the XML spec requires and is fetched
+  // by nobody; failing on it would be the guard reporting a namespace as a network dependency.
+  // What matters is what the browser actually goes and loads, which is src, srcset and href.
+  //[[ THE PATH IS MATCHED, NOT THE IMPORT STATEMENT, AND THAT DIFFERENCE WAS MEASURED.
+  //   This was anchored to `^import X from '...'` first. Changing one import's quotes to backticks
+  //   dropped that component out of the scan and the whole test still printed green, because the
+  //   two survivors cleared the floor below. A finder tied to one spelling of one statement is a
+  //   finder that a refactor silently narrows. Any mention of a components/*.astro path in the page
+  //   is what gets read now, which survives quote style, named imports and dynamic ones alike. ]]
+  const rendered = [];
+  for (const rel of new Set([...PAGE.matchAll(/\.\.\/components\/([A-Za-z0-9_-]+\.astro)/g)].map((m) => m[1]))) {
+    const file = join(SITE, 'src', 'components', rel);
+    assert.ok(existsSync(file), `index.astro names components/${rel}, which is not on disk`);
+    rendered.push([`src/components/${rel}`, readFileSync(file, 'utf8')]);
+  }
+  // A LOOP OVER NOTHING IS NOT A CHECK. If the import syntax on the page ever changes shape — a
+  // named import, a different quote style, a components/ path written another way — this regex
+  // would quietly match zero files and every assertion below would pass over an unread tree. The
+  // landing has imported .astro components since before this rule existed; zero means the finder
+  // broke, not that the components went away.
+  assert.ok(rendered.length >= 2,
+    `only ${rendered.length} component(s) of the landing were found to check — the import scan in`
+    + ' this test has stopped matching index.astro, so the rules below have read almost nothing');
+  for (const [name, source] of rendered) {
+    assert.doesNotMatch(source, /(?:src|srcset|href)\s*=\s*["']https?:\/\//i,
+      `${name} loads something over the network; the landing must not depend on a remote image or`
+      + ' banner, and an image that can be swapped by whoever hosts it is not evidence');
+    for (const tag of source.matchAll(/<(?:img|picture|source)\b[^>]*\bsrc\s*=\s*["']([^"']*)["'][^>]*>/gi)) {
+      assert.fail(`${name} hard-codes an image src="${tag[1]}". Every image on the landing must come`
+        + ' from src/data/consent-proof.ts so its provenance is checkable.');
+    }
+  }
+
   assert.doesNotMatch(CSS, /(?:asset[-_]?wall|ap[-_]wall|wall__|background-image\s*:\s*url\()/i,
     'landing.css still paints the removed asset/banner wall');
 });

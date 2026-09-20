@@ -279,52 +279,79 @@ real time before: a deploy that printed `done` while serving a year-old page, an
 that named a build four commits behind.
 
 ---
+## 5. The secret scanner failed on its own test fixtures — designed and closed 2026-09-21
 
-## 5. The secret scanner fails on its own test fixtures, and I did not weaken it to make CI green
+**Was OPEN.** `python3 scripts/secret-scan.py` exited 1 with `RESULT: CREDENTIALS IN THE CURRENT
+TREE`. The earlier version of this section said 32 hits in three files; re-measured with the exit
+code read from the scanner rather than from a `tail` at the end of a pipe, it was **34 hits across
+18 files** — sixteen test files, plus this document, which was quoting the fixture values back.
 
-**Measured 2026-09-20.** `python3 scripts/secret-scan.py` exits 1 with `RESULT: CREDENTIALS IN THE
-CURRENT TREE` — 32 hits across nine patterns, in exactly three files:
-
-```
-apps/web/tests/sentry-wiring.test.mjs
-apps/worker/tests/secret-redaction.test.mjs
-apps/worker/tests/memory-store.test.mjs
-```
-
-Every value is fabricated: `AKIAIOSFODNN7EXAMPLE` is AWS's own published example key,
-`sk-ant-api03-abcdefghij` and `ghp_abcdefghijkl…` are the alphabet, `xoxb-1234567890-` and
-`AIzaSyA123456789` are sequential digits. All three files exist to prove the redactor catches
-credential-shaped text. `secret-redaction.test.mjs` says so in its header:
+Every value was fabricated: a vendor prefix followed by the alphabet, by sequential digits, by a
+run of fives, or by the words `fixture_only` and `test-token`. The files exist to prove the
+redactor catches credential-shaped text. `apps/worker/tests/secret-redaction.test.mjs` says so in
+its header:
 
 > EVERY GUARD HERE IS FED THE THING IT IS SUPPOSED TO CATCH. A redactor tested on a clean string
 > proves that one string survived; it says nothing about whether a JWT would.
 
-### Why this is not a five-minute fix
+### Why it was not a five-minute fix
 
 The scanner's premise is *"anything present in the CURRENT tree fails the build, because that is
 fixable by editing a file"*. For a redaction test that premise is false — the file must contain
-credential-shaped strings or the test proves nothing.
+credential-shaped strings or the test proves nothing. The `ALLOW` list deliberately **cannot**
+suppress a `HARD_SIGNATURE`, and AWS / OpenAI / Anthropic / Google / GitHub / Slack keys and JWTs
+are all hard signatures. That is correct: a real AWS key looks exactly like a real AWS key.
 
-Its `ALLOW` list (`example|fake|placeholder|SENTINEL|…`) deliberately **cannot** suppress a
-`HARD_SIGNATURE`, and AWS / OpenAI / Anthropic / Google / GitHub / Slack keys and JWTs are all hard
-signatures. That is correct: a real AWS key looks exactly like a real AWS key. The register is
-history-only by design and refuses to record while anything is in-tree.
-
-So the three available moves are:
+Three moves were available:
 
 1. **Weaken the fixtures** so they stop matching — which guts the tests that protect every
    outbound request and error log.
-2. **Add an in-tree path exemption** to the scanner — a new hole in a security control, and the
-   standard way scanners get quietly neutered.
+2. **Add an in-tree path exemption** — a new hole in a security control, and the standard way
+   scanners get quietly neutered.
 3. **Teach the scanner that a fixture is a fixture** in a way that a real leak cannot imitate.
 
-Option 3 is the right one and it is a design decision, not a patch. **I did not take options 1 or 2
-to turn a badge green at the end of a long night.**
+### The decision: option 3, keyed by value, at a path
+
+`scripts/known-fixtures.json` declares a fixture as **(path, sha256 of the matched value)**. It
+holds no value bytes. The keying is the whole control, and it is what separates this from the path
+exemption in option 2:
+
+| | path exemption | value declaration |
+|---|---|---|
+| a new credential dropped into an already-blessed file | **invisible** | new hash, **build fails** |
+| the same fixture lifted from `tests/` into production source | invisible | new path, **build fails** |
+| a comment or a new case added to a declared file | fine | fine — the blob sha is not what is keyed |
+| a declaration whose fixture is gone | lingers | **build fails** as stale |
+
+Two further constraints: `--record-fixtures` refuses to run when `CI` is set in the environment, so
+a blessing can never be minted by a robot; and `head_blobs()` now maps a blob to **every** path it
+occupies in HEAD, because git stores identical content once and `rev-list --objects` reports such a
+blob under a single path — which would otherwise let a declared fixture cover an undeclared copy
+elsewhere. That last one was found by a test, not by reading.
+
+**What it still cannot do**, said plainly: it is an allowlist, not an attestation. Anyone who can
+commit can add a line blessing a real credential. The control is that the line is in the diff and
+the build blocks until someone writes it. The tool makes a new credential-shaped string a
+*reviewable event*; it cannot tell whether the review happened. The same caveat already applies to
+`scripts/known-exposures.json` and is stated in the scanner's docstring.
+
+### The tests, which did not exist before
+
+`scripts/test_secret_scan.py` — 12 tests, each building a throwaway git repository and asserting
+the exit code of the real scanner as a subprocess. Every one was watched going red on an aimed
+mutation and the source restored byte-identical. The two that carry the design are
+`test_new_secret_in_a_declared_file_still_fails` and `test_declaration_does_not_travel_to_another_path`;
+if either goes green after a change to the keying, the register has become a path exemption.
+
+Two of those tests were passing for the wrong reason when first written — one on git's blob
+de-duplication, one because a duplicated staleness check meant a mutation to one copy was invisible
+from the only test that reached the other. Both were found by the falsification pass and neither
+would have been found by reading. The duplicated check is now one function.
 
 ### State
 
-**OPEN.** CI's "Scan full history for secrets" step stays red until this is designed. It is
-pre-existing — `tail -4` on an earlier run showed me only the last pattern's output, which is how I
-first read this as three hits rather than thirty-two.
+**CLOSED.** `python3 scripts/secret-scan.py` exits 0; 34 declared fixtures in 18 files, and CI now
+runs `python3 scripts/test_secret_scan.py` before the scan, so the scanner's own control is tested
+before it is trusted.
 
-Nothing here is a live credential. No rotation is required.
+Nothing here was ever a live credential. No rotation is required.

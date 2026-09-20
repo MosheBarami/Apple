@@ -4,6 +4,7 @@ import AppleMark from '../components/AppleMark.astro';
 import { PLAN_LIMITS, PRODUCT_MODELS, PRODUCT_MODEL_INFO } from '@golem/shared';
 import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE, STUDIO_PLUGIN_STORE_REFUSAL } from '../lib/studio-plugin';
 import Horizon from '../components/Horizon.astro';
+import ConsentProof from '../components/ConsentProof.astro';
 
 /*
  * RESTRUCTURED 2026-09-20 AGAINST THE ROSEBUD MEASUREMENT.
@@ -353,6 +354,12 @@ const capabilities = [
     {/* Every section below the fold is the same three things in the same order — a title, one muted
         line, then the thing itself — which is the rule the reference repeats without variation at
         every section of its own page. The consistency is the effect. */}
+
+    {/* PROOF, BEFORE ANY OF THE CLAIMS BELOW IT. Its reasons and every one of its quotes live in
+        components/ConsentProof.astro and data/consent-proof.ts; it is a component rather than markup
+        here because it was written while another lane held this file. */}
+    <ConsentProof />
+
     <section class="band" id="inside" aria-labelledby="truths-title">
       <div class="shell">
         <div class="band-head" data-reveal>

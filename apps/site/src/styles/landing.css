@@ -1525,3 +1525,76 @@ html:not(.no-js) [data-reveal].is-in {
     transition-duration: 1ms;
   }
 }
+
+/* ============================================================================================
+   THE PROOF BAND — components/ConsentProof.astro.
+   The page's first image and its first quoted transcript. Its reasons are in that component and in
+   data/consent-proof.ts; what is here is only how it sits.
+
+   NO ACCENT IS SPENT IN THIS BLOCK, and that is deliberate rather than an omission. The rule the
+   rest of this sheet is written to — see the note on `.activity-line.refused` — is that hierarchy
+   below the fold is carried by how light a thing is against the page, with the single accent left
+   for the one primary action. A refusal painted in a warning hue would read as a failure the reader
+   caused, when what the line reports is the product protecting them, and a success painted green
+   would make the band an advertisement for itself. So the two runs share one card treatment and are
+   told apart by what is inside them: one ends in a log line and "Nothing was created", the other in
+   the tree Studio showed afterwards. The content is the difference; the paint is not.
+   ============================================================================================ */
+
+.proof { display: grid; grid-template-columns: 318px minmax(0, 1fr); gap: 32px; align-items: start; }
+
+/* The capture. `overflow: hidden` clips the screenshot's own square corners to the sheet's radius,
+   so the panel reads as an object on this page rather than a rectangle dropped onto it. */
+.proof-shot { margin: 0; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; background: var(--raised); }
+/* `display: block` kills the inline baseline gap under the image, which otherwise leaves a 4px
+   stripe of --raised between the screenshot and its caption rule. */
+.proof-shot img { display: block; width: 100%; height: auto; }
+.proof-caption { padding: 10px 14px; border-top: 1px solid var(--line); color: var(--faint); }
+
+.proof-pair { display: grid; gap: 16px; align-content: start; }
+
+/* The request, once, above both runs — because "the same request" is the whole claim of the section
+   and printing it twice would quietly weaken it into "two similar requests". */
+.proof-ask {
+  margin: 0; padding: 14px 16px;
+  border: 1px solid var(--line); border-radius: var(--r); background: var(--raised);
+  color: var(--ink); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px; line-height: 22px;
+}
+.proof-ask-label { display: block; margin-bottom: 6px; color: var(--faint); }
+
+.proof-runs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.proof-run { padding: 16px; border: 1px solid var(--line); border-radius: var(--r); background: var(--raised); }
+/* `balance` because this label is the widest short string in the band and the narrowest column on
+   the page. At 1280px the run card's text box is about 265px, and "Access: edits allowed for this
+   connection" — uppercase at 12px with 1.2px of tracking — wraps just past it and leaves CONNECTION
+   alone on a second line. tests/rendered-typography.test.mjs measured exactly that and budgets zero
+   stranded words; it also names this property as the rule that holds them down. */
+.proof-state { color: var(--faint); text-wrap: balance; }
+.proof-answer { margin: 10px 0 0; color: var(--ink); font-size: 14px; line-height: 21px; }
+.proof-log,
+.proof-outcome { margin: 10px 0 0; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; line-height: 22px; }
+/* The Explorer read-back. `white-space: pre` keeps the box-drawing aligned, and the scroll is on
+   the block rather than the page so a narrow screen never gives the whole document a sideways
+   shove. */
+.proof-tree {
+  margin: 10px 0 0; overflow-x: auto;
+  color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px; line-height: 22px; white-space: pre;
+}
+.proof-disclosure { margin: 0; color: var(--muted); font-size: 13px; line-height: 20px; }
+/* The record's own limitation, and where to read it. Set at the page's quietest level because it is
+   a footnote in weight — and present at all because it is not a footnote in kind. `overflow-wrap`
+   so the file path breaks rather than widening the page on a phone. */
+.proof-source { margin: 24px 0 0; color: var(--faint); letter-spacing: 0.6px; text-transform: none; font-weight: 400; font-size: 12px; line-height: 19px; overflow-wrap: anywhere; }
+
+/* The capture column is a fixed 318px, so it stops being a column before anything else on this page
+   needs to: below 1024 the two would be 318 + a remainder too narrow for two run cards. */
+@media (max-width: 1023px) {
+  .proof { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .proof-shot { max-width: 318px; }
+}
+
+@media (max-width: 640px) {
+  .proof-runs { grid-template-columns: minmax(0, 1fr); }
+}

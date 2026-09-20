@@ -1,0 +1,94 @@
+---
+/**
+ * THE FIRST THING UNDER THE HERO IS EVIDENCE, AND IT CARRIES THE FIRST PICTURE THIS SITE HAS EVER
+ * PUT ON ITS FRONT PAGE.
+ *
+ * Measured against the live origin on 2026-09-21, the deployed landing had `<img>` 0 and
+ * `<video>` 0. Every sentence on it was a claim, including the load-bearing one two sections below
+ * — "changes nothing until you say so" — which is the product's central safety promise and was
+ * printed in the same typeface as everything else with nothing behind it. The owner's standing
+ * instruction for this site is "do not make claims when we can demonstrate them".
+ *
+ * NOT ONE WORD IN THIS SECTION IS WRITTEN BY THIS FILE. Every quoted string comes out of
+ * src/data/consent-proof.ts, which records the file each one was taken from, and
+ * tests/proof-is-evidence.test.mjs re-reads those files and fails if a quote is not in the one it
+ * names. Two kinds of source, and the difference is the point:
+ *
+ *   the two access lines and the disclosure  — quoted from apps/apple-plugin/src/init.server.luau,
+ *     the SHIPPED plugin's own string literals. A page that reproduces a panel the plugin no longer
+ *     renders goes red rather than quietly wrong.
+ *   the transcript and the Explorer read-back  — quoted from the record of the run.
+ *
+ * The heading, the three small labels and the arrow are the only English here that is ours, and
+ * they name the structure rather than asserting a result.
+ *
+ * WHY THE EXPLORER BLOCK IS THE POINT AND NOT DECORATION. A model reporting its own success is not
+ * evidence of it. That tree is what Studio's own Explorer showed afterwards, which is why the
+ * record kept it and why it is on the page rather than summarised into a tick.
+ *
+ * THE LIMIT LINE AT THE FOOT IS PART OF THE MEASUREMENT, NOT A DISCLAIMER ON IT. It is the record's
+ * own sentence about what it does not establish. Without it this band reads as "Apple is safe";
+ * with it, it reads as the one refused operation and one granted one that were actually run. Do not
+ * trim it to tighten the layout.
+ *
+ * THIS IS A COMPONENT RATHER THAN MARKUP IN index.astro, which is the exception to that page's
+ * rule that it owns its own sections. It was written while another lane held index.astro in the
+ * shared checkout, and a seventy-line insertion into a file somebody else is rewriting is how one
+ * lane's commit swallows another's. <Horizon /> is the precedent: a self-contained object with its
+ * own reasons gets its own file.
+ */
+import { CONSENT_PROOF } from '../data/consent-proof';
+---
+
+<section class="band" id="proof" aria-labelledby="proof-title">
+  <div class="shell">
+    <div class="band-head" data-reveal>
+      <h2 id="proof-title" class="section-title">The same request, sent twice</h2>
+      <p class="section-sub">{CONSENT_PROOF.summary.text}</p>
+    </div>
+
+    <div class="proof">
+      <figure class="proof-shot" data-reveal>
+        {/* NO `loading="lazy"` ON THIS ONE, DELIBERATELY. It is the first image on the page and on
+            a phone it sits within a screen of the fold, where deferring it buys a visible pop-in
+            and saves nothing. `width`/`height` are the intrinsic size of the served file so the
+            row reserves its box before the bytes land — a proof panel that shoves the transcript
+            down when it arrives is worse than no picture. */}
+        <img
+          src={CONSENT_PROOF.capture.src}
+          alt={CONSENT_PROOF.capture.alt}
+          width={CONSENT_PROOF.capture.width}
+          height={CONSENT_PROOF.capture.height}
+          decoding="async"
+        />
+        <figcaption class="micro proof-caption">Roblox Studio · {CONSENT_PROOF.capturedLabel}</figcaption>
+      </figure>
+
+      <div class="proof-pair">
+        <p class="proof-ask"><span class="micro proof-ask-label">Sent, both times</span>{CONSENT_PROOF.request.text}</p>
+
+        <div class="proof-runs">
+          <article class="proof-run proof-run-refused">
+            <p class="micro proof-state">{CONSENT_PROOF.refused.access.text}</p>
+            <p class="proof-answer">{CONSENT_PROOF.refused.answer.text}</p>
+            <p class="proof-log">{CONSENT_PROOF.refused.log.text}</p>
+            <p class="proof-outcome">{CONSENT_PROOF.refused.outcome.text}</p>
+          </article>
+
+          <article class="proof-run proof-run-allowed">
+            <p class="micro proof-state">{CONSENT_PROOF.allowed.access.text}</p>
+            <p class="proof-answer">{CONSENT_PROOF.allowed.answer.text}</p>
+            {/* Studio's Explorer, as it read afterwards. `<pre>` because the alignment carries the
+                tree, and the string is one quote rather than six so the guard checks the shape of
+                the tree and not merely its node names. */}
+            <pre class="proof-tree">{CONSENT_PROOF.allowed.tree.text}</pre>
+          </article>
+        </div>
+
+        <p class="proof-disclosure">{CONSENT_PROOF.disclosure.text}</p>
+      </div>
+    </div>
+
+    <p class="micro proof-source">{CONSENT_PROOF.limit.text} Record: {CONSENT_PROOF.record}</p>
+  </div>
+</section>
