@@ -100,7 +100,7 @@ async function pluginLoop() {
 }
 
 // ---- websocket chat ---------------------------------------------------------
-function wsChat(text, mode, { expectTools } = {}) {
+function wsChat(text, mode, { expectTools, productModel } = {}) {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(`${BASE.replace('https', 'wss')}/api/projects/${project.id}/ws`, ['golem.v1', 'golem.jwt.' + jwt]);
     const events = [];
@@ -110,8 +110,8 @@ function wsChat(text, mode, { expectTools } = {}) {
       const msg = JSON.parse(ev.data);
       events.push(msg);
       if (msg.type === 'hello') {
-        log(`   ws hello (studio=${msg.studioConnected}) → sending "${text.slice(0, 40)}…" [${mode}]`);
-        ws.send(JSON.stringify({ type: 'chat', text, mode }));
+        log(`   ws hello (studio=${msg.studioConnected}) → sending "${text.slice(0, 40)}…" [${mode}${productModel ? '/' + productModel : ''}]`);
+        ws.send(JSON.stringify({ type: 'chat', text, mode, ...(productModel ? { productModel } : {}) }));
       }
       if (msg.type === 'delta') finalText += msg.text;
       if (msg.type === 'tool_end') log(`   tool: ${msg.summary}`);
@@ -166,10 +166,31 @@ log('   → stopReason', clay.stopReason, '| text:', clay.finalText.slice(0, 120
 if (clay.stopReason !== 'done' || clay.finalText.length < 10) fail('clay chat failed');
 
 // 6. chat WITH simulated studio (stone) — agent should call studio tools
+//
+// `productModel: 'apple'` IS LOAD-BEARING, AND ITS ABSENCE MADE THIS STEP UNREACHABLE.
+//
+// `effectiveProductModel` (apps/worker/src/do/session.ts:460) reads
+// `requested ?? (mode === 'clay' ? 'apple' : 'apple-max')`, so a `stone` chat that names no product
+// model is a request for **Apple MAX**, which `productModelVerdict` refuses on any free plan. The
+// E2E account is free — step 3 above prints `plan free` on every run — so since product-model
+// entitlement landed this step asked for something this account can never have, and the run died
+// here before reaching the assertion below. Measured against the live worker 2026-09-20T23:19Z:
+// `product_model_unavailable — Apple MAX requires a paid subscription.`
+//
+// THIS DOES NOT WEAKEN THE STEP, and it is worth being exact about why. What is being tested here
+// is named on the line above: *the agent calls Studio tools*, asserted at the bottom of this block
+// against `opsHandled`. That assertion is untouched. The mode stays `stone`, so the toolset is the
+// build toolset; only the FOUNDATION changes, and on the free lane `gatewayModelFor('stone','apple')`
+// is still `stone` — the same model, by the measurement in session.ts:464. What the free lane
+// actually gives up is steps (`maxStepsFor` caps it at Plan's limit), which is a smaller budget for
+// the same work, not a different test. A step that cannot run asserts nothing at all; this one can.
+//
+// If MAX entitlement itself needs covering, that is a separate step with a paid fixture account —
+// do not get it by removing this one's product model again.
 log('6. starting fake plugin loop + stone chat…');
 pluginLoop();
 await new Promise((r) => setTimeout(r, 2500)); // let first poll register
-const stone = await wsChat('Create a glowing neon blue anchored part named BeaconTower, 4x30x4 studs, at position (10, 15, 10) in the workspace. Then confirm what you created.', 'stone', { expectTools: true });
+const stone = await wsChat('Create a glowing neon blue anchored part named BeaconTower, 4x30x4 studs, at position (10, 15, 10) in the workspace. Then confirm what you created.', 'stone', { expectTools: true, productModel: 'apple' });
 pluginRunning = false;
 log('   → stopReason', stone.stopReason, '| studio ops handled by fake plugin:', JSON.stringify(opsHandled));
 log('   → reply:', stone.finalText.slice(0, 200).replace(/\n/g, ' '));
