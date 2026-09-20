@@ -76,7 +76,9 @@ test('a UI-only request now gets what a spatial request already got', () => {
 
 test('the escalation is not indiscriminate — talk and plain questions stay cheap', () => {
   assert.equal(planStep('hi').effort, 'low');
-  assert.equal(planStep('שלום').effort, 'low');
+  // Was a Hebrew greeting, replaced when the language was removed on 2026-09-20. The property is
+  // unchanged: a greeting is talk and must stay cheap.
+  assert.equal(planStep('hey').effort, 'low');
   // "settings" is a UI word; a bare greeting containing none of them must not be dragged up.
   assert.equal(planStep('thanks').effort, 'low');
   assert.equal(R.classifyRequest('raise the terrain near the river').uiDesignTask, false);

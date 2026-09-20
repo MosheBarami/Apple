@@ -945,7 +945,7 @@ const ocrTool: WebTool = {
       'Read the text in an image at an allowlisted https URL. Returns the text it found; an image with no text says so, and a read that could not happen is an error.',
     args: {
       imageUrl: { type: 'string', description: 'The https URL of the image.', required: true, max: 2048 },
-      language: { type: 'string', description: 'Expected language of the text.', enum: ['en', 'he', 'auto'], default: 'auto' },
+      language: { type: 'string', description: 'Expected language of the text.', enum: ['en', 'auto'], default: 'auto' },
     },
   },
   available: () => ({ ok: true }),

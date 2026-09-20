@@ -21,25 +21,28 @@
  */
 
 /** Scripts written right-to-left, by ISO 639 primary subtag. */
-const RTL_LANGS = new Set(['he', 'iw', 'ar', 'fa', 'ur', 'ps', 'sd', 'ug', 'yi', 'dv', 'ku', 'ckb']);
+// 'he' and 'iw' were removed on 2026-09-20 when the product stopped offering Hebrew. The set keeps
+// every OTHER right-to-left language, because mirroring the interface for Arabic or Persian was
+// never a Hebrew feature and taking it out would break languages the removal has nothing to do with.
+const RTL_LANGS = new Set(['ar', 'fa', 'ur', 'ps', 'sd', 'ug', 'yi', 'dv', 'ku', 'ckb']);
 
 /**
  * The languages the interface is actually WRITTEN IN. Today: English, and only English.
  *
  * THIS LIST IS THE WHOLE FIX. Direction used to be inferred from `navigator.languages` alone — what
- * the READER prefers — with no reference to what the interface can actually say. The owner of this
- * product reads Hebrew, so his browser asks for `he`, so his own sign-in page mirrored itself,
- * right-aligned its English sentences, moved every full stop to the left-hand end, and set
- * `lang="he"` on a document containing no Hebrew at all: a screen reader was being told to read
- * English words in a Hebrew voice.
+ * the READER prefers — with no reference to what the interface can actually say. A reader whose
+ * browser asks for a right-to-left language got a sign-in page that mirrored itself, right-aligned
+ * its English sentences, moved every full stop to the left-hand end, and set that language on a
+ * document written entirely in English: a screen reader was being told to read English words in
+ * the wrong voice.
  *
- * Mirroring is correct for a Hebrew interface and wrong for an English one, and the browser's
- * language list cannot tell those apart because it is not a fact about this interface. So the
- * question is asked of both: mirror when the reader wants an RTL language AND the interface has
- * that language to give them.
+ * Mirroring is correct for an interface written in an RTL language and wrong for an English one,
+ * and the browser's language list cannot tell those apart because it is not a fact about this
+ * interface. So the question is asked of both: mirror when the reader wants an RTL language AND
+ * the interface has that language to give them.
  *
  * NOTHING ELSE IN THIS FILE CHANGES, and none of the logical-property work in the stylesheets is
- * wasted: add `'he'` here on the day the strings are translated and every mirror turns on at once.
+ * wasted: add a tag here on the day its strings are translated and every mirror turns on at once.
  * An explicit choice still wins over this — somebody who deliberately picks RTL is telling us
  * something about themselves, not asking us to guess.
  */

@@ -42,12 +42,11 @@ const GREETINGS = [
   'got it',
   'good morning',
   'bye',
-  // Hebrew: the product must support RTL, and a Hebrew greeting is exactly as much "talk" as
-  // an English one. Without these, an entire language routes every greeting into a build.
-  'שלום',
-  'היי',
-  'תודה',
-  'אוקיי',
+  // The Hebrew greetings that sat here were removed on 2026-09-20 with the language itself: a
+  // Hebrew prompt was measured losing a word silently on the way in, so the product stopped
+  // offering the language rather than keep a promise it could not hold. The English list is the
+  // whole list now, and the property they were protecting — a greeting must not route into a
+  // build — is still covered by every entry above.
 ];
 
 const META = ['who are you', 'what can you do', 'which model are you', 'what are you?'];

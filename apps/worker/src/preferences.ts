@@ -91,12 +91,14 @@ export const ROBLOX_CONVENTIONS_MAX = 6;
  * as an instruction, and a free-text language field is a free-text instruction field wearing a
  * label. Hebrew is first-class here: this product is built in it.
  */
-export const LANGUAGES = ['en', 'he', 'es', 'pt-BR', 'fr', 'de', 'ru', 'ja', 'ko', 'zh'] as const;
+// 'he' was removed on 2026-09-20: a Hebrew prompt was measured losing a word silently on the way
+// in (לבה -> לב, lava -> heart) and returning an empty run intent, so the product stopped offering
+// the language rather than keep a promise it could not hold.
+export const LANGUAGES = ['en', 'es', 'pt-BR', 'fr', 'de', 'ru', 'ja', 'ko', 'zh'] as const;
 export type LanguageTag = (typeof LANGUAGES)[number];
 
 export const LANGUAGE_NAMES: Readonly<Record<LanguageTag, string>> = {
   en: 'English',
-  he: 'Hebrew',
   'pt-BR': 'Brazilian Portuguese',
   es: 'Spanish',
   fr: 'French',

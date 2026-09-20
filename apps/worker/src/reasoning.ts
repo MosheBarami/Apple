@@ -130,7 +130,7 @@ const AMBIGUOUS_RE = /\b(something|anything|whatever|surprise me|you decide|make
  * what makes the boundary mean the same thing in both scripts.
  */
 const CONVERSATIONAL_RE =
-  /^(?:\s*(?:hi|hey|hello|yo|sup|hiya|howdy|thanks?|thank you|thx|ty|ok|okay|k|cool|nice|great|awesome|got it|sure|yes|yeah|no|nope|bye|goodbye|see ya|good (?:morning|afternoon|evening|night)|\u05e9\u05dc\u05d5\u05dd|\u05d4\u05d9\u05d9|\u05d0\u05d4\u05dc\u05df|\u05ea\u05d5\u05d3\u05d4|\u05d0\u05d5\u05e7\u05d9\u05d9|\u05d1\u05e1\u05d3\u05e8|\u05d9\u05d5\u05e4\u05d9|\u05de\u05e2\u05d5\u05dc\u05d4|\u05d1\u05d9\u05d9)(?![\p{L}\p{N}])[\s!.,?]*)+$/iu;
+  /^(?:\s*(?:hi|hey|hello|yo|sup|hiya|howdy|thanks?|thank you|thx|ty|ok|okay|k|cool|nice|great|awesome|got it|sure|yes|yeah|no|nope|bye|goodbye|see ya|good (?:morning|afternoon|evening|night))(?![\p{L}\p{N}])[\s!.,?]*)+$/iu;
 
 /** Questions ABOUT the assistant rather than about the project — also talk, not work. */
 const META_QUESTION_RE =

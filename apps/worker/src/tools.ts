@@ -1092,7 +1092,7 @@ function parseOcr(raw: string): { text: string } | { error: string } {
 }
 
 async function readImageText(env: Env, dataUrl: string, opts: { language: string }): Promise<{ text: string } | { error: string }> {
-  const hint = opts.language === 'auto' ? '' : ` The text is expected to be in ${opts.language === 'he' ? 'Hebrew' : 'English'}.`;
+  const hint = opts.language === 'auto' ? '' : ' The text is expected to be in English.';
   try {
     const res = await chat(
       env,

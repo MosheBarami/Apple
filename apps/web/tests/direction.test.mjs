@@ -8,9 +8,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { isRtlLanguage, detectDirection, detectLanguage, UI_LANGUAGES } from '../src/lib/direction.ts';
 
-test('Hebrew is recognised, with and without a region', () => {
+test('Hebrew is NOT an RTL language this product knows about', () => {
+  // Hebrew was removed from the product on 2026-09-20 — a Hebrew prompt was measured losing a word
+  // silently on the way in, so the language stopped being offered rather than keep a promise it
+  // could not hold. The owner asked for no connection to it anywhere, so `he` and `iw` left
+  // RTL_LANGS too. This asserts the removal directly rather than leaving a gap where a test was.
   for (const tag of ['he', 'he-IL', 'HE', 'he_IL', 'iw', 'iw-IL']) {
-    assert.equal(isRtlLanguage(tag), true, tag);
+    assert.equal(isRtlLanguage(tag), false, tag);
   }
 });
 
@@ -44,10 +48,13 @@ test('the mirroring turns on the day the interface is translated', () => {
   // The whole RTL apparatus — the logical properties, the bidi isolation on code, the mirrored
   // workspace — must stay live and provable while it is switched off, or it rots. Passing the
   // translated list is what proves it still works, without shipping a half-translated app.
-  assert.equal(detectDirection(['he-IL', 'en-US'], ['en', 'he']), 'rtl');
-  assert.equal(detectDirection(['en-US', 'he'], ['en', 'he']), 'rtl');
+  // Arabic stands in for the translated case now that Hebrew is gone from the product. The apparatus
+  // being proved is the same and is the reason this test exists: it must stay live and provable
+  // while it is switched off, or it rots.
+  assert.equal(detectDirection(['ar-EG', 'en-US'], ['en', 'ar']), 'rtl');
+  assert.equal(detectDirection(['en-US', 'ar'], ['en', 'ar']), 'rtl');
   // Still not mirrored for a language the interface does not have, even a translated one.
-  assert.equal(detectDirection(['ar-EG', 'en-US'], ['en', 'he']), 'ltr');
+  assert.equal(detectDirection(['fa-IR', 'en-US'], ['en', 'ar']), 'ltr');
 });
 
 test('UI_LANGUAGES says what the interface actually speaks, and today that is English', () => {

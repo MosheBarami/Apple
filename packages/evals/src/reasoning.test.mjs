@@ -203,8 +203,12 @@ test('"ok" is still talk when nothing has happened yet', () => {
   assert.equal(chooseEffort(base('stone', { ...traits, step: 1 })).effort, 'low');
 });
 
-test('the Hebrew approvals classify the same way — the owner writes in Hebrew', () => {
-  for (const word of ['בסדר', 'אוקיי', 'יופי', 'מעולה', 'תודה']) {
+test('a bare approval classifies as talk however it is spelled', () => {
+  // This tested the Hebrew approvals, added because the owner wrote in Hebrew. The language was
+  // removed from the product on 2026-09-20 — a Hebrew prompt was measured losing a word silently on
+  // the way in — so the fixtures are English. The property is the one that mattered and is
+  // unchanged: a bare approval is talk, and the run that FOLLOWS it is not (see the tests below).
+  for (const word of ['ok', 'okay', 'sure', 'great', 'thanks', 'cool']) {
     assert.equal(classifyRequest(word).conversational, true, `${word} should classify as talk`);
   }
 });

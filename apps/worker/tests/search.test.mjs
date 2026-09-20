@@ -64,7 +64,7 @@ test('the escape character itself is escaped first', () => {
 });
 
 test('ordinary text passes through untouched', () => {
-  for (const q of ['door', 'ProximityPrompt', 'שלום עולם', 'a-b.c (d)']) {
+  for (const q of ['door', 'ProximityPrompt', 'こんにちは 世界', 'a-b.c (d)']) {
     assert.equal(escapeLike(q), q, q);
   }
 });
