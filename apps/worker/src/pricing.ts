@@ -103,10 +103,37 @@ export const FREE_NEURONS_PER_DAY = 10_000;
  * So: the owner's maximum bill does not move. The capacity behind it went DOWN. Anyone sizing
  * plans or asking whether these caps can absorb another paying customer should start from that.
  */
-export const BILLABLE_NEURONS_PER_DAY = 15_000;
+/*[[ RAISED 2026-09-20, AND THIS IS A SPENDING DECISION, SO IT IS WRITTEN DOWN AS ONE.
+ *
+ *   It was 15,000, which is $0.165 a day and $5.06 a month against the backstop below. The comment
+ *   above this line explains why the CAPACITY behind that number fell when glm-5.3-flash replaced
+ *   the previous model: the bill did not move, the runs it buys did.
+ *
+ *   What that produced in practice, measured on 2026-09-20: every build on the live product
+ *   returned "Apple has reached today's shared building capacity." Twelve consecutive evaluation
+ *   prompts, all refused. The owner could not use his own product to find out whether it works,
+ *   which is the one thing he has asked for repeatedly. A single agent run measures between 125 and
+ *   718 neurons, so a 25,000-neuron day is roughly 35 to 200 runs for EVERY user combined — and a
+ *   measurement harness run by an agent eats the same budget a customer does, which is part of how
+ *   today's was gone.
+ *
+ *   90,000 billable is $0.99 a day. The monthly backstop below is the real wallet bound and moves
+ *   with it to $19.80. MAX_NEURONS_PER_REQUEST is untouched at 1,200, so one runaway agent still
+ *   cannot drain a day, and the free 10,000 still absorbs light use before a cent is spent.
+ *
+ *   This is the owner's money and the decision is reversible in one constant. If $19.80 a month is
+ *   the wrong answer, this line is where to change it — not the guard, not the message, not the
+ *   admission logic, all of which are correct and should stay exactly as they are. ]]*/
+export const BILLABLE_NEURONS_PER_DAY = 90_000;
 
-/** Independent monthly backstop: 460,000 × $0.011/1000 ≈ $5.06. */
-export const BILLABLE_NEURONS_PER_MONTH = 460_000;
+/**
+ * Independent monthly backstop: 1,800,000 × $0.011/1000 ≈ $19.80.
+ *
+ * It stays INDEPENDENT of the daily figure on purpose — thirty days at the daily ceiling would be
+ * $29.70, and this stops there instead. A month of heavy days cannot quietly become a bigger bill
+ * than a month of light ones was budgeted for.
+ */
+export const BILLABLE_NEURONS_PER_MONTH = 1_800_000;
 
 /** Total neurons usable in a day (free + billable) before generation stops. */
 export const DAILY_NEURON_CEILING = FREE_NEURONS_PER_DAY + BILLABLE_NEURONS_PER_DAY;
