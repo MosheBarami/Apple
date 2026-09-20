@@ -30,11 +30,47 @@ test('the landing contains no fabricated run, place, or result snapshot', () => 
     /aria-label=["'][^"']*(?:example\s+(?:run|place)|result|snapshot|demo|metrics?)[^"']*["']/i,
     /<(?:table|ol|dl)\b/i,
     /class=["'][^"']*\b(?:ap-(?:slip|chips|hero__cta)|(?:fake|example)-(?:composer|prompt))\b[^"']*["']/i,
-    /<(?:input|textarea)\b|contenteditable\s*=|role=["']textbox["']/i,
+    // A FAKE FIELD, WHICH IS NOT THE SAME THING AS A FIELD. `contenteditable` and `role=textbox`
+    // are the two ways to draw something that looks typable without being a control, and both
+    // stay banned outright. `<input>` and `<textarea>` moved out of this list and into the
+    // assertion below — see the note there.
+    /contenteditable\s*=|role=["']textbox["']/i,
   ];
   for (const pattern of forbiddenStructure) {
     assert.doesNotMatch(source, pattern,
       `the landing contains a static result structure matching ${pattern}`);
+  }
+
+  /*[[ RE-AIMED 2026-09-21, FROM "NO TEXT FIELD" TO "NO DECORATIVE TEXT FIELD".
+   *
+   *   WHAT THIS LINE USED TO SAY, AND WHY IT WAS RIGHT WHEN IT WAS WRITTEN. `<input|textarea>` was
+   *   in the list above, banned outright, because the landing it was written against carried a
+   *   fabricated composer: a mocked field, a hand-authored transcript, object counts and a place
+   *   name, with no run behind any of it. Banning the element banned the mock.
+   *
+   *   WHY IT IS NOW THE WRONG SHAPE. The hero's composer was `aria-hidden="true"` and held three
+   *   <span>s — the single largest object above the fold was a photograph of a text field. A
+   *   keyboard user could not reach it, a screen reader was told nothing was there, and a reader
+   *   who clicked into it to type their idea got nothing. It is now a real <form> with a real
+   *   <textarea> that submits to /app/signup carrying what was typed. That is the opposite of the
+   *   defect this guard exists for: it is the removal of a mock, and the old spelling would have
+   *   made the fix fail the guard that wanted it.
+   *
+   *   THE PROPERTY, WHICH IS STRICTER THAN THE OLD RULE RATHER THAN LOOSER. Every text field on
+   *   this page must be a REAL control: inside a <form> that posts to the app, and carrying a
+   *   `name` so what is typed actually travels. A decorative field — one outside a form, or one
+   *   with no name, which is exactly what a mocked composer looks like — is still the defect, and
+   *   so is the old fabricated composer, which had neither. ]]*/
+  const forms = [...source.matchAll(/<form\b[^>]*>[\s\S]*?<\/form>/gi)].map((m) => m[0]);
+  const realForms = forms.filter((f) => /action=["']\/app\b[^"']*["']/i.test(f));
+  const fields = [...source.matchAll(/<(?:input|textarea)\b[^>]*>/gi)].map((m) => m[0]);
+  for (const field of fields) {
+    const inside = realForms.find((f) => f.includes(field));
+    assert.ok(inside,
+      `this text field is not inside a form that posts to the app, so it is decoration rather than ` +
+      `a control — which is what the fabricated composer was: ${field.slice(0, 90)}`);
+    assert.match(field, /\bname=["'][^"']+["']/,
+      `this text field has no name, so nothing a reader types travels anywhere: ${field.slice(0, 90)}`);
   }
 
   // Literal signatures make the guard useful even if a stale snapshot is given generic classes.

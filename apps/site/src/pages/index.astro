@@ -384,14 +384,55 @@ const asks = [
             the hero rather than a screenshot of one. Splitting the group into siblings with their
             own margins is how the gaps between the three drifted apart the first time. */}
         <div class="composer-group">
-          <div class="composer" aria-hidden="true">
+          {/*[[ THE COMPOSER IS THE PRODUCT'S OWN CONTROL NOW, NOT A PICTURE OF IT.
+            *
+            *   It carried `aria-hidden="true"` and held three <span>s. The largest object above
+            *   the fold on the front page was a photograph of a text field: a keyboard user could
+            *   not reach it, a screen reader was told nothing was there, and a reader who clicked
+            *   into it to type their idea — which is the single most likely thing anyone does with
+            *   a box that looks like that — got nothing at all.
+            *
+            *   It is a real <form> with a real <textarea> and a real submit, and the submit goes
+            *   where the page's own primary action already goes: /app/signup. What was typed
+            *   travels with it as `?start=`, so the reader's sentence is not thrown away between
+            *   the front door and the first screen inside.
+            *
+            *   NOTHING IN THE APP READS `start` YET, and that is written here rather than left to
+            *   be discovered, because this repository has exactly that scar: `data-cursor` sat on
+            *   three elements for weeks with no renderer, and every reader of those files
+            *   reasonably concluded a cursor system existed. docs/backlog/HANDOFF-HERO-START.md
+            *   names the hop and who has to build it. The page claims nothing about a prefill; it
+            *   says "Create a free account", which is what happens.
+            *
+            *   THE THREE EXAMPLES SURVIVE, as the empty state. They are the same three sentences
+            *   on the same one keyframe with no script; they are now a ghost behind a real field
+            *   and CSS hides them the moment it is focused or holds a character. Deleting them
+            *   would have removed the only moving thing in the foreground of this page. ]]*/}
+          <form class="composer" action="/app/signup" method="get">
             {/* All three sentences are in the markup, stacked, and the stylesheet fades between
                 them. With motion turned off the cycle does not stop on whichever one happened to
                 be painted — a cancelled animation returns to the declared value, so the stylesheet
                 declares the first line visible and that is the still state. Every line is a
                 finished sentence either way; none of them is a fragment. */}
             <div class="composer-field">
-              <span class="composer-typed">
+              <label class="visually-hidden" for="hero-start">What do you want built in your Roblox Studio place?</label>
+              {/* `placeholder=" "` is a single space and is deliberate: it makes `:placeholder-shown`
+                  true while the field is empty, which is what lets the ghost below be hidden by CSS
+                  alone with no script. A visible placeholder would be a second empty-state message
+                  competing with the three sentences. */}
+              <textarea
+                id="hero-start"
+                name="start"
+                class="composer-input"
+                rows="1"
+                maxlength="280"
+                placeholder=" "
+                autocomplete="off"
+                spellcheck="false"
+              ></textarea>
+              {/* The ghost. aria-hidden because the field above it is the real object and a screen
+                  reader reading three cycling example sentences into a text field is noise. */}
+              <span class="composer-typed" aria-hidden="true">
                 {composerExamples.map((example, i) => (
                   <span class="composer-line" style={`--turn:${i}`}>{example}</span>
                 ))}
@@ -432,9 +473,11 @@ const asks = [
                 </span>
                 <span class="chip chip-model">{composerModel}</span>
               </div>
-              <span class="composer-send">Build</span>
+              {/* A real submit. It was a <span>, so the most prominent control above the fold was
+                  not a control: not focusable, not pressable by keyboard, and announced as text. */}
+              <button class="composer-send" type="submit">Build</button>
             </div>
-          </div>
+          </form>
 
           <div class="hero-foot">
             <p class="availability">

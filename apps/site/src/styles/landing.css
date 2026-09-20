@@ -307,6 +307,14 @@ a:focus-visible, button:focus-visible {
 
 /* The skip link is a control like any other, so it lands on a control height instead of inventing
    one out of 12px of padding: 36px, the chrome step, with the primary action's 16px of side room. */
+/* The same utility global.css carries, restated here for the same reason the orphan rule below is:
+   this page does not import that sheet. The landing's first real form label is the first thing on
+   this route that needs it. */
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px;
+  margin: -1px; padding: 0; border: 0;
+  clip-path: inset(50%); overflow: hidden; white-space: nowrap;
+}
 .skip-link { position: fixed; z-index: 30; top: -80px; left: 20px; display: inline-flex; align-items: center; height: var(--h-md); padding: 0 16px; border-radius: var(--r-sm); background: var(--inverted); color: var(--ground); }
 .skip-link:focus { top: 12px; }
 
@@ -682,8 +690,59 @@ p, li, dd, dt, figcaption, blockquote { text-wrap: pretty; }
    the composer stepped between 138px and 117px as the line crossed its wrap, on the screen where
    it is most of the fold. 60 = one 22px line + 20 + 18, and 80 at 375 = two 21px lines + 38. */
 .composer-field {
+  /* `position: relative` is new and is what the ghost is positioned against. The field now holds
+     two things in the same box — the real <textarea> and the three example sentences behind it —
+     and they must share one origin or the caret and the example start at different pixels. */
+  position: relative;
   flex: 1; padding: 20px 20px 18px; min-height: 60px;
   color: var(--ink-secondary); font-size: 15px; line-height: 22px; letter-spacing: -0.01em;
+}
+
+/*[[ THE REAL FIELD. Everything here is either a browser default being undone or a value inherited
+ *   from .composer-field so the two cannot drift.
+ *
+ *   IT INHERITS ITS TYPE RATHER THAN RESTATING IT. A <textarea> does not inherit font by default —
+ *   it takes the UA's monospace-ish form font — so an unstyled one would set the reader's own
+ *   sentence in a different face and size from the example it replaces, and the box would jump the
+ *   moment the first character landed.
+ *
+ *   `resize: none` and `overflow: hidden` together: a drag handle in the corner of the hero's focal
+ *   object is a browser default nobody chose, and a scrollbar appearing at 281 characters would
+ *   move the composer's rim. The 280-character ceiling is on the element.
+ *
+ *   NO HEIGHT, ONLY A LINE COUNT. `rows="1"` plus the parent's min-height is what keeps the box
+ *   still; the field grows no taller than its one row and long text scrolls inside it. A field that
+ *   sized to its content would make the whole hero jump once per keystroke, which is the same
+ *   reason .composer-field carries a min-height rather than a height. */
+.composer-input {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  resize: none;
+  overflow: hidden;
+  color: var(--ink);
+  caret-color: var(--accent);
+  font: inherit;
+  letter-spacing: inherit;
+}
+.composer-input:focus { outline: none; }
+/* THE RIM IS THE FOCUS RING. The field fills the whole panel, so a ring drawn on the field itself
+   would sit inside a border 20px away from it and read as a box inside a box. The composer is the
+   focused object as far as a reader is concerned, so the composer is what changes. */
+.composer:focus-within { border-color: var(--accent-ring); }
+
+/* THE GHOST GOES THE MOMENT THERE IS A REAL CARET OR A REAL CHARACTER.
+   `:placeholder-shown` is true only while the field is empty — which is why the markup carries a
+   single-space placeholder — so these two selectors between them cover "being typed into" and
+   "already has something in it", with no script. `visibility` as well as `opacity`, or the hidden
+   example still takes the pointer and a click lands on a span instead of the field. */
+.composer-input:focus ~ .composer-typed,
+.composer-input:not(:placeholder-shown) ~ .composer-typed {
+  opacity: 0;
+  visibility: hidden;
 }
 /* THE ONLY THING IN THE FOREGROUND OF THIS PAGE THAT MOVES.
    Four animations already run above the fold and every one of them is in the background haze:
@@ -703,7 +762,15 @@ p, li, dd, dt, figcaption, blockquote { text-wrap: pretty; }
    separately positioned caret would have to be told where each sentence ends — in a typeface that
    is SF here, Segoe on Windows and Roboto on Android — and would be wrong on two of the three. A
    border on a fit-content box is at the end of its own text by construction, on every platform. */
-.composer-typed { position: relative; display: block; height: 22px; }
+/* ABSOLUTE OVER THE FIELD, not in flow. It used to BE the field's content; now it sits behind the
+   real one and must start at exactly the same pixel, so it takes the field's own padding as its
+   inset. `pointer-events: none` so a click anywhere in the box reaches the textarea. */
+.composer-typed {
+  position: absolute; left: 20px; top: 20px; right: 20px;
+  display: block; height: 22px;
+  pointer-events: none;
+  transition: opacity var(--t-fast) ease-out;
+}
 .composer-line {
   position: absolute; left: 0; top: 0;
   width: max-content; max-width: 100%;
@@ -793,6 +860,13 @@ p, li, dd, dt, figcaption, blockquote { text-wrap: pretty; }
    one, and using the chip recipe for the button is exactly the flatness the accent family exists to
    fix: a green control with a green border in the same green has no edge. */
 .composer-send {
+  /* It is a <button type="submit"> now and was a <span>. These three are the UA defaults a button
+     brings and a span does not: its own form font, its own baseline alignment, and the arrow
+     pointer. Without them the label lands off its measured baseline, in the form font, and the
+     panel's most prominent control looks subtly unlike the pills beside it. */
+  font-family: inherit;
+  vertical-align: middle;
+  cursor: pointer;
   display: inline-flex; align-items: center;
   height: var(--h-md); padding: 0 16px;
   border: 1px solid var(--accent-ring); border-radius: var(--r-sm);
