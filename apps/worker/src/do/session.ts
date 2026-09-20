@@ -1332,11 +1332,34 @@ export class SessionDO extends DurableObject<Env> {
     return this.connectedGiven(Math.max(this.lastSeenWrittenAt, this.pluginLastSeenMs));
   }
 
-  /** ONE rule, so there cannot be two answers. Both readers above are this function. */
+  /**
+   * ONE rule, so there cannot be two answers. Both readers above are this function.
+   *
+   * `pollDueBy` EXTENDS the window, it does not replace it. Its own declaration says what it is —
+   * "last answer + the sleep we issued + grace" — so it exists for the case where we told the
+   * plugin to sleep longer than the default idle and the heartbeat-derived deadline would
+   * therefore expire mid-hold. That is a reason to take the LATER of the two.
+   *
+   * It was written as `this.pollDueBy || …`, which takes it INSTEAD, and that inverts the meaning
+   * whenever the issued deadline has lapsed but a heartbeat has arrived since. A plugin
+   * reconnecting to a still-warm SessionDO does exactly that: handlePluginPoll writes the
+   * heartbeat, broadcasts `studio_status connected:true` to the browser, then holds the request
+   * for POLL_HOLD_WARM_MS before refreshing `pollDueBy`. For those six seconds the screen said
+   * connected and this function said false.
+   *
+   * Six seconds would be a small window if the answer were re-read, but it is not: a run started
+   * in it computes `studioConnected` once, builds the system prompt from it, and keeps that prompt
+   * as `agent.llm[0]` for the whole run — a prompt reading "Roblox Studio is NOT connected" and a
+   * tool set with no building tools in it. That is the owner's report exactly: the plugin says
+   * connected, the pill is green, and the model says it cannot see Studio.
+   *
+   * A fresh heartbeat is positive evidence of life. A lapsed deadline we issued earlier is not
+   * evidence of death once a poll has arrived after it.
+   */
   private connectedGiven(last: number): boolean {
     if (!last) return false;
-    const deadline = this.pollDueBy || last + POLL_WAIT_IDLE_MS + POLL_STALE_GRACE_MS;
-    return Date.now() < deadline;
+    const fromHeartbeat = last + POLL_WAIT_IDLE_MS + POLL_STALE_GRACE_MS;
+    return Date.now() < Math.max(this.pollDueBy, fromHeartbeat);
   }
 
   /**
