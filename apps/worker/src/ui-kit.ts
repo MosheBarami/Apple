@@ -106,6 +106,25 @@ function AppleUI.mount(playerGui, options)
         round(object, math.min(theme.radius, 14))
         outline(object, math.max(theme.stroke, 3))
         strokeText(object)
+        -- A TAP TARGET, NOT A CLICK TARGET. Roblox's own guidance is 44px, and every button in this
+        -- kit was sized by whatever its caller passed — fine under a mouse, and on a phone a control
+        -- a player misses twice reads as a broken game rather than as a small button. UISizeConstraint
+        -- raises the floor without touching any caller's layout: a button already large enough is
+        -- unchanged, and one that is not grows to where a thumb can land on it.
+        make("UISizeConstraint", object, { MinSize = Vector2.new(64, 44) })
+        -- PRESSED IS A STATE THE PLAYER CAUSED, and until now the only feedback was AutoButtonColor,
+        -- which on a touch screen is hidden under the finger that caused it. A hold that visibly
+        -- sinks the control is what tells somebody the tap registered BEFORE the server answers —
+        -- and the server answer is the slow half, which is exactly when a player taps again.
+        local restSize = dimensions
+        object.MouseButton1Down:Connect(function()
+            object.Size = UDim2.new(restSize.X.Scale, restSize.X.Offset - 2, restSize.Y.Scale, restSize.Y.Offset - 2)
+        end)
+        local function release()
+            object.Size = restSize
+        end
+        object.MouseButton1Up:Connect(release)
+        object.MouseLeave:Connect(release)
         -- The bevel is what makes a button read as pressable: a lighter top half, then a darker
         -- band along the bottom edge. Flat fills read as a web form, which is the note the
         -- reference library records against six of its ten entries.
@@ -371,13 +390,38 @@ function AppleUI.mount(playerGui, options)
     -- Size to the catalogue, not a mostly-empty full-height sheet. Large/narrow catalogues still
     -- scroll, and the measured safe viewport remains the upper bound in landscape layouts.
     local columns = 1
+    -- THE PHONE, WHICH IS WHERE ROBLOX IS PLAYED.
+    --
+    -- The grid already dropped to one column under 420px, which is the only thing in this kit that
+    -- had ever noticed a small screen. Everything else stayed at desktop proportions: a simulator
+    -- card is 240px tall, so on a phone in portrait ONE of them filled the panel and the player
+    -- scrolled a list of one. Text stayed at 16px, read at arm's length on a six-inch screen.
+    --
+    -- MEASURED FROM THE VIEWPORT, NOT FROM TouchEnabled. A touch-capable laptop is not a phone, and
+    -- a phone with a keyboard attached is still a phone; the number that decides whether a 240px
+    -- card fits is how many pixels there are, and it is the same number in both cases. It is also
+    -- live: Roblox rotates, and a portrait layout that never becomes a landscape one is the defect
+    -- with a different name.
+    local function phoneScale()
+        local shortest = math.min(overlay.AbsoluteSize.X, overlay.AbsoluteSize.Y)
+        if shortest <= 0 then return 1 end
+        if shortest < 420 then return 0.68 end
+        if shortest < 620 then return 0.82 end
+        return 1
+    end
+    local function cardHeightNow()
+        return math.max(120, math.floor(theme.cardHeight * phoneScale()))
+    end
     local function fitPanelHeight()
         local rows = theme.layout == "cards" and math.ceil(#cards / columns) or #cards
-        local content = rows > 0 and (rows * theme.cardHeight + math.max(0, rows - 1) * 12) or 64
+        local unit = cardHeightNow()
+        local content = rows > 0 and (rows * unit + math.max(0, rows - 1) * 12) or 64
         local height = math.min(650, math.max(224, content + 160))
         local available = overlay.AbsoluteSize.Y
         if available > 0 then height = math.min(height, math.floor(available * 0.88)) end
-        panel.Size = UDim2.new(0.92, 0, 0, height)
+        -- 0.92 of the width is right on a desktop and leaves no margin at all on a phone, where the
+        -- panel is the whole screen and a player's thumb covers the edge of it.
+        panel.Size = UDim2.new(phoneScale() < 1 and 0.96 or 0.92, 0, 0, height)
     end
     listen(overlay:GetPropertyChangedSignal("AbsoluteSize"), fitPanelHeight)
     if theme.layout == "cards" then
@@ -388,7 +432,7 @@ function AppleUI.mount(playerGui, options)
             local width = list.AbsoluteSize.X
             columns = width >= 420 and 2 or 1
             grid.FillDirectionMaxCells = columns
-            grid.CellSize = UDim2.new(1 / columns, columns == 2 and -10 or -8, 0, theme.cardHeight)
+            grid.CellSize = UDim2.new(1 / columns, columns == 2 and -10 or -8, 0, cardHeightNow())
             fitPanelHeight()
         end
         listen(list:GetPropertyChangedSignal("AbsoluteSize"), fitGrid)
@@ -500,9 +544,22 @@ function AppleUI.mount(playerGui, options)
             description.TextColor3 = muted
             if isCard then description.TextXAlignment = Enum.TextXAlignment.Center end
             description.Visible = item.description ~= ""
-            local price = label(row, "Price", item.price, 14, UDim2.new(0, 14, 1, -78), UDim2.new(1, -28, 0, 24))
-            if isCard then price.TextXAlignment = Enum.TextXAlignment.Center end
-            price.TextColor3 = muted
+            -- A PRICE IS A PILL, NOT A LINE OF TEXT, and the reference library records that as an
+            -- open gap against this theme: "prices render as bare text ('75 coins') rather than an
+            -- icon-then-number pill". Every shipped simulator in packages/corpus/data/ui-references/
+            -- simulator.json puts the number on a small filled capsule, because a price is the one
+            -- value on a card a player compares against their balance — and bare muted text beside a
+            -- chunky button reads as a caption rather than as a number to check.
+            local priceHolder = make("Frame", row, {
+                Name = "PriceTag", BackgroundColor3 = theme.panel, BorderSizePixel = 0,
+                Position = UDim2.new(0, 14, 1, -78), Size = UDim2.new(1, -28, 0, 26),
+            })
+            round(priceHolder, 999)
+            outline(priceHolder, math.max(theme.stroke, 2))
+            local price = label(priceHolder, "Price", item.price, 14, UDim2.fromOffset(0, 0), UDim2.fromScale(1, 1))
+            price.TextXAlignment = Enum.TextXAlignment.Center
+            price.TextColor3 = theme.ink
+            strokeText(price)
             local choose = button(row, "Choose", item.owned and "Owned" or (item.disabled and "Unavailable" or "Choose"), UDim2.new(0, 12, 1, -54), UDim2.new(1, -24, 0, 42))
             table.insert(cards, { root = row, button = choose, disabled = item.disabled })
             listen(choose.Activated, function()

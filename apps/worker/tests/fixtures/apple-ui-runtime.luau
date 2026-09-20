@@ -34,8 +34,28 @@ Color3 = {
 ColorSequenceKeypoint = { new = function(t, colour) return { Time = t, Value = colour } end }
 ColorSequence = { new = function(keypoints) return { Keypoints = keypoints } end }
 UDim = { new = function(...) return { ... } end }
-UDim2 = { new = function(...) return { ... } end, fromOffset = function(...) return { ... } end, fromScale = function(...) return { ... } end }
-Vector2 = { new = function(...) return { ... } end }
+-- UDim2 AND Vector2 CARRY THEIR FIELDS AS WELL AS THEIR ARGUMENTS.
+--
+-- These returned a bare positional table, so nothing in a test could ask a size what its height
+-- was: `panel.Size.Y.Offset` — which is how Roblox spells it and how every reader expects to — read
+-- nil. A fixture that cannot answer the question the engine answers pushes every assertion into
+-- `size[3]`, and an assertion written as `size[3]` is one nobody can check by reading.
+--
+-- The positional keys stay, so anything already indexing them is untouched; the named fields are
+-- added beside them. Deliberately NOT a metatable: this is a stub, and a stub that computes is a
+-- stub that can be wrong in a way the real thing is not.
+UDim2 = {
+    new = function(xs, xo, ys, yo)
+        return { xs, xo, ys, yo, X = { Scale = xs, Offset = xo }, Y = { Scale = ys, Offset = yo } }
+    end,
+    fromOffset = function(x, y)
+        return { x, y, X = { Scale = 0, Offset = x }, Y = { Scale = 0, Offset = y } }
+    end,
+    fromScale = function(x, y)
+        return { x, y, X = { Scale = x, Offset = 0 }, Y = { Scale = y, Offset = 0 } }
+    end,
+}
+Vector2 = { new = function(x, y) return { x, y, X = x, Y = y } end }
 TweenInfo = { new = function(...) return { ... } end }
 local services = {
     RunService = { IsClient = function() return true end, Heartbeat = signal() },
@@ -56,7 +76,22 @@ game = { GetService = function(_, name) assert(services[name], name); return ser
 Instance = {}
 function Instance.new(className)
     local propertySignals = {}
-    local data = { ClassName = className, Name = className, children = {}, Activated = signal(), Destroying = signal(), AbsoluteSize = {X=0,Y=0} }
+    -- THE POINTER SIGNALS A REAL GuiButton HAS, and this fixture did not.
+    --
+    -- It gave every instance `Activated` and `Destroying` and nothing else, so the moment the kit
+    -- connected a pressed state the whole suite failed with "attempt to index nil with 'Connect'" —
+    -- not because the kit was wrong but because the model of Roblox was thinner than Roblox. A
+    -- fixture missing a signal the engine has cannot tell "this code is broken" from "this code
+    -- uses something I have not heard of", and it reports the second as the first.
+    --
+    -- These four are on every GuiButton (create.roblox.com/docs/reference/engine/classes/GuiButton).
+    -- They are added to EVERY instance rather than to buttons only, which is the fixture already
+    -- being loose in the same way it is loose about Activated — worth knowing, not worth fixing
+    -- here, because a test that connects MouseLeave on a Frame is a test with a different problem.
+    local data = { ClassName = className, Name = className, children = {},
+        Activated = signal(), Destroying = signal(),
+        MouseButton1Down = signal(), MouseButton1Up = signal(), MouseEnter = signal(), MouseLeave = signal(),
+        AbsoluteSize = {X=0,Y=0} }
     local object = {}
     function data:GetPropertyChangedSignal(property)
         if not propertySignals[property] then propertySignals[property] = signal() end

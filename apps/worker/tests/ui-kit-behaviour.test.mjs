@@ -162,3 +162,72 @@ test('closed or disabled choices cannot send requests, including programmatic ac
     find(ui.gui, "Choose").Activated:Fire()
     assert(calls == 0)`);
 });
+
+/* ------------------------------------------------- the phone, which is where Roblox is played --- */
+
+test('THE SHOP FITS A PHONE — the panel shrinks with the viewport instead of filling it', () => {
+  // A simulator card is 240px tall. On a phone in portrait the usable panel is a few hundred pixels,
+  // so ONE card filled it and the player scrolled a list of one. The grid already dropped to a
+  // single column under 420px — the only thing in this kit that had ever noticed a small screen.
+  const out = run(`
+    local ui = UI.mount(playerGui, { theme = "simulator", onRequest = function() return true end })
+    ${items}
+    ui:open()
+    local overlay = find(ui.gui, "ShopOverlay")
+    local panel = find(ui.gui, "Shop")
+
+    -- Desktop first, so this compares two measured states rather than a number I chose.
+    overlay.AbsoluteSize = { X = 1280, Y = 720 }
+    overlay:GetPropertyChangedSignal("AbsoluteSize"):Fire()
+    local wide, wideScale = panel.Size.Y.Offset, panel.Size.X.Scale
+
+    overlay.AbsoluteSize = { X = 390, Y = 700 }
+    overlay:GetPropertyChangedSignal("AbsoluteSize"):Fire()
+    local narrow, narrowScale = panel.Size.Y.Offset, panel.Size.X.Scale
+
+    assert(narrow < wide, "the panel did not shrink on a phone: " .. narrow .. " vs " .. wide)
+    assert(narrowScale > wideScale, "the panel keeps its desktop side margin on a phone")
+  `);
+  assert.match(out, /UI-OK/);
+});
+
+test('a tap target has a floor, because a control a thumb misses reads as a broken game', () => {
+  // Roblox's own guidance is 44px. Every button here was sized by whatever its caller passed, which
+  // is fine under a mouse. UISizeConstraint raises the floor without touching a caller's layout.
+  const out = run(`
+    local ui = UI.mount(playerGui, { theme = "simulator", onRequest = function() return true end })
+    ${items}
+    ui:open()
+    local constraint = nil
+    for _, child in ipairs(find(ui.gui, "Choose").children) do
+      if child.ClassName == "UISizeConstraint" then constraint = child end
+    end
+    assert(constraint, "no UISizeConstraint on a button")
+    assert(constraint.MinSize.Y >= 44, "the tap-target floor is under 44px")
+  `);
+  assert.match(out, /UI-OK/);
+});
+
+test('A PRESS IS ANSWERED BEFORE THE SERVER IS, and the control returns when it ends', () => {
+  // AutoButtonColor was the only feedback, and on a touch screen it is hidden under the finger that
+  // caused it. The server answer is the slow half — which is exactly when a player taps again, and
+  // a second tap on a purchase is the failure worth four lines to avoid.
+  const out = run(`
+    local ui = UI.mount(playerGui, { theme = "simulator", onRequest = function() return true end })
+    ${items}
+    ui:open()
+    local choose = find(ui.gui, "Choose")
+    local rest = choose.Size.Y.Offset
+    choose.MouseButton1Down:Fire()
+    assert(choose.Size.Y.Offset < rest, "the button did not move on press")
+    choose.MouseButton1Up:Fire()
+    assert(choose.Size.Y.Offset == rest, "the button stayed pressed after release")
+
+    -- A finger that slides off is a cancelled tap, and a button left visibly held is one the player
+    -- believes is still working.
+    choose.MouseButton1Down:Fire()
+    choose.MouseLeave:Fire()
+    assert(choose.Size.Y.Offset == rest, "the button stayed pressed after the pointer left")
+  `);
+  assert.match(out, /UI-OK/);
+});
