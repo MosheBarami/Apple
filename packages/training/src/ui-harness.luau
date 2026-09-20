@@ -301,10 +301,34 @@ local METHODS = {
 	Destroy = function(d) setParent(d, nil) d.destroyed = true end,
 	Remove = function(d) setParent(d, nil) d.destroyed = true end,
 	ClearAllChildren = function(d) for i = #d.children, 1, -1 do setParent(d.children[i], nil) end end,
+	--[[ CLONE IS A DEEP COPY IN THE ENGINE, AND A SHALLOW ONE HERE BLAMED THE MODEL.
+
+	     MEASURED, 2026-09-20, on a generated tycoon leaderboard. The model built one board Part
+	     with a SurfaceGui named "LeaderboardSurface" inside it, then wrote the ordinary Roblox
+	     idiom for a second board:
+
+	         local boardPart2 = boardPart:Clone()
+	         local dailyGui = boardPart2:FindFirstChild("LeaderboardSurface")
+	         dailyGui.TitleBar.Title.Text = "TODAY'S TOP DROPPER EARNERS"
+
+	     `Instance:Clone()` copies the instance AND all of its descendants — that is the whole
+	     reason anybody calls it. This shim copied the properties and dropped every child, so
+	     FindFirstChild returned nil, the next line threw "attempt to index nil with 'TitleBar'",
+	     and correct Luau was recorded as the model's runtime error.
+
+	     Attributes are copied too, for the same reason. Parent deliberately is NOT: a fresh clone
+	     is unparented in the engine, and `props` never holds Parent anyway because __newindex
+	     routes it to setParent. ]]
 	Clone = function(d)
-		local copy = newInstance(d.class, nil, d.props.Name)
-		for k, v in pairs(d.props) do nodeOf(copy).props[k] = v end
-		return copy
+		local function cloneInto(src, parentProxy)
+			local proxy = newInstance(src.class, parentProxy, src.props.Name)
+			local cd = nodeOf(proxy)
+			for k, v in pairs(src.props) do cd.props[k] = v end
+			for k, v in pairs(src.attrs) do cd.attrs[k] = v end
+			for _, child in ipairs(src.children) do cloneInto(child, proxy) end
+			return proxy
+		end
+		return cloneInto(d, nil)
 	end,
 	SetAttribute = function(d, k, v) d.attrs[k] = v end,
 	GetAttribute = function(d, k) return d.attrs[k] end,
@@ -354,6 +378,26 @@ local CLASS_METHODS = {
 	TweenService = {
 		Create = function() return opaque("Tween") end,
 		GetValue = function() return 0 end,
+	},
+	--[[ MEASURED, 2026-09-20, on a generated tycoon HUD. Its second statement was
+
+	         StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, false)
+
+	     which is the correct and standard way to hide Roblox's own health bar before drawing your
+	     own — the model even said so in a comment. The call landed on no method and the build died
+	     with "attempt to call missing method" before a single Frame existed, so an entire HUD was
+	     recorded as a model failure at line 8.
+
+	     These four are safe to answer because NONE of them can touch the instance tree, which is
+	     what this harness measures. SetCore/SetCoreGuiEnabled toggle engine chrome; the getters are
+	     given the engine's default of enabled. They are listed by name rather than made into a
+	     catch-all no-op, because a catch-all would swallow the next real gap silently — the failure
+	     mode this whole file is careful about. ]]
+	StarterGui = {
+		SetCoreGuiEnabled = function() end,
+		GetCoreGuiEnabled = function() return true end,
+		SetCore = function() end,
+		GetCore = function() return nil end,
 	},
 }
 

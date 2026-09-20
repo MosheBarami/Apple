@@ -101,3 +101,61 @@ test('the Unit of a zero vector is zero rather than a division by zero', () => {
   assert.equal(built.status, 'ok', `harness threw: ${built.detail}`);
   assert.deepEqual(posOf(built), { k: 'Vector3', x: 0, y: 0, z: 0 });
 });
+
+/**
+ * TWO MORE GAPS FROM THE SAME RUN, AND THE SAME CLASS OF DEFECT: correct Luau that this shim could
+ * not execute, recorded as the model's failure. Both were found by generating real screens.
+ */
+test('Clone copies descendants, because that is the only reason anyone calls it', () => {
+  const built = buildUiTree(`
+local board = Instance.new("Part")
+board.Name = "Board"
+board.Size = Vector3.new(10, 6, 1)
+board.Position = Vector3.new(0, 5, 0)
+local surface = Instance.new("SurfaceGui")
+surface.Name = "LeaderboardSurface"
+surface.Parent = board
+local title = Instance.new("TextLabel")
+title.Name = "Title"
+title.Text = "WEEKLY"
+title.Parent = surface
+board.Parent = game:GetService("Workspace")
+
+local second = board:Clone()
+second.Name = "Board2"
+second.Position = Vector3.new(28, 5, 0)
+second.Parent = game:GetService("Workspace")
+local gui = second:FindFirstChild("LeaderboardSurface")
+gui.Title.Text = "DAILY"
+`);
+  assert.equal(built.status, 'ok', `harness threw: ${built.detail}`);
+  const labels = built.nodes.filter((n) => n.class === 'TextLabel').map((n) => n.props?.Text?.v);
+  assert.deepEqual(labels.sort(), ['DAILY', 'WEEKLY'], 'the clone must carry its own copy of the label');
+  assert.equal(built.nodes.filter((n) => n.class === 'SurfaceGui').length, 2, 'the SurfaceGui is cloned with the part');
+});
+
+test('a clone is unparented until the script parents it', () => {
+  const built = buildUiTree(`
+local f = Instance.new("Frame")
+f.Name = "Original"
+f.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+local c = f:Clone()
+c.Name = "Copy"
+`);
+  assert.equal(built.status, 'ok', `harness threw: ${built.detail}`);
+  const copy = built.nodes.find((n) => n.props?.Name?.v === 'Copy');
+  assert.ok(copy, 'the clone exists');
+  assert.equal(copy.parent, null, 'the engine returns a clone with no Parent');
+});
+
+test('StarterGui:SetCoreGuiEnabled answers, because every custom HUD disables the core one first', () => {
+  const built = buildUiTree(`
+local StarterGui = game:GetService("StarterGui")
+StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, false)
+local gui = Instance.new("ScreenGui")
+gui.Name = "Hud"
+gui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+`);
+  assert.equal(built.status, 'ok', `harness threw: ${built.detail}`);
+  assert.ok(built.nodes.some((n) => n.class === 'ScreenGui' && n.props?.Name?.v === 'Hud'), 'the HUD after the call still builds');
+});
