@@ -59,7 +59,25 @@ test('staleness is derived from the sleep we issued, never a fixed constant', ()
   // A fixed 8s threshold is what made a 12s hold fail every op with "Studio is not connected".
   // Once the sleep is adaptive, the deadline has to move with it.
   assert.match(SESSION, /this\.pollDueBy = Date\.now\(\) \+ waitMs \+ POLL_STALE_GRACE_MS;/);
-  assert.match(SESSION, /const deadline = this\.pollDueBy \|\| last \+ POLL_WAIT_IDLE_MS \+ POLL_STALE_GRACE_MS;/, 'after an eviction it must fall back to the widest sleep, not to a stale constant');
+  //[[ THIS PINNED THE SPELLING OF AN EXPRESSION THAT HAD A BUG IN IT.
+  //
+  //   It asserted the literal `this.pollDueBy || last + POLL_WAIT_IDLE_MS + POLL_STALE_GRACE_MS`.
+  //   The property it names — after an eviction, fall back to the heartbeat-derived deadline rather
+  //   than a stale constant — is correct and still holds. But `||` does something else as well: it
+  //   lets a LAPSED pollDueBy override a heartbeat that arrived after it, which is what made the
+  //   plugin report connected while the model was told it was not (see
+  //   studio-connected-disagreement.test.mjs). Fixing that turned this guard red, because the guard
+  //   was holding the code to the shape of the defect.
+  //
+  //   Re-aimed at the two properties it meant, and neither is a spelling:
+  //     - the fallback still exists, so an evicted instance is not declared dead; and
+  //     - pollDueBy EXTENDS the deadline rather than replacing it, which is what its own
+  //       declaration comment says it is for.
+  const body = /private connectedGiven\(last: number\): boolean \{([\s\S]*?)\n  \}/.exec(SESSION);
+  assert.ok(body, 'connectedGiven is no longer one function — re-read this guard before changing it');
+  assert.match(body[1], /POLL_WAIT_IDLE_MS \+ POLL_STALE_GRACE_MS/, 'the heartbeat-derived fallback must survive an eviction');
+  assert.match(body[1], /Math\.max\(\s*this\.pollDueBy/, 'pollDueBy must EXTEND the window, never replace it');
+  assert.ok(!/this\.pollDueBy \|\|/.test(SESSION), 'the override form is back; a lapsed deadline can outvote a fresh heartbeat again');
   assert.equal(/Date\.now\(\) - last < 8000/.test(SESSION), false, 'the old fixed 8s staleness must be gone');
 
   // The grace must cover the sleep, or a plugin that obeys us is declared dead for obeying us.

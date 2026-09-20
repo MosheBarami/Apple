@@ -715,7 +715,13 @@ export function phaseForTool(tool: string): AgentPhase {
     // the other two asset-decision tools because it is the same act: deciding what to use before
     // anything is built. Announcing "Building world" for a lookup would be the wrong claim.
     case 'get_genre_kit':
-    case 'search_asset_library':
+    // The two knowledge libraries added 2026-09-20. Both read a statically bundled corpus and
+    // touch nothing: get_ui_construction answers how an interface is SHAPED, get_verified_module
+    // hands over Luau that was run against its own checks. They sit here for the same reason
+    // get_genre_kit does — looking something up before building is not building, and announcing
+    // "Building world" for a lookup is a claim about work that is not happening.
+    case 'get_ui_construction':
+    case 'get_verified_module':
     case 'find_verified_asset':
     case 'inspect_model':
     // The read-only Studio tools. Each one ASKS the place something and changes nothing, so
@@ -745,8 +751,8 @@ export function phaseForTool(tool: string): AgentPhase {
     // would have the workspace claim the place is being changed at the exact moment it is not.
     case 'propose_plan':
       return 'planning';
-    // Writing a file into Golem's own store, which is what `remembering` already covers: it is
-    // the phase for durable state that belongs to Golem rather than to the place. `building`
+    // Writing a file into Apple's own store, which is what `remembering` already covers: it is
+    // the phase for durable state that belongs to Apple rather than to the place. `building`
     // would say the agent changed the game, and it did not touch it.
     case 'workspace_write':
       return 'remembering';
@@ -2361,8 +2367,18 @@ export function isRobloxScope(v: unknown): v is RobloxScope {
  * SHARED for the same reason the Roblox scopes are: the dialog offers these choices and the worker
  * validates what comes back, and a vocabulary in two places lets the dialog offer an option the
  * worker refuses — a control that cannot work, discovered by the person who ticked it.
+ *
+ * `apple_library` WAS THE FIRST MEMBER AND WAS REMOVED ON 2026-09-20, with the catalogue it
+ * authorised. Leaving it would be that exact failure in reverse: a box in the dialog that unlocks
+ * no engine source, so ticking it changes nothing and the person who ticked it finds out later.
+ *
+ * A STORED POLICY THAT STILL NAMES IT IS NOW INVALID, and that is the intended degradation rather
+ * than an oversight. `isAssetSourcePolicy` (worker preferences.ts) rejects a policy containing an
+ * unknown choice outright, so such a row falls back to `ASSET_SOURCE_DEFAULT` — `ask`, allowing
+ * nothing — and the person is asked again. Silently dropping the dead member instead would leave
+ * `remember` set on an answer they never gave.
  */
-export const ASSET_SOURCE_CHOICES = ['apple_library', 'creator_store', 'from_scratch'] as const;
+export const ASSET_SOURCE_CHOICES = ['creator_store', 'from_scratch'] as const;
 export type AssetSourceChoice = (typeof ASSET_SOURCE_CHOICES)[number];
 
 /**

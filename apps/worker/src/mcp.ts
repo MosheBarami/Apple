@@ -288,7 +288,6 @@ export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
   speak_line: 'Paid speech synthesis, and the result is uploaded to Roblox under the product\'s own creator account.',
   assign_sounds: 'Writes Sound instances into the place, and generates audio to fill them.',
   search_docs: 'Embeds the query before searching, so every call is an inference call. An MCP client already has documentation search of its own; this one costs the owner money.',
-  search_asset_library: 'Embeds the query to search the asset library, so every call is an inference call. It also names no project, so a key\'s grant could not scope it.',
 
   // ---- reaches outside the place on the caller's behalf ----------------------------------
   find_verified_asset: 'Calls the Roblox Creator Store from the worker. An unauthenticated program driving the product\'s outbound requests is a way to borrow its reputation and its rate limit.',
@@ -305,6 +304,8 @@ export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
   focus_camera: 'Moves the camera of whoever is sitting in Studio. It writes nothing to the place and still takes the screen away from a person who did not ask.',
   select_instances: 'Changes what that person has selected, which is the state their next click acts on.',
   find_mechanic: 'Reads a static pattern table and cites public repositories, so it writes nothing, spends nothing and reaches nowhere. Excluded on the same rule as choose_asset_source and get_genre_kit: it names no project, so a key\'s grant has nothing to scope the call by.',
+  get_ui_construction: 'Reads a statically bundled corpus of how shipped Roblox interfaces are constructed — stroke weights, radii, tiles per row — so it writes nothing, spends nothing and reaches nowhere. Excluded on the same rule as get_genre_kit: it names no project, so a key\'s grant has nothing to scope the call by, and it is the opening move of a build this surface cannot make.',
+  get_verified_module: 'Hands over Luau this repository authored and executed against its own checks. It writes nothing and reaches nowhere, but it is excluded rather than exposed for the reason above AND one of its own: a key holder who could pull the module bodies out one id at a time would be using this surface as a source distribution channel, which is not what a project-scoped grant is for.',
   get_genre_kit: 'Reads a static kit — palette, Lighting values, library queries and pinned sound ids — so it writes nothing, spends nothing and reaches nowhere. It is excluded on the other rule this surface has: it names no project, so a key\'s grant has nothing to scope it by, exactly as with choose_asset_source. It is also the opening move of a build this surface cannot make.',
   inspect_model: 'Asset QC for a model this surface can neither generate nor insert. It belongs to the build pipeline, and the build pipeline is reached through an agent run.',
   workspace_list: 'Reads Apple\'s own per-project scratch storage rather than the Roblox place. No scope in API_SCOPES describes it, and reusing projects:read would silently widen every key already minted.',
