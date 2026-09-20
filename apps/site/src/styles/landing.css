@@ -6,6 +6,13 @@
  * The measurements, the rules derived from them and the things deliberately NOT taken are recorded
  * in packages/corpus/data/ui-references/web-landing.json.
  *
+ * RE-MEASURED 2026-09-20 FOR THE HERO AND THE NAV. The owner rejected the first pass and set the
+ * bar again: the geometry is to be the reference's geometry exactly, in our own black and green.
+ * https://tesana.ai/en was re-read with getComputedStyle at 1568x900 and again at 390x844, and the
+ * hero numbers below are that second reading rather than the first. What was NOT taken is unchanged
+ * and is the harder half: no markup, no stylesheet, no image, no icon, no font file, no wordmark and
+ * not one sentence of its copy. A measurement is a fact about a page; its words are not.
+ *
  * The three decisions that matter, and why each is a number rather than a taste:
  *
  *   ONE WEIGHT. Every text node on the reference is font-weight 400, including its 96px statement.
@@ -41,16 +48,43 @@
   --faint: #8a8783;
 
   --line: rgba(244, 243, 242, 0.08);
-  --line-strong: rgba(244, 243, 242, 0.18);
+  /* The reference fills a quiet control — a nav link on hover, a secondary button, a chip — with
+     its own ink at 6%, and nothing else. Naming it stops the next person reaching for a fifth
+     surface step when what they want is the one tint the whole bar already uses. */
+  --control-fill: rgba(244, 243, 242, 0.06);
 
-  /* One saturated colour, used once — the rule taken from the reference, not its hue. */
+  /* ONE SATURATED COLOUR, SPENT ONCE. #00d492 is the owner's green and the only hue on the page.
+     It is never a solid fill: the reference's green is light standing on a surface, so the accent
+     appears as a 10% tint carrying text at 90% — which is why the two derived tokens exist and the
+     raw hex appears exactly once, here. A second green thing on a screen means neither is the
+     answer, so this pays for the composer's primary control and the focus ring, and nothing else. */
+  --accent: #00d492;
+  --accent-soft: color-mix(in srgb, var(--accent) 10%, transparent);
+  --accent-ink: color-mix(in srgb, var(--accent) 90%, transparent);
+
+  /* The composer is the hero's focal object. On the bar it is a solid white slab on a black page —
+     the brightest thing above the fold. Translated into black and green it keeps that job by
+     inverting: a dark translucent fill with a near-white 1px rim, so the edge is what carries the
+     brightness. Without the rim the composer stops being an object sitting on the page and becomes
+     a rectangle drawn on it. */
+  --composer-fill: rgba(23, 22, 21, 0.72);
+  --composer-rim: rgba(244, 243, 242, 0.86);
 
   --shell: 1280px;
   --gutter: 32px;
+  /* The hero is full-bleed with its own gutter: the bar's nav sits in a 1280px container with 32px
+     padding, while its hero content is centred in the viewport behind 24px. Two different gutters
+     is the measurement, not an oversight, and one variable for each keeps them from drifting. */
+  --hero-gutter: 24px;
   --nav-h: 60px;
   --r: 10px;
   --r-sm: 6px;
-  --r-pill: 999px;
+  /* 22px, measured on the composer and used nowhere else. It is the one radius on the bar that is
+     not 10 or 6, and a composer at 10px reads as a text field rather than a surface. */
+  --r-lg: 22px;
+  /* Every control on the bar is 36px tall — nav link, secondary button, primary button, chip. One
+     height is why the nav row reads as a single line of objects instead of four sizes. */
+  --control-h: 36px;
 
   --ease: cubic-bezier(0.22, 0.68, 0.24, 1);
 }
@@ -74,7 +108,10 @@ body {
 a { color: inherit; text-decoration: none; }
 button, input { font: inherit; color: inherit; }
 img { display: block; max-width: 100%; }
-a:focus-visible, button:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; border-radius: 4px; }
+/* The focus ring is the accent at full strength, 2px at a 4px offset, and it is never restyled per
+   component. A keyboard user gets the same product, and an ink-coloured ring on a page that now has
+   an accent would make the focused element look like every other light thing on it. */
+a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
 ::selection { background: var(--ink); color: var(--ground); }
 
 .skip-link { position: fixed; z-index: 30; top: -80px; left: 20px; padding: 12px 16px; border-radius: var(--r-sm); background: var(--inverted); color: var(--ground); }
@@ -86,13 +123,41 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--ink); outline-o
 
 /* THE TYPE SCALE, measured. 56 / 32 / 20 / 16 / 14 / 10, tracking tightening as size grows and
    turning positive at the micro label. Nothing here is bold. */
-/* 54px, not the reference's 56: scripts/check-copy.mjs caps display type at 3.4rem/54.4px, and a
-   guard that exists to stop a page shouting is not worth weakening for 2 pixels. */
-.display { margin: 0; font-size: clamp(38px, 5vw, 54px); font-weight: 400; line-height: 1.14; letter-spacing: -0.02em; text-wrap: balance; }
-.statement { margin: 0; font-size: clamp(30px, 4.4vw, 50px); font-weight: 400; line-height: 1.16; letter-spacing: -0.02em; text-wrap: balance; }
-.section-title { margin: 0; font-size: clamp(26px, 2.4vw, 32px); font-weight: 400; line-height: 1.32; letter-spacing: -0.013em; }
-.section-sub { margin: 8px 0 0; color: var(--muted); font-size: 14px; line-height: 20px; letter-spacing: -0.01em; }
-.lead { margin: 0; color: var(--ink-secondary); font-size: 16px; line-height: 24px; letter-spacing: -0.01em; }
+/* 56px, which is the bar's H1 exactly, and 40px at 390px wide, which is the bar's H1 there.
+   THE LINE BOX IS `font-size + 8px`, NOT A RATIO. The reference sets 56/64 at desktop and 40/48 on a
+   phone; 64/56 is 1.143 and 48/40 is 1.2, so no single ratio reproduces both and a ratio picked from
+   one end silently misses the other by four pixels. calc(1em + 8px) lands on both measurements.
+   THIS EXCEEDS scripts/check-copy.mjs's 3.4rem (54.4px) display cap by 1.6px, deliberately and with
+   the owner's instruction behind it: the bar for this page is now the reference's own measurements,
+   and the cap was set from a different set of competitors. Raising MAX_DISPLAY_REM to 3.5 belongs to
+   whoever owns that guard; this file does not route around it by hiding the size behind a variable,
+   because a guard you can no longer read is worse than a guard you disagree with. */
+.display { margin: 0; font-size: clamp(40px, 5vw, 56px); font-weight: 400; line-height: calc(1em + 8px); letter-spacing: -0.02em; text-wrap: balance; }
+/* THE STATEMENT IS THE BAR'S 56px STEP, AT THE BAR'S 56px.
+   Read off the live DOM: 56px on a 64px line box with -1.12px of tracking, centred in a 750px
+   measure, and 32px on a 40px line box with -0.48px below the 768px breakpoint. Both line boxes are
+   the font size plus eight — 1.143 at one end and 1.25 at the other — so calc(1em + 8px) lands on
+   both measurements where any single ratio misses one of them by four pixels. This is the same
+   construction .display above uses, for the same reason, and it exceeds scripts/check-copy.mjs's
+   3.4rem (54.4px) cap by the same 1.6px and with the same answer: raising MAX_DISPLAY_REM belongs
+   to whoever owns that guard, and this file does not route around it by hiding the size behind a
+   variable, because a guard you can no longer read is worse than a guard you disagree with.
+   The 750px measure is not decoration. Without it the statement runs the full 1216px container,
+   which is about 150 characters to a line, and that is why large centred type usually looks rented
+   rather than composed. */
+.statement { margin: 0 auto; max-width: 750px; font-size: clamp(32px, 3.8vw, 56px); font-weight: 400; line-height: calc(1em + 8px); letter-spacing: -0.02em; text-wrap: balance; }
+.section-title { margin: 0; font-size: clamp(28px, 2.4vw, 32px); font-weight: 400; line-height: 1.3125; letter-spacing: -0.013em; }
+/* THE SUB-LINE IS 16px, NOT BODY SIZE. Every section on the bar is the same three objects at the
+   same three sizes: a 32px title, eight pixels, a 16px/24px muted line, and then the thing itself.
+   Ours set that line at 14px, which is the size of the text inside the cards below it, so a head
+   read as a title with a caption attached instead of as a section opening. The consistency is the
+   whole effect, and it only works if the number never varies. */
+.section-sub { margin: 8px 0 0; color: var(--muted); font-size: 16px; line-height: 24px; letter-spacing: -0.01em; }
+/* The sub-headline is 20/30 at desktop and 16/24 on a phone — both 1.5, which is the one ratio the
+   reference does hold at both ends. It is NOT muted: the bar sets it in its ink at 90%, which over
+   our page composites to exactly --ink-secondary (#dedcda). A sub-line at --muted is the reflex that
+   makes the second sentence look like a caption, and it is what the first pass got wrong here. */
+.lead { margin: 0; color: var(--ink-secondary); font-size: 20px; line-height: 1.5; letter-spacing: -0.012em; }
 .micro { margin: 0; color: var(--faint); font-size: 10px; line-height: 15px; letter-spacing: 0.018em; text-transform: uppercase; }
 
 /* ------------------------------------------------------------------ nav */
@@ -101,40 +166,94 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--ink); outline-o
   position: fixed; z-index: 20; top: 0; left: 0; right: 0;
   height: var(--nav-h);
   display: flex; align-items: center;
-  border-bottom: 1px solid var(--line);
-  /* The reference's nav is fully transparent with no blur, and that works there because nothing
-     scrolls under it at a readable size. Ours does. A short scrim — no blur, no hard fill — keeps
-     the hairline reading as the separation while stopping body text from showing through the nav.
-     A deliberate departure from the bar, with the reason written down rather than drifted into. */
-  background: linear-gradient(180deg, var(--ground) 0%, var(--ground) 62%, rgba(20, 19, 18, 0) 100%);
-}
-.site-header > .shell { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
-.wordmark { display: inline-flex; align-items: center; gap: 9px; font-size: 16px; letter-spacing: -0.014em; }
-.site-nav { display: flex; align-items: center; gap: 28px; font-size: 14px; letter-spacing: -0.01em; }
-.site-nav a { color: var(--muted); transition: color 160ms var(--ease); }
-.site-nav a:hover { color: var(--ink); }
+  /* NO VISIBLE FILL AND NO HAIRLINE — the owner's ruling, kept. What changed is the reasoning
+     underneath it, which was wrong.
 
+     The rule used to read `background: transparent` and justify it like this: "the hero is a
+     viewport tall, so the first thing that scrolls under the nav is a section boundary rather than
+     a paragraph." Measured at 375px, 650px and 1280px, that is false. `.hero` is
+     `display:flex; align-items:center`, so its copy sits at the MIDDLE of the viewport, and the
+     first thing to cross the bar is the hero's own lead paragraph. At scrollY 218 on the live site
+     the <p> "Describe the game you want. Apple builds it inside your own place." measured
+     top:-38 bottom:52 against a header band of 0..60 — printed straight through the wordmark and
+     the link row, two lines of light text over each other.
+
+     The fix does not bring back the scrim that was rejected. `.hero` has no background of its own
+     and `body` is a flat `var(--ground)` with no image, so the surface behind this bar is that one
+     colour at EVERY scroll position. Painting the bar in the same colour is therefore invisible —
+     identical pixels at rest, identical pixels scrolled — and its only effect is that prose passing
+     underneath is occluded instead of showing through. There is still no blur and still no
+     hairline; nothing a person can see has been added. */
+  background: var(--ground);
+}
+/* `position: relative` is load-bearing: the link row below is taken out of flow and centred against
+   this container, which is the shell and therefore already centred in the viewport. */
+.site-header > .shell { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.wordmark { display: inline-flex; align-items: center; gap: 12px; font-size: 16px; letter-spacing: -0.014em; }
+
+/* THE LINKS ARE CENTRED ON THE VIEWPORT, NOT SPACED BETWEEN THE ENDS. On the bar the link cluster is
+   its own centred layer, so it stays put when the wordmark or the buttons change width — which is
+   what makes the nav read as symmetrical rather than as three groups that happen to fit. Laying it
+   out with `space-between` instead makes the centre move every time a word is translated. */
+.site-nav {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 6px;
+  font-size: 14px; line-height: 20px; letter-spacing: -0.01em;
+}
+/* Nav links are full ink, not muted, and they are 36px objects with a 10px radius rather than bare
+   words — which is what gives them a hover state that is a surface step instead of a colour change.
+   Muting them, as the first pass did, makes every destination on the site look secondary to the one
+   button beside them. */
+.site-nav a {
+  display: inline-flex; align-items: center;
+  height: var(--control-h); padding: 0 12px;
+  border-radius: var(--r);
+  color: var(--ink);
+  transition: background-color 160ms var(--ease);
+}
+.site-nav a:hover { background: var(--control-fill); }
+
+/* One control shape for the whole page: 36px tall, 10px radius, 12px of side padding, 14/20 text.
+   The bar has no stadium-shaped buttons at all, and a 999px pill beside a 10px card is the mixing
+   this design system exists to prevent. */
 .pill {
   display: inline-flex; align-items: center; gap: 8px;
-  height: 34px; padding: 0 16px;
-  border: 0; border-radius: var(--r-pill);
-  background: var(--inverted); color: var(--ground);
-  font-size: 14px; letter-spacing: -0.01em; white-space: nowrap;
+  height: var(--control-h); padding: 0 12px;
+  border: 0; border-radius: var(--r);
+  background: var(--ink); color: var(--raised);
+  font-size: 14px; line-height: 20px; letter-spacing: -0.01em; white-space: nowrap;
   transition: opacity 160ms var(--ease);
 }
 .pill:hover { opacity: 0.86; }
+/* The quiet button is a 6% ink fill and full-ink text — no outline. An outlined button next to a
+   solid one reads as two different systems, and the bar draws its secondary action this way. */
 .pill-quiet {
-  background: transparent; color: var(--ink);
-  border: 1px solid var(--line-strong);
+  background: var(--control-fill); color: var(--ink);
+  border: 0;
 }
 .pill-quiet:hover { background: var(--surface-2); opacity: 1; }
 
 /* ----------------------------------------------------------------- hero */
 
-.hero { position: relative; isolation: isolate; padding: calc(var(--nav-h) + 96px) 0 96px; overflow: hidden; }
-.hero-inner { display: flex; flex-direction: column; align-items: center; text-align: center; }
-.hero .display { max-width: 18ch; }
-.hero .lead { margin-top: 18px; max-width: 46ch; color: var(--muted); text-wrap: pretty; }
+/* THE HERO IS A VIEWPORT, AND THE CONTENT IS CENTRED IN IT. The bar's hero section is exactly 100vh
+   and its content block is centred inside that, which is why its headline sits 241px down on a
+   900px screen rather than at a fixed distance from the nav. A top padding measured off one screen
+   height puts the headline in the wrong place on every other one. The symmetric `--nav-h` padding
+   does not move the centre — it guarantees the content cannot reach the transparent nav on a short
+   window, which is the one case centring alone gets wrong. */
+.hero {
+  position: relative; isolation: isolate;
+  min-height: 100vh;
+  display: flex; align-items: center;
+  padding: var(--nav-h) 0;
+  overflow: hidden;
+}
+/* The hero is full-bleed behind a 24px gutter, not shell-width: the bar constrains its headline by
+   a measure (840px) rather than by a container, so the composer can be wider than the text above it
+   without either one moving off centre. */
+.hero-inner { width: 100%; max-width: none; padding: 0 var(--hero-gutter); display: flex; flex-direction: column; align-items: center; text-align: center; }
+.hero .display { max-width: 840px; }
+.hero .lead { margin-top: 24px; max-width: 840px; text-wrap: pretty; }
 
 /* The backdrop is line-art, drawn here rather than shipped as an image: the reference's hero art is
    its own and is not ours to reuse, and a gradient blob would be the placeholder this page is
@@ -162,110 +281,241 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--ink); outline-o
 @keyframes settle { from { opacity: 0.4; } to { opacity: 0.68; } }
 .atmosphere::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(20,19,18,0) 30%, var(--ground) 92%); }
 
-/* The focal object is the product's own composer, not a screenshot of it. */
+/* The focal object is the product's own composer, not a screenshot of it.
+   THE GROUP, NOT JUST THE BOX. On the bar the composer and the row beneath it are one block: 40px
+   below the sub-headline, then the box, then a 24px gap, then a label and a row of controls 12px
+   apart. Hanging the row off the box with its own margin is how those three gaps drift apart the
+   next time one of them is edited. */
+.composer-group { width: 100%; max-width: 838px; margin: 40px auto 0; display: flex; flex-direction: column; gap: 24px; }
+/* 838 x 140 with a 22px radius. The height is a sum, not a guess: 1px rim + an 82px field + a 56px
+   bar + 1px rim. Live on 2026-09-20 the bar's own box measures 164 because its textarea is 100px
+   tall rather than 82; 140 is the figure this run was given and the one the whole hero is spaced
+   against, and the field is the single number to change if that reading is preferred.
+   NO SHADOW. Separation here is the rim and the fill, which is the rule for the whole page — a
+   drop shadow under the one object that is supposed to be sitting in light reads as a sticker. */
 .composer {
-  width: 100%; max-width: 720px; margin: 40px auto 0;
-  border: 1px solid var(--line); border-radius: var(--r);
-  background: var(--raised);
+  height: 140px;
+  display: flex; flex-direction: column;
+  border: 1px solid var(--composer-rim); border-radius: var(--r-lg);
+  background: var(--composer-fill);
+  /* Glass is reserved for the composer and the top bar — surfaces that sit over moving content.
+     The hero's line-art drifts behind this one, and 8px is the blur the bar itself uses. */
+  backdrop-filter: blur(8px);
+  box-shadow: none;
   text-align: left;
   overflow: hidden;
 }
-.composer-field { padding: 20px 20px 28px; color: var(--faint); font-size: 16px; line-height: 24px; }
-.composer-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 12px 12px 16px; border-top: 1px solid var(--line); }
+.composer-field { flex: 1; padding: 20px; color: var(--faint); font-size: 14px; line-height: 20px; letter-spacing: -0.01em; }
+/* The bar is 56px tall with its padding all on the bottom, which leaves a 40px row the 36px
+   controls centre inside. A border across the top would cut the composer into two boxes; the bar
+   on the reference is the bottom of one field, not a second panel. */
+.composer-bar { height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 16px 16px; }
 .composer-chips { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--card); color: var(--muted); font-size: 12px; letter-spacing: -0.01em; white-space: nowrap; }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: var(--control-h); padding: 0 12px; border: 0; border-radius: var(--r); background: var(--control-fill); color: var(--muted); font-size: 14px; line-height: 20px; letter-spacing: -0.01em; white-space: nowrap; }
+/* THE ONE GREEN THING ON THE PAGE. A 10% tint carrying text at 90%, in the control shape everything
+   else uses. It marks where a run starts and nothing else is allowed to take the colour — a second
+   accent on this screen would mean neither one is the answer. */
+.composer-send { display: inline-flex; align-items: center; height: var(--control-h); padding: 0 12px; border-radius: var(--r); background: var(--accent-soft); color: var(--accent-ink); font-size: 14px; line-height: 20px; letter-spacing: -0.01em; white-space: nowrap; }
 
-.hero-actions { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 28px; flex-wrap: wrap; }
-.availability { margin-top: 22px; color: var(--faint); font-size: 12px; line-height: 18px; letter-spacing: -0.005em; }
-.availability a { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+/* The qualifier sits ABOVE the buttons, 12px from them, the way the bar sets the small line above
+   its own row of controls. A reader meets the condition before the thing it conditions, instead of
+   pressing a button and finding the caveat underneath it. */
+.hero-foot { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.hero-actions { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0; flex-wrap: wrap; }
+.availability { margin: 0; color: var(--muted); font-size: 12px; line-height: 18px; letter-spacing: -0.01em; }
+.availability a { color: var(--ink-secondary); text-decoration: underline; text-underline-offset: 3px; }
 
 /* -------------------------------------------------------------- section */
 
-.band { padding: 96px 0; border-top: 1px solid var(--line); }
-.band-head { max-width: 62ch; margin-bottom: 40px; }
+/* SECTIONS ARE SEPARATED BY SPACE, NOT BY A LINE.
+   Every element below the fold on the bar was enumerated for a border: on 6,347px of page there is
+   exactly one, a 1px frame around a single 16:9 figure, and there are no shadows at all. Ours drew
+   a hairline across the full width at every section — six horizontal rules a reader has to look
+   past — and that is what made 128px of air read as a stack of panels rather than as the page's own
+   rhythm. The measured rhythm is 64px above and below at six of the bar's eight sections, and 80px
+   at the one that carries nothing but a statement — which is the only variation, and it is a
+   variation of sixteen pixels, not of a rule.
+   :has() carries the statement variant because the markup gives every section the same class and
+   the markup is another surface's file. A browser without :has() falls back to 64px, which is a
+   slightly tighter band, not a broken one. */
+.band { padding: 64px 0; }
+.band:has(> .shell > .statement) { padding: 80px 0; }
+/* The head sits 24px above its content on the bar, not 40, and it is not narrowed — its sub-lines
+   run the full container width. 62ch clamped ours to 547px, so the head ended up visibly narrower
+   than the grid it was introducing, which reads as a mistake rather than as a measure. */
+.band-head { margin-bottom: 24px; }
 
 /* --------------------------------------------------------------- truths */
 
-.truths { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
-.truth { padding: 24px; background: var(--ground); }
-.truth h3 { margin: 12px 0 6px; font-size: 16px; font-weight: 400; letter-spacing: -0.012em; line-height: 24px; }
-.truth p { margin: 0; color: var(--muted); font-size: 14px; line-height: 20px; }
-.truth .micro { color: var(--faint); }
+/* FOUR COLUMNS, NOT A TABLE.
+   There is no bordered, filled cell anywhere below the fold on the bar. Its four-up block is four
+   columns of text at a 32px gap sitting directly on the page, with the gap doing the grouping.
+   Ours was a 1px-gap grid inside a border with a radius on it, which is a table — and a table
+   invites a reader across its rows, which these four independent statements do not have.
+   THE LABEL WAS RENDERING AT 14px. `.truth p` is one class and one type, `.micro` is one class, so
+   `.truth p` won and every one of these uppercase labels came out at body size with positive
+   tracking: a caption set as loudly as the heading under it. The 10px step is restored here, at a
+   specificity that can actually reach it. */
+.truths { display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; }
+.truth { padding: 0; }
+.truth h3 { margin: 8px 0 0; font-size: 20px; font-weight: 400; letter-spacing: -0.012em; line-height: 30px; }
+.truth p { margin: 8px 0 0; color: var(--muted); font-size: 14px; line-height: 20px; }
+.truth .micro { margin: 0; color: var(--faint); font-size: 10px; line-height: 15px; letter-spacing: 0.018em; }
 
 /* ------------------------------------------------------------- sequence */
 
-.sequence { display: grid; grid-template-columns: 1.25fr 1fr; gap: 72px; align-items: start; }
-.sequence-figure { position: sticky; top: calc(var(--nav-h) + 40px); border: 1px solid var(--line); border-radius: var(--r); background: var(--raised); overflow: hidden; }
+/* THE ONE FRAME THE BAR ACTUALLY DRAWS.
+   Its figure-and-list section is a two-column grid at a 48px gap — 729.6px of figure against
+   438.4px of text, which is 1.664 to 1 — with the two columns centred against each other rather
+   than top-aligned, and the figure is the single bordered object below the fold: a 1px hairline, a
+   10px radius, and the page itself showing through it. Ours used 72px of gutter, a 1.25 ratio, a
+   top alignment and a filled panel, so the figure read as a card parked beside the text instead of
+   as the thing the text is describing.
+   The sticky position goes with it. The bar does not pin this figure, and pinning an element inside
+   a grid that centres its two columns is two alignment rules fighting over the same box: the
+   figure creeps away from the sentence that explains it as soon as the reader scrolls. */
+.sequence { display: grid; grid-template-columns: minmax(0, 1.664fr) minmax(0, 1fr); gap: 48px; align-items: center; }
+.sequence-figure { border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
 .sequence-figure .figure-head { padding: 12px 16px; border-bottom: 1px solid var(--line); color: var(--faint); }
 /* One element per line rather than a <pre> with newline expressions spliced into it: the refused
    line needs its own element to carry colour, and Astro will not parse `{'\n'}` inside a <pre>. */
 .activity { padding: 20px 24px; overflow-x: auto; }
-.activity-line { color: var(--ink-secondary); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; line-height: 26px; white-space: pre; }
-/* The refusal is the point of the whole figure, so it is the only coloured thing on the page. */
-.activity-line.refused { color: #e0a08a; }
-.steps { display: grid; gap: 40px; padding: 8px 0; }
-.step h3 { margin: 0 0 8px; font-size: clamp(24px, 2vw, 30px); font-weight: 400; letter-spacing: -0.014em; line-height: 1.3; }
-.step p { margin: 0; color: var(--muted); font-size: 16px; line-height: 24px; }
-/* The reference dims inactive steps to about a third. Scroll-driven, and it degrades to "all
-   readable" rather than "all invisible" where the feature is unsupported or motion is reduced. */
+.activity-line { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; line-height: 26px; white-space: pre; }
+/* THE REFUSAL IS THE BRIGHTEST LINE, NOT A DIFFERENT HUE.
+   Every element below the fold on the bar was tested for a saturated colour and not one was found:
+   hierarchy there is carried entirely by how light a thing is against the page. This line was
+   #e0a08a, which made it the only coloured thing below the fold on a page whose whole instruction
+   is one ground and one accent — and a warm orange is the colour a reader has learned means a
+   warning they caused, when what this line reports is the product protecting them.
+   Ink against muted says "this is the line to read" with the contrast the bar uses, and it leaves
+   the single accent unspent for the one primary action the lock allows it on. */
+.activity-line.refused { color: var(--ink); }
+/* A STEP IS A SECTION TITLE, NOT A SIZE OF ITS OWN.
+   On the bar each item in this list is set at the same 32px/42px/-0.416px as every section heading,
+   eight pixels above a 16px/24px muted line, and the list runs at a 32px gap. Ours invented a 30px
+   step between the section title and the body — a fourth size in a scale that has three — and
+   spaced the list at 40px, so the three items drifted apart from the figure they are meant to run
+   alongside. */
+.steps { display: grid; gap: 32px; padding: 0; }
+.step h3 { margin: 0 0 8px; font-size: clamp(20px, 2.4vw, 32px); font-weight: 400; letter-spacing: -0.013em; line-height: 1.3125; }
+.step p { margin: 0; color: var(--muted); font-size: 16px; line-height: 24px; letter-spacing: -0.01em; }
+/* The bar dims an inactive step by colour rather than by opacity: its title drops to the muted grey
+   at 50% and its body to 40%. A single block opacity cannot carry two alphas, so it takes the
+   title's — 0.5, not the 0.32 that was here, which dimmed a step further than the bar ever dims
+   anything and left two of the three steps unreadable rather than secondary. Scroll-driven, and it
+   degrades to "all readable" rather than "all invisible" where the feature is unsupported or motion
+   is reduced. */
 .step { opacity: 1; transition: opacity 320ms var(--ease); }
 @supports (animation-timeline: view()) {
   @media (prefers-reduced-motion: no-preference) {
     .step { animation: step-focus linear both; animation-timeline: view(); animation-range: entry 10% cover 46%; }
   }
 }
-@keyframes step-focus { from { opacity: 0.32; } to { opacity: 1; } }
+@keyframes step-focus { from { opacity: 0.5; } to { opacity: 1; } }
 
 /* ---------------------------------------------------------- capabilities */
 
-.cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
-.card { border: 1px solid var(--line); border-radius: var(--r); background: var(--raised); overflow: hidden; }
-.card-media { aspect-ratio: 4 / 5; display: grid; place-items: center; background: var(--card); color: var(--muted); }
-.card-body { padding: 18px; }
-.card-body h3 { margin: 0 0 6px; font-size: 16px; font-weight: 400; letter-spacing: -0.012em; line-height: 24px; }
-.card-body p { margin: 0; color: var(--muted); font-size: 14px; line-height: 20px; }
+/* A CARD ON THE BAR IS A TILE WITH WORDS UNDER IT, AND NOTHING ELSE.
+   Measured: a 10px-radius panel with no border and no shadow, then 8px, then a 20px/30px title,
+   then 8px, then a 14px/20px muted line — the text sitting on the page next to its neighbours
+   rather than inside a box with them — and the grid runs at a 32px gap. Ours drew a border, filled
+   the entire card and padded the text by 18px, which turns four short descriptions into four framed
+   objects and spends a hairline on each one. Four hairlines in a row is a fence, and a reader
+   counts fence posts instead of reading what is behind them.
+   THE TILE IS 16:9 AT EVERY WIDTH. The bar uses a 296:460 portrait where it has a screenshot and a
+   16:9 landscape where it has a game; ours holds a single 40px line drawing, and the portrait was
+   already found to make 77% of a card an empty rectangle the moment the grid collapsed. 16:9 is the
+   bar's own landscape tile, and it is the one that fits what is actually inside ours. */
+.cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; }
+.card { background: none; }
+.card-media { aspect-ratio: 16 / 9; display: grid; place-items: center; border-radius: var(--r); background: var(--card); color: var(--muted); overflow: hidden; }
+.card-body { padding: 0; }
+.card-body h3 { margin: 8px 0 0; font-size: 20px; font-weight: 400; letter-spacing: -0.012em; line-height: 30px; }
+.card-body p { margin: 8px 0 0; color: var(--muted); font-size: 14px; line-height: 20px; }
 
 /* --------------------------------------------------------------- plans */
 
-.model-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; max-width: 840px; }
-.model-card { display: flex; flex-direction: column; gap: 10px; padding: 24px; border: 1px solid var(--line); border-radius: var(--r); background: var(--raised); }
-.model-card h3 { margin: 0; font-size: 20px; font-weight: 400; letter-spacing: -0.014em; line-height: 30px; }
+/* THE TWO PLANS ARE TWO COLUMNS OF TEXT.
+   Same construction as the capability tiles, for the same measured reason: there is no bordered,
+   filled, padded card anywhere below the fold on the bar. A plan in a box reads as a thing to buy.
+   These two are a description of what the product costs today, and one of them cannot be bought at
+   all — so the box was making an offer that the line underneath it then withdrew. 32px of gap
+   groups them, 8px separates a title from its line, and the words carry the rest. */
+.model-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; max-width: 840px; }
+.model-card { display: flex; flex-direction: column; gap: 8px; padding: 0; background: none; }
+.model-card h3 { margin: 0; font-size: 20px; font-weight: 400; letter-spacing: -0.012em; line-height: 30px; }
 .model-card p { margin: 0; color: var(--muted); font-size: 14px; line-height: 20px; }
 .model-card .micro { margin-top: auto; padding-top: 12px; }
 .max-name { color: var(--ink); }
 
 /* -------------------------------------------------------------- closing */
 
-.closing { padding: 128px 0; border-top: 1px solid var(--line); text-align: center; }
-.closing .statement { margin-bottom: 28px; }
+/* THE CLOSING BLOCK, MEASURED.
+   112px above and below on the bar, a statement in a 900px measure rather than the 750px the
+   mid-page one gets, and a button 32px beneath it. Ours was 128px of padding under a hairline the
+   bar does not draw, with the statement and the button 28px apart.
+   THE BUTTON IS 44px AND SQUARE-CORNERED, WHICH THE SHARED .pill IS NOT. The bar's nav pill is 36px
+   and its closing call to action is 44px with 16px text — two sizes for two jobs, measured on the same
+   page, not a drift. The radius, the fill and the ink are already the shared control's and are not
+   restated; only the two numbers that differ are. `.pill` belongs to the header, the hero and the
+   composer, so the closing button takes its size here instead of moving a control three other
+   places depend on. */
+.closing { padding: 112px 0; text-align: center; }
+.closing .statement { max-width: 900px; margin-bottom: 0; }
+.closing .pill { height: 44px; margin-top: 32px; padding: 0 16px; font-size: 16px; line-height: 24px; }
 
 /* --------------------------------------------------------------- footer */
 
-.site-footer { padding: 56px 0 64px; border-top: 1px solid var(--line); background: var(--raised); }
-.footer-grid { display: grid; grid-template-columns: 1.4fr repeat(3, 1fr); gap: 32px; }
-.footer-col h3 { margin: 0 0 12px; color: var(--faint); font-size: 14px; font-weight: 400; letter-spacing: -0.01em; }
-.footer-col a { display: block; padding: 5px 0; color: var(--muted); font-size: 14px; transition: color 160ms var(--ease); }
+/* THE FOOTER SEPARATES ITSELF WITH A SURFACE STEP, NOT A LINE.
+   The bar's footer is rgb(35,34,33) against a rgb(23,22,21) page — our --surface against our
+   --ground, the same twelve points of lift — with no border anywhere inside it, 64px of padding top
+   and bottom, equal columns at a 32px gutter and 40px between rows, and every column a stack at a
+   12px gap. Ours used --raised, which is three points off the page and therefore invisible, so a
+   hairline was doing the work a step should do; and the links carried 5px of their own padding,
+   which is a second spacing system arguing with the gap over the same rhythm.
+   ONE TEXT SIZE. Every word in the bar's footer is 14px on 20px: the column headings, the links and
+   the legal line alike. Ours set the note at 12px, which made the one paragraph a customer might
+   genuinely need to read the smallest text on the page. The heading takes the muted grey and the
+   links sit brighter than it, so a column reads as a label above its contents rather than as five
+   items of equal weight. */
+.site-footer { padding: 64px 0; background: var(--surface); }
+.footer-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: 32px; row-gap: 40px; }
+.footer-col { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+.footer-col h3 { margin: 0; color: var(--muted); font-size: 14px; font-weight: 400; line-height: 20px; letter-spacing: -0.01em; }
+.footer-col a { padding: 0; color: var(--ink-secondary); font-size: 14px; line-height: 20px; transition: color 160ms var(--ease); }
 .footer-col a:hover { color: var(--ink); }
-.footer-note { margin: 40px 0 0; color: var(--faint); font-size: 12px; line-height: 18px; max-width: 70ch; }
+.footer-note { margin: 0; color: var(--muted); font-size: 14px; line-height: 20px; max-width: 70ch; }
 
 /* ------------------------------------------------------------ responsive */
 
-@media (max-width: 1000px) {
+/* 1023, NOT 1000. The bar holds its four-up and three-up grids to 1024 and its two-up to 768. A
+   breakpoint set twenty-four pixels early is twenty-four pixels of a layout nobody designed, and it
+   is the kind of number that gets copied into the next stylesheet because it was already there.
+   The stacked figure-and-list takes a 16px gap, which is the bar's, not the 40px that was here:
+   once the figure is directly above the sentence describing it, 40px reads as a gap between two
+   sections rather than as a caption relationship. */
+@media (max-width: 1023px) {
   .truths { grid-template-columns: repeat(2, 1fr); }
   .cards { grid-template-columns: repeat(2, 1fr); }
-  .sequence { grid-template-columns: 1fr; gap: 40px; }
-  .sequence-figure { position: static; }
-  .footer-grid { grid-template-columns: repeat(2, 1fr); }
+  .sequence { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 640px) {
+  /* The CONTAINER gutter halves on a phone and the HERO gutter does not. Measured at 390px: the
+     bar's nav row is padded 16px and its hero content 24px — the two numbers that are 32 and 24 at
+     1568px do not converge, they stay apart. Setting `--hero-gutter: 16px` here would look like
+     tidiness and would be a third measurement nobody took. `--gutter` is restated rather than left
+     to the block below because the header is this surface's and must not depend on another
+     surface's rule for whether it has a gutter at 375px. */
   :root { --gutter: 16px; }
-  .hero { padding: calc(var(--nav-h) + 56px) 0 64px; }
-  .band { padding: 64px 0; }
-  .closing { padding: 88px 0; }
-  .truths { grid-template-columns: 1fr; }
-  .cards { grid-template-columns: 1fr; }
-  .model-grid { grid-template-columns: 1fr; }
+  /* THE PHONE END OF THE SAME MEASUREMENTS. At 390px the bar sets its H1 to 40/48/-0.8px behind a
+     300px measure and its sub-line to 16/24/-0.16px behind 240px. Those are two more readings, not
+     a scaled-down guess: the display clamp already lands on 40px here, so only the measures and the
+     sub-line's size need saying. Without the measure the headline runs the full gutter-to-gutter
+     width and loses the ragged shape the centring depends on. */
+  .hero .display { max-width: 300px; }
+  .hero .lead { font-size: 16px; letter-spacing: -0.01em; max-width: 240px; }
   /* THE NAVIGATION WAS DELETED ON A PHONE AND NOTHING REPLACED IT.
      `display: none` with no hamburger, no drawer, nothing — so at 375px the header was a wordmark
      and one pill, the word "Pricing" existed only in the footer 6,534px down, and a returning
@@ -276,25 +526,51 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--ink); outline-o
      already fit. The row scrolls horizontally only if a translation makes it longer, and it never
      wraps into a ragged block. */
   .site-header > .shell { flex-wrap: wrap; row-gap: 10px; }
+  /* The centred layer becomes a row again here. Leaving it absolutely positioned would park five
+     links on top of the wordmark, because a second line cannot exist for something out of flow. */
   .site-nav {
+    position: static; transform: none;
     order: 3; width: 100%;
-    gap: 18px; font-size: 13px;
+    gap: 4px; font-size: 13px;
     overflow-x: auto; scrollbar-width: none;
     padding-block-end: 2px;
   }
   .site-nav::-webkit-scrollbar { display: none; }
-  .site-nav a { white-space: nowrap; }
+  /* 8px of side padding rather than 12: five 36px link objects with 12px each side come to 334px
+     before the gaps, which is the full 343px a 375px phone has. Eight fits with room to spare and
+     keeps every link a tap target rather than a word. */
+  .site-nav a { padding: 0 8px; white-space: nowrap; }
   /* The header is two rows now, so everything measured from its height moves with it. */
   :root { --nav-h: 96px; }
 
-  /* 77% OF EACH CARD WAS AN EMPTY BOX. `aspect-ratio: 4/5` is right in the 4-up desktop grid and
-     absurd once the grid collapses to one column: 343px wide became 429px tall, holding a single
-     40px icon, above 126px of words — four of them, 2,277px, nearly three phone screens of dark
-     rectangle. It reads as a page whose images failed to load. 16/9 keeps the panel as a band
-     rather than a wall. */
-  .card-media { aspect-ratio: 16 / 9; }
+  /* The bar does NOT wrap. The composer is a fixed 140px object, so a second row of controls would
+     be drawn outside the box it belongs to; at 375px the two chips and the send control measure
+     189px inside a 325px row, and `overflow: hidden` on the composer catches a translation that
+     does not fit rather than letting it spill past the rim. */
+}
 
-  .composer-bar { flex-wrap: wrap; }
+/* THE BAR'S OWN PHONE BREAKPOINT IS 768, AND EVERYTHING THAT MOVES, MOVES THERE.
+   Measured at 390px against 1568px: section padding drops from 64 to 40, the container gutter from
+   32 to 16, the statement from 56/64 to 32/40, a section title from 32/42 to 28/36, a step title
+   from 32/42 to 20/30 with its body down to 14/20, and the step list closes from 32 to 16.
+   This block is 767 rather than 640 because 768 is where the bar changes, and it sits AFTER the 640
+   block rather than before it so that the two can never disagree about a number if that block —
+   which carries the header, the nav, the hero and the composer, and belongs to another surface —
+   grows a rule for something down here again. Everything in this block is this surface's. */
+@media (max-width: 767px) {
+  :root { --gutter: 16px; }
+  .band, .band:has(> .shell > .statement) { padding: 40px 0; }
+  .closing { padding: 80px 0; }
+  .statement { letter-spacing: -0.015em; }
+  /* 28/36 and -0.336px on a phone against 32/42 and -0.416px at desktop: the bar tightens tracking
+     as the size grows, so a single em figure is right at one end and wrong at the other. */
+  .section-title { line-height: 1.2857; letter-spacing: -0.012em; }
+  .steps { gap: 16px; }
+  .step h3 { line-height: 1.5; letter-spacing: -0.012em; }
+  .step p { font-size: 14px; line-height: 20px; }
+  .truths { grid-template-columns: 1fr; }
+  .cards { grid-template-columns: 1fr; }
+  .model-grid { grid-template-columns: 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {
