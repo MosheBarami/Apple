@@ -503,6 +503,23 @@ test('report() renders and is labelled an internal model', () => {
 //   exemption, named with its reason, so the staleness it covers is a decision somebody made
 //   rather than a hole. ]]
 
+//[[ AND IT CAUGHT MY OWN EVIDENCE FILE WITHIN THE HOUR, WHICH IS THE POINT.
+//
+//   docs/evidence/2026-09-20-billing-wiring-and-signup-funnel.md records what the stale document
+//   SAID — `## Hard maximum: $10.06 / month` and "the hard maximum is still $10.06/month" — and
+//   this scan read the record of the defect as the defect. That is the fifth time in this
+//   repository that a prose-reading scanner has reported somebody's explanation of a fix.
+//
+//   Stripping HTML comments was not enough, because this quotation is in running prose and in a
+//   code span. Detecting "quoted rather than claimed" in markdown is a heuristic that would fail
+//   the other way, silently, so the answer is the one the documents' own nature gives:
+//
+//   A DATED RECORD IS NOT A LIVE CLAIM. docs/evidence/ and docs/audit/ exist to say what was true
+//   on a day. Rewriting an evidence file when a constant changes would be falsifying the record —
+//   a worse error than the one this guard prevents. They are exempt as CATEGORIES, with that
+//   reason, and everything under docs/ that speaks in the present tense is still checked. ]]
+const HARD_MAX_DOC_EXEMPT_DIRS = ['docs/evidence/', 'docs/audit/'];
+
 /**
  * Documents whose $10.06 figures sit INSIDE an arithmetic argument rather than stating the current
  * ceiling, and which therefore need their author rather than a find-and-replace.
@@ -539,6 +556,7 @@ test('the documented hard maximum is the one the safeguards actually allow', () 
   let claims = 0;
   for (const rel of docs) {
     if (HARD_MAX_DOC_EXEMPTIONS.has(rel)) continue;
+    if (HARD_MAX_DOC_EXEMPT_DIRS.some((d) => rel.startsWith(d))) continue;
     const text = readFileSync(join(repoRoot, rel), 'utf8').replace(/<!--[\s\S]*?-->/g, ' ');
     for (const line of text.split('\n')) {
       for (const m of line.matchAll(HARD_MAX_CLAIM)) {
