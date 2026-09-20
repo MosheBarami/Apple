@@ -167,8 +167,20 @@ function main() {
       });
     } catch { /* a run that is not on disk is simply not listed */ }
   };
-  addRetrieval('shipped door, measured 2026-09-20', 'knowledge-reach.json', (d) => d.customer?.top1 ?? null);
+  //[[ THE 49/80 ROW IS HISTORY, NOT THE DOOR. knowledge-reach.json recorded the shipped scorer at
+  //   11:23 on 2026-09-20; commit 21231d9 shipped need-index-search.ts later the same day and the
+  //   same function now answers 73/80. Restating the recorded figure as "the shipped door" would
+  //   put a number in this table that no live code produces — the exact substitution this file was
+  //   written to stop. So the recorded row is LABELLED as recorded, and the live re-run of the same
+  //   function, measured by measure-embedding-retrieval.mjs against the Worker's own bundle, is
+  //   listed beside it. When the two agree the second row is a duplicate and costs nothing; when
+  //   they disagree, the disagreement is the point.
+  addRetrieval('shipped door AS RECORDED 11:23, superseded', 'knowledge-reach.json', (d) => d.customer?.top1 ?? null);
+  addRetrieval('shipped door RE-RUN LIVE, searchVerifiedModules today', 'embedding-retrieval.json',
+    (d) => d.harness?.rerunBaseline?.customerTop1 ?? null);
   addRetrieval('need-index BM25F, peer workflow', 'knowledge-reach-need-index.json', (d) => d.headline?.['bm25f+need']?.customerTop1 ?? null);
+  addRetrieval('embedding index, int8 in the bundle', 'embedding-retrieval.json',
+    (d) => d.modules?.shippedPath?.customer?.top1 ?? null);
 
   const out = {
     measuredAt: new Date().toISOString(),

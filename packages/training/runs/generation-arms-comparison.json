@@ -1,0 +1,389 @@
+{
+ "measuredAt": "2026-09-20T22:41:13.987Z",
+ "what": "Every approach in ONE unit: the share of requests that end in Luau which passes its own exhaustive checks when executed.",
+ "slice": {
+  "from": 0,
+  "n": 80,
+  "curriculum": 80
+ },
+ "settings": {
+  "lane": "apple",
+  "productMode": "agent",
+  "gateway": "stone",
+  "effort": "high",
+  "effortIsAFloor": true,
+  "baseTokens": 4400,
+  "requestedTokens": 5500,
+  "gatewayCeiling": 5600,
+  "effectiveTokens": 5500,
+  "clampedByCeiling": false,
+  "servedModel": "@cf/zai-org/glm-5.3-flash",
+  "provider": "workers-ai",
+  "n": 80,
+  "offset": 0,
+  "endpoint": "https://apple.moshe-barami111.workers.dev/api/admin/model-test"
+ },
+ "libraryPassesItsOwnChecks": {
+  "n": 80,
+  "pass": 80,
+  "fail": 0,
+  "missing": 0,
+  "failures": []
+ },
+ "arms": [
+  {
+   "arm": "fewshot",
+   "n": 80,
+   "ok": 74,
+   "pct": 92.5,
+   "notMeasured": 0,
+   "pairedN": 80,
+   "vsBaseline": {
+    "fixed": 24,
+    "broken": 3,
+    "net": 21,
+    "bothOk": 50,
+    "bothBad": 3,
+    "mcnemarP": 0,
+    "fixedIds": [
+     "weighted-selection",
+     "dependency-order",
+     "seeded-shuffle",
+     "route-cost",
+     "team-balance",
+     "due-respawns",
+     "loot-budget",
+     "hunger-drain",
+     "quest-step",
+     "ability-charges",
+     "grid-route-cost",
+     "stack-into-slots",
+     "trade-offer-check",
+     "auction-bid",
+     "seat-assignment",
+     "elevator-next-floor",
+     "spawn-clearance",
+     "chest-respawn",
+     "buff-stacks",
+     "deep-table-equality",
+     "filter-by-search",
+     "notification-queue",
+     "project-client-fields",
+     "distribute-column-widths"
+    ],
+    "brokenIds": [
+     "visible-ui-rows",
+     "prestige-conversion",
+     "tooltip-placement"
+    ]
+   },
+   "callsPerPrompt": 1,
+   "neuronsPerPrompt": 35.4,
+   "gatewayMsPerPrompt": 8405,
+   "reasons": {
+    "fails_own_checks": 6
+   },
+   "notShippable": null
+  },
+  {
+   "arm": "fewshotcustomer",
+   "n": 80,
+   "ok": 68,
+   "pct": 85,
+   "notMeasured": 0,
+   "pairedN": 80,
+   "vsBaseline": {
+    "fixed": 18,
+    "broken": 3,
+    "net": 15,
+    "bothOk": 50,
+    "bothBad": 9,
+    "mcnemarP": 0.0015,
+    "fixedIds": [
+     "weighted-selection",
+     "merge-ranges",
+     "dependency-order",
+     "seeded-shuffle",
+     "route-cost",
+     "team-balance",
+     "due-respawns",
+     "hunger-drain",
+     "quest-step",
+     "ability-charges",
+     "stack-into-slots",
+     "trade-offer-check",
+     "auction-bid",
+     "seat-assignment",
+     "chest-respawn",
+     "deep-table-equality",
+     "filter-by-search",
+     "notification-queue"
+    ],
+    "brokenIds": [
+     "cooldown-clock",
+     "token-bucket-spend",
+     "merge-settings"
+    ]
+   },
+   "callsPerPrompt": 1,
+   "neuronsPerPrompt": 34.9,
+   "gatewayMsPerPrompt": 9036,
+   "reasons": {
+    "fails_own_checks": 11,
+    "not_standalone": 1
+   },
+   "notShippable": null
+  },
+  {
+   "arm": "fewshotrandom",
+   "n": 80,
+   "ok": 67,
+   "pct": 83.8,
+   "notMeasured": 0,
+   "pairedN": 80,
+   "vsBaseline": {
+    "fixed": 17,
+    "broken": 3,
+    "net": 14,
+    "bothOk": 50,
+    "bothBad": 10,
+    "mcnemarP": 0.0026,
+    "fixedIds": [
+     "weighted-selection",
+     "merge-ranges",
+     "dependency-order",
+     "crafting-batches",
+     "seeded-shuffle",
+     "route-cost",
+     "due-respawns",
+     "ability-charges",
+     "grid-route-cost",
+     "stack-into-slots",
+     "auction-bid",
+     "seat-assignment",
+     "elevator-next-floor",
+     "chest-respawn",
+     "deep-table-equality",
+     "project-client-fields",
+     "distribute-column-widths"
+    ],
+    "brokenIds": [
+     "visible-ui-rows",
+     "leaderboard-insert",
+     "sort-inventory-rows"
+    ]
+   },
+   "callsPerPrompt": 1,
+   "neuronsPerPrompt": 34.9,
+   "gatewayMsPerPrompt": 8497,
+   "reasons": {
+    "fails_own_checks": 13
+   },
+   "notShippable": null
+  },
+  {
+   "arm": "oracle",
+   "n": 80,
+   "ok": 63,
+   "pct": 78.8,
+   "notMeasured": 0,
+   "pairedN": 80,
+   "vsBaseline": {
+    "fixed": 12,
+    "broken": 2,
+    "net": 10,
+    "bothOk": 51,
+    "bothBad": 15,
+    "mcnemarP": 0.0129,
+    "fixedIds": [
+     "route-cost",
+     "team-balance",
+     "ability-charges",
+     "trade-offer-check",
+     "spawn-clearance",
+     "chest-respawn",
+     "buff-stacks",
+     "deep-table-equality",
+     "filter-by-search",
+     "notification-queue",
+     "project-client-fields",
+     "distribute-column-widths"
+    ],
+    "brokenIds": [
+     "leaderboard-insert",
+     "tooltip-placement"
+    ]
+   },
+   "callsPerPrompt": 1.32,
+   "neuronsPerPrompt": 35.3,
+   "gatewayMsPerPrompt": 12136,
+   "reasons": {
+    "fails_own_checks": 17
+   },
+   "notShippable": "THE ORACLE ARM READS THE HIDDEN EVAL CHECKS. It is a ceiling, not a product number."
+  },
+  {
+   "arm": "secondpass",
+   "n": 80,
+   "ok": 62,
+   "pct": 77.5,
+   "notMeasured": 0,
+   "pairedN": 80,
+   "vsBaseline": {
+    "fixed": 14,
+    "broken": 5,
+    "net": 9,
+    "bothOk": 48,
+    "bothBad": 13,
+    "mcnemarP": 0.0636,
+    "fixedIds": [
+     "route-cost",
+     "team-balance",
+     "quest-step",
+     "ability-charges",
+     "grid-route-cost",
+     "auction-bid",
+     "elevator-next-floor",
+     "spawn-clearance",
+     "chest-respawn",
+     "buff-stacks",
+     "deep-table-equality",
+     "notification-queue",
+     "project-client-fields",
+     "distribute-column-widths"
+    ],
+    "brokenIds": [
+     "fit-ui-aspect",
+     "visible-ui-rows",
+     "leaderboard-insert",
+     "validate-action-payload",
+     "sort-inventory-rows"
+    ]
+   },
+   "callsPerPrompt": 2,
+   "neuronsPerPrompt": 42.4,
+   "gatewayMsPerPrompt": 14767,
+   "reasons": {
+    "fails_own_checks": 17,
+    "does_not_compile": 1
+   },
+   "notShippable": null
+  },
+  {
+   "arm": "specrepair",
+   "n": 80,
+   "ok": 58,
+   "pct": 72.5,
+   "notMeasured": 0,
+   "pairedN": 80,
+   "vsBaseline": {
+    "fixed": 8,
+    "broken": 3,
+    "net": 5,
+    "bothOk": 50,
+    "bothBad": 19,
+    "mcnemarP": 0.2266,
+    "fixedIds": [
+     "weighted-selection",
+     "hunger-drain",
+     "quest-step",
+     "ability-charges",
+     "auction-bid",
+     "chest-respawn",
+     "filter-by-search",
+     "notification-queue"
+    ],
+    "brokenIds": [
+     "fit-ui-aspect",
+     "visible-ui-rows",
+     "leaderboard-insert"
+    ]
+   },
+   "callsPerPrompt": 1.9,
+   "neuronsPerPrompt": 110.4,
+   "gatewayMsPerPrompt": 37877,
+   "reasons": {
+    "fails_own_checks": 22
+   },
+   "notShippable": null
+  },
+  {
+   "arm": "baseline",
+   "n": 80,
+   "ok": 53,
+   "pct": 66.3,
+   "notMeasured": 0,
+   "pairedN": 80,
+   "vsBaseline": null,
+   "callsPerPrompt": 1,
+   "neuronsPerPrompt": 17.1,
+   "gatewayMsPerPrompt": 7679,
+   "reasons": {
+    "fails_own_checks": 27
+   },
+   "notShippable": null
+  }
+ ],
+ "selfCheck": {
+  "specRan": 79,
+  "specUnusable": 1,
+  "firedAndWasWrong": 21,
+  "firedButWasRight": 51,
+  "silentAndWasWrong": 0,
+  "silentAndWasRight": 7,
+  "repaired": 67,
+  "repairPassedOwnSpec": 1,
+  "keptDraft": 66,
+  "stillWrong": 22,
+  "unreachableBySelfCheck": 0,
+  "unreachablePctOfRemainingFailures": 0
+ },
+ "exemplarProximity": {
+  "fewshot": {
+   "exemplars": 240,
+   "sharingAnIdTokenWithTheTarget": 9
+  },
+  "fewshotcustomer": {
+   "exemplars": 240,
+   "sharingAnIdTokenWithTheTarget": 13
+  },
+  "fewshotrandom": {
+   "exemplars": 240,
+   "sharingAnIdTokenWithTheTarget": 2
+  }
+ },
+ "retrievalInTheSameUnit": [
+  {
+   "policy": "retrieve-then-hand-over (shipped door AS RECORDED 11:23, superseded)",
+   "customerTop1": 49,
+   "of": 80,
+   "endToEndPct": 61.3,
+   "modelCalls": 0,
+   "note": "correct exactly when top-1 is correct, because every library module passes its own checks"
+  },
+  {
+   "policy": "retrieve-then-hand-over (shipped door RE-RUN LIVE, searchVerifiedModules today)",
+   "customerTop1": 73,
+   "of": 80,
+   "endToEndPct": 91.3,
+   "modelCalls": 0,
+   "note": "correct exactly when top-1 is correct, because every library module passes its own checks"
+  },
+  {
+   "policy": "retrieve-then-hand-over (need-index BM25F, peer workflow)",
+   "customerTop1": 73,
+   "of": 80,
+   "endToEndPct": 91.3,
+   "modelCalls": 0,
+   "note": "correct exactly when top-1 is correct, because every library module passes its own checks"
+  },
+  {
+   "policy": "retrieve-then-hand-over (embedding index, int8 in the bundle)",
+   "customerTop1": 69,
+   "of": 80,
+   "endToEndPct": 86.3,
+   "modelCalls": 0,
+   "note": "correct exactly when top-1 is correct, because every library module passes its own checks"
+  }
+ ]
+}

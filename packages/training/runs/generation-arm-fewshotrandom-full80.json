@@ -1,0 +1,1410 @@
+{
+ "measuredAt": "2026-09-20T21:08:11.419Z",
+ "what": "ARM \"fewshotrandom\" measured END TO END: the model writes the module, the module is EXECUTED against the example's own exhaustive checks. Not retrieval.",
+ "arm": "fewshotrandom",
+ "notShippable": null,
+ "fidelityGate": {
+  "ok": true,
+  "why": null,
+  "recorded": {
+   "file": "eval-production-apple-agent-armA-shipped.json",
+   "n": 24,
+   "ok": 16,
+   "pct": 67
+  }
+ },
+ "settings": {
+  "lane": "apple",
+  "productMode": "agent",
+  "gateway": "stone",
+  "effort": "high",
+  "effortIsAFloor": true,
+  "baseTokens": 4400,
+  "requestedTokens": 5500,
+  "gatewayCeiling": 5600,
+  "effectiveTokens": 5500,
+  "clampedByCeiling": false,
+  "servedModel": "@cf/zai-org/glm-5.3-flash",
+  "provider": "workers-ai",
+  "n": 80,
+  "offset": 0,
+  "endpoint": "https://apple.moshe-barami111.workers.dev/api/admin/model-test"
+ },
+ "attempted": 80,
+ "n": 80,
+ "ok": 67,
+ "pct": 83.8,
+ "notMeasured": 0,
+ "errors": [],
+ "modelCalls": 80,
+ "callsPerPrompt": 1,
+ "neurons": 2791,
+ "neuronsPerPrompt": 34.9,
+ "gatewayMsTotal": 679760,
+ "gatewayMsPerPrompt": 8497,
+ "reasons": {
+  "fails_own_checks": 13
+ },
+ "rows": [
+  {
+   "id": "purchase-transaction",
+   "family": "economy-transaction",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 23,
+   "ms": 3128,
+   "chars": 463,
+   "finishReason": "stop",
+   "exemplars": [
+    "finite-normalization",
+    "stack-into-slots",
+    "route-cost"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "bounded-reward",
+   "family": "bounded-reward",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 25,
+   "ms": 4139,
+   "chars": 861,
+   "finishReason": "stop",
+   "exemplars": [
+    "ability-charges",
+    "crafting-batches",
+    "token-bucket-spend"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "cooldown-clock",
+   "family": "cooldown-clock",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 31,
+   "ms": 4280,
+   "chars": 927,
+   "finishReason": "stop",
+   "exemplars": [
+    "filter-by-search",
+    "distribute-column-widths",
+    "merge-settings"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "ordered-checkpoints",
+   "family": "ordered-checkpoints",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 37,
+   "ms": 10738,
+   "chars": 997,
+   "finishReason": "stop",
+   "exemplars": [
+    "deep-table-equality",
+    "grid-route-cost",
+    "prestige-conversion"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "inventory-capacity",
+   "family": "inventory-capacity",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 21,
+   "ms": 4957,
+   "chars": 863,
+   "finishReason": "stop",
+   "exemplars": [
+    "finite-normalization",
+    "token-bucket-spend",
+    "prestige-conversion"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "round-transitions",
+   "family": "round-transitions",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 32,
+   "ms": 3568,
+   "chars": 969,
+   "finishReason": "stop",
+   "exemplars": [
+    "trade-offer-check",
+    "distribute-column-widths",
+    "hunger-drain"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "level-from-xp",
+   "family": "level-from-xp",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 27,
+   "ms": 2638,
+   "chars": 477,
+   "finishReason": "stop",
+   "exemplars": [
+    "buff-stacks",
+    "speed-audit",
+    "loot-budget"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "unlock-prerequisites",
+   "family": "unlock-prerequisites",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 21,
+   "ms": 4275,
+   "chars": 805,
+   "finishReason": "stop",
+   "exemplars": [
+    "cooldown-clock",
+    "weighted-selection",
+    "session-window"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "finite-normalization",
+   "family": "finite-normalization",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 16,
+   "ms": 2612,
+   "chars": 341,
+   "finishReason": "stop",
+   "exemplars": [
+    "dense-sample-mean",
+    "ordered-checkpoints",
+    "unlock-prerequisites"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "stable-leaderboard",
+   "family": "stable-leaderboard",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 33,
+   "ms": 7742,
+   "chars": 1301,
+   "finishReason": "stop",
+   "exemplars": [
+    "meter-band",
+    "merge-ranges",
+    "merge-settings"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "weighted-selection",
+   "family": "weighted-selection",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 33,
+   "ms": 6977,
+   "chars": 1526,
+   "finishReason": "stop",
+   "exemplars": [
+    "wave-difficulty",
+    "ordinal-suffix",
+    "team-balance"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "interval-overlap",
+   "family": "interval-overlap",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 35,
+   "ms": 6146,
+   "chars": 949,
+   "finishReason": "stop",
+   "exemplars": [
+    "due-respawns",
+    "finite-normalization",
+    "grid-route-cost"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "merge-ranges",
+   "family": "range-normalization",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 45,
+   "ms": 7875,
+   "chars": 1916,
+   "finishReason": "stop",
+   "exemplars": [
+    "prestige-conversion",
+    "elevator-next-floor",
+    "stack-into-slots"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "dependency-order",
+   "family": "dependency-order",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 50,
+   "ms": 13280,
+   "chars": 2798,
+   "finishReason": "stop",
+   "exemplars": [
+    "wrap-label-text",
+    "ordered-checkpoints",
+    "weighted-selection"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "crafting-batches",
+   "family": "crafting-batches",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 40,
+   "ms": 12633,
+   "chars": 2344,
+   "finishReason": "stop",
+   "exemplars": [
+    "session-window",
+    "honest-percent",
+    "progress-segments"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "seeded-shuffle",
+   "family": "seeded-shuffle",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 39,
+   "ms": 8637,
+   "chars": 1617,
+   "finishReason": "stop",
+   "exemplars": [
+    "leaderboard-insert",
+    "interval-overlap",
+    "hunger-drain"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "turn-rotation",
+   "family": "turn-rotation",
+   "ok": false,
+   "reason": "fails_own_checks",
+   "calls": 1,
+   "neurons": 36,
+   "ms": 6132,
+   "chars": 1406,
+   "finishReason": "stop",
+   "exemplars": [
+    "dependency-order",
+    "filter-by-search",
+    "purchase-transaction"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "damage-mitigation",
+   "family": "damage-mitigation",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 32,
+   "ms": 4339,
+   "chars": 1096,
+   "finishReason": "stop",
+   "exemplars": [
+    "quest-step",
+    "stamina-regen",
+    "seat-assignment"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "route-cost",
+   "family": "route-cost",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 35,
+   "ms": 7176,
+   "chars": 1465,
+   "finishReason": "stop",
+   "exemplars": [
+    "buff-stacks",
+    "round-transitions",
+    "tooltip-placement"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "team-balance",
+   "family": "team-balance",
+   "ok": false,
+   "reason": "fails_own_checks",
+   "calls": 1,
+   "neurons": 26,
+   "ms": 5543,
+   "chars": 1121,
+   "finishReason": "stop",
+   "exemplars": [
+    "day-night-phase",
+    "purchase-transaction",
+    "format-duration"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "fit-ui-aspect",
+   "family": "ui-aspect-fitting",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 24,
+   "ms": 4164,
+   "chars": 880,
+   "finishReason": "stop",
+   "exemplars": [
+    "round-transitions",
+    "abbreviate-counter",
+    "wave-difficulty"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "visible-ui-rows",
+   "family": "ui-viewport-window",
+   "ok": false,
+   "reason": "fails_own_checks",
+   "calls": 1,
+   "neurons": 43,
+   "ms": 13177,
+   "chars": 1505,
+   "finishReason": "stop",
+   "exemplars": [
+    "rating-bracket",
+    "speed-audit",
+    "wrap-label-text"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "ui-grid-columns",
+   "family": "ui-grid-capacity",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 46,
+   "ms": 17438,
+   "chars": 2638,
+   "finishReason": "stop",
+   "exemplars": [
+    "round-transitions",
+    "fit-ui-aspect",
+    "radial-damage-falloff"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "escape-ui-richtext",
+   "family": "ui-richtext-escaping",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 22,
+   "ms": 4433,
+   "chars": 599,
+   "finishReason": "stop",
+   "exemplars": [
+    "ordered-checkpoints",
+    "damage-mitigation",
+    "snap-slider-value"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "session-window",
+   "family": "half-open-time-window",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 22,
+   "ms": 5339,
+   "chars": 857,
+   "finishReason": "stop",
+   "exemplars": [
+    "truncate-display-name",
+    "day-night-phase",
+    "dense-sample-mean"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "dense-sample-mean",
+   "family": "dense-sample-mean",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 30,
+   "ms": 5631,
+   "chars": 1274,
+   "finishReason": "stop",
+   "exemplars": [
+    "combo-multiplier",
+    "honest-percent",
+    "project-client-fields"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "meter-band",
+   "family": "fractional-band-classification",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 24,
+   "ms": 5314,
+   "chars": 756,
+   "finishReason": "stop",
+   "exemplars": [
+    "zoom-notches",
+    "speed-audit",
+    "chest-respawn"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "compact-under-ceiling",
+   "family": "dense-filter-preservation",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 25,
+   "ms": 3618,
+   "chars": 878,
+   "finishReason": "stop",
+   "exemplars": [
+    "finite-normalization",
+    "scrollbar-thumb",
+    "team-balance"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "radial-damage-falloff",
+   "family": "damage-falloff",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 29,
+   "ms": 7491,
+   "chars": 1159,
+   "finishReason": "stop",
+   "exemplars": [
+    "damage-mitigation",
+    "inventory-capacity",
+    "distribute-column-widths"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "due-respawns",
+   "family": "respawn-queue",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 42,
+   "ms": 10066,
+   "chars": 2218,
+   "finishReason": "stop",
+   "exemplars": [
+    "stack-into-slots",
+    "grid-snap",
+    "round-transitions"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "rating-bracket",
+   "family": "matchmaking-brackets",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 29,
+   "ms": 5749,
+   "chars": 1229,
+   "finishReason": "stop",
+   "exemplars": [
+    "tool-durability",
+    "merge-settings",
+    "speed-audit"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "loot-budget",
+   "family": "loot-budget-allocation",
+   "ok": false,
+   "reason": "fails_own_checks",
+   "calls": 1,
+   "neurons": 39,
+   "ms": 14048,
+   "chars": 1896,
+   "finishReason": "stop",
+   "exemplars": [
+    "chest-respawn",
+    "turn-rotation",
+    "stamina-regen"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "stamina-regen",
+   "family": "stamina-regeneration",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 27,
+   "ms": 6786,
+   "chars": 1232,
+   "finishReason": "stop",
+   "exemplars": [
+    "radial-damage-falloff",
+    "compact-under-ceiling",
+    "session-window"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "hunger-drain",
+   "family": "hunger-decay",
+   "ok": false,
+   "reason": "fails_own_checks",
+   "calls": 1,
+   "neurons": 29,
+   "ms": 5836,
+   "chars": 930,
+   "finishReason": "stop",
+   "exemplars": [
+    "meter-band",
+    "seeded-shuffle",
+    "notification-queue"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "prestige-conversion",
+   "family": "prestige-reset",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 31,
+   "ms": 7804,
+   "chars": 1235,
+   "finishReason": "stop",
+   "exemplars": [
+    "scrollbar-thumb",
+    "trade-offer-check",
+    "round-transitions"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "quest-step",
+   "family": "quest-step-gating",
+   "ok": false,
+   "reason": "fails_own_checks",
+   "calls": 1,
+   "neurons": 39,
+   "ms": 7721,
+   "chars": 1904,
+   "finishReason": "stop",
+   "exemplars": [
+    "due-respawns",
+    "anchor-inside-bounds",
+    "tool-durability"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "ability-charges",
+   "family": "ability-charges",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 36,
+   "ms": 5866,
+   "chars": 1290,
+   "finishReason": "stop",
+   "exemplars": [
+    "scrollbar-thumb",
+    "elevator-next-floor",
+    "ordinal-suffix"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "projectile-lead",
+   "family": "projectile-intercept",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 38,
+   "ms": 7489,
+   "chars": 1360,
+   "finishReason": "stop",
+   "exemplars": [
+    "paginate-list",
+    "visible-ui-rows",
+    "anchor-inside-bounds"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "grid-snap",
+   "family": "grid-snapping",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 23,
+   "ms": 3422,
+   "chars": 608,
+   "finishReason": "stop",
+   "exemplars": [
+    "token-bucket-spend",
+    "validate-action-payload",
+    "purchase-transaction"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "grid-route-cost",
+   "family": "grid-path-search",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 66,
+   "ms": 16974,
+   "chars": 3782,
+   "finishReason": "stop",
+   "exemplars": [
+    "loot-budget",
+    "sort-inventory-rows",
+    "cooldown-clock"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "stack-into-slots",
+   "family": "inventory-stacking",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 45,
+   "ms": 11137,
+   "chars": 2224,
+   "finishReason": "stop",
+   "exemplars": [
+    "dependency-order",
+    "merge-settings",
+    "prestige-conversion"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "trade-offer-check",
+   "family": "trade-validation",
+   "ok": false,
+   "reason": "fails_own_checks",
+   "calls": 1,
+   "neurons": 47,
+   "ms": 12964,
+   "chars": 2431,
+   "finishReason": "stop",
+   "exemplars": [
+    "auction-bid",
+    "grid-cell-position",
+    "anchor-inside-bounds"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "auction-bid",
+   "family": "auction-bidding",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 45,
+   "ms": 11104,
+   "chars": 2100,
+   "finishReason": "stop",
+   "exemplars": [
+    "leaderboard-insert",
+    "stamina-regen",
+    "visible-ui-rows"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "token-bucket-spend",
+   "family": "token-bucket",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 27,
+   "ms": 6794,
+   "chars": 1251,
+   "finishReason": "stop",
+   "exemplars": [
+    "prestige-conversion",
+    "grid-cell-position",
+    "grid-snap"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "speed-audit",
+   "family": "movement-speed-audit",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 30,
+   "ms": 6153,
+   "chars": 1188,
+   "finishReason": "stop",
+   "exemplars": [
+    "distribute-column-widths",
+    "rating-bracket",
+    "round-transitions"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "seat-assignment",
+   "family": "vehicle-seating",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 43,
+   "ms": 11068,
+   "chars": 2270,
+   "finishReason": "stop",
+   "exemplars": [
+    "notification-queue",
+    "grid-snap",
+    "remap-range"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "elevator-next-floor",
+   "family": "elevator-dispatch",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 43,
+   "ms": 13361,
+   "chars": 2424,
+   "finishReason": "stop",
+   "exemplars": [
+    "interval-overlap",
+    "inventory-capacity",
+    "turn-rotation"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "day-night-phase",
+   "family": "day-night-phase",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 29,
+   "ms": 5904,
+   "chars": 1066,
+   "finishReason": "stop",
+   "exemplars": [
+    "compact-under-ceiling",
+    "elevator-next-floor",
+    "meter-band"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "wave-difficulty",
+   "family": "wave-scaling",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 31,
+   "ms": 8312,
+   "chars": 1259,
+   "finishReason": "stop",
+   "exemplars": [
+    "honest-percent",
+    "elevator-next-floor",
+    "inventory-capacity"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "combo-multiplier",
+   "family": "combo-multiplier",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 27,
+   "ms": 5098,
+   "chars": 841,
+   "finishReason": "stop",
+   "exemplars": [
+    "ui-grid-columns",
+    "seat-assignment",
+    "damage-mitigation"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "leaderboard-insert",
+   "family": "top-n-insertion",
+   "ok": false,
+   "reason": "fails_own_checks",
+   "calls": 1,
+   "neurons": 56,
+   "ms": 17502,
+   "chars": 2979,
+   "finishReason": "stop",
+   "exemplars": [
+    "abbreviate-counter",
+    "cooldown-clock",
+    "format-duration"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "spawn-clearance",
+   "family": "spawn-spacing",
+   "ok": false,
+   "reason": "fails_own_checks",
+   "calls": 1,
+   "neurons": 48,
+   "ms": 15871,
+   "chars": 2610,
+   "finishReason": "stop",
+   "exemplars": [
+    "compact-under-ceiling",
+    "project-client-fields",
+    "grid-cell-position"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "chest-respawn",
+   "family": "chest-respawn",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 27,
+   "ms": 6751,
+   "chars": 1034,
+   "finishReason": "stop",
+   "exemplars": [
+    "buff-stacks",
+    "tool-durability",
+    "cooldown-clock"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "tool-durability",
+   "family": "tool-durability",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 24,
+   "ms": 4784,
+   "chars": 895,
+   "finishReason": "stop",
+   "exemplars": [
+    "abbreviate-counter",
+    "ordered-checkpoints",
+    "unlock-prerequisites"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "buff-stacks",
+   "family": "buff-stacking",
+   "ok": false,
+   "reason": "fails_own_checks",
+   "calls": 1,
+   "neurons": 42,
+   "ms": 13033,
+   "chars": 2299,
+   "finishReason": "stop",
+   "exemplars": [
+    "paginate-list",
+    "format-duration",
+    "inventory-capacity"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "abbreviate-counter",
+   "family": "ui-count-abbreviation",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 86,
+   "ms": 29385,
+   "chars": 1545,
+   "finishReason": "stop",
+   "exemplars": [
+    "turn-rotation",
+    "truncate-display-name",
+    "token-bucket-spend"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "format-duration",
+   "family": "ui-duration-format",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 24,
+   "ms": 3620,
+   "chars": 587,
+   "finishReason": "stop",
+   "exemplars": [
+    "level-from-xp",
+    "seeded-shuffle",
+    "snap-slider-value"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "ordinal-suffix",
+   "family": "ui-ordinal-suffix",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 23,
+   "ms": 4736,
+   "chars": 648,
+   "finishReason": "stop",
+   "exemplars": [
+    "parse-hex-colour",
+    "bounded-reward",
+    "rating-bracket"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "truncate-display-name",
+   "family": "ui-name-truncation",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 34,
+   "ms": 6588,
+   "chars": 1061,
+   "finishReason": "stop",
+   "exemplars": [
+    "unlock-prerequisites",
+    "prestige-conversion",
+    "grid-route-cost"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "wrap-label-text",
+   "family": "ui-text-wrap",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 41,
+   "ms": 7844,
+   "chars": 1905,
+   "finishReason": "stop",
+   "exemplars": [
+    "stack-into-slots",
+    "crafting-batches",
+    "visible-ui-rows"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "paginate-list",
+   "family": "ui-pagination",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 38,
+   "ms": 8319,
+   "chars": 1325,
+   "finishReason": "stop",
+   "exemplars": [
+    "leaderboard-insert",
+    "projectile-lead",
+    "chest-respawn"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "grid-cell-position",
+   "family": "ui-grid-placement",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 34,
+   "ms": 4531,
+   "chars": 902,
+   "finishReason": "stop",
+   "exemplars": [
+    "auction-bid",
+    "wrap-label-text",
+    "sort-inventory-rows"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "scrollbar-thumb",
+   "family": "ui-scrollbar-thumb",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 34,
+   "ms": 7968,
+   "chars": 1799,
+   "finishReason": "stop",
+   "exemplars": [
+    "merge-settings",
+    "truncate-display-name",
+    "smoothstep-between"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "anchor-inside-bounds",
+   "family": "ui-edge-anchoring",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 40,
+   "ms": 6277,
+   "chars": 1373,
+   "finishReason": "stop",
+   "exemplars": [
+    "grid-route-cost",
+    "stack-into-slots",
+    "purchase-transaction"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "progress-segments",
+   "family": "ui-progress-segments",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 29,
+   "ms": 4385,
+   "chars": 764,
+   "finishReason": "stop",
+   "exemplars": [
+    "stack-into-slots",
+    "visible-ui-rows",
+    "zoom-notches"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "honest-percent",
+   "family": "ui-percent-display",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 26,
+   "ms": 3966,
+   "chars": 1000,
+   "finishReason": "stop",
+   "exemplars": [
+    "stamina-regen",
+    "truncate-display-name",
+    "scrollbar-thumb"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "remap-range",
+   "family": "ui-value-remap",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 34,
+   "ms": 5489,
+   "chars": 1158,
+   "finishReason": "stop",
+   "exemplars": [
+    "stack-into-slots",
+    "stamina-regen",
+    "turn-rotation"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "smoothstep-between",
+   "family": "ui-eased-interpolation",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 33,
+   "ms": 4432,
+   "chars": 990,
+   "finishReason": "stop",
+   "exemplars": [
+    "abbreviate-counter",
+    "buff-stacks",
+    "project-client-fields"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "parse-hex-colour",
+   "family": "ui-hex-colour",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 36,
+   "ms": 14016,
+   "chars": 1195,
+   "finishReason": "stop",
+   "exemplars": [
+    "cooldown-clock",
+    "auction-bid",
+    "stack-into-slots"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "deep-table-equality",
+   "family": "data-deep-equality",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 35,
+   "ms": 11695,
+   "chars": 1639,
+   "finishReason": "stop",
+   "exemplars": [
+    "honest-percent",
+    "tool-durability",
+    "parse-hex-colour"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "merge-settings",
+   "family": "ui-settings-merge",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 44,
+   "ms": 13697,
+   "chars": 2122,
+   "finishReason": "stop",
+   "exemplars": [
+    "seat-assignment",
+    "unlock-prerequisites",
+    "team-balance"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "validate-action-payload",
+   "family": "contract-payload-shape",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 34,
+   "ms": 9942,
+   "chars": 1759,
+   "finishReason": "stop",
+   "exemplars": [
+    "cooldown-clock",
+    "inventory-capacity",
+    "speed-audit"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "filter-by-search",
+   "family": "ui-search-filter",
+   "ok": false,
+   "reason": "fails_own_checks",
+   "calls": 1,
+   "neurons": 31,
+   "ms": 7954,
+   "chars": 1422,
+   "finishReason": "stop",
+   "exemplars": [
+    "inventory-capacity",
+    "bounded-reward",
+    "scrollbar-thumb"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "sort-inventory-rows",
+   "family": "data-inventory-sort-key",
+   "ok": false,
+   "reason": "fails_own_checks",
+   "calls": 1,
+   "neurons": 35,
+   "ms": 22950,
+   "chars": 1881,
+   "finishReason": "stop",
+   "exemplars": [
+    "hunger-drain",
+    "day-night-phase",
+    "bounded-reward"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "tooltip-placement",
+   "family": "ui-tooltip-flip",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 39,
+   "ms": 12745,
+   "chars": 1750,
+   "finishReason": "stop",
+   "exemplars": [
+    "combo-multiplier",
+    "anchor-inside-bounds",
+    "grid-snap"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "zoom-notches",
+   "family": "ui-zoom-step",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 35,
+   "ms": 8894,
+   "chars": 1798,
+   "finishReason": "stop",
+   "exemplars": [
+    "ability-charges",
+    "anchor-inside-bounds",
+    "inventory-capacity"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "snap-slider-value",
+   "family": "ui-slider-snap",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 40,
+   "ms": 12219,
+   "chars": 1527,
+   "finishReason": "stop",
+   "exemplars": [
+    "ability-charges",
+    "elevator-next-floor",
+    "progress-segments"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "notification-queue",
+   "family": "ui-notification-queue",
+   "ok": false,
+   "reason": "fails_own_checks",
+   "calls": 1,
+   "neurons": 39,
+   "ms": 11798,
+   "chars": 1771,
+   "finishReason": "stop",
+   "exemplars": [
+    "spawn-clearance",
+    "chest-respawn",
+    "format-duration"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "project-client-fields",
+   "family": "contract-field-projection",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 34,
+   "ms": 8058,
+   "chars": 1258,
+   "finishReason": "stop",
+   "exemplars": [
+    "token-bucket-spend",
+    "distribute-column-widths",
+    "damage-mitigation"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  },
+  {
+   "id": "distribute-column-widths",
+   "family": "ui-column-widths",
+   "ok": true,
+   "reason": null,
+   "calls": 1,
+   "neurons": 48,
+   "ms": 13235,
+   "chars": 2256,
+   "finishReason": "stop",
+   "exemplars": [
+    "visible-ui-rows",
+    "buff-stacks",
+    "merge-ranges"
+   ],
+   "retrievedWith": "nothing — seeded pick, the control"
+  }
+ ]
+}
