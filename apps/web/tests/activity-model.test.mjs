@@ -205,11 +205,13 @@ test('changing what exists is editing; adding to the world is building', () => {
 });
 
 test('a tool name separates states that agent_status collapses together', () => {
-  // The worker reports search_asset_library as phase `inspecting`; only the tool
-  // name can say "Searching assets".
+  // The worker reports find_verified_asset as phase `inspecting`; only the tool name can say
+  // "Searching assets". (`search_asset_library` was the other tool in this pair until the asset
+  // catalogue was removed on 2026-09-20; an unmapped name now falls to `working`, asserted below.)
   assert.equal(kindForPhase('inspecting'), 'inspecting');
-  assert.equal(kindForTool('search_asset_library'), 'searching_assets');
   assert.equal(kindForTool('find_verified_asset'), 'searching_assets');
+  assert.equal(kindForTool('search_asset_library'), 'working',
+    'the removed catalogue tool must have no label of its own — a label is a claim the product still has one');
 });
 
 test('an unmapped tool is `working` and keeps its own name — no invented prose', () => {

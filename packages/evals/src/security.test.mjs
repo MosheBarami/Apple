@@ -763,13 +763,16 @@ function studioCtx(env, overrides = {}) {
     restoreCheckpoint: async () => ({ ok: true }),
     addMemoryFact: async () => {},
     discoveredAssetIds: new Set([424242]),
-    // BOTH asset-source choices allowed, ON PURPOSE. choose_asset_source, search_asset_library,
-    // find_verified_asset and insert_asset now refuse before reaching their bodies when the caller
-    // has no policy (asset-policy.ts) — which `studioCtx()` had, by omission, until this comment.
-    // An unset `assetSources` would make all four short-circuit to `{ error }` here, and A2's egress
-    // sweep below would keep reporting them clean while scanning nothing: `withDetail >= 10` and the
+    // BOTH asset-source choices allowed, ON PURPOSE. choose_asset_source, find_verified_asset and
+    // insert_asset refuse before reaching their bodies when the caller has no policy
+    // (asset-policy.ts) — which `studioCtx()` had, by omission, until this comment. An unset
+    // `assetSources` would make all three short-circuit to `{ error }` here, and A2's egress sweep
+    // below would keep reporting them clean while scanning nothing: `withDetail >= 10` and the
     // TOOL_ARGS enumeration are both satisfied by a refusal just as readily as by a real result.
-    assetSources: { mode: 'remember', allow: ['apple_library', 'creator_store', 'from_scratch'] },
+    //
+    // It was three choices until 2026-09-20; `apple_library` went with the asset catalogue, and so
+    // did the fourth tool in that list, `search_asset_library`.
+    assetSources: { mode: 'remember', allow: ['creator_store', 'from_scratch'] },
     // OUTBOUND HTTP FOR THE WEB TOOLS, STUBBED HERE ON PURPOSE.
     //
     // `globalThis.fetch` above is the no-network router, and A1 asserts that no provider host was
@@ -873,7 +876,6 @@ const TOOL_ARGS = {
   // palette, no lighting and no sound ids — so the egress scan below would inspect a refusal and
   // report that a tool leaking asset ids is clean.
   get_genre_kit: { genre: 'horror' },
-  search_asset_library: { query: 'oak tree' },
   find_verified_asset: { query: 'oak tree' },
   insert_asset: { assetId: 424242, parent: 'game.Workspace' },
   generate_model: { prompt: 'a lamp post', intent: 'lamp post' },

@@ -1,5 +1,29 @@
 # The asset pipeline
 
+> **DECOMMISSIONED IN PART — 2026-09-20.** Layer 1, the curated asset library, no longer exists.
+> The owner removed it outright: every upload that pipeline could make was an Image or a Decal,
+> Roblox refuses to archive either, so each one was permanent in somebody's real account — 299
+> landed in the owner's personal account before he had agreed to it, and Roblox would not take them
+> back. The catalogue also held rows named after other companies' properties under a single blanket
+> licence claim, and 0 of its 511,208 rows were insertable on the day it was measured.
+>
+> Deleted with it: `search_asset_library` (the tool), `asset-library.ts`, `asset-ingest.ts`,
+> `asset-import.ts`, `asset-catalog-previews.ts`, the `/api/assets/search`,
+> `/api/admin/assets/{ingest,import,unimport}` and `/api/me/roblox-import` routes, the harvest and
+> ingest scripts, `packages/corpus/data/library/`, and the `apple_library` asset-source choice.
+>
+> **Still live, and everything below about them still holds:** Layer 0 (procedural), Layer 2
+> (GenerationService in the customer's own session), Layer 3 (the Creator Store, reached by
+> `find_verified_asset`), `insert_asset` and its two gates, `generate_image` (which draws into the
+> customer's own account), and the genre kits' hand-pinned sound ids. `provenance.ts` and the
+> credits report also still run — with the catalogue gone, every placed asset is reported as
+> provenance-unknown, which is the honest answer rather than a gap.
+>
+> Read the rest of this document as a record of what the system WAS wherever it names Layer 1, the
+> library, an import, or an upload under Apple's own account. The 511,208 rows are still sitting in
+> the live `CORPUS` D1 database until somebody drops them; the product no longer reads or writes
+> them.
+
 Golem's instinct, left alone, is to search the toolbox for a tree. That instinct is wrong in almost
 every row of the table below, and in two rows it is actively dangerous: free Roblox *Models* are
 the classic delivery vehicle for backdoor scripts.

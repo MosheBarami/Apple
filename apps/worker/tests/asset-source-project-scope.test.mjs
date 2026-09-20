@@ -125,16 +125,16 @@ test('THE CEILING IS THE LAYERS ABOVE THE PROJECT, AND EXCLUDES THE PROJECT ITSE
   // asset-source-policy.test.mjs would still be green.
   const { env, access, close } = await db();
   try {
-    await writePrefs(env, access, 'user', USER, { asset_sources: pol('remember', ['apple_library', 'creator_store']) });
-    await writePrefs(env, access, 'project', A, { asset_sources: pol('remember', ['apple_library']) });
+    await writePrefs(env, access, 'user', USER, { asset_sources: pol('remember', ['creator_store', 'from_scratch']) });
+    await writePrefs(env, access, 'project', A, { asset_sources: pol('remember', ['creator_store']) });
 
     const p = await read(env, access, A);
     assert.deepEqual(
       p.assetSourceCeiling?.allow,
-      ['apple_library', 'creator_store'],
+      ['creator_store', 'from_scratch'],
       'the ceiling must be what the ACCOUNT allows, not what the project narrowed it to',
     );
-    assert.deepEqual(p.prefs.asset_sources?.allow, ['apple_library'], 'and the resolved policy is still the narrowed one');
+    assert.deepEqual(p.prefs.asset_sources?.allow, ['creator_store'], 'and the resolved policy is still the narrowed one');
     assert.notDeepEqual(
       p.assetSourceCeiling?.allow,
       p.prefs.asset_sources?.allow,
@@ -149,13 +149,13 @@ test('an organisation narrows the ceiling, so a project is never offered what it
   const { env, access, close } = await db();
   try {
     const orgAccess = { ...access, orgs: [{ orgId: ORG, role: 'owner' }] };
-    await writePrefs(env, orgAccess, 'org', ORG, { asset_sources: pol('remember', ['apple_library']) });
-    await writePrefs(env, orgAccess, 'user', USER, { asset_sources: pol('remember', ['apple_library', 'creator_store']) });
+    await writePrefs(env, orgAccess, 'org', ORG, { asset_sources: pol('remember', ['creator_store']) });
+    await writePrefs(env, orgAccess, 'user', USER, { asset_sources: pol('remember', ['creator_store', 'from_scratch']) });
 
     const p = await read(env, orgAccess, A, [ORG]);
     assert.deepEqual(
       p.assetSourceCeiling?.allow,
-      ['apple_library'],
+      ['creator_store'],
       'the org allows one source; the ceiling must not offer the two the account wanted',
     );
   } finally {

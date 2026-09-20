@@ -3,9 +3,8 @@
 //
 //[[ AN EMPTY INDEX MUST NOT ANSWER LIKE A REAL MISS.
 //
-//   `searchDocs` already refuses to render a double backend failure as "no results" (rag.ts), and
-//   `assetLibraryAvailable` already refuses to create tables so that a library nobody filled can
-//   answer "no matches". Both stop one step short of the case that actually ships: BOTH backends
+//   `searchDocs` already refuses to render a double backend failure as "no results" (rag.ts).
+//   That stops one step short of the case that actually ships: BOTH backends
 //   answer, correctly, with nothing — because the `chunks` table has zero rows, or because the
 //   vector half of it was never embedded.
 //

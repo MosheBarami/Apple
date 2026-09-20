@@ -33,8 +33,12 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
+import { PRODUCT_ORIGIN } from './lib/product-origin.mjs';
+
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const DEPLOYED = 'https://golem.moshe-barami111.workers.dev';
+// THE ORIGIN IS READ, NOT TYPED. It used to be a copy of the LEGACY hostname, so this program
+// measured — and wrote into its evidence file as "origin" — a deployment nobody is sent to.
+const DEPLOYED = PRODUCT_ORIGIN;
 
 /* ------------------------------------------------------------------- flags --- */
 

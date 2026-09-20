@@ -1,0 +1,113 @@
+{
+ "measuredAt": "2026-09-20T10:23:15.138Z",
+ "what": "the DEPLOYED model, through the real gateway, scored by execution",
+ "model": "clay",
+ "system": "You write standalone Luau modules for Roblox. Reply with ONE fenced luau code block and nothing else. The module must return the function described, handle every invalid input the contract names, and must not read a clock, mutate shared state, or require anything.",
+ "maxTokens": 6500,
+ "n": 12,
+ "ok": 1,
+ "pct": 8,
+ "neurons": 719,
+ "reasons": {
+  "no_code_block": 10,
+  "fails_own_checks": 1
+ },
+ "rows": [
+  {
+   "id": "purchase-transaction",
+   "family": "economy-transaction",
+   "ok": false,
+   "reason": "no_code_block",
+   "ms": 12186,
+   "finishReason": "length"
+  },
+  {
+   "id": "bounded-reward",
+   "family": "bounded-reward",
+   "ok": false,
+   "reason": "no_code_block",
+   "ms": 12962,
+   "finishReason": "length"
+  },
+  {
+   "id": "cooldown-clock",
+   "family": "cooldown-clock",
+   "ok": false,
+   "reason": "no_code_block",
+   "ms": 12407,
+   "finishReason": "length"
+  },
+  {
+   "id": "ordered-checkpoints",
+   "family": "ordered-checkpoints",
+   "ok": false,
+   "reason": "no_code_block",
+   "ms": 11536,
+   "finishReason": "length"
+  },
+  {
+   "id": "inventory-capacity",
+   "family": "inventory-capacity",
+   "ok": false,
+   "reason": "no_code_block",
+   "ms": 13243,
+   "finishReason": "length"
+  },
+  {
+   "id": "round-transitions",
+   "family": "round-transitions",
+   "ok": true,
+   "reason": null,
+   "ms": 8008,
+   "finishReason": "stop"
+  },
+  {
+   "id": "level-from-xp",
+   "family": "level-from-xp",
+   "ok": false,
+   "reason": "no_code_block",
+   "ms": 11837,
+   "finishReason": "length"
+  },
+  {
+   "id": "unlock-prerequisites",
+   "family": "unlock-prerequisites",
+   "ok": false,
+   "reason": "no_code_block",
+   "ms": 10705,
+   "finishReason": "length"
+  },
+  {
+   "id": "finite-normalization",
+   "family": "finite-normalization",
+   "ok": false,
+   "reason": "no_code_block",
+   "ms": 13013,
+   "finishReason": "length"
+  },
+  {
+   "id": "stable-leaderboard",
+   "family": "stable-leaderboard",
+   "ok": false,
+   "reason": "fails_own_checks",
+   "ms": 9149,
+   "finishReason": "stop"
+  },
+  {
+   "id": "weighted-selection",
+   "family": "weighted-selection",
+   "ok": false,
+   "reason": "no_code_block",
+   "ms": 15779,
+   "finishReason": "length"
+  },
+  {
+   "id": "interval-overlap",
+   "family": "interval-overlap",
+   "ok": false,
+   "reason": "no_code_block",
+   "ms": 10977,
+   "finishReason": "length"
+  }
+ ]
+}

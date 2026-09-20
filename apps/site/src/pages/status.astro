@@ -24,7 +24,13 @@ const shortDate = (iso: string) =>
   <section class="section" aria-labelledby="status-title">
     <div class="wrap status-wrap">
       <p class="eyebrow">Status</p>
-      <h1 id="status-title">Is the apple awake?</h1>
+      {/* `carved` — the class every other h1 on this site carries, and the one heading that had
+          been shipped without it. Measured at 1280px: this title rendered at 32px in weight 700
+          with no tracking, against 51.2px at weight 400 and -1.02px everywhere else, because
+          without the class an <h1> falls back to the browser's own 2em bold. So the page a reader
+          opens when they think the product is down was the one page whose title looked like an
+          unstyled document — and the only bold heading on the site. */}
+      <h1 id="status-title" class="carved">Is the apple awake?</h1>
       <p class="lede">
         This page checks the live API from your own browser — the same endpoint the app uses — and
         refreshes every 30 seconds.

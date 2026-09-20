@@ -19,11 +19,40 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+/**
+ * COMMENTS ARE STRIPPED FIRST, and this is not tidiness. Without it these assertions match the
+ * PROSE as readily as the markup: `aria-modal="true"` deleted from the JSX still passed, because
+ * the paragraph above the return quotes the attribute while explaining it. Proven by deleting the
+ * line — nine tests stayed green — and by deleting it again after this change, where the three
+ * that are about it go red. A guard that reads its own documentation is measuring nothing.
+ */
 const SRC = readFileSync(
   join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'components', 'ws', 'primitives.tsx'),
   'utf8',
-);
-const DRAWER = SRC.slice(SRC.indexOf('export function Drawer'), SRC.indexOf('export function Drawer') + 3000);
+).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+/**
+ * THE SLICE WAS A MAGIC NUMBER AND IT WENT BLIND. This read the 3000 characters after
+ * `export function Drawer`, which happened to reach the markup — until a comment was added above
+ * the return and pushed `role="dialog"` past character 3000. Three assertions then failed with the
+ * attributes still there, untouched, in the file. A check that stops reading at an arbitrary offset
+ * reports on where it stopped, not on what the code does.
+ *
+ * Bounded by the NEXT top-level declaration instead, so the window is the function itself however
+ * long it or its documentation becomes.
+ */
+const DRAWER_AT = SRC.indexOf('export function Drawer');
+const NEXT_AT = SRC.indexOf('\nexport ', DRAWER_AT + 1);
+const DRAWER = SRC.slice(DRAWER_AT, NEXT_AT === -1 ? SRC.length : NEXT_AT);
+
+test('the window this file reads is the whole Drawer, and nothing after it', () => {
+  // The guard on the guard. If the bound ever slips past the end of the function these tests start
+  // passing on somebody else's markup; if it stops short they fail on code that is correct.
+  assert.ok(DRAWER_AT !== -1, 'Drawer was renamed or moved');
+  assert.match(DRAWER, /^export function Drawer\b/);
+  assert.match(DRAWER, /className="gx-drawer__body"/, 'the window must reach the end of the markup');
+  assert.doesNotMatch(DRAWER.slice(DRAWER.indexOf('gx-drawer__body')), /^[\s\S]*\nexport /,
+    'the window must stop at the next declaration');
+});
 
 test('the panel announces itself as a modal dialog', () => {
   // Without role and aria-modal a screen reader keeps reading the page behind it, so

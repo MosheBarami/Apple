@@ -16,7 +16,14 @@
 // list of claims it knows how to verify. It cannot read English. A label that says something true
 // of the data in words this file does not know will pass — so the `from` pointer beside each
 // figure is the real discipline, and this script is what makes the pointer binding.
-import { readFileSync, readdirSync, existsSync } from 'node:fs';
+//
+// THE ASSET-LIBRARY HALF OF THIS FILE WAS REMOVED ON 2026-09-20 with the catalogue it recomputed.
+// It read `packages/corpus/data/library/*`, deduplicated it the way the ingest did, and resolved
+// the page's `library.total` and `library.withRobloxId` pointers from the result. Both the harvest
+// and the pointers are gone. It also refused to run at all when the harvest was not on disk — the
+// right call then, and permanent now, so a guard that could never come back clean has been narrowed
+// to the part that can: the template figures, and the rule that no number on the page is typed.
+import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -26,92 +33,9 @@ const PAGE = join(ROOT, 'apps', 'site', 'src', 'pages', 'index.astro');
 
 /* ------------------------------------------------------------------- the figures, computed --- */
 
-/** Every harvested asset, deduplicated by id exactly as the ingest deduplicates them. */
-function libraryTotals() {
-  const files = [
-    join(DATA, 'asset-seeds.json'),
-    ...readdirSync(join(DATA, 'library'))
-      .filter((f) => f.endsWith('.json') && f !== 'index.json')
-      .map((f) => join(DATA, 'library', f)),
-  ];
-  const seen = new Set();
-  let total = 0;
-  let withRobloxId = 0;
-  let withoutLicence = 0;
-  for (const f of files) {
-    if (!existsSync(f)) continue;
-    const part = JSON.parse(readFileSync(f, 'utf8'));
-    // A harvest that recorded its own failure is not evidence of anything. Counting its rows
-    // would be counting a file that says "I did not finish".
-    if (part.failed === true) continue;
-    for (const a of part.assets ?? []) {
-      if (seen.has(a.id)) continue;
-      seen.add(a.id);
-      total++;
-      if (a.robloxAssetId) withRobloxId++;
-      if (!a.licence) withoutLicence++;
-    }
-  }
-  return { total, withRobloxId, withoutLicence };
-}
-
 function templateTotals() {
   const t = JSON.parse(readFileSync(join(DATA, 'template-seeds.json'), 'utf8'));
   return t.counts ?? {};
-}
-
-/**
- * Which harvest parts the index says exist, and which are actually on disk.
- *
- * `packages/corpus/data/library/*` is gitignored except four small parts (see .gitignore), because
- * the corpus is ~49MB and re-fetchable. So in any fresh clone, and in every git worktree, most of
- * it is simply absent — and `libraryTotals` skips a missing file and carries on, producing a
- * smaller total that this script then reported as "the landing page states things the data does
- * not say". It had not read the data. It had read a fraction of it.
- *
- * A FAILURE TO OBSERVE MUST NOT RENDER AS AN OBSERVATION: "the number is wrong" and "the corpus is
- * not here" are different findings with different next steps, and only one of them is about the
- * page. The index names every source the harvest wrote, so the absence is nameable.
- */
-function harvestShortfall(counted) {
-  const indexPath = join(DATA, 'library', 'index.json');
-  if (!existsSync(indexPath)) return ['library/index.json is not there, so there is nothing to check the harvest against'];
-  const index = JSON.parse(readFileSync(indexPath, 'utf8'));
-  const gaps = Object.keys(index.perSource ?? {})
-    .filter((s) => !existsSync(join(DATA, 'library', `${s}.json`)))
-    .map((s) => `library/${s}.json is missing`);
-  // The per-source check alone is not enough: the harvest also writes parts the index does not
-  // name one-for-one (`kenney-expanded.json` and friends), so a checkout can have every named file
-  // and still be short. The index records what the harvest KEPT, and a recount below that number
-  // means rows are not here — whichever file they were in.
-  const recorded = Number(index.total ?? 0);
-  if (recorded > 0 && counted < recorded) {
-    gaps.push(`the harvest recorded ${recorded.toLocaleString()} rows and only ${counted.toLocaleString()} are on disk`);
-  }
-  return gaps;
-}
-
-const lib = libraryTotals();
-
-//[[ A FAILURE TO OBSERVE MUST NOT RENDER AS AN OBSERVATION.
-//
-//   `packages/corpus/data/library/*` is gitignored except four small parts (see .gitignore),
-//   because the harvest is ~49MB and re-fetchable. So in a fresh clone — and in every git worktree
-//   — most of it is simply absent, `libraryTotals` skipped each missing file and carried on, and
-//   this script reported the shortfall as "the landing page states things the data does not say".
-//   It had not read the data. It had read a fraction of it, and blamed the page.
-//
-//   "The number is wrong" and "the corpus is not here" are different findings with different next
-//   steps, and only one of them is about the page. Exit 2 rather than 0, because a guard that
-//   cannot see the thing it guards must say so loudly and must never come back clean. ]]
-const gaps = harvestShortfall(lib.total);
-if (gaps.length) {
-  console.error('PROOF FIGURES UNCHECKED — the corpus these numbers are computed from is not all here.\n\n'
-    + gaps.map((g) => `  · ${g}`).join('\n')
-    + '\n\nThis is NOT a clean run and NOT a claim about the landing page: nothing has been verified.\n'
-    + 'The harvest is gitignored and re-fetchable — run `pnpm --filter @golem/corpus bootstrap`\n'
-    + 'and run this again.');
-  process.exit(2);
 }
 
 const tpl = templateTotals();
@@ -119,13 +43,15 @@ const tpl = templateTotals();
 /**
  * What each `from` pointer resolves to.
  *
- * `library.usable` is deliberately NOT `template.total`: the harvester's own `usable` flag means
+ * `templates.usable` is deliberately NOT `templates.total`: the harvester's own `usable` flag means
  * not archived, carrying a real licence, and using no API Roblox has removed. 3,017 is what a
  * GitHub search returned; 1,034 is what survived a gate.
+ *
+ * `library.total` and `library.withRobloxId` were here until 2026-09-20. A page that still points
+ * at either now fails the "resolves to nothing" branch below by name, which is what should happen:
+ * the number it would have printed cannot be recomputed from anything in this repository.
  */
 const RESOLVE = {
-  'library.total': lib.total,
-  'library.withRobloxId': lib.withRobloxId,
   'templates.usable': tpl.usable,
   'templates.total': tpl.total,
   'templates.apiChecked': tpl.apiChecked,
@@ -206,10 +132,6 @@ for (const f of written) {
 //   claims this file knows how to test, each written because the page made it falsely once. ]]
 for (const f of written) {
   const says = f.what.toLowerCase();
-
-  if (/every licence|licence recorded|licensed/.test(says) && f.from === 'library.total' && lib.withoutLicence > 0) {
-    problems.push(`"${f.what}" claims every row carries a licence, and ${lib.withoutLicence} do not`);
-  }
 
   // "checked against current Roblox APIs" was attached to 3,017 while the harvest records the
   // check for 300. A claim of a check may only ride on the count that was checked.

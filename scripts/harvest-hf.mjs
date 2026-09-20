@@ -218,7 +218,8 @@ const MODELS = [
 // Hub access
 // ===========================================================================================
 
-const UA = { 'User-Agent': 'golem-harvest-hf/1.0 (+packages/training)' };
+// Internal-only: Hugging Face reads this for rate-limiting and nothing resolves us by it.
+const UA = { 'User-Agent': 'apple-harvest-hf/1.0 (+packages/training)' };
 
 /**
  * Fetch with backoff on the transient statuses, and a THROW on everything else.

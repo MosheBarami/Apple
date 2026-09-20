@@ -313,8 +313,21 @@ export const NON_POSTGRES_STORES: readonly NonPostgresStore[] = [
   // the row to key on. Marking it `personal: false` would have satisfied the guard and been a lie
   // about what the table is for.
   { store: 'd1', binding: 'CORPUS', name: 'recovery_requests', personal: true, holds: 'that somebody who could not sign in asked for help, as a hash of the address and the note they wrote' },
-  { store: 'd1', binding: 'CORPUS', name: 'asset_library', personal: false, holds: 'the shared asset catalogue; nothing in a row is about a customer' },
-  { store: 'd1', binding: 'CORPUS', name: 'asset_verification_log', personal: false, holds: 'catalogue verification history' },
+  //[[ `asset_library` AND `asset_verification_log` WERE HERE AND WERE REMOVED ON 2026-09-20.
+  //
+  //   The asset catalogue was deleted with the code that created, read and wrote those two tables,
+  //   so nothing in this worker creates them any more and the guard below — "the inventory names
+  //   real stores" — would fail on an entry no `create table` backs.
+  //
+  //   NOTHING PERSONAL LEFT THE EXPORT WITH THEM. Both were `personal: false`: a catalogue row
+  //   said what an asset was and who published it, never who used it, and the verification log
+  //   recorded what Roblox answered about an asset id. Which assets a PROJECT used is a different
+  //   table, `project_asset_use`, and it is still listed and still exported.
+  //
+  //   THE ROWS ARE STILL IN THE DEPLOYED DATABASE. 511,208 of them, last measured 2026-09-19, and
+  //   dropping them is a `wrangler d1` action against live infrastructure, not a code change. This
+  //   note is here so the next person to read this list knows the difference between "the product
+  //   no longer has a catalogue" and "the bytes are gone". ]]
   { store: 'd1', binding: 'CORPUS', name: 'chunks', personal: false, holds: 'the documentation corpus the agent retrieves from' },
   { store: 'd1', binding: 'CORPUS', name: 'static_assets', personal: false, holds: 'the deployed web bundle' },
   { store: 'd1', binding: 'CORPUS', name: 'static_chunks', personal: false, holds: 'the bytes of the deployed web bundle' },
@@ -330,6 +343,7 @@ export const NON_POSTGRES_STORES: readonly NonPostgresStore[] = [
   { store: 'do', binding: 'QUOTA_DO', name: 'month_totals', personal: true, holds: 'the monthly rollup of that spend' },
   { store: 'do', binding: 'QUOTA_DO', name: 'billing_events', personal: true, holds: 'the Stripe events that set this account\'s plan' },
   { store: 'do', binding: 'QUOTA_DO', name: 'applied_events', personal: true, holds: 'which of those were already applied, so a redelivery cannot double-charge' },
+  { store: 'do', binding: 'QUOTA_DO', name: 'applied_refunds', personal: true, holds: 'which runs have already had their Credits returned, so a retried alarm cannot refund twice' },
   {
     store: 'do',
     binding: 'QUOTA_DO',

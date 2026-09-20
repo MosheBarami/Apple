@@ -221,6 +221,40 @@ body {
   color: var(--accent-on);
 }
 
+/* ORPHANED LAST LINES — the single thing that made these pages read as unfinished beside the bar.
+   MEASURED, not assumed: a pass over all 19 routes at 375px and 1280px counted 86 text blocks
+   whose last visual line held one word — "once.", "month.", "declined", "one", "beta." — with
+   /docs/privacy-and-data alone contributing ten. The count is the guard in
+   tests/no-orphaned-last-lines.test.mjs, which re-measures in a real browser rather than reading
+   this file, because a stylesheet assertion cannot tell whether the browser honoured the property.
+
+   `pretty` is the right property for prose: it costs the engine a second pass over the last few
+   lines and pulls a word down rather than leaving one stranded. `balance` is the right one for a
+   heading, where both lines should be even and the block is short enough for the browser to
+   consider it (engines cap balancing at a handful of lines, which is why prose gets `pretty`).
+   `.carved` and the landing's `.display` already carried `balance`; this is the same decision
+   applied to the headings and paragraphs underneath them instead of only the top one.
+
+   Where the property is unsupported it is dropped and the rendering is exactly today's, so the
+   fallback is the current page rather than a broken one. */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  text-wrap: balance;
+}
+
+p,
+li,
+dd,
+dt,
+figcaption,
+blockquote {
+  text-wrap: pretty;
+}
+
 a {
   color: inherit;
 }

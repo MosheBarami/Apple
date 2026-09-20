@@ -71,7 +71,7 @@ export const SETTING_FIELDS: readonly SettingField[] = [
     section: 'Building',
     // Nobody types "asset source policy". They type the thing they are worried about — that it is
     // using other people's work, or that it is spending credits making its own.
-    keywords: ['assets', 'library', 'creator store', 'from scratch', 'licence', 'credits', 'where', 'models', 'textures', 'sources', 'pop up', 'ask me'],
+    keywords: ['assets', 'creator store', 'from scratch', 'licence', 'credits', 'where', 'models', 'textures', 'sources', 'pop up', 'ask me'],
   },
   {
     id: 'api-keys',

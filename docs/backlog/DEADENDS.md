@@ -486,3 +486,27 @@ own path to the library is untouched; only the customer's door is closed.
 
 **If it comes back:** it is one file in git history, and this entry is where to find out why it was
 not there.
+
+---
+
+## apps/worker/src/unzip.ts — STRUCTURALLY-BLOCKED, 2026-09-20
+
+**Found:** imported by nothing in the tree, as of the asset library's removal.
+
+**Its only product caller was `asset-import.ts`, and that file no longer exists.** The reader was
+written for the catalogue: ambientCG, OpenGameArt and Kenney publish ZIP archives and nothing else,
+Roblox takes png/jpeg/bmp/tga, so without a reader those rows could never become assets. The owner
+removed the catalogue on 2026-09-20 and the import path went with it.
+
+**It is NOT deleted, and the reason is a live guard rather than sentiment.** `zip-write.ts` is
+reached from `index.ts` and builds the archive a customer downloads when they take a copy of their
+whole workspace. `apps/worker/tests/files-archive-live.test.mjs` verifies that archive by parsing it
+with `listZip`/`extractFromZip` **from this file** — deliberately, and it says so in its own header:
+"A writer checked only by its own reader proves nothing; this one is checked by a reader that was
+written for somebody else's files." Deleting `unzip.ts` would not remove dead code, it would remove
+the independent oracle from a guard on a feature that ships, and leave the writer checked only by
+itself.
+
+**Structurally blocked on:** nothing in the product should import it. Its correct state is exactly
+this — no product caller, one test caller, and an entry here saying why that is deliberate. If a
+product path ever needs to read a ZIP again, this becomes a WIRE and this entry goes.

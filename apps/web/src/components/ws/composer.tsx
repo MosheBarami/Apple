@@ -8,8 +8,11 @@ import {
   MESSAGE_WARN_CHARS,
   PRODUCT_MODELS,
   PRODUCT_MODEL_INFO,
+  PRODUCT_MODES_OFFERED,
+  PRODUCT_MODE_INFO,
   canUseProductModel,
   type ChatAttachment,
+  type ProductMode,
   type ProductModel,
   type StudioEventSelection,
 } from '@golem/shared';
@@ -24,6 +27,7 @@ import {
   stageReducer,
 } from '../../lib/attachments';
 import { matchesShortcut } from '../../lib/shortcuts';
+import { observeComposerHeight } from '../../lib/composer-height';
 import { sendBinding, sendHint } from '../../lib/send-key';
 import { readDraft, writeDraft, clearDraft } from '../../lib/draft';
 import { insertAtCursor, selectionChipLabel, selectionReference, type Insertion } from '../../lib/selection-reference';
@@ -74,6 +78,21 @@ interface Props {
   productModel: ProductModel;
   modelPlan?: string;
   onModelChange: (model: ProductModel) => void;
+  /**
+   * PLAN OR AGENT — the choice between looking and building, made by the person sending the
+   * message.
+   *
+   * It was never a missing feature. `PRODUCT_MODE_INFO` has named both since the vocabulary was
+   * written, `workspace.tsx` has held the state and sent it with every message, and the worker
+   * routes it: Plan is `clay`, whose toolset is `PLAN_TOOLS` — no `edit_script`, no
+   * `create_instances`, no `run_luau` — and whose system prompt says "the user chose this mode
+   * because they want thinking, not changes". All of that shipped with no control anywhere in the
+   * chat to reach it, so the only people who could choose were the ones filling in an Automation
+   * form. The composer is where a person decides what this message is going to do, so the choice
+   * belongs here.
+   */
+  mode: ProductMode;
+  onModeChange: (mode: ProductMode) => void;
   onUpgrade?: () => void;
   maxUpgradeAvailable?: boolean | null;
   seed?: string;
@@ -112,6 +131,8 @@ export function Composer({
   productModel,
   modelPlan,
   onModelChange,
+  mode,
+  onModeChange,
   onUpgrade,
   maxUpgradeAvailable = null,
   seed,
@@ -125,12 +146,29 @@ export function Composer({
   // RESTORED ON THE FIRST RENDER, not in an effect. An effect paints an empty box first, and
   // people start retyping into it before the draft lands on top of what they just typed.
   const [text, setText] = useState(() => (draftKey ? readDraft(draftKey) : ''));
+  // `modeOpen` is the MODEL menu and has carried that name since before the product had two
+  // vocabularies. The Plan/Agent menu is the one actually called a mode, so it gets the clearer
+  // name rather than renaming a field five call sites read.
   const [modeOpen, setModeOpen] = useState(false);
+  const [taskModeOpen, setTaskModeOpen] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [creation, setCreation] = useState<CreationIntent>('build');
   const box = useRef<HTMLTextAreaElement>(null);
   const lastKey = useRef(draftKey);
   const { prefs } = usePrefs();
+
+  //[[ THE PANEL'S HEIGHT, PUBLISHED, SO THE TOAST STACK STOPS LANDING ON THE MESSAGE BOX.
+  //
+  //   components/toast.css lifted itself clear of this panel with a constant added up in a
+  //   comment. Measured against the real thing it was short everywhere but 1440px, and at 375px
+  //   the toast covered the top 49px of an 85px textarea — `elementFromPoint` at the field's first
+  //   line returned the toast, not the field. The panel is also not one size: it grows with the
+  //   tool bar wrapping, with a staged attachment, and with the draft somebody is typing.
+  //
+  //   So the height is MEASURED and published on the root for the floating surfaces to read; see
+  //   lib/composer-height.ts, which toast.css's own header asked for by name. ]]
+  const panel = useRef<HTMLDivElement>(null);
+  useEffect(() => observeComposerHeight(panel.current, document.documentElement), []);
 
   // ONE source for the chord. The handler and the hint below both read this, so the help can
   // never describe a key the handler does not listen for — which is how the two diverged before.
@@ -588,7 +626,7 @@ export function Composer({
   const activeModel = PRODUCT_MODEL_INFO[productModel];
 
   return (
-    <div className="gx-composer">
+    <div className="gx-composer" ref={panel}>
       <form
         className={`gx-composer__inner${dropping ? ' is-dropping' : ''}`}
         onSubmit={submit}
@@ -740,7 +778,58 @@ export function Composer({
         )}
 
         <div className="gx-composer__bar">
-          {/* -------------------------------------------------- mode ---- */}
+          {/*[[ ---------------------------------------- plan or agent ----
+              FIRST IN THE BAR, because it is the only control here that decides whether this
+              message CHANGES the place. The model chip picks how well the work is done; this
+              picks whether work happens at all, and a person who wants to be told what is wrong
+              before anything is touched has no other way to ask for that.
+
+              Both entries are always selectable. Neither is gated on a plan, a subscription or a
+              Studio connection — Plan maps to the same free specialist a free account already
+              runs, so an entry that looked choosable and was not would repeat the defect the MAX
+              row still has. ]]*/}
+          <div className="gx-pop-wrap">
+            <button
+              type="button"
+              className="gx-chip"
+              aria-haspopup="menu"
+              aria-expanded={taskModeOpen}
+              aria-label={`Mode: ${PRODUCT_MODE_INFO[mode].name}`}
+              title={PRODUCT_MODE_INFO[mode].blurb}
+              onClick={() => setTaskModeOpen((v) => !v)}
+            >
+              <Icon d={mode === 'plan' ? PATH.docs : PATH.layers} size={13} />
+              <span>{PRODUCT_MODE_INFO[mode].name}</span>
+              <span className="gx-chip__caret" aria-hidden="true">
+                <Icon d={PATH.chevronDown} size={11} />
+              </span>
+            </button>
+            <Popover open={taskModeOpen} onClose={() => setTaskModeOpen(false)} label="Mode">
+              {PRODUCT_MODES_OFFERED.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={id === mode}
+                  className="gx-pop__item gx-pop__item--stack"
+                  onClick={() => {
+                    onModeChange(id);
+                    setTaskModeOpen(false);
+                  }}
+                >
+                  <Icon d={id === 'plan' ? PATH.docs : PATH.layers} size={14} />
+                  <span className="gx-pop__main">
+                    <span>{PRODUCT_MODE_INFO[id].name}</span>
+                    {/* The blurb is the shared vocabulary's own sentence, not a second description
+                        written here that could drift from what the worker actually does. */}
+                    <span className="gx-pop__sub">{PRODUCT_MODE_INFO[id].blurb}</span>
+                  </span>
+                </button>
+              ))}
+            </Popover>
+          </div>
+
+          {/* -------------------------------------------------- model ---- */}
           <div className="gx-pop-wrap">
             <button
               type="button"
@@ -766,7 +855,20 @@ export function Composer({
                     type="button"
                     role="menuitemradio"
                     aria-checked={id === productModel}
-                    className="gx-pop__item gx-pop__item--stack"
+                    //[[ A ROW THAT CANNOT BE CHOSEN SAYS SO.
+                    //
+                    //   B3 of the owner's definition of done is not closed by this and this file
+                    //   cannot close it: MAX needs paid subscriptions, which do not exist yet. What
+                    //   it fixes is the lie in the meantime. The row carried no disabled and no
+                    //   aria-disabled, so it read as selectable to everyone and as selectable to a
+                    //   screen reader, and a click left the chip unchanged with a notice elsewhere
+                    //   on the screen explaining why.
+                    //   `aria-disabled` rather than `disabled`: the button must stay focusable and
+                    //   clickable, because the sentence it raises — what MAX is and that it is not
+                    //   purchasable yet — is the only place that is said. A `disabled` button is
+                    //   skipped by the tab order and says nothing at all.
+                    aria-disabled={available ? undefined : true}
+                    className={`gx-pop__item gx-pop__item--stack${available ? '' : ' is-unavailable'}`}
                     onClick={() => {
                       if (!available) { setModeOpen(false); requestMaxAccess(); return; }
                       onModelChange(id);

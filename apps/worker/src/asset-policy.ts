@@ -17,7 +17,7 @@ export { ASSET_SOURCES };
 /**
  * Which dialog choice governs this engine source, or `null` when none does.
  *
- * Exhaustive by construction, the same discipline `ASSET_ORIGINALITY` (asset-library.ts) and
+ * Exhaustive by construction, the same discipline `ASSET_ORIGINALITY` (asset-provenance.ts) and
  * `SOURCE_CREDITS` (provenance.ts) already use one file away: `Record<AssetSource, …>` means
  * adding a member to `ASSET_SOURCES` fails the typecheck until someone decides, in writing, which
  * choice authorises it — or writes `null` to say none does. Without this, a new engine source
@@ -31,7 +31,6 @@ export { ASSET_SOURCES };
  * owed" rather than omitting sources that need none.
  */
 export const SOURCE_CHOICE: Readonly<Record<AssetSource, AssetSourceChoice | null>> = {
-  library: 'apple_library',
   creator_store: 'creator_store',
   procedural: 'from_scratch',
   generation_service: 'from_scratch',
@@ -61,14 +60,12 @@ export function choiceFor(source: AssetSource): AssetSourceChoice | null {
  * implementation detail.
  */
 export const POLICY_TO_SOURCE: Readonly<Record<AssetSourceChoice, readonly AssetSource[]>> = {
-  apple_library: ASSET_SOURCES.filter((source) => SOURCE_CHOICE[source] === 'apple_library'),
   creator_store: ASSET_SOURCES.filter((source) => SOURCE_CHOICE[source] === 'creator_store'),
   from_scratch: ASSET_SOURCES.filter((source) => SOURCE_CHOICE[source] === 'from_scratch'),
 };
 
 /** Human wording, matched to the dialog so a refusal and the control read as the same thing. */
 const CHOICE_NAME: Readonly<Record<AssetSourceChoice, string>> = {
-  apple_library: 'the Apple library',
   creator_store: 'the Roblox Creator Store',
   from_scratch: 'building from scratch out of parts',
 };
@@ -129,9 +126,9 @@ export function sourceRefusal(
  * reason `SOURCE_CHOICE` above is: adding a new provenance kind to `./assets` fails the typecheck
  * here until someone writes down, in this file, whether the asset-source policy governs it.
  *
- * `library` and `search_result` are real choices APPLE made on the customer's behalf — a curated-
- * library hit and a Creator Store search result, respectively — so they map onto the engine
- * sources the dialog can restrict.
+ * `search_result` is a real choice APPLE made on the customer's behalf — a Creator Store search
+ * result — so it maps onto the engine source the dialog can restrict. (`library` was the other
+ * one, and it went with the catalogue on 2026-09-20.)
  *
  * `user_supplied` is `null` DELIBERATELY, and this is a different fact from "not governed yet": the
  * asset-source policy is about where APPLE may go looking. An id the person pasted into their own
@@ -146,7 +143,6 @@ export function sourceRefusal(
  * here for this policy to say yes or no to.
  */
 export const PROVENANCE_SOURCE: Readonly<Record<AssetProvenanceSource, AssetSource | null>> = {
-  library: 'library',
   search_result: 'creator_store',
   user_supplied: null,
   model_output: null,

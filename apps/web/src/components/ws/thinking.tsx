@@ -17,7 +17,7 @@
 // the same real events into ordered, timed phases with a terminal state and
 // hangs each step's typed evidence on it. `buildTimeline` still decides whether
 // that stage exists at all, so the honesty tests keep gating the whole timeline.
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { RunIntent } from '@golem/shared';
 import type { AgentStatus, ToolEvent } from '../../lib/use-project-socket';
 import { readSoundEnabled, writeSoundEnabled } from '../../lib/prefs';
@@ -247,7 +247,18 @@ export function Thinking({
   /** Typed artifacts, keyed by `toolId`. See `evidence-model.ts`. */
   evidence: Map<string, Evidence>;
 }) {
-  const [open, setOpen] = useState(false);
+  //[[ WHO DECIDED THIS PANEL IS SHUT.
+  //
+  //   `useState(false)` meant nobody did: every run, on every screen, started with its own record
+  //   folded away behind "View details". The card is the one place the product shows what it is
+  //   doing with a person's Credits WHILE it is doing it, and none of it was on screen until they
+  //   clicked. An audit of the deployed product read the live cost out of the DOM and recorded it
+  //   as visible; it was not visible, because `.gx-think__body` is `display:none` until `.is-open`
+  //   and `innerText` falls back to `textContent` on an unrendered element.
+  //
+  //   `null` is "the person has not said", and while the run is live that resolves to open. A
+  //   click is a statement and outranks it from then on, in both directions.
+  const [openChoice, setOpenChoice] = useState<boolean | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(readSoundEnabled);
   const detailsId = useId();
   const reducedMotion = useReducedMotion();
@@ -259,6 +270,7 @@ export function Thinking({
   // A terminal event is enough to draw the card. It is a real answer about the
   // run, even when the run produced no stages of its own.
   const isLive = streaming && !activity.terminal;
+  const open = openChoice ?? isLive;
   const title = activity.terminal?.note ?? (isLive && compact.current ? presentActionLabel(compact.current) : (isLive && status ? (PHASE_LABEL[status.phase] ?? status.phase) : 'Activity'));
   // THE SECOND LINE OF THE HEADER, WHICH WAS COMPUTED ON EVERY RENDER AND DRAWN BY NOBODY.
   //
@@ -284,6 +296,16 @@ export function Thinking({
     // resume an AudioContext while a history turn is being painted.
     interfaceSound.setEnabled(soundEnabled);
   }, [soundEnabled]);
+
+  // A RUN THAT ENDS MUST NOT SHUT THE PANEL UNDER THE PERSON READING IT. Liveness opened it, so
+  // liveness ending would close it again — mid-sentence, at the exact moment the last two steps
+  // and the outcome landed. Latching only the un-stated case keeps a click authoritative, and a
+  // turn painted from history never latches because it was never live here.
+  const wasLive = useRef(false);
+  useEffect(() => {
+    if (wasLive.current && !isLive) setOpenChoice((choice) => (choice === null ? true : choice));
+    wasLive.current = isLive;
+  }, [isLive]);
 
   const toggleSound = useCallback(() => {
     const next = !soundEnabled;
@@ -322,7 +344,7 @@ export function Thinking({
           className="gx-think__toggle"
           aria-expanded={open}
           aria-controls={detailsId}
-          onClick={() => setOpen((v) => !v)}
+          onClick={() => setOpenChoice(!open)}
         >
           <ModelMark live={isLive && !reducedMotion && !pageHidden} />
           <span className="gx-think__word">{title}</span>
@@ -334,6 +356,22 @@ export function Thinking({
             <Icon d={PATH.chevronDown} size={14} />
           </span>
         </button>
+
+        {/*[[ WHAT THIS RUN HAS COST, ON SCREEN WHILE IT IS STILL COSTING IT.
+            This figure used to live in the foot INSIDE `.gx-think__body`, which is `display:none`
+            until the person opens the panel — so the answer to "what is this costing me" was one
+            click away for the whole of the run, and arrived in the turn footer only once the money
+            was already spent. It is settled by the worker and never estimated here, and it is
+            drawn only once something has actually been spent: an opening run showing a confident
+            "0 Credits" would be a claim nobody measured.
+            OUTSIDE the toggle deliberately. Inside, it would join the button's accessible name and
+            a screen reader would hear the cost re-read every time the label changed. ]]*/}
+        {status?.creditsSpent != null && status.creditsSpent > 0 && (
+          <span className="gx-think__cost" title="Credits settled for this run so far">
+            <strong>{status.creditsSpent}</strong> {status.creditsSpent === 1 ? 'Credit' : 'Credits'}
+            <span className="gx-sr"> spent on this run so far</span>
+          </span>
+        )}
         {open && <button
           type="button"
           className={`gx-think__sound${soundEnabled ? ' is-on' : ' is-muted'}`}
@@ -378,21 +416,14 @@ export function Thinking({
           {/* The reasoning POLICY's own justification for the effort tier it
               picked. A classification of the request, not the model's private
               reasoning. */}
-          {(status?.effort || status?.creditsSpent != null || status?.step != null) && (
+          {/* The credit figure is NOT restated here — it is in the card's head, where it is on
+              screen whether or not this panel is open. Printing it in both places would show one
+              measurement twice and invite the reader to add them up. */}
+          {(status?.effort || status?.step != null) && (
             <p className="gx-think__foot">
               {status?.step != null && status?.totalSteps != null && (
                 <>
                   Step <strong>{status.step}</strong> of {status.totalSteps}
-                  {(status.effort || status.creditsSpent != null) ? ' · ' : ''}
-                </>
-              )}
-              {/* What THIS run has cost, settled by the worker and never estimated here. The
-                  account-wide figure lives in the credits panel; this is the one a user watching a
-                  build can actually act on. Rendered only once something has been spent, so an
-                  opening run does not display a confident "0". */}
-              {status?.creditsSpent != null && status.creditsSpent > 0 && (
-                <>
-                  <strong>{status.creditsSpent}</strong> {status.creditsSpent === 1 ? 'Credit' : 'Credits'} this run
                   {status.effort ? ' · ' : ''}
                 </>
               )}

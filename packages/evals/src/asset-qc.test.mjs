@@ -33,20 +33,24 @@ const esbuild = join(WORKER, 'node_modules', '.bin', 'esbuild');
 // assets.ts has no runtime imports, so a plain transpile is enough.
 const assetsOut = join(dir, 'assets.mjs');
 execFileSync(esbuild, [src('assets.ts'), '--format=esm', '--outfile=' + assetsOut], { stdio: 'pipe', cwd: WORKER });
-// asset-library.ts imports embed() from the gateway, so it is bundled with its local deps.
-const libraryOut = join(dir, 'asset-library.mjs');
+// THE LICENCE TABLE, which is all that is left here of the asset catalogue.
+//
+// This used to bundle `asset-library.ts` — the catalogue: its D1 schema, its FTS search, its
+// provenance validator and its seed manifest. The owner removed the catalogue on 2026-09-20 and
+// that module went with it. `licences.ts` is the piece the product still needs, because deciding
+// what a licence string means is a question about a string and outlives the table it was written
+// for; the kits and the credits report both still ask it.
+const licencesOut = join(dir, 'licences.mjs');
 // `--main-fields` is explicit because `--platform=neutral` defaults it to EMPTY, so a workspace
-// package whose entry comes from `main` cannot be resolved at all. That was invisible until
-// asset-library gained a transitive @golem/shared import through the gateway; the bundle had
-// simply never had a package to resolve before.
+// package whose entry comes from `main` cannot be resolved at all.
 execFileSync(
   esbuild,
-  [src('asset-library.ts'), '--bundle', '--format=esm', '--platform=neutral', '--main-fields=main,module', '--outfile=' + libraryOut],
+  [src('licences.ts'), '--bundle', '--format=esm', '--platform=neutral', '--main-fields=main,module', '--outfile=' + licencesOut],
   { stdio: 'pipe', cwd: WORKER },
 );
 
-// provenance.ts is bundled the same way asset-library is, and for the same reason: it imports
-// from asset-library.ts, so a plain transpile would leave those imports unresolved.
+// provenance.ts is bundled rather than transpiled because it imports from asset-provenance.ts, so
+// a plain transpile would leave those imports unresolved.
 const provOut = join(dir, 'provenance.mjs');
 execFileSync(
   esbuild,
@@ -73,7 +77,7 @@ const {
   lateralPivotToleranceStuds,
 } = await import(assetsOut);
 
-const { validateProvenance, normaliseLicence, LICENCES, SEED_MANIFEST, rowsPerStatement, MAX_BOUND_PARAMS, assetEmbeddingInput } = await import(libraryOut);
+const { normaliseLicence, LICENCES } = await import(licencesOut);
 
 // ==============================================================================================
 // 1. Decision table
@@ -95,8 +99,10 @@ test('every need has an ordered, non-empty, duplicate-free list with a stated ga
 
 test('chooseAssetSource returns copies — a caller cannot corrupt the table', () => {
   const first = chooseAssetSource('prop');
+  const was = first[0].source;
   first[0].source = 'creator_store';
-  assert.equal(chooseAssetSource('prop')[0].source, 'library');
+  assert.notEqual(was, 'creator_store', 'the fixture must mutate the value to something it was not');
+  assert.equal(chooseAssetSource('prop')[0].source, was);
 });
 
 test('ground goes to Terrain first — free, no assets, better looking than any slab', () => {
@@ -109,11 +115,15 @@ test('buildings are procedural first and never reach the Creator Store', () => {
   assert.ok(!choices.some((c) => c.source === 'creator_store'), 'buildings must never come from the Creator Store — that is where script-bearing free models live');
 });
 
-test('FOLIAGE IS WHERE PROCEDURAL LOSES: library first, procedural absent entirely', () => {
+test('FOLIAGE IS WHERE PROCEDURAL LOSES: generation first, procedural absent entirely', () => {
+  // It was `library` first, marked MANDATORY, until the catalogue was removed on 2026-09-20. The
+  // fact that made it mandatory has not changed — parts-and-wedges trees look amateur at any part
+  // count — so procedural must still be absent, and the answer is now the generator rather than a
+  // curated pack. A row that fell back to procedural here would be the removal quietly costing the
+  // product the one thing this row exists to prevent.
   const choices = chooseAssetSource('foliage');
-  assert.equal(choices[0].source, 'library');
+  assert.equal(choices[0].source, 'generation_service');
   assert.ok(!choices.some((c) => c.source === 'procedural'), 'parts-and-wedges trees look amateur at any part count; procedural must not be offered for foliage');
-  assert.match(choices[0].rationale, /MANDATORY/);
 });
 
 test('CHARACTERS ARE WHERE PROCEDURAL LOSES: built-in rig first, procedural and Creator Store absent', () => {
@@ -137,10 +147,24 @@ test('lighting is procedural and nothing else — the highest quality-per-effort
   assert.equal(choices[0].source, 'procedural');
 });
 
-test('props prefer the library and put the Creator Store last', () => {
+test('props build from parts first and put the Creator Store last', () => {
   const choices = chooseAssetSource('prop');
-  assert.equal(choices[0].source, 'library');
+  assert.equal(choices[0].source, 'procedural');
   assert.equal(choices[choices.length - 1].source, 'creator_store');
+});
+
+test('NO NEED OFFERS THE CURATED LIBRARY ANY MORE, in any position', () => {
+  // The decision table is injected into the model's prompt by `choose_asset_source`. A `library`
+  // row surviving here would send it to a tool that is not in the registry, and it would tell the
+  // customer their asset "needs importing" from a catalogue that was deleted.
+  const table = assetDecisionTable();
+  const offending = Object.entries(table)
+    .filter(([, row]) => row.some((c) => c.source === 'library'))
+    .map(([need]) => need);
+  assert.deepEqual(offending, [], `these needs still offer the removed catalogue: ${offending.join(', ')}`);
+  // CONTROL: the walk saw every need, so an empty list is an absence rather than an empty table.
+  assert.equal(Object.keys(table).length, ASSET_NEEDS.length);
+  assert.ok(Object.values(table).every((row) => row.length > 0), 'a need with no source at all is worse than the library');
 });
 
 test('textures lead with the free built-in Enum.Material', () => {
@@ -150,11 +174,16 @@ test('textures lead with the free built-in Enum.Material', () => {
 test('the whole table renders, and lighting is the only single-option row', () => {
   const table = assetDecisionTable();
   assert.equal(Object.keys(table).length, ASSET_NEEDS.length);
-  const singles = Object.entries(table).filter(([, v]) => v.length === 1).map(([k]) => k);
-  assert.deepEqual(singles, ['lighting']);
+  // `lighting` was the only single-option row until 2026-09-20. Removing the library left three
+  // more needs with one source each, and each one is a real answer rather than a gap: a texture is
+  // a built-in Material or a generated image, a particle is emitter configuration, and a sound is
+  // a free Creator Store id. Listing them here rather than relaxing the assertion keeps the next
+  // narrowing visible.
+  const singles = Object.entries(table).filter(([, v]) => v.length === 1).map(([k]) => k).sort();
+  assert.deepEqual(singles, ['lighting', 'particle', 'sfx', 'texture']);
 });
 
-test('ASSET_KINDS is the storable subset — lighting is configuration, not an asset', () => {
+test('ASSET_KINDS is every kind a build needs an asset for — lighting is configuration, not an asset', () => {
   assert.ok(!ASSET_KINDS.includes('lighting'));
   assert.equal(ASSET_KINDS.length, ASSET_NEEDS.length - 1);
 });
@@ -514,35 +543,21 @@ test('a search hit never claims to be verified — hintIsFree is only ever a hin
 });
 
 // ==============================================================================================
-// 4. Licence and provenance validation
+// 4. Licence resolution
 // ==============================================================================================
-
-const goodRecord = (over = {}) => ({
-  id: 'kenney/nature-kit/tree-pine-01',
-  name: 'Tree Pine 01',
-  kind: 'foliage',
-  source: 'kenney',
-  sourceUrl: 'https://kenney.nl/assets/nature-kit',
-  licence: 'License: Creative Commons CC0',
-  licenceUrl: 'https://kenney.nl/assets/nature-kit',
-  commercialUse: true,
-  attributionRequired: false,
-  author: 'Kenney',
-  retrievedAt: '2026-08-30T12:00:00.000Z',
-  robloxAssetId: null,
-  triangles: 480,
-  textureResolution: 256,
-  boundsStuds: [6, 18, 6],
-  tags: ['lowpoly', 'tree', 'foliage'],
-  sha256: 'a'.repeat(64),
-  ...over,
-});
-
-test('a complete CC0 record validates', () => {
-  const r = validateProvenance(goodRecord());
-  assert.equal(r.ok, true, r.errors.join('; '));
-  assert.equal(r.licenceId, 'CC0-1.0');
-});
+//
+// THIS SECTION USED TO BE "Licence and provenance validation" AND IT LOST ITS SECOND HALF.
+//
+// `validateProvenance` checked a catalogue row: its namespaced id, its verbatim licence string
+// against the source page, its hash, its measurements, whether a Roblox id we minted carried the
+// bytes we uploaded. It existed to gate an ingest, and the ingest was the asset catalogue, which
+// the owner removed on 2026-09-20. `SEED_MANIFEST`, `assetEmbeddingInput` and the D1 bound-
+// parameter batching went with it for the same reason.
+//
+// The licence questions did NOT go with it, and that is why this section still exists. "What does
+// this string mean, and may it be used commercially" is asked by the genre kits when they admit a
+// sound id, and by the credits report when it tells a customer what they owe. The table lives in
+// `licences.ts` and is exercised here directly.
 
 test('normaliseLicence resolves the verbatim wordings the sources actually publish', () => {
   assert.equal(normaliseLicence('License: Creative Commons CC0'), 'CC0-1.0');
@@ -558,174 +573,35 @@ test('share-alike is matched BEFORE plain attribution — "CC BY-SA" must not re
   assert.equal(normaliseLicence('Creative Commons Attribution-ShareAlike'), 'CC-BY-SA-4.0');
 });
 
-test('CC-BY-SA and GPL are excluded from the library outright', () => {
-  for (const licence of ['CC BY-SA 4.0', 'GPL-3.0']) {
-    const r = validateProvenance(goodRecord({ licence, attributionRequired: true }));
-    assert.equal(r.ok, false);
-    assert.match(r.errors.join(' '), /excluded from the library/);
-  }
+test('CC-BY-SA and GPL are excluded outright, and the exclusion is a field rather than a habit', () => {
+  // `allowedInLibrary` is still the name of the flag. It is read by `admitToKit` in genre-kits.ts,
+  // which is what stops a share-alike sound reaching a customer's game, so the decision outlived
+  // the table it was named for.
   assert.equal(LICENCES['CC-BY-SA-4.0'].allowedInLibrary, false);
   assert.equal(LICENCES['GPL-3.0'].allowedInLibrary, false);
-});
-
-test('a record whose booleans contradict its licence is rejected, not quietly corrected', () => {
-  const r = validateProvenance(goodRecord({ attributionRequired: true }));
-  assert.equal(r.ok, false);
-  assert.match(r.errors.join(' '), /attributionRequired is true but CC0-1.0 says false/);
-});
-
-test('an unrecognised licence string is rejected rather than guessed at', () => {
-  const r = validateProvenance(goodRecord({ licence: 'free for everyone probably' }));
-  assert.equal(r.ok, false);
-  assert.match(r.errors.join(' '), /not a recognised licence/);
-});
-
-test('CC-BY is allowed but warns, and is rejected when an ingest asks for no-credit licences', () => {
-  const ccby = goodRecord({ licence: 'CC BY 4.0', attributionRequired: true });
-  const permissive = validateProvenance(ccby);
-  assert.equal(permissive.ok, true, permissive.errors.join('; '));
-  assert.match(permissive.warnings.join(' '), /credit line/);
-  const strict = validateProvenance(ccby, { cc0Only: true });
-  assert.equal(strict.ok, false);
-  // The REASON, not a licence id and not a fixed sentence. The message has been reworded twice
-  // — once when the rule stopped being a list of three ids, once when the policy it enforced was
-  // retired — and both times this assertion went red for a wording change rather than a
-  // behaviour one. What must hold is that the refusal is about the credit line.
-  assert.match(strict.errors.join(' '), /credit line|attribution/, 'the reason must name the obligation');
-});
-
-test('THE POLICY IS "NO ATTRIBUTION OWED", NOT "THE STRING SAYS CC0"', () => {
-  // These are different rules and the gate used to be the first one wearing the second one's name:
-  // an explicit list of three licence ids, which refused ROBLOX-TOU — a licence with
-  // attributionRequired FALSE, because using a free Creator Store asset owes nobody a credit. That
-  // would have excluded the ~100,000 library rows that are already Roblox asset ids and need no
-  // upload at all: the one part of the library with nothing standing between it and a game.
-  const tou = goodRecord({
-    source: 'creator_store',
-    licence: 'Roblox Terms of Use',
-    attributionRequired: false,
-    robloxAssetId: 4969855485,
-  });
-  const strict = validateProvenance(tou, { cc0Only: true });
-  assert.equal(strict.ok, true, strict.errors.join('; '));
-
-  // And the gate still bites wherever an obligation really exists — the control, so this is not
-  // simply a loosening that lets everything through.
-  for (const l of ['CC BY 4.0', 'CC BY 3.0', 'MIT', 'Apache 2.0']) {
-    const rec = goodRecord({ licence: l, attributionRequired: true });
-    assert.equal(validateProvenance(rec, { cc0Only: true }).ok, false, `${l} owes a credit line and must be refused`);
+  assert.equal(LICENCES['CC0-1.0'].allowedInLibrary, true);
+  for (const id of ['CC-BY-SA-4.0', 'GPL-3.0']) {
+    assert.ok(LICENCES[id].why && LICENCES[id].why.length > 0, `${id} is excluded without saying why`);
   }
 });
 
-test('A ROBLOX ASSET ID WE DID NOT MINT NEEDS NO HASH — and one we did still does', () => {
-  // `robloxAssetId` meant one thing when it was written: "we uploaded this, here is the id we got
-  // back", and the hash invariant rests on it — we must always be able to say what bytes we put in
-  // somebody's account. A Creator Store row's id belongs to its own creator and we never held the
-  // bytes, so there is no hash we could honestly record. The invariant is scoped, not dropped.
-  const store = goodRecord({ source: 'creator_store', licence: 'Roblox Terms of Use', attributionRequired: false, robloxAssetId: 123456789, sha256: null });
-  assert.equal(validateProvenance(store).ok, true, validateProvenance(store).errors.join('; '));
-
-  const ours = goodRecord({ source: 'poly_haven', robloxAssetId: 123456789, sha256: null });
-  const r = validateProvenance(ours);
-  assert.equal(r.ok, false);
-  assert.match(r.errors.join(' '), /sha256 is required/, 'an id WE minted must still be accompanied by the bytes we uploaded');
+test('a licence that owes a credit says so, and one that permits no commercial use says that too', () => {
+  assert.equal(LICENCES['CC0-1.0'].attributionRequired, false);
+  assert.equal(LICENCES['CC-BY-4.0'].attributionRequired, true);
+  assert.equal(LICENCES['CC-BY-4.0'].commercialUse, true);
+  assert.equal(LICENCES['CC-BY-NC-4.0'].commercialUse, false,
+    'a non-commercial licence reading as commercial is how an unshippable game gets certified');
 });
 
-test('provenance fields that cannot be verified later are rejected', () => {
-  const cases = [
-    [{ id: 'NotASlug' }, /namespaced lowercase slug/],
-    [{ id: 'nonamespace' }, /namespaced lowercase slug/],
-    [{ name: '' }, /name is required/],
-    [{ kind: 'spaceship' }, /kind must be one of/],
-    [{ source: 'some-random-site' }, /source must be one of/],
-    [{ sourceUrl: 'http://kenney.nl/x' }, /sourceUrl must be an https URL/],
-    [{ licenceUrl: 'not a url' }, /licenceUrl must be an https URL/],
-    [{ author: '' }, /author is required/],
-    [{ retrievedAt: 'last tuesday' }, /retrievedAt must be an ISO 8601/],
-    [{ tags: [] }, /tags must be a non-empty array/],
-    [{ tags: ['Not A Slug'] }, /lowercase slug/],
-    [{ sha256: 'nope' }, /64 lowercase hex/],
-    [{ textureResolution: 4096 }, /exceeds Roblox's 1024px guidance/],
-    [{ boundsStuds: [1, 0.001, 1] }, /three finite numbers/],
-    [{ boundsStuds: [1, 2] }, /three finite numbers/],
-    [{ triangles: -1 }, /non-negative integer/],
-    [{ robloxAssetId: -3 }, /positive integer or null/],
-  ];
-  for (const [over, pattern] of cases) {
-    const r = validateProvenance(goodRecord(over));
-    assert.equal(r.ok, false, `${JSON.stringify(over)} should have been rejected`);
-    assert.match(r.errors.join(' | '), pattern, JSON.stringify(over));
+test('every licence in the table answers all three questions', () => {
+  const ids = Object.keys(LICENCES);
+  assert.ok(ids.length >= 5, 'the licence table is empty or barely populated, so the walk below proves nothing');
+  for (const id of ids) {
+    const rule = LICENCES[id];
+    assert.equal(typeof rule.commercialUse, 'boolean', `${id} does not say whether it permits commercial use`);
+    assert.equal(typeof rule.attributionRequired, 'boolean', `${id} does not say whether it owes a credit`);
+    assert.equal(typeof rule.allowedInLibrary, 'boolean', `${id} does not say whether it may be used at all`);
   }
-});
-
-test('an asset live in Roblox must be hashed — we have to know what we uploaded', () => {
-  const live = goodRecord({ robloxAssetId: 987654321, sha256: null });
-  const r = validateProvenance(live);
-  assert.equal(r.ok, false);
-  assert.match(r.errors.join(' '), /sha256 is required once robloxAssetId is set/);
-  assert.equal(validateProvenance(goodRecord({ robloxAssetId: 987654321 })).ok, true);
-});
-
-test('a record with no Roblox id validates but is flagged as not yet insertable', () => {
-  const r = validateProvenance(goodRecord({ robloxAssetId: null }));
-  assert.equal(r.ok, true);
-  assert.match(r.warnings.join(' '), /not yet insertable/);
-});
-
-test('validateProvenance survives garbage input instead of throwing', () => {
-  for (const junk of [null, undefined, 42, 'a string', [], {}]) {
-    const r = validateProvenance(junk);
-    assert.equal(r.ok, false);
-    assert.ok(r.errors.length > 0);
-  }
-});
-
-// ---- the seed manifest -------------------------------------------------------------------------
-
-test('every seed record validates in seed mode, and all of them are CC0', () => {
-  assert.ok(SEED_MANIFEST.length >= 15, 'the seed kit should actually cover the categories');
-  for (const rec of SEED_MANIFEST) {
-    const r = validateProvenance(rec, { seed: true, cc0Only: true });
-    assert.equal(r.ok, true, `${rec.id}: ${r.errors.join('; ')}`);
-    assert.equal(r.licenceId, 'CC0-1.0', `${rec.id} is not CC0`);
-    assert.equal(rec.attributionRequired, false);
-    assert.equal(rec.commercialUse, true);
-  }
-});
-
-test('seed records are pre-ingest: no Roblox ids, no hashes, no measurements', () => {
-  for (const rec of SEED_MANIFEST) {
-    assert.equal(rec.robloxAssetId, null, `${rec.id} claims a Roblox id it cannot have yet`);
-    assert.equal(rec.sha256, null, `${rec.id} claims a hash but no binary was downloaded`);
-    assert.equal(rec.triangles, null);
-    assert.equal(rec.boundsStuds, null);
-  }
-});
-
-test('seed ids are unique and every seed source is one of the three verified CC0 sites', () => {
-  const ids = SEED_MANIFEST.map((r) => r.id);
-  assert.equal(new Set(ids).size, ids.length, 'duplicate seed ids');
-  const trusted = new Set(['kenney', 'quaternius', 'ambientcg']);
-  for (const rec of SEED_MANIFEST) assert.ok(trusted.has(rec.source), `${rec.id} comes from an untrusted source`);
-});
-
-test('the seed kit covers the categories where procedural geometry loses', () => {
-  const kinds = new Set(SEED_MANIFEST.map((r) => r.kind));
-  assert.ok(kinds.has('foliage'), 'foliage is the whole reason the library exists');
-  assert.ok(kinds.has('character'), 'characters are the other category procedural cannot do');
-});
-
-test('the embedding input carries kind, name and style tags', () => {
-  const text = assetEmbeddingInput(SEED_MANIFEST[0]);
-  assert.match(text, new RegExp(SEED_MANIFEST[0].kind));
-  assert.match(text, /Style:/);
-});
-
-test('batch writes respect D1’s 100-bound-parameter cap', () => {
-  assert.equal(MAX_BOUND_PARAMS, 100);
-  assert.equal(rowsPerStatement(20), 5);
-  assert.equal(rowsPerStatement(101), 1, 'a wide row must still produce at least one row per statement');
-  assert.ok(rowsPerStatement() * 20 <= MAX_BOUND_PARAMS);
 });
 
 // ==============================================================================================
@@ -875,20 +751,47 @@ test('the plugin refuses scripts and calls GetObjects rather than InsertService:
   assert.match(luauSrc, /REFUSE this model/, 'a script-bearing model must be refused outright');
 });
 
+//[[ THE CHAIN THESE TWO TESTS GUARD SURVIVED THE CATALOGUE; ITS FIRST LINK DID NOT.
+//
+//   Both used to open with `validateProvenance(rec).ok`, which is how the catalogue's ingest gate
+//   admitted or refused a row. The catalogue was removed on 2026-09-20 and that gate went with it,
+//   so there is nothing left to admit anything — but the OBLIGATION is still real. Assets still
+//   reach a customer's place, and the credits report is still what tells them what they owe.
+//
+//   So the licence decision is asserted against `licences.ts`, which is where it actually lives
+//   now and is what `admitToKit` reads, and the discharge is asserted against the credits report
+//   exactly as before. What is gone is the middle link, because the middle link is gone. ]]
+const creditableRecord = (over = {}) => ({
+  id: 'iconify/pictogrammers/abacus',
+  name: 'Abacus',
+  kind: 'ui_icon',
+  source: 'iconify',
+  sourceUrl: 'https://icon-sets.iconify.design/mdi/abacus/',
+  licence: 'MIT',
+  licenceUrl: 'https://opensource.org/license/mit',
+  commercialUse: true,
+  attributionRequired: true,
+  author: 'Pictogrammers',
+  retrievedAt: '2026-08-30T12:00:00.000Z',
+  robloxAssetId: null,
+  triangles: null,
+  textureResolution: null,
+  boundsStuds: null,
+  tags: ['icon', 'abacus'],
+  sha256: null,
+  ...over,
+});
+
 test('ADMITTING AN ATTRIBUTION-REQUIRED ASSET IS ONLY HONEST WHILE THE CREDITS CAN NAME IT', async () => {
-  // The library stopped refusing MIT, Apache, ISC, BSD and CC-BY, and the whole justification is
-  // that the product can now discharge the obligation. That justification is a CHAIN, and a chain
+  // The licence table stopped refusing MIT, Apache, ISC, BSD and CC-BY, and the whole justification
+  // is that the product can discharge the obligation. That justification is a CHAIN, and a chain
   // asserted in a comment is a chain nobody re-checks. This is the link test: if the credits ever
   // stop naming the author of an attribution-required asset, the decision to admit them goes red
   // rather than silently becoming a licence violation in every customer's place.
-  const rec = goodRecord({
-    source: 'iconify',
-    licence: 'MIT',
-    attributionRequired: true,
-    author: 'Pictogrammers',
-    name: 'Abacus',
-  });
-  assert.equal(validateProvenance(rec).ok, true, 'the library must admit it at all');
+  const rec = creditableRecord();
+  assert.equal(normaliseLicence(rec.licence), 'MIT', 'the licence must resolve at all');
+  assert.equal(LICENCES.MIT.allowedInLibrary, true, 'MIT must still be admitted');
+  assert.equal(LICENCES.MIT.attributionRequired, true, 'and must still be understood to owe a credit');
 
   const report = attributionReport('p1', [{ use: { assetId: rec.id, viaLiveApi: false }, provenance: rec }]);
   assert.equal(report.required.length, 1, 'it must land in the REQUIRED list, not the courtesy one');
@@ -904,9 +807,17 @@ test('ADMITTING AN ATTRIBUTION-REQUIRED ASSET IS ONLY HONEST WHILE THE CREDITS C
 test('and what stays refused is what CANNOT be discharged, not what is merely inconvenient', () => {
   // Share-alike and non-commercial are excluded because a customer would inherit an obligation
   // they never agreed to — a Roblox place cannot carry a source-distribution or copyleft duty.
-  // That distinction is the reason the gate is still a gate.
+  // That distinction is the reason the licence table is still a gate rather than a lookup.
   for (const l of ['CC BY-SA 4.0', 'CC BY-NC 4.0', 'GPL 3.0', 'SIL Open Font License']) {
-    const rec = goodRecord({ licence: l, attributionRequired: true });
-    assert.equal(validateProvenance(rec).ok, false, `${l} must still be refused outright`);
+    const id = normaliseLicence(l);
+    assert.ok(id, `${l} does not resolve at all, so this loop is asserting nothing about it`);
+    assert.equal(LICENCES[id].allowedInLibrary, false, `${l} must still be refused outright`);
+  }
+  // CONTROL: the same loop shape admits what it should, so `false` above is a decision rather than
+  // a field that is false for everything.
+  for (const l of ['CC0 1.0', 'MIT', 'CC BY 4.0']) {
+    const id = normaliseLicence(l);
+    assert.ok(id, `${l} does not resolve`);
+    assert.equal(LICENCES[id].allowedInLibrary, true, `${l} must still be admitted`);
   }
 });

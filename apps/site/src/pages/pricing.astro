@@ -3,6 +3,7 @@ import {
   PLAN_COPY,
   PLAN_FEATURES,
   PLAN_IDS,
+  type PlanId,
   PLAN_LIMITS,
   PLAN_SUPPORT,
   PRICE_CURRENCY,
@@ -92,10 +93,47 @@ const billing = {
   checkout: billingProbe?.checkout === true,
   purchasable: Array.isArray(billingProbe?.purchasable) ? billingProbe.purchasable : [],
 };
-const canBuy = (id) => billing.purchasable.includes(id);
+// Typed rather than left implicit: `astro check` reported ts(7006) here, and an `any` parameter on
+// the one predicate that decides whether a plan shows a buy button is the parameter you least want
+// unchecked — a mode id or a plan NAME passed by mistake would compile and quietly answer false.
+const canBuy = (id: PlanId) => billing.purchasable.includes(id);
 
 const free = PLAN_LIMITS.free;
 const paid = PLAN_IDS.filter((id) => id !== 'free' && PLAN_COPY[id].priceUsdMonthly !== null);
+
+/*
+ * THE CARDS' SHARED FLOOR IS DERIVED, WHICH IS ALSO WHAT CLOSES THE HOLE IN THEM.
+ *
+ * Free listed "Unlimited projects" and "Checkpoints & rollback" as typed bullets while Builder and
+ * Studio said "Everything in Free" and stopped — so the two paid cards ran out of content after
+ * five lines and left ~235px of empty charcoal above their own bottom edge, measured on the
+ * deployed page. "Everything in Free" is not a capability, it is an instruction to go and read
+ * another card; the reader who does not is left thinking the paid tier has fewer features than the
+ * free one, which is the opposite of the truth.
+ *
+ * PLAN_FEATURES already knows which rows are true for every plan. Enumerating them per card is
+ * therefore not new copy — it is the comparison table's own answer, printed where the decision is
+ * made. The void closes because the cards now say what they actually include, not because
+ * something was padded.
+ */
+const UNIVERSAL_BULLETS = PLAN_FEATURES.filter((f) => PLAN_IDS.every((id) => f.values[id] === true)).map(
+  (f) => f.label,
+);
+
+/*
+ * ONE CARD IS RANKED, AND WHICH ONE IS ASKED RATHER THAN TYPED.
+ *
+ * `is-featured` was set on the first paid plan and styled NOWHERE — measured, the middle card's
+ * computed style was byte-identical to its neighbours: same size, same fill, same border, no
+ * shadow, no badge. Three plans of equal weight and one button between them is a page with no
+ * answer to "what do I click".
+ *
+ * The honest answer today is Free: it is the only plan this deployment can actually give anybody.
+ * The moment checkout opens, the answer becomes the cheapest plan that can be bought, and this
+ * line changes with `/api/billing/config` rather than with somebody remembering.
+ */
+const promoted: PlanId = paid.find((id) => canBuy(id)) ?? 'free';
+
 
 //[[ "BUY EXTRA CREDITS" WAS THE ONE ROW IN THE MATRIX THAT ADVERTISED A CHANNEL RATHER THAN A
 //   CAPABILITY, AND THE CHANNEL DOES NOT EXIST.
@@ -273,7 +311,12 @@ const limitFaq = [
       </p>
 
       <div class="plans">
-        <article class="plan slab slab--seam" aria-labelledby="plan-free" data-reveal>
+        <article
+          class={`plan slab slab--seam${promoted === 'free' ? ' is-promoted' : ''}`}
+          aria-labelledby="plan-free"
+          data-reveal
+        >
+          {promoted === 'free' && <p class="plan__flag">Available now</p>}
           <header class="plan__head">
             <h2 id="plan-free">Free</h2>
             <p class="plan__price"><span>{formatMoney(0, { currency: PRICE_CURRENCY })}</span> forever</p>
@@ -289,32 +332,39 @@ const limitFaq = [
                 "Step 2 of 3" counter after signing up, which is the wrong side of the decision.
                 /docs/modes says the same thing at length; the guard is tests/free-lane-steps. */}
             <li>Up to 3 steps per request — longer builds continue across messages</li>
-            <li>Unlimited projects</li>
-            <li>Checkpoints &amp; rollback</li>
+            {UNIVERSAL_BULLETS.map((b) => <li>{b}</li>)}
             <li>{studioBullet}</li>
             {/* Published for every plan, including this one. Three of the four tiers said nothing
                 about support anywhere, and a buyer cannot tell silence from "there is none". */}
             <li>{PLAN_SUPPORT.free.channel}</li>
           </ul>
-          <a href="/app/signup" class="btn btn-primary plan__cta">Start building — free</a>
-          <p class="plan__note">
-            No paid subscription to cancel. Free chat is available now.
-          </p>
+          {/*[[ EVERY CARD ENDS ON THE SAME ROW, AND THE ROW IS ANCHORED TO THE BOTTOM EDGE.
+               Only this card had a button. `margin-top: auto` on a CTA that two of three cards did
+               not render is not a layout — it is a layout for one card and a hole for the others.
+               The footer is the thing that is anchored now, so the card that cannot be bought still
+               ends on a control at the same y as the one that can, and the caption that explains
+               why sits under it instead of floating in the middle of the void. ]]*/}
+          <footer class="plan__foot">
+            <a href="/app/signup" class="btn btn-primary plan__cta">Start building — free</a>
+            <p class="plan__note plan__note--foot">No card required. Free chat is available now.</p>
+          </footer>
         </article>
 
         {
           paid.map((id, i) => (
-            /* NO HUE ON THE RECOMMENDED CARD. This carried `is-rune`, which repoints the whole
-               subtree's `--accent` at a violet — so the one plan the page wants read was the only
-               violet object on an otherwise unhued site, and it was violet because of a class named
-               after a colour rather than because of anything about the plan. The emphasis it
-               deserves is carried by `is-featured`, in the accent this site actually has. */
+            /* NO HUE ON THE RECOMMENDED CARD FOR ITS OWN SAKE. This carried `is-rune`, which
+               repoints the whole subtree's `--accent` at a violet — so the one plan the page wanted
+               read was the only violet object on an otherwise unhued site, and it was violet
+               because of a class named after a colour. It then carried `is-featured`, which was
+               styled nowhere at all. What ranks a card here is `is-promoted`, and it is only ever
+               on a plan somebody can actually take. */
             <article
-              class={`plan slab slab--seam${i === 0 ? ' is-featured' : ''}`}
+              class={`plan slab slab--seam${promoted === id ? ' is-promoted' : ' is-planned'}`}
               aria-labelledby={`plan-${id}`}
               data-reveal
               data-reveal-delay={110 + i * 60}
             >
+              {promoted === id ? <p class="plan__flag">Recommended</p> : <p class="plan__flag plan__flag--quiet">Planned</p>}
               <header class="plan__head">
                 <h2 id={`plan-${id}`}>{PLAN_COPY[id].name}</h2>
                 <p class="plan__price">
@@ -333,19 +383,50 @@ const limitFaq = [
                     comparison row that now reads "Unavailable" would make the page disagree with
                     itself in two places a reader can see at once. Filtered rather than reworded:
                     the bullet is true of the planned tier and false of the product today, and the
-                    flag is what decides which. */}
+                    flag is what decides which.
+
+                    "Everything in Free" / "Everything in Builder" is filtered for a different
+                    reason: it is a cross-reference, not a capability, and it is what left these
+                    cards two hundred pixels short of their own bottom edge. The rows it was
+                    standing in for are printed underneath it instead. */}
                 {PLAN_COPY[id].highlights
                   .filter((h) => CREDIT_PURCHASE_LIVE || !/\bbuy\b.*\bcredits?\b/i.test(h))
+                  .filter((h) => !/^everything in\b/i.test(h))
                   .map((h) => (
                     <li>{h}</li>
                   ))}
+                {UNIVERSAL_BULLETS.map((b) => (
+                  <li>{b}</li>
+                ))}
+                <li>{studioBullet}</li>
                 <li>{PLAN_SUPPORT[id].channel}</li>
               </ul>
-              {canBuy(id) ? (
-                <a href={`/app/usage?plan=${id}`} class="btn btn-primary plan__cta">Choose {PLAN_COPY[id].name}</a>
-              ) : (
-                <p class="plan__note">Planned tier — not available to purchase yet.</p>
-              )}
+              <footer class="plan__foot">
+                {canBuy(id) ? (
+                  <a href={`/app/usage?plan=${id}`} class="btn btn-primary plan__cta">Choose {PLAN_COPY[id].name}</a>
+                ) : (
+                  /*[[ A BUTTON THAT IS VISIBLY OFF, RATHER THAN NO BUTTON AT ALL.
+                       The two planned cards rendered a 12px grey sentence and nothing else, so the
+                       row of three cards had exactly one control in it and no answer to "what do I
+                       click". A `disabled` button is the honest shape: it says the affordance
+                       exists, names the state, and cannot be pressed into a checkout that would
+                       answer 503. It is a real <button disabled>, not a styled span, so assistive
+                       technology is told the same thing the eye is. ]]*/
+                  <button
+                    type="button"
+                    class="btn plan__cta"
+                    disabled
+                    aria-describedby={`plan-${id}-note`}
+                  >
+                    Checkout not open
+                  </button>
+                )}
+                <p class="plan__note plan__note--foot" id={`plan-${id}-note`}>
+                  {canBuy(id)
+                    ? 'Cancel from your own account page at any time.'
+                    : 'Planned tier — not available to purchase yet.'}
+                </p>
+              </footer>
             </article>
           ))
         }
@@ -421,7 +502,19 @@ const limitFaq = [
                 <tr>
                   <th scope="row">
                     {feature.label}
-                    {feature.note && <span class="tx">{feature.note}</span>}
+                    {/*[[ THIS CAPTION USED TO PRINT ON TOP OF THE NUMBERS BESIDE IT.
+                         `.tx` in this page's scoped block set `white-space: nowrap`, which beat
+                         global.css by Astro's scoping attribute. The row header is capped at 148px
+                         and is `position: sticky` with `z-index: 1`, so an unwrappable sentence did
+                         not merely overflow — it painted OVER the cells it ran into. Measured on
+                         the deployed page with a Range over the text node rather than the element
+                         box (the box stays 134px wide while the ink does not): five of five
+                         captions overflowed, the worst by 563px across three value columns, on top
+                         of "231", "416" and three "Unavailable"s.
+                         The element box is the wrong instrument for this defect, which is why a
+                         stylesheet grep for the class found nothing wrong.
+                         It is its own class now so the mode table's inline `.tx` is untouched. ]]*/}
+                    {feature.note && <span class="rownote">{feature.note}</span>}
                   </th>
                   {PLAN_IDS.map((id) => {
                     const value = feature.values[id];
@@ -570,25 +663,79 @@ const limitFaq = [
   }
 
   .plan {
+    position: relative;
     display: flex;
     flex-direction: column;
     padding: clamp(1.5rem, 3vw, 2.1rem);
+    padding-top: clamp(2.4rem, 4vw, 3rem);
     border: 1px solid var(--line);
     border-radius: 20px;
     box-shadow: none;
+    transition: border-color var(--dur) var(--ease-out), background-color var(--dur) var(--ease-out);
   }
 
+  /*[[ THE ONE SATURATED THING ON THE PAGE, AND IT IS THE PLAN YOU CAN ACTUALLY HAVE.
+   *
+   *   Measured before this: every colour on /pricing was achromatic — a scan of all 419 elements'
+   *   colour, background and border returned zero values with more than 18 points of channel
+   *   spread. Three identical charcoal cards, one white pill below the fold, nothing ranked.
+   *
+   *   The hue is `--good`, which this site already defines in both themes (#27634c light,
+   *   #9cc8a8 dark) and already means "this is the state you want". Nothing new is invented and
+   *   nothing is imported from anybody else's palette: a green seam, a green badge, a green button
+   *   and a four-percent wash on one card of three. The bullet glyphs stay neutral: nine green
+   *   diamonds would spend the hue on decoration instead of on the one thing to press. The other two stay exactly as grey as they
+   *   were, which is what makes the green mean something. ]]*/
+  .plan.is-promoted {
+    --seam: var(--good);
+    border-color: color-mix(in srgb, var(--good) 30%, var(--line));
+    background: color-mix(in srgb, var(--good) 4%, var(--surface));
+  }
+
+  .plan.is-promoted .plan__list strong {
+    color: var(--good);
+  }
+
+  .plan.is-promoted .plan__cta {
+    border-color: var(--good);
+    background: var(--good);
+    color: var(--accent-on);
+  }
+
+  .plan.is-promoted .plan__cta:hover {
+    border-color: color-mix(in srgb, var(--good) 78%, var(--ink));
+    background: color-mix(in srgb, var(--good) 78%, var(--ink));
+    color: var(--accent-on);
+  }
+
+  /* A planned tier is quieter than the live one on purpose: same grid, less light. */
+  .plan.is-planned {
+    background: color-mix(in srgb, var(--paper) 42%, var(--surface));
+  }
+
+  /* Styled and, for the first time, actually rendered. `.plan__flag` existed in this block with no
+     markup anywhere that used it, which is why the "featured" card carried no badge. */
   .plan__flag {
     position: absolute;
-    top: 1.1rem;
-    right: 1.2rem;
+    top: 1.15rem;
+    left: clamp(1.5rem, 3vw, 2.1rem);
+    margin: 0;
+    font-family: var(--font-mono);
     font-size: 0.62rem;
+    line-height: 1;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: var(--accent);
-    border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+    color: var(--good);
+    background: color-mix(in srgb, var(--good) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--good) 40%, transparent);
     border-radius: var(--r-pill);
-    padding: 0.22rem 0.6rem;
+    padding: 0.32rem 0.62rem;
+  }
+
+  .plan__flag--quiet {
+    color: var(--faint);
+    background: transparent;
+    border-color: var(--line-strong);
   }
 
   .plan__head {
@@ -656,9 +803,38 @@ const limitFaq = [
     clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
   }
 
-  .plan__cta {
+  /*[[ THE FOOTER IS WHAT IS ANCHORED, NOT THE BUTTON.
+   *   `margin-top: auto` on `.plan__cta` only reaches the bottom of a card that HAS a cta, and two
+   *   of three did not — which is the whole 235px hole. Anchoring the footer instead puts a control
+   *   at the same distance from every card's bottom edge whatever that card can offer, and pins the
+   *   caption directly under it rather than leaving it floating mid-void. ]]*/
+  .plan__foot {
     margin-top: auto;
+    padding-top: 1.25rem;
+    display: grid;
+    gap: 0.55rem;
+    border-top: 1px solid var(--hairline);
+  }
+
+  .plan__cta {
     justify-content: center;
+    width: 100%;
+  }
+
+  /* Off, and visibly so, without pretending to be absent. */
+  .plan__cta:disabled,
+  .plan__cta:disabled:hover {
+    border-color: var(--line-strong);
+    background: transparent;
+    color: var(--faint);
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .plan__note--foot {
+    margin: 0;
+    /* Two lines' worth, so three footers of unequal copy still land their buttons on one baseline. */
+    min-height: 3em;
   }
 
   .plan__note {
@@ -721,11 +897,33 @@ const limitFaq = [
     margin-right: 0.5rem;
   }
 
-  .tx {
+  /* The compare table's row-header caption. It is NOT `.tx`: `.tx` is an inline tail on a value
+     cell ("+1 per extra step") where not wrapping is correct, and reusing it inside a 148px sticky
+     header is what put a 712px sentence across three columns. This one wraps, drops the uppercase
+     mono it was inheriting from `th`, and is capped at a comfortable measure. */
+  .rownote {
+    display: block;
+    margin-top: 0.35rem;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-transform: none;
+    font-family: var(--font-body);
+    font-size: 0.76rem;
+    font-weight: 400;
+    letter-spacing: 0;
+    line-height: 1.45;
     color: var(--faint);
-    font-size: 0.78rem;
-    margin-left: 0.45rem;
-    white-space: nowrap;
+    max-width: 34ch;
+  }
+
+  /* The 148px cap in global.css exists so two plan columns stay visible beside the sticky row
+     header at 375px. It is a phone constraint and it was silently a desktop one: at 1280 the
+     capability column was 170px of a 1120px table. Lifted only where there is room. */
+  @media (min-width: 760px) {
+    .compare th[scope='row'] {
+      max-width: 34ch;
+      width: 30%;
+    }
   }
 
   .num {

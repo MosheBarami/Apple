@@ -55,7 +55,11 @@ function assertToolPermissionNarrowing(src) {
   // mode -> user-permission narrowing, with plugin capabilities narrowing again afterwards.
   assert.match(src, /const promptCapabilityFilter = this\.pluginToolFilter\(promptUserTools\);/);
   assert.match(src, /const offeredCapabilityFilter = this\.pluginToolFilter\(userAllowed\);/);
-  assert.match(src, /tools:\s*toolDefs\(studioConnected, offeredAllowed,/);
+  // The trailing comma was a third argument — `{ assetLibrary: hasAssetLibrary }` — and it went
+  // with the asset catalogue on 2026-09-20. What this assertion is for is that the tools OFFERED
+  // to the model come from `offeredAllowed`, the fully narrowed set, so the boundary is matched
+  // rather than the argument list.
+  assert.match(src, /tools:\s*toolDefs\(studioConnected, offeredAllowed\)/);
   assert.match(src, /const allowed = new Set\(\[\.\.\.offeredAllowed\]\.filter\(\(name\) => capabilityFilter\.allowed\.has\(name\)\)\);/);
 }
 

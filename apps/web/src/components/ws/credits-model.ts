@@ -149,8 +149,8 @@ export function readiness(res: AttributionResponse): PublishVerdict {
   // The worker grades `missing_provenance` as a blocker, which is right for the export
   // gate it was written for: you cannot certify what you cannot account for. But the
   // first version of this panel rendered that as red, "N assets cannot ship
-  // commercially", with "each of these has to be replaced or cleared first" — and while
-  // the curated library does not exist (BLOCKERS §4b) EVERY asset Apple inserts lands
+  // commercially", with "each of these has to be replaced or cleared first" — and since
+  // there is no catalogue to look an id up in, EVERY asset Apple inserts lands
   // unaccounted, so every user with a placed asset was told their game was not
   // shippable. Apple never determined that. It checked the asset was free, publicly
   // visible, script-free and from a trusted creator, and then did not know its licence.

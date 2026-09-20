@@ -11,7 +11,18 @@ import { meterView, periodComparisonLine, spendByKind } from '../components/usag
 import { maxUpgradeAvailable } from '../lib/creation-intent';
 import { formatNumber } from '../lib/format';
 import { Failure } from '../components/failure';
-import { PRODUCT_MODELS, PRODUCT_MODEL_INFO, PLAN_COPY, formatMoney, isPlanId, type PlanId } from '@golem/shared';
+import {
+  MODE_INFO,
+  PLAN_COPY,
+  PRODUCT_MODELS,
+  PRODUCT_MODEL_INFO,
+  PRODUCT_MODES_OFFERED,
+  PRODUCT_MODE_INFO,
+  PRODUCT_MODE_TO_SPECIALIST,
+  formatMoney,
+  isPlanId,
+  type PlanId,
+} from '@golem/shared';
 import { ModelMark } from '../components/ws/model-mark';
 import {
   billingChangeLine,
@@ -47,6 +58,79 @@ import './usage.css';
 // The modes a person may CHOOSE. PRODUCT_MODES is every mode the system can produce —
 // pricing one nobody can start is how "Super Agent" survived being removed from the composer.
 const MODELS = PRODUCT_MODELS;
+
+/* ===== WHAT THE NEXT REQUEST COSTS: BEGIN — executed by tests/next-request-cost.test.mjs ===== */
+
+/**
+ * WHAT THE NEXT REQUEST WILL COST, INSIDE THE APP.
+ *
+ * G1 of the owner's definition of done is two things: "sees credits left, AND what the next
+ * request will cost". The first half has been on this page for months — a ring, thirty days of
+ * bars, a breakdown of what the Credits went on. The second half was nowhere in the product.
+ * `typicalCredits` ships in the bundle nine times and every one of them sat inside an object
+ * literal that nothing rendered; the only place a customer could read a per-request figure was
+ * /pricing and /docs/credits-and-limits, which are pages you leave the app to reach.
+ *
+ * DERIVED, NEVER RESTATED. The figure comes through PRODUCT_MODE_TO_SPECIALIST into MODE_INFO,
+ * exactly as apps/site/src/pages/pricing.astro and docs/credits-and-limits.astro derive theirs,
+ * so the app and the site cannot quote different prices. scripts/check-credit-figures.mjs checks
+ * that table against the measurements in docs/COST-MODEL.md; a second copy here would be a second
+ * copy free to drift, which is the defect that check exists because of.
+ *
+ * PRODUCT_MODES_OFFERED, not PRODUCT_MODES: pricing a mode nobody can select is how Super Agent
+ * kept a published price after it left the composer.
+ *
+ * An unparseable figure produces NO LINE rather than a wrong one. A missing price is a gap; a
+ * price rendered as NaN Credits is a lie with a number in it.
+ */
+interface RequestCost {
+  mode: string;
+  name: string;
+  /** The published figure, en-dashed for reading: "2", "4–18". */
+  published: string;
+  low: number;
+  high: number;
+}
+
+const REQUEST_COSTS: RequestCost[] = PRODUCT_MODES_OFFERED.map((m) => {
+  const published = String(MODE_INFO[PRODUCT_MODE_TO_SPECIALIST[m]].typicalCredits);
+  const parts = published.split('-').map((piece) => Number(piece.trim()));
+  const low = parts[0] ?? NaN;
+  const high = parts.length === 2 ? (parts[1] ?? NaN) : low;
+  return {
+    mode: m,
+    name: PRODUCT_MODE_INFO[m].name,
+    published: published.replace('-', '–'),
+    low,
+    high,
+  };
+}).filter((c) => Number.isFinite(c.low) && Number.isFinite(c.high) && c.low > 0 && c.high >= c.low);
+
+/**
+ * How many more of these the balance buys.
+ *
+ * A RANGE, because the published cost is a range. Dividing by the low end alone would answer
+ * "about 55 more Agent runs" to somebody whose next run costs 18 — the most flattering reading of
+ * a spread, presented as a fact. The cheap end gives the most requests and the dear end the
+ * fewest, and both are printed.
+ */
+export function requestsLeftLine(spendable: number, low: number, high: number, period: 'day' | 'month'): string {
+  const window = period === 'month' ? 'this month' : 'today';
+  if (!Number.isFinite(spendable) || spendable < 0) return `we could not read what is left ${window}`;
+  const most = Math.floor(spendable / low);
+  const fewest = Math.floor(spendable / high);
+  if (most === 0) return `not enough left ${window} for one`;
+  if (fewest === most) return `about ${formatNumber(most)} more ${window}`;
+  if (fewest === 0) return `up to ${formatNumber(most)} more ${window}`;
+  return `between ${formatNumber(fewest)} and ${formatNumber(most)} more ${window}`;
+}
+
+/** "A Plan request" / "An Agent request" — the article the mode's own name takes. */
+export function articleFor(name: string): string {
+  return /^[aeiou]/i.test(name) ? 'An' : 'A';
+}
+
+/* ===== WHAT THE NEXT REQUEST COSTS: END ===== */
 
 /**
  * The ring shows the ALLOWANCE, and credits are reported beside it — never added into the arc.
@@ -700,6 +784,24 @@ export function UsagePage() {
                 a comparison with zero. */}
             {comparison && <p className="credits-compare">{comparison}</p>}
             <p className="muted">{view.resetsIn ?? 'Resets in a moment'}</p>
+            {/* The second half of "sees credits left, and what the next request will cost". The
+                balance above is what is left; these are what spending it costs, beside it rather
+                than on a marketing page the user would have to leave the app to read. */}
+            {REQUEST_COSTS.length > 0 && (
+              <>
+                <h3 className="spend-kinds__head">What your next request costs</h3>
+                {REQUEST_COSTS.map((c) => (
+                  <p className="credits-credits" key={c.mode}>
+                    {articleFor(c.name)} <strong>{c.name}</strong> request typically costs{' '}
+                    <strong>{c.published} Credits</strong>
+                    <span className="muted">
+                      {' \u2014 '}
+                      {requestsLeftLine(view.allowanceRemaining + view.credits, c.low, c.high, view.period)}
+                    </span>
+                  </p>
+                ))}
+              </>
+            )}
             <ul className="mode-cost-list">
               {MODELS.map((m) => (
                 <li key={m} className="mode-cost">

@@ -171,6 +171,17 @@ export interface ActivityStep {
   label: string;
   /** The worker's own one-line summary of what the step returned. */
   detail?: string;
+  /**
+   * WHICH THING the step was given, read from the call's arguments at `tool_start`.
+   *
+   * SEPARATE FROM `detail` BECAUSE THEY ARE DIFFERENT QUESTIONS, and collapsing them is how the
+   * answer to the first one got lost. `detail` used to read `summary ?? target`, and the worker's
+   * `tool_end` summary is `✓ <tool>` for every tool whose argument is not one of five names it
+   * knows (`path`, `query`, `root`, `label`, `fact`). So a summary carrying no information beyond
+   * the tool's own name still outranked a target that carried the genre, the instance names or
+   * the asset id — the panel printed "✓ get_genre_references" and dropped "obby".
+   */
+  target?: string;
   state: StepState;
   /** Present only for steps that came from a tool, so evidence can be matched. */
   toolId?: string;
@@ -326,6 +337,33 @@ function byTime<T extends { startedAt?: number; endedAt?: number; seq: number }>
   return a.seq - b.seq;
 }
 
+/**
+ * A `tool_end` summary that says nothing the row's own label does not already say.
+ *
+ * The worker formats every summary as `✓ <tool>` or `✗ <tool>`, optionally followed by ` · <arg>`
+ * — and the arg is appended only when the call's arguments carry one of five keys it looks for.
+ * For everything else the whole "result" is the tool's name with a tick in front of it, under a
+ * label that already reads "Looked up genre references". That is not a result, and while it was
+ * treated as one it SUPPRESSED the argument the same step had already reported at `tool_start`.
+ *
+ * So: strip the verdict mark, and if what is left is just the tool's name, there is no summary.
+ * The tick is already drawn by `StepMark`; the row loses nothing and gets its subject back.
+ */
+// The verdict marks a summary may open with, as escapes rather than glyphs: `tests/status-icon`
+// forbids drawing a status with a literal mark, and a rule that is true of rendering code is worth
+// keeping true of the code that PARSES the same marks — the escapes also survive any editor or
+// pipeline that would helpfully normalise them. U+2713/U+2717 are the two the worker writes today;
+// the others are what a future one might, plus the repeat arrow used for "already done".
+const VERDICT_MARKS = /^[\u2713\u2714\u2717\u2718\u00d7\u21ba\u2022\u00b7\s]+/u;
+
+export function informativeSummary(summary: string | undefined, tool: string | undefined): string | undefined {
+  if (!summary) return undefined;
+  if (!tool) return summary;
+  // U+2713/U+2717 are the two the worker writes; the rest are the marks a future one might.
+  const bare = summary.replace(VERDICT_MARKS, '').trim();
+  return bare === tool || summary.trim() === tool ? undefined : summary;
+}
+
 function stepElapsed(record: ToolRecord, now: number, live: boolean): Elapsed | undefined {
   if (record.durationMs !== undefined) return { ms: record.durationMs, basis: 'wall' };
   if (live && record.startObserved && record.startedAt !== undefined) {
@@ -414,10 +452,11 @@ export function reduceActivity(input: ActivityInput): ActivityRun {
       kind: kindForTool(r.tool),
       label: labelForTool(r.tool),
       // The tool's own NAME is not a detail — it would read as "edit_script" under a label that
-      // already says "Editing project". The target is, and it is the only thing available while
-      // the step is still running; once the tool ends the worker's own sentence is the better
-      // line and takes over.
-      detail: (r.summary && r.summary !== r.tool ? r.summary : undefined) ?? r.target,
+      // already says "Editing project". What came back is, when the worker said anything beyond
+      // the name; what it was given is the separate `target` field below, and the two are no
+      // longer allowed to overwrite one another. See `informativeSummary`.
+      detail: informativeSummary(r.summary, r.tool),
+      target: r.target,
       state,
       toolId: r.toolId,
       tool: r.tool,

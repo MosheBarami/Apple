@@ -102,30 +102,63 @@ body .toast-stack { inset-block-end:24px; inset-inline:auto 24px; width:min(400p
 
 /* ------------------------------------------------------- clearing the composer --- */
 
-/* THE LIFT, and the numbers are measured off design/system.css rather than guessed.
-   Conversation mode: 12px of top padding + a 64px textarea + a 57px tool bar + 2px of border +
-   27px for the note under it + 26px of bottom padding ≈ 188px. The start sheet's textarea is
-   100px and its bottom padding 34px, which takes the same stack to ≈ 232px. Each rule clears its
-   own case with about 12px to spare.
+/* THE LIFT, AND IT IS NOW MEASURED RATHER THAN ADDED UP.
+   What stood here was a sum done in this comment — "12px of top padding + a 64px textarea + a 57px
+   tool bar … ≈ 188px" — and the sum was wrong about a box nobody had measured. In Chromium,
+   against the real workspace with a toast on screen:
+
+       1440px   composer 198px, lift 200px  → clears by 2px
+       1024px   composer 244px, lift 200px  → the toast covers its top 43px
+        768px   composer 244px, lift 200px  → the toast covers its top 43px
+        375px   composer 264px, lift 204px  → the toast covers the top 49px of an 85px textarea,
+                                              and `elementFromPoint` at the field's first line
+                                              returns the TOAST
+
+   So on a phone the confirmation landed on the message box — the exact thing this file's header
+   says it exists to prevent. `--composer-h` is the fix that header named and left to another lane;
+   lib/composer-height.ts publishes it on `:root` from a ResizeObserver, which also covers the case
+   the old note admitted it could not: the textarea grows to 220px as somebody types.
+
+   EVERY CONSUMER KEEPS THE OLD CONSTANT AS ITS FALLBACK, so the first paint before the observer
+   has measured anything, and any browser without ResizeObserver, land exactly where they landed
+   before. 12px is the gap above the panel, which is what the old sum was aiming for.
    `:has()` on the body rather than a class on the stack, because the stack is a portal at the root
-   of the tree and knows nothing about the page it is floating over.
-   WHAT THIS DOES NOT COVER, stated rather than left to be discovered: the composer's textarea
-   grows to 220px as somebody types, and a draft that long reaches back up behind the stack. The
-   rows still cannot be clicked through to (pointer-events, above) so the composer stays usable,
-   and the honest fix is a `--composer-h` custom property published by ws/composer.css — a file
-   this change does not own. */
-body:has(.gx-composer) .toast-stack { inset-block-end:200px; }
-body:has(.start-sheet) .toast-stack { inset-block-end:244px; }
+   of the tree and knows nothing about the page it is floating over. */
+body:has(.gx-composer) .toast-stack { inset-block-end:calc(var(--composer-h,200px) + 12px); }
+body:has(.start-sheet) .toast-stack { inset-block-end:calc(var(--composer-h,244px) + 12px); }
+
+/* AND AN OVERLAY TAKES THE LIFT BACK, at every width. A drawer, a modal and the asset-source
+   dialog all sit over the composer, so a stack lifted clear of a composer nobody can see is a
+   stack floating in the MIDDLE of whatever replaced it — measured at 1440px with "Credits and
+   clearance" open, the toast sat at y=553..600 across the panel's body text, and at 375px at
+   y=489..536 across a full-bleed one. Back to the stack's own resting inset, which is the corner
+   a notification belongs in.
+   Same specificity as the two lifts above, so this wins by coming after them — and it reads in
+   that order too: lift for the composer, unless something has covered the composer. */
+body:has(.gx-drawer) .toast-stack,
+body:has(.modal-overlay) .toast-stack,
+body:has(.asrc__scrim) .toast-stack { inset-block-end:24px; }
 
 /* -------------------------------------------------------------------------- at 375px --- */
 
 /* Full width between two 16px gutters. A 400px card floated at a 24px inset on a 375px screen is
-   the horizontal scrollbar the design lock's seventh rule exists to prevent. The composer is
-   shorter here — 10px + 85px + 52px + 2px + 24px + 18px ≈ 191px — and the start sheet does not
-   change it, so one lift covers both. */
+   the horizontal scrollbar the design lock's seventh rule exists to prevent. The lift is the same
+   measured height as above — the old note claimed the composer was SHORTER here ("10px + 85px +
+   52px + 2px + 24px + 18px ≈ 191px"); measured, it is 264px, because the tool bar wraps to two
+   rows at this width. The 204px fallback is kept, unchanged, for the pre-measurement paint. */
 @media (max-width:680px) {
   body .toast-stack { inset-block-end:16px; inset-inline:16px; width:auto; }
-  body:has(.gx-composer) .toast-stack,body:has(.start-sheet) .toast-stack { inset-block-end:204px; }
+  body:has(.gx-composer) .toast-stack,body:has(.start-sheet) .toast-stack { inset-block-end:calc(var(--composer-h,204px) + 12px); }
+  /* AND AN OVERLAY TAKES THE LIFT BACK. Below this width a drawer, a modal and the asset-source
+     dialog are all full-bleed: the composer is behind them, so a stack lifted 276px clear of a
+     composer nobody can see lands in the MIDDLE of the panel somebody is reading. Measured at
+     375px with "Credits and clearance" open — the toast sat at y=489..536 across the body text,
+     and in the shortcuts dialog it covered the "Search this conversation" row outright.
+     Same specificity as the two lifts above, so this wins by coming after them, which is also the
+     order it reads in: lift for the composer, unless something has covered the composer. */
+  body:has(.gx-drawer) .toast-stack,
+  body:has(.modal-overlay) .toast-stack,
+  body:has(.asrc__scrim) .toast-stack { inset-block-end:16px; }
   .toast-stack .toast { padding:11px 11px 11px 14px; gap:10px; }
 }
 

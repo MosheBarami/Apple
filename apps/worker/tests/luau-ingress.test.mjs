@@ -140,7 +140,11 @@ test('the refusal names the tool to use instead, and which primitive tripped it'
   const r = refuseLuauIngress('game:GetObjects(1)');
   assert.ok(r);
   assert.match(r.error, /insert_asset/);
-  assert.match(r.error, /search_asset_library|find_verified_asset/);
+  // It was `/search_asset_library|find_verified_asset/` until the catalogue went on 2026-09-20.
+  // An alternation that still admits the dead name would pass on a refusal telling the model to
+  // call a tool that is not in the registry, which is the failure this assertion exists to catch.
+  assert.match(r.error, /find_verified_asset/);
+  assert.doesNotMatch(r.error, /search_asset_library/, 'the refusal points at a tool that no longer exists');
   assert.ok(r.blocked.includes('get_objects'));
   // An agent that cannot tell WHAT it did wrong retries the same thing.
   assert.match(r.error, /GetObjects/);

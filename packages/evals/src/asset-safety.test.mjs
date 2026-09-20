@@ -1004,7 +1004,11 @@ function serveDetails(body) {
 }
 
 /**
- * An AgentCtx over the fake Studio above. `library` is what search_asset_library would have added.
+ * An AgentCtx over the fake Studio above.
+ *
+ * IT USED TO TAKE A `library` LIST — the ids the catalogue search would have added — and that
+ * option is gone with the catalogue (2026-09-20). Membership in it waived three marketplace
+ * assertions; nothing waives anything now, which several tests below assert directly.
  *
  * `assetSources` IS A PRECONDITION OF THIS SECTION, NOT A DETAIL OF IT. An absent policy allows
  * nothing — `allowedSources(undefined)` is `[]` by deliberate design in asset-policy.ts — so
@@ -1021,8 +1025,7 @@ function serveDetails(body) {
  */
 function toolCtx(studio, {
   discovered = [],
-  library = [],
-  assetSources = { mode: 'remember', allow: ['apple_library', 'creator_store', 'from_scratch'] },
+  assetSources = { mode: 'remember', allow: ['creator_store', 'from_scratch'] },
 } = {}) {
   return {
     env: {},
@@ -1031,7 +1034,6 @@ function toolCtx(studio, {
     createCheckpoint: async () => ({ error: 'checkpoints are not part of this path' }),
     addMemoryFact: async () => {},
     discoveredAssetIds: new Set(discovered),
-    libraryAssetIds: new Set(library),
     assetSources,
   };
 }
@@ -1099,12 +1101,12 @@ test('the clean case still runs the whole sequence — a clean asset is PROVEN c
   }
 });
 
-test('A LIBRARY-DISCOVERED ID IS STILL VERIFIED — membership is provenance, never a skip', async () => {
-  // The recorded bypass, exactly: a library row pointing at a Model id. Under the old code this id
-  // was in discoveredAssetIds, so it went straight to Studio unresolved and unscanned.
+test('A SEARCH-DISCOVERED ID IS STILL VERIFIED — membership is provenance, never a skip', async () => {
+  // The recorded bypass, exactly: a discovered id pointing at a Model. Under the old code an id in
+  // discoveredAssetIds went straight to Studio unresolved and unscanned.
   serveDetails(detailsFor(777, { asset: { typeId: 10, name: 'Free Admin Model' } }));
   const studio = fakeStudio();
-  const out = await insert(toolCtx(studio, { discovered: [777], library: [777] }), 777);
+  const out = await insert(toolCtx(studio, { discovered: [777] }), 777);
 
   assert.equal(out.ok, false);
   assert.match(out.result.error, /was not verified/);
@@ -1113,42 +1115,54 @@ test('A LIBRARY-DISCOVERED ID IS STILL VERIFIED — membership is provenance, ne
   assert.ok(fetched.some((u) => u.includes('assetIds=777')), 'the id must actually have been resolved');
 });
 
-test('a library id carrying scripts is refused on the SAME field the Creator Store path uses', async () => {
+test('a discovered id carrying scripts is refused on the field the details endpoint reports it in', async () => {
   serveDetails(detailsFor(778, { asset: { hasScripts: true, scriptCount: 3 } }));
   const studio = fakeStudio();
-  const out = await insert(toolCtx(studio, { discovered: [778], library: [778] }), 778);
+  const out = await insert(toolCtx(studio, { discovered: [778] }), 778);
   assert.equal(out.ok, false);
-  assert.match(out.result.error, /carries Luau/);
+  // `carries Luau` was `securityBlockers`'s phrasing — the waiver path, deleted with the catalogue
+  // on 2026-09-20. Every id now takes the one remaining path, whose verdict code is the assertion
+  // that matters; the sentence beside it is the one a person reads.
+  assert.match(out.result.error, /fail_has_scripts/);
+  assert.match(out.result.error, /script\(s\)|scripts are an untrusted-code injection vector/);
   assert.equal(studio.state.calls.length, 0);
 });
 
-test('the library waiver is NARROW: price, votes and creator badge are waived, and they are named', async () => {
-  // A Golem-uploaded Open Use mesh: no marketplace price, no votes, no verified badge. Refusing it
-  // on those would refuse the entire library, so they are waived — and the waiver is reported.
-  serveDetails(
-    detailsFor(779, {
-      creator: { id: 4242, name: 'Golem', isVerifiedCreator: false },
-      voting: { upVotePercent: 0, voteCount: 0 },
-      fiatProduct: { isFree: false },
-    }),
-  );
+//[[ THE WAIVER THIS TESTED IS GONE, AND WHAT REPLACES IT IS THE SAME ASSET WITH THE OPPOSITE VERDICT.
+//
+//   A catalogue asset was uploaded under Apple's own account, so by construction it carried no
+//   marketplace price, no votes and no verified-creator badge. Refusing it on those three would
+//   have refused the whole catalogue, so those three — and only those three — were waived, and the
+//   waiver was reported back as `waivedForLibraryAsset` so nobody had to infer it.
+//
+//   The catalogue was removed on 2026-09-20. No id can reach `insert_asset` with that provenance
+//   any more, so the branch was unreachable — and an unreachable SECURITY WAIVER is worse than a
+//   live one, because the next reader has to prove from two other files that nothing can ask for
+//   it. Branch and helper were deleted together.
+//
+//   So the same asset is served here and the verdict is now a refusal. That is the assertion: the
+//   exemption did not survive in some quieter form. ]]
+test('NOTHING WAIVES PRICE, VOTES OR THE CREATOR BADGE ANY MORE — the exemption is gone, not hidden', async () => {
+  const unwaivable = {
+    creator: { id: 4242, name: 'Apple', isVerifiedCreator: false },
+    voting: { upVotePercent: 0, voteCount: 0 },
+    fiatProduct: { isFree: false },
+  };
+  serveDetails(detailsFor(779, unwaivable));
   const studio = fakeStudio();
-  const out = await insert(toolCtx(studio, { discovered: [779], library: [779] }), 779);
-  assert.equal(out.ok, true, out.resultForLlm);
-  assert.ok(Array.isArray(out.result.waivedForLibraryAsset) && out.result.waivedForLibraryAsset.length > 0, 'a waiver that is not reported is a waiver nobody can audit');
+  const out = await insert(toolCtx(studio, { discovered: [779] }), 779);
+  assert.equal(out.ok, false, 'the asset the catalogue used to be allowed to waive must now be refused');
+  assert.match(out.result.error, /was not verified/);
+  assert.equal(out.result.waivedForLibraryAsset, undefined, 'a waiver is being reported, so one is being granted');
+  assert.equal(studio.state.calls.length, 0, 'nothing may touch the place when the gate refuses');
 
-  // The same asset from the Creator Store gets no such waiver.
-  serveDetails(
-    detailsFor(779, {
-      creator: { id: 4242, name: 'Someone', isVerifiedCreator: false },
-      voting: { upVotePercent: 0, voteCount: 0 },
-      fiatProduct: { isFree: false },
-    }),
-  );
-  const store = fakeStudio();
-  const fromStore = await insert(toolCtx(store, { discovered: [779] }), 779);
-  assert.equal(fromStore.ok, false, 'only a curated-library id may waive anything');
-  assert.equal(store.state.calls.length, 0);
+  // And an id nobody searched for gets the identical verdict, because provenance no longer changes
+  // which assertions run — only what the audit trail records about where the number came from.
+  serveDetails(detailsFor(779, unwaivable));
+  const pasted = fakeStudio();
+  const fromUser = await insert(toolCtx(pasted), 779);
+  assert.equal(fromUser.ok, false);
+  assert.equal(pasted.state.calls.length, 0);
 });
 
 test('A DETAILS RESPONSE WITH hasScripts ABSENT IS REFUSED, NOT PASSED', async () => {
@@ -1401,7 +1415,7 @@ L.Brightness = 2.5
 L.ClockTime = 15
 return "filled"`,
   'a comment that names the primitive': `-- do NOT use game:GetObjects here; insert_asset owns that
--- rbxassetid:// links belong in the asset library, not in a build script
+-- rbxassetid:// links belong behind insert_asset, not in a build script
 local p = Instance.new("Part")
 p.Anchored = true
 p.Parent = workspace
@@ -1452,9 +1466,9 @@ test("run_luau's own description tells the model the rule, so a refusal is never
 // ==============================================================================================
 // 8. Provenance — the code and the description now say the same thing
 //
-// The description used to promise: "The id MUST have come from search_asset_library or
+// The description used to promise: "The id MUST have come from a catalogue search or
 // find_verified_asset in this conversation — an id from anywhere else is refused." It was not.
-// `provenance` is computed as library | search_result | user_supplied, and only `model_output` and
+// `provenance` is computed as search_result | user_supplied, and only `model_output` and
 // `unknown` are refused — and nothing assigns `model_output`, so the refusal could not fire.
 //
 // The gap is not fixable HERE: an id the user pasted and an id the model invented arrive at the
@@ -1482,9 +1496,11 @@ test('provenance is reported for every source, so the audit trail never has to i
   const searched = await insert(toolCtx(fakeStudio(), { discovered: [4243] }), 4243);
   assert.equal(searched.result.provenance, 'search_result');
 
+  // `library` was the third provenance and the only one that waived anything. It went with the
+  // catalogue; what remains is "this session searched for it" and "somebody handed it to us".
   serveDetails(detailsFor(4244));
-  const lib = await insert(toolCtx(fakeStudio(), { discovered: [4244], library: [4244] }), 4244);
-  assert.equal(lib.result.provenance, 'library');
+  const pasted = await insert(toolCtx(fakeStudio()), 4244);
+  assert.equal(pasted.result.provenance, 'user_supplied');
 });
 
 test('THE DESCRIPTION MATCHES THE CODE: it no longer promises a refusal that never fires', () => {
@@ -1494,8 +1510,8 @@ test('THE DESCRIPTION MATCHES THE CODE: it no longer promises a refusal that nev
   assert.match(d, /never one you produced yourself/, 'the model still has to be told not to invent ids');
 });
 
-test('an undiscovered id gets NO waiver — the library exemption is by provenance, not by pleading', async () => {
-  // The same unrated, unfree, unverified-creator asset that the library may waive in §6.
+test('an undiscovered id gets no waiver either — there is no exemption left to ask for', async () => {
+  // The same unrated, unfree, unverified-creator asset that §6 now refuses from every provenance.
   serveDetails(
     detailsFor(4245, {
       creator: { id: 91, name: 'Someone', isVerifiedCreator: false },
@@ -1681,30 +1697,33 @@ execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [join(WORKER, 'src
 const P = await import(promptsOut);
 
 test('THE SYSTEM PROMPT NO LONGER CONTRADICTS THE TOOLS it is describing', () => {
-  // The invariant is agreement between the prompt and the tool list, in BOTH deployment states —
-  // not that a particular tool is always named. `search_asset_library` is now withheld where the
-  // curated library's tables were never created, and naming a tool the model cannot see would be
-  // the same contradiction this test was written to catch, pointing the other way.
+  //[[ THIS USED TO LOOP OVER TWO DEPLOYMENT STATES AND THERE IS NOW ONE.
+  //
+  //   `assetLibraryAvailable` told the prompt whether the curated catalogue's D1 tables existed
+  //   here, and `toolDefs({ assetLibrary })` withheld `search_asset_library` where they did not.
+  //   The invariant was agreement between the two in BOTH states. The catalogue was removed on
+  //   2026-09-20, so there is no deployment in which that tool exists, both flags are gone, and a
+  //   loop over a boolean nothing reads would run the same assertion twice and call it coverage.
+  //
+  //   The invariant is unchanged and is now stated once, plus the stronger half the removal makes
+  //   available: the prompt must not merely omit the catalogue, it must SAY there is none, because
+  //   a model told nothing will offer to search one. ]]
   const base = { mode: 'stone', studioConnected: true, placeName: 'Test', projectName: 'Test', memorySummary: null, memoryFacts: [], fenceId: 'ev4lf3nc' };
+  const sys = P.systemPrompt(base);
+  const offered = T.toolDefs(true).map((d) => d.name);
 
-  for (const assetLibraryAvailable of [true, false]) {
-    const sys = P.systemPrompt({ ...base, assetLibraryAvailable });
-    const offered = T.toolDefs(true, undefined, { assetLibrary: assetLibraryAvailable }).map((d) => d.name);
+  assert.equal(offered.includes('search_asset_library'), false, 'the catalogue search tool is offered again');
+  assert.equal(sys.includes('search_asset_library'), false, 'the prompt names a tool the model cannot see');
+  assert.match(sys, /THERE IS NO APPLE ASSET LIBRARY AND NO CATALOGUE TO SEARCH/,
+    'the model must be TOLD there is no catalogue, or it will offer to search one it was never given');
 
-    assert.equal(
-      sys.includes('search_asset_library'),
-      offered.includes('search_asset_library'),
-      `library=${assetLibraryAvailable}: the prompt and the tool list must agree`,
-    );
-    // The Creator Store route exists in both states and must be named in both.
-    assert.match(sys, /find_verified_asset/);
-    assert.ok(offered.includes('find_verified_asset'));
-    assert.match(sys, /run_luau refuses/, 'the prompt must state the run_luau rule the tool enforces');
-    assert.equal(/There is no asset search/.test(sys), false, 'stale: an asset search does exist');
-    // And it must not re-introduce the old rule that only a user-given id may be inserted, which
-    // would send the model looking for permission it does not need for a searched id.
-    assert.equal(/Only call insert_asset with an id the USER gave you/.test(sys), false);
-    // The template token must never survive into a real prompt.
-    assert.equal(sys.includes('{{ASSET_SOURCES}}'), false, 'unsubstituted template token in the system prompt');
-  }
+  // The Creator Store route is what is left, and it must be named.
+  assert.match(sys, /find_verified_asset/);
+  assert.ok(offered.includes('find_verified_asset'));
+  assert.match(sys, /run_luau refuses/, 'the prompt must state the run_luau rule the tool enforces');
+  // And it must not re-introduce the old rule that only a user-given id may be inserted, which
+  // would send the model looking for permission it does not need for a searched id.
+  assert.equal(/Only call insert_asset with an id the USER gave you/.test(sys), false);
+  // The template token must never survive into a real prompt.
+  assert.equal(sys.includes('{{ASSET_SOURCES}}'), false, 'unsubstituted template token in the system prompt');
 });

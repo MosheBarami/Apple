@@ -90,7 +90,6 @@ const TOOL_EVIDENCE: Record<string, EvidenceKind> = {
   render_view: 'render',
   edit_script: 'diff',
   run_and_check: 'test',
-  search_asset_library: 'assets',
   find_verified_asset: 'assets',
 };
 
@@ -274,5 +273,5 @@ export const LOADING_COPY: Record<EvidenceKind, string> = {
   render: 'Rendering in Studio…',
   diff: 'Writing the edit…',
   test: 'Running the place…',
-  assets: 'Searching the asset library…',
+  assets: 'Searching the Creator Store…',
 };

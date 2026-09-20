@@ -102,10 +102,16 @@ test('without Studio, builders retain image generation but Plan stays read-only'
   // Roblox place. It must remain discoverable for Agent/Super Agent while Studio is offline.
   // Explicit capability tripwire: get_genre_references was reviewed as static, bounded retrieval
   // with no project access, network request or mutation (genre-reference-tools.test.mjs).
+  // `get_verified_module` and `get_ui_construction` are here for the reason `get_genre_references`
+  // is: studio:false, answered from a table compiled into this bundle, no project access, no
+  // network call, no inference. They were reachable ONLY from stone/rune with a live Studio, which
+  // made the two libraries the product says the model "holds in its head" unreachable in Plan mode
+  // and unreachable in every mode while Studio was offline.
+  const KNOWLEDGE = ['get_verified_module', 'get_ui_construction'];
   const expected = {
-    clay: ['get_genre_references', 'read_creation_skill', 'remember', 'search_creation_skills', 'search_docs'],
-    stone: ['generate_image', 'get_genre_references', 'read_creation_skill', 'remember', 'search_creation_skills', 'search_docs'],
-    rune: ['generate_image', 'get_genre_references', 'read_creation_skill', 'remember', 'search_creation_skills', 'search_docs'],
+    clay: ['get_genre_references', 'read_creation_skill', 'remember', 'search_creation_skills', 'search_docs', ...KNOWLEDGE],
+    stone: ['generate_image', 'get_genre_references', 'read_creation_skill', 'remember', 'search_creation_skills', 'search_docs', ...KNOWLEDGE],
+    rune: ['generate_image', 'get_genre_references', 'read_creation_skill', 'remember', 'search_creation_skills', 'search_docs', ...KNOWLEDGE],
   };
   for (const [mode, names] of Object.entries(expected)) {
     const allowed = toolsForMode(mode, false, ALL);
@@ -234,4 +240,57 @@ test('CONTROL: the real modes are unaffected by the unknown-mode rule', () => {
   const plan = toolsForMode('clay', true, ALL);
   assert.equal(plan.has('read_script'), true, 'Plan must still be able to read');
   assert.equal(plan.has('get_project_tree'), true, 'Plan must still be able to look');
+});
+
+/* ------------------------------------------- the knowledge libraries ---------- */
+
+/**
+ * THE LIBRARIES THE SPEC SAYS THE MODEL HOLDS IN ITS HEAD MUST BE REACHABLE FROM WHERE IT THINKS.
+ *
+ * docs/spec/DONE.md D1 and D2: Luau modules that were RUN against their own checks, and
+ * construction files with measured stroke weights, radii and tiles per row. Both are served by
+ * `studio: false` tools that read a table compiled into the worker — no project access, no
+ * outbound request, no inference, no credit. They were nonetheless in neither PLAN_TOOLS nor
+ * OFFLINE_TOOLS, so Plan mode was never offered them at all and NO mode was offered them while
+ * Studio was disconnected. An audit of the deployed product could not watch the model call either
+ * one for exactly that reason.
+ *
+ * This is the guard for the fix. It fails if either name leaves either list.
+ */
+const KNOWLEDGE_TOOLS = ['get_verified_module', 'get_ui_construction'];
+
+test('the knowledge libraries are really registered tools', () => {
+  // Guards the guard: a rename would otherwise turn every assertion below into a check that a
+  // nonexistent name is absent from a set, which passes by doing nothing.
+  const missing = KNOWLEDGE_TOOLS.filter((n) => !ALL.includes(n));
+  assert.deepEqual(missing, [], `${missing.join(', ')} is not in TOOLS`);
+});
+
+test('PLAN can reach the proven modules and the construction library', () => {
+  const allowed = toolsForMode('clay', true, ALL);
+  for (const n of KNOWLEDGE_TOOLS) {
+    assert.ok(allowed.has(n),
+      `Plan cannot call ${n}, so "what would you do here" is answered from pretraining `
+      + 'while the measured answer sits in this bundle unread.');
+  }
+});
+
+test('EVERY mode keeps the knowledge libraries while Studio is disconnected', () => {
+  for (const mode of ['clay', 'stone', 'rune']) {
+    const allowed = toolsForMode(mode, false, ALL);
+    for (const n of KNOWLEDGE_TOOLS) {
+      assert.ok(allowed.has(n),
+        `${mode} loses ${n} when Studio drops, though the tool never needed Studio`);
+    }
+  }
+});
+
+test('and they are not a way to change a project', () => {
+  // The reason they may be added to a read-only mode at all. If one of these ever gains a write,
+  // this is the line that stops it riding into Plan mode on a list it was added to as a lookup.
+  for (const n of KNOWLEDGE_TOOLS) {
+    assert.equal(MUTATING.includes(n), false, `${n} became a mutating tool`);
+  }
+  const plan = toolsForMode('clay', true, ALL);
+  assert.deepEqual([...plan].filter((n) => MUTATING.includes(n)), []);
 });

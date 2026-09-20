@@ -96,28 +96,45 @@ test('a group creator replaces the user one rather than joining it', async () =>
 
 /* ---------------------------------------------------------------------------- the refusals --- */
 
-test('MODELS HAVE NO UPLOAD PATH, and that is the rule the whole library rests on', () => {
-  // Images, Decals and Meshes are Open Use by default; Models are not. A Model uploaded under
-  // Apple's account would be usable by Apple and by nobody who pays for the product.
-  assert.deepEqual([...U.OPEN_USE_UPLOAD_TYPES], ['Decal', 'Image', 'Mesh']);
-  assert.ok(!U.OPEN_USE_UPLOAD_TYPES.includes('Model'));
-  assert.equal(U.uploadTypeFor('building', 'application/zip'), null, 'a zip has no path');
-  assert.equal(U.uploadTypeFor('prop', 'text/html'), null, 'nor does a web page');
+//[[ THE TWO TESTS THAT WERE HERE GUARDED THE SHARED-ACCOUNT UPLOAD PATH, AND IT IS GONE.
+//
+//   They asserted that `OPEN_USE_UPLOAD_TYPES` was exactly ['Decal','Image','Mesh'] and never
+//   'Model', and that `uploadTypeFor(kind, contentType)` mapped a catalogue kind onto one of them —
+//   refusing .glb and .fbx, because those can only go up as a Model, and a Model uploaded under
+//   APPLE'S account would load for Apple and 404 for every paying customer.
+//
+//   That constraint was about one account: the shared one the asset library imported into. The
+//   library was removed on 2026-09-20 and both exports went with it. The only caller left is
+//   `creator-dashboard.ts`, uploading into the CUSTOMER'S own account with the customer's own key,
+//   where a Model is perfectly usable because they own it — so `ROBLOX_UPLOAD_TYPES` deliberately
+//   includes Model and `assetTypeForContentType` deliberately maps .glb and .fbx onto it. Keeping
+//   the old assertions would have been pinning a rule to a situation that no longer occurs.
+//
+//   What replaces them is the assertion that the shared-account path did not survive in some other
+//   form, because that is the thing that must not come back. ]]
+test('THERE IS NO SHARED-ACCOUNT UPLOAD PATH LEFT, in any shape', () => {
+  assert.equal(U.OPEN_USE_UPLOAD_TYPES, undefined,
+    'the Open Use type list is back — it only ever described what Apple could upload into its own account');
+  assert.equal(U.uploadTypeFor, undefined,
+    'uploadTypeFor is back, and it is the function that turned a catalogue row into a shared-account upload');
+  assert.equal(U.archiveAsset, undefined,
+    'archiveAsset is back — it was the undo for a library import, and there are no imports');
+  // CONTROL: the module still exports the customer path, so the three `undefined`s above are real
+  // absences and not a module that failed to load and handed back an empty namespace.
+  assert.equal(typeof U.uploadAsset, 'function', 'the customer upload path must still be here');
+  assert.equal(typeof U.preflight, 'function');
+  assert.ok(Array.isArray([...U.ROBLOX_UPLOAD_TYPES]), 'and the full Roblox type list');
 });
 
-test('an image becomes an Image, and an icon or particle becomes a Decal', () => {
-  assert.equal(U.uploadTypeFor('texture', 'image/jpeg'), 'Image');
-  assert.equal(U.uploadTypeFor('ui_icon', 'image/png'), 'Decal');
-  assert.equal(U.uploadTypeFor('particle', 'image/png'), 'Decal');
-  // GEOMETRY IS NOT UPLOADABLE HERE, and this assertion is the one that caught it. Open Cloud's
-  // `Mesh` type takes Roblox's own mesh format only — the docs say it is for re-uploading what the
-  // Asset Delivery API handed you. A .glb can only go up as a `Model`, and Models are not Open
-  // Use, so it would load for Apple and 404 for every paying customer.
-  assert.equal(U.uploadTypeFor('prop', 'model/gltf-binary'), null, 'a .glb has no Open Use path');
-  assert.equal(U.uploadTypeFor('prop', 'model/fbx'), null, 'nor does an .fbx');
-  assert.equal(U.uploadTypeFor('prop', 'model/x-file-mesh-data'), 'Mesh', 'only Roblox-format mesh data');
-  assert.equal(U.uploadTypeFor('texture', 'image/bmp'), 'Image');
-  assert.equal(U.uploadTypeFor('texture', 'image/webp'), null, 'Roblox does not list webp');
+test('the customer path maps a content type onto a Roblox type, Model included', () => {
+  // Open Use is not a constraint on somebody uploading into their own account, so the full set is
+  // reachable here on purpose. This is the mapping `creator-dashboard.ts` actually calls.
+  assert.equal(U.assetTypeForContentType('image/png'), 'Image');
+  assert.equal(U.assetTypeForContentType('image/png; charset=binary'), 'Image', 'parameters are dropped');
+  assert.equal(U.assetTypeForContentType('model/gltf-binary'), 'Model');
+  assert.equal(U.assetTypeForContentType('model/x-file-mesh-data'), 'Mesh');
+  assert.equal(U.assetTypeForContentType('image/webp'), null, 'Roblox does not list webp');
+  assert.equal(U.assetTypeForContentType('text/html'), null, 'nor a web page');
 });
 
 test('preflight refuses before a byte is sent, and says which thing is wrong', () => {

@@ -17,9 +17,8 @@
 // was merely the first thing to touch a database something else had exhausted.
 //
 // WHAT THIS IS NOT. It is not a claim that the tables exist. It is a memory that THIS ISOLATE has
-// already run the DDL. Whether a table exists is a different question with a different answer
-// (`assetLibraryAvailable` reads sqlite_master and is what search consults), and conflating the
-// two would let a cache decide a table is there.
+// already run the DDL. Whether a table exists is a different question with a different answer —
+// sqlite_master has to be read — and conflating the two would let a cache decide a table is there.
 //
 // THREE PROPERTIES, EACH WRITTEN BECAUSE THE OBVIOUS IMPLEMENTATION LACKS IT:
 //

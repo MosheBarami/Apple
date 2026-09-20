@@ -5,6 +5,7 @@
 // keyboard handling, focus return and dismissal are written once and behave
 // identically everywhere.
 import { useEffect, useRef, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 /* -------------------------------------------------------------- icons ---- */
 
@@ -143,7 +144,28 @@ export function Drawer({ open, onClose, title, children }: DrawerProps) {
   }, [open]);
 
   if (!open) return null;
-  return (
+  //[[ PORTALLED TO THE BODY, BECAUSE A MODAL TRAPPED IN A STACKING CONTEXT IS NOT MODAL.
+  //
+  //   Every Drawer is rendered from routes/workspace.tsx, inside `.gx-ws` — and `.gx-ws` is
+  //   `position:relative; z-index:1`, which is a stacking context. So the scrim's z-index of 70 and
+  //   the panel's 80 were never compared with anything outside the workspace: they competed as
+  //   `.gx-ws`'s 1 against the navigation rail's 55, and lost.
+  //
+  //   MEASURED in Chromium with "Credits and clearance" open, `document.elementFromPoint`:
+  //
+  //     1440px  the nav rail is undimmed and fully clickable while an aria-modal dialog is open —
+  //             the point at the centre of a rail row returns `span.studio-dock__label`
+  //      375px  the rail has collapsed to a 44px button at x=12..56 and the drawer is full-bleed,
+  //             so the button sits ON the drawer's own title: the point 4px into
+  //             "Credits and clearance" returns `button.studio-navigation`, and the title reads
+  //             "edits and clearance" because the first 27px of it are behind the button
+  //
+  //   `aria-modal="true"` and the focus trap above were already telling a screen reader and a
+  //   keyboard that the rest of the page was inert while a pointer could still reach it. The panel
+  //   is the same element with the same ref, so the trap, the Escape handler and the focus return
+  //   are untouched; only where it paints changes. Modal does not need this because it is rendered
+  //   from the shell, outside `.gx-ws` — which is exactly why nobody found this here. ]]
+  return createPortal(
     <>
       <button type="button" className="gx-scrim" onClick={onClose} tabIndex={-1} aria-hidden="true" />
       <div
@@ -168,6 +190,7 @@ export function Drawer({ open, onClose, title, children }: DrawerProps) {
         </div>
         <div className="gx-drawer__body">{children}</div>
       </div>
-    </>
+    </>,
+    document.body,
   );
 }

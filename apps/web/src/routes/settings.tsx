@@ -17,7 +17,7 @@ import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { PairingCodeDto } from '@golem/shared';
 import { MOCK_MODE, mockProfile } from '../lib/mock';
-import { supabase, type ProfileRow } from '../lib/supabase';
+import { getAccessToken, supabase, type ProfileRow } from '../lib/supabase';
 import { createDiscordCode, disconnectDiscord, fetchDiscordLink } from '../lib/api';
 import { countdownTo } from '../lib/format';
 import { Failure } from '../components/failure';
@@ -60,7 +60,6 @@ import { SETTING_FIELDS, matchSettings } from '../lib/settings-search.ts';
 import {
   DELETE_ACCOUNT_PHRASE,
   deleteAccount,
-  downloadAccountExport,
   fetchDeletionStatus,
   fetchNotifications,
   fetchScopeMemory,
@@ -127,6 +126,472 @@ async function fetchProfile(userId: string): Promise<ProfileRow | null> {
   if (error) throw new Error(error.message);
   return (data as ProfileRow | null) ?? null;
 }
+
+/* ===== ACCOUNT EXPORT: BEGIN — executed by tests/account-export-complete.test.mjs ===== */
+/* =====================================================================================
+ * DOWNLOAD MY DATA — ONE CLICK, ONE FILE, AND THE MAP ACTUALLY FOLLOWED.
+ *
+ * `GET /api/me/export` answers with the Postgres slice of an account plus a MAP: four tables
+ * marked `not_recorded_here` and 45 `elsewhere` entries, each naming the route that really
+ * serves it. That document is honest and it is not the data. Somebody who clicked "Download my
+ * data" received their profile and their project rows together with a list explaining that
+ * their conversations, their checkpoints and their spend history were somewhere else — dozens
+ * more requests they would have to make by hand, carrying a bearer token they do not have.
+ * One action in the promise, four-plus actions in the product.
+ *
+ * So this page follows the map. One click fetches the base document, then every route it names
+ * that can be served as TEXT, and writes one file containing all of it.
+ *
+ * What it will not put in the file, and prints rather than omits:
+ *
+ *   BYTES. Generated images, generated audio, checkpoint snapshots and workspace files are
+ *   objects in R2 and KV. A JSON document cannot hold them and inlining them base64 would turn
+ *   a 26 KB file into hundreds of megabytes. Their routes are printed under `notInThisFile`.
+ *
+ *   CREDENTIALS. A Studio pairing code is a working key — `/api/studio/claim` is
+ *   unauthenticated and takes the code as its only proof — so a code sitting in a downloaded
+ *   file is a live key to the project it names. The READABLE half of a pairing (which place,
+ *   paired when, expiring when, the recent operations) is followed; the code is not.
+ *
+ *   Anything the worker itself describes as "not offered as a download".
+ *
+ * COVERAGE IS MEASURED AGAINST THE SERVER'S OWN LIST, never against the table below. Every name
+ * in `elsewhere`, and every table the server could not serve, is either followed or printed
+ * under `notInThisFile` carrying the server's own sentence about where it lives. A store the
+ * worker adds tomorrow shows up in the file as an unfollowed pointer instead of disappearing
+ * from it — which is the difference between a file that is incomplete and a file that lies.
+ */
+
+/** The shape of `apple.account-export.v1`, read defensively: it is a network answer. */
+export interface AccountExportV1 {
+  format?: string;
+  user?: { id?: string; email?: string };
+  complete?: boolean;
+  incomplete?: string[];
+  tables?: Record<string, { status?: string; rows?: unknown[]; where?: string; holds?: string }>;
+  elsewhere?: { store?: string; name?: string; holds?: string; where?: string }[];
+  sha256?: string;
+}
+
+/**
+ * One route, and the stores it answers for.
+ *
+ * `covers` is written in the SERVER'S vocabulary — the exact `elsewhere[].name` and `tables` key
+ * — because that is what the coverage check compares against. A pretty name here would silently
+ * un-cover the store it was supposed to stand for.
+ */
+interface ExportSource {
+  key: string;
+  covers: readonly string[];
+  path: (id: string) => string;
+}
+
+const USER_SOURCES: readonly ExportSource[] = [
+  { key: 'usage', covers: ['usage_events', 'ledger', 'month_totals'], path: () => '/api/me/usage' },
+  { key: 'notifications', covers: ['notifications', 'collab_mentions'], path: () => '/api/notifications' },
+  { key: 'organisations', covers: ['memory_org_members'], path: () => '/api/orgs' },
+  { key: 'roblox_key', covers: ['user_credentials'], path: () => '/api/me/roblox-key' },
+  { key: 'roblox_writes', covers: ['creator_write_log'], path: () => '/api/me/roblox/writes' },
+  { key: 'deletion_request', covers: ['account_deletions'], path: () => '/api/me/delete' },
+  { key: 'billing_history', covers: ['billing_events'], path: () => '/api/billing/history' },
+  { key: 'discord_link', covers: ['DiscordDO storage'], path: () => '/api/discord/link' },
+  { key: 'memory', covers: ['memory_entries'], path: (u) => `/api/memory/user/${encodeURIComponent(u)}/export` },
+  { key: 'memory_audit', covers: ['memory_audit'], path: (u) => `/api/memory/user/${encodeURIComponent(u)}/audit` },
+];
+
+const PROJECT_SOURCES: readonly ExportSource[] = [
+  {
+    key: 'transcript',
+    covers: ['messages', 'message_models', 'message_revisions'],
+    path: (p) => `/api/projects/${encodeURIComponent(p)}/export`,
+  },
+  { key: 'checkpoints', covers: ['checkpoints'], path: (p) => `/api/projects/${encodeURIComponent(p)}/checkpoints` },
+  { key: 'attribution', covers: ['oplog', 'project_asset_use'], path: (p) => `/api/projects/${encodeURIComponent(p)}/attribution` },
+  { key: 'automations', covers: ['automations', 'automation_runs'], path: (p) => `/api/projects/${encodeURIComponent(p)}/automations` },
+  { key: 'files', covers: ['ws:<project>:', 'wst:<project>:'], path: (p) => `/api/projects/${encodeURIComponent(p)}/files` },
+  { key: 'studio', covers: ['studio_pairings'], path: (p) => `/api/projects/${encodeURIComponent(p)}/studio/diagnostics?limit=200` },
+  { key: 'memory', covers: ['memory_entries'], path: (p) => `/api/memory/project/${encodeURIComponent(p)}/export` },
+  { key: 'memory_audit', covers: ['memory_audit'], path: (p) => `/api/memory/project/${encodeURIComponent(p)}/audit` },
+  {
+    key: 'comments',
+    covers: ['collab_comments', 'collab_reactions'],
+    // The GET refuses without a target — `unknown_target_kind`, measured — and the target that
+    // means "this project's own thread" is the project itself.
+    path: (p) => `/api/shared/${encodeURIComponent(p)}/comments?targetKind=project&targetId=${encodeURIComponent(p)}`,
+  },
+  {
+    key: 'reviews',
+    covers: ['collab_reviews', 'collab_review_reviewers', 'collab_approvals'],
+    path: (p) => `/api/shared/${encodeURIComponent(p)}/reviews`,
+  },
+  { key: 'versions', covers: ['collab_versions'], path: (p) => `/api/shared/${encodeURIComponent(p)}/versions` },
+  { key: 'share_links', covers: ['share:link:'], path: (p) => `/api/shared/${encodeURIComponent(p)}/links` },
+  { key: 'members', covers: ['share:grant:<project>:'], path: (p) => `/api/shared/${encodeURIComponent(p)}/members` },
+];
+
+/**
+ * Why a named store is not in the file, where this file has something truer to say than the
+ * server's own pointer. Anything absent from here falls back to the server's sentence, which is
+ * what it should do — the worker is the thing that knows.
+ */
+const OMISSION_WHY: Record<string, string> = {
+  checkpoint_chunks: 'Bytes, not text. A checkpoint snapshot is a binary object; it is restored from the workspace rather than read.',
+  'wsv:<project>:': 'One route per file path, and a download cannot guess which paths you want. Every current file is listed per project under `followed`; its history is fetched per path from the route here.',
+  generated_images: 'Bytes, not text. The conversation that produced each image IS in this file and carries its id; the image itself is fetched one id at a time.',
+  'image/<project>/': 'Bytes, not text.',
+  'image:<project>:': 'Bytes, not text — and this is a cache that lasts an hour, not a store.',
+  'audio/<project>/': 'Bytes, not text.',
+  'audio:<project>:': 'Bytes, not text — and this is a cache that lasts an hour, not a store.',
+};
+
+/**
+ * THE ONE THING WITHHELD ON PURPOSE RATHER THAN BY FORMAT.
+ *
+ * Printed unconditionally, because a reader must not have to notice an absence. The pairing's
+ * readable half is followed through `/studio/diagnostics`; this entry is about the secret.
+ */
+const PAIRING_CODE_OMISSION: Omission = {
+  store: 'studio_pairings.code',
+  holds: 'the pairing code itself — the six characters typed into the Studio plugin',
+  why: 'A live credential. `/api/studio/claim` is unauthenticated and takes this code as its only proof, so an unclaimed code sitting in a downloaded file is a working key to the project it names. Everything else about the pairing — which place, paired when, expiring when, the recent operations — is in this file.',
+  where: 'not offered as a download, deliberately',
+};
+
+export interface FollowPlanItem {
+  /** Unique per request: the source key, plus the project id where there is one. */
+  key: string;
+  label: string;
+  endpoint: string;
+  project?: { id: string; name: string };
+}
+
+export interface Omission {
+  store: string;
+  holds: string;
+  why: string;
+  where: string;
+}
+
+export interface ExportPlan {
+  follow: FollowPlanItem[];
+  omit: Omission[];
+}
+
+/**
+ * Everything the table above knows how to follow, in the server's vocabulary.
+ *
+ * Exported so a test can assert the POSITIVE direction. The negative one is structural — a store
+ * this file cannot follow is printed in `notInThisFile` by construction — but "messages is
+ * followed" is the claim the whole change is about, and it has to be checkable without reading
+ * the table it comes from.
+ */
+export function accountExportCoverage(): Set<string> {
+  const covered = new Set<string>();
+  for (const s of [...USER_SOURCES, ...PROJECT_SOURCES]) for (const c of s.covers) covered.add(c);
+  return covered;
+}
+
+/**
+ * What to fetch, and what will be missing, given the base document.
+ *
+ * COVERAGE IS STATIC AND THE PLAN IS NOT. An account with no projects still COVERS `messages` —
+ * this file knows the route — it simply has nothing to ask for. Deriving coverage from the plan
+ * instead would print "your conversations are not in this file" at somebody whose conversations
+ * are all in projects they have since deleted.
+ */
+export function planAccountExport(base: AccountExportV1): ExportPlan {
+  const userId = typeof base.user?.id === 'string' ? base.user.id : '';
+  const table = base.tables?.projects;
+  const projects = (table?.status === 'ok' && Array.isArray(table.rows) ? table.rows : [])
+    .map((row) => row as { id?: unknown; name?: unknown })
+    .filter((row): row is { id: string; name?: unknown } => typeof row.id === 'string' && row.id.length > 0)
+    .map((row) => ({ id: row.id, name: typeof row.name === 'string' ? row.name : row.id }));
+
+  const follow: FollowPlanItem[] = [];
+  if (userId) {
+    for (const s of USER_SOURCES) follow.push({ key: s.key, label: s.key, endpoint: s.path(userId) });
+  }
+  for (const p of projects) {
+    for (const s of PROJECT_SOURCES) {
+      follow.push({ key: `${s.key}:${p.id}`, label: s.key, endpoint: s.path(p.id), project: p });
+    }
+  }
+
+  const covered = accountExportCoverage();
+  const omit: Omission[] = [PAIRING_CODE_OMISSION];
+  const seen = new Set<string>([PAIRING_CODE_OMISSION.store]);
+  for (const e of base.elsewhere ?? []) {
+    const name = typeof e.name === 'string' ? e.name : '';
+    if (!name || covered.has(name) || seen.has(name)) continue;
+    seen.add(name);
+    omit.push({
+      store: name,
+      holds: typeof e.holds === 'string' ? e.holds : '',
+      why: OMISSION_WHY[name] ?? 'This file does not follow this pointer. The server’s own sentence about it is in `where`.',
+      where: typeof e.where === 'string' ? e.where : '',
+    });
+  }
+  // A table the server could not serve AND this file has no route for is the worst kind of gap,
+  // so it is printed with the server's own reason rather than left to the `elsewhere` list.
+  for (const [name, entry] of Object.entries(base.tables ?? {})) {
+    if (entry?.status === 'ok' || covered.has(name) || seen.has(name)) continue;
+    seen.add(name);
+    omit.push({
+      store: name,
+      holds: typeof entry?.holds === 'string' ? entry.holds : '',
+      why: 'The server could not serve this table and this file has no other route for it.',
+      where: typeof entry?.where === 'string' ? entry.where : '',
+    });
+  }
+  return { follow, omit };
+}
+
+export interface FetchedRecord {
+  endpoint: string;
+  status: number;
+  body?: unknown;
+  error?: string;
+}
+
+/**
+ * The second wave: a run belongs to an automation, and the ids only exist once the first wave
+ * has answered. Derived from what came back rather than from a guess about how many there are.
+ */
+export function automationRunFollowUps(
+  plan: ExportPlan,
+  results: Record<string, FetchedRecord>,
+): FollowPlanItem[] {
+  const extra: FollowPlanItem[] = [];
+  const seen = new Set<string>();
+  for (const item of plan.follow) {
+    if (item.label !== 'automations') continue;
+    const body = results[item.key]?.body as { automations?: unknown } | undefined;
+    const list = Array.isArray(body?.automations) ? body.automations : [];
+    for (const raw of list) {
+      const id = (raw as { id?: unknown })?.id;
+      if (typeof id !== 'string' || id.length === 0 || seen.has(id)) continue;
+      seen.add(id);
+      extra.push({
+        key: `automation_runs:${id}`,
+        label: 'automation_runs',
+        endpoint: `/api/automations/${encodeURIComponent(id)}/runs`,
+        ...(item.project ? { project: item.project } : {}),
+      });
+    }
+  }
+  return extra;
+}
+
+/**
+ * WHAT `complete` MEANS IN THIS FILE, spelled out inside the file.
+ *
+ * `complete: true` in the server's v1 document meant "this contains everything" and was false.
+ * Rather than redefine a word quietly, the file says in a sentence what its own flag is a claim
+ * about — every record that can be written as text — and keeps the two things it is NOT a claim
+ * about in a separate list a reader cannot miss.
+ */
+const READ_ME =
+  'One file, assembled by your browser from every route Apple serves about you. `database` is the ' +
+  'server’s own export document, exactly as it was signed, including its sha256. `followed` is ' +
+  'everything that document pointed at — your conversations in full, your checkpoints, your Credit ' +
+  'spend, your inbox, what Apple was asked to remember, your comments, reviews, share links and ' +
+  'Studio pairings — each under the route it came from. `complete` is a claim about those and only ' +
+  'those: it is true when every route answered. Two kinds of thing are NOT in here whatever it says, ' +
+  'and both are listed in `notInThisFile` with the route that serves them: bytes (images, audio, ' +
+  'workspace files, checkpoint snapshots), which cannot be lines of JSON, and live credentials, ' +
+  'which would be dangerous in a downloaded file.';
+
+export function assembleAccountExport(
+  base: AccountExportV1,
+  plan: ExportPlan,
+  results: Record<string, FetchedRecord>,
+  now: string,
+): Record<string, unknown> {
+  const followed: Record<string, unknown> = {};
+  const failed: Record<string, unknown> = {};
+  for (const item of plan.follow) {
+    const got = results[item.key];
+    const project = item.project ? { id: item.project.id, name: item.project.name } : undefined;
+    if (!got) {
+      failed[item.key] = { endpoint: item.endpoint, project, error: 'this file never asked for it' };
+      continue;
+    }
+    if (got.error !== undefined || got.status < 200 || got.status >= 300) {
+      failed[item.key] = {
+        endpoint: got.endpoint,
+        status: got.status,
+        project,
+        error: got.error ?? `the server answered ${got.status}`,
+      };
+      continue;
+    }
+    followed[item.key] = { endpoint: got.endpoint, status: got.status, project, body: got.body ?? null };
+  }
+  const missing = Object.keys(failed);
+  return {
+    format: 'apple.account-export.v2',
+    exportedAt: now,
+    user: base.user ?? null,
+    readMe: READ_ME,
+    complete: missing.length === 0,
+    incomplete: missing,
+    notInThisFile: plan.omit,
+    database: base,
+    followed,
+    failed,
+  };
+}
+
+/** One authenticated GET, turned into a record that can be printed whether or not it worked. */
+async function getJsonRecord(path: string, token: string | null): Promise<FetchedRecord> {
+  const headers = new Headers();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  try {
+    const res = await fetch(path, { headers });
+    const text = await res.text();
+    let body: unknown = null;
+    if (text.length > 0) {
+      try {
+        body = JSON.parse(text);
+      } catch {
+        return { endpoint: path, status: res.status, error: `the answer was not JSON (${text.length} bytes)` };
+      }
+    }
+    if (!res.ok) {
+      const named = typeof body === 'object' && body !== null && 'error' in body ? String((body as { error: unknown }).error) : '';
+      return { endpoint: path, status: res.status, error: named || `the server answered ${res.status}` };
+    }
+    return { endpoint: path, status: res.status, body };
+  } catch (e) {
+    return { endpoint: path, status: 0, error: e instanceof Error ? e.message : 'the request never completed' };
+  }
+}
+
+/**
+ * A SECOND ASK FOR THE ANSWERS THAT ARE WORTH ASKING TWICE.
+ *
+ * The walk is one request per project per store: seven projects made 101 of them, and an account
+ * with two hundred projects makes two and a half thousand. The failure that scales with the size of
+ * an account is a 429, and the accounts it would hit first are the ones with the most to lose from
+ * an export that comes back incomplete.
+ *
+ * Retried: 429, and 502/503/504 — a rate limit and a gateway that did not reach the worker are both
+ * "ask again". A network error (status 0) is retried too. NOT retried: 4xx, which will say the same
+ * thing next time, and 500, which is the worker itself having already decided.
+ *
+ * Bounded at two extra attempts with a short backoff, because the alternative to giving up is not
+ * trying forever — it is a file that names what it could not read, which is the whole design.
+ */
+const RETRY_STATUSES = new Set([0, 429, 502, 503, 504]);
+const RETRY_BACKOFF_MS = [250, 900];
+
+function retrying(
+  fetchRecord: (path: string, token: string | null) => Promise<FetchedRecord>,
+  sleep: (ms: number) => Promise<void>,
+): (path: string, token: string | null) => Promise<FetchedRecord> {
+  return async (path, token) => {
+    let got = await fetchRecord(path, token);
+    for (const wait of RETRY_BACKOFF_MS) {
+      if (got.error === undefined || !RETRY_STATUSES.has(got.status)) return got;
+      await sleep(wait);
+      got = await fetchRecord(path, token);
+    }
+    return got;
+  };
+}
+
+/** Bounded concurrency. Ninety-odd requests fired at once is a rate limit, not a download. */
+async function inPool<T>(items: readonly T[], limit: number, run: (item: T) => Promise<void>): Promise<void> {
+  let next = 0;
+  const lanes = Array.from({ length: Math.max(1, Math.min(limit, items.length)) }, async () => {
+    for (;;) {
+      const i = next++;
+      if (i >= items.length) return;
+      await run(items[i]!);
+    }
+  });
+  await Promise.all(lanes);
+}
+
+function saveJsonFile(text: string, filename: string): void {
+  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+export interface ExportOutcome {
+  complete: boolean;
+  requests: number;
+  missing: string[];
+  bytes: number;
+  filename: string;
+}
+
+/**
+ * The whole thing, from one click.
+ *
+ * `fetchRecord` and `save` are parameters so the behaviour can be executed in a test rather than
+ * grepped — the repository's rule is that a guard is not trusted until it has been seen to fail,
+ * and a downloader asserted by reading its source has never been seen to do anything.
+ */
+export async function buildCompleteAccountExport(
+  onProgress: (done: number, total: number) => void,
+  deps: {
+    fetchRecord?: (path: string, token: string | null) => Promise<FetchedRecord>;
+    save?: (text: string, filename: string) => void;
+    token?: string | null;
+    now?: () => Date;
+    sleep?: (ms: number) => Promise<void>;
+  } = {},
+): Promise<ExportOutcome> {
+  const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((r) => window.setTimeout(r, ms)));
+  const fetchRecord = retrying(deps.fetchRecord ?? getJsonRecord, sleep);
+  const save = deps.save ?? saveJsonFile;
+  const now = deps.now ?? (() => new Date());
+  const token = deps.token !== undefined ? deps.token : await getAccessToken();
+
+  const first = await fetchRecord('/api/me/export', token);
+  if (first.error !== undefined || typeof first.body !== 'object' || first.body === null) {
+    throw new Error(first.error ?? `Could not read your account (${first.status})`);
+  }
+  const base = first.body as AccountExportV1;
+  const plan = planAccountExport(base);
+  const results: Record<string, FetchedRecord> = {};
+  let done = 0;
+  onProgress(0, plan.follow.length);
+  await inPool(plan.follow, 6, async (item) => {
+    results[item.key] = await fetchRecord(item.endpoint, token);
+    onProgress((done += 1), plan.follow.length);
+  });
+
+  const extra = automationRunFollowUps(plan, results);
+  if (extra.length > 0) {
+    plan.follow.push(...extra);
+    await inPool(extra, 6, async (item) => {
+      results[item.key] = await fetchRecord(item.endpoint, token);
+      onProgress((done += 1), plan.follow.length);
+    });
+  }
+
+  const stamp = now();
+  const doc = assembleAccountExport(base, plan, results, stamp.toISOString());
+  const text = JSON.stringify(doc, null, 2);
+  const filename = `apple-data-${stamp.toISOString().slice(0, 10)}.json`;
+  save(text, filename);
+  return {
+    complete: doc.complete === true,
+    requests: plan.follow.length + 1,
+    missing: doc.incomplete as string[],
+    bytes: text.length,
+    filename,
+  };
+}
+/* ===== ACCOUNT EXPORT: END ===== */
 
 /**
  * CONNECT DISCORD.
@@ -297,21 +762,214 @@ function DiscordCard({ userId }: { userId: string }) {
 
 /* ------------------------------------------------------------- small parts --- */
 
-/** A labelled row that search can hide. `hidden` rather than unmounting: state survives a query. */
-function Row({ id, visible, children }: { id: string; visible: boolean; children: ReactNode }) {
+/**
+ * A labelled row that search can hide. `hidden` rather than unmounting: state survives a query.
+ *
+ * TWO SHAPES, AND THE DEFAULT IS NOT THE ONE TO REACH FOR.
+ *
+ * Pass `control` and the row becomes the two-column unit this page is built out of: name and a
+ * one-line description flush left, the operable thing — input, select, segmented group, button —
+ * right-aligned to an axis every other split row on the page shares. That axis is the whole point.
+ * Before it existed every card was ~1265px wide with its contents left-aligned in a ~670px column,
+ * so the right 45-50% of every card was permanently empty and the page ran to 16k px of stacked
+ * blocks. A blind critic comparing this screen against a competitor's said so in as many words.
+ *
+ * Omit `control` and you get the old full-width stack, which is correct for the handful of rows
+ * whose "control" is itself a panel — the two-step enrolment, the security log, the API key table.
+ * Squeezing those into a right-hand column would just move the problem.
+ */
+function Row({
+  id,
+  visible,
+  title,
+  control,
+  controlStacks,
+  children,
+}: {
+  id: string;
+  visible: boolean;
+  title?: ReactNode;
+  control?: ReactNode;
+  /** The control carries its own visible labels (a two-field form), so don't hide them. */
+  controlStacks?: boolean;
+  children?: ReactNode;
+}) {
+  if (control === undefined) {
+    return (
+      <div className="settings-row" data-setting={id} hidden={!visible}>
+        {children}
+      </div>
+    );
+  }
   return (
-    <div className="settings-row" data-setting={id} hidden={!visible}>
-      {children}
+    <div className="settings-row settings-row--split" data-setting={id} hidden={!visible}>
+      <div className="settings-row__text">
+        {title !== undefined && <h3 className="settings-sub">{title}</h3>}
+        {children}
+      </div>
+      <div className={`settings-row__control${controlStacks ? ' settings-row__control--stack' : ''}`}>
+        {control}
+      </div>
     </div>
   );
 }
 
-function Section({ title, visible, children, danger }: { title: string; visible: boolean; children: ReactNode; danger?: boolean }) {
+/**
+ * One card, and one entry in the rail on the left.
+ *
+ * `id` is what the rail scrolls to and what `SECTION_INDEX` below names. It is required rather than
+ * derived from the title because the rail has to know the sections exist before any of them
+ * render — two of them live inside child components this file only mounts.
+ */
+function Section({
+  id,
+  title,
+  visible,
+  children,
+  danger,
+}: {
+  id: string;
+  title: string;
+  visible: boolean;
+  children: ReactNode;
+  danger?: boolean;
+}) {
   return (
-    <section className={`card settings-card${danger ? ' danger-card' : ''}`} hidden={!visible}>
+    <section
+      id={`settings-${id}`}
+      data-section={id}
+      className={`card settings-card${danger ? ' danger-card' : ''}`}
+      hidden={!visible}
+    >
       <h2>{title}</h2>
       {children}
     </section>
+  );
+}
+
+/**
+ * THE RAIL'S CONTENTS, AND THE ONLY LIST OF SECTIONS THERE IS.
+ *
+ * Each entry names the settings it contains, so the rail hides an entry for exactly the same reason
+ * the card hides — `sectionShows(...fields)` is the same predicate both sides ask. A rail that
+ * still listed "Notifications" while the search had filtered that card away would be a link to
+ * nothing, which is the failure mode this page already had once with its search results.
+ */
+const SECTION_INDEX = [
+  { group: 'Account', id: 'profile', label: 'Profile', fields: ['display-name'] },
+  {
+    group: 'Account',
+    id: 'security',
+    label: 'Security',
+    fields: ['email-address', 'password', 'two-step', 'sign-out-everywhere', 'security-history'],
+  },
+  { group: 'Account', id: 'connections', label: 'Connections', fields: ['roblox-key', 'api-keys', 'discord'] },
+  { group: 'Building', id: 'assets', label: 'Assets', fields: ['asset-sources'] },
+  {
+    group: 'Building',
+    id: 'notifications',
+    label: 'Notifications',
+    fields: ['notify-quiet-hours', 'notify-digest', 'notify-events'],
+  },
+  { group: 'Preferences', id: 'appearance', label: 'Appearance', fields: ['appearance', 'motion'] },
+  { group: 'Preferences', id: 'region', label: 'Language and region', fields: ['region', 'clock', 'time-zone'] },
+  {
+    group: 'Your data',
+    id: 'privacy',
+    label: 'Privacy',
+    fields: ['training-promise', 'analytics-opt-out', 'download-my-data'],
+  },
+  { group: 'Your data', id: 'danger', label: 'Danger zone', fields: ['reset-settings', 'delete-account'] },
+] as const;
+
+/**
+ * The rail: a per-section index, and the answer to "which part of settings am I looking at".
+ *
+ * ACTIVE IS DECIDED BY WHAT IS ON SCREEN, not by what was last clicked, because the page still
+ * scrolls freely and a highlight that only moved on click would spend most of its life lying. The
+ * chosen section is the last one whose top has passed the reading line — a quarter of the way down
+ * the viewport rather than its very top, so a card becomes "current" when you are reading it and
+ * not when its first pixel appears.
+ */
+function SettingsRail({ entries }: { entries: { group: string; id: string; label: string }[] }) {
+  const [active, setActive] = useState<string | null>(entries[0]?.id ?? null);
+  const ids = entries.map((e) => e.id).join(',');
+
+  useEffect(() => {
+    const list = ids ? ids.split(',') : [];
+    if (list.length === 0) return;
+    let frame = 0;
+    const pick = () => {
+      frame = 0;
+      const line = window.innerHeight * 0.25;
+      let chosen = list[0]!;
+      for (const id of list) {
+        const el = document.getElementById(`settings-${id}`);
+        if (!el || el.hidden) continue;
+        if (el.getBoundingClientRect().top <= line) chosen = id;
+      }
+      // The last card is usually too short to ever reach the reading line, so the rail would never
+      // light it up. Hitting the bottom of the document IS being on the last section.
+      const atEnd =
+        window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2;
+      setActive(atEnd ? (list[list.length - 1] ?? chosen) : chosen);
+    };
+    const onScroll = () => {
+      if (frame === 0) frame = window.requestAnimationFrame(pick);
+    };
+    pick();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+    return () => {
+      if (frame !== 0) window.cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, [ids]);
+
+  if (entries.length === 0) return null;
+
+  return (
+    <nav className="st-nav" aria-label="Settings sections">
+      <ul className="st-nav__list">
+        {entries.map((e, i) => (
+          <li key={e.id}>
+            {/* The group heading is drawn by the FIRST entry that belongs to it, rather than by
+                nesting a list per group: search can hide any entry, and a nested list would leave
+                "Building" standing over nothing whenever both of its sections were filtered out.
+                It is aria-hidden because the visible grouping is the point — a screen reader
+                already gets a flat list of nine named links, which is the better shape to move
+                through than four lists of two. */}
+            {e.group !== entries[i - 1]?.group && (
+              <span className="st-nav__group" aria-hidden="true">
+                {e.group}
+              </span>
+            )}
+            <a
+              href={`#settings-${e.id}`}
+              className={`st-nav__link${active === e.id ? ' is-active' : ''}`}
+              aria-current={active === e.id ? 'true' : undefined}
+              onClick={(ev) => {
+                const el = document.getElementById(`settings-${e.id}`);
+                if (!el) return;
+                ev.preventDefault();
+                setActive(e.id);
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                // The heading, not the card: the card is not focusable and moving focus to it
+                // would announce the whole section. `-1` keeps it out of the tab order.
+                const head = el.querySelector('h2');
+                if (head) {
+                  head.setAttribute('tabindex', '-1');
+                  (head as HTMLElement).focus({ preventScroll: true });
+                }
+              }}
+            >
+              {e.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
   );
 }
 
@@ -335,14 +993,12 @@ function Choice<T extends string>({
   options,
   onChange,
   names,
-  hint,
 }: {
   label: string;
   value: T;
   options: readonly T[];
   onChange: (v: T) => void;
   names: Readonly<Record<string, string>>;
-  hint?: ReactNode;
 }) {
   const group = useRef<HTMLDivElement>(null);
 
@@ -356,9 +1012,12 @@ function Choice<T extends string>({
     group.current?.querySelectorAll<HTMLButtonElement>('.theme-btn')[next]?.focus();
   };
 
+  // THE HINT USED TO LIVE HERE, under the segments. In the two-column row model it belongs with
+  // the rest of the prose on the left, next to the name of the setting it explains — a sentence
+  // hanging off the right-hand control column would break the shared right edge that column exists
+  // to hold. Every caller now renders it as the row's description.
   return (
-    <>
-      <div className="theme-toggle" role="radiogroup" aria-label={label} ref={group}>
+    <div className="theme-toggle" role="radiogroup" aria-label={label} ref={group}>
         {options.map((option) => (
           <button
             key={option}
@@ -380,10 +1039,8 @@ function Choice<T extends string>({
           >
             {names[option] ?? option}
           </button>
-        ))}
-      </div>
-      {hint && <p className="settings-note">{hint}</p>}
-    </>
+      ))}
+    </div>
   );
 }
 
@@ -518,7 +1175,7 @@ function AssetSourceSettings({
   if (!sectionShows('asset-sources')) return null;
   if (!stored.data || stored.isError) {
     return (
-      <Section title="Where Apple gets assets" visible>
+      <Section id="assets" title="Where Apple gets assets" visible>
         {/* A caution and not a refusal. The sentence says nothing stored has changed, and red
             beside that copy would contradict it — the same call api-keys-panel.css writes down
             for its own failed lookup. */}
@@ -533,30 +1190,55 @@ function AssetSourceSettings({
   }
 
   return (
-    <Section title="Where Apple gets assets" visible>
+    <Section id="assets" title="Where Apple gets assets" visible>
       <p className="settings-note">{summarise(policy).line}</p>
 
+      {/* ONE SOURCE PER ROW, and the switch on the shared right edge.
+          This used to be a stack of far-left square checkboxes whose descriptions ran to the full
+          width of the card underneath them, so there was no column to scan and no way to see at a
+          glance which sources were on. Each source is now the same two-column unit as every other
+          setting on this page: name and what it costs on the left, the switch on the right. The
+          whole group is one `data-setting`, because that is what search registers. */}
       <Row id="asset-sources" visible={shows('asset-sources')}>
-        <div className="settings-pair settings-pair--stack">
+        <div className="settings-switchlist">
           {SOURCE_EXPLANATIONS.map((e) => (
-            <label key={e.choice} className="asrc__choice asrc__choice--settings">
-              <input type="checkbox" disabled={save.isPending} checked={displayedChosen.includes(e.choice)} onChange={() => toggle(e.choice)} />
-              <span className="asrc__body">
-                <span className="asrc__name">{e.title}</span>
-                <span className="asrc__does">{e.does}</span>
+            <label key={e.choice} className="settings-switchrow">
+              <span className="settings-switchrow__text">
+                <span className="settings-switchrow__name">{e.title}</span>
+                <span className="settings-switchrow__does">{e.does}</span>
                 <span className="asrc__meta">
                   <span className="asrc__cost">{e.costs}</span>
                   <span className="asrc__reach">{e.reach}</span>
                 </span>
               </span>
+              <input
+                className="settings-switch"
+                type="checkbox"
+                disabled={save.isPending}
+                checked={displayedChosen.includes(e.choice)}
+                onChange={() => toggle(e.choice)}
+              />
             </label>
           ))}
 
-          <label className="asrc__remember">
-            <input type="checkbox" disabled={save.isPending} checked={displayedAsk} onChange={() => { setChosen([...displayedChosen]); setDirty(true); setAsk(!displayedAsk); }} />
-            Ask me again before each build
+          <label className="settings-switchrow">
+            <span className="settings-switchrow__text">
+              <span className="settings-switchrow__name">Ask me again before each build</span>
+              <span className="settings-switchrow__does">
+                Off, and Apple remembers this choice and gets on with it.
+              </span>
+            </span>
+            <input
+              className="settings-switch"
+              type="checkbox"
+              disabled={save.isPending}
+              checked={displayedAsk}
+              onChange={() => { setChosen([...displayedChosen]); setDirty(true); setAsk(!displayedAsk); }}
+            />
           </label>
+        </div>
 
+        <div className="settings-commit">
           {displayedChosen.length === 0 && (
             <p className="form-error" role="alert">
               {/* The same sentence the dialog uses. An empty allow list is not a setting, it is a
@@ -564,10 +1246,9 @@ function AssetSourceSettings({
               With none of these, Apple can only place plain parts.
             </p>
           )}
-
           <button
             type="button"
-            className="btn"
+            className="btn btn-primary"
             disabled={save.isPending || !dirty}
             title={!save.isPending && !dirty ? 'Nothing has changed yet' : undefined}
             onClick={() => save.mutate()}
@@ -657,7 +1338,7 @@ function NotificationSettings({
   );
 
   return (
-    <Section title="Notifications" visible={sectionShows('notify-quiet-hours', 'notify-digest', 'notify-events')}>
+    <Section id="notifications" title="Notifications" visible={sectionShows('notify-quiet-hours', 'notify-digest', 'notify-events')}>
       {/* A FAILED READ IS NOT "NOTHING IS SET". Rendering the defaults over a fetch that never
           answered would show quiet hours as off to somebody who has them on. */}
       {stored.isError && (
@@ -667,34 +1348,57 @@ function NotificationSettings({
         </p>
       )}
 
-      <Row id="notify-quiet-hours" visible={shows('notify-quiet-hours')}>
-        <h3 className="settings-sub">Quiet hours</h3>
+      <Row id="notify-quiet-hours"
+        visible={shows('notify-quiet-hours')}
+        title="Quiet hours"
+        controlStacks
+        control={
+          <>
+            <div className="settings-pair">
+              <label className="field">
+                <span className="field-label">From</span>
+                <input
+                  type="time"
+                  name="quietStart"
+                  value={start}
+                  disabled={stored.isPending}
+                  onChange={(e) => edit(() => setStart(e.target.value))}
+                />
+              </label>
+              <label className="field">
+                <span className="field-label">Until</span>
+                <input
+                  type="time"
+                  name="quietEnd"
+                  value={end}
+                  disabled={stored.isPending}
+                  onChange={(e) => edit(() => setEnd(e.target.value))}
+                />
+              </label>
+            </div>
+            <label className="field">
+              <span className="field-label">Read these times in</span>
+              <select
+                name="notifyTimeZone"
+                value={delivery.timezone}
+                disabled={stored.isPending}
+                onChange={(e) => edit(() => setDelivery({ ...delivery, timezone: e.target.value }))}
+              >
+                {zoneOptions.map((z) => (
+                  <option key={z} value={z}>
+                    {z.replace(/_/g, ' ')}
+                    {z === deviceTimeZone() ? ' — this device' : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
+        }
+      >
         <p className="settings-note">
           Nothing arrives inside this window except a billing or security alert, which are never held. Leave both
           empty for no quiet hours.
         </p>
-        <div className="settings-pair">
-          <label className="field">
-            <span className="field-label">From</span>
-            <input
-              type="time"
-              name="quietStart"
-              value={start}
-              disabled={stored.isPending}
-              onChange={(e) => edit(() => setStart(e.target.value))}
-            />
-          </label>
-          <label className="field">
-            <span className="field-label">Until</span>
-            <input
-              type="time"
-              name="quietEnd"
-              value={end}
-              disabled={stored.isPending}
-              onChange={(e) => edit(() => setEnd(e.target.value))}
-            />
-          </label>
-        </div>
         {window.problem && (
           <p className="settings-note settings-note-warn" role="alert">
             {window.problem === 'half_window'
@@ -702,84 +1406,77 @@ function NotificationSettings({
               : rejectSentence('notify_delivery:quiet_hours', window.problem)}
           </p>
         )}
-
-        <label className="field">
-          <span className="field-label">Read these times in</span>
-          <select
-            name="notifyTimeZone"
-            value={delivery.timezone}
-            disabled={stored.isPending}
-            onChange={(e) => edit(() => setDelivery({ ...delivery, timezone: e.target.value }))}
-          >
-            {zoneOptions.map((z) => (
-              <option key={z} value={z}>
-                {z.replace(/_/g, ' ')}
-                {z === deviceTimeZone() ? ' — this device' : ''}
-              </option>
-            ))}
-          </select>
-        </label>
       </Row>
 
-      <Row id="notify-digest" visible={shows('notify-digest')}>
-        <h3 className="settings-sub">How often</h3>
-        <label className="field">
-          <span className="field-label">Delivery</span>
-          <select
-            name="notifyDigest"
-            value={delivery.digest}
-            disabled={stored.isPending}
-            onChange={(e) => edit(() => setDelivery({ ...delivery, digest: e.target.value as DigestMode }))}
-          >
-            {DIGEST_MODES.map((m) => (
-              <option key={m} value={m}>
-                {digestLabel(m)}
-              </option>
-            ))}
-          </select>
-        </label>
-        {/* The hour means nothing for 'off' and 'hourly' — the server ignores it — and a control
-            that is always visible invites somebody to set a value that changes nothing. */}
-        {delivery.digest === 'daily' && (
-          <label className="field">
-            <span className="field-label">Arriving at</span>
-            <select
-              name="notifyDigestHour"
-              value={String(delivery.digest_hour)}
-              disabled={stored.isPending}
-              onChange={(e) => edit(() => setDelivery({ ...delivery, digest_hour: Number(e.target.value) }))}
-            >
-              {Array.from({ length: 24 }, (_, h) => (
-                <option key={h} value={String(h)}>
-                  {digestHourLabel(h)}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
+      <Row id="notify-digest"
+        visible={shows('notify-digest')}
+        title="How often"
+        controlStacks={delivery.digest === 'daily'}
+        control={
+          <>
+            <label className="field">
+              <span className="field-label">Delivery</span>
+              <select
+                name="notifyDigest"
+                value={delivery.digest}
+                disabled={stored.isPending}
+                onChange={(e) => edit(() => setDelivery({ ...delivery, digest: e.target.value as DigestMode }))}
+              >
+                {DIGEST_MODES.map((m) => (
+                  <option key={m} value={m}>
+                    {digestLabel(m)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {/* The hour means nothing for 'off' and 'hourly' — the server ignores it — and a
+                control that is always visible invites somebody to set a value that changes
+                nothing. */}
+            {delivery.digest === 'daily' && (
+              <label className="field">
+                <span className="field-label">Arriving at</span>
+                <select
+                  name="notifyDigestHour"
+                  value={String(delivery.digest_hour)}
+                  disabled={stored.isPending}
+                  onChange={(e) => edit(() => setDelivery({ ...delivery, digest_hour: Number(e.target.value) }))}
+                >
+                  {Array.from({ length: 24 }, (_, h) => (
+                    <option key={h} value={String(h)}>
+                      {digestHourLabel(h)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </>
+        }
+      >
+        <p className="settings-note">How often Apple collects what has happened and sends it on.</p>
       </Row>
 
       <Row id="notify-events" visible={shows('notify-events')}>
         <h3 className="settings-sub">What to tell me about</h3>
-        <fieldset className="prefs__set">
+        <fieldset className="prefs__set settings-switchlist">
           <legend className="gx-sr">Notification kinds</legend>
           {NOTIFICATION_KINDS.map((kind) => {
             const locked = MANDATORY_KINDS.includes(kind);
             return (
-              <label key={kind} className="prefs__check">
+              <label key={kind} className="settings-switchrow">
+                <span className="settings-switchrow__text">
+                  <span className="settings-switchrow__name">{KIND_LABELS[kind]}</span>
+                  {/* Disabled AND PRESENT. A row that is simply absent reads as "this product does
+                      not notify me about billing" — it does, and it always will. */}
+                  {locked && <span className="settings-switchrow__does">{MANDATORY_REASON}</span>}
+                </span>
                 <input
+                  className="settings-switch"
                   type="checkbox"
                   name={`notify-${kind}`}
                   checked={eventEnabled(events, kind)}
                   disabled={locked || stored.isPending}
                   onChange={(e) => edit(() => setEvents(toggledEvents(events, kind, e.target.checked)))}
                 />
-                <span>
-                  {KIND_LABELS[kind]}
-                  {/* Disabled AND PRESENT. A row that is simply absent reads as "this product does
-                      not notify me about billing" — it does, and it always will. */}
-                  {locked && <span className="field-hint"> — {MANDATORY_REASON}</span>}
-                </span>
               </label>
             );
           })}
@@ -794,9 +1491,10 @@ function NotificationSettings({
         </ul>
       )}
 
+      <div className="settings-commit">
       <button
         type="button"
-        className="btn"
+        className="btn btn-primary"
         disabled={!dirty || save.isPending || window.problem !== null || stored.isPending}
         // Four ways to be disabled and four different things to do about it. Without this the
         // button is dead for a reason nobody on the page states.
@@ -815,6 +1513,7 @@ function NotificationSettings({
       >
         {save.isPending ? 'Saving…' : 'Save notification settings'}
       </button>
+      </div>
     </Section>
   );
 }
@@ -1390,9 +2089,28 @@ export function SettingsPage() {
     onError: (e: Error) => toast(`Couldn't save: ${e.message}`, 'error'),
   });
 
+  /**
+   * The progress of the walk, because it is dozens of requests rather than one.
+   *
+   * A button that says "Preparing your file…" for forty seconds is indistinguishable from a
+   * button that has died. The count is the only thing that separates them, and it is the real
+   * count of requests answered — not a bar that fills on a timer.
+   */
+  const [exportWalk, setExportWalk] = useState<{ done: number; total: number } | null>(null);
+
   const exportData = useMutation({
-    mutationFn: () => downloadAccountExport(),
-    onSuccess: () => toast('Your data is downloading.', 'success'),
+    mutationFn: () =>
+      buildCompleteAccountExport((done, total) => setExportWalk({ done, total })),
+    onSettled: () => setExportWalk(null),
+    // REPORTED, NOT ASSUMED. `complete` is what the walk measured; a file that is missing four
+    // stores must not be announced as everything, and the file itself names which four.
+    onSuccess: (out) =>
+      toast(
+        out.complete
+          ? `Your data is downloading — ${formatNumber(out.requests)} requests, one file.`
+          : `Your data is downloading, but ${formatNumber(out.missing.length)} of ${formatNumber(out.requests)} requests did not answer. The file names each one.`,
+        out.complete ? 'success' : 'error',
+      ),
     onError: (e: Error) => toast(`Couldn't export your data: ${e.message}`, 'error'),
   });
 
@@ -1492,16 +2210,18 @@ export function SettingsPage() {
   };
 
   return (
-    <div className="page page-narrow">
-      <div className="page-head">
-        <div>
-          <h1 className="page-title">Settings</h1>
-          <p className="page-sub">Signed in as {session?.user.email}</p>
+    <div className="page settings-page">
+      {/* THE MASTHEAD USED TO BE THE TOP 40% OF THE FIRST SCREEN — a 40px title, a sub-line and a
+          search box wrapped in its own bordered card, which left one text field and a Save button
+          as the only operable things above the fold. The title is now 26px, the search box stands
+          on its own with no wrapper, and the rail below puts the whole shape of the page on screen
+          before you have scrolled a pixel. */}
+      <div className="settings-head">
+        <div className="settings-head__who">
+          <h1 className="settings-title">Settings</h1>
+          <p className="settings-signed">Signed in as {session?.user.email}</p>
         </div>
-      </div>
-
-      <div className="card settings-card settings-search">
-        <label className="field" htmlFor="settings-search">
+        <label className="settings-find" htmlFor="settings-search">
           <span className="gx-sr">Search settings</span>
           <input
             id="settings-search"
@@ -1509,63 +2229,115 @@ export function SettingsPage() {
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search settings — try “dark”, “24 hour”, “devices”"
+            placeholder="Search settings"
             autoComplete="off"
           />
         </label>
-        {/* BOTH ANSWERS, not only the bad one. A filtered page with no count looks like a page
-            that has lost its sections; a "nothing matches" with no next move leaves somebody
-            guessing at the vocabulary. */}
-        {query.trim() !== '' && (
-          <p className="settings-note" role="status">
-            {matches.size === 0
-              ? `Nothing matches “${query.trim()}”. Try a word from the setting itself, like “theme”, “password”, “time zone” or “delete”.`
-              : `Showing ${matches.size} of ${SETTING_FIELDS.length} settings. Clear the box to see them all.`}
-          </p>
-        )}
       </div>
 
+      {/* BOTH ANSWERS, not only the bad one. A filtered page with no count looks like a page
+          that has lost its sections; a "nothing matches" with no next move leaves somebody
+          guessing at the vocabulary. */}
+      {query.trim() !== '' && (
+        <p className="settings-note settings-found" role="status">
+          {matches.size === 0
+            ? `Nothing matches “${query.trim()}”. Try a word from the setting itself, like “theme”, “password”, “time zone” or “delete”.`
+            : `Showing ${matches.size} of ${SETTING_FIELDS.length} settings. Clear the box to see them all.`}
+        </p>
+      )}
+
+      <div className="settings-shell">
+        <SettingsRail
+          entries={SECTION_INDEX.filter((s) => sectionShows(...s.fields)).map((s) => ({
+            group: s.group,
+            id: s.id,
+            label: s.label,
+          }))}
+        />
+
+        <div className="settings-stream">
       {profile.isError && (
         <div className="card settings-card">
           <Failure error={profile.error} onRetry={() => void profile.refetch()} compact />
         </div>
       )}
 
-      <Section title="Profile" visible={sectionShows('display-name')}>
-        <Row id="display-name" visible={shows('display-name')}>
-          <form onSubmit={submitName} className="settings-inline">
-            <label className="field settings-grow">
-              <span className="field-label">Display name</span>
-              <input
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                maxLength={60}
-                name="displayName"
-                id="display-name"
-                // A disabled field showing "How Apple should address you" reads as "you have not set
-                // one" while the answer is still being fetched. Same conflation as everywhere else.
-                placeholder={profile.isPending ? 'Loading…' : 'How Apple should address you'}
-                disabled={profile.isPending}
-              />
-            </label>
-            <button
-              type="submit"
-              className="btn"
-              disabled={saveName.isPending || profile.isPending}
-              title={!saveName.isPending && profile.isPending ? 'Still reading your profile' : undefined}
-            >
-              {saveName.isPending ? 'Saving…' : 'Save'}
-            </button>
-          </form>
+      <Section id="profile" title="Profile" visible={sectionShows('display-name')}>
+        <Row id="display-name"
+          visible={shows('display-name')}
+          title="Display name"
+          control={
+            <form onSubmit={submitName} className="settings-inline">
+              <label className="field settings-grow">
+                <span className="field-label">Display name</span>
+                <input
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  maxLength={60}
+                  name="displayName"
+                  id="display-name"
+                  // A disabled field showing "How Apple should address you" reads as "you have not
+                  // set one" while the answer is still being fetched. Same conflation as everywhere
+                  // else.
+                  placeholder={profile.isPending ? 'Loading…' : 'How Apple should address you'}
+                  disabled={profile.isPending}
+                />
+              </label>
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={saveName.isPending || profile.isPending}
+                title={!saveName.isPending && profile.isPending ? 'Still reading your profile' : undefined}
+              >
+                {saveName.isPending ? 'Saving…' : 'Save'}
+              </button>
+            </form>
+          }
+        >
+          <p className="settings-note">How Apple addresses you in chat and on your projects.</p>
         </Row>
       </Section>
 
       <Section
+        id="security"
         visible={sectionShows('email-address', 'password', 'two-step', 'sign-out-everywhere', 'security-history')}
         title="Security"
       >
-        <Row id="email-address" visible={shows('email-address')}>
-          <h3 className="settings-sub">Email address</h3>
+        <Row id="email-address"
+          visible={shows('email-address')}
+          title="Email address"
+          control={
+            emailSentTo ? null : (
+              <form
+                className="settings-inline"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (newEmail.trim()) guard('change-email');
+                }}
+              >
+                <label className="field settings-grow">
+                  <span className="field-label">New email address</span>
+                  <input
+                    type="email"
+                    name="newEmail"
+                    autoComplete="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    placeholder="you@example.com"
+                  />
+                </label>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={!newEmail.trim() || changeEmail.isPending}
+                  title={!changeEmail.isPending && !newEmail.trim() ? 'Type the new address first' : undefined}
+                >
+                  {changeEmail.isPending ? 'Sending…' : 'Change'}
+                </button>
+              </form>
+            )
+          }
+        >
           <p className="settings-current">
             <strong>{session?.user.email}</strong>{' '}
             {/* Three states, not two. An absent user object is not an unverified address, and a
@@ -1587,98 +2359,78 @@ export function SettingsPage() {
               </button>
             </p>
           )}
-          {emailSentTo ? (
+          {emailSentTo && (
             <p className="settings-note" role="status">
               A confirmation link is on its way to <strong>{emailSentTo}</strong>. The address on your account does not
               change until that link is opened, so if this was not you, doing nothing is enough — and it is worth
               changing your password, because someone who could reach this page could reach the rest of the account.
             </p>
-          ) : (
-            <form
-              className="settings-inline"
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (newEmail.trim()) guard('change-email');
-              }}
-            >
-              <label className="field settings-grow">
-                <span className="field-label">New email address</span>
-                <input
-                  type="email"
-                  name="newEmail"
-                  autoComplete="email"
-                  value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
-                  placeholder="you@example.com"
-                />
-              </label>
-              <button
-                type="submit"
-                className="btn"
-                disabled={!newEmail.trim() || changeEmail.isPending}
-                title={!changeEmail.isPending && !newEmail.trim() ? 'Type the new address first' : undefined}
-              >
-                {changeEmail.isPending ? 'Sending…' : 'Change'}
-              </button>
-            </form>
           )}
         </Row>
 
-        <Row id="password" visible={shows('password')}>
-          <h3 className="settings-sub">Password</h3>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (!passwordFault && newPassword && newPassword === confirmPassword) guard('change-password');
-            }}
-          >
-            {/* The manager needs to know whose password this is. */}
-            <input type="text" name="username" autoComplete="username" value={session?.user.email ?? ''} readOnly hidden />
-            <label className="field">
-              <span className="field-label">New password</span>
-              <input
-                type="password"
-                name="newPassword"
-                autoComplete="new-password"
-                minLength={PASSWORD_MIN}
-                value={newPassword}
-                aria-invalid={passwordTooWeak !== null || undefined}
-                onChange={(e) => setNewPassword(e.target.value)}
-              />
-            </label>
-            <label className="field">
-              <span className="field-label">New password again</span>
-              <input
-                type="password"
-                name="confirmPassword"
-                autoComplete="new-password"
-                value={confirmPassword}
-                aria-invalid={passwordsDiffer || undefined}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-              />
-            </label>
-            {passwordFault && (
-              <p className="form-error" role="alert">
-                {passwordFault}
-              </p>
-            )}
-            <button
-              type="submit"
-              className="btn"
-              disabled={
-                changePassword.isPending || !newPassword || newPassword !== confirmPassword || passwordFault !== null
-              }
-              title={
-                changePassword.isPending
-                  ? undefined
-                  : !newPassword
-                    ? 'Enter a new password first'
-                    : passwordFault ?? (newPassword !== confirmPassword ? 'Type the new password again to confirm' : undefined)
-              }
+        <Row id="password"
+          visible={shows('password')}
+          title="Password"
+          controlStacks
+          control={
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!passwordFault && newPassword && newPassword === confirmPassword) guard('change-password');
+              }}
             >
-              {changePassword.isPending ? 'Saving…' : 'Change password'}
-            </button>
-          </form>
+              {/* The manager needs to know whose password this is. */}
+              <input type="text" name="username" autoComplete="username" value={session?.user.email ?? ''} readOnly hidden />
+              <label className="field">
+                <span className="field-label">New password</span>
+                <input
+                  type="password"
+                  name="newPassword"
+                  autoComplete="new-password"
+                  minLength={PASSWORD_MIN}
+                  value={newPassword}
+                  aria-invalid={passwordTooWeak !== null || undefined}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+              </label>
+              <label className="field">
+                <span className="field-label">New password again</span>
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  aria-invalid={passwordsDiffer || undefined}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+              </label>
+              {passwordFault && (
+                <p className="form-error" role="alert">
+                  {passwordFault}
+                </p>
+              )}
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={
+                  changePassword.isPending || !newPassword || newPassword !== confirmPassword || passwordFault !== null
+                }
+                title={
+                  changePassword.isPending
+                    ? undefined
+                    : !newPassword
+                      ? 'Enter a new password first'
+                      : passwordFault ?? (newPassword !== confirmPassword ? 'Type the new password again to confirm' : undefined)
+                }
+              >
+                {changePassword.isPending ? 'Saving…' : 'Change password'}
+              </button>
+            </form>
+          }
+        >
+          <p className="settings-note">
+            At least {PASSWORD_MIN} characters. Changing it asks you to confirm who you are first.
+          </p>
         </Row>
 
         <Row id="two-step" visible={shows('two-step')}>
@@ -1690,15 +2442,19 @@ export function SettingsPage() {
           />
         </Row>
 
-        <Row id="sign-out-everywhere" visible={shows('sign-out-everywhere')}>
-          <h3 className="settings-sub">Sign out everywhere</h3>
+        <Row id="sign-out-everywhere"
+          visible={shows('sign-out-everywhere')}
+          title="Sign out everywhere"
+          control={
+            <button type="button" className="btn btn-strong" onClick={() => guard('sign-out-everywhere')}>
+              Sign out on all devices
+            </button>
+          }
+        >
           <p className="settings-note">
             Ends every session on every device, including this one. Reach for this if you have lost a machine or seen
             something you do not recognise. Signing out from the account menu only affects this browser.
           </p>
-          <button type="button" className="btn" onClick={() => guard('sign-out-everywhere')}>
-            Sign out on all devices
-          </button>
         </Row>
 
         <Row id="security-history" visible={shows('security-history')}>
@@ -1706,7 +2462,7 @@ export function SettingsPage() {
         </Row>
       </Section>
 
-      <Section title="Connections" visible={sectionShows('roblox-key', 'api-keys', 'discord')}>
+      <Section id="connections" title="Connections" visible={sectionShows('roblox-key', 'api-keys', 'discord')}>
         <Row id="roblox-key" visible={shows('roblox-key')}>
           <RobloxKeyPanel />
         </Row>
@@ -1725,100 +2481,123 @@ export function SettingsPage() {
       <AssetSourceSettings userId={userId} shows={shows} sectionShows={sectionShows} />
       <NotificationSettings userId={userId} shows={shows} sectionShows={sectionShows} />
 
-      <Section title="Appearance" visible={sectionShows('appearance', 'motion')}>
-        <Row id="appearance" visible={shows('appearance')}>
-          <h3 className="settings-sub">Appearance</h3>
-          <Choice
-            label="Theme"
-            value={prefs.appearance}
-            options={APPEARANCES}
-            names={APPEARANCE_NAMES}
-            onChange={(v) => setPref('appearance', v)}
-            hint={
-              prefs.appearance === 'system'
-                ? `Your system is set to ${systemTheme === 'dark' ? 'dark' : 'light'}, so Apple is ${theme}. It follows along when you change it.`
-                : 'Dark is the apple’s natural habitat, but daylight works too.'
-            }
-          />
+      <Section id="appearance" title="Appearance" visible={sectionShows('appearance', 'motion')}>
+        <Row id="appearance"
+          visible={shows('appearance')}
+          title="Theme"
+          control={
+            <Choice
+              label="Theme"
+              value={prefs.appearance}
+              options={APPEARANCES}
+              names={APPEARANCE_NAMES}
+              onChange={(v) => setPref('appearance', v)}
+            />
+          }
+        >
+          <p className="settings-note">
+            {prefs.appearance === 'system'
+              ? `Your system is set to ${systemTheme === 'dark' ? 'dark' : 'light'}, so Apple is ${theme}. It follows along when you change it.`
+              : 'Dark is the apple’s natural habitat, but daylight works too.'}
+          </p>
         </Row>
 
-        <Row id="motion" visible={shows('motion')}>
-          <h3 className="settings-sub">Motion</h3>
-          <Choice
-            label="Motion"
-            value={prefs.motion}
-            options={MOTIONS}
-            names={MOTION_NAMES}
-            onChange={(v) => setPref('motion', v)}
-            hint={
-              prefs.motion === 'full'
-                ? 'Some effects are switched off by your operating system’s own reduced-motion setting and stay off; this covers the movement Apple itself drives.'
-                : 'Animation, the drifting cursor and the grain. “Always reduce” overrides your system setting in this product only.'
-            }
-          />
+        <Row id="motion"
+          visible={shows('motion')}
+          title="Motion"
+          control={
+            <Choice
+              label="Motion"
+              value={prefs.motion}
+              options={MOTIONS}
+              names={MOTION_NAMES}
+              onChange={(v) => setPref('motion', v)}
+            />
+          }
+        >
+          <p className="settings-note">
+            {prefs.motion === 'full'
+              ? 'Some effects are switched off by your operating system’s own reduced-motion setting and stay off; this covers the movement Apple itself drives.'
+              : 'Animation, the drifting cursor and the grain. “Always reduce” overrides your system setting in this product only.'}
+          </p>
         </Row>
       </Section>
 
-      <Section title="Language and region" visible={sectionShows('region', 'clock', 'time-zone')}>
-        <Row id="region" visible={shows('region')}>
-          <label className="field">
-            <span className="field-label">Regional formatting</span>
-            <select
-              name="region"
-              value={prefs.region}
-              onChange={(e) => setPref('region', e.target.value as Region)}
-            >
-              {REGIONS.map((r) => (
-                <option key={r} value={r}>
-                  {REGION_NAMES[r]}
-                </option>
-              ))}
-            </select>
-          </label>
+      <Section id="region" title="Language and region" visible={sectionShows('region', 'clock', 'time-zone')}>
+        <Row id="region"
+          visible={shows('region')}
+          title="Regional formatting"
+          control={
+            <label className="field">
+              <span className="field-label">Regional formatting</span>
+              <select
+                name="region"
+                value={prefs.region}
+                onChange={(e) => setPref('region', e.target.value as Region)}
+              >
+                {REGIONS.map((r) => (
+                  <option key={r} value={r}>
+                    {REGION_NAMES[r]}
+                  </option>
+                ))}
+              </select>
+            </label>
+          }
+        >
           <p className="settings-note">
             Dates and numbers throughout Apple. Right now: <strong>{formatNumber(1234.5)}</strong> and{' '}
             <strong>{fullStamp(Date.now())}</strong>.
           </p>
         </Row>
 
-        <Row id="clock" visible={shows('clock')}>
-          <h3 className="settings-sub">Clock</h3>
-          <Choice
-            label="Clock"
-            value={prefs.hourCycle}
-            options={HOUR_CYCLES}
-            names={HOUR_NAMES}
-            onChange={(v) => setPref('hourCycle', v)}
-          />
+        <Row id="clock"
+          visible={shows('clock')}
+          title="Clock"
+          control={
+            <Choice
+              label="Clock"
+              value={prefs.hourCycle}
+              options={HOUR_CYCLES}
+              names={HOUR_NAMES}
+              onChange={(v) => setPref('hourCycle', v)}
+            />
+          }
+        >
+          <p className="settings-note">How times are written across Apple.</p>
         </Row>
 
-        <Row id="time-zone" visible={shows('time-zone')}>
-          <label className="field">
-            <span className="field-label">Time zone</span>
-            <select
-              name="timeZone"
-              value={prefs.timeZone}
-              onChange={(e) => setPref('timeZone', e.target.value)}
-            >
-              <option value="system">Match my device</option>
-              {/* A zone already stored that is not on the short list still works and still shows —
-                  dropping it silently would move every timestamp without saying so. */}
-              {!COMMON_TIME_ZONES.includes(prefs.timeZone) && prefs.timeZone !== 'system' && (
-                <option value={prefs.timeZone}>{prefs.timeZone}</option>
-              )}
-              {COMMON_TIME_ZONES.map((z) => (
-                <option key={z} value={z}>
-                  {z.replace(/_/g, ' ')}
-                </option>
-              ))}
-            </select>
-          </label>
+        <Row id="time-zone"
+          visible={shows('time-zone')}
+          title="Time zone"
+          control={
+            <label className="field">
+              <span className="field-label">Time zone</span>
+              <select
+                name="timeZone"
+                value={prefs.timeZone}
+                onChange={(e) => setPref('timeZone', e.target.value)}
+              >
+                <option value="system">Match my device</option>
+                {/* A zone already stored that is not on the short list still works and still shows —
+                    dropping it silently would move every timestamp without saying so. */}
+                {!COMMON_TIME_ZONES.includes(prefs.timeZone) && prefs.timeZone !== 'system' && (
+                  <option value={prefs.timeZone}>{prefs.timeZone}</option>
+                )}
+                {COMMON_TIME_ZONES.map((z) => (
+                  <option key={z} value={z}>
+                    {z.replace(/_/g, ' ')}
+                  </option>
+                ))}
+              </select>
+            </label>
+          }
+        >
           <p className="settings-note">Every timestamp in Apple is shown in this zone, and says which zone it is.</p>
         </Row>
       </Section>
 
 
-      <Section title="Privacy" visible={sectionShows('training-promise', 'analytics-opt-out', 'download-my-data')}>
+      <Section id="privacy" title="Privacy" visible={sectionShows('training-promise', 'analytics-opt-out', 'download-my-data')}>
         {/* THE TOGGLE IS GONE, AND THE PROMISE IS THE REASON.
             Both published privacy pages say Apple never trains on a customer's projects — the
             policy states outright that no opt-in programme exists. This row offered exactly that
@@ -1842,27 +2621,32 @@ export function SettingsPage() {
             The number below is the real retention window from apps/worker/src/retention.ts, and
             tests/account-data.test.mjs compares the two — a privacy page quoting a window the code
             does not keep is the drift this product has already had once. */}
-        <Row id="analytics-opt-out" visible={shows('analytics-opt-out')}>
-          <h3 className="settings-sub">Analytics</h3>
+        <Row id="analytics-opt-out"
+          visible={shows('analytics-opt-out')}
+          title="Analytics"
+          control={
+            <label className="switch-row switch-row--toggle">
+              <input
+                className="settings-switch"
+                type="checkbox"
+                name="analyticsOptOut"
+                id="analytics-opt-out"
+                checked={storedPrefs.data?.preferences.prefs.analytics_opt_out ?? false}
+                onChange={(e) => setAnalyticsOptOut.mutate(e.target.checked)}
+                disabled={storedPrefs.isPending || setAnalyticsOptOut.isPending}
+              />
+              <span className="gx-sr">Keep my account id out of analytics</span>
+            </label>
+          }
+        >
           <p className="settings-note">
             Apple records which requests were made and how long they took, so a broken feature can be told from a slow
             one. That record carries your account id for 30 days unless you turn it off here. The requests are still
             counted either way — an opt-out removes your name from the row, not the row.
           </p>
-          <label className="switch-row">
-            <input
-              type="checkbox"
-              name="analyticsOptOut"
-              id="analytics-opt-out"
-              checked={storedPrefs.data?.preferences.prefs.analytics_opt_out ?? false}
-              onChange={(e) => setAnalyticsOptOut.mutate(e.target.checked)}
-              disabled={storedPrefs.isPending || setAnalyticsOptOut.isPending}
-            />
-            <span>
-              Keep my account id out of analytics
-              <span className="field-hint"> — takes effect within a minute.</span>
-            </span>
-          </label>
+          <p className="settings-note settings-note-quiet">
+            Switched on, your account id is kept out. Takes effect within a minute.
+          </p>
           {/* A FAILED READ IS NOT "OFF". Rendering an unchecked box over a fetch that never
               answered would show somebody their opt-out had been forgotten. */}
           {storedPrefs.isError && (
@@ -1873,41 +2657,72 @@ export function SettingsPage() {
           )}
         </Row>
 
-        <Row id="download-my-data" visible={shows('download-my-data')}>
-          <h3 className="settings-sub">Download my data</h3>
+        <Row id="download-my-data"
+          visible={shows('download-my-data')}
+          title="Download my data"
+          control={
+            <button type="button" className="btn btn-strong" onClick={() => guard('export-data')} disabled={exportData.isPending}>
+              {exportData.isPending
+                ? exportWalk && exportWalk.total > 0
+                  ? `Collecting — ${formatNumber(exportWalk.done)} of ${formatNumber(exportWalk.total)}`
+                  : 'Reading your account…'
+                : 'Download my data'}
+            </button>
+          }
+        >
           <p className="settings-note">
-            One file with everything Apple holds about you in its database — your profile, your projects, every message,
-            your checkpoints, what you have spent, and the keys you have issued. It also names what it does NOT contain
-            and where to get that instead, so the file is honest about being one part of the answer.
+            One file, one click. Your profile and your projects, every message of every conversation in full, your
+            checkpoints, every Credit you have spent, your inbox, what Apple was asked to remember, your comments,
+            reviews, share links and Studio pairings. The browser walks every route the server holds about you rather
+            than handing you a list of them to fetch yourself, and it counts the requests while it does it.
           </p>
-          <button type="button" className="btn" onClick={() => guard('export-data')} disabled={exportData.isPending}>
-            {exportData.isPending ? 'Preparing your file…' : 'Download my data'}
-          </button>
+          <p className="settings-note settings-note-quiet">
+            Two things stay out of it and the file says so at the top, next to the route that serves each: bytes —
+            images, audio, your workspace files and checkpoint snapshots, which cannot be lines of JSON — and a live
+            Studio pairing code, which would be a working key to your project sitting in a downloaded file. Everything
+            else about those pairings is in there.
+          </p>
         </Row>
       </Section>
 
-      <Section title="Danger zone" visible={sectionShows('reset-settings', 'delete-account')} danger>
-        <Row id="reset-settings" visible={shows('reset-settings')}>
-          <h3 className="settings-sub">Reset settings</h3>
+      <Section id="danger" title="Danger zone" visible={sectionShows('reset-settings', 'delete-account')} danger>
+        <Row id="reset-settings"
+          visible={shows('reset-settings')}
+          title="Reset settings"
+          control={
+            <button
+              type="button"
+              className="btn btn-strong"
+              onClick={() => guard('reset-settings')}
+              disabled={isDefaultPrefs(prefs)}
+              title={isDefaultPrefs(prefs) ? 'Nothing has been changed from the defaults' : undefined}
+            >
+              {isDefaultPrefs(prefs)
+                ? 'Everything is already default'
+                : `Reset ${changed.length} setting${changed.length === 1 ? '' : 's'}`}
+            </button>
+          }
+        >
           <p className="settings-note">
             Puts appearance, motion, region, clock, time zone and workspace preferences back to their defaults on this
             device. Your projects, your display name and your privacy choice are not touched.
           </p>
-          <button
-            type="button"
-            className="btn"
-            onClick={() => guard('reset-settings')}
-            disabled={isDefaultPrefs(prefs)}
-            title={isDefaultPrefs(prefs) ? 'Nothing has been changed from the defaults' : undefined}
-          >
-            {isDefaultPrefs(prefs)
-              ? 'Everything is already default'
-              : `Reset ${changed.length} setting${changed.length === 1 ? '' : 's'}`}
-          </button>
         </Row>
 
-        <Row id="delete-account" visible={shows('delete-account')}>
-          <h3 className="settings-sub">Delete my account</h3>
+        <Row id="delete-account"
+          visible={shows('delete-account')}
+          title="Delete my account"
+          control={
+            <button
+              type="button"
+              className="btn btn-danger"
+              onClick={() => guard('delete-account')}
+              disabled={runDelete.isPending}
+            >
+              {runDelete.isPending ? 'Deleting…' : 'Delete my account'}
+            </button>
+          }
+        >
           <p className="settings-note">
             Deletes your projects, conversations, checkpoints, workspace files, memory, notifications, automations, API
             keys and your stored Roblox key from every store Apple can reach. It cannot be undone.
@@ -1933,15 +2748,6 @@ export function SettingsPage() {
               {deletion.data.stepsFailed > 0 ? `, ${deletion.data.stepsFailed} could not be` : ''}.
             </p>
           )}
-          <button
-            type="button"
-            className="btn btn-danger"
-            onClick={() => guard('delete-account')}
-            disabled={runDelete.isPending}
-          >
-            {runDelete.isPending ? 'Deleting…' : 'Delete my account'}
-          </button>
-
           {/* THE SERVER'S RECEIPT, AS THE SERVER WROTE IT. It is the only thing that knows which
               stores were actually cleared; a sentence composed here would be this page claiming
               something nothing measured. */}
@@ -1960,6 +2766,8 @@ export function SettingsPage() {
           )}
         </Row>
       </Section>
+        </div>
+      </div>
 
       {reauthFor && (
         <ReauthDialog

@@ -33,8 +33,11 @@ const src = (name) => new URL(`../../../apps/worker/src/${name}`, import.meta.ur
 
 const out = join(dir, 'provenance.mjs');
 execFileSync(ESBUILD, [src('provenance.ts'), '--bundle', '--format=esm', '--platform=neutral', '--main-fields=main,module', '--outfile=' + out], { stdio: 'pipe' });
-const libOut = join(dir, 'asset-library.mjs');
-execFileSync(ESBUILD, [src('asset-library.ts'), '--bundle', '--format=esm', '--platform=neutral', '--main-fields=main,module', '--outfile=' + libOut], { stdio: 'pipe' });
+// `asset-library.ts` was bundled here until 2026-09-20, when the asset catalogue was removed.
+// What this file actually needs from it — the source-site vocabulary, the originality table and
+// the licence rules — moved to `asset-provenance.ts`, which holds exactly that and nothing else.
+const libOut = join(dir, 'asset-provenance.mjs');
+execFileSync(ESBUILD, [src('asset-provenance.ts'), '--bundle', '--format=esm', '--platform=neutral', '--main-fields=main,module', '--outfile=' + libOut], { stdio: 'pipe' });
 
 const {
   SOURCE_CREDITS,
@@ -46,7 +49,41 @@ const {
   recordAssetUse,
 } = await import(out);
 
-const { ASSET_ORIGINALITY, ASSET_SOURCE_SITES, originalityOf, originalAsset, validateProvenance, normaliseLicence, LICENCES } = await import(libOut);
+const { ASSET_ORIGINALITY, ASSET_SOURCE_SITES, originalityOf, normaliseLicence, LICENCES } = await import(libOut);
+
+//[[ `originalAsset()` WAS A CONSTRUCTOR IN THE DELETED CATALOGUE MODULE, AND IS A FIXTURE NOW.
+//
+//   It built a provenance record for something Apple made itself: source `procedural`, author
+//   `Apple`, no licence obligation. It was only ever called by this suite — nothing in the worker
+//   ever constructed one — so it went with `asset-library.ts`. The RECORD SHAPE is what these tests
+//   are about, and `attributionReport` still consumes exactly this shape out of `projectAssets`,
+//   so the shape is written here instead of imported from a module that no longer exists. ]]
+const originalAsset = ({ id, name, kind, tags, createdAt, robloxAssetId = null, sha256 = null }) => ({
+  id,
+  name,
+  kind,
+  source: 'procedural',
+  sourceUrl: 'https://apple.moshe-barami111.workers.dev',
+  // `NONE-PROCEDURAL` is the canonical id `normaliseLicence` resolves this string to, and it is
+  // what makes the record a real one rather than a plausible-looking shape: a licence string the
+  // table cannot resolve is graded `unrecognised_licence` and BLOCKS a commercial publish, so a
+  // fixture with invented wording would have quietly turned these tests into the opposite of what
+  // they claim to check.
+  licence: 'none-procedural',
+  licenceUrl: 'https://apple.moshe-barami111.workers.dev',
+  commercialUse: true,
+  attributionRequired: false,
+  author: 'Apple',
+  retrievedAt: createdAt,
+  importedAt: createdAt,
+  modifications: [],
+  robloxAssetId,
+  triangles: null,
+  textureResolution: null,
+  boundsStuds: null,
+  tags,
+  sha256,
+});
 
 const PROJECT = '11111111-2222-3333-4444-555555555555';
 
@@ -114,7 +151,6 @@ test('AN ORIGINAL APPLE ASSET is credited as our own work and never as a third p
     tags: ['lowpoly', 'market'],
     createdAt: '2026-08-31T11:00:00.000Z',
   });
-  assert.equal(validateProvenance(mine).ok, true, validateProvenance(mine).errors.join('; '));
   // `golem_original` is a PERSISTED originality value written into provenance rows and into user
   // places; the rebrand exempts it for exactly that reason. `author` is different — it is rendered
   // in the credits panel, so it carries the brand and follows it.
@@ -275,11 +311,14 @@ test('A NON-COMMERCIAL ASSET BLOCKS a commercial publish, and the report names i
   assert.equal(c.findings[0].severity, 'blocker');
 });
 
-test('a non-commercial licence is refused by the library gate too, not only at export', () => {
-  const r = validateProvenance(rec({ licence: 'CC BY-NC 4.0', commercialUse: false, attributionRequired: true }));
-  assert.equal(r.ok, false);
-  assert.equal(r.licenceId, 'CC-BY-NC-4.0');
-  assert.match(r.errors.join(' '), /does not permit commercial use/);
+test('a non-commercial licence is refused by the licence table too, not only at export', () => {
+  // This used to go through the catalogue's ingest validator, which refused the row before it was
+  // ever stored. There is no ingest any more, so the same decision is asserted where it now lives:
+  // the licence table, which `admitToKit` reads before a sound id reaches a customer's game.
+  const id = normaliseLicence('CC BY-NC 4.0');
+  assert.equal(id, 'CC-BY-NC-4.0');
+  assert.equal(LICENCES[id].commercialUse, false);
+  assert.equal(LICENCES[id].allowedInLibrary, false, 'non-commercial must be refused, not merely warned about');
 });
 
 test('NC-SA resolves to itself rather than being matched as NC or SA alone', () => {

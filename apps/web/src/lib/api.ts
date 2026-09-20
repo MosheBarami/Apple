@@ -16,10 +16,6 @@ import type { BillingChange, Invoice, InvoiceDetail, SubscriptionView } from './
 import { getAccessToken } from './supabase';
 import { noteReachability } from './connectivity';
 import type { SearchType } from './search-filters';
-import type { CatalogAsset } from './asset-catalog';
-
-export const searchAssetCatalog = (query: string, signal?: AbortSignal, insertableOnly = false): Promise<{ assets: CatalogAsset[] }> =>
-  request(`/api/assets/search?query=${encodeURIComponent(query)}&limit=20&insertableOnly=${insertableOnly}&previews=true`, { signal });
 
 export class ApiError extends Error {
   status: number;

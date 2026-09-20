@@ -11,7 +11,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -39,9 +39,51 @@ test('Env declares no WebAssembly.Module binding while no wrangler file can prov
 });
 
 test('nothing in the worker reads RESVG_WASM, so removing it changed no behaviour', () => {
-  const src = readFileSync(join(WORKER, 'src', 'asset-import.ts'), 'utf8');
-  assert.equal(/RESVG_WASM/.test(src), false);
-  // The refusal that the binding was supposed to gate is unconditional, which is why its absence
-  // was invisible: it never asks whether a renderer is present.
-  assert.match(src, /this deployment does not rasterise/);
+  //[[ THIS USED TO READ ONE FILE, AND THAT FILE HAS BEEN DELETED.
+  //
+  //   `asset-import.ts` was the SVG rasterisation path: it was the only module that would have used
+  //   an RESVG_WASM binding, and its refusal ("this deployment does not rasterise") was
+  //   unconditional, which is exactly why the missing binding was invisible. The asset catalogue
+  //   and its import pipeline were removed on 2026-09-20 and that file went with them.
+  //
+  //   Reading one named file is also the weaker check. The claim is about the WHOLE worker, so it
+  //   is now made about the whole worker: no source file anywhere under src/ reads the binding.
+  //   That covers the deleted file's replacement, wherever somebody puts it.
+  //
+  //   COMMENTS ARE STRIPPED FIRST, and that is not a loophole. `env.ts` carries a dated paragraph
+  //   explaining why the binding was removed, and a bare substring search red-lights on the
+  //   explanation — a check that fails on its own documentation and passes only once somebody
+  //   deletes it is measuring the wrong thing. What is searched for is a READ: a property access
+  //   or a declaration, in code. ]]
+  const stripComments = (src) => src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\/\/[^\n]*/g, ' ');
+  const READS = /(?:\.|\b)RESVG_WASM\s*[?!]?\s*[:.,)\]}=;]|(?:\.|\b)RESVG_WASM\s*$/m;
+  const readers = [];
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) { walk(full); continue; }
+      if (!entry.name.endsWith('.ts')) continue;
+      if (READS.test(stripComments(readFileSync(full, 'utf8')))) readers.push(full);
+    }
+  };
+  walk(join(WORKER, 'src'));
+  // CONTROL: the walk must actually have opened files, or "nothing reads it" is a walk that found
+  // nothing — a failure to observe rendering as an observation.
+  assert.ok(seenTypeScriptFiles(join(WORKER, 'src')) > 50, 'the source walk found almost no files, so it verified nothing');
+  assert.deepEqual(readers, [], `${readers.join(', ')} still reads RESVG_WASM, which no wrangler file provides`);
+  // CONTROL 2: the matcher must find a real binding read when one exists, or `[]` above is a regex
+  // that matches nothing rather than a worker that reads nothing.
+  assert.ok(READS.test(stripComments('const x = env.RESVG_WASM;')), 'the read matcher no longer matches a read');
+  assert.equal(READS.test(stripComments('// RESVG_WASM was here and is gone')), false, 'a comment must not count as a read');
 });
+
+/** How many .ts files the walk above can actually see. Used as its own falsification control. */
+function seenTypeScriptFiles(dir) {
+  let n = 0;
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) { n += seenTypeScriptFiles(full); continue; }
+    if (entry.name.endsWith('.ts')) n += 1;
+  }
+  return n;
+}

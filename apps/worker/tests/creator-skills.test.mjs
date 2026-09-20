@@ -400,3 +400,61 @@ test('a declared backing still says whether anything executable was verified', (
   assert.ok(declared.some((b) => b.executableVerified === true), 'nothing is verified — the distinction is unexercised');
   assert.ok(declared.some((b) => b.executableVerified === false), 'nothing is unverified — the distinction is unexercised');
 });
+
+/**
+ * A DECLARED BACKING THE MODEL CANNOT ACT ON IS A DOOR WITH NO HANDLE.
+ *
+ * docs/spec/DONE.md D3: ready-made system modules for data saving, purchases, economy, leaderboard,
+ * rounds and checkpoints. They exist, and every one of them is declared here as
+ * `implementation: { kind: 'reviewed_prefab', id: … }`. What was missing is the only thing that
+ * turns the declaration into an action: the NAME of the tool that installs it.
+ *
+ * It was in `note`, and `note` is the first field `fitReadPayload` drops under budget pressure.
+ * Measured against the deployed worker before this change: read_creation_skill for
+ * mechanic-persistence-architecture returned 2,428 characters with `truncated: true` and no
+ * occurrence of the string "install_module" anywhere in the payload. The tool's own description
+ * does carry the catalogue — but that description is offered only with Studio connected, and never
+ * in Plan mode, while these two retrieval tools are offered in every mode and with Studio absent.
+ *
+ * So the pointer has to survive the smallest payload the shrink can produce, which is what this
+ * asserts. It is the read path that matters: a caller holding ONE skill is the reader that cannot
+ * tell "no source exists" from "the field was left out".
+ */
+test('a prefab-backed skill names the tool that installs it, at every budget', () => {
+  const backed = CREATOR_SKILLS.filter((s) => s.implementation?.kind === 'reviewed_prefab');
+  assert.ok(backed.length >= 6,
+    `expected the reviewed prefabs to back at least the six systems the spec names, found ${backed.length}`);
+
+  for (const skill of backed) {
+    for (const budget of [2800, 2700, MIN_READ_CHARS]) {
+      const payload = readCreatorSkill(skill.id, budget);
+      const impl = payload.skill.implementation;
+      assert.equal(impl.status, 'declared', `${skill.id} lost its backing at ${budget}`);
+      assert.equal(impl.id, skill.implementation.id, `${skill.id} lost the prefab id at ${budget}`);
+      assert.ok(
+        JSON.stringify(payload).includes('install_module'),
+        `${skill.id} at budget ${budget} declares reviewed source and never names the tool that `
+        + 'installs it, so a model reading it can only write a fourth version by hand.',
+      );
+      assert.ok(JSON.stringify(payload).length <= budget, `${skill.id} broke the ${budget} budget`);
+    }
+  }
+});
+
+test('and a skill with nothing executable behind it promises no install', () => {
+  // The other half: if every payload said install_module, the assertion above would pass by
+  // saying nothing. Guidance that nobody implemented must keep saying so.
+  const guidance = CREATOR_SKILLS.filter((s) => s.implementation?.kind === 'mechanic_pattern');
+  assert.ok(guidance.length > 0, 'no non-prefab skill to compare against');
+  for (const skill of guidance.slice(0, 40)) {
+    const payload = readCreatorSkill(skill.id, MIN_READ_CHARS);
+    assert.equal(payload.skill.implementation.install, undefined,
+      `${skill.id} is authored guidance and claims an install tool`);
+  }
+  const none = CREATOR_SKILLS.filter((s) => !s.implementation);
+  for (const skill of none.slice(0, 20)) {
+    const payload = readCreatorSkill(skill.id, MIN_READ_CHARS);
+    assert.equal(payload.skill.implementation.status, 'none');
+    assert.equal(payload.skill.implementation.install, undefined);
+  }
+});

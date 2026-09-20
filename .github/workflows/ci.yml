@@ -256,6 +256,20 @@ jobs:
         # derives the check from pnpm-workspace.yaml rather than a second list.
         run: node scripts/check-workspace-coverage.mjs
 
+      - name: The product is called what it is called
+        # THE REBRAND HAD NO ENFORCEMENT ANYWHERE UNTIL TONIGHT. check-rebrand.mjs was written,
+        # was correct, and was invoked by no gate, no npm script and no job in this file — so its
+        # exit code carried no weight and drift landed on 2026-09-19 with every check green. It is
+        # the thing the owner has asked for more times than anything else in this repository.
+        #
+        # --offline ON PURPOSE: the full run fetches the live origin to date its capture, and a CI
+        # job that needs the network goes red for reasons that are not about the code. The offline
+        # half is deterministic and it is the half that catches source drift, which is what landed
+        # unobserved. Its success line says "IN SOURCE … THE DEPLOYED SITE WAS NOT CHECKED", so a
+        # green here cannot be read as a statement about production; the deployed half belongs on
+        # the deploy path.
+        run: node scripts/check-rebrand.mjs --offline
+
       - name: Formatting drift (report only)
         # PINNED. `prettier@3` resolves the newest 3.x from npm on every run, including
         # every fork PR — unpinned remote code execution, in a workflow whose other two

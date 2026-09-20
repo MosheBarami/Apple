@@ -39,13 +39,21 @@
  * the production build, silently. `.card.settings-card` rather than `.settings-card`, and
  * `.settings-card .settings-row` rather than `.settings-row`, are that and nothing else.
  *
- * THE ACCENT IS NOT SPENT ON THIS PAGE, and that is a decision rather than an omission. There is no
- * primary action here — twenty settings, each with its own Save — so there is nothing for one
- * green to mean. It appears in the focus ring and nowhere else, which is the one spend
- * docs/DESIGN-LOCK.md names that a page this long can afford. The single status colour a panel may
- * carry goes to the fact somebody has to act on: `--warn` on an unconfirmed address, `--bad` in the
- * danger zone. "Verified" and "Protected" are the resting state and stay grey, because a green
- * badge beside a green focus ring is two greens and neither is the answer.
+ * THE ACCENT IS NOW SPENT, IN EXACTLY THREE PLACES, AND THAT IS A REVERSION.
+ * This file used to argue that with twenty settings and twenty Saves there was no single primary
+ * action for one green to mean, so the accent went to the focus ring and nowhere else. The result
+ * was measured from outside and came back as the page's second-worst fault: every button on screen
+ * — Save, Change, Change password, Save asset sources — was the same low-contrast grey outline, so
+ * they all read as DISABLED and the whole page read as inert. "No primary action" was the right
+ * observation about the page and the wrong conclusion about the button.
+ * The correction is per ROW, not per page: the one action that commits that row's change carries
+ * `.btn-primary` — the tinted pill from system.css, 10% green behind 90% green, never a filled
+ * block. So the accent appears in (1) the focus ring, (2) the commit button of a row, (3) the 2px
+ * bar on the rail's current section. Everything else is grey by intent: `.btn-strong` is the raised
+ * neutral for a consequential action that is not a save (Sign out everywhere, Download my data),
+ * and `.btn-danger` keeps the danger zone red. The status colours are unchanged: `--warn` on an
+ * unconfirmed address, `--bad` where something cannot be undone. "Verified" and "Protected" are the
+ * resting state and stay grey.
  *
  * BOTH THEMES. Two tints invert on the light ramp and are corrected where they are set: the
  * segmented control's chosen segment (`--surface-2` is DARKER than the `--paper-2` track on light,
@@ -56,12 +64,67 @@
 /* ------------------------------------------------------------------ the column --- */
 
 /* `.page` is 1160px because it was built for the dashboard's card grid. A form column that wide
-   puts a 1000px text input under a 13px label, and the eye has no left edge to come back to. The
-   class the markup asked for and nobody wrote. */
-.page.page-narrow { max-width:880px; }
-.page-narrow .page-head { margin-bottom:26px; }
-.page-narrow .page-title { margin:0 0 8px; font-size:clamp(30px,6vw,40px); line-height:1.15; letter-spacing:-.03em; }
-.page-narrow .page-sub { margin:0; font-size:13px; line-height:1.55; overflow-wrap:anywhere; }
+   puts a 1000px text input under a 13px label, and the eye has no left edge to come back to.
+   1060px is that narrow column PLUS the rail now standing beside it, and the top padding drops
+   from 110px to 34px: a settings screen that spends 110px of an 800px viewport on air before the
+   title, and then another 280px on the title itself, has given away half its first screen before
+   it says anything. */
+.page.settings-page { max-width:1060px; padding-block:34px 70px; }
+
+/* ------------------------------------------------------------------- the head --- */
+
+/* THE MASTHEAD AND THE SEARCH BOX ARE ONE LINE, not four hundred pixels of them.
+   Name and address on the left, the search field pinned right on its own — no wrapper card. The
+   search used to sit inside a bordered card of nearly the card's own tone with ~40px of padding
+   all round, which is a box drawn round a box for no reason the eye can name. It is still 16px:
+   iOS zooms the viewport on focus for anything smaller, and a search box that moves the page under
+   your thumb is the one field where that is unsurvivable. */
+.settings-head { display:flex; flex-wrap:wrap; align-items:end; justify-content:space-between; gap:16px 28px; margin-bottom:22px; padding-bottom:20px; border-bottom:1px solid var(--line); }
+.settings-head__who { min-width:0; }
+.settings-title { margin:0 0 5px; font-size:26px; line-height:1.2; font-weight:400; letter-spacing:-.025em; color:var(--ink); }
+.settings-signed { margin:0; font-size:13px; line-height:1.5; color:var(--muted); overflow-wrap:anywhere; }
+.settings-find { display:block; flex:0 1 288px; min-width:0; }
+.settings-find > input[type='search'] { width:100%; padding:9px 13px; border:1px solid var(--line); border-radius:var(--r-md); background:var(--paper-2); color:var(--ink); font-size:16px; letter-spacing:-.01em; transition:border-color var(--t-fast) var(--ease-out),background-color var(--t-fast) var(--ease-out); }
+.settings-find > input[type='search']::placeholder { color:var(--faint); }
+.settings-find > input[type='search']:hover { border-color:var(--surface-3); }
+.settings-find > input[type='search']:focus { border-color:var(--accent-line); background:var(--surface); }
+.settings-found { margin:0 0 18px; max-width:68ch; font-size:13px; line-height:1.6; color:var(--muted); text-wrap:pretty; }
+
+/* ------------------------------------------------------------------- the rail --- */
+
+/* THERE WAS NO SETTINGS NAVIGATION AT ALL. Nine topics, 8229px of document, and the only way to
+   reach any of them was the scroll wheel — the global app sidebar knows about "Settings" and
+   nothing inside it. The rail is that missing level: every section, always on screen, with the
+   one you are reading lit.
+   It is a rail and not a router because the search box filters ACROSS sections — a URL per section
+   would make "show me everything matching 'time'" unrepresentable, and that query is the reason
+   this page has a search box in the first place. */
+.settings-shell { display:grid; grid-template-columns:184px minmax(0,1fr); align-items:start; gap:0 36px; }
+/* The negative inset is the link's own 11px of padding, pulled back so that the TEXT of the first
+   rail entry sits on the same left edge as the word "Settings" above it — measured at 284px for
+   both. Without it the rail's labels start 11px inboard of the title and the column has two left
+   edges. The active pill is what bleeds past that edge, which is the correct thing to bleed. */
+.st-nav { position:sticky; top:26px; min-width:0; margin-inline-start:-11px; }
+.st-nav__list { display:grid; gap:1px; margin:0; padding:0; list-style:none; }
+/* The rail is grouped for the same reason the app's own sidebar is — BUILD over ACCOUNT there,
+   four headings here. Nine flat links is a list; four named runs of two or three is a map, and a
+   map is what somebody who does not know where "Assets" lives actually needs. */
+.st-nav__group { display:block; margin:18px 0 6px; padding-inline:11px; font:10px/1.4 var(--font-mono); text-transform:uppercase; letter-spacing:.09em; color:var(--faint); }
+.st-nav__list > li:first-child .st-nav__group { margin-top:0; }
+.st-nav__link { display:block; padding:7px 11px; border-radius:var(--r-xs); font-size:13px; line-height:1.45; letter-spacing:-.01em; color:var(--muted); text-decoration:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; transition:color var(--t-fast) var(--ease-out),background-color var(--t-fast) var(--ease-out); }
+.st-nav__link:hover { background:color-mix(in srgb,var(--surface-2) 60%,transparent); color:var(--ink); }
+/* THE ACCENT IS SPENT HERE AND NOWHERE ELSE ON THE PAGE'S CHROME — a 2px bar and the ink, not a
+   filled block. This product's green is a restrained one; a saturated pill under the cursor would
+   out-shout the primary button, which is the only other green on screen. */
+.st-nav__link.is-active { background:var(--surface-2); color:var(--ink); box-shadow:inset 2px 0 0 var(--accent); }
+.st-nav__link:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.settings-stream { min-width:0; }
+.settings-stream > .settings-card:first-child { margin-block-start:0; }
+/* The rail scrolls the card to the top of the window; without this the card's own first row ends
+   up under the viewport edge. */
+.settings-card { scroll-margin-top:22px; }
+.settings-card > h2:focus { outline:none; }
+.settings-card > h2:focus-visible { outline:2px solid var(--accent); outline-offset:6px; border-radius:var(--r-xs); }
 
 /* ----------------------------------------------------------------- the section --- */
 
@@ -132,10 +195,10 @@
    the page is navigated with, and it keeps 16px at every width: iOS zooms the viewport on focus
    for anything under 16px, and a search box that moves the page under your thumb is the one field
    where that is unsurvivable. */
-.card.settings-card.settings-search { padding:18px 20px; }
-.settings-search .field { gap:0; }
-.settings-card.settings-search input[type='search'] { font-size:16px; padding:13px 15px; }
-.settings-search .settings-note { margin-top:11px; }
+/* The search moved into `.settings-head` above and lost its wrapper card; these four rules used to
+   dress that card and now match nothing. Kept as a note rather than silently deleted, because the
+   header of this very file is about classes that had no rule — the mirror image is a rule with no
+   class, and both are how a stylesheet drifts away from its markup. */
 
 /* ------------------------------------------------------------------- the field --- */
 
@@ -490,4 +553,233 @@
   .settings-card :is(.switch-row,.prefs__check,.asrc__remember),
   .asrc__choice--settings .asrc__name { transition:none; }
   .settings-card .settings-note-busy::before { animation:none; opacity:.7; }
+}
+
+
+/* =============================================================== THE ROW MODEL ===
+ *
+ * THE SINGLE BIGGEST THING WRONG WITH THIS PAGE, NAMED FROM OUTSIDE.
+ *
+ * A critic who had never seen this product compared its settings screen against a competitor's
+ * with both sets of labels stripped, and picked the competitor. The reason given, in full:
+ *
+ *   every settings card is ~1265px wide but its contents are left-aligned in a ~670px column and
+ *   stacked vertically (uppercase label, then input, then button underneath), so the right 45-50%
+ *   of every card is permanently empty while the page grows to 16,458px tall.
+ *
+ * Measured here at 1280x800 before this block existed: 8229px of document, 23 rows, not one of
+ * them with a control on the right. Each row was a top-to-bottom stack — sub-heading, prose, an
+ * uppercase 11px field label, a 46px input, then the button on a third line, everything flush left
+ * inside an 808px card. Nine cards of that is a well-typeset document. It is not a control panel.
+ *
+ * A row is now two columns. Left: the name of the setting and one or two lines saying what it
+ * does. Right: the thing you operate, right-aligned to an axis EVERY split row on the page shares
+ * — which is what makes a column of controls scannable at all. `align-items:start` keeps the
+ * control level with the setting's name rather than floating in the middle of a tall paragraph,
+ * and `column-gap` is wide enough that a long sentence never runs into a select.
+ *
+ * `auto` on the second track, not a fixed width: a segmented three-way control and a 32px button
+ * are both controls and neither should be padded out to the other's size. What holds the axis is
+ * `justify-items:end` on the track, not equal widths inside it.
+ */
+.settings-card .settings-row--split { grid-template-columns:minmax(0,1fr) minmax(0,auto); align-items:start; column-gap:40px; }
+.settings-card .settings-row--split > .settings-row__text { display:grid; gap:6px; min-width:0; grid-column:1; }
+.settings-card .settings-row--split > .settings-row__control { grid-column:2; justify-self:end; display:grid; gap:12px; justify-items:end; min-width:0; max-width:100%; }
+.settings-card .settings-row--split > .settings-row__control > * { margin:0; min-width:0; max-width:100%; }
+
+/* The left column is prose and nothing else, so it gets prose's measure. 58ch rather than the 68ch
+   the full-width rows use — the column is narrower now, and a line length tuned for an 808px card
+   would wrap raggedly in a 400px one. */
+.settings-card .settings-row--split .settings-row__text > p { max-width:58ch; margin:0; font-size:13px; line-height:1.6; color:var(--muted); text-wrap:pretty; }
+.settings-card .settings-row--split .settings-row__text > .settings-sub { margin:0; padding:0; border:0; font-size:15px; line-height:1.4; letter-spacing:-.015em; color:var(--ink); }
+.settings-card .settings-row--split .settings-row__text > .settings-current { font-size:14px; }
+
+/* THE UPPERCASE LABEL IS REDUNDANT IN A SPLIT ROW and is the "form generator" tell: the row's
+   own heading already says "Display name" six inches to the left, and repeating it in 11px caps
+   directly above the input is the page saying the same word twice in two voices.
+   VISUALLY hidden, not `display:none`. The <label> wraps the input, so that span IS the input's
+   accessible name — hiding it outright would leave every field on this page unnamed to a screen
+   reader. This is the `.gx-sr` pattern from system.css, applied by selector. */
+.settings-card .settings-row__control:not(.settings-row__control--stack) .field-label { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+/* …except where the control is a form with more than one field — two passwords, a From and an
+   Until — where the labels are the only thing telling them apart. Those rows pass `controlStacks`. */
+.settings-card .settings-row__control--stack { justify-items:stretch; width:min(320px,100%); }
+.settings-card .settings-row__control--stack .field-label { display:block; }
+
+/* Controls in the right column size to the column, not to the 420px the stacked model allowed. */
+.settings-card .settings-row__control .field { max-width:100%; width:100%; }
+.settings-card .settings-row__control > form { display:grid; gap:12px; justify-items:end; width:min(300px,100%); }
+.settings-card .settings-row__control--stack > form { width:100%; justify-items:stretch; }
+.settings-card .settings-row__control .settings-inline { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:10px; width:100%; }
+.settings-card .settings-row__control .settings-inline > .settings-grow { max-width:none; }
+.settings-card .settings-row__control .settings-inline > .btn { flex:none; }
+.settings-card .settings-row__control :is(input:not([type='checkbox']):not([type='radio']),select) { padding:9px 12px; }
+.settings-card .settings-row__control select { min-width:180px; }
+.settings-card .settings-row__control > .btn,
+.settings-card .settings-row__control form > .btn { justify-self:end; white-space:nowrap; }
+
+/* Tighter than the 18px stacked rows, because a row is now one line of reading plus one control
+   rather than a four-deep stack — 18px between two-line rows leaves the card looking gappy. */
+.settings-card .settings-row--split { padding-block:15px; }
+.settings-card > .settings-row:first-of-type,
+.settings-card > form > .settings-row:first-of-type { border-top:0; padding-block-start:4px; }
+
+/* ================================================================ THE SWITCH ===
+ *
+ * THE CHECKBOX LISTS WERE THE SAME FAULT IN MINIATURE: a 15px square at the far left with three
+ * sentences wrapping to the full width of the card underneath it, repeated eight times, so there
+ * was no column of states to scan and no way to see at a glance what was on. Same fix — name and
+ * description left, the state on the shared right edge — with the box drawn as a track and a knob
+ * so that "on" is legible from across the row rather than from a 15px tick.
+ *
+ * `appearance:none` on the input itself rather than a hidden input beside a styled span: the
+ * element stays the real checkbox, so focus, the space bar, form semantics and `:disabled` are the
+ * browser's and not something re-implemented here.
+ */
+.settings-switchlist { display:grid; gap:0; margin:0; padding:0; border:0; min-inline-size:0; }
+.settings-card .settings-switchlist.prefs__set { padding:0; border:0; background:transparent; }
+.settings-card .settings-switchrow { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; column-gap:28px; margin:0; padding-block:13px; border-top:1px solid var(--line); cursor:pointer; }
+.settings-card .settings-switchrow:first-of-type { border-top:0; }
+.settings-card .settings-switchrow:has(:disabled) { cursor:not-allowed; }
+.settings-card .settings-switchrow__text { display:grid; gap:3px; min-width:0; }
+.settings-card .settings-switchrow__name { font-size:14px; line-height:1.45; letter-spacing:-.01em; color:var(--muted); transition:color var(--t-fast) var(--ease-out); }
+.settings-card .settings-switchrow:hover .settings-switchrow__name,
+.settings-card .settings-switchrow:has(:checked) .settings-switchrow__name { color:var(--ink); }
+.settings-card .settings-switchrow:has(:disabled) .settings-switchrow__name { color:var(--faint); }
+.settings-card .settings-switchrow__does { max-width:58ch; font-size:12px; line-height:1.55; color:var(--muted); text-wrap:pretty; }
+.settings-card .settings-switchrow .asrc__meta { margin:0; }
+
+.settings-card .settings-switch { appearance:none; -webkit-appearance:none; flex:none; position:relative; width:38px; height:22px; margin:0; padding:0; border:1px solid var(--line); border-radius:var(--r-pill); background:var(--paper-2); cursor:inherit; transition:background-color var(--t-fast) var(--ease-out),border-color var(--t-fast) var(--ease-out); }
+.settings-card .settings-switch::after { content:''; position:absolute; top:3px; inset-inline-start:3px; width:14px; height:14px; border-radius:var(--r-pill); background:var(--muted); transition:transform var(--t-fast) var(--ease-out),background-color var(--t-fast) var(--ease-out); }
+/* `:not(:checked)` is load-bearing, and measured: `:hover:not(:disabled)` is four classes' worth of
+   specificity against `:checked`'s three, so hovering an ON switch repainted its border grey —
+   which reads as the switch turning itself off under the cursor. */
+.settings-card .settings-switch:hover:not(:disabled):not(:checked) { border-color:var(--surface-3); }
+/* ON IS THE ACCENT AT A TENTH, exactly the primary button's treatment — the same green meaning the
+   same thing (this is live) in the same weight, rather than a second saturated green competing
+   with it. The knob carries the full accent so the state reads at a glance without the track
+   turning into a block of paint. */
+.settings-card .settings-switch:checked { background:var(--accent-fill); border-color:var(--accent-line); }
+.settings-card .settings-switch:checked::after { transform:translateX(16px); background:var(--accent); }
+.settings-card .settings-switch:disabled { opacity:.45; }
+.settings-card .settings-switch:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+/* The privacy row's single opt-out uses the same object, with its label read-only to the screen
+   reader — the row heading and the sentence beside it are the visible name. */
+/* SPECIFICITY, MEASURED RATHER THAN GUESSED. The privacy opt-out is a `.switch-row`, and this
+   file already carries `.settings-card :is(.switch-row,.prefs__check,.asrc__remember) > input
+   { width:15px; height:15px }` at (0,2,1) — one step above the plain `.settings-card
+   .settings-switch` at (0,2,0). The track therefore rendered as a 15px circle with a 14px knob
+   inside it: a switch that was, visibly, a dot. Naming both classes puts this at (0,3,1). */
+.settings-card .switch-row--toggle { display:block; margin:0; padding:0; }
+.settings-card .switch-row--toggle > .settings-switch { width:38px; height:22px; margin:0; }
+
+/* ============================================================== THE BUTTONS ===
+ *
+ * `.btn-strong` — the raised neutral. Between the grey outline (which reads as disabled when it is
+ * the ONLY treatment on a page) and the green commit (which must stay rare to mean anything).
+ * Sign out everywhere, Download my data and Reset settings are consequential and none of them is a
+ * save, so none of them gets the accent — but a surface step and full ink is enough to stop them
+ * looking switched off. */
+.settings-card .btn-strong { border-color:var(--surface-3); background:var(--surface-2); color:var(--ink); }
+.settings-card .settings-row .btn-strong:hover:not(:disabled) { background:var(--surface-3); border-color:color-mix(in srgb,var(--ink) 22%,var(--line)); color:var(--ink); }
+.settings-card .settings-row .btn-strong:active:not(:disabled) { background:var(--surface-2); }
+.settings-card .btn-strong:disabled { opacity:.5; }
+/* The commit button must not inherit the card's generic `.btn` hover, which repaints it grey. */
+.settings-card .settings-row .btn-primary:hover:not(:disabled),
+.settings-card .btn-primary:hover:not(:disabled) { background:color-mix(in srgb,var(--accent) 18%,transparent); border-color:transparent; color:var(--accent); }
+.settings-card .settings-row .btn-primary:active:not(:disabled),
+.settings-card .btn-primary:active:not(:disabled) { background:color-mix(in srgb,var(--accent) 26%,transparent); }
+.settings-card .btn-primary:disabled { opacity:.42; }
+
+/* The footer of a card whose control is a whole list rather than one row: the save belongs at the
+   end of what it saves, on the same right edge every other control sits on. */
+.settings-card .settings-commit { display:grid; justify-items:end; gap:10px; margin-top:18px; padding-top:16px; border-top:1px solid var(--line); }
+.settings-card .settings-commit > .form-error { justify-self:start; margin:0; font-size:13px; line-height:1.55; text-wrap:pretty; }
+.settings-card > .settings-commit > .btn { justify-self:end; }
+.settings-note-quiet { font-size:12px; color:var(--faint); }
+
+/* ================================================================= THE ENTRY ===
+ *
+ * The page did not animate in at all — the ambient beam breathed above a masthead that was already
+ * fully drawn, so the only movement at rest was decoration behind static content. Cards now arrive
+ * on a short stagger, which is the difference between a page that loaded and a page that was
+ * assembled. Six steps and then it stops: a stagger that keeps counting past the fold is a page
+ * that animates things nobody is looking at.
+ *
+ * `--t-mid`-ish 380ms on a decelerating curve, 10px of travel, and `backwards` so the card is not
+ * visible at its final position for a frame before the delay elapses. Both global reduced-motion
+ * escapes in system.css (`prefers-reduced-motion` and `.motion-reduced`, the in-product setting)
+ * already carry `animation:none !important`, so this needs no guard of its own — it is switched
+ * off by the same two switches as everything else, including by the Motion row on this very page.
+ */
+@keyframes settings-rise { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
+.settings-stream > .settings-card { animation:settings-rise .38s var(--ease-out) backwards; }
+.settings-stream > .settings-card:nth-child(1) { animation-delay:.02s; }
+.settings-stream > .settings-card:nth-child(2) { animation-delay:.06s; }
+.settings-stream > .settings-card:nth-child(3) { animation-delay:.10s; }
+.settings-stream > .settings-card:nth-child(4) { animation-delay:.14s; }
+.settings-stream > .settings-card:nth-child(5) { animation-delay:.18s; }
+.settings-stream > .settings-card:nth-child(n+6) { animation-delay:.22s; }
+.st-nav { animation:settings-rise .38s var(--ease-out) backwards; }
+
+/* ============================================================== THE NARROW ONE ===
+ *
+ * TWO BREAKPOINTS, FOR TWO DIFFERENT FAILURES.
+ *
+ * Below 1080px the rail cannot stand beside the content — the app's own 246px sidebar has already
+ * taken its share — so it lies down: the same nine entries as a horizontal strip that sticks under
+ * the top of the viewport and scrolls sideways. It is still the index; it has just run out of
+ * vertical space to be a column in.
+ *
+ * Below 720px the split row cannot hold two columns either, and this is the one place the stacked
+ * model was right all along: a name, its sentence, and the control underneath at full width. The
+ * uppercase field label comes BACK here, because with no column to the left the row heading is far
+ * enough above the input that the input is otherwise unlabelled to the eye.
+ */
+@media (max-width:1080px) {
+  .settings-shell { display:block; }
+  .st-nav { margin-inline-start:0; }
+  .st-nav { position:sticky; top:0; z-index:4; margin:0 -20px 20px; padding:9px 20px; background:color-mix(in srgb,var(--paper) 92%,transparent); backdrop-filter:blur(8px); border-bottom:1px solid var(--line); }
+  .st-nav__list { display:flex; gap:4px; overflow-x:auto; scrollbar-width:none; }
+  .st-nav__list::-webkit-scrollbar { display:none; }
+  .st-nav__list > li { flex:none; }
+  /* THE GROUP HEADINGS DO NOT SURVIVE THE ROTATION, and leaving them in was a two-line strip
+     220px tall with the chips stranded at different heights — which is what a vertical device
+     turned on its side looks like when nobody looked at it. A horizontal chip strip has no room
+     for a heading above each run, and the whole strip is short enough to read in one pass, which
+     is what the groups existed to buy. */
+  .st-nav__group { display:none; }
+  .st-nav__link { padding:6px 12px; border-radius:var(--r-pill); background:var(--paper-2); }
+  .st-nav__link.is-active { box-shadow:none; background:var(--accent-fill); color:var(--accent-on-fill); }
+}
+@media (max-width:720px) {
+  /* THE DOCK COLLAPSES TO A 44px FIXED BUTTON AT top:10px/left:12px (system.css, the ≤760 block),
+     and the page's old 90px top padding was the only thing keeping the title out from under it.
+     Cutting that padding to reclaim the first screen put the burger straight through the word
+     "Settings" — measured, in a screenshot, which is the only way that kind of fault shows up.
+     The clearance is now an indent on the title block rather than 90px of empty page: the title
+     sits BESIDE the button, the way a mobile header is supposed to. */
+  .page.settings-page { padding-block:16px 40px; }
+  .settings-head { display:block; padding-bottom:14px; margin-bottom:14px; }
+  .settings-head__who { min-height:38px; padding-inline-start:54px; }
+  .settings-title { font-size:22px; }
+  .settings-find { margin-top:13px; }
+  /* The placeholder was clipped mid-string at 375 — "Search settings — try “dark”, “24 hour”" — and
+     a truncated example is worse than no example, because it reads as a bug. It is one word now. */
+  .settings-find > input[type='search'] { padding:11px 13px; }
+  .card.settings-card { padding:16px 15px; margin-block:12px; }
+  .settings-card > h2 { font-size:17px; margin-bottom:8px; }
+  .settings-card .settings-row--split { grid-template-columns:minmax(0,1fr); row-gap:10px; padding-block:13px; }
+  .settings-card .settings-row--split > .settings-row__control { grid-column:2 / auto; grid-column:1; justify-self:stretch; justify-items:stretch; width:100%; }
+  /* The uppercase label stays hidden here too. Stacked, the row's own heading sits two lines above
+     the input rather than a column away, so repeating it in 11px caps adds a line per row to a page
+     that is 9000px long and tells nobody anything. Multi-field controls still show theirs. */
+  .settings-card .settings-row__control > form,
+  .settings-card .settings-row__control--stack { width:100%; justify-items:stretch; }
+  .settings-card .settings-row__control .settings-inline { grid-template-columns:minmax(0,1fr) auto; }
+  .settings-card .settings-row__control select { min-width:0; width:100%; }
+  .settings-card .settings-row__control .theme-toggle { width:100%; }
+  .settings-card .settings-row__control .theme-toggle > .theme-btn { flex:1 1 0; padding:8px 6px; white-space:normal; text-align:center; }
+  .settings-card .settings-switchrow { column-gap:16px; padding-block:11px; }
+  .settings-card .settings-row--split .settings-row__text > p { font-size:12.5px; }
 }

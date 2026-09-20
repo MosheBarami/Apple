@@ -87,6 +87,17 @@ import AppleMark from '../components/AppleMark.astro';
     }
   }
 
+  /* THE ONE THING ON THIS PAGE THAT WAS VISIBLY OFF-AXIS. `.eyebrow` is `display: flex` in
+     global.css, and a flex container ignores the `text-align: center` it inherits — its items are
+     placed by `justify-content`, which defaults to flex-start. So on a page whose every other line
+     is centred, "ERROR 404" sat hard against the left edge of the 640px column: at 1280px the
+     heading began at x=413 and the label above it at x=320, and at 375px the label sat in the
+     gutter while the heading was centred. /pricing already solves this the same way for its three
+     centred eyebrows; this is that fix, applied to the one page that still had the defect. */
+  .lost .eyebrow {
+    justify-content: center;
+  }
+
   .lost .lede {
     margin-inline: auto;
   }

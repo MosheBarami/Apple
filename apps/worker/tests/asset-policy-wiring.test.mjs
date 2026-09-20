@@ -52,22 +52,49 @@ test('choose_asset_source NARROWS its list to what the policy allows', () => {
   );
 });
 
-test('SEARCHING A FORBIDDEN LIBRARY IS REFUSED BEFORE THE QUERY RUNS', () => {
-  // Searching and then filtering would still spend a D1 query, and worse, would let an empty
-  // result read as "the library has nothing like that" — a claim about a table the caller was
-  // never allowed to look in.
-  const start = tools.indexOf('  search_asset_library: {');
-  const end = tools.indexOf('  find_verified_asset: {');
+//[[ THE TEST THAT WAS HERE GUARDED A TOOL THAT NO LONGER EXISTS, AND IS REPLACED RATHER THAN DROPPED.
+//
+//   It asserted that `search_asset_library` called `sourceRefusal(...)` BEFORE `searchAssetLibrary(...)`,
+//   because searching and then filtering would spend a D1 query and, worse, let an empty result read
+//   as "the library has nothing like that" — a claim about a table the caller was never allowed to
+//   look in. The catalogue was removed on 2026-09-20, so that ordering has nothing left to order.
+//
+//   The PROPERTY still matters for the search that remains, so it is asserted about that one
+//   instead: `find_verified_asset` reaches the Roblox Creator Store, and an empty result from a
+//   search the caller was never allowed to run is the same lie about a different catalogue. ]]
+test('SEARCHING A FORBIDDEN CREATOR STORE IS REFUSED BEFORE THE SEARCH RUNS', () => {
+  const start = tools.indexOf('  find_verified_asset: {');
+  const end = tools.indexOf('  insert_asset: {');
   // A failure to find either marker must not silently become "start to end of file" — that would
   // let this test read as passing (or failing for the wrong reason) while actually observing
   // nothing. A guard that cannot see the thing it guards must say so loudly.
-  assert.notEqual(start, -1, 'search_asset_library marker moved or was renamed');
-  assert.notEqual(end, -1, 'find_verified_asset marker moved or was renamed');
+  assert.notEqual(start, -1, 'find_verified_asset marker moved or was renamed');
+  assert.notEqual(end, -1, 'insert_asset marker moved or was renamed');
+  assert.ok(end > start, 'the two markers are in the wrong order, so the slice below is not the tool');
   const body = tools.slice(start, end);
   const refusal = body.indexOf('sourceRefusal(');
-  const search = body.indexOf('searchAssetLibrary(');
+  const search = body.indexOf('findVerifiedAssets(');
   assert.ok(refusal !== -1, 'it must consult the policy');
-  assert.ok(refusal < search, 'and refuse BEFORE querying');
+  assert.ok(search !== -1, 'and it must actually perform the search, or this test is vacuous');
+  assert.ok(refusal < search, 'and refuse BEFORE searching');
+});
+
+//[[ AND THE CATALOGUE SEARCH MUST NOT COME BACK.
+//
+//   Matched on the REGISTRY ENTRY marker `  search_asset_library: {` — the same shape `toolEntry`
+//   above uses to find a tool — and not on the bare name. A bare substring would also match the
+//   paragraph in `toolDefs` that explains why the tool was removed, so the guard would fail on the
+//   note describing the removal and pass only once somebody deleted the explanation. A check that
+//   red-lights its own documentation is not measuring the thing it names. ]]
+test('no tool in the registry searches a catalogue of Apple\'s own', () => {
+  assert.equal(tools.includes('  search_asset_library: {'), false,
+    'the search_asset_library registry entry is back — the catalogue behind it was deleted on 2026-09-20');
+  assert.equal(tools.includes('searchAssetLibrary('), false,
+    'tools.ts calls searchAssetLibrary again, which means the catalogue module came back');
+  // CONTROL: the marker shape finds a tool that IS there, so a `false` above is a real absence
+  // rather than a marker that stopped matching anything.
+  assert.ok(tools.includes('  find_verified_asset: {'),
+    'the registry-entry marker shape no longer matches any tool, so the two assertions above prove nothing');
 });
 
 test('the session hands the policy to every step, not to the first one', () => {

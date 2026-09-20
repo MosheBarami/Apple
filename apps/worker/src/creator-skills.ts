@@ -88,12 +88,34 @@ export function skillBacking(skill: Pick<CreatorSkill, 'implementation'>): Creat
   };
 }
 
-/** The compact form, for payloads that are already fighting a character budget. */
-export function skillBackingBrief(skill: Pick<CreatorSkill, 'implementation'>): { status: 'none' } | { status: 'declared'; kind: string; id: string; executableVerified: boolean } {
+/**
+ * The compact form, for payloads that are already fighting a character budget.
+ *
+ * WHY `install` IS HERE AND NOT LEFT TO THE NOTE. `note` is the first thing `fitReadPayload` drops
+ * under pressure, and measured against the deployed worker it is dropped EVERY time for a
+ * prefab-backed skill: the live `read_creation_skill` payload for mechanic-persistence-architecture
+ * comes back 2,428 characters with `truncated: true` and the brief in place. So the one sentence
+ * that named the tool — install_module("profile_store") — reached the model never, and the skill
+ * said "reviewed source exists for this" while withholding how to obtain it. `install_module`'s own
+ * description carries the catalogue, but that description is only offered with Studio connected and
+ * is withheld from Plan mode entirely, whereas search_creation_skills and read_creation_skill are
+ * offered in EVERY mode, connected or not. Fourteen characters of tool name is what makes the
+ * declaration actionable rather than a fact about a door with no handle.
+ */
+export function skillBackingBrief(skill: Pick<CreatorSkill, 'implementation'>): { status: 'none' } | { status: 'declared'; kind: string; id: string; executableVerified: boolean; install?: string } {
   const impl = skill.implementation;
   if (!impl) return { status: 'none' };
-  return { status: 'declared', kind: impl.kind, id: impl.id, executableVerified: impl.executableVerified };
+  return {
+    status: 'declared',
+    kind: impl.kind,
+    id: impl.id,
+    executableVerified: impl.executableVerified,
+    ...(impl.kind === 'reviewed_prefab' ? { install: PREFAB_INSTALL_TOOL } : {}),
+  };
 }
+
+/** Named once, so the payload and the note cannot come to disagree about which tool installs it. */
+export const PREFAB_INSTALL_TOOL = 'install_module';
 
 export interface CreatorSkill {
   id: string;

@@ -17,7 +17,15 @@ const checkoutOpen = billingProbe?.checkout === true;
 const purchasable = Array.isArray(billingProbe?.purchasable) ? billingProbe.purchasable : [];
 const paidPlans = PLAN_IDS.filter((id) => id !== 'free' && PLAN_COPY[id].priceUsdMonthly !== null);
 const planPrices = paidPlans
-  .map((id) => `${PLAN_COPY[id].name} at ${formatMoney(PLAN_COPY[id].priceUsdMonthly, PRICE_CURRENCY)} a month`)
+  .map((id) => {
+    // The filter above already dropped every plan with no price, but TypeScript cannot follow a
+    // narrowing done inside a callback — `astro check` reported ts(2345) on this line. Reading the
+    // price once and refusing null is the same test in a form the compiler can see, and it fails
+    // loudly at build time rather than printing a price of "null" into the terms of service.
+    const price = PLAN_COPY[id].priceUsdMonthly;
+    if (price === null) throw new Error(`${id} has no monthly price but passed the paid-plan filter`);
+    return `${PLAN_COPY[id].name} at ${formatMoney(price, { currency: PRICE_CURRENCY })} a month`;
+  })
   .join(' and ');
 ---
 

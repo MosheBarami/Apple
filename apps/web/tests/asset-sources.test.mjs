@@ -3,6 +3,14 @@
 // The owner asked for this dialog by name. The part worth testing is not that it renders: it is
 // that it cannot be turned into a yes by the cheapest gesture available, and that a dismissed
 // dialog does not leave behind something the rest of the product reads as an answer.
+//
+// RE-AIMED 2026-09-20, NOT WEAKENED. `apple_library` was removed from ASSET_SOURCE_CHOICES with
+// the catalogue it authorised (packages/shared), and this file had been using it as its example of
+// a VALID choice in eleven places — so every one of those assertions was pinning a vocabulary the
+// product no longer has. Each question below is the question it was; only the member it is asked
+// about moved to a live one. Two assertions were ADDED where the removal created a new way to be
+// wrong: the retired member must now be refused by `cleanSelection`, and a stored policy that
+// still names it must not survive into a pre-ticked box.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -33,9 +41,9 @@ test('A DISMISSED DIALOG IS NOT AN ANSWER — the second way to be unanswered', 
   assert.equal(A.owesAnswer(null), true, 'never answered');
   assert.equal(A.owesAnswer(undefined), true);
   assert.equal(A.owesAnswer({ mode: 'ask', allow: [] }), true);
-  assert.equal(A.owesAnswer({ mode: 'ask', allow: ['apple_library'] }), true, 'ask means ask, even with a list');
+  assert.equal(A.owesAnswer({ mode: 'ask', allow: ['creator_store'] }), true, 'ask means ask, even with a list');
   assert.equal(A.owesAnswer({ mode: 'remember', allow: [] }), true, 'remembering nothing is not remembering');
-  assert.equal(A.owesAnswer({ mode: 'remember', allow: ['apple_library'] }), false, 'this one is settled');
+  assert.equal(A.owesAnswer({ mode: 'remember', allow: ['creator_store'] }), false, 'this one is settled');
 });
 
 test('the dialog opens on the answer somebody already gave, not a blank form', () => {
@@ -47,7 +55,12 @@ test('AND IT DOES NOT PRE-TICK THE ONE THAT SPENDS CREDITS', () => {
   // default is not a decision, and this is the default that would cost money.
   const fresh = A.initialSelection(null);
   assert.equal(fresh.includes('from_scratch'), false, 'the paid choice must be opt-in');
-  assert.deepEqual(fresh, ['apple_library', 'creator_store'], 'the two that cost nothing');
+  // It was two of these until the Apple library went; `creator_store` is what is left that adds
+  // nothing to what a build already costs.
+  assert.deepEqual(fresh, ['creator_store'], 'the one that costs nothing extra');
+  // AND THE DEFAULT CANNOT NAME A RETIRED SOURCE. This is the failure that put this file in front
+  // of somebody: a hand-written default outliving the vocabulary it was written against.
+  for (const c of fresh) assert.ok(A.explainSource(c), `${c} is pre-ticked and is not a real choice`);
 });
 
 /* ---------------------------------------------------------------- what it says --- */
@@ -55,7 +68,7 @@ test('AND IT DOES NOT PRE-TICK THE ONE THAT SPENDS CREDITS', () => {
 test('every choice states what it COSTS, not just what it is', () => {
   // "Creator Store" is a label. "Nothing to buy, and nothing uploaded — but the work is other
   // creators' and stays credited to them" is the thing somebody needs in order to choose.
-  assert.equal(A.SOURCE_EXPLANATIONS.length, 3);
+  assert.equal(A.SOURCE_EXPLANATIONS.length, 2);
   for (const e of A.SOURCE_EXPLANATIONS) {
     assert.ok(e.title && e.title.length > 3, `${e.choice}: needs a name`);
     assert.ok(e.does && e.does.length > 30, `${e.choice}: must say what happens`);
@@ -66,29 +79,40 @@ test('every choice states what it COSTS, not just what it is', () => {
   assert.match(scratch.costs, /[Cc]redits/, 'the paid one must say it is paid');
 });
 
-test('source descriptions distinguish catalog entries from usable assets without frozen counts', () => {
-  const library = A.explainSource('apple_library');
-  assert.match(library.reach, /import/i, 'a catalog match is not automatically insertable');
-  assert.match(library.costs, /[Cc]redits/, 'a free licence does not make the build free');
-  assert.doesNotMatch(library.does, /already.*checked/i, 'harvested metadata is not an asset-quality review');
+test('source descriptions promise no inventory the product cannot prove', () => {
+  // This test used to be asked about the Apple library — that a catalogue MATCH was not the same
+  // as an insertable asset. The library is gone; the claim it was protecting against is not, and
+  // `creator_store` is now the surface that can over-promise, because what it reaches depends on
+  // Roblox permissions and on the individual asset rather than on us.
+  const store = A.explainSource('creator_store');
+  assert.match(store.reach, /permission|licence|license/i, 'what it can reach is not ours to guarantee');
+  assert.match(store.costs, /[Cc]redits/, 'a free licence does not make the build free');
+  assert.doesNotMatch(store.does, /already.*checked/i, 'harvested metadata is not an asset-quality review');
   for (const e of A.SOURCE_EXPLANATIONS) {
     assert.doesNotMatch(e.reach, /\d[\d,]* assets|Unlimited/i, 'static copy cannot prove live inventory or unlimited service');
   }
+  // And a retired source has no card left to describe it.
+  assert.equal(A.explainSource('apple_library'), null, 'the Apple library card must be gone, not merely unreachable');
 });
 
 test('an unrecognised choice never reaches the worker', () => {
-  assert.deepEqual(A.cleanSelection(['apple_library', 'nonsense', 'creator_store']), ['apple_library', 'creator_store']);
-  assert.deepEqual(A.cleanSelection(['apple_library', 'apple_library']), ['apple_library'], 'and a duplicate is dropped');
+  assert.deepEqual(A.cleanSelection(['from_scratch', 'nonsense', 'creator_store']), ['from_scratch', 'creator_store']);
+  assert.deepEqual(A.cleanSelection(['creator_store', 'creator_store']), ['creator_store'], 'and a duplicate is dropped');
   assert.deepEqual(A.cleanSelection([]), []);
+  // A RETIRED MEMBER IS AN UNRECOGNISED ONE. `apple_library` was a real choice until the catalogue
+  // was removed; the worker now rejects a whole policy containing it, so anything this app sends
+  // must not carry it.
+  assert.deepEqual(A.cleanSelection(['apple_library', 'creator_store']), ['creator_store'],
+    'the retired source must be stripped, not passed through');
 });
 
 /* ------------------------------------------------------------------ summarising --- */
 
 test('the settings row reads as a sentence, and says when Apple will ask again', () => {
-  assert.match(A.summarise({ mode: 'remember', allow: ['apple_library'] }).line, /Apple library/);
-  assert.match(A.summarise({ mode: 'remember', allow: ['apple_library', 'creator_store'] }).line, /and/);
-  assert.match(A.summarise({ mode: 'ask', allow: ['apple_library'] }).line, /ask again/);
-  assert.equal(/ask again/.test(A.summarise({ mode: 'remember', allow: ['apple_library'] }).line), false);
+  assert.match(A.summarise({ mode: 'remember', allow: ['creator_store'] }).line, /Roblox Creator Store/);
+  assert.match(A.summarise({ mode: 'remember', allow: ['creator_store', 'from_scratch'] }).line, /and/);
+  assert.match(A.summarise({ mode: 'ask', allow: ['creator_store'] }).line, /ask again/);
+  assert.equal(/ask again/.test(A.summarise({ mode: 'remember', allow: ['creator_store'] }).line), false);
 });
 
 test('NO SOURCES IS ITS OWN STATE, not an empty sentence', () => {
@@ -141,23 +165,23 @@ test('it is a real dialog for a screen reader', () => {
 // — because nothing allowed is also the state that means "still owes an answer" — ask the same
 // question again on the very next send, forever. The box has to be unavailable when it is offered.
 
-test('NO CEILING MEANS NO LIMIT — the ordinary case leaves all three open', () => {
+test('NO CEILING MEANS NO LIMIT — the ordinary case leaves every live choice open', () => {
   // The default that matters most, because getting it backwards would grey out every box for every
   // project that ever existed. This is deliberately the OPPOSITE default from the worker's
   // `allowedSources`, which answers a different question — what a build may touch, where absent
   // must mean nothing.
-  assert.deepEqual(A.availableChoices(null), ['apple_library', 'creator_store', 'from_scratch']);
-  assert.deepEqual(A.availableChoices(undefined), ['apple_library', 'creator_store', 'from_scratch']);
-  for (const c of ['apple_library', 'creator_store', 'from_scratch']) {
+  assert.deepEqual(A.availableChoices(null), ['creator_store', 'from_scratch']);
+  assert.deepEqual(A.availableChoices(undefined), ['creator_store', 'from_scratch']);
+  for (const c of ['creator_store', 'from_scratch']) {
     assert.equal(A.unavailableReason(null, c), null, `${c} must be pickable when nobody has restricted it`);
   }
 });
 
 test('A CEILING IS A LIMIT — what it does not allow cannot be ticked for one project', () => {
-  const ceiling = { mode: 'remember', allow: ['apple_library'] };
-  assert.deepEqual(A.availableChoices(ceiling), ['apple_library']);
-  assert.equal(A.unavailableReason(ceiling, 'apple_library'), null);
-  for (const c of ['creator_store', 'from_scratch']) {
+  const ceiling = { mode: 'remember', allow: ['creator_store'] };
+  assert.deepEqual(A.availableChoices(ceiling), ['creator_store']);
+  assert.equal(A.unavailableReason(ceiling, 'creator_store'), null);
+  for (const c of ['from_scratch']) {
     const why = A.unavailableReason(ceiling, c);
     assert.ok(why, `${c} must be refused`);
     // It names WHERE the rule lives and that it is not this project's to change. A greyed box with
@@ -174,22 +198,31 @@ test('a ceiling that allows nothing leaves nothing pickable — and says so rath
 });
 
 test('a ceiling never invents a source that is not in the vocabulary', () => {
-  assert.deepEqual(A.availableChoices({ mode: 'remember', allow: ['toolbox', 'apple_library'] }), ['apple_library']);
+  // `apple_library` sits beside `toolbox` here deliberately: one was never a choice and one has
+  // stopped being one, and a ceiling must treat them the same.
+  assert.deepEqual(A.availableChoices({ mode: 'remember', allow: ['toolbox', 'apple_library', 'creator_store'] }), ['creator_store']);
 });
 
 test('THE PRE-TICKED SELECTION RESPECTS THE CEILING — a default must not be unsaveable', () => {
-  // initialSelection pre-ticks the two free choices. Under a ceiling that forbids one of them, a
-  // person who touched nothing and pressed the button would be saving a selection the server
-  // strips — so the default is filtered, not merely the checkbox.
+  // initialSelection pre-ticks the free choice. Under a ceiling that forbids it, a person who
+  // touched nothing and pressed the button would be saving a selection the server strips — so the
+  // default is filtered, not merely the checkbox.
   const ceiling = { mode: 'remember', allow: ['from_scratch'] };
-  assert.deepEqual(A.initialSelection(null, ceiling), [], 'neither free choice survives this ceiling');
+  assert.deepEqual(A.initialSelection(null, ceiling), [], 'the free choice does not survive this ceiling');
   assert.deepEqual(
-    A.initialSelection({ mode: 'remember', allow: ['apple_library', 'from_scratch'] }, ceiling),
+    A.initialSelection({ mode: 'remember', allow: ['creator_store', 'from_scratch'] }, ceiling),
     ['from_scratch'],
     'a stored answer is filtered too — the layers above may have changed since it was given',
   );
-  // And with no ceiling it is unchanged, so this costs nothing in the ordinary case.
-  assert.deepEqual(A.initialSelection(null), ['apple_library', 'creator_store']);
+  // AND A STORED ANSWER THAT NAMES THE RETIRED SOURCE DOES NOT COME BACK AS A TICK, with no
+  // ceiling in play at all. Rows written before 2026-09-20 still say `apple_library`.
+  assert.deepEqual(
+    A.initialSelection({ mode: 'remember', allow: ['apple_library', 'creator_store'] }),
+    ['creator_store'],
+    'a policy stored against the old vocabulary must not pre-tick a source no build can use',
+  );
+  // And with no ceiling the fresh default is unchanged, so this costs nothing in the ordinary case.
+  assert.deepEqual(A.initialSelection(null), ['creator_store']);
 });
 
 test('the dialog disables what the ceiling forbids rather than letting it be swallowed', () => {

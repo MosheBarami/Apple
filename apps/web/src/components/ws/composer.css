@@ -256,6 +256,15 @@
    action, and the leading padding is cut by the bar's width so no text shifts when it appears. */
 .gx-pop__item.gx-pop__item--stack[aria-checked='true'] { background:var(--surface-2); border-inline-start:2px solid var(--ink); padding-inline-start:9px; }
 
+/* A ROW THAT CANNOT BE CHOSEN, DRAWN AS ONE.
+   `aria-disabled` tells a screen reader; this tells everybody else. The row keeps its hover and
+   its click, because clicking it is how a person finds out WHY — it is the only place the product
+   says that Apple MAX is not purchasable yet. So it is dimmed rather than greyed to the point of
+   looking broken: the title drops to the body colour and the whole row loses a little presence,
+   which is the difference between "not available" and "not there". */
+.gx-pop__item.gx-pop__item--stack.is-unavailable .gx-pop__main > span:first-child { color:var(--muted); }
+.gx-pop__item.gx-pop__item--stack.is-unavailable .model-signature { opacity:.55; }
+
 /* -------------------------------------------------------- notes and counts ---- */
 
 /* THE COUNTER HAD NO INK OF ITS OWN, so it inherited --ink and the least important number on the

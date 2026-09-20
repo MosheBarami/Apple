@@ -72,7 +72,11 @@ export const SCOPE_EXPLANATIONS: readonly ScopeExplanation[] = [
   {
     scope: 'asset:write',
     title: 'Create assets in your account',
-    does: 'Apple can upload images, decals and audio into your Roblox account while it builds.',
+    // It said "while it builds", and that was true of a path that no longer exists: Apple used to
+    // import assets from its own catalogue into a customer's account, and the catalogue was removed
+    // on 2026-09-20. The only thing that uploads now is the file you hand it, so the sentence says
+    // that instead. The caution below is unchanged and is the reason this scope needs one.
+    does: 'Apple can upload a file you give it — an image, decal or audio — into your Roblox account.',
     undoable: false,
     caution:
       'Roblox does not let anyone delete an uploaded image or decal — not you, not us, not through '
@@ -167,8 +171,8 @@ export function explain(scope: RobloxScope): ScopeExplanation | null {
 /**
  * The scopes something in the product actually asks for.
  *
- * Two today: `asset:write` (asset-import.ts, when a build uploads into the customer's account) and
- * `user.social:read` (roblox-check.ts, the connection check). The list is derived rather than
+ * Two today: `asset:write` (creator-dashboard.ts, when the customer uploads a file into their own
+ * account) and `user.social:read` (roblox-check.ts, the connection check). The list is derived rather than
  * written out twice so that adding a consumer and telling the truth about it are the same edit.
  */
 export function implementedScopes(): RobloxScope[] {

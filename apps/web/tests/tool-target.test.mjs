@@ -13,6 +13,15 @@
 //   2. Letting it outlive its usefulness. Once the tool has ended, the worker's own summary is a
 //      better sentence than a bare path, and a target that overrode it would make finished steps
 //      LESS informative than they are today.
+//
+// WHAT CHANGED ON 2026-09-20, and why these assertions moved from `detail` to `target`. The two
+// were one field: `detail = summary ?? target`. That made them compete, and the summary won —
+// including when the summary was `<tick> get_genre_references`, which is what the worker sends for
+// every tool whose argument is not one of the five keys `summarize()` knows. So the panel printed
+// a tool name it had already printed as the row's label and dropped the genre. They are now two
+// fields answering two questions — on what, and what came back — and `activity.tsx` prints the
+// subject only when the worker's sentence does not already contain it. Every claim below is the
+// same claim; it is read off the field that now holds the answer.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -36,7 +45,9 @@ test('A RUNNING STEP NAMES ITS RESOURCE — that is the whole point', () => {
   const step = stepFor(a, 't1');
   assert.ok(step, 'no step for the running tool');
   assert.equal(step.state, 'active');
-  assert.equal(step.detail, 'game.ServerScriptService.RoundManager');
+  assert.equal(step.target, 'game.ServerScriptService.RoundManager');
+  // And the bare tool name did not take the result line hostage on the way past.
+  assert.equal(step.detail, undefined);
 });
 
 test('and the bare tool name is still suppressed, as it always was', () => {
@@ -44,6 +55,7 @@ test('and the bare tool name is still suppressed, as it always was', () => {
   // underneath a label that already says "Editing project".
   const a = run([{ type: 'tool_start', at: T0, toolId: 't1', tool: 'edit_script', summary: 'edit_script' }], T0 + 1000);
   assert.equal(stepFor(a, 't1').detail, undefined);
+  assert.equal(stepFor(a, 't1').target, undefined);
 });
 
 test('once it ends, the worker’s sentence wins over the bare path', () => {
@@ -55,11 +67,15 @@ test('once it ends, the worker’s sentence wins over the bare path', () => {
     T0 + 2000,
   );
   assert.equal(stepFor(a, 't1').detail, 'RoundManager · +14 / -3');
+  // It wins the RESULT line. It does not delete the subject, which is a different fact and is now
+  // kept beside it rather than underneath it.
+  assert.equal(stepFor(a, 't1').target, 'game.ServerScriptService.RoundManager');
 });
 
-test('a step that ends with nothing to say falls back to the target', () => {
-  // The honest fallback: better the resource than an empty line, and this is the shape an
-  // interrupted or refused tool leaves behind.
+test('a step that ends with nothing to say still names its resource', () => {
+  // Better the resource than an empty line, and this is the shape an interrupted or refused tool
+  // leaves behind. `summary: 'delete_instances'` says nothing the row's label does not, so there
+  // is no result line — and the subject is untouched by that.
   const a = run(
     [
       { type: 'tool_start', at: T0, toolId: 't1', tool: 'delete_instances', summary: 'delete_instances', target: 'game.Workspace.Door' },
@@ -67,13 +83,15 @@ test('a step that ends with nothing to say falls back to the target', () => {
     ],
     T0 + 500,
   );
-  assert.equal(stepFor(a, 't1').detail, 'game.Workspace.Door');
+  assert.equal(stepFor(a, 't1').target, 'game.Workspace.Door');
+  assert.equal(stepFor(a, 't1').detail, undefined);
 });
 
 test('no target is no line, not an empty one', () => {
   for (const target of [undefined, '', '   ']) {
     const a = run([{ type: 'tool_start', at: T0, toolId: 't1', tool: 'get_project_tree', summary: 'get_project_tree', target }], T0 + 10);
     assert.equal(stepFor(a, 't1').detail, undefined, JSON.stringify(target));
+    assert.equal(stepFor(a, 't1').target, undefined, JSON.stringify(target));
   }
 });
 
@@ -87,7 +105,7 @@ test('a reloaded turn carries it through the same reducer the socket feeds', () 
     now: T0 + 3000,
     streaming: true,
   });
-  assert.equal(stepFor(a, 't1').detail, 'game.Workspace.Door');
+  assert.equal(stepFor(a, 't1').target, 'game.Workspace.Door');
 });
 
 test('the socket keeps the field off the wire message', () => {

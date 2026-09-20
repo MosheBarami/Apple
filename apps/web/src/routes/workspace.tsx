@@ -1250,7 +1250,19 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
           productModel={productModel}
           modelPlan={modelPlan}
           maxUpgradeAvailable={maxUpgradeAvailable(billing.data)}
-          onModelChange={(next) => { setProductModel(next); setMode('agent'); }}
+          onModelChange={setProductModel}
+          //[[ THE MODE THE COMPOSER NOW SHOWS IS THIS STATE — it always was, and nothing could
+          //   reach it. `mode` has been sent with every message since the workspace was written
+          //   (`PRODUCT_MODE_TO_SPECIALIST[mode]` in `send`, and again in the edit-and-resend
+          //   path), the worker has routed Plan to a read-only toolset the whole time, and the
+          //   only surfaces that ever set it were the Automations form and a Roadmap handoff.
+          //
+          //   `onModelChange` USED TO RESET IT TO 'agent'. That silently overrode a choice the
+          //   person had made, from a control about a different question — and with no mode chip
+          //   on screen, it overrode it invisibly. Picking a model is not a statement about
+          //   whether this message should change the place. ]]
+          mode={mode}
+          onModeChange={setMode}
           onUpgrade={() => navigate('/usage')}
           seed={seed}
           selection={studio.selection}

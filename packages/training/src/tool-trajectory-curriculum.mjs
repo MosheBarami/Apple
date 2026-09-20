@@ -184,18 +184,23 @@ export const TOOL_TRAJECTORY_CURRICULUM = [
         tool: 'propose_plan',
         args: {
           steps: [
-            { title: 'Trees that will not slow the game down', detail: 'Search the verified library for low-triangle foliage.', tool: 'search_asset_library' },
-            { title: 'Trees placed around spawn', detail: 'Insert the chosen model into Workspace.', tool: 'insert_asset' },
+            { title: 'Trees that will not slow the game down', detail: 'Search the Creator Store for verified low-triangle foliage.', tool: 'find_verified_asset' },
+            { title: 'Trees placed around spawn', detail: 'Insert the chosen mesh into Workspace.', tool: 'insert_asset' },
             { title: 'Check the spawn area still reads well', detail: 'Composition check against the request.', tool: 'check_composition' },
           ],
         },
       },
-      { tool: 'search_asset_library', args: { query: 'stylised low poly tree', kind: 'foliage', maxTriangles: 1500 } },
+      // THIS SEED NAMED `search_asset_library` UNTIL 2026-09-20, when the asset catalogue was
+      // removed. A trajectory is training data: a seed that calls a tool the registry does not have
+      // teaches the model to call it, and the model would then spend a step on a name that comes
+      // back unknown. `tool-trajectory-curriculum.test.mjs` verifies every seed against the LIVE
+      // registry, which is what caught this rather than a reader noticing.
+      { tool: 'find_verified_asset', args: { query: 'stylised low poly tree', maxTriangles: 1500 } },
       { tool: 'insert_asset', args: { assetId: 4391384843, parent: 'game.Workspace.SpawnDressing' } },
       { tool: 'check_composition', args: { target: 'game.Workspace.SpawnDressing', subject: 'scene', intent: 'trees around the spawn area, kept light' } },
     ],
-    reply: 'I searched the verified library for foliage under 1,500 triangles and inserted the one that fit, grouped under SpawnDressing so it is easy to move or delete as a set. The composition check came back against your own wording — trees around spawn, kept light.',
-    mutation: { step: 1, path: 'kind', value: 'tree' },
+    reply: 'I searched the Creator Store for verified foliage under 1,500 triangles and inserted the one that fit, grouped under SpawnDressing so it is easy to move or delete as a set. The composition check came back against your own wording — trees around spawn, kept light.',
+    mutation: { step: 1, path: 'query', value: '' },
   },
 
   {

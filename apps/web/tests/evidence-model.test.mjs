@@ -49,8 +49,11 @@ test('only tools whose result reliably carries a block get a card', () => {
   assert.equal(evidenceKindForTool('render_view'), 'render');
   assert.equal(evidenceKindForTool('edit_script'), 'diff');
   assert.equal(evidenceKindForTool('run_and_check'), 'test');
-  assert.equal(evidenceKindForTool('search_asset_library'), 'assets');
   assert.equal(evidenceKindForTool('find_verified_asset'), 'assets');
+  // `search_asset_library` was the other tool that produced an asset card. The catalogue behind it
+  // was removed on 2026-09-20, so it must map to nothing: a card kind for a tool that cannot run
+  // is a piece of UI waiting to describe a feature the product does not have.
+  assert.equal(evidenceKindForTool('search_asset_library'), null);
 });
 
 test('the visual gates get no card — their verdict is already the Validation row', () => {
@@ -79,7 +82,7 @@ test('every card kind has a loading state, shaped by the tool name alone', () =>
     ['render_view', 'render'],
     ['edit_script', 'diff'],
     ['run_and_check', 'test'],
-    ['search_asset_library', 'assets'],
+    ['find_verified_asset', 'assets'],
   ];
   for (const [tool, kind] of kinds) {
     const e = evidenceFor(source({ tool, done: false, hasDetail: false }), null);
@@ -114,7 +117,7 @@ test('a result that was sent but did not validate is unreadable, not a failure',
 });
 
 test('every card kind can express both faults', () => {
-  for (const tool of ['render_view', 'edit_script', 'run_and_check', 'search_asset_library']) {
+  for (const tool of ['render_view', 'edit_script', 'run_and_check', 'find_verified_asset']) {
     assert.equal(evidenceFor(source({ tool, ok: false }), null).fault, 'tool_failed');
     assert.equal(evidenceFor(source({ tool, ok: true }), null).fault, 'unreadable');
   }
@@ -268,7 +271,7 @@ test('a report with counts but no case list is still real evidence', () => {
 
 test('an asset search shows what it matched, thumbnail or not', () => {
   const e = evidenceFor(
-    source({ tool: 'search_asset_library' }),
+    source({ tool: 'find_verified_asset' }),
     doc({
       type: 'asset_picker',
       title: 'Stools',

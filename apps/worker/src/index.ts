@@ -1,9 +1,4 @@
 // Golem worker entry: API routes + static serving + DO exports.
-import { ingestAssets, type IngestRequest } from './asset-ingest';
-import { searchAssetLibrary } from './asset-library';
-import { resolveAssetCatalogPreviews, catalogAssetMetadata } from './asset-catalog-previews';
-import { ASSET_KINDS, type AssetKind } from './assets';
-import { importPending, unimportAssets } from './asset-import';
 import { putRobloxCredential, describeRobloxCredential, deleteRobloxCredential } from './user-credentials';
 import {
   getExperience, listOwnedAssets, listGamePasses, createGamePass, grantAssetPermission, listWrites,
@@ -812,77 +807,6 @@ app.get('/api/health', async (c) => {
     buildSha: c.env.BUILD_SHA ?? 'unknown',
     time: new Date().toISOString(),
   });
-});
-
-/**
- * Read-only catalogue browse. This is intentionally lexical-only: displaying catalogue metadata
- * must not spend inference credits or reach Workers AI/Vectorize, and a Roblox id is provenance
- * from the catalogue rather than a safety or permission verdict.
- */
-app.get('/api/assets/search', async (c) => {
-  const rawQuery = c.req.query('query');
-  const query = (rawQuery ?? '').trim();
-  if (query.length > 120) return c.json({ error: 'query must be at most 120 characters', assets: [] }, 400);
-
-  const rawKind = c.req.query('kind');
-  let kind: AssetKind | undefined;
-  if (rawKind) {
-    if (!(ASSET_KINDS as readonly string[]).includes(rawKind)) {
-      return c.json({ error: `kind must be one of ${ASSET_KINDS.join(', ')}`, assets: [] }, 400);
-    }
-    kind = rawKind as AssetKind;
-  }
-
-  const rawLimit = c.req.query('limit');
-  const limit = rawLimit === undefined ? 20 : Number(rawLimit);
-  if (rawLimit !== undefined && (!/^\d+$/.test(rawLimit) || !Number.isInteger(limit) || limit < 1 || limit > 20)) {
-    return c.json({ error: 'limit must be an integer from 1 to 20', assets: [] }, 400);
-  }
-
-  const rawInsertableOnly = c.req.query('insertableOnly');
-  if (rawInsertableOnly !== undefined && rawInsertableOnly !== 'true' && rawInsertableOnly !== 'false') {
-    return c.json({ error: 'insertableOnly must be true or false', assets: [] }, 400);
-  }
-  const insertableOnly = rawInsertableOnly === 'true';
-  const rawPreviews = c.req.queries('previews') ?? [];
-  if (rawPreviews.length > 1 || (rawPreviews.length === 1 && rawPreviews[0] !== 'true' && rawPreviews[0] !== 'false')) {
-    return c.json({ error: 'previews must be true or false (once only)', assets: [] }, 400);
-  }
-  const previews = rawPreviews[0] === 'true';
-  // Empty search is a valid browse state, but it must not claim that an unavailable/unseeded
-  // catalogue is empty. It also avoids issuing a pointless FTS query.
-  if (!query) return c.json({ assets: [] });
-
-  try {
-    const hits = await searchAssetLibrary(c.env, query, {
-      lexicalOnly: true,
-      kind,
-      insertableOnly,
-      k: limit,
-    });
-    const hitPreviews = await resolveAssetCatalogPreviews(hits, previews);
-    return c.json({
-      assets: hits.map((hit, index) => ({
-        id: hit.id,
-        name: hit.name,
-        kind: hit.kind,
-        source: hit.source,
-        sourceUrl: hit.sourceUrl,
-        author: hit.author,
-        licence: hit.licence,
-        attributionRequired: hit.attributionRequired,
-        robloxAssetId: hit.robloxAssetId,
-        availability: hit.availability,
-        ...catalogAssetMetadata(hit),
-        ...(previews ? { preview: hitPreviews[index] ?? { state: 'unavailable', url: null } } : {}),
-      })),
-    });
-  } catch (error) {
-    if (/no such table|no such module/i.test(String((error as Error)?.message ?? error))) {
-      return c.json({ error: 'asset catalogue is unavailable', assets: [] }, 503);
-    }
-    throw error;
-  }
 });
 
 // ---------------------------------------------------------------- project session routes
@@ -3896,40 +3820,6 @@ app.post('/api/admin/spend-reset', async (c) => {
 });
 
 /**
- * Populate the curated asset library. The harvest lives in packages/corpus/data/asset-seeds.json
- * and is pushed here in batches by scripts/ingest-assets.mjs.
- */
-app.post('/api/admin/assets/ingest', async (c) => {
-  const body = await c.req.json<IngestRequest>().catch(() => null);
-  if (!body || !Array.isArray(body.assets)) {
-    return c.json({ error: 'assets must be an array of provenance records' }, 400);
-  }
-  return c.json(await ingestAssets(c.env, body));
-});
-
-/**
- * Import pending library rows into Roblox as Open Use assets. Bounded per call; driven in a loop
- * by scripts/import-assets.mjs so no single request runs long enough to be killed mid-upload.
- */
-app.post('/api/admin/assets/import', async (c) => {
-  const body = await c.req.json<{ limit?: number; source?: string; idPrefix?: string; after?: string }>().catch(() => null);
-  const limit = Number.isFinite(body?.limit) ? Number(body?.limit) : 5;
-  return c.json(await importPending(c.env as never, limit, body?.source, body?.idPrefix, body?.after));
-});
-
-/**
- * Undo imports: archive the assets on Roblox and return the rows to pending. Bounded per call.
- * Exists because 299 assets were uploaded to the owner's personal account before he had agreed to
- * it, and an action with a reverse is a different decision from one without.
- */
-app.post('/api/admin/assets/unimport', async (c) => {
-  const body = await c.req.json<{ limit?: number; force?: boolean }>().catch(() => null);
-  const limit = Number.isFinite(body?.limit) ? Number(body?.limit) : 5;
-  // `force` unlinks a row whose Roblox asset cannot be archived — Images and Decals cannot be.
-  return c.json(await unimportAssets(c.env as never, limit, body?.force === true));
-});
-
-/**
  * The customer's OWN Roblox key: connect, inspect, disconnect.
  *
  * Under `/api/me/` rather than `/api/admin/` because the credential belongs to the person, not to
@@ -4013,22 +3903,6 @@ app.delete('/api/me/roblox-key', async (c) => {
     );
   }
   return c.json({ removed });
-});
-
-/**
- * Import library assets into the CALLER'S OWN Roblox account, using the key they connected.
- *
- * Under `/api/me/` and not `/api/admin/`: the assets land in the caller's account, so the caller
- * is the only person who may ask for it. The admin route beside it exists for Apple's own library
- * work and writes to the deployment's account — two different acts that would be one route, and
- * one accident, if they shared a path.
- */
-app.post('/api/me/roblox-import', async (c) => {
-  const user = c.get('user');
-  if (!user) return c.json({ error: 'not signed in' }, 401);
-  const body = await c.req.json<{ limit?: number; idPrefix?: string; after?: string }>().catch(() => null);
-  const limit = Number.isFinite(body?.limit) ? Number(body?.limit) : 3;
-  return c.json(await importPending(c.env as never, limit, undefined, body?.idPrefix, body?.after, user.userId));
 });
 
 /**
@@ -4224,7 +4098,7 @@ app.post('/api/admin/corpus-init', async (c) => {
   //   content_hash — what was written, so a re-index can skip what did not change.
   // Deployed databases predate all three, and `create table if not exists` will not add them. D1
   // has no `add column if not exists`, so the failure is caught: on an already-migrated database it
-  // is a duplicate-column error and nothing else, exactly as asset-library.ts does it.
+  // is a duplicate-column error and nothing else.
   for (const col of ['embedded integer not null default 0', 'indexed_at integer', 'content_hash text']) {
     try {
       await c.env.CORPUS.exec(`alter table chunks add column ${col}`);

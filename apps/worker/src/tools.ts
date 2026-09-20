@@ -16,17 +16,13 @@ import {
   findVerifiedAssets,
   scanInsertedHierarchy,
   summariseTree,
-  ACCEPTABLE_ASSET_TYPES,
   SCAN_LIMITS,
   type AssetNeed,
-  type AssetKind,
   type AssetProvenanceSource,
-  type AssetVerdict,
   type FetchLike,
   type HttpResponseLike,
   type ScannedScriptInput,
 } from './assets';
-import { searchAssetLibrary } from './asset-library';
 import { GENRE_KIT_IDS, getGenreKit, admitToKit } from './genre-kits';
 import { getGenreReferenceGuide, GENRE_REFERENCE_GUIDE_ASPECT_IDS } from './genre-reference-guide';
 import { getUIConstruction, UI_CONSTRUCTION_GENRE_IDS, UI_CONSTRUCTION_SCREEN_IDS } from './ui-construction-guide';
@@ -167,22 +163,22 @@ export interface AgentCtx {
   /**
    * Asset ids that came out of a verified search in THIS session.
    *
-   * Membership records PROVENANCE and nothing else — not permission, and not a skip. It used to
-   * double as a skip (an id in this set went to Studio without ever being resolved), which meant
-   * one bad row in the curated library could put an unverified Model into a customer's place.
+   * Membership records PROVENANCE and nothing else — not permission and not a skip. It changes at
+   * most which assertions may be waived, never whether the gate runs. It used to double as a skip
+   * (an id in this set went to Studio without ever being resolved), which meant one bad catalogue
+   * row could put an unverified Model into a customer's place.
    *
    * Nor is it an admission list: an id that is NOT here is not refused, it is simply the weakest
    * provenance and waives nothing. Refusing it would need evidence this worker does not have —
    * see the note at the provenance computation in `insert_asset`.
+   *
+   * SINCE 2026-09-20 NOTHING IN THIS WORKER WAIVES AN ASSERTION AT ALL. There was a second set,
+   * `libraryAssetIds`, holding the ids that came out of Apple's curated catalogue, and membership
+   * in it waived three marketplace assertions — price, votes, verified creator — which a catalogue
+   * asset had none of by construction. The catalogue is gone, so the set is gone and the waiver
+   * with it, and every id now faces the identical verdict.
    */
   discoveredAssetIds?: Set<number>;
-  /**
-   * The subset of the above that came out of `asset_library` rather than the Creator Store.
-   *
-   * Held separately because it changes which assertions may be waived (see `securityBlockers`),
-   * never whether the gate runs.
-   */
-  libraryAssetIds?: Set<number>;
   /**
    * Outbound HTTP for the web-facing tools.
    *
@@ -634,26 +630,6 @@ export function strictDetailsFetch(seen: DetailsIntegrity, base?: FetchLike): Fe
 }
 
 /**
- * The assertions no source of an id may waive, re-read off the verdict's own fields.
- *
- * `AssetVerdict.verdict` names only the FIRST failure. That is fine to branch on today because
- * `judgeAssetDetails` evaluates security-first — but "fine because of the evaluation order inside
- * another module" is not a property worth depending on for this, so the four facts that actually
- * matter are asserted here directly.
- */
-function securityBlockers(v: AssetVerdict): string[] {
-  const blocked: string[] = [];
-  if (!v.exists) blocked.push(`asset ${v.assetId} did not resolve to anything (${v.verdict})`);
-  if (v.hasScripts || v.scriptCount > 0) blocked.push('the Creator Store itself reports that this asset carries Luau');
-  if (v.shouldSandbox) blocked.push('Roblox flags this asset shouldSandbox');
-  if (v.assetTypeId === null || !ACCEPTABLE_ASSET_TYPES[v.assetTypeId]) {
-    blocked.push(`typeId ${v.assetTypeId ?? 'unknown'} is not insertable — a Model is refused because it is the container type that can carry scripts`);
-  }
-  if (v.visibilityStatus !== null && v.visibilityStatus !== 1) blocked.push(`visibilityStatus ${v.visibilityStatus} — not publicly visible`);
-  return blocked;
-}
-
-/**
  * Insert one verified id and prove the place clean afterwards, or leave the place as it was found.
  *
  * Returns a tool result: small, and free of any line of the source it removed. An attacker's Luau
@@ -1004,7 +980,7 @@ export function refuseLuauIngress(code: string): { error: string; blocked: strin
   return {
     error:
       `this Luau was refused because it reaches for an asset-ingress primitive: ${findings.map((f) => f.why).join('; ')}. ` +
-      'Luau is not how assets enter a place. Find an id with search_asset_library or find_verified_asset and insert it with insert_asset, ' +
+      'Luau is not how assets enter a place. Find an id with find_verified_asset and insert it with insert_asset, ' +
       'which verifies the id and then reads the place back to prove nothing executable arrived with it. ' +
       'Everything else run_luau does — loops, terrain, bulk property edits, measurement — is unaffected.',
     blocked: findings.map((f) => f.code),
@@ -1014,17 +990,22 @@ export function refuseLuauIngress(code: string): { error: string; blocked: strin
 /**
  * Write the attribution row for an asset that has just been placed.
  *
- * The ledger keys on `asset_library.id` — a namespaced slug like
- * `kenney/city-kit-suburban/building-a-01` — because a Roblox id says nothing about
- * where the bytes came from or under what licence. A Creator Store asset that is not
- * in the curated library therefore has no key, and inventing one that LOOKS like a
- * library id would be worse than having none: the report's left join would match a
- * real library row one day and credit the wrong author.
+ * EVERY ROW THIS WRITES IS NOW UNACCOUNTED, AND THAT IS THE HONEST ANSWER RATHER THAN A GAP.
+ * The ledger keys on a namespaced provenance slug like `kenney/city-kit-suburban/building-a-01`,
+ * because a Roblox id says nothing about where the bytes came from or under what licence. Those
+ * slugs came from the curated library, and the library was removed on 2026-09-20 — so an id
+ * arriving at `insert_asset` today is, by construction, a Creator Store id or one the user pasted,
+ * and Apple knows nothing about its licence beyond what the Creator Store said when it was gated.
  *
- * So an unaccounted asset is keyed `unaccounted:roblox:<id>`, which contains a colon
- * and can never satisfy the library's own id pattern. The join always misses, the
- * report renders it as provenance-unknown, and that is the honest answer — it is the
- * one state `provenance: null` exists to express.
+ * It is therefore keyed `unaccounted:roblox:<id>`, which contains a colon and can never satisfy
+ * the provenance id pattern, so `provenance.ts`'s left join always misses and the credits panel
+ * renders it as provenance-unknown. That is the one state `provenance: null` exists to express,
+ * and it is what the customer should see: Apple placed this, and cannot tell you who made it.
+ *
+ * WHAT USED TO BE HERE, so nobody re-adds it. This function asked D1 for a library row matching
+ * the Roblox id, on every insertion, so that an asset that WAS in the library got credited no
+ * matter how its number reached the tool. With the table gone that query can only ever answer
+ * `no such table`, which is a network round-trip whose result is known before it is made.
  *
  * Returns the key it wrote, or null when there was nothing to write it against.
  */
@@ -1047,42 +1028,15 @@ async function recordPlacedAsset(
       await ensureProvenanceTables(ctx.env);
       provenanceTablesReady = true;
     }
-    // The library is asked about EVERY id, not only ones this session's search returned.
-    // Gating the lookup on `fromLibrary` — which is session membership — meant a library
-    // asset whose id arrived any other way was recorded as unaccounted and then reported
-    // to the customer as an asset Golem could not account for. Both of the other arrival
-    // routes are supported paths: an id the user pasted, and one carried over from an
-    // earlier session. The query below answers correctly for any id, and provenance is a
-    // property of the ASSET, not of how its number reached this function.
-    let key: string | null = null;
-    try {
-      const row = await ctx.env.CORPUS.prepare('select id from asset_library where roblox_asset_id = ? limit 1')
-        .bind(assetId)
-        .first<{ id: string }>();
-      key = row?.id ?? null;
-    } catch (e) {
-      // ONLY the missing table. The first version of this catch swallowed everything,
-      // which made it do the very thing the read path in provenance.ts refuses to do —
-      // and worse, durably. A transient D1 error would fall through and write a
-      // PERMANENT `unaccounted:` row for an asset that is in the library; the row
-      // outlives the blip, and because the primary key is (project_id, asset_id) a
-      // later correct placement writes a SECOND row under the real library id, so one
-      // physical asset appears in the report twice — once as unaccounted, once
-      // credited. A missing table is a known state of the world; anything else is a
-      // fault, and a fault must not be recorded as an answer.
-      if (!String(e instanceof Error ? e.message : e).includes('no such table')) throw e;
-      key = null;
-    }
-    const accounted = key !== null;
-    // `viaLiveApi` is false here and it is a claim, not a default: the only source that
-    // asks for a live-API credit is Poly Haven, and nothing on this path calls it. A
-    // library asset was ingested offline by an operator and re-uploaded under Golem's
-    // account; the insertion touches Roblox, not the origin's API.
-    await recordAssetUse(ctx.env, ctx.projectId, key ?? `unaccounted:roblox:${assetId}`, {
+    const key = `unaccounted:roblox:${assetId}`;
+    // `viaLiveApi` is false here and it is a claim, not a default: it records that the
+    // credit was not obtained by calling an origin's own API at placement time. Nothing
+    // on this path does — the insertion touches Roblox and nobody else.
+    await recordAssetUse(ctx.env, ctx.projectId, key, {
       viaLiveApi: false,
       context: parent,
     });
-    return { assetId: key ?? `unaccounted:roblox:${assetId}`, accounted };
+    return { assetId: key, accounted: false };
   } catch (e) {
     // The reason travels back with the failure. A bare `catch { return null }` reported a
     // permanent schema mistake — a renamed column in `recordAssetUse` — exactly like a
@@ -2931,7 +2885,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       const usable = chosen.filter((c) => allowed.includes(c.source));
       if (usable.length) return usable;
       return {
-        error: sourceRefusal(ctx.assetSources, chosen[0]?.source ?? 'library')
+        error: sourceRefusal(ctx.assetSources, chosen[0]?.source ?? 'procedural')
           ?? 'no asset source is available for this need',
         // The unusable list is returned too: a model told only "no" cannot explain to the person
         // what it would have done, and that explanation is what makes the setting make sense.
@@ -3077,7 +3031,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'get_genre_kit',
       description:
-        'Ask for a genre by name and get the whole matched set at once: palette with the job each colour does, Lighting values, the library queries for UI/VFX/textures/props, five sound-effect ids already chosen for that genre, and what to build procedurally instead of fetching. Call this FIRST on any build that has a genre — one call replaces five searches that each return a good answer belonging to a different game.',
+        'Ask for a genre by name and get the whole matched set at once: palette with the job each colour does, Lighting values, briefs for the UI/VFX/textures/props that genre needs and how to make each one, five sound-effect ids already chosen and checked for that genre, and what to build procedurally. Call this FIRST on any build that has a genre — one call replaces five separate decisions that are each defensible and do not belong in the same game. There is no asset catalogue to search; everything here is either made in the customer\u2019s own account or referenced by an id already pinned below.',
       parameters: S({ genre: { type: 'string', enum: [...GENRE_KIT_IDS] } }, ['genre']),
     },
     studio: false,
@@ -3107,9 +3061,9 @@ export const TOOLS: Record<string, ToolImpl> = {
         });
       }
 
-      // These ids are already public Creator Store assets, so they are not "discovered" in the
-      // sense insert_asset means — they are not added to libraryAssetIds, because that set waives
-      // three marketplace assertions and nothing here has earned that waiver.
+      // These ids are already public Creator Store assets, and they are REFERENCED by id rather
+      // than inserted, so they are not added to discoveredAssetIds: nothing here has been through
+      // insert_asset's gate, and marking them discovered would claim it had.
       return {
         genre: kit.id,
         pitch: kit.pitch,
@@ -3130,7 +3084,24 @@ export const TOOLS: Record<string, ToolImpl> = {
         palette: kit.palette,
         lighting: kit.lighting,
         buildTheseYourself: kit.procedural,
-        searchTheLibraryFor: kit.slots.map((s) => ({ need: s.need, query: s.query, styleTags: s.tags, take: s.count, why: s.why })),
+        // THE KEY USED TO BE `searchTheLibraryFor`, AND THERE IS NO LIBRARY TO SEARCH.
+        // It named a tool that no longer exists, so the model was being handed five queries and
+        // no way to run them. The briefs themselves were never the library's — the `why` is the
+        // art direction — so each one now says how to MAKE the thing instead, which is the honest
+        // answer and the one that ends with an asset the customer owns.
+        makeThese: kit.slots.map((s) => ({
+          need: s.need,
+          subject: s.query,
+          styleTags: s.tags,
+          howMany: s.count,
+          why: s.why,
+          how:
+            s.need === 'sfx'
+              ? 'use the ids under `sounds` — do not search for audio, they are already chosen for this genre'
+              : s.need === 'ui_icon' || s.need === 'particle' || s.need === 'texture'
+                ? `generate_image with target="${s.need === 'ui_icon' ? 'ui_icon' : s.need === 'particle' ? 'decal' : 'texture'}", subject as given, and the styleTags folded into the style fields`
+                : 'build it from Parts with create_instances, or generate_model for a shape parts cannot describe',
+        })),
         sounds: admitted,
         // Present even when empty is wrong — an empty key reads as "we checked and all were fine",
         // which is true here only because the loop above actually ran. It is included ONLY when
@@ -3139,109 +3110,18 @@ export const TOOLS: Record<string, ToolImpl> = {
       };
     },
   },
-  search_asset_library: {
-    def: {
-      name: 'search_asset_library',
-      description:
-        "Search Apple's curated asset library. Every hit carries the licence recorded for that library row; inspect the returned provenance before use, and remember that a recorded licence is not the same as a safety verdict. Each numeric assetId is still resolved and security-gated by insert_asset like any other. Prefer this over the Creator Store for anything procedural geometry cannot do — foliage and characters especially. EVERY HIT CARRIES `libraryId`, the stable canonical `asset_library.id` (never a Roblox id), `assetId`, the numeric Roblox id or null until import, `insertable`, and `availability`, which has THREE states and only one of them means you can insert now: \"insertable\" — the id belongs to this user's own account, so insert_asset will work; \"needs_take\" — a real Roblox id exists but it belongs to somebody else on the Creator Store, and Roblox refuses insert_asset with \"User is not authorized\" until the USER takes it into their inventory themselves, so tell them to do that and give them the sourceUrl rather than calling insert_asset and reporting a failure; \"needs_import\" — the library holds the asset but its bytes were never uploaded to Roblox, so assetId is null. Say which one it is plainly, and never invent an id. Source, licence, attributionRequired, and status provenance also travel with every hit. Results are ranked with curated rows ahead of the bulk Creator Store scrape; ranking is relevance, not a quality or safety guarantee.",
-      parameters: S(
-        {
-          query: { type: 'string' },
-          kind: { type: 'string', enum: ['ground', 'building', 'prop', 'foliage', 'character', 'vehicle', 'ui_icon', 'texture', 'particle', 'sfx'] },
-          maxTriangles: { type: 'number' },
-        },
-        ['query'],
-      ),
-    },
-    studio: false,
-    run: async (ctx, a) => {
-      const refused = sourceRefusal(ctx.assetSources, 'library');
-      // BEFORE the query, not after. Filtering afterwards spends a D1 read, and an empty result
-      // would read as "the curated library has nothing like that" — a claim about a table this
-      // caller was never allowed to look in.
-      if (refused) return { error: refused };
-      let hits;
-      try {
-        hits = await searchAssetLibrary(ctx.env, String(a.query ?? ''), {
-          kind: a.kind ? (String(a.kind) as AssetKind) : undefined,
-          maxTriangles: a.maxTriangles ? Number(a.maxTriangles) : undefined,
-          //[[ THIS USED TO PASS `insertableOnly: true`, AND THAT ONE FLAG HID THE LIBRARY.
-          //
-          //   In this library "has a Roblox id" means "came from the Creator Store scrape" — 2008
-          //   user uploads named "Bakiiiiiiiiiiiiiiii" and "Part2". The curated CC0 packs (Kenney,
-          //   Poly Haven, ambientCG, Quaternius, OpenGameArt, game-icons) carry no id until
-          //   somebody imports them, so filtering on an id returned the junk and nothing else.
-          //
-          //   So the filter is gone and the FACT is returned instead: every hit says whether it is
-          //   insertable now or needs an import, and the model is told below what to do with each.
-          //   A caller that genuinely cannot wait for an import asks for `insertableOnly`; this one
-          //   can, because telling the person "the library has this, it needs importing" is a far
-          //   better answer than handing them an anime rip. ]]
-          k: 8,
-        });
-      } catch (e) {
-        // THE LIBRARY NOT EXISTING IS NOT THE SAME FACT AS THE LIBRARY HAVING NO MATCH,
-        // and this deployment is in the first state: nothing in the repository calls
-        // `ensureAssetTables` or `upsertAssets`, so `asset_library` has never been
-        // created and every call here raised `no such table: asset_library_fts`. The
-        // model saw a raw SQL string it could do nothing with.
-        //
-        // Returning [] instead would be worse than the raw error, not better: it would
-        // read as "the curated library has nothing like that", which is a claim about
-        // an empty table nobody has ever filled. So the state is named, and the model
-        // is told to take the Creator Store path DELIBERATELY rather than by accident.
-        if (String(e instanceof Error ? e.message : e).includes('no such table')) {
-          return {
-            error:
-              'the curated asset library is not available in this deployment — it has never been '
-              + 'populated, so this is not a statement that it has nothing matching your query. '
-              + 'Use find_verified_asset for the Creator Store instead, or build the thing from '
-              + 'Parts with create_instances.',
-          };
-        }
-        throw e;
-      }
-      // Recorded as provenance, on both sets. A library hit is still resolved and gated before it
-      // may be inserted — the library says an id is LICENSED, not that it is safe.
-      for (const h of hits) {
-        if (h.robloxAssetId === null) continue;
-        (ctx.discoveredAssetIds ??= new Set()).add(h.robloxAssetId);
-        (ctx.libraryAssetIds ??= new Set()).add(h.robloxAssetId);
-      }
-      // The canonical library id and provenance travel with every hit, because "we have nothing
-      // like that" and "we have exactly that, it is not imported yet" are different answers and
-      // the person deserves the second one. `assetId` is null on a needs_import row — that is the
-      // truth, and insert_asset would refuse an invented id anyway.
-      return hits.map((h) => ({
-        libraryId: h.id,
-        assetId: h.robloxAssetId,
-        name: h.name,
-        kind: h.kind,
-        triangles: h.triangles,
-        boundsStuds: h.boundsStuds,
-        tags: h.tags,
-        insertable: h.insertable,
-        availability: h.availability,
-        source: h.source,
-        licence: h.licence,
-        attributionRequired: h.attributionRequired,
-        status: h.status,
-      }));
-    },
-  },
   find_verified_asset: {
     def: {
       name: 'find_verified_asset',
       description:
-        'Last resort when the library has nothing: search the Creator Store and return only ids that passed full verification (free, publicly visible, ZERO scripts, Mesh/Image only — never a Model, trusted creator, inside the triangle budget). Never invent an assetId; only ids returned here or by search_asset_library can be inserted.',
+        'Search the Roblox Creator Store and return only ids that passed full verification (free, publicly visible, ZERO scripts, Mesh/Image only — never a Model, trusted creator, inside the triangle budget). This is the ONLY search there is: Apple has no asset library or catalogue of its own. Never invent an assetId; an id may be inserted only if it was returned here or given to you by the user.',
       parameters: S({ query: { type: 'string' }, maxTriangles: { type: 'number' }, robloxOnly: { type: 'boolean' } }, ['query']),
     },
     studio: false,
     run: async (ctx, a) => {
       const refused = sourceRefusal(ctx.assetSources, 'creator_store');
-      // BEFORE the search, for the same reason search_asset_library refuses before its query: an
-      // empty result would read as "the Creator Store has nothing like that" — a claim about a
-      // catalogue this caller was never allowed to look in.
+      // BEFORE the search, never after. An empty result would read as "the Creator Store has
+      // nothing like that" — a claim about a catalogue this caller was never allowed to look in.
       if (refused) return { error: refused };
       const integrity: DetailsIntegrity = { missing: [] };
       const res = await findVerifiedAssets(ctx.env, String(a.query ?? ''), {
@@ -3266,7 +3146,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'insert_asset',
       description:
-        'Insert an asset by numeric assetId. Use an id from search_asset_library or find_verified_asset, or one the USER gave you — never one you produced yourself: a made-up id resolves to something random or to nothing. Where the id came from does not decide whether it is checked. EVERY id is resolved against the Creator Store and must pass the full gate (free, publicly visible, zero scripts, Mesh or Image — a Model is always refused, trusted creator, inside the triangle budget), and every insertion is then scanned INSIDE the place: Luau that arrived with the asset is removed, the place is re-listed to prove it clean, and an asset that cannot be proven clean is deleted whole and refused. To create objects, build them from Parts with create_instances instead.',
+        'Insert an asset by numeric assetId. Use an id from find_verified_asset, or one the USER gave you — never one you produced yourself: a made-up id resolves to something random or to nothing. Where the id came from does not decide whether it is checked. EVERY id is resolved against the Creator Store and must pass the full gate (free, publicly visible, zero scripts, Mesh or Image — a Model is always refused, trusted creator, inside the triangle budget), and every insertion is then scanned INSIDE the place: Luau that arrived with the asset is removed, the place is re-listed to prove it clean, and an asset that cannot be proven clean is deleted whole and refused. To create objects, build them from Parts with create_instances instead.',
       parameters: S({ assetId: { type: 'number' }, parent: { type: 'string' } }, ['assetId']),
     },
     studio: true,
@@ -3294,14 +3174,13 @@ export const TOOLS: Record<string, ToolImpl> = {
       // rejected: a user pasting an id they own is a real flow, and it is the flow that is hardest
       // to work around when it is broken. The provenance is reported in the result so that an id
       // nobody searched for is visible in the transcript and in the audit log rather than inferred.
-      const fromLibrary = ctx.libraryAssetIds?.has(assetId) === true;
-      const provenance: AssetProvenanceSource = fromLibrary ? 'library' : ctx.discoveredAssetIds?.has(assetId) ? 'search_result' : 'user_supplied';
+      const provenance: AssetProvenanceSource = ctx.discoveredAssetIds?.has(assetId) ? 'search_result' : 'user_supplied';
 
       // BEFORE verification, not after: this is a question about where the id came from, which
       // `provenance` already answers for free, and it costs nothing to ask now. Verification below
       // spends a real Creator Store network call — paying for it on an id nobody was allowed to go
-      // looking for through this app in the first place would be the same mistake search_asset_library
-      // and find_verified_asset avoid above. `user_supplied` is never refused here — see
+      // looking for through this app in the first place would be the same mistake find_verified_asset
+      // avoids above. `user_supplied` is never refused here — see
       // `PROVENANCE_SOURCE` in asset-policy.ts for why a pasted id is the customer's own choice, not
       // Apple's, and still faces the full gate immediately below regardless.
       const sourceRefused = provenanceRefusal(ctx.assetSources, provenance);
@@ -3317,14 +3196,20 @@ export const TOOLS: Record<string, ToolImpl> = {
         };
       }
 
-      // A curated-library id is an asset an operator ingested with a recorded licence, source URL
-      // and sha256, and uploaded under Golem's own account. It therefore has no marketplace price,
-      // no votes and no verified-creator badge by construction, and failing it on those three would
-      // refuse every asset in the library. Those three, and ONLY those three, are waived — the
-      // script, sandbox, type and moderation assertions are re-read field by field in
-      // `securityBlockers`, and the waiver is reported back so nobody has to infer it.
-      const blockers = fromLibrary ? securityBlockers(verdict) : verdict.ok ? [] : [`${verdict.verdict}. ${verdict.reasons.join(' ')}`];
-      if (blockers.length) return { error: `asset ${assetId} was not verified: ${blockers.join(' ')}` };
+      //[[ THERE IS NO LONGER A WAIVER HERE, AND THAT IS THE POINT.
+      //
+      //   A curated-library id used to take a softer path: it had been ingested by an operator and
+      //   uploaded under Apple's own account, so by construction it carried no marketplace price,
+      //   no votes and no verified-creator badge, and the full gate would have refused every asset
+      //   in the library on those three alone. Those three were waived and only those three.
+      //
+      //   The library was removed on 2026-09-20 and `libraryAssetIds` went with it, so `fromLibrary`
+      //   could only ever have been false from that moment on. A branch that no input can reach is
+      //   not a harmless leftover when the branch is a security waiver: the next reader sees three
+      //   assertions described as waivable and has to work out, from two other files, that nothing
+      //   can ask for it. So the waiver is deleted rather than left unreachable, and EVERY id now
+      //   faces the same verdict — which is what the tool description already promised. ]]
+      if (!verdict.ok) return { error: `asset ${assetId} was not verified: ${verdict.verdict}. ${verdict.reasons.join(' ')}` };
 
       ctx.discoveredAssetIds = (ctx.discoveredAssetIds ?? new Set()).add(assetId);
       const placed = await insertAndProveClean(ctx, assetId, parent);
@@ -3352,7 +3237,6 @@ export const TOOLS: Record<string, ToolImpl> = {
         // and the admin run-tool route. Saying "recorded: false" there would report a
         // failure that never happened.
         ...(recorded ? { attribution: recorded } : {}),
-        ...(fromLibrary && !verdict.ok ? { waivedForLibraryAsset: verdict.reasons } : {}),
       };
     },
   },
@@ -3819,24 +3703,16 @@ export function targetOf(tool: string, argsJson: unknown): string | undefined {
 /**
  * Tools the model may call, given what this deployment can actually do.
  *
- * `assetLibrary: false` removes `search_asset_library` rather than leaving it to fail. The system
- * prompt tells the model to try it FIRST, and on a deployment where the tables were never created
- * every one of those calls returned `no such table` — a wasted inference step on every build that
- * reaches for an asset, and a raw SQL string the model could do nothing with.
- *
- * Removing it is not the same as pretending the library is empty. `search_asset_library` keeps its
- * loud missing-table branch for any path that still reaches it; this only stops OFFERING a tool
- * that cannot work here.
+ * THIS USED TO TAKE AN `assetLibrary` FLAG, and the flag is gone with the thing it gated. It
+ * removed `search_asset_library` on deployments where the catalogue tables had never been created,
+ * so the model was not offered a tool whose every call answered `no such table`. On 2026-09-20 the
+ * catalogue was removed outright — there is no deployment where that tool exists — so a parameter
+ * for "does this deployment have a library" would now have exactly one answer, and a caller
+ * passing `true` would be asking for a tool that is not in `TOOLS` at all.
  */
-export function toolDefs(
-  studioConnected: boolean,
-  allowed?: Set<string>,
-  opts: { assetLibrary?: boolean } = {},
-): GatewayToolDef[] {
-  const assetLibrary = opts.assetLibrary ?? true;
+export function toolDefs(studioConnected: boolean, allowed?: Set<string>): GatewayToolDef[] {
   return Object.entries(TOOLS)
     .filter(([name, t]) => (studioConnected || !t.studio) && (!allowed || allowed.has(name)))
-    .filter(([name]) => assetLibrary || name !== 'search_asset_library')
     .map(([, t]) => t.def);
 }
 

@@ -30,8 +30,12 @@ import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { PRODUCT_ORIGIN } from './lib/product-origin.mjs';
+
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const DEPLOYED = 'https://golem.moshe-barami111.workers.dev';
+// THE ORIGIN IS READ, NOT TYPED. It used to be a copy of the LEGACY hostname, so this program
+// measured — and wrote into its evidence file as "origin" — a deployment nobody is sent to.
+const DEPLOYED = PRODUCT_ORIGIN;
 
 const argv = process.argv.slice(2);
 let BASE = DEPLOYED;

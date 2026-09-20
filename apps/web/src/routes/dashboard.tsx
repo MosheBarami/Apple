@@ -13,6 +13,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Failure } from '../components/failure';
@@ -91,14 +92,54 @@ async function fetchTagUniverse(): Promise<{ tags?: string[] }[]> {
   return (data ?? []) as { tags?: string[] }[];
 }
 
+/**
+ * WHERE THE MENU IS PAINTED, AND WHY IT IS NOT PAINTED IN THE CARD.
+ *
+ * MEASURED ON THE DEPLOYED SHELF, 2026-09-20, and reproduced here at 700x900 before this was
+ * written: with the menu open on the first card, `document.elementFromPoint` at the centre of
+ * "Export conversation (Markdown)" returned `H2.project-card-name`, at "Export conversation
+ * (JSON)" it returned `P.project-card-desc`, and at "Delete project…" it returned
+ * `DIV.project-card-meta` — all three belonging to the card in the NEXT ROW. A real click on
+ * "Delete project…" opened the neighbouring project. Two of the six capabilities the owner's
+ * definition of done names for a project — export and delete — were unreachable from the card
+ * for every project except the ones in the last grid row.
+ *
+ * `z-index:20` on `.menu-pop` could not fix it and the stylesheet already says so: every card
+ * carries `transform:translate3d(0,0,0)` for its hover lift, and a transform creates a stacking
+ * context. The menu's 20 is therefore spent INSIDE its own card, and cards paint in document
+ * order, so any later card covers it. Raising the number raises it against its siblings inside a
+ * box it cannot leave. The only fix is to leave the box.
+ *
+ * So the popup is rendered through a portal into the shelf root — not `document.body`, because
+ * every rule that styles it is written `.shelf .menu-pop` for the specificity reasons at the top
+ * of dashboard.css, and a popup parented to `<body>` would lose all of them — and positioned
+ * `fixed` against the trigger's own rectangle. Fixed rather than absolute because the shelf root
+ * is not a positioned ancestor and must not become one.
+ *
+ * WHAT THIS DELIBERATELY KEEPS. The trigger stays inside the card, so the tab order does not move.
+ * Every item keeps `preventDefault` + `stopPropagation`: the card is a `<Link>`, and while the
+ * portal means a click can no longer bubble INTO the anchor, the handlers are what stop a stray
+ * pointer sequence doing it and they cost nothing.
+ */
 function ProjectMenu({ onDelete, onExport, onEdit, onArchive, onPin, onTags, archived, pinned }: { onDelete: () => void; onExport: (format: 'md' | 'json') => void; onEdit: () => void; onArchive: () => void; onPin: () => void; onTags: () => void; archived: boolean; pinned: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
+  // `null` until it has been measured. The popup is rendered invisible for exactly one frame so
+  // its height can be read before it is placed — a menu that is drawn at a guessed position and
+  // then corrected is a menu that visibly jumps, and near the bottom of the window the guess is
+  // wrong every time.
+  const [at, setAt] = useState<{ top: number; left: number } | null>(null);
 
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      // The popup is no longer a descendant of `ref`, so asking only `ref` whether it contains the
+      // click would close the menu on every click INSIDE the menu.
+      if (ref.current?.contains(target)) return;
+      if (popRef.current?.contains(target)) return;
+      setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setOpen(false);
@@ -111,28 +152,66 @@ function ProjectMenu({ onDelete, onExport, onEdit, onArchive, onPin, onTags, arc
     };
   }, [open]);
 
-  return (
-    <div className="card-menu" ref={ref}>
-      <button
-        type="button"
-        className="icon-btn"
-        aria-label="Project actions"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          setOpen((v) => !v);
-        }}
-      >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-          <circle cx="3" cy="8" r="1.4" />
-          <circle cx="8" cy="8" r="1.4" />
-          <circle cx="13" cy="8" r="1.4" />
-        </svg>
-      </button>
-      {open && (
-        <div className="menu-pop" role="menu">
+  // Placement, and re-placement. A fixed element is positioned against the WINDOW, so anything
+  // that moves the trigger within the window — a scroll, a resize, the grid reflowing — moves the
+  // trigger out from under its own menu unless the menu is told.
+  useEffect(() => {
+    if (!open) return;
+    const place = () => {
+      const trigger = ref.current?.getBoundingClientRect();
+      const pop = popRef.current?.getBoundingClientRect();
+      if (!trigger || !pop) return;
+      const gap = 6;
+      const edge = 8;
+      // Below the trigger, unless the window has no room for it, in which case above. Clamped so a
+      // menu can never be pushed off the top either.
+      const below = trigger.bottom + gap;
+      const top =
+        below + pop.height <= window.innerHeight - edge
+          ? below
+          : Math.max(edge, trigger.top - gap - pop.height);
+      // `.menu-pop` is `inset-inline-end:0` in the stylesheet: its END aligns with the trigger's.
+      // Reading the direction rather than assuming left-to-right is what keeps that true on a
+      // Hebrew shelf, which this product has.
+      const rtl = getComputedStyle(ref.current as Element).direction === 'rtl';
+      const wanted = rtl ? trigger.left : trigger.right - pop.width;
+      const left = Math.min(Math.max(edge, wanted), window.innerWidth - pop.width - edge);
+      setAt((prev) => (prev && prev.top === top && prev.left === left ? prev : { top, left }));
+    };
+    place();
+    // Capture, because the scroller is an ancestor of the trigger and scroll does not bubble.
+    window.addEventListener('scroll', place, true);
+    window.addEventListener('resize', place);
+    return () => {
+      window.removeEventListener('scroll', place, true);
+      window.removeEventListener('resize', place);
+    };
+  }, [open]);
+
+  const host = open ? (ref.current?.closest('.shelf') ?? document.body) : null;
+
+  const pop = (
+        <div
+          className="menu-pop"
+          role="menu"
+          ref={popRef}
+          style={{
+            position: 'fixed',
+            // `inset-inline-end:0` from system.css is what placed this against the card. It is
+            // meaningless once the popup is a child of the shelf rather than of the trigger, and
+            // left un-cleared it would stretch the box from `left` to the window's edge.
+            insetInlineEnd: 'auto',
+            insetInlineStart: 'auto',
+            top: at ? `${at.top}px` : 0,
+            left: at ? `${at.left}px` : 0,
+            // One frame invisible while the height is measured. `hidden`, not `display:none`:
+            // a box with no display has no height to read.
+            visibility: at ? 'visible' : 'hidden',
+            // Above the shelf and every card on it; below the scrim (70), the modal overlay (100)
+            // and the toasts (150), which are the things that are allowed to cover a menu.
+            zIndex: 65,
+          }}
+        >
           <button
             type="button"
             role="menuitem"
@@ -230,7 +309,29 @@ function ProjectMenu({ onDelete, onExport, onEdit, onArchive, onPin, onTags, arc
             Delete project…
           </button>
         </div>
-      )}
+  );
+
+  return (
+    <div className="card-menu" ref={ref}>
+      <button
+        type="button"
+        className="icon-btn"
+        aria-label="Project actions"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setOpen((v) => !v);
+        }}
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+          <circle cx="3" cy="8" r="1.4" />
+          <circle cx="8" cy="8" r="1.4" />
+          <circle cx="13" cy="8" r="1.4" />
+        </svg>
+      </button>
+      {open && host ? createPortal(pop, host) : null}
     </div>
   );
 }
@@ -535,9 +636,22 @@ function EditProjectModal({ project, onClose }: { project: ProjectRow; onClose: 
 function DeleteProjectModal({ project, onClose }: { project: ProjectRow; onClose: () => void }) {
   const qc = useQueryClient();
   const { toast } = useToast();
+  //[[ NINE SECONDS OF THE WORD "DELETING…" IS INDISTINGUISHABLE FROM A BUTTON THAT DID NOTHING.
+  //
+  //   MEASURED, 2026-09-20: a real delete on the deployed product took over nine seconds, and for
+  //   all nine the only thing that changed on screen was the button's label. The auditor's first
+  //   attempt "looked like a silent failure until I waited longer" — which is the exact moment a
+  //   user reaches for the button again, on the one action in this product that cannot be undone.
+  //
+  //   The wait is not the defect. A purge really does walk every store the project touched, and
+  //   rushing it is how half-deleted data happens. What was missing is the product SAYING which of
+  //   the two things it is doing, so the time reads as work rather than as nothing. `role="status"`
+  //   makes the change spoken as well as shown, because a blind user has even less to go on. ]]
+  const [stage, setStage] = useState<'erasing' | 'unlisting'>('erasing');
 
   const del = useMutation({
     mutationFn: async () => {
+      setStage('erasing');
       //[[ A FAILED PURGE MUST NOT BE FOLLOWED BY DELETING THE ROW THAT POINTS AT WHAT SURVIVED.
       //
       //   This awaited the purge and read nothing back. The worker has always answered honestly —
@@ -557,6 +671,7 @@ function DeleteProjectModal({ project, onClose }: { project: ProjectRow; onClose
         );
       }
       // Only now: the data is gone, so the row that points at it can go.
+      setStage('unlisting');
       const { error } = await supabase.from('projects').delete().eq('id', project.id);
       if (error) throw new Error(error.message);
     },
@@ -588,6 +703,15 @@ function DeleteProjectModal({ project, onClose }: { project: ProjectRow; onClose
       busy={del.isPending}
       onConfirm={() => del.mutate()}
       onClose={onClose}
+      details={
+        del.isPending ? (
+          <p className="field-hint" role="status">
+            {stage === 'erasing'
+              ? 'Erasing the conversation, the checkpoints and the Studio pairing. On a large project this takes a few seconds — it finishes on its own.'
+              : 'Erased. Taking it off your shelf…'}
+          </p>
+        ) : undefined
+      }
     >
       This permanently deletes <strong>{project.name}</strong> — chat history, checkpoints and the Studio
       pairing. Your Roblox place itself is not touched. This cannot be undone.

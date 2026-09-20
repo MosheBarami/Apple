@@ -191,7 +191,7 @@ const REGEX_KEYWORDS = /(?:^|[^\w$])(return|typeof|instanceof|in|of|new|delete|v
  * `--` IS ONLY A COMMENT IN LUAU. In TypeScript it is the decrement operator, and blanking to end
  * of line from `i--` removed real code — including any literal that shared the line.
  */
-function blankComments(src, { luau = false } = {}) {
+function blankComments(src, { luau = false, py = false } = {}) {
   const out = src.split('');
   let i = 0;
   const blank = (from, to) => { for (let k = from; k < to; k += 1) if (out[k] !== '\n') out[k] = ' '; };
@@ -205,6 +205,26 @@ function blankComments(src, { luau = false } = {}) {
   };
   while (i < src.length) {
     const c = src[i];
+    // A PYTHON TRIPLE-QUOTED REGION IS ONE LITERAL, and it is the only string in either language
+    // that legitimately spans lines with a plain quote. Skipped rather than blanked — it is a
+    // literal, stringLiterals() matches it, and a docstring is printed by `help()`, so it is
+    // exactly the kind of prose this program exists to read. Handled BEFORE the single-quote
+    // branch below, whose newline backstop would otherwise close it after one line and leave the
+    // rest of the docstring to be re-read as code.
+    if (py && (c === '"' || c === "'")) {
+      const triple = src.slice(i, i + 3);
+      if (triple === '"""' || triple === "'''") {
+        const end = src.indexOf(triple, i + 3);
+        i = end === -1 ? src.length : end + 3;
+        continue;
+      }
+    }
+    if (py && c === '#') {
+      const end = src.indexOf('\n', i);
+      blank(i, end === -1 ? src.length : end);
+      i = end === -1 ? src.length : end;
+      continue;
+    }
     // A Luau long STRING — `[[ … ]]`, `[==[ … ]==]`. Kept, not blanked: it is a literal, and
     // stringLiterals() matches it. Skipped here so quotes inside it cannot open a phantom string.
     if (luau && c === '[') {
@@ -296,9 +316,39 @@ function blankComments(src, { luau = false } = {}) {
   return out.join('');
 }
 
+/**
+ * An .astro file with everything the build strips replaced by spaces of the same length.
+ *
+ * Offsets are preserved because the caller reports a line number computed from one. Two kinds are
+ * removed: the FRONTMATTER between the opening `---` fences, which is TypeScript and whose `//`
+ * and `/* *\/` comments are already handled by blankComments(), and `{/* … *\/}` expression
+ * comments in the markup, which Astro deletes at compile time.
+ */
+function blankAstroComments(src) {
+  let out = src;
+  const pad = (m) => m.replace(/[^\n]/g, ' ');
+  const fence = /^---\n([\s\S]*?)\n---/.exec(out);
+  if (fence) {
+    const body = blankComments(fence[1], {});
+    out = `${out.slice(0, 4)}${body}${out.slice(4 + fence[1].length)}`;
+  }
+  return out.replace(/\{\/\*[\s\S]*?\*\/\}/g, pad);
+}
+
 function stringLiterals(src, rel) {
   // Astro markup is prose by construction — the whole file renders to a user.
-  if (/\.astro$/.test(rel)) return [{ text: src, offset: 0 }];
+  //
+  // EXCEPT WHAT THE BUILD DELETES, and the difference is not pedantry — it is the difference
+  // between a checker and a muzzle. apps/site/src/components/Footer.astro carries a six-line
+  // `{/* … */}` comment explaining why the operator's byline is "Apple Labs" and what it used to
+  // say; Astro compiles that comment away and no browser ever receives a byte of it. Reported as a
+  // finding, the only way to clear the gate is to DELETE THE EXPLANATION — so the check would be
+  // spending the one thing this repository is built on, the reason a decision was made, to buy a
+  // green line about a word nobody can read.
+  //
+  // An HTML `<!-- … -->` comment is NOT in this exemption. Astro keeps it, it is served, and a
+  // stranger reading source sees it. The line is drawn at what reaches the browser.
+  if (/\.astro$/.test(rel)) return [{ text: blankAstroComments(src), offset: 0 }];
 
   const out = [];
   // COMMENTS ARE BLANKED FIRST, and this is not belt-and-braces — it is the difference between
@@ -312,10 +362,10 @@ function stringLiterals(src, rel) {
   //
   // Blanking cannot be a regex either: `//` appears inside every https:// URL in the tree, and a
   // naive strip would eat the rest of those lines and the literals on them.
-  const code = blankComments(src, { luau: /\.luau$/.test(rel) });
+  const code = blankComments(src, { luau: /\.luau$/.test(rel), py: /\.py$/.test(rel) });
   // Single, double and backtick strings, and Luau's [[long brackets]]. Escapes are honoured so a
   // quote inside a string does not end it early.
-  const re = /'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)*`|\[\[[\s\S]*?\]\]/g;
+  const re = /"""[\s\S]*?"""|'''[\s\S]*?'''|'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)*`|\[\[[\s\S]*?\]\]/g;
   for (const m of code.matchAll(re)) {
     // A Luau long bracket is also the comment syntax `--[[ ... ]]`, so one preceded by `--` is a
     // comment, not a literal.
@@ -449,6 +499,42 @@ function selftest() {
     check('escaped quote does not end the string', texts(src, 'a.ts').includes("'it\\'s Golem'"),
       JSON.stringify(texts(src, 'a.ts')));
     check('escaped quote: the comment after it is still blanked', !/golem here/.test(blankComments(src, {})));
+  }
+  // 8d. PYTHON. `#` is a comment there and nothing at all in TypeScript, and a docstring is a
+  //     quote that legitimately spans lines — the one case the newline backstop must not close.
+  {
+    const src = '# golem lived here\nBASE = "Golem ships"\n';
+    check('py: a # comment is blanked', !/golem lived/.test(blankComments(src, { py: true })));
+    check('py: the literal after it is seen', texts(src, 'a.py').includes('"Golem ships"'));
+    check('py: # is NOT a comment in TypeScript', texts('const s = "#golem";\n', 'a.ts').includes('"#golem"'));
+  }
+  {
+    const src = '"""Talk to Golem.\n\nSecond line.\n"""\nX = "after"\n';
+    check('py: a docstring is one literal, not a mis-scan',
+      texts(src, 'a.py').some((t) => t.startsWith('"""') && /Golem/.test(t)), JSON.stringify(texts(src, 'a.py')));
+    check('py: the assignment after a docstring is still seen', texts(src, 'a.py').includes('"after"'));
+  }
+  {
+    // A `#` inside a string is not a comment, so the literal must survive intact.
+    const src = 'X = "golem#1"\n# golem lived here\n';
+    check('py: # inside a string does not start a comment', texts(src, 'a.py').includes('"golem#1"'));
+    check('py: the comment after that string is still blanked', !/golem lived/.test(blankComments(src, { py: true })));
+  }
+  // 8e. ASTRO. The markup is prose, so the whole file counts — but not the two things the build
+  //     deletes, and very much still the one it keeps.
+  {
+    const withJsx = '<p>Apple</p>\n{/* it used to say Golem */}\n<p>Two</p>\n';
+    check('astro: a {/* … */} comment is not shipped prose', !/golem/i.test(texts(withJsx, 'a.astro').join('')));
+    check('astro: blanking a comment preserves the line count',
+      texts(withJsx, 'a.astro')[0].split('\n').length === withJsx.split('\n').length);
+    check('astro: the markup around it is still prose',
+      /Apple/.test(texts(withJsx, 'a.astro').join('')));
+    const frontmatter = '---\nconst x = 1; // Golem lived here\n---\n<p>Apple</p>\n';
+    check('astro: a frontmatter // comment is not shipped prose', !/golem/i.test(texts(frontmatter, 'a.astro').join('')));
+    const html = '<p>Apple</p>\n<!-- Golem -->\n';
+    check('astro: an HTML comment IS shipped and still counts', /Golem/.test(texts(html, 'a.astro').join('')));
+    const copy = '<p>Built with Golem</p>\n';
+    check('astro: ordinary copy still counts', /Golem/.test(texts(copy, 'a.astro').join('')));
   }
   // 9. Comments are still excluded, which is the property the blanking existed for.
   check('line comment is not a literal', !texts("// Golem was here\nconst a = 1;\n", 'a.ts').some((t) => /Golem/.test(t)));
@@ -600,7 +686,37 @@ const captureProblems = OFFLINE || deployed === null ? [] : await verifyCapture(
 // necessarily contains the old name — and README.md, which is prose for a developer rather than
 // copy for a user. A checker that flags the instructions it was given is measuring the wrong thing.
 const SOURCE_GLOBS = ['*.ts', '*.tsx', '*.astro', '*.luau'];
-const sources = git(['ls-files', ...SOURCE_GLOBS]).split('\n').filter(Boolean)
+//
+// AND THE SHIPPED CLIENTS, WHICH ARE NEITHER .ts NOR .luau AND WERE THEREFORE NOT LOOKED AT.
+//
+// packages/sdk ships three language clients and a CLI. The Luau one is a .luau and was in the
+// denominator; the JavaScript one is .mjs and the Python one is .py, and this program had never
+// opened either. That is not a gap in coverage of internal code — it is the SDK a stranger is
+// handed, and `apple --help` printed "then GOLEM_TOKEN" to everyone who ran it while this
+// checker reported the tree clean. A denominator that omits the shipped product cannot support
+// the sentence REBRAND COMPLETE.
+//
+// The rest of the tree's .mjs is deliberately NOT here: 271 of its hits are test fixtures —
+// `golem.test` hostnames and tmpdir prefixes — which are neither prose nor shipped, and a checker
+// whose signal is mostly noise gets muted. What is in scope is what package.json's `files` field
+// puts in the tarball.
+const SHIPPED_CLIENT_GLOBS = [
+  'packages/sdk/src/*.mjs',
+  'packages/sdk/bin/*.mjs',
+  'packages/sdk/python/apple_sdk/*.py',
+];
+const lsFiles = (globs) => git(['ls-files', ...globs]).split('\n').filter(Boolean);
+const shipped = lsFiles(SHIPPED_CLIENT_GLOBS);
+// A GLOB THAT MATCHES NOTHING IS THIS PROGRAM'S OWN FAILURE MODE, one directory rename away: move
+// or rename the SDK and the clients leave the denominator in silence while the headline keeps its
+// wording. Refused rather than reported, because there is no honest verdict over a denominator
+// that lost a limb.
+if (!shipped.length) {
+  console.error('check-rebrand: the shipped-client globs match no tracked file — packages/sdk has moved, '
+    + 'and the clients a stranger is handed are no longer in the denominator. Re-aim SHIPPED_CLIENT_GLOBS.');
+  process.exit(2);
+}
+const sources = [...new Set([...lsFiles(SOURCE_GLOBS), ...shipped])]
   // The checker names every exempt identifier, so it would flag itself.
   .filter((f) => f !== 'scripts/check-rebrand.mjs');
 

@@ -112,6 +112,29 @@ test('the token comes from APPLE_TOKEN when no --token is given', async () => {
   }
 });
 
+test('the pre-rename token variable still works, and is not advertised', async () => {
+  // TWO ASSERTIONS THAT PULL IN OPPOSITE DIRECTIONS, which is why they share a test: deleting
+  // the fallback to satisfy the second would break a shell that still exports the old name, and
+  // re-advertising it would put the dead product name back in the sentence the CLI prints most.
+  // Either change alone reddens this.
+  const s = await startServer({ 'GET /api/me': () => ({ body: { userId: 'u1' } }) });
+  try {
+    // APPLE_TOKEN is REMOVED from the child's environment rather than set empty: the resolution
+    // is `?? `, so an empty string is a value and would legitimately win over the fallback.
+    const r = await apple(['me', '--base-url', s.baseUrl], { APPLE_TOKEN: undefined, GOLEM_TOKEN: 'from-old-env' });
+    assert.equal(r.code, 0, r.stderr);
+    assert.equal(s.requests.at(-1).headers.authorization, 'Bearer from-old-env',
+      'the pre-rename environment variable no longer resolves — that breaks a shell that works today');
+  } finally {
+    await s.close();
+  }
+  const help = await apple([]);
+  assert.equal(help.code, 2, 'bare `apple` still prints usage and exits 2');
+  const printed = help.stdout + help.stderr;
+  assert.match(printed, /APPLE_TOKEN/, 'the help no longer names the variable it does document');
+  assert.doesNotMatch(printed, /golem/i, 'the CLI help still prints the old product name');
+});
+
 test('an API error exits 1 and prints the server sentence on stderr', async () => {
   const s = await startServer({ 'GET /api/me': () => ({ status: 401, body: { error: 'unauthorized' } }) });
   try {

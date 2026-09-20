@@ -119,6 +119,21 @@ const sessionShape = modes
     Where: the balance meter is in the FOOTER OF THE LEFT RAIL, not a header —
     apps/web/src/components/layout.tsx renders <UsageMeter> inside `.gx-rail__foot`.
 
+    AND THEN "IN THE FOOTER OF THE LEFT RAIL" WAS WRONG TOO, in the state a first-time reader is
+    actually in. Measured on the deployed app on 2026-09-20 with a fresh browser profile at 1920,
+    1440, 1280 and 1024: the shell renders `gx gx-shell is-rail-collapsed`, there is NO `.gx-usage`
+    element in the document at all, and `.gx-rail__foot` does not exist either. What the collapsed
+    dock holds is a row labelled "Usage and Credits". Click "Open navigation" and the rail appears
+    with the meter in its footer, reading "202 Credits left today / Free / of 231 a day / about 2
+    more builds / resets in 14h" — so the old sentence was true only AFTER an action this page
+    never told anybody to take. A reader following it looked at a rail that was not there and
+    concluded the product had lost their balance.
+
+    So the paragraph names the dock row first, because that is what is on screen when the workspace
+    loads, and the rail footer second, as what you get once the navigation is open. The Credits page
+    it links to now also carries what the next request costs, per mode, beside the balance —
+    apps/web/src/routes/usage.tsx, derived from MODE_INFO the same way the table above is.
+
     Live: it is not. The meter is fed from `me.data?.quota`, a react-query ['me'] query with
     staleTime 60s, and apps/web/src/app.tsx sets refetchOnWindowFocus: false. Only two actions in
     Settings ever invalidate it. The worker DOES push a live `quota` socket message — the hook
@@ -132,10 +147,14 @@ const sessionShape = modes
   */}
   <h2>How metering works</h2>
   <p>
-    Your balance sits in the footer of the left rail, beside your account. It is read when the
-    workspace loads and does not refresh itself while you build — reload the page for the current
-    figure. What does move as it happens is the run you are watching: the thinking panel counts the
-    Credits this run has spent, step by step. One Credit is taken when a request starts, and the
+    Your balance is one click away in the workspace: the dock down the left edge carries a
+    <strong>Usage and Credits</strong> row, and it opens a page with the figure, the last thirty
+    days, and what your next request costs in each mode. The left navigation is closed when the
+    workspace loads, so the meter itself is not on screen until you open it — once you do, it sits
+    in the footer of the left rail beside your account, reading what is left, what your allowance is
+    and when it resets. Either surface is read when the page loads and does not refresh itself while
+    you build — reload for the current figure. What does move as it happens is the run you are
+    watching: the thinking panel counts the Credits this run has spent, step by step. One Credit is taken when a request starts, and the
     rest settles against the compute the run actually consumed, so a long build's cost arrives as
     it is incurred rather than as a total you could not see coming.
   </p>

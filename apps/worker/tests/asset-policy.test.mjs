@@ -22,7 +22,6 @@ const P = await import(`file://${out}`);
 const policy = (allow) => ({ mode: 'remember', allow });
 
 test('each choice maps to the engine sources it actually authorises', () => {
-  assert.deepEqual(P.POLICY_TO_SOURCE.apple_library, ['library']);
   assert.deepEqual(P.POLICY_TO_SOURCE.creator_store, ['creator_store']);
   // `from_scratch` covers three engine sources, and the reason is worth stating: building out of
   // parts, generating geometry in the customer's own session, and using Studio's own built-ins are
@@ -40,32 +39,58 @@ test('NO POLICY ALLOWS NOTHING — never everything', () => {
 });
 
 test('an allowed choice yields its sources, and nothing else', () => {
-  assert.deepEqual(P.allowedSources(policy(['apple_library'])), ['library']);
-  const both = P.allowedSources(policy(['apple_library', 'creator_store']));
-  assert.deepEqual(both.sort(), ['creator_store', 'library']);
-  assert.equal(both.includes('procedural'), false, 'from_scratch was not chosen');
+  assert.deepEqual(P.allowedSources(policy(['creator_store'])), ['creator_store']);
+  const both = P.allowedSources(policy(['creator_store', 'from_scratch']));
+  assert.deepEqual(both.sort(), ['builtin', 'creator_store', 'generation_service', 'procedural', 'terrain']);
+});
+
+//[[ THE ASSET LIBRARY WAS REMOVED ON 2026-09-20, AND THIS IS WHERE IT STAYS REMOVED.
+//
+//   The owner's reason was not that the catalogue was slow or small. Every upload it could make was
+//   an Image or a Decal, Roblox refuses to archive either, so each one was permanent in somebody's
+//   real account — and it also held rows named after other companies' properties under one blanket
+//   licence claim. Putting the choice back would put that back.
+//
+//   It is tested HERE, in the policy, rather than only by the absence of a tool, because the
+//   dialog's vocabulary is where it would come back first: a box that reads "the Apple library"
+//   and unlocks an engine source is the whole feature, and everything else follows from it. ]]
+test('NEITHER THE LIBRARY ENGINE SOURCE NOR THE DIALOG CHOICE THAT UNLOCKED IT EXISTS', () => {
+  assert.equal(P.ASSET_SOURCES.includes('library'), false,
+    'the `library` engine source is back in ./assets — the catalogue it named was deleted');
+  assert.equal(Object.prototype.hasOwnProperty.call(P.SOURCE_CHOICE, 'library'), false,
+    'SOURCE_CHOICE still classifies `library`, which means something can still authorise it');
+  assert.equal(Object.prototype.hasOwnProperty.call(P.POLICY_TO_SOURCE, 'apple_library'), false,
+    'the `apple_library` dialog choice is back — a box that unlocks a catalogue that does not exist');
+  // And a stored policy that still names it must not quietly grant anything. `allowedSources`
+  // ignores an unknown choice, which is the safe direction: nothing, rather than everything.
+  assert.deepEqual(P.allowedSources(policy(['apple_library'])), [],
+    'a saved `apple_library` must unlock no engine source at all');
+  // PROVENANCE, THE OTHER HALF. `library` was also a provenance kind, and it was the one that
+  // waived three marketplace assertions in insert_asset. It must not be classifiable either.
+  assert.equal(Object.prototype.hasOwnProperty.call(P.PROVENANCE_SOURCE, 'library'), false,
+    'the `library` provenance kind is back, and with it the waiver it used to authorise');
 });
 
 test('A REFUSAL NAMES THE SETTING AND WHERE TO CHANGE IT', () => {
   // "not allowed" tells a model to give up and a person nothing. The sentence has to say which
   // switch is off and where the switch is, because the reader is an agent that will otherwise
   // report a capability gap that is really a preference.
-  const r = P.sourceRefusal(policy(['from_scratch']), 'library');
+  const r = P.sourceRefusal(policy(['from_scratch']), 'creator_store');
   assert.ok(r, 'a disallowed source must be refused');
-  assert.match(r, /Apple library/i, 'it must name the source in the words the dialog used');
+  assert.match(r, /Creator Store/i, 'it must name the source in the words the dialog used');
   assert.match(r, /Settings/i, 'and where to change it');
   assert.match(r, /from scratch|parts/i, 'and what IS allowed, so the agent can carry on');
 });
 
 test('an allowed source is not refused', () => {
-  assert.equal(P.sourceRefusal(policy(['apple_library']), 'library'), null);
   assert.equal(P.sourceRefusal(policy(['creator_store']), 'creator_store'), null);
+  assert.equal(P.sourceRefusal(policy(['from_scratch']), 'procedural'), null);
 });
 
 test('with nothing answered, the refusal says so rather than blaming a setting', () => {
   // Never answered and deliberately turned off are different facts, and the fix differs: one
   // person needs to answer a dialog, the other to change their mind.
-  const r = P.sourceRefusal(null, 'library');
+  const r = P.sourceRefusal(null, 'creator_store');
   assert.match(r, /has not chosen|not been asked|no asset sources/i);
   assert.equal(/turned off|disabled/i.test(r), false, 'nobody turned anything off');
 });

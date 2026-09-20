@@ -1,28 +1,27 @@
-// Turn a catalogued asset into one a customer's experience can actually use.
+// Uploading one file into a Roblox account through Open Cloud, and nothing else.
 //
-// THE PROBLEM THIS SOLVES, STATED PLAINLY. The library holds 7,000+ rows of provenance and not one
-// of them has a `robloxAssetId`. A row without one is a CATALOGUE ENTRY: Apple knows the asset
-// exists, who made it and under what licence, and cannot put it in anybody's game. That is why
-// every ingested row is `pending_ingest`.
+// WHAT THIS FILE USED TO BE. It was the library's import path: it turned a catalogued asset into a
+// Roblox asset by uploading the bytes under APPLE'S OWN account, where Images, Decals and Meshes
+// are created Open Use and are therefore referenceable by id from every customer's experience.
+// That whole idea was removed on 2026-09-20. It only ever produced Images and Decals, Roblox
+// refuses to archive either, and so every asset it created was permanent in a real account — 299
+// of them landed in the owner's personal account before he had agreed to it, and Roblox would not
+// take them back.
 //
-// Search used to answer that by hiding those rows — `ftsSearch` filtered on `status = 'active'` —
-// and hiding them was worse than the problem. The rows that DID have ids were the Creator Store
-// scrape, so the library's whole curated half was invisible and the junk was all anyone could see.
-// Search now returns both and labels each hit `insertable` or `needs_import` (asset-library.ts),
-// so "we have this, it needs importing" can be said out loud instead of being silently swallowed.
-//
-// WHY IMAGES AND MESHES AND NOT MODELS. Roblox creates Images, Decals and Meshes as **Open Use** by
-// default, so one upload under Apple's account is referenceable by asset id from every customer's
-// experience. Models are not: a Model uploaded here would be usable by Apple and by nobody else,
-// and the library would fill with ids that 404 for every paying customer. asset-library.ts states
-// this rule at the top of the file; this is where it becomes a refusal rather than a note.
+// WHAT IS LEFT IS THE CUSTOMER'S OWN ACCOUNT. `creator-dashboard.ts` is the only caller now: a
+// customer connects their own Open Cloud key in Settings and uploads into their own account, where
+// Open Use does not matter because they own the result. The functions below are the HTTP half of
+// that — the multipart body, the operation polling, the two nestings Roblox has used for an asset
+// id — and they hold no credential of their own. `uploadTypeFor` and `OPEN_USE_UPLOAD_TYPES` went
+// with the library, because "which type is Open Use under a shared account" was only ever the
+// library's question. `archiveAsset` went with it too: it was the undo for an import, and there
+// are no imports.
 //
 // UPLOADING IS ASYNCHRONOUS AND MODERATED. `POST /assets/v1/assets` returns an OPERATION, not an
 // asset. The operation may still be running, may fail, and may return an asset that moderation
 // later rejects. So `uploadAsset` returns a discriminated result with `done`, `assetId` and
 // `error` rather than a number — because "the upload was accepted" and "the asset exists" are
 // different facts and a function that returned only the id would conflate them.
-import type { AssetKind } from './assets';
 import { redactSecrets } from './redaction.ts';
 
 /** Verified 2026-09-15: POST with an invalid key answers 401, so the endpoint is live. */
@@ -33,29 +32,17 @@ const OPERATIONS_ENDPOINT = 'https://apis.roblox.com/assets/v1/operations';
 export const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 
 /**
- * The asset types Open Cloud accepts, restricted to the ones that are Open Use.
- *
- * `Model` is deliberately absent and its absence is the point — see the header. If Roblox ever
- * makes Models Open Use, adding it here is a one-line change with a dated comment, not a silent
- * loosening somewhere in a caller.
- */
-export const OPEN_USE_UPLOAD_TYPES = ['Decal', 'Image', 'Mesh'] as const;
-export type OpenUseUploadType = (typeof OPEN_USE_UPLOAD_TYPES)[number];
-
-/**
  * Every content type Open Cloud's Create Asset accepts, and which asset type each one names.
  *
  * Read off Roblox's own table on 2026-09-15 (creator-docs, cloud/guides/usage-assets.md), which is
  * the only place the accepted formats are written down — `assetType` in assets/v1.json is declared
  * as a bare string with `"format": "enum"` and no members, so the spec alone cannot tell you this.
  *
- * WHY THIS IS A WIDER SET THAN `OPEN_USE_UPLOAD_TYPES`, AND WHY THAT IS NOT A LOOSENING. Open Use
- * is a constraint on APPLE'S SHARED ACCOUNT: an asset uploaded there has to be referenceable from
- * every customer's experience, and a Model is not, so a Model in the library would 404 for every
- * paying customer. Uploading into a CUSTOMER'S OWN account has no such problem — they own it, so
- * they can use it. `uploadTypeFor` below is unchanged and still returns Open Use types only, so the
- * library path cannot reach the wider set by accident; only a caller holding that customer's own
- * key can, which is `creator-dashboard.ts` and nothing else.
+ * THIS IS THE FULL SET, INCLUDING `Model`, AND THAT IS NOT A LOOSENING. Open Use — the property
+ * that made an asset referenceable from every customer's experience — was a constraint on APPLE'S
+ * SHARED ACCOUNT, and there is no longer a path that writes to one. Every caller here holds a
+ * CUSTOMER'S OWN key and writes into that customer's own account, where a Model is perfectly
+ * usable because they own it. That caller is `creator-dashboard.ts` and nothing else.
  *
  * `model/x-rbxm` IS AMBIGUOUS IN ROBLOX'S OWN TABLE — it is listed under both Animation and Model —
  * and a content type cannot tell the two apart. It resolves to Model, the common case, and a caller
@@ -96,32 +83,6 @@ export function assetTypeForContentType(contentType: string): RobloxUploadType |
   return UPLOAD_CONTENT_TYPES[bare] ?? null;
 }
 
-/**
- * What a library `kind` becomes on Roblox. null means "this kind has no Open Use upload path".
- *
- * GEOMETRY HAS NO PATH HERE, AND THAT IS A ROBLOX CONSTRAINT, NOT AN OMISSION. Checked against the
- * Open Cloud asset-format table on 2026-09-15: `Mesh` accepts **"Roblox only"** format
- * (`model/x-file-mesh-data`) and the documentation says in as many words that it exists for
- * re-uploading meshes downloaded from the Asset Delivery API. A `.glb` or `.fbx` can only be
- * uploaded as `Model` — and Models are not Open Use, so one uploaded under Apple's account would
- * load for Apple and 404 for every customer who pays.
- *
- * My first version of this function mapped `model/gltf-binary` to `Mesh`. It would have sent real
- * geometry to an endpoint that cannot take it, once per asset, against the owner's live account.
- *
- * The path for third-party geometry is therefore NOT this API. It is the Studio plugin's own 3D
- * import, which creates the mesh inside the customer's session under the customer's account —
- * `user_generated` in asset-library.ts's vocabulary, which is exactly why that category exists.
- */
-export function uploadTypeFor(kind: AssetKind, contentType: string): OpenUseUploadType | null {
-  if (/^image\/(png|jpeg|jpg|bmp|tga)/.test(contentType)) {
-    return kind === 'ui_icon' || kind === 'particle' ? 'Decal' : 'Image';
-  }
-  // The one legitimate Mesh upload: bytes that came out of Roblox's own asset delivery.
-  if (contentType === 'model/x-file-mesh-data') return 'Mesh';
-  return null;
-}
-
 export interface UploadEnv {
   /** Open Cloud key. Uploading needs the `asset:write` scope; reading the Creator Store does not. */
   ROBLOX_API_KEY?: string;
@@ -158,8 +119,8 @@ export function preflight(env: UploadEnv, bytes: number, type: RobloxUploadType 
   if (!env.ROBLOX_API_KEY) return 'ROBLOX_API_KEY is not set — uploading needs an Open Cloud key with the asset:write scope';
   const hasUser = !!env.ROBLOX_CREATOR_USER_ID;
   const hasGroup = !!env.ROBLOX_CREATOR_GROUP_ID;
-  // Both set is an ambiguity, not a preference. Roblox would take one and the library would record
-  // an owner nobody chose, which is the kind of quiet wrong answer that surfaces months later.
+  // Both set is an ambiguity, not a preference. Roblox would take one and the audit row would
+  // record an owner nobody chose, which is the kind of quiet wrong answer that surfaces months later.
   if (hasUser && hasGroup) return 'both ROBLOX_CREATOR_USER_ID and ROBLOX_CREATOR_GROUP_ID are set — exactly one must be';
   if (!hasUser && !hasGroup) return 'neither ROBLOX_CREATOR_USER_ID nor ROBLOX_CREATOR_GROUP_ID is set — uploads need an owner';
   // The consent check, and it is deliberately an EQUALITY against the account being written to
@@ -192,9 +153,9 @@ export interface UploadInput {
    * instead of a charge, which is what the customer path wants — a fee taken out of somebody's
    * balance because nobody named a ceiling is configuration-is-not-consent with money in it.
    *
-   * OMITTED rather than defaulted, because the library path has been uploading without it for
-   * months against Apple's own account and a silent behaviour change there would be a different
-   * decision smuggled into this one. `creator-dashboard.ts` passes 0 explicitly.
+   * OMITTED rather than defaulted, so that the only caller that has an opinion about price states
+   * it: `creator-dashboard.ts` passes 0 explicitly, which turns a priced upload into a refusal
+   * instead of a charge against the customer's balance.
    */
   expectedPrice?: number;
 }
@@ -329,38 +290,4 @@ export function assetIdFrom(body: unknown): number | null {
   if (typeof raw !== 'string' || !/^\d+$/.test(raw)) return null;
   const n = Number(raw);
   return Number.isSafeInteger(n) && n > 0 ? n : null;
-}
-
-/**
- * Archive an asset this key owns — the undo for an upload.
- *
- * WHY THIS EXISTS. 299 assets were uploaded to the owner's personal Roblox account before he had
- * agreed to that, which is exactly the kind of outward-facing action that needed asking first.
- * Being able to say "and here is the one command that removes them" is part of not doing it again:
- * an action with no reverse is a different, heavier decision than one with a reverse, and the two
- * should not be confused at the moment of taking it.
- *
- * Verified 2026-09-15: `POST /assets/v1/assets/{id}:archive` answers 401 with an invalid key and
- * 404 for the verbs that do not exist, so the route is real. Archiving is reversible on Roblox's
- * side (`:restore`), which is why this is archive and not a delete.
- */
-export async function archiveAsset(
-  env: UploadEnv,
-  robloxAssetId: number,
-  fetchImpl: typeof fetch = fetch,
-): Promise<{ ok: boolean; status: number; error?: string }> {
-  if (!env.ROBLOX_API_KEY) return { ok: false, status: 0, error: 'ROBLOX_API_KEY is not set' };
-  if (!Number.isSafeInteger(robloxAssetId) || robloxAssetId <= 0) {
-    // The same refusal as assetIdFrom, for the same reason: asset 0 is not an asset, and a request
-    // built from one would be a well-formed call against nothing.
-    return { ok: false, status: 0, error: `${robloxAssetId} is not an asset id` };
-  }
-  const res = await fetchImpl(`${ASSETS_ENDPOINT}/${robloxAssetId}:archive`, {
-    method: 'POST',
-    // A JSON body here, unlike the multipart upload, so the type is stated.
-    headers: { 'x-api-key': env.ROBLOX_API_KEY, 'content-type': 'application/json' },
-    body: '{}',
-  });
-  if (res.ok) return { ok: true, status: res.status };
-  return { ok: false, status: res.status, error: (await res.text()).slice(0, 300) || `HTTP ${res.status}` };
 }

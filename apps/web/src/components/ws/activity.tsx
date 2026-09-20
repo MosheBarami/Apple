@@ -128,6 +128,16 @@ function Elapsed({ value }: { value: ActivityStep['elapsed'] }) {
   );
 }
 
+/**
+ * Does the worker's sentence already name this subject?
+ *
+ * Both strings have been through the same one-line collapse upstream, so a plain containment test
+ * is exact rather than approximate. A target the summary already carries is not printed twice.
+ */
+function carries(detail: string | undefined, target: string): boolean {
+  return detail !== undefined && detail.includes(target);
+}
+
 /* ----------------------------------------------------------------- rows --- */
 
 function Step({
@@ -151,6 +161,14 @@ function Step({
           <span className="gx-sr"> — {STATE_WORD[step.state]}</span>
           {showElapsed && <Elapsed value={step.elapsed} />}
         </span>
+        {/* ON WHAT, then WHAT CAME BACK — two questions, two lines, and neither may delete the
+            other. The subject is printed only when the worker's own sentence does not already
+            contain it, because for the tools whose argument `summarize()` recognises the summary
+            already reads "read_script, ServerScriptService.Main" with its verdict mark in front,
+            and printing the path again underneath would read as two facts where there is one. */}
+        {step.target && !carries(step.detail, step.target) && (
+          <span className="gx-act__detail gx-act__target">{step.target}</span>
+        )}
         {step.detail && <span className="gx-act__detail">{step.detail}</span>}
         {step.state === 'unknown' && (
           <span className="gx-act__detail">The run ended before this step reported a result.</span>

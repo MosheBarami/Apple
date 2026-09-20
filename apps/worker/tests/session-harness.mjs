@@ -84,6 +84,8 @@ export function sessionHarness(opts = {}) {
   };
   if (!store.has('bind')) store.set('bind', { projectId: 'p1', projectName: 'Harness Place', ownerId: 'u-owner' });
   if (!store.has('pluginLastSeen')) store.set('pluginLastSeen', Date.now());
+  /** The object's single alarm, as workerd holds it: null when none is scheduled. */
+  let alarmAt = opts.alarmAt ?? null;
   const ctx = {
     storage: {
       sql,
@@ -96,8 +98,14 @@ export function sessionHarness(opts = {}) {
         if (Array.isArray(k)) { for (const key of k) store.delete(key); return; }
         store.delete(k);
       },
-      setAlarm: async () => {},
-      deleteAlarm: async () => {},
+      // A REAL STORAGE ALWAYS HAS THESE THREE, and the fake had only two. Code that reads the
+      // alarm before setting it — the studio watchdog does, so it can move the deadline earlier
+      // without stamping on the run loop's — threw `getAlarm is not a function` here and nowhere
+      // in production. The shim keeps the single-alarm semantics workerd has: one value, last
+      // write wins, cleared when it fires.
+      getAlarm: async () => alarmAt,
+      setAlarm: async (at) => { alarmAt = at; },
+      deleteAlarm: async () => { alarmAt = null; },
       deleteAll: async () => store.clear(),
     },
     blockConcurrencyWhile: async (fn) => await fn(),

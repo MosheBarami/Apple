@@ -56,8 +56,16 @@ test('an unreadable PLAN_LIMITS refuses the whole station rather than checking t
   mkdirSync(join(dir, 'scripts'), { recursive: true });
   mkdirSync(join(dir, 'packages', 'shared', 'src'), { recursive: true });
   cpSync(PROBE, join(dir, 'scripts', 'probe-s1.mjs'));
-  // A shared module with no PLAN_LIMITS in it at all.
-  writeFileSync(join(dir, 'packages', 'shared', 'src', 'index.ts'), 'export const nothing = 1;\n');
+  mkdirSync(join(dir, 'scripts', 'lib'), { recursive: true });
+  cpSync(join(ROOT, 'scripts', 'lib', 'product-origin.mjs'), join(dir, 'scripts', 'lib', 'product-origin.mjs'));
+  // A shared module with no PLAN_LIMITS in it at all — and the origin the probe reads at import
+  // time, because the fixture is about clause 4 being underivable and nothing else. Leaving
+  // PRODUCT_ORIGIN out would make the probe die one line earlier, for a reason this test is not
+  // about, and the assertion below would be measuring the wrong refusal.
+  writeFileSync(join(dir, 'packages', 'shared', 'src', 'index.ts'),
+    "export const PRODUCT_ORIGIN = 'https://apple.moshe-barami111.workers.dev';\n"
+    + "export const LEGACY_PRODUCT_HOST = 'golem.moshe-barami111.workers.dev';\n"
+    + 'export const nothing = 1;\n');
 
   const r = spawnSync(process.execPath, [join(dir, 'scripts', 'probe-s1.mjs')], {
     cwd: dir, encoding: 'utf8', timeout: 120_000,

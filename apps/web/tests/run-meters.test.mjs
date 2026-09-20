@@ -80,9 +80,16 @@ test('the client carries it forward between settlements', () => {
 
 test('the UI shows it, and does not display a confident zero before anything is spent', () => {
   assert.match(THINKING, /status\.creditsSpent > 0/, 'an opening run must not render "0 Credits"');
-  // Matched on the fragment JSX actually produces: the plural expression splits the sentence, so
-  // the literal "Credits this run" never appears contiguously in the source.
-  assert.match(THINKING, /'Credits'\} this run/);
+  //[[ "this run" MOVED INTO THE SCREEN-READER SPAN when the figure moved out of the collapsible
+  //   body and into the card's head, on 2026-09-20. Sighted readers get the scope from where it
+  //   sits — inside the run's own card, beside that run's title — and a header that reads
+  //   "7 Credits spent on this run so far" in full is a header that wraps to two lines on a
+  //   phone. A screen reader has no such context, so it is still said in full there.
+  //   WHETHER IT IS ACTUALLY ON SCREEN IS NOT ASSERTABLE FROM SOURCE TEXT, and that is the
+  //   defect this file missed for a whole audit cycle: the old line WAS in the source, inside a
+  //   `display:none` panel. `tests/run-cost-visible.test.mjs` renders it in a browser and
+  //   measures it instead. ]]
+  assert.match(THINKING, /spent on this run so far/);
   // Singular and plural, because the string is shown verbatim.
   assert.match(THINKING, /status\.creditsSpent === 1 \? 'Credit' : 'Credits'/);
 });

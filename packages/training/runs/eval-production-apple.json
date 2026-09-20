@@ -1,0 +1,63 @@
+{
+ "measuredAt": "2026-09-20T10:24:13.895Z",
+ "what": "the apple LANE as a customer reaches it, through the real gateway, scored by execution",
+ "lane": "apple",
+ "model": "stone",
+ "system": "You write standalone Luau modules for Roblox. Reply with ONE fenced luau code block and nothing else. The module must return the function described, handle every invalid input the contract names, and must not read a clock, mutate shared state, or require anything.",
+ "maxTokens": 5500,
+ "n": 6,
+ "ok": 6,
+ "pct": 100,
+ "neurons": 71,
+ "reasons": {},
+ "rows": [
+  {
+   "id": "purchase-transaction",
+   "family": "economy-transaction",
+   "ok": true,
+   "reason": null,
+   "ms": 3066,
+   "finishReason": "stop"
+  },
+  {
+   "id": "bounded-reward",
+   "family": "bounded-reward",
+   "ok": true,
+   "reason": null,
+   "ms": 3818,
+   "finishReason": "stop"
+  },
+  {
+   "id": "cooldown-clock",
+   "family": "cooldown-clock",
+   "ok": true,
+   "reason": null,
+   "ms": 3526,
+   "finishReason": "stop"
+  },
+  {
+   "id": "ordered-checkpoints",
+   "family": "ordered-checkpoints",
+   "ok": true,
+   "reason": null,
+   "ms": 3343,
+   "finishReason": "stop"
+  },
+  {
+   "id": "inventory-capacity",
+   "family": "inventory-capacity",
+   "ok": true,
+   "reason": null,
+   "ms": 4607,
+   "finishReason": "stop"
+  },
+  {
+   "id": "round-transitions",
+   "family": "round-transitions",
+   "ok": true,
+   "reason": null,
+   "ms": 2211,
+   "finishReason": "stop"
+  }
+ ]
+}

@@ -48,10 +48,31 @@ test('MAX describes a notice, not an automatic navigation or model switch', () =
   assert.doesNotMatch(content, /opens plan availability/);
 });
 
-test('both privacy surfaces disclose archive limits and operator access', () => {
+/*
+ * THE DISCLOSURE STAYED; THE THING BEING DISCLOSED CHANGED.
+ *
+ * This asserted the literal "not a complete archive", which was the honest description of a file
+ * that left your conversations, your checkpoints and your spend history out of itself — measured on
+ * the live product on 2026-09-20 as 23,899 bytes reading `"complete": false`.
+ *
+ * settings.tsx now follows those routes on the click and writes one file: measured the same day,
+ * 159,032 bytes across 101 routes with nothing failing, seven transcripts and twenty messages
+ * inside it. Two things genuinely stay out — bytes, which cannot be lines of JSON, and a live
+ * Studio pairing code, which would be a working key in a downloaded file — and a route that does
+ * not answer is named rather than dropped.
+ *
+ * So the rule is the same rule, pointed at what is true: the pages must still say what the file
+ * does NOT hold. Keeping the old literal would have forced a page to advertise a limit the product
+ * no longer has, which is the same defect in the other direction.
+ * apps/site/tests/export-completeness-claim.test.mjs is the two-sided version, derived from the
+ * app's own source table rather than from a phrase.
+ */
+test('both privacy surfaces disclose what the export leaves out, and operator access', () => {
   for (const route of ['privacy', 'docs/privacy-and-data']) {
     const content = text(page(route));
-    assert.match(content, /not a complete archive/);
+    assert.match(content, /bytes/i, `${route} does not say bytes stay out of the export`);
+    assert.match(content, /pairing code/i, `${route} does not say the pairing code is withheld`);
+    assert.match(content, /(does not answer|did not answer)/i, `${route} does not say what a failed route looks like`);
     assert.match(content, /operators.{0,100}access production systems/i);
     assert.doesNotMatch(content, /only readable by you|Nobody else\./);
   }

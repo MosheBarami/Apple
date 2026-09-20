@@ -123,9 +123,8 @@ export function CreditsPanel({ projectId }: { projectId: string }) {
           {/* Named rather than hidden. An asset with no provenance row is the one
               state this report treats as worse than a known obligation. */}
           <p className="cr-note">
-            These were placed by Roblox asset id and are not in the curated library, so their
-            licence is unknown. Nothing here is a claim that they are unusable — only that
-            Apple cannot tell you either way.
+            These were placed by Roblox asset id, so their licence is unknown. Nothing here is a
+            claim that they are unusable — only that Apple cannot tell you either way.
           </p>
           <ul className="cr-ids">
             {a.unaccounted.map((id) => (

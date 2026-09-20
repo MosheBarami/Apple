@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..', '..', '..');
-const LEDGER = join(ROOT, 'packages', 'corpus', 'data', 'library', 'kit-pins.json');
+const LEDGER = join(ROOT, 'packages', 'corpus', 'data', 'kit-pins.json');
 const KITS = join(ROOT, 'apps', 'worker', 'src', 'genre-kits.ts');
 
 // Parsed out of the source rather than imported, deliberately: this guard must keep working if

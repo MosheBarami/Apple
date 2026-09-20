@@ -68,6 +68,11 @@ export class QuotaDO extends DurableObject<Env> {
         id integer primary key autoincrement, at integer not null, kind text not null,
         from_plan text, to_plan text, status text, event_id text);
         create table if not exists applied_events(event_id text primary key, at integer not null);
+        /* One row per refunded run. Its presence is what makes /refund idempotent: a Durable
+           Object alarm can be retried, and a refund applied twice mints Credits out of a crash. */
+        create table if not exists applied_refunds(
+          refund_id text primary key, at integer not null, credits integer not null);
+        create index if not exists applied_refunds_at on applied_refunds(at);
         create table if not exists month_totals(month text primary key, credits integer not null);
         create table if not exists billing_authority_replays(
           source_event_id text primary key,
@@ -441,7 +446,79 @@ export class QuotaDO extends DurableObject<Env> {
       // one number and the page cannot be made to lie by editing the other.
       this.sql.exec(`delete from ledger where day < ?`, dayKey(Date.now() - days(RETENTION.quotaLedgerDays)));
       const after = await this.state();
-      return Response.json({ ok: true, state: after });
+      // THE SPLIT TRAVELS WITH THE ANSWER, because a refund has to reverse the same two ledgers
+      // this charge touched and in the right proportions. Without it the only honest reversal
+      // available to a caller is "put it all back as purchased balance", which turns a spent free
+      // allowance into money. Additive: an older caller reads `ok` and `state` exactly as before.
+      return Response.json({ ok: true, state: after, fromAllowance, fromCredits });
+    }
+    /*
+     * GIVING IT BACK — the other half of a ledger that could only ever subtract.
+     *
+     * Credits are settled from measured compute, which is right, and until this route existed it
+     * was the only arithmetic in the product. A run that produced nothing still paid for every
+     * neuron it burned and was then invited to try again, at full price. See run-refund.ts for the
+     * rule about WHICH runs qualify; this route is only the ledger mechanics, and it is
+     * deliberately dumb about eligibility — the caller decides, this returns what it managed.
+     *
+     * THREE PROPERTIES, each of which has its own way of going wrong:
+     *
+     *  1. IDEMPOTENT. `refundId` is the run id. A Durable Object alarm can be retried, and a
+     *     refund applied twice is free Credits minted by a crash. `applied_refunds` is the same
+     *     mechanism `/grant-credits` uses for Stripe event ids.
+     *  2. NEVER PUSHES A DAY BELOW ZERO. The allowance is a RATE keyed by UTC day. Reversing more
+     *     than today's recorded spend would hand back an allowance the user never had, every
+     *     midnight, to anyone whose run straddled it. So the allowance half is clamped to what
+     *     today's ledger and this month's rollup can actually absorb, and the response says what
+     *     was returned rather than what was asked for. The sentence the user reads is composed
+     *     from THAT number — see refundSentence.
+     *  3. ONLY EVER RETURNS. Both halves are clamped non-negative, so a malformed or hostile body
+     *     cannot be turned into a charge through the refund door.
+     */
+    if (url.pathname === '/refund' && req.method === 'POST') {
+      const body = (await req.json().catch(() => null)) as
+        | { fromAllowance?: unknown; fromCredits?: unknown; kind?: unknown; refundId?: unknown }
+        | null;
+      const refundId = typeof body?.refundId === 'string' && body.refundId.length > 0 ? body.refundId.slice(0, 128) : null;
+      if (!refundId) return Response.json({ ok: false, error: 'refund_id_required', returned: 0, state: await this.state() }, { status: 400 });
+      const askAllowance = Math.max(0, Math.floor(Number(body?.fromAllowance) || 0));
+      const askCredits = Math.max(0, Math.floor(Number(body?.fromCredits) || 0));
+      const kind = typeof body?.kind === 'string' ? body.kind.slice(0, 40) : 'refund';
+      const already = this.sql.exec(`select refund_id from applied_refunds where refund_id = ?`, refundId).toArray();
+      if (already.length > 0) {
+        // A replay is not a second refund, and it is not a failure either: the money is already
+        // back. `returned: 0` with `replayed: true` is the honest pair — this call moved nothing.
+        return Response.json({ ok: true, replayed: true, returned: 0, state: await this.state() });
+      }
+      const spentToday = (this.sql.exec(`select coalesce(sum(credits),0) as s from ledger where day = ?`, this.today()).one() as { s: number }).s;
+      const spentThisMonth = (
+        this.sql.exec(`select coalesce(sum(credits),0) as s from ledger where day like ?`, `${this.thisMonth()}%`).one() as { s: number }
+      ).s;
+      const allowanceBack = Math.max(0, Math.min(askAllowance, spentToday, spentThisMonth));
+      const creditsBack = askCredits;
+      if (allowanceBack > 0) {
+        this.sql.exec(
+          `insert into ledger(day, kind, credits, created_at) values(?,?,?,?)`,
+          this.today(), `refund_${kind}`.slice(0, 40), -allowanceBack, Date.now(),
+        );
+        // The month rollup is accumulated as it happens and is never re-derived from the pruned
+        // ledger, so a reversal that skipped it would leave the monthly figure permanently high.
+        this.sql.exec(
+          `insert into month_totals(month, credits) values(?,?)
+             on conflict(month) do update set credits = max(0, credits + excluded.credits)`,
+          this.thisMonth(), -allowanceBack,
+        );
+      }
+      if (creditsBack > 0) await this.ctx.storage.put('credits', (await this.credits()) + creditsBack);
+      this.sql.exec(`insert into applied_refunds(refund_id, at, credits) values(?,?,?)`, refundId, Date.now(), allowanceBack + creditsBack);
+      this.sql.exec(`delete from applied_refunds where at < ?`, Date.now() - days(RETENTION.quotaLedgerDays));
+      return Response.json({
+        ok: true,
+        replayed: false,
+        asked: askAllowance + askCredits,
+        returned: allowanceBack + creditsBack,
+        state: await this.state(),
+      });
     }
     if (url.pathname === '/set-plan' && req.method === 'POST') {
       const { plan, customerId, subscription, eventId } = (await req.json()) as {

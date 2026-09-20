@@ -1,24 +1,30 @@
 // Genre kits: the agent asks for "horror" and gets a matched set instead of nine separate searches.
 //
-// WHY THIS IS A THING IN THE PRODUCT AND NOT A PROMPT. The library is 461,722 rows. A model asking
-// it for "a scary icon", then "a scary particle", then "a scary sound" gets three good answers that
-// do not belong together — the failure is not relevance, it is COHERENCE, and no amount of better
-// retrieval fixes it because each query is independently correct. A kit is the unit that carries
-// coherence: one palette, one lighting state, one set of tag preferences, and the same set every
-// time so a build is reproducible.
+// WHY THIS IS A THING IN THE PRODUCT AND NOT A PROMPT. A model deciding on "a scary icon", then
+// "a scary particle", then "a scary sound", one request at a time, gets three good answers that do
+// not belong together — the failure is not quality, it is COHERENCE, and each decision is
+// independently correct. A kit is the unit that carries coherence: one palette, one lighting state,
+// one set of style tags, and the same set every time so a build is reproducible.
 //
 // TEN KITS, NOT FORTY. These are the genres that actually carry Roblox's front page — obby,
 // simulator, tycoon, roleplay, horror, anime battle, tower defence, FPS, survival, racing. A
 // fortieth kit for a genre nobody ships would be a row in a table and nothing a person would pick.
 //
-// A KIT IS A CURATED SELECTION, NOT A COPY. Where a kit wants something the library already holds,
-// it records the QUERY and the REASON, and resolution happens against the live library at call
-// time. Only the SFX are pinned by id, because they are the one slot where retrieval cannot be
-// trusted to pick twice the same and where the set has to be stable: a horror kit whose jumpscare
-// changes between two builds of the same game is not a kit.
+// A KIT IS A BRIEF, NOT A BAG OF ASSETS. Every visual slot below says WHAT the genre needs and WHY,
+// and the thing itself is made at build time — drawn by generate_image into the customer's own
+// account, or built out of Parts. It used to be a query against Apple's curated library; the
+// library was removed on 2026-09-20 and the briefs outlived it, because the `why` was always the
+// valuable half and the query was only how it got filled.
+//
+// Only the SFX are pinned BY ID, and they survived intact: they are free, already-public Creator
+// Store audio referenced by `rbxassetid://`, never uploaded and never hosted here, so nothing about
+// the library's removal touches them. They are pinned because sound is the one slot where the set
+// has to be stable — a horror kit whose jumpscare changes between two builds of the same game is
+// not a kit — and each id in `packages/corpus/data/kit-pins.json` was probed against Roblox's own
+// details endpoint for existence, type, licence and creator on a recorded date.
 import type { AssetKind } from './assets';
-// From ./licences, not ./asset-library: the same single table, without dragging D1, Vectorize and
-// the AI gateway into a module whose only question is about a string.
+// From ./licences directly: the single table, without dragging anything heavier into a module whose
+// only question is about a string.
 import { LICENCES, normaliseLicence } from './licences';
 
 export const GENRE_KIT_IDS = [
@@ -43,16 +49,21 @@ export interface KitColour {
 }
 
 /**
- * One thing the kit needs, expressed as a query against the curated library rather than a copy of
- * its rows. `why` is required and is the difference between a curated selection and a filter.
+ * One thing the kit needs, as a BRIEF for making it. `why` is required and is the difference
+ * between art direction and a shopping list.
  */
 export interface KitSlot {
   need: AssetKind;
-  /** The retrieval query. Runs through searchAssetLibrary, which is where the licence gate lives. */
+  /**
+   * The subject, as a plain noun phrase — the same shape `generate_image` takes for `subject`, and
+   * the same shape a build-it-from-Parts plan starts from. It was a retrieval query when there was
+   * a catalogue to retrieve from; the words did not have to change when the catalogue went, because
+   * "skull eye key lock hand warning" describes the icons either way.
+   */
   query: string;
-  /** Style tags. searchAssetLibrary's rerank multiplies tag agreement, which is what keeps a set coherent. */
+  /** Style tags. What keeps this slot coherent with the rest of the kit rather than merely correct. */
   tags: string[];
-  /** How many to take. Small on purpose: a kit that returns forty icons has made no choice. */
+  /** How many to make. Small on purpose: a kit that asks for forty icons has made no choice. */
   count: number;
   why: string;
 }
@@ -140,7 +151,7 @@ export function admitToKit(rec: { id: string; name: string; kind: AssetKind; lic
   }
   const rule = LICENCES[licenceId];
   if (!rule) return { admitted: false, why: `licence id ${licenceId} has no rule`, licenceId };
-  if (!rule.allowedInLibrary) return { admitted: false, why: `${licenceId} is excluded from the library: ${rule.why}`, licenceId };
+  if (!rule.allowedInLibrary) return { admitted: false, why: `${licenceId} is excluded: ${rule.why}`, licenceId };
   // Belt and braces, and not redundant: a future table entry could be marked allowed with
   // commercialUse false by mistake, and a customer's Roblox experience is a commercial use.
   if (!rule.commercialUse) return { admitted: false, why: `${licenceId} does not permit commercial use`, licenceId };

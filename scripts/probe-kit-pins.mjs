@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const KITS = join(ROOT, 'apps', 'worker', 'src', 'genre-kits.ts');
-const OUT = join(ROOT, 'packages', 'corpus', 'data', 'library', 'kit-pins.json');
+const OUT = join(ROOT, 'packages', 'corpus', 'data', 'kit-pins.json');
 const ENDPOINT = 'https://apis.roblox.com/toolbox-service/v1/items/details';
 const UA = { 'user-agent': 'apple-asset-harvest/2 (+roblox asset library; contact via repository)', accept: 'application/json' };
 

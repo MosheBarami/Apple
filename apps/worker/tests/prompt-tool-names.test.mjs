@@ -161,3 +161,42 @@ test('AN UNPAIRED PROMPT DOES NOT SEND THE USER AFTER A PLUGIN THEY CANNOT GET',
     'and the install paths it would otherwise invent from pretraining must be named and refused');
   assert.match(unpaired, /\/docs\/plugin/, 'and it must have somewhere honest to send them instead');
 });
+
+/**
+ * THE LIBRARIES THE SPEC SAYS THE MODEL HOLDS IN ITS HEAD MUST BE NAMED WHERE IT ALWAYS LOOKS.
+ *
+ * docs/spec/DONE.md D1/D2/D3. The three libraries were reachable only through their own tool
+ * definitions, and a tool definition is handed over only when the mode and the Studio state allow
+ * it — so `install_module`'s catalogue, which lives entirely inside its description, reached the
+ * model in one mode out of three and never with Studio disconnected. The base prompt is the one
+ * surface that is identical in every mode and in both connection states, which is why the three
+ * names belong here as well as in the toolset.
+ *
+ * `install_module` is named while it is Studio-gated ON PURPOSE, and the prompt says so in the same
+ * breath. That is the rule the unpaired-prompt test above already settled: naming a tool while
+ * stating when it is available is context; naming one while implying it is callable is the defect.
+ */
+test('the base prompt names all three knowledge libraries, in every mode and both Studio states', () => {
+  const variants = [
+    ['stone, paired', systemPrompt(BASE)],
+    ['stone, unpaired', systemPrompt({ ...BASE, studioConnected: false })],
+    ['clay, paired', systemPrompt({ ...BASE, mode: 'clay' })],
+    ['clay, unpaired', systemPrompt({ ...BASE, mode: 'clay', studioConnected: false })],
+    ['rune, unpaired', systemPrompt({ ...BASE, mode: 'rune', studioConnected: false })],
+  ];
+  const registered = new Set(T.toolNames());
+  for (const tool of ['get_verified_module', 'get_ui_construction', 'install_module']) {
+    assert.ok(registered.has(tool), `${tool} must be a registered tool before the prompt names it`);
+    for (const [label, prompt] of variants) {
+      assert.match(prompt, new RegExp(`\\b${tool}\\b`),
+        `${label}: the prompt never names ${tool}, so the model meets that library only if the `
+        + 'toolset happens to carry it this run.');
+    }
+  }
+  // And the instruction that makes the naming worth its tokens — D1 is "installs what was proven
+  // INSTEAD OF REWRITING IT", which is a behaviour, not a lookup.
+  assert.match(systemPrompt(BASE), /install what they return rather than retyping it/,
+    'naming the library without telling the model to use what it returns is half the clause');
+  assert.match(systemPrompt({ ...BASE, studioConnected: false }), /Needs Studio/,
+    'install_module is Studio-gated and an unpaired prompt must say so where it names it');
+});

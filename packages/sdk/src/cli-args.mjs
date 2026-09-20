@@ -179,7 +179,14 @@ export function helpText() {
     'Commands:',
     ...rows,
     '',
-    'The access token is read from --token, then APPLE_TOKEN, then GOLEM_TOKEN.',
+    // THE OLD VARIABLE STILL WORKS AND IS NO LONGER ADVERTISED, and the two halves are separate
+    // decisions. bin/apple.mjs keeps reading GOLEM_TOKEN / GOLEM_API_URL after APPLE_TOKEN /
+    // APPLE_API_URL, so a shell that has exported the pre-rename name since before the rename
+    // keeps working — removing the fallback would break a working setup to tidy a string.
+    // Printing it is the other half: this text is the most-read sentence the CLI has, and the
+    // product's old name has no business in it. cli.test.mjs pins both — no Golem in the help,
+    // and the fallback still resolving.
+    'The access token is read from --token, then APPLE_TOKEN.',
     'The base URL is read from --base-url, then APPLE_API_URL, then the production worker.',
   ].join('\n');
 }

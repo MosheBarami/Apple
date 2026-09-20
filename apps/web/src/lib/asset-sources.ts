@@ -1,8 +1,15 @@
 // Where Apple may take assets from, asked once and then remembered.
 //
-// The owner's rule: before Apple builds, ask whether it may use the curated Apple library, the
-// Roblox Creator Store, or make things from scratch — and let that answer be settled once in
-// settings instead of being asked forever.
+// The owner's rule: before Apple builds, ask where it may take assets from — and let that answer
+// be settled once in settings instead of being asked forever.
+//
+// IT WAS THREE CHOICES AND IS NOW TWO. `apple_library` — the curated Apple catalogue — was removed
+// from the shared vocabulary on 2026-09-20 along with the catalogue itself (see
+// ASSET_SOURCE_CHOICES in packages/shared). This file kept offering it: a card in the dialog, a
+// pre-ticked box in the default selection, and a title in the settings summary, all naming a source
+// no build can use. That is the failure the shared comment names in reverse — a control that
+// changes nothing, discovered later by the person who ticked it — and it is also why this file did
+// not typecheck once the vocabulary shrank.
 //
 // THE DECISIONS LIVE HERE, in a file with no JSX, because two of them are not obvious:
 //
@@ -29,13 +36,6 @@ export interface SourceExplanation {
 
 export const SOURCE_EXPLANATIONS: readonly SourceExplanation[] = [
   {
-    choice: 'apple_library',
-    title: 'The Apple library',
-    does: 'Apple searches its catalog of props, textures, models and icons with recorded sources and licences.',
-    costs: 'Builds use Credits. Some files need a separate import before they can be used.',
-    reach: 'Results distinguish ready-to-use assets from files that still need import.',
-  },
-  {
     choice: 'creator_store',
     title: 'The Roblox Creator Store',
     does: 'Apple searches the free Creator Store and references what it finds directly in your place.',
@@ -50,6 +50,14 @@ export const SOURCE_EXPLANATIONS: readonly SourceExplanation[] = [
     reach: 'No external assets; limited by your Credits and what Studio can build.',
   },
 ];
+
+/**
+ * What a person who has never answered starts with.
+ *
+ * The one source that adds nothing to what a build already costs. `from_scratch` is deliberately
+ * absent: it spends Credits and time on every asset, and a pre-ticked box is not a decision.
+ */
+const DEFAULT_TICKED: readonly string[] = ['creator_store'];
 
 export function explainSource(choice: AssetSourceChoice): SourceExplanation | null {
   return SOURCE_EXPLANATIONS.find((e) => e.choice === choice) ?? null;
@@ -113,11 +121,19 @@ export function initialSelection(
   ceiling?: AssetSourcePolicy | null,
 ): AssetSourceChoice[] {
   const open = availableChoices(ceiling);
-  // A person who has chosen before sees their own answer again, not a blank form. A person who
-  // has not gets the two that cost nothing — pre-ticking `from_scratch` would quietly opt them
-  // into spending on every asset.
-  const want: AssetSourceChoice[] =
-    policy && policy.allow.length ? [...policy.allow] : ['apple_library', 'creator_store'];
+  // A person who has chosen before sees their own answer again, not a blank form. A person who has
+  // not gets the ones that cost nothing — which, since the Apple library went, is `creator_store`
+  // alone. `from_scratch` stays unticked deliberately: pre-ticking it would quietly opt somebody
+  // into spending Credits and time on every asset before they had read what the box means.
+  //
+  // NARROWED TO THE LIVE VOCABULARY before it is used. This list is written out rather than
+  // derived, because "costs nothing extra" is a judgement about each source and not something a
+  // sentence can be parsed for — but a hand-written list is exactly what named `apple_library`
+  // months after the catalogue went, so it is filtered through `cleanSelection` and a dead member
+  // can only ever shrink the default, never survive in it.
+  const want: AssetSourceChoice[] = policy && policy.allow.length
+    ? [...policy.allow]
+    : cleanSelection(DEFAULT_TICKED);
   return want.filter((c) => open.includes(c));
 }
 

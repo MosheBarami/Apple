@@ -95,20 +95,22 @@ test('THE MEASURED FACTS — a figure in the prose is the figure in the data', (
   //   becoming wrong for the next agent who has no way to check it. ]]
   const s = read(AGENTS);
 
-  const index = JSON.parse(read('packages/corpus/data/library/index.json'));
-  const total = index.total.toLocaleString('en-US');
-  assert.ok(s.includes(total), `AGENTS.md does not state the library total; index.json says ${total}`);
-  // `usableWithoutUploadKnown` no longer exists. w21 found the figure it held was three facts
-  // added together — it counted Creator Store rows that repeat up to ten times, and 13,023 audio
-  // rows that are ingested nowhere and so are usable by nobody. The canonicaliser replaced it with
-  // a LIVE measurement of the table the product actually inserts from, and kept the old value in
-  // `supersededUsable` with the reason. Reading the key by name is checked first: a schema change
-  // should say which key went missing, not throw a TypeError on `undefined.toLocaleString`.
-  assert.ok(index.liveMeasurement && typeof index.liveMeasurement.active === 'number',
-    'index.json has no liveMeasurement.active — the usable-without-upload figure moved again; read scripts/library-canonicalise.mjs before editing this');
-  const usable = index.liveMeasurement.active.toLocaleString('en-US');
-  assert.ok(s.includes(usable), `AGENTS.md does not state the live-insertable figure; index.json says ${usable}`);
-
+  //[[ THE LIBRARY FIGURES WERE CHECKED HERE AND THE LIBRARY IS GONE (2026-09-20).
+  //
+  //   Two counts were compared against `packages/corpus/data/library/index.json`: the harvest total
+  //   and `liveMeasurement.active`, the number of rows the product could actually insert. The owner
+  //   removed the asset catalogue, and the manifest went with the directory — so this cross-check
+  //   now has nothing on either side of it.
+  //
+  //   It is deleted rather than pointed at some other file. The pairing was the whole value: a
+  //   count in AGENTS.md checked against the data it was copied from. AGENTS.md no longer states
+  //   either figure, so there is no second copy left to rot. What replaced that section is a
+  //   statement that the library was removed, and that claim is not a number — it is checked by
+  //   the path assertion above, which fails the moment the prose points at a file that is not
+  //   there, and by the suite's own absence of a catalogue.
+  //
+  //   The Durable Object and binding checks below are untouched and are the reason this test still
+  //   earns its place. ]]
   const wrangler = read('apps/worker/wrangler.apple.jsonc');
   const classes = [...new Set([...wrangler.matchAll(/"class_name":\s*"(\w+)"/g)].map((m) => m[1]))];
   assert.ok(classes.length >= 5, 'no Durable Object classes parsed — this check would be vacuous');

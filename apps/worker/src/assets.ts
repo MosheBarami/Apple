@@ -65,11 +65,24 @@ export const ASSET_NEEDS = [
 ] as const;
 export type AssetNeed = (typeof ASSET_NEEDS)[number];
 
-/** Everything that is storable in the curated library — `lighting` is config, not an asset. */
+/** Every kind of thing a build can need an asset FOR — `lighting` is config, not an asset. */
 export const ASSET_KINDS = ASSET_NEEDS.filter((n): n is Exclude<AssetNeed, 'lighting'> => n !== 'lighting');
 export type AssetKind = Exclude<AssetNeed, 'lighting'>;
 
-export const ASSET_SOURCES = ['procedural', 'library', 'generation_service', 'creator_store', 'terrain', 'builtin'] as const;
+//[[ `library` WAS REMOVED FROM THIS LIST ON 2026-09-20, WITH THE THING IT NAMED.
+//
+//   It meant Apple's own curated catalogue: 511,208 provenance rows in D1, filled by an offline
+//   harvest and made insertable by uploading the bytes into a Roblox account. The owner removed it
+//   outright. Every upload that pipeline could make was an Image or a Decal, Roblox refuses to
+//   archive either, and so each one was permanent in somebody's real account; the catalogue also
+//   held rows named after other companies' characters under a single blanket licence claim. Of
+//   511,208 rows, 0 were insertable on the day it was measured.
+//
+//   It is deleted rather than left in the list and never chosen. A source nobody can select is
+//   still a source the next reader has to rule out, the exhaustive `Record<AssetSource, …>` tables
+//   in asset-policy.ts would still demand a decision about it, and the dialog would still offer a
+//   box that unlocks nothing. ]]
+export const ASSET_SOURCES = ['procedural', 'generation_service', 'creator_store', 'terrain', 'builtin'] as const;
 export type AssetSource = (typeof ASSET_SOURCES)[number];
 
 export interface SourceChoice {
@@ -82,21 +95,6 @@ export interface SourceChoice {
 
 const V = {
   none: 'none — nothing is fetched and no asset id is involved',
-  //[[ THIS SENTENCE WAS THE INVERTED LIBRARY, STATED A SECOND TIME.
-  //
-  //   It used to require `status=active, health_ok=1`, and `choose_asset_source` is documented
-  //   "call this BEFORE building anything you might be tempted to search for" — so this is the rule
-  //   the model is holding when the search results land. `status` is an import lifecycle
-  //   (asset-library.ts): the rows that are 'active' are the Creator Store scrape, and Kenney,
-  //   Poly Haven, ambientCG and Quaternius sit at 'pending_ingest' until somebody imports them.
-  //   Search was fixed to return both; this string still told the model to discard the curated half
-  //   of what it was being handed, which is worse than the original bug because it arrives first.
-  //
-  //   So it names the two facts separately, in the words the hits actually carry. What makes a row
-  //   dead is `quarantined`/`retired` (markHealth writes the first when an id stops resolving —
-  //   that is what "health" meant). What makes a row usable TODAY is having a Roblox id at all. ]]
-  library:
-    'library gate: the row must carry a recorded licence permitting commercial use and must not be quarantined or retired; the plugin inserts roblox_asset_id and nothing else. Being in the library is not the same as being insertable today, and this is the distinction that was wrong until 2026-09-19: availability=insertable means the id belongs to the account doing the inserting, so insert_asset will work; availability=needs_take means a real Roblox id exists but a third party owns it on the Creator Store, and Roblox refuses it as not authorized until the user takes it into their own inventory — measured, not assumed; availability=needs_import means the bytes were never uploaded to Roblox at all, so assetId is null. Say which one it is plainly, and never invent an id for it. Either way the id is still resolved and security-gated by insert_asset like any other',
   generated:
     'QC gate: Generation.inspect() must return verdict=pass in Studio, then a human accepts the preview, then the mesh is persisted via AssetService:CreateAssetAsync — GenerateModelAsync output is session-scoped and does not survive save/publish',
   creatorStore:
@@ -110,11 +108,23 @@ const V = {
 /**
  * Ordered source preference for a need, best first.
  *
- * The two facts this table exists to encode:
- *   - **Foliage and characters are the only rows where procedural loses outright.** Parts-and-wedges
+ * THE LIBRARY ROW IS GONE FROM EVERY NEED, and this table is where its removal is most visible to
+ * the model, because `choose_asset_source` puts these sentences into a prompt. It used to be the
+ * first answer for props, foliage, characters, icons, textures, particles and sound, and for
+ * foliage it was marked MANDATORY. It no longer exists, so saying it does would send the model to
+ * a tool that is not in the registry and end the build with "the library has this, it needs
+ * importing" — a promise about a thing that was deleted.
+ *
+ * The three facts this table now encodes:
+ *   - **Foliage and characters are the rows where procedural loses outright.** Parts-and-wedges
  *     trees and humanoids look bad at any part count, so `procedural` is absent from both lists.
- *   - Buildings and characters never reach the Creator Store, because that is where script-bearing
- *     free models live.
+ *   - Buildings never reach the Creator Store, because that is where script-bearing free models
+ *     live, and a building is exactly the shape procedural geometry is best at.
+ *   - Where the library used to be the easy answer for a FLAT thing — an icon, a texture, a
+ *     particle sprite — the replacement is `generate_image`, which draws an original into the
+ *     customer's own account. It is not listed as a source here because it takes nothing from
+ *     anywhere: there is no third-party id to gate, so the asset-source policy has nothing to
+ *     decide about it. It is named in the rationales instead, which is where the model reads.
  */
 const DECISION_TABLE: Record<AssetNeed, readonly SourceChoice[]> = {
   ground: [
@@ -129,11 +139,6 @@ const DECISION_TABLE: Record<AssetNeed, readonly SourceChoice[]> = {
       rationale: 'large anchored Parts with a correct built-in Enum.Material (Grass, Slate, Ground, Sand) — still zero assets, still free',
       verification: V.none,
     },
-    {
-      source: 'library',
-      rationale: 'ambientCG CC0 PBR set driven into a MaterialVariant or SurfaceAppearance, when a specific surface is called for',
-      verification: V.library,
-    },
   ],
   building: [
     {
@@ -143,22 +148,12 @@ const DECISION_TABLE: Record<AssetNeed, readonly SourceChoice[]> = {
       verification: V.none,
     },
     {
-      source: 'library',
-      rationale: 'a modular kit mesh (Kenney City/Castle) when a whole coherent style is wanted faster than it can be authored',
-      verification: V.library,
-    },
-    {
       source: 'generation_service',
       rationale: 'GenerateModelAsync for ONE hero structure only — a whole town of generated buildings will not share a style',
       verification: V.generated,
     },
   ],
   prop: [
-    {
-      source: 'library',
-      rationale: 'a curated CC0 mesh (Kenney/Quaternius) is instantly style-coherent with the rest of the kit and costs nothing at runtime',
-      verification: V.library,
-    },
     {
       source: 'procedural',
       rationale:
@@ -167,7 +162,7 @@ const DECISION_TABLE: Record<AssetNeed, readonly SourceChoice[]> = {
     },
     {
       source: 'generation_service',
-      rationale: 'GenerateModelAsync for a genuinely bespoke object the kit does not contain, ~20s and free',
+      rationale: 'GenerateModelAsync for a genuinely bespoke object parts cannot describe, ~20s and free',
       verification: V.generated,
     },
     {
@@ -178,14 +173,9 @@ const DECISION_TABLE: Record<AssetNeed, readonly SourceChoice[]> = {
   ],
   foliage: [
     {
-      source: 'library',
-      rationale:
-        'MANDATORY. Trees, bushes and grass built from parts and wedges look amateur at any part count — organic silhouettes are the one thing procedural geometry cannot fake',
-      verification: V.library,
-    },
-    {
       source: 'generation_service',
-      rationale: 'GenerateModelAsync for one signature species, then reuse it — variety comes from scale and rotation, not from more generations',
+      rationale:
+        'GenerateModelAsync for one signature species, then reuse it — variety comes from scale and rotation, not from more generations. This is FIRST for foliage because organic silhouettes are the one thing parts and wedges cannot fake, and there is no curated pack to fall back on any more',
       verification: V.generated,
     },
     {
@@ -198,13 +188,8 @@ const DECISION_TABLE: Record<AssetNeed, readonly SourceChoice[]> = {
     {
       source: 'builtin',
       rationale:
-        'the Roblox default rig plus HumanoidDescription is free, already animated, already moderated, and instantly familiar to players — nothing else in the table starts that far ahead',
+        'the Roblox default rig plus HumanoidDescription is free, already animated, already moderated, and instantly familiar to players — nothing else in the table starts that far ahead. Dress it with HumanoidDescription and Accessories rather than looking for a different body',
       verification: V.builtinRig,
-    },
-    {
-      source: 'library',
-      rationale: 'a Quaternius CC0 character mesh, which ships already rigged, when the default avatar is wrong for the world',
-      verification: V.library + '; plus confirm the rig is R15-compatible before use',
     },
     {
       source: 'generation_service',
@@ -220,11 +205,6 @@ const DECISION_TABLE: Record<AssetNeed, readonly SourceChoice[]> = {
       verification: V.generated,
     },
     {
-      source: 'library',
-      rationale: 'a CC0 vehicle mesh plus hand-written constraints, when a specific silhouette is required',
-      verification: V.library,
-    },
-    {
       source: 'procedural',
       rationale: 'a box-car from primitives. Honest last resort: curved bodywork is the second thing procedural geometry cannot fake',
       verification: V.none,
@@ -232,13 +212,9 @@ const DECISION_TABLE: Record<AssetNeed, readonly SourceChoice[]> = {
   ],
   ui_icon: [
     {
-      source: 'library',
-      rationale: 'a CC0 icon sheet (Kenney UI) uploaded once as Image assets — Images are Open Use by default, so one upload serves every customer',
-      verification: V.library,
-    },
-    {
       source: 'procedural',
-      rationale: 'Frame + UIStroke + UICorner + UIGradient shapes are resolution-independent, sharp at any scale, and involve no asset at all',
+      rationale:
+        'Frame + UIStroke + UICorner + UIGradient shapes are resolution-independent, sharp at any scale, and involve no asset at all. For a pictorial icon these cannot draw, call generate_image with target="ui_icon" — it produces an original in the customer\'s own account, so they own it outright',
       verification: V.none,
     },
     { source: 'builtin', rationale: 'Roblox built-in UI imagery where one exists for the concept', verification: V.none },
@@ -247,41 +223,31 @@ const DECISION_TABLE: Record<AssetNeed, readonly SourceChoice[]> = {
     {
       source: 'builtin',
       rationale:
-        'Enum.Material is already PBR, already streamed, and free. Setting Material correctly on every part is the single cheapest quality win available',
+        'Enum.Material is already PBR, already streamed, and free. Setting Material correctly on every part is the single cheapest quality win available. For a surface no built-in material covers, call generate_image with target="texture" rather than looking for one to download',
       verification: V.none,
-    },
-    {
-      source: 'library',
-      rationale: 'an ambientCG CC0 PBR set as a MaterialVariant or SurfaceAppearance, for a surface no built-in material covers',
-      verification: V.library,
     },
   ],
   particle: [
     {
       source: 'procedural',
-      rationale: 'ParticleEmitter / Beam / Trail configuration is pure property values — zero assets, and the look lives in the numbers, not the sprite',
+      rationale:
+        'ParticleEmitter / Beam / Trail configuration is pure property values — zero assets, and the look lives in the numbers, not the sprite. If a specific sprite shape is genuinely needed, generate_image with target="decal" draws one',
       verification: V.none,
     },
-    { source: 'library', rationale: 'a CC0 sprite Image asset behind a procedural emitter config, when a specific shape is needed', verification: V.library },
   ],
   // Sound is the one need with no procedural fallback at all — there is no Roblox API that
   // synthesises a gunshot — and no upload path either. Audio is NOT Open Use: a file uploaded under
-  // Apple's account stays private to Apple's account and a customer's place gets silence unless
-  // Apple grants that universe permission asset by asset
-  // (https://create.roblox.com/docs/en-us/audio/assets, read 2026-09-15 — NOT the asset-privacy
-  // page, which states that Asset Privacy does not affect Audio at all). So Kenney's ten CC0 audio
-  // packs, OpenGameArt's sound_effect split and freesound are all permissively licensed and all
-  // unusable. What is left is audio that is ALREADY public on the Creator Store, referenced by id.
+  // another account stays private to it and a customer's place gets silence unless that universe is
+  // granted permission asset by asset (https://create.roblox.com/docs/en-us/audio/assets, read
+  // 2026-09-15 — NOT the asset-privacy page, which states that Asset Privacy does not affect Audio
+  // at all). So a permissively licensed sound pack is still unusable. What is left is audio that is
+  // ALREADY public on the Creator Store, referenced by id — which is what the genre kits' pinned
+  // ids are, and they survived the library's removal because they are ids, not bytes we host.
   sfx: [
     {
-      source: 'library',
-      rationale:
-        'free Creator Store audio, harvested with its id and licence recorded — already public and moderated, so it is referenced rather than uploaded, and a genre kit can hand over a matched set',
-      verification: V.sfxReference,
-    },
-    {
       source: 'creator_store',
-      rationale: 'a live Creator Store audio search when the library has no match for this specific sound',
+      rationale:
+        'call get_genre_kit FIRST: each kit hands over a hand-checked, matched set of free public Creator Store audio ids for its genre, already probed for existence, type, licence and creator. Only when no kit covers the sound, run a live Creator Store audio search',
       verification: V.sfxReference,
     },
   ],
@@ -502,7 +468,7 @@ export type AssetVerdictCode =
   | 'fail_too_many_triangles';
 
 /** Where the caller says this id came from. Anything but a real discovery is refused. */
-export type AssetProvenanceSource = 'search_result' | 'library' | 'user_supplied' | 'model_output' | 'unknown';
+export type AssetProvenanceSource = 'search_result' | 'user_supplied' | 'model_output' | 'unknown';
 
 export interface AssetVerdict {
   assetId: number;

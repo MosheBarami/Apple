@@ -14,13 +14,24 @@ const CSS = readFileSync(join(WEB, 'src/design/system.css'), 'utf8');
  *  `doesNotMatch` over raw source would read that explanation as the rule coming back. */
 const CSS_RULES = CSS.replace(/\/\*[\s\S]*?\*\//g, '');
 
-test('the activity card has one status-backed header and starts closed', () => {
+test('the activity card has one status-backed header, and opens itself while the run is live', () => {
   assert.equal((JSX.match(/className="gx-think__head"/g) ?? []).length, 1,
     'the card must not grow a second compact activity row');
   assert.match(JSX, /const title = activity\.terminal\?\.note \?\?/);
   assert.match(JSX, /compact\.current/);
   assert.match(JSX, /status \?/);
-  assert.match(JSX, /const \[open, setOpen\] = useState\(false\)/);
+  //[[ THIS USED TO READ `useState(false)` AND THE ASSERTION PINNED IT SHUT.
+  //
+  //   "Starts closed" was written as a layout fact and it is a product one: the card is the only
+  //   place a person can see what is being done with their Credits WHILE it is being done, and
+  //   every run on every screen opened with all of it folded away. What is pinned now is the
+  //   three-state rule that replaced it — unstated, open, closed — because the bug the old
+  //   assertion would have caught (a card that can no longer be collapsed) is still worth
+  //   catching. A settled turn reloaded from history is not live and still rests closed. ]]
+  assert.match(JSX, /const \[openChoice, setOpenChoice\] = useState<boolean \| null>\(null\)/);
+  assert.match(JSX, /const open = openChoice \?\? isLive/,
+    'liveness must be what opens it, and only when the person has not said otherwise');
+  assert.match(JSX, /onClick=\{\(\) => setOpenChoice\(!open\)\}/, 'the toggle must still close it');
   assert.match(JSX, /aria-expanded=\{open\}/);
   assert.match(JSX, /aria-hidden=\{!open\}/);
   assert.doesNotMatch(JSX, /Current action/);

@@ -105,3 +105,56 @@
   .gx-usage__next { padding:9px; }
   .gx-usage__top { gap:8px; }
 }
+
+/* ------------------------------------------------- the two states with no number --- */
+
+/* THE BAR SAID THE SAME THING WHILE IT WAS ASKING AND AFTER IT HAD FAILED.
+ *
+ * usage-meter.tsx renders the empty bar for both, with a comment promising a difference: "The
+ * class differs so a load reads as a load and a failure reads as a failure." The class did differ.
+ * Nothing drew either of them. MEASURED in Chromium, through the real component in the real rail,
+ * by forcing each state at the one call site (components/layout.tsx):
+ *
+ *   pending  .gx-usage__bar 291×3 rgb(61,59,58), .gx-usage__fill width 0, animation none
+ *   unknown  .gx-usage__bar 291×3 rgb(61,59,58), .gx-usage__fill width 0, animation none
+ *
+ * Pixel for pixel the same picture — an empty track — for "we have not asked yet" and for "the
+ * usage service did not answer". The headline above them differs, and that is the only reason the
+ * two states were tellable apart at all.
+ *
+ * NEITHER MAY BE DRAWN AS A LENGTH. That is this file's existing rule and it is the right one: a
+ * bar at some width is a claim about a balance nobody has. So the difference is carried by
+ * TEXTURE and by MOTION, which are the two ways of saying "this is not a reading" that cannot be
+ * mistaken for one.
+ *
+ * MOTION IS ADDED HERE, AND THE FILE'S HEADER SAYS NONE IS — the header's rule is about the fill's
+ * WIDTH, "animating it would draw a balance travelling through values the account never held", and
+ * that still holds. A short segment sweeping a track is the opposite claim: it is legible
+ * precisely because it is not a value. It carries its own reduced-motion opt-out, per rule 5 of
+ * docs/DESIGN-LOCK.md, and the opt-out does not freeze the segment mid-track, because a segment
+ * that has stopped IS a length again.
+ *
+ * NO NEW COLOUR. --muted and --surface-3 are already in this panel's vocabulary; the dotted track
+ * is the same token at a different duty cycle, which is a step of colour and space rather than a
+ * hue.
+ */
+
+/* WAITING. A 30% segment crossing a solid track. 1.4s because it is a LOOP rather than one of the
+   three state-change durations in the lock — it is not a thing the reader is watching finish. The
+   travel is -100% to 233%: at 30% of the track, that is exactly one width off each end. */
+.gx-usage__fill.is-pending { width:30%; background:var(--muted); animation:gx-usage-sweep 1.4s var(--ease-in-out) infinite; }
+@keyframes gx-usage-sweep { from { transform:translateX(-100%); } to { transform:translateX(233%); } }
+
+/* UNAVAILABLE. The track stops being a track. Dots at --surface-3 over nothing read as "there is
+   no reading to draw here", and at 3px tall no dotted band can be misread as a fill. Motionless on
+   purpose: nothing is happening, which is the whole of what this state means. */
+.gx-usage.is-unknown .gx-usage__bar { background:repeating-linear-gradient(90deg,var(--surface-3) 0 2px,transparent 2px 5px); }
+
+/* REDUCED MOTION. The segment goes away rather than stopping, and the waiting state takes the same
+   dotted track one step brighter — --muted against unknown's --surface-3. Quieter than the sweep
+   and still two different pictures, which is the requirement; "brighter dots" is not as obvious as
+   "it is moving", and that is the honest cost of the opt-out rather than something to hide. */
+@media (prefers-reduced-motion: reduce) {
+  .gx-usage__fill.is-pending { display:none; }
+  .gx-usage.is-pending .gx-usage__bar { background:repeating-linear-gradient(90deg,var(--muted) 0 2px,transparent 2px 5px); }
+}

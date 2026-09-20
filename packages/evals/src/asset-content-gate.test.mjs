@@ -444,7 +444,11 @@ test('§1 the refusal tells the agent which tool to use instead', { skip: noLuau
   assert.match(detail, /MeshId/, 'the refusal must name the property that was refused');
   assert.match(detail, /4242/, 'the refusal must name the id that was refused');
   assert.match(detail, /insert_asset/, 'the refusal must name the gated tool');
-  assert.match(detail, /search_asset_library|find_verified_asset/, 'the refusal must say how to obtain a verified id');
+  // Named singly rather than as an alternation: `search_asset_library` went with the asset
+  // catalogue on 2026-09-20, and an alternation that still accepted it would pass on a refusal
+  // that sends the model to a tool the registry does not have.
+  assert.match(detail, /find_verified_asset/, 'the refusal must say how to obtain a verified id');
+  assert.doesNotMatch(detail, /search_asset_library/, 'the refusal names a removed tool');
 });
 
 // ==============================================================================================

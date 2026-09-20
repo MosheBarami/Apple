@@ -4,6 +4,14 @@
  * There is deliberately no DOM package here. Like unsaved.test.mjs, this bundles the production
  * module against a tiny React hook stub so effects and cleanups can be committed by hand. The
  * element/document doubles implement only the browser operations primitives.tsx actually uses.
+ *
+ * `react-dom` IS STUBBED FOR THE SAME REASON, added 2026-09-20 when Drawer began rendering through
+ * `createPortal`. The real react-dom touches a DOM at import time, so bundling it here does not
+ * fail a check — it fails the FILE, before a single assertion runs, which is the loudest possible
+ * way to say nothing about focus. The stub returns the children unchanged and records the
+ * container, which is exactly as much of a portal as this file is about: where the panel paints is
+ * drawer-stacking.test.mjs's question, and the one assertion added below only pins that the
+ * container is `document.body` so a portal into the wrong place cannot pass silently here either.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -58,6 +66,14 @@ export function useEffect(fn, deps) {
 }
 `);
 
+const domStub = join(dir, 'react-dom-stub.mjs');
+writeFileSync(domStub, String.raw`
+export function createPortal(children, container) {
+  globalThis.__lastPortalContainer = container;
+  return children;
+}
+`);
+
 const jsxStub = join(dir, 'jsx-stub.mjs');
 writeFileSync(jsxStub, String.raw`
 export const Fragment = Symbol.for('test.fragment');
@@ -70,6 +86,7 @@ execFileSync(join(WEB, '..', 'worker', 'node_modules', '.bin', 'esbuild'), [
   join(WEB, 'src', 'components', 'ws', 'primitives.tsx'),
   '--bundle', '--format=esm', '--platform=neutral', '--main-fields=main,module',
   `--alias:react/jsx-runtime=${jsxStub}`,
+  `--alias:react-dom=${domStub}`,
   `--alias:react=${reactStub}`,
   '--outfile=' + out,
 ], { stdio: 'pipe' });
@@ -124,6 +141,9 @@ function fakeDocument() {
   const listeners = new Map();
   return {
     activeElement: null,
+    // The portal's container. Named so an assertion can tell "portalled to the body" from
+    // "portalled to undefined", which the stub would otherwise accept in silence.
+    body: { nodeName: 'BODY' },
     addEventListener(type, fn) {
       const current = listeners.get(type) ?? [];
       current.push(fn);
@@ -169,6 +189,19 @@ function keyEvent(key, shiftKey = false) {
     stopPropagation() { this.stopped = true; },
   };
 }
+
+test('Drawer renders through a portal into the body, not wherever it was called from', () => {
+  // The panel is `aria-modal="true"` and traps Tab, and it used to do both from inside `.gx-ws`
+  // — a `z-index:1` stacking context that held its scrim below the navigation rail, so a POINTER
+  // could still reach the page the keyboard had been shut out of. Portalling is what fixes that,
+  // and `undefined` is what a careless refactor would hand the stub instead.
+  globalThis.__resetPrimitiveHooks();
+  globalThis.document = fakeDocument();
+  globalThis.__lastPortalContainer = null;
+  const panel = new FakeElement('panel', { children: [] });
+  render(P.Drawer, { open: true, onClose: () => {}, title: 'Files', children: null }, 'dialog', panel);
+  assert.equal(globalThis.__lastPortalContainer, document.body, 'the drawer must be portalled to document.body');
+});
 
 test('Drawer parent rerenders do not run close cleanup or recapture focus, and Escape uses the latest onClose', () => {
   globalThis.__resetPrimitiveHooks();

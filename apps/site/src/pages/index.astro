@@ -33,6 +33,35 @@ import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE, STUDIO_PLUGIN_STO
 
 const free = PLAN_LIMITS.free;
 
+/* THE THREE SENTENCES THE HERO'S FIELD SHOWS.
+ * They are examples of what a reader would TYPE, which is the only kind of content that can go in
+ * that box without becoming a claim. Each one names only capabilities this repository has evidence
+ * for on 2026-09-20 — instancing, scripts, checkpoints, the plugin's own write path — so a reader
+ * who types the sentence back gets the thing the sentence describes. No counts, no timings, and no
+ * "connected": those are assertions about state, and the picture of a product is read as its
+ * behaviour.
+ * THEY CYCLE, AND THE CYCLE IS THREE STACKED SPANS AND ONE @keyframes — NO SCRIPT.
+ * tests/living-background.test.mjs asserts this route contains no script element and no canvas
+ * element: the landing's motion is CSS or it does not exist. A typing effect was written here
+ * first, in seventeen lines of JavaScript, and that guard is what caught it. The guard is right
+ * and the script is gone — a rule that only holds until it is inconvenient is not a rule.
+ * (The guard reads the RAW source, comments and all, so it also caught this paragraph the first
+ * time it was written with the tags spelled out. That is not a false positive worth loosening: a
+ * regex that skipped comments would skip a script commented out today and uncommented tomorrow.)
+ * SHORT ON PURPOSE, AND THE LENGTHS ARE MEASURED. Each span is `white-space: nowrap`, because a
+ * cross-fading line that rewraps halfway through the fade puts two different wraps on screen at
+ * once. So every sentence must hold ONE line inside the 285px the field has at 375px. Rendered in
+ * Chromium at 14/21 with this stack's own metrics, these three measure 166px, 208px and 199px.
+ * The first draft of this list was sixty characters a line and was CLIPPED at 285px on every one —
+ * the array had not been swapped when the comment above it already claimed it had, and the only
+ * reason that is not live right now is that the number came off the rendered page rather than off
+ * the source. Re-measure before editing a word of these. */
+const composerExamples = [
+  'Make a twelve-stage obby',
+  'Add a shop that saves what I buy',
+  'Build a lobby with a round timer',
+];
+
 const truths = [
   { label: 'Scope', title: 'One place, the one you opened', body: 'Apple works in the Studio place you pair it to, and nowhere else. It cannot reach your files or your other games.' },
   { label: 'Consent', title: 'Edits are off until you allow them', body: 'The plugin opens read-only. Turning writes on takes two deliberate clicks, and disconnecting turns them off again.' },
@@ -130,7 +159,18 @@ const capabilities = [
             siblings with their own margins is how those gaps drifted apart the first time. */}
         <div class="composer-group">
           <div class="composer" aria-hidden="true">
-            <div class="composer-field">Ask Apple to build…</div>
+            {/* All three sentences are in the markup, stacked, and the stylesheet fades between
+                them. With motion turned off the cycle does not stop on whichever one happened to
+                be painted — a cancelled animation returns to the declared value, so the stylesheet
+                declares the first line visible and that is the still state. Every line is a
+                finished sentence either way; none of them is a fragment. */}
+            <div class="composer-field">
+              <span class="composer-typed">
+                {composerExamples.map((example, i) => (
+                  <span class="composer-line" style={`--turn:${i}`}>{example}</span>
+                ))}
+              </span>
+            </div>
             <div class="composer-bar">
               {/* THE DOT WAS GREEN AND THE WORD WAS "connected", on a page selling a product whose
                   plugin Roblox has not approved for distribution. A mock is still a claim: the
@@ -307,4 +347,5 @@ const capabilities = [
       </div>
     </div>
   </footer>
+
 </Landing>

@@ -22,9 +22,8 @@
 //   - `screenshot_page` that receives a zero-byte body returns an ERROR, never an empty image.
 //     An empty image renders as a blank page, which is a picture of a lie.
 //
-// A tool that cannot work in this deployment is not offered at all — the same decision
-// `toolDefs({ assetLibrary: false })` already makes for `search_asset_library`. `webToolAvailability`
-// below answers "can this run here", and it answers from the bindings present at call time.
+// A tool that cannot work in this deployment is not offered at all. `webToolAvailability` below
+// answers "can this run here", and it answers from the bindings present at call time.
 
 import type { Env } from './env';
 import { RETENTION, seconds } from './retention';

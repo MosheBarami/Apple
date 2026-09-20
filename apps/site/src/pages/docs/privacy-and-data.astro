@@ -84,11 +84,20 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
   <h2>Taking it with you</h2>
   <p>
-    Settings → Privacy → <strong>Download my data</strong> exports available account database
-    records and API-key metadata, not secret keys. It is not a complete archive of every store.
-    The file reports unreadable, failed or capped tables and lists separate routes for your
-    project transcripts, checkpoints, memory, workspace files, images and usage. Check those
-    omissions before deleting anything.
+    Settings → Privacy → <strong>Download my data</strong> gathers it into one file in one click.
+    Your account database records and API-key metadata — never a secret key — and then every route
+    the service holds about you, followed for you rather than listed at you: the full transcript of
+    every project, your checkpoints, your Credit spend, your inbox, what Apple was asked to
+    remember, your comments, reviews, share links and Studio pairings. The server's own signed
+    export sits inside it untouched, sha256 and all.
+  </p>
+  <p>
+    Two kinds of thing stay out, and the file names each one at the top with the route that serves
+    it: <strong>bytes</strong> — generated images, generated audio, your workspace files and
+    checkpoint snapshots, none of which can be lines of JSON — and a <strong>live Studio pairing
+    code</strong>, which would be a working key to your project sitting in a downloaded file. If a
+    route does not answer, the file says which one instead of quietly dropping it. Read that list
+    before you delete anything.
   </p>
 
   <h2>Deleting things</h2>

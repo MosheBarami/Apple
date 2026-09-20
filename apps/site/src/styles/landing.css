@@ -82,6 +82,23 @@
   --composer-fill: rgba(23, 22, 21, 0.72);
   --composer-rim: rgba(244, 243, 242, 0.86);
 
+  /* THE SECOND SURFACE. A blind critic compared this page against a competitor's with the labels
+     stripped and chose the competitor's, and the first reason it gave was that ours is "one flat
+     near-black value across the entire page, no second surface tone, no containment, so it reads
+     as text on a background rather than a designed screen." That is a true reading of what was
+     here: below the fold every block sat directly on --ground.
+     #1c1b19 against #141312 is eight points of lift — enough for an edge to exist at a glance and
+     far short of the #232221 control tint, which belongs to things you press. The gradient is the
+     same idea the composer's rim carries: light arrives from above, so the top of a raised surface
+     is fractionally brighter than its bottom. background-color carries the value and the image
+     carries the fall, so the surface is still a measurable colour and not a transparent box with a
+     gradient painted on it. */
+  --pillar: #1c1b19;
+  --pillar-sheen: linear-gradient(180deg, rgba(244, 243, 242, 0.045), rgba(244, 243, 242, 0) 62%);
+  --pillar-line: rgba(244, 243, 242, 0.09);
+  --pillar-hi: #211f1d;
+  --line-strong: rgba(244, 243, 242, 0.16);
+
   --shell: 1280px;
   --gutter: 32px;
   /* The hero is full-bleed with its own gutter: the bar's nav sits in a 1280px container with 32px
@@ -155,12 +172,26 @@
   --composer-fill: #ffffff;
   --composer-rim: rgba(20, 19, 18, 0.16);
 
+  /* On light the page is the bright thing, so a raised surface goes UP to white rather than down
+     to grey — the same relationship inverted, which is how every other pair in this ramp works. */
+  --pillar: #ffffff;
+  --pillar-sheen: linear-gradient(180deg, rgba(20, 19, 18, 0.02), rgba(20, 19, 18, 0) 62%);
+  --pillar-line: rgba(20, 19, 18, 0.10);
+  --pillar-hi: #ffffff;
+  --line-strong: rgba(20, 19, 18, 0.18);
+
   --glow-strong: rgba(217, 149, 118, 0.22);
   --glow-soft: rgba(217, 149, 118, 0.08);
 }
 
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+/* smooth scrolling, and a landing zone that clears the bar that is stuck over it.
+   The header is `position: sticky` and 60px tall — 96px once it wraps to two rows at 640px — so an
+   in-page jump to #inside parked that section's first line UNDER the header, and the reader met a
+   heading with its top half missing. scroll-padding-top is the one property that tells the
+   scrolling box where the visible top actually is, and --nav-h already carries both heights, so
+   this cannot disagree with the bar it is compensating for. */
+html { scroll-behavior: smooth; scroll-padding-top: calc(var(--nav-h) + 16px); }
 
 body {
   margin: 0;
@@ -216,7 +247,14 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
    which is about 150 characters to a line, and that is why large centred type usually looks rented
    rather than composed. */
 .statement { margin: 0 auto; max-width: 750px; font-size: clamp(32px, 3.8vw, 56px); font-weight: 400; line-height: calc(1em + 8px); letter-spacing: -0.02em; text-wrap: balance; }
-.section-title { margin: 0; font-size: clamp(28px, 2.4vw, 32px); font-weight: 400; line-height: 1.3125; letter-spacing: -0.013em; }
+.section-title { margin: 0; font-size: clamp(28px, 2.4vw, 32px); font-weight: 400; line-height: 1.3125; letter-spacing: -0.013em; text-wrap: balance; }
+
+/* The same orphan rule global.css carries, restated here because this page does not import it.
+   The landing was the mildest offender — one stranded word at 375px, in the paragraph under "It
+   works in the place you already have open" — but a phone-width line ending on "games." is the
+   same defect the docs had eighty-five more times, and the guard counts this page with the rest. */
+h1, h2, h3, h4, h5, h6 { text-wrap: balance; }
+p, li, dd, dt, figcaption, blockquote { text-wrap: pretty; }
 /* THE SUB-LINE IS 16px, NOT BODY SIZE. Every section on the bar is the same three objects at the
    same three sizes: a 32px title, eight pixels, a 16px/24px muted line, and then the thing itself.
    Ours set that line at 14px, which is the size of the text inside the cards below it, so a head
@@ -368,14 +406,17 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
    apart. Hanging the row off the box with its own margin is how those three gaps drift apart the
    next time one of them is edited. */
 .composer-group { width: 100%; max-width: 838px; margin: 40px auto 0; display: flex; flex-direction: column; gap: 24px; }
-/* 838 x 140 with a 22px radius. The height is a sum, not a guess: 1px rim + an 82px field + a 56px
-   bar + 1px rim. Live on 2026-09-20 the bar's own box measures 164 because its textarea is 100px
-   tall rather than 82; 140 is the figure this run was given and the one the whole hero is spaced
-   against, and the field is the single number to change if that reading is preferred.
+/* 838 WIDE, AND AS TALL AS WHAT IS IN IT. It was 838x140, and 140 was a sum — 1px rim + an 82px
+   field + a 56px bar + 1px rim — taken from a reference whose field holds a real textarea. Ours
+   holds one line. MEASURED, 2026-09-20, before this change: from the bottom of the placeholder's
+   only text line to the top of the control bar was 44px of nothing, which a blind critic read back
+   as "an outline-only rounded rectangle whose middle third is dead air." It was right. A box sized
+   for content it does not have is an empty box, whatever the reference measured.
+   The height is now the content's: 1 + (20 top + one 22px line + 18 bottom) + 56 + 1 = 118px, and
+   the field carries a min-height so the box cannot flinch while the line below types itself.
    NO SHADOW. Separation here is the rim and the fill, which is the rule for the whole page — a
    drop shadow under the one object that is supposed to be sitting in light reads as a sticker. */
 .composer {
-  height: 140px;
   display: flex; flex-direction: column;
   border: 1px solid var(--composer-rim); border-radius: var(--r-lg);
   background: var(--composer-fill);
@@ -386,7 +427,77 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
   text-align: left;
   overflow: hidden;
 }
-.composer-field { flex: 1; padding: 20px; color: var(--faint); font-size: 14px; line-height: 20px; letter-spacing: -0.01em; }
+/* THE FIELD SHOWS A REQUEST, NOT A PROMPT FOR ONE. "Ask Apple to build…" in placeholder grey is
+   the emptiest a text field can look, and it was the largest object above the fold. What replaces
+   it is a sentence a person would actually type, set in ink rather than in placeholder grey,
+   because that is what typed text looks like. It is an example of an INPUT — it asserts nothing
+   about what the product did, which is the line the connected-dot mock crossed and this must not.
+   min-height, not height: the line types and deletes itself, and a field that sizes to its current
+   character count would make the whole hero jump once per keystroke.
+   THE FLOOR IS A TOTAL, NOT A CONTENT HEIGHT, and the first version of this rule got that wrong.
+   `* { box-sizing: border-box }` at the top of this file makes min-height include the 38px of
+   padding, so `min-height: 22px` — one line of content — was a floor of 22 against a box that is
+   never smaller than 59, which is to say no floor at all. MEASURED at 375px before the correction:
+   the composer stepped between 138px and 117px as the line crossed its wrap, on the screen where
+   it is most of the fold. 60 = one 22px line + 20 + 18, and 80 at 375 = two 21px lines + 38. */
+.composer-field {
+  flex: 1; padding: 20px 20px 18px; min-height: 60px;
+  color: var(--ink-secondary); font-size: 15px; line-height: 22px; letter-spacing: -0.01em;
+}
+/* THE ONLY THING IN THE FOREGROUND OF THIS PAGE THAT MOVES.
+   Four animations already run above the fold and every one of them is in the background haze:
+   measured over three frames 1.5s apart, 2.19% of sampled pixels changed by more than 6/765, all
+   of it a blurred bloom and a set of near-black hairlines. Type, composer and buttons were still,
+   and a screen whose only motion is behind the headline photographs as a screenshot.
+   Three sentences are stacked here and faded between on an 18s cycle, six seconds each. The stack
+   is absolute because three spans in flow would be three lines; the parent carries the height, so
+   the composer's box cannot move when the visible sentence changes.
+   nowrap, and the sentences are short enough for it — measured, not assumed: 166px, 208px and
+   199px against the 285px the field has at 375px. A line that rewraps halfway through a cross-fade
+   tears, because two different wraps are on screen at once, and one that overruns is cut off by
+   the `overflow: hidden` that keeps the caret tight to its text. `max-width: 100%` is the guard
+   that makes an overrun clip inside the box rather than spill past the composer's rim; it is not
+   permission to write a longer sentence.
+   THE CARET IS THE SPAN'S OWN RIGHT BORDER, which is the whole reason this works without script. A
+   separately positioned caret would have to be told where each sentence ends — in a typeface that
+   is SF here, Segoe on Windows and Roboto on Android — and would be wrong on two of the three. A
+   border on a fit-content box is at the end of its own text by construction, on every platform. */
+.composer-typed { position: relative; display: block; height: 22px; }
+.composer-line {
+  position: absolute; left: 0; top: 0;
+  width: max-content; max-width: 100%;
+  white-space: nowrap; overflow: hidden;
+  /* 0 is the OFF state and the fallback for a cancelled animation; the first line overrides it so
+     that a reader with motion turned off gets a sentence rather than an empty box. See the note
+     under the keyframes — this is the whole reason that line exists. */
+  opacity: 0;
+  padding-right: 3px;
+  border-right: 1.5px solid var(--ink);
+  animation:
+    example-turn 18s var(--ease) infinite,
+    caret-blink 1.06s steps(1, end) infinite;
+  animation-delay: calc(var(--turn) * 6s), 0s;
+}
+/* Six seconds of an eighteen-second cycle, with the fade in and out inside that share rather than
+   bleeding past it: 2.2% of 18s is 400ms, so a sentence is fully opaque from 0.4s to 5.6s of its
+   own turn and the two neighbours are at zero for all of it. Anything wider overlaps the next
+   sentence and puts two of them on the screen together. */
+.composer-line:first-child { opacity: 1; }
+@keyframes example-turn {
+  0% { opacity: 0; }
+  2.2% { opacity: 1; }
+  31.1% { opacity: 1; }
+  33.3%, 100% { opacity: 0; }
+}
+/* The caret blinks at the platform rate, and stops solid under prefers-reduced-motion.
+   THE STILL STATE IS DECLARED, NOT INHERITED, and the first version of this got it backwards. The
+   comment here used to say that stopping the animation "leaves one sentence painted". It does not:
+   `animation: none` at the end of this file cancels the animated opacity and every line falls back
+   to the DECLARED opacity, which is 0 for all three — measured with reducedMotion: 'reduce', the
+   composer rendered with an empty field and a caret on nothing. A stopped animation returns to the
+   base value, so the base value has to be the still state you want. The first line declares
+   opacity 1 above for that reason; while the cycle runs, its own 0% keyframe overrides that. */
+@keyframes caret-blink { 0%, 50% { border-right-color: var(--ink); } 50.01%, 100% { border-right-color: transparent; } }
 /* The bar is 56px tall with its padding all on the bottom, which leaves a 40px row the 36px
    controls centre inside. A border across the top would cut the composer into two boxes; the bar
    on the reference is the bottom of one field, not a second panel. */
@@ -428,19 +539,49 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
 
 /* --------------------------------------------------------------- truths */
 
-/* FOUR COLUMNS, NOT A TABLE.
-   There is no bordered, filled cell anywhere below the fold on the bar. Its four-up block is four
-   columns of text at a 32px gap sitting directly on the page, with the gap doing the grouping.
-   Ours was a 1px-gap grid inside a border with a radius on it, which is a table — and a table
-   invites a reader across its rows, which these four independent statements do not have.
+/* FOUR CARDS. The earlier version of this block was four columns of text sitting directly on the
+   page, and the comment here argued for it: the reference has no filled cell below its fold, and a
+   bordered grid reads as a table inviting a reader across rows these four independent statements
+   do not have. That argument was about the reference. It was not about what the block looked like.
+   MEASURED, 2026-09-20, 1280x800, before this change: the four <article>s were each 161px tall —
+   grid stretch had already equalised the BOXES — while their text ran 3, 3, 3 and 5 lines, so the
+   ragged edge a blind critic named was a rag of INK inside four invisible boxes of equal height.
+   With nothing drawn around that ink there was no edge to be ragged against, which is the whole
+   defect: forty-odd pixels of unexplained black under three of the four columns, and 128px of band
+   rhythm under all of them, reading as one ~170px hole rather than as a closed block.
+   A surface fixes the rag without touching a single word, because the card's bottom edge is the
+   grid row's and the grid row is already equal. It also gives the page the second surface tone it
+   did not have anywhere below the fold.
+   THE TABLE WORRY IS PAID OFF BY THE GAP, NOT BY THE ABSENCE OF A BORDER. 20px between cards
+   against 24px of padding inside one means the inside of a card is a wider space than the space
+   between two, so each card groups with itself first. A 1px-gap grid inside one frame — which is
+   what this block genuinely was two revisions ago — is the table. Four separated objects are not.
    THE LABEL WAS RENDERING AT 14px. `.truth p` is one class and one type, `.micro` is one class, so
    `.truth p` won and every one of these uppercase labels came out at body size with positive
    tracking: a caption set as loudly as the heading under it. The 10px step is restored here, at a
    specificity that can actually reach it. */
-.truths { display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; }
-.truth { padding: 0; }
-.truth h3 { margin: 8px 0 0; font-size: 20px; font-weight: 400; letter-spacing: -0.012em; line-height: 30px; }
-.truth p { margin: 8px 0 0; color: var(--muted); font-size: 14px; line-height: 20px; }
+.truths { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; align-items: stretch; }
+.truth {
+  /* 26/24/28: a fraction more air under the paragraph than over the label, because the label is a
+     10px cap-height line and sits optically lower in its own box than the paragraph's last
+     descender sits in its. Equal numbers here measure equal and look top-heavy. */
+  padding: 26px 24px 28px;
+  border: 1px solid var(--pillar-line);
+  border-radius: var(--r);
+  background-color: var(--pillar);
+  background-image: var(--pillar-sheen);
+  /* The cards are the row's height, not their own. This is what removes the rag: every card's
+     bottom edge is the same line whatever its paragraph does. */
+  height: 100%;
+}
+/* The block answers a cursor. Four rectangles that do not react to being pointed at are four
+   rectangles, and this is the cheapest possible acknowledgement: the rim comes up to the strength
+   the composer's rim carries and the surface lifts by the smallest step in the ramp. No transform,
+   no shadow — a card that jumps under the pointer is a card that was not sitting still. */
+.truth { transition: border-color 200ms var(--ease), background-color 200ms var(--ease); }
+.truth:hover { border-color: var(--line-strong); background-color: var(--pillar-hi); }
+.truth h3 { margin: 10px 0 0; font-size: 19px; font-weight: 400; letter-spacing: -0.012em; line-height: 27px; text-wrap: balance; }
+.truth p { margin: 8px 0 0; color: var(--muted); font-size: 14px; line-height: 21px; }
 .truth .micro { margin: 0; color: var(--faint); font-size: 10px; line-height: 15px; letter-spacing: 0.018em; }
 
 /* ------------------------------------------------------------- sequence */
@@ -624,10 +765,17 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
   /* The header is two rows now, so everything measured from its height moves with it. */
   :root { --nav-h: 96px; }
 
-  /* The bar does NOT wrap. The composer is a fixed 140px object, so a second row of controls would
-     be drawn outside the box it belongs to; at 375px the two chips and the send control measure
-     189px inside a 325px row, and `overflow: hidden` on the composer catches a translation that
-     does not fit rather than letting it spill past the rim. */
+  /* The bar does NOT wrap. At 375px the two chips and the send control measure 189px inside a
+     325px row, and `overflow: hidden` on the composer catches a translation that does not fit
+     rather than letting it spill past the rim.
+     ONE LINE HERE TOO, WHICH IS WHY THE SENTENCES ARE MEASURED. 59 = a 21px line + 20 + 18, and it
+     is a total rather than a content height because `box-sizing: border-box` is set at the top of
+     this file — a floor written as the content height alone is 21px against a box that is never
+     smaller than 59, which is no floor at all. This reserved two lines while a script typed a
+     sixty-character sentence into it; the sentences are short now and the second line was 21px of
+     measured dead air on the screen where the composer is most of the fold. */
+  .composer-field { min-height: 59px; font-size: 14px; line-height: 21px; }
+  .composer-typed { height: 21px; }
 }
 
 /* THE BAR'S OWN PHONE BREAKPOINT IS 768, AND EVERYTHING THAT MOVES, MOVES THERE.

@@ -27,6 +27,17 @@ How you build things (a built thing is judged on how it LOOKS, not on whether it
   Follow the user's art direction over a kit; report missing reference coverage rather than invent it.
 - Use search_creation_skills and read_creation_skill for relevant construction and verification steps.
   Install AppleUI with an explicit matching theme when its components fit the requested interface.
+- THREE LIBRARIES HOLD WHAT WAS ALREADY PROVEN OR MEASURED. None costs a credit; use them instead
+  of re-deriving from memory, and install what they return rather than retyping it.
+  * get_verified_module — Luau RUN against its own exhaustive checks: cooldowns, currency, scoring,
+    percentages, inventory limits, XP curves, rounds. Call it BEFORE writing that logic by hand; you
+    write the right shape with the wrong arithmetic, and a wrong constant is invisible and permanent.
+  * get_ui_construction — how a shipped interface is BUILT: stroke weights, corner radii, tiles per
+    row, header overhang. By screen (shop, inventory, rewards, codes, leaderboard, settings, HUD,
+    battle pass) or by genre. Call it before building any interface.
+  * install_module — reviewed source for the systems whose failures are silent: data saving,
+    purchases, economy, leaderboards, rounds, checkpoints. Needs Studio; with Studio absent, name
+    the module in the plan instead of hand-writing what it already contains.
   Prefer readable low-poly silhouettes and coherent materials; do not depend on 4K textures for polish.
   Verify actual rendered UI and gameplay states after changes. Passing code tests does not finish a
   prototype-looking interface or map; keep the visual verdict unverified when no real view is available.
@@ -43,9 +54,15 @@ How you build things (a built thing is judged on how it LOOKS, not on whether it
 - A scene is not finished when the objects exist. It is finished when it has a ground treatment
   that is not a bare baseplate, a coherent material and colour palette, a clear focal point, and a
   lighting pass. Build, then LOOK at it with render_view, then fix what you see.
-- NEVER invent an asset id. {{ASSET_SOURCES}} An id you
-  produced yourself resolves to nothing or to something random. Every id is re-verified and every
-  insertion is scanned inside the place, so a bad id costs you a step and buys you nothing.
+- NEVER invent an asset id. THERE IS NO APPLE ASSET LIBRARY AND NO CATALOGUE TO SEARCH. Ids come
+  from find_verified_asset (the Roblox Creator Store) or from the user, and from nowhere else. An
+  id you produced yourself resolves to nothing or to something random. Every id is re-verified and
+  every insertion is scanned inside the place, so a bad id costs you a step and buys you nothing.
+- When neither the Creator Store nor the user can supply an id, BUILD THE THING out of Parts with
+  create_instances, or generate it: generate_image makes a texture or an icon in the customer's own
+  Roblox account, and generate_model makes geometry in their own Studio session. Never tell the
+  user that Apple has a library of assets, and never say an asset "needs importing" — there is
+  nothing to import it from.
 - Assets enter a place through insert_asset and nowhere else. run_luau refuses GetObjects,
   InsertService, rbxassetid:// and require of an asset id; do not try to route around it.
 - Reach for run_luau when a build is repetitive or math-heavy (rings of parts, stairs, spirals):
@@ -320,15 +337,6 @@ export function systemPrompt(opts: {
    * fence needs a secret rather than a constant.
    */
   fenceId: string;
-  /**
-   * Whether the curated asset library exists in THIS deployment.
-   *
-   * The rule below used to name `search_asset_library` unconditionally and tell the model to try it
-   * FIRST. Where the tables were never created that instruction pointed at a tool that always
-   * failed. Defaults to false: a prompt that promises a source which is not there is worse than one
-   * that omits it, so the burden of proof is on the library existing.
-   */
-  assetLibraryAvailable?: boolean;
   /** Worker-authored capability note only. Never pass plugin-authored refusal text here. */
   studioCapabilityNote?: string | null;
   /**
@@ -342,9 +350,6 @@ export function systemPrompt(opts: {
    */
   personalisation?: string | null;
 }): string {
-  const assetSources = opts.assetLibraryAvailable
-    ? 'Ids come from search_asset_library (curated, licence-cleared, try this\n  first) or from find_verified_asset (the Creator Store, last resort), or from the user.'
-    : 'Ids come from find_verified_asset (the Creator Store) or from the user.';
   const studio = opts.studioConnected
     ? `Roblox Studio is CONNECTED (place: ${opts.placeName ?? 'unsaved place'}). Use tools to act on the real project.`
     : `Roblox Studio is NOT connected. You can still discuss, plan, write code for the user to paste, and search docs. Building tools are unavailable; tell the user to open the Apple plugin in Studio and connect (Dashboard → project → "Connect Studio").${
@@ -378,7 +383,7 @@ export function systemPrompt(opts: {
     .filter(Boolean)
     .join('\n\n');
   return [
-    IDENTITY.replace('{{ASSET_SOURCES}}', assetSources),
+    IDENTITY,
     untrustedContentRule(opts.fenceId),
     MODE_RULES[opts.mode],
     opts.sceneKind ? BRIEF_START + worldBuildingBrief(opts.sceneKind) + BRIEF_END : '',

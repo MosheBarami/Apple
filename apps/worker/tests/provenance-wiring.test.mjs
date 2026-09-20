@@ -80,20 +80,29 @@ test('the attribution route exists and is owner-scoped', () => {
 
 /* ------------------------------------------------------- the key space it writes --- */
 
-test('an unaccounted key can never be mistaken for a library id', () => {
-  // The report left-joins usage rows onto asset_library by id. A key for an asset the
-  // library does not have must therefore be unable to MATCH a library id — now or
-  // after some future ingest. The library's own id pattern is the authority.
-  const lib = readFileSync(join(ROOT, 'apps/worker/src/asset-library.ts'), 'utf8');
-  const ID_RE = new RegExp(lib.match(/const ID_RE = \/(.+?)\/;/)[1]);
-
-  assert.ok(ID_RE.test('kenney/city-kit-suburban/building-a-01'), 'the pattern was read correctly');
-  assert.equal(ID_RE.test('unaccounted:roblox:123456'), false, 'the sentinel must be unrepresentable as a library id');
+test('an unaccounted key can never be mistaken for a provenance id', () => {
+  // The report left-joins usage rows onto the provenance table by id, and every id that table
+  // ever held is a namespaced slug: `kenney/city-kit-suburban/building-a-01`. The sentinel written
+  // for an asset nothing knows about must be unable to MATCH one — now, and if a provenance table
+  // is ever repopulated by some other route. A colon is what makes that true, so a colon is what
+  // is asserted rather than the whole shape.
+  //
+  // THE PATTERN USED TO BE READ OUT OF `asset-library.ts`, which was the honest way to do it while
+  // that file owned `ID_RE` and `validateProvenance`. The catalogue was removed on 2026-09-20 and
+  // both went with it, so the constraint is stated here directly instead of parsed out of a file
+  // that no longer exists. Reading a regex out of a deleted module is how a guard starts throwing
+  // ENOENT and gets deleted along with the thing it was protecting.
+  const SLUG_RE = /^[a-z0-9][a-z0-9._-]*(\/[a-z0-9][a-z0-9._-]*)+$/;
+  assert.ok(SLUG_RE.test('kenney/city-kit-suburban/building-a-01'), 'the pattern matches a real provenance id');
+  assert.equal(SLUG_RE.test('unaccounted:roblox:123456'), false, 'the sentinel must be unrepresentable as a provenance id');
 
   // And the sentinel the code actually writes must be that shape.
   const tools = readFileSync(join(ROOT, 'apps/worker/src/tools.ts'), 'utf8');
   const sentinel = tools.match(/`unaccounted:roblox:\$\{assetId\}`/g) ?? [];
   assert.ok(sentinel.length >= 1, 'insert_asset must key unaccounted assets with the sentinel');
+  for (const written of sentinel) {
+    assert.ok(written.includes(':'), 'the sentinel lost its colon, which is the only thing keeping it unmatchable');
+  }
 });
 
 // The runtime half of this wiring — that a recorded row survives the join and that an
@@ -158,17 +167,30 @@ test('the session restores its binding when an evicted instance is revived', () 
   assert.match(ctor, /this\.boundProjectId = bound\.projectId/);
 });
 
-test('a fault in the library lookup is not recorded as an answer', () => {
-  // The inner catch around the asset_library lookup must re-throw anything that is not
-  // the missing-table case. Swallowing everything would write a PERMANENT
-  // `unaccounted:` row for an asset that is in the library whenever D1 hiccups — and
-  // because the usage table's primary key is (project_id, asset_id), a later correct
-  // placement adds a SECOND row under the real library id, listing one physical asset
-  // twice: once unaccounted, once credited.
+//[[ THE LOOKUP THIS GUARDED IS GONE, AND WHAT REPLACED IT IS STRONGER, SO THE GUARD FOLLOWED IT.
+//
+//   `recordPlacedAsset` used to ask D1 for a catalogue row matching the Roblox id, and the inner
+//   catch around that query had to re-throw anything that was not the missing-table case.
+//   Swallowing everything would have written a PERMANENT `unaccounted:` row for an asset that WAS
+//   in the catalogue whenever D1 hiccuped — and because the usage table's primary key is
+//   (project_id, asset_id), a later correct placement added a SECOND row under the real id, listing
+//   one physical asset twice: once unaccounted, once credited.
+//
+//   The catalogue was removed on 2026-09-20. There is no row to find, so there is no query, so
+//   there is no fault to misreport: the key is the sentinel unconditionally. That is a stronger
+//   guarantee than the catch was, and this asserts it directly — no lookup, and no branch in which
+//   `accounted` could ever be true. ]]
+test('there is no catalogue lookup left to misreport a fault as an answer', () => {
   const src = readFileSync(join(ROOT, 'apps/worker/src/tools.ts'), 'utf8');
-  const fn = src.slice(src.indexOf('async function recordPlacedAsset'), src.indexOf('export const TOOLS'));
-  const lookup = fn.slice(fn.indexOf('asset_library where roblox_asset_id'));
-  const catchBlock = lookup.slice(lookup.indexOf('} catch'), lookup.indexOf('const accounted'));
-  assert.match(catchBlock, /no such table/, 'the catch must recognise the missing-table case');
-  assert.match(catchBlock, /throw e;/, 'and re-throw everything else');
+  const start = src.indexOf('async function recordPlacedAsset');
+  assert.notEqual(start, -1, 'recordPlacedAsset moved or was renamed — this guard is looking at nothing');
+  const fn = src.slice(start, src.indexOf('export const TOOLS'));
+  assert.ok(fn.length > 200, 'the slice is empty or truncated, so the assertions below prove nothing');
+
+  assert.equal(fn.includes('asset_library'), false,
+    'recordPlacedAsset queries the catalogue table again — it was deleted, so this can only ever throw');
+  assert.equal(/accounted:\s*true/.test(fn), false,
+    'something can be reported as accounted again, which means a provenance source came back unannounced');
+  assert.match(fn, /accounted: false/, 'and the honest verdict must actually be written');
+  assert.match(fn, /recordAssetUse\(ctx\.env, ctx\.projectId, key/, 'the usage row must still be written');
 });

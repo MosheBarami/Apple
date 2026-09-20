@@ -131,6 +131,8 @@ const WHERE_ELSE: Readonly<Record<string, string>> = {
   month_totals: 'GET /api/me/usage',
   billing_events: 'GET /api/billing/history',
   applied_events: 'not offered as a download — it holds only which Stripe events were already applied',
+  applied_refunds:
+    'not offered as a separate download — it holds only which runs have already had their Credits returned, so a retried refund cannot pay you twice. The refund itself appears as a negative row in your usage at GET /api/me/usage',
   billing_authority_replays:
     'not offered as a separate download — this is bounded service-internal replay state for recent normalized billing decisions. Your current subscription and billing change history are available at GET /api/billing/history; this cache does not contain raw Stripe payloads or credentials',
   events: 'not offered as a download — the request log is operational, and it carries no actor id at all once analytics are switched off',

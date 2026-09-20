@@ -68,6 +68,13 @@ const PLAN_TOOLS = [
   'search_creation_skills',
   'read_creation_skill',
   'get_genre_references',
+  // THE TWO KNOWLEDGE LIBRARIES. Both are `studio: false`, read a table compiled into this worker,
+  // reach nothing outside it and cost no inference — see KNOWLEDGE_TOOLS below for why withholding
+  // them was a defect rather than a safety property. Plan is the mode that most needs them: "what
+  // would you do here" is answered by the module that was already proven and the construction
+  // record that was already measured, not by the planner re-deriving either from memory.
+  'get_verified_module',
+  'get_ui_construction',
   'remember',
   // The READ-ONLY web tools. Each one reads something outside the user's project — a page, a
   // search, a repository, an image, the project's own scratch files — and none of them can reach
@@ -98,7 +105,26 @@ const PLAN_TOOLS = [
  * keep their read-only contract. Do not add a Studio-backed generator here — an offline mode must
  * never suggest a call that can only end in a connection refusal.
  */
-const OFFLINE_TOOLS = ['search_docs', 'search_creation_skills', 'read_creation_skill', 'get_genre_references', 'remember'];
+/**
+ * THE LIBRARIES THE MODEL IS SUPPOSED TO HOLD IN ITS HEAD, which it was handed in one mode out of
+ * three and in none of them when Studio was offline.
+ *
+ * `get_verified_module` serves Luau that was RUN against its own exhaustive checks at build time;
+ * `get_ui_construction` serves stroke weights, radii and grid pitches read off interfaces that
+ * shipped. Both are `studio: false`, both answer from a table compiled into this bundle, neither
+ * can touch the place, spend a credit or make an outbound request.
+ *
+ * They were nonetheless reachable only from stone/rune WITH a live Studio, because they were in
+ * neither list here — so Plan mode could never cite a proven module in a roadmap, and a
+ * disconnected session had to answer construction questions from pretraining. That is the precise
+ * failure the modules exist to stop: measured, the model writes the right shape with the wrong
+ * arithmetic, and an offered-but-unused library is indistinguishable from no library at all.
+ *
+ * The rule this list keeps is unchanged — an offline mode must never suggest a call that can only
+ * end in a connection refusal — and these two pass it: they answer identically with Studio absent.
+ */
+const KNOWLEDGE_TOOLS = ['get_verified_module', 'get_ui_construction'];
+const OFFLINE_TOOLS = ['search_docs', 'search_creation_skills', 'read_creation_skill', 'get_genre_references', ...KNOWLEDGE_TOOLS, 'remember'];
 const OFFLINE_IMAGE_TOOLS = [...OFFLINE_TOOLS, 'generate_image'];
 
 export function toolsForMode(mode: GolemMode, studioConnected: boolean, allNames: string[]): Set<string> {
