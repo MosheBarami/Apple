@@ -75,11 +75,25 @@ at $0.03/M against $0.15/M, so a working cache would cut the dominant cost by 5�
 happening, and the neuron figures above are what we actually pay.
 
 **Cost per quality-gated build:** ~16 steps at ~145 neurons plus 1–2 critiques ≈ **2,300 neurons
-($0.025)**, against 511 ($0.0056) for the old build-blind path. At the unchanged daily ceiling that
-is roughly **10 full quality-gated builds per day service-wide**, down from ~49 build-blind ones.
+($0.025)**, against 511 ($0.0056) for the old build-blind path. At today's daily ceiling of 100,000
+neurons that is roughly **43 full quality-gated builds per day service-wide**, against ~196
+build-blind ones.
 
-**The ceiling has not moved — the hard maximum is still $10.06/month.** What changed is how much fits
-inside it. This is the honest trade: far fewer builds, each of which the agent actually looked at.
+<!--[[ THE CEILING DID MOVE, ON 2026-09-20, AND THIS SAID OTHERWISE FOR A DAY.
+       This paragraph read "The ceiling has not moved — the hard maximum is still $10.06/month",
+       and three other documents restated that figure. It stopped being true when
+       BILLABLE_NEURONS_PER_DAY went 15,000 -> 90,000 and BILLABLE_NEURONS_PER_MONTH went
+       460,000 -> 1,800,000, because every build on the live product was being refused with
+       "Apple has reached today's shared building capacity" — see the decision comment above
+       BILLABLE_NEURONS_PER_DAY in apps/worker/src/pricing.ts. The constants, the enforcement and
+       packages/evals/src/economics.test.mjs all moved together that day; only the documents did
+       not, and the number they left behind was the OWNER'S WORST CASE, understated 2.5x.
+       Every figure below is now derived from those constants and checked by
+       "the documented hard maximum is the one the safeguards actually allow" in
+       economics.test.mjs. ]]-->
+**The ceiling moved on 2026-09-20 — the hard maximum is $24.80/month, up from $10.06.** It was
+raised on purpose, because at the old cap the service was refusing every build. What has not
+changed is that it is a hard cap: beyond it the caps refuse generation rather than spending more.
 
 The identified, quantified saving not yet taken: the art-direction brief is 7,406 of those 13,894
 characters and is re-sent on every step of a run. Moving it behind a tool the agent calls once while
@@ -116,31 +130,38 @@ selected**. See `apps/worker/src/reasoning.ts`.
 Cloudflare includes **10,000 neurons/day free** on both Free and Paid plans. Spend only begins
 after that. Workers Paid is **$5.00/month** flat.
 
+Every row below is `billable neurons × $0.011/1,000 + $5.00`, with the billable figure taken from
+`BILLABLE_NEURONS_PER_DAY` / `BILLABLE_NEURONS_PER_MONTH` in `apps/worker/src/pricing.ts`. Builds
+are counted at the 2,300-neuron quality-gated figure measured above, which is the same one the
+Credit allowances are denominated in.
+
 | Scenario | Daily neurons | Billable/day | AI cost/month | **Total bill** |
 |---|---|---|---|---|
-| **Low** — ~18 builds + 100 questions/day service-wide | ~10,000 | 0 | $0.00 | **$5.00** |
-| **Medium** — ~30 builds + 200 questions/day | ~17,000 | 7,000 | $2.34 | **$7.34** |
-| **Heavy** — demand at or above the ceiling | 25,000 (capped) | 15,000 | $5.02 | **$10.02** |
+| **Low** — ~4 builds or ~100 questions/day service-wide | ~10,000 | 0 | $0.00 | **$5.00** |
+| **Medium** — ~15 builds/day | ~35,000 | 25,000 | $8.25 | **$13.25** |
+| **Heavy** — demand at or above the daily ceiling | 100,000 (capped) | 90,000 | $19.80 (capped) | **$24.80** |
 
-The neuron ceilings are **unchanged** by either the GLM migration or the visual loop — the maximum
-bill has not moved at any point. What the ceiling buys has changed twice: GLM made builds 2.5×
-cheaper (from ~19 to ~49 per day at the cap), and the visual loop then spent some of that back on
-quality (down to **~34–38 full Stone builds per day**, still roughly double the pre-migration
-capacity, and now with the agent actually checking its work).
+The heavy row is the one worth reading twice. At the daily cap the AI spend is **$0.99 a day**, so
+thirty such days would be $29.70 — and the monthly backstop stops it at $19.80 instead. The month's
+cap is reached on **day 20**; every day after that refuses generation whatever the daily figure
+says. That is deliberate: a month of heavy days cannot quietly become a bigger bill than a month of
+light ones was budgeted for.
 
 Beyond "heavy" the caps refuse further generation rather than spending more — users get a
 capacity message, the bill does not move.
 
 ### Exact hard maximum
 
-The monthly billable cap is **460,000 neurons = $5.06**. Added to the $5.00 platform fee:
+The monthly billable cap is **1,800,000 neurons = $19.80**. Added to the $5.00 platform fee:
 
-> ## Hard maximum: **$10.06 / month**
+> ## Hard maximum: **$24.80 / month**
 
 One caveat stated honestly: the ledger blocks on *reserved + settled* neurons, so the only way to
 exceed the cap is requests already in flight at the instant it is crossed. That is bounded by
 (concurrent requests × 1,200 neurons/request) — about **$0.40** in a pathological burst of 30
-simultaneous requests. So the true ceiling is **$10.06, and under no circumstances above ~$10.50**.
+simultaneous requests. `MAX_NEURONS_PER_REQUEST` was not touched when the caps were raised, so that
+bound is the same as it always was. The true ceiling is **$24.80, and under no circumstances above
+~$25.20**.
 
 Non-AI resources (Durable Objects, D1, KV, Vectorize, Workers requests) sit far inside the
 allowances included with Workers Paid at this scale; the 30-user load test consumed a rounding

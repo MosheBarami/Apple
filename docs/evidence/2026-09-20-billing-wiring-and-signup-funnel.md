@@ -199,6 +199,45 @@ Every account in the project was created inside one 32-minute window on
    forged tokens (above); a valid one has not been exercised, because obtaining
    one means signing in.
 
+---
+
+## 4. The owner's own worst case was published 2.5x too low
+
+His row `published-agent-credit-figure` asks for *"the exact expected monthly bill at low, medium,
+and heavy usage, and the exact hard maximum bill your safeguards allow."*
+
+On 2026-09-20 the caps were raised on purpose — `BILLABLE_NEURONS_PER_DAY` 15,000 → 90,000 and
+`BILLABLE_NEURONS_PER_MONTH` 460,000 → 1,800,000 — because at the old cap the live product was
+refusing every build with *"Apple has reached today's shared building capacity."* The constants,
+the enforcement and `packages/evals/src/economics.test.mjs` all moved that day. Four documents did
+not.
+
+Measured live, from `GET /api/admin/spend`:
+
+```
+"limits": {"freeNeuronsPerDay":10000,"billableNeuronsPerDay":90000,
+           "billableNeuronsPerMonth":1800000,"maxNeuronsPerRequest":1200},
+"maxMonthlyUsd": 19.8,
+"state": {"estimatedMonthUsd": 0.8719, ...}
+```
+
+$19.80 of AI plus $5.00 Workers Paid is **$24.80/month**. `docs/COST-MODEL.md` was still headed
+`## Hard maximum: $10.06 / month`, and said in prose *"The ceiling has not moved — the hard maximum
+is still $10.06/month."* Both false, and the difference is the owner's money.
+
+`docs/COST-MODEL.md` and the pointer row in `docs/SCALE-V2.md` are corrected and every figure is
+re-derived from the constants: low $5.00, medium $13.25, heavy $24.80, with the monthly backstop
+biting on day 20 at the daily cap. A guard in `economics.test.mjs` now fails when any document
+under `docs/` states a hard monthly maximum that is not
+`BILLABLE_NEURONS_PER_MONTH × USD_PER_NEURON + WORKERS_PAID_USD_PER_MONTH`.
+
+**OPEN, and left alone deliberately:** `docs/BUDGET-SHARDING.md:370, 373, 401` still say $10.06,
+and its neighbouring `25,000 / 1,200 = 20.8` is the old daily ceiling. Those figures sit inside a
+ratio argument (`77 / 10.06 ≈ 7.6×`, which becomes `77 / 24.80 ≈ 3.1×`), so they need the
+document's author rather than a find-and-replace. The file is exempted BY NAME in the guard with
+that reason written out, so the staleness is owned rather than hidden. Its conclusion — that T1
+cannot be satisfied today — survives the correction.
+
 ### Residue worth someone's decision
 
 `https://golem.moshe-barami111.workers.dev/app/**` is still on the allow list.

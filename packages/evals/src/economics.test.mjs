@@ -12,6 +12,9 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readdirSync, readFileSync } from 'node:fs';
+import { dirname, join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import {
   USD_PER_NEURON,
@@ -468,4 +471,104 @@ test('report() renders and is labelled an internal model', () => {
   for (const u of ['100', '1,000', '10,000']) assert.ok(text.includes(u), `${u} users appears`);
   for (const a of Object.keys(ACTIVITY_LEVELS)) assert.ok(text.includes(a), `${a} activity appears`);
   assert.ok(text.length > 3_000, 'report is substantive');
+});
+
+// ---------------------------------------------------------------------------
+// AND THE DOCUMENTS HAVE TO SAY THE SAME NUMBER.
+// ---------------------------------------------------------------------------
+
+//[[ THE OWNER'S WORST CASE WAS PUBLISHED 2.5x TOO LOW FOR A DAY, IN FOUR PLACES.
+//
+//   His question, verbatim: "Show me the exact expected monthly bill at low, medium, and heavy
+//   usage, and the exact hard maximum bill your safeguards allow."
+//
+//   On 2026-09-20 BILLABLE_NEURONS_PER_DAY went 15,000 -> 90,000 and BILLABLE_NEURONS_PER_MONTH
+//   went 460,000 -> 1,800,000, because at the old cap the live product refused every build. The
+//   constants moved, the enforcement moved, and the test above was re-aimed the same day. The
+//   DOCUMENTS did not: docs/COST-MODEL.md still carried "## Hard maximum: $10.06 / month" and
+//   "the hard maximum is still $10.06/month", and docs/SCALE-V2.md and docs/BUDGET-SHARDING.md
+//   restated it. The safeguards allowed $24.80 and the owner had been told $10.06.
+//
+//   This is the same shape as scripts/check-credit-figures.mjs — a published figure checked
+//   against the constant it is derived from — applied to the owner's bill rather than the
+//   customer's. It is here rather than in a new script because this file already owns
+//   HARD_MAX_USD_PER_MONTH and is already cited as the asserter of it.
+//
+//   COMMENTS ARE STRIPPED FIRST. The fix in COST-MODEL.md carries an HTML comment explaining this
+//   defect, and it quotes the stale sentence verbatim. A prose-reading scanner that did not strip
+//   it would report the explanation of the fix as the fix being absent — which has happened four
+//   times in this repository.
+//
+//   THE FILE LIST IS WALKED, never typed, because a typed one outlives what it lists. One
+//   exemption, named with its reason, so the staleness it covers is a decision somebody made
+//   rather than a hole. ]]
+
+/**
+ * Documents whose $10.06 figures sit INSIDE an arithmetic argument rather than stating the current
+ * ceiling, and which therefore need their author rather than a find-and-replace.
+ *
+ * docs/BUDGET-SHARDING.md:370 reads "about 7.6x today's hard maximum of $10.06" and :401 tabulates
+ * "T1 monthly ceiling >= ~$77/month | $10.06/month". Both ratios move with the number (77/24.80 is
+ * 3.1, not 7.6) and so does the neighbouring "25,000 / 1,200 = 20.8", which was the old daily
+ * ceiling and is now 100,000 / 1,200. The document's CONCLUSION survives — T1 still cannot be
+ * satisfied — but rewriting four derived figures in someone else's argument without re-reading it
+ * is how a document becomes confidently wrong. Delete this entry when it has been re-derived.
+ */
+const HARD_MAX_DOC_EXEMPTIONS = new Set(['docs/BUDGET-SHARDING.md']);
+
+/** Any sentence claiming a hard monthly maximum or ceiling in dollars. */
+const HARD_MAX_CLAIM =
+  /hard\s+(?:monthly\s+)?(?:max(?:imum)?|ceiling)[^.\n]{0,40}?\$([0-9]+(?:\.[0-9]{1,2})?)/gi;
+
+function markdownDocs(dir, repoRoot, out = []) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) markdownDocs(full, repoRoot, out);
+    else if (entry.name.endsWith('.md')) out.push(relative(repoRoot, full));
+  }
+  return out;
+}
+
+test('the documented hard maximum is the one the safeguards actually allow', () => {
+  const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+  const docs = markdownDocs(join(repoRoot, 'docs'), repoRoot);
+  assert.ok(docs.length > 20, `only ${docs.length} markdown files under docs/ — the walk found nothing, so this test has checked nothing`);
+
+  const expected = HARD_MAX_USD_PER_MONTH.toFixed(2);
+  const wrong = [];
+  let claims = 0;
+  for (const rel of docs) {
+    if (HARD_MAX_DOC_EXEMPTIONS.has(rel)) continue;
+    const text = readFileSync(join(repoRoot, rel), 'utf8').replace(/<!--[\s\S]*?-->/g, ' ');
+    for (const line of text.split('\n')) {
+      for (const m of line.matchAll(HARD_MAX_CLAIM)) {
+        // Monthly claims only. "hard cap ... $0.01/million" is a vendor price, not our ceiling.
+        if (!/month/i.test(line.slice(m.index, m.index + m[0].length + 22))) continue;
+        claims += 1;
+        if (Number(m[1]).toFixed(2) !== expected) wrong.push(`${rel}: "${line.trim().slice(0, 100)}"`);
+      }
+    }
+  }
+  assert.ok(claims > 0,
+    'no document states a hard monthly maximum at all. The owner asked for exactly this figure, so '
+    + 'its absence is a failure, not a pass — and a scan that matches nothing is not a clean scan.');
+  assert.deepEqual(wrong, [],
+    `these documents publish a hard monthly maximum that is not $${expected}, which is what `
+    + `BILLABLE_NEURONS_PER_MONTH x USD_PER_NEURON + WORKERS_PAID_USD_PER_MONTH actually allows`);
+});
+
+test('COST-MODEL.md is the document that states it, and states it in full', () => {
+  // Named on its own because every other document points HERE for the figure. If the scan above
+  // ever passes because nothing states a maximum anywhere, this is what still fails.
+  const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+  const text = readFileSync(join(repoRoot, 'docs/COST-MODEL.md'), 'utf8').replace(/<!--[\s\S]*?-->/g, ' ');
+  assert.ok(text.includes(`$${HARD_MAX_USD_PER_MONTH.toFixed(2)}`),
+    `docs/COST-MODEL.md does not state the $${HARD_MAX_USD_PER_MONTH.toFixed(2)} hard maximum anywhere`);
+  // The AI half and the platform half both have to be visible: a total with no derivation is a
+  // number to be taken on trust, and the derivation is the only thing that survives the next
+  // change to the caps.
+  assert.ok(text.includes(`$${(BILLABLE_NEURONS_PER_MONTH * USD_PER_NEURON).toFixed(2)}`),
+    'COST-MODEL.md does not show the AI half of the ceiling');
+  assert.ok(text.includes(`$${WORKERS_PAID_USD_PER_MONTH.toFixed(2)}`),
+    'COST-MODEL.md does not show the platform fee the ceiling is added to');
 });
