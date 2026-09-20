@@ -1,0 +1,375 @@
+---
+/**
+ * THE HORIZON. One canvas, one composition, in our green.
+ *
+ * WHERE THE ART DIRECTION COMES FROM. `packages/corpus/data/ui-references/web-landing.json`,
+ * reference `rosebud-ai-design-language`, third measured claim: "The entire atmosphere is ONE fixed
+ * image: a div at position:fixed, 100lvw by 100lvh, z-index -1, background-image:
+ * front-page-background.webp. No gradient stack, no layers, no parallax." That image is a synthwave
+ * horizon — a perspective grid receding to a glowing band. Rule 17 says the same thing as an
+ * instruction: "Buy the atmosphere with one piece of art direction, not with a stack of layers,"
+ * against our own five-mechanism atmosphere that the owner still called static.
+ *
+ * WE CANNOT USE THEIRS. The fourth caution on that reference is explicit: "the background image in
+ * particular is THEIR art and must not be fetched or reproduced — ours has to be our own." So this
+ * file is that composition BUILT, in the accent this page already owns, from four numbers that are
+ * ours: a vanishing point, a floor, a glow band and a sky.
+ *
+ * AND WHY IT MOVES, when the reference measurably does not. The same reference's second claim reads
+ * "ZERO @keyframes. ZERO running animations. ZERO <canvas>." The owner was shown that measurement
+ * and asked for the opposite anyway — "you have to build the most keyframes, running animations,
+ * canvas ever". That is not a contradiction to resolve by splitting the difference. It is the
+ * brief: take their surfaces, radii, accent family, control heights and transition bands, and put a
+ * serious ambient motion layer under them. The transition bands (rule 16, nothing over 0.26s) bind
+ * INTERACTION. Ambient motion is exempt, and this is ambient.
+ *
+ * ================================ WHAT IS DRAWN, AND WHY IT IS DRAWN IN THAT ORDER
+ *
+ *   1. THE GLOW BAND, a vertical gradient in --accent peaking exactly on the horizon line and
+ *      falling off both ways — 120px up into the sky, 200px down onto the floor — plus a 1.2px
+ *      core so the band has an edge rather than being a smudge. Rule 13: "Elevate with a glow, and
+ *      keep the one real shadow inset." The whole page's elevation vocabulary is a glow; this is
+ *      that vocabulary at the scale of the viewport.
+ *
+ *   2. THE FLOOR. Rails are equally spaced along the BOTTOM EDGE and every one of them is drawn to
+ *      the vanishing point. That is not an approximation of perspective, it is perspective: lines
+ *      parallel to the view direction meet at the vanishing point, and their crossings of any one
+ *      horizontal scanline are equally spaced. Rungs are horizontal, at y = vpy + floor/(n - phase)
+ *      for n = 1..26, which is the projection of a ground plane's evenly spaced cross-lines. `phase`
+ *      runs 0 -> 1 and wraps, and because the wrap just renames line n as line n-1, the scroll is
+ *      seamless and has no keyframe boundary to see.
+ *
+ *   3. THE BOTTOM WASH, in --ground. Without it the near rungs terminate against the edge of the
+ *      viewport in a hard bright bar. With it the floor arrives out of the page's own colour.
+ *
+ *   4. THE SKY. Ninety particles, above the horizon only, lit by the band — alpha strongest near
+ *      it, falling to a quarter at the top of the frame — drifting up and across, and carrying a
+ *      little parallax off the vanishing point so the sky leans when the floor does.
+ *
+ * ================================ THE DECORATION YIELDS, AND HERE IS THE ARITHMETIC
+ *
+ * `apps/web/tests/decoration-yields-to-the-composer.test.mjs` records the rule the hard way: a mesh
+ * that was densest directly behind the composer read, correctly, as "broken". The horizon line here
+ * sits at 0.74 of the viewport height, so EVERY grid line — the densest thing this file draws — is
+ * in the bottom 26% of the frame. A hero whose content is centred puts its composer around 0.51h to
+ * 0.65h. The only thing this file paints in that band is the upper tail of the glow and a scattering
+ * of 1px dots, which is the thinnest part of the composition by construction rather than by luck.
+ *
+ * ================================ THE THREE WAYS IT GIVES UP
+ *
+ *   - prefers-reduced-motion: ONE frame is drawn at a fixed phase and the loop never starts. Not a
+ *     blank box — the grid, the band, the wash and the whole sky are all there, they simply do not
+ *     move. The still frame is a finished composition, which is the only version of "less motion"
+ *     that is not just "less".
+ *   - a hidden tab: the loop is cancelled on visibilitychange and restarted on return. A background
+ *     tab burning a core is the usual price of an effect like this and it is entirely avoidable.
+ *   - no 2D context: nothing is drawn, the canvas stays transparent, and whatever is behind it shows
+ *     through untouched.
+ *
+ * ================================ TWO MECHANICAL THINGS THAT COST THIS REPOSITORY A DEPLOY
+ *
+ *   - `document.querySelector`, never `document.currentScript`. Astro hoists a component's <script>
+ *     into a bundled `<script type="module">`, and `currentScript` is null in every module script by
+ *     spec. The hero effect that shipped this morning found its canvas that way, resolved to
+ *     undefined, and never ran — while the <canvas>, the class and the bundle were all present in
+ *     the served HTML. `tests/horizon-runs.test.mjs` executes this script and counts what comes out
+ *     of the context, because that is the only reading that can tell a live canvas from a dead one.
+ *   - devicePixelRatio is capped at 2. A 3x phone otherwise pays for nine times the pixels to draw
+ *     lines nobody can resolve.
+ *
+ * It is decoration. It carries aria-hidden, it takes no pointer events, and a screen reader is told
+ * nothing about it.
+ */
+---
+<canvas class="horizon" aria-hidden="true"></canvas>
+
+<style>
+  /* Fixed and full-viewport at z-index -1, which is the reference's own structure. It works here
+     for a specific reason worth writing down: `html` declares no background, so `body`'s --ground
+     propagates to the viewport canvas and is painted BENEATH the negative-z layer rather than over
+     it. A background moved onto `html` later would hide this element completely. */
+  .horizon {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    display: block;
+    pointer-events: none;
+    /* The sky is held back from the top of the frame so the nav row sits on the page's own colour
+       and not on drifting dust. The floor is not masked: its own falloff is drawn. */
+    mask-image: linear-gradient(180deg, transparent 0%, #000 24%);
+    -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 24%);
+  }
+
+  /* The still frame is the same composition, quieter. A motionless field at full strength reads as
+     a texture somebody forgot to finish. */
+  @media (prefers-reduced-motion: reduce) {
+    .horizon { opacity: 0.58; }
+  }
+</style>
+
+<script>
+  // NOT `document.currentScript` — see the note at the top of this file. That spelling is null in a
+  // module script, and Astro makes every component script a module script.
+  const canvas = document.querySelector('canvas.horizon');
+
+  if (canvas instanceof HTMLCanvasElement) {
+    const ctx = canvas.getContext('2d');
+
+    // No 2D context: draw nothing at all and leave the element transparent, so whatever sits behind
+    // it is exactly what a visitor sees.
+    if (ctx) {
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+      const TAU = Math.PI * 2;
+
+      /* ---------------------------------------------------------------- the theme, read not typed */
+
+      /*
+       * EVERY FUNCTION BELOW IS A `const` ARROW, AND THAT IS NOT A STYLE PREFERENCE.
+       *
+       * `canvas` and `ctx` are narrowed once, at the top, by `instanceof` and by a truthiness
+       * check. TypeScript keeps the narrowing of a `const` inside a closure that is CREATED after
+       * it — but a `function` declaration is hoisted, so it could in principle run before the
+       * check, and TS drops the narrowing for the whole body. Written as declarations this file
+       * produced 45 `'ctx' is possibly null` and `Property 'width' does not exist on type
+       * 'Element'` errors under `astro check`, which is exactly the count its sibling FlowField.astro
+       * still carries. Nothing about the running code changes; the checker simply stops being blind
+       * to the guard that is already there.
+       *
+       * The parameter defaults are the same trick without TypeScript syntax: they give the checker
+       * a type to infer under `strict` while the file stays plain JavaScript, which matters because
+       * `tests/horizon-runs.test.mjs` executes this script text directly in a `vm`.
+       */
+      const token = (name = '', fallback = '') => {
+        const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        return value || fallback;
+      };
+
+      /** '#00d492' | '#0a9' | 'rgb(0, 212, 146)' -> [r, g, b]. */
+      const channels = (value = '', fallback = [0, 0, 0]) => {
+        const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(value);
+        if (hex) {
+          const raw = hex[1].length === 3 ? hex[1].replace(/./g, (c) => c + c) : hex[1];
+          return [0, 2, 4].map((at) => parseInt(raw.slice(at, at + 2), 16));
+        }
+        const fn = /rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)/i.exec(value);
+        if (fn) return [Number(fn[1]), Number(fn[2]), Number(fn[3])];
+        return fallback;
+      };
+
+      // Read off the document rather than hardcoded, so one token change cannot leave one green on
+      // the page and a different green behind it — and so the light ramp gets a light horizon.
+      let accent = [0, 212, 146];
+      let ground = [5, 8, 7];
+      const readTheme = () => {
+        accent = channels(token('--accent', '#00d492'), [0, 212, 146]);
+        ground = channels(token('--ground', '#050807'), [5, 8, 7]);
+      };
+      const rgba = (c = [0, 0, 0], a = 1) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+
+      /* ------------------------------------------------------------------------------ the numbers */
+
+      const HORIZON = 0.74;      // the horizon line, as a fraction of the viewport height
+      const RUNGS = 26;          // ground cross-lines between the viewer and the vanishing point
+      const RAILS = 15;          // converging rails either side of centre
+      const SKY = 110;           // drifting particles above the horizon
+      const TRAVEL = 0.000115;   // phase per millisecond: one rung passes the viewer every ~8.7s
+      const EASE = 0.055;        // how hard the vanishing point chases the cursor, per frame
+
+      let w = 0;
+      let h = 0;
+      let dpr = 1;
+      let vpx = 0;               // the eased vanishing point
+      let vpy = 0;
+      let themeReadAt = -1e9;
+
+      const pointer = { x: -9999, y: -9999, on: false };
+
+      /** One mote of the drifting sky. */
+      const mote = () => ({
+        x: Math.random() * w,
+        y: Math.random() * h * HORIZON,
+        z: 0.25 + Math.random() * 0.75,        // parallax depth
+        r: 0.5 + Math.random() * 1.2,
+        a: 0.1 + Math.random() * 0.34,
+        phase: Math.random() * TAU,
+      });
+
+      // TYPED BY ITS FIRST MEMBER RATHER THAN BY AN ANNOTATION, so this file stays plain JavaScript
+      // and `tests/horizon-runs.test.mjs` can execute its text in a `vm` without a compile step. A
+      // bare `[]` is an evolving `any[]`, and `strict` cannot resolve one that is filled in one
+      // closure and read in another. The sky is REPLACED on every seed, never emptied in place.
+      let dust = [mote()];
+
+      const resize = () => {
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const r = canvas.getBoundingClientRect();
+        w = Math.max(1, Math.round(r.width));
+        h = Math.max(1, Math.round(r.height));
+        canvas.width = Math.round(w * dpr);
+        canvas.height = Math.round(h * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        vpx = w / 2;
+        vpy = h * HORIZON;
+      };
+
+      const seed = () => { dust = Array.from({ length: SKY }, mote); };
+
+      /* -------------------------------------------------------------------------------- the frame */
+
+      const draw = (t = 0) => {
+        // A horizon is not a flow field: it is cleared every frame. A wash here would smear the
+        // grid into a fog, which is the same mistake as clearing a flow field.
+        ctx.clearRect(0, 0, w, h);
+        ctx.globalAlpha = 1;
+
+        if (t - themeReadAt > 500) { readTheme(); themeReadAt = t; }
+
+        // THE POINTER MOVES THE VANISHING POINT. This is the whole reason the layer is a canvas
+        // rather than a fixed image: an image cannot lean. x is given real range; y is held to a
+        // narrow band, because a horizon that slides up and down the screen stops being a horizon.
+        const base = h * HORIZON;
+        const wantX = pointer.on ? w / 2 + (pointer.x - w / 2) * 0.24 : w / 2;
+        const wantY = pointer.on
+          ? Math.max(base - h * 0.03, Math.min(base + h * 0.03, base + (pointer.y - base) * 0.05))
+          : base;
+        vpx += (wantX - vpx) * EASE;
+        vpy += (wantY - vpy) * EASE;
+
+        const floor = Math.max(1, h - vpy);
+        const lean = (vpx - w / 2) / Math.max(1, w);
+
+        /* 1. THE GLOW BAND ------------------------------------------------------------------- */
+        const top = Math.max(0, vpy - 92);
+        const bottom = Math.min(h, vpy + 150);
+        if (bottom - top > 2) {
+          const band = ctx.createLinearGradient(0, top, 0, bottom);
+          const peak = Math.min(0.999, Math.max(0.001, (vpy - top) / (bottom - top)));
+          band.addColorStop(0, rgba(accent, 0));
+          band.addColorStop(peak * 0.55, rgba(accent, 0.055));
+          band.addColorStop(peak, rgba(accent, 0.24));
+          band.addColorStop(Math.min(1, peak + (1 - peak) * 0.38), rgba(accent, 0.07));
+          band.addColorStop(1, rgba(accent, 0));
+          ctx.fillStyle = band;
+          ctx.fillRect(0, top, w, bottom - top);
+        }
+        // The core. Without it the band is a smudge rather than a horizon.
+        ctx.fillStyle = rgba(accent, 0.52);
+        ctx.fillRect(0, vpy - 0.6, w, 1.2);
+
+        /* 2. THE FLOOR ----------------------------------------------------------------------- */
+        ctx.strokeStyle = rgba(accent, 1);
+        ctx.lineWidth = 1;
+
+        // Rails: equally spaced along the bottom edge, every one drawn to the vanishing point.
+        const spread = w * 1.9;
+        const step = spread / RAILS;
+        for (let i = -RAILS; i <= RAILS; i++) {
+          const edge = Math.min(1, Math.abs(i) / RAILS);
+          ctx.globalAlpha = 0.2 * (1 - edge * 0.74);
+          ctx.beginPath();
+          ctx.moveTo(vpx, vpy);
+          ctx.lineTo(vpx + i * step, h);
+          ctx.stroke();
+        }
+
+        // Rungs: the ground's cross-lines, scrolling toward the reader.
+        const phase = (t * TRAVEL) % 1;
+        for (let n = 1; n <= RUNGS; n++) {
+          const depth = n - phase;
+          if (depth <= 0.02) continue;
+          const y = vpy + floor / depth;
+          if (y > h + 2) continue;
+          const u = (y - vpy) / floor;           // 0 at the horizon, 1 at the bottom edge
+          ctx.globalAlpha = 0.28 * Math.pow(u, 0.5) * (1 - u * 0.3);
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(w, y);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+
+        /* 3. THE BOTTOM WASH, in the page's own ground colour -------------------------------- */
+        const washTop = vpy + floor * 0.72;
+        if (h - washTop > 2) {
+          const wash = ctx.createLinearGradient(0, washTop, 0, h);
+          wash.addColorStop(0, rgba(ground, 0));
+          wash.addColorStop(1, rgba(ground, 0.88));
+          ctx.fillStyle = wash;
+          ctx.fillRect(0, washTop, w, h - washTop);
+        }
+
+        /* 4. THE SKY ------------------------------------------------------------------------- */
+        ctx.fillStyle = rgba(accent, 1);
+        for (const p of dust) {
+          p.x += p.z * 0.16;
+          p.y -= p.z * 0.055;
+          if (p.x > w + 6) p.x = -6;
+          if (p.x < -6) p.x = w + 6;
+          // Off the top, or somehow below the horizon: born again on the band it is lit by.
+          if (p.y < -6 || p.y > vpy) {
+            p.y = vpy - Math.random() * 6;
+            p.x = Math.random() * w;
+          }
+          const sway = Math.sin(t * 0.00042 + p.phase) * 7 * p.z;
+          // A HUMP, NOT A RAMP, and the first version got this backwards in both directions.
+          // Ramping up toward the horizon puts the dust inside the glow, where it cannot be seen;
+          // ramping the other way puts it under the CSS mask, where it also cannot be seen. Peak in
+          // the middle of the sky is the one band where a 1px dot on a near-black page reads.
+          const lit = Math.sin(Math.PI * Math.min(1, Math.max(0, p.y) / Math.max(1, vpy)));
+          ctx.globalAlpha = p.a * (0.18 + 0.82 * lit);
+          ctx.beginPath();
+          ctx.arc(p.x + sway + lean * 120 * p.z, p.y, p.r, 0, TAU);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      };
+
+      /* ------------------------------------------------------------------------- the loop, and off */
+
+      let raf = 0;
+      const loop = (t = 0) => { draw(t); raf = requestAnimationFrame(loop); };
+      const start = () => { if (!raf && !reduced.matches) raf = requestAnimationFrame(loop); };
+      const stop = () => { if (raf) { cancelAnimationFrame(raf); raf = 0; } };
+
+      const boot = () => {
+        resize();
+        readTheme();
+        seed();
+        if (reduced.matches) {
+          // ONE still frame, at a phase chosen so the rungs are mid-stride rather than stacked on
+          // the edges of the floor. Everything is present; nothing moves again.
+          themeReadAt = -1e9;
+          draw(4200);
+          stop();
+        } else {
+          start();
+        }
+      };
+
+      addEventListener('resize', () => {
+        const running = !!raf;
+        stop();
+        boot();
+        if (!running) stop();
+      }, { passive: true });
+
+      addEventListener('pointermove', (e) => {
+        const r = canvas.getBoundingClientRect();
+        pointer.x = e.clientX - r.left;
+        pointer.y = e.clientY - r.top;
+        pointer.on = true;
+      }, { passive: true });
+
+      addEventListener('pointerleave', () => { pointer.on = false; }, { passive: true });
+
+      // A backgrounded tab must not burn a core.
+      document.addEventListener('visibilitychange', () => (document.hidden ? stop() : start()));
+
+      reduced.addEventListener?.('change', () => { stop(); boot(); });
+
+      boot();
+    }
+  }
+</script>

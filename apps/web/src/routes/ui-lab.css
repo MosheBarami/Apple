@@ -1,7 +1,7 @@
 /* THE SPECIMEN BOOK'S OWN CHROME — thirteen class names the page has always emitted and no
- * stylesheet in the bundle has ever matched.
+ * stylesheet in the bundle matched until Dd7711a.
  *
- * The page is reachable only in development now (see app.tsx: the route is not registered in a
+ * The page is reachable only in development (see app.tsx: the route is not registered in a
  * production build, and `grep -rl 'ui-lab' dist/` finds nothing). That removes the reason a
  * CUSTOMER should never have met it; it does not remove the reason it should be drawn. This page
  * exists so a reviewer can see whether ten empty states read as one family and whether success and
@@ -10,23 +10,46 @@
  * question. An unstyled specimen book makes the components look worse than they are, which is the
  * one thing it must not do.
  *
- * NOTHING HERE IS NEW VOCABULARY. Every value is a token from design/system.css, and the frame is
- * the same hairline-and-surface-step the rest of the app uses. The specimens inside must be judged
- * against the product's own surfaces, so the book is drawn in the product's own materials.
+ * REDRESSED 2026-09-20 ONTO THE MEASURED SYSTEM, and that is not decoration on a dev page. The
+ * owner named https://rosebud.ai/ as the bar; the measurements are in
+ * packages/corpus/data/ui-references/web-landing.json under id "rosebud-ai-design-language". A
+ * specimen book framed in the OLD radii, the OLD control heights and the OLD neutral surfaces would
+ * show every component against a background the product no longer has — which is the same defect
+ * as leaving it unstyled, one step subtler: the reviewer would be judging each block against a
+ * frame that disagrees with every screen it will actually appear on.
+ *
+ * NOTHING HERE IS NEW VOCABULARY AND NOTHING HERE IS A CONTROL. Every value is a token from
+ * design/system.css, and the buttons inside the specimens are drawn by that sheet rather than by
+ * this one — see "the controls" below, which is a comment where a block of rules used to be.
  */
+
+/*[[ THIS SHEET DECLARES NO TOKENS. The first pass of this rebuild carried a :root block — the
+ *   accent family, an 8px panel radius, two control heights, the hard curve — because
+ *   design/system.css had one accent and 10/10/6 radii. The lead landed the same system upstream
+ *   while it was being written, so the block is gone: this file is bundled BEFORE system.css, and a
+ *   route sheet that declares a system token on :root loses the tie it looks like it wins. Every
+ *   var() below names something system.css owns. ]]*/
 
 /* ----------------------------------------------------------------- one specimen --- */
 
 /* A card, because the thing being reviewed is INSIDE it and the boundary is the whole point: two
    specimens flowing into each other is how a reviewer mistakes one component's spacing for the
-   next one's. */
+   next one's.
+   --r-lg is the measured PANEL radius (claim: "RADII ARE TIGHT AND THERE ARE TWO: 8px on 23
+   elements (cards, panels), 6px on 11 (every control). Nothing is a pill."). This carried --r-md,
+   which was the 10px default of the old scale; --r-lg was 16px then and is 8px now, so the token
+   that means "panel" is the one to name rather than the number it happened to hold. */
 .lab-specimen {
   display: grid;
   gap: 14px;
   margin-block: 20px;
   padding: 20px;
   border: 1px solid var(--line);
-  border-radius: var(--r-md);
+  border-radius: var(--r-lg);
+  /* One step down from the page, and no colour is mixed in here: the rebuilt ramp in
+     design/system.css is already tinted toward the accent hue (#0a0f0c, green above blue above red
+     at every step), so a specimen is framed in the same surface the components inside it will
+     actually sit on. */
   background: var(--paper-2);
   /* The nav below is a list of `#lab-<id>` links, so every one of these is a scroll target. */
   scroll-margin-top: 90px;
@@ -41,10 +64,17 @@
   border-bottom: 1px solid var(--line);
 }
 
+/* THE PAGE'S ONE MICRO-LABEL, and it is the bar's: 12px, uppercase, 1.2px of positive tracking
+   (claim: "NAV AND LABELS ARE UPPERCASE WITH POSITIVE TRACKING… 12px/700 with 1.2px on labels").
+   The 700 is theirs and is the one thing not taken — nothing in this product is bolder than 400.
+   The markup already types these names in capitals ("STATUS MARKS · I-series"), so `text-transform`
+   is what stops a lowercase one from breaking the column later. */
 .lab-specimen-name {
   font-family: var(--font-mono);
   font-size: 12px;
-  letter-spacing: 0.04em;
+  line-height: 1.2;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
   color: var(--ink);
 }
 
@@ -66,9 +96,11 @@
    `javascript:` href, an `onerror` attribute — and what the reviewer is checking is that the
    sanitiser produced the safe fallback instead of markup. Marked with the same leading rule every
    failure in this app carries (components/failure.css), so a rejection case can never be mistaken
-   for an approved one at a glance. */
+   for an approved one at a glance. The rule is inset rather than hung off the edge, because at an
+   8px radius a 2px bar at `-1px` would float past a rounded corner. */
 .lab-invalid {
   border-inline-start: 2px solid var(--bad);
+  overflow: hidden;
 }
 
 /* ------------------------------------------------------------------- the grids --- */
@@ -82,14 +114,18 @@
   gap: 12px;
 }
 
+/* A mark's frame is a CONTROL-sized object, so it takes the control radius and the chrome variant's
+   6% fill and 18% hairline — the same box a chip gets everywhere else in the product. */
 .lab-mark {
   display: flex;
   align-items: center;
   gap: 9px;
   min-width: 0;
-  padding: 9px 11px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-xs);
+  min-height: var(--h-sm);
+  padding: 0 8.8px;
+  border: 1px solid var(--control-line);
+  border-radius: var(--r-md);
+  background: var(--control-fill);
 }
 
 /* The canonical states are whole panels rather than glyphs, so they get a wider track and a rule
@@ -101,6 +137,8 @@
   gap: 16px;
 }
 
+/* A whole state is a PANEL, not a control, so it takes the panel radius — which is also how a
+   reviewer can tell at a glance which specimens are objects and which are chips. */
 .lab-state {
   display: grid;
   gap: 8px;
@@ -108,7 +146,7 @@
   min-width: 0;
   padding: 14px;
   border: 1px solid var(--line);
-  border-radius: var(--r-xs);
+  border-radius: var(--r-lg);
 }
 
 /* The canonical id — "M04 · no_projects · creation". It is a label on the specimen, not part of
@@ -120,6 +158,21 @@
   color: var(--faint);
   overflow-wrap: anywhere;
 }
+
+/* --------------------------------------------------------------- the controls --- */
+
+/*[[ THERE ARE NO BUTTON RULES HERE, AND THAT IS THE MOST IMPORTANT LINE IN THIS FILE.
+ *
+ *   The first pass of this rebuild drew the specimens' `.btn`s as the measured chrome variant, and
+ *   a disabled one as the turned-down control the bar uses. design/system.css now does both on the
+ *   base `button` element: --control-fill over --control-line at --r-md and --h-md, and
+ *   `button:disabled` dropping to --quiet-line and --quiet-ink rather than the `opacity:.48` that
+ *   dimmed border, label and icon together and read as breakage.
+ *
+ *   A SPECIMEN BOOK IS THE ONE PLACE A LOCAL COPY WOULD BE ACTIVELY HARMFUL. Its whole job is to
+ *   show a reviewer what the product's controls look like; a button drawn by this stylesheet would
+ *   be a button that exists nowhere else, and every judgement made about it would be about a
+ *   control no customer will ever see. ]]*/
 
 /* ------------------------------------------------------- the book and its index --- */
 
@@ -147,18 +200,31 @@
 
 .lab-nav a {
   padding: 5px 8px;
-  border-radius: var(--r-xs);
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
   color: var(--muted);
   font-size: 12px;
   line-height: 1.45;
   text-decoration: none;
   overflow-wrap: anywhere;
-  transition: color var(--t-fast) var(--ease-out), background-color var(--t-fast) var(--ease-out);
+  transition: color var(--t-color) var(--ease-hard), border-color var(--t-fast) var(--ease-out), background-color var(--t-fast) var(--ease-out);
 }
 
+/* The index is a nav, and a nav item on the bar is the 6px chip shape lighting its border rather
+   than filling — which is the whole point of "differentiate by border and text, not by fill". */
 .lab-nav a:hover {
-  background: var(--surface);
+  border-color: var(--accent-ring);
+  background: var(--control-fill);
   color: var(--ink);
+}
+
+/* The one a `#lab-<id>` jump has landed on says so, in the accent's light tint. `:target` is the
+   browser's own record of where the reader is; using anything else would be a second source for a
+   fact the URL already carries. */
+.lab-specimen:target {
+  border-color: var(--accent-ring);
+  box-shadow: var(--glow);
+  animation: lab-landed var(--t-color) var(--ease-hard) both;
 }
 
 /* -------------------------------------------------------------------- narrow --- */
@@ -184,10 +250,23 @@
   }
 }
 
+/* -------------------------------------------------------------------- motion --- */
+
+/* One keyframe, and it is a STATE — "the jump you just made landed here" — rather than scenery.
+   The bar declares zero keyframes and runs zero animations; what the corpus says to do with the
+   budget instead is spend it on response, which is what a landing flash is. */
+@keyframes lab-landed {
+  from { box-shadow: 0 0 0 var(--accent-glow); }
+  to { box-shadow: var(--glow); }
+}
+
 /* system.css kills every transition under reduce with !important; restated so this sheet is
    correct on its own terms rather than by someone else's blanket rule. */
 @media (prefers-reduced-motion: reduce) {
   .lab-nav a {
     transition: none;
+  }
+  .lab-specimen:target {
+    animation: none;
   }
 }

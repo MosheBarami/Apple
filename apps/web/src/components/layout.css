@@ -16,6 +16,29 @@
  * Tokens only, one weight, one radius set, the accent spent once. See docs/DESIGN-LOCK.md.
  */
 
+/* ------------------------------------------------- the measured system --- */
+
+/*[[ THIS BLOCK USED TO BE A SECOND PALETTE, AND IT IS DELETED RATHER THAN KEPT.
+ *
+ * On 2026-09-20 this file grew a `--ws-` token layer — the accent family of three, the four control
+ * heights, the two radii, the two transition bands, the glow and the unavailable pair — derived from
+ * packages/corpus/data/ui-references/web-landing.json, reference `rosebud-ai-design-language`. It
+ * was written here because design/system.css belongs to another agent and could not be edited from
+ * this one, and a workspace that reads the measured system had to get those numbers from somewhere.
+ *
+ * WHILE IT WAS BEING WRITTEN, THAT AGENT LANDED THE SAME SYSTEM UNDER THE PRODUCT'S OWN NAMES:
+ * --accent / --accent-light / --accent-deep / --accent-soft / --accent-ring / --accent-glow,
+ * --control-fill / --control-line, --quiet-line / --quiet-ink, --r-lg 8px and --r-md 6px,
+ * --h-xs/--h-sm/--h-md/--h-lg, --ease-hard, --t-color/--t-fast/--t-base, --glow and
+ * --shadow-primary. Every `--ws-` name was then a second name for a colour that already had one,
+ * which is the exact defect this repository keeps finding — "two names for one colour is how a
+ * palette drifts", in system.css's own words about the ramp two blocks above those tokens.
+ *
+ * So the layer is gone and the workspace stylesheets read the canonical names directly. A var()
+ * resolves at computed-value time against whatever :root declares, so it does not matter that this
+ * file is bundled before system.css; only DECLARATIONS lose that tie, and there are none here now.
+ * What stays below is the one token this file genuinely owns, which is a geometry it alone decides. ]]*/
+
 /* ---------------------------------------------------------------- geometry --- */
 
 /* ONE NUMBER DECIDES THE PAGE. system.css hard-codes 76px in three places — the dock's width, the

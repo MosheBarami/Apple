@@ -40,30 +40,30 @@
    * this property off :root and writes it into the meta, so the band can never disagree with the
    * page again, in either theme.
    */
-  --theme-color: #141312;
+  --theme-color: #050807;
 
   /* The ramp. Four steps and an inverted one, which is all the reference uses. */
-  --ground: #141312;
-  --raised: #171615;
+  --ground: #050807;
+  --raised: #0a0f0c;
   /* `--surface` and `--surface-2` are the names every other stylesheet in this repo uses for these
      two steps. Two names for one colour is how a palette drifts, so these are the tokens and the
      older local names alias them rather than the other way round. A third alias, --control, was
      declared and read by nothing; the unused-token guard caught it and it is gone. */
-  --surface: #232221;
-  --surface-2: #333231;
+  --surface: #101814;
+  --surface-2: #18231d;
   --card: var(--surface);
   --inverted: #f4f3f2;
 
-  --ink: #f4f3f2;
-  --ink-secondary: #dedcda;
-  --muted: #a5a29f;
-  --faint: #8a8783;
+  --ink: #ffffff;
+  --ink-secondary: #c9d0cb;
+  --muted: #8b938e;
+  --faint: #69716c;
 
-  --line: rgba(244, 243, 242, 0.08);
+  --line: rgba(255, 255, 255, 0.08);
   /* The reference fills a quiet control — a nav link on hover, a secondary button, a chip — with
      its own ink at 6%, and nothing else. Naming it stops the next person reaching for a fifth
      surface step when what they want is the one tint the whole bar already uses. */
-  --control-fill: rgba(244, 243, 242, 0.06);
+  --control-fill: rgba(255, 255, 255, 0.06);
 
   /* ONE SATURATED COLOUR, SPENT ONCE. #00d492 is the owner's green and the only hue on the page.
      It is never a solid fill: the reference's green is light standing on a surface, so the accent
@@ -71,16 +71,34 @@
      raw hex appears exactly once, here. A second green thing on a screen means neither is the
      answer, so this pays for the composer's primary control and the focus ring, and nothing else. */
   --accent: #00d492;
-  --accent-soft: color-mix(in srgb, var(--accent) 10%, transparent);
+  --accent-soft: color-mix(in srgb, var(--accent) 12%, transparent);
   --accent-ink: color-mix(in srgb, var(--accent) 90%, transparent);
+
+  /*[[ THE ACCENT IS A FAMILY OF THREE, WHICH IS THE SINGLE BIGGEST THING TAKEN FROM THE BAR.
+   *
+   *   Measured on rosebud.ai: rgb(203,82,251) fills and focuses, rgb(236,146,251) — a LIGHTER tint
+   *   — borders every accented control, and rgb(143,0,200) — a DARKER shade — is the primary
+   *   button's fill. One accent doing all three jobs is exactly why our accented button read flat:
+   *   a green button with a green border in the same green has no edge.
+   *
+   *   Re-derived rather than hue-rotated, because rotating rgb(143,0,200) to green lands on a
+   *   colour no dark interface should carry. --accent-deep is chosen for CONTRAST: white on
+   *   #00794f measures 5.46:1, which clears 4.5:1 for the button label at any size.
+   *
+   *   The three alpha tokens carry the bar's own numbers — 12% fill, 38% border, 14% glow — so the
+   *   chip that names the model looks like the object it was learned from. ]]*/
+  --accent-light: #66efc2;
+  --accent-deep: #00794f;
+  --accent-ring: color-mix(in srgb, var(--accent-light) 38%, transparent);
+  --accent-glow: color-mix(in srgb, var(--accent) 14%, transparent);
 
   /* The composer is the hero's focal object. On the bar it is a solid white slab on a black page —
      the brightest thing above the fold. Translated into black and green it keeps that job by
      inverting: a dark translucent fill with a near-white 1px rim, so the edge is what carries the
      brightness. Without the rim the composer stops being an object sitting on the page and becomes
      a rectangle drawn on it. */
-  --composer-fill: rgba(23, 22, 21, 0.72);
-  --composer-rim: rgba(244, 243, 242, 0.86);
+  --composer-fill: rgba(16, 24, 20, 0.78);
+  --composer-rim: rgba(255, 255, 255, 0.14);
 
   /* THE SECOND SURFACE. A blind critic compared this page against a competitor's with the labels
      stripped and chose the competitor's, and the first reason it gave was that ours is "one flat
@@ -93,29 +111,56 @@
      is fractionally brighter than its bottom. background-color carries the value and the image
      carries the fall, so the surface is still a measurable colour and not a transparent box with a
      gradient painted on it. */
-  --pillar: #1c1b19;
-  --pillar-sheen: linear-gradient(180deg, rgba(244, 243, 242, 0.045), rgba(244, 243, 242, 0) 62%);
-  --pillar-line: rgba(244, 243, 242, 0.09);
-  --pillar-hi: #211f1d;
-  --line-strong: rgba(244, 243, 242, 0.16);
+  --pillar: #0d1410;
+  --pillar-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0) 62%);
+  --pillar-line: rgba(255, 255, 255, 0.09);
+  --pillar-hi: #121a15;
+  --line-strong: #2c3a33;
 
-  --shell: 1280px;
+  --shell: 1024px;
   --gutter: 32px;
   /* The hero is full-bleed with its own gutter: the bar's nav sits in a 1280px container with 32px
      padding, while its hero content is centred in the viewport behind 24px. Two different gutters
      is the measurement, not an oversight, and one variable for each keeps them from drifting. */
   --hero-gutter: 24px;
   --nav-h: 60px;
-  --r: 10px;
+  --r: 8px;
   --r-sm: 6px;
-  /* 22px, measured on the composer and used nowhere else. It is the one radius on the bar that is
-     not 10 or 6, and a composer at 10px reads as a text field rather than a surface. */
-  --r-lg: 22px;
-  /* Every control on the bar is 36px tall — nav link, secondary button, primary button, chip. One
-     height is why the nav row reads as a single line of objects instead of four sizes. */
-  --control-h: 36px;
+  /* THE THIRD RADIUS IS NOW THE FIRST ONE, and the paragraph that used to sit here argued for 22px
+     on the strength of a different page. Measured on rosebud.ai there are exactly two radii on the
+     whole site — "8px on 23 elements (cards, panels), 6px on 11 (every control). Nothing is a pill."
+     A composer is a panel, so it takes the panel radius. The token survives because the composer
+     reads it and "the big surface" is worth a name; its VALUE is no longer a third step. */
+  --r-lg: 8px;
+  /*[[ --control-h IS GONE, AND DELETING IT IS WHAT MAKES THE FOUR HEIGHTS BELOW REAL.
+   *
+   *   It said 36px, and every control in this sheet named it, on the reading that the old bar has
+   *   ONE control height. Re-measured on rosebud.ai that is false — "CONTROLS COME IN FOUR HEIGHTS
+   *   AND NO MORE: 28px for a bare text button, 32px for a chip or nav item, 36px for a chrome
+   *   button and the primary action, 50px for a large step CTA" — and an alias meaning 36 sitting
+   *   beside --h-md meaning 36 is two names for one number, which is precisely how the surface ramp
+   *   above drifted the last time somebody kept a friendly old name. So it is deleted rather than
+   *   re-pointed, and every control below names the step it actually lands on. The token is not
+   *   merely unread: apps/web/tests/contrast.test.mjs fails a landing token nothing references, and
+   *   that guard is right — a token nobody reads is a decision nobody made. ]]*/
+  /* FOUR CONTROL HEIGHTS AND NO MORE, quantised from the bar: 28 for a bare text button, 32 for a
+     chip or nav item, 36 for a chrome button and the primary action, 50 for a large step CTA.
+     Every control on that page lands on one of these four, and a fifth height is how a control bar
+     stops looking machined. */
+  --h-xs: 28px;
+  --h-sm: 32px;
+  --h-md: 36px;
+  --h-lg: 50px;
 
   --ease: cubic-bezier(0.22, 0.68, 0.24, 1);
+  /* THE BAR'S SIGNATURE CURVE. Colour-only changes there run 0.26s on cubic-bezier(0.32,0.72,0,1)
+     — a hard ease-out that leaves immediately and settles late — while background, border and
+     transform run 0.15s ease-out, and only the largest controls get 0.2s. NOTHING on that page
+     takes longer than 0.26s, and that ceiling is the reason it feels crisp rather than smooth. */
+  --ease-hard: cubic-bezier(0.32, 0.72, 0, 1);
+  --t-color: 0.26s;
+  --t-fast: 0.15s;
+  --t-base: 0.2s;
 
   /* The warm glow behind the composer, tokenised so the light theme can carry its own strength.
      A terracotta at 16% is a visible lift on #141312 and invisible on #f4f3f2. */
@@ -148,40 +193,48 @@
 :root[data-theme='light'] {
   color-scheme: light;
 
-  --theme-color: #f4f3f2;
+  --theme-color: #f2f5f3;
 
-  --ground: #f4f3f2;
+  --ground: #f2f5f3;
   --raised: #ffffff;
-  --surface: #ebeae8;
-  --surface-2: #dedcda;
+  --surface: #e8ede9;
+  --surface-2: #d9e2dc;
   --card: var(--surface);
-  --inverted: #141312;
+  --inverted: #050807;
 
-  --ink: #141312;
-  --ink-secondary: #343230;
-  --muted: #63605d;
-  --faint: #706d6a;
+  --ink: #061009;
+  --ink-secondary: #23302a;
+  --muted: #55635b;
+  --faint: #6b7872;
 
-  --line: rgba(20, 19, 18, 0.10);
-  --control-fill: rgba(20, 19, 18, 0.05);
+  --line: rgba(6, 16, 9, 0.10);
+  --control-fill: rgba(6, 16, 9, 0.05);
 
   --accent: #00694a;
   --accent-soft: color-mix(in srgb, #00d492 12%, transparent);
   --accent-ink: #00583e;
+  /* The family inverts on paper. On the dark ramp --accent-light is a LIGHTER tint because it
+     borders against black; here it must be DARKER than the fill or an accented control loses its
+     edge against #f2f5f3. --accent-deep keeps the same job — the primary button's fill — and is
+     chosen the same way, for contrast with its white label. */
+  --accent-light: #00553c;
+  --accent-deep: #00563d;
+  --accent-ring: color-mix(in srgb, var(--accent) 45%, transparent);
+  --accent-glow: color-mix(in srgb, var(--accent) 12%, transparent);
 
   --composer-fill: #ffffff;
-  --composer-rim: rgba(20, 19, 18, 0.16);
+  --composer-rim: rgba(6, 16, 9, 0.16);
 
   /* On light the page is the bright thing, so a raised surface goes UP to white rather than down
      to grey — the same relationship inverted, which is how every other pair in this ramp works. */
   --pillar: #ffffff;
-  --pillar-sheen: linear-gradient(180deg, rgba(20, 19, 18, 0.02), rgba(20, 19, 18, 0) 62%);
-  --pillar-line: rgba(20, 19, 18, 0.10);
+  --pillar-sheen: linear-gradient(180deg, rgba(6, 16, 9, 0.02), rgba(6, 16, 9, 0) 62%);
+  --pillar-line: rgba(6, 16, 9, 0.10);
   --pillar-hi: #ffffff;
-  --line-strong: rgba(20, 19, 18, 0.18);
+  --line-strong: rgba(6, 16, 9, 0.18);
 
-  --glow-strong: rgba(217, 149, 118, 0.22);
-  --glow-soft: rgba(217, 149, 118, 0.08);
+  --glow-strong: rgba(0, 105, 74, 0.20);
+  --glow-soft: rgba(0, 105, 74, 0.07);
 }
 
 * { box-sizing: border-box; }
@@ -200,7 +253,11 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   font-weight: 400;
   font-size: 14px;
-  line-height: 20px;
+  /* 1.5, NOT 20px. The bar's body is "14px/400/normal body at a 1.5 line height" and ours was
+     14/20, which is 1.429 — close enough to look deliberate and far enough to make every stacked
+     paragraph on the page fractionally tighter than the thing it was measured from. A ratio also
+     survives the two places below where the body size changes; 20px did not. */
+  line-height: 1.5;
   letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -212,10 +269,21 @@ img { display: block; max-width: 100%; }
 /* The focus ring is the accent at full strength, 2px at a 4px offset, and it is never restyled per
    component. A keyboard user gets the same product, and an ink-coloured ring on a page that now has
    an accent would make the focused element look like every other light thing on it. */
-a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
+/* FOCUS IS A RING AND A HALO, WHICH IS HOW THE BAR DRAWS IT. Measured: focus is `accent 0 0 0 1px`
+   plus a wider low-alpha halo — never a drop shadow, because "ELEVATION IS A GLOW, NOT A DROP
+   SHADOW" is the rule the whole sheet now follows. The offset comes in from 4px to 2px so the ring
+   reads as part of the control rather than as a second rectangle around it, and the radius is the
+   control radius rather than a fourth number typed here. */
+a:focus-visible, button:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+  border-radius: var(--r-sm);
+  box-shadow: 0 0 0 4px var(--accent-glow);
+}
 ::selection { background: var(--ink); color: var(--ground); }
 
-.skip-link { position: fixed; z-index: 30; top: -80px; left: 20px; padding: 12px 16px; border-radius: var(--r-sm); background: var(--inverted); color: var(--ground); }
+/* The skip link is a control like any other, so it lands on a control height instead of inventing
+   one out of 12px of padding: 36px, the chrome step, with the primary action's 16px of side room. */
+.skip-link { position: fixed; z-index: 30; top: -80px; left: 20px; display: inline-flex; align-items: center; height: var(--h-md); padding: 0 16px; border-radius: var(--r-sm); background: var(--inverted); color: var(--ground); }
 .skip-link:focus { top: 12px; }
 
 /* ---------------------------------------------------------------- shell */
@@ -266,7 +334,22 @@ p, li, dd, dt, figcaption, blockquote { text-wrap: pretty; }
    our page composites to exactly --ink-secondary (#dedcda). A sub-line at --muted is the reflex that
    makes the second sentence look like a caption, and it is what the first pass got wrong here. */
 .lead { margin: 0; color: var(--ink-secondary); font-size: 20px; line-height: 1.5; letter-spacing: -0.012em; }
-.micro { margin: 0; color: var(--faint); font-size: 10px; line-height: 15px; letter-spacing: 0.018em; text-transform: uppercase; }
+/* THE MICRO LABEL IS THE BAR'S LABEL: 12px, 700, +1.2px, uppercase.
+   Measured on rosebud.ai: "NAV AND LABELS ARE UPPERCASE WITH POSITIVE TRACKING, body is not: 12px/
+   700/1.2px on nav items, 12px/700 with 1.2px on labels, against 14px/400/normal body at a 1.5 line
+   height." Ours was 10px/400/+0.018em, which is the same gesture two steps quieter — and 0.018em at
+   10px is 0.18px, a tracking nobody can see. This is the ONE place the sheet spends weight 700; the
+   headings stay at 400, because hierarchy there is carried by size and colour.
+   THE COLOUR MOVES UP A TIER WITH THE SIZE. --faint on --ground measures 4.00:1, which is under the
+   4.5:1 small text needs, and it was carrying every label on the page. --muted is 6.42:1. --faint
+   now pays for the one thing on this page that is not text — see .card-media. */
+.micro { margin: 0; color: var(--muted); font-size: 12px; font-weight: 700; line-height: 18px; letter-spacing: 1.2px; text-transform: uppercase; }
+
+/* THE EYEBROW sits 16px above the headline, which is the gap the bar puts between a micro label and
+   the line it introduces. It is `.micro` with a margin and nothing else — a modifier that restated
+   the label's type would be the second place this page declares that object, and that label already
+   drifted to body size once because two rules claimed it. */
+.hero-eyebrow { margin-bottom: 16px; }
 
 /* ------------------------------------------------------------------ nav */
 
@@ -306,40 +389,79 @@ p, li, dd, dt, figcaption, blockquote { text-wrap: pretty; }
 .site-nav {
   position: absolute; left: 50%; transform: translateX(-50%);
   display: flex; align-items: center; gap: 6px;
-  font-size: 14px; line-height: 20px; letter-spacing: -0.01em;
 }
-/* Nav links are full ink, not muted, and they are 36px objects with a 10px radius rather than bare
-   words — which is what gives them a hover state that is a surface step instead of a colour change.
-   Muting them, as the first pass did, makes every destination on the site look secondary to the one
-   button beside them. */
+/* NAV ITEMS ARE 32px UPPERCASE OBJECTS, WHICH IS THE ONE PLACE THE FOUR HEIGHTS ARE MOST VISIBLE.
+   Measured on the bar: "32px for a chip or nav item" and "12px/700/1.2px on nav items". Ours were
+   36px sentence-case links at body size with an 8px radius — a nav row built out of the same object
+   as the button beside it, which is why the row read as five buttons and one button rather than as
+   a set of destinations next to an action.
+   The radius drops to the control radius (6px) with everything else on this page that is pressed;
+   8px now belongs to panels alone. The resting colour is --ink-secondary and hover takes it to full
+   ink, so the hover is a colour change with a surface step under it rather than only a fill. */
 .site-nav a {
   display: inline-flex; align-items: center;
-  height: var(--control-h); padding: 0 12px;
-  border-radius: var(--r);
-  color: var(--ink);
-  transition: background-color 160ms var(--ease);
+  height: var(--h-sm); padding: 0 12px;
+  border-radius: var(--r-sm);
+  color: var(--ink-secondary);
+  font-size: 12px; font-weight: 700; line-height: 18px; letter-spacing: 1.2px; text-transform: uppercase;
+  /* "SIGN IN" IS TWO WORDS, AND AT 12px/700/+1.2px IT IS WIDE ENOUGH TO BREAK. Measured in Chromium
+     at 748px: it wrapped inside its own 32px box and printed two half-height lines over the row.
+     nowrap was already set in the phone block, which is the one width where the row scrolls and the
+     one width where it was least likely to matter. It belongs on the object, not on a breakpoint. */
+  white-space: nowrap;
+  /* Colour on the bar's signature curve, everything else on the fast band. */
+  transition: color var(--t-color) var(--ease-hard), background-color var(--t-fast) ease-out;
 }
-.site-nav a:hover { background: var(--control-fill); }
+.site-nav a:hover { background: var(--control-fill); color: var(--ink); }
 
-/* One control shape for the whole page: 36px tall, 10px radius, 12px of side padding, 14/20 text.
-   The bar has no stadium-shaped buttons at all, and a 999px pill beside a 10px card is the mixing
-   this design system exists to prevent. */
+/*[[ THE PRIMARY BUTTON, REBUILT ON THE MEASURED ACCENT FAMILY.
+ *
+ *   `.pill` IS NOW A NAME, NOT A SHAPE. It carried a 999px-adjacent idea in its class name and an
+ *   8px radius in its rule; the bar has nothing rounder than 8 anywhere — "RADII ARE TIGHT AND
+ *   THERE ARE TWO: 8px on 23 elements (cards, panels), 6px on 11 (every control). Nothing is a
+ *   pill." The class name belongs to index.astro, which is another surface's file, so what changes
+ *   here is the geometry: 6px, the control radius, like every other pressable thing on the page.
+ *
+ *   IT WAS A WHITE SLAB, AND THAT IS THE ONE THING THE BAR DOES NOT DO. `background: var(--ink)`
+ *   with `color: var(--raised)` is an inverted chip: correct against a page with no accent, and
+ *   wrong the moment there is one, because the loudest object above the fold then has nothing to do
+ *   with the product's colour. The measured primary is "rgb(143,0,200) — a DARKER shade — is the
+ *   primary button's fill", bordered in the LIGHTER tint, with the page's only conventional shadow:
+ *   "`rgba(0,0,0,0.18) 0 0 0 1px inset, rgba(0,0,0,0.22) 0 2px`". White on --accent-deep measures
+ *   5.46:1, which is why that token was chosen for contrast rather than for hue.
+ *
+ *   HOVER RAISES THE GLOW, NOT THE FILL. Lightening #00794f toward #00d492 would take the white
+ *   label from 5.46:1 to about 1.9:1 — a hover state that fails contrast is a hover state that
+ *   fails. So hover adds the 12px halo the bar puts on its accented chip and brightens the rim to
+ *   --accent-light, which is "ELEVATION IS A GLOW, NOT A DROP SHADOW" applied to a press target. ]]*/
 .pill {
   display: inline-flex; align-items: center; gap: 8px;
-  height: var(--control-h); padding: 0 12px;
-  border: 0; border-radius: var(--r);
-  background: var(--ink); color: var(--raised);
+  height: var(--h-md); padding: 0 16px;
+  border: 1px solid var(--accent-ring); border-radius: var(--r-sm);
+  background: var(--accent-deep); color: #ffffff;
   font-size: 14px; line-height: 20px; letter-spacing: -0.01em; white-space: nowrap;
-  transition: opacity 160ms var(--ease);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18), 0 2px rgba(0, 0, 0, 0.22);
+  transition:
+    color var(--t-color) var(--ease-hard),
+    border-color var(--t-fast) ease-out,
+    box-shadow var(--t-fast) ease-out;
 }
-.pill:hover { opacity: 0.86; }
-/* The quiet button is a 6% ink fill and full-ink text — no outline. An outlined button next to a
-   solid one reads as two different systems, and the bar draws its secondary action this way. */
+.pill:hover {
+  border-color: var(--accent-light);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18), 0 2px rgba(0, 0, 0, 0.22), 0 0 12px var(--accent-glow);
+}
+/* THE CHROME BUTTON IS THE 36px STEP WITH 8px OF SIDE ROOM, which is the measurement: "0 8px at 36
+   chrome, 0 16px at 36 primary". Half the padding of the primary beside it is what says which of
+   the two is the action — on the bar the secondary is visibly the narrower object, not merely the
+   paler one. It keeps the 6% fill and takes a hairline, because separation on this page is a
+   hairline and a borderless quiet button against a bordered primary reads as two systems. */
 .pill-quiet {
   background: var(--control-fill); color: var(--ink);
-  border: 0;
+  border: 1px solid var(--line);
+  padding: 0 8px;
+  box-shadow: none;
 }
-.pill-quiet:hover { background: var(--surface-2); opacity: 1; }
+.pill-quiet:hover { background: var(--surface-2); border-color: var(--line-strong); box-shadow: none; }
 /* The right-hand group. The link row is absolutely centred, so the header's flow children are the
    wordmark and this — two items, which is what `space-between` on the shell expects. Adding the
    toggle as a third flow child instead pushed it into the centre, under the nav. */
@@ -347,7 +469,7 @@ p, li, dd, dt, figcaption, blockquote { text-wrap: pretty; }
 /* A square instance of the same 36px control, so the icon is optically centred rather than sitting
    in a button padded for a word. `currentColor` inherits --ink from .pill-quiet, which is how one
    pair of glyphs works in both themes. */
-.pill-icon { width: var(--control-h); padding: 0; justify-content: center; cursor: pointer; }
+.pill-icon { width: var(--h-md); padding: 0; justify-content: center; cursor: pointer; }
 .pill-icon .icon-moon { display: none; }
 .pill-icon[aria-pressed='true'] .icon-sun { display: none; }
 .pill-icon[aria-pressed='true'] .icon-moon { display: block; }
@@ -367,6 +489,40 @@ p, li, dd, dt, figcaption, blockquote { text-wrap: pretty; }
   padding: var(--nav-h) 0;
   overflow: hidden;
 }
+/*[[ THE CONTENT SITS AT OPTICAL CENTRE, BECAUSE GEOMETRIC CENTRE PUT IT ON THE HORIZON.
+ *
+ *   MEASURED IN CHROMIUM, THREE VIEWPORTS, BEFORE THIS RULE. Horizon.astro draws its glow band —
+ *   the brightest object in the whole composition — on a line at 0.74 of the viewport. The hero's
+ *   content block is centred, which lands the button row at roughly 0.745 to 0.787 of the viewport.
+ *   So at 1280x860 the band ran at y=636 and the row occupied 641 to 677, and at 1440x900 the band
+ *   ran at 666 against a row at 661 to 697. The brightest line of the decoration passed through the
+ *   top edge of "Create a free account" at every desktop height, because both numbers are fractions
+ *   of the same viewport and they were within five pixels of each other by arithmetic rather than
+ *   by luck.
+ *
+ *   That is the defect apps/web/tests/decoration-yields-to-the-composer.test.mjs exists for, in a
+ *   different file: "the decoration must never be densest behind the one control the screen exists
+ *   to serve". The owner's own words about the last one were that the whole thing looked broken,
+ *   and a bright horizontal seam across two buttons is the same reading.
+ *
+ *   IT IS FIXED FROM THIS SIDE RATHER THAN FROM THE CANVAS'S. The 0.74 constant is Horizon.astro's
+ *   and belongs to whoever owns that file; the hero's vertical rhythm is this one's. Adding to the
+ *   BOTTOM padding raises the centred block by half of what is added, and the shift is written as a
+ *   fraction of the viewport plus a constant — 10vh + 48px — because the thing being cleared is
+ *   itself a fraction of the viewport. A fixed pixel shift would clear the band at one screen
+ *   height and re-create the collision at another.
+ *
+ *   IT ALSO READS BETTER, WHICH IS THE PART THAT IS NOT ARITHMETIC. The backdrop is a landscape:
+ *   sky above the horizon, floor below it. Copy floating across the horizon line belongs to neither.
+ *   With the block lifted, the whole hero stands in the sky and the floor is open foreground.
+ *
+ *   DESKTOP ONLY. At 390x844 the phone's taller header and three-line headline already put the row
+ *   at 689-725 against a band at 625 — clear by 64px, and on the floor rather than across the line.
+ *   Applying the lift there would drag it back up INTO the band, which is the collision this rule
+ *   exists to prevent. Measured, not assumed. ]]*/
+@media (min-width: 860px) {
+  .hero { padding-bottom: calc(var(--nav-h) + 10vh + 48px); }
+}
 /* The hero is full-bleed behind a 24px gutter, not shell-width: the bar constrains its headline by
    a measure (840px) rather than by a container, so the composer can be wider than the text above it
    without either one moving off centre. */
@@ -374,12 +530,39 @@ p, li, dd, dt, figcaption, blockquote { text-wrap: pretty; }
 .hero .display { max-width: 840px; }
 .hero .lead { margin-top: 24px; max-width: 840px; text-wrap: pretty; }
 
-/* The backdrop is line-art, drawn here rather than shipped as an image: the reference's hero art is
-   its own and is not ours to reuse, and a gradient blob would be the placeholder this page is
-   trying to stop being. */
-.atmosphere { position: absolute; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
-.atmosphere svg { position: absolute; left: 50%; top: 0; width: 1760px; height: 100%; transform: translateX(-50%); fill: none; stroke: var(--ink); stroke-width: 0.5; opacity: 0.16; }
-.atmosphere .ridge { opacity: 0.55; }
+/*[[ ONE FIXED LAYER, WHICH IS THE REFERENCE'S WHOLE ATMOSPHERE.
+ *
+ *   Measured on rosebud.ai: "The entire atmosphere is ONE fixed image: a div at position:fixed,
+ *   100lvw by 100lvh, z-index -1 ... No gradient stack, no layers, no parallax." Ours was
+ *   `position: absolute` inside the hero, which is a different object with the same inset — it ends
+ *   where the hero ends, so everything below the fold sat on flat --ground and the page had
+ *   scenery for one screen and none for the other eleven. index.astro computes this layer's
+ *   geometry and says in as many words that landing.css is what makes it fixed; this is that.
+ *
+ *   `lvw`/`lvh` rather than `vw`/`vh`: on a phone the dynamic viewport shrinks as the browser
+ *   chrome slides in, and a 100vh backdrop that resizes on scroll repaints the whole field for a
+ *   change nobody asked for. The large viewport unit is the stable one. */
+.atmosphere { position: fixed; inset: 0; width: 100lvw; height: 100lvh; z-index: -1; pointer-events: none; overflow: hidden; }
+/* THE SKY. It was a 1760px-wide band centred with translateX(-50%) over a 1600x760 viewBox; the
+   layer it lives in is now the viewport, and index.astro's svg is `xMidYMid slice` over 1600x900,
+   which covers a box rather than being centred in one. So the centring comes out — a translateX
+   that is load-bearing for POSITION cannot also be the thing an ambient keyframe moves, which is
+   what the old `drift` frame had to work around by re-declaring -50% in both of its frames.
+   THE TOP IS MASKED to the same 24% the canvas beneath it masks, so the nav row sits on the page's
+   own colour rather than on drifting haze, and the two layers of one picture agree about where the
+   picture starts. */
+.atmosphere svg {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  fill: none; stroke: var(--ink); stroke-width: 0.5; opacity: 0.34;
+  mask-image: linear-gradient(180deg, transparent 0%, #000 24%);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 24%);
+}
+/* The haze bands are thinner than the ridge that stands on the horizon: a stratum is vapour and a
+   ridge is a silhouette, and drawing both at one weight is what makes a line-art sky read as a
+   diagram. Their opacity is a presentation attribute in the markup, graded by depth, and nothing
+   here overrides it — a CSS opacity would win over that attribute and flatten the grade. */
+.stratum { stroke-width: 0.45; }
+.atmosphere .ridge { opacity: 0.55; stroke-width: 0.9; }
 /* The warm column. The reference's hero is lit from behind by a terracotta glow; this is that idea
    in our own colour, sitting behind the composer so the focal object is the lit thing. */
 .light-column {
@@ -396,9 +579,27 @@ p, li, dd, dt, figcaption, blockquote { text-wrap: pretty; }
    prefers-reduced-motion, and neither is a script. */
 .atmosphere svg { animation: drift 38s ease-in-out infinite alternate; }
 .atmosphere .ridge { animation: settle 26s ease-in-out infinite alternate; }
-@keyframes drift { from { transform: translateX(-50%) translateY(0); } to { transform: translateX(calc(-50% - 26px)) translateY(-14px); } }
+/* THE GROUP SWAYS, THE BANDS INSIDE IT DRIFT, AND THEY ARE DIFFERENT ELEMENTS ON PURPOSE. One
+   property owned by one mechanism is the rule this repository learned from .step, where a
+   scroll-driven opacity and a reveal's opacity fought and the animation silently won. Here the
+   <g> owns the group's transform and each <path> owns its own. */
+.strata { animation: ambient-sway 31s ease-in-out infinite alternate; }
+/* The -50% is gone from both frames with the centring it was compensating for. What is left is the
+   movement itself, which is what a keyframe should contain. */
+@keyframes drift { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-26px, -14px, 0); } }
 @keyframes settle { from { opacity: 0.4; } to { opacity: 0.68; } }
-.atmosphere::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 30%, var(--ground) 92%); }
+/*[[ THE GROUND WASH IS GONE, AND IT HAD TO GO THE MOMENT THE FLOOR WAS DRAWN.
+ *
+ *   It read `linear-gradient(180deg, transparent 30%, var(--ground) 92%)` and its job was to fade a
+ *   hero-height band of line art into the page beneath it. The layer it sits in is now fixed and
+ *   viewport-tall, and the canvas inside it draws a horizon at 0.74 with a perspective floor under
+ *   that — so a wash running to solid --ground by 92% would paint over the bottom quarter of the
+ *   composition at every scroll position. The picture's own bottom edge IS the floor; covering it
+ *   would leave the page with a horizon and nothing standing on it.
+ *
+ *   The one edge it was still doing real work on is managed closer to where it matters now: the
+ *   canvas masks its own top 24% and the sky above masks the same 24%, so the two layers of one
+ *   picture agree about where the picture starts. ]]*/
 
 /* The focal object is the product's own composer, not a screenshot of it.
    THE GROUP, NOT JUST THE BOX. On the bar the composer and the row beneath it are one block: 40px
@@ -503,11 +704,64 @@ p, li, dd, dt, figcaption, blockquote { text-wrap: pretty; }
    on the reference is the bottom of one field, not a second panel. */
 .composer-bar { height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 16px 16px; }
 .composer-chips { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.chip { display: inline-flex; align-items: center; gap: 6px; height: var(--control-h); padding: 0 12px; border: 0; border-radius: var(--r); background: var(--control-fill); color: var(--muted); font-size: 14px; line-height: 20px; letter-spacing: -0.01em; white-space: nowrap; }
-/* THE ONE GREEN THING ON THE PAGE. A 10% tint carrying text at 90%, in the control shape everything
-   else uses. It marks where a run starts and nothing else is allowed to take the colour — a second
-   accent on this screen would mean neither one is the answer. */
-.composer-send { display: inline-flex; align-items: center; height: var(--control-h); padding: 0 12px; border-radius: var(--r); background: var(--accent-soft); color: var(--accent-ink); font-size: 14px; line-height: 20px; letter-spacing: -0.01em; white-space: nowrap; }
+/* A CHIP IS THE 32px STEP, AND ITS PADDING IS THE MEASURED ONE: "7.2px 16px at 32". The vertical
+   figure and the height are the same statement twice — border-box pins the box at 32 — and both are
+   written because the horizontal 16px is the part that carries, and a padding shorthand that only
+   said `0 16px` would lose the reading it came from. */
+.chip {
+  position: relative;
+  display: inline-flex; align-items: center; gap: 6px;
+  height: var(--h-sm); padding: 7.2px 16px;
+  border: 1px solid transparent; border-radius: var(--r-sm);
+  background: var(--control-fill); color: var(--muted);
+  font-size: 13px; line-height: 18px; letter-spacing: -0.01em; white-space: nowrap;
+  transition: color var(--t-color) var(--ease-hard), border-color var(--t-fast) ease-out;
+}
+/*[[ THE MODEL CHIP, WHICH THE REFERENCE CALLS THE MOST COPYABLE OBJECT ON ITS PAGE.
+ *
+ *   Measured: a 32px, 6px-radius chip naming the model, filled at 12% of the accent, bordered at
+ *   38% of the LIGHTER tint and glowing at 14% — it "sits inside the composer next to the
+ *   attachment control and names the model that will answer, which is exactly what our own composer
+ *   already does and does not look like". The three alphas are the three accent tokens, so this is
+ *   the measurement rather than a resemblance to it.
+ *
+ *   IT IS A NAME, NOT A STATE, and that is why the accent is allowed here at all. A green dot and
+ *   the word "connected" shipped in this same bar once and was removed, because a picture of a
+ *   product is read as its behaviour and the plugin is not attached to anybody's Studio. The
+ *   model's name is a fact about the product; a status light would be a claim about a connection.
+ *   The pulse ring further down rides this chip's own rim for the same reason.
+ *
+ *   SELECTED BY ITS OWN CLASS, NOT BY :last-child. The first pass reached it positionally, and that
+ *   was true of the markup for about an hour: an attachment control now sits after it, so
+ *   :last-child had quietly moved the whole accent family onto a paperclip. index.astro writes
+ *   `chip chip-model` as a modifier on the base class precisely so this rule can be wrong about
+ *   position and still right about identity. ]]*/
+.chip-model {
+  background: var(--accent-soft);
+  border-color: var(--accent-ring);
+  color: var(--accent-ink);
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+/* The attachment control is a chip holding a 15px glyph instead of a word, so it is square at the
+   same 32px step and its 16px of side room comes off. Padding measured for text, wrapped around an
+   icon, is what makes an icon button look off-centre in a row of word-shaped ones. */
+.chip-attach { width: var(--h-sm); padding: 0; justify-content: center; }
+/* THE PRIMARY ACTION INSIDE THE COMPOSER, drawn as the primary action everywhere else on the page:
+   the 36px step, 16px of side room, --accent-deep under a white label at 5.46:1, the lighter tint on
+   the rim, and the bar's one real shadow — an inset hairline plus a 2px lift. It was a 12% tint
+   carrying accent-coloured text, which is the ACCENTED CHIP recipe rather than the PRIMARY BUTTON
+   one, and using the chip recipe for the button is exactly the flatness the accent family exists to
+   fix: a green control with a green border in the same green has no edge. */
+.composer-send {
+  display: inline-flex; align-items: center;
+  height: var(--h-md); padding: 0 16px;
+  border: 1px solid var(--accent-ring); border-radius: var(--r-sm);
+  background: var(--accent-deep); color: #ffffff;
+  font-size: 14px; line-height: 20px; letter-spacing: -0.01em; white-space: nowrap;
+  /* The still state is DECLARED, so that cancelling glow-breathe under reduced motion leaves the
+     measured resting shadow rather than no shadow at all. Same lesson as the caret above. */
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18), 0 2px rgba(0, 0, 0, 0.22), 0 0 12px var(--accent-glow);
+}
 
 /* The qualifier sits ABOVE the buttons, 12px from them, the way the bar sets the small line above
    its own row of controls. A reader meets the condition before the thing it conditions, instead of
@@ -578,11 +832,18 @@ p, li, dd, dt, figcaption, blockquote { text-wrap: pretty; }
    rectangles, and this is the cheapest possible acknowledgement: the rim comes up to the strength
    the composer's rim carries and the surface lifts by the smallest step in the ramp. No transform,
    no shadow — a card that jumps under the pointer is a card that was not sitting still. */
-.truth { transition: border-color 200ms var(--ease), background-color 200ms var(--ease); }
+/* THE TWO BANDS, NAMED. Colour-only changes run on the bar's signature curve at 0.26s; everything
+   else runs 0.15s ease-out. 200ms on a custom curve was a third band between the two, which is the
+   thing rule 9 in the reference file forbids: "Two bands only: 0.1-0.16s for anything under the
+   finger, 0.2-0.3s for anything that moves on its own. Nothing in between." */
+.truth { transition: border-color var(--t-fast) ease-out, background-color var(--t-color) var(--ease-hard); }
 .truth:hover { border-color: var(--line-strong); background-color: var(--pillar-hi); }
 .truth h3 { margin: 10px 0 0; font-size: 19px; font-weight: 400; letter-spacing: -0.012em; line-height: 27px; text-wrap: balance; }
 .truth p { margin: 8px 0 0; color: var(--muted); font-size: 14px; line-height: 21px; }
-.truth .micro { margin: 0; color: var(--faint); font-size: 10px; line-height: 15px; letter-spacing: 0.018em; }
+/* The specificity fix stays — `.truth p` is one class and one type and would otherwise win over
+   `.micro` — but it no longer restates a size. Two places declaring the label's type is how the
+   label drifted to body size in the first place. */
+.truth .micro { margin: 0; }
 
 /* ------------------------------------------------------------- sequence */
 
@@ -597,11 +858,15 @@ p, li, dd, dt, figcaption, blockquote { text-wrap: pretty; }
    a grid that centres its two columns is two alignment rules fighting over the same box: the
    figure creeps away from the sentence that explains it as soon as the reader scrolls. */
 .sequence { display: grid; grid-template-columns: minmax(0, 1.664fr) minmax(0, 1fr); gap: 48px; align-items: center; }
-.sequence-figure { border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
-.sequence-figure .figure-head { padding: 12px 16px; border-bottom: 1px solid var(--line); color: var(--faint); }
+.sequence-figure { position: relative; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.sequence-figure .figure-head { position: relative; padding: 12px 16px; border-bottom: 1px solid var(--line); }
 /* One element per line rather than a <pre> with newline expressions spliced into it: the refused
    line needs its own element to carry colour, and Astro will not parse `{'\n'}` inside a <pre>. */
-.activity { padding: 20px 24px; overflow-x: auto; }
+/* The log sits one surface step off the page. --raised is three points above --ground: enough for
+   the panel to be an object and far short of the control tint, which belongs to things you press.
+   It was the last token in the ramp with no reader, having lost its only one when the primary
+   button stopped being a white slab with --raised ink on it. */
+.activity { padding: 20px 24px; overflow-x: auto; background: var(--raised); }
 .activity-line { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; line-height: 26px; white-space: pre; }
 /* THE REFUSAL IS THE BRIGHTEST LINE, NOT A DIFFERENT HUE.
    Every element below the fold on the bar was tested for a saturated colour and not one was found:
@@ -627,7 +892,10 @@ p, li, dd, dt, figcaption, blockquote { text-wrap: pretty; }
    anything and left two of the three steps unreadable rather than secondary. Scroll-driven, and it
    degrades to "all readable" rather than "all invisible" where the feature is unsupported or motion
    is reduced. */
-.step { opacity: 1; transition: opacity 320ms var(--ease); }
+/* 300ms, the top of the measured ambient band, not 320. "Two bands only: 0.1-0.16s for anything
+   under the finger, 0.2-0.3s for anything that moves on its own. Nothing in between." A step
+   brightening as it is scrolled to moves on its own, so it takes the slow band's ceiling. */
+.step { opacity: 1; transition: opacity 300ms var(--ease); }
 @supports (animation-timeline: view()) {
   @media (prefers-reduced-motion: no-preference) {
     .step { animation: step-focus linear both; animation-timeline: view(); animation-range: entry 10% cover 46%; }
@@ -650,7 +918,10 @@ p, li, dd, dt, figcaption, blockquote { text-wrap: pretty; }
    bar's own landscape tile, and it is the one that fits what is actually inside ours. */
 .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; }
 .card { background: none; }
-.card-media { aspect-ratio: 16 / 9; display: grid; place-items: center; border-radius: var(--r); background: var(--card); color: var(--muted); overflow: hidden; }
+/* --faint's one job. It measures 4.00:1 on --ground, which is under the 4.5:1 that TEXT needs and
+   comfortably over the 3:1 that a non-text graphic needs — so it pays for the 1.2px line drawing
+   inside this tile and for nothing that has to be read. */
+.card-media { position: relative; aspect-ratio: 16 / 9; display: grid; place-items: center; border-radius: var(--r); background: var(--card); color: var(--faint); overflow: hidden; }
 .card-body { padding: 0; }
 .card-body h3 { margin: 8px 0 0; font-size: 20px; font-weight: 400; letter-spacing: -0.012em; line-height: 30px; }
 .card-body p { margin: 8px 0 0; color: var(--muted); font-size: 14px; line-height: 20px; }
@@ -684,7 +955,12 @@ p, li, dd, dt, figcaption, blockquote { text-wrap: pretty; }
    places depend on. */
 .closing { padding: 112px 0; text-align: center; }
 .closing .statement { max-width: 900px; margin-bottom: 0; }
-.closing .pill { height: 44px; margin-top: 32px; padding: 0 16px; font-size: 16px; line-height: 24px; }
+/* THE LARGE STEP CTA IS 50px WITH 12px/24px OF PADDING, which is the fourth measured height and the
+   only place on this page that reaches it: "50px for a large step CTA ... 12px 24px at 50". It was
+   44px with the primary's own 16px of side room — a fifth height, and "a fifth height is how a
+   control bar stops looking machined". The largest control gets the slower of the two interaction
+   bands, which is what --t-base is for. */
+.closing .pill { height: var(--h-lg); margin-top: 32px; padding: 12px 24px; font-size: 16px; line-height: 24px; transition-duration: var(--t-base); }
 
 /* --------------------------------------------------------------- footer */
 
@@ -702,11 +978,302 @@ p, li, dd, dt, figcaption, blockquote { text-wrap: pretty; }
    items of equal weight. */
 .site-footer { padding: 64px 0; background: var(--surface); }
 .footer-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: 32px; row-gap: 40px; }
-.footer-col { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
-.footer-col h3 { margin: 0; color: var(--muted); font-size: 14px; font-weight: 400; line-height: 20px; letter-spacing: -0.01em; }
-.footer-col a { padding: 0; color: var(--ink-secondary); font-size: 14px; line-height: 20px; transition: color 160ms var(--ease); }
+/* THE FOOTER LINK IS THE 28px STEP — "28px for a bare text button" — and the column's rhythm is
+   preserved rather than changed by it: 20px of text on a 12px gap was 32px from one link's baseline
+   to the next, and a 28px object on a 4px gap is the same 32px with a tap target inside it. On a
+   phone these were 20px-tall words in a column of links, which is the smallest thing on the site a
+   thumb has to hit. */
+.footer-col { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+/* A column heading is a LABEL, so it is set as one: 12/700/+1.2px uppercase, the same object as the
+   nav item and the micro line. It was 14/400 in muted grey, which is the links' own size — a
+   heading indistinguishable from its contents except by colour. */
+.footer-col h3 { margin: 0 0 8px; color: var(--muted); font-size: 12px; font-weight: 700; line-height: 18px; letter-spacing: 1.2px; text-transform: uppercase; }
+.footer-col a { display: inline-flex; align-items: center; height: var(--h-xs); padding: 0; color: var(--ink-secondary); font-size: 14px; line-height: 20px; transition: color var(--t-color) var(--ease-hard); }
 .footer-col a:hover { color: var(--ink); }
+/* The first column is a wordmark over a paragraph rather than a heading over links, so it restores
+   the 8px the tightened gap took off it. */
+.footer-col .footer-note { margin-top: 8px; }
 .footer-note { margin: 0; color: var(--muted); font-size: 14px; line-height: 20px; max-width: 70ch; }
+
+
+/* ==============================================================================================
+   THE KEYFRAME LIBRARY.
+
+   WHY IT EXISTS, AND WHY IT SITS ON A REFERENCE THAT HAS NONE.
+
+   The owner's instruction is two instructions, and they pull against each other on purpose:
+   follow rosebud.ai closely in our own green, AND "you have to build the most keyframes, running
+   animations, canvas ever". The reference has ZERO @keyframes, ZERO running animations and ZERO
+   canvases — that is the measurement, he was shown it, and he decided anyway. So what is taken from
+   the bar is its STRUCTURE (surfaces, radii, the accent family, four control heights, two
+   transition bands) and what is added on top is a motion layer it does not have. This block is that
+   layer. It is not a contradiction to resolve; it is the brief.
+
+   THE RULES IT STILL OBEYS, because they are not about how much motion there is:
+
+     1. NOTHING OVER 0.26s IS AN INTERACTION. Every entrance, press and hover animation below is
+        0.3s or shorter, and the ones a finger triggers are 0.16-0.24s. The long durations belong to
+        AMBIENT motion — scenery that moves on its own — which the reference's transition-band rule
+        explicitly exempts ("2s on 26 elements, which is a different job entirely: ambient drift,
+        not response").
+
+     2. NOTHING HERE HIDES CONTENT. This is the hard one, and the repository has the scar. A hero
+        effect shipped on 2026-09-20 that never ran, because Astro hoists a component <script> into
+        a module script where document.currentScript is always null — so "the effect did not run" is
+        the assumed case here, not the unlucky one. Every rule below is plain CSS with no class and
+        no script behind it, and the STILL STATE OF EACH ONE IS THE DECLARED STATE. Under
+        prefers-reduced-motion the block at the foot of this file cancels every animation with
+        `animation: none !important`, and a cancelled animation returns to the declared value, NOT
+        to the frame it was painting. So anything that carries copy declares itself visible and
+        animates toward visible; anything that starts at zero opacity is decoration a reader loses
+        nothing by never seeing.
+
+     3. AMBIENT MOTION IS COMPOSITOR-ONLY, and one thing it cannot promise is said plainly. Every
+        infinite animation below moves `transform` or `opacity` and nothing else, so a backgrounded
+        tab does no layout or paint work for it. CSS has no page-visibility query, so the stop on
+        `visibilitychange` cannot live in a stylesheet — that guarantee is the canvas layer's, in
+        components/FlowField.astro, which this file does not own. Saying the stylesheet stops on
+        visibilitychange would be a claim about a mechanism that does not exist here.
+
+     4. DECORATION YIELDS TO THE CONTROL. Nothing new is painted behind the composer. The drifting
+        haze added below is two blobs at 18% and 82% of the hero's width with a gap between them,
+        because the composer is centred and "the decoration must never be densest behind the one
+        control the screen exists to serve" is a rule this repository already has a guard for.
+
+   HOW TO USE IT. Every effect is one rule listing a `.u-` utility class FIRST and the components
+   that currently reach it after. The utility is the name to reuse; the component selectors are what
+   makes the keyframe live rather than declared. A keyframe nothing references is dead code, and
+   this sheet is already held to that standard for its colour tokens.
+   ============================================================================================== */
+
+/* ---------------------------------------------------------------------------- entrance frames */
+/* Each ends at the element's own resting state — `transform: none`, `opacity: 1` — so cancelling
+   one lands exactly where the page would have been without it. */
+@keyframes rise-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes scale-in { from { opacity: 0; transform: scale(0.985) translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes slide-in-left { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
+@keyframes slide-in-right { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: none; } }
+@keyframes slide-in-down { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+/* NO `to` BLOCK ON PURPOSE. An implicit 100% frame takes the element's own computed value, so this
+   fades a layer up to whatever opacity it DECLARES rather than forcing it to 1 — which is the whole
+   reason it can be pointed at a graded layer at all: `.sky` rests at 0.34, and a `to { opacity: 1 }`
+   would have ended every page load with the haze at three times its intended strength and then left
+   it there. */
+@keyframes fade-in-soft { from { opacity: 0; } }
+/* The stagger frame has a VISIBLE FLOOR. 0.32, not 0: these drive log lines, and a line that starts
+   invisible is a line that stays invisible if its timeline never advances. */
+@keyframes stagger-in { from { opacity: 0.32; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
+
+/* --------------------------------------------------------------------------- attention frames */
+/* Both return to where they started, so neither can leave a control displaced. */
+@keyframes press-in { from { transform: scale(1); } 55% { transform: scale(0.972); } to { transform: scale(1); } }
+@keyframes nudge { 0%, 100% { transform: rotate(0deg); } 45% { transform: rotate(-14deg); } }
+
+/* ------------------------------------------------------------------------------ ambient frames */
+@keyframes ambient-drift { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(34px, -20px, 0); } }
+@keyframes ambient-sway { from { transform: translateY(0); } to { transform: translateY(9px); } }
+@keyframes pulse { 0%, 100% { opacity: 0.18; transform: scale(0.96); } 50% { opacity: 0.7; transform: scale(1.05); } }
+
+/* THE GLOW CARRIES THE WHOLE SHADOW STACK, not just its last layer. box-shadow interpolates as a
+   list, so a frame naming only the halo would drop the inset hairline and the 2px lift for the
+   duration of the animation and the primary button would lose its edge every 4.4 seconds. */
+@keyframes glow-breathe {
+  0%, 100% { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18), 0 2px rgba(0, 0, 0, 0.22), 0 0 12px var(--accent-glow); }
+  50% { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18), 0 2px rgba(0, 0, 0, 0.22), 0 0 22px var(--accent-glow); }
+}
+
+/* ------------------------------------------------------------------------------ surface frames */
+@keyframes shimmer { from { transform: translateX(-160%) skewX(-18deg); } to { transform: translateX(260%) skewX(-18deg); } }
+/* PERCENTAGES IN A TRANSLATE ARE PERCENTAGES OF THE ELEMENT, NOT OF ITS PARENT, and the first
+   version of this frame got that wrong in a way that would have looked like a bug rather than read
+   as one: a 3px-tall bar at translateY(1400%) has moved fourteen of its own heights, which is 42px
+   down a panel about 250px tall. The sweeping layer is now the full height of the panel with the
+   band painted INSIDE it as a gradient, so -100% is entirely above the panel and 100% entirely
+   below it, at any panel height. */
+@keyframes scan-line { from { transform: translateY(-100%); } to { transform: translateY(100%); } }
+@keyframes border-travel { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+/* A value filling from nothing to its full reading, which is what a count-up looks like when the
+   number itself is not ours to invent. This repository refuses placeholder figures, so the thing
+   that counts is a rule under a label rather than a fabricated statistic. */
+@keyframes count-up { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* ============================================================== the rules that reach the frames */
+
+/* ENTRANCE — the fold, in the order a reader meets it. Delays are 20/90/160/230ms: the whole
+   sequence is done inside a quarter of a second, which is the longest any copy on this page is
+   allowed to be in motion. `both` holds the first frame during the delay; cancelling the animation
+   under reduced motion returns every one of these to its declared, visible state. */
+.u-rise, .hero .display, .hero .lead, .hero-foot { animation: rise-in 0.3s var(--ease-hard) both; }
+.u-scale-in, .composer { animation: scale-in 0.3s var(--ease-hard) both; }
+.u-slide-left, .site-header .wordmark { animation: slide-in-left 0.3s var(--ease-hard) both; }
+.u-slide-right, .header-actions { animation: slide-in-right 0.3s var(--ease-hard) both; }
+.u-slide-down, .site-nav a { animation: slide-in-down 0.3s var(--ease-hard) both; }
+/* AFTER the shorthands above, because `animation:` resets delay to 0 and a delay written before its
+   shorthand is a delay that does not exist. */
+.hero .display { animation-delay: 20ms; }
+.hero .lead { animation-delay: 90ms; }
+.composer { animation-delay: 160ms; }
+.hero-foot { animation-delay: 230ms; }
+
+/* STAGGER — one delay ladder, shared. The nav's five links and the utility's children read the same
+   six rungs, so a collection anywhere on this page arrives in the same rhythm. */
+.u-stagger > * { animation: stagger-in 0.3s var(--ease-hard) both; }
+.u-stagger > :nth-child(1), .site-nav a:nth-child(1) { animation-delay: 40ms; }
+.u-stagger > :nth-child(2), .site-nav a:nth-child(2) { animation-delay: 80ms; }
+.u-stagger > :nth-child(3), .site-nav a:nth-child(3) { animation-delay: 120ms; }
+.u-stagger > :nth-child(4), .site-nav a:nth-child(4) { animation-delay: 160ms; }
+.u-stagger > :nth-child(5), .site-nav a:nth-child(5) { animation-delay: 200ms; }
+.u-stagger > :nth-child(6) { animation-delay: 240ms; }
+
+/* THE EXPENSIVE LAYER IS FADED IN RATHER THAN CUT IN. Cloudflare declares a `canvas-fade-in`
+   keyframe for exactly this and the reference file records why: "the expensive layer is never what
+   the first frame depends on". What this can and cannot say is worth being exact about — CSS cannot
+   know when the field is READY, so this is a fade over the layer's first second, not a readiness
+   signal.
+   IT WAS AIMED AT `.sky` AND LOST THE CASCADE, WHICH IS WHY THIS RULE READS THE WAY IT DOES NOW.
+   The previous spelling was `.u-fade, .sky { animation: fade-in-soft 0.9s ease-out; }` with a
+   comment directly above it asserting "IT IS AIMED AT `.sky`, WHICH IS ON THE PAGE" — and the
+   assertion was false at runtime. `.sky` is the `<svg class="sky">` inside `<div class="atmosphere">`,
+   and `.atmosphere svg` (specificity 0,1,1) five hundred lines up beats `.sky` (0,1,0) on a
+   SHORTHAND, which replaces the whole declaration. `getComputedStyle('.sky').animationName` in a
+   real browser returned `drift`. Zero elements on the built page carried fade-in-soft, and `.u-fade`
+   matched nothing in any .astro file either, so the keyframe was dead twice over while a comment
+   swore it was live.
+
+   That was found by loading the BUILT page in a headless browser and reading computed styles. It
+   was NOT found by listing every `animation:` value against every `@keyframes` name — that check
+   passes, because the rule exists; it simply never wins. A forward-only reachability check cannot
+   see shadowing, which is the same shape as every other defect this repository has filed: present
+   in the source, never reached at runtime.
+
+   The fix is not to delete the entrance — it is wanted — but to say both animations on the element
+   that actually matches, at a specificity that wins. `drift` is restated here because a shorthand
+   replaces rather than merges, so omitting it would trade a dead fade for a dead drift. Both are
+   stopped by the universal reduced-motion block at the foot of this file. */
+.atmosphere svg.sky { animation: drift 38s ease-in-out infinite alternate, fade-in-soft 0.9s ease-out; }
+
+/* ATTENTION — the two things a finger causes. Both well inside the 0.26s ceiling. */
+.u-press:active, .pill:active, .pill-icon:active, .site-nav a:active { animation: press-in 0.16s var(--ease-hard); }
+.u-nudge:hover, .pill-icon:hover .icon-sun, .pill-icon:hover .icon-moon { animation: nudge 0.24s ease-out; }
+
+/* GLOW-BREATHE — the primary action in the composer, and only that one. The page has one accent and
+   spends it once; a second breathing green object would mean neither is the answer. */
+.u-glow-breathe, .composer-send { animation: glow-breathe 4.4s ease-in-out infinite; }
+
+/* PULSE — a ring on the model chip's own rim. It rests at opacity 0, so with motion off the chip is
+   exactly the measured object: a 12% fill, a 38% rim and a 12px halo, and nothing moving. */
+.chip-model::after {
+  content: ''; position: absolute; inset: -3px;
+  border: 1px solid var(--accent-ring); border-radius: calc(var(--r-sm) + 3px);
+  opacity: 0; pointer-events: none;
+}
+.u-pulse, .chip-model::after { animation: pulse 3.4s ease-in-out infinite; }
+
+/* AMBIENT DRIFT — two soft accent hazes, at 18% and 82% of the hero. The gap between them is the
+   point: the composer is centred, and decoration is never densest behind the control the screen
+   exists to serve. It sits under .atmosphere's own ::after fade and over nothing. */
+.atmosphere::before {
+  content: ''; position: absolute; inset: -12% -8%;
+  background:
+    radial-gradient(38% 42% at 18% 34%, var(--accent-glow), transparent 70%),
+    radial-gradient(34% 38% at 82% 58%, var(--accent-glow), transparent 72%);
+  filter: blur(42px);
+  pointer-events: none;
+}
+.u-drift, .atmosphere::before { animation: ambient-drift 44s ease-in-out infinite alternate; }
+/* AMBIENT SWAY rides alongside the ridge's existing opacity settle: two properties, one element,
+   no contention — settle owns opacity and this owns transform. */
+.u-sway { animation: ambient-sway 31s ease-in-out infinite alternate; }
+
+/* THE STRATA — ONE KEYFRAME, TWENTY-SIX PHASES, WHICH IS WHAT index.astro ASKED FOR.
+   Each band carries `--i` (its ordinal) and `--t` (how far down the sky it sits). A NEGATIVE DELAY
+   scaled by --i starts every band at a different point of the same cycle, so twenty-six paths drift
+   out of step without twenty-six rules — and one shared duration is what keeps the group readable
+   as weather rather than as twenty-six independent objects.
+   --t DOES THE PARALLAX, INSIDE THE FRAME rather than in the rule: a band high in the sky sweeps
+   64px and one lying on the horizon sweeps 16, because distance is what makes haze near a horizon
+   look still. A custom property resolves per element inside a keyframe, so one frame here is
+   genuinely twenty-six different movements.
+   THE DURATION IS A LITERAL, AND THAT IS NOT AN AESTHETIC CHOICE. `animation: name calc(38s + ...)`
+   would phase the durations too and is the obvious way to write this; tests/living-background.test.mjs
+   reads the first time out of every animation shorthand to prove it is finite and positive, and a
+   calc() defeats that read. A guard that cannot see a duration is a guard that has gone blind while
+   still reporting green, so the phase lives in the delay where it costs the guard nothing. */
+@keyframes stratum-drift {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(calc(-64px + var(--t, 0) * 48px), calc(-10px + var(--t, 0) * 8px), 0); }
+}
+.u-stratum, .stratum { animation: stratum-drift 46s ease-in-out infinite alternate; }
+.stratum { animation-delay: calc(var(--i, 0) * -1.7s); }
+
+/* SHIMMER and BORDER-TRAVEL — the capability tiles. Both rest OFF THE EDGE of their tile rather
+   than at zero opacity, so a cancelled animation leaves a clean panel instead of an invisible band
+   parked across the middle of one. `overflow: hidden` on .card-media is what clips them. */
+.card-media::before {
+  content: ''; position: absolute; top: 0; left: 0;
+  width: 30%; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent-light), transparent);
+  transform: translateX(-100%);
+  opacity: 0.55; pointer-events: none;
+}
+.card-media::after {
+  content: ''; position: absolute; top: -20%; left: 0;
+  width: 42%; height: 140%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
+  transform: translateX(-160%) skewX(-18deg);
+  pointer-events: none;
+}
+.u-border-travel, .card-media::before { animation: border-travel 7.2s ease-in-out infinite; }
+.u-shimmer, .card-media::after { animation: shimmer 6.4s ease-in-out infinite; }
+/* Four tiles moving in lockstep is one tile moving four times, so the ladder offsets them. */
+.cards .card:nth-child(2) .card-media::before, .cards .card:nth-child(2) .card-media::after { animation-delay: 1.6s; }
+.cards .card:nth-child(3) .card-media::before, .cards .card:nth-child(3) .card-media::after { animation-delay: 3.2s; }
+.cards .card:nth-child(4) .card-media::before, .cards .card:nth-child(4) .card-media::after { animation-delay: 4.8s; }
+
+/* SCAN-LINE — a single soft band travelling down the activity log, which is the one figure on this
+   page that depicts something happening over time. It rests above the panel's top edge and is
+   clipped by the figure's own `overflow: hidden`. */
+.sequence-figure::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 0;
+  height: 100%;
+  background: linear-gradient(180deg, transparent 42%, var(--accent-glow) 47%, var(--accent-light) 50%, var(--accent-glow) 53%, transparent 58%);
+  opacity: 0.3;
+  transform: translateY(-100%);
+  pointer-events: none;
+}
+.u-scan, .sequence-figure::after { animation: scan-line 9s linear infinite; }
+
+/* COUNT-UP — a rule filling left to right under the figure's own label, sitting on the hairline
+   that is already there. Its resting state is scaleX(1): with motion off it is simply an accent
+   underline, which is a finished thing rather than a bar caught at zero. */
+.sequence-figure .figure-head::after {
+  content: ''; position: absolute; left: 0; bottom: -1px;
+  width: 100%; height: 1px;
+  background: var(--accent-light);
+  opacity: 0.5;
+  transform: scaleX(1); transform-origin: left center;
+  pointer-events: none;
+}
+.u-count-up, .sequence-figure .figure-head::after { animation: count-up 4.8s var(--ease-hard) infinite; }
+
+/* STAGGER, IN SCROLL SPACE. The log's seven lines brighten one after another as the figure is read,
+   rather than at page load where they are 2,000px below the fold and nobody is looking.
+   TWO THINGS MAKE THIS SAFE. The floor is 0.32 opacity, not 0, so a browser that supports view()
+   and never advances the timeline still shows every line; and `.activity-line` carries no
+   [data-reveal], so the reveal transition and this animation can never fight over one opacity —
+   which is the exact defect tests/reveal-cannot-hide-content.test.mjs was written for after .step
+   was found sitting live at half opacity. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .activity-line { animation: stagger-in linear both; animation-timeline: view(); animation-range: entry 6% cover 30%; }
+    .activity-line:nth-child(2) { animation-range: entry 10% cover 34%; }
+    .activity-line:nth-child(3) { animation-range: entry 14% cover 38%; }
+    .activity-line:nth-child(4) { animation-range: entry 18% cover 42%; }
+    .activity-line:nth-child(5) { animation-range: entry 22% cover 46%; }
+    .activity-line:nth-child(6) { animation-range: entry 26% cover 50%; }
+    .activity-line:nth-child(7) { animation-range: entry 30% cover 54%; }
+  }
+}
 
 /* ------------------------------------------------------------ responsive */
 
@@ -723,7 +1290,53 @@ p, li, dd, dt, figcaption, blockquote { text-wrap: pretty; }
   .footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
+/*[[ THE HEADER GOES TO TWO ROWS AT 859, NOT AT 640, AND 640 WAS MEASURABLY TOO LATE.
+ *
+ *   The link row is absolutely centred on the viewport — which is the measurement and is what keeps
+ *   the nav symmetrical when a word is translated — and an out-of-flow row cannot be pushed by the
+ *   things beside it. So the moment the three groups stop fitting, the centred one simply prints
+ *   over the right-hand one, silently.
+ *
+ *   MEASURED IN CHROMIUM, after the nav items were reset to the bar's 12px/700/+1.2px uppercase:
+ *   the row is 444px wide, and its right edge crosses the actions group's left edge at 641px (532
+ *   against 484), at 700px (562 against 543) and at 768px (596 against 595). It clears at 860. The
+ *   old breakpoint was 640, so every width from 641 to 859 — which is most tablets in portrait —
+ *   rendered "SIGN IN" underneath the theme toggle.
+ *
+ *   THIS BLOCK CARRIES THE HEADER ONLY, and the phone block below carries the phone. They were one
+ *   block before, and that is exactly why the header's breakpoint was a phone's: the two numbers
+ *   had no reason to be the same and no way to differ. Everything measured off the header's height
+ *   moves with --nav-h, so the hero's padding and the in-page scroll offset follow on their own. ]]*/
+@media (max-width: 859px) {
+  /* THE NAVIGATION WAS DELETED ON A PHONE AND NOTHING REPLACED IT.
+     `display: none` with no hamburger, no drawer, nothing — so at 375px the header was a wordmark
+     and one pill, the word "Pricing" existed only in the footer 6,534px down, and a returning
+     customer had no Sign in at any width. On the device most of this product's buyers use, the
+     front door hid the price and the door.
+     A SECOND ROW RATHER THAN A MENU. Five short links fit across 343px on one line; a hamburger
+     would be a button, a drawer, a focus trap and an escape key for five links that already fit.
+     The row scrolls horizontally only if a translation makes it longer, and it never wraps into a
+     ragged block. */
+  .site-header > .shell { flex-wrap: wrap; row-gap: 10px; }
+  /* The centred layer becomes a row again here. Leaving it absolutely positioned would park five
+     links on top of the wordmark, because a second line cannot exist for something out of flow. */
+  .site-nav {
+    position: static; transform: none;
+    order: 3; width: 100%;
+    gap: 4px;
+    overflow-x: auto; scrollbar-width: none;
+    padding-block-end: 2px;
+  }
+  .site-nav::-webkit-scrollbar { display: none; }
+  /* The header is two rows now, so everything measured from its height moves with it. */
+  :root { --nav-h: 96px; }
+}
+
 @media (max-width: 640px) {
+  /* 8px of side padding rather than 12: five 32px link objects with 12px each side come to 310px
+     before the gaps, against the 343px a 375px phone has. Eight fits with room to spare and keeps
+     every link a tap target rather than a word. */
+  .site-nav a { padding: 0 8px; }
   /* The CONTAINER gutter halves on a phone and the HERO gutter does not. Measured at 390px: the
      bar's nav row is padded 16px and its hero content 24px — the two numbers that are 32 and 24 at
      1568px do not converge, they stay apart. Setting `--hero-gutter: 16px` here would look like
@@ -738,33 +1351,6 @@ p, li, dd, dt, figcaption, blockquote { text-wrap: pretty; }
      width and loses the ragged shape the centring depends on. */
   .hero .display { max-width: 300px; }
   .hero .lead { font-size: 16px; letter-spacing: -0.01em; max-width: 240px; }
-  /* THE NAVIGATION WAS DELETED ON A PHONE AND NOTHING REPLACED IT.
-     `display: none` with no hamburger, no drawer, nothing — so at 375px the header was a wordmark
-     and one pill, the word "Pricing" existed only in the footer 6,534px down, and a returning
-     customer had no Sign in at any width. On the device most of this product's buyers use, the
-     front door hid the price and the door.
-     A SECOND ROW RATHER THAN A MENU. Five short links fit across 343px on one line at 13px; a
-     hamburger would be a button, a drawer, a focus trap and an escape key for five links that
-     already fit. The row scrolls horizontally only if a translation makes it longer, and it never
-     wraps into a ragged block. */
-  .site-header > .shell { flex-wrap: wrap; row-gap: 10px; }
-  /* The centred layer becomes a row again here. Leaving it absolutely positioned would park five
-     links on top of the wordmark, because a second line cannot exist for something out of flow. */
-  .site-nav {
-    position: static; transform: none;
-    order: 3; width: 100%;
-    gap: 4px; font-size: 13px;
-    overflow-x: auto; scrollbar-width: none;
-    padding-block-end: 2px;
-  }
-  .site-nav::-webkit-scrollbar { display: none; }
-  /* 8px of side padding rather than 12: five 36px link objects with 12px each side come to 334px
-     before the gaps, which is the full 343px a 375px phone has. Eight fits with room to spare and
-     keeps every link a tap target rather than a word. */
-  .site-nav a { padding: 0 8px; white-space: nowrap; }
-  /* The header is two rows now, so everything measured from its height moves with it. */
-  :root { --nav-h: 96px; }
-
   /* The bar does NOT wrap. At 375px the two chips and the send control measure 189px inside a
      325px row, and `overflow: hidden` on the composer catches a translation that does not fit
      rather than letting it spill past the rim.
@@ -811,10 +1397,23 @@ p, li, dd, dt, figcaption, blockquote { text-wrap: pretty; }
 }
 
 /* ------------------------------------------------------------ the flow field --- */
-/* Sits inside .atmosphere, above the drifting SVG and under the light column's glow, so the three
-   layers read as one weather system rather than as three effects. It is masked away from the top
-   and bottom edges: a field that runs to the edge of the section announces itself as a rectangle,
-   and the point is that it is behind the page rather than on it. */
+/*[[ THE COMPONENT THESE RULES DRESS IS NOT ON ANY PAGE TODAY, and that is written here rather than
+ *   left to be discovered. components/Horizon.astro replaced FlowField.astro in the hero on
+ *   2026-09-20 and brought its own <style> with it, which is the pattern to follow; FlowField.astro
+ *   has no <style> at all, so the four rules below are the only layout it has anywhere.
+ *
+ *   THEY ARE KEPT RATHER THAN DELETED FOR ONE REASON, AND IT IS NOT SENTIMENT. Deleting them would
+ *   not remove dead weight from the page — the selectors already match nothing — it would remove
+ *   the only thing that makes a live component in this repository renderable, and tests/
+ *   flow-field-runs.test.mjs still executes that component and passes. Whoever retires
+ *   FlowField.astro should take this block with it in the same change; whoever remounts it finds
+ *   its geometry here. What must not happen is the third option: this block quietly disappearing
+ *   and the component being remounted later as an unmasked, full-strength rectangle.
+ *
+ *   Its original note, still true of the component: it sits inside .atmosphere, above the drifting
+ *   SVG and under the light column's glow, so the layers read as one weather system rather than as
+ *   three effects, and it is masked away from the edges because a field that runs to the edge of
+ *   its section announces itself as a rectangle. ]]*/
 .flow {
   position: absolute; inset: 0; width: 100%; height: 100%;
   display: block; pointer-events: none;
@@ -850,8 +1449,16 @@ p, li, dd, dt, figcaption, blockquote { text-wrap: pretty; }
 
    The timings come from the measurements rather than from taste: 0.2-0.3s is the band all four
    references use for something that moves on its own (Cloudflare 0.2s on 147 elements, Gemini 0.2s
-   on 74 and 0.3s on 54), and the fast 0.1-0.16s band is reserved for things under the finger. This
-   sits at the slow end of the ambient band because it travels a distance.
+   on 74 and 0.3s on 54), and the fast 0.1-0.16s band is reserved for things under the finger.
+
+   RE-AIMED 2026-09-20 TO 0.3s, AND THE SENTENCE THAT USED TO END THIS PARAGRAPH IS WHY. It read
+   "this sits at the slow end of the ambient band because it travels a distance", above a rule that
+   ran for 0.58s — which is not the slow end of a 0.2-0.3s band, it is roughly twice its ceiling. A
+   justification that names a band and then leaves it is the most expensive kind of comment, because
+   the next reader trusts the sentence instead of the number. 0.3s IS the slow end of the band, and
+   it is the same figure every entrance animation in the keyframe library above uses, so the whole
+   page now moves at one of three speeds: 0.15s under a finger, 0.26s for a colour, 0.3s for
+   anything that moves on its own.
 --------------------------------------------------------------------------- */
 .no-js [data-reveal] { opacity: 1; transform: none; }
 
@@ -859,8 +1466,8 @@ html:not(.no-js) [data-reveal] {
   opacity: 0;
   transform: translateY(14px);
   transition:
-    opacity 0.58s cubic-bezier(0.22, 0.7, 0.24, 1),
-    transform 0.58s cubic-bezier(0.22, 0.7, 0.24, 1);
+    opacity 0.3s var(--ease-hard),
+    transform 0.3s var(--ease-hard);
   transition-delay: var(--reveal-delay, 0ms);
   will-change: opacity, transform;
 }

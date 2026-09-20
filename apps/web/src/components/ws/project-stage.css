@@ -13,13 +13,25 @@
  * corrections are written here at two classes and scoped to the only tree they can ever match. If
  * ConnectStudio is ever mounted somewhere else, this file moves with it.
  *
- * THE ACCENT, SPENT EXACTLY ONCE. docs/DESIGN-LOCK.md allows one green thing per screen. Here it
- * is the header pip when Studio is attached, OR the single primary action in the connection panel
- * when it is not — never both, because ConnectStudio renders nothing at all while connected. Every
- * other value in this file is --line, --muted, --faint, or a percentage of --ink. The surfaces
- * this panel holds carry their own status (the playtest chip goes --warn when a run is stale, the
- * console count goes --bad); a stage that tinted its own frame would stand a second and meaningless
- * signal beside the real one.
+ * THE ACCENT IS A FAMILY OF THREE NOW, AND THIS FILE SPENDS EACH MEMBER ON ITS OWN JOB.
+ * It used to be one colour and one rule: one green thing per screen, which here meant the header
+ * pip when Studio is attached OR the single primary action in the connection panel when it is not.
+ * That rule was written when --accent-light, --accent-deep and --accent-soft did not exist. They do
+ * now (design/system.css, measured off rosebud.ai and recorded in
+ * packages/corpus/data/ui-references/web-landing.json as `rosebud-ai-design-language`), and the
+ * point of the family is that a border, a fill and a marker can all be accented without any two of
+ * them claiming to be the same thing:
+ *
+ *   --accent        the live pip's core — the one saturated dot, and the only full-strength use
+ *   --accent-soft   the halo behind it, and the pressed state of a surface tab
+ *   --accent-ring   the chosen surface tab's border — variant 3 of 5, the accented outline
+ *   --accent-deep   the primary action in the connection panel, filled, once, and only while
+ *                   Studio is detached, because ConnectStudio renders nothing at all when it is not
+ *
+ * Every other value in this file is --line, --muted, --faint, or a percentage of --ink. The
+ * surfaces this panel holds carry their own status (the playtest chip goes --warn when a run is
+ * stale, the console count goes --bad); a stage that tinted its own frame would stand a second and
+ * meaningless signal beside the real one.
  *
  * SCOPED ONE LEVEL DEEPER THAN SYSTEM.CSS ON PURPOSE. main.tsx imports './app' before
  * './design/system.css', so this file is bundled AHEAD of it, and an equal-specificity rule written
@@ -77,15 +89,24 @@
 .gx-project-stage .gx-project-stage__summary { display:flex; align-items:center; gap:7px; min-width:0; }
 .gx-project-stage .gx-project-stage__summary-text { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
-/* THE LIVE INDICATOR, AND THE ONLY GREEN THING THIS PANEL MAY EVER DRAW.
-   Three states, separated by SHAPE before colour so the header still reads in greyscale: a hollow
-   ring is nothing attached, a filled core is Studio attached, and the same hollow ring breathing is
-   the handshake. The halo is a second box rather than a box-shadow — the design lock reserves
-   shadows for menus and modals, and a ring drawn as a shadow is the way that rule gets broken by
-   accident. */
+/*[[ THE LIVE INDICATOR. Three states, separated by SHAPE before colour so the header still reads in
+ *   greyscale: a hollow ring is nothing attached, a filled core is Studio attached, and the same
+ *   hollow ring breathing is the handshake.
+ *   THE HALO IS A box-shadow NOW, AND THAT REVERSES WHAT WAS WRITTEN HERE. It was a second box on
+ *   purpose, because the standing rule reserved shadows for menus and modals and "a ring drawn as a
+ *   shadow is the way that rule gets broken by accident". The measured system replaces that rule
+ *   rather than bending it: "ELEVATION IS A GLOW, NOT A DROP SHADOW ... the accented chip carries
+ *   rgba(accent,0.14) 0 0 12px", and --glow is that value as a token every accented object in the
+ *   product now reads. The old rule still holds for the thing it was about — a blurred black drop
+ *   shadow — and nothing in this file casts one. ]]*/
 .gx-project-stage .gx-project-stage__pip { flex:none; display:grid; place-items:center; width:12px; height:12px; border-radius:var(--r-pill); background:transparent; }
 .gx-project-stage .gx-project-stage__pip::before { content:''; display:block; width:7px; height:7px; border:1px solid var(--faint); border-radius:var(--r-pill); }
-.gx-project-stage[data-connection='live'] .gx-project-stage__pip { background:color-mix(in srgb,var(--accent) 16%,transparent); }
+/* ATTACHED IS THE ONE ACCENTED THING IN THIS HEADER, so it takes the measured accented treatment
+   rather than a hand-mixed 16%: --accent-soft is the bar's own 12% fill and --glow its 12px halo at
+   14%. "ELEVATION IS A GLOW, NOT A DROP SHADOW" — and a 12px pip is the smallest object in the
+   product that can carry one, which is why the halo reads as a light being on rather than as a
+   shadow under something. */
+.gx-project-stage[data-connection='live'] .gx-project-stage__pip { background:var(--accent-soft); box-shadow:var(--glow); }
 .gx-project-stage[data-connection='live'] .gx-project-stage__pip::before { border-color:var(--accent); background:var(--accent); }
 .gx-project-stage[data-connection='checking'] .gx-project-stage__pip::before { animation:stage-pip-breathe 1.8s var(--ease-in-out) infinite; }
 @keyframes stage-pip-breathe { 0%,100% { opacity:.35; } 50% { opacity:1; } }
@@ -99,16 +120,34 @@
 
 /* -------------------------------------------------------------- the two surfaces --- */
 
-/* A SEGMENTED CONTROL, NOT A WHITE BUTTON. system.css fills the chosen tab with `var(--ink)` — a
-   white plate, which is the largest, brightest object on the panel and points at a switch rather
-   than at the evidence the switch reveals. The chosen tab is now one surface step up inside a
-   hairline track, which is how every other chosen row in this product is drawn.
-   `width:fit-content` so the track wraps the two tabs instead of ruling a line across the panel. */
-.gx-project-stage .gx-project-stage__surfaces { display:inline-flex; width:fit-content; max-width:100%; gap:2px; margin:0 0 18px; padding:3px; border:1px solid var(--line); border-radius:var(--r-md); }
-.gx-project-stage .gx-project-stage__surfaces > button { flex:none; border:0; border-radius:var(--r-xs); padding:6px 14px; min-height:32px; font-size:12px; letter-spacing:-.01em; color:var(--muted); background:transparent; transition:background var(--t-fast) var(--ease-out),color var(--t-fast) var(--ease-out); }
-.gx-project-stage .gx-project-stage__surfaces > button:hover { color:var(--ink); background:var(--surface); }
-.gx-project-stage .gx-project-stage__surfaces > button:active { background:var(--surface-3); }
-.gx-project-stage .gx-project-stage__surfaces > button[aria-selected='true'] { color:var(--ink); background:var(--surface-2); }
+/*[[ A SEGMENTED CONTROL, AND THE CHOSEN TAB IS THE ACCENTED OUTLINE VARIANT.
+ *
+ * TWO RULES IN SYSTEM.CSS CLAIM THIS SELECTOR AND THE WRONG ONE WINS. The first draws it correctly:
+ * `.gx-chip[aria-pressed='true'],.gx-project-stage__surfaces button[aria-selected='true'],… {
+ * background:transparent; border:1px solid var(--accent-ring); color:var(--accent-light);
+ * box-shadow:var(--glow) }` — variant 3 of 5, the measured accented outline, added in the same pass
+ * that landed the family of three. The second, four hundred lines later in the same file, still
+ * says `.gx-project-stage__surfaces button[aria-selected='true'] { background:var(--ink);
+ * color:var(--paper) }` — the white plate the first rule was written to delete. The two selectors
+ * are IDENTICAL, so specificity cannot separate them and the later one wins: the accented outline
+ * is declared and never painted. That is worth reporting upward and is not this file's to fix;
+ * what this file can do is out-specify both at (0,3,1) and draw the variant that was intended.
+ *
+ * THE VARIANT ITSELF: "ACCENTED OUTLINE: NO fill at all, 1px rgba(accent-light,0.38) border,
+ * accent-light text." Two tabs, one of them chosen, and the chosen one is the only coloured thing
+ * in the panel while Studio is attached — which is the job the white plate was doing far too
+ * loudly. The glow is taken with it here, because unlike the composer's bar this panel has no other
+ * accented object to compete with: the pip is the only one, and it is twelve pixels wide.
+ *
+ * THE NUMBERS ARE THE BAR'S: a tab is a nav item, so 32px, 0 8.8px, 12px at +1.2px, uppercase. The
+ * track is a PANEL holding controls, so it takes the panel radius — 8px outside 6px, which is the
+ * whole radius system — and `width:fit-content` so it wraps the two tabs instead of ruling a line
+ * across the stage. ]]*/
+.gx-project-stage .gx-project-stage__surfaces { display:inline-flex; width:fit-content; max-width:100%; gap:2px; margin:0 0 18px; padding:3px; border:1px solid var(--line); border-radius:var(--r-lg); }
+.gx-project-stage .gx-project-stage__surfaces > button { flex:none; border:1px solid transparent; border-radius:var(--r-md); padding:0 8.8px; min-height:var(--h-sm); font-size:12px; letter-spacing:1.2px; text-transform:uppercase; color:var(--muted); background:transparent; box-shadow:none; transition:color var(--t-color) var(--ease-hard),background-color var(--t-fast) var(--ease-out),border-color var(--t-fast) var(--ease-out); }
+.gx-project-stage .gx-project-stage__surfaces > button:hover:not([aria-selected='true']) { color:var(--ink); background:var(--control-fill); }
+.gx-project-stage .gx-project-stage__surfaces > button:active { background:color-mix(in srgb,var(--ink) 11%,transparent); }
+.gx-project-stage .gx-project-stage__surfaces > button[aria-selected='true'] { color:var(--accent-light); background:transparent; border-color:var(--accent-ring); box-shadow:var(--glow); }
 
 /* -------------------------------------------------------------------- the frame --- */
 
@@ -216,13 +255,20 @@
 
 /* ------------------------------------------------------- the connection panel --- */
 
-/* A CARD ON A WELL. The stage body is --paper-2 and this is the one object in it you act on, so it
-   steps up to --surface behind a hairline. That step is the whole of its separation: the design
-   lock reserves shadows for things that float, and this is bolted to the top of the panel.
-   `:not(.gx-connect--quiet)` because the handshake state wears BOTH class names, and it is
-   deliberately not a card — a bordered box with one sentence in it reads as an empty input, and
-   this one is on screen for the length of a socket handshake. */
-.gx-project-stage .gx-connect:not(.gx-connect--quiet) { padding:18px; margin:0 0 20px; border:1px solid var(--line); border-radius:var(--r-md); background:var(--surface); }
+/*[[ A CARD ON A WELL, AT THE PANEL RADIUS. The stage body is --paper-2 and this is the one object
+ *   in it you act on, so it steps up to --surface behind a hairline. That step is the whole of its
+ *   separation — this is bolted to the top of the panel, not floating over it, and the measured
+ *   system separates with a hairline and lifts with a glow.
+ *   8px, not 6: "8px on 23 elements (cards, panels), 6px on 11 (every control)", and this holds
+ *   controls rather than being one. It was --r-md, which used to be 10px and is now the CONTROL
+ *   radius — so leaving the name alone would have quietly turned this card into a control-sized
+ *   corner the day the token moved.
+ *   It also arrives, once, when it mounts: this card appears the moment we learn Studio is NOT
+ *   attached, which is a state change a person needs to notice while they are looking elsewhere in
+ *   the panel. `:not(.gx-connect--quiet)` because the handshake state wears BOTH class names and is
+ *   deliberately not a card — a bordered box with one sentence in it reads as an empty input, and
+ *   that one is on screen for the length of a socket handshake. ]]*/
+.gx-project-stage .gx-connect:not(.gx-connect--quiet) { padding:18px; margin:0 0 20px; border:1px solid var(--line); border-radius:var(--r-lg); background:var(--surface); animation:stage-connect-in var(--t-base) var(--ease-out) both; }
 .gx-project-stage .gx-connect__title { margin:0 0 6px; font-size:15px; line-height:1.4; letter-spacing:-.015em; color:var(--ink); }
 /* `text-wrap:pretty` because this paragraph names a place the customer chose, and place names are
    long: the unbalanced last line is what makes a two-sentence explanation look like an error. */
@@ -240,16 +286,27 @@
    wrap, and an action set under its own instruction is what a setup sequence looks like anyway. */
 .gx-project-stage .gx-connect__step { display:grid; grid-template-columns:22px minmax(0,1fr); align-items:center; gap:9px 12px; padding-block:12px; border-top:1px solid var(--line); }
 /* The counter is system.css's; only its box changes. Tabular figures so 1, 2 and 3 sit on one
-   optical centre inside a circle that is the same circle every time. */
-.gx-project-stage .gx-connect__step::before { display:grid; place-items:center; width:22px; height:22px; flex:none; border:1px solid var(--line); border-radius:var(--r-pill); font:11px/1 var(--font-mono); font-variant-numeric:tabular-nums; color:var(--faint); }
+   optical centre inside a box that is the same box every time.
+   NOT A CIRCLE ANY MORE. "Two radii: 8px for panels, 6px for controls. No pills" — and a 22px
+   round marker is the only thing left in this file that was neither. --r-pill survives in the
+   system for a 6px dot and a spinner ring, which are round GEOMETRY rather than a rounded box;
+   a numbered marker beside a numbered instruction is a box. */
+.gx-project-stage .gx-connect__step::before { display:grid; place-items:center; width:22px; height:22px; flex:none; border:1px solid var(--line); border-radius:var(--r-md); font:11px/1 var(--font-mono); font-variant-numeric:tabular-nums; color:var(--faint); }
 .gx-project-stage .gx-connect__what { grid-column:2; min-width:0; font-size:13px; line-height:1.5; letter-spacing:-.01em; color:var(--ink); text-wrap:pretty; }
-.gx-project-stage .gx-connect__step > .gx-btn { grid-column:2; justify-self:start; min-height:34px; transition:background var(--t-fast) var(--ease-out),border-color var(--t-fast) var(--ease-out); }
-/* THE ONE PRIMARY ACTION ON THIS PANEL, and the only place the accent is spent while Studio is
-   detached. `.gx-connect__step > .gx-btn` in system.css sets `border:1px solid var(--line)` at two
-   classes and would otherwise draw a --line edge around a filled green button — a primary action
-   wearing a secondary button's outline. */
-.gx-project-stage .gx-connect__step > .gx-btn--primary { border-color:var(--accent-fill); }
-.gx-project-stage .gx-connect__step > .gx-btn--primary:hover { border-color:color-mix(in srgb,var(--accent-fill) 88%,var(--ink)); }
+/* 34px WAS A FIFTH HEIGHT. "Four control heights — 28, 32, 36, 50 — and padding that tracks the
+   height ... a fifth height is how a control bar stops looking machined." This is a chrome button
+   in a setup step, which is the 36px slot, and --h-md is the token every other 36px control in the
+   product now reads. */
+.gx-project-stage .gx-connect__step > .gx-btn { grid-column:2; justify-self:start; min-height:var(--h-md); transition:color var(--t-color) var(--ease-hard),background-color var(--t-fast) var(--ease-out),border-color var(--t-fast) var(--ease-out); }
+/* THE ONE PRIMARY ACTION ON THIS PANEL, and the only place the accent is spent as a FILL while
+   Studio is detached. `.gx-connect__step > .gx-btn` in system.css sets `border:1px solid var(--line)`
+   at (0,2,1), which outranks `.gx-btn--primary` at (0,1,0) — so without this the one filled green
+   button on the panel wears a secondary button's grey outline. The border is the fill's own colour,
+   which is what the shared primary rule says it is; the hover follows that rule's mix exactly
+   rather than inventing a second one, because a primary button in a panel is not a different
+   object from a primary button anywhere else. */
+.gx-project-stage .gx-connect__step > .gx-btn--primary { border-color:var(--accent-deep); }
+.gx-project-stage .gx-connect__step > .gx-btn--primary:hover { border-color:color-mix(in srgb,var(--accent-deep) 80%,var(--accent)); }
 
 /* THE HANDSHAKE, WHICH IS NOT A CARD. We do not yet know whether this person is paired, so the
    panel that would tell them what to do has nothing to say: one line, one breathing dot, and no
@@ -272,17 +329,35 @@
   .gx-project-stage .gx-connect__step > .gx-btn { justify-self:stretch; }
 }
 
+/* ------------------------------------------------------- the state catalogue --- */
+
+/* Four keyframes in this file and every one of them is a STATE, not scenery — the same discipline
+   the composer's own catalogue is written under, and for the same measured reason: the bar has ZERO
+   keyframes and ZERO running animations, and chatgpt.com has 138 keyframes with none of them
+   running while the page sits idle, because all 138 are states.
+
+     stage-pip-breathe   the handshake is in progress      ([data-connection='checking'], .gx-dot)
+     stage-scan          Apple is working on a first render (.gx-project-stage__blueprint--working)
+     stage-connect-in    Studio is NOT attached             (.gx-connect, mounted by that fact)
+
+   `stage-connect-in` is the one added in this pass. ConnectStudio returns nothing at all while
+   Studio is connected, so this card is mounted by the disconnection and the animation runs exactly
+   once, when the panel changes what it is saying — which is the moment the customer has to notice.
+   --t-base is .2s, inside the .26s ceiling the measured system puts on everything interactive. */
+@keyframes stage-connect-in { from { opacity:0; transform:translate3d(0,4px,0); } to { opacity:1; transform:none; } }
+
 /* ------------------------------------------------------------- reduced motion --- */
 
 /* OFF, NOT SLOWED. Everything in this file that moves is a nicety over something already written
    in words, so every one of them can simply stop: the pip's breath, the quiet line's dot, the light
-   crossing the blueprint while Apple works, the chevron's rotation, and the colour transitions on
-   the header, the tabs and the connect buttons. The sweep is HIDDEN rather than stopped — a halted
-   one leaves a static band of light parked across the drawing, which is a mark that means nothing
-   and that a reader will try to interpret. */
+   crossing the blueprint while Apple works, the connection card's arrival, the chevron's rotation,
+   and the colour transitions on the header, the tabs and the connect buttons. The sweep is HIDDEN
+   rather than stopped — a halted one leaves a static band of light parked across the drawing, which
+   is a mark that means nothing and that a reader will try to interpret. */
 @media (prefers-reduced-motion:reduce) {
   .gx-project-stage .gx-project-stage__pip::before,
-  .gx-project-stage .gx-connect--quiet .gx-dot { animation:none; opacity:1; }
+  .gx-project-stage .gx-connect--quiet .gx-dot,
+  .gx-project-stage .gx-connect:not(.gx-connect--quiet) { animation:none; opacity:1; }
   .gx-project-stage .gx-project-stage__blueprint--working .gx-project-stage__blueprint-art::after { display:none; }
   .gx-project-stage .gx-project-stage__toggle,
   .gx-project-stage .gx-project-stage__chevron,

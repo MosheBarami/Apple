@@ -1,85 +1,259 @@
-/* Apple / cinematic chat. Neutral system typography, deep black, restrained white light.
-   Primary-agent implementation of the owner's latest visual references. */
+/*
+ * THE PRODUCT'S DESIGN SYSTEM.
+ *
+ * REBUILT 2026-09-20 AGAINST A MEASURED BAR. The owner named https://rosebud.ai/ and set the brief
+ * in one sentence: follow it closely in OUR green, keep OUR typeface, and replace the current
+ * visual language wherever the two disagree. The measurements are not impressions — they were
+ * taken off the live DOM with getComputedStyle on 2026-09-20 and are recorded as twenty claims in
+ * packages/corpus/data/ui-references/web-landing.json under the reference id
+ * "rosebud-ai-design-language". Every number in this block cites one of them.
+ *
+ * THE NAMES AND VALUES HERE MIRROR apps/site/src/styles/landing.css, which was rebuilt against the
+ * same reading. Before this pass the marketing site and the product were two different companies:
+ * the same warm graphite ramp on both, neutral rather than tinted, one flat accent doing three
+ * jobs, ten-pixel radii, and control heights that landed wherever padding left them. A customer
+ * crosses from one to the other in a single click, and the seam was visible.
+ *
+ * WHAT WAS DELIBERATELY NOT TAKEN. The bar is monospace on every node, headings included; the
+ * owner asked for our typeface to be kept, so the type scale below is ours. Its accent is purple
+ * across three tints; ours is green and the three tints are RE-DERIVED rather than hue-rotated,
+ * because rotating rgb(143,0,200) to green lands on a colour no dark interface should carry. No
+ * markup, stylesheet, image, icon, font file or sentence of theirs is reproduced anywhere.
+ *
+ * THE SEVEN DECISIONS, each a number rather than a taste:
+ *
+ *   THE RAMP IS TINTED TOWARD THE ACCENT, NEVER NEUTRAL GREY. Measured on the bar: rgb(21,18,26),
+ *   rgb(10,8,12), rgb(34,29,46) — red and blue above green at every step, on a purple-accented
+ *   page. A pure-grey ramp under a saturated accent is what makes a dark interface read as a
+ *   default theme rather than a designed one. Ours is the same rule in green: green highest, then
+ *   blue, then red, at every step of the ramp.
+ *
+ *   TEXT IS THREE STEPS AND NOTHING ELSE — white, white at 78%, white at 55%. No grey tokens, no
+ *   second hue. The three below are those composites, flattened to hex so they can be MEASURED:
+ *   an alpha ink cannot be checked for contrast against a surface it has not been composited over,
+ *   and tests/contrast.test.mjs is what holds this ramp to 4.5:1.
+ *
+ *   THE ACCENT IS A FAMILY OF THREE. A fill, a LIGHTER tint for borders, a DARKER shade for the
+ *   primary button. One accent doing all three jobs is exactly why our accented button read flat:
+ *   a green button with a green border in the same green has no edge.
+ *
+ *   TWO RADII AND NO MORE — 8px for a panel, 6px for a control. Nothing is a pill. (--r-pill
+ *   survives for round GEOMETRY: dots, pips, spinner rings, meter caps, switch tracks. A 6px dot
+ *   is a square, which is why that token is not simply retired.)
+ *
+ *   FOUR CONTROL HEIGHTS — 28 / 32 / 36 / 50 — with padding that tracks the height. Every button
+ *   on the bar lands on one of those four; a fifth height is how a control bar stops looking
+ *   machined.
+ *
+ *   FIVE BUTTON VARIANTS THAT DIFFER BY BORDER AND TEXT, NOT BY FILL, and exactly one filled
+ *   button per screen. Four of the bar's five variants have no fill at all.
+ *
+ *   ELEVATION IS A GLOW AND SEPARATION IS A HAIRLINE. The only conventional shadow on the bar is
+ *   the primary button's inset rim plus a 2px lift, and --shadow-primary carries those two numbers
+ *   exactly.
+ */
 :root {
   color-scheme:dark;
   --font-body:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif; --font-display:var(--font-body); --font-mono:ui-monospace,SFMono-Regular,monospace;
-  /* WARM NEUTRALS, 2026-09-19. The workspace and the marketing site were two different blacks:
-     #080808 here against #141312 there, one cool and one warm, which is visible the moment a user
-     crosses from one to the other. Measured on the reference the owner named (tesana.ai): red
-     highest, blue lowest, by a point or two at every step of the ramp. Imperceptible per colour and
-     unmistakable across a screen. Numbers match apps/site/src/styles/landing.css exactly. */
-  --paper:#141312; --paper-2:#171615; --surface:#232221; --surface-2:#333231; --surface-3:#3d3b3a;
-  /* muted/faint are LIGHTER here than on the marketing site, deliberately. The site's secondary
-     inks sit on the page (#141312); the workspace puts the same roles on raised surfaces up to
-     #3d3b3a, where the site's values measure 4.39:1 and 3.12:1 — under the 4.5:1 the contrast
-     guard requires for normal text. These clear it on every surface in the ramp. */
-  --ink:#f4f3f2; --muted:#bdbab6; --faint:#aaa7a3; --line:#f4f3f21f;
 
-  /* THE ONE COLOUR THIS PRODUCT SPENDS, and the rule for spending it.
-     Locked 2026-09-20 against the direction the owner chose from seven references: cinematic
-     graphite, restrained green light, no second hue competing with it. The ramp above was already
-     measured off that reference and did not move; this is the half that was missing, because
-     `--accent` was #f4f3f2 — white pretending to be an accent, which is why nothing on any screen
-     ever looked deliberate.
-     WHERE IT GOES: the one primary action on a screen, the current item in a nav, a focus ring, a
-     live indicator. NOWHERE ELSE. Two green things on one screen means neither is the answer.
-     MEASURED, not chosen by eye: #8fd3ab is 6.40:1 at worst across every surface in the ramp, so
-     it is readable as text and not only as decoration. The fill is dark enough (2.60:1 against the
-     page) to read as a raised object rather than a glow, and carries --ink at 6.43:1. */
-  /* MEASURED OFF THE REFERENCE ITSELF, 2026-09-20, with getComputedStyle over its live DOM. Its
-     primary action reports `oklab(0.765 -0.169466 0.0510906)` — #00d492 in sRGB — and the thing
-     that matters more than the hue is the TREATMENT: the button is not a solid block. It is that
-     colour at 10% alpha behind the same colour at 90% as text, 10px radius, 36px tall, 14px. A
-     tinted pill, not a filled one.
-     Our first pass used a solid dark-green fill, which is the ordinary SaaS primary button and is
-     exactly what the owner rejected. The tint is what makes the green read as light rather than as
-     paint.
-     Contrast measured across the whole ramp: 9.57 / 9.32 / 8.19 / 6.60 / 5.75 — it clears 4.5:1 as
-     TEXT on every surface this product has, which is what lets a tinted button work at all. */
-  --accent:#00d492; --accent-fill:#00d4921a; --accent-on-fill:#00d492e6;
-  --accent-soft:#00d4921a; --accent-line:#00d49240;
-  --acc-ember:var(--accent); --acc-ember-soft:var(--accent-soft); --acc-ember-ink:#141312;
+  /* THE FOUR-STEP RAMP, TINTED TOWARD THE ACCENT HUE, plus the one extra step this product needs
+     that a marketing page does not (--surface-3 is a TRACK colour: meter grooves, skeletons, the
+     well a progress bar runs in). Green is above blue is above red at every step, which is the
+     same relationship the bar keeps in purple and the reason a black page reads as designed rather
+     than as an unset theme. These are the landing's --ground / --raised / --surface / --surface-2
+     under this sheet's own names; two names for one colour is how a palette drifts, so the values
+     are identical and the mapping is written down here rather than left to be rediscovered. */
+  --paper:#050807; --paper-2:#0a0f0c; --surface:#101814; --surface-2:#18231d; --surface-3:#22302a;
+
+  /* THREE TEXT STEPS. rgb(255,255,255), then 78%, then 55% — measured on the bar as the whole of
+     its text palette. Flattened over --paper so each one is a real colour that can be measured:
+     #ffffff / #c7cdc9 / #8e9691 clear 20.1 / 12.5 / 6.6 against the page and 16.2 / 10.0 / 5.3
+     against --surface-2, the lightest surface any of them sits on. The old ramp was #f4f3f2 /
+     #bdbab6 / #aaa7a3 — warm greys, and --muted and --faint only 0.5:1 apart, which is three names
+     for two colours. */
+  --ink:#ffffff; --muted:#c7cdc9; --faint:#8e9691;
+
+  /* THE EDGES, AND WHY THERE ARE FIVE OF THEM RATHER THAN ONE.
+     Measured on the bar: a hairline at rgba(255,255,255,0.08) separating surfaces, a heavier
+     divider, and then THREE different edges on controls — 0.18 on a chrome button, 0.38 (of the
+     lighter accent tint) on an accented one, and 0.12 on one that is not available. Those last
+     three are the entire button system: the variants differ by their BORDER and their TEXT, and
+     almost never by their fill. One --line doing all of it is why every control in this product
+     looked like the same control. */
+  --line:rgba(255,255,255,.08);
+  --line-strong:#2c3a33;
+  --control-fill:rgba(255,255,255,.06);
+  --control-line:rgba(255,255,255,.18);
+  /* AN UNAVAILABLE CONTROL KEEPS ITS SHAPE AND LOSES ITS CONTRAST. Measured: the bar's unavailable
+     action is the same height, radius, padding and tracking as the live one beside it, and differs
+     only by border alpha 0.38 -> 0.12 and label 100% -> 38%. It is not greyed out, not hidden and
+     not a different object — it is the same object turned down. What this replaces is
+     `opacity:.48` on every disabled control in the app, which dims the BORDER and the LABEL and
+     the icon together and reads as breakage rather than as not-yet. */
+  --quiet-line:rgba(255,255,255,.12);
+  --quiet-ink:rgba(255,255,255,.38);
+
+  /*[[ THE ACCENT IS A FAMILY OF THREE, which is the single biggest thing taken from the bar.
+   *
+   *   Measured: rgb(203,82,251) fills and focuses, rgb(236,146,251) — a LIGHTER tint — borders
+   *   every accented control, and rgb(143,0,200) — a DARKER shade — is the primary button's fill.
+   *
+   *   --accent-deep is chosen for CONTRAST rather than by eye: white on #00794f measures 5.46:1,
+   *   which clears 4.5:1 for the button label at any size. The old primary button was the accent
+   *   at 10% alpha carrying the same accent at 90% as text — a tinted rectangle, which is the one
+   *   variant the bar does NOT have. Its primary is filled, once per screen, and everything else
+   *   is an outline.
+   *
+   *   The three alpha tokens carry the bar's own numbers — 12% fill, 38% border, 14% glow — so the
+   *   chip that names the model looks like the object it was learned from. ]]*/
+  --accent:#00d492;
+  --accent-light:#66efc2;
+  --accent-deep:#00794f;
+  --accent-soft:color-mix(in srgb,var(--accent) 12%,transparent);
+  --accent-ring:color-mix(in srgb,var(--accent-light) 38%,transparent);
+  --accent-glow:color-mix(in srgb,var(--accent) 14%,transparent);
+  /* The primary button's fill and label, under the names the rest of the product already reads.
+     --accent-fill was a 10% tint; it is the deep shade now, and --accent-on-fill is white rather
+     than the accent at 90%, so the one filled control on a screen is a filled control. */
+  --accent-fill:var(--accent-deep); --accent-on-fill:#ffffff;
+  --accent-line:var(--accent-ring);
+  /* THE LAST THREE NAMES OF A RETIRED ALIAS FAMILY, and a note on why two of them are still here.
+     `grep -rn acc-ember src`, run at the end of this pass: components/roadmap/marks.tsx reads
+     --acc-ember and nothing in this tree reads the other two — components/ws/composer.css dropped
+     its --acc-ember-ink reference while this file was being rewritten. They are one line, they now
+     resolve into the accent family rather than to a private value, and they are kept for one pass
+     because three peer stylesheets are uncommitted in this same checkout right now: deleting a name
+     another session is still writing against turns into a red guard in somebody else's run. The
+     next person to touch this block should check that grep again and delete both. */
+  --acc-ember:var(--accent); --acc-ember-soft:var(--accent-soft); --acc-ember-ink:var(--paper);
   --good:#99d4b0; --bad:#f6aaaa; --warn:#e7c991; --info:#a1c6ef; --future:#c5b3ef;
   --syntax-keyword:#e5b9eb; --syntax-string:#b5d9b5; --syntax-number:#ddc18f; --syntax-comment:#a6a6a6; --syntax-function:#a9d9ee;
-  /* ONE RADIUS DOES ALMOST ALL THE WORK, which is the discipline measured off the reference: 10px
-     on 343 elements, 6px on 56, pills reserved for buttons. Five sizes spread across a product is
-     how a page stops looking like one object. --r-md is the default; reach past it only for a
-     full-bleed panel (--r-lg) or something smaller than a chip (--r-xs). */
-  --r-lg:16px; --r-md:10px; --r-sm:10px; --r-xs:6px; --r-pill:999px;
 
-  /* MOTION, AS A VOCABULARY RATHER THAN A NUMBER PER RULE. --ease-out is the decelerating curve
-     everything that ENTERS uses; --ease-in-out is for something moving between two states it will
-     come back from. The three durations are the whole scale: a hover is instant enough to feel
-     attached to the cursor, a panel is slow enough to be followed, and nothing is slower. Every
-     one of them collapses to 0 under prefers-reduced-motion, at the bottom of this file. */
+  /* TWO RADII. Measured: 8px on 23 elements (cards, panels), 6px on 11 (every control), and
+     nothing rounder anywhere on the page. --r-md, --r-sm and --r-xs were 10/10/6 — three names
+     for the control radius — and are one value now, so a chip, a button, an input and a menu row
+     cannot drift apart. --r-lg was 16px, which is a panel that has started to look like a pill. */
+  --r-lg:8px; --r-md:6px; --r-sm:6px; --r-xs:6px;
+  /* ROUND GEOMETRY ONLY. Nothing stadium-shaped survives this pass, but 37 rules across this app
+     use this token to make a 6px DOT, a spinner ring, a meter cap or a switch track round — and a
+     6px radius on a 6px dot is a square. The token keeps its job and loses its buttons. */
+  --r-pill:999px;
+
+  /* FOUR CONTROL HEIGHTS AND NO MORE, quantised from the bar: 28 for a bare text button, 32 for a
+     chip or a nav item, 36 for a chrome button and the primary action, 50 for a large step CTA.
+     Padding tracks the height and is not round — 0 8.8px at 32 with 12px/1.2px uppercase text,
+     0 8px at 36 chrome, 0 16px at 36 primary, 12px 24px at 50 — and an icon-only button takes no
+     padding at all and is square instead. */
+  --h-xs:28px; --h-sm:32px; --h-md:36px; --h-lg:50px;
+
+  /*[[ MOTION: TWO BANDS AND A SIGNATURE CURVE, and a ceiling.
+   *
+   *   Measured on the bar: colour-only changes run 0.26s on cubic-bezier(0.32,0.72,0,1) — a hard
+   *   ease-out that leaves immediately and settles late — while background, border and transform
+   *   run 0.15s ease-out, with 0.2s reserved for the largest controls. NOTHING on that page takes
+   *   longer than 0.26s, and that ceiling is the reason it feels crisp rather than smooth.
+   *
+   *   Four of the five references measured agree on the shape: a fast band for anything under the
+   *   finger and a slow band for anything that moves on its own, with nothing in between. This
+   *   sheet's --t-fast was 120ms (below the fast band) and --t-slow was 420ms (above the ceiling,
+   *   and used by five stylesheets for entrance animations). They are 150 and 260 now, so one
+   *   token retunes 108 transitions and six entrances at once.
+   *
+   *   AMBIENT MOTION IS EXEMPT and says so where it is declared: weather measured in seconds is
+   *   not a response to anything, and the ceiling is about what happens under a finger. ]]*/
   --ease-out:cubic-bezier(.16,1,.3,1); --ease-in-out:cubic-bezier(.65,0,.35,1);
-  --t-fast:120ms; --t-base:200ms; --t-slow:420ms;
+  --ease-hard:cubic-bezier(.32,.72,0,1);
+  --t-color:.26s; --t-fast:.15s; --t-base:.2s; --t-slow:.26s;
 
-  /* DEPTH. Shadows are effectively absent from the reference and stay that way here: separation is
-     a hairline and a surface step. These two exist for the two things that genuinely float — a
-     menu over content, and a modal over everything — and nothing else may cast. */
-  --shadow-pop:0 10px 30px #0000004d; --shadow-modal:0 24px 70px #00000066;
+  /*[[ ELEVATION IS A GLOW, NOT A DROP SHADOW.
+   *
+   *   Measured: the accented chip carries `rgba(203,82,251,0.14) 0 0 12px`, focus is a 1px accent
+   *   ring plus a wider low-alpha halo, and the ONLY conventional shadow on the whole page is on
+   *   the primary button — an inset rim and a 2px lift, both of them near-black:
+   *   `rgba(0,0,0,0.18) 0 0 0 1px inset, rgba(0,0,0,0.22) 0 2px`. Everything else separates with a
+   *   hairline.
+   *
+   *   --shadow-pop and --shadow-modal keep their names because docs/DESIGN-LOCK.md licenses those
+   *   two and no others, and five stylesheets read them. What changed is what they contain: they
+   *   were `0 10px 30px #0000004d` and `0 24px 70px #00000066` — a 30px and a 70px blur of pure
+   *   black, which is the house style of every dark SaaS template and the thing the owner rejected
+   *   by name. ]]*/
+  --glow:0 0 12px var(--accent-glow);
+  --shadow-pop:0 0 12px var(--accent-glow); --shadow-modal:0 0 28px var(--accent-glow);
+  --shadow-primary:inset 0 0 0 1px rgba(0,0,0,.18),0 2px rgba(0,0,0,.22);
   font-family:var(--font-body); font-size:16px; line-height:1.55; color:var(--ink); background:var(--paper);
 }
+/* THE SAME SYSTEM INVERTED, not a second design. Every step keeps its ROLE — --paper is the page,
+   --surface is one step off it toward the light, --surface-3 is the track — and its TINT: green
+   above blue above red at every step here too.
+   TWO THINGS COULD NOT SIMPLY INVERT AND ARE NAMED. The accent: #00d492 measures 1.75:1 on a white
+   page, so the hue is kept and the value dropped until it clears — #00694a is 6.13:1 on the page
+   and 5.08:1 on --surface-2 — and --accent-light, which is a LIGHTER tint on black, has to be a
+   DARKER one here or a bordered control loses its border. The inks: white at 78% and 55% has no
+   light-theme equivalent that clears 4.5:1, so these are re-derived and measured — 17.6 / 9.0 /
+   6.3 on the page, 14.6 / 7.5 / 5.2 on --surface-2.
+   THIS BLOCK WAS TWO BLOCKS. A second `:root[data-theme='light']` two hundred lines further down
+   redeclared --accent, --accent-fill, --accent-on-fill, --accent-soft and --accent-line, and won
+   on source order — so the values written here were not the values that shipped, and anyone
+   reading the palette read the wrong half of it. There is one now. */
 :root[data-theme='light'] {
-  color-scheme:light; --paper:#fafafa; --paper-2:#f3f3f3; --surface:#ffffff; --surface-2:#eeeeee; --surface-3:#dddddd;
-  --ink:#202020; --muted:#555555; --faint:#636363; --line:#00000025;
-  /* The same accent, taken down the other way. #15603c is 5.58:1 at worst on the light ramp; the
-     fill is the same colour, so a primary button is one object in both themes rather than two. */
-  --accent:#15603c; --accent-fill:#15603c; --accent-on-fill:#ffffff;
-  --accent-soft:#15603c0f; --accent-line:#15603c40;
+  color-scheme:light;
+  --paper:#f2f5f3; --paper-2:#e8ede9; --surface:#ffffff; --surface-2:#d9e2dc; --surface-3:#ccd8d1;
+  --ink:#061009; --muted:#38463f; --faint:#4f5d56;
+  --line:rgba(6,16,9,.10); --line-strong:rgba(6,16,9,.20);
+  --control-fill:rgba(6,16,9,.05); --control-line:rgba(6,16,9,.18);
+  --quiet-line:rgba(6,16,9,.12); --quiet-ink:rgba(6,16,9,.42);
+  --accent:#00694a; --accent-light:#00553c; --accent-deep:#00563d;
+  /* The tint stays mixed from the BRIGHT green: a tint's job is to be a tint, and 12% of the dark
+     shade over a white page is a grey box. */
+  --accent-soft:color-mix(in srgb,#00d492 12%,transparent);
+  --accent-ring:color-mix(in srgb,var(--accent) 45%,transparent);
+  --accent-glow:color-mix(in srgb,var(--accent) 12%,transparent);
+  --accent-fill:var(--accent-deep); --accent-on-fill:#ffffff;
+  --accent-line:var(--accent-ring);
   --acc-ember-soft:var(--accent-soft); --acc-ember-ink:#ffffff;
   --good:#28633f; --bad:#a33131; --warn:#775620; --info:#345d95; --future:#74549a;
   --syntax-keyword:#773e81; --syntax-string:#326744; --syntax-number:#795e2d; --syntax-comment:#636363; --syntax-function:#285c7c;
+  /* The glow is the same mechanism with the light coming the other way: on paper a halo has to be
+     a shade rather than a tint, or it is invisible. */
+  --glow:0 0 12px var(--accent-glow);
+  --shadow-pop:0 0 12px var(--accent-glow); --shadow-modal:0 0 24px var(--accent-glow);
+  --shadow-primary:inset 0 0 0 1px rgba(0,0,0,.14),0 2px rgba(0,0,0,.16);
 }
 *,*::before,*::after { box-sizing:border-box; }
 body { margin:0; min-width:320px; }
 button,input,select,textarea { font:inherit; color:inherit; }
 button,a,input,select,textarea { -webkit-tap-highlight-color:transparent; }
-button { cursor:pointer; border:1px solid var(--line); border-radius:var(--r-md); background:transparent; padding:9px 14px; }
-button:disabled,[aria-disabled='true'] { cursor:not-allowed; opacity:.48; }
-button:hover:not(:disabled) { background:var(--surface-2); }
-button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-visible { outline:2px solid var(--accent); outline-offset:4px; }
+/* VARIANT 2 OF 5 — CHROME, and it is what a bare <button> is in this product.
+   Measured: rgba(255,255,255,.06) fill, 1px rgba(255,255,255,.18) border, rgba(255,255,255,.78)
+   label, 6px radius, 36px tall, 0 8px of padding. It was `border:1px solid var(--line);
+   background:transparent; padding:9px 14px` — a transparent box whose height was whatever 9px of
+   padding plus a 24.8px line box happened to make (44px, a fifth height), edged in a hairline four
+   points too faint to read as an edge.
+   THE FILL IS ALSO THE RESET. tests/button-reset.test.mjs requires this rule to declare a
+   background at all, because a <button> with none inherits the BROWSER's — #6b6b6b in dark mode,
+   a colour no token in this repository contains. It used to satisfy that with `transparent`; it
+   satisfies it with the measured chrome fill now.
+   THE TRANSITION IS THE SIGNATURE PAIR: colour-only properties on the hard ease-out at 0.26s,
+   everything else at 0.15s. Nothing here exceeds the ceiling. */
+button { cursor:pointer; min-height:var(--h-md); padding:0 8px; border:1px solid var(--control-line); border-radius:var(--r-md); background:var(--control-fill); color:var(--muted); font-size:14px; line-height:20px; letter-spacing:-.01em; transition:color var(--t-color) var(--ease-hard),background-color var(--t-color) var(--ease-hard),border-color var(--t-color) var(--ease-hard),box-shadow var(--t-fast) var(--ease-out); }
+/* VARIANT 4 OF 5 — UNAVAILABLE. The same object, turned down: same height, same radius, same
+   padding, same tracking as the live control beside it, with the border dropped from .18 to .12
+   and the label to 38%. What this replaces is `opacity:.48`, which fades the border, the label and
+   any icon together and reads as breakage rather than as not-yet. `background:transparent` is part
+   of the shape: a filled control that cannot be pressed is the one that looks broken.
+   `box-shadow:none` takes the primary button's lift away with its fill, so an unavailable primary
+   stops pretending to float. */
+button:disabled,[aria-disabled='true'] { cursor:not-allowed; background:transparent; border-color:var(--quiet-line); color:var(--quiet-ink); box-shadow:none; }
+/* HOVER LIFTS THE LABEL, NOT THE OBJECT. A translucent step rather than --surface-2, so a control
+   standing on a raised panel still lifts — an opaque hover fill is invisible on the surface whose
+   colour it happens to be. */
+button:hover:not(:disabled):not([aria-disabled='true']) { background:color-mix(in srgb,var(--ink) 12%,transparent); color:var(--ink); }
+button:active:not(:disabled):not([aria-disabled='true']) { background:color-mix(in srgb,var(--ink) 18%,transparent); }
+/* FOCUS IS A RING PLUS A WIDER HALO, which is how the bar draws it: `accent 0 0 0 1px` and a
+   low-alpha glow behind it. The outline carries the ring; --glow carries the halo, and focus-halo
+   opens it rather than snapping it on. */
+button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-visible { outline:2px solid var(--accent); outline-offset:4px; box-shadow:var(--glow); animation:focus-halo var(--t-fast) var(--ease-out); }
 a { color:inherit; text-underline-offset:4px; } img,video,canvas { max-width:100%; } svg { flex:none; vertical-align:middle; }
 h1,h2,h3,h4,p { margin-top:0; }
 /* ONE WEIGHT, AND THIS IS THE LINE THAT WAS MISSING. The rule below sets family, line-height and
@@ -89,7 +263,11 @@ h1,h2,h3,h4,p { margin-top:0; }
 h1,h2,h3,h4,h5,h6 { font-weight:400; }
 h1,h2,h3 { font-family:var(--font-display); line-height:1.25; letter-spacing:-.025em; }
 h1 { font-size:clamp(32px,5vw,54px); } h2 { font-size:30px; } h3 { font-size:22px; }
-input:not([type='checkbox']):not([type='radio']),select,textarea { border:1px solid var(--line); background:var(--surface); border-radius:4px; padding:12px; max-width:100%; }
+/* A FIELD IS A CONTROL AND TAKES THE CONTROL RADIUS. This was `border-radius:4px` — a fifth
+   radius, written nowhere else, on every input in the product. */
+input:not([type='checkbox']):not([type='radio']),select,textarea { border:1px solid var(--control-line); background:var(--surface); border-radius:var(--r-md); padding:12px; max-width:100%; }
+input:not([type='checkbox']):not([type='radio']),select { min-height:var(--h-md); padding:0 12px; }
+input:not([type='checkbox']):not([type='radio']):focus-visible,textarea:focus-visible,select:focus-visible { border-color:var(--accent-ring); }
 textarea { resize:vertical; } input[type='checkbox'],input[type='radio'] { accent-color:var(--accent); }
 button svg { width:17px; height:17px; } [hidden] { display:none !important; }
 .gx-sr,.visually-hidden,.sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
@@ -100,13 +278,13 @@ a.gx-sr:focus { z-index:1000; top:10px; inset-inline-start:10px; width:auto; hei
    It was `background: var(--ink)` — a white button, which is what a product looks like when it has
    no colour of its own. The fill is dark enough against the page (2.6:1) to read as a raised object
    rather than a glow, and carries --ink at 6.4:1. See docs/DESIGN-LOCK.md. */
-.btn-primary,.gx-btn--primary { color:var(--accent-on-fill); background:var(--accent-fill); border-color:transparent; border-radius:var(--r-md); min-height:36px; padding:0 12px; font-size:14px; }
+.btn-primary,.gx-btn--primary { color:var(--accent-on-fill); background:var(--accent-deep); border:1px solid var(--accent-deep); border-radius:var(--r-md); min-height:var(--h-md); padding:0 16px; font-size:14px; box-shadow:var(--shadow-primary); }
 /* Hover deepens the TINT rather than darkening a fill — the object is a piece of coloured light on
    the surface, so more of it is the only response that keeps it the same object. */
-.btn-primary:hover:not(:disabled),.gx-btn--primary:hover:not(:disabled) { color:var(--accent); background:color-mix(in srgb,var(--accent) 18%,transparent); border-color:transparent; }
+.btn-primary:hover:not(:disabled),.gx-btn--primary:hover:not(:disabled) { color:var(--accent-on-fill); background:color-mix(in srgb,var(--accent-deep) 80%,var(--accent)); border-color:color-mix(in srgb,var(--accent-deep) 80%,var(--accent)); }
 /* PRESSED IS A STATE, not a missing one. Without it a button that is doing something looks
    identical to one that has not been touched, which is how a person clicks twice. */
-.btn-primary:active:not(:disabled),.gx-btn--primary:active:not(:disabled) { background:color-mix(in srgb,var(--accent) 26%,transparent); }
+.btn-primary:active:not(:disabled),.gx-btn--primary:active:not(:disabled) { background:color-mix(in srgb,var(--accent-deep) 86%,#000000); animation:press-settle var(--t-fast) var(--ease-out); }
 .btn,.gx-btn { display:inline-flex; gap:8px; align-items:center; justify-content:center; text-decoration:none; }
 /* THE TWO BUTTON VARIANTS THAT EXISTED ONLY IN THE MARKUP. `--primary` above has had a rule since
    the beginning; `--outline` and `--ghost` never did, across 29 uses in seven files. On a <button>
@@ -119,29 +297,72 @@ a.gx-sr:focus { z-index:1000; top:10px; inset-inline-start:10px; width:auto; hei
    `--ghost` had the opposite defect, and it was a false statement rather than an omission: every
    ghost button drew the full border the element rule gives it, so the borderless variant was
    indistinguishable from the default one and the word in the class name meant nothing. */
-.gx-btn--outline { border:1px solid var(--line); border-radius:var(--r-md); padding:9px 14px; background:transparent; color:var(--ink); }
-.gx-btn--outline:hover:not(:disabled):not([aria-disabled='true']) { background:var(--surface-2); }
-.gx-btn--ghost { border-color:transparent; background:transparent; color:var(--muted); }
-.gx-btn--ghost:hover:not(:disabled) { background:var(--surface-2); color:var(--ink); }
-.gx-icon-btn { display:inline-grid; place-items:center; width:38px; height:38px; padding:8px; border:0; }
-.gx {
-  --gx-ground:var(--paper); --gx-rail:var(--surface); --gx-raise:var(--surface); --gx-raise-2:var(--surface-2);
-  --gx-ink:var(--ink); --gx-ink-warm:var(--ink); --gx-ink-2:var(--muted); --gx-ink-3:var(--faint);
-  --gx-line:var(--line); --gx-line-2:var(--line); --gx-amber:var(--accent); --gx-ember:var(--accent);
-  --gx-ember-soft:var(--acc-ember-soft); --gx-cream:var(--ink); --gx-cream-ink:var(--paper);
-  --gx-good:var(--good); --gx-bad:var(--bad); --gx-warn:var(--warn); --gx-r:4px; --gx-r-lg:8px; --gx-mono:var(--font-mono);
-}
+/* VARIANT 2 OF 5 again, under its own name, because half its users are anchors and an anchor
+   inherits none of the <button> element rule above. Same four measured numbers. */
+.gx-btn--outline { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:var(--h-md); padding:0 8px; font-size:14px; line-height:20px; letter-spacing:-.01em; border:1px solid var(--control-line); border-radius:var(--r-md); background:var(--control-fill); color:var(--muted); transition:color var(--t-color) var(--ease-hard),background-color var(--t-color) var(--ease-hard),border-color var(--t-color) var(--ease-hard); }
+.gx-btn--outline:hover:not(:disabled):not([aria-disabled='true']) { background:color-mix(in srgb,var(--ink) 12%,transparent); color:var(--ink); }
+/* VARIANT 5 OF 5 — THE BARE TEXT BUTTON, 28px, the smallest of the four heights and the only one
+   with no edge at all. It is what the bar uses for an action that is present but not being
+   offered — a Cancel beside a Save. */
+.gx-btn--ghost { min-height:var(--h-xs); padding:0 8px; font-size:14px; line-height:20px; border-color:transparent; background:transparent; color:var(--muted); }
+.gx-btn--ghost:hover:not(:disabled) { background:var(--control-fill); color:var(--ink); }
+/* ICON-ONLY: fully transparent including the border, square, and taking no padding — the glyph is
+   centred by the box rather than by a padding written for a word. 38px was a fifth size; 32 is the
+   measured one. */
+.gx-icon-btn { display:inline-grid; place-items:center; width:var(--h-sm); height:var(--h-sm); min-height:var(--h-sm); padding:0; border:1px solid transparent; background:transparent; color:var(--muted); }
+.gx-icon-btn:hover:not(:disabled):not([aria-disabled='true']) { background:var(--control-fill); color:var(--ink); }
+/*[[ THE MODEL CHIP — the single most copyable object on the bar, and the one our composer already
+ *   has and did not look like.
+ *
+ *   Measured, all five numbers: 32px tall, 6px radius, filled with the accent at 12%, bordered
+ *   with the LIGHTER accent tint at 38%, and glowing `rgba(accent,0.14) 0 0 12px`. It sits inside
+ *   the composer next to the attachment control and names the model that will answer, which is
+ *   exactly what ours does.
+ *
+ *   `:has(.model-signature)` rather than a new class, because this sheet cannot add one to the
+ *   markup and a class nothing applies is dead code. components/ws/composer.tsx renders the model
+ *   chip as `<button className="gx-chip"><ModelMark/>…</button>` and renders that mark nowhere
+ *   else in the tool bar, so this selector reaches exactly one control at runtime.
+ *
+ *   FOR WHOEVER READS THIS NEXT: components/ws/composer.css deliberately de-accents the mark
+ *   INSIDE this chip (`.gx-composer__bar .model-signature { color:currentColor }`) so the glyph
+ *   belongs to the chip rather than competing with Send. That decision survives untouched — the
+ *   mark is still currentColor. What changed is the chip around it, which is the object the bar
+ *   accents and the one place this product had an accent to spend and was not spending it. ]]*/
+.gx-chip:has(.model-signature) { min-height:var(--h-sm); border-radius:var(--r-md); background:var(--accent-soft); border:1px solid var(--accent-ring); color:var(--accent-light); box-shadow:var(--glow); }
+.gx-chip:has(.model-signature):hover:not(:disabled) { background:color-mix(in srgb,var(--accent) 18%,transparent); color:var(--accent-light); }
+
+/*[[ VARIANT 3 OF 5 — THE ACCENTED OUTLINE, which is the variant this product did not have.
+ *
+ *   Measured: NO fill at all, a 1px border of the lighter accent tint at 38%, and a label in that
+ *   same lighter tint. It is how the bar marks the one control in a row that is selected or
+ *   special WITHOUT spending the single filled button a screen is allowed.
+ *
+ *   These three selectors are where the product was spending a fill instead. Two of them —
+ *   the stage surface tabs and the preview scenario switches — were `background:var(--ink);
+ *   color:var(--paper)`: a WHITE filled button, which on a screen that already has one filled
+ *   primary is two answers to the question of what to press. The third is the generic pressed
+ *   chip, which painted the accent on an accent tint and had no edge. ]]*/
+.gx-chip[aria-pressed='true'],.gx-project-stage__surfaces button[aria-selected='true'],.preview-scenarios button[aria-pressed='true'] { background:transparent; border:1px solid var(--accent-ring); color:var(--accent-light); box-shadow:var(--glow); }
+/* THE WORKSPACE SCOPE. This block used to declare twenty-one `--gx-*` aliases of the tokens above
+   — a second name for every colour, every line, two more radii and the mono stack. Nothing read
+   any of them: `grep -roE "var\(--gx-[a-z0-9-]+" src` returns exactly one name, --gx-dock-w, and
+   that one is declared in components/layout.css. Twenty-one dead tokens is not free — the next
+   person looking for the workspace palette finds a complete, plausible one and edits it, and
+   nothing on the screen moves. They are gone; what is left is the scope doing an actual job, which
+   is owning the ground the shell paints on. */
+.gx { background:var(--paper); color:var(--ink); }
 .gx-shell { min-height:100dvh; width:100%; background:var(--paper); }
 .gx-main { min-height:100dvh; width:calc(100% - 76px); margin-inline-start:76px; position:relative; }
-.studio-dock { position:fixed; inset-block:0; inset-inline-start:0; z-index:55; width:76px; display:flex; flex-direction:column; align-items:center; gap:17px; padding:23px 12px; border-inline-end:1px solid var(--line); background:linear-gradient(140deg,#151515a6,#080808db 50%); backdrop-filter:blur(18px); }
-.studio-dock > button,.studio-dock > a { display:grid; place-items:center; width:44px; height:44px; padding:10px; border:0; border-radius:var(--r-md); color:var(--muted); text-decoration:none; }
+.studio-dock { position:fixed; inset-block:0; inset-inline-start:0; z-index:55; width:76px; display:flex; flex-direction:column; align-items:center; gap:17px; padding:23px 12px; border-inline-end:1px solid var(--line); background:color-mix(in srgb,var(--paper-2) 88%,transparent); backdrop-filter:blur(18px); }
+.studio-dock > button,.studio-dock > a { display:grid; place-items:center; width:var(--h-md); height:var(--h-md); min-height:var(--h-md); padding:0; border:1px solid transparent; background:transparent; border-radius:var(--r-md); color:var(--muted); text-decoration:none; }
 .studio-dock > :is(button,a):hover { background:var(--surface-2); color:var(--ink); }
 .studio-dock .studio-dock__brand { margin-bottom:12px; color:var(--ink); } .studio-dock__brand .model-signature { width:34px; height:34px; }
-.studio-dock .studio-dock__account { margin-top:auto; background:linear-gradient(130deg,#ffffff16,#ffffff03); box-shadow:inset 0 1px #ffffff10; }
+.studio-dock .studio-dock__account { margin-top:auto; background:var(--control-fill); border-color:var(--control-line); }
 .studio-navigation svg,.studio-dock svg { width:21px; height:21px; }
 .gx-ws { position:relative; z-index:1; height:100dvh; display:grid; grid-template-rows:72px minmax(0,1fr) auto; overflow:hidden; }
 .gx-top { display:flex; align-items:center; gap:12px; padding:16px 30px; border-bottom:1px solid var(--line); }
-.gx-top__title { margin:0; font:500 14px var(--font-body); border:0; padding:4px 0; max-width:35vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.gx-top__title { margin:0; font:400 14px var(--font-body); border:0; background:transparent; min-height:var(--h-xs); padding:4px 0; max-width:35vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .gx-top__when { color:var(--faint); font-size:12px; }
 /* THE TOPBAR CONTROL PAIR, whose behaviour was written down in workspace.tsx and implemented
    nowhere. The comment beside the Roadmap link states that `gx-top__cp` is what gives a topbar
@@ -151,13 +372,13 @@ a.gx-sr:focus { z-index:1000; top:10px; inset-inline-start:10px; width:auto; hei
    describing a rule nobody wrote is worse than no comment at all: it is read as a reason not to
    check. Both controls already carry an aria-label precisely because of this collapse — a
    display:none span contributes nothing to an accessible name — so the label may be hidden. */
-.gx-top__cp { min-height:38px; padding-inline:12px; font-size:12px; flex:none; white-space:nowrap; }
+.gx-top__cp { min-height:var(--h-md); padding-inline:12px; font-size:12px; flex:none; white-space:nowrap; }
 @media (max-width:860px) { .gx-top__cp-label { display:none; } .gx-top__cp { padding-inline:10px; } }
 .studio-workspace-controls { display:flex; align-items:center; gap:24px; margin-inline-start:auto; }
-.studio-preview-toggle,.studio-project-menu > summary { border:0; padding:8px 0; font-size:14px; }
+.studio-preview-toggle,.studio-project-menu > summary { border:0; background:transparent; min-height:var(--h-xs); padding:0; font-size:14px; }
 .studio-preview-toggle span,.studio-project-menu summary span { margin-inline-start:12px; color:var(--accent); }
 .studio-project-menu { position:relative; } .studio-project-menu summary { list-style:none; cursor:pointer; } .studio-project-menu summary::-webkit-details-marker { display:none; }
-.gx-top__actions { position:absolute; z-index:30; inset-block-start:42px; inset-inline-end:0; width:270px; padding:12px; border:1px solid var(--line); background:var(--surface); box-shadow:0 12px 35px #0002; display:grid; gap:4px; }
+.gx-top__actions { position:absolute; z-index:30; inset-block-start:42px; inset-inline-end:0; width:270px; padding:12px; border:1px solid var(--line); background:var(--surface); box-shadow:var(--shadow-pop); border-radius:var(--r-lg); display:grid; gap:4px; animation:pop-open var(--t-fast) var(--ease-out); }
 .gx-top__actions > button,.gx-top__actions > a { width:100%; height:auto; justify-content:flex-start; text-align:start; padding:10px; display:flex; gap:9px; }
 .gx-top__actions > .gx-icon-btn::after { content:attr(title); font-size:14px; }
 .gx-pill { font-size:13px; display:inline-flex; flex:none; align-items:center; gap:6px; padding:8px; } .gx-pill__short,.gx-dot { display:none; }
@@ -171,13 +392,18 @@ a.gx-sr:focus { z-index:1000; top:10px; inset-inline-start:10px; width:auto; hei
 .start-sheet { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:28px; padding:35px 0 55px; text-align:center; }
 .studio-caption { display:block; font:11px var(--font-mono); letter-spacing:.1em; color:var(--muted); margin-bottom:26px; }
 .start-sheet h1 { margin-bottom:14px; font-size:clamp(27px,3vw,36px); letter-spacing:-.035em; line-height:1.3; font-weight:400; }
-.start-sheet__identity { display:inline-grid; margin-bottom:26px; filter:drop-shadow(0 0 20px #ffffff55); }
+/* THE MARK GLOWS IN THE PRODUCT'S COLOUR, not in white. A 20px white drop-shadow on a black page
+   is a light source the rest of the system does not have. */
+.start-sheet__identity { display:inline-grid; margin-bottom:26px; filter:drop-shadow(0 0 16px var(--accent-glow)); }
 .start-sheet__identity .model-signature { width:52px; height:52px; }
-.start-sheet__lead { animation:type-arrive 700ms var(--ease-out) both; }
+.start-sheet__lead { animation:type-arrive var(--t-slow) var(--ease-out) both; }
 .start-sheet__lead p { font-size:14px; line-height:1.6; margin:0; color:var(--muted); }
 .start-sheet__ideas { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
-.start-sheet__ideas > button { display:flex; gap:17px; align-items:center; font-size:12px; border:1px solid var(--line); background:#ffffff04; border-radius:var(--r-md); padding:12px 16px; transition:background 180ms,border-color 180ms; }
-.start-sheet__ideas > button:hover { border-color:#ffffff50; color:var(--ink); background:#ffffff0b; } .start-sheet__ideas > button > span:last-child { color:var(--faint); }
+/* THE SUGGESTION CHIPS ARE CHROME, all of them, and none of them is the primary — the composer
+   below is. 50px is the fourth measured height, the one reserved for a large step CTA, and these
+   are exactly that: the step a reader takes instead of typing. Padding tracks it at 12px 24px. */
+.start-sheet__ideas > button { display:flex; gap:17px; align-items:center; min-height:var(--h-lg); font-size:12px; border:1px solid var(--control-line); background:var(--control-fill); color:var(--muted); border-radius:var(--r-md); padding:12px 24px; transition:color var(--t-color) var(--ease-hard),background-color var(--t-color) var(--ease-hard),border-color var(--t-color) var(--ease-hard); }
+.start-sheet__ideas > button:hover { border-color:var(--accent-ring); color:var(--ink); background:color-mix(in srgb,var(--ink) 12%,transparent); } .start-sheet__ideas > button > span:last-child { color:var(--faint); }
 .start-sheet__number { color:var(--faint); font:11px var(--font-mono); padding-top:5px; }
 .start-sheet__aside { display:block; font-size:13px; line-height:1.6; color:var(--faint); margin-top:22px; }
 .studio-atmosphere { position:fixed; inset-block:0; inset-inline:76px 0; overflow:hidden; pointer-events:none; z-index:0; background:radial-gradient(ellipse at 55% 35%,#ffffff06,transparent 43%),radial-gradient(ellipse at 105% 90%,#ffffff09,transparent 45%); }
@@ -227,7 +453,14 @@ a.gx-sr:focus { z-index:1000; top:10px; inset-inline-start:10px; width:auto; hei
   from { transform:translate3d(-3%,2%,0) scale(1); opacity:.55; }
   to   { transform:translate3d(4%,-3%,0) scale(1.12); opacity:.95; }
 }
-.studio-atmosphere__dust { position:absolute; inset:0; opacity:.3; background-image:radial-gradient(circle at 15% 20%,#fff9 0 .6px,transparent 1px),radial-gradient(circle at 73% 39%,#fff6 0 .5px,transparent 1px),radial-gradient(circle at 47% 75%,#fff5 0 .7px,transparent 1px); background-size:311px 263px,419px 337px,593px 457px; }
+.studio-atmosphere__dust { position:absolute; inset:0; opacity:.3; background-image:radial-gradient(circle at 15% 20%,#fff9 0 .6px,transparent 1px),radial-gradient(circle at 73% 39%,#fff6 0 .5px,transparent 1px),radial-gradient(circle at 47% 75%,#fff5 0 .7px,transparent 1px); background-size:311px 263px,419px 337px,593px 457px; animation:ambient-dust 96s linear infinite; }
+/* AMBIENT, AND EXEMPT FROM THE 0.26s CEILING — the ceiling is about what happens under a finger.
+   Three layers on three periods with no common multiple anybody will sit through (96s here, 41s on
+   the aurora, 24s on the mesh, 14s on the beam), so the field never repeats a frame it has already
+   shown. It is stopped twice over: by `.studio-atmosphere.is-still *` a few rules below, which the
+   workspace applies for a hidden tab AND for a reduced-motion reader, and by the universal
+   reduced-motion block at the foot of this file. */
+@keyframes ambient-dust { from { background-position:0 0,0 0,0 0; } to { background-position:311px 263px,-419px 337px,593px -457px; } }
 /* `*` does not reach a pseudo-element on the container itself, so the aurora is named. Somebody
    who asked for less motion was still being given the biggest moving thing on the page. */
 .studio-atmosphere.is-still *,
@@ -235,24 +468,38 @@ a.gx-sr:focus { z-index:1000; top:10px; inset-inline-start:10px; width:auto; hei
 @keyframes ambient-drift { from { transform:translate3d(0,8px,0) rotate(-1deg); opacity:.1; } to { transform:translate3d(18px,-10px,0) rotate(1deg); opacity:.2; } }
 @keyframes ambient-breath { from { opacity:.5; transform:rotate(4deg) scaleX(.8); } to { opacity:1; transform:rotate(-3deg) scaleX(1.1); } }
 :root[data-theme='light'] .studio-atmosphere { opacity:.2; filter:invert(1); }
-:root[data-theme='light'] .studio-dock { background:#f0f0f0d9; }
-:root[data-theme='light'] .gx-composer__inner { background:#fffffff0; border-color:#0003; box-shadow:0 4px 20px #0001; }
-:root[data-theme='light'] .gx-user { background:#00000006; }
+:root[data-theme='light'] .studio-dock { background:color-mix(in srgb,var(--paper-2) 88%,transparent); }
+:root[data-theme='light'] .gx-composer__inner { background:var(--surface); border-color:var(--control-line); box-shadow:var(--shadow-pop); }
+:root[data-theme='light'] .gx-user { background:var(--control-fill); }
 .gx-main > .page { position:relative; z-index:1; }
 .gx-composer { margin-inline:auto; width:min(940px,100%); padding:12px 36px 26px; }
 .gx-ws:has(.start-sheet) .gx-composer { width:min(940px,100%); padding-bottom:34px; }
-.gx-composer__inner { background:linear-gradient(120deg,#ffffff10,#ffffff04 45%,#ffffff09),#151515c9; border:1px solid #ffffff40; border-top-color:#ffffff86; border-inline-start-color:#ffffff65; border-radius:24px; box-shadow:inset 0 1px 1px #ffffff16,0 12px 40px #0004; backdrop-filter:blur(28px); position:relative; transition:border-color 180ms,box-shadow 180ms; }
-.gx-composer__inner:focus-within { border-color:#ffffff91; box-shadow:inset 0 1px 1px #ffffff20,0 0 30px #ffffff09; } .gx-composer textarea { width:100%; display:block; resize:none; min-height:100px; max-height:220px; border:0; padding:22px 24px 10px; font-size:16px; background:transparent; outline:0; }
+/* THE COMPOSER IS A PANEL AND TAKES THE PANEL RADIUS. It was 24px — three times the measured
+   panel radius and by a wide margin the roundest thing in the product — over a stack of six raw
+   white alphas and a 40px black blur. Now: the raised surface, the chrome border, the panel
+   radius, and a glow instead of a drop shadow. */
+.gx-composer__inner { background:color-mix(in srgb,var(--surface) 86%,transparent); border:1px solid var(--control-line); border-radius:var(--r-lg); box-shadow:var(--shadow-pop); backdrop-filter:blur(28px); position:relative; transition:border-color var(--t-color) var(--ease-hard),box-shadow var(--t-fast) var(--ease-out); }
+/* FOCUS PUTS THE ACCENT ON THE EDGE, which is the bar's own answer: the accented control is the
+   one with the accent BORDER, never the one with a brighter white rim. */
+.gx-composer__inner:focus-within { border-color:var(--accent-ring); box-shadow:var(--glow); } .gx-composer textarea { width:100%; display:block; resize:none; min-height:100px; max-height:220px; border:0; padding:22px 24px 10px; font-size:16px; background:transparent; outline:0; }
 .gx-composer textarea::placeholder { color:var(--faint); }
 .gx-ws:not(:has(.start-sheet)) .gx-composer textarea { min-height:64px; padding-top:16px; }
 .gx-composer__bar { display:flex; gap:8px; align-items:center; padding:8px 14px 13px; flex-wrap:wrap; }
-.gx-chip { display:inline-flex; gap:7px; align-items:center; border:1px solid transparent; border-radius:var(--r-md); padding:6px 9px; min-height:36px; font-size:12px; }
-.gx-chip[aria-pressed='true'] { color:var(--accent); background:var(--acc-ember-soft); }
-.gx-composer__tools { margin-inline-start:auto; display:flex; gap:8px; align-items:center; } .gx-composer__tools > button:not(.gx-send) { border:0; padding:8px; }
-.gx-send { width:38px; height:38px; display:grid; place-items:center; border:1px solid #ffffff30; border-radius:var(--r-md); color:#f3f3f3; background:linear-gradient(145deg,#8b8b8b,#343434); box-shadow:inset 0 1px 1px #ffffff65,0 0 15px #ffffff0d; }
-.gx-send:hover:not(:disabled) { background:var(--ink); color:var(--paper); } .gx-send:disabled { background:var(--surface-3); color:var(--faint); opacity:1; }
+/* A CHIP IS 32px AND ITS PADDING TRACKS THAT HEIGHT: 0 8.8px at 32, measured, with 12px text. It
+   was 36px with 6px 9px of padding — the chrome height wearing a chip's type. */
+.gx-chip { display:inline-flex; gap:7px; align-items:center; border:1px solid var(--control-line); border-radius:var(--r-md); padding:0 8.8px; min-height:var(--h-sm); font-size:12px; background:var(--control-fill); color:var(--muted); }
+.gx-composer__tools { margin-inline-start:auto; display:flex; gap:8px; align-items:center; } .gx-composer__tools > button:not(.gx-send) { border:1px solid transparent; background:transparent; width:var(--h-sm); height:var(--h-sm); min-height:var(--h-sm); padding:0; display:grid; place-items:center; }
+/* THE ONE FILLED BUTTON ON THE WORKSPACE, drawn as the primary rather than as a grey gradient
+   behind a white rim. Square at 36 — the primary height — and it carries --shadow-primary, which
+   is the only conventional shadow this system allows and the only place it is spent.
+   (components/ws/composer.css restates the fill for the in-composer instance and owns its stop and
+   disabled states; this is the object those rules refine, and they now refine the same object.) */
+.gx-send { width:var(--h-md); height:var(--h-md); min-height:var(--h-md); padding:0; display:grid; place-items:center; border:1px solid var(--accent-deep); border-radius:var(--r-md); color:var(--accent-on-fill); background:var(--accent-deep); box-shadow:var(--shadow-primary); }
+.gx-send:hover:not(:disabled) { background:color-mix(in srgb,var(--accent-deep) 80%,var(--accent)); border-color:color-mix(in srgb,var(--accent-deep) 80%,var(--accent)); color:var(--accent-on-fill); }
+.gx-send:active:not(:disabled) { animation:press-settle var(--t-fast) var(--ease-out); }
+.gx-send:disabled { background:transparent; border-color:var(--quiet-line); color:var(--quiet-ink); box-shadow:none; opacity:1; }
 .gx-composer__note { text-align:center; color:var(--faint); font-size:10px; margin:13px 0 0; } .gx-creation-note { font-size:12px; color:var(--muted); margin:12px 0 0; }
-.gx-composer__count { font:11px var(--font-mono); text-align:end; padding-inline:16px; } .gx-composer__count.is-full { color:var(--bad); }
+.gx-composer__count { font:11px var(--font-mono); text-align:end; padding-inline:16px; } .gx-composer__count.is-full { color:var(--bad); animation:count-flash var(--t-slow) var(--ease-out); }
 .model-signature { width:30px; height:30px; display:inline-grid; place-items:center; color:var(--accent); flex-shrink:0; }
 .model-signature svg { width:100%; height:100%; }
 .model-signature--apple { color:var(--ink); }
@@ -270,13 +517,28 @@ a.gx-sr:focus { z-index:1000; top:10px; inset-inline-start:10px; width:auto; hei
    it now shimmers in the product's colour instead of against it. If the owner wants the rainbow
    back it is one declaration and this comment says which. */
 .apple-max-name { display:inline-block; color:var(--accent); background:linear-gradient(90deg,var(--accent) 0%,color-mix(in srgb,var(--accent) 55%,var(--ink)) 50%,var(--accent) 100%); background-size:200% 100%; background-clip:text; -webkit-text-fill-color:transparent; animation:max-ink 2.4s linear infinite; font-weight:750; }
-.gx-turn { margin:0 0 30px; } .gx-turn--user { margin-inline-start:20%; display:flex; flex-direction:column; align-items:flex-end; } .gx-user { font-size:15px; line-height:1.65; border:1px solid var(--line); border-radius:var(--r-lg); padding:12px 18px; white-space:pre-wrap; overflow-wrap:anywhere; background:linear-gradient(135deg,#ffffff10,#ffffff05); width:fit-content; max-width:100%; }
-.gx-user__foot { display:flex; justify-content:end; align-items:center; gap:12px; margin-top:6px; } .gx-user__foot button { border:0; padding:3px; font-size:12px; }
+.gx-turn { margin:0 0 30px; } .gx-turn--user { margin-inline-start:20%; display:flex; flex-direction:column; align-items:flex-end; } .gx-user { font-size:15px; line-height:1.65; border:1px solid var(--line); border-radius:var(--r-lg); padding:12px 18px; white-space:pre-wrap; overflow-wrap:anywhere; background:var(--control-fill); width:fit-content; max-width:100%; }
+.gx-user__foot { display:flex; justify-content:end; align-items:center; gap:12px; margin-top:6px; } .gx-user__foot button { border:0; background:transparent; min-height:var(--h-xs); padding:0 4px; font-size:12px; }
 .gx-mark { display:none; } .gx-turn__body { min-width:0; } .gx-stamp { color:var(--faint); font-size:11px; display:flex; gap:7px; margin-top:10px; }
 .gx-prose,.markdown { line-height:1.75; font-size:16px; overflow-wrap:anywhere; } .gx-prose p,.markdown p { margin-bottom:16px; } .gx-prose :is(h1,h2,h3),.markdown :is(h1,h2,h3) { margin-top:24px; }
 pre { overflow:auto; border:1px solid var(--line); padding:18px; background:var(--surface-2); font-size:13px; } code { font-size:.87em; }
-.gx-outcome__retry { border:0; border-bottom:1px solid var(--line); border-radius:0; font-size:12px; padding:4px 0; }
-.gx-think { margin-bottom:10px; } .gx-think__head { display:flex; align-items:center; gap:8px; }
+.gx-outcome__retry { border:0; background:transparent; border-bottom:1px solid var(--line); border-radius:0; min-height:var(--h-xs); font-size:12px; padding:0; }
+/*[[ THE THINKING CARD IS A PANEL NOW, because it was never an object at all.
+ *
+ *   `margin-bottom:10px` was the whole of it: a header row and a body floating directly on the
+ *   thread with nothing containing them, which is what a blind critic meant by "text on a
+ *   background rather than a designed screen". The bar's panel is one shape repeated — 8px
+ *   radius, a 1px rgba(255,255,255,0.08) hairline, a raised fill — with its internal bands
+ *   supplying their own spacing rather than the panel padding everything.
+ *
+ *   AND IT IS THE OBJECT THE ACCENT IS SPENT ON WHILE A RUN IS IN FLIGHT. `is-live` is already on
+ *   this element (thinking.tsx sets it, and `.gx-think.is-live .gx-think__word` below has read it
+ *   since the redesign), so the accented state is REACHED rather than declared: an accent-ring
+ *   edge and the measured 12px glow at 14%, which is the treatment the bar gives the one chip it
+ *   accents. When the run ends the class goes and the card returns to a hairline. ]]*/
+.gx-think { margin-bottom:10px; border:1px solid var(--line); border-radius:var(--r-lg); background:var(--paper-2); }
+.gx-think.is-live { border-color:var(--accent-ring); box-shadow:var(--glow); }
+.gx-think__head { display:flex; align-items:center; gap:8px; padding-inline:14px; }
 /* model-mark.tsx emits `model-signature`, never `model-mark`, so the 18px cap never applied and
    the header glyph rendered at its intrinsic size beside 14px text. */
 .gx-think__toggle .model-signature { width:18px; height:18px; }
@@ -302,7 +564,7 @@ pre { overflow:auto; border:1px solid var(--line); padding:18px; background:var(
 .gx-think.is-live .gx-think__word { background:linear-gradient(100deg,var(--muted) 20%,var(--ink) 50%,var(--muted) 80%); background-size:220% 100%; color:var(--muted); background-clip:text; -webkit-text-fill-color:transparent; animation:thinking-light 2.8s ease-in-out infinite; }
 .gx-think.is-reduced .gx-think__word,.gx-think.is-page-hidden .gx-think__word { animation:none; }
 @keyframes thinking-light { 0%,100% { background-position:100% 0; } 50% { background-position:0% 0; } }
-.gx-think__word { font-size:14px; font-weight:400; } .gx-think__hint { color:var(--faint); font-size:12px; margin-inline-start:auto; } .gx-think__chev { display:flex; } .gx-think__sound { border:0; padding:5px; font-size:12px; }
+.gx-think__word { font-size:14px; font-weight:400; } .gx-think__hint { color:var(--faint); font-size:12px; margin-inline-start:auto; } .gx-think__chev { display:flex; } .gx-think__sound { border:0; background:transparent; min-height:var(--h-xs); padding:0 5px; font-size:12px; }
 /* THE ONLY CHEVRON IN THE BUNDLE THAT DID NOT TURN. Measured open and shut in Chromium: both
    reported `transform: none`, so the one visible acknowledgement that the click landed was the
    content appearing — and on a card whose body is a height transition, that reads as a delay.
@@ -314,7 +576,7 @@ pre { overflow:auto; border:1px solid var(--line); padding:18px; background:var(
    pointing the right way, it simply gets there without travelling. */
 .gx-think__chev { transition:transform var(--t-base) var(--ease-in-out); }
 .gx-think__toggle[aria-expanded='true'] .gx-think__chev { transform:rotate(180deg); }
-.gx-think__body { display:none; } .gx-think__body.is-open { display:block; animation:type-arrive 200ms ease-out; } .gx-think__inner { padding:0 0 18px 38px; }
+.gx-think__body { display:none; } .gx-think__body.is-open { display:block; animation:panel-open var(--t-base) var(--ease-out); } .gx-think__inner { padding:0 14px 18px 38px; border-block-start:1px solid var(--line); }
 /* THE COMPACT PREVIEW IS GONE AND ITS SEVEN RULES WENT WITH IT.
    `.gx-think__compact`, `-list`, `-step`, `-copy`, `-kicker`, `-mark` and `-ring` styled a second
    activity row under the header that the redesign removed — and
@@ -333,21 +595,22 @@ pre { overflow:auto; border:1px solid var(--line); padding:18px; background:var(
 .gx-act__step { display:flex; gap:10px; padding:6px 0; } .gx-act__mark { width:17px; flex-shrink:0; } .gx-act__mark svg { max-width:16px; height:16px; } .gx-act__step-body { flex:1; min-width:0; } .gx-act__step-head { display:flex; justify-content:space-between; gap:16px; } .gx-act__detail { display:block; } .gx-act__ms { font:10px var(--font-mono); color:var(--faint); flex-shrink:0; }
 .gx-act__step-label,.gx-act__detail,.gx-stage-row__body,.gx-act__phase-body { min-width:0; overflow-wrap:anywhere; }
 .gx-gate__verdict { margin-inline-start:12px; } .is-pass { color:var(--good); } .is-fail { color:var(--bad); } .gx-tick { fill:none; stroke:currentColor; } .gx-ring { width:16px; height:16px; fill:none; stroke:var(--accent); }
-.gx-pop-wrap { position:relative; } .gx-pop { position:absolute; z-index:60; background:var(--surface); border:1px solid var(--line); box-shadow:0 10px 25px #0002; padding:6px; min-width:245px; max-width:min(370px,90vw); }
+.gx-pop-wrap { position:relative; } .gx-pop { position:absolute; z-index:60; background:var(--surface); border:1px solid var(--line); box-shadow:var(--shadow-pop); border-radius:var(--r-lg); padding:6px; min-width:245px; max-width:min(370px,90vw); animation:pop-open var(--t-fast) var(--ease-out); }
 .gx-pop--up { bottom:calc(100% + 8px); inset-inline-start:0; } .gx-pop--down-right { top:calc(100% + 8px); inset-inline-end:0; }
-.gx-pop__item { display:flex; width:100%; gap:12px; align-items:center; text-align:start; border:0; padding:11px; } .gx-pop__main { display:grid; font-size:14px; } .gx-pop__sub { font-size:12px; color:var(--muted); margin-top:4px; } .gx-pop__sep { border-top:1px solid var(--line); }
-.gx-scrim,.modal-backdrop,.dialog-backdrop,.cmdk-backdrop { position:fixed; inset:0; z-index:70; background:#17201b55; border:0; border-radius:0; }
-.gx-drawer { position:fixed; inset-block:0; inset-inline-end:0; z-index:80; width:min(540px,100%); background:var(--surface); border-inline-start:1px solid var(--line); display:flex; flex-direction:column; box-shadow:-15px 0 60px #0001; animation:panel-arrive 260ms var(--ease-out); }
+.gx-pop__item { display:flex; width:100%; gap:12px; align-items:center; text-align:start; border:0; background:transparent; border-radius:var(--r-md); min-height:var(--h-sm); padding:8px 11px; }
+.gx-pop__item:hover:not(:disabled):not([aria-disabled='true']) { background:var(--control-fill); color:var(--ink); } .gx-pop__main { display:grid; font-size:14px; } .gx-pop__sub { font-size:12px; color:var(--muted); margin-top:4px; } .gx-pop__sep { border-top:1px solid var(--line); }
+.gx-scrim,.modal-backdrop,.dialog-backdrop,.cmdk-backdrop { position:fixed; inset:0; z-index:70; background:color-mix(in srgb,var(--paper) 66%,transparent); border:0; border-radius:0; animation:scrim-in var(--t-fast) var(--ease-out); }
+.gx-drawer { position:fixed; inset-block:0; inset-inline-end:0; z-index:80; width:min(540px,100%); background:var(--surface); border-inline-start:1px solid var(--line); display:flex; flex-direction:column; box-shadow:var(--shadow-modal); animation:panel-arrive var(--t-slow) var(--ease-out); }
 .gx-drawer__head { display:flex; align-items:center; padding:22px 28px; border-bottom:1px solid var(--line); } .gx-drawer__title { font-family:var(--font-display); font-size:24px; } .gx-drawer__body { flex:1; overflow:auto; padding:26px; }
-.gx-rail { position:fixed; inset-block:0; inset-inline-start:0; z-index:90; width:min(340px,90vw); padding:24px; background:var(--surface); display:flex; flex-direction:column; border-inline-end:1px solid var(--line); animation:panel-arrive 220ms ease-out; }
-.gx-rail__head { display:flex; align-items:center; margin-bottom:28px; } .gx-wordmark { text-decoration:none; font:600 25px var(--font-display); } .gx-wordmark svg { display:none; } .gx-rail__close { margin-inline-start:auto; } .gx-rail__collapse,.gx-rail__resize { display:none; }
+.gx-rail { position:fixed; inset-block:0; inset-inline-start:0; z-index:90; width:min(340px,90vw); padding:24px; background:var(--surface); display:flex; flex-direction:column; border-inline-end:1px solid var(--line); animation:panel-arrive var(--t-base) var(--ease-out); }
+.gx-rail__head { display:flex; align-items:center; margin-bottom:28px; } .gx-wordmark { text-decoration:none; font:400 25px var(--font-display); } .gx-wordmark svg { display:none; } .gx-rail__close { margin-inline-start:auto; } .gx-rail__collapse,.gx-rail__resize { display:none; }
 .gx-new { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:14px 0; text-decoration:none; border-block:1px solid var(--line); } .gx-kbd { font-size:11px; color:var(--faint); } .gx-rail__scroll { flex:1; overflow:auto; margin-block:28px; } .gx-rail__label { color:var(--muted); font-size:12px; margin-bottom:15px; }
 .gx-rail__list { list-style:none; margin:0; padding:0; } .gx-conv { display:flex; gap:10px; justify-content:space-between; align-items:center; padding:12px 0; text-decoration:none; border-bottom:1px solid var(--line); } .gx-conv.is-active { color:var(--accent); } .gx-conv__name { font-size:14px; overflow:hidden; text-overflow:ellipsis; } .gx-conv__time { color:var(--faint); font-size:11px; white-space:nowrap; } .gx-viewall { display:flex; gap:10px; font-size:12px; margin-top:22px; text-decoration:none; }
-.gx-rail__foot { display:grid; gap:18px; } .gx-card-btn { display:flex; text-align:start; align-items:center; gap:12px; padding:12px 0; border:0; border-top:1px solid var(--line); } .gx-card-btn__text { display:grid; } .gx-card-btn__title { font-size:14px; } .gx-card-btn__sub { font-size:11px; color:var(--muted); } .gx-card-btn__chev { margin-inline-start:auto; }
+.gx-rail__foot { display:grid; gap:18px; } .gx-card-btn { display:flex; text-align:start; align-items:center; gap:12px; padding:12px 0; border:0; background:transparent; border-top:1px solid var(--line); } .gx-card-btn__text { display:grid; } .gx-card-btn__title { font-size:14px; } .gx-card-btn__sub { font-size:11px; color:var(--muted); } .gx-card-btn__chev { margin-inline-start:auto; }
 .gx-usage { font-size:12px; } .gx-usage__top,.gx-usage__foot { display:flex; justify-content:space-between; gap:12px; } .gx-usage__plan { font-size:10px; } .gx-usage__bar { height:3px; background:var(--surface-3); display:flex; margin-block:10px; } .gx-usage__fill { height:100%; display:block; background:var(--ink); } .gx-usage__detail { margin:0 0 7px; color:var(--muted); } .gx-usage__foot { font-size:10px; color:var(--faint); }
-.gx-user-card { display:flex; align-items:center; gap:8px; } .gx-user-card__id { display:flex; align-items:center; gap:10px; border:0; flex:1; min-width:0; padding:8px 0; } .gx-user-card__names { display:grid; overflow:hidden; text-align:start; } .gx-user-card__name { font-size:13px; } .gx-user-card__email { font-size:10px; overflow:hidden; text-overflow:ellipsis; } .gx-avatar { width:30px; height:30px; display:grid; place-items:center; background:var(--surface-2); font-size:12px; } .gx-user-card__wrap { min-width:0; flex:1; }
+.gx-user-card { display:flex; align-items:center; gap:8px; } .gx-user-card__id { display:flex; align-items:center; gap:10px; border:0; background:transparent; flex:1; min-width:0; padding:8px 0; } .gx-user-card__names { display:grid; overflow:hidden; text-align:start; } .gx-user-card__name { font-size:13px; } .gx-user-card__email { font-size:10px; overflow:hidden; text-overflow:ellipsis; } .gx-avatar { width:30px; height:30px; display:grid; place-items:center; background:var(--surface-2); font-size:12px; } .gx-user-card__wrap { min-width:0; flex:1; }
 .gx-project-stage { border-inline-start:1px solid var(--line); overflow:auto; background:var(--paper-2); } .gx-project-stage.is-collapsed { display:none; } .gx-project-stage__head { position:sticky; top:0; background:var(--paper-2); z-index:2; border-bottom:1px solid var(--line); }
-.gx-project-stage__toggle { width:100%; border:0; border-radius:0; padding:18px; display:flex; gap:12px; align-items:center; text-align:start; } .gx-project-stage__heading { display:grid; } .gx-project-stage__summary { font-size:12px; color:var(--muted); } .gx-project-stage__chevron { margin-inline-start:auto; } .gx-project-stage__body { padding:20px; } .gx-project-stage__surfaces { display:flex; gap:10px; margin-bottom:20px; } .gx-project-stage__surfaces button[aria-selected='true'] { background:var(--ink); color:var(--paper); }
+.gx-project-stage__toggle { width:100%; border:0; background:transparent; border-radius:0; padding:18px; display:flex; gap:12px; align-items:center; text-align:start; } .gx-project-stage__heading { display:grid; } .gx-project-stage__summary { font-size:12px; color:var(--muted); } .gx-project-stage__chevron { margin-inline-start:auto; } .gx-project-stage__body { padding:20px; } .gx-project-stage__surfaces { display:flex; gap:10px; margin-bottom:20px; } 
 .gx-project-stage__blueprint-art,.gx-project-stage__cinema-glow { display:none; } .gx-project-stage__blueprint { min-height:250px; display:flex; flex-direction:column; justify-content:center; } .gx-project-stage__blueprint-title { font-size:24px; } .gx-project-stage__blueprint-copy { color:var(--muted); font-size:14px; }
 .gx-workbench__tabs { display:none; } .gx-studio-view img,.gx-playtest img { display:block; width:100%; object-fit:contain; }
 .gx-connect { padding:20px 0; }
@@ -362,7 +625,7 @@ pre { overflow:auto; border:1px solid var(--line); padding:18px; background:var(
 .gx-conn-note,.gx-link-note { font-size:13px; color:var(--muted); padding:10px 26px; margin:0; }
 .gx-compose-region { position:relative; min-width:0; }
 .gx-jump { position:absolute; bottom:calc(100% + 8px); left:50%; transform:translateX(-50%); z-index:15; background:var(--surface); font-size:12px; }
-.gx-row { padding:12px 0; border-bottom:1px solid var(--line); } .gx-empty,.empty-state { padding:48px 24px; text-align:center; } .gx-plain { padding:100px 30px; }
+.gx-row { padding:12px 0; border-bottom:1px solid var(--line); } .gx-empty,.empty-state { padding:48px 24px; text-align:center; animation:empty-arrive var(--t-slow) var(--ease-out); } .gx-plain { padding:100px 30px; }
 .page { max-width:1160px; margin:0 auto; padding:110px 36px 70px; } .page-head { display:flex; align-items:start; justify-content:space-between; gap:24px; margin-bottom:36px; } .page-title { font-size:44px; margin-bottom:14px; } .page-desc { color:var(--muted); max-width:650px; }
 .project-grid,.projects-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:20px; } .project-card { border:1px solid var(--line); background:var(--surface); padding:24px; position:relative; } .project-card:hover { border-color:var(--accent); }
 /* THE CARD IS THE LINK NOW, and this rule was written when it merely CONTAINED one.
@@ -387,15 +650,82 @@ pre { overflow:auto; border:1px solid var(--line); padding:18px; background:var(
 .scope-tabs,.tabs,.settings-inline,.settings-pair,.modal-actions { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; }
 /* Tabs and a modal footer are rows of equal-height controls; centring is what they mean and it
    survives one of them growing a second line. */
-.scope-tabs,.tabs,.modal-actions { align-items:center; } .scope-tabs { border-bottom:1px solid var(--line); margin-bottom:24px; } .scope-tab { border:0; border-radius:0; } .scope-tab.is-on { box-shadow:inset 0 -2px var(--accent); } .scope-tab__count { font-size:11px; margin-inline-start:8px; }
+.scope-tabs,.tabs,.modal-actions { align-items:center; } .scope-tabs { border-bottom:1px solid var(--line); margin-bottom:24px; } .scope-tab { border:0; background:transparent; border-radius:0; min-height:var(--h-sm); padding:0 8.8px; } .scope-tab.is-on { box-shadow:inset 0 -2px var(--accent); } .scope-tab__count { font-size:11px; margin-inline-start:8px; }
 .settings-section,.usage-card,.settings-sub { margin-block:28px; padding-block:20px; border-top:1px solid var(--line); } .settings-section h2 { font-size:28px; } .settings-row,.settings-current { display:flex; align-items:center; justify-content:space-between; gap:22px; padding-block:14px; } .settings-grow,.settings-pair > .field { flex:1; } .field { display:grid; gap:8px; margin-block:14px; } .field-label { font-size:13px; font-weight:400; } .field-hint { font-size:12px; } .prefs__check { display:flex; gap:10px; align-items:start; margin-block:10px; } .prefs__set { border:1px solid var(--line); padding:20px; }
-.modal-backdrop,.dialog-backdrop,.cmdk-backdrop { display:grid; place-items:center; padding:20px; } .modal,.dialog,.cmdk { width:min(580px,100%); max-height:85dvh; overflow:auto; background:var(--surface); border:1px solid var(--line); padding:30px; color:var(--ink); box-shadow:0 20px 70px #0003; } .modal-header,.modal-head { display:flex; justify-content:space-between; gap:15px; margin-bottom:20px; } .modal-actions { justify-content:end; margin-top:24px; }
-.cmdk__input { width:100%; } .cmdk__list { max-height:55vh; overflow:auto; padding-block:16px; } .cmdk__section { font:11px var(--font-mono); color:var(--muted); margin-block:15px 8px; } .cmdk__item { display:flex; width:100%; justify-content:space-between; border:0; text-align:start; } .cmdk__item.is-selected { background:var(--surface-2); } .cmdk__why { display:block; font-size:12px; color:var(--faint); } .cmdk__hint,.cmdk__foot { font-size:11px; color:var(--muted); }
-.toast-stack { position:fixed; bottom:24px; inset-inline-end:24px; z-index:150; display:grid; gap:10px; max-width:min(480px,90vw); } .toast { display:flex; align-items:center; gap:15px; padding:16px 18px; background:var(--surface); color:var(--ink); border:1px solid var(--line); border-radius:var(--r-md); box-shadow:0 8px 25px #0004; font-size:13px; } .toast-close,.toast-action { border:0; padding:3px; color:inherit; } .toast-error { border-inline-start:3px solid var(--bad); }
+.modal-backdrop,.dialog-backdrop,.cmdk-backdrop { display:grid; place-items:center; padding:20px; } .modal,.dialog,.cmdk { width:min(580px,100%); max-height:85dvh; overflow:auto; background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); padding:30px; color:var(--ink); box-shadow:var(--shadow-modal); animation:sheet-rise var(--t-base) var(--ease-out); } .modal-header,.modal-head { display:flex; justify-content:space-between; gap:15px; margin-bottom:20px; } .modal-actions { justify-content:end; margin-top:24px; }
+.cmdk__input { width:100%; } .cmdk__list { max-height:55vh; overflow:auto; padding-block:16px; } .cmdk__section { font:11px var(--font-mono); color:var(--muted); margin-block:15px 8px; } .cmdk__item { display:flex; width:100%; justify-content:space-between; border:0; background:transparent; border-radius:var(--r-md); padding:8px 11px; text-align:start; } .cmdk__item.is-selected { background:var(--surface-2); } .cmdk__why { display:block; font-size:12px; color:var(--faint); } .cmdk__hint,.cmdk__foot { font-size:11px; color:var(--muted); }
+.toast-stack { position:fixed; bottom:24px; inset-inline-end:24px; z-index:150; display:grid; gap:10px; max-width:min(480px,90vw); } .toast { display:flex; align-items:center; gap:15px; padding:16px 18px; background:var(--surface); color:var(--ink); border:1px solid var(--line); border-radius:var(--r-lg); box-shadow:var(--shadow-pop); font-size:13px; } .toast-close,.toast-action { border:0; background:transparent; min-height:var(--h-xs); padding:0 4px; color:inherit; } .toast-error { border-inline-start:3px solid var(--bad); }
 .pairing-code { font:40px var(--font-mono); letter-spacing:.18em; } .pairing-code-box { border:1px solid var(--line); padding:24px; text-align:center; } .auth-page,.auth { min-height:100dvh; display:grid; place-items:center; padding:28px; } .auth-card { width:min(430px,100%); padding:32px; border-block:1px solid var(--line); }
 table { width:100%; border-collapse:collapse; font-size:13px; } th,td { padding:12px; border-bottom:1px solid var(--line); text-align:start; }
-.gx-attach { list-style:none; padding:8px 16px; } .gx-attach__row { display:flex; gap:8px; padding:8px; font-size:12px; } .gx-attach__error,.gx-attach__block { color:var(--bad); font-size:12px; } .gx-attach__block { padding-inline:20px; }
+.gx-attach { list-style:none; padding:8px 16px; } .gx-attach__row { display:flex; gap:8px; padding:8px; font-size:12px; } .gx-attach__error,.gx-attach__block { color:var(--bad); font-size:12px; animation:tone-in var(--t-fast) var(--ease-out); } .gx-attach__block { padding-inline:20px; }
 .gx-panel,.gx-evidence { border:1px solid var(--line); padding:20px; margin-block:18px; overflow:auto; } .gx-panel img,.gx-evidence img { object-fit:contain; max-height:500px; } .gx-panel__head { display:flex; justify-content:space-between; gap:12px; }
+
+/* ==============================================================================================
+   THE MOTION LIBRARY.
+
+   WHAT THE MEASUREMENTS SAY, AND WHY THIS IS A CATALOGUE OF STATES RATHER THAN A SET OF EFFECTS.
+   Five pages were read in a real browser on 2026-09-20 with document.getAnimations(), a stylesheet
+   scan for @keyframes and a direct count of <canvas> and <video>
+   (packages/corpus/data/ui-references/web-landing.json). chatgpt.com declares 138 @keyframes and
+   returns ZERO running animations while the page sits idle; grok.com has 18 keyframes, no canvas
+   and no video; rosebud.ai — the bar — has ZERO keyframes, zero running animations and zero
+   canvases on the page whose look the owner called beautiful.
+   The conclusion is not "animate less". It is that every one of those 138 keyframes is a STATE —
+   toast-open, shimmer-skeleton, pulse-dot, float-sidebar-in — and none of them is scenery that
+   runs on its own. So the budget is spent on RESPONSE first and scenery last, and the library
+   below is named the way that catalogue is named: after what just happened, not after a motion.
+
+   THE TWO BANDS AND THE CEILING. 0.15s for anything under a finger, 0.2-0.26s for anything that
+   moves on its own, nothing in between, and NOTHING INTERACTIVE OVER 0.26s. The three ambient
+   animations at the foot of this file are measured in seconds and are exempt, because weather is
+   not a response to anything — and they say so where they are declared.
+
+   EVERY KEYFRAME BELOW IS REFERENCED BY A RULE IN THIS SHEET, and every rule that references one
+   is bound to a selector this app actually renders. A keyframe nothing drives and a class nothing
+   applies are the same defect, and this repository has shipped both.
+
+   ALL OF IT STOPS UNDER prefers-reduced-motion, at the block near the foot of this file: one
+   `*,*::before,*::after { animation:none !important }`. Nothing here declares a starting opacity
+   or transform on the ELEMENT — only inside the keyframes — so removing the animation leaves the
+   final frame rather than a blank one. That distinction is the whole reason a reveal that starts
+   at `opacity:0` and waits for a class is forbidden here.
+   ============================================================================================== */
+
+/* ---- response: things a person just did ------------------------------------------------- */
+/* The focus halo OPENS rather than snapping on: the ring is the outline, this is the wider
+   low-alpha glow behind it that the bar pairs with it. */
+@keyframes focus-halo { from { box-shadow:0 0 0 var(--accent-glow); } to { box-shadow:var(--glow); } }
+/* A press is a 1px dip and a return. The button does not resize, because a control that changes
+   size under the cursor moves the next one out from under a click already on its way. */
+@keyframes press-settle { 0% { transform:translateY(0); } 45% { transform:translateY(1px); } 100% { transform:translateY(0); } }
+/* A disclosure opening in place: it arrives from above because that is where its own header is. */
+@keyframes panel-open { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:none; } }
+/* A popover belongs to the control that opened it, so it grows out of it rather than fading in
+   from nowhere. 4px, which is as far as anything travels under a finger. */
+@keyframes pop-open { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
+/* A sheet is the one thing on this list that moves on its own, so it takes the slow band. */
+@keyframes sheet-rise { from { opacity:0; transform:translateY(8px) scale(.99); } to { opacity:1; transform:none; } }
+@keyframes scrim-in { from { opacity:0; } to { opacity:1; } }
+/* Expanding a stage to full screen is the same gesture at a different scale. */
+@keyframes veil-lift { from { opacity:0; transform:scale(.985); } to { opacity:1; transform:none; } }
+/* An empty state is a whole screen arriving; a message about a failed upload is one line. Same
+   shape, different distance, because the distance is what says how much of the page changed. */
+@keyframes empty-arrive { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+@keyframes tone-in { from { opacity:0; transform:translateY(-2px); } to { opacity:1; transform:none; } }
+/* THE COUNTER HITTING ITS LIMIT is the one place colour alone had to carry a change of state, and
+   a colour that is simply there when you look reports nothing. It flashes once and stays. */
+@keyframes count-flash { 0% { color:var(--muted); } 30% { color:var(--bad); } 60% { color:var(--muted); } 100% { color:var(--bad); } }
+
+/* ---- reports: things the machine is doing --------------------------------------------- */
+/* A skeleton is the only thing in this product that is allowed to run forever while nothing is
+   being pressed, because it is the answer to "is this coming". */
+@keyframes shimmer-skeleton { from { background-position:120% 0; } to { background-position:-20% 0; } }
+@keyframes pulse-dot { 0%,100% { opacity:.55; } 50% { opacity:1; } }
+/* The composer armed for a drop: the glow widens and settles, which is the accent doing the one
+   job the accent is for — naming the thing that is about to happen. */
+@keyframes drop-armed { 0%,100% { box-shadow:var(--glow); } 50% { box-shadow:0 0 22px color-mix(in srgb,var(--accent) 26%,transparent); } }
+
+/* ---- the ones that were already here, kept and re-timed -------------------------------- */
 @keyframes type-arrive { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
 @keyframes panel-arrive { from { opacity:0; transform:translateX(15px); } to { opacity:1; transform:translateX(0); } }
 @keyframes signature-work { 0%,100% { transform:perspective(100px) rotateY(-15deg) rotate(-6deg); } 50% { transform:perspective(100px) rotateY(30deg) rotate(8deg); } }
@@ -403,31 +733,36 @@ table { width:100%; border-collapse:collapse; font-size:13px; } th,td { padding:
 @keyframes max-ink { from { background-position:0% 50%; } to { background-position:-200% 50%; } }
 @media(max-width:1000px) {
   .start-sheet { gap:26px; } .start-sheet h1 { font-size:32px; } .gx-thread { padding-inline:26px; }
-  .gx-workbench.is-stage-open { grid-template-columns:minmax(0,1fr); } .gx-workbench.is-stage-open .gx-project-stage { position:fixed; z-index:50; top:72px; bottom:0; inset-inline-end:0; width:min(520px,100%); box-shadow:-20px 0 40px #0002; }
+  .gx-workbench.is-stage-open { grid-template-columns:minmax(0,1fr); } .gx-workbench.is-stage-open .gx-project-stage { position:fixed; z-index:50; top:72px; bottom:0; inset-inline-end:0; width:min(520px,100%); box-shadow:var(--shadow-modal); }
 }
 @media(max-width:680px) {
   .gx-main { width:100%; margin-inline-start:0; } .studio-atmosphere { inset-inline-start:0; }
   .studio-dock { inset-block:10px auto; inset-inline-start:12px; padding:0; width:44px; height:44px; background:transparent; border:0; backdrop-filter:none; }
   .studio-dock > button,.studio-dock > a { display:none; } .studio-dock > .studio-navigation { display:grid; }
   .gx-ws { grid-template-rows:64px minmax(0,1fr) auto; } .gx-top { padding:12px 18px 12px 72px; gap:8px; } .gx-top__title { max-width:32vw; font-size:13px; } .gx-top__when { display:none; } .studio-workspace-controls { gap:12px; } .studio-project-menu summary,.studio-preview-toggle { font-size:12px; } .studio-preview-toggle span,.studio-project-menu summary span { margin-inline-start:3px; }
-  .start-sheet { gap:26px; padding-block:20px; } .start-sheet h1 { font-size:27px; } .start-sheet__lead p { font-size:13px; } .start-sheet__ideas { gap:8px; } .start-sheet__ideas > button { padding:10px 12px; font-size:11px; } .gx-thread { padding:20px; } .gx-composer,.gx-ws:has(.start-sheet) .gx-composer { padding:10px 12px 18px; } .gx-composer textarea { min-height:85px; font-size:16px; padding:18px; } .gx-composer__bar { gap:3px; padding:6px 10px 10px; } .gx-chip { font-size:11px; gap:5px; padding:5px; } .gx-composer__note { font-size:10px; } .gx-chip--template { display:none; } .gx-send { width:36px; height:36px; } .gx-think__hint { display:none; } .gx-user { font-size:15px; } .gx-turn--user { margin-inline-start:7%; } .page { padding:90px 20px 40px; } .page-head { display:block; } .settings-row { align-items:start; } .settings-pair { display:grid; } .modal,.dialog,.cmdk { padding:22px; }
+  .start-sheet { gap:26px; padding-block:20px; } .start-sheet h1 { font-size:27px; } .start-sheet__lead p { font-size:13px; } .start-sheet__ideas { gap:8px; } .start-sheet__ideas > button { min-height:var(--h-md); padding:0 12px; font-size:11px; } .gx-thread { padding:20px; } .gx-composer,.gx-ws:has(.start-sheet) .gx-composer { padding:10px 12px 18px; } .gx-composer textarea { min-height:85px; font-size:16px; padding:18px; } .gx-composer__bar { gap:3px; padding:6px 10px 10px; } .gx-chip { font-size:11px; gap:5px; padding:0 6px; } .gx-composer__note { font-size:10px; } .gx-chip--template { display:none; } .gx-send { width:var(--h-md); height:var(--h-md); } .gx-think__hint { display:none; } .gx-user { font-size:15px; } .gx-turn--user { margin-inline-start:7%; } .page { padding:90px 20px 40px; } .page-head { display:block; } .settings-row { align-items:start; } .settings-pair { display:grid; } .modal,.dialog,.cmdk { padding:22px; }
 }
 @media(max-height:740px) and (min-width:681px) { .start-sheet { padding-block:12px; } .start-sheet h1 { font-size:30px; } .gx-ws:has(.start-sheet) .gx-composer { padding-bottom:20px; } }
 @media (prefers-reduced-motion: reduce) { *,*::before,*::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; } }
-.motion-reduced *,.motion-reduced *::before,.motion-reduced *::after { animation:none !important; transition:none !important; }
+/* THE SCRIPTED HALF OF THE SAME POLICY, for the app's own reduced-motion preference rather than
+   the operating system's. IT DID NOT COVER THE ELEMENT CARRYING THE CLASS: `.motion-reduced *`
+   matches descendants only, so anything animated on the root itself kept moving for the one person
+   who asked it not to. The element is named first now. */
+.motion-reduced,.motion-reduced *,.motion-reduced *::before,.motion-reduced *::after { animation:none !important; transition:none !important; }
 
 /* Functional surfaces. Same paper, rules and typography, without dashboard chrome. */
 pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
-.modal-overlay { position:fixed; inset:0; z-index:100; display:grid; place-items:center; padding:24px; background:#15211b66; backdrop-filter:blur(5px); }
-.modal-panel { width:min(560px,100%); max-height:calc(100dvh - 48px); overflow:auto; padding:30px; background:var(--surface); box-shadow:0 24px 100px #0003; border:1px solid var(--line); animation:type-arrive 220ms var(--ease-out); }
-.modal-wide { width:min(840px,100%); } .modal-title { font-size:27px; margin:0; } .modal-head { align-items:center; } .modal-body { min-width:0; } .icon-btn { border:0; padding:6px 10px; font-size:22px; }
+.modal-overlay { position:fixed; inset:0; z-index:100; display:grid; place-items:center; padding:24px; background:color-mix(in srgb,var(--paper) 62%,transparent); backdrop-filter:blur(5px); animation:scrim-in var(--t-fast) var(--ease-out); }
+.modal-panel { width:min(560px,100%); max-height:calc(100dvh - 48px); overflow:auto; padding:30px; background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); box-shadow:var(--shadow-modal); animation:type-arrive var(--t-base) var(--ease-out); }
+.modal-wide { width:min(840px,100%); } .modal-title { font-size:27px; margin:0; } .modal-head { align-items:center; } .modal-body { min-width:0; } .icon-btn { border:1px solid transparent; background:transparent; width:var(--h-sm); height:var(--h-sm); min-height:var(--h-sm); padding:0; display:grid; place-items:center; font-size:22px; }
 .btn-ghost,.btn-quiet { background:transparent; } .btn-sm { padding:6px 10px; font-size:12px; }
 .btn-primary:focus-visible,.gx-btn--primary:focus-visible { color:var(--accent-on-fill); background:var(--accent-fill); }
-/* The light theme cannot use a 10% tint of a bright green on white — it disappears. Same hue, taken
-   to a depth that reads on paper. #00754f was the first guess and it measured 4.23:1 at worst,
-   UNDER the 4.5 this product requires, so it was darkened until it cleared rather than kept because
-   it looked right: #006644 measures 5.18:1 against the lightest surface in the ramp. */
-:root[data-theme='light'] { --accent:#006644; --accent-fill:#0066441a; --accent-on-fill:#006644; --accent-soft:#00664414; --accent-line:#00664440; }
+/* THE SECOND LIGHT PALETTE LIVED HERE and is gone. It redeclared --accent, --accent-fill,
+   --accent-on-fill, --accent-soft and --accent-line two hundred lines below the palette that
+   claims to define them, and won on source order — so the block at the top of this file was
+   documentation of a decision that did not ship. Its surviving contribution, that a bright green
+   tint disappears on a white page, is now carried by --accent-soft in the one light block, which
+   mixes from #00d492 for exactly that reason. */
 .card,.admin-panel { padding:22px; border:1px solid var(--line); margin-block:20px; }
 .rail-head,.admin-actions,.admin-form-row,.switch-row,.admin-tools-check { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
 .model-tag { font:11px var(--font-mono); padding:4px 7px; border:1px solid var(--line); }
@@ -457,7 +792,7 @@ pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
 .rag-hit { padding-block:14px; border-top:1px solid var(--line); } .rag-preview,.page-sub { color:var(--muted); font-size:13px; }
 .gx-outcome { display:flex; flex-wrap:wrap; align-items:baseline; gap:12px; margin-block:16px; }
 .gx-outcome__retry:focus-visible,.gx-history-toggle:focus-visible { outline:2px solid var(--accent); outline-offset:4px; }
-.gx-composer__inner.is-dropping { border:2px dashed var(--accent); background:var(--acc-ember-soft); }
+.gx-composer__inner.is-dropping { border:2px dashed var(--accent); background:var(--accent-soft); animation:drop-armed 1.1s var(--ease-in-out) infinite; }
 .gx-assumed,.gx-open-qs { border-inline-start:2px solid var(--warn); padding:10px 16px; margin-block:14px; font-size:13px; }
 .gx-assumed__label,.gx-open-qs__label { display:block; font-weight:400; color:var(--ink); }
 .gx-assumed ul,.gx-open-qs ul { padding-inline-start:18px; color:var(--muted); }
@@ -472,7 +807,16 @@ pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
    to an inline box, so the phase marker has never drawn and the live-phase accent halo had nothing
    to sit on. */
 .gx-act__pip { display:inline-block; width:5px; height:5px; background:var(--faint); border-radius:50%; }
-.gx-act__phase.is-active .gx-act__pip { background:var(--accent); box-shadow:0 0 0 3px var(--acc-ember-soft); }
+/* THE LIVE PHASE, GLOWING. The 3px halo was the whole accent on this row; --glow adds the measured
+   12px at 14% behind it, which is the same halo the thinking card and the model chip carry — one
+   treatment for "this is the thing happening now".
+   NO ANIMATION AND NO TRANSITION, deliberately and permanently: tests/activity-motion.test.mjs
+   requires every travelling rule on .gx-act to be gated behind .gx-act.is-moving, and requires
+   this halo to exist WITHOUT one so a reduced-motion reader still sees which phase is live. */
+.gx-act__phase.is-active .gx-act__pip { background:var(--accent); box-shadow:0 0 0 3px var(--accent-soft),var(--glow); }
+/* THE ROWS. A phase is a band inside the card, and the live one is NAMED in the lighter accent
+   tint rather than filled — variant 3 of the five below, applied to a row instead of a button. */
+.gx-act__phase.is-active .gx-act__phase-name { color:var(--accent-light); }
 /* activity.tsx:205 renders `gx-stage-row gx-term is-<kind>`; this rule said `.gx-act__terminal`. */
 .gx-term { border-block-start:1px solid var(--line); margin-block-start:12px; padding-block:12px; font-size:13px; }
 /* A RUN THAT CRASHED LOOKED EXACTLY LIKE A RUN THAT WORKED, three rows deep in the same card.
@@ -545,9 +889,9 @@ pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
 .order-summary { padding:20px; border:1px solid var(--line); margin-block:20px; } .order-summary__row { display:flex; gap:20px; justify-content:space-between; padding-block:9px; }
 .order-summary__label,.order-summary__terms,.order-summary__tax { color:var(--muted); font-size:12px; } .order-summary__value { font-weight:400; }
 .spend-kinds,.usage-months { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:20px; padding-block:18px; }
-.gx-stage { margin:0 0 20px; } .gx-stage__frame { width:100%; display:block; padding:0; border:0; background:#131713; overflow:hidden; position:relative; }
+.gx-stage { margin:0 0 20px; } .gx-stage__frame { width:100%; display:block; padding:0; border:0; background:var(--paper-2); overflow:hidden; position:relative; }
 .gx-stage__canvas { display:block; width:100%; height:auto; aspect-ratio:16/10; object-fit:contain; }
-.gx-stage__working { position:absolute; bottom:10px; inset-inline-start:10px; padding:4px 8px; background:var(--surface); font-size:11px; }
+.gx-stage__working { position:absolute; bottom:10px; inset-inline-start:10px; padding:4px 8px; border:1px solid var(--accent-ring); border-radius:var(--r-md); background:var(--surface); color:var(--accent-light); font-size:11px; animation:pulse-dot 1.8s var(--ease-in-out) infinite; }
 .gx-stage__caption { display:flex; align-items:start; gap:12px; flex-wrap:wrap; padding-block:12px; font-size:12px; }
 .gx-stage__what { flex:1; color:var(--muted); } .gx-stage__meta,.gx-stage__count { font:10px var(--font-mono); color:var(--faint); }
 .gx-stage__nav { display:flex; align-items:center; gap:8px; }
@@ -555,7 +899,7 @@ pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
 .gx-playtest__title { display:flex; align-items:center; gap:7px; font-size:13px; font-weight:400; }
 .gx-playtest__chip { font-size:10px; color:var(--muted); } .gx-playtest__chip--stale,.gx-playtest__chip--dead { color:var(--warn); }
 .gx-playtest__elapsed { margin-inline-start:auto; font:11px var(--font-mono); }
-.gx-playtest__frame { width:100%; position:relative; display:block; padding:0; border:0; overflow:hidden; background:#121612; }
+.gx-playtest__frame { width:100%; position:relative; display:block; padding:0; border:0; overflow:hidden; background:var(--paper-2); }
 .gx-playtest__canvas { width:100%; height:auto; aspect-ratio:16/10; display:block; object-fit:contain; }
 .gx-playtest__veil { position:absolute; bottom:10px; inset-inline-start:10px; font:10px var(--font-mono); color:#fff; background:#000b; padding:5px 8px; }
 .gx-playtest.is-dimmed .gx-playtest__canvas { opacity:.6; } .gx-playtest__foot { padding-block:16px; }
@@ -563,21 +907,28 @@ pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
 .gx-playtest__action,.gx-playtest__count { font-size:11px; } .gx-playtest__count.is-error { color:var(--bad); } .gx-playtest__count.is-warn { color:var(--warn); }
 .gx-playtest__degraded { font-size:12px; border-inline-start:2px solid var(--warn); padding-inline-start:12px; color:var(--muted); }
 .gx-playtest__empty { min-height:180px; display:grid; place-content:center; font-size:13px; color:var(--muted); }
-.gx-stage.is-expanded,.gx-playtest.is-expanded { position:fixed; inset:5vh 5vw; padding:20px; overflow:auto; z-index:95; background:var(--surface); box-shadow:0 0 0 100vmax #0009; }
+.gx-stage.is-expanded,.gx-playtest.is-expanded { position:fixed; inset:5vh 5vw; padding:20px; overflow:auto; z-index:95; background:var(--surface); border-radius:var(--r-lg); box-shadow:0 0 0 100vmax color-mix(in srgb,var(--paper) 72%,transparent); animation:veil-lift var(--t-base) var(--ease-out); }
 .gx-stage.is-expanded .gx-stage__canvas,.gx-playtest.is-expanded .gx-playtest__canvas { max-height:65vh; }
-.asrc__scrim { position:fixed; inset:0; z-index:100; display:grid; place-items:center; padding:20px; background:#14221b77; backdrop-filter:blur(5px); }
-.asrc { width:min(620px,100%); max-height:90dvh; overflow:auto; background:var(--surface); padding:30px; box-shadow:0 24px 100px #0003; }
+.asrc__scrim { position:fixed; inset:0; z-index:100; display:grid; place-items:center; padding:20px; background:color-mix(in srgb,var(--paper) 68%,transparent); backdrop-filter:blur(5px); animation:scrim-in var(--t-fast) var(--ease-out); }
+.asrc { width:min(620px,100%); max-height:90dvh; overflow:auto; background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); padding:30px; box-shadow:var(--shadow-modal); animation:sheet-rise var(--t-base) var(--ease-out); }
 .asrc__title { font-size:28px; } .asrc__lede { font-size:14px; color:var(--muted); } .asrc__choices { margin-block:22px; }
 .asrc__choice { display:flex; align-items:start; gap:14px; padding:18px 0; border-top:1px solid var(--line); cursor:pointer; }
 .asrc__choice input { margin-top:6px; flex-shrink:0; } .asrc__body { display:grid; gap:7px; } .asrc__name { font-size:15px; font-weight:400; } .asrc__does { font-size:13px; }
 .asrc__meta { font-size:11px; line-height:1.7; color:var(--muted); } .asrc__reach { display:block; } .asrc__remember { font-size:13px; display:flex; gap:10px; }
 .asrc__actions { display:flex; justify-content:end; gap:12px; margin-top:24px; } .asrc__warn { font-size:12px; color:var(--bad); margin-top:14px; }
-.btn--primary { background:var(--ink); color:var(--paper); } .btn--primary:hover:not(:disabled),.btn--primary:focus-visible { background:var(--ink); color:var(--paper); }
+/* VARIANT 1 OF 5 — THE PRIMARY, and the only filled button a screen may carry. It was
+   `background:var(--ink)` — a WHITE button, which is what a product looks like when it has no
+   colour of its own — and it stated the same white for hover and focus, so pressing it reported
+   nothing. The hover restatement stays, because tests/button-label-contrast.test.mjs requires a
+   filled variant to say what its label does under the pointer: `.btn:hover { color:var(--accent) }`
+   is right for a ghost button and blanks a filled one, and that defect shipped. */
+.btn--primary { background:var(--accent-deep); color:var(--accent-on-fill); border:1px solid var(--accent-deep); box-shadow:var(--shadow-primary); }
+.btn--primary:hover:not(:disabled),.btn--primary:focus-visible { background:color-mix(in srgb,var(--accent-deep) 80%,var(--accent)); color:var(--accent-on-fill); border-color:color-mix(in srgb,var(--accent-deep) 80%,var(--accent)); }
 .gx-files { min-width:0; } .gx-files__text { max-height:55vh; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; } .gx-files__table { display:block; overflow:auto; }
 .gx-files__summary { margin:0 0 10px; }
 .gx-files__toolbar, .gx-files__upload { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
 .gx-files__upload > .gx-row__meta { flex:1 1 220px; min-width:0; overflow-wrap:anywhere; }
-.gx-row__main { display:grid; gap:6px; } .gx-row__main--button { border:0; padding:0; text-align:start; } .gx-row__meta,.gx-pop__note { font-size:12px; color:var(--muted); }
+.gx-row__main { display:grid; gap:6px; } .gx-row__main--button { border:0; background:transparent; min-height:0; padding:0; text-align:start; } .gx-row__meta,.gx-pop__note { font-size:12px; color:var(--muted); }
 .gx-files .gx-row { display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
 .gx-pill { flex:none; } .gx-pill__place,.gx-pill__label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .gx-pill__full { display:inline; } .gx-pill__short { display:none; }
@@ -591,7 +942,7 @@ pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
 .au-item__text,.au-run__body { flex:1; display:grid; gap:8px; } .au-item__name { font-weight:400; }
 .au-item__meta,.au-item__note,.au-run__when,.au-run__meta,.mem__note,.mem__none { font-size:12px; color:var(--muted); }
 .au-badge { font-size:10px; color:var(--warn); } .au-editor,.au-history { margin-block:18px; } .mem__fact { width:100%; }
-.es { display:grid; justify-items:center; gap:14px; padding:42px 24px; text-align:center; }
+.es { display:grid; justify-items:center; gap:14px; padding:42px 24px; text-align:center; animation:empty-arrive var(--t-slow) var(--ease-out); }
 .es__title { color:var(--ink); font-size:25px; margin:0; } .es__body { color:var(--muted); font-size:14px; max-width:500px; margin:0; }
 .es--creation { color:var(--accent); } .es--studio { color:var(--info); } .es--failure { color:var(--bad); } .es--proven { color:var(--good); } .es--future { color:var(--future); }
 .gx-cp__desc { color:var(--muted); font-size:13px; line-height:1.6; margin-block:8px; }
@@ -641,7 +992,7 @@ pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
 .rm-contents__line,.rm-contents__hedge,.rm-contents__none { font-size:13px; color:var(--muted); }
 .rm-spine { list-style:none; padding:0; margin-block:35px; } .rm-stage { display:grid; grid-template-columns:25px minmax(0,1fr); gap:16px; margin-block:24px; }
 .rm-stage__rail { display:flex; align-items:center; flex-direction:column; } .rm-stage__line { flex:1; width:1px; background:var(--line); margin-top:12px; }
-.rm-stage__label { font-size:19px; text-align:start; margin:0 0 20px; padding:0; border:0; } .rm-stage__count,.rm-stage__parallel { color:var(--muted); font-size:11px; margin-inline-start:12px; }
+.rm-stage__label { font-size:19px; text-align:start; margin:0 0 20px; padding:0; border:0; background:transparent; } .rm-stage__count,.rm-stage__parallel { color:var(--muted); font-size:11px; margin-inline-start:12px; }
 .rm-stage__cards,.rm-suggest__grid { display:grid; gap:18px; grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr)); }
 .rm-card,.rm-sg { border:1px solid var(--line); padding:24px; background:var(--surface); }
 .rm-card__head { display:flex; align-items:start; gap:18px; justify-content:space-between; } .rm-card__title,.rm-sg__title { font-size:23px; margin-bottom:14px; }
@@ -658,7 +1009,7 @@ pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
    marks.tsx states at the top of the file. */
 .rm-node { color:var(--accent); }
 .rm-node--ready { color:var(--muted); } .rm-node--waiting { color:var(--faint); }
-.rm-ref { padding:3px 7px; background:var(--surface-2); } .rm-card__spacer { flex:1; } .rm-disclose { border:0; padding:4px 0; font-size:12px; }
+.rm-ref { padding:3px 7px; background:var(--surface-2); } .rm-card__spacer { flex:1; } .rm-disclose { border:0; background:transparent; min-height:var(--h-xs); padding:0; font-size:12px; }
 .rm-card__waiting,.rm-suggest__pending,.rm-suggest__error { font-size:13px; padding:14px; border-inline-start:2px solid var(--warn); }
 .rm-suggest { margin-block:40px; } .rm-suggest__head { display:flex; align-items:start; gap:20px; justify-content:space-between; margin-bottom:24px; }
 .rm-suggest__title { font-size:28px; } .rm-suggest__sub,.rm-suggest__none { color:var(--muted); font-size:13px; }
@@ -667,8 +1018,9 @@ pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
 .project-card { border-radius:var(--r-lg); } .project-card-top { display:flex; gap:12px; justify-content:space-between; align-items:center; }
 .project-card-name { font-size:22px; font-weight:400; } .project-card-desc { color:var(--muted); font-size:14px; margin-block:20px; }
 .project-card-meta { font-size:11px; color:var(--faint); display:flex; flex-wrap:wrap; gap:12px; }
-.card-menu { position:relative; } .menu-pop { position:absolute; z-index:20; inset-inline-end:0; top:100%; min-width:180px; padding:6px; background:var(--surface); border:1px solid var(--line); border-radius:var(--r-md); box-shadow:0 12px 40px #0004; }
-.menu-item { display:block; width:100%; text-align:start; padding:10px; border:0; } .menu-danger { color:var(--bad); }
+.card-menu { position:relative; } .menu-pop { position:absolute; z-index:20; inset-inline-end:0; top:100%; min-width:180px; padding:6px; background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); box-shadow:var(--shadow-pop); animation:pop-open var(--t-fast) var(--ease-out); }
+.menu-item { display:block; width:100%; text-align:start; min-height:var(--h-sm); padding:8px 10px; border:0; background:transparent; border-radius:var(--r-md); }
+.menu-item:hover:not(:disabled):not([aria-disabled='true']) { background:var(--control-fill); color:var(--ink); } .menu-danger { color:var(--bad); }
 .tag-row,.page-foot-links { display:flex; gap:10px; flex-wrap:wrap; } .tag-chip,.pill { font-size:11px; border-radius:var(--r-sm); padding:4px 8px; background:var(--surface-2); }
 .page-foot { margin-top:35px; font-size:12px; color:var(--muted); } .tpl__grid { display:grid; gap:10px; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); }
 .tpl__label { display:block; } .tpl__blurb { display:block; color:var(--muted); font-size:12px; margin-top:8px; }
@@ -677,34 +1029,34 @@ pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
 .auth-hero-title { font-size:38px; line-height:1.3; font-weight:400; } .auth-hero-sub { font-size:14px; color:var(--muted); line-height:1.8; }
 .auth-hero-points { list-style:none; padding:0; font-size:13px; color:var(--muted); } .auth-hero-points li { margin-top:16px; }
 .auth-form-col { width:100%; max-width:430px; } .auth-mobile-brand { display:none; } .auth-theme-toggle { position:absolute; top:20px; inset-inline-end:24px; }
-.auth-card { width:100%; border:1px solid var(--line); border-radius:22px; padding:32px; background:var(--surface); }
+.auth-card { width:100%; border:1px solid var(--line); border-radius:var(--r-lg); padding:32px; background:var(--surface); }
 .auth-card-title { font-size:27px; font-weight:400; } .auth-card-sub,.auth-switch { font-size:13px; color:var(--muted); } .auth-switch { text-align:center; margin-top:22px; }
 .btn-block { width:100%; } .auth-form-col input { border-radius:var(--r-md); }
 @media(max-width:800px) { .auth-page { grid-template-columns:1fr; gap:0; padding:80px 20px 30px; } .auth-hero { display:none; } .auth-mobile-brand { display:flex; justify-content:center; align-items:center; gap:10px; margin-bottom:28px; } }
-.skeleton { background:var(--surface-3); min-height:12px; border-radius:2px; } .skeleton-line { margin-block:12px; height:14px; } .skeleton-line.short { width:60%; }
+.skeleton { background:linear-gradient(100deg,var(--surface-3) 32%,color-mix(in srgb,var(--ink) 12%,var(--surface-3)) 50%,var(--surface-3) 68%); background-size:220% 100%; min-height:12px; border-radius:var(--r-xs); animation:shimmer-skeleton 1.4s var(--ease-in-out) infinite; } .skeleton-line { margin-block:12px; height:14px; } .skeleton-line.short { width:60%; }
 .gu-doc { display:grid; gap:20px; margin-block:20px; font-size:14px; }
 .gu-panel { min-width:0; padding:20px; background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); }
 .gu-panel-head { display:flex; gap:14px; align-items:center; justify-content:space-between; flex-wrap:wrap; margin-bottom:15px; }
 .gu-panel-title { font-size:16px; font-weight:400; margin:0; letter-spacing:0; }
 .gu-panel-sub,.gu-caption,.gu-text,.gu-step-detail,.gu-fix-detail,.gu-metric-hint { font-size:13px; color:var(--muted); line-height:1.7; }
-.gu-chip,.gu-verdict,.gu-sev { font-size:11px; padding:3px 7px; border:1px solid var(--line); border-radius:6px; }
+.gu-chip,.gu-verdict,.gu-sev { font-size:11px; padding:3px 7px; border:1px solid var(--line); border-radius:var(--r-xs); }
 .gu-path,.gu-mono { font:11px var(--font-mono); overflow-wrap:anywhere; }
 .gu-scroll-x { max-width:100%; overflow:auto; } .gu-diff-counts { display:flex; align-items:center; gap:10px; font-size:11px; }
 .gu-diff-added,.gu-t-good { color:var(--good); } .gu-diff-removed,.gu-t-bad { color:var(--bad); } .gu-t-warn { color:var(--warn); } .gu-t-neutral { color:var(--muted); }
 .gu-diff-body,.gu-excerpt { font:12px/1.8 var(--font-mono); direction:ltr; text-align:start; }
 .gu-diff-line,.gu-excerpt-line { display:flex; gap:12px; white-space:pre; } .gu-diff-gutter { min-width:24px; color:var(--faint); text-align:end; }
 .gu-diff-sigil { width:12px; } .gu-diff-line--add { background:#82c79712; } .gu-diff-line--remove { background:#f5a6a612; }
-.gu-diff-hunk-head { color:var(--faint); margin-bottom:10px; } .gu-callout { padding:14px 18px; border-inline-start:2px solid var(--line); background:var(--surface-2); border-radius:0 10px 10px 0; }
+.gu-diff-hunk-head { color:var(--faint); margin-bottom:10px; } .gu-callout { padding:14px 18px; border-inline-start:2px solid var(--line); background:var(--surface-2); border-radius:0 var(--r-lg) var(--r-lg) 0; }
 .gu-callout-text,.gu-callout-title { margin:0; font-size:13px; line-height:1.7; } .gu-callout-title { font-weight:400; margin-bottom:8px; }
 .gu-render-id { display:grid; gap:7px; } .gu-render-verdict { display:flex; align-items:center; gap:12px; }
 .gu-dial { width:52px; height:52px; position:relative; display:grid; place-content:center; text-align:center; flex:none; }
 .gu-dial svg { position:absolute; inset:0; width:100%; height:100%; transform:rotate(-90deg); } .gu-dial-track { stroke:var(--surface-3); fill:none; } .gu-dial-arc { stroke:var(--good); fill:none; }
 .gu-dial--fail .gu-dial-arc { stroke:var(--warn); } .gu-dial-value { font-size:15px; } .gu-dial-scale { font-size:8px; color:var(--faint); }
-.gu-render-large { display:block; width:100%; max-height:380px; object-fit:contain; background:#0b0b0b; border-radius:var(--r-md); }
+.gu-render-large { display:block; width:100%; max-height:380px; object-fit:contain; background:var(--paper-2); border-radius:var(--r-md); }
 .gu-render-readout { display:flex; gap:12px; align-items:center; font-size:11px; margin-block:12px; color:var(--muted); }
 .gu-render-thumbs { display:flex; gap:8px; overflow:auto; margin-block:15px; }
 .gu-thumb { flex:0 0 90px; display:grid; gap:6px; padding:6px; font-size:10px; border:1px solid var(--line); border-radius:var(--r-sm); }
-.gu-thumb.is-active { border-color:var(--ink); } .gu-thumb-img { display:block; width:100%; height:52px; object-fit:cover; }
+.gu-thumb.is-active { border-color:var(--accent-ring); box-shadow:var(--glow); } .gu-thumb-img { display:block; width:100%; height:52px; object-fit:cover; }
 .gu-render-metrics,.gu-kv-list { margin:0; padding:0; } .gu-render-metrics { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px 22px; }
 .gu-kv-row { display:flex; gap:16px; justify-content:space-between; font-size:11px; border-bottom:1px solid var(--line); padding-block:8px; }
 .gu-kv-row dt { color:var(--muted); } .gu-kv-row dd { margin:0; }
@@ -717,7 +1069,7 @@ pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
 .gu-step-body { display:grid; gap:6px; } .gu-step-title { font-size:13px; } .gu-step-meta { display:flex; gap:12px; font-size:10px; color:var(--faint); }
 .gu-test { display:flex; gap:12px; align-items:start; padding-block:12px; border-top:1px solid var(--line); } .gu-test-body { flex:1; } .gu-test-name { font-size:13px; } .gu-test-time { margin-inline-start:auto; font-size:11px; color:var(--faint); }
 .gu-test-detail { display:block; margin-top:6px; color:var(--muted); font-size:12px; } .gu-test-counts { display:flex; gap:12px; font-size:11px; }
-.gu-meter { height:4px; background:var(--surface-3); margin-block:12px; overflow:hidden; border-radius:3px; } .gu-meter-fill { display:block; height:100%; background:var(--ink); }
+.gu-meter { height:4px; background:var(--surface-3); margin-block:12px; overflow:hidden; border-radius:var(--r-pill); } .gu-meter-fill { display:block; height:100%; background:var(--ink); }
 .gu-progress-head { display:flex; gap:12px; justify-content:space-between; font-size:12px; }
 .gu-compare-grid,.gu-cp-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:15px; }
 .gu-compare-cell { margin:0; } .gu-compare-img { width:100%; height:200px; object-fit:contain; } .gu-wipe-stage { position:relative; aspect-ratio:16/10; }
@@ -728,7 +1080,7 @@ pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
 .gu-img-loading,.gu-noimg { display:grid; place-content:center; padding:30px; color:var(--muted); background:var(--surface-2); font-size:12px; }
 .preview-toolbar,.preview-scenarios { display:flex; flex-wrap:wrap; align-items:center; gap:14px; padding-block:12px; font-size:12px; }
 .preview-toolbar > span { color:var(--muted); font-size:10px; margin-inline-end:auto; }
-.preview-scenarios button[aria-pressed='true'] { background:var(--ink); color:var(--paper); }
+
 .preview-workspace { display:grid; grid-template-columns:minmax(0,1fr) minmax(240px,32%); margin-top:20px; min-height:70vh; border-top:1px solid var(--line); }
 .preview-workspace--chat { grid-template-columns:1fr; } .preview-chat { padding:24px; display:flex; flex-direction:column; }
 .preview-chat__heading { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; }
@@ -753,7 +1105,7 @@ pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
 .mode-cost > .model-signature { grid-row:1 / 3; width:22px; height:22px; }
 .mode-cost-name { grid-column:2; font-weight:400; }
 .mode-cost-blurb { grid-column:2; color:var(--muted); font-size:13px; }
-.ring-number { fill:var(--ink); font:600 25px var(--font-body); }
+.ring-number { fill:var(--ink); font:400 25px var(--font-body); }
 .ring-caption,.bar-label { fill:var(--muted); font:12px var(--font-body); }
 .usage-bars { display:block; width:100%; max-height:210px; overflow:visible; }
 .bar { fill:var(--line); } .bar-active { fill:var(--accent); } .bar-base { stroke:var(--line); }

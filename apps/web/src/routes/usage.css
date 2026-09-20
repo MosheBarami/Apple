@@ -1,9 +1,28 @@
-/* /usage — the billing half of the page, which shipped as markup with no rules.
+/* /usage — the page where the product talks about money.
  *
- * The Credits half (the ring, the bars, the mode costs) has always been drawn by design/system.css.
- * Everything below it — the subscription notice, the invoice list and each invoice's lines, the
- * invoice-details form, the billing history, the proration quote — rendered as unstyled <span>s and
- * <div>s running into each other. These are the rules those class names were written expecting.
+ * REBUILT 2026-09-20 ONTO THE MEASURED SYSTEM. The owner named https://rosebud.ai/ as the bar and
+ * said to follow it closely in our green, keep our typeface, and replace the current visual
+ * language wherever the two disagree. The measurements are in
+ * packages/corpus/data/ui-references/web-landing.json under id "rosebud-ai-design-language"; the
+ * claims cited below are rows of its `demonstrates` array, read with getComputedStyle over its
+ * live DOM. apps/site/src/styles/landing.css is the same system already built on the marketing
+ * side, and this sheet mirrors it rather than re-deriving it.
+ *
+ * WHAT THE PAGE LOOKED LIKE BEFORE. Two bordered boxes with 22px of padding, square corners and no
+ * fill; a 140px ring whose track was --surface-3 (a control tint, i.e. the colour of something you
+ * press) and whose arc took 600ms to travel; thirty flat --accent rectangles; a spend breakdown
+ * drawn in --ink; and a "PDF" control on a draft invoice that was `visibility:hidden` — present in
+ * the layout, invisible on the screen. Nothing on it was wrong. Nothing on it was designed either,
+ * and it is the page a customer reads before deciding to pay.
+ *
+ * THE SHAPE OF THE CREDITS CARD IS THE BAR'S PRICING CARD (claim: "THE PRICING CARD IS A BORDERED
+ * PANEL WITH NO PADDING OF ITS OWN: 8px radius, 1px rgba(255,255,255,0.08) border, … and its
+ * internal bands — a title block, a highlighted bonus strip, a full-width primary button, then a
+ * dotted feature list — supply their own spacing. The strip is the only accented thing in the
+ * card."). Our card has no button in it — usage.tsx renders no control there and this sheet does
+ * not own usage.tsx — so what is taken is the rest: the panel carries no padding, every band pays
+ * for its own, and the ONE accented band is the purchased-credits strip, which is literally the
+ * bonus row that claim describes.
  *
  * ORDERING. This sheet is imported from a route that app.tsx pulls in BEFORE main.tsx imports
  * design/system.css, so on a tie system.css wins. Every rule here that overrides one of its
@@ -11,61 +30,328 @@
  * `.invoice-row`) so the result does not depend on bundle order at all.
  *
  * ONE WEIGHT. Nothing here is bold, including the <strong> elements the markup contains —
- * emphasis is a colour step from --muted to --ink, never 600.
+ * emphasis is a colour step from --faint to --muted to --ink, never 600.
  */
+
+/*[[ THIS SHEET DECLARES NO TOKENS, AND IT DID FOR ABOUT AN HOUR.
+ *
+ *   The first pass of this rebuild carried its own :root block — --accent-light, --accent-ring,
+ *   --accent-glow, an 8px panel radius, three control heights and the hard curve — because
+ *   design/system.css had one accent and 10/10/6 radii and none of the rest. While it was being
+ *   written the lead landed the same system upstream, properly: the accent family, --control-fill /
+ *   --control-line, --quiet-line / --quiet-ink for a turned-down control, --r-lg 8 / --r-md 6,
+ *   --h-xs..--h-lg, --ease-hard, --t-color and --glow all now live in the locked sheet.
+ *
+ *   So the block is gone rather than kept "in case". Two declarations of one value is how a palette
+ *   drifts, and this file is bundled BEFORE system.css — a route sheet that declares a system token
+ *   on :root loses the tie it looks like it wins, which is the worst of both outcomes: duplicated
+ *   AND inert. Every var() below names something design/system.css owns. ]]*/
 
 /* ------------------------------------------------------------------ the two cards --- */
 
 /* The page had a class called `usage-grid` and no grid: both cards ran the full 1160px, so a
    140px ring sat alone on a line of its own. */
 .usage-grid { display:grid; grid-template-columns:minmax(0,330px) minmax(0,1fr); gap:20px; align-items:start; }
-.usage-grid > .card { margin-block:0; min-width:0; }
-.credits-card { display:grid; justify-items:start; }
-/* Purchased credits, beside the allowance. The number is the emphasis; the sentence around it is
-   not, so <strong> becomes a colour and a figure face rather than a weight. */
-.credits-credits { margin:14px 0 6px; font-size:13px; line-height:1.6; letter-spacing:-.005em; color:var(--muted); }
-.credits-credits strong { font-weight:400; color:var(--ink); font-variant-numeric:tabular-nums; }
+
+/*[[ THE PANEL, WHICH IS THE ONE OBJECT THIS PAGE IS MADE OF.
+ *
+ *   8px radius, one hairline, and one surface step. The step is --surface with nothing mixed into
+ *   it: the rebuilt ramp in design/system.css is already tinted toward the accent hue (#101814,
+ *   green above blue above red at every step), which is the rule "Tint every surface step toward
+ *   the accent hue instead of using neutral grey" applied once, upstream, where a ramp belongs.
+ *   system.css gives `.card` a hairline, 22px of padding and no radius and no fill at all, so what
+ *   this rule adds is the shape and the step — not a second palette.
+ *
+ *   ELEVATION IS A GLOW AND SEPARATION IS A HAIRLINE (rule: "Elevate with a glow, and keep the one
+ *   real shadow inset."). There is no drop shadow anywhere in this file. ]]*/
+.usage-grid > .card {
+  margin-block:0;
+  min-width:0;
+  border:1px solid var(--line);
+  border-radius:var(--r-lg);
+  background:var(--surface);
+}
+/* The failure card, which renders INSTEAD of the grid and therefore never matches the rule above —
+   so without this one line an error on /usage draws a square, unfilled box beside nothing, which is
+   the "only the front page got looked at" defect in miniature. `<div className="card">` wrapping a
+   <Failure /> directly is a shape that exists exactly once in src/routes (usage.tsx:776), so the
+   `:has()` reaches the card this sheet owns and no other page's. */
+.page > .card:has(> .failure) { border-radius:var(--r-lg); background:var(--surface); }
+
+/*[[ NO PADDING OF ITS OWN. Both cards drop system.css's 22px and hand it to their bands, so the
+ *   accented strip and the chart can reach the panel's own edges. Every direct child pays 20px of
+ *   inline padding back; the bands that need to bleed take it off again. ]]*/
+.usage-grid > .card { padding:0; }
+.usage-grid > .card > * { margin-block:0; padding-inline:20px; }
+.usage-grid > .card > :first-child { padding-block-start:18px; }
+.usage-grid > .card > :last-child { padding-block-end:20px; }
+
+/* The band title. 15px against the card's 13px body and the 12px micro-labels: three steps, no
+   weight (claim: "One weight. Set every heading and every paragraph at 400"). h2 is 30px in
+   system.css, which is a page heading sitting inside a 330px card. */
+.usage-grid > .card > h2 {
+  padding-block:0 14px;
+  font-family:var(--font-body);
+  font-size:15px;
+  line-height:1.4;
+  letter-spacing:-.012em;
+  color:var(--ink);
+}
+
+/* --------------------------------------------------------------- the credits card --- */
+
+.credits-card { display:grid; justify-items:stretch; }
+
+/* The ring is the card's title block, centred and given the room a 140px object needs. */
+.credits-card > svg { justify-self:center; margin-block:2px 16px; }
+
+/*[[ THE ACCENTED STRIP, AND IT IS THE ONLY ACCENTED THING IN THE CARD.
+ *
+ *   The bar's pricing card highlights exactly one internal band — the bonus row — and ours is
+ *   literally a bonus row: credits that were purchased or granted, which do not expire and are not
+ *   part of the allowance the ring reports. It is a full-bleed band (the inline padding is given
+ *   back so the tint reaches the panel's edge), filled with the accent at its soft alpha, ruled
+ *   above and below with --accent-ring, and carrying a 14% glow.
+ *
+ *   IT IS ABSENT WHEN THE BALANCE IS ZERO, because usage.tsx renders the paragraph only when
+ *   `view.credits > 0`. A card with nothing bought has no accented band and that is correct: the
+ *   repository's standing rule is never to ship a section it cannot fill truthfully. ]]*/
+.credits-card > .credits-credits {
+  margin:0;
+  padding:13px 20px;
+  border-block:1px solid var(--accent-ring);
+  background:var(--accent-soft);
+  box-shadow:var(--glow);
+  font-size:13px;
+  line-height:1.6;
+  letter-spacing:-.005em;
+  color:var(--muted);
+}
+.credits-card > .credits-credits strong { font-weight:400; color:var(--accent-light); font-variant-numeric:tabular-nums; }
+
+/*[[ AND THE COST LINES ARE NOT THAT BAND. `.credits-credits` is applied twice by usage.tsx — once
+ *   to the purchased balance and once per published per-request cost — so the accent above would
+ *   have painted four green strips down a card whose whole discipline is that it has one. The
+ *   sibling combinator separates them by the only structural fact that distinguishes them: the
+ *   cost lines follow the "What your next request costs" heading and the bonus row precedes it.
+ *   Written AFTER the rule it corrects and one step more specific, so neither order nor
+ *   specificity decides it by accident. ]]*/
+.credits-card > .spend-kinds__head ~ .credits-credits {
+  padding:0 20px 8px;
+  border-block:0;
+  background:none;
+  box-shadow:none;
+  font-size:13px;
+}
+.credits-card > .spend-kinds__head ~ .credits-credits strong { color:var(--ink); }
+
+/* Against last month, and the reset sentence. Two quiet lines, a step apart in colour. */
+.credits-card > .credits-compare { padding-block:14px 0; font-size:13px; line-height:1.6; color:var(--muted); }
+.credits-card > .muted { padding-block:8px 0; font-size:13px; line-height:1.6; color:var(--faint); }
+
+/*[[ ONE MICRO-LABEL FOR THE WHOLE PAGE, and it is the bar's rather than the one this sheet used to
+ *   carry. Measured: 12px, uppercase, 1.2px of positive tracking (claim: "NAV AND LABELS ARE
+ *   UPPERCASE WITH POSITIVE TRACKING, body is not: 12px/700/1.2px on nav items, 12px/700 with
+ *   1.2px on labels, against 14px/400/normal body"). The 700 is theirs and is the one thing not
+ *   taken — nothing in this product is bolder than 400 — so the label is separated from body text
+ *   by case, size and tracking alone. The previous value was 11px/.018em, which is tesana's
+ *   number; where the two references disagree the owner said the bar wins.
+ *   font-weight is spelled out because an h3 is bold in the UA sheet. */
+.spend-kinds__head {
+  margin:0;
+  padding-block:20px 12px;
+  font-family:var(--font-body);
+  font-size:12px;
+  font-weight:400;
+  line-height:1.4;
+  letter-spacing:1.2px;
+  text-transform:uppercase;
+  color:var(--faint);
+}
+
+/* The published per-mode costs: the card's dotted feature list, ruled off from the bands above.
+   The trailing 20px is restated because this rule is the card's last child and would otherwise
+   beat the `:last-child` padding two blocks up on source order, leaving the list flush to the
+   panel's bottom edge. */
+.credits-card > .mode-cost-list { margin:0; padding-block:16px 20px; border-top:1px solid var(--line); }
+
+/* ------------------------------------------------------------------------ the ring --- */
+
+/*[[ THE TRACK IS A HAIRLINE SURFACE, NOT A CONTROL TINT. usage.tsx paints it `stroke="var(--surface-3)"`
+ *   as a presentation attribute — the colour of a pressed control, sitting behind a number — and a
+ *   presentation attribute loses to any CSS declaration, which is what lets this sheet correct it
+ *   without touching the route. --line is the one hairline this product separates with.
+ *   The selector is the circle that is NOT the arc, because the track carries no class at all. ]]*/
+.credits-card svg circle:not(.ring-arc) { stroke:var(--line); }
+
+/*[[ AND THE FILL IS THE ACCENT, WITH THE GLOW. Elevation on the bar is `rgba(accent,0.14) 0 0 12px`
+ *   and never a drop shadow; on an SVG stroke the same thing is a drop-shadow filter, which is the
+ *   only form a glow can take on a shape rather than a box.
+ *   THE ARC MOVES ONLY WHEN THE FIGURE IT REPORTS MOVES, and now within the ceiling: it ran at
+ *   600ms, which is more than twice the 0.26s nothing on the bar exceeds. A ring redrawing itself
+ *   is a surface moving on its own rather than a thing under the finger, so it takes the colour
+ *   band's duration and the hard curve that arrives fast and settles. ]]*/
+.credits-card .ring-arc {
+  filter:drop-shadow(0 0 8px var(--accent-glow));
+  transition:stroke-dasharray var(--t-color) var(--ease-hard);
+  animation:usage-ring-arrive var(--t-color) var(--ease-hard) both;
+}
+
+/* ------------------------------------------------------------------ the thirty days --- */
+
 .bars-wrap { margin-top:16px; }
-/* The arc is the one thing on the page that moves, and only when the figure it reports changes. */
-.ring-arc { transition:stroke-dasharray 600ms var(--ease-out); }
+.bars-card > .bars-wrap { padding-inline:14px; }
+
+/*[[ THIRTY BARS THAT ARRIVE, one after another, from the baseline they are measured against.
+ *
+ *   This is the half of the brief the bar itself cannot supply: it declares zero @keyframes and
+ *   runs zero animations. What the corpus says to do with the motion budget instead is spend it on
+ *   STATE — chatgpt.com declares 138 keyframes and every one of them is a state (a toast opening, a
+ *   skeleton shimmering, a dot pulsing) rather than scenery. A bar rising is the arrival of thirty
+ *   days of history, which is a state this page genuinely enters.
+ *
+ *   scaleY from the fill box's own bottom edge, so the animation is a transform on the compositor
+ *   and never a geometry change — and so a bar can never be drawn at a height that misreports a
+ *   day's spend for longer than one frame. The stagger is written out per group because CSS cannot
+ *   read an element's index; 9ms apart puts the whole sweep at 261ms, inside the ceiling. ]]*/
+.bars-wrap > .usage-bars .bar { transform-box:fill-box; transform-origin:bottom; animation:usage-bar-rise var(--t-base) var(--ease-hard) both; }
+.usage-bars g:nth-of-type(1) .bar { animation-delay:0ms; }
+.usage-bars g:nth-of-type(2) .bar { animation-delay:9ms; }
+.usage-bars g:nth-of-type(3) .bar { animation-delay:18ms; }
+.usage-bars g:nth-of-type(4) .bar { animation-delay:27ms; }
+.usage-bars g:nth-of-type(5) .bar { animation-delay:36ms; }
+.usage-bars g:nth-of-type(6) .bar { animation-delay:45ms; }
+.usage-bars g:nth-of-type(7) .bar { animation-delay:54ms; }
+.usage-bars g:nth-of-type(8) .bar { animation-delay:63ms; }
+.usage-bars g:nth-of-type(9) .bar { animation-delay:72ms; }
+.usage-bars g:nth-of-type(10) .bar { animation-delay:81ms; }
+.usage-bars g:nth-of-type(11) .bar { animation-delay:90ms; }
+.usage-bars g:nth-of-type(12) .bar { animation-delay:99ms; }
+.usage-bars g:nth-of-type(13) .bar { animation-delay:108ms; }
+.usage-bars g:nth-of-type(14) .bar { animation-delay:117ms; }
+.usage-bars g:nth-of-type(15) .bar { animation-delay:126ms; }
+.usage-bars g:nth-of-type(16) .bar { animation-delay:135ms; }
+.usage-bars g:nth-of-type(17) .bar { animation-delay:144ms; }
+.usage-bars g:nth-of-type(18) .bar { animation-delay:153ms; }
+.usage-bars g:nth-of-type(19) .bar { animation-delay:162ms; }
+.usage-bars g:nth-of-type(20) .bar { animation-delay:171ms; }
+.usage-bars g:nth-of-type(21) .bar { animation-delay:180ms; }
+.usage-bars g:nth-of-type(22) .bar { animation-delay:189ms; }
+.usage-bars g:nth-of-type(23) .bar { animation-delay:198ms; }
+.usage-bars g:nth-of-type(24) .bar { animation-delay:207ms; }
+.usage-bars g:nth-of-type(25) .bar { animation-delay:216ms; }
+.usage-bars g:nth-of-type(26) .bar { animation-delay:225ms; }
+.usage-bars g:nth-of-type(27) .bar { animation-delay:234ms; }
+.usage-bars g:nth-of-type(28) .bar { animation-delay:243ms; }
+.usage-bars g:nth-of-type(29) .bar { animation-delay:252ms; }
+.usage-bars g:nth-of-type(30) .bar { animation-delay:261ms; }
+
+/* A day with spend is the accent carrying its glow; a day without is the hairline, and it stays a
+   hairline — an empty day is not a small amount, it is none. */
+.bars-wrap > .usage-bars .bar-active { fill:var(--accent); filter:drop-shadow(0 0 5px var(--accent-glow)); }
+.bars-wrap > .usage-bars .bar:not(.bar-active) { fill:var(--line); }
+.bars-wrap > .usage-bars .bar-base { stroke:var(--line); }
+/* A bar is hoverable — it carries a <title> — so pointing at one says so. Colour only, on the
+   colour band's curve. */
+.bars-wrap > .usage-bars .bar { transition:fill var(--t-color) var(--ease-hard); }
+.bars-wrap > .usage-bars .bar:hover { fill:var(--accent-light); }
 
 /* ------------------------------------------------------- what the credits went on --- */
 
 /* system.css lays `.spend-kinds` out as an auto-fit grid, which was written for markup that held
-   the slices directly. It now holds a heading and a list, and that rule put them side by side. */
-.bars-card .spend-kinds { display:block; margin-top:22px; padding:18px 0 0; border-top:1px solid var(--line); }
-/* font-weight is spelled out because an h3 is bold by default in the UA sheet, and nothing on this
-   page is bold. Hierarchy here is 11px uppercase against 13px sentence case. */
-.spend-kinds__head { margin:0 0 14px; font-family:var(--font-body); font-size:11px; font-weight:400; line-height:1.4; letter-spacing:.018em; text-transform:uppercase; color:var(--faint); }
+   the slices directly. It now holds a heading and a list, and that rule put them side by side.
+   The band is full-bleed and its padding is inside it, so the rule that divides it from the chart
+   above reaches both edges of the panel the way every band divider on the bar does. */
+.bars-card .spend-kinds { display:block; margin-top:8px; padding:0 20px 20px; border-top:1px solid var(--line); }
 .spend-kinds__list { list-style:none; margin:0; padding:0; display:grid; gap:14px; }
 /* Name and figure on one line, the share of the thirty days under both. */
 .spend-kind { display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-areas:'name value' 'bar bar'; column-gap:16px; align-items:baseline; }
 .spend-kind__name { grid-area:name; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:13px; letter-spacing:-.01em; color:var(--muted); }
-.spend-kinds__list .spend-kind__value { grid-area:value; font-variant-numeric:tabular-nums; }
-.spend-kinds__list .spend-kind__bar { grid-area:bar; margin:9px 0 0; }
-/* Height and fill repeat what `.spend-kind__bar > span` already sets, deliberately and identically:
-   this class must carry them itself, or a later change to the child selector empties the meter. */
-.spend-kind__fill { display:block; height:100%; min-width:2px; background:var(--ink); transition:width 450ms var(--ease-out); }
+.spend-kinds__list .spend-kind__value { grid-area:value; font-variant-numeric:tabular-nums; color:var(--ink); }
+/* THE TRACK IS A HAIRLINE SURFACE, the same correction the ring's track needed: system.css fills it
+   --surface-3, which is the colour of a control. Two steps of specificity to beat `.spend-kind__bar`. */
+.spend-kinds__list .spend-kind__bar { grid-area:bar; height:4px; margin:9px 0 0; border-radius:2px; background:var(--line); }
+/*[[ AND THE FILL IS THE ACCENT WITH THE GLOW, not --ink. TWO classes and not one, which is not
+ *   decoration: system.css sets the fill with `.spend-kind__bar > span`, which scores 0,1,1, and a
+ *   single class here scores 0,1,0 and loses — silently, because the bar would still be painted,
+ *   just in white. The previous version of this rule carried `background:var(--ink)` and a comment
+ *   saying it deliberately restated the child selector's value; restating a value is what hid the
+ *   fact that the rule could not change one. The track above deliberately does NOT clip, or the
+ *   12px glow would be cut off at the meter's own 4px edge and the fill would be flat again.
+ *   It GROWS rather than being drawn at width, and grows by transform: `width` is the number
+ *   itself, and a width travelling from 0 through every intermediate value is a share of spend
+ *   being claimed thirty times on the way to the right one. ]]*/
+.spend-kinds__list .spend-kind__fill {
+  display:block;
+  height:100%;
+  min-width:2px;
+  background:var(--accent);
+  box-shadow:var(--glow);
+  transform-origin:left center;
+  animation:usage-fill-grow var(--t-base) var(--ease-hard) both;
+  transition:width var(--t-base) var(--ease-hard);
+}
+[dir='rtl'] .spend-kinds__list .spend-kind__fill { transform-origin:right center; }
 
 /* --------------------------------------------------------------- the subscription --- */
 
-/* Renewal, cancellation, a failed payment. One hairline panel; colour only when it is a warning,
-   because a renewal date tinted blue is a panel with nothing emphasised. */
-.billing-notice { position:relative; display:grid; justify-items:start; gap:7px; margin-block:20px; padding:15px 18px; border:1px solid var(--line); border-radius:var(--r-sm); background:var(--paper-2); }
-.billing-notice::before { content:''; position:absolute; inset-block:12px; inset-inline-start:-1px; width:2px; background:var(--surface-3); }
-.billing-notice--info::before { background:var(--surface-3); }
-.billing-notice--warn::before { background:var(--warn); }
+/*[[ RENEWAL, CANCELLATION, A FAILED PAYMENT. One 8px panel with the bar's leading strip, and colour
+ *   only when it is a warning — a renewal date tinted is a panel with nothing emphasised.
+ *   THE STRIP IS INSIDE THE PANEL NOW. It used to be `inset-inline-start:-1px` on a square box,
+ *   which at an 8px radius would leave a 2px bar floating past a rounded corner. ]]*/
+.billing-notice {
+  position:relative;
+  display:grid;
+  justify-items:start;
+  gap:7px;
+  margin-block:20px;
+  padding:15px 18px 15px 20px;
+  overflow:hidden;
+  border:1px solid var(--line);
+  border-radius:var(--r-lg);
+  background:var(--surface);
+  animation:usage-panel-arrive var(--t-base) var(--ease-hard) both;
+}
+.billing-notice::before { content:''; position:absolute; inset-block:0; inset-inline-start:0; width:2px; background:var(--control-line); }
+.billing-notice--info::before { background:var(--control-line); }
+/*[[ A FAILED PAYMENT IS THE ONE THING ON THIS PAGE THAT ASKS FOR SOMETHING BACK, so its strip is
+ *   the one element here that keeps moving after it arrives. It is the bar's `pulse-dot` applied to
+ *   the state that earns it: a warning nobody has acted on. Six seconds a cycle and a 20-point
+ *   alpha swing — visible in peripheral vision, not in the way of reading the sentence beside it. ]]*/
+.billing-notice--warn::before { background:var(--warn); animation:usage-warn-pulse 6s var(--ease-in-out) infinite; }
 .billing-notice__head { margin:0; font-size:14px; line-height:1.45; letter-spacing:-.01em; color:var(--ink); }
 .billing-notice--warn .billing-notice__head { color:var(--warn); }
 .billing-notice__detail { margin:0; font-size:13px; line-height:1.6; letter-spacing:-.005em; color:var(--muted); }
 
 /* Returning from Stripe, and returning from the billing portal. */
-.plans-note { margin-block:18px; padding:14px 16px; border:1px solid var(--line); border-radius:var(--r-sm); background:var(--paper-2); font-size:13px; line-height:1.7; letter-spacing:-.005em; color:var(--muted); }
+.plans-note { margin-block:18px; padding:14px 16px; border:1px solid var(--line); border-radius:var(--r-lg); background:var(--surface); font-size:13px; line-height:1.7; letter-spacing:-.005em; color:var(--muted); animation:usage-panel-arrive var(--t-base) var(--ease-hard) both; }
 .plans-note strong { font-weight:400; color:var(--ink); }
 .plans-manage { margin-block:18px; font-size:13px; letter-spacing:-.005em; color:var(--muted); }
-.plans-manage a { color:var(--muted); text-decoration:underline; text-decoration-color:var(--surface-3); text-underline-offset:4px; }
-.plans-manage a:hover { color:var(--ink); text-decoration-color:var(--faint); }
+.plans-manage a { color:var(--muted); text-decoration:underline; text-decoration-color:color-mix(in srgb,var(--ink) 24%,transparent); text-underline-offset:4px; transition:color var(--t-color) var(--ease-hard),text-decoration-color var(--t-color) var(--ease-hard); }
+.plans-manage a:hover { color:var(--ink); text-decoration-color:currentColor; }
 .plans-section { margin-top:44px; }
+
+/* ------------------------------------------------------------- the chrome controls --- */
+
+/*[[ AND THERE ARE NO BUTTON RULES IN THIS FILE, WHICH IS THE POINT.
+ *
+ *   The first pass of this rebuild restyled every `.btn` on the page into the measured chrome
+ *   variant — 32px, 6px, 0 8.8px, a 6% fill, an 18% hairline and a 12px/1.2px uppercase label —
+ *   scoped to the five containers that hold one. The lead then landed the same thing on the base
+ *   `button` element in design/system.css, at the 36px chrome height the bar actually measures for
+ *   a chrome button (0 8.8px at 32 is the CHIP's padding), with --control-fill / --control-line for
+ *   the resting state and --quiet-line / --quiet-ink for a disabled one.
+ *
+ *   So the rules are gone instead of being kept alongside. The five containers on this page hold
+ *   ghosts — "Manage billing", "Check again", "Export", "Save" — and every one of them is now the
+ *   product's control rather than this route's copy of it. The one filled control on the screen is
+ *   the plan ladder's call to action, which is a component and not this sheet's; keeping a second
+ *   button system here would have made two.
+ *
+ *   The `opacity:.48` this file used to put on a disabled control is gone with them: dimming the
+ *   border, the label and the icon together reads as breakage, and the system's turned-down
+ *   treatment is the measured answer (claim: "AN UNAVAILABLE CONTROL KEEPS ITS SHAPE AND LOSES ITS
+ *   CONTRAST"). ]]*/
 
 /* -------------------------------------------------------------------- the invoices --- */
 
@@ -74,30 +360,60 @@
 /* system.css makes `.invoice-row` a flex row, from when a row WAS one line. It now holds a head
    and, once opened, a detail panel underneath it. */
 .invoice-list__rows > .invoice-row { display:block; padding:0; }
-.invoice-row__head { display:flex; align-items:center; flex-wrap:wrap; gap:12px; padding:12px 0; }
-/* Number and date are the target, so the target is the whole of them rather than a word.
-   The caret LEADS the row: at the end of a stretched toggle it sits against the status pill and
-   reads as part of it. */
-.invoice-row__toggle { position:relative; flex:1 1 180px; min-width:0; display:grid; justify-items:start; gap:2px; padding:7px 10px 7px 22px; border:0; border-radius:var(--r-xs); background:transparent; text-align:start; }
-.invoice-row__toggle:hover { background:var(--surface-2); }
+.invoice-row__head { display:flex; align-items:center; flex-wrap:wrap; gap:12px; padding:6px 0; }
+/* Number and date are the target, so the target is the whole of them rather than a word. 50px is
+   the bar's large-step height and is what two lines of type plus its padding already measured; the
+   caret LEADS the row, and the inset it needs is taken out of the leading padding the way an
+   icon-only control takes none at all. */
+.invoice-row__toggle { position:relative; flex:1 1 180px; min-width:0; min-height:var(--h-lg); display:grid; align-content:center; justify-items:start; gap:2px; padding:8px 12px 8px 24px; border:1px solid transparent; border-radius:var(--r-md); background:transparent; text-align:start; transition:color var(--t-color) var(--ease-hard),border-color var(--t-fast) var(--ease-out),background-color var(--t-fast) var(--ease-out); }
+/*[[ FOUR SELECTOR STEPS, AND THEY ARE ARITHMETIC. design/system.css hovers every button with
+ *   `button:hover:not(:disabled):not([aria-disabled='true'])`, which scores 0,3,1 — so
+ *   `.invoice-row__toggle:hover` (0,2,0) and even `…:hover:not(:disabled)` (0,3,0) both LOSE, and
+ *   the row would take the product's 12% chrome fill instead of the quiet one a list row wants.
+ *   The two `:not()`s here are the same two, which puts this at 0,4,0 and settles it on the class
+ *   count rather than on which sheet happens to be bundled last. ]]*/
+.invoice-row__toggle:hover:not(:disabled):not([aria-disabled='true']) { border-color:var(--quiet-line); background:var(--control-fill); color:inherit; }
+.invoice-row__toggle[aria-expanded='true'] { border-color:var(--accent-ring); background:color-mix(in srgb,var(--accent) 6%,transparent); }
 /* Inside the row, not hanging to the left of it: a caret in the page's own gutter puts the
    invoice number out of line with the heading above it, at every width. */
-.invoice-row__toggle::before { content:''; position:absolute; inset-inline-start:4px; top:calc(50% - 4px); width:6px; height:6px; border-inline-end:1px solid var(--faint); border-block-end:1px solid var(--faint); transform:rotate(-45deg); transition:transform 180ms var(--ease-out); }
+.invoice-row__toggle::before { content:''; position:absolute; inset-inline-start:8px; top:calc(50% - 4px); width:6px; height:6px; border-inline-end:1px solid var(--faint); border-block-end:1px solid var(--faint); transform:rotate(-45deg); transition:transform var(--t-fast) var(--ease-out),border-color var(--t-color) var(--ease-hard); }
 [dir='rtl'] .invoice-row__toggle::before { transform:rotate(135deg); }
 /* Open points down, which is the same rotation in either direction. */
-.invoice-row__toggle[aria-expanded='true']::before,[dir='rtl'] .invoice-row__toggle[aria-expanded='true']::before { transform:rotate(45deg); }
+.invoice-row__toggle[aria-expanded='true']::before,[dir='rtl'] .invoice-row__toggle[aria-expanded='true']::before { transform:rotate(45deg); border-color:var(--accent-light); }
 .invoice-row__number { font:14px/1.4 var(--font-mono); letter-spacing:-.01em; color:var(--ink); overflow-wrap:anywhere; }
 .invoice-row__date { font-size:12px; line-height:1.4; letter-spacing:-.005em; color:var(--faint); }
 .invoice-row__amount { margin-inline-start:auto; font:14px var(--font-mono); font-variant-numeric:tabular-nums; color:var(--ink); }
-.invoice-row__pdf { flex:none; padding:5px 9px; border:1px solid var(--line); border-radius:var(--r-xs); font-size:11px; line-height:1.4; letter-spacing:.018em; text-transform:uppercase; text-decoration:none; color:var(--faint); }
-.invoice-row__pdf:hover { border-color:var(--surface-3); color:var(--ink); }
-/* A draft invoice has no PDF. The markup renders an empty aria-hidden span in its place so the
-   amounts above and below it stay in one column — which only works if it keeps the width. */
-.invoice-row__pdf--none { visibility:hidden; }
-.invoice-row__pdf--none::after { content:'PDF'; }
 
-/* What the invoice was actually made of. A nested surface, one step up from the page. */
-.invoice-row > .invoice-detail { margin:0 0 14px; padding:14px 16px; border:1px solid var(--line); border-radius:var(--r-sm); background:var(--paper-2); }
+/* The status word. 6px and a hairline of its own colour, at the bare-text-button height — a pill
+   here would be the one pill in a product that has none. */
+.invoice-row__head > .invoice-pill { display:inline-flex; align-items:center; min-height:var(--h-xs); padding:0 8.8px; border:1px solid currentColor; border-radius:var(--r-md); font-size:12px; line-height:1.2; letter-spacing:1.2px; text-transform:uppercase; }
+
+/* The PDF, at the bare-text-button height with the chrome variant's border and ink. */
+.invoice-row__pdf { flex:none; display:inline-flex; align-items:center; min-height:var(--h-xs); padding:0 8.8px; border:1px solid var(--control-line); border-radius:var(--r-md); font-size:12px; line-height:1.2; letter-spacing:1.2px; text-transform:uppercase; text-decoration:none; color:var(--muted); transition:color var(--t-color) var(--ease-hard),border-color var(--t-fast) var(--ease-out); }
+.invoice-row__pdf:hover { border-color:var(--accent-ring); color:var(--ink); }
+
+/*[[ AN UNAVAILABLE CONTROL KEEPS ITS SHAPE AND LOSES ITS CONTRAST — re-aimed 2026-09-20.
+ *
+ *   IT USED TO BE `visibility:hidden`. A draft invoice has no PDF, so usage.tsx renders an empty
+ *   aria-hidden span in the anchor's place and this sheet hid it, to keep the amounts above and
+ *   below in one column. That was a real problem with a real fix and the fix is now the wrong one:
+ *   measured on the bar, an unavailable action keeps the same height, radius, padding and tracking
+ *   as the live control beside it and differs ONLY by border alpha .18 -> .12 and label ink
+ *   100% -> 38% (claim: "It is not greyed out, not hidden, and not a different object; it is the
+ *   same object turned down"). A hidden control still says nothing about why it is not there.
+ *
+ *   The width is still reserved — it is the same box — so the column the old rule existed to
+ *   protect is protected by the same geometry that now carries the meaning. The span stays
+ *   aria-hidden in the markup, so nothing is announced as an action that cannot be taken; this is
+ *   a fact drawn for the eye, next to the word "Draft" that states it for everyone. ]]*/
+.invoice-row__pdf--none { border-color:var(--quiet-line); color:var(--quiet-ink); }
+.invoice-row__pdf--none::after { content:'PDF'; }
+.invoice-row__pdf--none:hover { border-color:var(--quiet-line); color:var(--quiet-ink); }
+
+/*[[ WHAT THE INVOICE WAS ACTUALLY MADE OF. A nested panel, one step up from the page, and it is
+ *   MOUNTED rather than revealed — usage.tsx renders it only while `open` — so its entrance is a
+ *   state and not a decoration. 200ms, which is the band for a surface that moves on its own. ]]*/
+.invoice-row > .invoice-detail { margin:0 0 14px; padding:14px 16px; border:1px solid var(--line); border-radius:var(--r-lg); background:var(--paper-2); animation:usage-detail-open var(--t-base) var(--ease-hard) both; }
 .invoice-row > .invoice-detail > .muted { margin:0; font-size:12px; }
 .invoice-detail__lines { list-style:none; margin:0; padding:0; }
 .invoice-detail__line { display:flex; align-items:baseline; gap:12px; padding:8px 0; border-bottom:1px solid var(--line); }
@@ -116,7 +432,7 @@
 /* ------------------------------------------------- the two disclosures underneath --- */
 
 .billing-details,.billing-history { margin-block:20px; border-top:1px solid var(--line); font-size:14px; }
-:is(.billing-details,.billing-history) > summary { padding:16px 2px; cursor:pointer; letter-spacing:-.01em; color:var(--muted); transition:color 160ms var(--ease-out); }
+:is(.billing-details,.billing-history) > summary { min-height:var(--h-lg); display:flex; align-items:center; padding:0 2px; cursor:pointer; letter-spacing:-.01em; color:var(--muted); transition:color var(--t-color) var(--ease-hard); }
 :is(.billing-details,.billing-history) > summary:hover { color:var(--ink); }
 :is(.billing-details,.billing-history)[open] > summary { color:var(--ink); }
 :is(.billing-details,.billing-history)[open] { padding-bottom:22px; }
@@ -124,10 +440,18 @@
 .billing-details__intro { margin:0 0 18px; max-width:62ch; font-size:13px; line-height:1.6; letter-spacing:-.005em; }
 .billing-details__form { display:grid; gap:15px; max-width:420px; }
 .billing-details__field { display:grid; gap:6px; }
-.billing-details__label { font-size:11px; line-height:1.4; letter-spacing:.018em; text-transform:uppercase; color:var(--faint); }
+/* The page's one micro-label, restated for a field rather than a section. */
+.billing-details__label { font-size:12px; line-height:1.4; letter-spacing:1.2px; text-transform:uppercase; color:var(--faint); }
+/* The input is a well one step DOWN from the panel it sits on, at the control radius. system.css
+   gives every input a 4px radius, which is not a token in either sheet. */
+/* THE INPUT IS A WELL, WHICH IS WHAT --paper-2 IS FOR: on a --surface panel a --surface input is
+   invisible as a field, and system.css fills every input with --surface. The radius, the hairline
+   and the accent focus ring are the system's and are not restated here. */
+.billing-details__field input { background:var(--paper-2); transition:background-color var(--t-fast) var(--ease-out); }
+.billing-details__field input:focus { background:var(--surface); }
 .billing-details__actions { display:flex; align-items:center; gap:12px; margin-top:3px; }
 /* One line, after a save the person asked for — so the tone is worth a colour. */
-.billing-details__note { margin:14px 0 0; font-size:12px; line-height:1.6; letter-spacing:-.005em; }
+.billing-details__note { margin:14px 0 0; font-size:12px; line-height:1.6; letter-spacing:-.005em; animation:usage-panel-arrive var(--t-fast) ease-out both; }
 .billing-details__note--ok { color:var(--good); }
 .billing-details__note--warn { color:var(--warn); }
 .billing-details__note--pending { color:var(--muted); }
@@ -145,6 +469,62 @@
 .preview-lines > li:first-child { border-top:0; }
 .preview-lines__amount { flex:none; font:12px var(--font-mono); font-variant-numeric:tabular-nums; white-space:nowrap; color:var(--ink); }
 
+/* ----------------------------------------------------------------- waiting, drawn --- */
+
+/*[[ EVERY LINE ON THIS PAGE THAT SAYS IT IS WAITING NOW LOOKS LIKE IT IS.
+ *
+ *   `aria-busy="true"` is the attribute the screen reader is told with — on "Loading history…" and
+ *   "Loading this invoice…" — so it is the hook the eye is told with too: one fact, one source.
+ *   This is the bar's `shimmer-skeleton` applied to states that already declare themselves, rather
+ *   than a spinner bolted onto a sentence.
+ *
+ *   A BOUND, STATED RATHER THAN PAPERED OVER. usage.tsx has a THIRD busy line — "Loading your
+ *   Credits…" at the top of the page — and it is not covered here. It is a bare `<p className="muted"
+ *   aria-busy="true">` directly under `.page`, which is the identical shape admin.tsx renders, so
+ *   any selector that reaches it reaches a route this sheet does not own. It is also the one of the
+ *   three that is mutually exclusive with the other two: the grid replaces it. So it stays plain.
+ *
+ *   The gradient is --muted -> --ink -> --muted, so it flips with the ramp and needs no second set
+ *   of numbers for the light theme. 2.4s is ambient, which the ceiling exempts; under reduced
+ *   motion it stops and the text is simply --muted. ]]*/
+:is(.usage-grid,.invoice-row > .invoice-detail) [aria-busy='true'] {
+  background:linear-gradient(100deg,var(--muted) 20%,var(--ink) 50%,var(--muted) 80%);
+  background-size:220% 100%;
+  background-clip:text;
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  color:var(--muted);
+  animation:usage-waiting 2.4s ease-in-out infinite;
+}
+@media (forced-colors:active) { :is(.usage-grid,.invoice-row > .invoice-detail) [aria-busy='true'] { background:none; -webkit-text-fill-color:currentColor; color:CanvasText; } }
+
+/* ------------------------------------------------------------------- the keyframes --- */
+
+/*[[ SIX, AND EVERY ONE OF THEM IS A STATE THIS PAGE ENTERS.
+ *
+ *   The bar declares zero keyframes and runs zero animations, and the corpus is explicit that this
+ *   is not a licence to be still: chatgpt.com declares 138 and every one is an interaction state.
+ *   So each of these is named after the thing that causes it, and each is referenced by a rule
+ *   above whose selector matches markup usage.tsx actually renders:
+ *
+ *     usage-ring-arrive   the balance came back           .ring-arc
+ *     usage-bar-rise      thirty days of history came back .usage-bars .bar
+ *     usage-fill-grow     a spend share was computed       .spend-kind__fill
+ *     usage-panel-arrive  a notice / a saved detail appeared .billing-notice, .plans-note, .billing-details__note
+ *     usage-detail-open   an invoice was expanded          .invoice-detail
+ *     usage-warn-pulse    a payment failed and nobody has fixed it  .billing-notice--warn::before
+ *     usage-waiting       a request is in flight           [aria-busy='true'] in the grid / a detail
+ *
+ *   Nothing here is scenery, and nothing here outlasts 0.26s except the two that are ambient by
+ *   definition — the shimmer and the warning pulse — which the ceiling exempts. ]]*/
+@keyframes usage-ring-arrive { from { opacity:0; } to { opacity:1; } }
+@keyframes usage-bar-rise { from { transform:scaleY(0); opacity:.4; } to { transform:none; opacity:1; } }
+@keyframes usage-fill-grow { from { transform:scaleX(0); } to { transform:none; } }
+@keyframes usage-panel-arrive { from { opacity:0; transform:translate3d(0,6px,0); } to { opacity:1; transform:none; } }
+@keyframes usage-detail-open { from { opacity:0; transform:translate3d(0,-4px,0); } to { opacity:1; transform:none; } }
+@keyframes usage-warn-pulse { 0%,100% { opacity:.55; } 50% { opacity:1; } }
+@keyframes usage-waiting { from { background-position:180% 0; } to { background-position:-80% 0; } }
+
 /* ------------------------------------------------------------------------- narrow --- */
 
 @media (max-width:900px) {
@@ -152,10 +532,13 @@
 }
 /* 375px: the ring card, an invoice row and the form all have to hold at one column. */
 @media (max-width:600px) {
-  .credits-card { justify-items:stretch; }
-  .bars-card .spend-kinds { margin-top:18px; }
+  .usage-grid > .card > * { padding-inline:16px; }
+  .credits-card > .credits-credits { padding-inline:16px; }
+  .credits-card > .spend-kinds__head ~ .credits-credits { padding-inline:16px; }
+  .bars-card > .bars-wrap { padding-inline:10px; }
+  .bars-card .spend-kinds { margin-top:6px; }
   .invoice-list { margin-block:26px; }
-  .invoice-row__head { gap:10px; padding:14px 0; }
+  .invoice-row__head { gap:10px; padding:8px 0; }
   .invoice-row__toggle { flex:1 1 100%; }
   .invoice-row__amount { margin-inline-start:0; }
   .invoice-row__pdf { margin-inline-start:auto; }
@@ -166,6 +549,31 @@
   .preview-lines > li { flex-wrap:wrap; gap:2px 12px; }
 }
 
+/* ---------------------------------------------------------------------- motion off --- */
+
+/*[[ OFF, NOT SLOWED, and the entrances set opacity only inside their keyframes — so with
+ *   `animation:none` every panel, bar and arc is simply THERE at full strength rather than
+ *   invisible. A rule that adds motion carries its own switch. ]]*/
 @media (prefers-reduced-motion: reduce) {
-  .ring-arc,.spend-kind__fill,.invoice-row__toggle::before,:is(.billing-details,.billing-history) > summary { transition:none; }
+  .credits-card .ring-arc,
+  .bars-wrap > .usage-bars .bar,
+  .spend-kinds__list .spend-kind__fill,
+  .billing-notice,
+  .billing-notice--warn::before,
+  .plans-note,
+  .billing-details__note,
+  .invoice-row > .invoice-detail,
+  :is(.usage-grid,.invoice-row > .invoice-detail) [aria-busy='true'] { animation:none; }
+  /* The shimmer's clipped background has to be handed back with it, or the sentence it was
+     painting stays transparent and the waiting state renders as an empty line. */
+  :is(.usage-grid,.invoice-row > .invoice-detail) [aria-busy='true'] { background:none; -webkit-text-fill-color:currentColor; color:var(--muted); }
+  .credits-card .ring-arc,
+  .bars-wrap > .usage-bars .bar,
+  .spend-kinds__list .spend-kind__fill,
+  .invoice-row__toggle,
+  .invoice-row__toggle::before,
+  .invoice-row__pdf,
+  .plans-manage a,
+  .billing-details__field input,
+  :is(.billing-details,.billing-history) > summary { transition:none; }
 }

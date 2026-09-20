@@ -1,0 +1,143 @@
+---
+/**
+ * THE STRIP THAT KEEPS MOVING. CSS only, no script, no canvas.
+ *
+ * WHERE IT COMES FROM. `packages/corpus/data/ui-references/web-landing.json`, reference
+ * `rosebud-ai-design-language`, fifteenth measured claim: "The /play gallery is filter chips over
+ * horizontally-scrolling rows of thumbnail cards... It is directly the shape our project shelf
+ * wants." Their rows are scrolled by hand; this is the same object with the scroll running on its
+ * own, which is the owner's standing instruction for this pass — the reference measures at ZERO
+ * running animations and he asked for the opposite anyway, knowing that.
+ *
+ * THE GEOMETRY IS THE REFERENCE'S, NOT INVENTED HERE:
+ *   - 6px radius on every item. Rule 14: "Two radii: 8px for panels, 6px for controls. No pills."
+ *     A scrolling strip of rounded-full tags is the single most common way this component is built
+ *     and it is exactly what that rule exists to forbid.
+ *   - 32px tall, padded 7.2px / 16px. Rule 15: "Four control heights — 28, 32, 36, 50 — and padding
+ *     that tracks the height", and claim 9 gives 7.2px 16px as the padding measured AT 32.
+ *   - Hairline separation, no shadow. Rule 2, rule 13.
+ *   - 0.26s on the hard ease for the colour change, 0.15s for everything else. Rule 16: "Nothing
+ *     takes longer than 0.26s, and colour-only changes use a hard ease-out." The SCROLL is not
+ *     bound by that band — it is ambient, not a response to a finger.
+ *
+ * WEIGHT 400, DELIBERATELY, where the two sources disagree. Claim 11 measures the reference's
+ * micro-labels at 700; rule 0 of this same file says "One weight... Reaching for 600 is the reflex
+ * that makes a page look like a template." The uppercase and the positive tracking are taken, the
+ * bold is not, because the reference is a monospace page and 700 is how a monospace face gets a
+ * second voice. Ours has size, colour and space to do that job, and rule 3 supplies the tracking.
+ *
+ * HOW THE LOOP IS SEAMLESS. The list is rendered twice inside one track, the track is `max-content`
+ * wide, and the animation translates it exactly -50%. At the end of a cycle the second copy is
+ * standing precisely where the first began, so the reset is invisible and there is no seam to time.
+ *
+ * IT STOPS TWICE:
+ *   - on hover and on focus-within, because a line of text sliding out from under a reader who is
+ *     trying to read it is hostile, and because a focusable item inside a moving strip cannot be
+ *     reached otherwise.
+ *   - under prefers-reduced-motion, where the animation is removed entirely and the track sits at
+ *     its declared transform. That is `translate3d(0,0,0)` — the FIRST copy, complete and readable
+ *     from its first item. This component has no state that only the animation can produce, so
+ *     stopping it can never leave a half-scrolled row or an empty strip.
+ *
+ * NOTHING HERE IS HIDDEN UNTIL A CLASS ARRIVES. There is no script, no IntersectionObserver and no
+ * reveal: the markup is the content, and with JavaScript switched off entirely it renders complete.
+ * The second copy is the only thing marked aria-hidden, so the strip is read once rather than twice.
+ */
+interface Props {
+  /** Short strings. Anything long enough to wrap does not belong in a strip. */
+  items: string[];
+  /** One full cycle, in seconds. Longer list, longer cycle — the pixel speed should not change. */
+  seconds?: number;
+  /** What the row is, for a screen reader. Decoration should pass `label={null}` instead. */
+  label?: string | null;
+}
+
+const { items, seconds = 44, label = null } = Astro.props;
+const run = items.filter((item) => typeof item === 'string' && item.trim().length > 0);
+---
+{run.length > 0 && (
+  <div class="marquee" style={`--marquee-seconds:${seconds}s`}>
+    <div class="marquee-track">
+      <ul class="marquee-run" aria-label={label ?? undefined}>
+        {run.map((item) => <li class="marquee-item">{item}</li>)}
+      </ul>
+      {/* The copy that makes the loop seamless. It is the same words a second time, so it is read
+          to nobody. */}
+      <ul class="marquee-run" aria-hidden="true">
+        {run.map((item) => <li class="marquee-item">{item}</li>)}
+      </ul>
+    </div>
+  </div>
+)}
+
+<style>
+  /* The strip fades at both ends rather than being cut by a border. A hard edge tells a reader the
+     row has stopped; a fade tells them it continues, which is true. */
+  .marquee {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    mask-image: linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent 100%);
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent 100%);
+  }
+
+  .marquee-track {
+    display: flex;
+    width: max-content;
+    /* The declared state is the one a stopped animation returns to, and it is the readable one. */
+    transform: translate3d(0, 0, 0);
+    animation: marquee-run var(--marquee-seconds, 44s) linear infinite;
+    will-change: transform;
+  }
+
+  /* Hover stops it for the reader; focus-within stops it so a keyboard can reach anything
+     focusable that is ever placed inside. */
+  .marquee:hover .marquee-track,
+  .marquee:focus-within .marquee-track {
+    animation-play-state: paused;
+  }
+
+  @keyframes marquee-run {
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(-50%, 0, 0); }
+  }
+
+  .marquee-run {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 0 4px;
+    list-style: none;
+  }
+
+  /* 32px tall at 7.2px/16px padding, 6px radius, one hairline, no shadow. */
+  .marquee-item {
+    display: inline-flex;
+    align-items: center;
+    height: var(--h-sm, 32px);
+    padding: 7.2px 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    background: var(--control-fill, rgba(255, 255, 255, 0.06));
+    color: var(--ink-secondary, var(--muted));
+    font-size: 12px;
+    line-height: 1;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    transition:
+      color var(--t-color, 0.26s) var(--ease-hard, cubic-bezier(0.32, 0.72, 0, 1)),
+      border-color var(--t-fast, 0.15s) ease-out,
+      background-color var(--t-fast, 0.15s) ease-out;
+  }
+
+  .marquee:hover .marquee-item {
+    color: var(--ink);
+    border-color: var(--line-strong, var(--line));
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .marquee-track { animation: none; }
+  }
+</style>

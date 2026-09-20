@@ -1,16 +1,29 @@
 /* /projects/:id/roadmap — the rules this route owns.
  *
- * The spine, the milestone card, the suggestion panel and the summary's meter are
- * already dressed in design/system.css. What was left with no rules at all is the
- * page's own furniture: the head column, the loading state, the sentence the 409
- * empty state prints, and the two small spans that qualify a larger number
- * ("· 3 in progress", "· 28 read"). Every one of them is a <span> or a <button>,
- * so with no rules the qualifier ran into the number it qualifies and the "Now"
- * jump drew as a bordered 10px-radius button in the middle of a sentence.
+ * REBUILT 2026-09-20 ONTO THE MEASURED SYSTEM. The owner named https://rosebud.ai/ as the bar and
+ * said to follow it closely in our green, keep our typeface, and replace the current visual
+ * language wherever the two disagree; the measurements are in
+ * packages/corpus/data/ui-references/web-landing.json under id "rosebud-ai-design-language".
  *
- * Square corners are deliberate: .rm-card and .rm-contents carry no radius, and a
- * rounded skeleton that squares off on load is a visible pop.
+ * WHAT THIS FILE OWNS AND WHAT IT DOES NOT. The milestone card, the spine and the suggestion panel
+ * have their own stylesheets under src/components/roadmap/ and are not touched here. What IS here
+ * is the page's own furniture — the head column, the loading state, the progress summary, the
+ * inventory and the two small spans that qualify a larger number. Every rule that has to beat
+ * design/system.css, which is bundled after this file, is scoped to `.rm-page` (roadmap.tsx:159)
+ * so it cannot reach another route on its way to winning.
+ *
+ * SQUARE CORNERS ARE GONE. They were deliberate — a rounded skeleton that squares off on load is a
+ * visible pop — and the fix was to square the card rather than to round the skeleton. Under the
+ * measured system a panel is 8px and a control is 6px, so the skeleton is rounded to match the
+ * thing it stands in for and the pop cannot happen in either direction.
  */
+
+/*[[ THIS SHEET DECLARES NO TOKENS. The first pass of this rebuild carried its own scoped block —
+ *   the accent family, an 8px panel radius, the control heights and the hard curve — because
+ *   design/system.css had one accent and 10/10/6 radii. The lead landed the same system upstream
+ *   while it was being written, so the block is gone rather than kept: a page-scoped redeclaration
+ *   BEATS :root, which would have made `.rm-page` the one surface in the product where a change to
+ *   the locked palette had no effect. Every var() below names something system.css owns. ]]*/
 
 /* ------------------------------------------------------------------- the head --- */
 /* .page-head is a flex row with the suggest button on its end. This is the column
@@ -19,17 +32,39 @@
 .rm-head__text { flex:1; min-width:0; max-width:680px; }
 .rm-head__text .page-sub { max-width:62ch; margin:0; letter-spacing:-.01em; }
 
+/* The trail. `aria-current="page"` is the last crumb and is not a link, so it is the one that steps
+   down in colour — the difference between where you are and where you can go is a fact the eye
+   should get from the same attribute the screen reader does. */
+.rm-page .rm-crumbs a { color:var(--muted); text-decoration:none; transition:color var(--t-color) var(--ease-hard); }
+.rm-page .rm-crumbs a:hover { color:var(--ink); }
+.rm-page .rm-crumbs [aria-current='page'] { color:var(--faint); }
+
+/*[[ THERE IS NO PRIMARY-BUTTON RULE HERE, AND THERE WAS ONE FOR AN HOUR.
+ *   "Suggest what to build next" (roadmap.tsx:148) is the one filled control on this screen, and
+ *   the first pass of this rebuild drew it: --accent-deep under a white label at 36px with 0 16px
+ *   of padding and the measured inset-plus-ledge shadow. design/system.css now draws exactly that
+ *   for `.btn-primary` everywhere, including the label colour on hover and focus that
+ *   tests/button-label-contrast.test.mjs exists to defend. A route sheet's copy of it could only
+ *   ever drift. ]]*/
+
 /* ---------------------------------------------------------------- the loading --- */
 /* Same track sizing as .rm-stage__cards, so the placeholders stand where the real
    cards will. The sentence spans the whole grid — it is about all three. */
 .rm-loading { display:grid; gap:18px; grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr)); }
 .rm-loading__copy { grid-column:1/-1; margin:0; font-size:13px; color:var(--muted); letter-spacing:-.01em; }
-/* A step DOWN from .rm-card's --surface: a placeholder is recessed, not raised. */
-.rm-card.rm-card--skeleton { background:var(--paper-2); }
+/* A step DOWN from .rm-card's --surface: a placeholder is recessed, not raised. It carries the
+   panel radius so it stands in for the card's shape as well as its size — the reason this used to
+   be square was that .rm-card was, and it no longer is. */
+.rm-page .rm-card.rm-card--skeleton { border-radius:var(--r-lg); background:var(--paper-2); }
 .rm-card--skeleton .skeleton-title { height:21px; width:66%; }
+.rm-card--skeleton .skeleton { border-radius:var(--r-md); }
 /* Breathing, not a sweeping gradient — at this size a moving highlight reads as a
    rendering fault. The global reduce rule already kills it; this is the local one. */
 .rm-card--skeleton .skeleton { animation:rm-breathe 1.7s var(--ease-out) infinite alternate; }
+/* The three placeholders breathe out of phase, so the block reads as three objects waiting rather
+   than one rectangle blinking. Ambient, which the 0.26s ceiling exempts. */
+.rm-loading > .rm-card--skeleton:nth-of-type(2) .skeleton { animation-delay:220ms; }
+.rm-loading > .rm-card--skeleton:nth-of-type(3) .skeleton { animation-delay:440ms; }
 @keyframes rm-breathe { from { opacity:.5; } to { opacity:1; } }
 @media (prefers-reduced-motion:reduce) { .rm-card--skeleton .skeleton { animation:none; opacity:.75; } }
 
@@ -39,31 +74,78 @@
 .rm-empty__detail { margin:0 auto; max-width:500px; font-family:var(--font-mono); font-size:12px; line-height:1.6; letter-spacing:0; color:var(--faint); overflow-wrap:anywhere; }
 
 /* ---------------------------------------------------------------- the summary --- */
+
+/*[[ THE PROGRESS PANEL. It was two hairlines across the page with 24px of air between them, which
+ *   is a rule rather than an object — the one place on this route that states how much of the plan
+ *   is done had no edges at all. It is now the page's 8px panel: one hairline, the panel radius
+ *   and one surface step. The step is --surface and nothing is mixed into it here — the rebuilt
+ *   ramp in design/system.css is already tinted toward the accent hue (#101814, green above blue
+ *   above red), which is the rule "Tint every surface step toward the accent hue instead of using
+ *   neutral grey" applied once, upstream, where a ramp belongs. ]]*/
+.rm-page .rm-summary { padding:20px 22px; border:1px solid var(--line); border-radius:var(--r-lg); background:var(--surface); }
+
+/*[[ AND THE METER SPENDS THE ACCENT FAMILY. system.css fills the track with --surface-3 — the
+ *   colour of a control, sitting behind a reading — and the fill with --good, which is a status
+ *   colour three points from --accent and therefore reads as "a green thing" beside the accent
+ *   without being it. The track is now the hairline this product separates with, and the fill is
+ *   the accent carrying the measured 12px glow (claim: "ELEVATION IS A GLOW, NOT A DROP SHADOW.
+ *   The accented chip carries `rgba(203,82,251,0.14) 0 0 12px`").
+ *   The track deliberately does not clip: at 4px tall, clipping would cut the glow off at the
+ *   meter's own edge and the fill would be flat again. ]]*/
+.rm-page .rm-meter { height:4px; border-radius:2px; background:var(--line); }
+.rm-page .rm-meter__fill { height:100%; display:block; border-radius:2px; background:var(--accent); box-shadow:var(--glow); transform-origin:left center; animation:rm-meter-grow var(--t-base) var(--ease-hard) both; transition:width var(--t-base) var(--ease-hard); }
+[dir='rtl'] .rm-page .rm-meter__fill { transform-origin:right center; }
+/* It GROWS rather than being drawn at width, and grows by transform: `width` is the figure itself,
+   and a width travelling from zero through every intermediate value is a claim about how much of
+   the plan is done, made once per frame on the way to the right one. */
+@keyframes rm-meter-grow { from { transform:scaleX(0); } to { transform:none; } }
+
 /* "12 of 19 landed · 3 in progress" — one sentence, two ranks. The second half is
    a qualifier, so it drops a step in colour rather than gaining a weight. */
 .rm-summary__active { color:var(--faint); }
 
 .rm-summary__now { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
 /* A jump, not a submit: the global button chrome comes off entirely and the
-   affordance is a hairline underline that firms up on hover. */
-.rm-summary__now-link { padding:0; border:0; border-radius:0; background:none; text-align:start; font-size:15px; letter-spacing:-.01em; color:var(--ink); text-decoration:underline; text-decoration-color:var(--line); text-underline-offset:5px; transition:text-decoration-color .18s var(--ease-out); }
-/* :not(:disabled) matches the global button:hover rule's specificity, so the grey
-   hover fill is beaten whatever order the two sheets land in. */
-.rm-summary__now-link:hover:not(:disabled) { background:none; text-decoration-color:var(--muted); }
+   affordance is a hairline underline that firms up on hover — and firms up into the accent's light
+   tint, which is the one place on this line the family is spent. */
+.rm-summary__now-link { padding:0; border:0; border-radius:0; background:none; text-align:start; font-size:15px; letter-spacing:-.01em; color:var(--ink); text-decoration:underline; text-decoration-color:var(--line); text-underline-offset:5px; transition:color var(--t-color) var(--ease-hard),text-decoration-color var(--t-color) var(--ease-hard); }
+/*[[ FOUR SELECTOR STEPS, RE-AIMED 2026-09-20 AND THE ARITHMETIC RECORDED.
+ *   This rule used to read `.rm-summary__now-link:hover:not(:disabled)` with a comment saying it
+ *   "matches the global button:hover rule's specificity". That was TRUE of the old system.css,
+ *   whose hover was `button:hover:not(:disabled)` at 0,2,1. The rebuilt sheet hovers with
+ *   `button:hover:not(:disabled):not([aria-disabled='true'])` — 0,3,1 — so the old selector (0,3,0)
+ *   quietly started losing, and a jump link in the middle of a sentence would have taken the
+ *   product's 12% chrome fill. The page root and the second :not() put this at 0,4,0. ]]*/
+.rm-page .rm-summary__now-link:hover:not(:disabled):not([aria-disabled='true']) { background:none; color:var(--accent-light); text-decoration-color:currentColor; }
 @media (prefers-reduced-motion:reduce) { .rm-summary__now-link { transition:none; } }
 
 /* --------------------------------------------------------------- the contents --- */
+
+/* The inventory is the summary's sibling and reads as one, so it is the same panel rather than
+   another hairline across the page. */
+.rm-page .rm-contents { padding:20px 22px; border:1px solid var(--line); border-radius:var(--r-lg); background:var(--surface); }
 /* Counts are read against each other, so they line up on the digit. */
 .rm-contents__counts dd { letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
 /* "at least 1,204 · 28 read" — how many scripts were opened, riding the count it
    qualifies. It never wraps away from its own number. */
 .rm-contents__partial { font-size:12px; letter-spacing:0; color:var(--faint); white-space:nowrap; }
 
-/* One micro-label style for the page. Scoped to .rm-page: .eyebrow is shared with
-   the dashboard and this route does not get to decide for it. */
-.rm-page .eyebrow { display:inline-block; font-size:10px; text-transform:uppercase; letter-spacing:.018em; color:var(--faint); }
+/* A status line from the worker. A leading strip inside an 8px panel, the same object the billing
+   notice on /usage is — two routes, one shape. */
+.rm-page .rm-note { position:relative; margin-block:14px; padding:13px 16px 13px 18px; overflow:hidden; border:1px solid var(--line); border-radius:var(--r-lg); background:var(--surface); }
+.rm-page .rm-note::before { content:''; position:absolute; inset-block:0; inset-inline-start:0; width:2px; background:var(--control-line); }
+
+/*[[ ONE MICRO-LABEL FOR THE PAGE, AND IT IS THE BAR'S. Measured: 12px, uppercase, 1.2px of positive
+ *   tracking (claim: "NAV AND LABELS ARE UPPERCASE WITH POSITIVE TRACKING… 12px/700 with 1.2px on
+ *   labels"). The 700 is theirs and is the one thing not taken — nothing in this product is bolder
+ *   than 400 — so the label is separated from body text by case, size and tracking alone. It was
+ *   10px at +.018em, which is tesana's number; where the two references disagree the owner said
+ *   the bar wins.
+ *   Scoped to .rm-page: .eyebrow is shared with the dashboard and this route does not decide for
+ *   it. */
+.rm-page .eyebrow { display:inline-block; font-size:12px; line-height:1.2; text-transform:uppercase; letter-spacing:1.2px; color:var(--faint); }
 /* Scripts / Zones / Currencies / Interface read as a column when their labels do. */
-.rm-contents__line .eyebrow { min-width:78px; }
+.rm-contents__line .eyebrow { min-width:92px; }
 
 /* ----------------------------------------------------------------- at 375px --- */
 @media (max-width:680px) {
@@ -72,6 +154,16 @@
   .page-head.rm-head { display:grid; gap:20px; justify-items:start; }
   .rm-head__text { max-width:none; }
   .rm-head__text .page-sub { max-width:none; }
+  .rm-page .rm-summary,.rm-page .rm-contents { padding:16px; }
   .rm-contents__line .eyebrow { display:block; min-width:0; }
   .rm-summary__now-link { font-size:14px; }
+}
+
+/* ---------------------------------------------------------------------- motion off --- */
+
+/* A rule that adds motion carries its own switch. OFF, not slowed — and the meter's keyframe sets
+   a transform only, so with `animation:none` the fill is simply at its real width. */
+@media (prefers-reduced-motion:reduce) {
+  .rm-page .rm-meter__fill { animation:none; transition:none; }
+  .rm-page .rm-crumbs a { transition:none; }
 }

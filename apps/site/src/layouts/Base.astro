@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import Nav from '../components/Nav.astro';
 import Footer from '../components/Footer.astro';
+import InterfaceSound from './InterfaceSound.astro';
 
 interface Props {
   title: string;
@@ -106,6 +107,13 @@ const ogImage = new URL('/og.png', site);
     </main>
 
     {!bare && <Footer />}
+
+    {/* INTERFACE SOUND. It used to live in the module script below — a soft triangle tick that
+        fired on the sound toggle and on nothing else in the entire product, so pressing anything
+        was silent even with sound on. It is now a keyswitch in layouts/InterfaceSound.astro,
+        wired to every button and link-as-button by one delegated listener, and the landing renders
+        the SAME component rather than a second copy that would drift from this one. */}
+    <InterfaceSound />
 
     <script>
       // ---------------------------------------------------------------
@@ -222,60 +230,6 @@ const ogImage = new URL('/og.png', site);
 
       paintToggles();
 
-      // ---------------------------------------------------------------
-      // Sound. OFF by default and never armed until the visitor presses the
-      // toggle — that press is the required user gesture, and it is also
-      // what creates the AudioContext. Nothing autoplays, ever.
-      // ---------------------------------------------------------------
-      let audio: AudioContext | null = null;
-      let soundOn = false;
-
-      function paintSoundToggles() {
-        document
-          .querySelectorAll<HTMLElement>('[data-sound-toggle]')
-          .forEach((btn) => {
-            btn.setAttribute('aria-pressed', String(soundOn));
-            btn.setAttribute(
-              'aria-label',
-              soundOn ? 'Turn interface sound off' : 'Turn interface sound on'
-            );
-          });
-      }
-
-      /** short synthesised chisel tick — no audio files, no autoplay */
-      function tick(freq = 320, dur = 0.07, gain = 0.05) {
-        if (!soundOn || !audio) return;
-        const t = audio.currentTime;
-        const osc = audio.createOscillator();
-        const env = audio.createGain();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(freq, t);
-        osc.frequency.exponentialRampToValueAtTime(freq * 0.55, t + dur);
-        env.gain.setValueAtTime(0.0001, t);
-        env.gain.exponentialRampToValueAtTime(gain, t + 0.006);
-        env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-        osc.connect(env).connect(audio.destination);
-        osc.start(t);
-        osc.stop(t + dur + 0.02);
-      }
-
-      (window as any).appleTick = tick;
-
-      document.addEventListener('click', (e) => {
-        const btn = (e.target as HTMLElement)?.closest('[data-sound-toggle]');
-        if (!btn) return;
-        soundOn = !soundOn;
-        if (soundOn && !audio) {
-          const Ctx =
-            (window as any).AudioContext || (window as any).webkitAudioContext;
-          if (Ctx) audio = new Ctx();
-        }
-        if (soundOn) audio?.resume?.();
-        paintSoundToggles();
-        if (soundOn) tick(420, 0.09, 0.05);
-      });
-
-      paintSoundToggles();
     </script>
   </body>
 </html>

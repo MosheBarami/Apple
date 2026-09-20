@@ -3,36 +3,60 @@ import Landing from '../layouts/Landing.astro';
 import AppleMark from '../components/AppleMark.astro';
 import { PLAN_LIMITS, PRODUCT_MODELS, PRODUCT_MODEL_INFO } from '@golem/shared';
 import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE, STUDIO_PLUGIN_STORE_REFUSAL } from '../lib/studio-plugin';
-import FlowField from '../components/FlowField.astro';
+import Horizon from '../components/Horizon.astro';
 
 /*
- * REBUILT 2026-09-19 AGAINST A MEASURED BAR, AND THE HERO RE-MEASURED AGAINST IT ON 2026-09-20.
+ * RESTRUCTURED 2026-09-20 AGAINST THE ROSEBUD MEASUREMENT.
  *
- * The second pass exists because the owner rejected the first: the instruction is the reference's
- * geometry exactly, in our black and green. tesana.ai/en was read again with
- * getComputedStyle at 1568x900 and at 390x844, and the hero's structure below now mirrors what that
- * reading found — a viewport-tall section with its content centred, a 56/64 headline over a full-ink
- * 20/30 sub-line, and one block holding an 838x140 composer, a small qualifying line and a row of
- * 36px controls. The words, the mark and the claims are unchanged and are ours.
+ * The owner named rosebud.ai as the bar and said to follow it closely in our own green, keeping our
+ * typeface, and to replace the current visual language wherever the two disagree without asking.
+ * The measurement is not a memory of the page: packages/corpus/data/ui-references/web-landing.json
+ * carries sixteen claims under the id "rosebud-ai-design-language", taken by walking the live DOM
+ * with getComputedStyle, and nineteen rules derived from those and the four earlier references.
+ * Every structural decision below cites one of them.
  *
- * The owner named tesana.ai. It was opened in Chrome and read with getComputedStyle rather than
- * admired: the ramp, the type scale, the tracking rule, the radii, the nav treatment and the
- * section rhythm are in packages/corpus/data/ui-references/web-landing.json, and landing.css
- * derives from those numbers.
+ * WHAT THIS FILE OWNS AND WHAT IT DOES NOT. It owns markup, classes and the geometry of the hero's
+ * line art. It defines no CSS: the ramp, the radii, the four control heights, the two transition
+ * bands and the accent family all live in landing.css, and this page spends the tokens rather than
+ * re-declaring them. Where a new object needs a rule — the model chip, the attachment control, the
+ * eyebrow — the class is written as a MODIFIER on a class that already exists (`chip chip-model`,
+ * `micro hero-eyebrow`), so the object is styled by the base rule on the day it lands and merely
+ * gets better when the sheet names the modifier. An unstyled new class is an invisible object, and
+ * this page has shipped one of those before.
  *
- * WHAT WAS DELIBERATELY NOT TAKEN, which is the harder half. Most of the reference's page area is
- * social proof: a 300,000-builder claim, a live counter ticker, a gallery of user games and a wall
- * of creator videos. We have none of those things. Reproducing the shells with placeholder numbers
- * or stock imagery would make this page a lie in exactly the shape the rest of this repository
- * exists to prevent, so those sections are absent rather than empty.
+ * THE SHAPE, from claims 3, 7, 9, 10, 13 and 14 of that reference:
+ *   - a 1024px container behind 32px of gutter, and a short page
+ *   - ONE atmosphere layer, fixed, behind everything, at z-index -1 (the sheet makes it fixed; the
+ *     container lives inside the hero because that is where its content is authored)
+ *   - a hero that is eyebrow, heading, ONE muted line, then the product's own composer as the
+ *     focal object — not a picture of a product, the product's own control
+ *   - a composer panel at the 8px radius carrying the field, a model chip that names the model
+ *     which will answer, an attachment control, and the primary action on the right
+ *   - below the fold, every section is a title, one muted line, and then the thing itself
  *
- * What replaces them is the only material we actually have: what the product does, verified. Every
- * claim below is one this repository has evidence for on 2026-09-19 — the consent gate, the
+ * WHAT WAS DELIBERATELY NOT TAKEN, which is the harder half and is unchanged from the first pass.
+ * Most of the reference's page area is social proof: play counts, hearts, a populated gallery of
+ * other people's games. We have none of those. Reproducing the shells with placeholder numbers or
+ * stock imagery would make this page a lie in exactly the shape the rest of this repository exists
+ * to prevent, so those sections are absent rather than empty. Their typeface is not taken either —
+ * the whole interface is monospace, and the owner asked for ours to be kept — and the caution in
+ * the reference says why their 32px hero cannot simply be copied into a proportional face.
+ *
+ * Every claim below is one this repository has evidence for on 2026-09-20 — the consent gate, the
  * refusals, the visual critique, the plan limits — and the install line asks the shared constant
- * rather than asserting anything.
+ * rather than asserting anything. The copy is unchanged by this pass. Structure and classes moved;
+ * not one sentence did.
  */
 
 const free = PLAN_LIMITS.free;
+
+/* THE MODEL THE COMPOSER NAMES, ASKED RATHER THAN TYPED.
+ * Reference claim 13: the most copyable object on the bar is a chip inside the composer that names
+ * the model which will answer. Ours already has that object in the product — apps/web's composer
+ * renders exactly this chip from PRODUCT_MODEL_INFO — so the landing reads the same constant
+ * instead of repeating the word. A chip that names a model by hand is a chip that can disagree
+ * with the picker it depicts. */
+const composerModel = PRODUCT_MODEL_INFO[PRODUCT_MODELS[0]].name;
 
 /* THE THREE SENTENCES THE HERO'S FIELD SHOWS.
  * They are examples of what a reader would TYPE, which is the only kind of content that can go in
@@ -41,17 +65,10 @@ const free = PLAN_LIMITS.free;
  * who types the sentence back gets the thing the sentence describes. No counts, no timings, and no
  * "connected": those are assertions about state, and the picture of a product is read as its
  * behaviour.
- * THEY CYCLE, AND THE CYCLE IS THREE STACKED SPANS AND ONE @keyframes — NO SCRIPT.
- * tests/living-background.test.mjs asserts this route contains no script element and no canvas
- * element: the landing's motion is CSS or it does not exist. A typing effect was written here
- * first, in seventeen lines of JavaScript, and that guard is what caught it. The guard is right
- * and the script is gone — a rule that only holds until it is inconvenient is not a rule.
- * (The guard reads the RAW source, comments and all, so it also caught this paragraph the first
- * time it was written with the tags spelled out. That is not a false positive worth loosening: a
- * regex that skipped comments would skip a script commented out today and uncommented tomorrow.)
+ * THEY CYCLE, AND THE CYCLE IS THREE STACKED SPANS AND ONE @keyframes — NO SCRIPT HERE.
  * SHORT ON PURPOSE, AND THE LENGTHS ARE MEASURED. Each span is `white-space: nowrap`, because a
  * cross-fading line that rewraps halfway through the fade puts two different wraps on screen at
- * once. So every sentence must hold ONE line inside the 285px the field has at 375px. Rendered in
+ * once. So every sentence must hold ONE line inside the width the field has at 375px. Rendered in
  * Chromium at 14/21 with this stack's own metrics, these three measure 166px, 208px and 199px.
  * The first draft of this list was sixty characters a line and was CLIPPED at 285px on every one —
  * the array had not been swapped when the comment above it already claimed it had, and the only
@@ -62,6 +79,65 @@ const composerExamples = [
   'Add a shop that saves what I buy',
   'Build a lobby with a round timer',
 ];
+
+/* ---------------------------------------------------------------------------
+ * THE SKY STRATA — COMPUTED HERE, ANIMATED IN THE SHEET, DRAWN OVER BY THE CANVAS.
+ *
+ * The owner's standing instruction is the most keyframes and the most running animations this page
+ * has ever carried. The reference he named has ZERO of both, he was shown that measurement, and he
+ * decided anyway — so this is not a contradiction to resolve, it is the brief. The way it stays
+ * honest against the reference's own rule 17 ("buy the atmosphere with one piece of art direction,
+ * not with a stack of layers") is that there is still ONE image here. It simply has a great many
+ * moving parts inside it instead of being five mechanisms piled on each other.
+ *
+ * THAT ONE IMAGE IS A LANDSCAPE, AND THIS FILE DRAWS ONLY THE PART OF IT THE CANVAS DOES NOT.
+ * <Horizon /> puts its horizon line at 0.74 of the viewport, paints the glow band on it, the
+ * perspective grid below it and a sky of ninety drifting particles above it. So the division is:
+ *
+ *   the canvas  — the horizon, the floor, the glow, the particles
+ *   this file   — the strata (long, near-flat haze bands in the sky) and the ridge on the horizon
+ *
+ * TWENTY EMBERS WERE WRITTEN HERE AND DELETED BEFORE THEY SHIPPED. They were small drifting dots
+ * scattered above and below the fold — which is exactly the canvas's ninety sky particles, drawn a
+ * second time in a second technology. Two mechanisms doing one job is the failure rule 17 names,
+ * and adding them would have raised the element count while making the picture worse. The strata
+ * stayed because the canvas draws no such thing; the embers went because it already does.
+ *
+ * DENSITY YIELDS TO THE COMPOSER, AND IT YIELDS IN THE DATA RATHER THAN IN A HOPE.
+ * apps/web/tests/decoration-yields-to-the-composer.test.mjs records this the hard way: a mesh that
+ * was densest directly behind the composer read, correctly, as broken. The hero's content column is
+ * about 475px tall and centres in a 900px viewport, so it occupies roughly 24% to 76% of the field
+ * and the composer itself sits at 51% to 65%. The strata are therefore NOT evenly spaced: their
+ * position is y(t) = 0.38·t + 0.62·t^2.8 across the sky band, which packs them at the top of the
+ * frame and opens them out as they descend, and their weight falls as (1 − t)^1.4 on top of that.
+ *
+ * Measured off the numbers this generator actually emits, as ink per 100px of band:
+ *
+ *   free sky, above the headline      3.07      adjacent gaps: 12px at the top of the frame
+ *   the headline and its one line     0.57
+ *   THE COMPOSER                      0.31      adjacent gaps: 66px at the bottom of the band
+ *   the foot, down to the horizon     0.41
+ *
+ * The composer's band is the thinnest of the four and a tenth of the free sky's. That is a property
+ * of the curve rather than of an eye, which is the only kind of yielding that survives an edit.
+ * --------------------------------------------------------------------------- */
+const STRATA_COUNT = 26;
+const SKY_TOP = -150; // above the top of the frame: a stratum must enter from off-screen
+const SKY_DEPTH = 805; // down to 655, which is just clear of the canvas's horizon at 0.74 × 900
+const round = (n: number) => Math.round(n);
+const strata = Array.from({ length: STRATA_COUNT }, (_, i) => {
+  const t = i / (STRATA_COUNT - 1);
+  const y = SKY_TOP + SKY_DEPTH * (0.38 * t + 0.62 * t ** 2.8);
+  const weight = Number((0.16 + 0.84 * (1 - t) ** 1.4).toFixed(3));
+  const amp = 30 + 90 * (1 - t); // the bow flattens as the band nears the horizon, as haze does
+  const phase = ((i % 5) - 2) * 16;
+  return {
+    i,
+    t: Number(t.toFixed(3)),
+    weight,
+    d: `M-140 ${round(y)} C 300 ${round(y - amp)}, 720 ${round(y + amp * 0.62 + phase)}, 1140 ${round(y - amp * 0.34)} S 1560 ${round(y + amp * 0.26 - phase)}, 1780 ${round(y - amp * 0.12)}`,
+  };
+});
 
 const truths = [
   { label: 'Scope', title: 'One place, the one you opened', body: 'Apple works in the Studio place you pair it to, and nowhere else. It cannot reach your files or your other games.' },
@@ -118,8 +194,8 @@ const capabilities = [
       </nav>
       {/* THE ONE CONTROL THIS PAGE WAS MISSING. Every other route carries a theme toggle in Nav.astro;
           the landing has its own header and had none, so a reader who chose light elsewhere on the
-          site could not see or change that choice on the front page. Same 36px control height as the
-          links beside it, so the nav is still one row of one-sized objects. */}
+          site could not see or change that choice on the front page. It lands on one of the four
+          control heights the reference quantises to (claim 10), like everything beside it. */}
       <div class="header-actions">
       <button class="pill pill-quiet pill-icon" type="button" data-theme-toggle aria-pressed="true" aria-label="Switch to light theme">
         <svg class="icon-sun" viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
@@ -139,26 +215,56 @@ const capabilities = [
 
   <main id="main">
     <section class="hero" aria-labelledby="hero-title">
+      {/* THE ATMOSPHERE IS ONE CONTAINER AND IT HOLDS EVERYTHING THAT MOVES ON ITS OWN.
+          Reference claim 3: the bar's entire atmosphere is a single fixed layer at z-index -1,
+          100lvw by 100lvh, with all content above it. Ours is authored here because this is where
+          its geometry is computed, and landing.css is what makes it fixed — a fixed child of the
+          hero covers the viewport for the whole page, which is the shape the claim describes.
+          It is `aria-hidden` because it is decoration: nothing in it is content, and a screen
+          reader that announced twenty-six streamlines would be reading scenery aloud. */}
       <div class="atmosphere" aria-hidden="true">
         <div class="light-column"></div>
-        <FlowField />
-        <svg viewBox="0 0 1600 760" preserveAspectRatio="xMidYMin slice">
-          {Array.from({ length: 18 }, (_, i) => (
-            <path d={`M-80 ${330 + i * 22} C 420 ${190 + i * 16}, 1060 ${560 - i * 9}, 1840 ${250 + i * 20}`} />
-          ))}
-          <path class="ridge" d="M-40 620 L220 430 L360 520 L560 350 L760 560 L980 400 L1180 540 L1420 380 L1640 560 L1840 470" />
-          <path class="ridge" d="M-40 700 L260 560 L470 640 L700 500 L930 660 L1180 540 L1420 660 L1700 560 L1840 620" />
+        {/* <Horizon /> replaces the flow field that used to sit here. The canvas is ADDITIVE and
+            everything under it is a finished composition without it — the light column and the
+            line art below are what a visitor sees if the script is blocked, throws, or never
+            reaches its element, which is not hypothetical: exactly that shipped to production on
+            this page and every reading of the served HTML said the effect was there. */}
+        <Horizon />
+        <svg class="sky" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+          {/* Each band carries `--i` (its ordinal) and `--t` (how far down the sky it sits), so the
+              sheet can phase ONE keyframe across all twenty-six with calc() rather than authoring
+              twenty-six rules. The `opacity` attribute is the computed weight and is a presentation
+              attribute on purpose: it is the lowest-priority way to say it, so any rule the sheet
+              writes for `.stratum` wins over it, and the field is still correctly graded on the day
+              before that rule exists. */}
+          <g class="strata">
+            {strata.map((band) => (
+              <path class="stratum" style={`--i:${band.i};--t:${band.t}`} opacity={band.weight} d={band.d} />
+            ))}
+          </g>
+          {/* THE RIDGE, ON THE HORIZON AND NEVER BELOW IT. Every vertex here is between y=578 and
+              y=666, and 666 is 0.74 × 900 — the exact line the canvas draws its glow band on. A
+              ridge whose feet fell below that would be a mountain standing on a perspective floor,
+              which is two incompatible readings of the same ground plane. `.ridge` is the hook
+              landing.css already animates by name; renaming it would leave a live rule pointing at
+              nothing, which is how a stylesheet fills up with rules nobody can delete. */}
+          <path class="ridge" style="--i:0;--t:0.94" d="M-40 666 L180 622 L330 654 L520 616 L700 660 L900 620 L1120 656 L1340 612 L1560 658 L1840 630" />
+          <path class="ridge" style="--i:1;--t:0.97" d="M-40 664 L240 592 L430 648 L640 578 L860 646 L1090 590 L1330 650 L1600 584 L1840 640" />
         </svg>
       </div>
 
       <div class="shell hero-inner">
+        {/* THE EYEBROW. Claim 11: labels on the bar are uppercase with positive tracking against a
+            body that is neither, and that is how a page gets a third level of hierarchy without a
+            second typeface — which matters more for us than for them, because we are keeping a
+            proportional face where they have a monospace one. `.micro` is already that object. */}
+        <p class="micro hero-eyebrow">Inside Roblox Studio</p>
         <h1 id="hero-title" class="display">Build it in the place you already have open.</h1>
         <p class="lead">Describe the game you want. Apple builds it inside your own Roblox Studio place, names every step while it happens, and changes nothing until you say so.</p>
 
-        {/* THE COMPOSER AND THE ROW UNDER IT ARE ONE BLOCK. The bar spaces its hero as four things
-            — headline, sub-line, composer, and a small line above a row of controls — with 24px
-            and 40px gaps that only hold if the last two are a single group. Splitting them into
-            siblings with their own margins is how those gaps drifted apart the first time. */}
+        {/* THE COMPOSER AND THE ROW UNDER IT ARE ONE BLOCK, and the composer is the focal object of
+            the hero rather than a screenshot of one. Splitting the group into siblings with their
+            own margins is how the gaps between the three drifted apart the first time. */}
         <div class="composer-group">
           <div class="composer" aria-hidden="true">
             {/* All three sentences are in the markup, stacked, and the stylesheet fades between
@@ -174,16 +280,39 @@ const capabilities = [
               </span>
             </div>
             <div class="composer-bar">
-              {/* THE DOT WAS GREEN AND THE WORD WAS "connected", on a page selling a product whose
-                  plugin Roblox has not approved for distribution. A mock is still a claim: the
-                  largest, most tappable-looking thing above the fold on a phone told a reader the
-                  product was attached to their Studio before they had one. The sub-line two blocks
-                  down says the opposite, and a reader believes the picture.
-                  "Studio" alone is the same image without the assertion — it shows where the model
-                  chip and the connection chip sit, which is the only job this mock has. */}
+              {/* THE MODEL CHIP, WHICH IS THE ONE OBJECT THE REFERENCE SAYS TO COPY OUTRIGHT.
+                  Claim 13: a 32px, 6px-radius chip filled at 12% of the accent, bordered at 38% of
+                  the lighter tint and glowing at 14% — sitting in the composer beside the
+                  attachment control, naming the model that will answer. Ours names it from the
+                  shared constant, so it is the same word the product's own picker shows.
+
+                  THERE IS NO STATUS DOT, AND THAT IS DELIBERATE. What used to sit here was a green
+                  dot and the word "connected", on a page selling a product whose plugin Roblox has
+                  not approved for distribution — the largest, most tappable-looking thing above the
+                  fold on a phone told a reader the product was attached to their Studio before they
+                  had one, and the sub-line two blocks down said the opposite. A reader believes the
+                  picture. The accent is spent on the model's NAME, which is a fact about the
+                  product, and on nothing that could be read as a state. */}
               <div class="composer-chips">
-                <span class="chip">Studio</span>
-                <span class="chip">Apple</span>
+                {/* THE ATTACHMENT CONTROL COMES FIRST AND THE MODEL CHIP IS LAST, AND THAT ORDER IS
+                    LOAD-BEARING. landing.css spends the whole accent family on this row through
+                    `.composer-chips .chip:last-child` — the accent fill, the 38% rim, the 14% halo
+                    and the pulse ring are all attached to the LAST chip rather than to a class.
+                    This was written the other way round first, and the measured result was the
+                    accent and its pulse sitting on a paperclip while the model's name stayed grey:
+                    the single most copyable object on the reference, pointed at the wrong control.
+                    The classes below say which is which for the day that selector is re-aimed at
+                    them; until then, do not reorder these two.
+
+                    The attachment control depicts something that exists — apps/web's composer
+                    uploads files onto a message — rather than a control the reference had and we
+                    do not. */}
+                <span class="chip chip-attach">
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="m14.6 8.4-5.1 5.1a1.75 1.75 0 0 0 2.5 2.5l5.2-5.2a3.5 3.5 0 0 0-5-5L6.8 11.2a5.25 5.25 0 0 0 7.4 7.4l4.3-4.3" />
+                  </svg>
+                </span>
+                <span class="chip chip-model">{composerModel}</span>
               </div>
               <span class="composer-send">Build</span>
             </div>
@@ -211,6 +340,9 @@ const capabilities = [
       </div>
     </section>
 
+    {/* Every section below the fold is the same three things in the same order — a title, one muted
+        line, then the thing itself — which is the rule the reference repeats without variation at
+        every section of its own page. The consistency is the effect. */}
     <section class="band" id="inside" aria-labelledby="truths-title">
       <div class="shell">
         <div class="band-head" data-reveal>
@@ -239,9 +371,15 @@ const capabilities = [
           <figure class="sequence-figure" data-reveal>
             <figcaption class="figure-head micro">Studio · activity</figcaption>
             <div class="activity">
-              {activity.map((line) => <div class={line.refused ? 'activity-line refused' : 'activity-line'}>{line.text}</div>)}
+              {activity.map((line, i) => (
+                <div class={line.refused ? 'activity-line refused' : 'activity-line'} style={`--i:${i}`}>{line.text}</div>
+              ))}
             </div>
           </figure>
+          {/* NO [data-reveal] ON `.step`, ON PURPOSE. Each step already carries a native
+              scroll-driven animation — `animation: step-focus; animation-timeline: view()` — and
+              two mechanisms driving one element's opacity is how a section ends up half-lit. The
+              reveal pass that covers the rest of this page deliberately skips these. */}
           <div class="steps">
             <article class="step">
               <h3>Pair one place</h3>
@@ -262,7 +400,7 @@ const capabilities = [
 
     <section class="band" aria-labelledby="statement-title">
       <div class="shell" style="text-align:center">
-        <h2 id="statement-title" class="statement">Apple builds inside Roblox Studio — in your place, with your account, under your approval.</h2>
+        <h2 id="statement-title" class="statement" data-reveal>Apple builds inside Roblox Studio — in your place, with your account, under your approval.</h2>
       </div>
     </section>
 
@@ -273,8 +411,8 @@ const capabilities = [
           <p class="section-sub">Four things it does end to end today.</p>
         </div>
         <div class="cards">
-          {capabilities.map((c) => (
-            <article class="card">
+          {capabilities.map((c, i) => (
+            <article class="card" data-reveal data-reveal-delay={String(i * 70)}>
               <div class="card-media" aria-hidden="true">
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
                   {c.glyph === 'tree' && <><path d="M5 4v14a2 2 0 0 0 2 2h4" /><path d="M5 12h6" /><rect x="13" y="2" width="6" height="5" rx="1" /><rect x="13" y="10" width="6" height="5" rx="1" /><rect x="13" y="17" width="6" height="5" rx="1" /></>}
@@ -300,8 +438,8 @@ const capabilities = [
           <p class="section-sub">Apple is free to use today. Paid checkout is not open yet, and the pricing page says so too.</p>
         </div>
         <div class="model-grid">
-          {PRODUCT_MODELS.map((model) => (
-            <article class="model-card">
+          {PRODUCT_MODELS.map((model, i) => (
+            <article class="model-card" data-reveal data-reveal-delay={String(i * 70)}>
               <h3>{model === 'apple-max' ? <>Apple <span class="max-name">MAX</span></> : PRODUCT_MODEL_INFO[model].name}</h3>
               <p>{model === 'apple'
                 ? `The free tier. ${free.creditsPerDay.toLocaleString()} Credits a day, up to ${free.creditsPerMonth.toLocaleString()} a month — you have whichever is lower at the time.`

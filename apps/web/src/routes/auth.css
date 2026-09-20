@@ -1,18 +1,39 @@
 /* /login, /signup, /forgot, /reset, /confirm, /recovery — the first screen a customer ever sees.
  *
- * WHAT WAS ON SCREEN BEFORE THIS FILE. design/system.css drew the auth pages in nine dense lines
- * near the bottom, and what they produced was a bordered box floating in the middle of a black
- * page: a 22px radius that is not a token, a 4px input radius that is not a token either, the
- * field labels and the card copy set at the same 13px so nothing in the card outranked anything
- * else, `<strong>` in the hero rendering bold against a system whose first rule is that nothing
- * is, and the plan marks in the hero painted `--accent` — a second green on the one screen where
- * the primary button is already spending it. `.wordmark`, `.wordmark-lg` and `.carved` were
- * written into the markup and had no rule anywhere in the tree, so the brand line rendered at
- * inherited body size and the word "carved" meant nothing at all.
+ * REBUILT 2026-09-20 ONTO THE MEASURED SYSTEM, for the same reason the rest of the app is being
+ * rebuilt: the owner named https://rosebud.ai/ as the bar, said to follow it closely in our green,
+ * keep our typeface, and replace the current visual language wherever the two disagree. The
+ * measurements are in packages/corpus/data/ui-references/web-landing.json under id
+ * "rosebud-ai-design-language"; every claim quoted below is a row of its `demonstrates` array, read
+ * with getComputedStyle over its live DOM. apps/site/src/styles/landing.css is the same system
+ * already built on the marketing side, and a stranger who clicks "Sign in" from there has to land
+ * on the same product.
+ *
+ * WHAT MOVED, AND WHY EACH IS A NUMBER RATHER THAN A TASTE:
+ *
+ *   THE ACCENT BECAME A FAMILY. --accent alone did three jobs — fill, border and primary button —
+ *   and a green button with a green border in the same green has no edge. #00794f is chosen for
+ *   CONTRAST rather than by eye: white on it measures 5.46:1, which clears 4.5:1 for the label at
+ *   any size, and it is the first genuinely FILLED primary this product has had. system.css's
+ *   `.btn-primary` is a 10% tint carrying 90% text; that is the bar's SECONDARY treatment, and on
+ *   the one screen whose whole job is a single action it reads as a suggestion.
+ *
+ *   THE RADII CAME DOWN AND THE PILLS WENT. 16px cards and 999px marks became 8px panels and 6px
+ *   controls (claim: "RADII ARE TIGHT AND THERE ARE TWO: 8px on 23 elements (cards, panels), 6px on
+ *   11 (every control). Nothing is a pill."). The only circle left on the screen is the busy ring,
+ *   which is a circle by necessity rather than by radius.
+ *
+ *   THE HEIGHTS QUANTISED. Four and no more — 28 for a bare text button, 32 for a chip, 36 for a
+ *   chrome button, 50 for the large step. The submit was 46px, which is a fifth height, and a fifth
+ *   height is how a control set stops looking machined.
+ *
+ *   THE MOTION CAME UNDER THE CEILING. Nothing interactive on the bar exceeds 0.26s; the card and
+ *   the hero entered on --t-slow (420ms). Colour-only changes now take 0.26s on the hard curve,
+ *   everything else the fast band, and the one thing still running for 22 seconds is the ambient
+ *   light, which the ceiling exempts.
  *
  * WHY IT IS A SEPARATE FILE RATHER THAN MORE LINES IN system.css. The lead owns the locked system;
- * this is one surface's use of it. Nothing below invents a colour, a radius, a shadow or a weight —
- * every value is a token from :root or a color-mix of tokens. See docs/DESIGN-LOCK.md.
+ * this is one surface's use of it. See docs/DESIGN-LOCK.md.
  *
  * SCOPED ONE LEVEL DEEPER THAN system.css ON PURPOSE, the same discipline layout.css and
  * dashboard.css record: main.tsx imports ./app (which reaches this file) BEFORE
@@ -20,34 +41,73 @@
  * written here would quietly lose a tie it looks like it should win. Every selector carries
  * `.auth-page`, and the page root itself is written `.auth-page.auth-page` for the same reason.
  * That is also true of the markup: none of these classes appear outside this surface.
- *
- * DEPTH WITHOUT GLASS AND WITHOUT SHADOW. The lock reserves backdrop-filter for the composer and
- * the top bar — surfaces that sit over moving content — and says a card does not cast. So the
- * depth here is made the way the reference makes it: a ground that is lit rather than flat, one
- * hairline, and one surface step between the page and the card.
  */
+
+/*[[ THIS SHEET DECLARES NO TOKENS, AND IT DID FOR ABOUT AN HOUR.
+ *
+ *   The first pass of this rebuild carried a block on `.auth-page.auth-page` — the accent family,
+ *   an 8px panel radius, three control heights, the hard curve — because design/system.css had one
+ *   accent and 10/10/6 radii and none of the rest. While it was being written the lead landed the
+ *   same system upstream, properly: --accent-light / --accent-deep / --accent-soft / --accent-ring /
+ *   --accent-glow, --accent-fill and --accent-on-fill, --control-fill / --control-line for a chrome
+ *   control and --quiet-line / --quiet-ink for a turned-down one, --r-lg 8 and --r-md 6, the four
+ *   heights, --ease-hard, --t-color and --glow.
+ *
+ *   Keeping the local copy would have been worse than never writing it. A block on `.auth-page`
+ *   BEATS :root, so this would have become the one surface in the product where a change to the
+ *   locked palette had no effect — and it is the surface a stranger sees first. Every var() below
+ *   names something design/system.css owns. ]]*/
 
 /* ------------------------------------------------------------------- the ground --- */
 
-/* THE PAGE IS LIT FROM THE TOP-LEFT AND NOTHING ELSE SEPARATES IT. Two radial washes in `--surface`
-   rather than a hue: `--surface` is the one token that is LIGHTER than `--paper` in both themes,
-   so the same declaration reads as a lift under dark and under light instead of needing a second
-   set of numbers. `overflow-x:clip` is load-bearing — the aura below is wider than the viewport on
-   purpose, and without this it would put a horizontal scrollbar on a 375px phone. */
-.auth-page.auth-page { position:relative; isolation:isolate; min-height:100dvh; display:grid; grid-template-columns:minmax(0,1fr); align-content:center; gap:0; padding:clamp(76px,11vh,104px) 16px 40px; overflow-x:clip; background:radial-gradient(118% 88% at 16% -6%,color-mix(in srgb,var(--surface) 62%,transparent),transparent 58%),radial-gradient(86% 64% at 104% 106%,color-mix(in srgb,var(--surface) 38%,transparent),transparent 62%),var(--paper); }
+/*[[ ONE PIECE OF ART DIRECTION, NOT A STACK OF MECHANISMS.
+ *
+ *   The rule is measured: "The entire atmosphere is ONE fixed raster image… No gradient stack, no
+ *   layers, no parallax, no second element. One piece of art direction doing the work that five
+ *   separate CSS mechanisms were doing on ours." This page had three — two radial washes on the
+ *   page background, a drifting aura, and an isometric plane — and they were three because each was
+ *   added to fix what the previous one failed to do.
+ *
+ *   It is now ONE composition with two named parts, and the page itself is flat. We cannot ship
+ *   their image (it is their artwork and the corpus is explicit about that), and this sheet cannot
+ *   add an element or a <canvas> to auth-pages.tsx, which it does not own. So the one piece of art
+ *   direction is the light: a single accent-tinted wash, drifting, on a plane that says this
+ *   product builds in a 3D editor and then gets out of the way.
+ *
+ *   TINTED TOWARD THE ACCENT, NOT NEUTRAL (rule: "Tint every surface step toward the accent hue
+ *   instead of using neutral grey… A pure-grey ramp under a saturated accent is what makes a dark
+ *   interface read as a default theme rather than a designed one"). The page used --surface — a
+ *   warm grey — for its light, which is exactly the flat default that rule names.
+ *
+ *   `overflow-x:clip` is load-bearing: the aura is wider than the viewport on purpose, and without
+ *   this it would put a horizontal scrollbar on a 375px phone. */
+.auth-page.auth-page { position:relative; isolation:isolate; min-height:100dvh; display:grid; grid-template-columns:minmax(0,1fr); align-content:center; gap:0; padding:clamp(76px,11vh,104px) 16px 40px; overflow-x:clip; background:var(--paper); }
 
 /* The ambience is absolutely positioned so it leaves the grid: an aria-hidden decoration that took
    a grid track would push the card off-centre on every breakpoint. */
 .auth-page .auth__atmosphere { position:absolute; inset:0; z-index:-1; overflow:hidden; pointer-events:none; }
 
-/* One slow beam, the same gesture the workspace's atmosphere makes, at a fraction of its contrast.
-   `--r-pill` keeps the blurred edge from squaring off against the viewport corner. */
-.auth-page .auth__aura { position:absolute; inset-block-start:-26%; inset-inline-start:-10%; width:min(720px,80%); height:132%; border-radius:var(--r-pill); background:radial-gradient(closest-side ellipse,color-mix(in srgb,var(--surface) 70%,transparent),transparent 74%); filter:blur(28px); animation:auth-drift 22s var(--ease-in-out) infinite alternate; }
+/*[[ THE ONE MOVING THING ON THE SCREEN, AND IT YIELDS TO THE CARD.
+ *
+ *   The repository has shipped the opposite defect once already — see
+ *   tests/decoration-yields-to-the-composer.test.mjs, which exists because the workspace's accent
+ *   mesh was at full strength exactly where the composer floats, and the owner's reading of the
+ *   screenshot was "the whole thing looks broken". The same trap is live here: below 980px the hero
+ *   is gone and the CARD is what sits in the middle of the page, so an aura anchored at 16% of the
+ *   viewport is directly behind the one control this screen exists to serve.
+ *
+ *   So the aura is drawn quiet and pushed off the card's column by default, and only opens up at
+ *   the width where the card moves to the right-hand track and the left half is the hero's. The
+ *   drift is 22 seconds, which is ambient and therefore exempt from the 0.26s ceiling — the ceiling
+ *   is about response. ]]*/
+.auth-page .auth__aura { position:absolute; inset-block-start:-34%; inset-inline-start:-46%; width:min(660px,86%); height:120%; border-radius:50%; opacity:.5; background:radial-gradient(closest-side ellipse,color-mix(in srgb,var(--accent) 16%,transparent),transparent 72%); filter:blur(46px); animation:auth-drift 22s var(--ease-in-out) infinite alternate; }
 
 /* THE ONLY PIECE OF STUDIO DNA ON THIS SCREEN, and it is drawn in the hairline token rather than in
    a colour: two 60° rules crossing into an isometric plane, masked away before it reaches the card
-   so it never competes with type. A product that builds in a 3D editor may say so once, quietly. */
-.auth-page .auth__grid { position:absolute; inset-inline:-10%; inset-block-end:-14%; height:64%; opacity:.42; background-image:repeating-linear-gradient(60deg,var(--line) 0 1px,transparent 1px 78px),repeating-linear-gradient(-60deg,var(--line) 0 1px,transparent 1px 78px); -webkit-mask-image:linear-gradient(to top,var(--ink) 0,transparent 72%); mask-image:linear-gradient(to top,var(--ink) 0,transparent 72%); }
+   so it never competes with type. A product that builds in a 3D editor may say so once, quietly.
+   It creeps by one cell over 40 seconds — ambient, and the only reason it is not a static image is
+   that a plane that never moves reads as a texture rather than as a space. */
+.auth-page .auth__grid { position:absolute; inset-inline:-10%; inset-block-end:-14%; height:64%; opacity:.42; background-image:repeating-linear-gradient(60deg,var(--line) 0 1px,transparent 1px 78px),repeating-linear-gradient(-60deg,var(--line) 0 1px,transparent 1px 78px); -webkit-mask-image:linear-gradient(to top,var(--ink) 0,transparent 72%); mask-image:linear-gradient(to top,var(--ink) 0,transparent 72%); animation:auth-plane 40s linear infinite; }
 
 /* Both halves sit above the ambience. Without this the aura's stacking context would paint over the
    hero on any browser that promotes the blurred layer. */
@@ -69,11 +129,19 @@
      the far right of a 1600px monitor is a form column nobody's eye returns to after reading the
      headline. The tracks are capped, the gap is fluid, and the pair is what centres. */
   .auth-page.auth-page { grid-template-columns:minmax(300px,520px) minmax(340px,400px); justify-content:center; align-items:center; gap:clamp(44px,6vw,104px); padding:clamp(56px,9vh,120px) clamp(32px,5vw,72px); }
-  .auth-page .auth-hero { display:block; max-width:520px; animation:auth-fade var(--t-slow) var(--ease-out) both; }
+  .auth-page .auth-hero { display:block; max-width:520px; animation:auth-fade var(--t-base) var(--ease-out) both; }
   .auth-page .auth-form-col { max-width:none; margin-inline:0; }
+  /* The card has moved to the right-hand track, so the left half of the page is the hero's and the
+     light can come up to strength there without ever being densest behind the submit button. */
+  .auth-page .auth__aura { inset-inline-start:-18%; width:min(720px,58%); opacity:1; }
 }
 
 /* ------------------------------------------------------------------------ the hero --- */
+
+/* `.auth-hero-inner` is emitted by auth-pages.tsx and had no rule anywhere in the bundle — the
+   drift this repository keeps finding, one class at a time. It is the measure the hero is set to
+   and the box the staggered entrance below is timed against. */
+.auth-page .auth-hero-inner { display:block; max-width:520px; }
 
 /* The brand line is the first thing read and the only place the wordmark appears at size. `.wordmark`
    and `.wordmark-lg` had no rule in the tree at all, so both rendered at inherited 16px beside a
@@ -100,14 +168,18 @@
    read: an unbounded 520px column of 15px text is 80 characters a line. */
 .auth-page .auth-hero-sub { margin:0; max-width:46ch; font-size:15px; line-height:1.66; letter-spacing:-.01em; color:var(--muted); text-wrap:pretty; }
 
-/* THE PLAN ROWS, WHICH WERE A BULLET LIST WITH A BOLD RUN IN IT. Two changes that are rules rather
-   than taste: the name is no longer `<strong>` (nothing in this product is bolder than 400, and the
-   element rule in system.css never reset the user agent's bold), and the marks are no longer
-   `--accent`. `.model-signature` paints itself green; on this screen the primary button is already
-   the accent, and two green things means neither is the answer. A hairline between rows, no bullet,
-   no chip. */
+/*[[ THE PLAN ROWS, WHICH WERE A BULLET LIST WITH A BOLD RUN IN IT. Two changes that are rules rather
+ *   than taste: the name is no longer `<strong>` (nothing in this product is bolder than 400), and
+ *   the marks are no longer `--accent`. `.model-signature` paints itself green; on this screen the
+ *   primary button is now a FILLED accent, and two green things means neither is the answer. A
+ *   hairline between rows, no bullet, no chip.
+ *   They arrive in order, 60ms apart, once — the bar's own `float-…-in` shape applied to the only
+ *   list on the page. The hero is hidden below 980px, so nothing animates where it is not shown. ]]*/
 .auth-page .auth-hero-points { list-style:none; margin:clamp(32px,5vh,48px) 0 0; padding:0; }
-.auth-page .auth-hero-points li { display:grid; grid-template-columns:auto minmax(0,1fr); align-items:center; gap:4px 14px; margin:0; padding-block:16px; }
+.auth-page .auth-hero-points li { display:grid; grid-template-columns:auto minmax(0,1fr); align-items:center; gap:4px 14px; margin:0; padding-block:16px; animation:auth-rise var(--t-base) var(--ease-out) both; }
+.auth-page .auth-hero-points li:nth-child(1) { animation-delay:60ms; }
+.auth-page .auth-hero-points li:nth-child(2) { animation-delay:120ms; }
+.auth-page .auth-hero-points li:nth-child(3) { animation-delay:180ms; }
 .auth-page .auth-hero-points li + li { border-block-start:1px solid var(--line); }
 .auth-page .auth-hero-points .model-signature { grid-row:span 2; width:26px; height:26px; color:var(--faint); }
 .auth-page .auth-hero-points__name { font-size:15px; letter-spacing:-.012em; color:var(--ink); }
@@ -125,12 +197,17 @@
 
 /* ------------------------------------------------------------------------- the card --- */
 
-/* ONE SURFACE STEP AND ONE HAIRLINE. No shadow: a card does not float, and the separation that
-   `--surface` over `--paper` already provides is the whole language. --r-lg because this is a
-   full-bleed panel rather than a control; the 22px it used to carry is not a token and never was.
-   It enters once, on the slowest duration in the scale, and the opacity it enters from lives in the
-   keyframes and nowhere else — so when motion is off the card is simply there, not invisible. */
-.auth-page .auth-card { width:100%; padding:clamp(24px,4vw,34px); border:1px solid var(--line); border-radius:var(--r-lg); background:var(--surface); animation:auth-rise var(--t-slow) var(--ease-out) both; }
+/*[[ ONE SURFACE STEP, ONE HAIRLINE, AND THE 8px PANEL RADIUS.
+ *
+ *   No drop shadow: elevation on the bar is a glow and separation is a hairline, and the only
+ *   conventional shadow anywhere on it is the inset on the primary button. The card was --r-lg
+ *   (16px); the measured panel radius is 8, and an 8px panel against a 6px control is the whole
+ *   radius system.
+ *   The fill is TINTED toward the accent rather than being the neutral --surface, for the reason
+ *   the ground is: a pure-grey card under a saturated accent reads as a default theme.
+ *   It enters once, at the band for a surface that moves on its own, and the opacity it enters from
+ *   lives in the keyframes and nowhere else — so when motion is off the card is simply there. ]]*/
+.auth-page .auth-card { width:100%; padding:clamp(24px,4vw,34px); border:1px solid var(--line); border-radius:var(--r-lg); background:var(--surface); animation:auth-rise var(--t-base) var(--ease-out) both; }
 /* Lit from above in the dark theme, where a brighter top edge reads as a raised object. In the light
    theme the same declaration would be a dark line across the top of a white card, which reads as a
    seam — so it is corrected rather than copied. */
@@ -145,21 +222,28 @@
 /* A second sentence under the first belongs to the same block, not to the field below it. */
 .auth-page .auth-card-sub + .auth-card-sub { margin-block-start:-14px; }
 
-/* THE STATUS MARK. One 42px disc, hairline and a surface step, neutral by default — a success card
-   does NOT tint it, because `--good` and `--accent` are within a few points of each other and a
-   green tick above a green button is the two-green defect wearing a costume. Only `--bad` tints,
-   on a card whose whole subject is something the reader has to act on. */
-.auth-page .auth-card__mark { display:grid; place-items:center; width:42px; height:42px; margin:0 0 18px; border:1px solid var(--line); border-radius:var(--r-pill); background:var(--surface-2); color:var(--muted); }
+/*[[ THE STATUS MARK. One 42px panel — not a disc: the pill went with the rest of them, and an 8px
+ *   rounded square beside an 8px card is the radius system saying the same thing twice rather than
+ *   two things. Neutral by default: a success card does NOT tint it, because --good and --accent
+ *   are within a few points of each other and a green tick above a green button is the two-green
+ *   defect wearing a costume. Only --bad tints, on a card whose whole subject is something the
+ *   reader has to act on.
+ *   It scales in behind the title, which is the state "this screen is telling you something
+ *   happened" — the one moment on these six pages where a mark is the message. ]]*/
+.auth-page .auth-card__mark { display:grid; place-items:center; width:42px; height:42px; margin:0 0 18px; border:1px solid var(--line); border-radius:var(--r-lg); background:var(--control-fill); color:var(--muted); animation:auth-mark-in var(--t-base) var(--ease-hard) both; }
 .auth-page .auth-card__mark svg { width:19px; height:19px; }
-.auth-page .auth-card__mark--alert { border-color:color-mix(in srgb,var(--bad) 42%,transparent); background:color-mix(in srgb,var(--bad) 10%,var(--surface-2)); color:var(--bad); }
+.auth-page .auth-card__mark--alert { border-color:color-mix(in srgb,var(--bad) 42%,transparent); background:color-mix(in srgb,var(--bad) 10%,var(--surface)); color:var(--bad); }
 
 /* ---------------------------------------------------------------------- the fields --- */
 
-/* MICRO-LABEL, AND THIS IS THE ONE PLACE TRACKING GOES POSITIVE. The lock records it off the
-   reference: letter-spacing is negative everywhere and turns to +.018em on 10–11px uppercase. It is
-   what makes a label read as a label rather than as small body text. */
+/*[[ ONE MICRO-LABEL, AND IT IS THE BAR'S. Measured: 12px, uppercase, 1.2px of positive tracking
+ *   (claim: "NAV AND LABELS ARE UPPERCASE WITH POSITIVE TRACKING, body is not: 12px/700/1.2px on
+ *   nav items, 12px/700 with 1.2px on labels, against 14px/400/normal body at a 1.5 line height").
+ *   The 700 is theirs and is the one thing not taken — nothing here is bolder than 400 — so the
+ *   label is separated from body text by case, size and tracking alone. It was 11px at +.018em,
+ *   which is tesana's number; where the two references disagree, the owner said the bar wins. ]]*/
 .auth-page .field { display:grid; gap:7px; margin:0 0 16px; }
-.auth-page .field-label { display:block; font-size:11px; line-height:1; letter-spacing:.018em; text-transform:uppercase; font-weight:400; color:var(--muted); }
+.auth-page .field-label { display:block; font-size:12px; line-height:1.2; letter-spacing:1.2px; text-transform:uppercase; font-weight:400; color:var(--muted); }
 .auth-page .field-hint { margin:0; font-size:12px; line-height:1.5; color:var(--faint); text-wrap:pretty; }
 /* A HINT THAT IS THE CARD'S CHILD IS A NOTE ABOUT THE CARD, not a note about the field under it —
    the recovery form opens with one, and with `margin:0` it sat flush against the EMAIL label below
@@ -167,45 +251,47 @@
    inside a `.field` stays tight to its input, a hint beside one gets the gap it needs. */
 .auth-page .auth-card > .field-hint { margin-block-end:18px; }
 
-/* THE INPUT IS A WELL, WHICH IS WHAT `--paper-2` IS FOR. On a `--surface` card a `--surface` input is
-   invisible as a field — it was the same colour as the thing it sits on. 16px is not a taste
-   decision: iOS Safari zooms the viewport on focus for anything under it, and a sign-in form that
-   jumps and scrolls sideways the moment you tap it is a sign-in form people abandon. The 4px radius
-   system.css gives every input is not a token; --r-md is.
+/* THE INPUT IS A WELL, WHICH IS WHAT `--paper-2` IS FOR. On a card fill a same-tone input is
+   invisible as a field. 16px is not a taste decision: iOS Safari zooms the viewport on focus for
+   anything under it, and a sign-in form that jumps and scrolls sideways the moment you tap it is a
+   sign-in form people abandon. The 4px radius system.css gives every input is not a token; 6px is
+   the measured control radius, and every control on this screen now carries it.
    THREE CLASSES DEEP AND NOT TWO, and it is not decoration: system.css sets the base with
    `input:not([type='checkbox']):not([type='radio'])`, which scores 0,2,1 — exactly what
    `.auth-page .field input` scores. A tie goes to source order, system.css is bundled last, and
    this whole block silently did nothing until it was read off a computed style rather than off the
-   source. The well stayed `--surface` and the radius stayed 4px. */
-.auth-page .auth-form-col .field input,.auth-page .auth-form-col .field textarea { width:100%; min-width:0; padding:12px 14px; font-size:16px; line-height:1.4; color:var(--ink); background:var(--paper-2); border:1px solid var(--line); border-radius:var(--r-md); transition:border-color var(--t-fast) var(--ease-out),background-color var(--t-fast) var(--ease-out); }
+   source. The well stayed --surface and the radius stayed 4px. */
+.auth-page .auth-form-col .field input,.auth-page .auth-form-col .field textarea { width:100%; min-width:0; padding:12px 14px; font-size:16px; line-height:1.4; color:var(--ink); background:var(--paper-2); border:1px solid var(--line); border-radius:var(--r-md); transition:border-color var(--t-fast) var(--ease-out),background-color var(--t-fast) var(--ease-out),box-shadow var(--t-color) var(--ease-hard); }
 .auth-page .auth-form-col .field textarea { line-height:1.55; }
 .auth-page .field input::placeholder,.auth-page .field textarea::placeholder { color:var(--faint); }
 /* HOVER IS A HAIRLINE BRIGHTENING, never a size change — a field that grows under the cursor shifts
    every field below it. */
 .auth-page .field input:hover:not(:disabled),.auth-page .field textarea:hover:not(:disabled) { border-color:color-mix(in srgb,var(--ink) 24%,var(--line)); }
-/* Focus is the outline system.css draws for every focusable thing in the product, and it is not
-   restyled here. What IS added is the well lifting to `--surface`, so the field being typed into is
-   legible as the active one even at a glance and even when the ring is off-screen on a small
-   keyboard-covered viewport. */
-.auth-page .field input:focus,.auth-page .field textarea:focus { background:var(--surface); border-color:color-mix(in srgb,var(--ink) 30%,var(--line)); }
+/* FOCUS IS THE ACCENT FAMILY, WHICH IS WHAT IT IS FOR. system.css draws the outline ring for every
+   focusable thing in the product and that is not restyled here; what IS added is the well lifting
+   and taking the accent border plus the bar's 12px glow, so the field being typed into is legible
+   as the active one at a glance and even when the ring is off-screen behind a keyboard. */
+.auth-page .field input:focus,.auth-page .field textarea:focus { background:var(--surface); border-color:var(--accent-ring); box-shadow:var(--glow); }
 .auth-page .field input:disabled,.auth-page .field textarea:disabled { opacity:.48; cursor:not-allowed; }
-/* A FIELD THE FORM HAS ALREADY REJECTED says so on the field, not only in the panel at the top.
-   `aria-invalid` is the attribute the screen reader is told with, so it is also the hook the eye is
-   told with — one fact, one source.
-   FOUR SELECTOR STEPS, to sit above the hover rule two lines up rather than beside it. A rejected
-   field that loses its mark the moment the cursor crosses it is a field whose mark is decoration:
-   measured on the screen, hovering the password after a failed sign-up put the neutral hairline
-   back. Hover is a fact about the pointer; invalid is a fact about the value, and the value wins. */
-.auth-page .auth-form-col .field input[aria-invalid='true'] { border-color:color-mix(in srgb,var(--bad) 55%,transparent); }
+/*[[ A FIELD THE FORM HAS ALREADY REJECTED says so on the field, not only in the panel at the top.
+ *   `aria-invalid` is the attribute the screen reader is told with, so it is also the hook the eye
+ *   is told with — one fact, one source, and now one motion: the field nudges once, 160ms, so the
+ *   correction lands where the cursor already is rather than only in a sentence above the fold.
+ *   FOUR SELECTOR STEPS, to sit above the hover rule rather than beside it. A rejected field that
+ *   loses its mark the moment the cursor crosses it is a field whose mark is decoration: measured
+ *   on the screen, hovering the password after a failed sign-up put the neutral hairline back.
+ *   Hover is a fact about the pointer; invalid is a fact about the value, and the value wins. ]]*/
+.auth-page .auth-form-col .field input[aria-invalid='true'] { border-color:color-mix(in srgb,var(--bad) 55%,transparent); animation:auth-reject 160ms ease-out both; }
 
 /* The reveal control lives INSIDE the well, so the input keeps the whole field and the button is
    read as part of it. The input reserves its width rather than running under it: text that
-   disappears beneath a button is how people mistype a password twice. */
+   disappears beneath a button is how people mistype a password twice. 28px is the bare-text-button
+   height, which is what this is. */
 .auth-page .field__wrap { position:relative; display:flex; align-items:center; min-width:0; }
 .auth-page .auth-form-col .field__wrap input { padding-inline-end:74px; }
-.auth-page .field__reveal { position:absolute; inset-inline-end:5px; min-height:34px; padding:6px 10px; border:1px solid transparent; border-radius:var(--r-xs); background:transparent; font-size:12px; letter-spacing:-.005em; color:var(--muted); transition:color var(--t-fast) var(--ease-out),background-color var(--t-fast) var(--ease-out); }
-.auth-page .field__reveal:hover:not(:disabled) { background:var(--surface-2); color:var(--ink); }
-.auth-page .field__reveal:active:not(:disabled) { background:var(--surface-3); }
+.auth-page .field__reveal { position:absolute; inset-inline-end:6px; min-height:var(--h-xs); padding:0 8.8px; border:1px solid transparent; border-radius:var(--r-md); background:transparent; font-size:12px; line-height:1.2; letter-spacing:1.2px; text-transform:uppercase; color:var(--muted); transition:color var(--t-color) var(--ease-hard),border-color var(--t-fast) var(--ease-out),background-color var(--t-fast) var(--ease-out); }
+.auth-page .field__reveal:hover:not(:disabled):not([aria-disabled='true']) { border-color:var(--control-line); background:var(--control-fill); color:var(--ink); }
+.auth-page .field__reveal:active:not(:disabled) { background:color-mix(in srgb,var(--ink) 12%,transparent); }
 
 /* The six-digit code is a number being copied off another screen, so it is set in the mono face and
    spaced out to be checked digit by digit. Centred because there is nothing else on the line. */
@@ -217,28 +303,54 @@
    a column of 13px text is indistinguishable from more instructions. It is now a panel: a `--bad`
    hairline, an 8% tint of the same token, and a mark. One status colour on the card, which is the
    budget the lock sets. `role="alert"` is on the element itself, so this appearing is announced. */
-.auth-page .auth-card__error { display:flex; align-items:flex-start; gap:10px; margin:0 0 18px; padding:12px 14px; border:1px solid color-mix(in srgb,var(--bad) 40%,transparent); border-radius:var(--r-md); background:color-mix(in srgb,var(--bad) 9%,var(--surface)); font-size:13px; line-height:1.5; color:var(--bad); text-wrap:pretty; animation:auth-rise var(--t-base) var(--ease-out) both; }
+.auth-page .auth-card__error { display:flex; align-items:flex-start; gap:10px; margin:0 0 18px; padding:12px 14px; border:1px solid color-mix(in srgb,var(--bad) 40%,transparent); border-radius:var(--r-lg); background:color-mix(in srgb,var(--bad) 9%,var(--surface)); font-size:13px; line-height:1.5; color:var(--bad); text-wrap:pretty; animation:auth-rise var(--t-base) var(--ease-hard) both; }
 .auth-page .auth-card__error svg { flex:none; width:16px; height:16px; margin-block-start:1px; }
 
 /* ------------------------------------------------------------------- the actions --- */
 
-/* THE ONE ACCENT ON THE SCREEN. `.btn-primary` already carries the fill from system.css; what it
-   lacked was a target big enough to hit with a thumb and a radius that agrees with the rest of the
-   product's buttons. --r-md, not --r-pill: the lock permits pills for buttons, and every other
-   button in this product is --r-md, so a pill here would be the second visual language the lock
-   exists to prevent. */
-.auth-page .btn-block { display:flex; width:100%; min-height:46px; padding:12px 18px; border-radius:var(--r-md); font-size:14px; letter-spacing:-.008em; transition:background-color var(--t-fast) var(--ease-out),border-color var(--t-fast) var(--ease-out),color var(--t-fast) var(--ease-out); }
+/*[[ THE LARGE STEP, AT THE MEASURED HEIGHT AND PADDING. 50px with 12px 24px of padding is the
+ *   bar's fourth control height (claim: "CONTROLS COME IN FOUR HEIGHTS AND NO MORE: 28px for a bare
+ *   text button, 32px for a chip or nav item, 36px for a chrome button and the primary action, 50px
+ *   for a large step CTA"). It was 46px, which is a fifth. 6px radius, because the pills are gone
+ *   and this is a control. ]]*/
+/* The radius, the hairline, the fill, the label colour and the four transitions all come from the
+   base `button` rule in design/system.css. What a full-width action adds is its width, the large
+   step's height and padding, and the one property that sheet has no reason to animate — the 1px the
+   primary travels when it is pressed. */
+.auth-page .btn-block { display:flex; width:100%; min-height:var(--h-lg); padding:12px 24px; font-size:14px; letter-spacing:-.008em; transition:transform var(--t-fast) var(--ease-out); }
 .auth-page .auth-card .btn-block + .btn-block { margin-block-start:10px; }
-/* The SECONDARY full-width button — "send it again" — must not read as the answer. It is the card's
-   surface with a hairline, and it steps up on hover rather than filling. */
-.auth-page .auth-card .btn-block:not(.btn-primary) { border-color:var(--line); background:var(--surface-2); color:var(--ink); }
-.auth-page .auth-card .btn-block:not(.btn-primary):hover:not(:disabled) { background:var(--surface-3); border-color:color-mix(in srgb,var(--ink) 22%,var(--line)); }
-.auth-page .auth-card .btn-block:not(.btn-primary):active:not(:disabled) { background:var(--surface-2); }
+
+/*[[ THE ONE FILLED CONTROL ON THE SCREEN, AND ITS COLOUR IS NOT DECIDED HERE.
+ *
+ *   design/system.css draws `.btn-primary` as --accent-deep under --accent-on-fill with
+ *   --shadow-primary (the measured inset rim plus a hard 2px ledge, the only conventional shadow in
+ *   the product), and restates the label colour for hover and focus — which is what
+ *   tests/button-label-contrast.test.mjs exists to defend, after a filled button in this app once
+ *   went wordless the instant anybody pointed at it. None of that is repeated here.
+ *
+ *   What IS this screen's is the SIZE. A sign-in submit is the bar's fourth control height — the
+ *   large step — so it is 50px with 12px 24px of padding rather than the 36px chrome-and-primary
+ *   height every other filled button in the product takes (claim: "CONTROLS COME IN FOUR HEIGHTS
+ *   AND NO MORE: 28px for a bare text button, 32px for a chip or nav item, 36px for a chrome button
+ *   and the primary action, 50px for a large step CTA"). It was 46px, which is a fifth height.
+ *
+ *   And the press: a 2px ledge exists so something can sit down onto it. ]]*/
+.auth-page .auth-card .btn-block.btn-primary:active:not(:disabled) { transform:translate3d(0,1px,0); box-shadow:inset 0 0 0 1px rgba(0,0,0,.18),0 1px rgba(0,0,0,.22); }
+
+/* The SECONDARY full-width button — "send it again" — must not read as the answer, and it is the
+   chrome variant design/system.css already draws on the base `button` element: --control-fill,
+   --control-line, --muted. Nothing is restated here except the one thing this screen changes, which
+   is that it takes the accent's border on hover rather than only a brighter fill — the bar's rule
+   is that variants differ by BORDER and TEXT. Four selector steps because the system's own hover is
+   `button:hover:not(:disabled):not([aria-disabled='true'])` at 0,3,1, and a shorter selector here
+   would lose to it. */
+.auth-page .auth-card .btn-block:not(.btn-primary):hover:not(:disabled) { border-color:var(--accent-ring); }
 
 /* PRESSED AND BUSY ARE DIFFERENT STATES AND BOTH WERE MISSING. A submit that has been clicked
    changed only its label — "Signing in…" — which on a slow connection is a word change nobody
-   watching the button notices. The ring says the same thing where the cursor already is. */
-.auth-page .btn[data-busy='true']::before { content:''; flex:none; width:13px; height:13px; border:1.5px solid color-mix(in srgb,currentColor 32%,transparent); border-block-start-color:currentColor; border-radius:var(--r-pill); animation:auth-spin 640ms linear infinite; }
+   watching the button notices. The ring says the same thing where the cursor already is. It is a
+   circle because a ring is, not because anything here is a pill. */
+.auth-page .btn[data-busy='true']::before { content:''; flex:none; width:13px; height:13px; border:1.5px solid color-mix(in srgb,currentColor 32%,transparent); border-block-start-color:currentColor; border-radius:50%; animation:auth-spin 640ms linear infinite; }
 .auth-page .btn:disabled,.auth-page .btn[aria-disabled='true'] { opacity:.48; cursor:not-allowed; }
 
 /* THE LINKS UNDER THE CARD, which are the whole of the navigation on this surface: forgot password,
@@ -248,13 +360,13 @@
    the half that is legible. */
 .auth-page .auth-switch { margin:16px 0 0; font-size:13px; line-height:1.55; text-align:center; color:var(--muted); text-wrap:pretty; }
 .auth-page .auth-switch + .auth-switch { margin-block-start:8px; }
-.auth-page .auth-switch a,.auth-page .field-hint a { color:var(--ink); text-decoration:underline; text-decoration-color:color-mix(in srgb,var(--ink) 34%,transparent); text-underline-offset:3px; transition:text-decoration-color var(--t-fast) var(--ease-out),color var(--t-fast) var(--ease-out); }
-.auth-page .auth-switch a:hover,.auth-page .field-hint a:hover { text-decoration-color:currentColor; }
+.auth-page .auth-switch a,.auth-page .field-hint a { color:var(--ink); text-decoration:underline; text-decoration-color:color-mix(in srgb,var(--ink) 34%,transparent); text-underline-offset:3px; transition:text-decoration-color var(--t-color) var(--ease-hard),color var(--t-color) var(--ease-hard); }
+.auth-page .auth-switch a:hover,.auth-page .field-hint a:hover { color:var(--accent-light); text-decoration-color:currentColor; }
 .auth-page .auth-switch a:active,.auth-page .field-hint a:active { color:var(--muted); }
 /* The "use a different account" control is a button in a sentence of links, and it has to read as
    one of them rather than as a fourth full-width action. */
 .auth-page .auth-switch .btn-ghost { border-color:transparent; padding:4px 6px; color:var(--ink); text-decoration:underline; text-decoration-color:color-mix(in srgb,var(--ink) 34%,transparent); text-underline-offset:3px; }
-.auth-page .auth-switch .btn-ghost:hover:not(:disabled) { background:transparent; text-decoration-color:currentColor; }
+.auth-page .auth-switch .btn-ghost:hover:not(:disabled) { background:transparent; color:var(--accent-light); text-decoration-color:currentColor; }
 
 /* THE FIRST LINK AFTER AN ACTION gets a wider gap than the links have between themselves, so the
    block of alternatives reads as one thing sitting below the button rather than as a fourth row of
@@ -265,29 +377,70 @@
 
 /* Pinned to the page rather than to the viewport so it scrolls away with a tall card on a short
    phone — a fixed control over a keyboard-covered form is a control in the way. It is the only
-   thing on the screen above the card, so it stays quiet: `--muted` on a hairline, stepping up on
-   hover like every other secondary control in the product. */
+   thing on the screen above the card, so it stays quiet: the chrome variant at the chip height,
+   32px with the measured 0 8.8px of padding and the 12px/1.2px uppercase label. */
 .auth-page .auth-theme-toggle { position:absolute; inset-block-start:16px; inset-inline-end:16px; z-index:2; }
-.auth-page .auth-theme-toggle .btn { min-height:34px; padding:7px 12px; border:1px solid var(--line); border-radius:var(--r-md); font-size:12px; color:var(--muted); background:transparent; transition:color var(--t-fast) var(--ease-out),background-color var(--t-fast) var(--ease-out),border-color var(--t-fast) var(--ease-out); }
-.auth-page .auth-theme-toggle .btn:hover:not(:disabled) { background:var(--surface-2); border-color:color-mix(in srgb,var(--ink) 20%,var(--line)); color:var(--ink); }
-.auth-page .auth-theme-toggle .btn:active:not(:disabled) { background:var(--surface-3); }
+/* Only the geometry and the label are this screen's: the chrome variant's fill, hairline, ink and
+   transitions are already on the base `button` rule. 32px is the bar's chip-and-nav-item height and
+   0 8.8px with 12px uppercase at 1.2px of tracking is the padding and the label measured at it
+   (claim: "Control padding is tied to height and is not round: 0 8.8px at 32px with 12px/1.2px
+   uppercase text"). */
+.auth-page .auth-theme-toggle .btn { min-height:var(--h-sm); padding:0 8.8px; font-size:12px; line-height:1.2; letter-spacing:1.2px; text-transform:uppercase; }
+.auth-page .auth-theme-toggle .btn:hover:not(:disabled):not([aria-disabled='true']) { border-color:var(--accent-ring); }
 @media (min-width:980px) { .auth-page .auth-theme-toggle { inset-block-start:24px; inset-inline-end:28px; } }
 
 /* --------------------------------------------------------------------- the motion --- */
 
-/* Three animations, and the opt-out is in this file rather than borrowed from the global one at the
-   bottom of system.css — a rule that adds motion carries its own switch, so deleting the global
-   sweep later cannot silently re-enable a page of drifting light. OFF, not slowed. The entrances
-   set opacity only inside the keyframes, so with `animation:none` the card is present at full
-   opacity rather than invisible. */
+/*[[ EIGHT KEYFRAMES, AND EVERY ONE OF THEM IS A STATE OR AN AMBIENT.
+ *
+ *   The bar itself declares ZERO keyframes and runs ZERO animations, and the corpus is explicit
+ *   that this is not a licence to be still: chatgpt.com declares 138 and every one of them is an
+ *   interaction state — toast-open, shimmer-skeleton, pulse-dot, blink — rather than scenery. So
+ *   each of these is named after what causes it, and each is referenced by a rule above whose
+ *   selector matches markup auth-pages.tsx actually renders:
+ *
+ *     auth-rise     the card, an error panel and each hero row arriving
+ *     auth-fade     the hero column arriving, at and above 980px
+ *     auth-mark-in  a status mark — "check your mail", "that link expired"
+ *     auth-reject   a field the form has already refused
+ *     auth-spin     a submit that has been pressed and is waiting
+ *     auth-drift    the ambient light  (22s — ambient is exempt from the 0.26s ceiling)
+ *     auth-plane    the isometric ground  (40s, one cell, same exemption)
+ *
+ *   The opt-out is in this file rather than borrowed from the global one at the bottom of
+ *   system.css — a rule that adds motion carries its own switch, so deleting the global sweep later
+ *   cannot silently re-enable a page of drifting light. OFF, not slowed. The entrances set opacity
+ *   only inside the keyframes, so with `animation:none` the card is present at full opacity rather
+ *   than invisible. ]]*/
 @keyframes auth-rise { from { opacity:0; transform:translate3d(0,10px,0); } to { opacity:1; transform:none; } }
 @keyframes auth-fade { from { opacity:0; } to { opacity:1; } }
-@keyframes auth-drift { from { opacity:.62; transform:translate3d(0,-2%,0) scale(.97); } to { opacity:1; transform:translate3d(3%,2%,0) scale(1.04); } }
+@keyframes auth-mark-in { from { opacity:0; transform:scale(.86); } to { opacity:1; transform:none; } }
+@keyframes auth-reject { 0% { transform:translate3d(0,0,0); } 30% { transform:translate3d(-3px,0,0); } 70% { transform:translate3d(3px,0,0); } 100% { transform:translate3d(0,0,0); } }
+@keyframes auth-drift { from { transform:translate3d(0,-2%,0) scale(.97); } to { transform:translate3d(4%,2%,0) scale(1.06); } }
+/* 156px DOWN AND NOTHING SIDEWAYS, which is arithmetic rather than a guess. A linear-gradient at
+   angle A advances along (sin A, -cos A); at +60deg and -60deg those two directions are mirror
+   images about the vertical, so a purely VERTICAL shift of dy moves both lattices by the same
+   0.5*dy. The tile is 78px, so dy = 156px returns both to phase and the loop has no seam. Any
+   horizontal component would put one lattice back and the other half a cell out, and the plane
+   would visibly jump once every cycle. */
+@keyframes auth-plane { from { background-position:0 0,0 0; } to { background-position:0 156px,0 156px; } }
 @keyframes auth-spin { to { transform:rotate(1turn); } }
+
 @media (prefers-reduced-motion:reduce) {
-  .auth-page .auth-card,.auth-page .auth-hero,.auth-page .auth-card__error,.auth-page .auth__aura,.auth-page .btn[data-busy='true']::before { animation:none; }
+  .auth-page .auth-card,
+  .auth-page .auth-card__mark,
+  .auth-page .auth-hero,
+  .auth-page .auth-hero-points li,
+  .auth-page .auth-card__error,
+  .auth-page .auth__aura,
+  .auth-page .auth__grid,
+  .auth-page .auth-form-col .field input[aria-invalid='true'],
+  .auth-page .btn[data-busy='true']::before { animation:none; }
   /* The field selectors carry `.auth-form-col` because the rules that DECLARE those transitions do
      — an opt-out written one step shorter than the rule it switches off is an opt-out that loses
      the cascade and reads, in source, as though motion were handled. */
   .auth-page .auth-form-col .field input,.auth-page .auth-form-col .field textarea,.auth-page .field__reveal,.auth-page .btn-block,.auth-page .auth-switch a,.auth-page .field-hint a,.auth-page .auth-theme-toggle .btn { transition:none; }
+  /* The pressed primary still has to sit down when it is pressed — that is a position, not a
+     motion — so only the travel to it is removed. */
+  .auth-page .auth-card .btn-block.btn-primary:active:not(:disabled) { transform:none; }
 }
