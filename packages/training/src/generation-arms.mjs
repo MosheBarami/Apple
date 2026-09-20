@@ -39,13 +39,14 @@
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { ALL_GAME_LOGIC_CURRICULUM } from './build-game-logic.mjs';
 import { scoreGameLogic, fencedLuau } from './score-eval.mjs';
 import { detectContextDependencies } from './audit-dataset.mjs';
 import { runSpecCase } from './tool-trajectory-verify.mjs';
 import { CUSTOMER_QUERIES } from './customer-queries.mjs';
+import { resolveSettings } from './production-settings.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const RUNS_DIR = resolve(HERE, '..', 'runs');
@@ -69,17 +70,37 @@ const KEY = () => process.env.GOLEM_ADMIN_KEY;
 //   and the exact resolved settings that produced 16/24; the gate below compares this file's copy
 //   to that file and refuses to spend a neuron if they differ. A baseline arm that is not the
 //   shipped configuration is not a baseline, it is a sixth arm nobody asked for.
-const GATEWAY = 'stone';          // apple lane, agent mode -> gatewayModelFor('stone','apple')
-const REQUESTED_TOKENS = 5500;    // tokensForEffort(MODE_BASE_TOKENS.stone=4400, effort 'high'=1.25)
-const GATEWAY_CEILING = 6500;     // gateway.ts stone ceiling; high effort now asks 8800 and is clamped to this
-const EFFECTIVE_TOKENS = Math.min(REQUESTED_TOKENS, GATEWAY_CEILING);
+//[[ 2026-09-21: THESE WERE FOUR LITERALS AND THEY WENT STALE WHILE THE GATE WENT ON PASSING.
+//
+//   On 2026-09-20 the worker moved `high` from x1.25 to x2 and stone's ceiling from 5600 to 6500
+//   (commit 8b61c91). The ceiling literal here was updated; REQUESTED_TOKENS was not. So this file
+//   kept sending 5500 while the product sent 6500 — and the fidelity gate below kept reporting
+//   agreement, because it compares this file to a RECORDING of an old run and never to production.
+//   A gate that cannot see the thing it guards is this repository's own failure shape at the
+//   harness layer, and a hand-written copy of a table is rule 7 of the working rules.
+//
+//   production-settings.mjs is the ONE mirror that production-settings.test.mjs holds against
+//   apps/worker/src field by field, so the resolution is taken from there and nothing is retyped.
+//   If the worker moves again, this file moves with it and the gate says so instead of agreeing.
+const PRODUCTION = resolveSettings({ lane: 'apple', mode: 'agent' });
+const GATEWAY = PRODUCTION.gateway;
+const REQUESTED_TOKENS = PRODUCTION.requestedTokens;
+const GATEWAY_CEILING = PRODUCTION.gatewayCeiling;
+const EFFECTIVE_TOKENS = PRODUCTION.effectiveTokens;
 
 const BASELINE_SYSTEM =
   'You write standalone Luau modules for Roblox. Reply with ONE fenced luau code block and nothing else. '
   + 'The module must return the function described, handle every invalid input the contract names, and must not '
   + 'read a clock, mutate shared state, or require anything.';
 
-const FIDELITY_SOURCE = resolve(RUNS_DIR, 'eval-production-apple-agent-armA-shipped.json');
+//[[ 2026-09-21: THE RECORDING MOVED, AND THE OLD ONE IS KEPT RATHER THAN OVERWRITTEN.
+//
+//   `eval-production-apple-agent-armA-shipped.json` was taken on 2026-09-20 at effectiveTokens
+//   5500, and it is the provenance of all seven arms in docs/frontier-for-roblox.md §4. Production
+//   now sends 6500, so that file can no longer be the fidelity source without the gate certifying a
+//   budget the product stopped sending — but deleting it would erase what those seven arms were
+//   measured at. Both exist; this names the current one, and §4 names the other.
+const FIDELITY_SOURCE = resolve(RUNS_DIR, 'eval-production-apple-agent-armA-shipped-2026-09-21.json');
 
 function fidelityGate({ system = BASELINE_SYSTEM, gateway = GATEWAY, tokens = EFFECTIVE_TOKENS, file = FIDELITY_SOURCE } = {}) {
   let recorded;
@@ -88,11 +109,20 @@ function fidelityGate({ system = BASELINE_SYSTEM, gateway = GATEWAY, tokens = EF
   const problems = [];
   if (recorded.system !== system) problems.push('system prompt differs from the recorded shipped run');
   if (recorded.settings?.gateway !== gateway) problems.push(`gateway ${recorded.settings?.gateway} != ${gateway}`);
-  if (recorded.settings?.effectiveTokens !== tokens) problems.push(`effectiveTokens ${recorded.settings?.effectiveTokens} != ${tokens}`);
+  //[[ A DRIFT HERE IS NOT A TYPO, IT IS A DIFFERENT EXPERIMENT. The recorded run is the thing every
+  //   arm is compared against; if production now sends a different output budget, a new arm and the
+  //   recorded arms did not answer the same question and the difference between them is not the
+  //   arm. The fix is to re-record the shipped baseline at today's budget, not to relax this line.
+  if (recorded.settings?.effectiveTokens !== tokens) {
+    problems.push(
+      `effectiveTokens ${recorded.settings?.effectiveTokens} (recorded) != ${tokens} (production today)`
+      + ' — re-record the shipped baseline before comparing a new arm against it',
+    );
+  }
   return {
     ok: problems.length === 0,
     why: problems.join('; ') || null,
-    recorded: { file: 'eval-production-apple-agent-armA-shipped.json', n: recorded.n, ok: recorded.ok, pct: recorded.pct },
+    recorded: { file: basename(file), n: recorded.n, ok: recorded.ok, pct: recorded.pct, effectiveTokens: recorded.settings?.effectiveTokens ?? null },
   };
 }
 
@@ -439,10 +469,7 @@ async function main() {
     notShippable: armName === 'oracle' ? 'THE ORACLE ARM READS THE HIDDEN EVAL CHECKS. It is a ceiling, not a product number.' : null,
     fidelityGate: gate,
     settings: {
-      lane: 'apple', productMode: 'agent', gateway: GATEWAY,
-      effort: 'high', effortIsAFloor: true, baseTokens: 4400,
-      requestedTokens: REQUESTED_TOKENS, gatewayCeiling: GATEWAY_CEILING,
-      effectiveTokens: EFFECTIVE_TOKENS, clampedByCeiling: EFFECTIVE_TOKENS < REQUESTED_TOKENS,
+      ...PRODUCTION,
       servedModel, provider, n, offset,
       endpoint: `${BASE}/api/admin/model-test`,
     },

@@ -5,6 +5,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ALL_GAME_LOGIC_CURRICULUM } from './build-game-logic.mjs';
 import { BASELINE_SYSTEM, exemplarsFor, fencedBlocks, fidelityGate, loadLibrary, runOwnSpec } from './generation-arms.mjs';
+import { resolveSettings } from './production-settings.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CORPUS = resolve(HERE, '../../corpus/data/verified-modules.json');
@@ -50,13 +51,40 @@ test('exemplars are other modules, and there are three of them', async () => {
 
 //[[ FALSIFY THE GATE BEFORE TRUSTING IT. A fidelity gate that cannot go red is a green light with
 //   no wire behind it — this repository has shipped one of those before.
+//
+//   2026-09-21 — RE-AIMED, AND THE REASON IS THE FINDING. The first line used to be
+//   `assert.equal(fidelityGate().ok, true)` with the message "the shipped string still matches the
+//   recorded run". It went red the moment generation-arms.mjs stopped carrying a literal budget and
+//   started DERIVING one from production-settings.mjs, because production had moved to
+//   effectiveTokens 6500 on 2026-09-20 while every recorded arm was taken at 5500. The code got
+//   better and the assertion was holding a fossil, which is case 2 of the working rules. So the
+//   green-after half is kept — a gate that never says yes is not a gate either — but aimed at the
+//   property: it agrees exactly when the run it is given and the settings it is given agree, and
+//   the specific numbers it is agreeing about are pinned in the tripwire below.
 test('the fidelity gate goes red when the baseline system prompt drifts', () => {
-  assert.equal(fidelityGate().ok, true, 'the shipped string still matches the recorded run');
+  assert.equal(fidelityGate().ok, true, 'the recorded run and production agree today');
   const drifted = fidelityGate({ system: BASELINE_SYSTEM + ' Also be cheerful.' });
   assert.equal(drifted.ok, false);
   assert.match(drifted.why, /system prompt differs/);
   assert.equal(fidelityGate({ tokens: 4400 }).ok, false, 'a budget that is not production is not a baseline');
   assert.equal(fidelityGate({ gateway: 'rune' }).ok, false, 'a different gateway is a different measurement');
+});
+
+//[[ A TRIPWIRE, NOT A PIN — it is meant to fire on ANY change, because each one needs reviewing.
+//
+//   Two things must stay true together or the arms stop being comparable to each other: the budget
+//   the harness derives from production, and the budget the recorded baseline was taken at. When
+//   the worker's effort scale or a gateway ceiling moves, this goes red and the review is: re-record
+//   the shipped baseline at the new budget, then re-run any arm you intend to compare against it.
+//   Do not bump the number. 6500 is `min(4400 x 2, stone ceiling 6500)` as of commit 8b61c91; the
+//   seven arms in docs/frontier-for-roblox.md §4 were all taken at 5500, which is why that section
+//   names its own budget rather than pointing here.
+test('the harness, production and the recorded baseline are all on the same output budget', () => {
+  const production = resolveSettings({ lane: 'apple', mode: 'agent' });
+  assert.equal(production.effectiveTokens, 6500, 'production moved — re-record the baseline, then re-run the arms');
+  const gate = fidelityGate();
+  assert.equal(gate.recorded.effectiveTokens, production.effectiveTokens, 'the recorded baseline is at a different budget from production');
+  assert.equal(gate.recorded.file, 'eval-production-apple-agent-armA-shipped-2026-09-21.json');
 });
 
 test('the fidelity gate refuses rather than passing when the recorded run is missing', () => {
