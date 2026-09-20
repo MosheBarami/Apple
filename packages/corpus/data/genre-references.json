@@ -110,11 +110,6 @@
    "id": "survival",
    "name": "Survival",
    "description": "Resource gathering, crafting, environmental navigation, equipment, and threat visibility."
-  },
-  {
-   "id": "pet_simulator",
-   "name": "Pet Simulator",
-   "description": "Collection and rarity: pet grids with rarity borders, egg-hatching moments, index books and equip slots."
   }
  ],
  "externalReferences": [

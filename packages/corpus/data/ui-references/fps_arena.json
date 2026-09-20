@@ -1,0 +1,147 @@
+{
+  "genre": "fps_arena",
+  "label": "Arena shooter / round-based FPS (team deathmatch, objective modes, 1v1 duels)",
+  "recorded": "2026-09-20",
+  "provenance": "Web research, not owner screenshots. Every row below was fetched over the network on 2026-09-20 from the community wikis of five SHIPPED Roblox shooters — Phantom Forces, Arsenal, BIG Paintball 2, Rivals and Bad Business — read as wikitext through each wiki's api.php endpoint. No image, no Luau source and no asset is copied here; each row records where the claim was read and what interface construction it describes, so the claim can be checked. This file was written because a guard added on 2026-09-20 asked, for the first time, whether every genre the product can BUILD has construction knowledge behind it, and found that this one — a genre in GENRE_KIT_IDS, orderable by any customer — had none at all.",
+  "incomplete": false,
+  "references": [
+    {
+      "id": "phantom-forces-controls",
+      "source": "https://roblox-phantom-forces.fandom.com/wiki/Controls — read on 2026-09-20 through https://roblox-phantom-forces.fandom.com/api.php?action=parse&page=Controls&prop=wikitext, because Fandom serves its article HTML behind Cloudflare while api.php is open.",
+      "demonstrates": [
+        "A control row is a key AND THE STATE IT LEAVES THE PLAYER IN, not a keybind. The table's Notes column carries the transitions and they are the real content: 'Use when crouched/prone to stand up' on Jump, 'Press again while crouching to stand. Press while prone to crouch' on Crouch, 'Sprinting never expires, and forces standing up' on Sprint. A keybind list without those notes is not a controls screen, it is a legend.",
+        "Keyboard/mouse and controller are COLUMNS OF ONE TABLE, never two screens. Every function has both bindings on the same row, so a player switching input never has to learn a second layout.",
+        "One function can have two bindings with different feel: Sprint is 'Double-tap W' OR 'Hold Shift'. A tap and a hold are offered for the same verb rather than one being declared correct.",
+        "The page states its own freshness in its opening sentence — \"up-to-date (as of 12 October 2019)\". A controls reference that cannot say when it was last true is a controls reference nobody can trust."
+      ]
+    },
+    {
+      "id": "phantom-forces-votekick-modal",
+      "source": "https://roblox-phantom-forces.fandom.com/wiki/Mechanics — read on 2026-09-20 through https://roblox-phantom-forces.fandom.com/api.php?action=parse&page=Mechanics&prop=wikitext, because Fandom serves its article HTML behind Cloudflare while api.php is open.",
+      "demonstrates": [
+        "A vote popup with THREE keys, not two: y votes yes, n votes no, and j dismisses the popup and abstains. Abstaining is a first-class action with its own control rather than a thing you do by ignoring the modal — which means the interface can tell an abstention from a player who was mid-fight.",
+        "The vote runs 40 seconds and resolves the instant the required yes count is reached, rather than always running the clock down. A timer is an upper bound, not a ceremony.",
+        "THE TALLY WAS DELIBERATELY MADE LESS INFORMATIVE. Before version 7.0.0 the popup showed how many voted yes and how many voted no; it was changed to show only how many people voted at all. Showing the split let a server see who was winning and apply pressure. This is the rare recorded case of a shipped UI REMOVING a number on purpose, and it is the most transferable thing in this file.",
+        "Capability is split INSIDE one feature by progression: a player below Rank 25 cannot initiate a votekick but can still vote in one. The control is visible to everyone and actionable by some.",
+        "Failure has consequences the UI must express: a failed vote starts a server-wide cooldown, and the player who initiated it cannot start the next one until somebody else does.",
+        "The votekick is explicitly NOT a report — reporting is a separate command entirely. Two actions that look adjacent to a player are kept apart, and the wiki says so in as many words: votekicking 'does not submit a report'."
+      ]
+    },
+    {
+      "id": "arsenal-settings-screen",
+      "source": "https://robloxarsenal.fandom.com/wiki/Settings — read on 2026-09-20 through https://robloxarsenal.fandom.com/api.php?action=parse&page=Settings&prop=wikitext, because Fandom serves its article HTML behind Cloudflare while api.php is open.",
+      "demonstrates": [
+        "Settings are reached from a navigation tab in the MAIN MENU, not from a gear icon floating over the HUD. The in-match surface stays free of configuration.",
+        "Options that cost frames were labelled 'Expensive' in the list — Viewport Character and Particle Physics — to warn a player before enabling them. The label was attached to the option itself rather than buried in a performance section.",
+        "Settings were RENAMED toward plain language in a design revamp: Announcer Voice Overs became Announcers, Death/Pain Noises became Character Vocal Damage Noises, Haptic Feedback became Gamepad Vibration, Subtitles became VO Subtitles. The direction is not uniformly toward shorter — it is toward saying exactly what the switch does.",
+        "The developers shipped a note at the bottom of their own settings menu admitting the design was still 'a mess' after an overhaul, and removed it at the next revamp. A settings screen is a surface teams knowingly ship half-finished.",
+        "A recorded defect worth designing against: the information panel for Victory Themes displayed the title 'Kill Hitsound'. A reused panel that does not re-read its own title is how a settings list lies about what it is configuring."
+      ]
+    },
+    {
+      "id": "big-paintball-platform-parity",
+      "source": "https://big-paintball.fandom.com/wiki/PC%20Game%20Play%20(BIG%20Paintball%202) — read on 2026-09-20 through https://big-paintball.fandom.com/api.php?action=parse&page=PC%20Game%20Play%20(BIG%20Paintball%202)&prop=wikitext, because Fandom serves its article HTML behind Cloudflare while api.php is open.",
+      "demonstrates": [
+        "INPUT MODES ARE EXCLUSIVE, NOT ADDITIVE. Connecting a controller to a PC makes the WASD keys inactive and switches the layout to the console one. The interface picks a mode rather than accepting both at once, so the on-screen prompts can never show the wrong glyphs.",
+        "A control can exist on one platform and not another: crouching is available to PC players and is listed as a PC advantage. The control list is therefore per-platform, and a shared list would promise a key that does nothing.",
+        "Movement keys carry alternates on the same row — W or the Up arrow, S or Down — rather than a second remapping screen.",
+        "Platform imbalance is compensated in the ECONOMY rather than in aim: mobile and console players earn more Credits per hit and need one fewer tag to activate an ability. The fairness adjustment is a number in the reward path, which is legible, instead of a hidden assist in the aiming code, which is not."
+      ]
+    },
+    {
+      "id": "rivals-lobby-mechanics",
+      "source": "https://robloxrivals.fandom.com/wiki/Mechanics — read on 2026-09-20 through https://robloxrivals.fandom.com/api.php?action=parse&page=Mechanics&prop=wikitext, because Fandom serves its article HTML behind Cloudflare while api.php is open.",
+      "demonstrates": [
+        "The backpack sits along the bottom of the screen and displays ONLY items that can be opened. It is a container filtered by what is actionable right now, not a complete inventory — the cosmetics you already own live elsewhere.",
+        "Matchmaking is a PHYSICAL OBJECT in the lobby: players step onto a duel pad to enter a match, and a countdown from 3 begins once the pad is ready. There is no queue dialog; standing somewhere is the queue.",
+        "The pad encodes the gamemode: a 1v1 pad needs one player per side, a 2v2 needs two, and private servers can enable pads that accept unlimited players. The rule of the match is expressed by the object you stand on.",
+        "Try-before-buy is reachable FROM THE LOCKED ITEM ITSELF — clicking a locked weapon offers 'Try out for free!', or Q on PC, which sends the player to the shooting range with it. The path from wanting a thing to holding it is one click, not a separate demo mode.",
+        "Party size CONSTRAINS the gamemode list: with two people in a party, 1v1 becomes unavailable. A social choice made in one screen removes options in another, so the mode list cannot be a static menu.",
+        "Practice targets carry different health on purpose — red bots have 150 health, purple and yellow have infinite — so a range can teach both time-to-kill and sustained tracking without a mode switch."
+      ]
+    },
+    {
+      "id": "rivals-shop-structure",
+      "source": "https://robloxrivals.fandom.com/wiki/Shop — read on 2026-09-20 through https://robloxrivals.fandom.com/api.php?action=parse&page=Shop&prop=wikitext, because Fandom serves its article HTML behind Cloudflare while api.php is open.",
+      "demonstrates": [
+        "The shop is divided into seven sections, and the Home section is an OVERVIEW OF THE OTHER SIX rather than a seventh category. The landing tab shows a sample of everything, so nothing is discoverable only by tabbing.",
+        "TWO CURRENCIES SIT SIDE BY SIDE and each item is priced in the one that applies to it: Robux for cases and bundles, Keys for wraps, charms and finisher packs. A single price field per item, not a converted dual display.",
+        "A price is shown WITH ITS CAVEAT: the article states plainly that listed Robux prices are the standard global ones and that Roblox regional pricing may make an item cost differently. A number the product does not fully control is displayed as such.",
+        "The shop home carries banners for the Season Pass and for a rewarded-advertisement offer, so a promotional surface and a purchase surface share one screen and must be visually separable.",
+        "Bundle contents are itemised line by line — crate, weapon, skin, wrap, charm, finisher — rather than summarised as a count. A bundle that says \"6 items\" cannot be compared against another bundle; a list can."
+      ]
+    },
+    {
+      "id": "bad-business-gamemodes",
+      "source": "https://roblox-bad-business.fandom.com/wiki/Gamemodes — read on 2026-09-20 through https://roblox-bad-business.fandom.com/api.php?action=parse&page=Gamemodes&prop=wikitext, because Fandom serves its article HTML behind Cloudflare while api.php is open.",
+      "demonstrates": [
+        "EVERY MODE STATES BOTH WIN CONDITIONS AT ONCE — a score target and a time limit. Team Deathmatch ends at 150 kills or 15 minutes; Free for All ends at 30 kills or 10 minutes. A scoreboard showing only one of the two cannot tell a player how close the round is.",
+        "A capture point has THREE states, not two. The hill captures faster the more players stand on it, and when both teams are present it becomes \"contested\" — progress FREEZES rather than reversing. Contested is a distinct state the bar must render, and freezing is a different promise from decay.",
+        "Holding the objective pays continuously — one point per second while controlled — so the score display changes between kills and the round reads as ongoing rather than turn-based.",
+        "A mode variant can change one rule and keep everything else: SWAT TDM is Team Deathmatch with headshots dealing double damage even on weapons that normally have no headshot multiplier, and the same 150-kill, 15-minute ending. Variants are a diff, not a new mode screen.",
+        "Only a SUBSET of modes can be assigned as daily challenges — TDM, KOTH, Domination, Patrol and Hardpoint. The challenge system draws from a narrower list than the mode picker, so the two lists are not interchangeable in code."
+      ]
+    }
+  ],
+  "rules": [
+    {
+      "rule": "Write a control row as a key plus the state it leaves the player in.",
+      "why": "Phantom Forces' controls table carries its meaning in the Notes column — jump stands you up from prone, crouch toggles differently depending on whether you are already crouched. A table of key-to-verb pairs omits exactly the part a player needs."
+    },
+    {
+      "rule": "Put keyboard and controller bindings on the same row, and pick ONE input mode at a time.",
+      "why": "Phantom Forces columns them in one table; BIG Paintball 2 deactivates WASD the moment a controller is connected. Together: show both, run one — which is what lets on-screen prompts show the right glyphs without guessing."
+    },
+    {
+      "rule": "Show both win conditions at once — the target and the clock.",
+      "why": "Every Bad Business mode is defined by a score AND a time limit. A round display carrying one of the two cannot answer \"how close is this?\", which is the only question a scoreboard exists to answer."
+    },
+    {
+      "rule": "A contested objective is a THIRD state, and it freezes rather than reverses.",
+      "why": "Bad Business KOTH: capture rate scales with attackers, and with both teams present the progress stops changing. A two-state bar has to choose between lying and decaying, and decaying is a different game."
+    },
+    {
+      "rule": "Give abstention its own control.",
+      "why": "Phantom Forces' votekick binds j to dismiss and abstain, alongside y and n. Without it, a player who was mid-fight and a player who declined to judge are the same row in the tally."
+    },
+    {
+      "rule": "Remove a number when showing it invites pressure on a person.",
+      "why": "Phantom Forces showed the yes/no split on votekicks and changed it in 7.0.0 to show only the number who voted. This is a shipped UI deliberately becoming less informative because the information was being used against players, and it is the clearest precedent in this library for that trade."
+    },
+    {
+      "rule": "Gate capability inside a feature by progression, and leave the feature visible.",
+      "why": "Below Rank 25 a Phantom Forces player votes but cannot initiate. Hiding the whole feature would teach nothing; showing it with one action unavailable teaches what the rank is for."
+    },
+    {
+      "rule": "Label an option that costs performance, on the option itself.",
+      "why": "Arsenal marked Viewport Character and Particle Physics 'Expensive' in the settings list. A player who cannot see the cost until frames drop blames the game, not the switch."
+    },
+    {
+      "rule": "Name a setting after what it does, not after its subsystem.",
+      "why": "Arsenal renamed Haptic Feedback to Gamepad Vibration and Subtitles to VO Subtitles in a revamp. The rewrite went toward precision about the effect, sometimes at the cost of brevity."
+    },
+    {
+      "rule": "Offer the trial from the locked item, not from a separate demo mode.",
+      "why": "Rivals puts 'Try out for free!' on the locked weapon and sends the player to the range holding it. Wanting the thing and holding the thing are one click apart."
+    },
+    {
+      "rule": "Let the queue be a place, not a dialog, when the game already has a lobby.",
+      "why": "Rivals duel pads: step on the pad, a countdown from 3 begins, and the pad itself encodes how many players the mode needs. A lobby that exists and also shows a queue modal is two matchmaking interfaces."
+    },
+    {
+      "rule": "Price each item in the one currency that applies to it, and state the caveat on prices you do not control.",
+      "why": "Rivals quotes Robux for cases and Keys for wraps, never both, and says outright that regional pricing may change the Robux figure. A converted dual price implies an exchange rate the product cannot honour."
+    },
+    {
+      "rule": "Itemise a bundle; never summarise it as a count.",
+      "why": "Rivals lists every bundle line — crate, weapon, skin, wrap, charm, finisher. \"6 items\" is not comparable against another bundle, and comparison is the entire decision a shop asks for."
+    }
+  ],
+  "limits": [
+    "Fandom serves its article HTML behind Cloudflare, so every wiki row was read through api.php as wikitext. That is the same content, but it means the SCREENSHOTS those pages embed were named and not seen — every claim above is one the page states in prose, never one inferred from an image nobody looked at.",
+    "THE IN-MATCH HUD IS THE THINNEST PART OF THIS FILE AND THAT SHOULD BE FIXED BEFORE IT IS TRUSTED FOR ONE. These wikis document menus, modes, controls and economies far better than they document what sits on screen during a firefight. Nothing read here describes crosshair construction, ammo-counter placement, killfeed behaviour, hitmarker feedback, minimap rendering or damage-direction indicators. A request for an arena-shooter HUD is still largely unbacked, and the rules above are about the surfaces AROUND the match.",
+    "No numeric stroke weight, corner radius, padding or font size was found in any source read here. Nothing in this file should be used as a measurement.",
+    "The Phantom Forces controls page states its own currency as 12 October 2019. Its control SEMANTICS are what is recorded above rather than its specific bindings, because a binding from that date may since have changed.",
+    "Five games is a narrow sample of one broad genre, and four of the five are team-based. Nothing here is backed by a battle-royale, extraction or single-life shooter, and those differ most in exactly the place this file is already weakest — the in-match HUD."
+  ]
+}

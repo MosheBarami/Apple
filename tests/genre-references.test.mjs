@@ -112,6 +112,27 @@ test('the UI reference library and the genre catalogue do not disagree about a g
   // no reason. `studio` is the plugin panel, which the comment above invited adding back
   // deliberately once a file existed for it — one now does.
   const NON_GENRE_SURFACES = new Set(['web-landing', 'studio']);
+
+  //[[ A THIRD AXIS, AND THE MISTAKE THAT FOUND IT.
+  //
+  //   `pet_simulator` was added to the genre taxonomy on 2026-09-20 to satisfy this very test, and
+  //   that was wrong. It broke a stricter contract one directory away: genre-reference-guide.ts
+  //   asserts the taxonomy is EXACTLY `GENRE_KIT_IDS`, and it broke the moment an eleventh id
+  //   appeared. The two lists were never the same list.
+  //
+  //   THE CATALOGUE THIS FILE GUARDS IS VISUAL COVERAGE — genres whose LOOK is backed by a
+  //   reference somebody inspected, which is what lets the product say "this is how shipped horror
+  //   games light a room". The UI library answers a different question: how an interface is BUILT,
+  //   read out of wikis and DevForum threads. Those can legitimately diverge, and pet simulator is
+  //   the proof: 55 sourced construction claims about pet grids and rarity borders, and not one
+  //   inspected screenshot of how a pet sim LOOKS. genre-reference-guide.ts names "a pet sim" in
+  //   its own comments as the example of a genre the catalogue does NOT cover.
+  //
+  //   So the split is recorded rather than erased, and it ratchets in both directions: a name here
+  //   must have a library file, and must NOT be in the visual catalogue. The day somebody inspects
+  //   a pet simulator and adds it to the taxonomy, this list fails until the name is removed — the
+  //   same shape as PENDING in tests/ui-references.test.mjs. ]]
+  const UI_ONLY_GENRES = new Set(['pet_simulator']);
   const isScreen = (id) => id.startsWith('screen-');
   const files = readdirSync(uiDir).filter((f) => f.endsWith('.json')).map((f) => f.replace(/\.json$/, ''));
   const stale = [...NON_GENRE_SURFACES].filter((id) => !files.includes(id));
@@ -119,6 +140,53 @@ test('the UI reference library and the genre catalogue do not disagree about a g
   // Non-vacuity: if the prefix ever matched everything, the genre half of this check would quietly
   // stop running while still reporting green.
   assert.ok(files.some((id) => !isScreen(id)), 'every file looks like a screen — the genre half of this check is dead');
-  const orphans = files.filter((id) => !known.has(id) && !NON_GENRE_SURFACES.has(id) && !isScreen(id));
+  const uiOnlyStale = [...UI_ONLY_GENRES].filter((id) => !files.includes(id));
+  assert.deepEqual(uiOnlyStale, [],
+    `declared UI-only genres with no library file: ${uiOnlyStale.join(', ')}`);
+  const uiOnlyCovered = [...UI_ONLY_GENRES].filter((id) => known.has(id));
+  assert.deepEqual(uiOnlyCovered, [],
+    `these are declared UI-only but the visual catalogue now covers them — remove them from `
+    + `UI_ONLY_GENRES rather than leaving a note that outlived its gap: ${uiOnlyCovered.join(', ')}`);
+
+  // THE OTHER DIRECTION, which nothing checked before: a genre the product can build a kit for must
+  // have construction knowledge in the UI library. Visual coverage without it is a genre we can
+  // describe the look of and cannot say how to assemble.
+  //[[ FOUND BY THIS ASSERTION ON THE DAY IT WAS WRITTEN, which is the only reason anyone knows.
+  //
+  //   `fps_arena` is a genre the product ships a KIT for — it is in GENRE_KIT_IDS, so a customer can
+  //   ask for an arena shooter and get one — and the UI library has no construction reference for it
+  //   at all. Every other buildable genre carries between 51 and 106 sourced claims about how its
+  //   interface is assembled. This one carries zero, so a request for an FPS HUD is answered from
+  //   the model's own memory of shooters rather than from anything read out of a shipped game.
+  //
+  //   It is declared here rather than quietly excluded, and it ratchets both ways: the name must
+  //   still be a buildable genre, and the moment a library file exists this list fails until the
+  //   name is removed. An empty set is the goal, not a state to be defended. ]]
+  //   CLOSED THE SAME DAY IT WAS OPENED. fps_arena.json was written from five shipped Roblox
+  //   shooters — Phantom Forces, Arsenal, BIG Paintball 2, Rivals and Bad Business — read through
+  //   each wiki's api.php: 7 references, 35 sourced claims, 13 rules. The set is empty and the
+  //   ratchet above keeps it honest in both directions, so emptying it is not a relaxation: every
+  //   buildable genre must now carry construction knowledge, with nothing exempt.
+  //
+  //   The file's own `limits` records what is still thin — the IN-MATCH HUD specifically, because
+  //   these wikis document menus, modes and economies far better than they document what sits on
+  //   screen during a firefight. That gap is recorded where somebody reading the references will
+  //   see it, rather than here where only a test run would surface it.
+  const NO_CONSTRUCTION_YET = new Set([]);
+  const fixed = [...NO_CONSTRUCTION_YET].filter((id) => files.includes(id));
+  assert.deepEqual(fixed, [],
+    `these now HAVE a construction reference and must be removed from NO_CONSTRUCTION_YET: ${fixed.join(', ')}`);
+  const notBuildable = [...NO_CONSTRUCTION_YET].filter((id) => !known.has(id));
+  assert.deepEqual(notBuildable, [],
+    `NO_CONSTRUCTION_YET names something the catalogue does not cover, so the excuse outlived its `
+    + `subject: ${notBuildable.join(', ')}`);
+
+  const noConstruction = [...known].filter((id) => !files.includes(id) && !NO_CONSTRUCTION_YET.has(id));
+  assert.deepEqual(noConstruction, [],
+    `the visual catalogue covers these, but the UI library has no construction reference for them: `
+    + noConstruction.join(', '));
+
+  const orphans = files.filter((id) => !known.has(id) && !NON_GENRE_SURFACES.has(id)
+    && !isScreen(id) && !UI_ONLY_GENRES.has(id));
   assert.deepEqual(orphans, [], `these UI reference genres are not in the genre taxonomy: ${orphans.join(', ')}`);
 });

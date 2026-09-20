@@ -9,7 +9,7 @@ import { GENRE_KIT_IDS, type GenreKitId } from './genre-kits';
 
 /** SHA-256 of packages/corpus/data/genre-references.json. The test fails when regeneration is due. */
 export const GENRE_REFERENCE_GUIDE_SOURCE_SHA256 =
-  '482787e6fe202531f332daab1f2bd37fa24046c7f8194f354f657ab0fa163921' as const;
+  'db076cc7f381193b608e2958ea30ef665d0f5b980cef0e2deaac84b72be40115' as const;
 
 export const GENRE_REFERENCE_GUIDE_ASPECT_IDS = [
   'ui_hud',
