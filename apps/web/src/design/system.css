@@ -181,10 +181,41 @@ a.gx-sr:focus { z-index:1000; top:10px; inset-inline-start:10px; width:auto; hei
 .start-sheet__number { color:var(--faint); font:11px var(--font-mono); padding-top:5px; }
 .start-sheet__aside { display:block; font-size:13px; line-height:1.6; color:var(--faint); margin-top:22px; }
 .studio-atmosphere { position:fixed; inset-block:0; inset-inline:76px 0; overflow:hidden; pointer-events:none; z-index:0; background:radial-gradient(ellipse at 55% 35%,#ffffff06,transparent 43%),radial-gradient(ellipse at 105% 90%,#ffffff09,transparent 45%); }
-.studio-atmosphere__beam { position:absolute; width:180px; height:80%; top:-16%; inset-inline-start:calc(55% - 90px); background:radial-gradient(ellipse,#ffffff15 0%,#ffffff07 25%,transparent 63%); filter:blur(17px); transform:rotate(5deg); animation:ambient-breath 14s ease-in-out infinite alternate; }
-.studio-atmosphere__mesh { position:absolute; width:115%; height:100%; inset-inline-start:-7%; bottom:-5%; fill:none; stroke:#ffffff; stroke-width:.7; opacity:.13; animation:ambient-drift 24s ease-in-out infinite alternate; mask-image:linear-gradient(transparent 25%,#000 75%); }
+.studio-atmosphere__beam { position:absolute; width:210px; height:84%; top:-16%; inset-inline-start:calc(55% - 105px); background:radial-gradient(ellipse,#ffffff1f 0%,#ffffff0b 25%,transparent 63%); filter:blur(19px); transform:rotate(5deg); animation:ambient-breath 14s ease-in-out infinite alternate; }
+/*[[ THE ATMOSPHERE WAS PITCHED SO LOW IT READ AS NOTHING.
+ *
+ *   The beam, the mesh and the dust were all here and all animating, and the owner's report was
+ *   that the product is static — which is what a 24-second drift at 13% opacity behind a dark
+ *   surface actually looks like. Motion nobody can perceive is motion that cost render time and
+ *   bought nothing.
+ *
+ *   Three changes, all of them presence rather than speed: the mesh carries the accent instead of
+ *   plain white so it belongs to this product, it drifts further, and a second slow aurora wash
+ *   moves across the whole field on a different period so the two never line up into a visible
+ *   loop. Nothing here is faster than before — a page that hurries feels cheap, and this is
+ *   supposed to be weather, not an animation. ]]*/
+.studio-atmosphere__mesh { position:absolute; width:118%; height:100%; inset-inline-start:-9%; bottom:-5%; fill:none; stroke:var(--accent); stroke-width:.8; opacity:.2; animation:ambient-drift 24s ease-in-out infinite alternate; mask-image:linear-gradient(transparent 22%,#000 78%); }
+
+/* The aurora. One element, no image, composited transform only — it never touches layout. 41s
+   against the mesh's 24s and the beam's 14s: three periods with no common multiple a person will
+   sit through, so the field never repeats a frame it has already shown them. */
+.studio-atmosphere::after {
+  content:''; position:absolute; inset:-20%;
+  background:
+    radial-gradient(38% 30% at 22% 28%,color-mix(in srgb,var(--accent) 13%,transparent),transparent 70%),
+    radial-gradient(32% 26% at 78% 68%,color-mix(in srgb,var(--accent) 9%,transparent),transparent 72%);
+  filter:blur(46px);
+  animation:ambient-aurora 41s ease-in-out infinite alternate;
+}
+@keyframes ambient-aurora {
+  from { transform:translate3d(-3%,2%,0) scale(1); opacity:.55; }
+  to   { transform:translate3d(4%,-3%,0) scale(1.12); opacity:.95; }
+}
 .studio-atmosphere__dust { position:absolute; inset:0; opacity:.3; background-image:radial-gradient(circle at 15% 20%,#fff9 0 .6px,transparent 1px),radial-gradient(circle at 73% 39%,#fff6 0 .5px,transparent 1px),radial-gradient(circle at 47% 75%,#fff5 0 .7px,transparent 1px); background-size:311px 263px,419px 337px,593px 457px; }
-.studio-atmosphere.is-still * { animation:none; }
+/* `*` does not reach a pseudo-element on the container itself, so the aurora is named. Somebody
+   who asked for less motion was still being given the biggest moving thing on the page. */
+.studio-atmosphere.is-still *,
+.studio-atmosphere.is-still::after { animation:none; }
 @keyframes ambient-drift { from { transform:translate3d(0,8px,0) rotate(-1deg); opacity:.1; } to { transform:translate3d(18px,-10px,0) rotate(1deg); opacity:.2; } }
 @keyframes ambient-breath { from { opacity:.5; transform:rotate(4deg) scaleX(.8); } to { opacity:1; transform:rotate(-3deg) scaleX(1.1); } }
 :root[data-theme='light'] .studio-atmosphere { opacity:.2; filter:invert(1); }

@@ -161,7 +161,57 @@
 /* A column, so the metadata strip sits on the floor of every card in a row instead of wherever the
    description happened to stop. `.card-grid` stretches its rows already; this is what makes the
    stretch visible as one shelf rather than three ragged ones. */
-.shelf .project-card { display:flex; flex-direction:column; min-width:0; padding:22px; border-radius:var(--r-lg); }
+.shelf .project-card { display:flex; flex-direction:column; min-width:0; padding:20px; border-radius:var(--r-lg); }
+
+/*[[ THE CARDS WERE MOSTLY EMPTY, AND THE GRID IS WHY.
+ *
+ *   `.card-grid` stretches its rows, so every card in a row takes the height of the tallest. The
+ *   description had no clamp, so ONE project with a three-line summary set the height of the two
+ *   beside it — and a project whose summary is "Open this conversation to continue." rendered as a
+ *   title, one line, and eighty pixels of nothing. The owner's words for the result: giant empty
+ *   boxes. He was describing the stretch.
+ *
+ *   Clamping the description to three lines AND reserving those three lines makes every card the
+ *   same natural height, so the stretch has nothing left to stretch. The dead space disappears
+ *   because the cards agree on a height rather than because anything was made shorter.
+ *
+ *   `min-height` is in `em` against this element's own line-height, so it tracks the type scale
+ *   instead of pinning a pixel figure that stops being three lines the day the font changes. ]]*/
+.shelf .project-card-desc {
+  margin-block:14px 0;
+  line-height:1.5;
+  min-height:calc(3 * 1.5em);
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:3;
+  line-clamp:3;
+  overflow:hidden;
+}
+
+/* The metadata strip sits on the floor: with the description now a fixed three lines, this only
+   matters for a card whose name wraps to two, which is the one ragged case left. */
+.shelf .project-card-meta { margin-block-start:auto; }
+
+/*[[ A CARD THAT ANSWERS THE POINTER WITH MORE THAN A TINT.
+ *
+ *   The sheen below is attached to the hand and is the right idea, but on a dark surface a 7% wash
+ *   is close to nothing — which is most of why the shelf reads as static. This adds the two things
+ *   a card can do that cost nothing and are felt rather than seen: it rises a little, and its top
+ *   edge picks up the accent, so the eye is told which card is live by an edge rather than by a
+ *   brightness change it has to compare against neighbours.
+ *
+ *   `translate3d` and not `top`: the transform is composited, so a shelf of twenty cards does not
+ *   relayout when one is hovered. ]]*/
+.shelf .project-card { transform:translate3d(0,0,0); }
+.shelf .project-card::after {
+  content:''; position:absolute; inset-inline:0; inset-block-start:0; height:1px; z-index:2;
+  background:linear-gradient(90deg,transparent,var(--accent),transparent);
+  opacity:0; transition:opacity var(--t-base) var(--ease-out);
+}
+.shelf .project-card:hover,
+.shelf .project-card:focus-visible { transform:translate3d(0,-2px,0); }
+.shelf .project-card:hover::after,
+.shelf .project-card:focus-visible::after { opacity:.85; }
 
 /* THE SHEEN, AND WHY IT IS A ::before AND NOT A ::after. An absolutely-positioned pseudo paints
    ABOVE the card's non-positioned text, so an ::after tint would wash the project name it is
@@ -188,7 +238,7 @@
    paints `.project-card:hover { border-color:var(--accent) }`, so every card on the shelf went
    green under the cursor. Twenty green things is the same defect as two, multiplied. The step is a
    HALF one — --surface to --surface-2 in full is a jump you see as a flash at 120ms across a grid. */
-.shelf .project-card { transition:background var(--t-fast) var(--ease-out),border-color var(--t-fast) var(--ease-out); }
+.shelf .project-card { transition:background var(--t-fast) var(--ease-out),border-color var(--t-fast) var(--ease-out),transform var(--t-base) var(--ease-out); }
 .shelf .project-card:hover,
 .shelf .project-card:focus-visible {
   background:color-mix(in srgb,var(--surface-2) 55%,var(--surface));
@@ -475,4 +525,8 @@
   .tag-row--filter .tag-chip { transition:none; animation:none; }
   .shelf .project-card::before { display:none; }
   .shelf .project-card--ghost .skeleton { background:var(--surface-2); animation:none; }
+  /* The lift is movement; the edge is not, so it stays — a hover that says nothing at all is worse
+     for somebody who asked for less motion, not better. */
+  .shelf .project-card:hover,
+  .shelf .project-card:focus-visible { transform:none; }
 }
