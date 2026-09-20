@@ -242,19 +242,35 @@ that is set but wrong fails silently, which is why the probe is the issue list a
 
 </details>
 
-## 3. Discord — the bot answers 503
+## 3. Discord — the endpoint verifies now; the commands still need a bot token
 
 `/api/discord/interactions` verifies an Ed25519 signature over `timestamp + rawBody`, refuses with
 503 when no public key is configured, and 401 before parsing on a bad signature. The commands
 (`/build`, `/status`, `/link`, `/unlink`, `/credits`), the per-user rate limits and the credit gate
 are all implemented and tested.
 
-Full runbook: `docs/DISCORD-SETUP.md`. In short: create the Discord application, set
-`DISCORD_PUBLIC_KEY` and `DISCORD_BOT_TOKEN` as Worker secrets, deploy, paste the interactions URL,
-publish the commands from the admin page, invite the bot.
+**2026-09-21.** `wrangler secret list` on the `apple` worker held eight secrets and no `DISCORD_*`
+among them, so every interaction hit the 503. `DISCORD_PUBLIC_KEY` was in `.env` and is now a
+Worker secret. Measured against the live origin, before and after:
 
-**Probe:** Discord's own "Save Changes" on the interactions URL performs a signed PING. If it saves,
-verification works.
+```
+POST https://apple.moshe-barami111.workers.dev/api/discord/interactions
+  unsigned, before   HTTP 503   {"error":"discord is not configured"}
+  unsigned, after    HTTP 401
+  wrong signature    HTTP 401
+```
+
+**What that does and does not prove.** It proves the key is loaded and the endpoint now runs
+signature verification rather than refusing outright. It does **not** prove a real interaction
+succeeds: a valid signature requires Discord's private key, so no probe available here can produce
+one. The reachable evidence is the 503→401 transition plus the unit tests over the verifier.
+
+Still open, and both need someone with a browser:
+
+- `DISCORD_BOT_TOKEN` is not in `.env`. Without it `/api/admin/discord/commands` answers 503 and no
+  slash command can be published.
+- Discord's own "Save Changes" on the interactions URL performs a signed PING. That is the probe
+  that closes this, and it is the owner's to run.
 
 ---
 
