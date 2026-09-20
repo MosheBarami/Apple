@@ -1,0 +1,2360 @@
+{
+ "measuredAt": "2026-09-20T20:19:24.291Z",
+ "what": "RETRIEVAL ONLY, with an embedding index. Same 80 customer and 80 contract queries as knowledge-reach.json, same limit of 5, no model in the loop and nothing generated.",
+ "harness": {
+  "querySets": "read verbatim from packages/training/runs/knowledge-reach.json",
+  "lexicalScorer": "searchVerifiedModules() bundled out of apps/worker/src with the repo esbuild",
+  "reproducesRecordedBaseline": false,
+  "recordedBaseline": {
+   "customerTop1": 49,
+   "customerInTop5": 67,
+   "contractTop1": 80,
+   "uiFound": 18
+  },
+  "rerunBaseline": {
+   "customerTop1": 73,
+   "customerInTop5": 79,
+   "contractTop1": 80
+  }
+ },
+ "modules": {
+  "variants": [
+   {
+    "variant": "bge-m3|doc=full|q=none",
+    "model": "@cf/baai/bge-m3",
+    "dims": 1024,
+    "doc": "full",
+    "queryPrefix": "none",
+    "embedding": {
+     "customer": {
+      "n": 80,
+      "top1": 66,
+      "top1Pct": 82.5,
+      "inTop5": 75,
+      "inTop5Pct": 93.8,
+      "failures": [
+       {
+        "id": "cooldown-clock",
+        "query": "stop the player using an ability too often",
+        "returned": [
+         "round-transitions",
+         "stamina-regen",
+         "combo-multiplier",
+         "ability-charges",
+         "turn-rotation"
+        ]
+       },
+       {
+        "id": "unlock-prerequisites",
+        "query": "only let them open this one if they finished the earlier ones",
+        "returned": [
+         "session-window",
+         "ordered-checkpoints",
+         "cooldown-clock",
+         "bounded-reward",
+         "turn-rotation"
+        ]
+       },
+       {
+        "id": "finite-normalization",
+        "query": "turn a health value into a 0 to 1 number for the bar",
+        "returned": [
+         "abbreviate-counter",
+         "remap-range",
+         "leaderboard-insert",
+         "stable-leaderboard",
+         "meter-band"
+        ]
+       },
+       {
+        "id": "token-bucket-spend",
+        "query": "rate limit how often a player can fire a remote",
+        "returned": [
+         "stamina-regen",
+         "projectile-lead",
+         "ability-charges",
+         "speed-audit",
+         "radial-damage-falloff"
+        ]
+       },
+       {
+        "id": "anchor-inside-bounds",
+        "query": "keep a popup fully on screen",
+        "returned": [
+         "tooltip-placement",
+         "scrollbar-thumb",
+         "fit-ui-aspect",
+         "notification-queue",
+         "truncate-display-name"
+        ]
+       }
+      ]
+     },
+     "contract": {
+      "n": 80,
+      "top1": 80,
+      "top1Pct": 100,
+      "inTop5": 80,
+      "inTop5Pct": 100,
+      "failures": []
+     }
+    },
+    "hybrid": {
+     "customer": {
+      "n": 80,
+      "top1": 72,
+      "top1Pct": 90,
+      "inTop5": 78,
+      "inTop5Pct": 97.5,
+      "failures": [
+       {
+        "id": "token-bucket-spend",
+        "query": "rate limit how often a player can fire a remote",
+        "returned": [
+         "projectile-lead",
+         "stamina-regen",
+         "hunger-drain",
+         "notification-queue",
+         "speed-audit"
+        ]
+       },
+       {
+        "id": "anchor-inside-bounds",
+        "query": "keep a popup fully on screen",
+        "returned": [
+         "tooltip-placement",
+         "notification-queue",
+         "fit-ui-aspect",
+         "honest-percent",
+         "wrap-label-text"
+        ]
+       }
+      ]
+     },
+     "contract": {
+      "n": 80,
+      "top1": 80,
+      "top1Pct": 100,
+      "inTop5": 80,
+      "inTop5Pct": 100,
+      "failures": []
+     }
+    },
+    "weightedFusion": [
+     {
+      "w": 0,
+      "top1": 66,
+      "inTop5": 75,
+      "contractTop1": 80
+     },
+     {
+      "w": 0.05,
+      "top1": 74,
+      "inTop5": 80,
+      "contractTop1": 80
+     },
+     {
+      "w": 0.1,
+      "top1": 77,
+      "inTop5": 80,
+      "contractTop1": 80
+     },
+     {
+      "w": 0.2,
+      "top1": 75,
+      "inTop5": 80,
+      "contractTop1": 80
+     },
+     {
+      "w": 0.4,
+      "top1": 73,
+      "inTop5": 80,
+      "contractTop1": 80
+     },
+     {
+      "w": 0.8,
+      "top1": 73,
+      "inTop5": 79,
+      "contractTop1": 80
+     }
+    ],
+    "recall": {
+     "embeddingCustomer": [
+      {
+       "depth": 10,
+       "hit": 77,
+       "n": 80,
+       "pct": 96.3
+      },
+      {
+       "depth": 20,
+       "hit": 80,
+       "n": 80,
+       "pct": 100
+      }
+     ],
+     "hybridCustomer": [
+      {
+       "depth": 10,
+       "hit": 80,
+       "n": 80,
+       "pct": 100
+      },
+      {
+       "depth": 20,
+       "hit": 80,
+       "n": 80,
+       "pct": 100
+      }
+     ]
+    }
+   }
+  ],
+  "best": "bge-m3|doc=full|q=none",
+  "shippedPath": {
+   "module": "apps/worker/src/embedding-retrieval.ts",
+   "model": "@cf/baai/bge-base-en-v1.5",
+   "dims": 768,
+   "indexBuiltAt": "2026-09-20T20:15:58.388Z",
+   "quantisation": "int8 in the bundle, dequantised per row at load",
+   "indexBytes": 118751,
+   "customer": {
+    "n": 80,
+    "top1": 69,
+    "top1Pct": 86.3,
+    "inTop5": 79,
+    "inTop5Pct": 98.8,
+    "failures": [
+     {
+      "id": "unlock-prerequisites",
+      "query": "only let them open this one if they finished the earlier ones",
+      "returned": [
+       "ordered-checkpoints",
+       "session-window",
+       "cooldown-clock",
+       "due-respawns",
+       "elevator-next-floor"
+      ]
+     }
+    ]
+   },
+   "contract": {
+    "n": 80,
+    "top1": 80,
+    "top1Pct": 100,
+    "inTop5": 80,
+    "inTop5Pct": 100,
+    "failures": []
+   },
+   "float32SameModel": null,
+   "quantisationCostTop1": null,
+   "indexIsBestSweepModel": false
+  }
+ },
+ "uiConstruction": {
+  "n": 53,
+  "answerKeys": {
+   "strict": "the recorded run's own rule: a row whose id normalises to the query, else uncovered",
+   "label": "strict, plus rows whose own label covers the query — evidence below",
+   "labelEvidence": {
+    "shooter": [
+     "fps_arena",
+     "label: \"Arena shooter / round-based FPS\""
+    ],
+    "clicker": [
+     "simulator",
+     "label: \"Cartoony simulator / pet-sim / clicker\""
+    ],
+    "parkour": [
+     "obby",
+     "label: \"Obby / parkour\""
+    ],
+    "fighting": [
+     "anime_battle",
+     "label: \"Anime fighting / battlegrounds\""
+    ],
+    "crafting": [
+     "survival",
+     "label: \"Survival / crafting\""
+    ],
+    "daily rewards": [
+     "screen-rewards",
+     "label: \"The DAILY REWARDS / login-streak screen\""
+    ],
+    "battle pass": [
+     "screen-progress",
+     "label: \"The BATTLE PASS / SEASON PASS screen\""
+    ],
+    "tower_defence": [
+     "tower_defense",
+     "the British spelling of an existing row"
+    ],
+    "quest log": [
+     "anime_battle",
+     "label: \"… quest list …\" — the only row that records a quest panel"
+    ]
+   },
+   "coveredStrict": 26,
+   "coveredLabel": 34
+  },
+  "shipped": {
+   "found": 27,
+   "rightStrict": 26,
+   "rightLabel": 27,
+   "falseConfidence": 0,
+   "correctMiss": 19,
+   "rows": [
+    {
+     "query": "shop",
+     "answered": "screen-shop",
+     "expectedStrict": "screen-shop",
+     "expectedLabel": "screen-shop"
+    },
+    {
+     "query": "inventory",
+     "answered": "screen-inventory",
+     "expectedStrict": "screen-inventory",
+     "expectedLabel": "screen-inventory"
+    },
+    {
+     "query": "leaderboard",
+     "answered": "screen-leaderboard",
+     "expectedStrict": "screen-leaderboard",
+     "expectedLabel": "screen-leaderboard"
+    },
+    {
+     "query": "settings",
+     "answered": "screen-settings",
+     "expectedStrict": "screen-settings",
+     "expectedLabel": "screen-settings"
+    },
+    {
+     "query": "hud",
+     "answered": "screen-hud",
+     "expectedStrict": "screen-hud",
+     "expectedLabel": "screen-hud"
+    },
+    {
+     "query": "rewards",
+     "answered": "screen-rewards",
+     "expectedStrict": "screen-rewards",
+     "expectedLabel": "screen-rewards"
+    },
+    {
+     "query": "codes",
+     "answered": "screen-codes",
+     "expectedStrict": "screen-codes",
+     "expectedLabel": "screen-codes"
+    },
+    {
+     "query": "progress",
+     "answered": "screen-progress",
+     "expectedStrict": "screen-progress",
+     "expectedLabel": "screen-progress"
+    },
+    {
+     "query": "obby",
+     "answered": "obby",
+     "expectedStrict": "obby",
+     "expectedLabel": "obby"
+    },
+    {
+     "query": "tycoon",
+     "answered": "tycoon",
+     "expectedStrict": "tycoon",
+     "expectedLabel": "tycoon"
+    },
+    {
+     "query": "simulator",
+     "answered": "simulator",
+     "expectedStrict": "simulator",
+     "expectedLabel": "simulator"
+    },
+    {
+     "query": "racing",
+     "answered": "racing",
+     "expectedStrict": "racing",
+     "expectedLabel": "racing"
+    },
+    {
+     "query": "horror",
+     "answered": "horror",
+     "expectedStrict": "horror",
+     "expectedLabel": "horror"
+    },
+    {
+     "query": "roleplay",
+     "answered": "roleplay",
+     "expectedStrict": "roleplay",
+     "expectedLabel": "roleplay"
+    },
+    {
+     "query": "survival",
+     "answered": "survival",
+     "expectedStrict": "survival",
+     "expectedLabel": "survival"
+    },
+    {
+     "query": "tower_defense",
+     "answered": "tower_defense",
+     "expectedStrict": "tower_defense",
+     "expectedLabel": "tower_defense"
+    },
+    {
+     "query": "fps_arena",
+     "answered": "fps_arena",
+     "expectedStrict": "fps_arena",
+     "expectedLabel": "fps_arena"
+    },
+    {
+     "query": "anime_battle",
+     "answered": "anime_battle",
+     "expectedStrict": "anime_battle",
+     "expectedLabel": "anime_battle"
+    },
+    {
+     "query": "pet_simulator",
+     "answered": "pet_simulator",
+     "expectedStrict": "pet_simulator",
+     "expectedLabel": "pet_simulator"
+    },
+    {
+     "query": "studio",
+     "answered": "studio",
+     "expectedStrict": "studio",
+     "expectedLabel": "studio"
+    },
+    {
+     "query": "web-landing",
+     "answered": "web-landing",
+     "expectedStrict": "web-landing",
+     "expectedLabel": "web-landing"
+    },
+    {
+     "query": "tower defense",
+     "answered": "tower_defense",
+     "expectedStrict": "tower_defense",
+     "expectedLabel": "tower_defense"
+    },
+    {
+     "query": "pet simulator",
+     "answered": "pet_simulator",
+     "expectedStrict": "pet_simulator",
+     "expectedLabel": "pet_simulator"
+    },
+    {
+     "query": "fps",
+     "answered": "fps_arena",
+     "expectedStrict": "fps_arena",
+     "expectedLabel": "fps_arena"
+    },
+    {
+     "query": "shooter",
+     "answered": null,
+     "expectedStrict": null,
+     "expectedLabel": "fps_arena"
+    },
+    {
+     "query": "battle royale",
+     "answered": null,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "clicker",
+     "answered": null,
+     "expectedStrict": null,
+     "expectedLabel": "simulator"
+    },
+    {
+     "query": "idle",
+     "answered": null,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "sandbox",
+     "answered": null,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "story game",
+     "answered": null,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "minigame",
+     "answered": null,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "fighting",
+     "answered": null,
+     "expectedStrict": null,
+     "expectedLabel": "anime_battle"
+    },
+    {
+     "query": "sports",
+     "answered": null,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "fishing",
+     "answered": null,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "farming",
+     "answered": null,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "escape room",
+     "answered": null,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "parkour",
+     "answered": null,
+     "expectedStrict": null,
+     "expectedLabel": "obby"
+    },
+    {
+     "query": "rpg",
+     "answered": null,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "open world",
+     "answered": null,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "card game",
+     "answered": null,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "tower_defence",
+     "answered": "tower_defense",
+     "expectedStrict": null,
+     "expectedLabel": "tower_defense"
+    },
+    {
+     "query": "quest log",
+     "answered": null,
+     "expectedStrict": null,
+     "expectedLabel": "anime_battle"
+    },
+    {
+     "query": "daily rewards",
+     "answered": null,
+     "expectedStrict": null,
+     "expectedLabel": "screen-rewards"
+    },
+    {
+     "query": "battle pass",
+     "answered": null,
+     "expectedStrict": null,
+     "expectedLabel": "screen-progress"
+    },
+    {
+     "query": "trading",
+     "answered": "screen-trading",
+     "expectedStrict": "screen-trading",
+     "expectedLabel": "screen-trading"
+    },
+    {
+     "query": "crafting",
+     "answered": "screen-crafting",
+     "expectedStrict": "screen-crafting",
+     "expectedLabel": "screen-crafting"
+    },
+    {
+     "query": "skill tree",
+     "answered": null,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "main menu",
+     "answered": null,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "pause menu",
+     "answered": null,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "loading screen",
+     "answered": null,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "death screen",
+     "answered": null,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "chat",
+     "answered": null,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "friends list",
+     "answered": null,
+     "expectedStrict": null,
+     "expectedLabel": null
+    }
+   ]
+  },
+  "embedding": {
+   "model": "@cf/baai/bge-m3",
+   "floors": [
+    {
+     "floor": 0,
+     "strict": {
+      "covered": 26,
+      "right": 25,
+      "wrongAnswer": 1,
+      "missedCovered": 0,
+      "falseConfidence": 27,
+      "correctMiss": 0,
+      "rightPct": 96.2
+     },
+     "label": {
+      "covered": 34,
+      "right": 30,
+      "wrongAnswer": 4,
+      "missedCovered": 0,
+      "falseConfidence": 19,
+      "correctMiss": 0,
+      "rightPct": 88.2
+     }
+    },
+    {
+     "floor": 0.4,
+     "strict": {
+      "covered": 26,
+      "right": 25,
+      "wrongAnswer": 1,
+      "missedCovered": 0,
+      "falseConfidence": 27,
+      "correctMiss": 0,
+      "rightPct": 96.2
+     },
+     "label": {
+      "covered": 34,
+      "right": 30,
+      "wrongAnswer": 4,
+      "missedCovered": 0,
+      "falseConfidence": 19,
+      "correctMiss": 0,
+      "rightPct": 88.2
+     }
+    },
+    {
+     "floor": 0.45,
+     "strict": {
+      "covered": 26,
+      "right": 25,
+      "wrongAnswer": 1,
+      "missedCovered": 0,
+      "falseConfidence": 27,
+      "correctMiss": 0,
+      "rightPct": 96.2
+     },
+     "label": {
+      "covered": 34,
+      "right": 30,
+      "wrongAnswer": 4,
+      "missedCovered": 0,
+      "falseConfidence": 19,
+      "correctMiss": 0,
+      "rightPct": 88.2
+     }
+    },
+    {
+     "floor": 0.5,
+     "strict": {
+      "covered": 26,
+      "right": 25,
+      "wrongAnswer": 1,
+      "missedCovered": 0,
+      "falseConfidence": 24,
+      "correctMiss": 3,
+      "rightPct": 96.2
+     },
+     "label": {
+      "covered": 34,
+      "right": 30,
+      "wrongAnswer": 4,
+      "missedCovered": 0,
+      "falseConfidence": 16,
+      "correctMiss": 3,
+      "rightPct": 88.2
+     }
+    },
+    {
+     "floor": 0.55,
+     "strict": {
+      "covered": 26,
+      "right": 25,
+      "wrongAnswer": 1,
+      "missedCovered": 0,
+      "falseConfidence": 21,
+      "correctMiss": 6,
+      "rightPct": 96.2
+     },
+     "label": {
+      "covered": 34,
+      "right": 30,
+      "wrongAnswer": 4,
+      "missedCovered": 0,
+      "falseConfidence": 13,
+      "correctMiss": 6,
+      "rightPct": 88.2
+     }
+    },
+    {
+     "floor": 0.6,
+     "strict": {
+      "covered": 26,
+      "right": 22,
+      "wrongAnswer": 1,
+      "missedCovered": 3,
+      "falseConfidence": 7,
+      "correctMiss": 20,
+      "rightPct": 84.6
+     },
+     "label": {
+      "covered": 34,
+      "right": 25,
+      "wrongAnswer": 1,
+      "missedCovered": 8,
+      "falseConfidence": 4,
+      "correctMiss": 15,
+      "rightPct": 73.5
+     }
+    },
+    {
+     "floor": 0.65,
+     "strict": {
+      "covered": 26,
+      "right": 13,
+      "wrongAnswer": 1,
+      "missedCovered": 12,
+      "falseConfidence": 5,
+      "correctMiss": 22,
+      "rightPct": 50
+     },
+     "label": {
+      "covered": 34,
+      "right": 16,
+      "wrongAnswer": 1,
+      "missedCovered": 17,
+      "falseConfidence": 2,
+      "correctMiss": 17,
+      "rightPct": 47.1
+     }
+    },
+    {
+     "floor": 0.7,
+     "strict": {
+      "covered": 26,
+      "right": 6,
+      "wrongAnswer": 0,
+      "missedCovered": 20,
+      "falseConfidence": 1,
+      "correctMiss": 26,
+      "rightPct": 23.1
+     },
+     "label": {
+      "covered": 34,
+      "right": 7,
+      "wrongAnswer": 0,
+      "missedCovered": 27,
+      "falseConfidence": 0,
+      "correctMiss": 19,
+      "rightPct": 20.6
+     }
+    }
+   ],
+   "rowsAtChosenFloor": [
+    {
+     "query": "shop",
+     "answered": "screen-shop",
+     "topId": "screen-shop",
+     "similarity": 0.628,
+     "expectedStrict": "screen-shop",
+     "expectedLabel": "screen-shop",
+     "runnerUp": {
+      "id": "roleplay",
+      "similarity": 0.526
+     }
+    },
+    {
+     "query": "inventory",
+     "answered": "screen-inventory",
+     "topId": "screen-inventory",
+     "similarity": 0.646,
+     "expectedStrict": "screen-inventory",
+     "expectedLabel": "screen-inventory",
+     "runnerUp": {
+      "id": "horror",
+      "similarity": 0.573
+     }
+    },
+    {
+     "query": "leaderboard",
+     "answered": "screen-leaderboard",
+     "topId": "screen-leaderboard",
+     "similarity": 0.742,
+     "expectedStrict": "screen-leaderboard",
+     "expectedLabel": "screen-leaderboard",
+     "runnerUp": {
+      "id": "tower_defense",
+      "similarity": 0.575
+     }
+    },
+    {
+     "query": "settings",
+     "answered": "screen-settings",
+     "topId": "screen-settings",
+     "similarity": 0.663,
+     "expectedStrict": "screen-settings",
+     "expectedLabel": "screen-settings",
+     "runnerUp": {
+      "id": "fps_arena",
+      "similarity": 0.593
+     }
+    },
+    {
+     "query": "hud",
+     "answered": "survival",
+     "topId": "survival",
+     "similarity": 0.68,
+     "expectedStrict": "screen-hud",
+     "expectedLabel": "screen-hud",
+     "runnerUp": {
+      "id": "tower_defense",
+      "similarity": 0.675
+     }
+    },
+    {
+     "query": "rewards",
+     "answered": "screen-rewards",
+     "topId": "screen-rewards",
+     "similarity": 0.649,
+     "expectedStrict": "screen-rewards",
+     "expectedLabel": "screen-rewards",
+     "runnerUp": {
+      "id": "screen-progress",
+      "similarity": 0.611
+     }
+    },
+    {
+     "query": "codes",
+     "answered": "screen-codes",
+     "topId": "screen-codes",
+     "similarity": 0.665,
+     "expectedStrict": "screen-codes",
+     "expectedLabel": "screen-codes",
+     "runnerUp": {
+      "id": "horror",
+      "similarity": 0.544
+     }
+    },
+    {
+     "query": "progress",
+     "answered": null,
+     "topId": "screen-progress",
+     "similarity": 0.55,
+     "expectedStrict": "screen-progress",
+     "expectedLabel": "screen-progress",
+     "runnerUp": {
+      "id": "survival",
+      "similarity": 0.534
+     }
+    },
+    {
+     "query": "obby",
+     "answered": "obby",
+     "topId": "obby",
+     "similarity": 0.679,
+     "expectedStrict": "obby",
+     "expectedLabel": "obby",
+     "runnerUp": {
+      "id": "tower_defense",
+      "similarity": 0.504
+     }
+    },
+    {
+     "query": "tycoon",
+     "answered": "tycoon",
+     "topId": "tycoon",
+     "similarity": 0.714,
+     "expectedStrict": "tycoon",
+     "expectedLabel": "tycoon",
+     "runnerUp": {
+      "id": "fps_arena",
+      "similarity": 0.487
+     }
+    },
+    {
+     "query": "simulator",
+     "answered": null,
+     "topId": "simulator",
+     "similarity": 0.599,
+     "expectedStrict": "simulator",
+     "expectedLabel": "simulator",
+     "runnerUp": {
+      "id": "pet_simulator",
+      "similarity": 0.515
+     }
+    },
+    {
+     "query": "racing",
+     "answered": "racing",
+     "topId": "racing",
+     "similarity": 0.609,
+     "expectedStrict": "racing",
+     "expectedLabel": "racing",
+     "runnerUp": {
+      "id": "fps_arena",
+      "similarity": 0.5
+     }
+    },
+    {
+     "query": "horror",
+     "answered": "horror",
+     "topId": "horror",
+     "similarity": 0.613,
+     "expectedStrict": "horror",
+     "expectedLabel": "horror",
+     "runnerUp": {
+      "id": "survival",
+      "similarity": 0.476
+     }
+    },
+    {
+     "query": "roleplay",
+     "answered": "roleplay",
+     "topId": "roleplay",
+     "similarity": 0.606,
+     "expectedStrict": "roleplay",
+     "expectedLabel": "roleplay",
+     "runnerUp": {
+      "id": "screen-social",
+      "similarity": 0.529
+     }
+    },
+    {
+     "query": "survival",
+     "answered": "survival",
+     "topId": "survival",
+     "similarity": 0.644,
+     "expectedStrict": "survival",
+     "expectedLabel": "survival",
+     "runnerUp": {
+      "id": "horror",
+      "similarity": 0.616
+     }
+    },
+    {
+     "query": "tower_defense",
+     "answered": "tower_defense",
+     "topId": "tower_defense",
+     "similarity": 0.707,
+     "expectedStrict": "tower_defense",
+     "expectedLabel": "tower_defense",
+     "runnerUp": {
+      "id": "fps_arena",
+      "similarity": 0.527
+     }
+    },
+    {
+     "query": "fps_arena",
+     "answered": "fps_arena",
+     "topId": "fps_arena",
+     "similarity": 0.767,
+     "expectedStrict": "fps_arena",
+     "expectedLabel": "fps_arena",
+     "runnerUp": {
+      "id": "anime_battle",
+      "similarity": 0.61
+     }
+    },
+    {
+     "query": "anime_battle",
+     "answered": "anime_battle",
+     "topId": "anime_battle",
+     "similarity": 0.689,
+     "expectedStrict": "anime_battle",
+     "expectedLabel": "anime_battle",
+     "runnerUp": {
+      "id": "tower_defense",
+      "similarity": 0.553
+     }
+    },
+    {
+     "query": "pet_simulator",
+     "answered": "pet_simulator",
+     "topId": "pet_simulator",
+     "similarity": 0.67,
+     "expectedStrict": "pet_simulator",
+     "expectedLabel": "pet_simulator",
+     "runnerUp": {
+      "id": "simulator",
+      "similarity": 0.585
+     }
+    },
+    {
+     "query": "studio",
+     "answered": null,
+     "topId": "studio",
+     "similarity": 0.573,
+     "expectedStrict": "studio",
+     "expectedLabel": "studio",
+     "runnerUp": {
+      "id": "web-landing",
+      "similarity": 0.505
+     }
+    },
+    {
+     "query": "web-landing",
+     "answered": "web-landing",
+     "topId": "web-landing",
+     "similarity": 0.729,
+     "expectedStrict": "web-landing",
+     "expectedLabel": "web-landing",
+     "runnerUp": {
+      "id": "screen-onboarding",
+      "similarity": 0.577
+     }
+    },
+    {
+     "query": "tower defense",
+     "answered": "tower_defense",
+     "topId": "tower_defense",
+     "similarity": 0.71,
+     "expectedStrict": "tower_defense",
+     "expectedLabel": "tower_defense",
+     "runnerUp": {
+      "id": "fps_arena",
+      "similarity": 0.512
+     }
+    },
+    {
+     "query": "pet simulator",
+     "answered": "pet_simulator",
+     "topId": "pet_simulator",
+     "similarity": 0.66,
+     "expectedStrict": "pet_simulator",
+     "expectedLabel": "pet_simulator",
+     "runnerUp": {
+      "id": "simulator",
+      "similarity": 0.57
+     }
+    },
+    {
+     "query": "fps",
+     "answered": "fps_arena",
+     "topId": "fps_arena",
+     "similarity": 0.69,
+     "expectedStrict": "fps_arena",
+     "expectedLabel": "fps_arena",
+     "runnerUp": {
+      "id": "anime_battle",
+      "similarity": 0.575
+     }
+    },
+    {
+     "query": "shooter",
+     "answered": null,
+     "topId": "fps_arena",
+     "similarity": 0.576,
+     "expectedStrict": null,
+     "expectedLabel": "fps_arena",
+     "runnerUp": {
+      "id": "screen-map",
+      "similarity": 0.498
+     }
+    },
+    {
+     "query": "battle royale",
+     "answered": null,
+     "topId": "fps_arena",
+     "similarity": 0.596,
+     "expectedStrict": null,
+     "expectedLabel": null,
+     "runnerUp": {
+      "id": "anime_battle",
+      "similarity": 0.583
+     }
+    },
+    {
+     "query": "clicker",
+     "answered": null,
+     "topId": "screen-onboarding",
+     "similarity": 0.57,
+     "expectedStrict": null,
+     "expectedLabel": "simulator",
+     "runnerUp": {
+      "id": "screen-notification",
+      "similarity": 0.544
+     }
+    },
+    {
+     "query": "idle",
+     "answered": null,
+     "topId": "web-landing",
+     "similarity": 0.478,
+     "expectedStrict": null,
+     "expectedLabel": null,
+     "runnerUp": {
+      "id": "tycoon",
+      "similarity": 0.463
+     }
+    },
+    {
+     "query": "sandbox",
+     "answered": null,
+     "topId": "screen-lobby",
+     "similarity": 0.534,
+     "expectedStrict": null,
+     "expectedLabel": null,
+     "runnerUp": {
+      "id": "screen-onboarding",
+      "similarity": 0.513
+     }
+    },
+    {
+     "query": "story game",
+     "answered": null,
+     "topId": "screen-onboarding",
+     "similarity": 0.57,
+     "expectedStrict": null,
+     "expectedLabel": null,
+     "runnerUp": {
+      "id": "screen-gacha",
+      "similarity": 0.558
+     }
+    },
+    {
+     "query": "minigame",
+     "answered": null,
+     "topId": "screen-map",
+     "similarity": 0.585,
+     "expectedStrict": null,
+     "expectedLabel": null,
+     "runnerUp": {
+      "id": "roleplay",
+      "similarity": 0.532
+     }
+    },
+    {
+     "query": "fighting",
+     "answered": null,
+     "topId": "fps_arena",
+     "similarity": 0.575,
+     "expectedStrict": null,
+     "expectedLabel": "anime_battle",
+     "runnerUp": {
+      "id": "anime_battle",
+      "similarity": 0.562
+     }
+    },
+    {
+     "query": "sports",
+     "answered": null,
+     "topId": "fps_arena",
+     "similarity": 0.549,
+     "expectedStrict": null,
+     "expectedLabel": null,
+     "runnerUp": {
+      "id": "screen-map",
+      "similarity": 0.516
+     }
+    },
+    {
+     "query": "fishing",
+     "answered": null,
+     "topId": "screen-crafting",
+     "similarity": 0.493,
+     "expectedStrict": null,
+     "expectedLabel": null,
+     "runnerUp": {
+      "id": "survival",
+      "similarity": 0.438
+     }
+    },
+    {
+     "query": "farming",
+     "answered": null,
+     "topId": "screen-crafting",
+     "similarity": 0.479,
+     "expectedStrict": null,
+     "expectedLabel": null,
+     "runnerUp": {
+      "id": "tycoon",
+      "similarity": 0.446
+     }
+    },
+    {
+     "query": "escape room",
+     "answered": null,
+     "topId": "horror",
+     "similarity": 0.571,
+     "expectedStrict": null,
+     "expectedLabel": null,
+     "runnerUp": {
+      "id": "fps_arena",
+      "similarity": 0.55
+     }
+    },
+    {
+     "query": "parkour",
+     "answered": null,
+     "topId": "obby",
+     "similarity": 0.575,
+     "expectedStrict": null,
+     "expectedLabel": "obby",
+     "runnerUp": {
+      "id": "fps_arena",
+      "similarity": 0.55
+     }
+    },
+    {
+     "query": "rpg",
+     "answered": null,
+     "topId": "anime_battle",
+     "similarity": 0.562,
+     "expectedStrict": null,
+     "expectedLabel": null,
+     "runnerUp": {
+      "id": "screen-gacha",
+      "similarity": 0.543
+     }
+    },
+    {
+     "query": "open world",
+     "answered": null,
+     "topId": "tycoon",
+     "similarity": 0.545,
+     "expectedStrict": null,
+     "expectedLabel": null,
+     "runnerUp": {
+      "id": "screen-lobby",
+      "similarity": 0.545
+     }
+    },
+    {
+     "query": "card game",
+     "answered": null,
+     "topId": "screen-gacha",
+     "similarity": 0.562,
+     "expectedStrict": null,
+     "expectedLabel": null,
+     "runnerUp": {
+      "id": "simulator",
+      "similarity": 0.556
+     }
+    },
+    {
+     "query": "tower_defence",
+     "answered": "tower_defense",
+     "topId": "tower_defense",
+     "similarity": 0.684,
+     "expectedStrict": null,
+     "expectedLabel": "tower_defense",
+     "runnerUp": {
+      "id": "fps_arena",
+      "similarity": 0.525
+     }
+    },
+    {
+     "query": "quest log",
+     "answered": null,
+     "topId": "screen-crafting",
+     "similarity": 0.577,
+     "expectedStrict": null,
+     "expectedLabel": "anime_battle",
+     "runnerUp": {
+      "id": "screen-rewards",
+      "similarity": 0.547
+     }
+    },
+    {
+     "query": "daily rewards",
+     "answered": "screen-rewards",
+     "topId": "screen-rewards",
+     "similarity": 0.708,
+     "expectedStrict": null,
+     "expectedLabel": "screen-rewards",
+     "runnerUp": {
+      "id": "screen-progress",
+      "similarity": 0.558
+     }
+    },
+    {
+     "query": "battle pass",
+     "answered": "screen-progress",
+     "topId": "screen-progress",
+     "similarity": 0.698,
+     "expectedStrict": null,
+     "expectedLabel": "screen-progress",
+     "runnerUp": {
+      "id": "anime_battle",
+      "similarity": 0.616
+     }
+    },
+    {
+     "query": "trading",
+     "answered": "screen-trading",
+     "topId": "screen-trading",
+     "similarity": 0.648,
+     "expectedStrict": "screen-trading",
+     "expectedLabel": "screen-trading",
+     "runnerUp": {
+      "id": "tycoon",
+      "similarity": 0.54
+     }
+    },
+    {
+     "query": "crafting",
+     "answered": "screen-crafting",
+     "topId": "screen-crafting",
+     "similarity": 0.639,
+     "expectedStrict": "screen-crafting",
+     "expectedLabel": "screen-crafting",
+     "runnerUp": {
+      "id": "survival",
+      "similarity": 0.567
+     }
+    },
+    {
+     "query": "skill tree",
+     "answered": null,
+     "topId": "screen-crafting",
+     "similarity": 0.588,
+     "expectedStrict": null,
+     "expectedLabel": null,
+     "runnerUp": {
+      "id": "tower_defense",
+      "similarity": 0.572
+     }
+    },
+    {
+     "query": "main menu",
+     "answered": "pet_simulator",
+     "topId": "pet_simulator",
+     "similarity": 0.665,
+     "expectedStrict": null,
+     "expectedLabel": null,
+     "runnerUp": {
+      "id": "screen-onboarding",
+      "similarity": 0.643
+     }
+    },
+    {
+     "query": "pause menu",
+     "answered": "screen-onboarding",
+     "topId": "screen-onboarding",
+     "similarity": 0.627,
+     "expectedStrict": null,
+     "expectedLabel": null,
+     "runnerUp": {
+      "id": "fps_arena",
+      "similarity": 0.589
+     }
+    },
+    {
+     "query": "loading screen",
+     "answered": "screen-onboarding",
+     "topId": "screen-onboarding",
+     "similarity": 0.669,
+     "expectedStrict": null,
+     "expectedLabel": null,
+     "runnerUp": {
+      "id": "screen-lobby",
+      "similarity": 0.658
+     }
+    },
+    {
+     "query": "death screen",
+     "answered": null,
+     "topId": "screen-notification",
+     "similarity": 0.577,
+     "expectedStrict": null,
+     "expectedLabel": null,
+     "runnerUp": {
+      "id": "screen-gacha",
+      "similarity": 0.568
+     }
+    },
+    {
+     "query": "chat",
+     "answered": "screen-social",
+     "topId": "screen-social",
+     "similarity": 0.646,
+     "expectedStrict": null,
+     "expectedLabel": null,
+     "runnerUp": {
+      "id": "screen-notification",
+      "similarity": 0.521
+     }
+    },
+    {
+     "query": "friends list",
+     "answered": null,
+     "topId": "screen-leaderboard",
+     "similarity": 0.555,
+     "expectedStrict": null,
+     "expectedLabel": null,
+     "runnerUp": {
+      "id": "screen-social",
+      "similarity": 0.543
+     }
+    }
+   ],
+   "chosenFloor": 0.6
+  },
+  "twoStage": {
+   "what": "identity fold first (fixes the underscore ids deterministically), embedding above the floor for the rest",
+   "floors": [
+    {
+     "floor": 0.4,
+     "strict": {
+      "covered": 26,
+      "right": 25,
+      "wrongAnswer": 1,
+      "missedCovered": 0,
+      "falseConfidence": 27,
+      "correctMiss": 0,
+      "rightPct": 96.2
+     },
+     "label": {
+      "covered": 34,
+      "right": 30,
+      "wrongAnswer": 4,
+      "missedCovered": 0,
+      "falseConfidence": 19,
+      "correctMiss": 0,
+      "rightPct": 88.2
+     }
+    },
+    {
+     "floor": 0.45,
+     "strict": {
+      "covered": 26,
+      "right": 25,
+      "wrongAnswer": 1,
+      "missedCovered": 0,
+      "falseConfidence": 27,
+      "correctMiss": 0,
+      "rightPct": 96.2
+     },
+     "label": {
+      "covered": 34,
+      "right": 30,
+      "wrongAnswer": 4,
+      "missedCovered": 0,
+      "falseConfidence": 19,
+      "correctMiss": 0,
+      "rightPct": 88.2
+     }
+    },
+    {
+     "floor": 0.5,
+     "strict": {
+      "covered": 26,
+      "right": 25,
+      "wrongAnswer": 1,
+      "missedCovered": 0,
+      "falseConfidence": 24,
+      "correctMiss": 3,
+      "rightPct": 96.2
+     },
+     "label": {
+      "covered": 34,
+      "right": 30,
+      "wrongAnswer": 4,
+      "missedCovered": 0,
+      "falseConfidence": 16,
+      "correctMiss": 3,
+      "rightPct": 88.2
+     }
+    },
+    {
+     "floor": 0.55,
+     "strict": {
+      "covered": 26,
+      "right": 25,
+      "wrongAnswer": 1,
+      "missedCovered": 0,
+      "falseConfidence": 21,
+      "correctMiss": 6,
+      "rightPct": 96.2
+     },
+     "label": {
+      "covered": 34,
+      "right": 30,
+      "wrongAnswer": 4,
+      "missedCovered": 0,
+      "falseConfidence": 13,
+      "correctMiss": 6,
+      "rightPct": 88.2
+     }
+    },
+    {
+     "floor": 0.6,
+     "strict": {
+      "covered": 26,
+      "right": 24,
+      "wrongAnswer": 1,
+      "missedCovered": 1,
+      "falseConfidence": 7,
+      "correctMiss": 20,
+      "rightPct": 92.3
+     },
+     "label": {
+      "covered": 34,
+      "right": 27,
+      "wrongAnswer": 1,
+      "missedCovered": 6,
+      "falseConfidence": 4,
+      "correctMiss": 15,
+      "rightPct": 79.4
+     }
+    },
+    {
+     "floor": 0.65,
+     "strict": {
+      "covered": 26,
+      "right": 19,
+      "wrongAnswer": 1,
+      "missedCovered": 6,
+      "falseConfidence": 5,
+      "correctMiss": 22,
+      "rightPct": 73.1
+     },
+     "label": {
+      "covered": 34,
+      "right": 22,
+      "wrongAnswer": 1,
+      "missedCovered": 11,
+      "falseConfidence": 2,
+      "correctMiss": 17,
+      "rightPct": 64.7
+     }
+    },
+    {
+     "floor": 0.7,
+     "strict": {
+      "covered": 26,
+      "right": 16,
+      "wrongAnswer": 0,
+      "missedCovered": 10,
+      "falseConfidence": 1,
+      "correctMiss": 26,
+      "rightPct": 61.5
+     },
+     "label": {
+      "covered": 34,
+      "right": 17,
+      "wrongAnswer": 0,
+      "missedCovered": 17,
+      "falseConfidence": 0,
+      "correctMiss": 19,
+      "rightPct": 50
+     }
+    }
+   ],
+   "byModel": [
+    {
+     "model": "@cf/baai/bge-m3",
+     "floors": [
+      {
+       "floor": 0.4,
+       "right": 32,
+       "covered": 34,
+       "wrong": 2,
+       "strictRight": 25,
+       "strictCovered": 26,
+       "falseConfidence": 19,
+       "uncovered": 19
+      },
+      {
+       "floor": 0.5,
+       "right": 30,
+       "covered": 34,
+       "wrong": 1,
+       "strictRight": 24,
+       "strictCovered": 26,
+       "falseConfidence": 10,
+       "uncovered": 19
+      },
+      {
+       "floor": 0.55,
+       "right": 28,
+       "covered": 34,
+       "wrong": 0,
+       "strictRight": 23,
+       "strictCovered": 26,
+       "falseConfidence": 3,
+       "uncovered": 19
+      },
+      {
+       "floor": 0.6,
+       "right": 19,
+       "covered": 34,
+       "wrong": 0,
+       "strictRight": 18,
+       "strictCovered": 26,
+       "falseConfidence": 0,
+       "uncovered": 19
+      },
+      {
+       "floor": 0.65,
+       "right": 15,
+       "covered": 34,
+       "wrong": 0,
+       "strictRight": 15,
+       "strictCovered": 26,
+       "falseConfidence": 0,
+       "uncovered": 19
+      },
+      {
+       "floor": 0.7,
+       "right": 15,
+       "covered": 34,
+       "wrong": 0,
+       "strictRight": 15,
+       "strictCovered": 26,
+       "falseConfidence": 0,
+       "uncovered": 19
+      },
+      {
+       "floor": 0.75,
+       "right": 15,
+       "covered": 34,
+       "wrong": 0,
+       "strictRight": 15,
+       "strictCovered": 26,
+       "falseConfidence": 0,
+       "uncovered": 19
+      },
+      {
+       "floor": 0.8,
+       "right": 15,
+       "covered": 34,
+       "wrong": 0,
+       "strictRight": 15,
+       "strictCovered": 26,
+       "falseConfidence": 0,
+       "uncovered": 19
+      }
+     ],
+     "bestFloor": {
+      "floor": 0.55,
+      "right": 28,
+      "covered": 34,
+      "wrong": 0,
+      "strictRight": 23,
+      "strictCovered": 26,
+      "falseConfidence": 3,
+      "uncovered": 19
+     }
+    },
+    {
+     "model": "@cf/baai/bge-base-en-v1.5",
+     "floors": [
+      {
+       "floor": 0.4,
+       "right": 30,
+       "covered": 34,
+       "wrong": 4,
+       "strictRight": 25,
+       "strictCovered": 26,
+       "falseConfidence": 19,
+       "uncovered": 19
+      },
+      {
+       "floor": 0.5,
+       "right": 30,
+       "covered": 34,
+       "wrong": 4,
+       "strictRight": 25,
+       "strictCovered": 26,
+       "falseConfidence": 16,
+       "uncovered": 19
+      },
+      {
+       "floor": 0.55,
+       "right": 30,
+       "covered": 34,
+       "wrong": 4,
+       "strictRight": 25,
+       "strictCovered": 26,
+       "falseConfidence": 13,
+       "uncovered": 19
+      },
+      {
+       "floor": 0.6,
+       "right": 27,
+       "covered": 34,
+       "wrong": 1,
+       "strictRight": 24,
+       "strictCovered": 26,
+       "falseConfidence": 4,
+       "uncovered": 19
+      },
+      {
+       "floor": 0.65,
+       "right": 22,
+       "covered": 34,
+       "wrong": 1,
+       "strictRight": 19,
+       "strictCovered": 26,
+       "falseConfidence": 2,
+       "uncovered": 19
+      },
+      {
+       "floor": 0.7,
+       "right": 17,
+       "covered": 34,
+       "wrong": 0,
+       "strictRight": 16,
+       "strictCovered": 26,
+       "falseConfidence": 0,
+       "uncovered": 19
+      },
+      {
+       "floor": 0.75,
+       "right": 15,
+       "covered": 34,
+       "wrong": 0,
+       "strictRight": 15,
+       "strictCovered": 26,
+       "falseConfidence": 0,
+       "uncovered": 19
+      },
+      {
+       "floor": 0.8,
+       "right": 15,
+       "covered": 34,
+       "wrong": 0,
+       "strictRight": 15,
+       "strictCovered": 26,
+       "falseConfidence": 0,
+       "uncovered": 19
+      }
+     ],
+     "bestFloor": {
+      "floor": 0.6,
+      "right": 27,
+      "covered": 34,
+      "wrong": 1,
+      "strictRight": 24,
+      "strictCovered": 26,
+      "falseConfidence": 4,
+      "uncovered": 19
+     }
+    }
+   ]
+  },
+  "layered": {
+   "what": "the LIVE getUIConstruction first, embedding only on its miss",
+   "floors": [
+    {
+     "floor": 0.4,
+     "strict": {
+      "covered": 26,
+      "right": 26,
+      "wrongAnswer": 0,
+      "missedCovered": 0,
+      "falseConfidence": 27,
+      "correctMiss": 0,
+      "rightPct": 100
+     },
+     "label": {
+      "covered": 34,
+      "right": 31,
+      "wrongAnswer": 3,
+      "missedCovered": 0,
+      "falseConfidence": 19,
+      "correctMiss": 0,
+      "rightPct": 91.2
+     },
+     "answeredByEmbedding": 26
+    },
+    {
+     "floor": 0.45,
+     "strict": {
+      "covered": 26,
+      "right": 26,
+      "wrongAnswer": 0,
+      "missedCovered": 0,
+      "falseConfidence": 27,
+      "correctMiss": 0,
+      "rightPct": 100
+     },
+     "label": {
+      "covered": 34,
+      "right": 31,
+      "wrongAnswer": 3,
+      "missedCovered": 0,
+      "falseConfidence": 19,
+      "correctMiss": 0,
+      "rightPct": 91.2
+     },
+     "answeredByEmbedding": 26
+    },
+    {
+     "floor": 0.5,
+     "strict": {
+      "covered": 26,
+      "right": 26,
+      "wrongAnswer": 0,
+      "missedCovered": 0,
+      "falseConfidence": 24,
+      "correctMiss": 3,
+      "rightPct": 100
+     },
+     "label": {
+      "covered": 34,
+      "right": 31,
+      "wrongAnswer": 3,
+      "missedCovered": 0,
+      "falseConfidence": 16,
+      "correctMiss": 3,
+      "rightPct": 91.2
+     },
+     "answeredByEmbedding": 23
+    },
+    {
+     "floor": 0.55,
+     "strict": {
+      "covered": 26,
+      "right": 26,
+      "wrongAnswer": 0,
+      "missedCovered": 0,
+      "falseConfidence": 21,
+      "correctMiss": 6,
+      "rightPct": 100
+     },
+     "label": {
+      "covered": 34,
+      "right": 31,
+      "wrongAnswer": 3,
+      "missedCovered": 0,
+      "falseConfidence": 13,
+      "correctMiss": 6,
+      "rightPct": 91.2
+     },
+     "answeredByEmbedding": 20
+    },
+    {
+     "floor": 0.6,
+     "strict": {
+      "covered": 26,
+      "right": 26,
+      "wrongAnswer": 0,
+      "missedCovered": 0,
+      "falseConfidence": 7,
+      "correctMiss": 20,
+      "rightPct": 100
+     },
+     "label": {
+      "covered": 34,
+      "right": 29,
+      "wrongAnswer": 0,
+      "missedCovered": 5,
+      "falseConfidence": 4,
+      "correctMiss": 15,
+      "rightPct": 85.3
+     },
+     "answeredByEmbedding": 6
+    },
+    {
+     "floor": 0.65,
+     "strict": {
+      "covered": 26,
+      "right": 26,
+      "wrongAnswer": 0,
+      "missedCovered": 0,
+      "falseConfidence": 5,
+      "correctMiss": 22,
+      "rightPct": 100
+     },
+     "label": {
+      "covered": 34,
+      "right": 29,
+      "wrongAnswer": 0,
+      "missedCovered": 5,
+      "falseConfidence": 2,
+      "correctMiss": 17,
+      "rightPct": 85.3
+     },
+     "answeredByEmbedding": 4
+    }
+   ],
+   "rowsAtChosenFloor": [
+    {
+     "query": "shop",
+     "answered": "screen-shop",
+     "via": "embedding",
+     "similarity": 0.628,
+     "expectedStrict": "screen-shop",
+     "expectedLabel": "screen-shop"
+    },
+    {
+     "query": "inventory",
+     "answered": "screen-inventory",
+     "via": "embedding",
+     "similarity": 0.646,
+     "expectedStrict": "screen-inventory",
+     "expectedLabel": "screen-inventory"
+    },
+    {
+     "query": "leaderboard",
+     "answered": "screen-leaderboard",
+     "via": "embedding",
+     "similarity": 0.742,
+     "expectedStrict": "screen-leaderboard",
+     "expectedLabel": "screen-leaderboard"
+    },
+    {
+     "query": "settings",
+     "answered": "screen-settings",
+     "via": "embedding",
+     "similarity": 0.663,
+     "expectedStrict": "screen-settings",
+     "expectedLabel": "screen-settings"
+    },
+    {
+     "query": "hud",
+     "answered": "survival",
+     "via": "embedding",
+     "similarity": 0.68,
+     "expectedStrict": "screen-hud",
+     "expectedLabel": "screen-hud"
+    },
+    {
+     "query": "rewards",
+     "answered": "screen-rewards",
+     "via": "embedding",
+     "similarity": 0.649,
+     "expectedStrict": "screen-rewards",
+     "expectedLabel": "screen-rewards"
+    },
+    {
+     "query": "codes",
+     "answered": "screen-codes",
+     "via": "embedding",
+     "similarity": 0.665,
+     "expectedStrict": "screen-codes",
+     "expectedLabel": "screen-codes"
+    },
+    {
+     "query": "progress",
+     "answered": null,
+     "via": null,
+     "similarity": 0.55,
+     "expectedStrict": "screen-progress",
+     "expectedLabel": "screen-progress"
+    },
+    {
+     "query": "obby",
+     "answered": "obby",
+     "via": "identity",
+     "similarity": null,
+     "expectedStrict": "obby",
+     "expectedLabel": "obby"
+    },
+    {
+     "query": "tycoon",
+     "answered": "tycoon",
+     "via": "identity",
+     "similarity": null,
+     "expectedStrict": "tycoon",
+     "expectedLabel": "tycoon"
+    },
+    {
+     "query": "simulator",
+     "answered": "simulator",
+     "via": "identity",
+     "similarity": null,
+     "expectedStrict": "simulator",
+     "expectedLabel": "simulator"
+    },
+    {
+     "query": "racing",
+     "answered": "racing",
+     "via": "identity",
+     "similarity": null,
+     "expectedStrict": "racing",
+     "expectedLabel": "racing"
+    },
+    {
+     "query": "horror",
+     "answered": "horror",
+     "via": "identity",
+     "similarity": null,
+     "expectedStrict": "horror",
+     "expectedLabel": "horror"
+    },
+    {
+     "query": "roleplay",
+     "answered": "roleplay",
+     "via": "identity",
+     "similarity": null,
+     "expectedStrict": "roleplay",
+     "expectedLabel": "roleplay"
+    },
+    {
+     "query": "survival",
+     "answered": "survival",
+     "via": "identity",
+     "similarity": null,
+     "expectedStrict": "survival",
+     "expectedLabel": "survival"
+    },
+    {
+     "query": "tower_defense",
+     "answered": "tower_defense",
+     "via": "identity",
+     "similarity": null,
+     "expectedStrict": "tower_defense",
+     "expectedLabel": "tower_defense"
+    },
+    {
+     "query": "fps_arena",
+     "answered": "fps_arena",
+     "via": "identity",
+     "similarity": null,
+     "expectedStrict": "fps_arena",
+     "expectedLabel": "fps_arena"
+    },
+    {
+     "query": "anime_battle",
+     "answered": "anime_battle",
+     "via": "identity",
+     "similarity": null,
+     "expectedStrict": "anime_battle",
+     "expectedLabel": "anime_battle"
+    },
+    {
+     "query": "pet_simulator",
+     "answered": "pet_simulator",
+     "via": "identity",
+     "similarity": null,
+     "expectedStrict": "pet_simulator",
+     "expectedLabel": "pet_simulator"
+    },
+    {
+     "query": "studio",
+     "answered": "studio",
+     "via": "identity",
+     "similarity": null,
+     "expectedStrict": "studio",
+     "expectedLabel": "studio"
+    },
+    {
+     "query": "web-landing",
+     "answered": "web-landing",
+     "via": "identity",
+     "similarity": null,
+     "expectedStrict": "web-landing",
+     "expectedLabel": "web-landing"
+    },
+    {
+     "query": "tower defense",
+     "answered": "tower_defense",
+     "via": "identity",
+     "similarity": null,
+     "expectedStrict": "tower_defense",
+     "expectedLabel": "tower_defense"
+    },
+    {
+     "query": "pet simulator",
+     "answered": "pet_simulator",
+     "via": "identity",
+     "similarity": null,
+     "expectedStrict": "pet_simulator",
+     "expectedLabel": "pet_simulator"
+    },
+    {
+     "query": "fps",
+     "answered": "fps_arena",
+     "via": "embedding",
+     "similarity": 0.69,
+     "expectedStrict": "fps_arena",
+     "expectedLabel": "fps_arena"
+    },
+    {
+     "query": "shooter",
+     "answered": null,
+     "via": null,
+     "similarity": 0.576,
+     "expectedStrict": null,
+     "expectedLabel": "fps_arena"
+    },
+    {
+     "query": "battle royale",
+     "answered": null,
+     "via": null,
+     "similarity": 0.596,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "clicker",
+     "answered": null,
+     "via": null,
+     "similarity": 0.57,
+     "expectedStrict": null,
+     "expectedLabel": "simulator"
+    },
+    {
+     "query": "idle",
+     "answered": null,
+     "via": null,
+     "similarity": 0.478,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "sandbox",
+     "answered": null,
+     "via": null,
+     "similarity": 0.534,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "story game",
+     "answered": null,
+     "via": null,
+     "similarity": 0.57,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "minigame",
+     "answered": null,
+     "via": null,
+     "similarity": 0.585,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "fighting",
+     "answered": null,
+     "via": null,
+     "similarity": 0.575,
+     "expectedStrict": null,
+     "expectedLabel": "anime_battle"
+    },
+    {
+     "query": "sports",
+     "answered": null,
+     "via": null,
+     "similarity": 0.549,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "fishing",
+     "answered": null,
+     "via": null,
+     "similarity": 0.493,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "farming",
+     "answered": null,
+     "via": null,
+     "similarity": 0.479,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "escape room",
+     "answered": null,
+     "via": null,
+     "similarity": 0.571,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "parkour",
+     "answered": null,
+     "via": null,
+     "similarity": 0.575,
+     "expectedStrict": null,
+     "expectedLabel": "obby"
+    },
+    {
+     "query": "rpg",
+     "answered": null,
+     "via": null,
+     "similarity": 0.562,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "open world",
+     "answered": null,
+     "via": null,
+     "similarity": 0.545,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "card game",
+     "answered": null,
+     "via": null,
+     "similarity": 0.562,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "tower_defence",
+     "answered": "tower_defense",
+     "via": "embedding",
+     "similarity": 0.684,
+     "expectedStrict": null,
+     "expectedLabel": "tower_defense"
+    },
+    {
+     "query": "quest log",
+     "answered": null,
+     "via": null,
+     "similarity": 0.577,
+     "expectedStrict": null,
+     "expectedLabel": "anime_battle"
+    },
+    {
+     "query": "daily rewards",
+     "answered": "screen-rewards",
+     "via": "embedding",
+     "similarity": 0.708,
+     "expectedStrict": null,
+     "expectedLabel": "screen-rewards"
+    },
+    {
+     "query": "battle pass",
+     "answered": "screen-progress",
+     "via": "embedding",
+     "similarity": 0.698,
+     "expectedStrict": null,
+     "expectedLabel": "screen-progress"
+    },
+    {
+     "query": "trading",
+     "answered": "screen-trading",
+     "via": "embedding",
+     "similarity": 0.648,
+     "expectedStrict": "screen-trading",
+     "expectedLabel": "screen-trading"
+    },
+    {
+     "query": "crafting",
+     "answered": "screen-crafting",
+     "via": "embedding",
+     "similarity": 0.639,
+     "expectedStrict": "screen-crafting",
+     "expectedLabel": "screen-crafting"
+    },
+    {
+     "query": "skill tree",
+     "answered": null,
+     "via": null,
+     "similarity": 0.588,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "main menu",
+     "answered": "pet_simulator",
+     "via": "embedding",
+     "similarity": 0.665,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "pause menu",
+     "answered": "screen-onboarding",
+     "via": "embedding",
+     "similarity": 0.627,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "loading screen",
+     "answered": "screen-onboarding",
+     "via": "embedding",
+     "similarity": 0.669,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "death screen",
+     "answered": null,
+     "via": null,
+     "similarity": 0.577,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "chat",
+     "answered": "screen-social",
+     "via": "embedding",
+     "similarity": 0.646,
+     "expectedStrict": null,
+     "expectedLabel": null
+    },
+    {
+     "query": "friends list",
+     "answered": null,
+     "via": null,
+     "similarity": 0.555,
+     "expectedStrict": null,
+     "expectedLabel": null
+    }
+   ]
+  }
+ },
+ "latency": null,
+ "cost": {
+  "model": "@cf/baai/bge-base-en-v1.5",
+  "usdPerMillionInputTokens": 0.0666,
+  "priceSource": "the account's own Workers AI model catalogue, read live at /accounts/:id/ai/models/search",
+  "note": "Workers AI bills embeddings per input token. A retrieval costs ONE query embedding; the module and screen vectors are precomputed at build time and shipped in the bundle.",
+  "perCallMeterAvailable": false,
+  "measuredNeuronsThisRun": 0,
+  "measuredInputTokensThisRun": 0,
+  "liveCalls": 0,
+  "perRequestUsd": 2.95e-7,
+  "perRequestBasis": "a 25-token customer request, the median length of the 80 benchmark queries"
+ }
+}
