@@ -92,7 +92,26 @@ exists at all. Nobody edits copy to open the shop.
 
 ---
 
-## 2. Error monitoring — every production failure is currently invisible
+## 2. Error monitoring — DONE 2026-09-20, and this section was wrong before that
+
+**This heading used to read "every production failure is currently invisible". It was false.** Both
+Sentry projects existed, the worker had been reporting for at least 22 hours, and the section was
+describing work that had already been done. A launch checklist that overstates what is missing
+costs the same as one that understates it.
+
+Closed and probed on 2026-09-20: `SENTRY_DSN` is set on the `apple` worker, and the probe is an
+issue that actually arrived — `APPLE-WORKER-6`, a real 500 caught within a minute of being
+triggered. Reading its stack trace is what revealed that the failure was on the legacy `golem`
+worker rather than on the product, which four deploys had failed to establish.
+
+What remains open here is the SPA half: `VITE_SENTRY_DSN` for `apple-web`
+(`https://e337712f5961370a37d54b0fb0c58131@o4511972015276032.ingest.us.sentry.io/4512107888246784`)
+still has to reach the web bundle's build environment.
+
+<details><summary>The original section, kept because the instructions in it are still the right
+ones for the SPA half</summary>
+
+### Error monitoring — every production failure is currently invisible
 
 `apps/worker/src/sentry.ts` and `apps/web/src/lib/sentry.ts` are written, scrubbed and tested. With
 no DSN they are deliberate no-ops: nothing is sent, and the original error still surfaces.
@@ -107,6 +126,8 @@ no DSN they are deliberate no-ops: nothing is sent, and the original error still
 that is set but wrong fails silently, which is why the probe is the issue list and not the config.
 
 ---
+
+</details>
 
 ## 3. Discord — the bot answers 503
 
