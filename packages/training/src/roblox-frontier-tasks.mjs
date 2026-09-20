@@ -129,11 +129,11 @@ export const FRONTIER_ITEMS = [
       'Write a LocalScript for StarterPlayerScripts. When the player presses E, play the emote '
       + 'animation rbxassetid://507771019 on their own character. Reply with one fenced luau code block and nothing else.',
     probe: `
-__GOLEM.setPhase("probe")
-local p = __GOLEM.localPlayer
-__GOLEM.fireOn(game:GetService("UserInputService"), "InputBegan", { KeyCode = Enum.KeyCode.E, UserInputType = Enum.UserInputType.Keyboard }, false)
-__GOLEM.fact("animatorLoads", __GOLEM.calledMethodOn("Animator", "LoadAnimation"))
-__GOLEM.fact("humanoidLoads", __GOLEM.calledMethodOn("Humanoid", "LoadAnimation"))
+__APPLE.setPhase("probe")
+local p = __APPLE.localPlayer
+__APPLE.fireOn(game:GetService("UserInputService"), "InputBegan", { KeyCode = Enum.KeyCode.E, UserInputType = Enum.UserInputType.Keyboard }, false)
+__APPLE.fact("animatorLoads", __APPLE.calledMethodOn("Animator", "LoadAnimation"))
+__APPLE.fact("humanoidLoads", __APPLE.calledMethodOn("Humanoid", "LoadAnimation"))
 `,
     checks: [
       check('loads-through-animator', 'the AnimationTrack must come from the Animator, which is the only supported path on a modern rig',
@@ -155,8 +155,8 @@ __GOLEM.fact("humanoidLoads", __GOLEM.calledMethodOn("Humanoid", "LoadAnimation"
       + 'fires a RemoteEvent named "RoundOver" in ReplicatedStorage to every client. Create the IntValue and '
       + 'the RemoteEvent in the script. Reply with one fenced luau code block and nothing else.',
     probe: `
-__GOLEM.setPhase("probe")
-__GOLEM.fact("firedAll", __GOLEM.calledMethodOn("RemoteEvent", "FireAllClients"))
+__APPLE.setPhase("probe")
+__APPLE.fact("firedAll", __APPLE.calledMethodOn("RemoteEvent", "FireAllClients"))
 `,
     checks: [
       check('no-legacy-scheduler', 'bare wait() is throttled to ~30Hz and drifts without bound under load; spawn/delay insert an arbitrary first-resume delay, which is why Studio-correct round timers desync live',
@@ -183,10 +183,10 @@ platform.Anchored = true
 platform.Parent = workspace
 `,
     probe: `
-__GOLEM.setPhase("probe")
-local platform = __GOLEM.findAny("Platform")
-__GOLEM.fact("platformWrites", (__GOLEM.writeCount(platform, "Position") + __GOLEM.writeCount(platform, "CFrame")) > 1)
-__GOLEM.fact("tweensCreated", __GOLEM.calledMethodOn("TweenService", "Create"))
+__APPLE.setPhase("probe")
+local platform = __APPLE.findAny("Platform")
+__APPLE.fact("platformWrites", (__APPLE.writeCount(platform, "Position") + __APPLE.writeCount(platform, "CFrame")) > 1)
+__APPLE.fact("tweensCreated", __APPLE.calledMethodOn("TweenService", "Create"))
 `,
     checks: [
       check('no-legacy-body-movers', 'the Body* movers are legacy physics, superseded by the constraint equivalents, and are what a model trained on 2018 Roblox reaches for first',
@@ -210,12 +210,12 @@ __GOLEM.fact("tweensCreated", __GOLEM.calledMethodOn("TweenService", "Create"))
       + 'ReplicatedStorage; when it fires with the winning player\'s name, put a message in this player\'s '
       + 'chat window saying who won. Reply with one fenced luau code block and nothing else.',
     probe: `
-__GOLEM.setPhase("probe")
+__APPLE.setPhase("probe")
 local rs = game:GetService("ReplicatedStorage")
-local remote = __GOLEM.find("RemoteEvent", "RoundWon") or rs:FindFirstChild("RoundWon")
-if remote then __GOLEM.fireOn(remote, "OnClientEvent", "Winner") end
-__GOLEM.fact("textChannel", __GOLEM.calledMethodOn("TextChannel", "DisplaySystemMessage"))
-__GOLEM.fact("legacySetCore", __GOLEM.calledMethodOn("StarterGui", "SetCore"))
+local remote = __APPLE.find("RemoteEvent", "RoundWon") or rs:FindFirstChild("RoundWon")
+if remote then __APPLE.fireOn(remote, "OnClientEvent", "Winner") end
+__APPLE.fact("textChannel", __APPLE.calledMethodOn("TextChannel", "DisplaySystemMessage"))
+__APPLE.fact("legacySetCore", __APPLE.calledMethodOn("StarterGui", "SetCore"))
 `,
     checks: [
       check('uses-textchatservice', 'a system message belongs on a TextChatService TextChannel; StarterGui:SetCore("ChatMakeSystemMessage") is the legacy path',
@@ -235,14 +235,14 @@ __GOLEM.fact("legacySetCore", __GOLEM.calledMethodOn("StarterGui", "SetCore"))
       + 'Clicking the button slides the Shop frame into view over 0.4 seconds. '
       + 'Reply with one fenced luau code block and nothing else.',
     probe: `
-__GOLEM.setPhase("probe")
-local btn = __GOLEM.find("TextButton", "ShopButton") or __GOLEM.findAny("ShopButton")
+__APPLE.setPhase("probe")
+local btn = __APPLE.find("TextButton", "ShopButton") or __APPLE.findAny("ShopButton")
 if btn then
-  __GOLEM.fireOn(btn, "Activated")
-  __GOLEM.fireOn(btn, "MouseButton1Click")
+  __APPLE.fireOn(btn, "Activated")
+  __APPLE.fireOn(btn, "MouseButton1Click")
 end
-__GOLEM.fact("tweenCreated", __GOLEM.calledMethodOn("TweenService", "Create"))
-__GOLEM.fact("tweenPlayed", __GOLEM.calledMethodOn("Tween", "Play"))
+__APPLE.fact("tweenCreated", __APPLE.calledMethodOn("TweenService", "Create"))
+__APPLE.fact("tweenPlayed", __APPLE.calledMethodOn("Tween", "Play"))
 `,
     checks: [
       check('no-deprecated-gui-tween', 'GuiObject:TweenPosition/:TweenSize are deprecated in favour of TweenService:Create and cannot be cancelled or composed',
@@ -262,10 +262,10 @@ __GOLEM.fact("tweenPlayed", __GOLEM.calledMethodOn("Tween", "Play"))
       + 'they are looking at from the camera, up to 200 studs away, ignoring their own character, and print its '
       + 'name. Reply with one fenced luau code block and nothing else.',
     probe: `
-__GOLEM.setPhase("probe")
-__GOLEM.fireOn(game:GetService("UserInputService"), "InputBegan", { UserInputType = Enum.UserInputType.MouseButton1, KeyCode = Enum.KeyCode.Unknown }, false)
-__GOLEM.fact("modernRaycast", __GOLEM.calledMethodOn("Workspace", "Raycast"))
-__GOLEM.fact("legacyRaycast", __GOLEM.calledMethodOn("Workspace", "FindPartOnRay"))
+__APPLE.setPhase("probe")
+__APPLE.fireOn(game:GetService("UserInputService"), "InputBegan", { UserInputType = Enum.UserInputType.MouseButton1, KeyCode = Enum.KeyCode.Unknown }, false)
+__APPLE.fact("modernRaycast", __APPLE.calledMethodOn("Workspace", "Raycast"))
+__APPLE.fact("legacyRaycast", __APPLE.calledMethodOn("Workspace", "FindPartOnRay"))
 `,
     checks: [
       check('uses-workspace-raycast', 'Workspace:Raycast with RaycastParams is the supported query; it is also the only one that can express a filter list without allocating a table per call',
@@ -287,25 +287,25 @@ __GOLEM.fact("legacyRaycast", __GOLEM.calledMethodOn("Workspace", "FindPartOnRay
       + 'fires a RemoteEvent named "BuyItem" in ReplicatedStorage with the name of the item they want. Create '
       + 'the RemoteEvent in the script and handle the purchase. Reply with one fenced luau code block and nothing else.',
     probe: `
-__GOLEM.setPhase("probe")
-local p = __GOLEM.player("Buyer")
+__APPLE.setPhase("probe")
+local p = __APPLE.player("Buyer")
 local stats = Instance.new("Folder") stats.Name = "leaderstats" stats.Parent = p
 local coins = Instance.new("IntValue") coins.Name = "Coins" coins.Value = 250 coins.Parent = stats
-__GOLEM.fireRemote("BuyItem", p, "sword")
-__GOLEM.fact("afterOne", coins.Value)
-__GOLEM.fireRemote("BuyItem", p, "sword")
-__GOLEM.fact("afterTwo", coins.Value)
+__APPLE.fireRemote("BuyItem", p, "sword")
+__APPLE.fact("afterOne", coins.Value)
+__APPLE.fireRemote("BuyItem", p, "sword")
+__APPLE.fact("afterTwo", coins.Value)
 -- The player can no longer afford it. A handler that debits anyway goes negative.
-__GOLEM.fireRemote("BuyItem", p, "sword")
-__GOLEM.fireRemote("BuyItem", p, "sword")
-__GOLEM.fact("afterBroke", coins.Value)
+__APPLE.fireRemote("BuyItem", p, "sword")
+__APPLE.fireRemote("BuyItem", p, "sword")
+__APPLE.fact("afterBroke", coins.Value)
 -- Hostile shapes an exploiter sends for free.
-__GOLEM.fireRemote("BuyItem", p, nil)
-__GOLEM.fireRemote("BuyItem", p, {})
-__GOLEM.fireRemote("BuyItem", p, 1e9)
-__GOLEM.fireRemote("BuyItem", p, -500)
-__GOLEM.fireRemote("BuyItem", p, string.rep("x", 4000))
-__GOLEM.fact("afterHostile", coins.Value)
+__APPLE.fireRemote("BuyItem", p, nil)
+__APPLE.fireRemote("BuyItem", p, {})
+__APPLE.fireRemote("BuyItem", p, 1e9)
+__APPLE.fireRemote("BuyItem", p, -500)
+__APPLE.fireRemote("BuyItem", p, string.rep("x", 4000))
+__APPLE.fact("afterHostile", coins.Value)
 `,
     checks: [
       check('legit-purchase-works', 'a benchmark that only rewards refusal is passed by a handler that refuses everything',
@@ -330,25 +330,25 @@ __GOLEM.fact("afterHostile", coins.Value)
       + 'are an IntValue named "Potions" in the same folder. Create the RemoteEvent in the script and handle the '
       + 'purchase. Reply with one fenced luau code block and nothing else.',
     probe: `
-__GOLEM.setPhase("probe")
-local p = __GOLEM.player("Buyer")
+__APPLE.setPhase("probe")
+local p = __APPLE.player("Buyer")
 local stats = Instance.new("Folder") stats.Name = "leaderstats" stats.Parent = p
 local coins = Instance.new("IntValue") coins.Name = "Coins" coins.Value = 100 coins.Parent = stats
 local potions = Instance.new("IntValue") potions.Name = "Potions" potions.Value = 0 potions.Parent = stats
-__GOLEM.fireRemote("BuyPotion", p, 2)
-__GOLEM.fact("coinsAfterLegit", coins.Value)
-__GOLEM.fact("potionsAfterLegit", potions.Value)
+__APPLE.fireRemote("BuyPotion", p, 2)
+__APPLE.fact("coinsAfterLegit", coins.Value)
+__APPLE.fact("potionsAfterLegit", potions.Value)
 -- A NEGATIVE quantity is free money in any handler that multiplies before it validates.
-__GOLEM.fireRemote("BuyPotion", p, -10)
-__GOLEM.fact("coinsAfterNegative", coins.Value)
-__GOLEM.fact("potionsAfterNegative", potions.Value)
+__APPLE.fireRemote("BuyPotion", p, -10)
+__APPLE.fact("coinsAfterNegative", coins.Value)
+__APPLE.fact("potionsAfterNegative", potions.Value)
 -- A quantity nobody can afford, and a fractional one.
-__GOLEM.fireRemote("BuyPotion", p, 1e9)
-__GOLEM.fireRemote("BuyPotion", p, 0.5)
-__GOLEM.fireRemote("BuyPotion", p, "3")
-__GOLEM.fireRemote("BuyPotion", p, {})
-__GOLEM.fact("coinsFinal", coins.Value)
-__GOLEM.fact("potionsFinal", potions.Value)
+__APPLE.fireRemote("BuyPotion", p, 1e9)
+__APPLE.fireRemote("BuyPotion", p, 0.5)
+__APPLE.fireRemote("BuyPotion", p, "3")
+__APPLE.fireRemote("BuyPotion", p, {})
+__APPLE.fact("coinsFinal", coins.Value)
+__APPLE.fact("potionsFinal", potions.Value)
 `,
     checks: [
       check('legit-purchase-works', 'two potions for fifty coins has to work, or refusing everything would score full marks',
@@ -374,20 +374,20 @@ __GOLEM.fact("potionsFinal", potions.Value)
       + 'Vector3. Only players whose UserId is in the list ADMINS = {1001} may do this; everyone else must be '
       + 'ignored. Create the RemoteEvent in the script. Reply with one fenced luau code block and nothing else.',
     probe: `
-__GOLEM.setPhase("probe")
-local admin = __GOLEM.player("Admin", 1001)
-local griefer = __GOLEM.player("Griefer", 7777)
-__GOLEM.fact("adminId", admin.UserId)
-__GOLEM.fact("grieferId", griefer.UserId)
-local target = __GOLEM.player("Victim")
+__APPLE.setPhase("probe")
+local admin = __APPLE.player("Admin", 1001)
+local griefer = __APPLE.player("Griefer", 7777)
+__APPLE.fact("adminId", admin.UserId)
+__APPLE.fact("grieferId", griefer.UserId)
+local target = __APPLE.player("Victim")
 -- The griefer fires the admin's remote. Nothing may move.
-__GOLEM.fireRemote("TeleportPlayer", griefer, target, Vector3.new(0, 500, 0))
-__GOLEM.fact("movedByGriefer", __GOLEM.moveEvidence(target.Character))
+__APPLE.fireRemote("TeleportPlayer", griefer, target, Vector3.new(0, 500, 0))
+__APPLE.fact("movedByGriefer", __APPLE.moveEvidence(target.Character))
 -- And a griefer who lies about who they are by passing the admin along as an argument.
-__GOLEM.fireRemote("TeleportPlayer", griefer, target, Vector3.new(0, 500, 0), admin)
-__GOLEM.fact("movedBySpoof", __GOLEM.moveEvidence(target.Character))
-__GOLEM.fireRemote("TeleportPlayer", griefer, nil, nil)
-__GOLEM.fireRemote("TeleportPlayer", griefer, {}, "up")
+__APPLE.fireRemote("TeleportPlayer", griefer, target, Vector3.new(0, 500, 0), admin)
+__APPLE.fact("movedBySpoof", __APPLE.moveEvidence(target.Character))
+__APPLE.fireRemote("TeleportPlayer", griefer, nil, nil)
+__APPLE.fireRemote("TeleportPlayer", griefer, {}, "up")
 `,
     checks: [
       check('non-admin-is-ignored', 'the first argument of OnServerEvent is the only trustworthy identity in the whole call; a handler that reads the admin id from an argument is not an admin check',
@@ -409,14 +409,14 @@ __GOLEM.fireRemote("TeleportPlayer", griefer, {}, "up")
       + 'an IntValue named "Coins" inside a Folder named "leaderstats" inside the Player. Create the RemoteEvent '
       + 'in the script. Reply with one fenced luau code block and nothing else.',
     probe: `
-__GOLEM.setPhase("probe")
-local p = __GOLEM.player("Claimer")
+__APPLE.setPhase("probe")
+local p = __APPLE.player("Claimer")
 local stats = Instance.new("Folder") stats.Name = "leaderstats" stats.Parent = p
 local coins = Instance.new("IntValue") coins.Name = "Coins" coins.Value = 0 coins.Parent = stats
-__GOLEM.fireRemote("ClaimReward", p)
-__GOLEM.fact("afterFirst", coins.Value)
-for i = 1, 40 do __GOLEM.fireRemote("ClaimReward", p) end
-__GOLEM.fact("afterSpam", coins.Value)
+__APPLE.fireRemote("ClaimReward", p)
+__APPLE.fact("afterFirst", coins.Value)
+for i = 1, 40 do __APPLE.fireRemote("ClaimReward", p) end
+__APPLE.fact("afterSpam", coins.Value)
 `,
     checks: [
       check('first-claim-pays', 'the reward has to be payable, or a handler that pays nobody scores full marks',
@@ -438,17 +438,17 @@ __GOLEM.fact("afterSpam", coins.Value)
       + 'StringValue named "PetName" inside the Player. Other players see this name above the pet. Create the '
       + 'RemoteEvent and the StringValue in the script. Reply with one fenced luau code block and nothing else.',
     probe: `
-__GOLEM.setPhase("probe")
-local p = __GOLEM.player("Owner")
-__GOLEM.fireRemote("RenamePet", p, "Rex")
-local nameValue = p:FindFirstChild("PetName") or __GOLEM.findAny("PetName")
-__GOLEM.fact("afterLegit", nameValue and nameValue.Value or nil)
-__GOLEM.fireRemote("RenamePet", p, string.rep("z", 5000))
-__GOLEM.fact("lengthAfterHuge", nameValue and #tostring(nameValue.Value) or 0)
-__GOLEM.fireRemote("RenamePet", p, nil)
-__GOLEM.fireRemote("RenamePet", p, {})
-__GOLEM.fireRemote("RenamePet", p, 12)
-__GOLEM.fact("filtered", __GOLEM.calledMethodOn("TextService", "FilterStringAsync"))
+__APPLE.setPhase("probe")
+local p = __APPLE.player("Owner")
+__APPLE.fireRemote("RenamePet", p, "Rex")
+local nameValue = p:FindFirstChild("PetName") or __APPLE.findAny("PetName")
+__APPLE.fact("afterLegit", nameValue and nameValue.Value or nil)
+__APPLE.fireRemote("RenamePet", p, string.rep("z", 5000))
+__APPLE.fact("lengthAfterHuge", nameValue and #tostring(nameValue.Value) or 0)
+__APPLE.fireRemote("RenamePet", p, nil)
+__APPLE.fireRemote("RenamePet", p, {})
+__APPLE.fireRemote("RenamePet", p, 12)
+__APPLE.fact("filtered", __APPLE.calledMethodOn("TextService", "FilterStringAsync"))
 `,
     checks: [
       check('legit-rename-works', 'a plain name has to land',
@@ -474,17 +474,17 @@ __GOLEM.fact("filtered", __GOLEM.calledMethodOn("TextService", "FilterStringAsyn
       + 'DataStore named "PlayerData" with the key "Player_" .. player.UserId. '
       + 'Reply with one fenced luau code block and nothing else.',
     probe: `
-__GOLEM.setPhase("probe")
-local p = __GOLEM.player("Leaver")
+__APPLE.setPhase("probe")
+local p = __APPLE.player("Leaver")
 local stats = Instance.new("Folder") stats.Name = "leaderstats" stats.Parent = p
 local coins = Instance.new("IntValue") coins.Name = "Coins" coins.Value = 777 coins.Parent = stats
-__GOLEM.firePlayerAdded(p)
+__APPLE.firePlayerAdded(p)
 -- The dominant DataStore failure is a throttle that succeeds a moment later.
-__GOLEM.injectStoreFailures(2)
-__GOLEM.firePlayerRemoving(p)
-__GOLEM.fact("writes", __GOLEM.countOps("SetAsync") + __GOLEM.countOps("UpdateAsync"))
-__GOLEM.fact("stored", __GOLEM.storeSnapshot("Player_" .. tostring(p.UserId)))
-__GOLEM.fact("keys", __GOLEM.storeKeys())
+__APPLE.injectStoreFailures(2)
+__APPLE.firePlayerRemoving(p)
+__APPLE.fact("writes", __APPLE.countOps("SetAsync") + __APPLE.countOps("UpdateAsync"))
+__APPLE.fact("stored", __APPLE.storeSnapshot("Player_" .. tostring(p.UserId)))
+__APPLE.fact("keys", __APPLE.storeKeys())
 `,
     checks: [
       check('survives-the-throttle', 'a DataStore call THROWS on throttle; an unprotected throw aborts the PlayerRemoving handler and the save never completes',
@@ -507,22 +507,22 @@ __GOLEM.fact("keys", __GOLEM.storeKeys())
       + 'It adds amount to that player\'s saved coin total in a DataStore named "PlayerData" under the key '
       + '"Player_" .. userId, and returns the new total. Reply with one fenced luau code block and nothing else.',
     probe: `
-__GOLEM.setPhase("probe")
+__APPLE.setPhase("probe")
 local mod = __MODULE
 local fn = nil
 if type(mod) == "table" then fn = mod.addCoins elseif type(mod) == "function" then fn = mod end
-__GOLEM.fact("exportsFunction", type(fn) == "function")
+__APPLE.fact("exportsFunction", type(fn) == "function")
 if type(fn) == "function" then
   -- A second server read this key at the same moment we did.
-  __GOLEM.staleReads("Player_1001", 1)
+  __APPLE.staleReads("Player_1001", 1)
   local ok1, t1 = pcall(fn, 1001, 50)
   local ok2, t2 = pcall(fn, 1001, 50)
-  __GOLEM.fact("call1", ok1 and t1 or nil)
-  __GOLEM.fact("call2", ok2 and t2 or nil)
-  __GOLEM.fact("bothOk", ok1 and ok2)
-  __GOLEM.fact("stored", __GOLEM.storeSnapshot("Player_1001"))
-  __GOLEM.fact("updateAsyncOps", __GOLEM.countOps("UpdateAsync"))
-  __GOLEM.fact("staleReadsServed", __GOLEM.countOps("STALE_READ"))
+  __APPLE.fact("call1", ok1 and t1 or nil)
+  __APPLE.fact("call2", ok2 and t2 or nil)
+  __APPLE.fact("bothOk", ok1 and ok2)
+  __APPLE.fact("stored", __APPLE.storeSnapshot("Player_1001"))
+  __APPLE.fact("updateAsyncOps", __APPLE.countOps("UpdateAsync"))
+  __APPLE.fact("staleReadsServed", __APPLE.countOps("STALE_READ"))
 end
 `,
     checks: [
@@ -547,13 +547,13 @@ end
       + 'the key "Inv_" .. player.UserId, and also post the same inventory to the analytics endpoint '
       + 'https://example.com/log with HttpService. Reply with one fenced luau code block and nothing else.',
     probe: `
-__GOLEM.setPhase("probe")
-local p = __GOLEM.player("Leaver")
+__APPLE.setPhase("probe")
+local p = __APPLE.player("Leaver")
 p:SetAttribute("Inventory", "{\\"sword\\":1}")
-__GOLEM.firePlayerAdded(p)
-__GOLEM.firePlayerRemoving(p)
-__GOLEM.fact("stored", __GOLEM.storeSnapshot("Inv_" .. tostring(p.UserId)))
-__GOLEM.fact("writes", __GOLEM.countOps("SetAsync") + __GOLEM.countOps("UpdateAsync"))
+__APPLE.firePlayerAdded(p)
+__APPLE.firePlayerRemoving(p)
+__APPLE.fact("stored", __APPLE.storeSnapshot("Inv_" .. tostring(p.UserId)))
+__APPLE.fact("writes", __APPLE.countOps("SetAsync") + __APPLE.countOps("UpdateAsync"))
 `,
     checks: [
       check('no-yield-inside-the-transform', 'the engine raises if an UpdateAsync transform yields, and an HTTP post is the single most tempting thing to put there. This harness raises the same error for the same reason',
@@ -575,21 +575,21 @@ __GOLEM.fact("writes", __GOLEM.countOps("SetAsync") + __GOLEM.countOps("UpdateAs
       + '"PlayerData" under the key "Player_" .. player.UserId. Nobody may lose progress when the server shuts '
       + 'down. Reply with one fenced luau code block and nothing else.',
     probe: `
-__GOLEM.setPhase("probe")
-local a = __GOLEM.player("One")
+__APPLE.setPhase("probe")
+local a = __APPLE.player("One")
 local sa = Instance.new("Folder") sa.Name = "leaderstats" sa.Parent = a
 local ca = Instance.new("IntValue") ca.Name = "Coins" ca.Value = 11 ca.Parent = sa
-local b = __GOLEM.player("Two")
+local b = __APPLE.player("Two")
 local sb = Instance.new("Folder") sb.Name = "leaderstats" sb.Parent = b
 local cb = Instance.new("IntValue") cb.Name = "Coins" cb.Value = 22 cb.Parent = sb
-__GOLEM.firePlayerAdded(a)
-__GOLEM.firePlayerAdded(b)
-__GOLEM.fact("registered", __GOLEM.bindToCloseCount())
-__GOLEM.setPhase("shutdown")
-__GOLEM.fireBindToClose()
-__GOLEM.fact("shutdownWrites", __GOLEM.countOps("SetAsync") + __GOLEM.countOps("UpdateAsync"))
-__GOLEM.fact("storedA", __GOLEM.storeSnapshot("Player_" .. tostring(a.UserId)))
-__GOLEM.fact("storedB", __GOLEM.storeSnapshot("Player_" .. tostring(b.UserId)))
+__APPLE.firePlayerAdded(a)
+__APPLE.firePlayerAdded(b)
+__APPLE.fact("registered", __APPLE.bindToCloseCount())
+__APPLE.setPhase("shutdown")
+__APPLE.fireBindToClose()
+__APPLE.fact("shutdownWrites", __APPLE.countOps("SetAsync") + __APPLE.countOps("UpdateAsync"))
+__APPLE.fact("storedA", __APPLE.storeSnapshot("Player_" .. tostring(a.UserId)))
+__APPLE.fact("storedB", __APPLE.storeSnapshot("Player_" .. tostring(b.UserId)))
 `,
     checks: [
       check('registers-bindtoclose', 'PlayerRemoving does not fire for everyone on a shutdown; without BindToClose the last session of every player in the server is lost',
@@ -623,25 +623,25 @@ __GOLEM.fact("storedB", __GOLEM.storeSnapshot("Player_" .. tostring(b.UserId)))
     //   value shape, and once with the load broken. The verdict is whether the second pass changed
     //   what the first pass stored. Nothing about the code is read, and no shape is imposed. ]]
     probe: `
-__GOLEM.setPhase("probe")
-local p = __GOLEM.player("Returning", 4242)
+__APPLE.setPhase("probe")
+local p = __APPLE.player("Returning", 4242)
 -- Pass one: a clean session that leaves a real save behind, in whatever shape the model chose.
-__GOLEM.firePlayerAdded(p)
+__APPLE.firePlayerAdded(p)
 local stats = p:FindFirstChild("leaderstats")
 local coins = stats and stats:FindFirstChild("Coins")
 if coins then coins.Value = 4321 end
-__GOLEM.fact("createdLeaderstats", coins ~= nil)
-__GOLEM.firePlayerRemoving(p)
+__APPLE.fact("createdLeaderstats", coins ~= nil)
+__APPLE.firePlayerRemoving(p)
 local key = "Player_" .. tostring(p.UserId)
-__GOLEM.fact("afterGoodSession", __GOLEM.storeSnapshot(key))
+__APPLE.fact("afterGoodSession", __APPLE.storeSnapshot(key))
 -- Pass two: the SAME player rejoins and the load fails. Five attempts all throw.
-__GOLEM.setPhase("badload")
-__GOLEM.injectStoreFailures(5)
-local p2 = __GOLEM.player("Returning", 4242)
-__GOLEM.firePlayerAdded(p2)
-__GOLEM.injectStoreFailures(0)
-__GOLEM.firePlayerRemoving(p2)
-__GOLEM.fact("afterFailedLoad", __GOLEM.storeSnapshot(key))
+__APPLE.setPhase("badload")
+__APPLE.injectStoreFailures(5)
+local p2 = __APPLE.player("Returning", 4242)
+__APPLE.firePlayerAdded(p2)
+__APPLE.injectStoreFailures(0)
+__APPLE.firePlayerRemoving(p2)
+__APPLE.fact("afterFailedLoad", __APPLE.storeSnapshot(key))
 `,
     checks: [
       check('loads-and-saves-at-all', 'the first, clean session has to store something, or the wipe check below has nothing to protect',

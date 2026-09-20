@@ -68,6 +68,25 @@ const rootTests = readdirSync(join(ROOT, 'tests'))
 const fingerprintBefore = treeFingerprint(ROOT);
 
 const run = (cmd, args, opts = {}) => {
+  //[[ A GATE THAT NAMES A SCRIPT WHICH IS NOT IN THE TREE IS NOT A FAILED CHECK.
+  //
+  //   check-harvest-licences stayed in this list after its whole subject was deleted on the
+  //   owner's decision, and every run reported it exactly as if it had run and found something: a
+  //   node stack ending in MODULE_NOT_FOUND, printed under a label that reads like a finding about
+  //   asset licences. Somebody then goes looking for a licensing defect that cannot exist, in data
+  //   that is no longer in the repository.
+  //
+  //   Those are two different states and they must not print the same. This one says which. ]]
+  if (cmd === 'node' && typeof args?.[0] === 'string' && args[0].endsWith('.mjs')
+      && !existsSync(join(opts.cwd ?? ROOT, args[0]))) {
+    return {
+      ok: false,
+      out: `${args[0]} IS NOT IN THE TREE.\n\n`
+        + 'This gate names a script that does not exist, so it has checked NOTHING. That is a broken\n'
+        + 'entry in this suite, not a defect in whatever the label says it covers — do not read it as\n'
+        + 'a finding. Restore the script, or delete the entry along with the thing it guarded.',
+    };
+  }
   try {
     return { out: execFileSync(cmd, args, { cwd: opts.cwd ?? ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024 }), ok: true };
   } catch (e) {
@@ -129,9 +148,20 @@ const parts = [
   // The three numbers a visitor is invited to check. One of them was false on both halves
   // while a comment above it named a test that had never been written.
   { label: 'check-proof-figures', ...run('node', ['scripts/check-proof-figures.mjs']) },
-  // 57,049 rows were refused by an ingest that ran for half an hour before saying so, and the
-  // rejects print at the end. This predicts the run in seconds, per source, before it starts.
-  { label: 'check-harvest-licences', ...run('node', ['scripts/check-harvest-licences.mjs']) },
+  //[[ check-harvest-licences WENT WITH ITS SUBJECT, and this note is what is left of it.
+  //
+  //   It predicted, in seconds, what fraction of an asset ingest `validateProvenance` was going to
+  //   refuse — written after 57,049 Kenney rows were rejected by a run that took half an hour and
+  //   printed its rejects at the end. Every single thing it touched was deleted in ac82f9c on the
+  //   owner's decision: asset-seeds.json, packages/corpus/data/library/, asset-library.ts (which it
+  //   compiled to borrow the real validator rather than restate its rules), and the ingest itself.
+  //   Its entry outlived them by a few hours and reported MODULE_NOT_FOUND under a label that read
+  //   like a licence finding.
+  //
+  //   It is NOT re-aimed at the remaining harvesters. harvest-hf, harvest-roblox-knowledge and
+  //   harvest-templates feed the training corpus, not a D1 asset catalogue, and pointing a
+  //   Creator-Store licence gate at them would be inventing coverage rather than keeping it. The
+  //   asset library is not to be rebuilt; see the commit. ]]
   //[[ THE CODE AND THE DATABASE SCHEMA, COMPARED.
   //
   //   Three migrations were written, committed, reviewed and shipped without ever being applied,
