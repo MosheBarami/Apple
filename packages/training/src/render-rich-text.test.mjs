@@ -22,7 +22,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseRichText } from './render-ui-tree.mjs';
+import { parseRichText, renderTreeToSvg } from './render-ui-tree.mjs';
 
 const textOf = (parsed) => parsed.runs.map((r) => r.text).join('');
 
@@ -149,4 +149,95 @@ test('a line break is counted, because this renderer lays out no second line', (
   const parsed = parseRichText('first line<br/>second line');
   assert.equal(parsed.breaks, 1);
   assert.equal(textOf(parsed), 'first line second line');
+});
+
+// ---------------------------------------------------------------------------------------------
+// PLACEHOLDERS. A DIFFERENT PROPERTY, THE SAME DEFECT.
+//
+// MEASURED 2026-09-21, same screen. The model wrote `chatInput.Text = ""` with
+// `PlaceholderText = "Say something to All, Clan or Party…"` — how every chat and search field in
+// Roblox is built — and the renderer drew text only when `Text` was non-empty, so the input came
+// out as a blank grey bar. The card read as a model that forgot to label its own input. The engine
+// reference for TextBox.PlaceholderColor3 says it is "the text color that gets used when no text
+// has been entered", so the placeholder is exactly what a player sees.
+//
+// These drive the renderer rather than the parser, because the rule lives in the drawing path.
+// ---------------------------------------------------------------------------------------------
+
+const node = (cls, props, children = []) => ({
+  id: `n${Math.random().toString(36).slice(2)}`, class: cls, props, children, parentNode: null,
+});
+const str = (v) => ({ k: 'str', v });
+const col = (r, g, b) => ({ k: 'Color3', r: r / 255, g: g / 255, b: b / 255 });
+
+/** One node, one rect, straight through the renderer. */
+const draw = (n) => renderTreeToSvg({
+  guiNodes: [n],
+  rects: new Map([[n.id, { x: 10, y: 10, w: 300, h: 34 }]]),
+  viewport: { id: 'desktop', w: 800, h: 600 },
+});
+
+test('an empty TextBox draws its placeholder, not nothing', () => {
+  const out = draw(node('TextBox', {
+    Text: str(''),
+    PlaceholderText: str('Say something to All, Clan or Party…'),
+    TextColor3: col(235, 238, 245),
+  }));
+  assert.match(out.svg, /Say something to All, Clan or Party/, 'the prompt a player reads must be drawn');
+  assert.equal(out.placeholders, 1, 'and counted, so no caption can call it text somebody typed');
+  assert.equal(out.textNodes, 1);
+});
+
+test('entered text wins over the placeholder, as it does in the engine', () => {
+  const out = draw(node('TextBox', {
+    Text: str('gg wp'),
+    PlaceholderText: str('Say something…'),
+    TextColor3: col(235, 238, 245),
+  }));
+  assert.match(out.svg, /gg wp/);
+  assert.doesNotMatch(out.svg, /Say something/, 'a filled box never shows its placeholder');
+  assert.equal(out.placeholders, 0);
+});
+
+test('a placeholder is dimmer than entered text, and no colour is invented for it', () => {
+  // THE AIMED CASE. Drawing the prompt at full strength makes it read as typed input. Roblox's
+  // own default placeholder colour is a specific grey this process has no way to know, so the
+  // node's own TextColor3 is reduced instead of a value being made up.
+  const props = { PlaceholderText: str('Search items'), TextColor3: col(255, 255, 255) };
+  const dim = draw(node('TextBox', { ...props, Text: str('') }));
+  const full = draw(node('TextBox', { ...props, Text: str('Search items') }));
+  // The opacity of the <text> ELEMENT, not the first one in the document. The node's background
+  // rect carries a fill-opacity too, and a regex that took the first match read 1 for both cases
+  // and reported the guard green-then-red for the wrong reason.
+  const op = (out) => {
+    const m = /<text[^>]*fill-opacity="([\d.]+)"/.exec(out.svg);
+    assert.ok(m, 'the text element must carry an opacity for this test to mean anything');
+    return Number(m[1]);
+  };
+  assert.ok(op(dim) < op(full), `placeholder ${op(dim)} must be fainter than entered ${op(full)}`);
+  assert.match(dim.svg, /fill="rgb\(255,255,255\)"/, 'the node’s own colour, not an invented grey');
+});
+
+test('a PlaceholderColor3 the model set is used verbatim', () => {
+  const out = draw(node('TextBox', {
+    Text: str(''),
+    PlaceholderText: str('Search items'),
+    TextColor3: col(255, 255, 255),
+    PlaceholderColor3: col(120, 200, 255),
+  }));
+  assert.match(out.svg, /fill="rgb\(120,200,255\)"/, 'a colour the model chose is never overridden');
+  // Dimming on top of a chosen colour would be this renderer second-guessing the model. Read off
+  // the <text> element specifically: the background rect carries a fill-opacity of 1 whatever the
+  // text does, and matching the first one in the document made this assertion unfalsifiable — a
+  // mutation that dimmed a model-chosen colour passed it.
+  const m = /<text[^>]*fill-opacity="([\d.]+)"/.exec(out.svg);
+  assert.ok(m, 'the text element must carry an opacity for this test to mean anything');
+  assert.equal(Number(m[1]), 1, 'a placeholder the model coloured is drawn at full strength');
+});
+
+test('an empty box with no placeholder stays empty', () => {
+  const out = draw(node('TextBox', { Text: str(''), TextColor3: col(255, 255, 255) }));
+  assert.doesNotMatch(out.svg, /<text/, 'nothing to draw is still nothing to draw');
+  assert.equal(out.placeholders, 0);
+  assert.equal(out.textNodes, 0);
 });

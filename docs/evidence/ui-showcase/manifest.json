@@ -40,7 +40,7 @@
       },
       "opened": {
         "painted": 5,
-        "textNodes": 4,
+        "textNodes": 5,
         "forcedVisible": 7,
         "offscreen": 0
       },
@@ -475,7 +475,7 @@
       },
       "opened": {
         "painted": 53,
-        "textNodes": 71,
+        "textNodes": 72,
         "forcedVisible": 59,
         "offscreen": 0
       },
@@ -525,6 +525,6 @@
       "richTextBreaks": 0
     }
   ],
-  "renderedAt": "2026-09-20T23:15:03.489Z",
+  "renderedAt": "2026-09-20T23:29:30.620Z",
   "renderNote": "SVGs redrawn from the saved Luau by rerender-showcase.mjs; no completion was spent and no answer changed."
 }

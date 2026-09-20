@@ -9,6 +9,7 @@
 <text x="800.00" y="420.15" text-anchor="middle" font-size="15.0" fill="rgb(200,204,218)" fill-opacity="1.000">Type a code below and press Redeem to claim your reward.</text>
 <rect x="582.40" y="445.32" width="435.20" height="46.80" rx="8.00" ry="8.00" fill="rgb(38,42,54)" fill-opacity="1.000"/>
 <rect x="582.40" y="445.32" width="435.20" height="46.80" rx="8.00" ry="8.00" fill="none" stroke="rgb(70,74,90)" stroke-width="2" stroke-opacity="1.000"/>
+<text x="800.00" y="475.02" text-anchor="middle" font-size="18.0" fill="rgb(130,134,150)" fill-opacity="1.000">Enter code here...</text>
 <rect x="664.00" y="506.16" width="272.00" height="42.12" rx="8.00" ry="8.00" fill="rgb(88,178,92)" fill-opacity="1.000"/>
 <text x="800.00" y="534.22" text-anchor="middle" font-size="20.0" fill="rgb(255,255,255)" fill-opacity="1.000">Redeem</text>
 <rect x="987.84" y="347.04" width="76.16" height="32.76" rx="32.76" ry="32.76" fill="rgb(200,62,62)" fill-opacity="1.000"/>

@@ -320,6 +320,7 @@ export function renderTreeToSvg({ guiNodes, rects, viewport, background = '#1010
   let wrappedText = 0;
   let richTextNodes = 0;
   let richTextBreaks = 0;
+  let placeholders = 0;
 
   parts.push(
     `<svg xmlns="http://www.w3.org/2000/svg" width="${viewport.w}" height="${viewport.h}" ` +
@@ -399,13 +400,40 @@ export function renderTreeToSvg({ guiNodes, rects, viewport, background = '#1010
     }
 
     if (TEXT_CLASSES.has(node.class)) {
-      const text = strProp(node, 'Text', '');
+      //[[ AN EMPTY TEXTBOX IS NOT AN EMPTY BOX — IT SHOWS ITS PLACEHOLDER.
+      //
+      //   MEASURED 2026-09-21 on the generated tycoon social screen. The model wrote
+      //
+      //       chatInput.Text = ""
+      //       chatInput.PlaceholderText = "Say something to All, Clan or Party…"
+      //
+      //   which is how every chat and search field in Roblox is built. This renderer drew text
+      //   only when `Text` was non-empty, so the input came out as a blank grey bar and the card
+      //   read as a model that forgot to label its own input. TextBox.PlaceholderColor3 in the
+      //   engine reference is "the text color that gets used when no text has been entered into
+      //   the TextBox" — the placeholder is what a player sees, and it was the one string on that
+      //   row the model got right.
+      //
+      //   NO COLOUR IS INVENTED. If the model set PlaceholderColor3 it is used; otherwise the
+      //   placeholder is drawn in the node's own TextColor3 at reduced opacity, which says "this
+      //   is dimmer than entered text" without asserting an RGB nothing here can know. Roblox's
+      //   own default is a specific grey and this deliberately does not guess it.
+      //
+      //   `placeholders` counts them so no caption can present prompt text as text a player
+      //   typed. ]]
+      const entered = strProp(node, 'Text', '');
+      const placeholder = entered ? '' : strProp(node, 'PlaceholderText', '');
+      const text = entered || placeholder;
       const tTrans = numProp(node, 'TextTransparency', 0);
       if (text && tTrans < 1) {
         textNodes += 1;
         const { size, approximated } = textSize(node, rect);
         if (approximated) scaledText += 1;
-        const color = cssColor(node, 'TextColor3') ?? '#ffffff';
+        const color = (placeholder ? cssColor(node, 'PlaceholderColor3') : null)
+          ?? cssColor(node, 'TextColor3') ?? '#ffffff';
+        // Dimmer than entered text, and only when the model named no placeholder colour itself.
+        const dim = placeholder && !cssColor(node, 'PlaceholderColor3') ? 0.45 : 0;
+        if (placeholder) placeholders += 1;
         const xAlign = enumProp(node, 'TextXAlignment') ?? 'Center';
         const yAlign = enumProp(node, 'TextYAlignment') ?? 'Center';
         const pad = 6;
@@ -453,7 +481,7 @@ export function renderTreeToSvg({ guiNodes, rects, viewport, background = '#1010
           : esc(text);
         const el =
           `<text x="${tx.toFixed(2)}" y="${ty.toFixed(2)}" text-anchor="${anchor}" ` +
-          `font-size="${size.toFixed(1)}" fill="${color}" fill-opacity="${(1 - tTrans).toFixed(3)}">${body}</text>`;
+          `font-size="${size.toFixed(1)}" fill="${color}" fill-opacity="${((1 - tTrans) * (1 - dim)).toFixed(3)}">${body}</text>`;
 
         //[[ A WRAPPED LABEL STAYS IN ITS BOX, AND DRAWING IT SPILLING OUT LIBELS THE MODEL.
         //
@@ -486,5 +514,5 @@ export function renderTreeToSvg({ guiNodes, rects, viewport, background = '#1010
   }
 
   parts.push('</svg>');
-  return { svg: parts.join('\n'), painted, offscreen, imagePlaceholders, scaledText, textNodes, hidden, forcedVisible, wrappedText, richTextNodes, richTextBreaks };
+  return { svg: parts.join('\n'), painted, offscreen, imagePlaceholders, scaledText, textNodes, hidden, forcedVisible, wrappedText, richTextNodes, richTextBreaks, placeholders };
 }
