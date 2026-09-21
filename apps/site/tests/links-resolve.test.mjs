@@ -143,17 +143,25 @@ test('the exempt routes are published by something in this repository', () => {
   }
 });
 
-test('the navigation reaches the showcase from every page', () => {
+test('every page reaches the showcase, the landing included', () => {
   // THE FAILURE THIS EXISTS FOR IS ONE DAY OLD. /showcase went live on 2026-09-21 with nothing
   // anywhere linking to it: the best evidence this product has, reachable only by being told the
   // URL. A link that is nobody's test is a link that gets tidied away by the next person who
   // thinks the nav is too long.
-  const others = [...html].filter(([f]) => !f.startsWith('index.html'));
-  assert.ok(others.length >= 3, 'too few non-landing pages built to tell whether the nav is shared');
-  const missing = others
+  //
+  // THE LANDING IS IN THE SET, AND THE FIRST VERSION OF THIS TEST EXEMPTED IT. That version was
+  // written from the assumption that Nav.astro is the site's navigation; the landing has its own
+  // header and does not import it, so the check passed on nineteen pages and the front door — the
+  // one page the owner actually opens — was the single page with no link. The exemption hid
+  // exactly the case worth checking. It reaches /showcase from the footer rather than the header
+  // because landing.css measured that header row at 320px against 343 available on a phone; where
+  // the link lives is that page's business, that it is reachable is this test's.
+  assert.ok(html.size >= 10, 'too few pages built for this to mean anything');
+  const missing = [...html]
     .filter(([, body]) => !/href="\/showcase"/.test(body))
-    .map(([f]) => routeOf(f));
-  assert.deepEqual(missing, [], 'pages whose navigation does not offer the showcase:\n  ' + missing.join('\n  '));
+    .map(([f]) => routeOf(f))
+    .sort();
+  assert.deepEqual(missing, [], 'pages with no route to the showcase:\n  ' + missing.join('\n  '));
 });
 
 test('the navigation reaches every section it names, from every page', () => {

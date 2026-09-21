@@ -761,6 +761,29 @@ const asks = [
         </div>
         <div class="footer-col">
           <h3>Product</h3>
+          {/*[[ THE SHOWCASE IS LINKED HERE AND NOT IN THE HEADER, AND THE REASON IS A MEASUREMENT
+            *   IN landing.css RATHER THAN A PREFERENCE.
+            *
+            *   `/showcase` is sixteen Roblox screens and six playable maps the deployed model built
+            *   out of the product's own library. Every other page on this site reaches it from the
+            *   shared Nav.astro; this page has its own header, so without a link here the front
+            *   door — the one place a fifteen-year-old actually arrives — offered no way to it.
+            *
+            *   It is NOT in `.site-nav` because that row is already full. landing.css records the
+            *   arithmetic: at 375px the four links run 56 + 76 + 105 + 71 = 308 and three gaps take
+            *   it to 320 against 343 available, and at 360px the same row is 282 against 288 with
+            *   the padding already halved to 4px. "SHOWCASE" is eight characters at 12px/700/+1.2px
+            *   uppercase — about 82px with its padding — so adding it there does not shave the
+            *   margin, it overruns the row on every phone, and the row hides its own scrollbar.
+            *   That is the exact failure the header comment above describes happening to "Sign in",
+            *   which landed at x 340->411 and was unreachable. Not worth repeating for a link.
+            *
+            *   The footer column is a stacked list at every width and has no such ceiling. It is
+            *   first in the column because it is the most interesting thing behind any of them.
+            *
+            *   tests/links-resolve.test.mjs asserts EVERY built page carries this href, landing
+            *   included, so this is not an optional courtesy link. ]]*/}
+          <a href="/showcase">Showcase</a>
           <a href="/pricing">Pricing</a>
           <a href="/changelog">Changelog</a>
           <a href="/status">Status</a>
