@@ -229,3 +229,67 @@ document that granted it — the same treatment `repos.jsonl` already gives the 
 every row, and this pass changes none of them. Parsing is the **floor**, not the bar: it removes
 the possibility of training on bytes that are not Luau at all, and establishes nothing about
 whether any file is worth training on.
+
+# Fourth pass: is it *current* Luau?
+
+Measured 2026-09-21. Artifact: `packages/training/runs/luau-currency-github-v1.json`.
+
+The request names it — "כל סוגי הluau העדכניים", all the *current* kinds of Luau — and the third
+pass's own card still listed the gap: *"That the corpus is current Luau. These are repositories as
+they stood at their pinned commits."*
+
+The deprecated vocabulary is **derived from Roblox's engine reference**, which the corpus already
+holds pinned: a member carrying a `Deprecated` tag. 12 globals, 230 method names, 638 class files
+read. Nothing typed by hand, because a hand-typed list of deprecated APIs is the kind that goes
+stale fastest.
+
+| | rows | share |
+| --- | ---: | ---: |
+| call a deprecated **global** | 664 | 2.40% |
+| name a deprecated **method** (upper bound) | 1,642 | 5.93% |
+| carry a **modern-Luau marker** | 13,349 | 48.24% |
+| **current-Luau candidates** | **18,464** | |
+
+`getfenv` 223, `wait` 183, `version` 166, `spawn` 133, `collectgarbage` 80, `delay` 64.
+Markers: annotation 8,003 · `--!strict` 7,409 · type alias 6,127 · compound assignment 3,756 ·
+string interpolation 3,547 · `continue` 1,651.
+
+## Three qualities of evidence, kept apart
+
+**Globals are precise.** The match requires the name not to be preceded by a dot, colon or word
+character, so `task.wait(` — the *correct* modern call, the thing a good corpus should be full of
+— does not count, and neither does `signal:wait()`. A substring scanner would have reported the
+best code in the corpus as the worst, and the better the code the worse the number.
+
+**Methods are an upper bound**, and are labelled one everywhere they appear. `:Remove()` is
+deprecated on `Instance` and is also the name of a method on half the hand-rolled list classes in
+the corpus. A call site shows the method name, never the receiver's class.
+
+**Properties are not counted at all.** The deprecated property names include `.Rotation`, `.Scale`
+and `.Transparency`. Matching those by name would fire on nearly every file in the corpus and
+produce a large, confident, meaningless number. A measurement that cannot be made honestly is left
+unmade, and said to be unmade.
+
+## `--!strict` is a comment, and this scan strips comments
+
+The scan strips comments before matching, because four scanners in this repository have counted a
+file's own prose about what it deliberately does *not* do. Stripping also deletes `--!strict` —
+Luau's mode line, and the commonest mark of modern Luau there is.
+
+The first run reported `strict_mode` firing **zero** times. It did not look like an error: the
+marker was simply absent from the tally, while the other five carried a plausible total. Read from
+the raw source instead, it is **7,409 rows**. With `continue` also fixed to be seen where it is
+actually written — `if done then continue end`, not only at end of line — the modern share moved
+from 11,730 (42.39%) to 13,349 (48.24%).
+
+## What none of this establishes
+
+- That a row free of deprecated calls is modern. Lua 5.1 that never needed `wait()` is
+  indistinguishable here from Luau that avoided it. This counts evidence **of** modernity, never
+  evidence against it.
+- That a row using a deprecated global is bad. `wait()` in a 2019 repository is that repository
+  being its age, not a defect.
+- That a `.lua` extension means old code. Roblox accepted `.lua` long after Luau shipped; the
+  corpus is 26,264 `.luau` to 1,407 `.lua`.
+- That anything is approved for training. `training_approved` is false and `semantic_quality_pass`
+  is null on every row, and this pass changes neither.
