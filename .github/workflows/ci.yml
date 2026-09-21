@@ -162,9 +162,11 @@ jobs:
         run: node scripts/check-app-bundle.mjs
 
       - name: Landing payload budget
-        # The root route is meant to be one viewport of HTML and CSS with no
-        # JavaScript at all. This fails if that regresses, because a budget
-        # nobody enforces is not a budget.
+        # Three separately attributed lines — markup + stylesheets, JavaScript, images — each
+        # against its own measured number. The JavaScript line printed 0 B for months because it
+        # only counted `<script src>` and Astro inlines this page's scripts; it now also fails if
+        # it finds a `<script` it cannot read, because a budget that cannot see an asset class is
+        # not a loose budget, it is an instrument reporting on something it never looked at.
         run: node scripts/check-landing-budget.mjs
 
       - name: Asset wall says what it shows
