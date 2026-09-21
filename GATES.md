@@ -358,14 +358,21 @@ like it covers it.
     CHECK: node scripts/gate-suite.mjs
     EXPECT: SUITE GREEN
     UNTICKED 2026-09-21, for the second time, for the same reason the paragraph below describes.
-    Two independent facts, either of which is enough.
-    ONE: the EVIDENCE line carries no git-sha=, no tree-clean= and no at=. `gate-check --lint` is a
-    CI step and it said so in three separate problems. The NOTE below claims the current
-    `evidenceFor()` does not emit those fields; that claim is false — G91's line, written on
-    2026-09-15, carries git-sha=, tree-clean=, deps-clean= AND output-sha256=/output-bytes=. So the
-    short line here is hand-written, which is exactly what the field list exists to catch, and the
-    NOTE is a rationalisation of it.
-    TWO: the CHECK does not pass. `scripts/gate-suite.mjs` includes check-app-bundle, red on a
+    CORRECTED 2026-09-21, an hour after the first version of this note, which asserted the line
+    below was hand-written. IT IS NOT, and I had not read far enough to say so. scripts/
+    check-escape-hatches.mjs records that on 2026-09-20 this gate was recorded by a genuine passing
+    run whose line carried exit / shell / cwd / path / EXPECT / output-sha256 / output-bytes and
+    nothing else, because a SECOND recorder — unlazy's evidenceFor() — writes that shorter shape.
+    The NOTE below is therefore accurate and was not a rationalisation. I withdraw that.
+    WHAT IS ACTUALLY WRONG IS THAT TWO CHECKERS DISAGREE ABOUT THE SAME LINE. gate-check --lint
+    requires git-sha= + tree-clean= + at=; check-escape-hatches was re-aimed on 2026-09-20 to accept
+    EITHER that pair OR output-sha256= + output-bytes=. So a line from the second recorder passes
+    one and fails the other, permanently. That is an open question and it is NOT settled here — I
+    started to loosen --lint to match, and stopped, because --lint's separate `tree-clean=no` rule
+    is what caught three gates ticked against dirty trees tonight, and a line that omits the field
+    cannot be caught by it. Loosening would have removed the check I had just used. Recorded in
+    docs/backlog/CI-RED-JOBS-2026-09-21.md.
+    SO THE REASON THIS IS UNTICKED IS THE SECOND ONE ALONE, AND IT IS SUFFICIENT: the CHECK does not pass. `scripts/gate-suite.mjs` includes check-app-bundle, red on a
     180939 B entry bundle against a 70000 B budget, and check-landing-budget, red at 28208 B
     against 12000 B. Measured 2026-09-21; see docs/backlog/WEB-BUNDLE-BUDGET-OPEN.md.
     (NO BLANK LINES IN THIS NOTE, and that is not a style preference. The first draft of it used an

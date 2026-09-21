@@ -74,3 +74,66 @@ tree three lanes are writing to, a clone-and-compare is not a stable instrument.
 
 A red check is a question, not an answer. Before acting on one: did it run, did it run against the
 thing you think it did, and is the tree it measured the tree the runner will see.
+
+
+---
+
+# Two more, found after the first version of this file — and one correction
+
+## `pnpm -r test` — `@golem/corpus` needs a 10 MB file that is gitignored
+
+After `node --test tests/` was fixed for Node 22, `pnpm -r test` got past `@golem/lumen-isles` and
+stopped at the next package:
+
+```
+packages/corpus/src/genre-references.test.mjs:155
+  not ok 24 - official document IDs, URLs, and chunk IDs resolve exactly to the existing local corpus
+  ENOENT: no such file or directory, open '.../packages/corpus/data/chunks.jsonl'
+```
+
+`.gitignore:19` is `packages/corpus/data/*`. The file is 10 MB on this machine and is in no clone.
+**This test cannot pass in CI and never has** — it arrived in `eac3f01` ("three days of another
+session's work were sitting uncommitted"), and before tonight `pnpm -r test` always stopped at an
+earlier package, so nobody saw it.
+
+It is not a broken test. It is a test whose fixture is deliberately not committable, running in a
+job that only ever sees a clone. The three ways out, none of which is an infra decision:
+
+1. commit the corpus — 10 MB, deliberately ignored, and it grows;
+2. have CI build or fetch it — the honest option if the corpus is reproducible, and it costs
+   runner minutes;
+3. make the test report **could not measure** when the file is absent, distinctly from a pass, in
+   the way `check-asset-wall` exits 2 and `check-ci-references` says NOT CHECKED. The danger is
+   that it becomes a permanent silent skip, which is the failure this repository names most often.
+
+Left for the corpus lane. I did not choose one, and I did not make it green.
+
+## A CORRECTION — the G90 evidence line was NOT hand-written, and I said it was
+
+The first version of the GATES.md note under G90 asserted its short EVIDENCE line was hand-written
+and its own explanatory NOTE was "a rationalisation of it". **That was wrong, and I wrote it before
+reading `scripts/check-escape-hatches.mjs`**, which records that the line came from a genuine
+passing run on 2026-09-20, written by a second recorder — unlazy's `evidenceFor()` — that emits
+`exit / shell / cwd / path / EXPECT / output-sha256 / output-bytes` and nothing else.
+
+The note in GATES.md is corrected and the withdrawal is written into it rather than quietly edited
+out. G90 stays unticked on the other reason, which is independently sufficient: `gate-suite.mjs`
+includes `check-app-bundle` and `check-landing-budget`, both red.
+
+### The real defect underneath, and why I did not fix it
+
+`gate-check --lint` requires `git-sha=` + `tree-clean=` + `at=`. `check-escape-hatches` was re-aimed
+on 2026-09-20 to accept **either** that pair **or** `output-sha256=` + `output-bytes=`. A line from
+the second recorder therefore passes one checker and fails the other, permanently — which is what
+made G90 unfixable by running anything.
+
+I wrote the alignment, ran the suite, and **reverted it**. Two of gate-check's own tests went red,
+which is the signal to stop and read rather than to re-aim them, and reading gave the reason:
+`--lint` has a separate rule that fails a line carrying `tree-clean=no`. That rule is what caught
+G-S1, G-SEC-1 and G-ORACLE-7 tonight. A line that omits the field entirely cannot be caught by it,
+so accepting the shorter shape would have silently removed the check I had just used, in the same
+commit that used it.
+
+So the question is open and stated rather than answered: **either the second recorder should emit
+`tree-clean=`, or this ledger should be recorded only by `gate-check --approve`.** Both are real
+choices. Loosening the stricter checker to match the looser one is not.
