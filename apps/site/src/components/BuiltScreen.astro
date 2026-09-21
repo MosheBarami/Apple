@@ -122,7 +122,26 @@ const seconds = (BUILT_SCREEN.ms.value / 1000).toFixed(1);
      radius and border below is an existing custom property from landing.css — nothing new is
      invented, so the band inherits both themes for free. */
 
+  /* THE BACKGROUND WAS PAINTING OVER THE EVIDENCE, MEASURED IN A BROWSER AT THE LIVE ORIGIN.
+     <Horizon />'s canvas is `position: fixed; z-index: -1`, which ought to put it behind every
+     in-flow background on the page. It does not: on the deployed landing its perspective grid and
+     its glow band were drawn ACROSS the lower third of this screenshot and across the caption bar
+     under it, in both themes — clearest on the light one, where green grid lines ran over a white
+     bar. Sampled before and after, a point that is flat #101014 in the source SVG came back with a
+     green cast.
+
+     Every other band on this page can live with that; this one cannot. A green grid drawn over a
+     screenshot does not read as the page's atmosphere, it reads as the picture being corrupted, and
+     this band's entire claim is that the file a reader receives is the file the renderer wrote.
+     `position: relative` with `z-index: 0` gives the figure its own stacking context, which puts it
+     unambiguously above a negative-z-index canvas without touching <Horizon /> or landing.css —
+     both of which another lane rewrote hours ago.
+
+     tests/built-screen-pixels.test.mjs is the guard: it renders the built page and samples four
+     points that are flat background in the SVG. Take these two declarations out and it goes red. */
   .built-shot {
+    position: relative;
+    z-index: 0;
     margin: 0;
     border: 1px solid var(--line);
     border-radius: var(--r);
