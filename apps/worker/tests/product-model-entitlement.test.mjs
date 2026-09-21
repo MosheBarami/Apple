@@ -214,7 +214,7 @@ test('free Apple can ride Stone tools while its identity is persisted and return
   const agent = h.store.get('agent');
   assert.equal(agent.productModel, 'apple');
   assert.equal(agent.mode, 'stone');
-  assert.equal(agent.maxSteps, 3, 'free Apple keeps the independent free step ceiling');
+  assert.equal(agent.maxSteps, undefined, 'free Apple is not artificially stopped after a fixed number of work steps');
   const start = h.sent.find((m) => m.type === 'msg_start');
   assert.equal(start.productModel, 'apple');
   const res = await h.session.fetch(new Request('https://do/messages'));

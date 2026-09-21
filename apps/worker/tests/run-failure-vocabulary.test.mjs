@@ -68,8 +68,9 @@ test('the fallback stops interpolating the error into what the user reads', () =
     false,
     'the upstream error string is still being rendered as the reply',
   );
-  // And what replaces it answers the question the header of error-taxonomy.ts names first.
-  assert.match(SESSION, /Everything up to here is saved/, 'the fallback must still say whether anything was lost');
+  // And what replaces it answers the question the header of error-taxonomy.ts names first without
+  // claiming that nothing was lost: only edits actually applied to Studio are known to be saved.
+  assert.match(SESSION, /Work already applied to Studio is saved/, 'the fallback must still say what is known to be preserved');
 });
 
 test('the provider’s words survive on the server, for support', () => {

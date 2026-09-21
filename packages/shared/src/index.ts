@@ -890,7 +890,8 @@ export interface RunSnapshot {
   productModel?: ProductModel;
   phase: AgentPhase;
   step: number;
-  totalSteps: number;
+  /** Present only when replaying a legacy run created before autonomous unbounded runs. */
+  totalSteps?: number;
   /** Text the assistant has produced so far this run. */
   text: string;
   /** Tools already executed this run, oldest first. */

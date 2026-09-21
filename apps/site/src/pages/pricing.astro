@@ -336,13 +336,7 @@ const limitFaq = [
             <li><strong>{free.creditsPerDay.toLocaleString()} Credits</strong> per day · {free.creditsPerMonth.toLocaleString()} a month</li>
             <li>About {buildsPerMonth('free')} quality-gated builds a month</li>
             <li>Apple · limited free access</li>
-            {/* THE ALLOWANCE IS NOT THE ONLY LIMIT ON THE ONLY OFFER ANYBODY CAN TAKE.
-                A build is priced here at about sixteen steps, and a free request stops after three
-                — the worker clamps the free lane to Clay's ceiling whatever mode is chosen. The
-                Credits buy the whole build; one message does not. That was visible only as a
-                "Step 2 of 3" counter after signing up, which is the wrong side of the decision.
-                /docs/modes says the same thing at length; the guard is tests/free-lane-steps. */}
-            <li>Up to 3 steps per request — longer builds continue across messages</li>
+            <li>Autonomous runs keep working until the task is done, stopped, or the account reaches its Credits/capacity limit</li>
             {UNIVERSAL_BULLETS.map((b) => <li>{b}</li>)}
             <li>{studioBullet}</li>
             {/* Published for every plan, including this one. Three of the four tiers said nothing

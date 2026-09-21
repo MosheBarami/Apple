@@ -45,48 +45,24 @@ const shared = stripTs(readFileSync(join(ROOT, 'packages', 'shared', 'src', 'ind
 const pricing = readFileSync(join(SITE, 'src', 'pages', 'pricing.astro'), 'utf8');
 const modes = readFileSync(join(SITE, 'src', 'pages', 'docs', 'modes.astro'), 'utf8');
 
-/** The ceiling a run on the free Apple lane is clamped to, read out of the worker. */
-const FREE_LANE_STEPS = (() => {
-  const m = /const STEP_LIMITS: Record<GolemMode, number> = \{([^}]*)\}/.exec(session);
-  assert.ok(m, 'THIS GUARD IS BROKEN, NOT THE PAGES: STEP_LIMITS is no longer declared in session.ts the way this reads it');
-  const clay = /clay:\s*(\d+)/.exec(m[1]);
-  assert.ok(clay, 'STEP_LIMITS no longer names a clay limit');
-  const value = Number(clay[1]);
-  assert.ok(Number.isInteger(value) && value > 0, 'the clay step limit did not read as a usable number');
-  return value;
-})();
-
-const WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
-
-test('THE PREMISE IS STILL TRUE: a free request is clamped to the Clay ceiling', () => {
-  assert.match(
-    session,
-    /productModel === 'apple' \? Math\.min\(STEP_LIMITS\[mode\], STEP_LIMITS\.clay\)/,
-    'THIS GUARD IS STALE, NOT THE PAGES: maxStepsFor no longer clamps the Apple lane to the Clay ' +
-      'ceiling. If free runs got longer, the pages are understating the product — go and look ' +
-      'before changing either.',
-  );
+test('THE PREMISE: autonomous runs have no product-imposed step or wall-clock ceiling', () => {
+  assert.doesNotMatch(session, /STEP_LIMITS/);
+  assert.doesNotMatch(session, /maxStepsFor/);
+  assert.doesNotMatch(session, /RUN_WALL_MS/);
   assert.match(
     shared,
     /if \(model !== 'apple-max'\) return false;\s*return isPlanId\(plan\) && plan !== 'free';/,
-    'THIS GUARD IS STALE, NOT THE PAGES: canUseProductModel no longer refuses Apple MAX to Free, so ' +
-      'a free account may no longer be pinned to the three-step lane.',
+    'Apple MAX entitlement must still be paid even though run length is no longer a product tier.',
   );
 });
 
-test('the Free offer states the per-request step ceiling', () => {
-  const n = String(FREE_LANE_STEPS);
-  const word = WORDS[FREE_LANE_STEPS] ?? n;
-  const states = new RegExp(`\\b(${n}|${word})\\b[^.]{0,40}\\bsteps?\\b|\\bsteps?\\b[^.]{0,20}\\b(${n}|${word})\\b`, 'i');
-
+test('the Free offer states autonomous continuation without advertising a fake fixed run length', () => {
   for (const [name, src] of [['pricing.astro', pricing], ['docs/modes.astro', modes]]) {
-    assert.match(
-      visibleText(src),
-      states,
-      `${name} does not tell a reader that a free request runs at most ${FREE_LANE_STEPS} steps. ` +
-        'The page sells an allowance in builds measured at about sixteen steps; the shape of one ' +
-        'request is part of what is being offered.',
-    );
+    const text = visibleText(src);
+    assert.match(text, /Autonomous runs keep working|no artificial step or wall-clock ceiling/i,
+      `${name} does not describe the autonomous run contract`);
+    assert.doesNotMatch(text, /\b(up to|at most)\s+\d+\s+steps?\b/i,
+      `${name} still advertises a fixed step ceiling that the worker no longer has`);
   }
 });
 
@@ -146,15 +122,8 @@ test('no page claims a difference between Apple and Apple MAX that the gateway d
 });
 
 test('the guard has teeth', () => {
-  // The step disclosure: the Free card as it shipped, with no step line at all.
-  const shippedCard =
-    '<li>About 30 quality-gated builds a month</li><li>Apple · limited free access</li>' +
-    '<li>Unlimited projects</li>';
-  const n = String(FREE_LANE_STEPS);
-  const word = WORDS[FREE_LANE_STEPS] ?? n;
-  const states = new RegExp(`\\b(${n}|${word})\\b[^.]{0,40}\\bsteps?\\b|\\bsteps?\\b[^.]{0,20}\\b(${n}|${word})\\b`, 'i');
-  assert.doesNotMatch(visibleText(shippedCard), states, 'the shipped card would have passed — re-aim this');
-  assert.match(visibleText('<li>Up to 3 steps per request</li>'), states, 'the replacement does not satisfy its own check');
+  assert.match(visibleText('<li>Up to 3 steps per request</li>'), /up to 3 steps/i,
+    'the obsolete fixed-step copy would no longer be detected');
 
   //[[ The model claim: BOTH sentences this page has shipped, because the guard now refuses whichever
   //   one the gateway contradicts and a pattern that only catches one of them is half a guard.

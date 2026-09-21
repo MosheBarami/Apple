@@ -122,16 +122,12 @@ const HOSTILE = [
   ['an object', { toString: () => 'stone' }],
 ];
 
-test('CONTROL: every valid mode starts a run and gets a real step ceiling', async () => {
-  // If this fails, the harness is dead and every refusal below is meaningless.
+test('CONTROL: every valid mode starts an autonomous run with no step ceiling', async () => {
   for (const mode of VALID) {
     const { agent, errors } = await session().chat(mode);
     assert.ok(agent, `mode "${mode}" must start a run`);
     assert.deepEqual(errors, [], `mode "${mode}" must not be refused`);
-    assert.equal(typeof agent.maxSteps, 'number', `mode "${mode}" must get a numeric step ceiling`);
-    assert.ok(Number.isFinite(agent.maxSteps) && agent.maxSteps > 0, `mode "${mode}" ceiling must be usable`);
-    // the ceiling must actually be able to stop the loop — this is the comparison session.ts makes
-    assert.equal(9999 > agent.maxSteps, true, `mode "${mode}" ceiling must stop a runaway loop`);
+    assert.equal(agent.maxSteps, undefined, `mode "${mode}" must not receive a customer-visible step ceiling`);
   }
 });
 
@@ -144,16 +140,11 @@ for (const [label, mode] of HOSTILE) {
   });
 }
 
-test('NO ACCEPTED MODE CAN EVER LACK A STEP CEILING', async () => {
-  // The property that matters, stated directly rather than through the list above: whatever the
-  // ingress accepts must arrive with a ceiling that can stop the loop. A default like `?? 'clay'`
-  // would satisfy the refusal tests while quietly running a hostile value as something else; this
-  // one would still hold, which is why it is written as a property and not a case.
+test('UNBOUNDED RUNS DO NOT MEAN UNBOUNDED MODE INGRESS', async () => {
   for (const [, mode] of [...HOSTILE, ...VALID.map((m) => [m, m])]) {
     const { agent } = await session().chat(mode);
-    if (!agent) continue; // refused, which is the other acceptable outcome
-    assert.equal(typeof agent.maxSteps, 'number', `mode ${JSON.stringify(mode)} was ACCEPTED with maxSteps ${JSON.stringify(agent.maxSteps)}`);
-    assert.equal(9999 > agent.maxSteps, true, `mode ${JSON.stringify(mode)} was accepted with a ceiling that never stops`);
+    if (VALID.includes(mode)) assert.ok(agent, `valid mode ${mode} was refused`);
+    else assert.equal(agent, undefined, `hostile mode ${JSON.stringify(mode)} entered an autonomous run`);
   }
 });
 
@@ -164,5 +155,5 @@ test('a refused mode does not consume the run slot', async () => {
   const { agent, errors } = await s.chat('stone');
   assert.ok(agent, 'a valid mode must still start after a refused one');
   assert.ok(errors.includes('bad_mode'), 'the earlier refusal is still reported');
-  assert.equal(typeof agent.maxSteps, 'number');
+  assert.equal(agent.maxSteps, undefined);
 });

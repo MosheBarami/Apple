@@ -126,11 +126,10 @@ test('the run that writes the log sets the finish reason on every step, not only
   assert.ok(assign > 0 && branch > assign, 'the assignment must precede the truncation branch, or a completed run records nothing');
 });
 
-test('the step-cap and wall-clock branches pass their own outcome to the log', () => {
+test('the runtime no longer has artificial step-cap or wall-clock terminal branches', () => {
   const src = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
-  assert.match(src, /finishRun\(agent, 'done', undefined, undefined, 'timeout'\)/);
-  assert.match(src, /finishRun\(agent, 'done', undefined, undefined, 'step_limit'\)/);
-  // And the wire is deliberately unchanged: apps/web renders `msg_end.stopReason` from a union in
-  // @golem/shared that this lane does not own.
-  assert.match(src, /stopReason: reason/);
+  assert.doesNotMatch(src, /finishRun\(agent, 'done', undefined, undefined, 'timeout'\)/);
+  assert.doesNotMatch(src, /finishRun\(agent, 'done', undefined, undefined, 'step_limit'\)/);
+  assert.doesNotMatch(src, /I reached the step limit for this run/);
+  assert.doesNotMatch(src, /RUN_WALL_MS/);
 });

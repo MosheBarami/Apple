@@ -464,9 +464,9 @@ const start = async (h, text = 'build a small tower', mode = 'stone') => {
 const lastEnd = (h) => [...h.sent].reverse().find((m) => m.type === 'msg_end');
 const assistantRow = (h) => [...h.sql.messages].reverse().find((m) => m.role === 'assistant');
 
-test('END TO END: a run cut off with nothing applied gives the Credits back and SAYS SO', async () => {
+test('END TO END: a terminal provider failure with nothing applied gives the Credits back and SAYS SO', async () => {
   const book = ledger(100);
-  const h = makeSession({ book, responses: [gatewayResponse({ finishReason: 'length', text: 'I was about to create the first platform', neurons: 60 })] });
+  const h = makeSession({ book, responses: [gatewayResponse({ finishReason: 'error', text: 'I was about to create the first platform', neurons: 60 })] });
   await start(h);
   await h.session.alarm();
 
@@ -487,22 +487,19 @@ test('END TO END: a run cut off with nothing applied gives the Credits back and 
   assert.equal(note.run_id, lastEnd(h).msgId);
 });
 
-test('A RUN THAT SAVED NOTHING DOES NOT TELL THE USER THEIR WORK IS SAVED', async () => {
-  // "Everything completed before the cutoff is saved" was printed on every truncated run, including
-  // the ones that applied nothing. Vacuously true, read as reassurance, and it sends someone
-  // looking in their place for work that was never put there.
-  const h = makeSession({ responses: [gatewayResponse({ finishReason: 'length', text: 'Starting on it', neurons: 60 })] });
+test('A TERMINAL FAILURE THAT SAVED NOTHING DOES NOT TELL THE USER THEIR WORK IS SAVED', async () => {
+  const h = makeSession({ responses: [gatewayResponse({ finishReason: 'error', text: 'Starting on it', neurons: 60 })] });
   await start(h);
   await h.session.alarm();
   const content = assistantRow(h).content;
-  assert.match(content, /reached its output limit/, 'what stopped it is still said');
-  assert.match(content, /Send another message/, 'and so is what to do next');
+  assert.match(content, /could not complete|failed/i, 'what stopped it is still said');
+  assert.doesNotMatch(content, /send another message/i, 'the product must not outsource recovery to the user');
   assert.doesNotMatch(content, /is saved/, 'but nothing was saved, so nothing claims to be');
 });
 
-test('THE CONTROL: a run that changed the place keeps its Credits, cut off or not', async () => {
+test('THE CONTROL: a terminal failure after a real mutation keeps its Credits', async () => {
   const book = ledger(100);
-  const h = makeSession({ book, responses: [gatewayResponse({ finishReason: 'length', text: 'I finished the tower and the final check is', neurons: 60 })] });
+  const h = makeSession({ book, responses: [gatewayResponse({ finishReason: 'error', text: 'I finished the tower and the final check is', neurons: 60 })] });
   const agent = await start(h);
   agent.step = 1;
   agent.mutated = true;
@@ -581,7 +578,7 @@ test('A LEDGER THAT DID NOT ANSWER IS NOT A REFUND THAT FAILED — and the reply
   // rule pointed at a payment: a failure to observe must not render as an observation.
   const book = ledger(100);
   const deaf = { ...book, handle: (path, body) => (path === '/refund' ? Response.json({ ok: true }) : book.handle(path, body)) };
-  const h = makeSession({ book: deaf, responses: [gatewayResponse({ finishReason: 'length', text: 'Partial', neurons: 60 })] });
+  const h = makeSession({ book: deaf, responses: [gatewayResponse({ finishReason: 'error', text: 'Partial', neurons: 60 })] });
   await start(h);
   await h.session.alarm();
 

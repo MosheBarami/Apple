@@ -127,20 +127,19 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     automatically, and the reply tells you how many.
   </p>
 
-  <h3>“The model dropped that step”</h3>
+  <h3>Transient model failure</h3>
   <p>
-    A single inference call failed after Apple had already done real work. Everything up to that
-    step is saved in your place, and the dropped step is <strong>not</strong> charged — Credits are
-    billed from the compute a call actually reports, and a call that returned nothing reports
-    nothing. Send another message and Apple continues from where it stopped; you do not need to
-    repeat the whole instruction.
+    Apple retries transient provider failures inside the same run with bounded backoff. Work already
+    applied to Studio stays in place, completed tools are not replayed, and you do not need to send
+    another message to restart the task. If the provider keeps failing repeatedly, the run eventually
+    ends with a real error rather than looping and spending indefinitely.
   </p>
 
-  <h3>“Apple is busy” or “too many requests”</h3>
+  <h3>Provider is temporarily busy</h3>
   <p>
-    The model provider rate-limited us, not you. Nothing about your account changed and your
-    allowance is untouched. Wait a few seconds and continue — this clears on its own, and it clears
-    faster than retrying immediately, which joins the same queue.
+    A free provider refusal is handled as an internal wait. Apple keeps the run open, sleeps until
+    the retry window, and resumes the same step automatically. Nothing about your account changes,
+    and there is no Continue button or second message you need to send.
   </p>
 
   <h3>“Apple has reached today's shared building capacity”</h3>

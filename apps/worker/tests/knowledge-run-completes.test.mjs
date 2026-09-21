@@ -279,37 +279,34 @@ test('A RUN THAT USES THE KNOWLEDGE LIBRARY FINISHES, THROUGH THE BURST THAT USE
   assert.equal(lastEnd(h).error, undefined, 'a run that rode out a burst reports no failure');
 });
 
-test('the retry is BOUNDED: a burst that never clears still ends the run, and says so', async () => {
+test('a burst that never clears sleeps and keeps the same run alive instead of handing it back to the user', async () => {
   const h = makeSession({ responses: [CALLS_UI_CONSTRUCTION, REFUSED, REFUSED, REFUSED, REFUSED] });
   await start(h);
   await h.session.alarm();
 
   await h.session.alarm();
-  for (let i = 0; i < 3; i++) {
-    if (lastEnd(h)) break;
-    await fireScheduledAlarm(h);
-  }
+  for (let i = 0; i < 3; i++) await fireScheduledAlarm(h);
 
-  const end = lastEnd(h);
-  assert.equal(end.stopReason, 'error', 'a burst that outlasts every wait is still a failed run');
-  assert.equal(end.error, 'busy', 'and it is reported as the provider refusal it is, not as a model failure');
-  assert.equal(h.chatCalls.length, 5, 'four attempts at the refused step and no more — the wait cannot loop');
-  assert.equal(verdict(h).ok, false, 'CONTROL: the joint property is false here, and must be');
+  const waiting = h.store.get('agent');
+  assert.equal(lastEnd(h), undefined, 'provider burst must not manufacture a terminal customer reply');
+  assert.equal(waiting.status, 'running');
+  assert.equal(typeof waiting.resumeAt, 'number');
+  assert.equal(h.chatCalls.length, 5, 'the fixture exercised four refused retries after the knowledge call');
+  assert.equal(waiting.trace.some((t) => t.tool === 'get_ui_construction' && t.ok), true,
+    'the work already completed before the burst remains on the live run');
 });
 
-test('CONTROL — REACHED WITHOUT FINISHING reads as failure, which first-reach would have called a win', async () => {
-  // The exact shape the deployed worker produced 5 times out of 7: the library was consulted, the
-  // provider refused, the run ended. `reached` alone is true and the customer got nothing.
+test('CONTROL — REACHED WHILE STILL RUNNING is not misreported as a finished success', async () => {
   const h = makeSession({ responses: [CALLS_UI_CONSTRUCTION, REFUSED, REFUSED, REFUSED, REFUSED] });
   await start(h);
   await h.session.alarm();
   await h.session.alarm();
-  for (let i = 0; i < 3 && !lastEnd(h); i++) await fireScheduledAlarm(h);
+  for (let i = 0; i < 3; i++) await fireScheduledAlarm(h);
 
-  const v = verdict(h);
-  assert.equal(v.reached, true, 'the library WAS used');
-  assert.equal(v.finished, false, 'and the run did not finish');
-  assert.equal(v.ok, false, 'so the run is a failure, however good the reach number looks');
+  const live = h.store.get('agent');
+  assert.equal(live.trace.some((t) => t.tool === 'get_ui_construction' && t.ok), true, 'the library WAS used');
+  assert.equal(lastEnd(h), undefined, 'the run is still working rather than falsely terminal');
+  assert.equal(live.status, 'running');
 });
 
 test('CONTROL — FINISHED WITHOUT REACHING reads as failure, which the any-call measurement scored 0 and moved on', async () => {

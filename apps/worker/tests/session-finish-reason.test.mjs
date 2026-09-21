@@ -250,7 +250,7 @@ const lastEnd = (h) => [...h.sent].reverse().find((m) => m.type === 'msg_end');
 const assistantRow = (h) => [...h.sql.messages].reverse().find((m) => m.role === 'assistant');
 const history = async (h) => (await (await h.session.fetch(new Request('https://do/messages?limit=100'))).json()).messages;
 
-test('length AFTER a successful mutation preserves the partial text and settles as failed, never done', async () => {
+test('length AFTER a successful mutation stays inside the same run and schedules a smaller retry', async () => {
   const h = makeSession({ responses: [gatewayResponse({ finishReason: 'length', text: 'I finished the tower and the final verification is', neurons: 60 })] });
   const agent = await start(h);
   agent.step = 1;
@@ -260,19 +260,21 @@ test('length AFTER a successful mutation preserves the partial text and settles 
 
   await h.session.alarm();
 
-  const end = lastEnd(h);
-  const row = assistantRow(h);
-  assert.equal(end.stopReason, 'error', 'output-limit truncation is not a successful terminal state');
-  assert.match(row.content, /I finished the tower and the final verification is/);
-  assert.match(row.content, /output limit|did not finish|continue/i);
-  assert.match(row.tool_trace, /create_instances/, 'completed work before the truncation stays in the persisted trace');
-  assert.equal(h.sql.models.get(row.id), 'apple', 'the selected ProductModel survives the failed finish');
+  const continued = h.store.get('agent');
+  assert.equal(lastEnd(h), undefined, 'output-limit truncation must not end the customer run');
+  assert.equal(continued.status, 'running');
+  assert.equal(continued.lengthRecoveries, 1);
+  assert.match(continued.llm.at(-1).content, /Continue the SAME task/);
+  assert.equal(h.sent.some((m) => m.type === 'delta' && /final verification is/.test(m.text ?? '')), false,
+    'partial provider text must not be shown as a customer answer');
+  assert.equal(continued.trace.some((entry) => entry.tool === 'create_instances' && entry.ok), true,
+    'completed work before the truncation stays in the durable trace');
   assert.deepEqual(h.spends, [1, 1], 'one upfront Credit plus the measured run settlement remain charged');
-  assert.equal(end.creditsSpent, 2, 'msg_end carries the settled run total');
+  assert.ok(h.alarms.length >= 2, 'the same run was not re-armed after truncation');
 });
 
 test('terminal outcome, settled cost, context budget and denied-tool facts survive the REST history boundary', async () => {
-  const h = makeSession({ responses: [gatewayResponse({ finishReason: 'length', text: 'Partial final verification', neurons: 60 })] });
+  const h = makeSession({ responses: [gatewayResponse({ finishReason: 'error', text: 'Provider failed after verification', neurons: 60 })] });
   const agent = await start(h);
   agent.toolPermissions = { search_creation_skills: 'deny' };
   h.store.set('agent', structuredClone(agent));
@@ -310,14 +312,15 @@ test('old assistant rows with no terminal metadata stay unknown after reload rat
   assert.equal('deniedTools' in old, false);
 });
 
-test('length BEFORE any mutation is still a failed partial response, not fake completion', async () => {
+test('length BEFORE any mutation is recovered internally rather than shown as a failed partial response', async () => {
   const h = makeSession({ responses: [gatewayResponse({ finishReason: 'length', text: 'I was about to create the first platform', neurons: 60 })] });
   await start(h);
   await h.session.alarm();
 
-  assert.equal(lastEnd(h).stopReason, 'error');
-  assert.match(assistantRow(h).content, /I was about to create the first platform/);
-  assert.match(assistantRow(h).content, /continue/i);
+  assert.equal(lastEnd(h), undefined);
+  assert.equal(h.store.get('agent').status, 'running');
+  assert.equal(h.sent.some((m) => m.type === 'delta' && /about to create/.test(m.text ?? '')), false);
+  assert.match(h.store.get('agent').llm.at(-1).content, /same task/i);
   assert.deepEqual(h.spends, [1, 1]);
 });
 
@@ -340,7 +343,7 @@ test('explicit provider error persists useful partial text and an actionable fai
   assert.equal(end.stopReason, 'error');
   assert.equal(end.error, 'model_failed');
   assert.match(assistantRow(h).content, /verification reached the doorway/);
-  assert.match(assistantRow(h).content, /continue/i);
+  assert.doesNotMatch(assistantRow(h).content, /send another message/i);
   assert.deepEqual(h.spends, [1, 1]);
 });
 
@@ -353,10 +356,11 @@ test('a gateway response with no completion reason fails closed instead of inven
   assert.equal(end.stopReason, 'error');
   assert.equal(end.error, 'model_failed');
   assert.match(assistantRow(h).content, /Partial response with no terminal marker/);
-  assert.match(assistantRow(h).content, /completion|continue/i);
+  assert.match(assistantRow(h).content, /completion|confirm/i);
+  assert.doesNotMatch(assistantRow(h).content, /send another message/i);
 });
 
-test('a truncated direct artifact request keeps the artifact failure and does not auto-retry the model', async () => {
+test('a truncated direct artifact request keeps the run live and suppresses the invented artifact claim', async () => {
   const h = makeSession({ responses: [gatewayResponse({
     finishReason: 'length',
     text: 'Done — your image is available as image_fake_123',
@@ -365,12 +369,10 @@ test('a truncated direct artifact request keeps the artifact failure and does no
   await start(h, 'create an image of a red apple');
   await h.session.alarm();
 
-  const end = lastEnd(h);
-  const row = assistantRow(h);
-  assert.equal(end.stopReason, 'incomplete', 'missing requested artifact remains the stronger terminal fact');
-  assert.match(row.content, /No image was generated/);
-  assert.match(row.content, /output limit/);
-  assert.doesNotMatch(row.content, /image_fake_123/, 'artifact guard still suppresses an invented image claim');
+  assert.equal(lastEnd(h), undefined);
+  assert.equal(h.store.get('agent').status, 'running');
+  assert.equal(h.sent.some((m) => m.type === 'delta' && /image_fake_123/.test(m.text ?? '')), false,
+    'artifact guard still suppresses an invented image claim');
   assert.equal(h.chatCalls.length, 1, 'an output-limit finish does not buy a blanket retry');
   assert.deepEqual(h.spends, [1, 1], 'the consumed call remains settled once');
 });

@@ -208,7 +208,8 @@ export function progressLine(run: RunSnapshot | null): string {
   if (!run) return 'Nothing is building right now.';
   const phase = run.phase.replace(/_/g, ' ');
   const tools = run.tools.length;
-  return `Building — ${phase}, step ${run.step} of ${run.totalSteps}, ${tools} ${tools === 1 ? 'action' : 'actions'} so far.`;
+  const step = run.totalSteps ? `step ${run.step} of ${run.totalSteps}` : `step ${run.step}`;
+  return `Building — ${phase}, ${step}, ${tools} ${tools === 1 ? 'action' : 'actions'} so far.`;
 }
 
 // ---------------------------------------------------------------- commands

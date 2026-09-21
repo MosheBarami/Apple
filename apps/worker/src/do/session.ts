@@ -188,7 +188,8 @@ interface AgentState {
   msgId: string;
   llm: GatewayRequest['messages'];
   step: number;
-  maxSteps: number;
+  /** Legacy field from pre-autonomous runs. New runs do not have a step-count ceiling. */
+  maxSteps?: number;
   creditsSpent: number;
   /**
    * HOW those Credits were taken, split the way QuotaDO took them: renewable allowance first, then
@@ -224,6 +225,10 @@ interface AgentState {
   highEffortUsed?: number;
   /** the previous step errored or a tool reported failure */
   priorStepFailed?: boolean;
+  /** provider output cuts recovered inside this same run; diagnostic/escalation only, never a cap */
+  lengthRecoveries?: number;
+  /** consecutive provider transport failures; reset after a successful model response */
+  transientFailures?: number;
   /** the last visual critique failed its quality gate */
   visualDefectsFound?: boolean;
   /**
@@ -293,8 +298,8 @@ interface AgentState {
   rebuildOrdered?: boolean;
   /**
    * Provider rate-limit waits already spent on the CURRENT step, and the earliest moment that step
-   * may be attempted again. Reset once the step's model call gets through, so the budget is per
-   * step rather than per run; the run's own wall clock (RUN_WALL_MS) remains the outer bound.
+   * may be attempted again. Reset once the step's model call gets through. The run itself has no
+   * wall-clock or step-count ceiling; quota, Stop, access and operation timeouts are the bounds.
    *
    * `resumeAt` exists because the alarm is shared. `armStudioWatchdog` legitimately pulls the alarm
    * earlier, and every alarm during a run takes a step — without a "not before" mark the watchdog's
@@ -367,14 +372,14 @@ const accessClearPendingKey = (userId: string): string => `accessClearPending:${
 // build (2-3) + render + critique + fix (2) + re-render is eight on its own — and a Stone lamp-post
 // build was measured hitting the ceiling mid-work, leaving scaffolding behind and never finishing
 // the detail pass. These are sized so the loop can actually close.
-const STEP_LIMITS: Record<GolemMode, number> = { clay: 3, stone: 16, rune: 24 };
+const VALID_MODES = new Set<GolemMode>(['clay', 'stone', 'rune']);
 
 /** Tools that change the project. A run that ends without one of these has not done its job. */
 const MUTATING_TOOLS = new Set([
   'edit_script', 'create_instances', 'set_properties', 'delete_instances', 'run_luau', 'insert_asset',
 ]);
 /** How many times one run may be steered back to work after replying without acting. */
-const MAX_NUDGES = 2;
+const MAX_NUDGE_LEVEL = 6;
 //[[ THE FREE LANE'S BUDGET WAS BELOW THE FLOOR ITS OWN MODEL NEEDS TO ANSWER AT ALL.
 //
 //   `clay` routes to @cf/qwen/qwen3-30b-a3b-fp8, a REASONING model: it spends output budget
@@ -422,32 +427,14 @@ const MODE_BASE_TOKENS: Record<GolemMode, number> = { clay: 4400, stone: 4400, r
  *   mode=nonsense   maxSteps=undefined  same
  *   mode=__proto__  maxSteps={}         Object.prototype, and `9999 > {}` is false too
  *
- * An agent run was created every time. `memory` and `vision` are the sharp cases because they are
- * real DEFAULT_MODELS keys, so gateway.ts's `if (!cfg) throw` — the only thing that rejected a bad
- * mode — does not fire for them either, and the token arithmetic goes NaN through a chain of `>`
- * comparisons that all fail open. But the step ceiling is set HERE, before the gateway is ever
- * consulted, so ANY unrecognised mode removes it. An unbounded agent loop is a larger exposure
- * than any single under-reserved call.
- *
- * MEMBERSHIP IS CHECKED AGAINST BOTH TABLES, deliberately. The bug was two `Record<GolemMode, T>`
- * tables with different key sets — a compile-time promise that nothing keeps at runtime. Requiring
- * a mode to appear in both means that if they ever drift again the mode is REFUSED rather than
- * half-configured, so the next drift is a visible error instead of a missing ceiling.
- *
- * hasOwnProperty, not `in` and not truthiness: `'__proto__' in STEP_LIMITS` is true.
- *
- * THE TWO-TABLE CHECK CANNOT BE FALSIFIED TODAY and should not be mistaken for a tested clause.
- * The tables currently hold the same three keys, so dropping the MODE_BASE_TOKENS half turns
- * nothing red. It is kept because it is the drift itself that is being guarded against: the day
- * someone adds a fourth mode to one table and not the other, this refuses it instead of handing it
- * an undefined ceiling. Falsifiable only by a future that has not happened yet.
+ * Accepted modes are intentionally step-unbounded. That makes this ingress check more important,
+ * not less: `memory`, `vision`, `__proto__` and arbitrary strings must never become autonomy modes
+ * merely because another gateway table happens to contain the same key.
  */
 function asGolemMode(x: unknown): GolemMode | null {
   if (typeof x !== 'string') return null;
-  const inBoth =
-    Object.prototype.hasOwnProperty.call(STEP_LIMITS, x) &&
-    Object.prototype.hasOwnProperty.call(MODE_BASE_TOKENS, x);
-  return inBoth ? (x as GolemMode) : null;
+  const mode = x as GolemMode;
+  return VALID_MODES.has(mode) && Object.prototype.hasOwnProperty.call(MODE_BASE_TOKENS, x) ? mode : null;
 }
 
 /** Runtime validation for the additive product-model field on newer clients. */
@@ -481,18 +468,12 @@ function effectiveProductModel(mode: GolemMode, requested?: ProductModel): Produ
 //   version a customer can actually be told. Honouring it and the measurement at once means the free
 //   lane simply gets the better model everywhere, because the better model is also the cheaper one.
 //
-//   The tiers still differ, and by the honest axis: maxStepsFor caps the free lane at Plan's step
-//   limit and the daily allowance is smaller. Same brain, less of it — rather than a brain that
-//   cannot answer. ]]
+//   The tiers still differ by entitlement, allowance, effort policy and MAX-only capabilities.
+//   They do not differ by an artificial run-length ceiling that leaves a build half-finished. ]]
 export function gatewayModelFor(mode: GolemMode, productModel?: ProductModel): string {
   if (productModel === 'apple') return 'stone';
   if (productModel === 'apple-max') return mode === 'clay' ? 'stone' : mode;
   return mode;
-}
-
-/** The free Apple lane is bounded independently of the specialist's tool policy. */
-function maxStepsFor(mode: GolemMode, productModel?: ProductModel): number {
-  return productModel === 'apple' ? Math.min(STEP_LIMITS[mode], STEP_LIMITS.clay) : STEP_LIMITS[mode];
 }
 
 /**
@@ -510,9 +491,8 @@ function maxStepsFor(mode: GolemMode, productModel?: ProductModel): number {
  * unparseable tool call, nothing built, and the Credits spent. Asking the free lane to do the
  * Stone job on a Clay budget is that failure made structural.
  *
- * So: the budget is whatever the offered toolset is sized for. What the free lane is still bounded
- * by is `maxStepsFor` (fewer steps) and the cheaper model behind `gatewayModelFor` — bounds that
- * make a run smaller rather than making it fail halfway through writing a tool call.
+ * So: the budget is whatever the offered toolset is sized for. Free-vs-paid bounds live in
+ * allowance/entitlement and capability policy, not a hidden maximum number of work steps.
  *
  * Exported alongside `gatewayModelFor` because the budget that reaches the provider is the MINIMUM
  * of the two — llmChat clamps with `Math.min(req.maxTokens ?? cfg.maxTokens, cfg.maxTokens)` — so
@@ -562,91 +542,6 @@ const RATE_LIMIT_WAIT_MS = [5_000, 15_000, 30_000] as const;
  * correct if one ever does, instead of a comment asserting that none can.
  */
 class StepRefusedError extends RateLimitedError {}
-
-/**
- * HOW LONG A RUN MAY LAST — CHECKLIST-V2 §50.14.
- *
- * STEP_LIMITS bounds how many TIMES work is attempted. Nothing bounded how LONG those attempts
- * take, and `startedAt` was read exactly once, at the end, to report a `durationMs` nobody acted
- * on. A rune run of 24 steps each waiting on a slow provider runs for over an hour and spends the
- * whole time. The runaway that matters is not usually a fast loop; it is a slow one.
- *
- * Ordered by how long the mode is meant to work: Plan is a question, Agent is a build, Super Agent
- * is long-horizon. None of them is an hour.
- */
-export const RUN_WALL_MS: Record<GolemMode, number> = {
-  clay: 5 * 60_000,
-  stone: 20 * 60_000,
-  rune: 45 * 60_000,
-};
-
-/** The strictest ceiling, which is what an unrecognised mode gets. */
-const STRICTEST_RUN_WALL_MS = Math.min(...Object.values(RUN_WALL_MS));
-
-export interface RunDurationVerdict {
-  over: boolean;
-  elapsedMs: number;
-  capMs: number;
-  /** What to tell the agent. Never blames the step ceiling for a time limit. */
-  reason: string;
-}
-
-/**
- * Has this run been going too long?
- *
- * AN UNREADABLE CLOCK STOPS THE RUN. `Date.now() - NaN` is NaN and `NaN > cap` is FALSE, so the
- * naive form of this check removes the limit exactly when the state is corrupt. A deadline that
- * cannot be computed is a deadline that has passed — the same rule resolveMembership applies to an
- * expiry it cannot read.
- *
- * A start time in the FUTURE is corrupt too, not a run with extra credit.
- *
- * An unrecognised mode gets the STRICTEST ceiling rather than none. session.ts validates mode at
- * every ingress, so this is defence in depth — and the safe direction for a value nobody
- * recognised is the tightest bound.
- */
-export function runDurationVerdict(input: {
-  startedAt: unknown;
-  mode: unknown;
-  now: unknown;
-}): RunDurationVerdict {
-  const capMs =
-    typeof input.mode === 'string' && Object.prototype.hasOwnProperty.call(RUN_WALL_MS, input.mode)
-      ? RUN_WALL_MS[input.mode as GolemMode]
-      : STRICTEST_RUN_WALL_MS;
-
-  const started = input.startedAt;
-  const now = input.now;
-  if (typeof started !== 'number' || !Number.isFinite(started) || typeof now !== 'number' || !Number.isFinite(now)) {
-    return {
-      over: true,
-      elapsedMs: 0,
-      capMs,
-      reason: 'this run was stopped because its start time could not be read — an unreadable clock is not an unlimited one',
-    };
-  }
-  const elapsedMs = now - started;
-  if (elapsedMs < 0) {
-    return {
-      over: true,
-      elapsedMs: 0,
-      capMs,
-      reason: 'this run was stopped because its start time is in the future — the clock could not be trusted',
-    };
-  }
-  if (elapsedMs >= capMs) {
-    return {
-      over: true,
-      elapsedMs,
-      capMs,
-      reason:
-        `this run reached its time limit of ${Math.round(capMs / 60_000)} minutes (it had been going ` +
-        `${Math.round(elapsedMs / 60_000)}). Everything done so far is saved — send another message to carry on.`,
-    };
-  }
-  return { over: false, elapsedMs, capMs, reason: '' };
-}
-
 
 // ---------------------------------------------------------------------------------------------
 // PLUGIN POLL PACING — this is the largest recurring cost in the system, not inference.
@@ -2632,7 +2527,6 @@ export class SessionDO extends DurableObject<Env> {
       ...(agent.productModel ? { productModel: agent.productModel } : {}),
       phase: agent.phase ?? 'planning',
       step: agent.step,
-      totalSteps: agent.maxSteps,
       text: agent.streamedText ?? '',
       tools: agent.uiTools ?? [],
       startedAt: agent.startedAt,
@@ -3172,7 +3066,6 @@ export class SessionDO extends DurableObject<Env> {
       // trimTranscript documents — the agent kept working with no record of the task.
       llm: [{ role: 'system', content: sys }, ...history, { role: 'user', content: text, pinned: true }],
       step: 0,
-      maxSteps: maxStepsFor(mode, selectedProductModel),
       creditsSpent: 1,
       // The admission charge above, apportioned exactly as QuotaDO took it. Spread rather than
       // assigned so an older QuotaDO that reports no split leaves both fields ABSENT — which is the
@@ -3277,14 +3170,8 @@ export class SessionDO extends DurableObject<Env> {
       await this.finishRun(agent, 'stopped');
       return;
     }
-    if (Date.now() - agent.lastStepAt > STEP_STALE_MS && agent.step > 0) {
-      agent.finalText = agent.finalText || 'The run was interrupted. Everything up to the last completed step is saved — you can continue from here.';
-      await this.finishRun(agent, 'error', 'interrupted');
-      return;
-    }
-    // A step waiting out a provider burst is not a step that is ready. Checked AFTER the staleness
-    // branch above on purpose: a wait that somehow outlives STEP_STALE_MS is a wedged run and must
-    // still be declared interrupted rather than sleeping forever on its own say-so.
+    // Durable runs may legitimately sleep for minutes or hours between alarms. Age is not evidence
+    // that work is lost: Stop/access/quota and the operation-specific timeouts are the actual gates.
     if (typeof agent.resumeAt === 'number' && Date.now() < agent.resumeAt) {
       await this.ctx.storage.setAlarm(agent.resumeAt);
       return;
@@ -3318,9 +3205,11 @@ export class SessionDO extends DurableObject<Env> {
         //   the step did not run, and charging the step budget for work the provider refused to do
         //   would shorten the very runs this exists to let finish. ]]
         const waited = agent.rateLimitWaits ?? 0;
-        const waitMs = e instanceof StepRefusedError ? RATE_LIMIT_WAIT_MS[waited] : undefined;
+        const waitMs = e instanceof StepRefusedError
+          ? RATE_LIMIT_WAIT_MS[Math.min(waited, RATE_LIMIT_WAIT_MS.length - 1)]
+          : undefined;
         if (waitMs !== undefined) {
-          agent.rateLimitWaits = waited + 1;
+          agent.rateLimitWaits = Math.min(waited + 1, RATE_LIMIT_WAIT_MS.length - 1);
           agent.step = Math.max(0, agent.step - 1);
           agent.resumeAt = Date.now() + waitMs;
           await this.persistAgent(agent);
@@ -3335,15 +3224,23 @@ export class SessionDO extends DurableObject<Env> {
         return;
       }
       const msg = e instanceof Error ? e.message : String(e);
-      // Provider hiccups are surfaced, never silently re-billed. The agent recovers by asking
-      // the user to continue rather than spending a second time on the same step.
+      // Provider transport hiccups are recovered inside this run. This branch is before a usable
+      // provider response/tool result exists, so it never replays a mutating tool.
       if (/inference failed/i.test(msg) && agent.step > 1) {
+        const failures = (agent.transientFailures ?? 0) + 1;
+        agent.transientFailures = failures;
+        if (failures <= 8) {
+          agent.step = Math.max(0, agent.step - 1);
+          agent.resumeAt = Date.now() + Math.min(30_000, 1_000 * 2 ** Math.min(failures, 5));
+          console.warn('[session] transient model step failed; retrying in-run:', msg);
+          await this.persistAgent(agent);
+          await this.ctx.storage.setAlarm(agent.resumeAt);
+          return;
+        }
         agent.finalText =
           (agent.finalText ? agent.finalText + '\n\n' : '') +
-          'The model dropped that step. Everything up to here is saved — send another message and I will pick up where I left off.';
-        // The provider's own words stay here, where support can read them. They are not sent: see
-        // RUN_FAILURES in @golem/shared for why the wire carries a code instead.
-        console.warn('[session] dropped step:', msg);
+          'The model service kept failing before it could return a usable step. Work already applied to Studio is saved.';
+        console.warn('[session] repeated model step failure:', msg);
         await this.finishRun(agent, 'error', 'dropped_step');
         return;
       }
@@ -3364,7 +3261,7 @@ export class SessionDO extends DurableObject<Env> {
       // branch above it instead, and it answers "did I lose anything" first.
       agent.finalText =
         agent.finalText ||
-        'That step failed on our side. Everything up to here is saved — send another message and I will pick up where I left off.';
+        'That step failed on our side. Work already applied to Studio is saved.';
       console.warn('[session] step failed:', msg);
       await this.finishRun(agent, 'error', 'model_failed');
     }
@@ -3396,20 +3293,6 @@ export class SessionDO extends DurableObject<Env> {
 
     // TIME before STEPS: a run that has been going too long should be told so, not told it ran out
     // of steps. What stopped it has to be what it is told, or the next attempt repeats it.
-    const duration = runDurationVerdict({ startedAt: agent.startedAt, mode: agent.mode, now: Date.now() });
-    if (duration.over) {
-      agent.finalText = agent.finalText || duration.reason;
-      // 'done' on the wire, 'timeout' in the log. The user is told what stopped it by
-      // `duration.reason`; the rollups now count it as the failure it is.
-      await this.finishRun(agent, 'done', undefined, undefined, 'timeout');
-      return;
-    }
-
-    if (agent.step > agent.maxSteps) {
-      agent.finalText = agent.finalText || 'I reached the step limit for this run. Progress so far is saved — send another message to continue.';
-      await this.finishRun(agent, 'done', undefined, undefined, 'step_limit');
-      return;
-    }
     if (agent.step > 1) {
       const state = await this.quotaState(agent.userId);
       if (state.creditsRemaining <= 0) {
@@ -3467,7 +3350,7 @@ export class SessionDO extends DurableObject<Env> {
     // otherwise carries whatever the previous tool left us in, until the next
     // tool call renames it. Never invent a stage the agent has not entered.
     agent.phase = agent.step === 1 ? (agent.mode === 'clay' ? 'understanding' : 'planning') : (agent.phase ?? 'building');
-    this.broadcast({ type: 'agent_status', phase: agent.phase, step: agent.step, totalSteps: agent.maxSteps, creditsSpent: agent.creditsSpent });
+    this.broadcast({ type: 'agent_status', phase: agent.phase, step: agent.step, creditsSpent: agent.creditsSpent });
 
     const studioConnected = await this.pluginConnected();
     //[[ NARROWING ONLY, and in this order.
@@ -3564,7 +3447,6 @@ export class SessionDO extends DurableObject<Env> {
       type: 'agent_status',
       phase: agent.phase ?? 'planning',
       step: agent.step,
-      totalSteps: agent.maxSteps,
       ...(effortApplied ? { effort: choice.effort, effortReason: choice.reason } : {}),
       creditsSpent: agent.creditsSpent,
     });
@@ -3602,6 +3484,7 @@ export class SessionDO extends DurableObject<Env> {
     // The burst this step was waiting on has cleared, so the next one starts from a full set of
     // waits. Per STEP, not per run: the run's wall clock is what bounds the total.
     agent.rateLimitWaits = 0;
+    agent.transientFailures = 0;
     delete agent.resumeAt;
     // Pairing can change while the model is in flight. Re-read the current capability report before
     // interpreting or executing its response, and intersect it with what THIS call was offered.
@@ -3724,6 +3607,32 @@ export class SessionDO extends DurableObject<Env> {
     // step, so the value on the log is the last thing the provider said about this run — which is
     // the response the run ended on.
     agent.lastFinishReason = finishReason;
+    if (!res.toolCalls.length && finishReason === 'length') {
+      // Output ceilings are a provider-call boundary, not a customer-run boundary. The old path
+      // printed partial JSON/prose, ended the run and told the user to send another message. Keep
+      // the durable tool/results history, discard the unusable partial assistant payload, and ask
+      // the same run to retry the unfinished action in a smaller batch.
+      agent.priorStepFailed = true;
+      const cuts = (agent.lengthRecoveries ?? 0) + 1;
+      agent.lengthRecoveries = cuts;
+      const batchHint =
+        cuts >= 4
+          ? 'Use exactly one small mutating tool call for the next piece, then continue in later steps.'
+          : cuts >= 2
+            ? 'Split large instance/script work into small tool calls of at most four logical items.'
+            : 'Split any large tool payload into smaller calls instead of trying to describe the whole build at once.';
+      agent.llm.push({
+        role: 'user',
+        content:
+          'Your previous provider response hit its output ceiling before it became a complete action. ' +
+          'It was not shown to the user and did not end the run. Continue the SAME task from the ' +
+          'successful tools/results already in the transcript. Do not repeat completed work. ' +
+          batchHint,
+      });
+      await this.persistAgent(agent);
+      await this.ctx.storage.setAlarm(Date.now() + 10);
+      return;
+    }
     if (!res.toolCalls.length && finishReason !== 'stop') {
       //[[ "EVERYTHING COMPLETED BEFORE THE CUTOFF IS SAVED" IS A CLAIM, AND IT NEEDS A SUBJECT.
       //
@@ -3736,13 +3645,11 @@ export class SessionDO extends DurableObject<Env> {
       const kept = agent.mutated === true || agent.trace.some((t) => t.ok);
       const savedClause = kept ? ' Everything completed before it stopped is saved.' : '';
       const providerNote =
-        (finishReason === 'length'
-          ? 'The model reached its output limit before finishing this step.'
-          : finishReason === 'error'
-            ? 'The model could not complete this step.'
-            : 'The model response did not confirm that this step completed.') +
+        (finishReason === 'error'
+          ? 'The model could not complete this step.'
+          : 'The model response did not confirm that this step completed.') +
         savedClause +
-        ' Send another message and Apple will continue from here.';
+        ' Progress already applied to the project is preserved.';
       const artifactNote = artifact.missing
         ? artifact.tool === 'generate_image'
           ? 'No image was generated in this run. There is no new image to view or download.'
@@ -3758,7 +3665,7 @@ export class SessionDO extends DurableObject<Env> {
       await this.finishRun(
         agent,
         artifact.missing ? 'incomplete' : 'error',
-        finishReason === 'length' || artifact.missing ? undefined : 'model_failed',
+        artifact.missing ? undefined : 'model_failed',
         terminalContent,
       );
       return;
@@ -3775,8 +3682,8 @@ export class SessionDO extends DurableObject<Env> {
       if (artifact.missing) {
         const available = toolDefs(studioConnected, allowed)
           .some((tool) => tool.name === artifact.tool);
-        if (!artifact.attempted && available && (agent.nudges ?? 0) < MAX_NUDGES && agent.step < agent.maxSteps) {
-          agent.nudges = (agent.nudges ?? 0) + 1;
+        if (!artifact.attempted && available) {
+          agent.nudges = Math.min(MAX_NUDGE_LEVEL, (agent.nudges ?? 0) + 1);
           agent.llm.push({ role: 'user', content: `The requested artifact has not been created in this run. Call ${artifact.tool} now. Do not invent an artifact ID or describe work as completed without a successful tool result.` });
           await this.persistAgent(agent);
           await this.ctx.storage.setAlarm(Date.now() + 10);
@@ -3800,8 +3707,7 @@ export class SessionDO extends DurableObject<Env> {
         studioConnected &&
         agent.traits?.visualDesignTask &&
         allowed.has('inspect_visually') &&
-        !agent.autoCritiqued &&
-        agent.step < agent.maxSteps - 1
+        !agent.autoCritiqued
       ) {
         agent.autoCritiqued = true;
         agent.phase = 'critiquing';
@@ -3809,7 +3715,6 @@ export class SessionDO extends DurableObject<Env> {
           type: 'agent_status',
           phase: 'critiquing',
           step: agent.step,
-          totalSteps: agent.maxSteps,
           tool: 'inspect_visually',
         });
         const ctx2 = this.agentCtx(agent);
@@ -3862,8 +3767,8 @@ export class SessionDO extends DurableObject<Env> {
       // a message that never requested a change. See classifyRequest in reasoning.ts.
       const owesWork =
         agent.mode !== 'clay' && !agent.mutated && studioConnected && !agent.traits?.conversational;
-      if (owesWork && (agent.nudges ?? 0) < MAX_NUDGES && agent.step < agent.maxSteps) {
-        agent.nudges = (agent.nudges ?? 0) + 1;
+      if (owesWork) {
+        agent.nudges = Math.min(MAX_NUDGE_LEVEL, (agent.nudges ?? 0) + 1);
         agent.llm.push({
           role: 'user',
           content:
@@ -3926,7 +3831,6 @@ export class SessionDO extends DurableObject<Env> {
         type: 'agent_status',
         phase: agent.phase,
         step: agent.step,
-        totalSteps: agent.maxSteps,
         tool: call.name,
       });
       this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name, target: targetOf(call.name, call.arguments) });
