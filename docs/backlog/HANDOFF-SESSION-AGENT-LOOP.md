@@ -430,6 +430,20 @@ That this is what the owner saw. His browser has been clearing on `error` since
 his screen. This is the protocol half, and its cost today is paid by every non-browser consumer and
 by the next client anyone writes.
 
+### Confirmed in production, 2026-09-21, buildSha 29c91d0
+
+Diagnosed above from the code; now measured against the deployed worker, on two different call
+sites, by a probe that opened the real socket and recorded every frame with its arrival time.
+
+| asked for | answered | at | terminal frame in the next 45s |
+|---|---|---|---|
+| `productModel: "max"` | `error code=bad_product_model` | +1118ms | none |
+| `productModel: "apple-max"`, free plan | `error code=product_model_unavailable` | +1024ms | none |
+
+Frames both runs: `["presence","hello","error"]`. The socket stayed open until the probe closed it.
+Full record: `docs/evidence/2026-09-21-agent-live-probe.md`. This does not change the patch; it
+removes any remaining question about whether the defect is real on the deployed build.
+
 ---
 
 ## D. The free lane gets three steps, and a one-part build spends all three
