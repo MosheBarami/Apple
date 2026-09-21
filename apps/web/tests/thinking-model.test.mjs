@@ -99,12 +99,14 @@ test('Plan renders exactly the checklist the worker sent, in order, nothing adde
   assert.equal(plan.questions, undefined);
 });
 
-test('open questions are surfaced only when the worker actually asked them', () => {
+test('open questions remain internal metadata and do not become customer-facing plan chrome', () => {
   const stages = buildTimeline({
     ...EMPTY,
     intent: { summary: 's', checklist: ['a'], questions: ['Which tile size?'] },
   });
-  assert.deepEqual(stages.find((s) => s.kind === 'plan').questions, ['Which tile size?']);
+  const plan = stages.find((s) => s.kind === 'plan');
+  assert.deepEqual(plan.items, ['a']);
+  assert.equal(plan.questions, undefined);
 });
 
 // --- what Apple decided for itself -----------------------------------------
@@ -113,22 +115,23 @@ test('open questions are surfaced only when the worker actually asked them', () 
 // still open, an assumption has already been acted on. Showing only the first tells the user
 // about the choices Apple declined to make and hides the ones it made.
 
-test('WHAT APPLE ASSUMED IS SHOWN, not just what it left open', () => {
+test('Apple assumptions stay out of the visible plan', () => {
   const stages = buildTimeline({
     ...EMPTY,
     intent: { summary: 's', checklist: ['a bar'], questions: [], assumptions: ['mood: warm (from "cozy")'] },
   });
-  assert.deepEqual(stages.find((s) => s.kind === 'plan').assumptions, ['mood: warm (from "cozy")']);
+  assert.equal(stages.find((s) => s.kind === 'plan').assumptions, undefined);
 });
 
-test('assumptions and questions are separate lists, never merged', () => {
+test('assumptions and questions do not leak into the visible checklist', () => {
   const stages = buildTimeline({
     ...EMPTY,
     intent: { summary: 's', checklist: ['a'], questions: ['Which tile size?'], assumptions: ['mood: warm'] },
   });
   const plan = stages.find((s) => s.kind === 'plan');
-  assert.deepEqual(plan.questions, ['Which tile size?']);
-  assert.deepEqual(plan.assumptions, ['mood: warm']);
+  assert.deepEqual(plan.items, ['a']);
+  assert.equal(plan.questions, undefined);
+  assert.equal(plan.assumptions, undefined);
 });
 
 test('a worker that assumed nothing renders no assumption block at all', () => {
@@ -155,7 +158,7 @@ test('an older worker that sends no assumptions field breaks nothing', () => {
   assert.equal(stages.find((s) => s.kind === 'plan').assumptions, undefined);
 });
 
-test('the assumptions actually reach the screen, and carry a style of their own', async () => {
+test('the customer-facing Activity renderer contains no Apple-assumed/open-question blocks', async () => {
   // A field on a model that no component reads is the dead branch this whole section of the audit
   // is about — `PlanStep.tool` sat rendered-but-never-produced for months. Both halves are checked:
   // the JSX reads the field, and the class it renders under is defined rather than unstyled.
@@ -164,13 +167,12 @@ test('the assumptions actually reach the screen, and carry a style of their own'
   const { fileURLToPath } = await import('node:url');
   const web = join(dirname(fileURLToPath(import.meta.url)), '..');
   const tsx = readFileSync(join(web, 'src/components/ws/thinking.tsx'), 'utf8');
-  assert.match(tsx, /stage\.assumptions/, 'the Thinking card never reads the assumptions');
-  assert.match(tsx, /Apple assumed/, 'the assumptions render with no label saying they were assumed');
-  const css = readFileSync(join(web, 'src/design/system.css'), 'utf8');
-  assert.match(css, /\.gx-assumed\b/, 'the assumption block renders unstyled');
+  assert.doesNotMatch(tsx, /stage\.assumptions/);
+  assert.doesNotMatch(tsx, /Apple assumed/);
+  assert.doesNotMatch(tsx, /gx-open-qs/);
 });
 
-test('ASSUMPTIONS ALONE ARE ENOUGH TO DRAW THE PLAN ROW', () => {
+test('assumptions alone do not draw a customer-facing Plan row', () => {
   // The checklist used to be the only thing that could open this stage. A request made entirely
   // of adjectives ("make it cozier") names no object, so it has no checklist — and that is
   // exactly the request where what Apple assumed is the only thing worth reading. Gating the row
@@ -179,13 +181,10 @@ test('ASSUMPTIONS ALONE ARE ENOUGH TO DRAW THE PLAN ROW', () => {
     ...EMPTY,
     intent: { summary: 'make it cozier', checklist: [], questions: [], assumptions: ['mood: warm (from "cozier")'] },
   });
-  const plan = stages.find((s) => s.kind === 'plan');
-  assert.ok(plan, 'the assumption had nowhere to render');
-  assert.equal(plan.items, undefined, 'an empty checklist must not draw an empty list');
-  assert.deepEqual(plan.assumptions, ['mood: warm (from "cozier")']);
+  assert.equal(stages.find((s) => s.kind === 'plan'), undefined);
 });
 
-test('AND SO IS AN OPEN QUESTION, WITH NOTHING ELSE ALONGSIDE IT', () => {
+test('an open question alone does not draw internal planning scaffolding in the conversation', () => {
   // D79ab5 — the same gate, one turn further along, and the one the worker actually produces.
   // run-intent.ts returns `{summary, checklist, questions, assumptions}` and only returns null
   // when ALL FOUR are empty, so a hedged request that settled nothing yields questions and
@@ -200,11 +199,7 @@ test('AND SO IS AN OPEN QUESTION, WITH NOTHING ELSE ALONGSIDE IT', () => {
     ...EMPTY,
     intent: { summary: '', checklist: [], questions: ['Which part of the map do you mean?'], assumptions: [] },
   });
-  const plan = stages.find((s) => s.kind === 'plan');
-  assert.ok(plan, 'the open question had nowhere to render — the card showed the user nothing at all');
-  assert.deepEqual(plan.questions, ['Which part of the map do you mean?']);
-  assert.equal(plan.items, undefined, 'an empty checklist must not draw an empty list');
-  assert.equal(plan.assumptions, undefined, 'and nothing may be invented to fill the other blocks');
+  assert.equal(stages.find((s) => s.kind === 'plan'), undefined);
 });
 
 test('but a blank question is still not a question', () => {

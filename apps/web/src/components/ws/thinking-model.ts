@@ -192,33 +192,14 @@ export function buildTimeline(input: TimelineInput): TimelineStage[] {
   }
 
   const checklist = nonEmpty(input.intent?.checklist);
-  const questions = nonEmpty(input.intent?.questions);
-  const assumptions = nonEmpty(input.intent?.assumptions);
-  // ASSUMPTIONS OPEN THIS ROW TOO, not just the checklist.
-  //
-  // The checklist used to be the only key. A request made entirely of adjectives — "make it
-  // cozier" — names no object, so it has no checklist at all, and that is precisely the request
-  // where what the worker assumed is the only thing worth reading. Gating the row on the
-  // checklist hid the assumption in the one case it mattered most.
-  //
-  // AND SO DO QUESTIONS, for exactly the same reason one turn further along. `questions` is the
-  // extractor's record of what the request genuinely did not settle, and run-intent.ts already
-  // returns an intent carrying nothing else — it only returns null when summary, checklist,
-  // questions and assumptions are ALL empty. So a hedged request that yielded no checklist and no
-  // assumptions produced a question that was computed, serialised, sent over the socket, parsed
-  // here, and then dropped by this gate. The user was never told Apple did not know what they
-  // meant; they found out when the build came back wrong.
-  //
-  // Three keys rather than one, because the three are three different sentences: here is what I
-  // will do, here is what I guessed, here is what I could not work out. Any one of them on its own
-  // is worth a row.
-  if (checklist.length > 0 || assumptions.length > 0 || questions.length > 0) {
+  // Questions/assumptions remain internal RunIntent metadata for the agent and audit trail. They
+  // are deliberately not a customer-facing stage: showing inference scaffolding as a large yellow
+  // block made ordinary autonomous work feel like a form the user still had to supervise.
+  if (checklist.length > 0) {
     stages.push({
       kind: 'plan',
       label: 'Plan',
-      items: checklist.length > 0 ? checklist : undefined,
-      questions: questions.length > 0 ? questions : undefined,
-      assumptions: assumptions.length > 0 ? assumptions : undefined,
+      items: checklist,
       live: false,
     });
   }

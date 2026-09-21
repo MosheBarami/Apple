@@ -407,7 +407,7 @@ a.gx-sr:focus { z-index:1000; top:10px; inset-inline-start:10px; width:auto; hei
 .start-sheet__number { color:var(--faint); font:11px var(--font-mono); padding-top:5px; }
 .start-sheet__aside { display:block; font-size:13px; line-height:1.6; color:var(--faint); margin-top:22px; }
 .studio-atmosphere { position:fixed; inset-block:0; inset-inline:76px 0; overflow:hidden; pointer-events:none; z-index:0; background:radial-gradient(ellipse at 55% 35%,#ffffff06,transparent 43%),radial-gradient(ellipse at 105% 90%,#ffffff09,transparent 45%); }
-.studio-atmosphere__beam { position:absolute; width:210px; height:84%; top:-16%; inset-inline-start:calc(55% - 105px); background:radial-gradient(ellipse,#ffffff1f 0%,#ffffff0b 25%,transparent 63%); filter:blur(19px); transform:rotate(5deg); animation:ambient-breath 14s ease-in-out infinite alternate; }
+.studio-atmosphere__beam { position:absolute; width:230px; height:88%; top:-18%; inset-inline-start:calc(55% - 115px); background:radial-gradient(ellipse,#ffffff22 0%,color-mix(in srgb,var(--accent) 9%,transparent) 28%,transparent 66%); filter:blur(22px); transform:rotate(5deg); animation:ambient-breath 9s ease-in-out infinite alternate; }
 /*[[ THE ATMOSPHERE WAS PITCHED SO LOW IT READ AS NOTHING.
  *
  *   The beam, the mesh and the dust were all here and all animating, and the owner's report was
@@ -420,7 +420,7 @@ a.gx-sr:focus { z-index:1000; top:10px; inset-inline-start:10px; width:auto; hei
  *   moves across the whole field on a different period so the two never line up into a visible
  *   loop. Nothing here is faster than before — a page that hurries feels cheap, and this is
  *   supposed to be weather, not an animation. ]]*/
-.studio-atmosphere__mesh { position:absolute; width:118%; height:100%; inset-inline-start:-9%; bottom:-5%; fill:none; stroke:var(--accent); stroke-width:.8; opacity:.2; animation:ambient-drift 24s ease-in-out infinite alternate; mask-image:linear-gradient(transparent 6%,#000 38%,#000 58%,transparent 86%); }
+.studio-atmosphere__mesh { position:absolute; width:118%; height:100%; inset-inline-start:-9%; bottom:-5%; fill:none; stroke:var(--accent); stroke-width:.8; opacity:.26; animation:ambient-drift 15s ease-in-out infinite alternate; mask-image:linear-gradient(transparent 6%,#000 34%,#000 62%,transparent 88%); }
 /*[[ WHERE THE MESH IS ALLOWED TO BE LOUD.
  *
  *   The mask above used to read `linear-gradient(transparent 22%,#000 78%)` — transparent at the
@@ -447,13 +447,13 @@ a.gx-sr:focus { z-index:1000; top:10px; inset-inline-start:10px; width:auto; hei
     radial-gradient(38% 30% at 22% 28%,color-mix(in srgb,var(--accent) 13%,transparent),transparent 70%),
     radial-gradient(32% 26% at 78% 68%,color-mix(in srgb,var(--accent) 9%,transparent),transparent 72%);
   filter:blur(46px);
-  animation:ambient-aurora 41s ease-in-out infinite alternate;
+  animation:ambient-aurora 25s ease-in-out infinite alternate;
 }
 @keyframes ambient-aurora {
   from { transform:translate3d(-3%,2%,0) scale(1); opacity:.55; }
   to   { transform:translate3d(4%,-3%,0) scale(1.12); opacity:.95; }
 }
-.studio-atmosphere__dust { position:absolute; inset:0; opacity:.3; background-image:radial-gradient(circle at 15% 20%,#fff9 0 .6px,transparent 1px),radial-gradient(circle at 73% 39%,#fff6 0 .5px,transparent 1px),radial-gradient(circle at 47% 75%,#fff5 0 .7px,transparent 1px); background-size:311px 263px,419px 337px,593px 457px; animation:ambient-dust 96s linear infinite; }
+.studio-atmosphere__dust { position:absolute; inset:0; opacity:.38; background-image:radial-gradient(circle at 15% 20%,#fff9 0 .6px,transparent 1px),radial-gradient(circle at 73% 39%,#fff6 0 .5px,transparent 1px),radial-gradient(circle at 47% 75%,#fff5 0 .7px,transparent 1px); background-size:311px 263px,419px 337px,593px 457px; animation:ambient-dust 52s linear infinite; }
 /* AMBIENT, AND EXEMPT FROM THE 0.26s CEILING — the ceiling is about what happens under a finger.
    Three layers on three periods with no common multiple anybody will sit through (96s here, 41s on
    the aurora, 24s on the mesh, 14s on the beam), so the field never repeats a frame it has already
@@ -516,7 +516,7 @@ a.gx-sr:focus { z-index:1000; top:10px; inset-inline-start:10px; width:auto; hei
    It keeps its motion and its gradient, inside the accent's own range: the mark still shimmers, and
    it now shimmers in the product's colour instead of against it. If the owner wants the rainbow
    back it is one declaration and this comment says which. */
-.apple-max-name { display:inline-block; color:var(--accent); background:linear-gradient(90deg,var(--accent) 0%,color-mix(in srgb,var(--accent) 55%,var(--ink)) 50%,var(--accent) 100%); background-size:200% 100%; background-clip:text; -webkit-text-fill-color:transparent; animation:max-ink 2.4s linear infinite; font-weight:750; }
+.apple-max-name { display:inline-block; color:var(--accent); background:linear-gradient(100deg,#ff80ef 0%,#ba9cff 18%,#72d8ff 36%,#86ffc3 54%,#fff080 72%,#ff9b80 88%,#ff80ef 100%); background-size:240% 100%; background-clip:text; -webkit-background-clip:text; -webkit-text-fill-color:transparent; animation:max-ink 3.2s linear infinite; font-weight:750; }
 .gx-turn { margin:0 0 30px; } .gx-turn--user { margin-inline-start:20%; display:flex; flex-direction:column; align-items:flex-end; } .gx-user { font-size:15px; line-height:1.65; border:1px solid var(--line); border-radius:var(--r-lg); padding:12px 18px; white-space:pre-wrap; overflow-wrap:anywhere; background:var(--control-fill); width:fit-content; max-width:100%; }
 .gx-user__foot { display:flex; justify-content:end; align-items:center; gap:12px; margin-top:6px; } .gx-user__foot button { border:0; background:transparent; min-height:var(--h-xs); padding:0 4px; font-size:12px; }
 .gx-mark { display:none; } .gx-turn__body { min-width:0; } .gx-stamp { color:var(--faint); font-size:11px; display:flex; gap:7px; margin-top:10px; }

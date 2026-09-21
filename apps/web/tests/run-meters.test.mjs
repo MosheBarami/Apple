@@ -94,10 +94,9 @@ test('the UI shows it, and does not display a confident zero before anything is 
   assert.match(THINKING, /status\.creditsSpent === 1 \? 'Credit' : 'Credits'/);
 });
 
-test('step progress is shown as a real fraction, never invented', () => {
-  // Only when BOTH numbers are known — a step count with no total is a progress bar with no end,
-  // which reads as progress the product cannot actually promise.
-  assert.match(THINKING, /status\?\.step != null && status\?\.totalSteps != null/);
+test('activity does not advertise a finite step denominator for autonomous runs', () => {
+  assert.doesNotMatch(THINKING, /Step <strong>\{status\.step\}<\/strong> of/);
+  assert.doesNotMatch(THINKING, /status\?\.totalSteps/);
 });
 
 test('the cost shown is the worker\'s settled figure, not a client-side estimate', () => {

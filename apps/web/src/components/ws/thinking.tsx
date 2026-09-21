@@ -17,7 +17,7 @@
 // the same real events into ordered, timed phases with a terminal state and
 // hangs each step's typed evidence on it. `buildTimeline` still decides whether
 // that stage exists at all, so the honesty tests keep gating the whole timeline.
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 import type { RunIntent } from '@golem/shared';
 import type { AgentStatus, ToolEvent } from '../../lib/use-project-socket';
 import { readSoundEnabled, writeSoundEnabled } from '../../lib/prefs';
@@ -176,33 +176,6 @@ function Stage({
           </ul>
         )}
 
-        {stage.questions && (
-          <div className="gx-open-qs">
-            <span className="gx-open-qs__label">The request didn&rsquo;t say — Apple hasn&rsquo;t assumed:</span>
-            <ul>
-              {stage.questions.map((q) => (
-                <li key={q}>{q}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {/* The other half of the same honesty, and the half that was missing. The block above
-            lists what Apple DECLINED to decide; this lists what it decided anyway and is acting
-            on right now. Shipping only the first told the user about the restraint and hid the
-            choices. The label is an invitation because these are the cheapest possible
-            corrections — a wrong assumption caught here costs a sentence, not a rebuild. */}
-        {stage.assumptions && (
-          <div className="gx-assumed">
-            <span className="gx-assumed__label">Apple assumed — say so if this is wrong:</span>
-            <ul>
-              {stage.assumptions.map((a) => (
-                <li key={a}>{a}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-
         {/* The Actions stage is drawn by <Activity>, which groups the same real
             events into ordered, timed phases and hangs each step's evidence on
             it. `stage.actions` still decides whether this stage EXISTS AT ALL —
@@ -258,7 +231,7 @@ export function Thinking({
   //
   //   `null` is "the person has not said", and while the run is live that resolves to open. A
   //   click is a statement and outranks it from then on, in both directions.
-  const [openChoice, setOpenChoice] = useState<boolean | null>(null);
+  const [open, setOpen] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(readSoundEnabled);
   const detailsId = useId();
   const reducedMotion = useReducedMotion();
@@ -270,7 +243,6 @@ export function Thinking({
   // A terminal event is enough to draw the card. It is a real answer about the
   // run, even when the run produced no stages of its own.
   const isLive = streaming && !activity.terminal;
-  const open = openChoice ?? isLive;
   const title = activity.terminal?.note ?? (isLive && compact.current ? presentActionLabel(compact.current) : (isLive && status ? (PHASE_LABEL[status.phase] ?? status.phase) : 'Activity'));
   // THE SECOND LINE OF THE HEADER, WHICH WAS COMPUTED ON EVERY RENDER AND DRAWN BY NOBODY.
   //
@@ -296,16 +268,6 @@ export function Thinking({
     // resume an AudioContext while a history turn is being painted.
     interfaceSound.setEnabled(soundEnabled);
   }, [soundEnabled]);
-
-  // A RUN THAT ENDS MUST NOT SHUT THE PANEL UNDER THE PERSON READING IT. Liveness opened it, so
-  // liveness ending would close it again — mid-sentence, at the exact moment the last two steps
-  // and the outcome landed. Latching only the un-stated case keeps a click authoritative, and a
-  // turn painted from history never latches because it was never live here.
-  const wasLive = useRef(false);
-  useEffect(() => {
-    if (wasLive.current && !isLive) setOpenChoice((choice) => (choice === null ? true : choice));
-    wasLive.current = isLive;
-  }, [isLive]);
 
   const toggleSound = useCallback(() => {
     const next = !soundEnabled;
@@ -344,7 +306,7 @@ export function Thinking({
           className="gx-think__toggle"
           aria-expanded={open}
           aria-controls={detailsId}
-          onClick={() => setOpenChoice(!open)}
+          onClick={() => setOpen(!open)}
         >
           <ModelMark live={isLive && !reducedMotion && !pageHidden} />
           <span className="gx-think__word">{title}</span>
@@ -419,20 +381,10 @@ export function Thinking({
           {/* The credit figure is NOT restated here — it is in the card's head, where it is on
               screen whether or not this panel is open. Printing it in both places would show one
               measurement twice and invite the reader to add them up. */}
-          {(status?.effort || status?.step != null) && (
+          {status?.effort && (
             <p className="gx-think__foot">
-              {status?.step != null && status?.totalSteps != null && (
-                <>
-                  Step <strong>{status.step}</strong> of {status.totalSteps}
-                  {status.effort ? ' · ' : ''}
-                </>
-              )}
-              {status?.effort && (
-                <>
-                  Reasoning effort: <strong>{status.effort}</strong>
-                  {status.effortReason ? ` — ${status.effortReason}` : ''}
-                </>
-              )}
+              Reasoning effort: <strong>{status.effort}</strong>
+              {status.effortReason ? ` — ${status.effortReason}` : ''}
             </p>
           )}
         </div>
