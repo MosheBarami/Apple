@@ -420,11 +420,11 @@ test('B5 STATIC CHECK — the run loop wires the gate and the rebuild order into
   assert.match(block, /const rebuild = verdict\.rebuild && !agent\.rebuildOrdered/, 'a rebuild must be ordered at most once per run, or it loops');
   assert.match(block, /STOP PATCHING/, 'the rebuild branch must actually tell the model to stop patching');
   assert.match(block, /Do not start over/, 'the patch branch must remain the non-rebuild path');
-  // The gate is charged once per run and only with steps left, so it can neither loop nor surprise
-  // the budget.
+  // The gate is charged once per run. Autonomous runs deliberately have no finite step denominator;
+  // `autoCritiqued` is the loop guard and quota/BudgetDO remains the spend boundary.
   const guard = session.slice(session.indexOf('if (\n        agent.mode !== \'clay\''), session.indexOf('agent.autoCritiqued = true'));
   assert.match(guard, /!agent\.autoCritiqued/);
-  assert.match(guard, /agent\.step < agent\.maxSteps - 1/);
+  assert.doesNotMatch(guard, /maxSteps/, 'the visual gate must not re-introduce an artificial run ceiling');
 });
 
 // ===========================================================================
@@ -468,11 +468,14 @@ test("B6 STATIC CHECK — a run that owes work finishes as 'incomplete', and the
   assert.match(shared, /stopReason: 'done' \| 'stopped' \| 'error' \| 'quota' \| 'incomplete'/, "'incomplete' must remain a first-class stop reason on the wire");
 });
 
-test('B6 STATIC CHECK — the nudge that precedes it is bounded and cannot loop', () => {
+test('B6 STATIC CHECK — nudge escalation is bounded metadata, not a hidden run stop', () => {
   const session = read('do/session.ts');
-  assert.match(session, /const MAX_NUDGES = 2;/);
-  assert.match(session, /if \(owesWork && \(agent\.nudges \?\? 0\) < MAX_NUDGES && agent\.step < agent\.maxSteps\)/, 'the nudge must be bounded by both a counter and the step limit');
-  assert.match(session, /agent\.nudges = \(agent\.nudges \?\? 0\) \+ 1;/);
+  assert.match(session, /const MAX_NUDGE_LEVEL = 6;/);
+  assert.match(session, /if \(owesWork\) \{/,
+    'work debt must keep the autonomous run alive instead of returning control to the user');
+  assert.match(session, /agent\.nudges = Math\.min\(MAX_NUDGE_LEVEL, \(agent\.nudges \?\? 0\) \+ 1\);/,
+    'nudge metadata must saturate even though the run itself remains unbounded');
+  assert.doesNotMatch(session, /owesWork[^\n]*maxSteps/);
   // A mutating tool is what clears the debt, and the list of them is explicit.
   assert.match(session, /const MUTATING_TOOLS = new Set\(\[\s*\n\s*'edit_script', 'create_instances', 'set_properties', 'delete_instances', 'run_luau', 'insert_asset',\s*\n\]\);/);
   assert.match(session, /if \(out\.ok && MUTATING_TOOLS\.has\(call\.name\)\) agent\.mutated = true;/);

@@ -1232,7 +1232,7 @@ test('A2 STATIC CHECK — run_state replays only the whitelisted RunSnapshot fie
   assert.deepEqual(
     new Set(fields),
     new Set([
-      'msgId', 'mode', 'phase', 'step', 'totalSteps', 'text', 'tools', 'startedAt',
+      'msgId', 'mode', 'phase', 'step', 'text', 'tools', 'startedAt',
       'effort', 'effortReason',
       // `intent` reviewed 2026-08-31. RunIntent is { summary, checklist, questions },
       // every field of which is derived by regex and lexicon from the user's OWN
@@ -2400,7 +2400,10 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
   //   tool definitions, so the name is additionally one the registry currently offers. Both facts
   //   are asserted below, because a whitelisted NAME with a swapped SOURCE is how the fourth
   //   arrived — as a bug fix.
-  assert.equal(userPushes.length, 5, 'a user-role transcript injection was added or removed — review it for injection risk');
+  // SIX SINCE autonomous output-limit recovery. The sixth never reflects model/user/tool content:
+  // it tells the same run that the provider cut its output and chooses one of three fixed batch
+  // hints from a local numeric recovery counter.
+  assert.equal(userPushes.length, 6, 'a user-role transcript injection was added or removed — review it for injection risk');
   const dynamic = userPushes.filter((p) => /\$\{/.test(p));
   assert.equal(dynamic.length, 3, 'exactly three user-role injections should carry interpolated content');
   assert.ok(
@@ -2418,6 +2421,16 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
   const src = read('tool-recovery.ts');
   assert.match(src, /if \(!known\.has\(name\)\) return NOTHING\(raw\);/,
     'tool-recovery no longer confines `refused` to the registry — the model can choose the string session.ts interpolates');
+
+  const lengthRecovery = userPushes.find((p) => /previous provider response hit its output ceiling/.test(p));
+  assert.ok(lengthRecovery, 'the reviewed output-limit recovery injection disappeared or changed shape');
+  assert.equal(/\$\{/.test(lengthRecovery), false,
+    'output-limit recovery must not interpolate model, user or tool text into a user-role instruction');
+  assert.match(lengthRecovery, /batchHint/, 'the recovery injection no longer uses the closed local hint selector');
+  const hintBlock = session.slice(session.indexOf('const batchHint ='), session.indexOf('agent.llm.push({', session.indexOf('const batchHint =')));
+  assert.match(hintBlock, /Use exactly one small mutating tool call/);
+  assert.match(hintBlock, /at most four logical items/);
+  assert.match(hintBlock, /Split any large tool payload/);
 
   // THE FIFTH, HELD TO THE CODE THE SAME WAY.
   const steer = dynamic.find((p) => /artifact\.tool/.test(p));
