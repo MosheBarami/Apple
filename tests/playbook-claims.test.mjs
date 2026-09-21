@@ -16,6 +16,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -48,22 +49,125 @@ test('AGENTS.md is at the root, where an agent will find it without being told',
   assert.match(s, /rbxai-working-rules/, 'AGENTS.md must point at the skill that carries the method');
 });
 
-test('every repository path the guidance names exists', () => {
-  const docs = guidance();
-  const missing = [];
-  for (const doc of docs) {
-    const body = read(doc);
-    // Backticked paths that look like real repo paths: a slash, and a known top-level directory.
-    for (const [, p] of body.matchAll(/`((?:apps|docs|scripts|infra|packages|tests|\.claude)\/[A-Za-z0-9._/-]+)`/g)) {
-      const clean = p.replace(/[.,)]$/, '');
-      // A directory reference ends in / or has no extension; both are checked the same way.
-      if (!existsSync(join(ROOT, clean))) missing.push(`${doc} -> ${clean}`);
+/**
+ * WHAT A CLONE CAN SEE. Re-aimed 2026-09-21; the history is the point of the comment.
+ *
+ * This used to be `existsSync(join(ROOT, claimed))` — it asked the DEVELOPER'S DISK. On this
+ * repository that answer is not the runner's answer, and the gap is not small: `.dev.vars` holds
+ * secrets, `packages/corpus/data/chunks.jsonl` is a 10 MB build artefact, `apps/site/dist` is
+ * build output and `.claude/worktrees/` is a runtime directory. All four are on a machine that has
+ * worked here and in no fresh checkout, so the test was green on every Mac and red on every clone
+ * — CI run 35554147167 failed on exactly this, and it had been failing unseen because the same
+ * class of defect (a test reading a gitignored artefact) had already taken `pnpm -r test` down at
+ * three other packages the same night.
+ *
+ * It also let the WRONG thing pass. A path deleted from git but still lying on someone's disk read
+ * as present, which is the same shape as the checker that printed REBRAND COMPLETE four times over
+ * a fix that was never committed.
+ *
+ * So the question is asked of git, and it is asked in two tiers, because there are two different
+ * things a reader can be told:
+ *
+ *   IN THE COMMITTED TREE  — the reader will have it. Assert it is in HEAD, not on a disk.
+ *   NOT IN THE COMMITTED TREE — the reader will NOT have it, and no clone can observe whether it
+ *                               exists. The guidance may still name it (a secret file and a build
+ *                               directory are worth naming), but `.gitignore` must SAY the path is
+ *                               deliberately not carried. That rule is the declaration, it is a
+ *                               reviewable line, and this repository's .gitignore already writes a
+ *                               paragraph of reasoning for each one.
+ *
+ * A typo is in neither tier and fails. A path dropped from git and left on a disk is in neither
+ * tier and fails.
+ *
+ * WHAT IT STILL CANNOT DO, said plainly rather than left to be discovered: for a gitignored path it
+ * checks the DECLARATION, not the file. If guidance describes a gitignored directory that was
+ * deleted, nothing here can tell — the directory is invisible to every clone either way. That is a
+ * limit of the evidence, not an oversight, and pretending otherwise would be the failure this file
+ * is named after. Stale prose about an ignored path is caught by reading, and by the test below.
+ */
+const git = (...args) => {
+  try {
+    return execFileSync('git', args, { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  } catch (e) {
+    // A guard that cannot run its instrument must say so, not report clean.
+    throw new Error(`git ${args.join(' ')} failed, so this test measured nothing: ${e.message}`);
+  }
+};
+
+/** Every path in HEAD, plus every directory prefix, with and without a trailing slash. */
+const committedPaths = () => {
+  const out = new Set();
+  for (const file of git('ls-tree', '-r', '--name-only', 'HEAD').split('\n')) {
+    if (!file) continue;
+    out.add(file);
+    const parts = file.split('/');
+    for (let i = 1; i < parts.length; i += 1) {
+      const dir = parts.slice(0, i).join('/');
+      out.add(dir);
+      out.add(`${dir}/`);
     }
   }
+  return out;
+};
+
+/**
+ * The subset of `candidates` that .gitignore deliberately keeps out of a checkout.
+ *
+ * Every candidate is offered TWICE, once with a trailing slash. `git check-ignore` decides whether
+ * a rule written `dist/` applies by asking the filesystem whether the path is a directory — so on a
+ * machine that has built the site `apps/site/dist` matches and in a fresh clone the identical
+ * repository says it does not. The trailing slash is how you tell git "this is a directory" without
+ * a directory being there, and it is the difference between this function reading the RULES and
+ * reading one machine's disk, which is the whole defect this file was re-aimed for.
+ */
+const declaredIgnored = (candidates) => {
+  if (candidates.length === 0) return new Set();
+  const asked = candidates.flatMap((p) => [p.replace(/\/$/, ''), `${p.replace(/\/$/, '')}/`]);
+  let out;
+  try {
+    out = execFileSync('git', ['check-ignore', '--stdin'], {
+      cwd: ROOT,
+      input: asked.join('\n'),
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+  } catch (e) {
+    // check-ignore exits 1 when NOTHING matched. That is the answer "none of them", and it is
+    // the answer in the case this guard exists for, so it must not surface as a crash with no
+    // list in it. Any OTHER status is the instrument failing and is re-thrown.
+    if (e.status !== 1) throw new Error(`git check-ignore failed (status ${e.status}), so this test measured nothing: ${e.message}`);
+    out = e.stdout ?? '';
+  }
+  return new Set(String(out).split('\n').filter(Boolean).map((p) => p.replace(/\/$/, '')));
+};
+
+test('every repository path the guidance names is in the clone, or is declared not to be', () => {
+  const claimed = new Map(); // path -> the document that named it
+  for (const doc of guidance()) {
+    const body = read(doc);
+    // Backticked paths that look like real repo paths: a slash, and a known top-level directory.
+    for (const [, p] of body.matchAll(/`((?:apps|docs|scripts|infra|packages|tests|\.claude)\/[A-Za-z0-9._\/-]+)`/g)) {
+      const clean = p.replace(/[.,)]$/, '');
+      if (!claimed.has(clean)) claimed.set(clean, doc);
+    }
+  }
+  assert.ok(claimed.size > 10, `only ${claimed.size} path(s) matched — the reader stopped reading`);
+
+  const inHead = committedPaths();
+  const unresolved = [...claimed.keys()].filter((p) => !inHead.has(p) && !inHead.has(p.replace(/\/$/, '')));
+  const ignored = declaredIgnored(unresolved);
+
+  const missing = unresolved
+    .filter((p) => !ignored.has(p.replace(/\/$/, '')))
+    .map((p) => `${claimed.get(p)} -> ${p}`)
+    .sort();
+
   assert.deepEqual(
-    [...new Set(missing)].sort(),
+    missing,
     [],
-    'the guidance points at files that are not there:\n  ' + [...new Set(missing)].sort().join('\n  '),
+    'the guidance names paths that are not in the committed tree and that .gitignore does not ' +
+      'declare — each is a typo, or a path that left git and is still lying on one machine:\n  ' +
+      missing.join('\n  '),
   );
 });
 
