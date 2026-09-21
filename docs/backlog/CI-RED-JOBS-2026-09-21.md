@@ -137,3 +137,59 @@ commit that used it.
 So the question is open and stated rather than answered: **either the second recorder should emit
 `tree-clean=`, or this ledger should be recorded only by `gate-check --approve`.** Both are real
 choices. Loosening the stricter checker to match the looser one is not.
+
+---
+
+# Third pass, later the same night: the three `Build site and web` regressions are gone, and one new one arrived
+
+**Everything above about that job is now out of date. Read this section before acting on it.**
+
+Measured with `node scripts/ci-parity.mjs --with-build`, which clones HEAD into a scratch directory,
+installs and builds **in the clone**, and runs every CI step that does not need the Luau toolchain
+or a browser. At `b6c274b`:
+
+```
+CI PARITY — a clean clone of b6c274b, installed and built in the clone
+  pass  exit  0  pnpm -r typecheck
+  pass  exit  0  node --test tests/*.test.mjs
+  pass  exit  0  node scripts/gate-check.mjs --lint
+  pass  exit  0  node scripts/check-site-links.mjs
+  pass  exit  0  node scripts/check-credit-figures.mjs
+  pass  exit  0  node scripts/check-site-semantics.mjs
+  pass  exit  0  node scripts/check-dispositions.mjs
+  pass  exit  0  node scripts/check-app-bundle.mjs
+  pass  exit  0  node scripts/check-landing-budget.mjs
+  pass  exit  0  node scripts/check-asset-wall.mjs
+  pass  exit  0  pnpm --filter @golem/evals check
+  pass  exit  0  node scripts/check-workspace-coverage.mjs
+  pass  exit  0  node scripts/check-rebrand.mjs --offline
+  pass  exit  0  node scripts/check-ci-references.mjs
+  pass  exit  0  python3 scripts/test_secret_scan.py
+  pass  exit  0  python3 scripts/secret-scan.py
+```
+
+`check-app-bundle`, `check-landing-budget` and `check-asset-wall` are the three this file called
+"three regressions, none of them infra's". All three pass. No budget was raised: the entry bundle
+was route-split (the live `/app/` went from 180,974 B to 141,740 B gzipped over the wire) and the
+asset-wall guard was re-aimed at the claim in `10f2b12` because the wall is not coming back.
+
+**What is still not covered, and it is not nothing:** the Luau toolchain, `rojo build`, the
+Playwright smoke job, `pnpm -r test`, and `tests/check-pixels.test.mjs`. The parity tool prints that
+list with a reason per line on every run, so it is not a thing to remember.
+
+## The new one, which this pass introduced and fixed
+
+`e85fe18` added the Showcase nav entry — the only link to `/showcase` — and taught
+`apps/site/tests/links-resolve.test.mjs` about the page but not `scripts/check-site-links.mjs`,
+which is what CI runs as "Internal links resolve". That step went to **20 broken internal links, one
+per page**. It was found by hand, after a site deploy happened to require a build first, because the
+parity tool did not build at that point and skipped it. Fixed in `658f75d`; `--with-build` exists
+because of it.
+
+## And the thing that has not changed since 02:58
+
+**No job has started.** Three runs checked across three hours — `35556006872`, `35560867643`,
+`35564319883` — every job `conclusion: failure`, `steps: []`, four to nine seconds, no runner
+assigned, annotation *"the job was not started because recent account payments have failed"*. None
+of the green above has been seen by a runner. It is the nearest thing available while the account is
+blocked, and it is not the same thing.
