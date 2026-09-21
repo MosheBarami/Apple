@@ -193,3 +193,51 @@ because of it.
 assigned, annotation *"the job was not started because recent account payments have failed"*. None
 of the green above has been seen by a runner. It is the nearest thing available while the account is
 blocked, and it is not the same thing.
+
+## And the big one: `pnpm -r test` is green in a clean clone
+
+The step this file spends most of its length on. It bailed at four different packages in succession
+earlier tonight — @golem/corpus, @golem/training, @golem/web, @golem/site — each fix exposing the
+next, and its one confirmed pass on a runner was at `1032707`, before ten more commits landed.
+
+Re-measured at `381cc61`, in a clone in the scratch directory rather than in this checkout, with
+`pnpm install --frozen-lockfile` and the site build done there, and Chromium taken from the machine's
+existing Playwright cache:
+
+```
+$ pnpm -r test
+exit 0
+```
+
+| package | tests | pass | fail |
+|---|---|---|---|
+| apps/worker | 3679 | 3679 | 0 |
+| apps/web | 2066 | 2066 | 0 |
+| packages/evals | 1412 | 1412 | 0 |
+| packages/corpus | 282 | 282 | 0 |
+| apps/site | 274 | 274 | 0 |
+| packages/design | 80 | 80 | 0 |
+| packages/sdk | 86 | 86 | 0 |
+| apps/apple-plugin | 39 | 39 | 0 |
+| packages/training | 553 | 540 | 0 (13 skipped) |
+| apps/experiences/lumen-isles | 8 | 8 | 0 |
+| apps/benchmark/crystal-canyon | 4 | 4 | 0 |
+| apps/plugin | 1 | 1 | 0 |
+
+**8,471 passing, 0 failing, 12 packages.** Every package in the workspace ran; none was skipped by
+the recursion bailing early, which is the failure mode that hid the last three.
+
+`--with-build` does not run this step and says so — it is the longest thing in CI and three of its
+packages drive a browser. This was run by hand, once, and the number is dated rather than standing.
+
+## What has now been measured at `381cc61`, and what has not
+
+Measured green in a clean clone: `pnpm -r typecheck`, `pnpm -r test`, the root suite, both site
+builds, the web build, and every `node scripts/check-*` and `python3 scripts/*` step CI runs.
+
+**Not measured, and not claimed:** the Luau toolchain install and `rojo build` (the Build Studio
+plugin job), `pnpm exec playwright test` (the Playwright smoke job, which has not concluded in ANY
+run tonight — every attempt was cancelled by the next push or refused for billing), `tests/check-
+pixels.test.mjs`, and the two report-only steps, prettier and `pnpm audit`.
+
+And none of it has been seen by a runner, because no job has started since 02:58.
