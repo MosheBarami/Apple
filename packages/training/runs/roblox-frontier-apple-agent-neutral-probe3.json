@@ -1,0 +1,56 @@
+{
+ "measuredAt": "2026-09-20T12:42:09.909Z",
+ "what": "the apple LANE in agent mode as a customer reaches it, through the real gateway, scored by running the Luau",
+ "lanesAreTheSameModel": "@cf/zai-org/glm-5.3-flash",
+ "settings": {
+  "lane": "apple",
+  "productMode": "agent",
+  "specialist": "stone",
+  "gateway": "stone",
+  "modelId": "@cf/zai-org/glm-5.3-flash",
+  "effort": "high",
+  "effortIsAFloor": true,
+  "baseTokens": 4400,
+  "requestedTokens": 5500,
+  "gatewayCeiling": 5600,
+  "effectiveTokens": 5500,
+  "clampedByCeiling": false
+ },
+ "arm": {
+  "id": "neutral",
+  "what": "the model on its own — no Roblox guidance in the prompt",
+  "system": "You are a Roblox developer. Answer with ONE fenced luau code block and nothing else — no prose before or after it. Write the complete script that was asked for, ready to paste into Studio."
+ },
+ "provenance": {
+  "harness": "77949a17d20c46d7",
+  "scorer": "40726ebd2ddc83cc",
+  "tasks": "d66b72d3a82d0915",
+  "controls": "1bc93b760734281b",
+  "settingsMirror": "87ebf5ab482647a5"
+ },
+ "items": 1,
+ "attempted": 1,
+ "measured": 0,
+ "passed": 0,
+ "pct": 0,
+ "notMeasured": 1,
+ "errors": [
+  {
+   "id": "platform-mover",
+   "axis": "modern-api",
+   "error": "HTTP 500",
+   "detail": "{\"ok\":false,\"ms\":26,\"error\":\"Apple has reached today's shared building capacity. It resets at midnight UTC.\"}"
+  }
+ ],
+ "outcomes": {},
+ "byAxis": {},
+ "axes": [
+  "modern-api",
+  "server-authority",
+  "datastore-safety"
+ ],
+ "failedChecks": [],
+ "neurons": 0,
+ "neuronsPerItem": 0,
+ "rows": []
+}
