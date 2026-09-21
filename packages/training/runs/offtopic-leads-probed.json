@@ -1,0 +1,538 @@
+{
+  "generated_at": "2026-09-21T00:57:37.033Z",
+  "generator": "packages/training/src/probe-offtopic-leads.mjs",
+  "question": "is the relevance filter excluding a corpus, or a rounding error?",
+  "admit_candidates": 1986,
+  "off_topic_by_the_relevance_filter": 923,
+  "of_those_naming_roblox_in_topics_or_description": 39,
+  "trees_read": 39,
+  "tree_read_failures": 0,
+  "luau_lua_files_found": 252,
+  "luau_lua_bytes_found": 778740,
+  "repositories_holding_any_luau": 10,
+  "repositories_holding_luau_with_a_licence_file": 10,
+  "what_this_does_not_establish": [
+    "that the 884 repositories naming Roblox nowhere hold no Luau. They were not opened; they are counted and unopened, and this file says so rather than calling them empty.",
+    "that these files should be admitted. Volume is the only question asked here; whether tooling written around Roblox belongs in a corpus of Roblox Luau is a scope judgement, not a measurement."
+  ],
+  "probed": [
+    {
+      "source_id": "Kiet1308/Tovek",
+      "tree_status": "ok",
+      "primary_language": "Rust",
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE.txt",
+      "luau_lua_file_count": 195,
+      "luau_lua_bytes": 251256,
+      "tree_truncated": false,
+      "matched_on": [
+        "description"
+      ]
+    },
+    {
+      "source_id": "yennylol/unprom",
+      "tree_status": "ok",
+      "primary_language": "Python",
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 19,
+      "luau_lua_bytes": 16323,
+      "tree_truncated": false,
+      "matched_on": [
+        "description"
+      ]
+    },
+    {
+      "source_id": "rudybear/gltf-interactivity",
+      "tree_status": "ok",
+      "primary_language": "TypeScript",
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 17,
+      "luau_lua_bytes": 374974,
+      "tree_truncated": false,
+      "matched_on": [
+        "description"
+      ]
+    },
+    {
+      "source_id": "p4inz-code/obscura",
+      "tree_status": "ok",
+      "primary_language": "JavaScript",
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 12,
+      "luau_lua_bytes": 81631,
+      "tree_truncated": false,
+      "matched_on": [
+        "description"
+      ]
+    },
+    {
+      "source_id": "TabooHarmony/local-open-game-eval",
+      "tree_status": "ok",
+      "primary_language": "Python",
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 4,
+      "luau_lua_bytes": 2766,
+      "tree_truncated": false,
+      "matched_on": [
+        "description"
+      ]
+    },
+    {
+      "source_id": "DeftSolutions-dev/mcp-serotonin",
+      "tree_status": "ok",
+      "primary_language": "Python",
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 1,
+      "luau_lua_bytes": 37940,
+      "tree_truncated": false,
+      "matched_on": [
+        "topics",
+        "description"
+      ]
+    },
+    {
+      "source_id": "fabianofelix521-star/gameforge-agi",
+      "tree_status": "ok",
+      "primary_language": "Python",
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 1,
+      "luau_lua_bytes": 10065,
+      "tree_truncated": false,
+      "matched_on": [
+        "description"
+      ]
+    },
+    {
+      "source_id": "hanmahong5-arch/glint",
+      "tree_status": "ok",
+      "primary_language": "Zig",
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 1,
+      "luau_lua_bytes": 169,
+      "tree_truncated": false,
+      "matched_on": [
+        "topics",
+        "description"
+      ]
+    },
+    {
+      "source_id": "phonaputer/cmpgen",
+      "tree_status": "ok",
+      "primary_language": "Go",
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 1,
+      "luau_lua_bytes": 1670,
+      "tree_truncated": false,
+      "matched_on": [
+        "description"
+      ]
+    },
+    {
+      "source_id": "raicug/luna",
+      "tree_status": "ok",
+      "primary_language": "C++",
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 1,
+      "luau_lua_bytes": 1946,
+      "tree_truncated": false,
+      "matched_on": [
+        "description"
+      ]
+    },
+    {
+      "source_id": "AdjustedTechnologies/Adjusted-Cloud",
+      "tree_status": "ok",
+      "primary_language": null,
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 0,
+      "luau_lua_bytes": 0,
+      "tree_truncated": false,
+      "matched_on": [
+        "description"
+      ]
+    },
+    {
+      "source_id": "AmirAkramov/RoFly",
+      "tree_status": "ok",
+      "primary_language": "Python",
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 0,
+      "luau_lua_bytes": 0,
+      "tree_truncated": false,
+      "matched_on": [
+        "description"
+      ]
+    },
+    {
+      "source_id": "BlueHarper/AI-UnstableREM",
+      "tree_status": "ok",
+      "primary_language": "Python",
+      "api_license_guess": "Apache-2.0",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 0,
+      "luau_lua_bytes": 0,
+      "tree_truncated": false,
+      "matched_on": [
+        "description"
+      ]
+    },
+    {
+      "source_id": "ETAirPeter/undetectable",
+      "tree_status": "ok",
+      "primary_language": "Python",
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 0,
+      "luau_lua_bytes": 0,
+      "tree_truncated": false,
+      "matched_on": [
+        "description"
+      ]
+    },
+    {
+      "source_id": "IvanKuria/bloxscout",
+      "tree_status": "ok",
+      "primary_language": "TypeScript",
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 0,
+      "luau_lua_bytes": 0,
+      "tree_truncated": false,
+      "matched_on": [
+        "topics",
+        "description"
+      ]
+    },
+    {
+      "source_id": "IvanKuria/bloxscout-data",
+      "tree_status": "ok",
+      "primary_language": null,
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 0,
+      "luau_lua_bytes": 0,
+      "tree_truncated": false,
+      "matched_on": [
+        "description"
+      ]
+    },
+    {
+      "source_id": "KhanPython/RoAdmin",
+      "tree_status": "ok",
+      "primary_language": "JavaScript",
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE.MD",
+      "luau_lua_file_count": 0,
+      "luau_lua_bytes": 0,
+      "tree_truncated": false,
+      "matched_on": [
+        "topics",
+        "description"
+      ]
+    },
+    {
+      "source_id": "SuperInstance/lucineer-vector",
+      "tree_status": "ok",
+      "primary_language": "TypeScript",
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 0,
+      "luau_lua_bytes": 0,
+      "tree_truncated": false,
+      "matched_on": [
+        "description"
+      ]
+    },
+    {
+      "source_id": "TriangleSector/Simple_Checker_2026_new",
+      "tree_status": "ok",
+      "primary_language": "C++",
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 0,
+      "luau_lua_bytes": 0,
+      "tree_truncated": false,
+      "matched_on": [
+        "topics"
+      ]
+    },
+    {
+      "source_id": "Welsonnot/brokenblade-auto-farmer",
+      "tree_status": "ok",
+      "primary_language": "Python",
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 0,
+      "luau_lua_bytes": 0,
+      "tree_truncated": false,
+      "matched_on": [
+        "topics",
+        "description"
+      ]
+    },
+    {
+      "source_id": "Zenscerne/Prism",
+      "tree_status": "ok",
+      "primary_language": "Python",
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 0,
+      "luau_lua_bytes": 0,
+      "tree_truncated": false,
+      "matched_on": [
+        "topics"
+      ]
+    },
+    {
+      "source_id": "aaronaco/pii-intent-classifier-lib",
+      "tree_status": "ok",
+      "primary_language": "Python",
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 0,
+      "luau_lua_bytes": 0,
+      "tree_truncated": false,
+      "matched_on": [
+        "topics",
+        "description"
+      ]
+    },
+    {
+      "source_id": "alexchoukeir/voxlway",
+      "tree_status": "ok",
+      "primary_language": "TypeScript",
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 0,
+      "luau_lua_bytes": 0,
+      "tree_truncated": false,
+      "matched_on": [
+        "description"
+      ]
+    },
+    {
+      "source_id": "dan-glidercode/semabot2000",
+      "tree_status": "ok",
+      "primary_language": "Python",
+      "api_license_guess": "BSD-2-Clause",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 0,
+      "luau_lua_bytes": 0,
+      "tree_truncated": false,
+      "matched_on": [
+        "description"
+      ]
+    },
+    {
+      "source_id": "frvrfr20-blip/flow-decompiler",
+      "tree_status": "ok",
+      "primary_language": "Python",
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 0,
+      "luau_lua_bytes": 0,
+      "tree_truncated": false,
+      "matched_on": [
+        "description"
+      ]
+    },
+    {
+      "source_id": "huso3123/gaming-ai-corpus",
+      "tree_status": "ok",
+      "primary_language": "Python",
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 0,
+      "luau_lua_bytes": 0,
+      "tree_truncated": false,
+      "matched_on": [
+        "topics"
+      ]
+    },
+    {
+      "source_id": "iLegend00/Portaldb",
+      "tree_status": "ok",
+      "primary_language": "JavaScript",
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 0,
+      "luau_lua_bytes": 0,
+      "tree_truncated": false,
+      "matched_on": [
+        "description"
+      ]
+    },
+    {
+      "source_id": "kasapdev/kasap-ai-tools",
+      "tree_status": "ok",
+      "primary_language": "TypeScript",
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 0,
+      "luau_lua_bytes": 0,
+      "tree_truncated": false,
+      "matched_on": [
+        "topics",
+        "description"
+      ]
+    },
+    {
+      "source_id": "lmgame-org/ai-space-escape-engine",
+      "tree_status": "ok",
+      "primary_language": "Python",
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 0,
+      "luau_lua_bytes": 0,
+      "tree_truncated": false,
+      "matched_on": [
+        "description"
+      ]
+    },
+    {
+      "source_id": "magnet78/bloxscout",
+      "tree_status": "ok",
+      "primary_language": null,
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 0,
+      "luau_lua_bytes": 0,
+      "tree_truncated": false,
+      "matched_on": [
+        "description"
+      ]
+    },
+    {
+      "source_id": "notreux/UpsideEngineMCP",
+      "tree_status": "ok",
+      "primary_language": "Rust",
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 0,
+      "luau_lua_bytes": 0,
+      "tree_truncated": false,
+      "matched_on": [
+        "description"
+      ]
+    },
+    {
+      "source_id": "olishoc/roagent-runtime",
+      "tree_status": "ok",
+      "primary_language": "TypeScript",
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 0,
+      "luau_lua_bytes": 0,
+      "tree_truncated": false,
+      "matched_on": [
+        "description"
+      ]
+    },
+    {
+      "source_id": "rib3ye/RoInit",
+      "tree_status": "ok",
+      "primary_language": "Shell",
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 0,
+      "luau_lua_bytes": 0,
+      "tree_truncated": false,
+      "matched_on": [
+        "topics",
+        "description"
+      ]
+    },
+    {
+      "source_id": "vinkius-labs/awesome-mcp-servers",
+      "tree_status": "ok",
+      "primary_language": null,
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 0,
+      "luau_lua_bytes": 0,
+      "tree_truncated": false,
+      "matched_on": [
+        "description"
+      ]
+    },
+    {
+      "source_id": "whosArlend/KataFinder",
+      "tree_status": "ok",
+      "primary_language": "JavaScript",
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 0,
+      "luau_lua_bytes": 0,
+      "tree_truncated": false,
+      "matched_on": [
+        "topics",
+        "description"
+      ]
+    },
+    {
+      "source_id": "x15987856/anime-fighting-simulator-codes",
+      "tree_status": "ok",
+      "primary_language": null,
+      "api_license_guess": "CC0-1.0",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 0,
+      "luau_lua_bytes": 0,
+      "tree_truncated": false,
+      "matched_on": [
+        "topics",
+        "description"
+      ]
+    },
+    {
+      "source_id": "yashveer-singh-speaks/yashveer",
+      "tree_status": "ok",
+      "primary_language": "TypeScript",
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 0,
+      "luau_lua_bytes": 0,
+      "tree_truncated": false,
+      "matched_on": [
+        "description"
+      ]
+    },
+    {
+      "source_id": "yashveer-singh-speaks/yashveer-singh",
+      "tree_status": "ok",
+      "primary_language": "TypeScript",
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 0,
+      "luau_lua_bytes": 0,
+      "tree_truncated": false,
+      "matched_on": [
+        "description"
+      ]
+    },
+    {
+      "source_id": "yassirpersonelle-oss/oss-toolkit",
+      "tree_status": "ok",
+      "primary_language": "Python",
+      "api_license_guess": "MIT",
+      "license_file_name": "LICENSE",
+      "luau_lua_file_count": 0,
+      "luau_lua_bytes": 0,
+      "tree_truncated": false,
+      "matched_on": [
+        "topics",
+        "description"
+      ]
+    }
+  ]
+}
