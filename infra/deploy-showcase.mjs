@@ -151,13 +151,34 @@ async function main() {
   }));
   if (!images.length) throw new Error('the built page references no images — refusing to ship an empty gallery');
 
-  console.log(`${BASE}${PREFIX} — ${images.length} image(s) + 1 page`);
+  //[[ THE CODE THE MODEL WROTE SHIPS TOO, BECAUSE THE PAGE NOW LINKS IT.
+  //
+  //   Each card carries `<a href=".../x.luau">` and fetches the same URL when opened. Uploading
+  //   the page without the scripts would put twenty-eight dead links in front of him and this
+  //   script would still print `verified`, because it would have verified only what it sent.
+  //
+  //   Collected the same way the images are — read out of the BUILT HTML rather than off the
+  //   directory — so the uploaded set cannot drift from the referenced set in either direction.
+  //   Unlike images there is no floor: a manifest whose rows name no source is a page that makes
+  //   no code claim (build-showcase-gallery drops the "The code is here too" line with them), and
+  //   refusing to deploy that would block a legitimate gallery to defend a promise it never made.
+  const sources = [...new Set([...html.matchAll(/href="([^"]+\.luau)"/g)].map((m) => m[1]))].map((remote) => ({
+    local: join(remote.includes('/map-showcase/') ? mapDir : uiDir, basename(remote)),
+    remote,
+  }));
+
+  console.log(`${BASE}${PREFIX} — ${images.length} image(s) + ${sources.length} script(s) + 1 page`);
   let bytes = 0;
   for (const [i, img] of images.entries()) {
     bytes += upload(img.local, img.remote);
     process.stdout.write(`\r  images ${i + 1}/${images.length}, ${(bytes / 1024).toFixed(0)}KB   `);
   }
   console.log();
+  for (const [i, src] of sources.entries()) {
+    upload(src.local, src.remote);
+    process.stdout.write(`\r  scripts ${i + 1}/${sources.length}   `);
+  }
+  if (sources.length) console.log();
   upload(htmlPath, `${PREFIX}/index.html`);
   console.log(`  page uploaded (${(html.length / 1024).toFixed(0)}KB)`);
 
@@ -168,6 +189,7 @@ async function main() {
   for (const bad of await Promise.all([
     verify(PREFIX, sha256(Buffer.from(html)), BASE, WAITS),
     ...images.map((img) => verify(img.remote, sha256(readFileSync(img.local)), BASE, WAITS)),
+    ...sources.map((src) => verify(src.remote, sha256(readFileSync(src.local)), BASE, WAITS)),
   ])) if (bad) wrong.push(bad);
 
   if (wrong.length) {
@@ -175,7 +197,7 @@ async function main() {
     for (const w of wrong) console.error(`  ${w.url}   want ${w.want}, got ${w.got}`);
     process.exit(3);
   }
-  console.log(`verified — ${BASE}${PREFIX} and all ${images.length} image(s) serve the bytes just sent`);
+  console.log(`verified — ${BASE}${PREFIX}, all ${images.length} image(s) and all ${sources.length} script(s) serve the bytes just sent`);
 }
 
 // Imported by infra/deploy-showcase.test.mjs to exercise `verify` against a throwaway origin,

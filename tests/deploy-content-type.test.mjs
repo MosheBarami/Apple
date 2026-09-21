@@ -89,3 +89,12 @@ test('the worker still prefers a stored type over its own guess', () => {
   const worker = readFileSync(join(ROOT, 'apps', 'worker', 'src', 'static.ts'), 'utf8');
   assert.match(worker, /row\.content_type \?\? contentTypeFor\(row\.path\)/);
 });
+
+test('a .luau file is text, so a browser SHOWS the model’s code instead of downloading it', () => {
+  // /showcase now links the actual Luau behind every card. With no entry in the map the uploader
+  // sends no content type, the worker's guess yields application/octet-stream, and `nosniff` turns
+  // every one of those links into a download — the /pricing failure again, one extension over, and
+  // aimed at the fifteen-year-old the page was written for.
+  assert.equal(contentTypeOf('docs/evidence/ui-showcase/screen-hud--fps_arena.luau'), 'text/plain; charset=utf-8');
+  assert.equal(contentTypeOf('docs/evidence/map-showcase/map--tycoon.luau'), 'text/plain; charset=utf-8');
+});

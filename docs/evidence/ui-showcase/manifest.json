@@ -547,7 +547,10 @@
       "id": "screen-hud",
       "outcome": "does_not_compile",
       "detail": "line 207, col 37: SyntaxError: Expected identifier when parsing expression, got 'or'",
-      "codeChars": 12466
+      "codeChars": 12466,
+      "files": {
+        "luau": "screen-hud--fps_arena.luau"
+      }
     },
     {
       "target": "screen-hud",
@@ -720,6 +723,6 @@
       "wrappedText": 5
     }
   ],
-  "renderedAt": "2026-09-21T09:34:03.044Z",
+  "renderedAt": "2026-09-21T09:44:52.666Z",
   "renderNote": "SVGs redrawn from the saved Luau by rerender-showcase.mjs; no completion was spent and no answer changed."
 }

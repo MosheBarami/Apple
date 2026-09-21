@@ -30,6 +30,7 @@ const execFile = promisify(execFileCb);
 const sha = (b) => createHash('sha256').update(b).digest('hex').slice(0, 16);
 const SENT = 'the exact bytes the uploader sent';
 const NOW = [0]; // no cache-window waiting: there is no cache in front of these servers
+const LUAU = 'local screenGui = Instance.new("ScreenGui")\n';
 
 // ---------------------------------------------------------------------------------------------
 // 1. THE FETCH-BACK, IN ISOLATION
@@ -150,13 +151,17 @@ function tinyShowcase() {
     'base64',
   );
   writeFileSync(join(ui, 'screen-shop--tycoon.png'), png);
+  // THE SCRIPT IS ON DISK, because the page links it and the deploy has to carry it. A card that
+  // names a .luau the uploader never sends is a dead link the deploy would still call verified —
+  // it would have verified only what it sent.
+  writeFileSync(join(ui, 'screen-shop--tycoon.luau'), LUAU);
   writeFileSync(join(ui, 'manifest.json'), JSON.stringify({
     generatedAt: new Date().toISOString(), model: 'rune', lane: 'Apple MAX', genre: 'tycoon',
     counts: { targets: 1, built: 1, byOutcome: { built: 1 } },
     results: [{
-      target: 'screen-shop', id: 'screen-shop', genre: 'tycoon', outcome: 'built', codeChars: 10,
+      target: 'screen-shop', id: 'screen-shop', genre: 'tycoon', outcome: 'built', codeChars: LUAU.length,
       guiNodes: 3, sources: 2, asScripted: { painted: 2, textNodes: 1, hidden: 0, offscreen: 0 },
-      opened: null, files: { luau: 'x.luau', svg: 'screen-shop--tycoon.svg' },
+      opened: null, files: { luau: 'screen-shop--tycoon.luau', svg: 'screen-shop--tycoon.svg' },
     }],
   }));
   writeFileSync(join(maps, 'manifest.json'), JSON.stringify({ counts: { built: 0 }, results: [] }));
@@ -245,5 +250,73 @@ test('THE /pricing FAILURE — a stale row at the bare path shadows the index an
       'a showcase from a design that was deleted',
       'the shadowing row is still there; the deploy simply refused to claim otherwise',
     );
+  } finally { await origin.stop(); rmSync(src.dir, { recursive: true, force: true }); }
+});
+
+// ---------------------------------------------------------------------------------------------
+// 3. THE CODE THE MODEL WROTE
+// ---------------------------------------------------------------------------------------------
+
+test('the scripts the page links are uploaded AND fetched back, not just linked', async () => {
+  // Each card now carries `<a href=".../x.luau">` and fetches the same URL when opened. Shipping
+  // the page without the scripts puts a dead link under every picture, and this script would still
+  // print `verified` — because verifying what you sent says nothing about what you did not send.
+  const origin = await fakeOrigin();
+  const src = tinyShowcase();
+  try {
+    const { stdout } = await runDeploy(origin, src);
+    assert.match(stdout, /verified/);
+    assert.match(stdout, /1 script\(s\)/, 'the run does not account for the scripts it shipped');
+    assert.ok(origin.uploads.includes('/showcase/ui-showcase/screen-shop--tycoon.luau'), 'the script never left the laptop');
+    const res = await fetch(`${origin.url}/showcase/ui-showcase/screen-shop--tycoon.luau`);
+    assert.equal(res.status, 200);
+    assert.equal(await res.text(), LUAU, 'the origin serves something other than the script that was sent');
+  } finally { await origin.stop(); rmSync(src.dir, { recursive: true, force: true }); }
+});
+
+test('THE AIMED CASE — an origin that drops the SCRIPT while serving the page fails the run', async () => {
+  // The page is perfect, the images are perfect, and the one thing the page promises — "the Luau
+  // the model wrote" — 404s. This is the deploy most likely to be believed, because everything a
+  // reader checks first is right.
+  const origin = await fakeOrigin();
+  const src = tinyShowcase();
+  const swallow = '/showcase/ui-showcase/screen-shop--tycoon.luau';
+  const realSet = origin.store.set.bind(origin.store);
+  origin.store.set = (k, v) => (k === swallow ? origin.store : realSet(k, v));
+  try {
+    let err = null;
+    await runDeploy(origin, src).catch((e) => { err = e; });
+    assert.ok(err, 'a deploy that lost the script must not exit 0');
+    assert.equal(err.code, 3);
+    assert.doesNotMatch(`${err.stdout}${err.stderr}`, /verified/);
+    assert.match(err.stderr, /screen-shop--tycoon\.luau/, 'the missing script must be named');
+  } finally { await origin.stop(); rmSync(src.dir, { recursive: true, force: true }); }
+});
+
+test('a script the page does NOT link is not uploaded — the page decides, not the directory', async () => {
+  // The same contract the images keep. An orphan in the evidence directory is megabytes in D1 for
+  // something no card points at, and — worse in the other direction — it would let the uploaded
+  // set drift from the referenced one without anything noticing.
+  const origin = await fakeOrigin();
+  const src = tinyShowcase();
+  writeFileSync(join(src.ui, 'screen-nobody--tycoon.luau'), 'local orphan = true\n');
+  try {
+    await runDeploy(origin, src);
+    assert.ok(!origin.uploads.some((u) => u.includes('screen-nobody')), 'an unreferenced script was shipped');
+  } finally { await origin.stop(); rmSync(src.dir, { recursive: true, force: true }); }
+});
+
+test('a script is uploaded as text, or the browser downloads it instead of showing it', async () => {
+  // `nosniff` is set on every static response, so the stored content type is the whole decision.
+  // With no `luau` entry in deploy-static's MIME map the upload sends none, the worker guesses
+  // application/octet-stream, and every "the Luau the model wrote" link becomes a file download —
+  // which is not showing a fifteen-year-old the code, it is handing his phone a file it cannot
+  // open. This is the /pricing failure again, one content type over.
+  const origin = await fakeOrigin();
+  const src = tinyShowcase();
+  try {
+    await runDeploy(origin, src);
+    const res = await fetch(`${origin.url}/showcase/ui-showcase/screen-shop--tycoon.luau`);
+    assert.match(res.headers.get('content-type'), /^text\/plain/, 'a browser would download this rather than render it');
   } finally { await origin.stop(); rmSync(src.dir, { recursive: true, force: true }); }
 });

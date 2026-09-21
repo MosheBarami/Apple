@@ -287,9 +287,26 @@ async function runTarget({ target, genreId, model, maxTokens, lib, outDir, viewp
   const built = buildUiTree(code);
   writeFileSync(join(outDir, `${base}.luau`), code);
 
-  if (!built.ran) return { target, genre: genreId, id: construction.id, outcome: 'harness_did_not_run', detail: built.reason, codeChars: code.length };
-  if (built.compiled === false) return { target, genre: genreId, id: construction.id, outcome: 'does_not_compile', detail: built.detail, codeChars: code.length };
-  if (built.status === 'error') return { target, genre: genreId, id: construction.id, outcome: 'runtime_error', detail: built.detail, codeChars: code.length };
+  //[[ THE FILE EXISTS FROM THIS LINE ON, SO EVERY OUTCOME FROM THIS LINE ON NAMES IT.
+  //
+  //   `files` used to be assembled two hundred lines down, on the success path only. The Luau was
+  //   written here either way, so a failed target left a real script on disk that the manifest
+  //   never pointed at — and the manifest is the only index anything downstream reads.
+  //
+  //   MEASURED 2026-09-21. The fps_arena HUD failed to compile and its card printed
+  //   "line 207, col 37: SyntaxError". `screen-hud--fps_arena.luau` was sitting beside the
+  //   manifest the whole time, and the gallery could not link it, because `files` was undefined on
+  //   exactly the one row where the line number is the point. The card cited a line in a file
+  //   nothing would hand the reader — the same defect as the temp path that line number replaced,
+  //   one level up.
+  //
+  //   The failure rows are the rows whose source matters most. They are also the rows nobody
+  //   re-reads, which is why this is structural rather than four more literals. ]]
+  const wrote = { luau: `${base}.luau` };
+
+  if (!built.ran) return { target, genre: genreId, id: construction.id, outcome: 'harness_did_not_run', detail: built.reason, codeChars: code.length, files: { ...wrote } };
+  if (built.compiled === false) return { target, genre: genreId, id: construction.id, outcome: 'does_not_compile', detail: built.detail, codeChars: code.length, files: { ...wrote } };
+  if (built.status === 'error') return { target, genre: genreId, id: construction.id, outcome: 'runtime_error', detail: built.detail, codeChars: code.length, files: { ...wrote } };
 
   const tree = indexTree(built.nodes);
   const guis = screenGuisInPlayerGui(tree);
@@ -333,6 +350,7 @@ async function runTarget({ target, genreId, model, maxTokens, lib, outDir, viewp
       outcome: 'nothing_on_screen_or_on_a_surface',
       detail: 'the build ran, but no ScreenGui reached PlayerGui and no SurfaceGui or BillboardGui held anything',
       codeChars: code.length,
+      files: { ...wrote },
     };
   }
 
@@ -370,10 +388,10 @@ async function runTarget({ target, genreId, model, maxTokens, lib, outDir, viewp
   //   pictures below exist for, and it is not this. ]]
   const blank = blankRenderVerdict({ guiNodes, counters: asScripted });
   if (blank) {
-    return { target, genre: genreId, id: construction.id, ...blank, codeChars: code.length, guiNodes: guiNodes.length };
+    return { target, genre: genreId, id: construction.id, ...blank, codeChars: code.length, guiNodes: guiNodes.length, files: { ...wrote } };
   }
 
-  const files = { luau: `${base}.luau`, svg: `${base}.svg` };
+  const files = { ...wrote, svg: `${base}.svg` };
   let opened = null;
   if (asScripted.hidden > 0) {
     opened = renderTreeToSvg({ guiNodes, rects, viewport: viewport_, forceVisible: true });

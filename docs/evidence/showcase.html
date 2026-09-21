@@ -1,3 +1,5 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>What Apple MAX Built</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
@@ -98,7 +100,12 @@
     font-family: "IBM Plex Mono", monospace; font-size: 10.5px; letter-spacing: .02em;
     background: rgba(8,9,11,.82); color: #cfd4d8; padding: 5px 9px; border-radius: 5px;
   }
-  .card__body { padding: 16px 18px 18px; flex: 1; }
+  /* min-width:0 is not tidying. A flex item defaults to min-width:auto, so it refuses to shrink
+     below its widest content — and a failed card is a ROW flex container, so the moment the code
+     block went in, the body became 854px inside a 474px card and overflow:hidden silently ate the
+     right-hand 380px of it: the compiler message truncated mid-word, and the outcome and
+     luau-written values clipped away entirely. Measured in a browser before it shipped. */
+  .card__body { padding: 16px 18px 18px; flex: 1; min-width: 0; }
   .card__title { margin: 0 0 12px; font-size: 16px; font-weight: 600; text-transform: capitalize; letter-spacing: -.005em; }
   .card__verdict { margin: 0 0 8px; font-size: 14.5px; color: var(--fail); font-weight: 600; }
   .card__detail {
@@ -118,9 +125,51 @@
 
   footer { border-top: 1px solid var(--line); padding-top: 20px; font-size: 13px; color: var(--muted); line-height: 1.6; }
   footer code { font-family: "IBM Plex Mono", monospace; font-size: 12px; background: var(--panel-2); padding: 1px 5px; border-radius: 4px; }
+
+  /* THE CODE, ON THE CARD THAT CLAIMS IT. See sourceBlock. Collapsed by default so a phone pays
+     for nothing it is not reading, and the numbers live in ::before so selecting the block and
+     copying it yields the script rather than the script interleaved with a gutter. */
+  .home { display: inline-block; margin-bottom: 18px; font-size: 13px; color: var(--muted); text-decoration: none; border-bottom: 1px solid var(--line); padding-bottom: 2px; }
+  .home:hover { color: var(--accent); border-color: var(--accent); }
+
+  .src { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
+  .src__summary { cursor: pointer; font-size: 12.5px; color: var(--muted); list-style: none; display: flex; gap: 8px; align-items: baseline; }
+  .src__summary::-webkit-details-marker { display: none; }
+  .src__summary::before { content: "▸"; color: var(--accent); font-size: 10px; }
+  .src[open] .src__summary::before { content: "▾"; }
+  .src__summary:hover { color: var(--ink); }
+  .src__summary .mono { font-size: 11.5px; color: var(--muted); }
+  /* position:relative is load-bearing, not decoration: it makes this element the offsetParent of
+     its lines, so offsetTop in the script below is measured from the top of the scrolling box.
+     Static positioning measured it from the card instead, and the block scrolled to its own end
+     rather than to the line the compiler named. Watched: without it, scrollTop landed at 7462 on
+     a 439-line file whose marked line is 207. */
+  .src__code {
+    position: relative;
+    margin: 10px 0 0; max-height: 380px; overflow: auto;
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+    padding: 10px 12px; font-size: 11.5px; line-height: 1.55; color: var(--ink);
+    white-space: pre; tab-size: 2; counter-reset: none;
+  }
+  .src__code--failed { color: var(--fail); white-space: normal; }
+  .src__line { display: block; padding-left: 46px; text-indent: -46px; }
+  .src__line::before {
+    content: attr(data-n); display: inline-block; width: 38px; margin-right: 8px;
+    text-align: right; color: var(--muted); opacity: .65; user-select: none; text-indent: 0;
+  }
+  /* The line the compiler named, marked where he can see it — the number on the failure card is
+     useless if the file it counts into is not on the page. */
+  .src__line--bad { background: var(--fail-soft); box-shadow: inset 2px 0 0 var(--fail); }
+  .src__line--bad::before { color: var(--fail); opacity: 1; }
+  .src__direct { margin: 8px 0 0; font-size: 11.5px; }
+  .src__direct a { color: var(--muted); }
+  .src__direct a:hover { color: var(--accent); }
 </style>
 
 <div class="wrap">
+  <!-- Every route INTO this page is a link; there was not one out of it. A reader who arrives from
+       the nav and wants to go back has the browser's back button and nothing on the page. -->
+  <a class="home" href="/">← back to the site</a>
   <p class="eyebrow">Generated 2026-09-21 · lane Apple MAX</p>
   <h1>Roblox screens and maps, built by the model from its own library</h1>
   <p class="lede">
@@ -153,6 +202,9 @@
         <strong>nothing was uploaded to any Roblox account.</strong></li>
       <li><strong>The failures are here too</strong>, at the same size as the successes, with the
         reason each one gives.</li>
+      <li><strong>The code is here too.</strong> Every card opens the actual Luau the model wrote,
+        numbered by line. Where a script did not compile, the line the compiler named is marked in
+        it.</li>
     </ul>
   </div>
 
@@ -181,6 +233,11 @@
         <div><dt>references behind it</dt><dd class="mono">11 shipped games</dd></div>
         <div><dt>luau written</dt><dd class="mono">5,484 chars</dd></div>
       </dl>
+      <details class="src">
+        <summary class="src__summary">the Luau the model wrote <span class="mono">5,484 chars</span></summary>
+        <pre class="src__code mono" data-src="ui-showcase/screen-codes--tycoon.luau">opening this loads the file…</pre>
+        <p class="src__direct"><a class="mono" href="ui-showcase/screen-codes--tycoon.luau">screen-codes--tycoon.luau</a></p>
+      </details>
     </div>
   </article>
 <article class="card">
@@ -203,6 +260,11 @@
         <div><dt>references behind it</dt><dd class="mono">11 shipped games</dd></div>
         <div><dt>luau written</dt><dd class="mono">7,819 chars</dd></div>
       </dl>
+      <details class="src">
+        <summary class="src__summary">the Luau the model wrote <span class="mono">7,819 chars</span></summary>
+        <pre class="src__code mono" data-src="ui-showcase/screen-crafting--tycoon.luau">opening this loads the file…</pre>
+        <p class="src__direct"><a class="mono" href="ui-showcase/screen-crafting--tycoon.luau">screen-crafting--tycoon.luau</a></p>
+      </details>
     </div>
   </article>
 <article class="card">
@@ -225,6 +287,11 @@
         <div><dt>references behind it</dt><dd class="mono">10 shipped games</dd></div>
         <div><dt>luau written</dt><dd class="mono">8,500 chars</dd></div>
       </dl>
+      <details class="src">
+        <summary class="src__summary">the Luau the model wrote <span class="mono">8,500 chars</span></summary>
+        <pre class="src__code mono" data-src="ui-showcase/screen-gacha--tycoon.luau">opening this loads the file…</pre>
+        <p class="src__direct"><a class="mono" href="ui-showcase/screen-gacha--tycoon.luau">screen-gacha--tycoon.luau</a></p>
+      </details>
     </div>
   </article>
 <article class="card">
@@ -247,6 +314,11 @@
         <div><dt>references behind it</dt><dd class="mono">3 shipped games</dd></div>
         <div><dt>luau written</dt><dd class="mono">9,892 chars</dd></div>
       </dl>
+      <details class="src">
+        <summary class="src__summary">the Luau the model wrote <span class="mono">9,892 chars</span></summary>
+        <pre class="src__code mono" data-src="ui-showcase/screen-hud--tycoon.luau">opening this loads the file…</pre>
+        <p class="src__direct"><a class="mono" href="ui-showcase/screen-hud--tycoon.luau">screen-hud--tycoon.luau</a></p>
+      </details>
     </div>
   </article>
 <article class="card">
@@ -269,6 +341,11 @@
         <div><dt>references behind it</dt><dd class="mono">15 shipped games</dd></div>
         <div><dt>luau written</dt><dd class="mono">17,569 chars</dd></div>
       </dl>
+      <details class="src">
+        <summary class="src__summary">the Luau the model wrote <span class="mono">17,569 chars</span></summary>
+        <pre class="src__code mono" data-src="ui-showcase/screen-inventory--tycoon.luau">opening this loads the file…</pre>
+        <p class="src__direct"><a class="mono" href="ui-showcase/screen-inventory--tycoon.luau">screen-inventory--tycoon.luau</a></p>
+      </details>
     </div>
   </article>
 <article class="card">
@@ -291,6 +368,11 @@
         <div><dt>references behind it</dt><dd class="mono">12 shipped games</dd></div>
         <div><dt>luau written</dt><dd class="mono">7,602 chars</dd></div>
       </dl>
+      <details class="src">
+        <summary class="src__summary">the Luau the model wrote <span class="mono">7,602 chars</span></summary>
+        <pre class="src__code mono" data-src="ui-showcase/screen-leaderboard--tycoon.luau">opening this loads the file…</pre>
+        <p class="src__direct"><a class="mono" href="ui-showcase/screen-leaderboard--tycoon.luau">screen-leaderboard--tycoon.luau</a></p>
+      </details>
     </div>
   </article>
 <article class="card">
@@ -313,6 +395,11 @@
         <div><dt>references behind it</dt><dd class="mono">13 shipped games</dd></div>
         <div><dt>luau written</dt><dd class="mono">9,873 chars</dd></div>
       </dl>
+      <details class="src">
+        <summary class="src__summary">the Luau the model wrote <span class="mono">9,873 chars</span></summary>
+        <pre class="src__code mono" data-src="ui-showcase/screen-lobby--tycoon.luau">opening this loads the file…</pre>
+        <p class="src__direct"><a class="mono" href="ui-showcase/screen-lobby--tycoon.luau">screen-lobby--tycoon.luau</a></p>
+      </details>
     </div>
   </article>
 <article class="card">
@@ -335,6 +422,11 @@
         <div><dt>references behind it</dt><dd class="mono">13 shipped games</dd></div>
         <div><dt>luau written</dt><dd class="mono">12,215 chars</dd></div>
       </dl>
+      <details class="src">
+        <summary class="src__summary">the Luau the model wrote <span class="mono">12,215 chars</span></summary>
+        <pre class="src__code mono" data-src="ui-showcase/screen-map--tycoon.luau">opening this loads the file…</pre>
+        <p class="src__direct"><a class="mono" href="ui-showcase/screen-map--tycoon.luau">screen-map--tycoon.luau</a></p>
+      </details>
     </div>
   </article>
 <article class="card">
@@ -357,6 +449,11 @@
         <div><dt>references behind it</dt><dd class="mono">11 shipped games</dd></div>
         <div><dt>luau written</dt><dd class="mono">7,085 chars</dd></div>
       </dl>
+      <details class="src">
+        <summary class="src__summary">the Luau the model wrote <span class="mono">7,085 chars</span></summary>
+        <pre class="src__code mono" data-src="ui-showcase/screen-notification--tycoon.luau">opening this loads the file…</pre>
+        <p class="src__direct"><a class="mono" href="ui-showcase/screen-notification--tycoon.luau">screen-notification--tycoon.luau</a></p>
+      </details>
     </div>
   </article>
 <article class="card">
@@ -379,6 +476,11 @@
         <div><dt>references behind it</dt><dd class="mono">10 shipped games</dd></div>
         <div><dt>luau written</dt><dd class="mono">7,410 chars</dd></div>
       </dl>
+      <details class="src">
+        <summary class="src__summary">the Luau the model wrote <span class="mono">7,410 chars</span></summary>
+        <pre class="src__code mono" data-src="ui-showcase/screen-onboarding--tycoon.luau">opening this loads the file…</pre>
+        <p class="src__direct"><a class="mono" href="ui-showcase/screen-onboarding--tycoon.luau">screen-onboarding--tycoon.luau</a></p>
+      </details>
     </div>
   </article>
 <article class="card">
@@ -401,6 +503,11 @@
         <div><dt>references behind it</dt><dd class="mono">2 shipped games</dd></div>
         <div><dt>luau written</dt><dd class="mono">9,045 chars</dd></div>
       </dl>
+      <details class="src">
+        <summary class="src__summary">the Luau the model wrote <span class="mono">9,045 chars</span></summary>
+        <pre class="src__code mono" data-src="ui-showcase/screen-progress--tycoon.luau">opening this loads the file…</pre>
+        <p class="src__direct"><a class="mono" href="ui-showcase/screen-progress--tycoon.luau">screen-progress--tycoon.luau</a></p>
+      </details>
     </div>
   </article>
 <article class="card">
@@ -423,6 +530,11 @@
         <div><dt>references behind it</dt><dd class="mono">10 shipped games</dd></div>
         <div><dt>luau written</dt><dd class="mono">7,518 chars</dd></div>
       </dl>
+      <details class="src">
+        <summary class="src__summary">the Luau the model wrote <span class="mono">7,518 chars</span></summary>
+        <pre class="src__code mono" data-src="ui-showcase/screen-rewards--tycoon.luau">opening this loads the file…</pre>
+        <p class="src__direct"><a class="mono" href="ui-showcase/screen-rewards--tycoon.luau">screen-rewards--tycoon.luau</a></p>
+      </details>
     </div>
   </article>
 <article class="card">
@@ -445,6 +557,11 @@
         <div><dt>references behind it</dt><dd class="mono">10 shipped games</dd></div>
         <div><dt>luau written</dt><dd class="mono">8,636 chars</dd></div>
       </dl>
+      <details class="src">
+        <summary class="src__summary">the Luau the model wrote <span class="mono">8,636 chars</span></summary>
+        <pre class="src__code mono" data-src="ui-showcase/screen-settings--tycoon.luau">opening this loads the file…</pre>
+        <p class="src__direct"><a class="mono" href="ui-showcase/screen-settings--tycoon.luau">screen-settings--tycoon.luau</a></p>
+      </details>
     </div>
   </article>
 <article class="card">
@@ -467,6 +584,11 @@
         <div><dt>references behind it</dt><dd class="mono">11 shipped games</dd></div>
         <div><dt>luau written</dt><dd class="mono">9,968 chars</dd></div>
       </dl>
+      <details class="src">
+        <summary class="src__summary">the Luau the model wrote <span class="mono">9,968 chars</span></summary>
+        <pre class="src__code mono" data-src="ui-showcase/screen-shop--tycoon.luau">opening this loads the file…</pre>
+        <p class="src__direct"><a class="mono" href="ui-showcase/screen-shop--tycoon.luau">screen-shop--tycoon.luau</a></p>
+      </details>
     </div>
   </article>
 <article class="card">
@@ -489,6 +611,11 @@
         <div><dt>references behind it</dt><dd class="mono">11 shipped games</dd></div>
         <div><dt>luau written</dt><dd class="mono">14,537 chars</dd></div>
       </dl>
+      <details class="src">
+        <summary class="src__summary">the Luau the model wrote <span class="mono">14,537 chars</span></summary>
+        <pre class="src__code mono" data-src="ui-showcase/screen-social--tycoon.luau">opening this loads the file…</pre>
+        <p class="src__direct"><a class="mono" href="ui-showcase/screen-social--tycoon.luau">screen-social--tycoon.luau</a></p>
+      </details>
     </div>
   </article>
 <article class="card">
@@ -511,6 +638,11 @@
         <div><dt>references behind it</dt><dd class="mono">12 shipped games</dd></div>
         <div><dt>luau written</dt><dd class="mono">11,605 chars</dd></div>
       </dl>
+      <details class="src">
+        <summary class="src__summary">the Luau the model wrote <span class="mono">11,605 chars</span></summary>
+        <pre class="src__code mono" data-src="ui-showcase/screen-trading--tycoon.luau">opening this loads the file…</pre>
+        <p class="src__direct"><a class="mono" href="ui-showcase/screen-trading--tycoon.luau">screen-trading--tycoon.luau</a></p>
+      </details>
     </div>
   </article></div>
 
@@ -532,6 +664,11 @@
           <div><dt>outcome</dt><dd class="mono">does_not_compile</dd></div>
           <div><dt>luau written</dt><dd class="mono">12,466 chars</dd></div>
         </dl>
+        <details class="src" open>
+        <summary class="src__summary">the Luau the model wrote <span class="mono">12,466 chars</span></summary>
+        <pre class="src__code mono" data-src="ui-showcase/screen-hud--fps_arena.luau" data-error-line="207">opening this loads the file…</pre>
+        <p class="src__direct"><a class="mono" href="ui-showcase/screen-hud--fps_arena.luau">screen-hud--fps_arena.luau</a></p>
+      </details>
       </div>
     </article>
 <article class="card">
@@ -554,6 +691,11 @@
         <div><dt>references behind it</dt><dd class="mono">3 shipped games</dd></div>
         <div><dt>luau written</dt><dd class="mono">6,582 chars</dd></div>
       </dl>
+      <details class="src">
+        <summary class="src__summary">the Luau the model wrote <span class="mono">6,582 chars</span></summary>
+        <pre class="src__code mono" data-src="ui-showcase/screen-hud--obby.luau">opening this loads the file…</pre>
+        <p class="src__direct"><a class="mono" href="ui-showcase/screen-hud--obby.luau">screen-hud--obby.luau</a></p>
+      </details>
     </div>
   </article>
 <article class="card">
@@ -576,6 +718,11 @@
         <div><dt>references behind it</dt><dd class="mono">3 shipped games</dd></div>
         <div><dt>luau written</dt><dd class="mono">7,654 chars</dd></div>
       </dl>
+      <details class="src">
+        <summary class="src__summary">the Luau the model wrote <span class="mono">7,654 chars</span></summary>
+        <pre class="src__code mono" data-src="ui-showcase/screen-hud--horror.luau">opening this loads the file…</pre>
+        <p class="src__direct"><a class="mono" href="ui-showcase/screen-hud--horror.luau">screen-hud--horror.luau</a></p>
+      </details>
     </div>
   </article>
 <article class="card">
@@ -598,6 +745,11 @@
         <div><dt>references behind it</dt><dd class="mono">3 shipped games</dd></div>
         <div><dt>luau written</dt><dd class="mono">10,407 chars</dd></div>
       </dl>
+      <details class="src">
+        <summary class="src__summary">the Luau the model wrote <span class="mono">10,407 chars</span></summary>
+        <pre class="src__code mono" data-src="ui-showcase/screen-hud--simulator.luau">opening this loads the file…</pre>
+        <p class="src__direct"><a class="mono" href="ui-showcase/screen-hud--simulator.luau">screen-hud--simulator.luau</a></p>
+      </details>
     </div>
   </article>
 <article class="card">
@@ -620,6 +772,11 @@
         <div><dt>references behind it</dt><dd class="mono">3 shipped games</dd></div>
         <div><dt>luau written</dt><dd class="mono">7,004 chars</dd></div>
       </dl>
+      <details class="src">
+        <summary class="src__summary">the Luau the model wrote <span class="mono">7,004 chars</span></summary>
+        <pre class="src__code mono" data-src="ui-showcase/screen-hud--racing.luau">opening this loads the file…</pre>
+        <p class="src__direct"><a class="mono" href="ui-showcase/screen-hud--racing.luau">screen-hud--racing.luau</a></p>
+      </details>
     </div>
   </article>
 <article class="card">
@@ -642,6 +799,11 @@
         <div><dt>references behind it</dt><dd class="mono">3 shipped games</dd></div>
         <div><dt>luau written</dt><dd class="mono">10,026 chars</dd></div>
       </dl>
+      <details class="src">
+        <summary class="src__summary">the Luau the model wrote <span class="mono">10,026 chars</span></summary>
+        <pre class="src__code mono" data-src="ui-showcase/screen-hud--anime_battle.luau">opening this loads the file…</pre>
+        <p class="src__direct"><a class="mono" href="ui-showcase/screen-hud--anime_battle.luau">screen-hud--anime_battle.luau</a></p>
+      </details>
     </div>
   </article></div>
 
@@ -666,6 +828,11 @@
         
         <div><dt>luau written</dt><dd class="mono">7,023 chars</dd></div>
       </dl>
+      <details class="src">
+        <summary class="src__summary">the Luau the model wrote <span class="mono">7,023 chars</span></summary>
+        <pre class="src__code mono" data-src="map-showcase/map--tycoon.luau">opening this loads the file…</pre>
+        <p class="src__direct"><a class="mono" href="map-showcase/map--tycoon.luau">map--tycoon.luau</a></p>
+      </details>
     </div>
   </article>
 <article class="card">
@@ -684,6 +851,11 @@
         
         <div><dt>luau written</dt><dd class="mono">8,549 chars</dd></div>
       </dl>
+      <details class="src">
+        <summary class="src__summary">the Luau the model wrote <span class="mono">8,549 chars</span></summary>
+        <pre class="src__code mono" data-src="map-showcase/map--obby.luau">opening this loads the file…</pre>
+        <p class="src__direct"><a class="mono" href="map-showcase/map--obby.luau">map--obby.luau</a></p>
+      </details>
     </div>
   </article>
 <article class="card">
@@ -702,6 +874,11 @@
         
         <div><dt>luau written</dt><dd class="mono">13,444 chars</dd></div>
       </dl>
+      <details class="src">
+        <summary class="src__summary">the Luau the model wrote <span class="mono">13,444 chars</span></summary>
+        <pre class="src__code mono" data-src="map-showcase/map--horror.luau">opening this loads the file…</pre>
+        <p class="src__direct"><a class="mono" href="map-showcase/map--horror.luau">map--horror.luau</a></p>
+      </details>
     </div>
   </article>
 <article class="card">
@@ -720,6 +897,11 @@
         
         <div><dt>luau written</dt><dd class="mono">7,802 chars</dd></div>
       </dl>
+      <details class="src">
+        <summary class="src__summary">the Luau the model wrote <span class="mono">7,802 chars</span></summary>
+        <pre class="src__code mono" data-src="map-showcase/map--tower_defense.luau">opening this loads the file…</pre>
+        <p class="src__direct"><a class="mono" href="map-showcase/map--tower_defense.luau">map--tower_defense.luau</a></p>
+      </details>
     </div>
   </article>
 <article class="card">
@@ -738,6 +920,11 @@
         
         <div><dt>luau written</dt><dd class="mono">10,223 chars</dd></div>
       </dl>
+      <details class="src">
+        <summary class="src__summary">the Luau the model wrote <span class="mono">10,223 chars</span></summary>
+        <pre class="src__code mono" data-src="map-showcase/map--fps_arena.luau">opening this loads the file…</pre>
+        <p class="src__direct"><a class="mono" href="map-showcase/map--fps_arena.luau">map--fps_arena.luau</a></p>
+      </details>
     </div>
   </article>
 <article class="card">
@@ -756,6 +943,11 @@
         
         <div><dt>luau written</dt><dd class="mono">8,682 chars</dd></div>
       </dl>
+      <details class="src">
+        <summary class="src__summary">the Luau the model wrote <span class="mono">8,682 chars</span></summary>
+        <pre class="src__code mono" data-src="map-showcase/map--racing.luau">opening this loads the file…</pre>
+        <p class="src__direct"><a class="mono" href="map-showcase/map--racing.luau">map--racing.luau</a></p>
+      </details>
     </div>
   </article></div>
 
@@ -801,8 +993,55 @@
 
   <footer>
     Sources: <code>docs/evidence/ui-showcase/manifest.json</code> and
-    <code>docs/evidence/map-showcase/manifest.json</code>. The Luau behind every card sits beside them.
+    <code>docs/evidence/map-showcase/manifest.json</code>. The Luau behind every card is on the card,
+    under “the Luau the model wrote”.
     Rebuild with <code>packages/training/src/generate-ui-showcase.mjs</code> and
     <code>generate-map-showcase.mjs</code>.
   </footer>
 </div>
+<script>
+  // PROGRESSIVE, NOT LOAD-BEARING. Each card already carries a plain <a> to the same URL, so a
+  // reader with no JavaScript, a blocked fetch or a 404 still reaches the file. This only saves
+  // him the trip.
+  //
+  // THE CATCH BRANCH PRINTS WHAT WENT WRONG. A fetch that fails must not leave the reader looking
+  // at an empty box: an empty box reads as "the model wrote nothing", which would be this page
+  // libelling its own model — the same mistake as the racing HUD drawn as blank bars.
+  for (const d of document.querySelectorAll('details.src')) {
+    const pre = d.querySelector('.src__code');
+    if (!pre) continue;
+    let loading = false;
+    const load = async () => {
+      if (loading || pre.dataset.loaded === '1') return;
+      loading = true;
+      try {
+        const res = await fetch(pre.dataset.src);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const text = await res.text();
+        const bad = Number(pre.dataset.errorLine || 0);
+        pre.textContent = '';
+        const lines = text.replace(/\n$/, '').split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const el = document.createElement('span');
+          el.className = 'src__line' + (i + 1 === bad ? ' src__line--bad' : '');
+          el.setAttribute('data-n', String(i + 1));
+          el.textContent = lines[i] + '\n';
+          pre.appendChild(el);
+        }
+        pre.dataset.loaded = '1';
+        // Scroll the BLOCK, never the page: a card that yanked the viewport on load would move the
+        // page out from under whoever is reading something else.
+        const hit = pre.querySelector('.src__line--bad');
+        if (hit) pre.scrollTop = Math.max(0, hit.offsetTop - pre.clientHeight / 2);
+      } catch (e) {
+        pre.textContent = 'could not load the code — ' + (e && e.message ? e.message : e)
+          + '. The file itself is linked below.';
+        pre.classList.add('src__code--failed');
+      } finally {
+        loading = false;
+      }
+    };
+    d.addEventListener('toggle', () => { if (d.open) load(); });
+    if (d.open) load();
+  }
+</script>

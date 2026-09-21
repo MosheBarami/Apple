@@ -64,6 +64,11 @@ const MIME = {
   json: 'application/json; charset=utf-8', webmanifest: 'application/manifest+json',
   svg: 'image/svg+xml', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp',
   ico: 'image/x-icon', woff2: 'font/woff2', txt: 'text/plain; charset=utf-8',
+  // Luau source, served as text so a browser RENDERS it. With no entry here the upload sends no
+  // content type, the worker's own guess yields application/octet-stream, and `nosniff` turns
+  // every "the Luau the model wrote" link on /showcase into a file download — which is not
+  // "showing him the code", it is handing a fifteen-year-old a file his phone cannot open.
+  luau: 'text/plain; charset=utf-8', lua: 'text/plain; charset=utf-8',
   xml: 'application/xml; charset=utf-8', glb: 'model/gltf-binary', map: 'application/json; charset=utf-8',
 };
 

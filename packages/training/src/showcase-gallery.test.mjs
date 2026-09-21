@@ -22,6 +22,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync, mkdtempSync, mkdirSync, rmSync } from 'node:fs';
+import { errorLineOf } from './build-showcase-gallery.mjs';
 import { tmpdir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -32,12 +33,17 @@ const BUILDER = join(HERE, 'build-showcase-gallery.mjs');
 const CORPUS = join(REPO, 'packages/corpus/data/ui-construction.json');
 
 /** The gallery over a one-screen fixture: enough page to inspect, no dependence on real evidence. */
-function build({ corpus = null, corpusPath = null, results = null, genre = 'tycoon' } = {}) {
+function build({ corpus = null, corpusPath = null, results = null, genre = 'tycoon', sources = null, mapResults = null, mapSources = null } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'gallery-'));
   const ui = join(dir, 'ui');
   const maps = join(dir, 'maps');
   mkdirSync(ui, { recursive: true });
   mkdirSync(maps, { recursive: true });
+  // `sources` puts real .luau files beside the manifest. A row may NAME a script that is not on
+  // disk — the manifest and the directory are two different things — and the gallery has to tell
+  // those apart, so the fixture has to be able to produce both.
+  for (const [name, body] of Object.entries(sources ?? {})) writeFileSync(join(ui, name), body);
+  for (const [name, body] of Object.entries(mapSources ?? {})) writeFileSync(join(maps, name), body);
   writeFileSync(join(ui, 'manifest.json'), JSON.stringify({
     base: 'https://example.invalid', model: 'rune', genre,
     counts: { targets: 2, built: 1, byOutcome: { built: 1, truncated_code_block: 1 } },
@@ -46,7 +52,7 @@ function build({ corpus = null, corpusPath = null, results = null, genre = 'tyco
       { target: 'screen-social', id: 'screen-social', genre: 'tycoon', outcome: 'truncated_code_block', detail: 'stopped inside the block' },
     ],
   }));
-  writeFileSync(join(maps, 'manifest.json'), JSON.stringify({ counts: { built: 0 }, results: [] }));
+  writeFileSync(join(maps, 'manifest.json'), JSON.stringify({ counts: { built: 0 }, results: mapResults ?? [] }));
   const out = join(dir, 'showcase.html');
   const extra = [];
   if (corpus) {
@@ -254,4 +260,129 @@ test('with one genre there is no band at all, rather than an empty heading', () 
   assert.ok(!html.includes('The same screen, other genres'),
     'an empty cross-genre band is printed over a single-genre run');
   assert.ok(html.includes('Interface screens'), 'the one-game grid went missing too');
+});
+
+/**
+ * THE CODE THE MODEL WROTE, ON THE PAGE HE CAN OPEN.
+ *
+ * THE DEFECT. Every card reported how many objects the model built and how many labels it wrote,
+ * and none of them showed the Luau. The footer said "the Luau behind every card sits beside them"
+ * — beside `manifest.json`, inside a git checkout, on one laptop. He is fifteen, does not use git,
+ * and has no clone. That is the same shape as the gallery that lived at
+ * `docs/evidence/showcase.html` while `GET /showcase` answered 404: real work, addressed to
+ * somebody who cannot reach it.
+ *
+ * WORSE ON THE ONE CARD WHERE IT MATTERS MOST. The fps_arena HUD failed with "line 207, col 37",
+ * a number that was itself fixed a commit earlier so it would count into the model's file rather
+ * than into the test harness. It counted into a file the page did not offer.
+ *
+ * FOUR PROPERTIES HELD HERE:
+ *   1. A row whose script is on disk is linked; a row whose script is NOT is not — the same rule
+ *      `hasPng` keeps, so that `infra/deploy-showcase.mjs` ships exactly what the page references.
+ *   2. The marked line is read out of the row's own diagnostic, not typed.
+ *   3. The page claims "the code is here" only when a card is actually carrying some.
+ *   4. The link is a real `<a href>` outside the script, so no-JavaScript still reaches the file.
+ */
+const withSource = (over = {}) => ({
+  target: 'screen-shop', id: 'screen-shop', genre: 'tycoon', outcome: 'built', guiNodes: 4,
+  codeChars: 11, files: { svg: 'a.svg', luau: 'screen-shop--tycoon.luau' }, ...over,
+});
+
+test('errorLineOf takes the compiler position ONLY when it is in the model’s own file', () => {
+  assert.equal(errorLineOf("line 207, col 37: SyntaxError: Expected identifier when parsing expression, got 'or'"), 207);
+  // rebaseDiagnostic's other shape. 825 is a line of the 616-line harness plus the pcall wrapper;
+  // marking line 825 of a 438-line file would invent a location, which is the defect one level up.
+  assert.equal(errorLineOf('line 825 of the test harness, col 37 — not in the model’s file: SyntaxError'), null);
+  // A number that is not the compiler's position must not be mistaken for one.
+  assert.equal(errorLineOf('the build threw: attempt to index nil, line 4 of the stack'), null);
+  assert.equal(errorLineOf(undefined), null);
+});
+
+test('a card whose script is on disk links it; a card whose script is only NAMED does not', () => {
+  const linked = build({
+    results: [withSource()],
+    sources: { 'screen-shop--tycoon.luau': 'local a = 1\n' },
+  });
+  assert.match(linked, /<details class="src"/, 'the script is on disk and the card does not offer it');
+  assert.match(linked, /href="ui-showcase\/screen-shop--tycoon\.luau"/, 'no direct link to the file');
+  assert.match(linked, /data-src="ui-showcase\/screen-shop--tycoon\.luau"/, 'nothing for the script to fetch');
+
+  // THE AIMED HALF. Same manifest, nothing on disk. A card offering a file no upload will follow
+  // is twenty-eight dead links, and the deploy would still report success because it verifies
+  // only what it sent.
+  const dangling = build({ results: [withSource()] });
+  assert.doesNotMatch(dangling, /<details class="src"/, 'a script that is not on disk was linked anyway');
+  assert.doesNotMatch(dangling, /\.luau"/, 'a dangling reference reached the page');
+});
+
+test('THE MARKED LINE IS READ OFF THE ROW — a different diagnostic marks a different line', () => {
+  // The real manifest says 207, so a mutation replacing errorLineOf(r.detail) with a literal 207
+  // renders the real page byte-identically. Only a fixture the literal cannot satisfy defends the
+  // derivation — the same reason the library counts are tested against a made-up corpus.
+  const at207 = build({
+    results: [withSource({ outcome: 'does_not_compile', detail: "line 207, col 37: SyntaxError: got 'or'", files: { luau: 'screen-shop--tycoon.luau' } })],
+    sources: { 'screen-shop--tycoon.luau': 'local a = 1\n' },
+  });
+  assert.match(at207, /data-error-line="207"/);
+  const at3 = build({
+    results: [withSource({ outcome: 'does_not_compile', detail: 'line 3, col 9: SyntaxError: got ")"', files: { luau: 'screen-shop--tycoon.luau' } })],
+    sources: { 'screen-shop--tycoon.luau': 'local a = 1\n' },
+  });
+  assert.match(at3, /data-error-line="3"/, 'the marked line does not follow the diagnostic');
+  assert.doesNotMatch(at3, /data-error-line="207"/, 'a line number from another run leaked into this page');
+
+  // A failed card opens on load — the error is the point of the card, and a reader should not have
+  // to know there is something to click before the number means anything.
+  assert.match(at3, /<details class="src" open>/);
+  // A built card does not: he is here for the pictures, and 265 KB of Luau expanded by default is
+  // a page that scrolls for a minute before reaching the second screen.
+  const built = build({ results: [withSource()], sources: { 'screen-shop--tycoon.luau': 'local a = 1\n' } });
+  assert.doesNotMatch(built, /<details class="src" open>/);
+});
+
+test('the page claims the code is here ONLY when a card is carrying some', () => {
+  const carrying = build({ results: [withSource()], sources: { 'screen-shop--tycoon.luau': 'local a = 1\n' } });
+  assert.match(carrying, /The code is here too/);
+  // A typed claim survives every state in which it stops being true — a manifest whose rows lost
+  // their scripts, a directory that was not kept — and the page would go on promising him code it
+  // is not carrying. That is the lie by composition the FAILURES section exists to refuse.
+  const empty = build({ results: [withSource()] });
+  assert.doesNotMatch(empty, /The code is here too/, 'the page promises code that no card offers');
+});
+
+test('the link to the file is a real anchor OUTSIDE the script, so no-JavaScript still reaches it', () => {
+  const html = build({ results: [withSource()], sources: { 'screen-shop--tycoon.luau': 'local a = 1\n' } });
+  const beforeScript = html.slice(0, html.indexOf('<script>'));
+  assert.match(beforeScript, /<a class="mono" href="ui-showcase\/screen-shop--tycoon\.luau">/,
+    'the only route to the file is behind JavaScript');
+  // And the fetch failure branch must SAY so rather than leaving an empty box: an empty box reads
+  // as "the model wrote nothing", which would be this page libelling its own model.
+  assert.match(html, /could not load the code/, 'the script has no honest failure state');
+});
+
+test('maps carry their scripts too — a whole playable map is code he can read', () => {
+  const html = build({
+    mapResults: [{ genre: 'tycoon', outcome: 'built', parts: 3, codeChars: 11, bounds: { studsWide: 10, studsDeep: 10, minY: 0, maxY: 1 }, files: { svg: 'm.svg', luau: 'map--tycoon.luau' } }],
+    mapSources: { 'map--tycoon.luau': 'local a = 1\n' },
+  });
+  assert.match(html, /href="map-showcase\/map--tycoon\.luau"/, 'the map card does not offer its script');
+});
+
+test('THE 980px PAGE — a phone must be told the width, or it lays this out for a desktop', () => {
+  // MEASURED 2026-09-21 in a 375px browser: with no viewport meta, document.documentElement
+  // .clientWidth reported 980 and the whole page was scaled to 38%. He reads this on a phone, so
+  // the page he was actually being shown was unreadable, and the one-column rule at 900px in the
+  // stylesheet could never fire.
+  const html = build();
+  assert.match(html, /<meta name="viewport" content="width=device-width, initial-scale=1">/);
+  // The Hebrew section is the one part of this page whose whole purpose is that he understands it.
+  // Over HTTP the worker sends a charset; opened from disk there is no header and nothing to guess
+  // from but the bytes.
+  assert.match(html, /<meta charset="utf-8">/);
+});
+
+test('there is a way off this page — it is not a one-way trip', () => {
+  // Every route INTO /showcase is a link; there was not one out of it. Nav.astro now points twenty
+  // site pages here and this page pointed nowhere.
+  assert.match(build(), /<a class="home" href="\/">/);
 });

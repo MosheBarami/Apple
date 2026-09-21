@@ -96,6 +96,63 @@ const OUTCOME_WORDS = {
   threw: 'the pipeline itself threw',
 };
 
+/**
+ * WHICH LINE OF *HIS* FILE THE COMPILER WAS TALKING ABOUT.
+ *
+ * `rebaseDiagnostic` in score-ui.mjs already converted the compiler's line number from the
+ * concatenated harness+model program into a line of the model's own file, and emits one of two
+ * shapes:
+ *
+ *   "line 207, col 37: SyntaxError: ..."                                  -> in the model's file
+ *   "line 825 of the test harness, col 37 — not in the model's file: ..." -> NOT in it
+ *
+ * Only the first may be pointed at, and the second must return null rather than 825: highlighting
+ * line 825 of a 438-line file would invent a location, which is the same class of mistake as the
+ * temp path that number replaced. The anchor is required so a line number appearing anywhere else
+ * in an error message — "attempt to index nil (line 4 of the stack)" — cannot be mistaken for the
+ * compiler's own position.
+ */
+export function errorLineOf(detail) {
+  const m = /^line (\d+), col \d+: /.exec(String(detail ?? ''));
+  return m ? Number(m[1]) : null;
+}
+
+/**
+ * THE ONE THING THE PAGE NEVER SHOWED HIM WAS THE THING THE PRODUCT ACTUALLY PRODUCES.
+ *
+ * Every card above says how many objects the model built and how many labels it wrote. None of
+ * them showed the Luau. The footer said "the Luau behind every card sits beside them" — beside
+ * `manifest.json`, in a git checkout, on one laptop. He is fifteen, does not use git and has no
+ * clone; that sentence pointed him at a file he cannot reach, which is the same defect as the
+ * gallery that sat at `docs/evidence/showcase.html` while `GET /showcase` answered 404.
+ *
+ * The code is what he is buying. It goes on the page.
+ *
+ * FETCHED, NOT INLINED. The twenty-eight scripts are 265 KB of text against a 36 KB page, and he
+ * reads this on a phone. Each `<details>` pulls its own file the first time it is opened, so the
+ * page stays the size it was and a card he never opens costs nothing.
+ *
+ * THE LINK IS NOT THE ENHANCEMENT — it is always there, outside the script, and it is a real
+ * `<a href>` to the same URL the fetch uses. With no JavaScript, a blocked fetch, or a 404, he
+ * still gets the file, and the failure branch says which of those happened instead of leaving an
+ * empty box. An empty box is a failure to observe rendering as an observation.
+ *
+ * LINKED ONLY WHEN THE FILE IS ON DISK, the same rule `hasPng` keeps, and for the same reason:
+ * `infra/deploy-showcase.mjs` ships exactly what the built page references, so a card may not
+ * reference something no upload will follow.
+ */
+function sourceBlock(r, dir, prefix) {
+  const file = r.files?.luau;
+  if (!file || !existsSync(join(dir, file))) return '';
+  const bad = errorLineOf(r.detail);
+  const url = prefix + file;
+  return `<details class="src"${bad ? ' open' : ''}>
+        <summary class="src__summary">the Luau the model wrote${r.codeChars ? ` <span class="mono">${r.codeChars.toLocaleString()} chars</span>` : ''}</summary>
+        <pre class="src__code mono" data-src="${esc(url)}"${bad ? ` data-error-line="${bad}"` : ''}>opening this loads the file…</pre>
+        <p class="src__direct"><a class="mono" href="${esc(url)}">${esc(file)}</a></p>
+      </details>`;
+}
+
 function screenCard(r, uiDir, prefix, { showGenre = false } = {}) {
   const ok = r.outcome === 'built';
   //[[ THE GENRE BELONGS IN THE TITLE THE MOMENT TWO GENRES ARE ON THE PAGE.
@@ -123,6 +180,7 @@ function screenCard(r, uiDir, prefix, { showGenre = false } = {}) {
           <div><dt>outcome</dt><dd class="mono">${esc(r.outcome)}</dd></div>
           ${r.codeChars ? `<div><dt>luau written</dt><dd class="mono">${r.codeChars.toLocaleString()} chars</dd></div>` : ''}
         </dl>
+        ${sourceBlock(r, uiDir, prefix)}
       </div>
     </article>`;
   }
@@ -160,6 +218,7 @@ function screenCard(r, uiDir, prefix, { showGenre = false } = {}) {
         <div><dt>references behind it</dt><dd class="mono">${r.sources ?? 0} shipped games</dd></div>
         <div><dt>luau written</dt><dd class="mono">${(r.codeChars ?? 0).toLocaleString()} chars</dd></div>
       </dl>
+      ${sourceBlock(r, uiDir, prefix)}
     </div>
   </article>`;
 }
@@ -250,6 +309,7 @@ function mapCard(r, mapDir, prefix) {
         <h3 class="card__title">${esc(name)}</h3>
         <p class="card__verdict">${esc(OUTCOME_WORDS[r.outcome] ?? r.outcome)}</p>
         ${r.detail ? `<p class="card__detail">${esc(String(r.detail).slice(0, 320))}</p>` : ''}
+        ${sourceBlock(r, mapDir, prefix)}
       </div>
     </article>`;
   }
@@ -270,6 +330,7 @@ function mapCard(r, mapDir, prefix) {
         ${r.unknownColour ? `<div class="warn"><dt>BrickColor, drawn neutral</dt><dd class="mono">${r.unknownColour}</dd></div>` : ''}
         <div><dt>luau written</dt><dd class="mono">${(r.codeChars ?? 0).toLocaleString()} chars</dd></div>
       </dl>
+      ${sourceBlock(r, mapDir, prefix)}
     </div>
   </article>`;
 }
@@ -322,7 +383,35 @@ function page({ ui, uiDir, maps, mapDir, uiPrefix, mapPrefix, library }) {
   const totalNodes = uiResults.reduce((a, r) => a + (r.guiNodes ?? 0), 0);
   const when = (ui?.generatedAt ?? maps?.generatedAt ?? new Date().toISOString()).slice(0, 10);
 
-  return `<title>What Apple MAX Built</title>
+  //[[ THE CARDS ARE RENDERED BEFORE THE PROSE, SO THE PROSE CAN BE TOLD WHAT THE CARDS SAY.
+  //
+  //   "The code is here too" is a claim about the grids, and a claim about the grids has to be
+  //   read OFF the grids. Typed as a literal it survives every future state in which it stops
+  //   being true — a manifest whose rows lost their `files.luau`, a generator run whose scripts
+  //   were not kept — and the page would go on promising him code it is not carrying. That is the
+  //   same lie by composition the FAILURES section exists to refuse, aimed at a different target.
+  //
+  //   `sourceBlock` returns '' for any row whose .luau is not on disk, so this is true exactly
+  //   when at least one card actually offers a file. ]]
+  const primaryHtml = primary.map((r) => screenCard(r, uiDir, uiPrefix)).join('\n');
+  const crossHtml = crossGenre.map((r) => screenCard(r, uiDir, uiPrefix, { showGenre: true })).join('\n');
+  const mapHtml = mapResults.map((r) => mapCard(r, mapDir, mapPrefix)).join('\n');
+  const hasSource = /<details class="src"/.test(primaryHtml + crossHtml + mapHtml);
+
+  //[[ TWO META TAGS, BOTH MEASURED RATHER THAN COPIED IN FROM HABIT.
+  //
+  //   VIEWPORT. Without it a phone lays the page out at a 980px virtual width and scales the whole
+  //   thing down — measured in a 375px browser on 2026-09-21: `document.documentElement
+  //   .clientWidth` reported 980. The owner is fifteen and reads this on a phone, so the page he
+  //   was actually being shown was the desktop page at 38% and every number on it unreadable. The
+  //   `.grid` already has a one-column rule at 900px that nothing could ever trigger.
+  //
+  //   CHARSET. The worker sends `text/html; charset=utf-8`, so over HTTP this changes nothing. The
+  //   committed copy at docs/evidence/showcase.html is opened from disk, where there is no header
+  //   and the browser guesses — and the section this page exists for is written in Hebrew.
+  return `<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What Apple MAX Built</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
   :root {
@@ -422,7 +511,12 @@ function page({ ui, uiDir, maps, mapDir, uiPrefix, mapPrefix, library }) {
     font-family: "IBM Plex Mono", monospace; font-size: 10.5px; letter-spacing: .02em;
     background: rgba(8,9,11,.82); color: #cfd4d8; padding: 5px 9px; border-radius: 5px;
   }
-  .card__body { padding: 16px 18px 18px; flex: 1; }
+  /* min-width:0 is not tidying. A flex item defaults to min-width:auto, so it refuses to shrink
+     below its widest content — and a failed card is a ROW flex container, so the moment the code
+     block went in, the body became 854px inside a 474px card and overflow:hidden silently ate the
+     right-hand 380px of it: the compiler message truncated mid-word, and the outcome and
+     luau-written values clipped away entirely. Measured in a browser before it shipped. */
+  .card__body { padding: 16px 18px 18px; flex: 1; min-width: 0; }
   .card__title { margin: 0 0 12px; font-size: 16px; font-weight: 600; text-transform: capitalize; letter-spacing: -.005em; }
   .card__verdict { margin: 0 0 8px; font-size: 14.5px; color: var(--fail); font-weight: 600; }
   .card__detail {
@@ -442,9 +536,51 @@ function page({ ui, uiDir, maps, mapDir, uiPrefix, mapPrefix, library }) {
 
   footer { border-top: 1px solid var(--line); padding-top: 20px; font-size: 13px; color: var(--muted); line-height: 1.6; }
   footer code { font-family: "IBM Plex Mono", monospace; font-size: 12px; background: var(--panel-2); padding: 1px 5px; border-radius: 4px; }
+
+  /* THE CODE, ON THE CARD THAT CLAIMS IT. See sourceBlock. Collapsed by default so a phone pays
+     for nothing it is not reading, and the numbers live in ::before so selecting the block and
+     copying it yields the script rather than the script interleaved with a gutter. */
+  .home { display: inline-block; margin-bottom: 18px; font-size: 13px; color: var(--muted); text-decoration: none; border-bottom: 1px solid var(--line); padding-bottom: 2px; }
+  .home:hover { color: var(--accent); border-color: var(--accent); }
+
+  .src { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
+  .src__summary { cursor: pointer; font-size: 12.5px; color: var(--muted); list-style: none; display: flex; gap: 8px; align-items: baseline; }
+  .src__summary::-webkit-details-marker { display: none; }
+  .src__summary::before { content: "▸"; color: var(--accent); font-size: 10px; }
+  .src[open] .src__summary::before { content: "▾"; }
+  .src__summary:hover { color: var(--ink); }
+  .src__summary .mono { font-size: 11.5px; color: var(--muted); }
+  /* position:relative is load-bearing, not decoration: it makes this element the offsetParent of
+     its lines, so offsetTop in the script below is measured from the top of the scrolling box.
+     Static positioning measured it from the card instead, and the block scrolled to its own end
+     rather than to the line the compiler named. Watched: without it, scrollTop landed at 7462 on
+     a 439-line file whose marked line is 207. */
+  .src__code {
+    position: relative;
+    margin: 10px 0 0; max-height: 380px; overflow: auto;
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+    padding: 10px 12px; font-size: 11.5px; line-height: 1.55; color: var(--ink);
+    white-space: pre; tab-size: 2; counter-reset: none;
+  }
+  .src__code--failed { color: var(--fail); white-space: normal; }
+  .src__line { display: block; padding-left: 46px; text-indent: -46px; }
+  .src__line::before {
+    content: attr(data-n); display: inline-block; width: 38px; margin-right: 8px;
+    text-align: right; color: var(--muted); opacity: .65; user-select: none; text-indent: 0;
+  }
+  /* The line the compiler named, marked where he can see it — the number on the failure card is
+     useless if the file it counts into is not on the page. */
+  .src__line--bad { background: var(--fail-soft); box-shadow: inset 2px 0 0 var(--fail); }
+  .src__line--bad::before { color: var(--fail); opacity: 1; }
+  .src__direct { margin: 8px 0 0; font-size: 11.5px; }
+  .src__direct a { color: var(--muted); }
+  .src__direct a:hover { color: var(--accent); }
 </style>
 
 <div class="wrap">
+  <!-- Every route INTO this page is a link; there was not one out of it. A reader who arrives from
+       the nav and wants to go back has the browser's back button and nothing on the page. -->
+  <a class="home" href="/">← back to the site</a>
   <p class="eyebrow">Generated ${esc(when)} · lane ${esc(ui?.lane ?? maps?.lane ?? 'Apple MAX')}</p>
   <h1>Roblox screens and maps, built by the model from its own library</h1>
   <p class="lede">
@@ -477,6 +613,9 @@ function page({ ui, uiDir, maps, mapDir, uiPrefix, mapPrefix, library }) {
         <strong>nothing was uploaded to any Roblox account.</strong></li>
       <li><strong>The failures are here too</strong>, at the same size as the successes, with the
         reason each one gives.</li>
+      ${hasSource ? `<li><strong>The code is here too.</strong> Every card opens the actual Luau the model wrote,
+        numbered by line. Where a script did not compile, the line the compiler named is marked in
+        it.</li>` : ''}
     </ul>
   </div>
 
@@ -485,7 +624,7 @@ function page({ ui, uiDir, maps, mapDir, uiPrefix, mapPrefix, library }) {
     One screen per type the library covers, all for a ${esc(primaryName)} game. A screen that opens
     from a button starts hidden, so it is shown opened and labelled as such.
   </p>
-  <div class="grid">${primary.map((r) => screenCard(r, uiDir, uiPrefix)).join('\n')}</div>
+  <div class="grid">${primaryHtml}</div>
 ${crossGenre.length ? `
   <h2 class="section">The same screen, other genres</h2>
   <p class="section-note">
@@ -495,24 +634,71 @@ ${crossGenre.length ? `
     cards is what the library knows about the genre and nothing else. ${crossBuilt} of
     ${crossGenre.length} came back building. The ones that did not are here at the same size.
   </p>
-  <div class="grid">${crossGenre.map((r) => screenCard(r, uiDir, uiPrefix, { showGenre: true })).join('\n')}</div>` : ''}
+  <div class="grid">${crossHtml}</div>` : ''}
 
   <h2 class="section">Maps</h2>
   <p class="section-note">
     Whole playable maps, one per genre, built out of parts with real sizes and positions — no asset,
     no upload. Drawn looking straight down, shaded by height, spawns circled.
   </p>
-  <div class="grid">${mapResults.map((r) => mapCard(r, mapDir, mapPrefix)).join('\n')}</div>
+  <div class="grid">${mapHtml}</div>
 
   ${librarySection(library, ui)}
 
   <footer>
     Sources: <code>docs/evidence/ui-showcase/manifest.json</code> and
-    <code>docs/evidence/map-showcase/manifest.json</code>. The Luau behind every card sits beside them.
+    <code>docs/evidence/map-showcase/manifest.json</code>. The Luau behind every card is on the card,
+    under “the Luau the model wrote”.
     Rebuild with <code>packages/training/src/generate-ui-showcase.mjs</code> and
     <code>generate-map-showcase.mjs</code>.
   </footer>
 </div>
+<script>
+  // PROGRESSIVE, NOT LOAD-BEARING. Each card already carries a plain <a> to the same URL, so a
+  // reader with no JavaScript, a blocked fetch or a 404 still reaches the file. This only saves
+  // him the trip.
+  //
+  // THE CATCH BRANCH PRINTS WHAT WENT WRONG. A fetch that fails must not leave the reader looking
+  // at an empty box: an empty box reads as "the model wrote nothing", which would be this page
+  // libelling its own model — the same mistake as the racing HUD drawn as blank bars.
+  for (const d of document.querySelectorAll('details.src')) {
+    const pre = d.querySelector('.src__code');
+    if (!pre) continue;
+    let loading = false;
+    const load = async () => {
+      if (loading || pre.dataset.loaded === '1') return;
+      loading = true;
+      try {
+        const res = await fetch(pre.dataset.src);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const text = await res.text();
+        const bad = Number(pre.dataset.errorLine || 0);
+        pre.textContent = '';
+        const lines = text.replace(/\\n$/, '').split('\\n');
+        for (let i = 0; i < lines.length; i++) {
+          const el = document.createElement('span');
+          el.className = 'src__line' + (i + 1 === bad ? ' src__line--bad' : '');
+          el.setAttribute('data-n', String(i + 1));
+          el.textContent = lines[i] + '\\n';
+          pre.appendChild(el);
+        }
+        pre.dataset.loaded = '1';
+        // Scroll the BLOCK, never the page: a card that yanked the viewport on load would move the
+        // page out from under whoever is reading something else.
+        const hit = pre.querySelector('.src__line--bad');
+        if (hit) pre.scrollTop = Math.max(0, hit.offsetTop - pre.clientHeight / 2);
+      } catch (e) {
+        pre.textContent = 'could not load the code — ' + (e && e.message ? e.message : e)
+          + '. The file itself is linked below.';
+        pre.classList.add('src__code--failed');
+      } finally {
+        loading = false;
+      }
+    };
+    d.addEventListener('toggle', () => { if (d.open) load(); });
+    if (d.open) load();
+  }
+</script>
 `;
 }
 

@@ -32,6 +32,52 @@ const arg = (name, fallback) => {
   return at !== -1 && process.argv[at + 1] && !process.argv[at + 1].startsWith('--') ? process.argv[at + 1] : fallback;
 };
 
+/**
+ * ADOPT A SCRIPT THAT IS ON DISK AND MISSING FROM ITS OWN ROW — BUT ONLY WHEN IT PROVES ITSELF.
+ *
+ * WHAT WENT WRONG. `generate-ui-showcase.mjs` wrote `${id}--${genre}.luau` before it branched on
+ * the outcome, and attached `files` only on the success path. A row that failed to compile
+ * therefore had a real script beside the manifest and no `files.luau` naming it. The gallery links
+ * what the manifest names, so the one card whose whole content is a line number — "line 207, col
+ * 37" — was the one card that could not offer the file that line counts into.
+ *
+ * The generator now records it at the write site, which fixes every future run. This fixes the
+ * rows already on disk, without re-asking the model and so without changing an answer.
+ *
+ * IT IS NOT A GUESS, AND THAT IS THE ONLY REASON IT IS ALLOWED. Deriving a filename from a naming
+ * convention and writing it into evidence would be asserting a link nobody checked. So the
+ * candidate has to prove it is this row's output:
+ *
+ *   - `codeChars` is the exact byte length the generator recorded for the code it wrote, and
+ *   - the file's byte length has to equal it.
+ *
+ * A row with no `codeChars`, or a file of a different size, is left alone and says so. The failure
+ * mode of adopting the wrong file — showing him one screen's code under another screen's picture —
+ * is worse than showing no code, so the tie goes to refusing.
+ *
+ * @param {(name: string) => string|Buffer|null} readSource the evidence directory, as a reader.
+ * @returns {{adopted:string}|{refused:string}|null} null when the row already names its source.
+ */
+export function adoptOrphanSource(r, readSource) {
+  if (r.files?.luau) return null;
+  const id = String(r.id ?? r.target ?? '').trim();
+  const genre = String(r.genre ?? '').trim();
+  if (!id || !genre) return { refused: 'the row names neither an id nor a genre' };
+  const candidate = `${id}--${genre}.luau`;
+  const text = readSource(candidate);
+  if (text === null || text === undefined) return { refused: `no ${candidate} on disk` };
+  // `String(...)` is the whole encoding contract, held HERE rather than at the call site. The
+  // caller hands over file contents; whether it read them as a string or as a Buffer must not
+  // change the answer, because `codeChars` is a JS string length and a Buffer's `.length` is
+  // bytes. One em dash in a comment is the difference, and the symptom would be a silent refusal
+  // — a fix that looks applied and is not.
+  const chars = String(text).length;
+  if (typeof r.codeChars !== 'number') return { refused: `${candidate} is there, but the row records no codeChars to check it against` };
+  if (chars !== r.codeChars) return { refused: `${candidate} is ${chars} chars, the row recorded ${r.codeChars} — not the same file` };
+  r.files = { ...(r.files ?? {}), luau: candidate };
+  return { adopted: candidate };
+}
+
 function redraw(dir, r) {
   if (r.outcome !== 'built' || !r.files?.luau) return { skipped: 'not a built row' };
   const luauPath = join(dir, r.files.luau);
@@ -90,7 +136,16 @@ function main() {
   const manifestPath = join(dir, 'manifest.json');
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
   let redrawn = 0;
+  let adopted = 0;
+  const readSource = (name) => (existsSync(join(dir, name)) ? readFileSync(join(dir, name), 'utf8') : null);
   for (const r of manifest.results) {
+    const orphan = adoptOrphanSource(r, readSource);
+    if (orphan?.adopted) {
+      adopted += 1;
+      console.log(`  ${r.target ?? r.genre} — source adopted: ${orphan.adopted}`);
+    } else if (orphan?.refused) {
+      console.log(`  ${r.target ?? r.genre} — no source recorded and none adopted: ${orphan.refused}`);
+    }
     const out = redraw(dir, r);
     if (out.skipped) {
       console.log(`  ${r.target ?? r.genre} — ${out.skipped}`);
@@ -103,7 +158,7 @@ function main() {
   manifest.renderedAt = new Date().toISOString();
   manifest.renderNote = 'SVGs redrawn from the saved Luau by rerender-showcase.mjs; no completion was spent and no answer changed.';
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
-  console.log(`${redrawn} redrawn in ${dir}`);
+  console.log(`${redrawn} redrawn, ${adopted} source file(s) adopted, in ${dir}`);
 }
 
-main();
+if (import.meta.url === `file://${process.argv[1]}`) main();
