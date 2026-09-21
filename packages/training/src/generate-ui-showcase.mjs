@@ -38,7 +38,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { mkdtempSync } from 'node:fs';
-import { buildUiTree, indexTree, resolveLayout, guiDescendants, screenGuisInPlayerGui, descendants, fencedLuau } from './score-ui.mjs';
+import { buildUiTree, indexTree, resolveLayout, guiDescendants, screenGuisInPlayerGui, descendants, fencedLuau, udim2SlotErrors, unreadableTextNodes } from './score-ui.mjs';
 import { renderTreeToSvg, surfaceCanvas } from './render-ui-tree.mjs';
 import { mergeResults } from './showcase-manifest.mjs';
 
@@ -117,6 +117,46 @@ export function classifyNoLuau(text) {
   // fence has no newline requirement, which is exactly why a truncated answer matches the first
   // pattern and not fencedLuau's whole pattern.
   return /```(?:luau|lua)?[^\S\n]*\n/.test(String(text ?? '')) ? 'truncated_code_block' : 'no_code_block';
+}
+
+/**
+ * A BLANK PICTURE IS A FAILURE, AND IT HAS TO SAY WHY.
+ *
+ * MEASURED on the horror HUD, 2026-09-21. The model wrote `UDim.new(a, b, c, d)` — four arguments
+ * to a constructor that takes two — for every Position and Size in the file, fifty times, and
+ * `UDim2.new` not once. Assigning a UDim to a UDim2 property raises in the engine; the harness
+ * accepts it, `udim2` in score-ui.mjs falls back to {0,0,0,0}, and all forty-four objects
+ * collapsed to zero size at the origin.
+ *
+ * The row still said `outcome: "built"`, and the gallery drew a card with an empty picture and
+ * the caption "instances on screen 0". Every number on it was true and the card as a whole was
+ * false: a screen that failed for a nameable reason, shown as a screen that happened to contain
+ * nothing. That is this repository's own failure shape — a failure to observe rendering as an
+ * observation — pointed at the owner.
+ *
+ * `hidden` COUNTS AS DRAWN, deliberately. A screen that is entirely hidden as scripted is the
+ * modal case the two-picture render exists for — it gets an opened pass and a caption — and
+ * filing it here would turn every correct shop-behind-a-button into a failure.
+ *
+ * Exported and pure so the branch can be watched firing without spending a completion: the model
+ * that produced the horror sample did not repeat the mistake on the next run, so an integration
+ * test of this would depend on a model being wrong on demand.
+ */
+export function blankRenderVerdict({ guiNodes, counters }) {
+  const c = counters ?? {};
+  const drew = (c.painted ?? 0) + (c.textNodes ?? 0) + (c.hidden ?? 0) + (c.imagePlaceholders ?? 0);
+  if (drew > 0) return null;
+  const n = Array.isArray(guiNodes) ? guiNodes.length : Number(guiNodes ?? 0);
+  const slots = udim2SlotErrors(Array.isArray(guiNodes) ? guiNodes : []);
+  const worst = slots[0];
+  return {
+    outcome: 'nothing_reached_the_canvas',
+    detail: worst
+      ? `${n} objects built and none has a usable geometry: ${slots.length} Position/Size slot(s) `
+        + `hold a ${worst.got} where the engine requires a UDim2 (first: ${worst.class} `
+        + `"${worst.name}".${worst.property}). UDim.new takes two arguments; UDim2.new takes four.`
+      : `${n} objects built and nothing was painted, lettered or hidden`,
+  };
 }
 
 /** The prompt carries the library verbatim, under headings that say what each block is. */
@@ -311,6 +351,28 @@ async function runTarget({ target, genreId, model, maxTokens, lib, outDir, viewp
   const asScripted = renderTreeToSvg({ guiNodes, rects, viewport: viewport_ });
   writeFileSync(join(outDir, `${base}.svg`), asScripted.svg);
 
+  //[[ A BLANK PICTURE IS A FAILURE, AND IT HAS TO SAY WHY.
+  //
+  //   MEASURED on the horror HUD, 2026-09-21. The model wrote `UDim.new(a, b, c, d)` — four
+  //   arguments to a constructor that takes two — for every Position and Size in the file, fifty
+  //   times, and `UDim2.new` not once. Assigning a UDim to a UDim2 property raises in the engine;
+  //   the harness accepts it, `udim2` falls back to {0,0,0,0}, and all forty-four objects
+  //   collapsed to zero size at the origin.
+  //
+  //   The row still said `outcome: "built"`, and the gallery drew a card with an empty picture
+  //   and the caption "instances on screen 0". Every number on it was true and the card as a
+  //   whole was false: a screen that failed for a nameable reason, shown as a screen that
+  //   happened to contain nothing. That is this repository's own failure shape — a failure to
+  //   observe rendering as an observation — pointed at the owner.
+  //
+  //   The test is what reached the canvas, not what the tree contains: `hidden` is excluded on
+  //   purpose, because a screen that is entirely hidden as scripted is the modal case the two
+  //   pictures below exist for, and it is not this. ]]
+  const blank = blankRenderVerdict({ guiNodes, counters: asScripted });
+  if (blank) {
+    return { target, genre: genreId, id: construction.id, ...blank, codeChars: code.length, guiNodes: guiNodes.length };
+  }
+
   const files = { luau: `${base}.luau`, svg: `${base}.svg` };
   let opened = null;
   if (asScripted.hidden > 0) {
@@ -339,6 +401,10 @@ async function runTarget({ target, genreId, model, maxTokens, lib, outDir, viewp
     opened: opened
       ? { painted: opened.painted, textNodes: opened.textNodes, forcedVisible: opened.forcedVisible, offscreen: opened.offscreen }
       : null,
+    // Text the model wrote into a box with no area — invisible in the engine too, and the
+    // difference between "wrote no labels" and "wrote labels nobody can read". See
+    // unreadableTextNodes: the racing HUD's label helper never set Size.
+    unreadableText: unreadableTextNodes(guiNodes, rects).length,
     scaledText: (opened ?? asScripted).scaledText,
     imagePlaceholders: (opened ?? asScripted).imagePlaceholders,
     richTextNodes: (opened ?? asScripted).richTextNodes,

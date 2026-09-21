@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-09-21T09:23:31.444Z",
+  "generatedAt": "2026-09-21T09:31:56.797Z",
   "base": "https://apple.moshe-barami111.workers.dev",
   "model": "rune",
   "lane": "Apple MAX",
-  "genre": "anime_battle",
+  "genre": "horror",
   "viewport": {
     "id": "desktop",
     "w": 1600,
@@ -13,7 +13,7 @@
   "libraryDeliveryMeaning": "The get_ui_construction / get_genre_kit payloads were placed in the prompt verbatim. The model was GIVEN its library; it did not choose to ask for it. /api/admin/model-test wires no real tools.",
   "renderer": "packages/training/src/render-ui-tree.mjs over resolveLayout — geometry, not a Studio screenshot",
   "ranThisInvocation": [
-    "screen-hud--anime_battle"
+    "screen-hud--horror"
   ],
   "counts": {
     "targets": 22,
@@ -55,7 +55,8 @@
       },
       "wrappedText": 0,
       "richTextNodes": 0,
-      "richTextBreaks": 0
+      "richTextBreaks": 0,
+      "unreadableText": 1
     },
     {
       "target": "screen-crafting",
@@ -82,7 +83,8 @@
       },
       "wrappedText": 0,
       "richTextNodes": 0,
-      "richTextBreaks": 0
+      "richTextBreaks": 0,
+      "unreadableText": 6
     },
     {
       "target": "screen-gacha",
@@ -115,7 +117,8 @@
       },
       "wrappedText": 0,
       "richTextNodes": 0,
-      "richTextBreaks": 0
+      "richTextBreaks": 0,
+      "unreadableText": 0
     },
     {
       "target": "screen-hud",
@@ -142,7 +145,8 @@
       },
       "wrappedText": 0,
       "richTextNodes": 0,
-      "richTextBreaks": 0
+      "richTextBreaks": 0,
+      "unreadableText": 1
     },
     {
       "target": "screen-inventory",
@@ -169,7 +173,8 @@
       },
       "wrappedText": 1,
       "richTextNodes": 0,
-      "richTextBreaks": 0
+      "richTextBreaks": 0,
+      "unreadableText": 0
     },
     {
       "target": "screen-leaderboard",
@@ -211,7 +216,8 @@
       },
       "wrappedText": 0,
       "richTextNodes": 0,
-      "richTextBreaks": 0
+      "richTextBreaks": 0,
+      "unreadableText": 0
     },
     {
       "target": "screen-lobby",
@@ -238,7 +244,8 @@
       },
       "wrappedText": 0,
       "richTextNodes": 0,
-      "richTextBreaks": 0
+      "richTextBreaks": 0,
+      "unreadableText": 0
     },
     {
       "target": "screen-map",
@@ -271,7 +278,8 @@
       },
       "wrappedText": 4,
       "richTextNodes": 0,
-      "richTextBreaks": 0
+      "richTextBreaks": 0,
+      "unreadableText": 0
     },
     {
       "target": "screen-notification",
@@ -298,7 +306,8 @@
       },
       "wrappedText": 3,
       "richTextNodes": 0,
-      "richTextBreaks": 0
+      "richTextBreaks": 0,
+      "unreadableText": 0
     },
     {
       "target": "screen-onboarding",
@@ -331,7 +340,8 @@
       },
       "wrappedText": 2,
       "richTextNodes": 0,
-      "richTextBreaks": 0
+      "richTextBreaks": 0,
+      "unreadableText": 0
     },
     {
       "target": "screen-progress",
@@ -364,7 +374,8 @@
       },
       "wrappedText": 0,
       "richTextNodes": 0,
-      "richTextBreaks": 0
+      "richTextBreaks": 0,
+      "unreadableText": 0
     },
     {
       "target": "screen-rewards",
@@ -391,7 +402,8 @@
       },
       "wrappedText": 0,
       "richTextNodes": 0,
-      "richTextBreaks": 0
+      "richTextBreaks": 0,
+      "unreadableText": 0
     },
     {
       "target": "screen-settings",
@@ -418,7 +430,8 @@
       },
       "wrappedText": 0,
       "richTextNodes": 0,
-      "richTextBreaks": 0
+      "richTextBreaks": 0,
+      "unreadableText": 0
     },
     {
       "target": "screen-shop",
@@ -451,7 +464,8 @@
       },
       "wrappedText": 0,
       "richTextNodes": 0,
-      "richTextBreaks": 0
+      "richTextBreaks": 0,
+      "unreadableText": 0
     },
     {
       "target": "screen-social",
@@ -490,7 +504,8 @@
       },
       "wrappedText": 0,
       "richTextNodes": 4,
-      "richTextBreaks": 0
+      "richTextBreaks": 0,
+      "unreadableText": 0
     },
     {
       "target": "screen-trading",
@@ -523,7 +538,8 @@
       },
       "wrappedText": 0,
       "richTextNodes": 0,
-      "richTextBreaks": 0
+      "richTextBreaks": 0,
+      "unreadableText": 0
     },
     {
       "target": "screen-hud",
@@ -563,15 +579,17 @@
       "files": {
         "luau": "screen-hud--obby.luau",
         "svg": "screen-hud--obby.svg"
-      }
+      },
+      "unreadableText": 0,
+      "wrappedText": 0
     },
     {
       "target": "screen-hud",
       "id": "screen-hud",
       "genre": "horror",
       "outcome": "built",
-      "codeChars": 9225,
-      "ms": 67506,
+      "codeChars": 7654,
+      "ms": 59131,
       "screenGuis": 1,
       "surface": null,
       "viewport": {
@@ -579,10 +597,10 @@
         "w": 1600,
         "h": 900
       },
-      "guiNodes": 44,
+      "guiNodes": 36,
       "asScripted": {
-        "painted": 0,
-        "textNodes": 0,
+        "painted": 21,
+        "textNodes": 17,
         "hidden": 0,
         "offscreen": 0
       },
@@ -595,7 +613,9 @@
       "files": {
         "luau": "screen-hud--horror.luau",
         "svg": "screen-hud--horror.svg"
-      }
+      },
+      "unreadableText": 0,
+      "wrappedText": 1
     },
     {
       "target": "screen-hud",
@@ -627,7 +647,9 @@
       "files": {
         "luau": "screen-hud--simulator.luau",
         "svg": "screen-hud--simulator.svg"
-      }
+      },
+      "unreadableText": 3,
+      "wrappedText": 0
     },
     {
       "target": "screen-hud",
@@ -659,7 +681,9 @@
       "files": {
         "luau": "screen-hud--racing.luau",
         "svg": "screen-hud--racing.svg"
-      }
+      },
+      "unreadableText": 13,
+      "wrappedText": 0
     },
     {
       "target": "screen-hud",
@@ -691,7 +715,11 @@
       "files": {
         "luau": "screen-hud--anime_battle.luau",
         "svg": "screen-hud--anime_battle.svg"
-      }
+      },
+      "unreadableText": 0,
+      "wrappedText": 5
     }
-  ]
+  ],
+  "renderedAt": "2026-09-21T09:34:03.044Z",
+  "renderNote": "SVGs redrawn from the saved Luau by rerender-showcase.mjs; no completion was spent and no answer changed."
 }

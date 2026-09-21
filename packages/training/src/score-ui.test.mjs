@@ -4,8 +4,8 @@ import {
   buildTasks, UI_TASKS,
 } from './ui-tasks.mjs';
 import {
-  buildUiTree, check, deprecatedApis, indexTree, legacyApis, rebaseDiagnostic, resolveLayout,
-  scoreUiTask, screenGuisInPlayerGui, select, VIEWPORTS,
+  buildUiTree, check, deprecatedApis, indexTree, legacyApis, rebaseDiagnostic, resolveLayout, udim2SlotErrors, unreadableTextNodes,
+  scoreUiTask, screenGuisInPlayerGui, select, VIEWPORTS, guiDescendants,
 } from './score-ui.mjs';
 
 /**
@@ -624,4 +624,127 @@ test('a message with no file position is passed through untouched', () => {
   // those would be inventing a position.
   assert.equal(rebaseDiagnostic('no output', 600), 'no output');
   assert.equal(rebaseDiagnostic('', 600), '');
+});
+
+/**
+ * A POSITION SLOT HOLDING A UDim IS A NAMEABLE MODEL ERROR, NOT AN EMPTY SCREEN.
+ *
+ * MEASURED on the showcase's horror HUD, 2026-09-21. The model wrote `UDim.new(0.5, 0, 0, 44)` —
+ * four arguments to a two-argument constructor — for every Position and Size in the file, fifty
+ * times, and `UDim2.new` not once. `udim2` does not recognise a UDim and falls back to
+ * {0,0,0,0}, so all forty-four objects collapsed to zero size at the origin and the page showed a
+ * blank picture captioned "instances on screen 0" under the word BUILT.
+ *
+ * The fallback stays: inventing a geometry from a UDim would draw a layout the model did not
+ * write. What was missing is that nothing said so.
+ */
+test('a Position or Size holding a UDim instead of a UDim2 is reported, with what it holds', () => {
+  const built = buildUiTree(`
+    local sg = Instance.new("ScreenGui")
+    local f = Instance.new("Frame")
+    f.Name = "Sanity"
+    f.Position = UDim.new(0.5, 0, 0, 44)
+    f.Size = UDim.new(0, 260, 0, 30)
+    f.Parent = sg
+    sg.Parent = game.Players.LocalPlayer.PlayerGui
+  `);
+  assert.equal(built.status, 'ok', built.detail);
+  const hits = udim2SlotErrors(indexTree(built.nodes).all ?? built.nodes);
+  const onSanity = hits.filter((h) => h.name === 'Sanity');
+  assert.equal(onSanity.length, 2, `both slots should be reported, got ${JSON.stringify(hits)}`);
+  assert.deepEqual(onSanity.map((h) => h.property).sort(), ['Position', 'Size']);
+  assert.equal(onSanity[0].got, 'UDim', 'the report must say what the slot actually holds');
+  assert.equal(onSanity[0].class, 'Frame');
+});
+
+test('a correct UDim2 screen reports nothing, and an unset slot is not an error', () => {
+  // The false-positive direction, which is the one that would make this check worthless: a screen
+  // that never sets Size (a child of a UIListLayout, say) is ordinary and correct.
+  const built = buildUiTree(`
+    local sg = Instance.new("ScreenGui")
+    local a = Instance.new("Frame")
+    a.Position = UDim2.new(0.5, 0, 0, 44)
+    a.Size = UDim2.new(0, 260, 0, 30)
+    a.Parent = sg
+    local b = Instance.new("Frame")
+    b.Parent = a
+    sg.Parent = game.Players.LocalPlayer.PlayerGui
+  `);
+  assert.equal(built.status, 'ok', built.detail);
+  assert.deepEqual(udim2SlotErrors(indexTree(built.nodes).all ?? built.nodes), []);
+});
+
+/**
+ * "WROTE NO LABELS" AND "WROTE LABELS NOBODY CAN READ" ARE OPPOSITE FINDINGS ABOUT THE MODEL.
+ *
+ * MEASURED on the showcase's racing HUD, 2026-09-21. The model's own `label(parent, props)` helper
+ * set Text, Font, TextSize, TextColor3 and both alignments, and never set `Size`. A GuiObject's
+ * default Size is UDim2.new(0,0,0,0), so all eleven labels were zero-area boxes — invisible in the
+ * real engine, not only in this renderer. The card showed a page of empty outlined panels over the
+ * stat "written labels 0", which was true and explained nothing.
+ *
+ * The fixture below is that helper's shape: everything set except the size.
+ */
+test('text in a box with no area is reported, and the words are quoted so it can be found', () => {
+  const built = buildUiTree(`${HEAD}
+local band = Instance.new("Frame")
+band.Position = UDim2.new(0.5, 0, 0, 44)
+band.Size = UDim2.new(0.34, 0, 0, 40)
+band.Parent = gui
+local t = Instance.new("TextLabel")
+t.Name = "EventBanner"
+t.BackgroundTransparency = 1
+t.TextSize = 13
+t.Text = "MIDNIGHT CIRCUIT GP"
+t.Parent = band
+`);
+  assert.equal(built.status, 'ok', built.detail);
+  const root = screenGuisInPlayerGui(indexTree(built.nodes))[0];
+  const { rects } = resolveLayout(root, { id: 'desktop', w: 1600, h: 900 });
+  const hits = unreadableTextNodes(guiDescendants(root), rects);
+  assert.equal(hits.length, 1, `expected the one sizeless label, got ${JSON.stringify(hits)}`);
+  assert.equal(hits[0].name, 'EventBanner');
+  assert.match(hits[0].text, /MIDNIGHT CIRCUIT GP/, 'the words must be quoted so the reader can find them');
+});
+
+test('a label with a size is not reported, and neither is one with no text at all', () => {
+  // The false-positive directions. A sized label is the ordinary case and must stay silent; a
+  // Frame with no Text is not a label and reporting it would drown the real finding.
+  const built = buildUiTree(`${HEAD}
+local t = Instance.new("TextLabel")
+t.Name = "Readable"
+t.Position = UDim2.new(0, 0, 0, 0)
+t.Size = UDim2.new(0, 200, 0, 30)
+t.Text = "LAP 3/8"
+t.Parent = gui
+local f = Instance.new("Frame")
+f.Name = "JustAPanel"
+f.Size = UDim2.new(0, 100, 0, 100)
+f.Parent = gui
+-- A SIZELESS NODE THAT IS NOT A LABEL, and it is here because falsification found the fixture
+-- wanting: without it, deleting the has-text guard changed nothing, because every non-text node
+-- in the fixture had a size and was skipped by the geometry check instead. The assertion read as
+-- though it covered "no text at all" and covered only "has a size".
+local spacer = Instance.new("Frame")
+spacer.Name = "Spacer"
+spacer.Parent = gui
+`);
+  const root = screenGuisInPlayerGui(indexTree(built.nodes))[0];
+  const { rects } = resolveLayout(root, { id: 'desktop', w: 1600, h: 900 });
+  assert.deepEqual(unreadableTextNodes(guiDescendants(root), rects), []);
+});
+
+test('text the model deliberately made invisible is a choice, not a defect', () => {
+  // TextTransparency = 1 on a sizeless label is a model that meant it. Reporting that as a fault
+  // would punish a correct fade-in, which is how a check like this becomes noise and gets deleted.
+  const built = buildUiTree(`${HEAD}
+local t = Instance.new("TextLabel")
+t.Name = "FadeIn"
+t.Text = "READY"
+t.TextTransparency = 1
+t.Parent = gui
+`);
+  const root = screenGuisInPlayerGui(indexTree(built.nodes))[0];
+  const { rects } = resolveLayout(root, { id: 'desktop', w: 1600, h: 900 });
+  assert.deepEqual(unreadableTextNodes(guiDescendants(root), rects), []);
 });

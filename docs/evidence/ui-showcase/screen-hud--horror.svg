@@ -1,4 +1,53 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" font-family="'Gotham SSm','Montserrat','Helvetica Neue',Arial,sans-serif">
 <defs><pattern id="apple-unfetched" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="12" height="12" fill="#1b1b22"/><line x1="0" y1="0" x2="0" y2="12" stroke="#3a3a46" stroke-width="3"/></pattern></defs>
 <rect width="1600" height="900" fill="#101014"/>
+<text x="800.00" y="52.60" text-anchor="middle" font-size="16.0" fill="rgb(214,206,196)" fill-opacity="0.850">CHAPTER II — THE FLOODED BASEMENT</text>
+<clipPath id="wrap-30"><rect x="464.00" y="62.00" width="672.00" height="34.00"/></clipPath><g clip-path="url(#wrap-30)"><text x="800.00" y="83.90" text-anchor="middle" font-size="14.0" fill="rgb(168,158,148)" fill-opacity="1.000">Find the fuse for the breaker — 2 of 4 fuses collected</text></g>
+<rect x="0.00" y="0.18" width="190.00" height="34.00" rx="4.00" ry="4.00" fill="rgb(12,10,12)" fill-opacity="0.750"/>
+<rect x="0.00" y="0.18" width="190.00" height="34.00" rx="4.00" ry="4.00" fill="none" stroke="rgb(38,34,36)" stroke-width="1" stroke-opacity="0.750"/>
+<text x="14.00" y="13.03" text-anchor="start" font-size="11.0" fill="rgb(214,206,196)" fill-opacity="1.000">VITALS</text>
+<rect x="8.00" y="18.18" width="174.00" height="8.00" rx="3.00" ry="3.00" fill="rgb(24,20,22)" fill-opacity="1.000"/>
+<rect x="8.00" y="18.18" width="125.28" height="8.00" rx="3.00" ry="3.00" fill="rgb(148,26,30)" fill-opacity="1.000"/>
+<rect x="0.00" y="44.18" width="190.00" height="34.00" rx="4.00" ry="4.00" fill="rgb(12,10,12)" fill-opacity="0.750"/>
+<rect x="0.00" y="44.18" width="190.00" height="34.00" rx="4.00" ry="4.00" fill="none" stroke="rgb(38,34,36)" stroke-width="1" stroke-opacity="0.750"/>
+<text x="14.00" y="57.03" text-anchor="start" font-size="11.0" fill="rgb(214,206,196)" fill-opacity="1.000">SANITY</text>
+<rect x="8.00" y="62.18" width="174.00" height="8.00" rx="3.00" ry="3.00" fill="rgb(24,20,22)" fill-opacity="1.000"/>
+<rect x="8.00" y="62.18" width="71.34" height="8.00" rx="3.00" ry="3.00" fill="rgb(122,138,74)" fill-opacity="1.000"/>
+<rect x="0.00" y="88.18" width="190.00" height="34.00" rx="4.00" ry="4.00" fill="rgb(12,10,12)" fill-opacity="0.750"/>
+<rect x="0.00" y="88.18" width="190.00" height="34.00" rx="4.00" ry="4.00" fill="none" stroke="rgb(38,34,36)" stroke-width="1" stroke-opacity="0.750"/>
+<text x="14.00" y="101.03" text-anchor="start" font-size="11.0" fill="rgb(214,206,196)" fill-opacity="1.000">FLASHLIGHT BATTERY</text>
+<rect x="8.00" y="106.18" width="174.00" height="8.00" rx="3.00" ry="3.00" fill="rgb(24,20,22)" fill-opacity="1.000"/>
+<rect x="8.00" y="106.18" width="109.62" height="8.00" rx="3.00" ry="3.00" fill="rgb(196,168,84)" fill-opacity="1.000"/>
+<rect x="1438.00" y="375.00" width="150.00" height="150.00" rx="6.00" ry="6.00" fill="rgb(12,10,12)" fill-opacity="0.800"/>
+<rect x="1438.00" y="375.00" width="150.00" height="150.00" rx="6.00" ry="6.00" fill="none" stroke="rgb(38,34,36)" stroke-width="2" stroke-opacity="0.750"/>
+<text x="1513.00" y="387.85" text-anchor="middle" font-size="11.0" fill="rgb(214,206,196)" fill-opacity="1.000">GROUND FLOOR</text>
+<rect x="1456.00" y="417.00" width="51.00" height="45.00" fill="rgb(46,42,44)" fill-opacity="0.850"/>
+<rect x="1516.00" y="417.00" width="51.00" height="33.00" fill="rgb(46,42,44)" fill-opacity="0.850"/>
+<rect x="1483.00" y="468.00" width="60.00" height="39.00" fill="rgb(46,42,44)" fill-opacity="0.850"/>
+<rect x="1500.00" y="479.00" width="8.00" height="8.00" fill="rgb(148,26,30)" fill-opacity="1.000"/>
+<rect x="800.00" y="842.00" width="96.00" height="44.00" rx="4.00" ry="4.00" fill="rgb(12,10,12)" fill-opacity="0.800"/>
+<rect x="800.00" y="842.00" width="96.00" height="44.00" rx="4.00" ry="4.00" fill="none" stroke="rgb(38,34,36)" stroke-width="1" stroke-opacity="0.750"/>
+<text x="848.00" y="868.55" text-anchor="middle" font-size="13.0" fill="rgb(214,206,196)" fill-opacity="1.000">[F] LIGHT</text>
+<rect x="904.00" y="842.00" width="96.00" height="44.00" rx="4.00" ry="4.00" fill="rgb(12,10,12)" fill-opacity="0.800"/>
+<rect x="904.00" y="842.00" width="96.00" height="44.00" rx="4.00" ry="4.00" fill="none" stroke="rgb(38,34,36)" stroke-width="1" stroke-opacity="0.750"/>
+<text x="952.00" y="868.55" text-anchor="middle" font-size="13.0" fill="rgb(214,206,196)" fill-opacity="1.000">[E] HIDE</text>
+<rect x="1008.00" y="842.00" width="96.00" height="44.00" rx="4.00" ry="4.00" fill="rgb(12,10,12)" fill-opacity="0.800"/>
+<rect x="1008.00" y="842.00" width="96.00" height="44.00" rx="4.00" ry="4.00" fill="none" stroke="rgb(38,34,36)" stroke-width="1" stroke-opacity="0.750"/>
+<text x="1056.00" y="868.55" text-anchor="middle" font-size="13.0" fill="rgb(214,206,196)" fill-opacity="1.000">[Q] CROUCH</text>
+<rect x="1112.00" y="842.00" width="96.00" height="44.00" rx="4.00" ry="4.00" fill="rgb(12,10,12)" fill-opacity="0.800"/>
+<rect x="1112.00" y="842.00" width="96.00" height="44.00" rx="4.00" ry="4.00" fill="none" stroke="rgb(38,34,36)" stroke-width="1" stroke-opacity="0.750"/>
+<text x="1160.00" y="868.55" text-anchor="middle" font-size="13.0" fill="rgb(214,206,196)" fill-opacity="1.000">[TAB] MAP</text>
+<rect x="528.00" y="108.00" width="544.00" height="26.00" rx="3.00" ry="3.00" fill="rgb(12,10,12)" fill-opacity="0.850"/>
+<rect x="528.00" y="108.00" width="544.00" height="26.00" rx="3.00" ry="3.00" fill="none" stroke="rgb(38,34,36)" stroke-width="1" stroke-opacity="0.750"/>
+<text x="534.00" y="125.55" text-anchor="start" font-size="13.0" fill="rgb(148,26,30)" fill-opacity="1.000">  You hear footsteps above you.</text>
+<rect x="528.00" y="140.00" width="544.00" height="26.00" rx="3.00" ry="3.00" fill="rgb(12,10,12)" fill-opacity="0.850"/>
+<rect x="528.00" y="140.00" width="544.00" height="26.00" rx="3.00" ry="3.00" fill="none" stroke="rgb(38,34,36)" stroke-width="1" stroke-opacity="0.750"/>
+<text x="534.00" y="157.55" text-anchor="start" font-size="13.0" fill="rgb(122,138,74)" fill-opacity="1.000">  Fuse acquired — the breaker hums.</text>
+<rect x="12.00" y="794.00" width="210.00" height="92.00" rx="4.00" ry="4.00" fill="rgb(12,10,12)" fill-opacity="0.700"/>
+<rect x="12.00" y="794.00" width="210.00" height="92.00" rx="4.00" ry="4.00" fill="none" stroke="rgb(38,34,36)" stroke-width="1" stroke-opacity="0.750"/>
+<text x="26.00" y="810.20" text-anchor="start" font-size="12.0" fill="rgb(214,206,196)" fill-opacity="1.000">ESCAPE THE MANSION</text>
+<text x="26.00" y="827.85" text-anchor="start" font-size="11.0" fill="rgb(168,158,148)" fill-opacity="1.000">✓ Restore power to the stairwell</text>
+<text x="26.00" y="844.85" text-anchor="start" font-size="11.0" fill="rgb(168,158,148)" fill-opacity="1.000">✓ Collect the cellar key</text>
+<text x="26.00" y="861.85" text-anchor="start" font-size="11.0" fill="rgb(168,158,148)" fill-opacity="1.000">○ Find the flooded basement hatch</text>
+<text x="26.00" y="878.85" text-anchor="start" font-size="11.0" fill="rgb(168,158,148)" fill-opacity="1.000">○ Do not let it see you</text>
 </svg>

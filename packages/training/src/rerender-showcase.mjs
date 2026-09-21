@@ -19,7 +19,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildUiTree, indexTree, resolveLayout, guiDescendants, screenGuisInPlayerGui, descendants } from './score-ui.mjs';
+import { buildUiTree, indexTree, resolveLayout, guiDescendants, screenGuisInPlayerGui, descendants, unreadableTextNodes } from './score-ui.mjs';
 import { renderTreeToSvg, surfaceCanvas } from './render-ui-tree.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -69,6 +69,12 @@ function redraw(dir, r) {
     asScripted: { painted: asScripted.painted, textNodes: asScripted.textNodes, hidden: asScripted.hidden, offscreen: asScripted.offscreen },
     opened: opened ? { painted: opened.painted, textNodes: opened.textNodes, forcedVisible: opened.forcedVisible, offscreen: opened.offscreen } : null,
     scaledText: (opened ?? asScripted).scaledText,
+    // A RENDER COUNTER LIKE THE REST, which is why it belongs in this file's contract: it is read
+    // off the rectangles the resolver produced, not off the model's answer. Text the model wrote
+    // into a box with no area is invisible in the engine too — see unreadableTextNodes, and the
+    // racing HUD whose own label helper never set Size, leaving eleven zero-area labels under the
+    // stat "written labels 0".
+    unreadableText: unreadableTextNodes(guiNodes, rects).length,
     wrappedText: (opened ?? asScripted).wrappedText,
     imagePlaceholders: (opened ?? asScripted).imagePlaceholders,
     // Rich text markup the renderer interpreted rather than drew, and the line breaks inside it

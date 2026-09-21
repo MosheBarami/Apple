@@ -265,6 +265,82 @@ const udim2 = (node, name) => {
   const v = prop(node, name);
   return v && v.k === 'UDim2' ? { xs: v.xs, xo: v.xo, ys: v.ys, yo: v.yo } : { xs: 0, xo: 0, ys: 0, yo: 0 };
 };
+
+/**
+ * POSITION AND SIZE SLOTS HOLDING SOMETHING THAT IS NOT A UDim2.
+ *
+ * WHY THIS EXISTS, measured 2026-09-21 on the showcase's horror HUD. The model wrote
+ * `UDim.new(0.5, 0, 0, 44)` — four arguments — fifty times, and `UDim2.new` not once. `UDim.new`
+ * takes two. The harness's `udim(s, o)` ignores the extra pair and returns a UDim, `udim2` above
+ * does not recognise it and falls back to `{0,0,0,0}`, and so every one of that screen's
+ * forty-four objects collapsed to zero size at the origin. The page then showed a blank picture
+ * captioned "instances on screen 0" under the word BUILT, with no reason given — a screen that
+ * failed for a nameable reason, presented as a screen that simply had nothing in it.
+ *
+ * THE FALLBACK ABOVE IS NOT THE BUG AND IS DELIBERATELY LEFT ALONE. Guessing a geometry from a
+ * UDim would invent a layout the model did not write, which is the one thing this renderer must
+ * never do. The bug was that nothing SAID so. This names it instead.
+ *
+ * It is a real Roblox API error, not a harness artefact: assigning a UDim to a UDim2 property
+ * raises in the engine. Reporting it is reporting the model's Luau.
+ */
+/**
+ * TEXT THE MODEL WROTE THAT NOBODY CAN READ, BECAUSE ITS BOX HAS NO AREA.
+ *
+ * MEASURED on the showcase's racing HUD, 2026-09-21. The model wrote a `label(parent, props)`
+ * helper that sets Text, Font, TextSize, TextColor3 and both alignments — and never sets `Size`.
+ * A GuiObject's default Size is UDim2.new(0,0,0,0), so all eleven of its labels were zero-area
+ * boxes. That is invisible in the real engine too, not an artefact of this renderer.
+ *
+ * The card showed a page of empty outlined panels over the stat "written labels 0". The stat was
+ * true and it was not an explanation: a reader cannot tell "the model wrote no text" from "the
+ * model wrote text into boxes with no size", and those are opposite findings about the model.
+ *
+ * DISTINCT FROM `udim2SlotErrors`, which is about a slot holding the WRONG TYPE. This is about
+ * the resolved geometry, whatever produced it — an unset Size, a Scale of 0, a parent that
+ * collapsed — so one measure covers every cause. It reads the rectangle the layout actually
+ * produced, which is the only thing that decides whether a player sees the words.
+ */
+export function unreadableTextNodes(nodes, rects) {
+  const out = [];
+  for (const node of nodes ?? []) {
+    const text = prop(node, 'Text');
+    if (!text || text.k !== 'str' || !String(text.v).length) continue;
+    // Text the model deliberately made invisible is not this finding; it is a choice.
+    if (num(node, 'TextTransparency', 0) >= 1) continue;
+    const r = rects?.get?.(node.id);
+    if (r && r.w > 0 && r.h > 0) continue;
+    out.push({
+      name: node?.props?.Name?.v ?? node?.class ?? 'unnamed',
+      class: node?.class ?? 'unknown',
+      text: String(text.v).slice(0, 40),
+      w: r ? r.w : null,
+      h: r ? r.h : null,
+    });
+  }
+  return out;
+}
+
+export function udim2SlotErrors(nodes) {
+  const out = [];
+  for (const node of nodes ?? []) {
+    for (const name of ['Position', 'Size']) {
+      const v = prop(node, name);
+      // An ABSENT slot is not an error — both properties have engine defaults and plenty of
+      // correct screens never set Size on a node inside a UIListLayout. Only a slot that was
+      // filled with the wrong type counts.
+      if (v && v.k !== 'UDim2') {
+        out.push({
+          name: node?.props?.Name?.v ?? node?.class ?? 'unnamed',
+          class: node?.class ?? 'unknown',
+          property: name,
+          got: v.k,
+        });
+      }
+    }
+  }
+  return out;
+}
 const udim = (v, fallback = { s: 0, o: 0 }) => (v && v.k === 'UDim' ? { s: v.s, o: v.o } : fallback);
 const vec2 = (node, name, fallback = { x: 0, y: 0 }) => {
   const v = prop(node, name);

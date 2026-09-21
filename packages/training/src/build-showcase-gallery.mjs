@@ -85,6 +85,10 @@ const OUTCOME_WORDS = {
   runtime_error: 'the build threw while running',
   harness_did_not_run: 'the test harness could not run it',
   nothing_on_screen_or_on_a_surface: 'nothing reached the screen or a world surface',
+  // THE MODEL'S, AND NAMED RATHER THAN SHOWN AS AN EMPTY PICTURE. The tree was built and parented,
+  // and then nothing had a geometry the engine could use — see the blank-render branch in
+  // generate-ui-showcase.mjs for the horror HUD that taught this.
+  nothing_reached_the_canvas: 'the screen was built but nothing had a usable position or size',
   no_screengui_in_playergui: 'nothing reached the player’s screen',
   nothing_placeable: 'no part had both a size and a position',
   not_in_library: 'no construction recorded for this id',
@@ -147,6 +151,11 @@ function screenCard(r, uiDir, prefix, { showGenre = false } = {}) {
         ${o ? `<div><dt>hidden until opened</dt><dd class="mono">${o.forcedVisible}</dd></div>` : ''}
         ${a.offscreen ? `<div class="warn"><dt>off screen</dt><dd class="mono">${a.offscreen}</dd></div>` : ''}
         ${r.imagePlaceholders ? `<div class="warn"><dt>asset refs not fetched</dt><dd class="mono">${r.imagePlaceholders}</dd></div>` : ''}
+        ${/* THE DIFFERENCE BETWEEN "WROTE NO LABELS" AND "WROTE LABELS NOBODY CAN READ". The racing
+             HUD's own helper never set Size, so eleven TextLabels were zero-area boxes — invisible
+             in the engine too. The card showed empty panels over "written labels 0", which is true
+             and is not an explanation. */ ''}
+        ${r.unreadableText ? `<div class="warn"><dt>labels written into a box with no size</dt><dd class="mono">${r.unreadableText}</dd></div>` : ''}
         ${s ? `<div><dt>canvas</dt><dd class="mono">${r.viewport?.w ?? '?'} × ${r.viewport?.h ?? '?'} px @ ${s.pixelsPerStud}/stud</dd></div>` : ''}
         <div><dt>references behind it</dt><dd class="mono">${r.sources ?? 0} shipped games</dd></div>
         <div><dt>luau written</dt><dd class="mono">${(r.codeChars ?? 0).toLocaleString()} chars</dd></div>

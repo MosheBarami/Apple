@@ -1,321 +1,279 @@
--- Horror HUD — screen-hud construction + horror genre kit
+-- Horror HUD — LocalScript
 local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
-
 local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
 
--- coreUiCollision: custom health/sanity meter replaces the core one
+-- Core collision: custom health meter replaces the core one
 pcall(function()
 	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, false)
 end)
 
-local function make(className, props, parent)
+local gui = Instance.new("ScreenGui")
+gui.Name = "HorrorHud"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local INK = Color3.fromRGB(12, 10, 12)
+local BLOOD = Color3.fromRGB(148, 26, 30)
+local BONE = Color3.fromRGB(214, 206, 196)
+local DIRT = Color3.fromRGB(38, 34, 36)
+local SICKLY = Color3.fromRGB(122, 138, 74)
+
+local function base(className, props, parent)
 	local inst = Instance.new(className)
-	for k, v in pairs(props) do
-		inst[k] = v
-	end
+	for k, v in pairs(props) do inst[k] = v end
 	inst.Parent = parent
 	return inst
 end
 
-local screenGui = make("ScreenGui", {
-	Name = "HorrorHud",
-	ResetOnSpawn = false,
-	IgnoreGuiInset = true,
-	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-}, playerGui)
-
--- Palette (horror kit: near-black chrome, bone text, blood accent)
-local C_BG = Color3.fromRGB(12, 10, 12)
-local C_PANEL = Color3.fromRGB(22, 18, 22)
-local C_BONE = Color3.fromRGB(214, 205, 190)
-local C_DIM = Color3.fromRGB(120, 112, 108)
-local C_BLOOD = Color3.fromRGB(148, 26, 30)
-local C_SANITY = Color3.fromRGB(96, 60, 140)
-
-local function panel(props, parent)
-	local f = make("Frame", props, parent)
-	make("UICorner", { CornerRadius = UDim.new(0, 6) }, f)
-	make("UIStroke", { Color = Color3.fromRGB(60, 50, 52), Thickness = 1 }, f)
-	return f
+local function corner(r, inst)
+	base("UICorner", { CornerRadius = UDim.new(0, r) }, inst)
 end
 
-local function label(props, parent)
-	props.BackgroundTransparency = props.BackgroundTransparency or 1
-	props.Font = props.Font or Enum.Font.Gotham
-	props.TextColor3 = props.TextColor3 or C_BONE
-	props.TextSize = props.TextSize or 14
-	return make("TextLabel", props, parent)
+local function stroke(color, thickness, inst)
+	base("UIStroke", { Color = color, Thickness = thickness, Transparency = 0.25 }, inst)
 end
 
--- ============ TOP-CENTRE BAND: sanity meter (compact, animated fill not a panel) ============
-local sanityFrame = panel({
-	Name = "SanityMeter",
+-- ============ TOP-CENTRE BAND: chapter title + objective ============
+local topBand = base("Frame", {
+	Name = "TopCentre",
 	AnchorPoint = Vector2.new(0.5, 0),
-	Position = UDim.new(0.5, 0, 0, 44), -- below the 36px top bar
-	Size = UDim.new(0, 260, 0, 30),
-	BackgroundColor3 = C_PANEL,
-}, screenGui)
-label({
-	Name = "Title",
-	Position = UDim.new(0, 10, 0, 0),
-	Size = UDim.new(0, 90, 1, 0),
-	Text = "SANITY",
-	TextXAlignment = Enum.TextXAlignment.Left,
-	TextColor3 = C_DIM,
-	TextSize = 12,
-}, sanityFrame)
-local sanityTrack = make("Frame", {
-	Name = "Track",
-	Position = UDim.new(0, 70, 0.5, -5),
-	Size = UDim.new(1, -80, 0, 10),
-	BackgroundColor3 = Color3.fromRGB(30, 24, 30),
-	BorderSizePixel = 0,
-}, sanityFrame)
-make("UICorner", { CornerRadius = UDim.new(1, 0) }, sanityTrack)
-local sanityFill = make("Frame", {
-	Name = "Fill",
-	Size = UDim.new(0.62, 0, 1, 0),
-	BackgroundColor3 = C_SANITY,
-	BorderSizePixel = 0,
-}, sanityTrack)
-make("UICorner", { CornerRadius = UDim.new(1, 0) }, sanityFill)
-label({
-	Name = "Value",
-	AnchorPoint = Vector2.new(1, 0.5),
-	Position = UDim.new(1, -8, 0.5, 0),
-	Size = UDim.new(0, 40, 1, 0),
-	Text = "62%",
-	TextXAlignment = Enum.TextXAlignment.Right,
-	TextSize = 12,
-	TextColor3 = C_BONE,
-}, sanityFrame)
-
--- ============ LEFT EDGE below top bar: health meter (custom, core disabled above) ============
-local healthFrame = panel({
-	Name = "HealthMeter",
-	Position = UDim.new(0, 12, 0, 44),
-	Size = UDim.new(0, 220, 0, 30),
-	BackgroundColor3 = C_PANEL,
-}, screenGui)
-label({
-	Name = "Title",
-	Position = UDim.new(0, 10, 0, 0),
-	Size = UDim.new(0, 70, 1, 0),
-	Text = "VITALS",
-	TextXAlignment = Enum.TextXAlignment.Left,
-	TextColor3 = C_DIM,
-	TextSize = 12,
-}, healthFrame)
-local healthTrack = make("Frame", {
-	Name = "Track",
-	Position = UDim.new(0, 66, 0.5, -5),
-	Size = UDim.new(1, -76, 0, 10),
-	BackgroundColor3 = Color3.fromRGB(30, 24, 30),
-	BorderSizePixel = 0,
-}, healthFrame)
-make("UICorner", { CornerRadius = UDim.new(1, 0) }, healthTrack)
-local healthFill = make("Frame", {
-	Name = "Fill",
-	Size = UDim.new(0.85, 0, 1, 0),
-	BackgroundColor3 = C_BLOOD,
-	BorderSizePixel = 0,
-}, healthTrack)
-make("UICorner", { CornerRadius = UDim.new(1, 0) }, healthFill)
-
--- ============ LEFT EDGE below health: quest tracker ============
-local questFrame = panel({
-	Name = "QuestTracker",
-	Position = UDim.new(0, 12, 0, 84),
-	Size = UDim.new(0, 220, 0, 96),
-	BackgroundColor3 = C_PANEL,
-}, screenGui)
-label({
-	Name = "Header",
-	Position = UDim.new(0, 10, 0, 6),
-	Size = UDim.new(1, -20, 0, 16),
-	Text = "OBJECTIVE — FLOOR 2",
-	TextXAlignment = Enum.TextXAlignment.Left,
-	TextColor3 = C_BLOOD,
-	TextSize = 12,
-	Font = Enum.Font.GothamBold,
-}, questFrame)
-local questList = make("Frame", {
-	Name = "List",
-	Position = UDim.new(0, 10, 0, 26),
-	Size = UDim.new(1, -20, 1, -34),
+	Position = UDim2.new(0.5, 0, 0, 36), -- below Roblox top bar
+	Size = UDim2.new(0.42, 0, 0, 64),
 	BackgroundTransparency = 1,
-}, questFrame)
-make("UIListLayout", {
-	Padding = UDim.new(0, 4),
+}, gui)
+
+local chapter = base("TextLabel", {
+	Size = UDim2.new(1, 0, 0, 22),
+	BackgroundTransparency = 1,
+	Font = Enum.Font.SpecialElite,
+	Text = "CHAPTER II — THE FLOODED BASEMENT",
+	TextColor3 = BONE,
+	TextSize = 16,
+	TextTransparency = 0.15,
+}, topBand)
+
+local objective = base("TextLabel", {
+	Position = UDim2.new(0, 0, 0, 26),
+	Size = UDim2.new(1, 0, 0, 34),
+	BackgroundTransparency = 1,
+	Font = Enum.Font.SpecialElite,
+	Text = "Find the fuse for the breaker — 2 of 4 fuses collected",
+	TextColor3 = Color3.fromRGB(168, 158, 148),
+	TextSize = 14,
+	TextWrapped = true,
+}, topBand)
+
+-- ============ LEFT EDGE: survival meters (below top bar) ============
+local meters = base("Frame", {
+	Name = "Meters",
+	Position = UDim2.new(0, 0, 0, 0.18),
+	Size = UDim2.new(0, 0, 0, 0),
+	BackgroundTransparency = 1,
+}, gui)
+base("UIListLayout", {
+	Padding = UDim.new(0, 10),
 	SortOrder = Enum.SortOrder.LayoutOrder,
-}, questList)
-local objectives = {
-	{ "Find the brass key in the nursery", false },
-	{ "Light the three hallway candles", true },
-	{ "Escape through the cellar door", false },
-}
-for i, obj in ipairs(objectives) do
-	local row = make("Frame", {
-		Name = "Obj" .. i,
-		Size = UDim.new(1, 0, 0, 16),
+}, meters)
+
+local function makeMeter(order, label, fillColor, fillPct)
+	local holder = base("Frame", {
+		LayoutOrder = order,
+		Size = UDim2.new(0, 190, 0, 34),
+		BackgroundColor3 = INK,
+		BackgroundTransparency = 0.25,
+	}, meters)
+	corner(4, holder)
+	stroke(DIRT, 1, holder)
+
+	base("TextLabel", {
+		Position = UDim2.new(0, 8, 0, 3),
+		Size = UDim2.new(1, -16, 0, 12),
 		BackgroundTransparency = 1,
-		LayoutOrder = i,
-	}, questList)
-	label({
-		Size = UDim.new(0, 14, 1, 0),
-		Text = obj[2] and "✓" or "○",
-		TextColor3 = obj[2] and C_BONE or C_DIM,
-		TextSize = 12,
-	}, row)
-	label({
-		Position = UDim.new(0, 18, 0, 0),
-		Size = UDim.new(1, -18, 1, 0),
-		Text = obj[1],
+		Font = Enum.Font.SpecialElite,
+		Text = label,
+		TextColor3 = BONE,
+		TextSize = 11,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		TextColor3 = obj[2] and C_DIM or C_BONE,
-		TextSize = 12,
-	}, row)
+	}, holder)
+
+	local track = base("Frame", {
+		Position = UDim2.new(0, 8, 0, 18),
+		Size = UDim2.new(1, -16, 0, 8),
+		BackgroundColor3 = Color3.fromRGB(24, 20, 22),
+		BorderSizePixel = 0,
+	}, holder)
+	corner(3, track)
+
+	local fill = base("Frame", {
+		Size = UDim2.new(fillPct, 0, 1, 0),
+		BackgroundColor3 = fillColor,
+		BorderSizePixel = 0,
+	}, track)
+	corner(3, fill)
+	return fill
 end
 
--- ============ TOP-CENTRE: currency pill (candles collected) ============
-local pill = panel({
-	Name = "CurrencyPill",
-	AnchorPoint = Vector2.new(0.5, 0),
-	Position = UDim.new(0.5, 0, 0, 8),
-	Size = UDim.new(0, 130, 0, 28),
-	BackgroundColor3 = C_BG,
-}, screenGui)
-make("UIStroke", { Color = C_BLOOD, Thickness = 1 }, pill)
-label({
-	Name = "Icon",
-	Position = UDim.new(0, 10, 0, 0),
-	Size = UDim.new(0, 16, 1, 0),
-	Text = "🕯",
-	TextSize = 14,
-}, pill)
-label({
-	Name = "Amount",
-	Position = UDim.new(0, 30, 0, 0),
-	Size = UDim.new(1, -40, 1, 0),
-	Text = "7 CANDLES",
-	TextXAlignment = Enum.TextXAlignment.Left,
-	TextSize = 12,
-	Font = Enum.Font.GothamBold,
-}, pill)
+-- Custom health meter (core Health disabled above)
+makeMeter(1, "VITALS", BLOOD, 0.72)
+-- Sanity meter — compact, animates color not a blocking panel
+makeMeter(2, "SANITY", SICKLY, 0.41)
+-- Battery for the flashlight
+makeMeter(3, "FLASHLIGHT BATTERY", Color3.fromRGB(196, 168, 84), 0.63)
 
 -- ============ MID-RIGHT: minimap ============
-local minimap = panel({
+local minimap = base("Frame", {
 	Name = "Minimap",
-	AnchorPoint = Vector2.new(1, 0),
-	Position = UDim.new(1, -12, 0, 0.35),
-	Size = UDim.new(0, 150, 0, 150),
-	BackgroundColor3 = C_BG,
-}, screenGui)
-make("UIStroke", { Color = Color3.fromRGB(60, 50, 52), Thickness = 1 }, minimap)
-label({
-	Name = "MapTitle",
-	Position = UDim.new(0, 8, 0, 4),
-	Size = UDim.new(1, -16, 0, 14),
-	Text = "BLACKWOOD MANOR — GROUND FLOOR",
-	TextSize = 10,
-	TextColor3 = C_DIM,
-	TextXAlignment = Enum.TextXAlignment.Left,
+	AnchorPoint = Vector2.new(1, 0.5),
+	Position = UDim2.new(1, -12, 0.5, 0),
+	Size = UDim2.new(0, 150, 0, 150),
+	BackgroundColor3 = INK,
+	BackgroundTransparency = 0.2,
+}, minimap and gui or gui)
+corner(6, minimap)
+stroke(DIRT, 2, minimap)
+
+base("TextLabel", {
+	Size = UDim2.new(1, 0, 0, 18),
+	BackgroundTransparency = 1,
+	Font = Enum.Font.SpecialElite,
+	Text = "GROUND FLOOR",
+	TextColor3 = BONE,
+	TextSize = 11,
 }, minimap)
-local mapCanvas = make("Frame", {
-	Name = "Canvas",
-	Position = UDim.new(0, 8, 0, 22),
-	Size = UDim.new(1, -16, 1, -30),
-	BackgroundColor3 = Color3.fromRGB(18, 14, 18),
-	BorderSizePixel = 0,
-}, minimap)
-make("UICorner", { CornerRadius = UDim.new(0, 4) }, mapCanvas)
--- room blocks (symmetrical foyer read: central hall, side galleries)
+
+-- schematic rooms
 local rooms = {
-	{ 0.40, 0.35, 0.20, 0.45, "FOYER" },
-	{ 0.10, 0.40, 0.26, 0.30, "LIBRARY" },
-	{ 0.64, 0.40, 0.26, 0.30, "DINING" },
-	{ 0.40, 0.05, 0.20, 0.26, "STAIRS" },
-	{ 0.40, 0.84, 0.20, 0.12, "CELLAR" },
+	{ UDim2.new(0.12, 0, 0.28, 0), UDim2.new(0.34, 0, 0.30, 0) }, -- foyer
+	{ UDim2.new(0.52, 0, 0.28, 0), UDim2.new(0.34, 0, 0.22, 0) }, -- gallery
+	{ UDim2.new(0.30, 0, 0.62, 0), UDim2.new(0.40, 0, 0.26, 0) }, -- stair hall
 }
-for i, r in ipairs(rooms) do
-	local room = make("Frame", {
-		Name = "Room" .. r[5],
-		Position = UDim.new(r[1], 0, r[2], 0),
-		Size = UDim.new(r[3], 0, r[4], 0),
-		BackgroundColor3 = Color3.fromRGB(40, 32, 38),
+for _, r in ipairs(rooms) do
+	base("Frame", {
+		Position = r[1], Size = r[2],
+		BackgroundColor3 = Color3.fromRGB(46, 42, 44),
+		BackgroundTransparency = 0.15,
 		BorderSizePixel = 0,
-		ZIndex = 2,
-	}, mapCanvas)
-	make("UIStroke", { Color = Color3.fromRGB(70, 58, 62), Thickness = 1 }, room)
-	label({
-		Size = UDim.new(1, 0, 1, 0),
-		Text = r[5],
-		TextSize = 8,
-		TextColor3 = C_DIM,
-	}, room)
+	}, minimap)
 end
--- player blip in the foyer
-make("Frame", {
-	Name = "YouBlip",
+-- player blip
+base("Frame", {
 	AnchorPoint = Vector2.new(0.5, 0.5),
-	Position = UDim.new(0.5, 0, 0.55, 0),
-	Size = UDim.new(0, 6, 0, 6),
-	BackgroundColor3 = C_BLOOD,
+	Position = UDim2.new(0.44, 0, 0.72, 0),
+	Size = UDim2.new(0, 8, 0, 8),
+	BackgroundColor3 = BLOOD,
 	BorderSizePixel = 0,
-	ZIndex = 3,
-}, mapCanvas)
+}, minimap)
 
 -- ============ BOTTOM-CENTRE: button rail ============
-local rail = make("Frame", {
+local rail = base("Frame", {
 	Name = "ButtonRail",
 	AnchorPoint = Vector2.new(0.5, 1),
-	Position = UDim.new(0.5, 0, 1, -12),
-	Size = UDim.new(0, 320, 0, 44),
+	Position = UDim2.new(0.5, 0, 1, -14),
+	Size = UDim2.new(0, 0, 0, 44),
 	BackgroundTransparency = 1,
-}, screenGui)
-make("UIListLayout", {
+}, gui)
+base("UIListLayout", {
 	FillDirection = Enum.FillDirection.Horizontal,
-	HorizontalAlignment = Enum.HorizontalAlignment.Center,
 	Padding = UDim.new(0, 8),
+	SortOrder = Enum.SortOrder.LayoutOrder,
 }, rail)
-local railButtons = {
-	{ "FLASHLIGHT  [F]", C_PANEL },
-	{ "HIDE  [H]", C_PANEL },
-	{ "PRAY  [R]", C_BLOOD },
-}
-for i, b in ipairs(railButtons) do
-	local btn = make("TextButton", {
-		Name = "Btn" .. i,
-		Size = UDim.new(0, 100, 1, 0),
-		BackgroundColor3 = b[2],
-		Text = b[1],
-		Font = Enum.Font.GothamBold,
-		TextSize = 11,
-		TextColor3 = C_BONE,
+
+local function railButton(order, text)
+	local btn = base("TextButton", {
+		LayoutOrder = order,
+		Size = UDim2.new(0, 96, 1, 0),
+		BackgroundColor3 = INK,
+		BackgroundTransparency = 0.2,
+		Font = Enum.Font.SpecialElite,
+		Text = text,
+		TextColor3 = BONE,
+		TextSize = 13,
 		AutoButtonColor = true,
-		LayoutOrder = i,
 	}, rail)
-	make("UICorner", { CornerRadius = UDim.new(0, 6) }, btn)
-	make("UIStroke", { Color = Color3.fromRGB(60, 50, 52), Thickness = 1 }, btn)
+	corner(4, btn)
+	stroke(DIRT, 1, btn)
+	return btn
 end
 
--- ============ BOTTOM-CENTRE above rail: toast ============
-local toast = panel({
-	Name = "Toast",
-	AnchorPoint = Vector2.new(0.5, 1),
-	Position = UDim.new(0.5, 0, 1, -66),
-	Size = UDim.new(0, 380, 0, 32),
-	BackgroundColor3 = C_BG,
-}, screenGui)
-make("UIStroke", { Color = C_BLOOD, Thickness = 1 }, toast)
-label({
-	Name = "ToastText",
-	Position = UDim.new(0, 12, 0, 0),
-	Size = UDim.new(1, -24, 1, 0),
-	Text = "Something moved in the nursery. The candles flickered.",
-	TextXAlignment = Enum.TextXAlignment.Left,
+railButton(1, "[F] LIGHT")
+railButton(2, "[E] HIDE")
+railButton(3, "[Q] CROUCH")
+railButton(4, "[TAB] MAP")
+
+-- ============ TOASTS (top-centre, under objective) ============
+local toastHolder = base("Frame", {
+	Name = "Toasts",
+	AnchorPoint = Vector2.new(0.5, 0),
+	Position = UDim2.new(0.5, 0, 0, 108),
+	Size = UDim2.new(0.34, 0, 0, 0),
+	BackgroundTransparency = 1,
+}, gui)
+base("UIListLayout", {
+	Padding = UDim.new(0, 6),
+	SortOrder = Enum.SortOrder.LayoutOrder,
+	HorizontalAlignment = Enum.HorizontalAlignment.Center,
+}, toastHolder)
+
+local function toast(order, text, color)
+	local t = base("TextLabel", {
+		LayoutOrder = order,
+		Size = UDim2.new(1, 0, 0, 26),
+		BackgroundColor3 = INK,
+		BackgroundTransparency = 0.15,
+		Font = Enum.Font.SpecialElite,
+		Text = "  " .. text,
+		TextColor3 = color,
+		TextSize = 13,
+		TextXAlignment = Enum.TextXAlignment.Left,
+	}, toastHolder)
+	corner(3, t)
+	stroke(DIRT, 1, t)
+end
+
+toast(1, "You hear footsteps above you.", BLOOD)
+toast(2, "Fuse acquired — the breaker hums.", SICKLY)
+
+-- ============ QUEST TRACKER (left edge, under meters) ============
+local tracker = base("Frame", {
+	Name = "QuestTracker",
+	AnchorPoint = Vector2.new(0, 1),
+	Position = UDim2.new(0, 12, 1, -14),
+	Size = UDim2.new(0, 210, 0, 92),
+	BackgroundColor3 = INK,
+	BackgroundTransparency = 0.3,
+}, gui)
+corner(4, tracker)
+stroke(DIRT, 1, tracker)
+
+base("TextLabel", {
+	Position = UDim2.new(0, 8, 0, 4),
+	Size = UDim2.new(1, -16, 0, 16),
+	BackgroundTransparency = 1,
+	Font = Enum.Font.SpecialElite,
+	Text = "ESCAPE THE MANSION",
+	TextColor3 = BONE,
 	TextSize = 12,
-	TextColor3 = C_BONE,
-}, toast)
+	TextXAlignment = Enum.TextXAlignment.Left,
+}, tracker)
+
+local steps = {
+	"✓ Restore power to the stairwell",
+	"✓ Collect the cellar key",
+	"○ Find the flooded basement hatch",
+	"○ Do not let it see you",
+}
+for i, s in ipairs(steps) do
+	base("TextLabel", {
+		Position = UDim2.new(0, 8, 0, 22 + (i - 1) * 17),
+		Size = UDim2.new(1, -16, 0, 16),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.SpecialElite,
+		Text = s,
+		TextColor3 = (s:sub(1, 1) == "✓") and Color3.fromRGB(120, 130, 110) or Color3.fromRGB(168, 158, 148),
+		TextSize = 11,
+		TextXAlignment = Enum.TextXAlignment.Left,
+	}, tracker)
+end
