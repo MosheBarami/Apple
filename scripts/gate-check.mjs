@@ -185,6 +185,18 @@ function normaliseOutput(raw) {
     .replace(/\((?:\d+(?:\.\d+)?)(?:ms|s|m)\)/g, '(TIME)')
     // A port the OS chose for a server, which differs per run.
     .replace(/localhost:\d+/g, 'localhost:PORT')
+    //[[ THE PROCESS ID IN NODE'S OWN WARNING PREFIX. `(node:30739) Warning: …` — the number is the
+    //   pid, so any run that emits a warning at all could never reproduce its own fingerprint, and
+    //   a gate whose command warns about anything was permanently unverifiable.
+    //
+    //   Found by making tests/gate-check.test.mjs print the first RAW line that differs when the
+    //   fingerprints disagree, after the same assertion went red on the Linux runner and could not
+    //   be reproduced on macOS on Node 26, Node 24, the runner's exact Node 22.23.2, or with TMPDIR
+    //   moved outside both paths this function rewrites. The diagnostic named the line in one run.
+    //
+    //   ONLY THE PID GOES. The warning's text is signal — a gate that starts emitting a deprecation
+    //   warning has changed and must fail its fingerprint. ]]
+    .replace(/^\(node:\d+\)/gm, '(node:PID)')
     // mkdtemp directories: the random segment differs on every run
     .replace(/\/(?:var\/folders|tmp)\/[^\s'"`)]+/g, '/TMPDIR')
     // this checkout's absolute path, so a fingerprint is not machine-specific

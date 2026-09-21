@@ -516,7 +516,80 @@ test('two runs of an unchanged gate produce the same fingerprint', () => {
   const g = `- [ ] G1: timing noise\n    CHECK: node --test ${spec}\n    EXPECT: pass 2\n`;
   const a = check(g, ['--approve']).ledger();
   const b = check(g, ['--approve']).ledger();
+
+  //[[ A FAILURE HERE HAS TO CARRY ITS OWN CAUSE, because it is a failure that does not travel.
+  //
+  //   On 2026-09-21 this went red on the Linux runner — two fingerprints, one line of difference
+  //   between them, and nothing in the log saying WHICH line. It could not be reproduced on macOS
+  //   on Node 26, on Node 24, on the runner's exact Node 22.23.2, or with TMPDIR moved outside
+  //   both paths `normaliseOutput` rewrites. Four hypotheses, four measurements, no reproduction —
+  //   so the next person needs the runner to tell them, and a bare sha mismatch cannot.
+  //
+  //   Runs the fixture twice more and prints the first RAW line that differs. Whatever the noise
+  //   is, it is in that line. Costs two extra fixture runs and only on the failing path. ]]
+  if (sha(a) !== sha(b)) {
+    const raw = () => spawnSync('node', ['--test', spec], { encoding: 'utf8', timeout: 60_000 });
+    const [x, y] = [raw(), raw()].map((r) => `${r.stdout ?? ''}${r.stderr ?? ''}`.split('\n'));
+    let i = 0;
+    while (i < Math.max(x.length, y.length) && x[i] === y[i]) i++;
+    assert.fail(
+      'per-test durations must not change the fingerprint.\n'
+      + `  bytes:   ${JSON.stringify(/output-bytes=(\d+)/.exec(a)?.[1])} then ${JSON.stringify(/output-bytes=(\d+)/.exec(b)?.[1])}\n`
+      + `  first raw line that differs between two runs of the same fixture, line ${i}:\n`
+      + `    run 1: ${JSON.stringify(x[i] ?? '(end of output)')}\n`
+      + `    run 2: ${JSON.stringify(y[i] ?? '(end of output)')}\n`
+      + '  If those two lines look identical, the difference is invisible whitespace or an escape '
+      + 'sequence — compare them as JSON above, not by eye.',
+    );
+  }
   assert.equal(sha(a), sha(b), 'per-test durations must not change the fingerprint');
+});
+
+//[[ THE PID IN NODE'S OWN WARNING PREFIX, which is the concrete instance the test above could not
+//   name for itself. `(node:30739) Warning: …` carries the process id, so before this a gate whose
+//   command emitted ANY warning could never reproduce its fingerprint — `--reverify` would
+//   quarantine it on every pass, for ever, for a reason having nothing to do with the gate.
+//
+//   Written after the assertion above went red on the Linux runner and refused to reproduce on
+//   macOS on Node 26, Node 24 and the runner's exact Node 22.23.2. This does not prove it was the
+//   runner's cause — that remains open, and the diagnostic above is what will name it — but it is a
+//   real source of per-run variation, proven here, and it is gone. */
+test('a warning in a gate\'s output does not change the fingerprint, but its TEXT still does', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gate-check-warn-'));
+  const sha = (l) => {
+    const m = /output-sha256=([0-9a-f]{64})/.exec(l);
+    assert.ok(m, `no EVIDENCE line was written:\n${l}`);
+    return m[1];
+  };
+  const specWith = (text) => {
+    const f = join(dir, `warn-${text.replace(/\W/g, '')}.test.mjs`);
+    writeFileSync(f, `import test from 'node:test';\nprocess.emitWarning('${text}');\ntest('a', () => {});\n`);
+    return f;
+  };
+
+  // NON-VACUITY FIRST: the fixture really does emit a `(node:PID)` line, or everything below is
+  // about an output that has no pid in it and this test proves nothing.
+  const one = specWith('stalefixture');
+  // NODE_TEST_CONTEXT MUST NOT REACH THE PROBE. This file is itself running under `node --test`,
+  // and a `node --test` child that inherits that variable prints "run() is being called recursively
+  // within a test file. skipping running files." and RUNS NOTHING — so the first version of this
+  // probe asserted against a warning about recursion instead of the warning the fixture emits.
+  const childEnv = { ...process.env };
+  delete childEnv.NODE_TEST_CONTEXT;
+  const probe = spawnSync('node', ['--test', one], { encoding: 'utf8', timeout: 60_000, env: childEnv });
+  assert.match(`${probe.stdout ?? ''}${probe.stderr ?? ''}`, /^\(node:\d+\) Warning: stalefixture/m,
+    'the fixture emitted no pid-prefixed warning, so this test would pass over nothing');
+
+  const g = (spec) => `- [ ] G1: warned\n    CHECK: node --test ${spec}\n    EXPECT: pass 1\n`;
+  const a = check(g(one), ['--approve']).ledger();
+  const b = check(g(one), ['--approve']).ledger();
+  assert.equal(sha(a), sha(b), 'the pid in a warning prefix must not change the fingerprint');
+
+  // THE CONTROL, and it is the half that makes the line above safe: normalising the pid away must
+  // not normalise the warning away. A gate that starts warning about something new HAS changed.
+  const c = check(g(specWith('somethingelse')), ['--approve']).ledger();
+  assert.notEqual(sha(c), sha(a), 'a DIFFERENT warning text reproduced the same fingerprint — the '
+    + 'normaliser is eating signal, not noise');
 });
 
 test('but a CHANGED test set still changes the fingerprint', () => {
