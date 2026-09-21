@@ -81,7 +81,7 @@
      See the note in the frontmatter: a static one turns every failure of this component into a
      page with no pointer. */
   :root.has-cursor,
-  :root.has-cursor * { cursor: none !important; }
+  :root.has-cursor :global(*) { cursor: none !important; }
 
   .cursor-dot,
   .cursor-ring {
@@ -182,12 +182,12 @@
      removes the class; this makes the same page correct even if it somehow does not. */
   @media (prefers-reduced-motion: reduce) {
     :root.has-cursor,
-    :root.has-cursor * { cursor: auto !important; }
+    :root.has-cursor :global(*) { cursor: auto !important; }
     .cursor { display: none; }
   }
   @media (hover: none), (pointer: coarse) {
     :root.has-cursor,
-    :root.has-cursor * { cursor: auto !important; }
+    :root.has-cursor :global(*) { cursor: auto !important; }
     .cursor { display: none; }
   }
 </style>
