@@ -1,7 +1,8 @@
 # The agent, measured against production — 2026-09-21
 
 Everything below was run against `https://apple.moshe-barami111.workers.dev`, the origin a person is
-sent to, at `buildSha 29c91d0`. Nothing here is read out of the source tree. Where something could
+sent to, at `buildSha 29c91d0` and then again at `buildSha 1396144`, which is what is live now.
+Nothing here is read out of the source tree. Where something could
 not be measured it says so rather than guessing.
 
 The owner's standing instruction this answers, verbatim:
@@ -27,9 +28,18 @@ is exactly the peer's uncommitted change and nothing else.
 
 A first upload went out labelled `BUILD_SHA:49d1297` because `git rev-parse` was read after the
 archive was taken and another lane had committed in between. The bytes were the `29c91d0` extract,
-so the label was wrong; it was redeployed immediately as `29c91d0`. `git diff 29c91d0..dbc7a41 --
-apps/worker/src packages/shared/src` is empty, so no worker source landed in that window and the
-deployed binary is current.
+so the label was wrong; it was redeployed immediately as `29c91d0`.
+
+**And then `29c91d0` stopped being current, which is the more useful half of that lesson.** Two peer
+commits landed worker source afterwards — `ae3dce1` (a measured note in `providers/workers-ai.ts`
+about a ~5-minute response cache upstream of this worker) and `5fd87ee`, which adds four Luau rules
+to the system prompt in `prompts.ts`: filter player text, retry DataStore calls, use `UpdateAsync`
+for values two servers can change, and never write a default over a failed read. Comment-only would
+have been safe to leave; a prompt change is not, because it changes what the agent writes and it was
+invisible. So the whole thing was re-extracted at `1396144`, rebuilt and redeployed, and
+`GET /api/health` now returns `{"ok":true,"buildSha":"1396144",...}`. The same before/after checks
+were repeated on that build. Both peer commits were read before shipping; neither was independently
+tested by this session beyond the full worker suite passing (3681/3681) with them in the tree.
 
 `/app`, `/docs`, `/changelog` and `/app/assets/index-CMtGTYsw.js` are byte-identical before and after
 the worker deploy. `/` gained a new section and a new stylesheet hash in the same window — new
@@ -47,7 +57,8 @@ recorded every frame with its arrival time, and kept listening for 45 seconds.
 | `productModel: "apple-max"` on a free plan | `error code=product_model_unavailable — Apple MAX requires a paid subscription. Choose Apple to continue free.` | +1024ms | **none** |
 
 Frames received, both runs: `["presence","hello","error"]`. No `msg_end`, no `run_state`, and the
-socket stayed open until the probe closed it.
+socket stayed open until the probe closed it. Repeated a third time after the `1396144` deploy, same
+result: `error` at +1145ms, nothing else for 30 seconds.
 
 The browser build has its own fix (`use-project-socket.ts` clears `running` on any `error` frame), so
 a person on the website does not see a hang today. Every other consumer — the e2e harness,
@@ -66,11 +77,26 @@ tool: ✓ create_instances
 → reply: I reached the step limit for this run. Progress so far is saved — send another message to continue.
 ```
 
-This is handoff §B and §D compounding, and the causal chain is now on record rather than inferred:
-the plan is rejected (step 1), the model repeats it verbatim and the duplicate-call guard refuses it
-while still charging a step (step 2), one real mutation lands (step 3), and the run is out of steps.
-A free user's first build ends with "I reached the step limit" having made one change. Both fixes are
-in `session.ts`. Both remain **OPEN**.
+This is handoff §B and §D compounding: the plan is rejected (step 1), the model repeats it verbatim
+and the duplicate-call guard refuses it while still charging a step (step 2), one real mutation lands
+(step 3), and the run is out of steps.
+
+**§B is not deterministic and this run does not prove it always happens.** The identical request was
+run again after the `1396144` deploy and the second `propose_plan` was ACCEPTED (`tool: ✓
+propose_plan`) — the model had varied its wording, so the duplicate guard never fired. What DID
+happen in both runs is §D: three steps, a single mutation, and the same closing sentence.
+
+```
+run 2, buildSha 1396144:
+tool: ✗ propose_plan — this plan never checks its own work…
+tool: ✓ propose_plan
+tool: ✓ create_instances
+→ reply: I reached the step limit for this run. Progress so far is saved…
+```
+
+So a free user's first build ends with "I reached the step limit" having made one change, whether or
+not §B fires — it fires on one of the two paths out of a rejected plan and makes the outcome worse.
+Both fixes are in `session.ts`. Both remain **OPEN**.
 
 ## 3. Apple MAX cannot be exercised from any account this repository can sign in as
 
