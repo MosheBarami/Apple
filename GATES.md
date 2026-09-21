@@ -375,6 +375,22 @@ like it covers it.
     SO THE REASON THIS IS UNTICKED IS THE SECOND ONE ALONE, AND IT IS SUFFICIENT: the CHECK does not pass. `scripts/gate-suite.mjs` includes check-app-bundle, red on a
     180939 B entry bundle against a 70000 B budget, and check-landing-budget, red at 28208 B
     against 12000 B. Measured 2026-09-21; see docs/backlog/WEB-BUNDLE-BUDGET-OPEN.md.
+    BOTH OF THOSE TWO REASONS ARE NOW FALSE, and the paragraph above is left standing because a
+    note that quietly rewrites its own history is worth less than one that is corrected in place.
+    Measured 2026-09-21, later the same night, by running `node scripts/gate-suite.mjs`:
+    check-app-bundle exits 0 (entry 138.6 kB gzipped after three routes were split out and the
+    budgets re-pinned, with settings/usage/roadmap added to MUST_BE_SPLIT in the same commit), and
+    check-landing-budget exits 0 (the landing lane brought it under). The suite itself reports
+    `tests passed: 9003   failed: 0`, so the third reason the file above records — that the tree
+    fingerprint moves under three concurrent lanes and the suite can never finish over a still
+    tree — did not fire either.
+    THE GATE IS STILL UNTICKED, ON A THIRD AND DIFFERENT REASON, and it is stated rather than
+    worked around: `SUITE RED — check-proof-figures`. The landing prints a typed `/10` — the
+    `6/10` critic score in the demo stage at apps/site/src/pages/index.astro:655 — and
+    check-proof-figures requires every digit a visitor can read to come from an expression or from
+    a `proof` array with a `from` pointer. That is a landing-content decision belonging to the lane
+    that owns index.astro, not an infra pass's to make in someone else's demo copy.
+    AND THE RECORDER DISAGREEMENT ABOVE REMAINS OPEN. Nothing in this correction touches it.
     (NO BLANK LINES IN THIS NOTE, and that is not a style preference. The first draft of it used an
     indented numbered list with blank lines around it, and a blank line ENDS a gate's block in
     gate-check's parser — so G90's own FALSIFIED and EVIDENCE lines were silently detached from it.
