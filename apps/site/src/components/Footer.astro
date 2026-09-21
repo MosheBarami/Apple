@@ -69,7 +69,26 @@ const year = new Date().getFullYear();
     </div>
 
     <div class="foot__base">
-      <p>&copy; {year} Apple. Apple is a beta service, provided as-is.</p>
+      {/* THE NON-BREAKING SPACE IS LOAD-BEARING, on a phone, on nineteen pages.
+
+          At 375px on the runner's Linux font metrics this line wrapped so that "as-is." sat alone
+          on the last line, on every page this footer appears on, and
+          apps/site/tests/rendered-typography.test.mjs failed with "19 text blocks end on a
+          stranded word, and the budget is 0". `p { text-wrap: pretty }` in global.css did not
+          save it: the engine kept the break.
+
+          Binding the last two words is METRIC-INDEPENDENT. There is no viewport and no font on
+          which "as-is." can be stranded any more, because it can no longer be a line by itself —
+          which is a stronger fix than tuning a width, and it is why this is in the markup rather
+          than in the stylesheet.
+
+          MEASURED both ways in Chromium over the built site, not reasoned about:
+            before   360px  ["(c) 2026 Apple. Apple is a beta service, provided", "as-is."]
+            after    360px  ["(c) 2026 Apple. Apple is a beta service,", "provided as-is."]
+          macOS strands it at 360px and the runner at 375px, which is why the runner's failure did
+          not reproduce here at the width the runner named. Anyone re-checking this should sweep
+          widths rather than trusting one. */}
+      <p>&copy; {year} Apple. Apple is a beta service, provided&nbsp;as-is.</p>
       <p class="foot__disclaimer">
         Not affiliated with or endorsed by Roblox Corporation.
       </p>
