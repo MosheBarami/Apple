@@ -20,7 +20,9 @@ Ground truth this design is built on, unchanged:
 | Stone full build+verify 511 neurons; Rune 297; Clay question 37–43; critique 63–72; memory ~21; embed 1 | **measured** |
 | Free = 60 Credits/day, 1 Credit = 30 neurons = 1,800 neurons/day | `pricing.ts` |
 | ~30 successful requests/minute sustained; 3021 is the rate-limit code | **measured**, `docs/COST-MODEL.md` |
-| p95 17.3s under 6 concurrent, 2.0s median; 20-user test, zero inference errors | **measured** |
+| p95 17.3s under 6 concurrent, 2.0s median; 20-user test, zero inference errors | **measured**, 2026-09-15 |
+| Re-run 2026-09-21, 20 users / 6 concurrent: auth p50 975ms, WS connect p50 1392ms, Clay inference p50 2702ms, 0 errors, isolation clean | **measured**, `docs/evidence/loadtest-2026-09-21.md` |
+| The line above is n=6 for inference, so its "p95" IS its maximum. It does not contradict the 17.3s tail; at that sample size the instrument cannot see a tail at all | instrument note |
 | Prefix caching verified working on kimi-k2.5, verified **not surfaced** on glm-5.3-flash | **measured** |
 | No Queue, no cron, `fetch` is the only exported handler | `apps/worker/src/index.ts` (`export default app`), `wrangler.jsonc` |
 
