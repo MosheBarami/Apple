@@ -4,7 +4,7 @@ import {
   buildTasks, UI_TASKS,
 } from './ui-tasks.mjs';
 import {
-  buildUiTree, check, deprecatedApis, indexTree, legacyApis, resolveLayout,
+  buildUiTree, check, deprecatedApis, indexTree, legacyApis, rebaseDiagnostic, resolveLayout,
   scoreUiTask, screenGuisInPlayerGui, select, VIEWPORTS,
 } from './score-ui.mjs';
 
@@ -579,4 +579,49 @@ test('every task declares at least one geometric check, not only class-presence 
     assert.ok(t.checks.some((c) => geometric.has(c.id)), `${t.id} has no geometric check`);
   }
   assert.equal(tasks.length, UI_TASKS.length);
+});
+
+/**
+ * THE LINE NUMBER ON A FAILURE CARD HAS TO POINT AT THE FILE THE READER HAS.
+ *
+ * MEASURED ON THE LIVE SHOWCASE, 2026-09-21. The failed fps_arena HUD card printed
+ * `/var/folders/.../golem-ui-N8G66L/build.luau(825,37): SyntaxError: ...` while the file beside
+ * it, `screen-hud--fps_arena.luau`, is 438 lines long. 825 was a line in the harness this module
+ * prepends. The single actionable number on the card addressed a file nobody has, at a line the
+ * file they do have does not reach — a reader who checked would have concluded the report was
+ * wrong rather than off by a prelude — and it leaked a temp path from the laptop that ran it.
+ *
+ * These hold the property, not the wording: the reported line resolves inside the source that was
+ * handed in, and no absolute path survives.
+ */
+test('a compile error is reported at a line the model\'s own file actually has', () => {
+  // 40 good lines, then one that cannot parse. Whatever the harness grows to, the reported line
+  // must be 41 — this is computed from the fixture, not copied from a previous run's output.
+  const filler = Array.from({ length: 40 }, (_, i) => `local _pad${i} = ${i}`).join('\n');
+  const built = buildUiTree(`${filler}\nlocal broken = = 1\n`);
+  assert.equal(built.compiled, false, 'the fixture was supposed to be a syntax error');
+  const m = /line (\d+), col (\d+):/.exec(built.detail);
+  assert.ok(m, `the detail names no rebased line: ${built.detail}`);
+  assert.equal(Number(m[1]), 41, `reported line ${m[1]} is not the broken line of the source: ${built.detail}`);
+  assert.ok(!/\/(var|tmp|Users|home)\//.test(built.detail), `a filesystem path reached the reader: ${built.detail}`);
+  assert.ok(!/build\.luau/.test(built.detail), `the harness's own filename reached the reader: ${built.detail}`);
+  assert.match(built.detail, /SyntaxError|Expected/, 'the compiler\'s own words must survive the rebase');
+});
+
+test('an error inside the prelude says so, rather than printing a line the source does not have', () => {
+  // Reachable whenever the harness itself stops compiling. The honest answer is that the reader's
+  // file is not at fault — never a zero, a negative, or a number that looks like theirs.
+  const inPrelude = rebaseDiagnostic('/tmp/x/build.luau(12,3): SyntaxError: bad', 600);
+  assert.match(inPrelude, /line 12 of the test harness, col 3 — not in the model's file:/);
+  assert.ok(!/line -/.test(inPrelude) && !/line 0,/.test(inPrelude), 'a nonsense line number was printed');
+  // The boundary: the first line of the model's source is preludeLines + 1, and it is theirs.
+  assert.match(rebaseDiagnostic('/tmp/x/build.luau(601,1): E', 600), /^line 1, col 1: E$/);
+  assert.match(rebaseDiagnostic('/tmp/x/build.luau(600,1): E', 600), /of the test harness/);
+});
+
+test('a message with no file position is passed through untouched', () => {
+  // `no output`, a timeout note, anything the compiler prints without a (line,col) — rewriting
+  // those would be inventing a position.
+  assert.equal(rebaseDiagnostic('no output', 600), 'no output');
+  assert.equal(rebaseDiagnostic('', 600), '');
 });

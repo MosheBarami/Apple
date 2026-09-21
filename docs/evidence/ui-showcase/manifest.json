@@ -530,7 +530,7 @@
       "genre": "fps_arena",
       "id": "screen-hud",
       "outcome": "does_not_compile",
-      "detail": "/var/folders/hw/0ybpmzsn323dbcc3cgjwrb700000gn/T/golem-ui-NUG66L/build.luau(825,37): SyntaxError: Expected identifier when parsing expression, got 'or'",
+      "detail": "line 207, col 37: SyntaxError: Expected identifier when parsing expression, got 'or'",
       "codeChars": 12466
     },
     {

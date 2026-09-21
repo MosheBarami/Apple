@@ -135,8 +135,46 @@ export function legacyApis(source) {
  * @returns {{ran:false, reason:string} | {ran:true, compiled:false, detail:string}
  *          | {ran:true, compiled:true, status:'ok'|'loop'|'error', detail:string, nodes:Array}}
  */
+/**
+ * A COMPILER LINE NUMBER THAT POINTS AT NOTHING IS WORSE THAN NO LINE NUMBER.
+ *
+ * MEASURED 2026-09-21, on the showcase page the owner reads. The fps_arena HUD failed and the
+ * card printed, verbatim:
+ *
+ *   /var/folders/hw/0ybpmzsn.../T/golem-ui-N8G66L/build.luau(825,37): SyntaxError: ...
+ *
+ * The model's file — `screen-hud--fps_arena.luau`, the one sitting beside the manifest and the
+ * only file anybody can open — is 438 lines long. Line 825 is in the 616-line harness this module
+ * prepends before handing the code to `luau-compile`. So the one actionable number on the card
+ * addressed a file the reader does not have, at a line the file they DO have does not reach, and
+ * a reader who went looking would find nothing and conclude the report was wrong rather than
+ * off by a prelude. It also printed a temp directory from whichever laptop ran the generator.
+ *
+ * Rebasing is the whole fix: the offset is counted from the prefix actually built below, never
+ * typed, so editing the harness or the pcall wrapper cannot silently desynchronise it.
+ *
+ * AN ERROR INSIDE THE PRELUDE SAYS SO rather than printing a zero or a negative line. That branch
+ * is reachable — a harness edit that does not compile lands there — and it is the honest answer:
+ * the reader's file is not at fault and nothing in it will explain the message.
+ */
+export function rebaseDiagnostic(text, preludeLines) {
+  return String(text ?? '').replace(
+    /^\S*?build\.luau\((\d+),(\d+)\):\s*/,
+    (_m, line, col) => {
+      const n = Number(line) - preludeLines;
+      return n > 0
+        ? `line ${n}, col ${col}: `
+        : `line ${line} of the test harness, col ${col} — not in the model's file: `;
+    },
+  );
+}
+
 export function buildUiTree(source, { binary = 'luau', compiler = 'luau-compile', timeoutMs = 10_000 } = {}) {
   const harness = readFileSync(HARNESS, 'utf8').replace('return { emit = emit, LOOP_MARKER = LOOP_MARKER }', '');
+  // Everything that precedes the model's first line, counted rather than assumed — see
+  // rebaseDiagnostic. Kept beside the template so the two cannot drift apart.
+  const prelude = `${harness}\nlocal __ok, __err = pcall(function()\n`;
+  const preludeLines = prelude.split('\n').length - 1;
   const program = `${harness}
 local __ok, __err = pcall(function()
 ${source}
@@ -156,7 +194,8 @@ else emit("error", tostring(__err)) end
     const compiled = spawnSync(compiler, ['--null', file], { encoding: 'utf8', timeout: timeoutMs, maxBuffer: 8 * 1024 * 1024 });
     if (compiled.error) return { ran: false, reason: compiled.error.code === 'ENOENT' ? `no ${compiler} binary` : compiled.error.message };
     if (compiled.status !== 0) {
-      return { ran: true, compiled: false, detail: (String(compiled.stderr).trim() || 'no output').split('\n')[0].slice(0, 300) };
+      const raw = (String(compiled.stderr).trim() || 'no output').split('\n')[0];
+      return { ran: true, compiled: false, detail: rebaseDiagnostic(raw, preludeLines).slice(0, 300) };
     }
 
     const run = spawnSync(binary, [file], { encoding: 'utf8', timeout: timeoutMs, maxBuffer: 16 * 1024 * 1024 });
