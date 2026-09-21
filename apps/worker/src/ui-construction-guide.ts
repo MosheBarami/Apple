@@ -136,7 +136,7 @@ function find(id: string): { entry: UIConstructionEntry; how: UIConstructionMatc
 
 function render(entry: UIConstructionEntry, maxChars: number): string {
   const lines: string[] = [];
-  lines.push(`${entry.label} (${entry.kind}) — construction read off ${entry.referenceCount} shipped references.`);
+  lines.push(`${entry.label} (${entry.kind}) — construction distilled from ${entry.referenceCount} recorded references.`);
   if (entry.incomplete) {
     lines.push('INCOMPLETE: fewer than five references were found for this one. Treat the rules as a starting point and say so if the customer asks where the look came from.');
   }
@@ -147,7 +147,7 @@ function render(entry: UIConstructionEntry, maxChars: number): string {
   }
   if (entry.demonstrates.length) {
     lines.push('');
-    lines.push('OBSERVED IN SHIPPED GAMES:');
+    lines.push('OBSERVATIONS FROM RECORDED SOURCES:');
     for (const d of entry.demonstrates) lines.push(`- ${d}`);
   }
   let text = lines.join('\n');

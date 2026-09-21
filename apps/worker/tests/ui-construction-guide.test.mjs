@@ -56,6 +56,18 @@ test('a known id returns construction a generator can apply, with its provenance
   assert.match(a.guide, /stroke|radius|overhang|grid|bevel/i);
 });
 
+test('construction references never self-certify as visually inspected shipped games', () => {
+  // This corpus mixes owner-supplied screenshots with documentation, tutorials and API/text pages.
+  // Visual inspection is a separate, stricter contract in genre-references.json. Calling every row a
+  // shipped-game observation silently turns text research into visual evidence.
+  for (const id of [...UI_CONSTRUCTION_GENRE_IDS, ...UI_CONSTRUCTION_SCREEN_IDS]) {
+    const a = getUIConstruction({ id, totalChars: 100_000 });
+    assert.equal(a.found, true);
+    assert.doesNotMatch(a.guide, /read off .* shipped references|OBSERVED IN SHIPPED GAMES/i, id);
+    assert.match(a.guide, /recorded references/i, id);
+  }
+});
+
 test('an unknown id SAYS it is unknown, and lists what does exist', () => {
   const a = getUIConstruction({ id: 'battle-royale-sushi-tycoon' });
   assert.equal(a.found, false);
