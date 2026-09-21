@@ -23,6 +23,7 @@ import assert from 'node:assert/strict';
 import { FRONTIER_ITEMS, ALL_CHECK_IDS, AXES, ARMS } from './roblox-frontier-tasks.mjs';
 import { CONTROLS } from './roblox-frontier-controls.mjs';
 import { scoreFrontierItem, tally } from './score-roblox-frontier.mjs';
+import { resolveSettings } from './production-settings.mjs';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -125,6 +126,36 @@ for (const item of FRONTIER_ITEMS) {
     });
   }
 }
+
+//[[ THE DOCUMENT CLAIMS THE MAX NUMBER IS THE APPLE NUMBER. THIS IS WHAT THAT CLAIM RESTS ON.
+//
+//   docs/frontier-for-roblox.md §6 and §8.8 both said "nothing here supports or refutes a claim
+//   about MAX", because every arm ran the `apple` lane. §10 retires that, without a single neuron,
+//   on one fact: at this endpoint the two lanes send the SAME REQUEST. The bench posts
+//   `{ model: settings.gateway, prompt, system, maxTokens: settings.requestedTokens }`, and for
+//   agent mode all four fields are equal across the lanes. `lane` and `productMode` differ and are
+//   not sent.
+//
+//   IF THIS GOES RED, THE FIX IS NOT TO PUT THE LANES BACK. Differentiating them is a legitimate
+//   product change. What must happen is that §10's claim is retracted and the MAX lane is measured
+//   on its own — which is exactly what this guard exists to force rather than let drift silently.
+test('the MAX Agent lane and the Apple Agent lane send a byte-identical request, which is what §10 rests on', () => {
+  const arm = ARMS['house-rules-plus'];
+  const body = (lane) => {
+    const s = resolveSettings({ lane, mode: 'agent' });
+    return JSON.stringify({ model: s.gateway, prompt: 'PROMPT', system: arm.system, maxTokens: s.requestedTokens });
+  };
+  assert.equal(body('apple'), body('apple-max'),
+    'apple and apple-max no longer resolve to the same request in Agent mode. docs/frontier-for-roblox.md '
+    + '§10 says the 87.5% covers MAX because the request is identical; that claim is now false and '
+    + 'must be retracted or re-measured on the MAX lane.');
+  // And the one place they genuinely differ, named so it is not mistaken for coverage.
+  const superAgent = resolveSettings({ lane: 'apple-max', mode: 'super-agent' });
+  assert.equal(superAgent.gateway, 'rune', 'Super Agent no longer resolves to rune');
+  assert.notEqual(superAgent.requestedTokens, resolveSettings({ lane: 'apple', mode: 'agent' }).requestedTokens);
+  assert.equal(superAgent.effectiveTokens, resolveSettings({ lane: 'apple', mode: 'agent' }).effectiveTokens,
+    'the same ceiling no longer erases the difference between rune and stone; §10 says it does');
+});
 
 //[[ A RE-SCORED RUN MUST NOT CARRY A HASH OF THE FILE THAT JUDGED THE VERSION BEFORE IT.
 //   rescore-roblox-frontier.mjs re-judges saved answers with no model call, and it spreads the old

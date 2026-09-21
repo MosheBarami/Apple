@@ -810,3 +810,71 @@ hash the bench grows cannot be quietly missed. Watched red by deleting `tasks:` 
 - Everything in §8.8 that was not about this: sixteen items is a small suite, the four rules'
   cost elsewhere is unmeasured, no measurement here went through the live composer, and the MAX lane
   is untouched.
+
+---
+
+## 10. THE APPLE MAX LANE, ANSWERED FOR ZERO NEURONS — it is the same request
+
+§6 and §8.8 both recorded the same gap: *"every arm here ran `apple` / Agent … nothing here
+supports or refutes a claim about MAX."* The owner's question is about **Apple and Apple MAX**, so
+that gap sat under the whole page. Closing it looked like another sixteen prompts on another lane.
+It is not. It is an identity, and `--show-settings` prints it without spending anything.
+
+### 10.1 What the bench actually posts
+
+Every answer on this page came back from
+`POST /api/admin/model-test` with a body of exactly four fields:
+
+```js
+{ model: settings.gateway, prompt, system: arm.system, maxTokens: settings.requestedTokens }
+```
+
+`lane` and `productMode` are **not among them.** They are inputs to the resolution, not to the
+request. So the question "does MAX score differently" reduces to "does MAX resolve to a different
+body", which is answerable from the mirror.
+
+### 10.2 The resolution, printed for every lane and mode
+
+`resolveSettings` in `production-settings.mjs` mirrors `gatewayModelFor` in
+`apps/worker/src/do/session.ts`, and **its own test reads the worker's source**, so a drift between
+the two is a red test rather than a wrong table here.
+
+| lane | mode | gateway | model | effort | base | requested | ceiling | effective |
+|---|---|---|---|---|---|---|---|---|
+| `apple` | Plan | `stone` | glm-5.3-flash | low | 4,400 | 4,400 | 6,500 | 4,400 |
+| **`apple`** | **Agent** | **`stone`** | **glm-5.3-flash** | **high** | **4,400** | **8,800** | **6,500** | **6,500** |
+| `apple-max` | Plan | `stone` | glm-5.3-flash | high | 4,400 | 8,800 | 6,500 | 6,500 |
+| **`apple-max`** | **Agent** | **`stone`** | **glm-5.3-flash** | **high** | **4,400** | **8,800** | **6,500** | **6,500** |
+| `apple-max` | Super Agent | `rune` | glm-5.3-flash | high | 5,200 | 10,400 | 6,500 | 6,500 |
+
+The two Agent rows are equal in **every field that is sent**. Serialised with the same arm and the
+same prompt, the request bodies are 1,563 bytes each and hash to the same
+`sha256 041da14ebce80234` — checked by hashing them, not by comparing the table by eye.
+
+### 10.3 What this settles, and what it does not
+
+**Settles.** Apple MAX in **Agent** — the only MAX mode a customer can select, because
+`PRODUCT_MODES_OFFERED` is `['plan', 'agent']` — is not a different measurement from Apple in
+Agent. It is the same request. **Every number on this page is a MAX number as much as it is an
+Apple number**, including §9's 87.5%. §6 and §8.8's "nothing here supports or refutes a claim about
+MAX" is retired.
+
+`roblox-frontier.test.mjs` now fails if those two bodies ever differ. The failure message says the
+right remedy out loud: **not** to put the lanes back, but to retract §10 and measure MAX on its own.
+Differentiating the tiers is a legitimate product change; quietly keeping a claim that assumed they
+were identical is not.
+
+**Does not settle.** Three things, none of them about the model:
+
+- **Super Agent was not run.** `rune` at a requested 10,400 is a different body — and the same 6,500
+  ceiling clamps it, so the provider sees an identical budget, and `/api/admin/model-test` reports
+  `rune` serving the same `@cf/zai-org/glm-5.3-flash`. No customer can select it
+  (`PRODUCT_MODES_OFFERED`), and 16 items there would cost roughly 350 neurons to measure a mode
+  nobody reaches. Deliberately not spent, and named here rather than left as a silent gap.
+- **The step limit is a real difference between the lanes and this page cannot see it.**
+  `maxStepsFor` bounds the free lane to `min(STEP_LIMITS[mode], STEP_LIMITS.clay)`. Every item here
+  is one prompt and one answer, so a per-run step budget never enters. A multi-step build could
+  differ between the lanes for that reason alone, and nothing here says otherwise.
+- **The composer, still.** Same limit as §8.8: `/api/admin/model-test` takes the system prompt from
+  the caller, so no measurement on this page — on either lane — went through the prompt the product
+  composes.
