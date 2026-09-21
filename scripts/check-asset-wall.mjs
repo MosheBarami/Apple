@@ -64,7 +64,67 @@ const ROOTDIR = dirname(HTML);
 /* ------------------------------------------------------------------- find the wall --- */
 
 const section = /<section[^>]*id="library"[^>]*>([\s\S]*?)<\/section>/.exec(html);
-if (!section) blind(`${HTML} has no <section id="library">`);
+//[[ RE-AIMED 2026-09-21. THE WALL IS GONE AND IT IS NOT COMING BACK, so "no <section id=library>"
+//   is no longer an "I could not look" — it is the expected state, and exiting 2 on it kept the
+//   whole `Build site and web` job red with nothing to fix.
+//
+//   The evidence that this is a decision and not a regression, none of it mine:
+//     · `.gitignore` records "THE ASSET CATALOGUE LIVED HERE AND WAS DELETED ON 2026-09-20 …
+//       The owner removed the library outright — every upload it could make was an Image or a
+//       Decal, Roblox refuses to archive either, and the catalogue carried rows named after other
+//       companies' properties under one blanket licence claim." Six tracked files went with it.
+//     · commit 92c9221 rewrote the landing and the library section did not survive it. The page
+//       now carries hero-title, statement-title, sequence-title, models, inside, truths-title,
+//       plans-title and cap-title, and no library.
+//     · `apps/site/src/pages/index.astro` states the principle the new page is built to: it is
+//       "a page whose whole point is that it ships almost nothing".
+//
+//   SO THE GUARD IS RE-AIMED RATHER THAN DELETED, which is the third ending
+//   docs/backlog/WEB-BUNDLE-BUDGET-OPEN.md warned against. The failure this file exists for was
+//   never "the wall is missing" — it was A PAGE THAT STATES A NUMBER THE CARDS DO NOT SUPPORT.
+//   With no wall at all, the strongest form of that property is that the page must not claim a
+//   library, because there is now no library to claim. That is checked below, and it is a check
+//   the old shape could not perform: a landing that today said "from a library of 510,014" would
+//   have exited 2 and told nobody anything.
+//
+//   If the wall ever returns, the branch below is not taken and every card check runs unchanged. ]]
+if (!section) {
+  // Tags out, entities for the characters a count can hide behind, whitespace collapsed.
+  const prose = html
+    .replace(/<script[\s\S]*?<\/script>/g, ' ')
+    .replace(/<style[\s\S]*?<\/style>/g, ' ')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&(?:nbsp|#160|#xA0|#xa0);/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/\s+/g, ' ');
+
+  /** Every way the page could still be promising a library it no longer has. */
+  const CLAIMS = [
+    /\bfrom a library of\b/i,
+    /\blibrary of [\d,]{2,}/i,
+    /[\d][\d,]{2,}\s+(?:assets|models|textures|icons|sounds|meshes)\b/i,
+    /\b(?:assets|models|textures|icons)\s+(?:below|above)\b/i,
+    /\b[\d][\d,]{2,}\s+of them below\b/i,
+    /\bcurated (?:asset )?library\b/i,
+  ];
+  const found = [];
+  for (const rule of CLAIMS) {
+    const m = rule.exec(prose);
+    if (m) found.push(`"${prose.slice(Math.max(0, m.index - 60), m.index + m[0].length + 60).trim()}"`);
+  }
+  if (found.length > 0) {
+    console.error(`ASSET WALL — the wall is gone and ${found.length} claim(s) about it are still on the page\n`);
+    for (const quote of found) console.error(`  ${quote}`);
+    console.error('\nThe catalogue was deleted on 2026-09-20. A page that still counts it is counting nothing.');
+    process.exit(1);
+  }
+  console.log(
+    `check-asset-wall: ${HTML} has no library section, which is the recorded state since 2026-09-20 — `
+      + `and none of the ${CLAIMS.length} library claims this checks for appears anywhere on the page. `
+      + 'If the wall returns, every card check in this file runs again unchanged.',
+  );
+  process.exit(0);
+}
 
 /**
  * The cards.

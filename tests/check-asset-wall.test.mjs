@@ -203,11 +203,36 @@ test('a size attribute that is not the picture’s own size fails', () => {
   assert.match(r.out, /1x1/);
 });
 
-test('a page with no wall at all reports that it verified nothing', () => {
-  // THE ONE THAT MATTERS MOST. A guard that cannot find its subject must not print OK.
+//[[ THIS TEST USED TO READ: 'a page with no wall at all reports that it verified nothing', and it
+//   asserted exit 2 on a page with no <section id="library">. IT IS RE-AIMED, NOT DELETED, because
+//   the decision underneath it was reversed by the owner and not by a regression: the asset
+//   catalogue was deleted on 2026-09-20 (`.gitignore` carries the record and the reasons), commit
+//   92c9221 rewrote the landing without a library section, and the page now states that its whole
+//   point is that it ships almost nothing. Exiting 2 for ever on the expected state is not a guard
+//   reporting honestly, it is a red light with nothing behind it — and it held the entire
+//   `Build site and web` job red.
+//
+//   The property the checker exists for was never "a wall is present". It was A PAGE THAT STATES A
+//   NUMBER ITS CARDS DO NOT SUPPORT. With no wall, the strongest form of that is that the page must
+//   not claim a library at all, and the two tests below are that property from both sides. The
+//   "cannot find its subject" rule is untouched wherever a subject is supposed to exist: a section
+//   with no cards, and cards whose class was renamed, both still exit 2 — see the two tests that
+//   follow. ]]
+test('a page with no wall AND no claim about one is clean, and says the wall is gone', () => {
   const r = run(page([], { section: false }));
-  assert.equal(r.exit, 2, r.out);
-  assert.doesNotMatch(r.out, /ASSET WALL OK/);
+  assert.equal(r.exit, 0, r.out);
+  assert.match(r.out, /no library section/);
+});
+
+test('A PAGE WITH NO WALL THAT STILL COUNTS ONE IS THE DEFECT, and this is the half that matters', () => {
+  // The failure the checker exists for, in the shape it can still take: the cards are gone and the
+  // sentence promising them is not. Under the old behaviour this exited 2 and told nobody anything.
+  const withClaim = page([], { section: false })
+    .replace('<h2>Nothing to see</h2>', '<h2>Nothing to see</h2><p>Drawn from a library of 510,014 assets.</p>');
+  const r = run(withClaim);
+  assert.equal(r.exit, 1, r.out);
+  assert.match(r.out, /claim\(s\) about it are still on the page/);
+  assert.match(r.out, /510,014/, 'the checker must quote what it found, not merely count it');
 });
 
 test('a wall with zero cards reports that it verified nothing', () => {
