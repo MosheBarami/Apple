@@ -11,9 +11,37 @@ import { AppLayout } from './components/layout';
 import { ConfirmEmailPage, ForgotPasswordPage, LoginPage, RecoveryRequestPage, ResetPasswordPage, SignupPage } from './routes/auth-pages';
 import { DashboardPage } from './routes/dashboard';
 import { WorkspacePage } from './routes/workspace';
-import { RoadmapPage } from './routes/roadmap';
-import { UsagePage } from './routes/usage';
-import { SettingsPage } from './routes/settings';
+// LAZY, on a measurement rather than a hunch. `scripts/check-app-bundle.mjs` budgets the entry
+// graph at 70 kB gzipped, a figure measured when the entry WAS 54.2 kB. It then went unenforced —
+// the build job stopped at an earlier failure, so nobody saw the check — while the app grew, and
+// by the time it ran again the entry was 181 kB gzipped. Attributing the entry chunk through its
+// sourcemap gave the three cheapest routes to move:
+//
+//     settings.tsx   52,735 B of generated code   the largest single file in the entry
+//     usage.tsx      16,917 B
+//     roadmap.tsx     8,703 B
+//
+// None is a landing. Settings and usage are reached from the layout's own navigation, and the
+// roadmap hangs off a project the user has already opened — so each is a click that has always
+// cost a render, and now costs a fetch inside the same click. That is the same trade already made
+// for /admin below, with the same fallback.
+//
+// NOT WORKSPACE, deliberately. Its subtree — the route plus the ws components plus generative-ui
+// — is about 198 kB of the entry and is far and away the largest remaining piece, and it is also
+// the busiest path in the product. This app has no DOM test environment (see
+// walkable-routes.test.mjs: no jsdom, no testing-library), so a route that is split cannot be
+// watched rendering here; the three above are chosen because losing one for a release costs a
+// settings page, and losing the workspace costs the product. The measured debt is recorded in
+// docs/backlog/WEB-BUNDLE-BUDGET-OPEN.md, not closed.
+//
+// AND A NOTE FOR WHOEVER EDITS THIS COMMENT. The first draft of it wrote that subtree as a glob
+// with a star after the slash. Several checks in this repository strip comments from this file with
+// a naive block-comment regex before matching it, and that two-character sequence opened a comment
+// that ran to the next close — swallowing 60 lines of the route table. Two tests went red on the
+// text of a comment. Do not put that sequence in this file.
+const RoadmapPage = lazy(() => import('./routes/roadmap').then((m) => ({ default: m.RoadmapPage })));
+const UsagePage = lazy(() => import('./routes/usage').then((m) => ({ default: m.UsagePage })));
+const SettingsPage = lazy(() => import('./routes/settings').then((m) => ({ default: m.SettingsPage })));
 // Lazy for the same reason, and one more. The admin console is rendered only for
 // `is_admin` profiles, so for very nearly every user this was 10.7 kB raw / 2.4 kB
 // gzipped of a page they cannot use. Splitting it also stops the console's shape — the
@@ -41,8 +69,10 @@ const AdminPage = lazy(() => import('./routes/admin').then((m) => ({ default: m.
 // there is no such chunk and the entry is 586.71 kB (171.99 gzip) — so gating it also
 // takes 3.09 kB of shared code out of the entry that splitting alone left behind.
 //
-// Only these two are lazy. Dashboard and workspace are where a user lands, and splitting
-// those would trade bundle size for a round trip on the path that matters most.
+// THIS SENTENCE USED TO READ "Only these two are lazy", and the three declarations above made it
+// false the moment they landed. Five routes are lazy now — admin, ui-lab, settings, usage and
+// roadmap. What still holds is the second half: dashboard and workspace are where a user lands,
+// and splitting those would trade bundle size for a round trip on the path that matters most.
 const UiLabPage = import.meta.env.DEV
   ? lazy(() => import('./routes/ui-lab').then((m) => ({ default: m.UiLabPage })))
   : () => null;
@@ -131,13 +161,34 @@ export function App() {
                     <Route path="/projects/:id" element={<WorkspacePage />} />
                     {/* The plan for one project. Scoped under the project
                         because a roadmap without one has nothing to describe. */}
-                    <Route path="/projects/:id/roadmap" element={<RoadmapPage />} />
+                    <Route
+                      path="/projects/:id/roadmap"
+                      element={
+                        <Suspense fallback={<div className="page" aria-busy="true" />}>
+                          <RoadmapPage />
+                        </Suspense>
+                      }
+                    />
                     {/* Where a share link lands. INSIDE the guard on purpose: redeeming mints a
                         membership for the signed-in person, so a signed-out visitor is sent to
                         /login and returned here with the token intact — see AuthGuard. */}
                     <Route path="/join" element={<JoinPage />} />
-                    <Route path="/usage" element={<UsagePage />} />
-                    <Route path="/settings" element={<SettingsPage />} />
+                    <Route
+                      path="/usage"
+                      element={
+                        <Suspense fallback={<div className="page" aria-busy="true" />}>
+                          <UsagePage />
+                        </Suspense>
+                      }
+                    />
+                    <Route
+                      path="/settings"
+                      element={
+                        <Suspense fallback={<div className="page" aria-busy="true" />}>
+                          <SettingsPage />
+                        </Suspense>
+                      }
+                    />
                     <Route
                       path="/admin"
                       element={
