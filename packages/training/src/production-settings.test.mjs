@@ -5,7 +5,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   EFFORT_SCALE, GATEWAY_CEILING, GATEWAY_MODEL_ID, MODE_BASE_TOKENS,
-  effortFor, gatewayFor, resolveSettings, tokensForEffort,
+  cacheBustTokens, effortFor, gatewayFor, resolveSettings, tokensForEffort,
 } from './production-settings.mjs';
 
 /**
@@ -110,4 +110,73 @@ test('an explicit effort is no longer a floor, and an explicit budget overrides 
   assert.equal(s.effortIsAFloor, false);
   assert.equal(s.requestedTokens, 900);
   assert.equal(s.effectiveTokens, 900);
+});
+
+//[[ THE CACHE-BUSTING LEVER, WHICH WAS A NO-OP FOR A WHOLE REVISION AND SAID NOTHING.
+//
+//   eval-ui-generation.mjs shaved `requestedTokens` and printed "cacheBusting: maxTokens is
+//   decremented". That worked while the lane resolved to requested 5500 against a 5600 ceiling.
+//   Commit 8b61c91 moved requested to 8800 and the ceiling to 6500, so both 8800 and 8799 reached
+//   the provider as 6500, the response cache is keyed on what the provider is asked for, and every
+//   repeat after that was a replay billed in full. Nothing went red, because nothing asked whether
+//   the shave still reached anything.
+//
+//   THE PROPERTY, and it is the one that matters rather than the arithmetic: for n > 1 the value
+//   sent must be a value the PROVIDER sees as different from what sample 1 produces.
+test('a cache-busting budget is one the provider actually sees as different', () => {
+  for (const [lane, mode] of [['apple', 'agent'], ['apple-max', 'agent'], ['apple', 'plan'], ['apple-max', 'super-agent']]) {
+    const s = resolveSettings({ lane, mode });
+    const seen = (n) => (s.gatewayCeiling === null ? n : Math.min(n, s.gatewayCeiling));
+
+    assert.equal(cacheBustTokens(s, 1), s.requestedTokens,
+      `${lane}/${mode}: sample 1 must send production's own body, unshaved`);
+
+    const previous = new Set([s.effectiveTokens]);
+    for (const n of [2, 3, 4]) {
+      const sent = cacheBustTokens(s, n);
+      assert.ok(sent !== null, `${lane}/${mode}: sample ${n} has no bustable budget`);
+      const arrives = seen(sent);
+      assert.ok(!previous.has(arrives),
+        `${lane}/${mode}: sample ${n} sends ${sent}, which the provider sees as ${arrives} — a value an `
+        + 'earlier sample already produced, so this is a replay and would be billed as a sample.');
+      previous.add(arrives);
+    }
+  }
+});
+
+test('shaving the REQUESTED budget is what broke, and the property catches it', () => {
+  // The old rule, written out. It is not imported from anywhere -- it is the line that shipped.
+  const oldRule = (s, n) => s.requestedTokens - (n - 1);
+  const s = resolveSettings({ lane: 'apple', mode: 'agent' });
+  assert.equal(s.clampedByCeiling, true, 'this lane must be clamped or the regression cannot be shown');
+  const arrives = (v) => Math.min(v, s.gatewayCeiling);
+  assert.equal(arrives(oldRule(s, 2)), arrives(oldRule(s, 1)),
+    'the old rule sent a different number that arrived identical -- that is the whole defect');
+  assert.notEqual(arrives(cacheBustTokens(s, 2)), arrives(cacheBustTokens(s, 1)),
+    'the new rule must arrive different');
+});
+
+test('a budget too small to shave refuses instead of returning a replay', () => {
+  const s = resolveSettings({ lane: 'apple-max', mode: 'agent', maxTokens: 1 });
+  assert.equal(cacheBustTokens(s, 1), 1);
+  assert.equal(cacheBustTokens(s, 2), null, 'shaving 1 to 0 is not a request; it must refuse');
+  assert.equal(cacheBustTokens(s, 0), null);
+  assert.equal(cacheBustTokens(s, 1.5), null);
+});
+
+//[[ THE MUTATION THAT STAYED GREEN, KEPT AS A TEST SO THE DELETION IS NOT UNDONE BY A LATER READER.
+//   The first draft also returned null when the shaved value would clamp back up to effectiveTokens.
+//   Removing that branch turned nothing red -- it cannot fire, because effectiveTokens is already
+//   min(requested, ceiling) and subtracting a positive number never clamps back up. The branch was
+//   deleted. This asserts the arithmetic fact it was defending against, so nobody re-adds it as
+//   reassurance and nobody removes the real `sent < 1` refusal thinking it is the same thing.
+test('a shaved budget is always strictly under the ceiling, which is why no re-clamp guard is needed', () => {
+  for (const [lane, mode] of [['apple', 'agent'], ['apple-max', 'super-agent'], ['apple', 'plan']]) {
+    const s = resolveSettings({ lane, mode });
+    for (const n of [2, 3, 10]) {
+      const sent = cacheBustTokens(s, n);
+      assert.ok(sent < s.effectiveTokens, `${lane}/${mode} n=${n}: ${sent} is not below ${s.effectiveTokens}`);
+      if (s.gatewayCeiling !== null) assert.ok(sent < s.gatewayCeiling, 'a shaved budget must be under the ceiling');
+    }
+  }
 });

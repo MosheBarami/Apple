@@ -1,0 +1,95 @@
+{
+ "measuredAt": "2026-09-21T00:35:49.991Z",
+ "what": "the apple LANE in agent mode as a customer reaches it, through the real gateway, scored by running the Luau",
+ "lanesAreTheSameModel": "@cf/zai-org/glm-5.3-flash",
+ "settings": {
+  "lane": "apple",
+  "productMode": "agent",
+  "specialist": "stone",
+  "gateway": "stone",
+  "modelId": "@cf/zai-org/glm-5.3-flash",
+  "effort": "high",
+  "effortIsAFloor": true,
+  "baseTokens": 4400,
+  "requestedTokens": 5999,
+  "gatewayCeiling": 6500,
+  "effectiveTokens": 5999,
+  "clampedByCeiling": false
+ },
+ "replicate": 1,
+ "sentMaxTokens": 5999,
+ "arm": {
+  "id": "house-rules-plus",
+  "what": "production's written code rules TODAY, verbatim from prompts.ts IDENTITY — the control plus the four rules the work queue named",
+  "system": "You write modern, idiomatic Luau and follow current Roblox best practices:\n- task.wait/task.spawn/task.defer (never the deprecated global wait/spawn), no Instance.new parent argument,\n  use CFrame math correctly, prefer attributes over Value objects, RemoteEvents in ReplicatedStorage,\n  server logic in ServerScriptService, client logic in StarterPlayerScripts/StarterGui.\n- Scripts communicate via ModuleScripts and Remote events; never trust the client on the server.\n- UI: build with Frames/UIListLayout/UICorner/UIPadding, scale-based sizing for cross-device support.\n- Player-authored text that another player will see goes through TextService:FilterStringAsync\n  before it is stored, replicated or shown. Filtering is a platform requirement, not a style choice.\n- DataStore calls THROW. pcall is the floor, not the plan: retry a failed read or write a bounded\n  number of times with a pause between attempts, and treat a call that never succeeded as unsaved.\n- A value two servers can change at once — currency, inventory, a shared counter — is written with\n  UpdateAsync and a transform that reads the CURRENT value. A GetAsync/SetAsync pair silently loses\n  the other server's write.\n- A failed load is not an empty account. Never write a default over a key whose read failed; skip\n  saving that session instead.\n\nAnswer with ONE fenced luau code block and nothing else — no prose before or after it. Write the complete script that was asked for, ready to paste into Studio."
+ },
+ "provenance": {
+  "harness": "d37c205f94800574",
+  "scorer": "ff0314bdf550c111",
+  "tasks": "48db21dc232ca5f6",
+  "controls": "e22c0afb3e559870",
+  "settingsMirror": "7f0a2c6ccc8ab146"
+ },
+ "items": 1,
+ "attempted": 1,
+ "measured": 1,
+ "passed": 1,
+ "pct": 100,
+ "notMeasured": 0,
+ "excludedFromDenominator": 0,
+ "errors": [],
+ "outcomes": {
+  "checked": 1
+ },
+ "byAxis": {
+  "modern-api": {
+   "measured": 1,
+   "passed": 1,
+   "attempted": 1,
+   "checksPassed": 3,
+   "checksTotal": 3
+  }
+ },
+ "axes": [
+  "modern-api",
+  "server-authority",
+  "datastore-safety"
+ ],
+ "failedChecks": [],
+ "neurons": 20,
+ "neuronsPerItem": 20,
+ "rows": [
+  {
+   "id": "anim-emote",
+   "axis": "modern-api",
+   "outcome": "checked",
+   "ok": true,
+   "checks": [
+    {
+     "id": "loads-through-animator",
+     "pass": true
+    },
+    {
+     "id": "not-humanoid-loadanimation",
+     "pass": true
+    },
+    {
+     "id": "track-is-played",
+     "pass": true
+    }
+   ],
+   "failed": [],
+   "unresolved": 0,
+   "detail": null,
+   "probeError": null,
+   "unresolvedReads": [
+    "AnimationTrack.Stopped"
+   ],
+   "chars": 1283,
+   "ms": 15117,
+   "finishReason": "stop",
+   "neurons": 20,
+   "answer": "```luau\nlocal UserInputService = game:GetService(\"UserInputService\")\nlocal Players = game:GetService(\"Players\")\n\nlocal EMOTE_ANIMATION_ID = \"rbxassetid://507771019\"\n\nlocal player = Players.LocalPlayer\n\nlocal currentTrack: AnimationTrack? = nil\n\nlocal function playEmote()\n\tlocal character = player.Character\n\tif not character then\n\t\treturn\n\tend\n\tlocal humanoid = character:FindFirstChildOfClass(\"Humanoid\")\n\tif not humanoid or humanoid.Health <= 0 then\n\t\treturn\n\tend\n\n\tlocal animator = humanoid:FindFirstChildOfClass(\"Animator\")\n\tif not animator then\n\t\tanimator = Instance.new(\"Animator\")\n\t\tanimator.Parent = humanoid\n\tend\n\n\t-- Stop any previous emote so repeated presses restart cleanly\n\tif currentTrack then\n\t\tcurrentTrack:Stop(0)\n\t\tcurrentTrack = nil\n\tend\n\n\tlocal animation = Instance.new(\"Animation\")\n\tanimation.AnimationId = EMOTE_ANIMATION_ID\n\n\tlocal track = animator:LoadAnimation(animation)\n\ttrack.Priority = Enum.AnimationPriority.Action\n\tcurrentTrack = track\n\ttrack:Play()\n\n\ttrack.Stopped:Connect(function()\n\t\tif currentTrack == track then\n\t\t\tcurrentTrack = nil\n\t\tend\n\t\tanimation:Destroy()\n\tend)\nend\n\nUserInputService.InputBegan:Connect(function(input, gameProcessed)\n\tif gameProcessed then\n\t\treturn\n\tend\n\tif input.KeyCode == Enum.KeyCode.E then\n\t\tplayEmote()\n\tend\nend)\n```"
+  }
+ ]
+}

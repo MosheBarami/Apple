@@ -22,6 +22,10 @@
  *   - A PROMPT THAT WAS NEVER ANSWERED IS NOT A PROMPT THE MODEL GOT WRONG. Capacity bounces are
  *     retried with backoff and, if they exhaust, recorded as NOT MEASURED on their own line rather
  *     than counted as failures.
+ *   - A REPLICATE THAT REPLAYS THE FIRST ONE IS NOT A SECOND SAMPLE. The account's AI Gateway caches
+ *     on what the PROVIDER is asked for and bills the replay in full. `--replicate N` shaves N-1 off
+ *     the EFFECTIVE budget — the post-clamp value — because shaving the requested value is erased by
+ *     the clamp and busts nothing. Measured, not assumed: see the block above `requestTokens`.
  *
  * THE ARM IS PART OF THE MEASUREMENT AND IS NAMED IN EVERY RESULT. `--arm neutral` sends a system
  * prompt that says how to answer and nothing about Roblox: that measures the MODEL. `--arm
@@ -34,6 +38,7 @@
  *   node packages/training/src/roblox-frontier-bench.mjs --lane apple --mode agent --arm neutral
  *   node packages/training/src/roblox-frontier-bench.mjs --lane apple-max --mode super-agent --arm house-rules
  *   node packages/training/src/roblox-frontier-bench.mjs --show-settings --lane apple-max --mode super-agent
+ *   node packages/training/src/roblox-frontier-bench.mjs --lane apple --mode agent --arm neutral --replicate 2
  */
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -41,7 +46,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FRONTIER_ITEMS, ARMS, AXES } from './roblox-frontier-tasks.mjs';
 import { scoreFrontierItem, tally, HARNESS_PATH } from './score-roblox-frontier.mjs';
-import { MODE_ALIASES, resolveSettings } from './production-settings.mjs';
+import { MODE_ALIASES, resolveSettings, cacheBustTokens } from './production-settings.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const RUNS_DIR = resolve(HERE, '..', 'runs');
@@ -78,6 +83,54 @@ const settings = resolveSettings({
   maxTokens: arg('max-tokens', null),
 });
 
+//[[ A REPLICATE THAT REPLAYS THE FIRST ONE IS NOT A SECOND SAMPLE, AND IT IS BILLED LIKE ONE.
+//
+//   MEASURED, not suspected. The account's AI Gateway serves byte-identical request bodies from a
+//   response cache with a TTL near five minutes — six runs of this file at widening gaps came back
+//   16/16, 13/16, 2/16 then 0/16 identical (commit ae3dce1), which is decay with time, not
+//   determinism. The worker asks for none of it: llmChat sends `cacheTtl: 0`. The cache is the
+//   account's. And gateway.ts computes neurons from the usage block the cache replays, so
+//   `roblox-frontier-apple-agent-neutral-r2c.json` was charged 207 neurons for zero new generation
+//   and its answers were byte-identical to r2b's. An eval that counts that as a second sample
+//   reports a precision it does not have, and pays for the privilege.
+//
+//   THE KNOB, AND THE FIRST VERSION OF IT WAS WRONG — measured on 2026-09-21 before it shipped.
+//   The cache key is the request body, so busting it with the PROMPT would change what is being
+//   measured; `maxTokens` is in the body and the model never reads it. The first draft shaved the
+//   REQUESTED value, 8800 -> 8799, and refused whenever that changed the effective budget. Five
+//   one-item probes against the live worker say that is exactly backwards:
+//
+//     sent 8800  clamped->6500   6527 ms   sha 025cbe29   fresh generation
+//     sent 8800  clamped->6500    255 ms   sha 025cbe29   REPLAY
+//     sent 8799  clamped->6500    187 ms   sha 025cbe29   REPLAY — the shave changed nothing
+//     sent 6000  unclamped        4342 ms  sha b56bd8f3   different answer
+//     sent 5999  unclamped       15117 ms  sha ae23b7de   different answer
+//
+//   The cache is keyed on what the provider is asked for, which is the value AFTER llmChat's clamp.
+//   8800 and 8799 both arrive as 6500, so shaving the requested value is a no-op — and the draft
+//   refused precisely in the cases where the shave WOULD have worked.
+//
+//   So the shave comes off the EFFECTIVE budget: replicate N sends `effectiveTokens - (N - 1)`,
+//   6500 -> 6499 -> 6498, which is below the ceiling and therefore reaches the provider. Replicate 1
+//   sends the production body unchanged. The cost of the difference is measured rather than waved
+//   at: §2 of docs/frontier-for-roblox.md records `finish_reason: "length"` occurring 6 times in 560
+//   arm-prompts and ZERO times in the 320 single-call ones, so one token off 6,500 cannot move a row
+//   here. What it is NOT is production's exact body, and `sentMaxTokens` is recorded on every run so
+//   a reader can see which replicate they are holding.
+const replicate = Number(arg('replicate', '1'));
+if (!Number.isInteger(replicate) || replicate < 1) {
+  console.error(`--replicate must be a positive integer, got ${JSON.stringify(arg('replicate', '1'))}`);
+  process.exit(2);
+}
+const requestTokens = cacheBustTokens(settings, replicate);
+if (requestTokens === null) {
+  console.error(`--replicate ${replicate} has no bustable maxTokens at these settings: shaving ${replicate - 1} `
+    + `off an effective budget of ${settings.effectiveTokens} leaves nothing to ask for. The response cache is `
+    + 'keyed on what the provider is asked for, so without a distinct value this run would be a replay of '
+    + 'replicate 1, billed in full. Refusing rather than selling a replay as a sample.');
+  process.exit(2);
+}
+
 const sha = (path) => {
   try {
     return createHash('sha256').update(readFileSync(path)).digest('hex').slice(0, 16);
@@ -99,7 +152,10 @@ const provenance = {
 };
 
 if (flag('show-settings')) {
-  console.log(JSON.stringify({ ...settings, arm: armId, armIs: arm.what, items: FRONTIER_ITEMS.length, provenance }, null, 1));
+  console.log(JSON.stringify({
+    ...settings, replicate, sentMaxTokens: requestTokens,
+    arm: armId, armIs: arm.what, items: FRONTIER_ITEMS.length, provenance,
+  }, null, 1));
   process.exit(0);
 }
 
@@ -147,14 +203,14 @@ async function ask(prompt) {
     const r = await fetch(`${BASE}/api/admin/model-test`, {
       method: 'POST',
       headers: { 'X-Admin-Key': KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: settings.gateway, prompt, system: arm.system, maxTokens: settings.requestedTokens }),
+      body: JSON.stringify({ model: settings.gateway, prompt, system: arm.system, maxTokens: requestTokens }),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     }).catch((e) => ({ ok: false, status: 0, text: async () => `${e.name}: ${e.message}` }));
     if (r.ok) return { ...(await r.json()), attempts: attempt };
     const detail = (await r.text().catch(() => '')).slice(0, 300);
     if (process.env.FRONTIER_DEBUG) {
-      process.stderr.write(`    [debug] status=${r.status} bodyBytes=${JSON.stringify({ model: settings.gateway, prompt, system: arm.system, maxTokens: settings.requestedTokens }).length} `
-        + `model=${JSON.stringify(settings.gateway)} maxTokens=${JSON.stringify(settings.requestedTokens)} keyLen=${KEY.length} -> ${detail.slice(0, 120)}\n`);
+      process.stderr.write(`    [debug] status=${r.status} bodyBytes=${JSON.stringify({ model: settings.gateway, prompt, system: arm.system, maxTokens: requestTokens }).length} `
+        + `model=${JSON.stringify(settings.gateway)} maxTokens=${JSON.stringify(requestTokens)} keyLen=${KEY.length} -> ${detail.slice(0, 120)}\n`);
     }
     last = { error: `HTTP ${r.status}`, detail, attempts: attempt };
     // A refused credential or a bad request is refused identically next time; only capacity and
@@ -242,6 +298,13 @@ const out = {
   //   model", which no measurement in this file supports.
   lanesAreTheSameModel: settings.modelId,
   settings,
+  //[[ WHICH BODY THIS RUN SENT, so a replicate can be told from a replay after the fact.
+  //   `replicate: 1` sends production's exact body. Every later replicate sends `effectiveTokens -
+  //   (N-1)`, one token below the previous, which is what the provider — and therefore the response
+  //   cache — actually sees. A run file without these two fields predates the cache-busting and may
+  //   be a byte-identical replay of its neighbour; three of the nine runs §8 reads from are.
+  replicate,
+  sentMaxTokens: requestTokens,
   arm: { id: armId, what: arm.what, system: arm.system },
   provenance,
   items: items.length,
@@ -267,7 +330,10 @@ const out = {
 
 mkdirSync(RUNS_DIR, { recursive: true });
 const tag = arg('tag', null);
-const slug = `${lane}-${modeArg}-${armId}${tag ? `-${tag}` : ''}`;
+// The replicate is in the filename, because a replicate that overwrites the run it was meant to be
+// compared against destroys the evidence it was spent to produce. Replicate 1 keeps the old name so
+// the nine committed runs stay where §8 and §9 read them from.
+const slug = `${lane}-${modeArg}-${armId}${tag ? `-${tag}` : ''}${replicate > 1 ? `-rep${replicate}` : ''}`;
 const path = resolve(RUNS_DIR, `roblox-frontier-${slug}.json`);
 writeFileSync(path, JSON.stringify(out, null, 1) + '\n');
 

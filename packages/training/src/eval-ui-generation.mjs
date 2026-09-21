@@ -41,7 +41,7 @@ import { fileURLToPath } from 'node:url';
 import { buildTasks } from './ui-tasks.mjs';
 import { UI_SYSTEM_PROMPT } from './ui-tasks.mjs';
 import { check, select, scoreUiTask } from './score-ui.mjs';
-import { MODE_ALIASES, resolveSettings } from './production-settings.mjs';
+import { MODE_ALIASES, resolveSettings, cacheBustTokens } from './production-settings.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const RUNS_DIR = resolve(HERE, '..', 'runs');
@@ -117,8 +117,26 @@ if (!tasks.length) { console.error(`no task matched --only ${only}`); process.ex
 //   prompt, so decrementing it by one per attempt busts the cache while leaving every character the
 //   model reads identical; 5500 against 5499 is a 0.02% change in a budget none of these answers
 //   came close to spending. The exact value used is recorded on every row.
+//[[ AND THE KNOB WAS TURNING NOTHING. 2026-09-21: `settings.requestedTokens - (attempt - 1)` was
+//   written when this lane resolved to requested 5500 against a 5600 ceiling — unclamped, so the
+//   shave reached the provider. Commit 8b61c91 moved requested to 8800 and the ceiling to 6500.
+//   Both 8800 and 8799 now arrive at the provider as 6500, the cache is keyed on what the provider
+//   is asked for, and this line has been a no-op ever since while the report kept printing
+//   "cacheBusting: maxTokens is decremented". A mechanism that dies when a number moves elsewhere,
+//   and says nothing, is this repository's own failure shape wearing a config change.
+//   `cacheBustTokens` shaves the EFFECTIVE budget instead and returns null when it cannot bust at
+//   all; the evidence, six live calls, is in its header.
 const cacheBust = !flag('no-cache-bust');
-const tokensForAttempt = (attempt) => (cacheBust ? settings.requestedTokens - (attempt - 1) : settings.requestedTokens);
+const tokensForAttempt = (attempt) => {
+  if (!cacheBust) return settings.requestedTokens;
+  const sent = cacheBustTokens(settings, attempt);
+  if (sent === null) {
+    throw new Error(`cache-busting cannot produce a distinct request for attempt ${attempt} at these `
+      + `settings (requested ${settings.requestedTokens}, ceiling ${settings.gatewayCeiling}). Retrying `
+      + 'would replay the previous answer and be billed for it. Re-read cacheBustTokens before removing this.');
+  }
+  return sent;
+};
 
 async function ask(prompt, maxTokens, attempts = 6) {
   let lastError = null;
@@ -251,7 +269,12 @@ const out = {
     : `the ${settings.gateway} gateway CONFIG called directly — not necessarily a lane any customer reaches`,
   settings,
   cacheBusting: cacheBust
-    ? 'maxTokens is decremented by one per attempt, because an identical request body is served from a response cache (measured: 3346ms then 97ms then 87ms, byte-identical) — repeats over an identical body would be one sample printed N times'
+    ? `attempt 1 sends production's maxTokens (${settings.requestedTokens}); every later attempt sends `
+      + `effectiveTokens - (attempt - 1), starting at ${settings.effectiveTokens - 1}. The shave comes off the `
+      + 'EFFECTIVE budget because the response cache is keyed on what the PROVIDER is asked for: shaving the '
+      + 'requested value is erased by the clamp and busts nothing, which is what this runner did between '
+      + 'commit 8b61c91 and 2026-09-21 while printing that it was busting. See cacheBustTokens for the six '
+      + 'live calls that establish it.'
     : 'DISABLED (--no-cache-bust): repeats over an identical body are served from the response cache and are NOT independent samples',
   system,
   scorer: {

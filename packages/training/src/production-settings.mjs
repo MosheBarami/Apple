@@ -121,3 +121,42 @@ export function resolveSettings(input = {}) {
     clampedByCeiling: effectiveTokens < requestedTokens,
   };
 }
+
+/**
+ * THE `maxTokens` VALUE THAT BUSTS THE RESPONSE CACHE FOR SAMPLE N, OR `null` WHEN IT CANNOT.
+ *
+ * WHY THIS IS ONE FUNCTION AND NOT A LINE IN EACH RUNNER. The account's AI Gateway serves a
+ * byte-identical request from a response cache and bills the replay in full, so a repeat over an
+ * identical body is one sample printed twice. Both runners bust it by shaving `maxTokens`, which is
+ * in the request body and is not read by the model. Both got the rule wrong in the same way, and it
+ * took a live probe to see it, so the rule lives here with its evidence.
+ *
+ * MEASURED 2026-09-21, one item, six calls against the deployed worker:
+ *
+ *   sent 8800  clamped to 6500   6527 ms   sha 025cbe29   fresh
+ *   sent 8800  clamped to 6500    255 ms   sha 025cbe29   REPLAY
+ *   sent 8799  clamped to 6500    187 ms   sha 025cbe29   REPLAY — the shave changed nothing
+ *   sent 6000  unclamped         4342 ms   sha b56bd8f3   different answer
+ *   sent 5999  unclamped        15117 ms   sha ae23b7de   different answer
+ *   sent 6499  unclamped         6372 ms   sha 88fe0d30   different answer — the corrected shave
+ *
+ * The cache is keyed on what the PROVIDER is asked for, which is the value after llmChat's clamp.
+ * Shaving the REQUESTED value — 8800 to 8799 — is erased by the clamp and busts nothing. Shaving the
+ * EFFECTIVE value — 6500 to 6499 — reaches the provider and does.
+ *
+ * `n === 1` returns production's exact requested value: the first sample is the real body. `n > 1`
+ * returns `effectiveTokens - (n - 1)`, which is strictly below the ceiling and therefore reaches the
+ * provider unchanged. `null` means there is no bustable value and the caller must not run.
+ *
+ * A DRAFT OF THIS ALSO RETURNED null WHEN THE SHAVED VALUE WOULD CLAMP BACK TO `effectiveTokens`.
+ * That branch cannot fire: `effectiveTokens` is already `min(requested, ceiling)`, so subtracting a
+ * positive number can never clamp back up. A mutation test removed the branch and every test stayed
+ * green, which is what unreachable code looks like from the outside. It was deleted rather than
+ * kept as reassurance.
+ */
+export function cacheBustTokens(settings, n) {
+  if (!Number.isInteger(n) || n < 1) return null;
+  if (n === 1) return settings.requestedTokens;
+  const sent = settings.effectiveTokens - (n - 1);
+  return sent < 1 ? null : sent;
+}
