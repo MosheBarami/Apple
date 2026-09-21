@@ -220,8 +220,21 @@ if (broken.length) {
   for (const b of broken) {
     const lines = b.out.split('\n').filter((l) => l.trim());
     console.error(`  FAILED: ${b.label}`);
-    // The last few lines carry the verdict for a checker and the failure list for a test run.
-    for (const l of lines.slice(-6)) console.error(`    ${l.slice(0, 160)}`);
+    //[[ THE LAST SIX LINES OF A TEST RUN ARE A STACK TRACE, AND THEY NAME NOTHING.
+    //
+    //   True for a CHECKER, whose verdict is its last line. False for `node --test`, which ends on
+    //   frames of node:internal/test_runner — twice on 2026-09-21 this printed "FAILED: root tests
+    //   (38 files)" followed by six `at Test.processPendingSubtests` lines and no test name and no
+    //   file. The §ETW note above says a verdict that cannot say what produced it sends whoever
+    //   reads it back to the beginning; this was still doing that, because node puts the one line
+    //   that matters — `✖ <name>` — in the MIDDLE of its output.
+    //
+    //   So failing-test lines are hoisted when the output has any, and the tail is kept for output
+    //   that has none. `not ok` covers the TAP form. ]]
+    const named = [...new Set(lines
+      .map((l) => l.trim())
+      .filter((l) => /^(?:✖|not ok\b)/.test(l) && !/^✖ failing tests:/.test(l)))];
+    for (const l of (named.length ? named.slice(0, 6) : lines.slice(-6))) console.error(`    ${l.slice(0, 160)}`);
   }
   console.log(`SUITE RED — ${broken.map((b) => b.label).join(', ')}`);
   process.exit(1);
