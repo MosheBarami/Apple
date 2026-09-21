@@ -268,7 +268,13 @@ if (isMain) {
         if (!norm || seen.has(norm)) { nDup++; continue; }
         seen.add(norm);
         rows.push({
-          id: sha256(`${repo.source_id} ${sha} ${rel}`).slice(0, 24),
+          // `\0` is the two-character ESCAPE, not a raw NUL byte, and must stay that way. It was a
+          // raw byte, which made this file BINARY to grep, to file(1) and to every source-walking
+          // checker here — `grep -c` over it prints nothing and exits 1, which a naive check reads
+          // as "no matches" rather than "I could not look". The escape is byte-identical at runtime
+          // (verified: the built string compares equal) and keeps the file text. The NUL itself is
+          // load-bearing: it is the delimiter that stops `a|b` and `a` + `|b` hashing alike.
+          id: sha256(`${repo.source_id}\0${sha}\0${rel}`).slice(0, 24),
           kind: 'source_code',
           lane: 'upstream_repository_licence_text_verified',
           text,
