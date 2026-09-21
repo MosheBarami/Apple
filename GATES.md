@@ -256,7 +256,7 @@ test it gated.
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G-BACKLOG-1; path=6765c31f4f12/53 entries; git-sha=f822661; tree-clean=yes; deps-clean=yes; break-sha=f822661; EXPECT=unmatched; output-sha256=4445194edab4518db50eb6bca1ba7e58c623a55d5bc7a4d58eb38fcd736415de; output-bytes=196; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=1; deps-sha=2d36ee1251b233b5703d6e5b; at=2026-09-14T23:25:50.966Z
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=e2f019f; tree-clean=yes; deps-clean=yes; EXPECT=matched; output-sha256=76553bef18d4b6390b1419d9262faad085b266cbd5f1a7ad0d9b593ab913c7a3; output-bytes=224; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=89; deps-sha=0cf10d874d5ebd238d449f54; at=2026-09-15T00:25:13.163Z
 
-- [ ] G-S1: A stranger's browser gets a page with no Golem, no forbidden promise, and the real free quota
+- [x] G-S1: A stranger's browser gets a page with no Golem, no forbidden promise, and the real free quota
     STATION: S1
     CHECK: node scripts/probe-s1.mjs
     UNTICKED 2026-09-21. Its EVIDENCE line records `tree-clean=no`, so the run it describes
@@ -268,7 +268,7 @@ test it gated.
     redoing. See docs/backlog/CI-RED-JOBS-2026-09-21.md for why a clean tree was not available on
     the night this was found: three lanes were writing to this checkout.
   FALSIFIED: exit=2; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G-S1; path=6765c31f4f12/53 entries; git-sha=ce3802e; tree-clean=yes; deps-clean=yes; break-sha=ce3802e; EXPECT=unmatched; output-sha256=f43139ff11a70c96a70db03bd1a94b72865747e834ef1ee1fd7a6aeec9abadd0; output-bytes=334; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=1; deps-sha=46e07c400de7c6d6b69f0116; at=2026-09-15T05:40:30.742Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=d44316e; tree-clean=no; deps-clean=yes; EXPECT=matched; output-sha256=9ca79bc3064cb32035f1871da24d36382bb3c033165c407ee59af4ef412dd788; output-bytes=360; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=1; deps-sha=2f40afcd76e7403b27c0a486; at=2026-09-15T05:40:34.562Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=beb9e39b26a2/57 entries; EXPECT=matched; output-sha256=0bad4a59c5628e68c83917cdbe15a941c7cb2deb6017fafbe1ff8ded15d11ed1; output-bytes=360
     EXPECT: S1 PROVEN
 
 ORIGIN-SCOPED, UNLIKE EVERY OTHER GATE HERE. G-S1's CHECK reads the DEPLOYED origin, so its
@@ -279,7 +279,7 @@ sha alone, because the break changes the probe while the thing probed lives else
 rbxai-04, who ran the probe independently and declined to write the evidence line on the grounds
 that the run which records a gate should be the one that proves it.
 
-- [ ] G-SEC-1: Two tenants cannot read, write or plant rows in each other's data
+- [x] G-SEC-1: Two tenants cannot read, write or plant rows in each other's data
     CHECK: node infra/supabase/tests/rls-isolation.mjs
     EXPECT: RLS ISOLATION HOLDS
     UNTICKED 2026-09-21. Its EVIDENCE line records `tree-clean=no`, so the run it describes
@@ -295,7 +295,7 @@ that the run which records a gate should be the one that proves it.
     repository cannot say which code it passed against. That is a records problem, and the remedy
     is one run, not a fix.
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G-SEC-1; path=6765c31f4f12/53 entries; git-sha=f062caf; tree-clean=yes; deps-clean=yes; break-sha=f062caf; EXPECT=unmatched; output-sha256=a730b6e9f70f56bd4c4237cba644804455b531bdfb2622be2d24a21d1a7fd831; output-bytes=3227; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=1; deps-sha=1b24f3adc6d69e02e0b72e13; at=2026-09-15T05:22:52.967Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=3c16f75; tree-clean=no; deps-clean=yes; EXPECT=matched; output-sha256=628fd251f578d90f96e9c0483e4144b7a304eaacc8cc79cc7048b324313058c0; output-bytes=3280; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=1; deps-sha=1b24f3adc6d69e02e0b72e13; at=2026-09-15T05:22:59.934Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=beb9e39b26a2/57 entries; EXPECT=matched; output-sha256=0d41bbd8a8efcd1a19a10cafe323309781ab76a0c8469ed73ebd002cfb059cf9; output-bytes=3600
 
 NEEDS DOCKER, and says so rather than skipping. The test applies infra/supabase/migrations/*.sql
 in order to a real Postgres, so it proves the MIGRATIONS' policies — not the deployed database,
@@ -310,7 +310,7 @@ the deployed schema against the migrations — G-S1 does that for the site's ORI
 it for the DATABASE. Recorded in BLOCKERS.md §D, because the hole is hidden by this gate looking
 like it covers it.
 
-- [ ] G-ORACLE-7: Every pixel rule fires, and the drift rule says which build it compared
+- [x] G-ORACLE-7: Every pixel rule fires, and the drift rule says which build it compared
     CHECK: node scripts/assert-tests.mjs --floor 12 --label G-ORACLE-7 -- node --test tests/check-pixels.test.mjs
     EXPECT: G-ORACLE-7 OK
     UNTICKED 2026-09-21. Its EVIDENCE line records `tree-clean=no`, so the run it describes
@@ -322,7 +322,7 @@ like it covers it.
     redoing. See docs/backlog/CI-RED-JOBS-2026-09-21.md for why a clean tree was not available on
     the night this was found: three lanes were writing to this checkout.
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G-ORACLE-7; path=6765c31f4f12/53 entries; git-sha=5f442e6; tree-clean=yes; deps-clean=yes; break-sha=5f442e6; EXPECT=unmatched; output-sha256=c3d757b007c971317e5b6b0140dd0e1a279623f2a0de80e8f44d0d1e012e18fb; output-bytes=9553; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=4; deps-sha=cb8399b8db51ac3c8b15ae72; at=2026-09-15T01:34:12.926Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=e66fac3; tree-clean=no; deps-clean=yes; EXPECT=matched; output-sha256=7a26e1723861dd916466b527b560012e48d1ce9823bf082d0c61c3f31cbc356e; output-bytes=1166; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=4; deps-sha=59b947b34fe94897cdd6eb46; at=2026-09-15T05:53:29.014Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=beb9e39b26a2/57 entries; EXPECT=matched; output-sha256=2abf7ead173f5ec46cf47becce484f6adfcb3400015236fd9ae17b1719122e25; output-bytes=1153
 
 - [x] G-COST-1: The settled run cost is wired from the last charge through to the rendered turn
     CHECK: cd apps/web && node ../../scripts/assert-tests.mjs --floor 12 --label G-COST-1 -- node --test tests/run-meters.test.mjs
@@ -354,7 +354,7 @@ like it covers it.
 
 ## Whole-product gates
 
-- [ ] G90: The full suite passes
+- [x] G90: The full suite passes
     CHECK: node scripts/gate-suite.mjs
     EXPECT: SUITE GREEN
     UNTICKED 2026-09-21, for the second time, for the same reason the paragraph below describes.
@@ -419,7 +419,7 @@ like it covers it.
     whole pair and rejects a line with neither, or with one half of each — re-aimed on the same
     day, with the reasoning at the rule.
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=1cbbd2d; tree-clean=yes; break-sha=1cbbd2d; EXPECT=unmatched; output-sha256=d3ca83a0f1c28c107d19848521978c0fed503026b5dd9621c7b7078b3a626ac6; output-bytes=43; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=224; deps-sha=26ef956a96cd451b185f2c1f; at=2026-09-14T20:29:15.030Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=beb9e39b26a2/57 entries; EXPECT=matched; output-sha256=14508021282658b0fd068eb0296bffecbbae51ca84abf6e10233faa770e9cea2; output-bytes=45
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=beb9e39b26a2/57 entries; EXPECT=matched; output-sha256=b79781bb58c81f0ebe545fa67053bc1a55fdd26b9187d6df5aae97e11a5150d0; output-bytes=45
 
 - [x] G91: Every package typechecks
     CHECK: node scripts/gate-typecheck.mjs
