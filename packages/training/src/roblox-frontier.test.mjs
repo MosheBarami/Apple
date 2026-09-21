@@ -129,9 +129,14 @@ test('the two prompt arms differ only in Roblox guidance, and the neutral one ca
 //   arm's own string, so it could not notice prompts.ts moving underneath it: a mirror whose test
 //   never opens the original is a copy with a certificate, not a mirror. The settings mirror in
 //   production-settings.mjs is tested by reading apps/worker/src; this now is too.
-test('the house-rules arm is a verbatim block of the system prompt production sends', () => {
+//   2026-09-21, second edit: the four rules this benchmark's work queue named were measured and then
+//   SHIPPED into IDENTITY, so the arm that mirrors production is now `house-rules-plus`, and
+//   `house-rules` became the historical control the gain is read against. The mirror test moved with
+//   production rather than staying pointed at the arm that used to be it — a guard aimed at
+//   yesterday's production is a guard that cannot see today's drift.
+test('the arm that claims to be production is a verbatim block of the system prompt production sends', () => {
   const identity = readFileSync(resolve(HERE, '..', '..', '..', 'apps', 'worker', 'src', 'prompts.ts'), 'utf8');
-  const house = ARMS['house-rules'].system;
+  const house = ARMS['house-rules-plus'].system;
   // The arm is the Roblox-rules block plus a shared answer-format instruction the product does not
   // need (production streams into tools; the bench needs one fenced block). Only the first part
   // claims to be production's, so only the first part is compared — and it is compared whole.
@@ -139,7 +144,7 @@ test('the house-rules arm is a verbatim block of the system prompt production se
   assert.ok(rules.length > 400, 'the block being compared is too short to be the rules block');
   assert.ok(
     identity.includes(rules),
-    'the house-rules arm is no longer a verbatim substring of apps/worker/src/prompts.ts. Either '
+    'the house-rules-plus arm is no longer a verbatim substring of apps/worker/src/prompts.ts. Either '
     + 'production\'s IDENTITY changed and the arm must be re-copied, or the arm was edited. Until '
     + 'they match, the arm measures a prompt no customer receives and the neutral-vs-house gap is '
     + 'not the gap it is reported as.',

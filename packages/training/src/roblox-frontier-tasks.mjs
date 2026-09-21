@@ -737,10 +737,14 @@ export const HOUSE_RULES_PLUS_SYSTEM = HOUSE_RULES_SYSTEM.replace(
 
 export const ARMS = Object.freeze({
   neutral: { id: 'neutral', system: NEUTRAL_SYSTEM, what: 'the model on its own — no Roblox guidance in the prompt' },
-  'house-rules': { id: 'house-rules', system: HOUSE_RULES_SYSTEM, what: "production's own written code rules, verbatim from prompts.ts IDENTITY" },
+  //[[ WHICH ARM IS PRODUCTION CHANGED ON 2026-09-21, AND BOTH ARE KEPT.
+  //   `house-rules` was production's IDENTITY until the measurement below shipped. It is now the
+  //   HISTORICAL CONTROL: retiring it would delete the baseline the four new rules are measured
+  //   against, and every number in docs/frontier-for-roblox.md §8 is read against it.
+  'house-rules': { id: 'house-rules', system: HOUSE_RULES_SYSTEM, what: "production's written code rules AS THEY STOOD BEFORE 2026-09-21 — the historical control" },
   'house-rules-plus': {
     id: 'house-rules-plus',
     system: HOUSE_RULES_PLUS_SYSTEM,
-    what: "production's rules PLUS the four rules the work queue says are missing — an intervention, not production",
+    what: "production's written code rules TODAY, verbatim from prompts.ts IDENTITY — the control plus the four rules the work queue named",
   },
 });
