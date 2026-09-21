@@ -46,6 +46,7 @@
     "compare-generation-arms": "node src/compare-generation-arms.mjs",
     "analyze-dataset-v1": "node src/roblox-dataset-v1/analyze.mjs",
     "check-luau-syntax": "node src/check-luau-syntax.mjs",
-    "build-ui-asset-library": "node src/build-ui-asset-library.mjs"
+    "build-ui-asset-library": "node src/build-ui-asset-library.mjs",
+    "measure-luau-currency": "node src/measure-luau-currency.mjs"
   }
 }
