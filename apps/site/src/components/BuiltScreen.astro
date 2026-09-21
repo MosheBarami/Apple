@@ -82,11 +82,31 @@ const seconds = (BUILT_SCREEN.ms.value / 1000).toFixed(1);
       ))}
     </ul>
 
+    {/* THE DOOR POINTS AT THE RENDER, NOT AT THE GALLERY, AND THAT IS A REPAIR RATHER THAN A CHOICE.
+        It linked to {BUILT_SCREEN.gallery} first. That route is real and live — it is an object in
+        the worker's D1 static store, published by infra/deploy-showcase.mjs — but it is not an
+        Astro page, so tests/links-resolve.test.mjs reports it as a link to a route nothing serves.
+        The committed copy of that test does not know about /showcase; a peer's WORKING COPY does,
+        with a WORKER_SERVED map and a second test that makes the exemption earn itself, and it was
+        uncommitted when this shipped. Editing a file another lane is holding in a shared checkout
+        is how one lane's commit swallows another's, so the link came out instead of the guard being
+        edited around. docs/backlog/landing-showcase-door.md is the handoff and names the exact two
+        lines to put back the moment that exemption is committed.
+
+        The paragraph below still states the counts, because the numbers are the evidence and they
+        are resolved from the two manifests either way — what is missing is one anchor, not the
+        fact. `scripts/check-site-links.mjs` already carries the same exemption, in a file this lane
+        owns, so the route is declared once already. */}
     <p class="built-more" data-reveal>
       <span class="built-took">{seconds} seconds of model time, once.</span>
-      <a href={BUILT_SCREEN.gallery}>
-        All {BUILT_SCREEN.galleryScreens.value} {BUILT_SCREEN.galleryScreens.label} and {BUILT_SCREEN.galleryMaps.value} {BUILT_SCREEN.galleryMaps.label}, with the failures at the same size &rarr;
-      </a>
+      <a href={BUILT_SCREEN.capture.src}>This render at full size &rarr;</a>
+    </p>
+
+    <p class="built-rest" data-reveal>
+      The same run built {BUILT_SCREEN.galleryScreens.value} {BUILT_SCREEN.galleryScreens.label} and
+      {BUILT_SCREEN.galleryMaps.value} {BUILT_SCREEN.galleryMaps.label} in all, published at
+      <span class="built-route">{BUILT_SCREEN.gallery}</span>, where the failures are shown at the
+      same size as the successes.
     </p>
 
     <p class="micro built-source">
@@ -177,6 +197,22 @@ const seconds = (BUILT_SCREEN.ms.value / 1000).toFixed(1);
   }
 
   .built-took { color: var(--muted); }
+
+  .built-rest {
+    margin: 10px 0 0;
+    color: var(--muted);
+    font-size: 13.5px;
+    line-height: 21px;
+    text-wrap: pretty;
+  }
+
+  /* The route is printed as text rather than linked, for the reason written above it. Monospace so
+     a reader can tell it is a path to type and not a phrase. */
+  .built-route {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--ink);
+  }
 
   /* `a` is `color: inherit; text-decoration: none` site-wide on the landing, so an unstyled anchor
      here would be invisible as a link. Same four declarations ConsentProof.astro needs. */
