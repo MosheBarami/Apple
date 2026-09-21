@@ -443,3 +443,162 @@ count in §4.1 below roughly ±13 should be treated as indistinguishable from no
   (`CONFIDENCE_FLOOR = 0.15` is in the bytes Cloudflare serves) but `get_verified_module` is
   deliberately excluded from the MCP surface, so nothing short of a full agent run with a connected
   Studio exercises it end to end. That run has not been done.
+
+---
+
+## 8. THE ENGINE-FACING BENCHMARK, RUN FOR THE FIRST TIME — and what it changed
+
+### 8.1 It had never produced a number
+
+Everything in §4 through §7 is the **game-logic** curriculum: eighty pure, engine-independent
+modules. Not one of them saves to a DataStore, fires a RemoteEvent or filters a player's text. §6
+names that as a gap — *"whether the few-shot gain survives outside game logic"* — and
+`roblox-frontier-bench.mjs` is the file written to close it: sixteen tasks where the tempting answer
+and the correct answer use the same vocabulary, each decided by **running** the model's Luau under
+`frontier-harness.luau` and reading the recording, never by matching text.
+
+**It had never measured anything.** The three runs on disk before tonight read `notMeasured: 16`,
+`notMeasured: 1`, `notMeasured: 1` and `neurons: 0` — every call on 2026-09-20 came back
+`HTTP 500 Apple has reached today's shared building capacity`, the retry ladder and the pacing were
+added in response, and the bench was never re-run. A benchmark that has produced no number is
+indistinguishable, on a shelf, from one that produced a good one.
+
+### 8.2 The arithmetic was wrong before the first number was read
+
+The first run that completed printed **`9/13 items fully correct (69.2%)`** over sixteen items. Two
+of the three missing items were answers the Luau compiler **rejected**:
+
+```
+Players.PlayerRemoving:(function(player)                       -- no method name
+HttpService:CreateRequestHeadersAndEncodeData and HttpService:JSONEncode(...)   -- not an expression
+```
+
+Both are the model's own bytes — the harness prologue ends at line 1013 and both compiler messages
+point past line 1029 — and a customer who pastes either into Studio gets a red underline and no
+game. `tally` counted the denominator as `outcome === 'checked'` alone, so both left it and the
+headline rose. That is this repository's observation-failure pattern running backwards: not a
+failure to observe rendered as an observation, but **the most decidable observation a code benchmark
+can make, rendered as a failure to observe**.
+
+`checked`, `does_not_compile` and `no_code_block` are now in the denominator; `runtime_error` and
+`harness_unavailable` stay out, unchanged and for the unchanged reason — in that same run
+`look-raycast` threw `attempt to index nil with 'Connect'` on `mouse.Button1Down`, which the shim
+genuinely does not implement, and counting that against the model would score the harness. Corrected,
+that run is **9/15 — 60%**, and `excluded` is now printed beside `measured`.
+
+### 8.3 Replicates that were replays
+
+Six runs were taken to beat the sampling noise §7.5 measured. Comparing them **answer by answer**
+before averaging anything:
+
+| pair | byte-identical answers |
+|---|---|
+| neutral r2b vs r2c | **16 of 16 — r2c is a replay, discarded** |
+| house-rules r2 vs r2b | 13 of 16 |
+| neutral r2 vs r2b | 2 of 16 |
+| house-rules-plus p1 vs p2 vs p3 | **0 of 16 — three genuinely independent samples** |
+
+A replicate that is a replay is not a replicate. Averaging six runs here would have reported a
+precision that does not exist, and no total below includes the discarded one.
+
+### 8.4 What production's own Roblox rules were buying: nothing measurable
+
+Two arms, identical but for the system prompt. `neutral` says how to answer and nothing about
+Roblox — it measures the **model**. `house-rules` carried production's IDENTITY rules verbatim.
+
+| axis | `neutral` | `house-rules` |
+|---|---|---|
+| modern-api | 9/10 — 90% | 15/18 — 83% |
+| server-authority | 6/10 — 60% | 9/15 — 60% |
+| datastore-safety | **2/10 — 20%** | **5/15 — 33%** |
+| **overall** | 17/30 — 56.7% | 29/48 — 60.4% |
+
+The per-arm spread (neutral 53.3–60.0%, house-rules 50.0–68.8%) is **wider than the gap between the
+arms**, so nothing here is a prompt effect. What is not noise is the item-level structure: **five of
+sixteen items failed in every independent sample of both arms.**
+
+And four of those five are things production's prompt **never said**. What it did say — `task.*`,
+`Instance.new`'s parent argument, RemoteEvent placement, never trust the client — is the modern-api
+axis, which both arms already passed 9/10 and 15/18. **The live prompt's Roblox guidance landed
+where the model was already right and was silent where it was reliably wrong.**
+
+### 8.5 Writing down the four things it never said
+
+`house-rules-plus` is `house-rules` plus exactly four sentences, one per permanently-failing check,
+each compressed from that check's own `cite`. A guard proves the arm is its control byte-for-byte
+plus four bullets and nothing else, so a difference in score has one candidate cause.
+
+| item | `neutral` | `house-rules` | `house-rules-plus` |
+|---|---|---|---|
+| `save-survives-throttle` | FAIL FAIL | FAIL FAIL FAIL | **PASS PASS PASS** |
+| `failed-load-no-wipe` | FAIL FAIL | FAIL FAIL FAIL | **PASS PASS PASS** |
+| `pet-rename` | FAIL FAIL | FAIL FAIL FAIL | FAIL **PASS** FAIL |
+| `atomic-add` | FAIL FAIL | FAIL FAIL FAIL | FAIL FAIL FAIL |
+| `shop-debit` | FAIL FAIL | FAIL FAIL FAIL | FAIL FAIL FAIL |
+
+| axis | `house-rules` | `house-rules-plus` |
+|---|---|---|
+| modern-api | 15/18 — 83% | 15/18 — 83% |
+| server-authority | 9/15 — 60% | 10/15 — 67% |
+| **datastore-safety** | **5/15 — 33%** | **12/15 — 80%** |
+| **overall** | 29/48 — 60.4% | **37/48 — 77.1%** |
+
+**Two items that were deterministic failures in five independent samples are deterministic passes in
+three.** `pet-rename` moved 0/3 → 1/3 and all three answers now call `FilterStringAsync`, which none
+of the five prior answers ever did — the rule is read and obeyed, and sometimes obeyed wrongly.
+
+The four rules were shipped into `apps/worker/src/prompts.ts` IDENTITY and deployed. They are in the
+bytes Cloudflare serves (one occurrence each in `workers/scripts/apple/content/v2`, with a
+never-shipped control string at zero), and every one of the composer's seven shipped variants is now
+read for all four by a guard that goes red when one is dropped.
+
+### 8.6 What did not move, and the statistics stated honestly
+
+- **`atomic-add` fails `reported-total-is-real` in all eight samples across all three arms.** The
+  UpdateAsync rule was obeyed — all three intervention answers use `UpdateAsync` and none uses
+  `SetAsync`, and the concurrency check they used to fail now passes — and the item still fails, on
+  a fourth check about the number the function **returns** matching the number in the store. It is
+  the clearest single entry left on the work queue and no rule here addresses it.
+- **`shop-debit` fails everywhere and should not be read as a server-authority result.** Its two
+  failing checks fail because the model keys its item table on `"Sword"` while the probe fires the
+  prompt's own spelling, `"sword"`; it passes both checks on that item that are actually about
+  authority. It is deliberately not addressed, because a rule written to fix it would be a rule
+  about matching strings and the arm would be measuring the benchmark's phrasing.
+- `anim-emote` and `round-countdown` each slipped 3/3 → 2/3. One sample each, inside this suite's
+  demonstrated noise, and named rather than netted away.
+- **The sign test over the sixteen items is p = 0.2891** (6 up, 2 down) and is **not significant**.
+  Pairing by (item, sample index) gives +10 / −2 and exact McNemar p = 0.0386, but sample 1 of one
+  arm is not a matched condition of sample 1 of another, so that pairing is weaker than it looks.
+  The claim this section rests on is neither: it is two items that were deterministic failures in
+  five independent samples and are deterministic passes in three.
+
+### 8.7 The number any public claim has to be written against
+
+§4 reports **91.3%** — retrieve-then-hand-over on the eighty game-logic requests. Every one of those
+eighty has a verified module, and §7 measured what happens to a request that does not: **0/80**.
+
+This section is the other kind of request. Sixteen engine-facing tasks, no library entry for any of
+them, scored by running the Luau in a Roblox shim. The best arm measured is **37/48 — 77.1%**, and
+before tonight's four rules it was 60.4%.
+
+So the honest pair of numbers is **91.3% where the library has the answer, 77.1% where it does
+not** — and the second one is the one a sentence like *"the best-trained Roblox model"* would have
+to be written against, because a customer's request does not know which set it is in. Nothing
+user-facing carries such a claim today; `/docs/modes` says the two lanes run the same third-party
+foundation model and that none of it was trained here, which was checked against the live page
+tonight (the false sentence 0 occurrences, the corrected one 1, a control phrase present).
+
+### 8.8 Still not measured after this section
+
+- **Sixteen items is a small suite.** One item is 6.25 points. Every percentage here inherits that,
+  and the per-sample spread in 8.4 is the honest width of the instrument.
+- **Whether the four rules cost anything elsewhere.** They add roughly 120 tokens to every request
+  and the two modern-api slips in 8.6 are the only evidence either way, which is not enough.
+- **Whether the rules reach a real build.** They are provably in the served bundle and in all seven
+  composed variants, but `/api/admin/model-test` takes the system prompt from the caller, so no
+  measurement here went through the composer on the live worker. A real agent run with a connected
+  Studio has not been done — the same limit §7.6 records for `CONFIDENCE_FLOOR`.
+- **The Apple MAX lane.** Unchanged from §6: every arm here ran `apple` / Agent. `stone` and `rune`
+  are the same model at the same ceiling, so nothing here supports or refutes a claim about MAX.
+- **The eighty-vs-sixteen split is not a random split of one population.** The two sets were written
+  for different purposes, so 91.3% and 77.1% are two measurements, not two arms of one experiment.
