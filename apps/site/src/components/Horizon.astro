@@ -208,8 +208,33 @@
       // the page and a different green behind it — and so the light ramp gets a light horizon.
       let accent = [0, 212, 146];
       let ground = [5, 8, 7];
+      /*[[ `--horizon-key` FIRST, AND `--accent` ONLY AS ITS FALLBACK.
+       *
+       *   ONE COMPOSITION WAS BEING PAINTED IN TWO DIFFERENT COLOURS ACROSS ONE PRODUCT, and
+       *   nothing said so because both readings were of the same token name. Measured on the live
+       *   origin, 2026-09-21, `getComputedStyle(:root).getPropertyValue('--accent')`:
+       *
+       *     the landing (landing.css)   dark #00d492   light #00694a    — the brand green
+       *     /proof and 17 others (global.css)  dark #f4f3f2   light #292929  — ink, no hue at all
+       *
+       *   So this component drew a green horizon on the front page and a white one on every other
+       *   route, from the same line of code. global.css is the tesana-derived monochrome pass of
+       *   2026-09-19; landing.css is the rosebud-in-green pass the owner asked for on 2026-09-20.
+       *   Both are deliberate and they are one version apart.
+       *
+       *   THIS FIXES THE ATMOSPHERE ONLY, WHICH IS THE PART THAT IS NOT A TASTE QUESTION. Whether
+       *   the other eighteen routes should be repainted green is a real design decision with the
+       *   owner's own words on both sides of it, and it is recorded in docs/design/ rather than
+       *   settled here by a token swap. What is NOT a decision is that one shared layer, rendered
+       *   by one component, on nineteen pages of one site, should be one colour.
+       *
+       *   `--horizon-key` is separate from `--accent` on purpose: a page's accent is what its
+       *   controls are painted in and has contrast obligations against text, and this has none —
+       *   it is scenery behind a 0.45 veil. Tying them together is what produced the split.
+       *   landing.css does not define it, so the landing falls through to its own green and not one
+       *   pixel of the front page moves. ]]*/
       const readTheme = () => {
-        accent = channels(token('--accent', '#00d492'), [0, 212, 146]);
+        accent = channels(token('--horizon-key', '') || token('--accent', '#00d492'), [0, 212, 146]);
         ground = channels(token('--ground', '#050807'), [5, 8, 7]);
       };
       const rgba = (c = [0, 0, 0], a = 1) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;

@@ -81,6 +81,7 @@ function run({
   rect = { width: 1009, height: 768 },
   dpr = 1,
   accent = '#00d492',
+  horizonKey = '',
   ground = '#050807',
   context = true,
 } = {}) {
@@ -164,6 +165,9 @@ function run({
     console,
     getComputedStyle: () => ({
       getPropertyValue: (prop) => {
+        // Empty by default, which is what an undeclared custom property resolves to and is what
+        // landing.css leaves it as. A test that opts in supplies it.
+        if (prop === '--horizon-key') return horizonKey;
         if (prop === '--accent') return accent;
         if (prop === '--ground') return ground;
         return '';
@@ -420,6 +424,80 @@ test('the accent and the ground are read from the page, so one token change cann
   assert.match(stops, /255\s*,\s*0\s*,\s*85/, 'the glow band does not use the page accent');
   assert.match(stops, /16\s*,\s*32\s*,\s*48/,
     'the horizon does not read --ground, so its falloff cannot follow the theme onto a light page');
+});
+
+/*[[ ONE ATMOSPHERE, ONE COLOUR, ACROSS NINETEEN ROUTES.
+ *
+ *   This component is rendered by BOTH layouts and used to paint in `--accent`, which is the brand
+ *   green in landing.css and plain ink in global.css. Measured on the live origin on 2026-09-21,
+ *   `getComputedStyle(:root).getPropertyValue('--accent')`:
+ *
+ *     the landing            dark #00d492   light #00694a
+ *     /proof and 17 others   dark #f4f3f2   light #292929
+ *
+ *   so one composition was drawn green on the front page and white one click later, from a single
+ *   line of code, and nothing could notice because the token NAME agreed in both files and only
+ *   its value did not. The two tests below are the pair that makes that unrepeatable: the key is
+ *   preferred where it is declared, and `--accent` still works where it is not — because a page
+ *   that declares neither must not end up painting in a hardcoded literal, which is the failure the
+ *   test above this one has guarded since it was written. ]]*/
+test('the horizon paints in --horizon-key where a stylesheet declares one', () => {
+  const sky = run({ horizonKey: '#ff0055', accent: '#123456', ground: '#102030' });
+  sky.advance(1);
+
+  const strokes = sky.ops.filter((op) => op.name === 'stroke');
+  assert.ok(strokes.length > 0, 'nothing was stroked, so there is no colour to inspect');
+  for (const op of strokes) {
+    assert.match(String(op.strokeStyle), /255\s*,\s*0\s*,\s*85/,
+      `a grid line was stroked in ${op.strokeStyle} — the atmosphere ignored --horizon-key and took `
+      + 'the page accent, which is how the front page ended up green and every other route white');
+  }
+  const stops = sky.gradients.flatMap((g) => g.stops.map((st) => st.color)).join(' ');
+  assert.doesNotMatch(stops, /18\s*,\s*52\s*,\s*86/,
+    'the glow band is still mixing in --accent alongside the key it was given');
+});
+
+test('a page that declares no --horizon-key still gets its own accent, not a literal', () => {
+  /*[[ THE ACCENT HERE IS DELIBERATELY NOT THE COMPONENT'S OWN FALLBACK LITERAL, AND THE FIRST
+   *   DRAFT OF THIS TEST WAS USELESS BECAUSE IT WAS.
+   *
+   *   It passed `accent: '#00d492'` — the same green the component falls back to when everything
+   *   is missing — so `token('--horizon-key', '') || token('--accent', ...)` and the broken
+   *   `token('--horizon-key', '#00d492')` produced the identical stroke and the test could not
+   *   tell them apart. Watched: that mutation left this GREEN. A fallback test whose two
+   *   candidate values are equal is not testing a fallback.
+   *
+   *   landing.css declares --accent and not --horizon-key; an undeclared custom property resolves
+   *   to the empty string, which is what this stubs. So a hot pink accent with no key must come
+   *   out hot pink, and a component that quietly substitutes its own literal comes out green. ]]*/
+  const sky = run({ horizonKey: '', accent: '#ff0055', ground: '#050807' });
+  sky.advance(1);
+  const strokes = sky.ops.filter((op) => op.name === 'stroke');
+  assert.ok(strokes.length > 0, 'nothing was stroked, so there is no colour to inspect');
+  for (const op of strokes) {
+    assert.match(String(op.strokeStyle), /255\s*,\s*0\s*,\s*85/,
+      `a grid line was stroked in ${op.strokeStyle}; with no key declared the PAGE's accent must win, `
+      + 'and a hardcoded literal winning instead is the landing silently losing its own colour');
+  }
+});
+
+/*[[ AND THE STYLESHEET HAS TO ACTUALLY DECLARE IT, which the two tests above cannot see.
+ *
+ *   Both of them stub `getComputedStyle`, so they prove the COMPONENT honours the key and say
+ *   nothing about whether any page sets one. Deleting all three declarations from global.css left
+ *   every test in this file green while restoring the exact defect — nineteen routes, two colours.
+ *   A guard that cannot see the half of the mechanism that lives in CSS is half a guard. ]]*/
+test('global.css declares --horizon-key in every theme block it declares --accent in', () => {
+  const css = readFileSync(join(SITE, 'src', 'styles', 'global.css'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ');   // the prose names the token; only declarations count
+  const keys = css.match(/--horizon-key\s*:/g) ?? [];
+  const accents = css.match(/^\s*--accent\s*:/gm) ?? [];
+  assert.ok(accents.length >= 3,
+    `global.css declares --accent in ${accents.length} block(s); this file expects one per theme`);
+  assert.equal(keys.length, accents.length,
+    `global.css declares --accent in ${accents.length} theme block(s) and --horizon-key in ${keys.length}. `
+    + 'Every block that sets an accent must set a horizon key, or the atmosphere falls back to the '
+    + "accent in that theme and the front page's green stops matching the rest of the site");
 });
 
 test('without a 2D context nothing is drawn at all, and whatever is behind shows through', () => {

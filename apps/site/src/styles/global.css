@@ -32,6 +32,24 @@
      two spellings of one colour cannot drift apart. */
   --ground: #f5f5f5;
   --horizon-veil: 0.45;
+  /*[[ THE HORIZON'S OWN KEY, WHICH IS NOT THIS PAGE'S ACCENT AND MUST NOT BE.
+   *
+   *   Horizon.astro is rendered by BOTH layouts and read --accent to paint with, so it drew the
+   *   brand green on the landing (landing.css: #00d492 dark, #00694a light) and plain ink on the
+   *   eighteen routes that use this file (#f4f3f2 dark, #292929 light). One composition, one
+   *   component, two colours, and no line anywhere saying so — the token name was the same in
+   *   both places and only its value disagreed.
+   *
+   *   These two values are landing.css's own greens, by value rather than by import, because this
+   *   file and that one share no cascade: the landing never loads global.css. A colour repeated in
+   *   two files is a drift risk and is the lesser of the two here, against scenery that is green on
+   *   the front page and grey one click later.
+   *
+   *   --accent is NOT changed. It is what controls are painted in and owes contrast to the text on
+   *   it; this owes nothing to anybody and sits behind a 0.45 veil. Whether the rest of this
+   *   palette should become green is written up in docs/design/palette-split.md rather than
+   *   decided by editing the line below. ]]*/
+  --horizon-key: #00694a;
   --accent: #292929;
   --accent-soft: rgba(0, 0, 0, 0.06);
   --accent-ink: #ffffff;
@@ -123,6 +141,8 @@
     --bg: var(--paper);
   --ground: #141312;
   --horizon-veil: 0.45;
+    /* The dark end of --horizon-key; see the note beside the light value at the top of this file. */
+    --horizon-key: #00d492;
     --accent: #f4f3f2;
     --accent-soft: rgba(255, 255, 255, 0.08);
     --accent-ink: #141312;
@@ -176,6 +196,8 @@
   --bg: var(--paper);
   --ground: #141312;
   --horizon-veil: 0.45;
+  /* The dark end of --horizon-key; see the note beside the light value at the top of this file. */
+  --horizon-key: #00d492;
   --accent: #f4f3f2;
   --accent-soft: rgba(255, 255, 255, 0.08);
   --accent-ink: #141312;
