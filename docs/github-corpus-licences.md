@@ -293,3 +293,185 @@ from 11,730 (42.39%) to 13,349 (48.24%).
   corpus is 26,264 `.luau` to 1,407 `.lua`.
 - That anything is approved for training. `training_approved` is false and `semantic_quality_pass`
   is null on every row, and this pass changes neither.
+
+# Fifth pass: 41 repositories that were in no ledger row, and the two reasons
+
+Measured 2026-09-21. Artifacts: `packages/training/discovery/v2/github-trees.jsonl` (re-read),
+`packages/training/data/roblox-github-v1/repos.jsonl`, `packages/training/runs/offtopic-leads-probed.json`.
+
+The headline above says **1,063 licence-verified, Roblox-relevant repositories**. `repos.jsonl`
+held **1,024**. Nothing in this document, in the ledger or in the card accounted for the other 39,
+and two of the 1,024 wrote no rows, so the real gap to the 1,022 acquired was 41.
+
+Absence is the one verdict nobody reviews. A repository that is excluded with a reason gets read;
+a repository that is simply not there gets counted as "not relevant" by whoever notices, which is
+nobody. Both halves of the gap turned out to be recoverable, and one of them was a false statement.
+
+## Eleven repositories were recorded as having no licence file, and every one has one
+
+`summariseTree` matched a root licence file with `/^(LICEN[CS]E|COPYING)(\.[A-Za-z0-9]+)?$/i`, and
+`acquire-github-luau.mjs` requires `license_file_name` — without a file there is no text to read,
+and a repository whose only evidence is GitHub's detection cannot reach the `licence_text` tier.
+That is the right rule. The matcher was not:
+
+| what the root actually held | repositories | what the old pattern did |
+| --- | ---: | --- |
+| `UNLICENSE` | 7 | does not begin with `LICEN[CS]E`, so no match |
+| `LICENSE-APACHE.md` / `.txt` / bare | 4 | a `-APACHE` stem is not a dot extension, so no match |
+
+All eleven were probed against the GitHub API before anything was changed. Every one has a licence
+file at its root. The artifact had written **"NO licence file found at the repository root"** onto
+all eleven — a failure to match rendered as an observation about a repository — and 310
+licence-clean Luau files sat outside the corpus behind it.
+
+Four of the eleven are **dual-licensed**: `LICENSE-APACHE` beside `LICENSE-MIT`. Picking by tree
+order is picking at random, and picking wrong is not cosmetic — acquisition fetches exactly
+`license_file_name` and rejects the repository when the text does not corroborate the detected SPDX
+id, so an Apache-2.0 repository whose MIT file was fetched becomes `licence_text_mismatch`: a false
+rejection wearing the costume of a real rights finding. `preferredLicenceFile` takes the SPDX id and
+prefers the file that names it, falling back to the bare `LICENSE` by a stable order.
+
+Re-read: **11 repositories, 0 errors.** Exactly 11 rows changed and only in their four licence
+fields — 36,366 Luau files, 260,346,115 bytes and 75,868 total files are byte-identical before and
+after. **1,063 of 1,063 now have a licence file at their root.** Acquired: **241 rows** from 310
+files, the other 69 being content already held.
+
+## Two repositories were skipped for size, and held 1,956 Luau files
+
+The snapshot cap is on REPOSITORY size, and it is there for a real reason: `sploithunter/HaloAndHorns`
+is **1.8 GiB**, and buffering that tarball takes the process down. Its status line has always said
+honestly that "its 1,936 Luau files are NOT in the corpus", which is why this was a gap and not a
+defect. But 1.8 GiB of repository is 16 MB of Luau, and the tree already named a sha for every file.
+
+`--oversized` takes those repositories one blob at a time: one tree request at the **pinned** commit,
+then one `git/blobs/{sha}` request per Luau file, written into the same `{owner}-{repo}-{sha}/`
+layout the archive produces so that the walk, the vendored exclusion, the dedupe, the row literal and
+every count below are the same code on the same bytes. A second row builder would be a second
+definition of what a row is.
+
+A blob arriving alone has none of the integrity a tar archive gives for free, so every one is hashed
+as git names it — `sha1("blob <len>\0" + bytes)` — and compared against the sha the pinned tree
+recorded. A truncated body or a substituted file fails and is dropped rather than written under this
+repository's licence.
+
+| | HaloAndHorns | GodotLuau |
+| --- | ---: | ---: |
+| Luau blobs in the pinned tree | 1,936 | 20 |
+| fetched | 1,936 | 20 |
+| **integrity failures** | **0** | **0** |
+| vendored, excluded | 635 | 0 |
+| already held | 0 | 1 |
+| **rows** | **1,301** | **19** |
+
+**1,320 rows, 0 integrity failures, both licence texts corroborated.**
+
+**635 of HaloAndHorns' 1,936 Luau files are wally's `Packages/_Index/` store** — somebody else's
+library vendored into an MIT repository, which that MIT grants none of. They are excluded by the
+same rule that has always excluded them, and the 1.8 GiB is mostly neither Luau nor this author's.
+
+## The first --oversized run did nothing, and exited 0
+
+It printed `0 repositories processed, rows written: 0` and returned success. Both target repositories
+were sitting in the resume set wearing a `skipped_repository_too_large` row, and a skipped row is not
+a repository that is done. Nothing failed; nothing happened either, and the exit code said the same
+thing it says on a good run.
+
+Their skipped rows are now dropped from the ledger rather than left behind an appended acquired row.
+One repository, one row: two would make `repos.length` larger than the number of repositories, and
+`eligible_by_rights` and the licence tally in the card are both derived from it.
+
+## The 1,063 now partition, and a guard keeps them partitioned
+
+Every one of the 1,063 tree rows is now either in `repos.jsonl` or fails a NAMED clause of the
+rights predicate, and `summarise-github-corpus.test.mjs` restates that predicate and fails if any
+repository passes all of it and appears in no ledger row:
+
+| | count |
+| --- | ---: |
+| licence-verified, Roblox-relevant, tree-read | 1,063 |
+| eligible by rights and acquired | **1,035** |
+| holds no Luau at all | 28 |
+| **passing every clause and in no ledger row** | **0** |
+
+The same test asserts one row per repository, which is what the superseded-skipped-row fix above is
+there to keep true.
+
+## What the corpus is now
+
+| | third pass | fifth pass |
+| --- | ---: | ---: |
+| repositories acquired | 1,022 | **1,035** |
+| rows | 27,671 | **29,232** |
+| hand-written | 19,322 | **20,877** |
+| machine-generated | 8,349 | 8,355 |
+| distinct shapes | 18,816 | 20,351 |
+| bytes | 221,092,562 | 237,752,817 |
+
+**The third and fourth pass figures above them are superseded, not corrected.** They were true of a
+27,671-row corpus that no longer exists; they are left standing as the record of what was measured
+then, exactly as the "Not a file count" bullet was left standing when it stopped being true.
+
+## And the 923 the relevance filter rejected
+
+Separately measured, because "irrelevant" was also a word about repositories nobody had opened. Of
+the 1,986 licence-clean admit candidates, `isRobloxRelevant` keeps 1,063 on `primary_language` and
+the owner/name string alone. The other 923 were written up as off-topic without a byte being counted.
+
+39 of them name roblox/rbx/luau/rojo/wally in their **topics or description** — the two fields the
+filter never reads. All 39 trees were read: **252 Luau files, in 10 of the 39**, 195 of them in one
+repository. Against the corpus's 36,366 that is 0.69%. The filter is not hiding a corpus, and that
+is now a measurement rather than an assumption. The remaining **884, which name Roblox nowhere,
+were not opened** — they are recorded as counted and unopened, never as empty.
+
+## Still not admission
+
+`training_approved` is `false`, `semantic_quality_pass` is `null` and `production_training_ready` is
+`false` on all 29,232 rows, including all 1,561 added by this pass, and a guard walks every row in
+`rows.jsonl` asserting it. Everything here is a RIGHTS finding: these files MAY be used. Whether any
+of them SHOULD be is a judgement nothing in this document has made.
+
+## The four passes, re-run over the larger corpus
+
+Nothing in the third or fourth pass supports a corpus it never read, so all of it ran again. The
+parse rate barely moved, which is the point — 1,561 rows arriving from a wally-heavy game project
+and a Godot extension did not quietly change what the corpus is:
+
+| | third/fourth pass, 27,671 rows | fifth pass, 29,232 rows |
+| --- | ---: | ---: |
+| parse as Luau | 27,437 (99.15%) | **28,993 (99.18%)** |
+| do not parse | 233, in 80 repositories | 238, in 85 repositories |
+| not measured | 1 | 1 |
+| call a deprecated **global** | 664 (2.40%) | 730 (2.5%) |
+| **name** a deprecated method (upper bound) | 1,642 (5.93%) | 1,755 (6%) |
+| carry a modern-Luau marker | 13,349 (48.24%) | 13,911 (47.59%) |
+| current-Luau **candidates** | 18,464 | **19,950** |
+| usable UI assets, across 214 repositories | 1,051 | **1,212** |
+| …distinct shapes among them | 1,047 | 1,207 |
+| …naming the screen they build | 99 of 1,060 | 123 of 1,221 |
+| distinct composition keys | 444 | 528 |
+
+The one row `luau-analyze` never finishes is still `underonunicom/IsEvenLuau/IsEven.luau`, 10.18 MB
+of hardcoded answers, and it is still counted in the denominator rather than dropped to raise the
+headline.
+
+## The card had no currency row, and the card is the only thing a fresh clone reads
+
+The fourth pass measured currency on 2026-09-21 and wrote it up in this document. `dataset-card.json`
+— the one part of this corpus that reaches a fresh clone, because `rows.jsonl` is gitignored — had
+no `luau_currency` field at all, and its `what_this_does_not_establish` list still told a reader
+the corpus had never been checked for it.
+
+A document does not fail a build. The card now carries the measurement, wired the same way the
+parse row already was and with the same staleness guard: `currencyReportApplies` quotes the report
+only when it is about this corpus at this row count, and says `not_measured` otherwise. That guard
+is why the card refused the currency report for the ten minutes when the corpus had grown to 29,232
+and the report still described 27,671.
+
+Two of the four disclaimers were **re-aimed rather than deleted**, and guards check both:
+
+- *current Luau* now says 19,950 rows are CANDIDATES and repeats that this counts evidence OF
+  modernity and never evidence against it. Lua 5.1 that never needed `wait()` is indistinguishable
+  here from Luau that avoided it.
+- *left out for size* said repositories over the cap are recorded skipped with their Luau file count.
+  None are any more. A disclaimer that goes on warning about missing files when none are missing is
+  a disclaimer standing in for a fact — the same defect as a fact standing in for a disclaimer.

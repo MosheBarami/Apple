@@ -26,10 +26,14 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { tally, splitRows } from './summarise-github-corpus.mjs';
+import { currencyReportApplies } from './measure-luau-currency.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CARD = join(ROOT, 'data/roblox-github-v1/dataset-card.json');
 const REPORT = join(ROOT, 'runs/luau-syntax-github-v1.json');
+const CURRENCY = join(ROOT, 'runs/luau-currency-github-v1.json');
+const TREES = join(ROOT, 'discovery/v2/github-trees.jsonl');
+const REPOS = join(ROOT, 'data/roblox-github-v1/repos.jsonl');
 
 const row = (over = {}) => ({ generated: false, shape_sha256: 'a'.repeat(64), bytes: 10, ...over });
 
@@ -109,6 +113,117 @@ test('the card keeps saying what it does not establish',
     assert.match(card.derived_from['repos.jsonl'].sha256, /^[0-9a-f]{64}$/,
       'the card does not record the sha256 of the ledger it was derived from');
     assert.equal(card.rights.evidence_tier, 'licence_text');
+  });
+
+test('every licence-verified repository is either in the ledger or excluded for a stated reason',
+  { skip: !(existsSync(TREES) && existsSync(REPOS)) && 'the tree pass or the ledger is absent' }, () => {
+    // WHY THIS EXISTS. docs/github-corpus-licences.md headlined 1,063 licence-verified repositories
+    // and the ledger held 1,024. The 39 in between were nowhere: not a row, not a reason, not a
+    // count. 28 held no Luau, and ELEVEN held 310 licence-clean Luau files and were excluded by a
+    // regex that could not see a file named UNLICENSE — an exclusion that read, in the artifact,
+    // exactly like a rights finding.
+    //
+    // Absence is the one verdict nobody reviews. So the two files must partition: each of the 1,063
+    // is in the ledger, or it fails a NAMED clause of the rights predicate.
+    const trees = readFileSync(TREES, 'utf8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l));
+    const ledger = new Set(readFileSync(REPOS, 'utf8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l).source_id));
+    assert.ok(trees.length > 100 && ledger.size > 100, 'one of the two files is too thin to partition');
+
+    // The acquisition predicate, restated. If acquire-github-luau.mjs changes it, this test is
+    // where the disagreement surfaces instead of in a missing row nobody counts.
+    const clauses = {
+      tree_not_read: (r) => r.tree_status !== 'ok',
+      licence_not_permissive: (r) => r.license_class !== 'permissive_osi',
+      no_licence_file_at_root: (r) => !r.license_file_name,
+      archived: (r) => r.archived !== false,
+      fork: (r) => r.fork !== false,
+      holds_no_luau: (r) => (r.luau_lua_file_count || 0) === 0,
+    };
+
+    const unexplained = [];
+    for (const r of trees) {
+      const failed = Object.entries(clauses).filter(([, f]) => f(r)).map(([k]) => k);
+      if (ledger.has(r.source_id)) {
+        assert.equal(failed.length, 0,
+          `${r.source_id} is in the ledger while failing ${failed.join(', ')}`);
+      } else if (failed.length === 0) {
+        unexplained.push(r.source_id);
+      }
+    }
+    assert.deepEqual(unexplained, [],
+      `${unexplained.length} repositories pass every rights clause and appear in no ledger row, `
+      + 'so their exclusion has no reason attached to it anywhere');
+
+    // And the ledger must not invent repositories the tree pass never saw.
+    const seen = new Set(trees.map((r) => r.source_id));
+    for (const id of ledger) assert.ok(seen.has(id), `${id} is in the ledger and in no tree row`);
+
+    // One repository, one row. A superseded skipped row left behind an acquired one would make
+    // every count derived from repos.length larger than the number of repositories.
+    const ids = readFileSync(REPOS, 'utf8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l).source_id);
+    assert.equal(ids.length, new Set(ids).size, 'the ledger holds more than one row for some repository');
+  });
+
+test('a currency report from a smaller corpus cannot be quoted as though it covered this one', () => {
+  const real = 'packages/training/data/roblox-github-v1';
+  assert.equal(currencyReportApplies({ corpus: real, rows_in_corpus: 27912 }, real, 27912), true);
+  assert.equal(currencyReportApplies({ corpus: real, rows_in_corpus: 27671 }, real, 27912), false,
+    'a report about 27,671 rows was accepted as covering 27,912 — the exact drift that happens when rows are added');
+  assert.equal(currencyReportApplies({ corpus: 'some/fixture', rows_in_corpus: 27912 }, real, 27912), false,
+    'a report about a fixture was accepted as covering the real corpus');
+  assert.equal(currencyReportApplies({ corpus: `${real}-v2`, rows_in_corpus: 27912 }, real, 27912), false,
+    'corpus paths must match exactly, not by prefix');
+  assert.equal(currencyReportApplies(null, real, 27912), false);
+  assert.equal(currencyReportApplies({}, real, 27912), false);
+});
+
+test("the card's currency claim is the measurement's own numbers, or it is not a claim",
+  { skip: !existsSync(CARD) && 'the card has not been generated' }, () => {
+    // WHY THIS EXISTS. The currency pass ran on 2026-09-21 and was written up in
+    // docs/github-corpus-licences.md. The card — the only part of this corpus that reaches a fresh
+    // clone — carried no currency row at all, and its what_this_does_not_establish list still told
+    // a reader the corpus had never been checked for it. A document does not fail a build. This
+    // does.
+    const card = JSON.parse(readFileSync(CARD, 'utf8'));
+    const claim = String(card.validation.luau_currency ?? '');
+    assert.ok(claim, 'the card has no luau_currency row; the fourth pass is invisible to every machine that reads this card');
+
+    if (claim.startsWith('not_measured')) {
+      assert.ok(!/\d+ of \d+ rows call/.test(claim), 'not_measured must not carry numbers');
+      // And the disclaimer must then say currency is unmeasured rather than describe a candidate set.
+      assert.ok(card.what_this_does_not_establish.some((b) => /nothing has measured/i.test(b)),
+        'the card quotes no currency measurement and does not say so in what_this_does_not_establish');
+      return;
+    }
+
+    assert.ok(existsSync(CURRENCY),
+      'the card claims currency was measured, and the report it claims to quote is not in this checkout');
+    const r = JSON.parse(readFileSync(CURRENCY, 'utf8'));
+    assert.ok(currencyReportApplies(r, 'packages/training/data/roblox-github-v1', card.volume.rows_total),
+      'the card is quoting a currency report about a different corpus or a different number of rows');
+
+    for (const n of [
+      r.deprecated_globals.rows_calling_at_least_one, r.deprecated_globals.percent_of_corpus,
+      r.deprecated_method_names.rows_naming_at_least_one, r.deprecated_method_names.percent_of_corpus,
+      r.modern_luau.rows_with_at_least_one_marker, r.modern_luau.percent_of_corpus,
+      r.current_luau_candidates, r.rows_in_corpus,
+    ]) {
+      assert.ok(claim.includes(String(n)), `the card's currency claim does not carry the report's ${n}`);
+    }
+
+    // The three qualities of evidence must survive the trip into the card. The method figure is an
+    // upper bound and the claim is worthless — worse than absent — if it stops saying so.
+    assert.match(claim, /UPPER BOUND/,
+      "the method-name figure lost the words that stop it being read as 'uses a deprecated API'");
+    assert.match(claim, /CANDIDATES/,
+      'the current-Luau figure lost the word that stops it being read as a count of modern rows');
+    assert.match(claim, /never evidence against it/,
+      'the claim lost the sentence saying this counts evidence OF modernity only');
+
+    // And the disclaimer must have been RE-AIMED, not deleted, when the measurement landed.
+    const bullet = card.what_this_does_not_establish.find((b) => /current Luau/.test(b));
+    assert.ok(bullet, 'the bullet saying the corpus is not established to be current Luau was deleted when it was measured');
+    assert.match(bullet, /CANDIDATES/, 'the re-aimed bullet does not say the set is a candidate set');
   });
 
 test('the card\'s parse claim is the gate\'s own numbers, or it is not a claim',

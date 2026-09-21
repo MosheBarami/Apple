@@ -88,6 +88,20 @@ export function licenceTextCorroborates(spdx, text) {
 const sha256 = (buf) => createHash('sha256').update(buf).digest('hex');
 
 /**
+ * Git's own name for a blob's contents: sha1("blob <len>\0" + bytes).
+ *
+ * The tree read recorded a sha per file. When a file is fetched one blob at a time rather than
+ * inside a snapshot, that sha is a check worth making: it proves the bytes that arrived are the
+ * bytes the pinned tree named, and a truncated or substituted response fails it. The tarball path
+ * gets this integrity for free from the archive; the blob path has to ask for it.
+ *
+ * sha1 is git's, not a security choice here. It is being used to compare against git's own label.
+ */
+export function gitBlobSha1(buf) {
+  return createHash('sha1').update(Buffer.concat([Buffer.from(`blob ${buf.length}\0`), buf])).digest('hex');
+}
+
+/**
  * Was this file written by a machine?
  *
  * The first repository this pipeline opened, `tijnepema/lucide-roblox`, contributed 8,187 rows —
@@ -145,6 +159,21 @@ if (isMain) {
   const OUT_DIR = resolve(arg('out', resolve(HERE, '..', 'data', 'roblox-github-v1')));
   /** Snapshot cap. Two of the 1,063 are over a gigabyte and neither is a gigabyte of Luau. */
   const MAX_REPO_KB = Number(arg('max-repo-mib', '600')) * 1024;
+  /**
+   * --oversized: take the over-cap repositories one blob at a time instead of skipping them.
+   *
+   * The cap is on REPOSITORY size, and the two repositories over it hold 1,956 Luau files between
+   * them — `sploithunter/HaloAndHorns` is 1.8 GiB of which 16 MB is 1,936 Luau files. Their status
+   * line has always said so honestly ("its N Luau files are NOT in the corpus"), which is why this
+   * is a gap and not a defect. Buffering a 1.8 GiB tarball would take the process down; fetching
+   * 1,956 blobs against a 5,000/hour ceiling would not.
+   *
+   * The blobs are written into the same `{owner}-{repo}-{sha}/` layout the archive produces, so
+   * EVERYTHING below — the walk, the vendored exclusion, the dedupe, the row literal, the counts —
+   * is the same code on the same bytes. A second row builder would be a second definition of what
+   * a row is, and the two would drift.
+   */
+  const OVERSIZED = process.argv.includes('--oversized');
   const ROWS = join(OUT_DIR, 'rows.jsonl');
   const REPOS = join(OUT_DIR, 'repos.jsonl');
   mkdirSync(OUT_DIR, { recursive: true });
@@ -165,10 +194,28 @@ if (isMain) {
 
   const doneRepos = new Set();
   if (existsSync(REPOS)) {
+    const ledger = [];
     for (const l of readFileSync(REPOS, 'utf8').trim().split('\n')) {
       if (!l) continue;
-      try { doneRepos.add(JSON.parse(l).source_id); } catch { /* partial line */ }
+      try { ledger.push(JSON.parse(l)); } catch { /* partial line */ }
     }
+    // A repository that was SKIPPED is not a repository that is done, and under --oversized it is
+    // precisely the one we came back for. The first --oversized run reported "0 repositories
+    // processed, rows written: 0" and exited 0, because both over-cap repositories were sitting in
+    // the resume set wearing a skipped row. Nothing failed; nothing happened either.
+    //
+    // Their skipped rows are also dropped from the ledger here rather than left behind an appended
+    // acquired row. One repository, one row: two would make repos.length larger than the number of
+    // repositories and every count derived from it — the card's `eligible_by_rights`, its licence
+    // tally — quietly wrong.
+    const superseded = OVERSIZED ? ledger.filter((r) => r.status === 'skipped_repository_too_large') : [];
+    if (superseded.length) {
+      writeFileSync(REPOS, ledger.filter((r) => r.status !== 'skipped_repository_too_large')
+        .map((r) => JSON.stringify(r)).join('\n') + '\n');
+      console.error(`--oversized: retrying ${superseded.length} repositories skipped for size `
+        + `(${superseded.map((r) => r.source_id).join(', ')}); their skipped ledger rows are superseded`);
+    }
+    for (const r of ledger) if (!superseded.includes(r)) doneRepos.add(r.source_id);
     console.error(`resuming: ${doneRepos.size} repositories already acquired`);
   }
   // Content-addressed dedupe across every repository, rebuilt from what is already on disk.
@@ -227,30 +274,66 @@ if (isMain) {
         continue;
       }
 
-      // 3. One request for the whole snapshot, then keep only Luau. A blob-by-blob fetch would be
-      //    one API call per file and would not finish.
-      // A 1.8 GiB repository is assets, not Luau, and buffering one would take the process down.
-      // Skipped with a reason rather than silently absent from the corpus.
-      if ((repo.size_kb || 0) > MAX_REPO_KB) {
+      // 3. Materialise the Luau. One request for the whole snapshot, then keep only Luau — a
+      //    blob-by-blob fetch is one API call per file and is not how you take a thousand
+      //    repositories. For the two that are over the cap it is the only way to take them at
+      //    all, because buffering a 1.8 GiB tarball takes the process down, and 2,000 requests
+      //    against a 5,000/hour ceiling do not. Without --oversized they are skipped with a
+      //    reason rather than being silently absent from the corpus.
+      const tooLarge = (repo.size_kb || 0) > MAX_REPO_KB;
+      if (tooLarge && !OVERSIZED) {
         record.status = 'skipped_repository_too_large';
-        record.status_reason = `${Math.round(repo.size_kb / 1024)} MiB exceeds the ${Math.round(MAX_REPO_KB / 1024)} MiB snapshot cap; its ${repo.luau_lua_file_count} Luau files are NOT in the corpus and were not measured for content`;
+        record.status_reason = `${Math.round(repo.size_kb / 1024)} MiB exceeds the ${Math.round(MAX_REPO_KB / 1024)} MiB snapshot cap; its ${repo.luau_lua_file_count} Luau files are NOT in the corpus and were not measured for content. Re-run with --oversized to take them one blob at a time.`;
         record.rows_written = 0;
         appendFileSync(REPOS, JSON.stringify(record) + '\n');
         nRepo++;
         continue;
       }
       work = mkdtempSync(join(tmpdir(), 'acq-'));
-      const tgz = join(work, 'r.tgz');
-      const tRes = await fetch(`https://codeload.github.com/${path}/tar.gz/${sha}`);
-      if (tRes.status !== 200) throw new Error(`tarball http ${tRes.status}`);
-      await pipeline(Readable.fromWeb(tRes.body), createWriteStream(tgz));
       const ex = join(work, 'x');
       mkdirSync(ex);
-      // bsdtar exits non-zero when an --include pattern matches nothing, which is normal for a
-      // repository that is all .luau and no .lua. The extraction is checked by walking the
-      // directory below, not by this exit code — a pipeline whose verdict came from the wrong
-      // process is the failure this comment exists to prevent.
-      try { execFileSync('tar', ['-xzf', tgz, '-C', ex, '--include=*.luau', '--include=*.lua'], { stdio: 'ignore' }); } catch { /* checked by walk */ }
+      // The archive's own prefix. The walk below strips one path segment to get the repo-relative
+      // path, so the blob path has to reproduce this or every `rel` would lose its first directory.
+      const prefix = `${path.replace('/', '-')}-${sha}`;
+
+      if (tooLarge) {
+        // One tree request at the PINNED sha — not HEAD — so the blobs are the revision every row
+        // is about to be quoted against.
+        const tr = await gh(`https://api.github.com/repos/${path}/git/trees/${sha}?recursive=1`);
+        if (tr.status !== 200) throw new Error(`oversized tree http ${tr.status}`);
+        const body = await tr.json();
+        if (body.truncated === true) {
+          // A truncated tree is a FLOOR. Acquiring from one would silently take a subset and record
+          // it as the repository, which is the exact failure `estimated_rows_basis` exists to name.
+          throw new Error('oversized tree came back truncated; a subset must not be recorded as the repository');
+        }
+        const blobs = (body.tree || []).filter((e) => e.type === 'blob' && /\.(luau|lua)$/i.test(e.path));
+        record.oversized_blob_fetch = { blobs_in_tree: blobs.length, fetched: 0, integrity_failures: 0 };
+        for (const b of blobs) {
+          const br = await gh(`https://api.github.com/repos/${path}/git/blobs/${b.sha}`);
+          if (br.status === 403 || br.status === 429) throw new Error(`rate limited fetching blobs after ${record.oversized_blob_fetch.fetched}`);
+          if (br.status !== 200) continue;
+          const j = await br.json();
+          const buf = Buffer.from(j.content ?? '', j.encoding === 'base64' ? 'base64' : 'utf8');
+          // The tree named this sha. If the bytes that arrived are not those bytes, they are not
+          // this repository's file and are dropped rather than written under its licence.
+          if (gitBlobSha1(buf) !== b.sha) { record.oversized_blob_fetch.integrity_failures++; continue; }
+          const dest = join(ex, prefix, b.path);
+          mkdirSync(dirname(dest), { recursive: true });
+          writeFileSync(dest, buf);
+          record.oversized_blob_fetch.fetched++;
+        }
+      } else {
+        const tgz = join(work, 'r.tgz');
+        const tRes = await fetch(`https://codeload.github.com/${path}/tar.gz/${sha}`);
+        if (tRes.status !== 200) throw new Error(`tarball http ${tRes.status}`);
+        await pipeline(Readable.fromWeb(tRes.body), createWriteStream(tgz));
+        // bsdtar exits non-zero when an --include pattern matches nothing, which is normal for a
+        // repository that is all .luau and no .lua. The extraction is checked by walking the
+        // directory below, not by this exit code — a pipeline whose verdict came from the wrong
+        // process is the failure this comment exists to prevent.
+        try { execFileSync('tar', ['-xzf', tgz, '-C', ex, '--include=*.luau', '--include=*.lua'], { stdio: 'ignore' }); } catch { /* checked by walk */ }
+      }
 
       const files = existsSync(ex) ? walk(ex) : [];
       const rows = [];
@@ -320,6 +403,7 @@ if (isMain) {
       for (const r of rows) shapes.add(r.shape_sha256);
       Object.assign(record, {
         status: 'acquired',
+        acquired_via: tooLarge ? 'git_blob_api_at_pinned_revision' : 'repository_tarball_at_pinned_revision',
         luau_files_in_tree: repo.luau_lua_file_count,
         luau_files_extracted: files.filter((f) => /\.(luau|lua)$/i.test(f)).length,
         vendored_excluded: vendored,

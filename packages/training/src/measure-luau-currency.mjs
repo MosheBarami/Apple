@@ -152,6 +152,22 @@ export function modernMarkers(code, raw = code) {
   };
 }
 
+/**
+ * Is this currency report about THIS corpus, at THIS size?
+ *
+ * The same question `syntaxReportApplies` asks, and for the same reason. The card quotes this
+ * report; a report left over from a smaller corpus would certify rows it never read, and the drift
+ * is invisible because the sentence it produces reads exactly the same either way. The card must
+ * fall back to `not_measured` rather than quote a stale number — 241 rows were added to this corpus
+ * on 2026-09-21 and every report generated before that moment describes a corpus that no longer
+ * exists.
+ */
+export function currencyReportApplies(report, corpusRelPath, rowsInCorpus) {
+  if (!report || typeof report !== 'object') return false;
+  if (report.corpus !== corpusRelPath) return false;
+  return report.rows_in_corpus === rowsInCorpus;
+}
+
 /* c8 ignore start -- filesystem driver */
 const isMain = process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));
 if (isMain) {

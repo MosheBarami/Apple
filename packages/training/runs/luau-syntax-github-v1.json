@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-21T00:36:26.977Z",
+  "generated_at": "2026-09-21T01:19:22.007Z",
   "generator": "packages/training/src/check-luau-syntax.mjs",
   "corpus": "packages/training/data/roblox-github-v1",
   "analyzer": "luau-analyze --formatter=plain",
@@ -11,15 +11,15 @@
   ],
   "signal": "a SyntaxError diagnostic carrying the file path. luau-analyze exits 0 on files it cannot parse, so the exit code is deliberately unused.",
   "canary": "a file with a known syntax error rides in every invocation; a batch whose canary stays silent is re-run one file at a time rather than recorded as clean",
-  "rows_checked": 27671,
-  "rows_that_parse": 27437,
-  "rows_that_do_not_parse": 233,
+  "rows_checked": 29232,
+  "rows_that_parse": 28993,
+  "rows_that_do_not_parse": 238,
   "rows_not_measured": 1,
   "not_measured_meaning": "luau-analyze did not finish within 30000 ms. Neither \"parses\" nor \"does not parse\" is known of these rows, and rounding them into either would be an invention.",
-  "parse_rate_percent": 99.15,
+  "parse_rate_percent": 99.18,
   "parse_rate_denominator": "rows_checked, INCLUDING the not-measured rows. Dropping them from the denominator would raise the headline by pretending the unread rows were read.",
-  "rows_re_run_singly_after_a_silent_canary_or_timeout": 171,
-  "repositories_with_a_failing_file": 80,
+  "rows_re_run_singly_after_a_silent_canary_or_timeout": 250,
+  "repositories_with_a_failing_file": 85,
   "failures_by_repository": {
     "PolarisHub/luau-disassembler-decompiler": 88,
     "boydev-1444/lunaux-decompiler": 22,
@@ -100,7 +100,12 @@
     "repinek/noctalia-plugins": 1,
     "Custom-Sync/Roblox-Studio-IDE-Template": 1,
     "SalazarGaming01/TMaC-Public": 1,
-    "giaco6/polysource": 1
+    "giaco6/polysource": 1,
+    "tp-link-extender/2013": 1,
+    "rniraclefire/funk": 1,
+    "Heliodex/nocte": 1,
+    "sploithunter/HaloAndHorns": 1,
+    "Pimpoli/GodotLuau": 1
   },
   "failures": [
     {
@@ -2432,6 +2437,56 @@
       "generated": false,
       "first_error": "3:1: Incomplete statement: expected assignment or a function call",
       "syntax_error_count": 101
+    },
+    {
+      "row_id": "63cf7a5cee5b7eb5de61f58a",
+      "source_id": "tp-link-extender/2013",
+      "source_path": "defs.d.lua",
+      "revision": "b87d6fac9378493cbb493b36a602fa277bd0567e",
+      "bytes": 126366,
+      "generated": false,
+      "first_error": "12:1: Incomplete statement: expected assignment or a function call",
+      "syntax_error_count": 4
+    },
+    {
+      "row_id": "544237ac2e4960925e300463",
+      "source_id": "rniraclefire/funk",
+      "source_path": "types/funk.d.luau",
+      "revision": "744a19627bcba41e4bb2f1c94fdb37efca69ee46",
+      "bytes": 1168,
+      "generated": false,
+      "first_error": "1:1: Incomplete statement: expected assignment or a function call",
+      "syntax_error_count": 9
+    },
+    {
+      "row_id": "1b15752d1c1a3bf9d1ff6a15",
+      "source_id": "Heliodex/nocte",
+      "source_path": "run/types.d.luau",
+      "revision": "3e7c4b72594d5a2c060b7a2607d295c3361fe38d",
+      "bytes": 449,
+      "generated": false,
+      "first_error": "1:1: Incomplete statement: expected assignment or a function call",
+      "syntax_error_count": 47
+    },
+    {
+      "row_id": "20ee37cbe15ce06816ac2c18",
+      "source_id": "sploithunter/HaloAndHorns",
+      "source_path": "scripts/debug_server_direct_fixed.lua",
+      "revision": "71b6eb7d03d5bdd0fe13815bc1ea6c29733d076c",
+      "bytes": 5875,
+      "generated": false,
+      "first_error": "59:5: Incomplete statement: expected assignment or a function call",
+      "syntax_error_count": 3
+    },
+    {
+      "row_id": "2fbeebdd7dcf6aaa11dde341",
+      "source_id": "Pimpoli/GodotLuau",
+      "source_path": "corpus/roblox_common.lua",
+      "revision": "7044a11c1bcc2eac2a91155e829a5821d92ab66e",
+      "bytes": 8773,
+      "generated": false,
+      "first_error": "249:1: Expected <eof>, got 'local'",
+      "syntax_error_count": 1
     }
   ],
   "not_measured": [

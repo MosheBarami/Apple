@@ -28,7 +28,8 @@ import { readFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { isVendoredPath, licenceTextCorroborates, normalisedSha256, isGeneratedLuau, shapeSha256 } from './acquire-github-luau.mjs';
+import { isVendoredPath, licenceTextCorroborates, normalisedSha256, isGeneratedLuau, shapeSha256, gitBlobSha1 } from './acquire-github-luau.mjs';
+import { execFileSync } from 'node:child_process';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ROWS = join(ROOT, 'data/roblox-github-v1/rows.jsonl');
@@ -54,6 +55,73 @@ test('a licence text that does not carry the grant fails closed', () => {
   assert.equal(licenceTextCorroborates('MIT', 'Permission   is\nhereby  granted, free of charge'), true,
     'corroboration broke on line wrapping, which every real LICENSE file has');
 });
+
+test('a blob fetched one at a time is checked against the sha the pinned tree named', () => {
+  // WHY THIS EXISTS. Two repositories are over the 600 MiB snapshot cap and hold 1,956 Luau files
+  // between them. Buffering a 1.8 GiB tarball would take the process down, so those files arrive
+  // one blob at a time — and a blob arriving alone has none of the integrity a tar archive gives
+  // for free. A truncated body, a substituted file or a base64 decode that silently lost bytes
+  // would be written into rows.jsonl under this repository's licence, with a pinned permalink
+  // pointing at content that is not what is stored. The tree already named a sha per file; this is
+  // what turns that into a check.
+  //
+  // It is git's own labelling, so git is the oracle: `git hash-object` must agree, or the check is
+  // comparing against something other than what the tree recorded.
+  const cases = ['hello world\n', '', 'local x = 1\n-- ünïcödé ✓\n', 'a'.repeat(5000)];
+  for (const text of cases) {
+    const buf = Buffer.from(text, 'utf8');
+    const fromGit = execFileSync('git', ['hash-object', '--stdin'], { input: buf }).toString().trim();
+    assert.equal(gitBlobSha1(buf), fromGit,
+      `gitBlobSha1 disagrees with git hash-object on a ${buf.length}-byte blob`);
+  }
+
+  // A single flipped byte must not hash to the same name, or the check certifies nothing.
+  const good = Buffer.from('local x = 1\n');
+  const tampered = Buffer.from('local x = 2\n');
+  assert.notEqual(gitBlobSha1(good), gitBlobSha1(tampered));
+
+  // And the length is inside the hash, so a truncation is caught even when the prefix is honest.
+  assert.notEqual(gitBlobSha1(Buffer.from('local x = 1\n')), gitBlobSha1(Buffer.from('local x = 1')));
+
+  // Binary is hashed as bytes, not as a string. A NUL must not terminate anything.
+  const withNul = Buffer.from([0x6c, 0x00, 0x78]);
+  assert.equal(gitBlobSha1(withNul), execFileSync('git', ['hash-object', '--stdin'], { input: withNul }).toString().trim());
+});
+
+test('a row acquired blob-by-blob is indistinguishable from one acquired from a tarball',
+  { skip: !existsSync(ROWS) && 'rows.jsonl is gitignored and absent from this checkout' }, () => {
+    // The two acquisition paths share the walk, the vendored exclusion, the dedupe and the row
+    // literal on purpose: a second row builder would be a second definition of what a row is, and
+    // the two would drift silently. The ledger records WHICH path each repository took, and this
+    // asserts the rows themselves carry no trace of it.
+    const repos = readFileSync(REPOS, 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+    const byBlob = repos.filter((r) => r.acquired_via === 'git_blob_api_at_pinned_revision');
+    if (byBlob.length === 0) return; // --oversized has not been run in this checkout
+
+    for (const r of byBlob) {
+      assert.equal(r.status, 'acquired');
+      assert.equal(r.evidence_tier, 'licence_text',
+        `${r.source_id} came in by blob and skipped the licence-text tier the tarball path enforces`);
+      assert.equal(r.licence_text_corroborates_tag, true);
+      assert.ok(r.oversized_blob_fetch, `${r.source_id} records no blob-fetch accounting`);
+      assert.equal(r.oversized_blob_fetch.integrity_failures, 0,
+        `${r.source_id} wrote rows from a run that had blobs fail their sha check`);
+      assert.ok(r.oversized_blob_fetch.fetched <= r.oversized_blob_fetch.blobs_in_tree);
+    }
+
+    const ids = new Set(byBlob.map((r) => r.source_id));
+    const tarKeys = new Set();
+    const blobKeys = new Set();
+    for (const line of readFileSync(ROWS, 'utf8').split('\n')) {
+      if (!line.trim()) continue;
+      const row = JSON.parse(line);
+      const target = ids.has(row.provenance?.source_id) ? blobKeys : tarKeys;
+      if (target.size < 400) for (const k of Object.keys(row)) target.add(k);
+    }
+    assert.ok(blobKeys.size > 0, 'the ledger names blob-acquired repositories and no row came from one');
+    assert.deepEqual([...blobKeys].sort(), [...tarKeys].sort(),
+      'a blob-acquired row has a different shape from a tarball-acquired one; the two paths have drifted');
+  });
 
 test('vendor exclusion matches whole path segments, not substrings', () => {
   for (const p of [

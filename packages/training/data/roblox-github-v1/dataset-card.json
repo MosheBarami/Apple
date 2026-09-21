@@ -1,14 +1,14 @@
 {
   "id": "roblox-github-v1",
-  "generated_at": "2026-09-21T00:36:41.330Z",
+  "generated_at": "2026-09-21T01:19:50.637Z",
   "generator": "packages/training/src/summarise-github-corpus.mjs",
   "derived_from": {
     "repos.jsonl": {
-      "rows": 1024,
-      "sha256": "c89edec3f8d08508d3c5b3742f2e23a8efe24492064135cbda46f21dccb4b40f"
+      "rows": 1035,
+      "sha256": "d72078f740c8a3d49eebe37c28a47a5008ae47a5d00d41a0b17f0aefd4e9f700"
     },
     "rows.jsonl": {
-      "rows": 27671,
+      "rows": 29232,
       "note": "gitignored: third-party Luau source, re-fetchable from the pinned revisions in repos.jsonl"
     }
   },
@@ -17,9 +17,9 @@
     "evidence_tier": "licence_text",
     "tier_meaning": "the licence DOCUMENT was retrieved at the pinned revision and its sha256 recorded, per repository. This is the tier clear-rights.mjs reserves for retrieved text — four of the six sources v1 shipped from cap at publisher_declaration_only and never reach it.",
     "licences": {
-      "MIT": 909,
-      "Apache-2.0": 85,
-      "Unlicense": 11,
+      "MIT": 911,
+      "Apache-2.0": 89,
+      "Unlicense": 18,
       "CC0-1.0": 7,
       "BSD-3-Clause": 4,
       "ISC": 2,
@@ -28,18 +28,17 @@
       "MIT-0": 1
     },
     "repositories_rejected_for_licence_text_mismatch": 0,
-    "vendored_paths_excluded": 4659,
+    "vendored_paths_excluded": 5294,
     "vendored_exclusion_reason": "a wally Packages/ or node_modules/ inside an MIT repository is a third party's source; the enclosing LICENSE grants none of it"
   },
   "repositories": {
-    "eligible_by_rights": 1024,
-    "acquired": 1022,
+    "eligible_by_rights": 1035,
+    "acquired": 1035,
     "rejected_licence_text_mismatch": 0,
-    "skipped_too_large": 2,
+    "skipped_too_large": 0,
     "failed": 0,
     "statuses": {
-      "acquired": 1022,
-      "skipped_repository_too_large": 2
+      "acquired": 1035
     },
     "largest_contributors": [
       {
@@ -47,6 +46,12 @@
         "rows": 8187,
         "machine_generated": 8171,
         "distinct_shapes": 18
+      },
+      {
+        "source_id": "sploithunter/HaloAndHorns",
+        "rows": 1301,
+        "machine_generated": 4,
+        "distinct_shapes": 1301
       },
       {
         "source_id": "quadigen/Kinemium-Engine",
@@ -95,28 +100,23 @@
         "rows": 308,
         "machine_generated": 4,
         "distinct_shapes": 304
-      },
-      {
-        "source_id": "fromage3900/Zundamons-Kitchen-V2",
-        "rows": 303,
-        "machine_generated": 5,
-        "distinct_shapes": 295
       }
     ]
   },
   "volume": {
-    "rows_total": 27671,
-    "rows_machine_generated": 8349,
-    "rows_hand_written": 19322,
-    "distinct_shapes_total": 18816,
-    "distinct_shapes_hand_written": 18730,
-    "bytes_total": 221092562,
-    "bytes_hand_written": 205340237
+    "rows_total": 29232,
+    "rows_machine_generated": 8355,
+    "rows_hand_written": 20877,
+    "distinct_shapes_total": 20351,
+    "distinct_shapes_hand_written": 20259,
+    "bytes_total": 237752817,
+    "bytes_hand_written": 221915070
   },
-  "volume_note": "8349 of 27671 rows carry a generator banner. Placeholdering every literal, the 27671 rows are 18816 distinct programs, 18730 of them hand-written. Quote whichever number answers the question being asked, and say which it is.",
+  "volume_note": "8355 of 29232 rows carry a generator banner. Placeholdering every literal, the 29232 rows are 20351 distinct programs, 20259 of them hand-written. Quote whichever number answers the question being asked, and say which it is.",
   "validation": {
     "engine_execution": "not_run",
-    "luau_compiler": "luau-analyze, 2026-09-21T00:36:26.977Z: 27437 of 27671 rows parse (99.15%), 233 do not, 1 not measured. See packages/training/runs/luau-syntax-github-v1.json. Parsing is the floor, not approval.",
+    "luau_compiler": "luau-analyze, 2026-09-21T01:19:22.007Z: 28993 of 29232 rows parse (99.18%), 238 do not, 1 not measured. See packages/training/runs/luau-syntax-github-v1.json. Parsing is the floor, not approval.",
+    "luau_currency": "deprecated vocabulary derived from Roblox's own engine reference, 2026-09-21T01:19:25.224Z: 730 of 29232 rows call a deprecated GLOBAL (2.5%, precise); 1755 NAME a deprecated method (6%, an UPPER BOUND — a call site never shows the receiver's class); 13911 carry a modern-Luau marker (47.59%). 19950 current-Luau CANDIDATES. See packages/training/runs/luau-currency-github-v1.json. Evidence of modernity is never evidence against it.",
     "human_review": "not_performed",
     "semantic_quality": "not_measured",
     "deduplication": "exact, on content normalised for line endings and trailing whitespace. Near-duplicates are MEASURED via shape_sha256 and are NOT removed."
@@ -124,7 +124,7 @@
   "what_this_does_not_establish": [
     "That the upstream author held the rights they granted. A retrieved LICENSE is the publisher speaking, not a chain of title.",
     "That any file is worth training on. Parsing is the only quality evidence here: nothing executed anything in an engine or scored quality, and training_approved is false with semantic_quality_pass null on every row.",
-    "That the corpus is current Luau. These are repositories as they stood at their pinned commits; some predate the .luau extension and 6,090 of the files in the surrounding survey are .lua.",
-    "That the counts cover every eligible repository. Repositories over the snapshot cap are recorded skipped_repository_too_large with their Luau file count, and those files are not here."
+    "That the corpus is current Luau. 19950 rows are CANDIDATES — hand-written, observed to parse, calling no deprecated global — which counts evidence OF modernity and never evidence against it: Lua 5.1 that never needed wait() is indistinguishable here from Luau that avoided it. 2250 of these rows carry a .lua extension, which is not by itself old code.",
+    "That any repository was left out for size. None were: every eligible repository was taken, the two over the snapshot cap one blob at a time against the sha their pinned tree named. What the counts still do not cover is vendored source, which is excluded on purpose and counted separately."
   ]
 }
