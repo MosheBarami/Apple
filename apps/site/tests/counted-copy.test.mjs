@@ -87,8 +87,16 @@ test('the landing contains no fabricated run, place, or result snapshot', () => 
       `the landing contains fabricated runtime evidence matching ${pattern}`);
   }
 
-  assert.match(source, /href=["']\/app["']/,
-    'the root has no real app entry point; this guard would otherwise only verify absence');
+  //[[ RE-AIMED 2026-09-21. THE CONTROL IS "THE PAGE LINKS INTO THE PRODUCT", NOT ONE PATH.
+  //   This required exactly `href="/app"`. The landing's primary button said "Open Apple" and
+  //   pointed there — and /app redirects a logged-out browser to /app/login, so the biggest green
+  //   button on the front page asked a first-time visitor to sign in to an account they did not
+  //   have. It now says "Create an account" and points at /app/signup, matching Nav.astro on every
+  //   other page. That is still a real entry point into the product, which is all this control
+  //   needs to be true for the absence assertions above to mean anything. ]]
+  assert.match(source, /href=["']\/app(?:\/(?:signup|login))?["']/,
+    'the root has no real app entry point — no /app, /app/signup or /app/login link; this guard '
+    + 'would otherwise only verify absence');
 });
 
 test('the model cards are data-driven and do not revive the removed hand-counted sections', () => {

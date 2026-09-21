@@ -356,7 +356,16 @@ const asks = [
           <path d="M20 14.4A8.4 8.4 0 0 1 9.6 4a8.4 8.4 0 1 0 10.4 10.4Z" fill="currentColor"></path>
         </svg>
       </button>
-      <a class="pill" href="/app">Open Apple</a>
+      {/* IT SAID "Open Apple" AND POINTED AT /app, WHICH SENDS A STRANGER TO A SIGN-IN FORM.
+          Measured on the deployed landing: the header offered Sign in -> /app/login and
+          Open Apple -> /app, and /app redirects a logged-out browser straight to /app/login. So
+          the green primary button in the first 40px of the front page — the one a first-time
+          visitor is most likely to press — asked them to sign in to an account they do not have,
+          and the words "create an account" appeared nowhere on the page.
+          Every OTHER page on this site already gets this right: Nav.astro carries a ghost Sign in
+          beside a primary "Create an account" -> /app/signup. The landing now matches it. A
+          returning customer is served by the Sign in beside it, which is what that link is for. */}
+      <a class="pill" href="/app/signup">Create an account</a>
       </div>
     </div>
   </header>
@@ -805,6 +814,16 @@ const asks = [
           <a href="/docs">Getting started</a>
           <a href="/docs/plugin">Install the plugin</a>
           <a href="/docs/credits-and-limits">Credits &amp; limits</a>
+        </div>
+        <div class="footer-col">
+          {/* THE LANDING WAS THE ONLY PAGE ON THE SITE WITH NO WAY TO REACH A PERSON.
+              Measured across the deployed pages: /pricing carries one mailto, /docs two, /privacy
+              its own — and / carried zero. The front page is where somebody who cannot make the
+              product work arrives first, and it was the one page that offered them nowhere to go.
+              It goes in the footer column rather than the header for the reason recorded above the
+              Showcase link: that row already overruns 343px of phone at 375px wide. */}
+          <h3>Contact</h3>
+          <a href="mailto:apple.labs.app@gmail.com">Email us</a>
         </div>
         <div class="footer-col">
           <h3>Legal</h3>
