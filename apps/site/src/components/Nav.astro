@@ -13,9 +13,21 @@ import AppleMark from './AppleMark.astro';
 //   The hrefs are ROOT-RELATIVE (`/#product`, not `#product`) so one list works from every page.
 //   On the landing itself a same-document fragment still scrolls without a navigation; from
 //   /pricing it loads the landing and lands on the section.
+//   SHOWCASE IS NOT AN ASTRO ROUTE, AND THAT IS WHY IT WAS MISSING FROM HERE FOR A DAY.
+//
+//   `/showcase` — sixteen Roblox screens and six playable maps the deployed model built out of the
+//   product's own library — is an object in the Worker's D1 static store, uploaded by
+//   `infra/deploy-showcase.mjs`. Nothing under `apps/site/src/pages` builds it and nothing there
+//   should. It was live and reachable from 2026-09-21 with not one link pointing at it, so the
+//   only way to see the single best piece of evidence this product has was to be told the URL by
+//   hand. The owner is fifteen and does not read git; an unlinked page is a page on one laptop.
+//
+//   `tests/links-resolve.test.mjs` knows about it by name and checks that a publisher for it
+//   exists in the repository — an exemption that has to be earned rather than a hole.
 const links = [
   { href: '/#inside', label: 'Product' },
   { href: '/#models', label: 'Models' },
+  { href: '/showcase', label: 'Showcase' },
   { href: '/pricing', label: 'Pricing' },
   { href: '/docs', label: 'Docs' },
 ];

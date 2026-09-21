@@ -55,6 +55,27 @@ function fileFor(route, all) {
   return null;
 }
 
+/**
+ * ROUTES THIS SITE LINKS TO THAT ASTRO DOES NOT BUILD.
+ *
+ * RE-AIMED 2026-09-21, and the history matters because the alternative was to weaken this file.
+ * `/showcase` is a real, reachable page — sixteen Roblox screens and six playable maps the
+ * deployed model built from the product's own library — but it is an object in the Worker's D1
+ * static store, uploaded by `infra/deploy-showcase.mjs`, not a file under `apps/site/src/pages`.
+ * So `fileFor` cannot see it, and the nav link to it would read as broken to the check below.
+ *
+ * The property this file defends is "every internal link goes somewhere a reader can reach", NOT
+ * "every internal link is an Astro page" — the second was only ever a cheap proxy for the first,
+ * and it was correct until the day the site gained a route from somewhere else. Naming the route
+ * here re-aims the check at the property.
+ *
+ * AN EXEMPTION LIST IS A HOLE UNLESS SOMETHING GUARDS IT, which is the whole reason the value is a
+ * publisher path and not a comment: `the exempt routes are published by something in this
+ * repository` below reads that file and fails if it does not actually ship the route. Adding
+ * `/anything` here without a publisher does not buy silence.
+ */
+const WORKER_SERVED = new Map([['/showcase', 'infra/deploy-showcase.mjs']]);
+
 const built = existsSync(DIST) ? pages() : [];
 const html = new Map(built.map((f) => [f, readFileSync(join(DIST, f), 'utf8')]));
 const ids = new Map([...html].map(([f, body]) => [f, new Set([...body.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]))]));
@@ -70,6 +91,7 @@ test('every internal link resolves to a page that exists', () => {
       // /app/* is the SPA, served by the worker from a different bundle, and /api/* is the worker.
       if (href.startsWith('/app') || href.startsWith('/api') || href.startsWith('/v1')) continue;
       if (/\.(png|svg|ico|xml|json|webmanifest|txt|webp|jpg|css|js)$/.test(href)) continue;
+      if (WORKER_SERVED.has(href.replace(/\/$/, '') || '/')) continue;
       if (!fileFor(href, built)) broken.push(`${routeOf(file)} -> ${href}`);
     }
   }
@@ -94,6 +116,44 @@ test('every anchor names an id that is on the page it points at', () => {
     'an anchor to a section that is not there lands the reader at the top of a page with nothing to '
       + 'see and no explanation:\n  ' + [...new Set(dangling)].sort().join('\n  '),
   );
+});
+
+test('the exempt routes are published by something in this repository', () => {
+  // WHAT MAKES THE EXEMPTION HONEST. A route listed above is being excused from the
+  // does-it-resolve check on the claim that the Worker serves it. This reads the file that is
+  // supposed to do the serving and fails if it does not name the route — so the claim costs
+  // something. Without this, `WORKER_SERVED` would be a list of links nobody checks at all, which
+  // is strictly worse than the broken-link report it replaced.
+  const repo = join(SITE, '..', '..');
+  for (const [route, publisher] of WORKER_SERVED) {
+    const path = join(repo, publisher);
+    assert.ok(existsSync(path), `${route} is exempt on the word of ${publisher}, which does not exist`);
+    const source = readFileSync(path, 'utf8');
+    assert.ok(
+      source.includes(`'${route}'`) || source.includes(`"${route}"`),
+      `${publisher} is named as the publisher of ${route} but never mentions that path — the exemption is unearned`,
+    );
+    // AND THE OPPOSITE DRIFT: the day someone adds apps/site/src/pages/showcase.astro, this entry
+    // becomes a lie that silently stops the real check from running on a real page. Self-cleaning.
+    assert.equal(
+      fileFor(route, built),
+      null,
+      `${route} is now built by Astro — delete its ${publisher} exemption so the ordinary check covers it`,
+    );
+  }
+});
+
+test('the navigation reaches the showcase from every page', () => {
+  // THE FAILURE THIS EXISTS FOR IS ONE DAY OLD. /showcase went live on 2026-09-21 with nothing
+  // anywhere linking to it: the best evidence this product has, reachable only by being told the
+  // URL. A link that is nobody's test is a link that gets tidied away by the next person who
+  // thinks the nav is too long.
+  const others = [...html].filter(([f]) => !f.startsWith('index.html'));
+  assert.ok(others.length >= 3, 'too few non-landing pages built to tell whether the nav is shared');
+  const missing = others
+    .filter(([, body]) => !/href="\/showcase"/.test(body))
+    .map(([f]) => routeOf(f));
+  assert.deepEqual(missing, [], 'pages whose navigation does not offer the showcase:\n  ' + missing.join('\n  '));
 });
 
 test('the navigation reaches every section it names, from every page', () => {
