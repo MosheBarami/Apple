@@ -241,6 +241,31 @@ spec("typed creation and set_props commit a recording", function()
     c:destroy()
 end)
 
+spec("ordinary remotes and scriptable post effects are first-class checkpoint-safe creation", function()
+    local c = newCommands()
+    local made = run(c, "network-and-lighting", { op = "create_instances", items = {
+        { className = "RemoteEvent", name = "ShopChanged", parent = "game.ReplicatedStorage" },
+        { className = "RemoteFunction", name = "BuyItem", parent = "game.ReplicatedStorage" },
+        { className = "DepthOfFieldEffect", name = "ShopDepth", parent = "game.Lighting", props = {
+            FocusDistance = { t = "number", v = 24 },
+            InFocusRadius = { t = "number", v = 18 },
+            FarIntensity = { t = "number", v = 0.25 },
+        } },
+    } }, true)
+    eq(made.ok, true, "ordinary networking/presentation classes must be creatable: " .. tostring(made.error))
+    eq(services.ReplicatedStorage:FindFirstChild("ShopChanged").ClassName, "RemoteEvent")
+    eq(services.ReplicatedStorage:FindFirstChild("BuyItem").ClassName, "RemoteFunction")
+    eq(services.Lighting:FindFirstChild("ShopDepth").FocusDistance, 24)
+    local snap = run(c, "network-checkpoint", { op = "snapshot", root = "game", includeScripts = true, checkpointId = "cp-network" }, false)
+    eq(snap.ok, true, tostring(snap.error))
+    eq(snap.data.restorable, true, "ordinary remotes/effects must not poison a whole-place checkpoint")
+    eq(next(snap.data.skipped), nil, "supported networking/presentation classes were skipped")
+    services.ReplicatedStorage:FindFirstChild("ShopChanged"):Destroy()
+    services.ReplicatedStorage:FindFirstChild("BuyItem"):Destroy()
+    services.Lighting:FindFirstChild("ShopDepth"):Destroy()
+    c:destroy()
+end)
+
 spec("create_instances preflights collisions and the whole nested tree", function()
     local c = newCommands()
     local existing = run(c, "existing-name", { op = "create_instances", items = {{ className = "Part", name = "Typed", parent = "game.Workspace" }} }, true)
@@ -409,6 +434,9 @@ spec("restore is checkpoint-bound, source-hash verified and one recorded mutatio
     local c = newCommands()
     local snap = run(c, "restore-snapshot", { op = "snapshot", root = "game.Workspace.RestoreTarget", includeScripts = true, checkpointId = "cp-restore-1" }, false)
     eq(snap.ok, true, tostring(snap.error)); eq(snap.data.restorable, true); eq(snap.data.complete, true)
+    local savedPart = nil
+    for _, node in ipairs(snap.data.node.children) do if node.className == "Part" then savedPart = node end end
+    eq(savedPart ~= nil, true); eq(savedPart.props.Transparency.v, 0.25, "checkpoint must preserve the pre-mutation part transparency")
     local sourceNode = nil
     for _, node in ipairs(snap.data.node.children) do if node.className == "ModuleScript" then sourceNode = node end end
     eq(sourceNode ~= nil, true); eq(sourceNode.source, "return 'checkpoint'\\n"); eq(sourceNode.sourceChars, #sourceNode.source); eq(type(sourceNode.baseHash), "string"); eq(#sourceNode.baseHash, 8)
@@ -449,11 +477,11 @@ end)
 spec("incomplete snapshot is never checkpoint-eligible or mutated from", function()
     local root = Instance.new("Folder"); root.Name = "IncompleteSnapshot"; root.Parent = workspace
     local supported = Instance.new("Part"); supported.Name = "Supported"; supported.Parent = root
-    local unsupported = Instance.new("RemoteEvent"); unsupported.Name = "Unsupported"; unsupported.Parent = root
+    local unsupported = Instance.new("ObjectValue"); unsupported.Name = "Unsupported"; unsupported.Parent = root
     local c = newCommands()
     local snap = run(c, "incomplete-snapshot", { op = "snapshot", root = "game.Workspace.IncompleteSnapshot", includeScripts = true, checkpointId = "cp-incomplete-1" }, false)
     eq(snap.ok, true, tostring(snap.error)); eq(snap.data.complete, false); eq(snap.data.restorable, false); eq(snap.data.checkpointEligible, false); eq(snap.data.coverage, "incomplete")
-    eq(snap.data.skipped.RemoteEvent, 1)
+    eq(snap.data.skipped.ObjectValue, 1)
     local beforeHistory = #history.log
     local refused = run(c, "incomplete-restore", { op = "restore", root = "game.Workspace.IncompleteSnapshot", checkpointId = "cp-incomplete-1", snapshot = snap.data }, true, function() return true end)
     eq(refused.ok, false); eq(refused.failure, "invalid"); has(refused.error, "incomplete or unbound")
@@ -481,7 +509,7 @@ spec("restore rejects stale protected or unsupported current content before muta
     local supported = Instance.new("Part"); supported.Name = "Supported"; supported.Parent = subtree
     local supportedSnap = run(c, "unsupported-snapshot", { op = "snapshot", root = "game.Workspace.UnsupportedCurrent", checkpointId = "cp-unsupported-1", includeScripts = true }, false)
     eq(supportedSnap.ok, true)
-    local unknown = Instance.new("RemoteEvent"); unknown.Name = "DoNotDelete"; unknown.Parent = subtree
+    local unknown = Instance.new("ObjectValue"); unknown.Name = "DoNotDelete"; unknown.Parent = subtree
     local refused = run(c, "unsupported-restore", { op = "restore", root = "game.Workspace.UnsupportedCurrent", checkpointId = "cp-unsupported-1", snapshot = supportedSnap.data }, true, function() return true end)
     eq(refused.ok, false); eq(refused.failure, "conflict"); has(refused.error, "unsupported current content")
     eq(subtree:FindFirstChild("DoNotDelete"), unknown); eq(subtree:FindFirstChild("Supported"), supported); eq(#history.log, beforeHistory)

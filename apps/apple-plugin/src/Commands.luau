@@ -148,6 +148,22 @@ local CREATE_CLASSES = {
 	NumberValue = true,
 	Vector3Value = true,
 	Color3Value = true,
+	-- Ordinary in-place networking primitives. These do not load code or external content; their
+	-- behavior lives in the Script/LocalScript source Apple writes through edit_script. Refusing
+	-- them made a normal server-authoritative shop impossible to build and also made an existing
+	-- RemoteEvent poison whole-place checkpoints.
+	RemoteEvent = true,
+	RemoteFunction = true,
+	UnreliableRemoteEvent = true,
+	BindableEvent = true,
+	BindableFunction = true,
+	-- Scriptable presentation objects whose state is completely covered by PROPERTY_ALLOW below.
+	Atmosphere = true,
+	BloomEffect = true,
+	BlurEffect = true,
+	ColorCorrectionEffect = true,
+	DepthOfFieldEffect = true,
+	SunRaysEffect = true,
 }
 
 -- Snapshot restore may re-materialise source that was already in this place.  It still cannot
@@ -169,6 +185,9 @@ local SCRIPT_CLASSES = {
 local PRESERVE_CLASSES = {
 	Terrain = true,
 	Camera = true,
+	-- Sky carries external Content ids. Apple deliberately does not write Content properties, so an
+	-- existing Sky is safer as a protected identity than as a half-restored recreatable object.
+	Sky = true,
 }
 
 -- Checkpoints also encounter four Roblox-created TextChatService configuration singletons in a
@@ -182,6 +201,7 @@ local SNAPSHOT_PRESERVE_CLASSES = {
 	ChatInputBarConfiguration = true,
 	ChannelTabsConfiguration = true,
 	BubbleChatConfiguration = true,
+	Sky = true,
 }
 
 -- These objects are owned by Studio and must keep their identity, but the user-authored children
@@ -228,6 +248,21 @@ local PROPERTY_ALLOW = {
 	Ambient = true,
 	OutdoorAmbient = true,
 	ExposureCompensation = true,
+	Intensity = true,
+	Threshold = true,
+	FocusDistance = true,
+	InFocusRadius = true,
+	NearIntensity = true,
+	FarIntensity = true,
+	Contrast = true,
+	Saturation = true,
+	TintColor = true,
+	Spread = true,
+	Density = true,
+	Offset = true,
+	Haze = true,
+	Glare = true,
+	Decay = true,
 
 	Visible = true,
 	Active = true,
@@ -313,6 +348,21 @@ local READ_PROPERTIES = {
 	Ambient = true,
 	OutdoorAmbient = true,
 	ExposureCompensation = true,
+	Intensity = true,
+	Threshold = true,
+	FocusDistance = true,
+	InFocusRadius = true,
+	NearIntensity = true,
+	FarIntensity = true,
+	Contrast = true,
+	Saturation = true,
+	TintColor = true,
+	Spread = true,
+	Density = true,
+	Offset = true,
+	Haze = true,
+	Glare = true,
+	Decay = true,
 	Visible = true,
 	Active = true,
 	Selectable = true,
@@ -945,10 +995,11 @@ end
 local function captureProperties(gameRef: any, inst: any, tableAllow: any): ({ [string]: any }, { string })
 	local out = {}
 	local issues = {}
-	local seen = 0
+	-- `tableAllow` is a source-authored finite table, not untrusted input. Do not reuse MAX_PROPS here:
+	-- that limit belongs to one incoming write. READ_PROPERTIES already contains more entries than
+	-- MAX_PROPS, and stopping an unordered Luau table walk at 48 made checkpoint fidelity random — a
+	-- Part could omit Transparency simply because post-effect keys happened to be visited first.
 	for property in tableAllow do
-		seen += 1
-		if seen > MAX_PROPS then break end
 		if not CONTENT_PROPERTY[property] then
 			local ok, value = pcall(function() return inst[property] end)
 			if ok and value ~= nil then
@@ -1672,6 +1723,9 @@ local function engineOwnedSnapshotPreserve(self: any, inst: any): boolean
 		if parent ~= workspaceService then return false end
 		local ok, currentCamera = pcall(function() return workspaceService.CurrentCamera end)
 		return ok and currentCamera == inst
+	end
+	if className == "Sky" then
+		return parent == serviceFrom(self.game, self.options.services, "Lighting")
 	end
 	local textChatService = serviceFrom(self.game, self.options.services, "TextChatService")
 	if parent ~= textChatService then return false end
