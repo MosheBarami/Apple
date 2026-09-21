@@ -135,15 +135,15 @@ node scripts/check-site-semantics.mjs → exit 0
 > | 3.10 Playwright MCP | CLOSED | `.mcp.json` at project scope, verified by a real initialize handshake returning Playwright 1.64.0-alpha, not by the file existing |
 > | 3.11 six commits on no remote | CLOSED | pushed; `git rev-list --count origin/main..HEAD` = 0 |
 > | 3.12 the live worker matches no commit | CLOSED | `curl /api/health` → `buildSha` equal to HEAD, from a tree where the worker's own sources are clean |
+> | 3.6 rosebud reference | CLOSED | `docs/evidence/rosebud-landing-measured.json` — first capture ever taken here, from a real browser at 1024×768. It contradicts the brief: rosebud.ai's landing has **zero** keyframe animations, no `<audio>` and no audio in the resource timeline. Ours animates 56 elements across 10 keyframes. The gap is type (one monospace against our two families) and length (2,450px against our 6,353px), not motion. |
+> | 3.9 seen/unseen split | CLOSED | `docs/evals/HELD-OUT.md` — 3,000 gate questions × 404 training instructions, 1,212,000 pairs, 0 overlaps of three kinds, max 0.1985 against a 0.6 threshold, margin 0.4015, verdict HELD OUT. The 88-task suite against the hosted models is written down as ARGUED rather than measured, in those words, because we do not have GLM's corpus. |
 >
-> **Still open, and why each one is:**
+> **Still open — both need someone other than me:**
 >
-> - **3.6 rosebud HAR** — needs a browser session on a site with a real account. Owner step.
 > - **3.8 visual benchmark** — drives `/api/admin/studio-op/…` against live Studio, and
 >   `session-info` reports `pluginConnected: false`, `link.paired: false`. Owner step: open Studio,
 >   open the Apple plugin, pair the project. Verified 2026-09-21, see
 >   `docs/evidence/live-run-2026-09-21.md`.
-> - **3.9 seen/unseen split** — a paid eval run with the held-out set reported separately.
 > - **3.13 `check-rebrand`** — still exit 1, and still not mine to fix: the fix rewrites
 >   `docs/evidence/probes/pass3/app-bundle.txt`, which another lane holds dirty. Tonight's web
 >   deploy moved the live asset hashes again, so its four stale-bundle findings now name
