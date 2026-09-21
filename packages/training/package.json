@@ -44,6 +44,8 @@
     "report-roblox-frontier": "node src/report-roblox-frontier.mjs",
     "generation-arms": "node src/generation-arms.mjs",
     "compare-generation-arms": "node src/compare-generation-arms.mjs",
-    "analyze-dataset-v1": "node src/roblox-dataset-v1/analyze.mjs"
+    "analyze-dataset-v1": "node src/roblox-dataset-v1/analyze.mjs",
+    "check-luau-syntax": "node src/check-luau-syntax.mjs",
+    "build-ui-asset-library": "node src/build-ui-asset-library.mjs"
   }
 }

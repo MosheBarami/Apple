@@ -103,6 +103,16 @@ packages/corpus/raw/*
 # The registry handoff: 1,082 resolvable candidates. Tracked so `discover --includeRegistry`
 # works without re-cloning 43MB of package indexes first.
 !packages/corpus/data/registry-seeds.json
+# THE UI ASSET INDEX over the GitHub corpus: 1,060 rights-cleared Luau files that build a Roblox
+# interface, keyed by what they construct, each pinned to a revision and carrying its SPDX id and
+# the sha256 of the licence document that granted it.
+#
+# Tracked because it is the LIBRARY, not a cache of one. The 25.9 MiB of source it points at stays
+# out (rows.jsonl is ignored below for the same reason), so if this index is untracked there is
+# nothing in a fresh clone to look anything up in, and `ui-asset-library.test.mjs` skips its
+# arithmetic check while reporting green — a guard that passes by not finding its evidence.
+# It is 1.1 MB, and it is re-derivable only by re-reading 1,022 repositories over the network.
+!packages/corpus/data/ui-assets-github-v1.json
 packages/evals/results/raw/
 
 # THE HARVESTED ROBLOXQA ROWS: derived, third-party, and 4.8 MB. The EVIDENCE about them is not.
