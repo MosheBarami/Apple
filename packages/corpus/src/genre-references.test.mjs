@@ -13,11 +13,11 @@ import {
   loadGenreReferenceManifest,
   queryGenreReferences,
 } from './genre-references.mjs';
+import { deriveWitness, hasChunks, readWitness, witnessedDocuments } from './chunk-witness.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..', '..', '..');
 const GENRE_KITS_PATH = path.join(REPO, 'apps', 'worker', 'src', 'genre-kits.ts');
-const CHUNKS_PATH = path.join(REPO, 'packages', 'corpus', 'data', 'chunks.jsonl');
 
 const EXPECTED_ASPECTS = [
   'ui_hud',
@@ -49,16 +49,17 @@ function canonicalGenreIds() {
   return ids;
 }
 
+// WAS: read `packages/corpus/data/chunks.jsonl` directly. That file is a gitignored 10 MB build
+// artefact, so in a fresh checkout this threw ENOENT rather than failing an assertion, `pnpm -r
+// test` bailed at @golem/corpus, and every package after it never ran. See chunk-witness.mjs for
+// why the fix is a tracked witness rather than either committing the corpus or skipping the test.
 function corpusByDocument() {
-  const documents = new Map();
-  for (const line of readFileSync(CHUNKS_PATH, 'utf8').trim().split('\n')) {
-    const row = JSON.parse(line);
-    const rows = documents.get(row.docSlug) ?? [];
-    rows.push(row);
-    documents.set(row.docSlug, rows);
-  }
-  assert.ok(documents.size > 2_000, `expected the existing official corpus, found ${documents.size} documents`);
-  return documents;
+  const witness = readWitness();
+  assert.ok(
+    witness.documentCount > 2_000,
+    `expected the existing official corpus, the witness records ${witness.documentCount} documents`,
+  );
+  return witnessedDocuments(witness);
 }
 
 function assertIsoDate(value, label) {
@@ -180,6 +181,30 @@ test('official document IDs, URLs, and chunk IDs resolve exactly to the existing
       : rows[0].title;
     assert.equal(document.title, expectedTitle);
   }
+});
+
+// THE OTHER HALF OF THE WITNESS, and the half that stops it from being a fixture somebody can edit
+// to agree with whatever the manifest says. On any machine that actually has the corpus — the one
+// the witness was written on, and every machine that rebuilds it — the witness is re-derived from
+// chunks.jsonl and must come back identical, hash and counts included.
+//
+// Where the corpus is absent this test says so out loud instead of passing quietly, because "the
+// check did not run" and "the check passed" must not look the same in a log.
+test('the chunk witness still matches the corpus it was taken from', (t) => {
+  const witness = readWitness();
+  if (!hasChunks()) {
+    t.diagnostic(`${witness.source} is not in this checkout — the witness taken on ${witness.generatedAt} `
+      + 'was NOT re-derived here. It is re-derived wherever the corpus exists.');
+    assert.equal(hasChunks(), false);
+    return;
+  }
+
+  const manifest = loadGenreReferenceManifest();
+  const fresh = deriveWitness(manifest.officialDocuments.map((item) => item.id), { generatedAt: witness.generatedAt });
+  assert.equal(fresh.sourceSha256, witness.sourceSha256, 'chunks.jsonl changed — regenerate with `node src/chunk-witness.mjs --write`');
+  assert.equal(fresh.sourceLines, witness.sourceLines);
+  assert.equal(fresh.documentCount, witness.documentCount);
+  assert.deepEqual(fresh.documents, witness.documents);
 });
 
 test('every canonical genre has useful external references and one official link for every aspect', () => {
