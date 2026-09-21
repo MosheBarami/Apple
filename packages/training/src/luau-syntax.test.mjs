@@ -62,11 +62,21 @@ test('a diagnostic line is parsed into path, position, kind and message', () => 
 });
 
 test('a path containing a colon is not truncated at it', () => {
-  // A repository may name a directory `a:b`. Anchoring the line/col tail from the LEFT would cut
-  // the path at the first colon and file every diagnostic under the wrong name.
+  // A repository may name a directory `a:b`. Cutting the path at the FIRST colon files every
+  // diagnostic under the wrong name — and under a name that is a prefix of the real one, so it
+  // looks like a path rather than like an error.
   const d = parseDiagnosticLine('./weird:dir/b.luau:2:3-4: (W0) SyntaxError: bad');
   assert.equal(d.path, './weird:dir/b.luau');
   assert.equal(d.line, 2);
+
+  // THE CASE THAT ACTUALLY PINS IT. A falsification run swapped the greedy `(.*)` for a lazy
+  // `(.*?)` and this test stayed GREEN: with a colon followed by non-digits, the `:(\d+)` that
+  // follows forces the engine to backtrack to the same answer either way, so the fixture above
+  // cannot tell a left-anchored parse from a right-anchored one. A colon followed by DIGITS can.
+  const numeric = parseDiagnosticLine('./v1:2/b.luau:7:3-4: (W0) SyntaxError: bad');
+  assert.equal(numeric.path, './v1:2/b.luau', 'the path was cut at a colon that looked like a line number');
+  assert.equal(numeric.line, 7, 'a colon inside the path was read as the line number');
+  assert.equal(numeric.column, 3);
 });
 
 test('SyntaxError is separated from TypeError and from lint kinds', () => {

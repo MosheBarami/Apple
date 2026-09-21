@@ -127,6 +127,13 @@ test('a syntax report about a different corpus certifies nothing', () => {
   assert.equal(syntaxReportApplies({ corpus: real, rows_checked: 3 }, real, 27671), false,
     'a report that covered 3 of 27,671 rows was accepted as covering all of them');
   assert.equal(syntaxReportApplies(null, real, 27671), false);
+
+  // THE CASE THAT PINS THE IDENTITY CHECK SEPARATELY. A falsification run deleted the
+  // `report.corpus !== corpusRelPath` line and this test stayed GREEN, because every fixture that
+  // named a different corpus ALSO had a different row count — the row count was doing all the
+  // work. A sibling corpus of the same size would then have certified this one.
+  assert.equal(syntaxReportApplies({ corpus: 'packages/training/data/roblox-github-v2', rows_checked: 27671 }, real, 27671), false,
+    'a report about a DIFFERENT corpus of the same size was accepted');
 });
 
 test('the composition key does not depend on the order the classes were found in', () => {
