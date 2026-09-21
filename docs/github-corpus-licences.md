@@ -86,13 +86,19 @@ What else the trees say:
 
 | | count |
 | --- | ---: |
-| repositories with a licence FILE at the root | 1,052 |
+| repositories with a licence FILE at the root | ~~1,052~~ **1,063** — see below |
 | repositories shipping a Rojo project | 506 |
 | repositories shipping a wally manifest | 345 |
 | repositories holding no Luau at all | 28 |
 
-The 1,052 with a licence file are the ones on which `licence_text` is reachable at all — the tier
-`clear-rights.mjs` reserves for a licence document that was retrieved and read, and the tier no
+**1,052 was this matcher's answer, not the repositories' answer.** Eleven roots held a licence file
+named `UNLICENSE` or `LICENSE-APACHE.md`, which the pattern could not see, and every one of them was
+written up as having none. The fifth pass below re-read those eleven; the artifact now says 1,063 of
+1,063, and the row here is struck through rather than quietly edited because the 310 Luau files that
+figure kept out of the corpus are the reason it matters.
+
+The repositories with a licence file are the ones on which `licence_text` is reachable at all — the
+tier `clear-rights.mjs` reserves for a licence document that was retrieved and read, and the tier no
 Hugging Face dataset in the acquisition queue reaches. Seeing a licence file in a tree is not
 reading it; `license_verified` on these rows says `github_api_detection+licence_file_present` and
 nothing stronger.
