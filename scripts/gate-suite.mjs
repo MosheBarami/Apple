@@ -234,7 +234,17 @@ if (broken.length) {
     const named = [...new Set(lines
       .map((l) => l.trim())
       .filter((l) => /^(?:✖|not ok\b)/.test(l) && !/^✖ failing tests:/.test(l)))];
-    for (const l of (named.length ? named.slice(0, 6) : lines.slice(-6))) console.error(`    ${l.slice(0, 160)}`);
+    //   AND THE NAME WITHOUT THE REASON IS HALF THE ANSWER. The first version of this hoist
+    //   printed only the `✖` lines and dropped the tail, so the very next red said
+    //   `✖ it catches a ticked gate with no FALSIFIED record (300054ms)` and threw away the
+    //   sentence explaining that 300054 was a spawn timeout rather than a verdict. Both now.
+    //   The REASON is in the middle too, so it is hoisted the same way. A stack frame is the one
+    //   thing in this output that never identifies anything, and it was all this used to print.
+    const why = [...new Set(lines
+      .map((l) => l.trim())
+      .filter((l) => /^(?:[A-Za-z]*Error\b|Expected |Actual |\+ actual|- expected)/.test(l)))];
+    const shown = named.length ? [...named.slice(0, 4), ...why.slice(0, 2)] : lines.slice(-6);
+    for (const l of shown) console.error(`    ${l.slice(0, 160)}`);
   }
   console.log(`SUITE RED — ${broken.map((b) => b.label).join(', ')}`);
   process.exit(1);
