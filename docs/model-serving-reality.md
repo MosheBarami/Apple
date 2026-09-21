@@ -30,7 +30,7 @@ From `apps/worker/src/gateway.ts` (`DEFAULT_MODELS`, lines 104–137) and the la
 | `stone` | `@cf/zai-org/glm-5.3-flash` | 5,600 | yes | **Apple (free) — every mode**, and **Apple MAX in Plan mode** |
 | `rune`  | `@cf/zai-org/glm-5.3-flash` | 6,500 | yes | **Apple MAX — Agent / Super Agent** |
 | `vision`| `@cf/zai-org/glm-5.3-flash` | 4,000 | no  | the visual critic |
-| `clay`  | `@cf/qwen/qwen3-30b-a3b-fp8` | 6,500 | yes | **no product lane routes here any more** |
+| `clay`  | `@cf/qwen/qwen3-30b-a3b-fp8` | 6,500 | yes | **no product lane routes here any more** — but see the correction under this table: that is not the same as unreachable |
 | `memory`| `@cf/qwen/qwen3-30b-a3b-fp8` | 800 | no | internal summarisation |
 
 **Say this precisely, because the repository has been burned by not saying it precisely:** `clay`,
@@ -48,6 +48,17 @@ budget). The only thing a customer request can currently hit is GLM-5.3 Flash.
 
 That matters for this question: there is no second, lesser production lane sitting on a
 LoRA-capable model that a fine-tune could quietly improve. There is one model, and it refuses LoRA.
+
+> **Correction, 2026-09-21, and it does not change the LoRA answer.** "No product lane routes here"
+> is true and reads as "nothing reaches clay", which is false. `gatewayModelFor` was bundled and
+> **run** over every input: with `productModel` **undefined** it returns the mode unchanged, so a
+> run asking for mode `clay` and sending no product model is served `@cf/qwen/qwen3-30b-a3b-fp8` —
+> while `effectiveProductModel` records that same run as `apple`. Both copies of `asProductModel`
+> return `undefined` for an omitted field, and one of them serves `POST /v1/projects/:id/runs`.
+> Written up in `docs/backlog/HANDOFF-CLAY-REACHABLE.md`; not fixed here, because
+> `apps/worker/src/do/session.ts` is held by another session. Whether live traffic takes that path
+> is unmeasured. qwen3-30b-a3b-fp8 carries no `lora` property either (§3.1), so the answer above
+> stands for every key.
 
 > A stale note in project memory says all five keys resolve to GLM and that the account has zero
 > finetunes uploaded. Both are now wrong: `clay`/`memory` are qwen3-30b-a3b-fp8, and the account has
