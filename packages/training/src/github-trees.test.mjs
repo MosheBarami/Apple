@@ -27,7 +27,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { summariseTree, isRobloxRelevant, isLuauPath } from './read-github-trees.mjs';
+import { summariseTree, isRobloxRelevant, isLuauPath, preferredLicenceFile } from './read-github-trees.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ARTIFACT = join(ROOT, 'discovery/v2/github-trees.jsonl');
@@ -88,6 +88,53 @@ test('seeing a licence file in a tree is never recorded as having read it', () =
   const nested = summariseTree(tree([blob('node_modules/x/LICENSE', 1000, 'beef'), blob('src/a.luau')]));
   assert.equal(nested.license_file_name, null,
     "a vendored dependency's licence was taken as the repository's own grant");
+});
+
+test('a licence file named UNLICENSE or LICENSE-APACHE is found, because eleven of them were not', () => {
+  // HISTORY. The first matcher was /^(LICEN[CS]E|COPYING)(\.[A-Za-z0-9]+)?$/i. Against the 1,063
+  // trees it wrote "NO licence file found at the repository root" onto eleven repositories that
+  // each had one, and 310 licence-clean Luau files were dropped from the corpus as a result. The
+  // exclusion was recorded as a rights fact. It was a regex.
+  //
+  // These names are not hypothetical: every string below is a real root entry read from GitHub on
+  // 2026-09-21 in the repositories named beside it.
+  const cases = [
+    ['UNLICENSE', 'Unlicense', 'TokenManiac/Base64, Heliodex/VM, tp-link-extender/2013 and four more'],
+    ['LICENSE-APACHE.md', 'Apache-2.0', 'rniraclefire/pretty-fusion-utils, rniraclefire/funk'],
+    ['LICENSE-APACHE.txt', 'Apache-2.0', 'techs-sus/azalea'],
+    ['LICENSE-APACHE', 'Apache-2.0', 'project-roadwork/spatial-grid'],
+  ];
+  for (const [name, spdx, where] of cases) {
+    const s = summariseTree(tree([blob(name, 1067, 'cafe'), blob('src/a.luau')]), spdx);
+    assert.equal(s.license_file_name, name, `${name} (${where}) was not seen as a licence file`);
+    assert.equal(s.license_file_sha, 'cafe');
+  }
+
+  // The widening must not swallow source files that merely talk about licences.
+  for (const notALicence of ['license-checker.luau', 'licensing.md', 'NOTICE', 'LICENSES/readme.md']) {
+    assert.equal(summariseTree(tree([blob(notALicence), blob('src/a.luau')]), 'MIT').license_file_name, null,
+      `${notALicence} was taken for a licence grant`);
+  }
+
+  // Sift/LICENSE.luau really is the MIT text under a .luau extension. It stays in.
+  assert.equal(summariseTree(tree([blob('LICENSE.luau')]), 'MIT').license_file_name, 'LICENSE.luau');
+});
+
+test('a dual-licensed root picks the file that matches the detected licence, not the first one', () => {
+  // WHY THIS IS NOT COSMETIC. acquire-github-luau.mjs fetches exactly license_file_name and runs
+  // licenceTextCorroborates(api_license_guess, thatText). Handing it LICENSE-MIT for an Apache-2.0
+  // repository produces `licence_text_mismatch` and zero rows — a false rejection that reads in the
+  // artifact exactly like a real rights finding.
+  const dual = ['LICENSE-APACHE.md', 'LICENSE-MIT.md'];
+  assert.equal(preferredLicenceFile(dual, 'Apache-2.0'), 'LICENSE-APACHE.md');
+  assert.equal(preferredLicenceFile(dual, 'MIT'), 'LICENSE-MIT.md');
+  assert.equal(preferredLicenceFile(['LICENSE-APACHE', 'LICENSE-BSD'], 'BSD-3-Clause'), 'LICENSE-BSD');
+
+  // With nothing to go on, the bare LICENSE wins over a qualified one, and the choice is stable.
+  assert.equal(preferredLicenceFile(['LICENSE-MIT', 'LICENSE'], null), 'LICENSE');
+  assert.equal(preferredLicenceFile(['LICENSE-MIT', 'LICENSE'], 'GPL-3.0'), 'LICENSE',
+    'an unrecognised SPDX id must fall back to the stable order, not to tree order');
+  assert.equal(preferredLicenceFile([], 'MIT'), null);
 });
 
 test('the relevance filter rejects the awesome-lists the raw sweep dragged in', () => {

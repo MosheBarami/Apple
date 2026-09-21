@@ -12,7 +12,7 @@
  * repositories with a verified licence are worth nothing to a corpus until somebody knows whether
  * they contain ten Luau files or ten thousand.
  *
- *   GH_TOKEN=... node packages/training/src/read-github-trees.mjs [--limit=N]
+ *   GH_TOKEN=... node packages/training/src/read-github-trees.mjs [--limit=N] [--relicence]
  *
  * ONE request per repository: `GET /repos/{owner}/{repo}/git/trees/HEAD?recursive=1`. The response
  * carries every path, its blob sha and its byte size, so the count, the byte total and a
@@ -63,12 +63,81 @@ export function isLuauPath(path) {
 }
 
 /**
+ * Licence files as they are actually named at a repository root.
+ *
+ * WHY THIS IS NOT `/^(LICEN[CS]E|COPYING)(\.[A-Za-z0-9]+)?$/`. That was the first matcher, and it
+ * missed two whole families, in both cases writing "NO licence file found at the repository root"
+ * over a root that had one:
+ *
+ *   `UNLICENSE`          — the canonical filename of the Unlicense, which does not begin with
+ *                          LICEN[CS]E at all. Seven repositories in this corpus.
+ *   `LICENSE-APACHE.md`  — the dual-licence convention. The old pattern allowed a dot extension
+ *   `LICENSE-MIT.txt`      and nothing else, so a `-APACHE` stem was not a licence file.
+ *
+ * Eleven licence-verified repositories holding 310 Luau files were excluded from the corpus by
+ * that, and the exclusion read as a rights fact rather than as the string-matching defect it was.
+ *
+ * A hyphen or underscore suffix must NAME A LICENCE FAMILY; a dot extension may be anything. That
+ * one distinction is what separates `LICENSE-APACHE.md` (in) from `license-checker.luau` (out, a
+ * script about licences) while keeping `LICENSE.luau` in — the corpus really does contain a
+ * repository that saved the MIT text under a `.luau` extension, and that file is its licence.
+ *
+ * NOTICE is deliberately absent. An Apache NOTICE file sits beside the grant and is not one.
+ */
+const LICENCE_FAMILY = 'APACHE|MIT|BSD|GPL|LGPL|AGPL|MPL|ISC|ZLIB|CC0|CC-BY|CC|UNLICENSE|EPL|BSL|WTFPL|BOOST|ARTISTIC';
+const LICENCE_AT_ROOT = new RegExp(
+  `^(LICEN[CS]E|UNLICEN[CS]E|COPYING|COPYRIGHT|OFL)([-_](${LICENCE_FAMILY})[A-Za-z0-9.-]*)?(\\.[A-Za-z0-9]+)*$`,
+  'i',
+);
+
+/** A word in a licence filename that names the licence family, e.g. LICENSE-APACHE.md -> apache. */
+const SPDX_FILENAME_HINT = {
+  'apache-2.0': 'apache',
+  mit: 'mit',
+  'mit-0': 'mit',
+  unlicense: 'unlicen',
+  'bsd-3-clause': 'bsd',
+  'bsd-2-clause': 'bsd',
+  '0bsd': 'bsd',
+  isc: 'isc',
+  'cc0-1.0': 'cc0',
+  zlib: 'zlib',
+};
+
+/**
+ * Which of a root's licence files is THE one, when there is more than one.
+ *
+ * A dual-licensed repository ships `LICENSE-APACHE` and `LICENSE-MIT` side by side. Picking the
+ * first in tree order is picking at random, and picking wrong is not cosmetic: `acquire-github-luau.mjs`
+ * fetches exactly this file and rejects the repository when its text does not corroborate the SPDX
+ * id GitHub detected. An Apache-2.0 repository whose MIT file was fetched is recorded
+ * `licence_text_mismatch` and contributes nothing — a false rejection wearing the costume of a
+ * rights finding.
+ *
+ * So: prefer the file whose NAME names the detected licence; otherwise the shortest name, which is
+ * the bare `LICENSE` when one exists; ties broken by sort so the choice is reproducible.
+ */
+export function preferredLicenceFile(names, spdx) {
+  if (names.length === 0) return null;
+  const hint = SPDX_FILENAME_HINT[String(spdx ?? '').toLowerCase()];
+  const sorted = [...names].sort((a, b) => a.length - b.length || a.localeCompare(b));
+  if (hint) {
+    const named = sorted.find((n) => n.toLowerCase().includes(hint));
+    if (named) return named;
+  }
+  return sorted[0];
+}
+
+/**
  * Fold one GitHub tree response into the count fields the probed schema left null.
+ *
+ * `spdx` is the licence GitHub detected on the repository object. It is used ONLY to choose
+ * between several licence files at the root, never to decide whether one is there.
  *
  * Pure, so the guard can drive it with a truncated tree and a complete one and watch the basis
  * string change, without a network call.
  */
-export function summariseTree(body) {
+export function summariseTree(body, spdx = null) {
   const entries = Array.isArray(body?.tree) ? body.tree : [];
   const blobs = entries.filter((e) => e.type === 'blob');
   const luau = blobs.filter((e) => /\.luau$/i.test(e.path));
@@ -76,7 +145,9 @@ export function summariseTree(body) {
   const both = [...luau, ...lua];
   const truncated = body?.truncated === true;
   const root = (p) => !p.includes('/');
-  const licenceBlob = blobs.find((e) => root(e.path) && /^(LICEN[CS]E|COPYING)(\.[A-Za-z0-9]+)?$/i.test(e.path));
+  const licenceBlobs = blobs.filter((e) => root(e.path) && LICENCE_AT_ROOT.test(e.path));
+  const preferred = preferredLicenceFile(licenceBlobs.map((e) => e.path), spdx);
+  const licenceBlob = licenceBlobs.find((e) => e.path === preferred) ?? null;
   return {
     tree_sha: body?.sha ?? null,
     tree_truncated: truncated,
@@ -122,6 +193,17 @@ if (isMain) {
   }
   console.error(`${targets.length} licence-verified Roblox-relevant repositories to tree-read`);
 
+  // --relicence re-reads ONLY the rows whose licence file came back null.
+  //
+  // The matcher that produced those nulls missed UNLICENSE and LICENSE-APACHE, so a null is the
+  // one verdict it could get wrong in the direction that costs rows. A row where a licence file
+  // WAS found needs no re-read: the widened matcher can only add siblings beside it, and the
+  // preference order can only move the pick to a file that better matches the detected SPDX id —
+  // which cannot change a repository whose text already corroborated, and all 1,022 acquired ones
+  // did (`repositories_rejected_for_licence_text_mismatch: 0`). Re-reading the whole set would
+  // re-measure 1,052 trees at a later HEAD and move every figure in the corpus for no finding.
+  const RELICENCE = process.argv.includes('--relicence');
+
   const done = new Map();
   if (existsSync(OUT)) {
     for (const line of readFileSync(OUT, 'utf8').trim().split('\n')) {
@@ -129,6 +211,13 @@ if (isMain) {
       try { const o = JSON.parse(line); done.set(o.source_id, o); } catch { /* partial line from a kill */ }
     }
     console.error(`resuming: ${done.size} already tree-read`);
+  }
+
+  if (RELICENCE) {
+    const stale = [...done.values()].filter((o) => o.tree_status === 'ok' && !o.license_file_name);
+    for (const o of stale) done.delete(o.source_id);
+    console.error(`--relicence: re-reading ${stale.length} repositories recorded as having no licence file at their root`);
+    if (stale.length === 0) { console.error('nothing to re-read; refusing to make a pass that measures nothing look like a pass that found nothing'); process.exit(4); }
   }
 
   const out = [];
@@ -172,7 +261,7 @@ if (isMain) {
       out.push({ ...repo, tree_status: 'tree_failed', tree_error: `http ${res.status}` });
     } else {
       ok++;
-      const summary = summariseTree(body);
+      const summary = summariseTree(body, repo.api_license_guess);
       if (summary.tree_truncated) truncated++;
       out.push({
         ...repo,
