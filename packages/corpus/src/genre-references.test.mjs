@@ -13,7 +13,7 @@ import {
   loadGenreReferenceManifest,
   queryGenreReferences,
 } from './genre-references.mjs';
-import { deriveWitness, hasChunks, readWitness, witnessedDocuments } from './chunk-witness.mjs';
+import { hasChunks, readWitness, rederiveWitness, witnessedDocuments } from './chunk-witness.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..', '..', '..');
@@ -199,9 +199,11 @@ test('the chunk witness still matches the corpus it was taken from', (t) => {
     return;
   }
 
-  const manifest = loadGenreReferenceManifest();
-  const fresh = deriveWitness(manifest.officialDocuments.map((item) => item.id), { generatedAt: witness.generatedAt });
-  assert.equal(fresh.sourceSha256, witness.sourceSha256, 'chunks.jsonl changed — regenerate with `node src/chunk-witness.mjs --write`');
+  // Re-derived from the WITNESS'S own slug list, not from this manifest's. The file also carries
+  // the 60-odd documents apps/worker's CREATOR_SKILL_REFERENCES cites, and a check that re-derived
+  // only these 25 would report a clean match over a third of the file.
+  const fresh = rederiveWitness(witness);
+  assert.equal(fresh.sourceSha256, witness.sourceSha256, 'chunks.jsonl changed — regenerate with `node scripts/build-chunk-witness.mjs`');
   assert.equal(fresh.sourceLines, witness.sourceLines);
   assert.equal(fresh.documentCount, witness.documentCount);
   assert.deepEqual(fresh.documents, witness.documents);

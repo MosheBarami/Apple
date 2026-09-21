@@ -7,7 +7,6 @@
   "scripts": {
     "fetch": "node src/fetch.mjs",
     "chunk": "node src/chunk.mjs",
-    "witness": "node src/chunk-witness.mjs --write",
     "upload": "node src/upload.mjs",
     "all": "node src/fetch.mjs --record-only && node src/scan.mjs && node src/hash.mjs && node src/tag.mjs && node src/chunk.mjs && node src/upload.mjs",
     "test": "node --test \"src/**/*.test.mjs\"",

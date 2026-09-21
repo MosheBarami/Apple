@@ -9,10 +9,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { hasChunks, readWitness, rederiveWitness } from '../../../packages/corpus/src/chunk-witness.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
@@ -53,11 +54,42 @@ const {
   searchCreatorSkills,
 } = C;
 
-const corpusRows = readFileSync(join(REPO, 'packages', 'corpus', 'data', 'chunks.jsonl'), 'utf8')
-  .trim()
-  .split('\n')
-  .map((line) => JSON.parse(line));
-const corpusByExactAddress = new Map(corpusRows.map((row) => [`${row.docSlug}\0${row.vecId}`, row]));
+// WAS: `readFileSync(join(REPO, 'packages', 'corpus', 'data', 'chunks.jsonl'))`. That file is a
+// 10 MB gitignored BUILD ARTEFACT — it exists on a machine that has run the chunker and in no
+// clone — so on the runner this did not fail an assertion, it threw ENOENT before the first test,
+// and `pnpm -r test` bailed at @golem/worker with everything behind it unrun.
+//
+// The addresses are checked against the tracked witness instead, which records exactly what the
+// corpus SAID about the 86 documents this repository cites, plus the corpus's own sha256 and
+// document count. Wherever the corpus is present the witness is re-derived from it and must come
+// back identical, so it cannot drift into agreeing with whatever cites it. The design, and why a
+// skip would have been the wrong answer, are in packages/corpus/src/chunk-witness.mjs.
+const corpusWitness = readWitness();
+assert.ok(
+  corpusWitness.documentCount > 2_000,
+  `expected the existing official corpus, the witness records ${corpusWitness.documentCount} documents`,
+);
+const corpusByExactAddress = new Map(
+  Object.entries(corpusWitness.documents)
+    .flatMap(([docSlug, rows]) => rows.map((row) => [`${docSlug}\0${row.vecId}`, row])),
+);
+
+// The witness is a tracked file, so it could be edited to agree with the table above. On any
+// machine that actually has the corpus it is re-derived from it and must come back identical —
+// and where the corpus is absent this says so rather than passing quietly.
+test('the chunk witness these addresses are checked against still matches the corpus', (t) => {
+  if (!hasChunks()) {
+    t.diagnostic(`${corpusWitness.source} is not in this checkout — the witness taken on `
+      + `${corpusWitness.generatedAt} was NOT re-derived here. It is re-derived wherever the corpus exists.`);
+    assert.equal(hasChunks(), false);
+    return;
+  }
+  const fresh = rederiveWitness(corpusWitness);
+  assert.equal(fresh.sourceSha256, corpusWitness.sourceSha256,
+    'chunks.jsonl changed — regenerate with `node scripts/build-chunk-witness.mjs`');
+  assert.equal(fresh.documentCount, corpusWitness.documentCount);
+  assert.deepEqual(fresh.documents, corpusWitness.documents);
+});
 
 test('the catalogue contains more than 200 distinct tasks rather than genre-count multiplication', () => {
   assert.equal(CREATOR_SKILL_COUNT, CREATOR_SKILLS.length);

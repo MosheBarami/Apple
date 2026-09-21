@@ -22,7 +22,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as esbuild from 'esbuild';
-import { readFileSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { tmpdir } from 'node:os';
@@ -38,10 +38,38 @@ const R = await import(pathToFileURL(OUT).href);
 process.on('exit', () => rmSync(OUT, { force: true }));
 
 const GOLD = JSON.parse(readFileSync(join(REPO, 'packages', 'evals', 'data', 'retrieval-gold.json'), 'utf8')).queries;
-const CORPUS = readFileSync(join(REPO, 'packages', 'corpus', 'data', 'chunks.jsonl'), 'utf8')
-  .split('\n')
-  .filter((l) => l.trim())
-  .map((l) => JSON.parse(l));
+
+// THE ONE TEST IN THIS REPOSITORY THAT CANNOT BE WITNESSED, and the reason is worth stating.
+//
+// Everything else that cited `packages/corpus/data/chunks.jsonl` cited ADDRESSES — a docSlug, a
+// vecId, a url — and addresses fit in a tracked file (see packages/corpus/src/chunk-witness.mjs).
+// This file needs the TEXT: it builds a keyword index over all 8,326 chunks and measures recall
+// through it. 80% of the corpus is that text, 8.6 MB of it, and an index over a sample is a
+// different and easier retrieval problem wearing the same number. There is no small stand-in.
+//
+// So this file measures where the corpus exists and SAYS SO where it does not, which is the same
+// treatment packages/evals/src/luau-ast.test.mjs already gives the same corpus. Until this commit
+// the read was unconditional: on the runner it threw ENOENT, took @golem/worker down, and every
+// package behind it went unrun — an outcome that told nobody that retrieval was unmeasured.
+//
+// ZERO IS THE DISCRIMINATOR AND NOTHING ELSE IS. A corpus that is present but small still fails
+// the `> 1000` floor below; only a corpus that is not there at all is skipped, and the skip prints.
+const HAS_CORPUS = existsSync(join(REPO, 'packages', 'corpus', 'data', 'chunks.jsonl'));
+const CORPUS = HAS_CORPUS
+  ? readFileSync(join(REPO, 'packages', 'corpus', 'data', 'chunks.jsonl'), 'utf8')
+    .split('\n')
+    .filter((l) => l.trim())
+    .map((l) => JSON.parse(l))
+  : [];
+
+/** True when there is nothing to measure, after saying so in the test's own output. */
+function unmeasured(t) {
+  if (HAS_CORPUS) return false;
+  t.diagnostic('packages/corpus/data/chunks.jsonl is not in this checkout — it is a 10 MB build '
+    + 'artefact and this file needs its TEXT, which no tracked witness can stand in for. NOTHING '
+    + 'was measured by this test here. Build it with `pnpm --filter @golem/corpus chunk`.');
+  return true;
+}
 
 /**
  * A keyword index over the corpus, standing in for FTS5 bm25.
@@ -114,7 +142,8 @@ const EMPTY = buildIndex([]);
 
 /* ========================================================================================== */
 
-test('every page the gold set expects is actually in the corpus', () => {
+test('every page the gold set expects is actually in the corpus', (t) => {
+  if (unmeasured(t)) return;
   // A gold set whose answers are absent measures the gold set. Recall would be 0 for a reason that
   // has nothing to do with retrieval, and the fix would be applied to the wrong thing.
   const urls = new Set(CORPUS.map((c) => c.url));
@@ -123,7 +152,8 @@ test('every page the gold set expects is actually in the corpus', () => {
   assert.ok(CORPUS.length > 1000, `the corpus fixture is suspiciously small: ${CORPUS.length} chunks`);
 });
 
-test('the production query builder and reranker find the right page for real questions', async () => {
+test('the production query builder and reranker find the right page for real questions', async (t) => {
+  if (unmeasured(t)) return;
   const score = await runRetrievalEval(GOLD, async (q, k) => INDEX.search(q, k), { k: 5 });
   console.log(`[gold] keyword-half only, ${INDEX.size} chunks — ${formatRetrievalScore(score)}`);
   if (score.positives?.misses?.length) console.log(`[gold] missed: ${score.positives.misses.join(', ')}`);
@@ -155,7 +185,8 @@ test('the production query builder and reranker find the right page for real que
   assert.equal(score.negatives.wrong, 0, `${score.negatives.wrongIds.join(', ')} came back answered by a corpus that cannot answer them`);
 });
 
-test('THE SAME GOLD SET AGAINST AN EMPTY INDEX IS REFUSED, not scored', () => {
+test('THE SAME GOLD SET AGAINST AN EMPTY INDEX IS REFUSED, not scored', (t) => {
+  if (unmeasured(t)) return;
   // THE CLAIM. The identical code, the identical queries, zero rows. Left to the arithmetic this
   // run reports recall 0.0 and 3/3 negatives held — a plausible, publishable, entirely fictional
   // row in a report.
@@ -168,7 +199,8 @@ test('THE SAME GOLD SET AGAINST AN EMPTY INDEX IS REFUSED, not scored', () => {
   });
 });
 
-test('a real question and an unanswerable one are told apart by more than the hit count', async () => {
+test('a real question and an unanswerable one are told apart by more than the hit count', async (t) => {
+  if (unmeasured(t)) return;
   const real = INDEX.search('how do I change how fast a player character walks', 5);
   const absurd = INDEX.search('kubernetes horizontal pod autoscaler custom metrics adapter', 5);
   assert.ok(real.hits.length > 0);
@@ -179,7 +211,8 @@ test('a real question and an unanswerable one are told apart by more than the hi
   assert.notEqual(EMPTY.search('kubernetes horizontal pod autoscaler', 5).outcome.kind, absurd.outcome.kind);
 });
 
-test('the hits come back with citations a reader can follow', async () => {
+test('the hits come back with citations a reader can follow', async (t) => {
+  if (unmeasured(t)) return;
   const res = INDEX.search('smoothly animate a part from one position to another over time', 5);
   assert.ok(res.citations.length > 0);
   assert.deepEqual(res.citations.map((c) => c.n), res.citations.map((_, i) => i + 1), 'citation numbers must be 1..n with no gaps');

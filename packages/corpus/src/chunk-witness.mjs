@@ -27,9 +27,15 @@
 // the corpus at all. That is strictly more checking than the version that read the file directly,
 // which checked nothing anywhere the file was absent.
 //
-// Regenerate with:  node src/chunk-witness.mjs --write
+// Regenerate with:  node scripts/build-chunk-witness.mjs
+//
+// The generator lives at the repository root because the witness now serves TWO readers with two
+// different slug lists — `genre-references.json` here, and `CREATOR_SKILL_REFERENCES` in
+// `apps/worker/src/creator-skills.ts`, which is TypeScript and needs esbuild to read. Neither
+// package should have to know about the other, so the union is assembled one level up and this
+// module stays a library.
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 export const CHUNKS_PATH = fileURLToPath(new URL('../data/chunks.jsonl', import.meta.url));
@@ -106,19 +112,14 @@ export function witnessedDocuments(witness) {
   return new Map(Object.entries(witness.documents));
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  if (!process.argv.includes('--write')) {
-    console.error('usage: node src/chunk-witness.mjs --write');
-    process.exit(2);
-  }
-  if (!hasChunks()) {
-    console.error(`${CHUNKS_REPO_PATH} is not in this checkout — build the corpus before regenerating the witness`);
-    process.exit(1);
-  }
-  const manifest = JSON.parse(readFileSync(fileURLToPath(new URL('../data/genre-references.json', import.meta.url)), 'utf8'));
-  const witness = deriveWitness(manifest.officialDocuments.map((item) => item.id));
-  writeFileSync(WITNESS_PATH, `${JSON.stringify(witness, null, 2)}\n`);
-  const chunkIds = Object.values(witness.documents).reduce((n, rows) => n + rows.length, 0);
-  console.log(`wrote ${WITNESS_PATH}: ${Object.keys(witness.documents).length} documents, ${chunkIds} chunk ids, `
-    + `witnessing ${witness.documentCount} documents across ${witness.sourceLines} lines`);
+/**
+ * Re-derive a witness from the corpus using THE WITNESS'S OWN slug list.
+ *
+ * A caller checking that the witness still matches the corpus must not have to know which slugs
+ * are in it — the file serves more than one reader, and a check that derived only its own reader's
+ * slugs would report a clean match over a file it had read a fraction of. This takes the list from
+ * the witness, so whoever runs it checks all of it.
+ */
+export function rederiveWitness(witness) {
+  return deriveWitness(Object.keys(witness.documents), { generatedAt: witness.generatedAt });
 }
