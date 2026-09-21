@@ -116,6 +116,42 @@ test('an import whose path is a variable is not a finding, because nobody could 
   assert.equal(code, 0, out);
 });
 
+test('the same pattern written in a comment is prose, not a site', (t) => {
+  const root = repo();
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  // This is not hypothetical. The checker's own header spells out the pattern it recognises, and
+  // the first run after it was committed -- the first run in which git could see it at all --
+  // reported `scripts/check-committed-imports.mjs imports a/b.ext`, its own documentation.
+  writeFileSync(join(root, 'tests', 'a.test.mjs'),
+    "import { join } from 'node:path';\nconst REPO = '.';\n"
+    + "// the shape this catches is import(join(REPO, 'scripts', 'nowhere.mjs'))\n" + ASSEMBLED);
+  writeFileSync(join(root, 'scripts', 'thing.mjs'), 'export const x = 1;\n');
+  track(root, 'tests/a.test.mjs', 'scripts/thing.mjs');
+  const { code, out } = run(root);
+  assert.equal(code, 0, out);
+  assert.doesNotMatch(out, /nowhere\.mjs/);
+});
+
+test('a url earlier on the line is not a comment, and does not hide the import after it', (t) => {
+  const root = repo();
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  //[[ THIS TEST WAS RE-AIMED, and the history is the reason it is trustworthy now.
+  //   It first read `await import(`file://${join(REPO, ...)}`)` and asserted a finding, on the
+  //   reasoning that the comment rule must not swallow a `file://` URL. It passed -- and it also
+  //   passed with the colon guard deleted, because the match starts at `import(` and `file://`
+  //   comes AFTER it, so nothing about that line ever reached the guard. A test that survives the
+  //   mutation of the thing it names is not defending it.
+  //   The guard's real job is a `//` that appears BEFORE the import on the same line and is part of
+  //   a URL rather than a comment. That is the shape below, and with `[^:]` removed from
+  //   inLineComment this line reads as commented out and the checker finds no site at all. ]]
+  importer(root,
+    "const base = 'https://example.invalid/x'; await import(join(REPO, 'scripts', 'thing.mjs'));\n");
+  track(root, 'tests/a.test.mjs');
+  const { code, out } = run(root);
+  assert.equal(code, 1, out);
+  assert.match(out, /scripts\/thing\.mjs/);
+});
+
 test('finding no import site at all is refused, not reported as clean', (t) => {
   const root = repo();
   t.after(() => rmSync(root, { recursive: true, force: true }));

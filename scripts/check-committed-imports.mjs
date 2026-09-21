@@ -74,6 +74,25 @@ function resolvesInIndex(importer, segments) {
   return index.has(tail) || tracked.some((p) => p.endsWith(`/${tail}`));
 }
 
+/**
+ * Does this match begin inside a `//` comment rather than in code?
+ *
+ * FOUND BY THE CHECKER, ON ITSELF, THE MINUTE IT BECAME VISIBLE TO ITSELF. While
+ * check-committed-imports.mjs was untracked it was not in `git ls-files` and so was never scanned.
+ * The first run after committing it reported `scripts/check-committed-imports.mjs imports a/b.ext`
+ * -- the prose above SITE, which spells out the pattern it recognises. A checker whose first act is
+ * to indict its own documentation is a checker people turn off.
+ *
+ * `//` preceded by a colon is not a comment. Sources here carry URLs -- `file://`, `https://` --
+ * and one sitting earlier on the same line as an import would otherwise read as commenting the
+ * import out. tests/check-committed-imports.test.mjs has that line, and was watched losing the
+ * finding when `[^:]` is removed from this expression.
+ */
+const inLineComment = (text, idx) => {
+  const prefix = text.slice(text.lastIndexOf('\n', idx) + 1, idx);
+  return /(^|[^:])\/\//.test(prefix);
+};
+
 /** Is the last segment a file this same source writes before it reads it? */
 const producesItself = (text, segments) => {
   const name = segments[segments.length - 1];
@@ -90,6 +109,7 @@ for (const f of CODE) {
   // reading it as text would silently match nothing and count as examined.
   if (text.includes('\0')) continue;
   for (const m of text.matchAll(SITE)) {
+    if (inLineComment(text, m.index)) continue;
     sites += 1;
     const segments = [...m[1].matchAll(/'([^']*)'/g)].map((x) => x[1]);
     if (resolvesInIndex(f, segments)) continue;
