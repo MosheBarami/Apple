@@ -98,7 +98,11 @@ function session() {
     store, sent,
     async chat(mode, text = 'build a house') {
       try { await s.webSocketMessage(ws, JSON.stringify({ type: 'chat', text, mode })); } catch { /* downstream stubs */ }
-      return { agent: store.get('agent'), errors: sent.filter((m) => m.type === 'error').map((m) => m.code) };
+      return {
+        agent: store.get('agent'),
+        errors: sent.filter((m) => m.type === 'error').map((m) => m.code),
+        refusalFrames: sent.filter((m) => m.type === 'error'),
+      };
     },
   };
 }
@@ -133,9 +137,10 @@ test('CONTROL: every valid mode starts a run and gets a real step ceiling', asyn
 
 for (const [label, mode] of HOSTILE) {
   test(`a chat frame with ${label} as its mode is refused by name`, async () => {
-    const { agent, errors } = await session().chat(mode);
+    const { agent, errors, refusalFrames } = await session().chat(mode);
     assert.equal(agent, undefined, 'no agent run may be created for an unrecognised mode');
     assert.ok(errors.includes('bad_mode'), `expected a bad_mode refusal, got [${errors.join(',')}]`);
+    assert.equal(refusalFrames.at(-1)?.terminal, true, 'a refused request must say that it is terminal');
   });
 }
 

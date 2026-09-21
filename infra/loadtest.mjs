@@ -103,7 +103,10 @@ await Promise.all(live.slice(0, INFER).map((u) => new Promise((resolve) => {
   u.ws.onmessage = (ev) => {
     const m = JSON.parse(ev.data);
     if (m.type === 'delta' && firstDelta === null) { firstDelta = t() - t0; firstTokenTimes.push(firstDelta); }
-    if (m.type === 'error') inferErrors.push(`user${u.i}: ${m.code}`);
+    if (m.type === 'error') {
+      inferErrors.push(`user${u.i}: ${m.code}`);
+      if (m.terminal === true) { clearTimeout(timer); resolve(); }
+    }
     if (m.type === 'msg_end') { clearTimeout(timer); inferTimes.push(t() - t0); resolve(); }
   };
   u.ws.send(JSON.stringify({ type: 'chat', text: 'In one short sentence: what is a RemoteEvent used for in Roblox?', mode: 'clay' }));

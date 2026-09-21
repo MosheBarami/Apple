@@ -221,6 +221,23 @@ test('waitForRun resolves with the assembled turn', async () => {
   assert.equal(run.creditsSpent, 4);
 });
 
+test('a terminal refusal ends the SDK run while an informational error does not', () => {
+  const initial = applyServerMsg(emptyRun(), { type: 'msg_start', msgId: 'm1' });
+  const info = applyServerMsg(initial, {
+    type: 'error', code: 'role_changed', message: 'role changed', terminal: false,
+  });
+  assert.equal(info.done, false);
+  assert.equal(info.stopReason, null);
+  assert.equal(info.error, 'role changed');
+
+  const refused = applyServerMsg(initial, {
+    type: 'error', code: 'product_model_unavailable', message: 'MAX unavailable', terminal: true,
+  });
+  assert.equal(refused.done, true);
+  assert.equal(refused.stopReason, 'error');
+  assert.equal(refused.error, 'MAX unavailable');
+});
+
 test('a FLAPPING connection backs off further each time, and does not reset on open', () => {
   const { stream, sockets } = connected();
   const attempts = [];

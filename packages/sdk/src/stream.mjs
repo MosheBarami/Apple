@@ -108,7 +108,12 @@ export function applyServerMsg(run, msg) {
         creditsSpent: finiteNumber(msg.creditsSpent, run.creditsSpent),
       };
     case 'error':
-      return { ...run, error: typeof msg.message === 'string' ? msg.message : 'error', done: true, stopReason: 'error' };
+      // A modern worker distinguishes a refused request from an informational event such as a
+      // collaborator role change. Undefined keeps the legacy behaviour, so an older worker cannot
+      // strand an SDK waiting forever after a refusal.
+      return msg.terminal === false
+        ? { ...run, error: typeof msg.message === 'string' ? msg.message : 'error' }
+        : { ...run, error: typeof msg.message === 'string' ? msg.message : 'error', done: true, stopReason: 'error' };
     default:
       return run;
   }

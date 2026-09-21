@@ -249,6 +249,11 @@ const runOnce = () =>
         finalText += m.text;
       } else if (m.type === 'error') {
         seen.errors.push(`${m.code}: ${m.message}`);
+        if (m.terminal === true) {
+          clearTimeout(timer);
+          try { ws.close(); } catch {}
+          resolve('error');
+        }
       } else if (m.type === 'msg_end') {
         clearTimeout(timer);
         try { ws.close(); } catch {}

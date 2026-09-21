@@ -155,30 +155,26 @@ function wsChat(text, mode, { expectTools, productModel } = {}) {
         // A REFUSAL IS AN ANSWER. REPORTING IT AS A TIMEOUT IS A FAILURE TO OBSERVE DRESSED AS AN
         // OBSERVATION, WHICH IS THE ONE THING THIS HARNESS MUST NOT DO.
         //
-        // `refuseOne` in apps/worker/src/do/session.ts sends one `error` frame and returns: no
-        // `msg_end`, no `run_state`, no terminal event of any kind. Every refusal on the start path
-        // does this (busy at ~2987 and ~3004, forbidden at ~3009, product_model_unavailable at
-        // ~3014). So the server HAD answered, promptly and clearly, and this harness sat for the
-        // full 150 seconds and then blamed a timeout — naming the wrong defect, and charging 150
-        // seconds for the privilege. Measured 2026-09-20: a free account asking for Apple MAX gets
-        // `product_model_unavailable` and the run never terminates on the wire.
+        // A refusal now says `terminal:true` for THIS request. There is deliberately no msg_end:
+        // it can be refused before an assistant msgId exists, and inventing one would fabricate a
+        // run. An unmarked non-role error remains a protocol failure below, which catches a
+        // regression back to the ambiguous wire measured on 2026-09-20.
         //
         // THIS DOES NOT WEAKEN THE ASSERTION, and must not be relaxed into one that does. A chat
-        // that ends without a terminal event is still a FAILURE and still rejects here; the only
-        // thing that changed is that the rejection now says what actually happened and says it at
-        // once. When the worker starts emitting a terminal event after a refusal, this rejection
-        // stops firing on its own, because `msg_end` will arrive first.
+        // that ends without a terminal signal is still a FAILURE and still rejects here.
         //
-        // `role_changed` is excluded because it is the one INFORMATIONAL use of the error channel
-        // (apps/worker/src/do/session.ts, broadcastRoleChange): it tells a viewer their permissions
-        // moved and refuses nothing. Treating it as fatal would invent a failure. Every other code
-        // the worker can send here — busy, forbidden, quota, capacity, edit, restore, checkpoint,
-        // bad_mode, bad_product_model, product_model_unavailable — is a refusal of this request.
+        // role_changed is the informational use and is explicitly terminal:false.
+        if (msg.terminal === true) {
+          clearTimeout(timer);
+          ws.close();
+          resolve({ finalText, events, stopReason: 'error', refusal: { code: msg.code, message: msg.message } });
+          return;
+        }
         if (msg.code !== 'role_changed') {
           clearTimeout(timer);
           ws.close();
           reject(new Error(
-            `refused with no terminal event: ${msg.code} — ${msg.message}` +
+            `error with no terminal signal: ${msg.code} — ${msg.message}` +
             ` (events: ${events.map((e) => e.type).join(',')})`,
           ));
           return;

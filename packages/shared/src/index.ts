@@ -1244,7 +1244,19 @@ export type ServerMsg =
    * different claim from an empty list and is the reason this is not folded into agent_status.
    */
   | { type: 'tools_denied'; msgId: string; tools: string[] }
-  | { type: 'error'; code: string; message: string }
+  | {
+      type: 'error';
+      code: string;
+      message: string;
+      /**
+       * Whether THIS REQUEST is over because of this error.
+       *
+       * Older workers omitted the field, so clients must keep their legacy behaviour for
+       * undefined. New refusal paths set true; informational errors such as role_changed set
+       * false. This is request terminality, not a claim that no other run exists in the room.
+       */
+      terminal?: boolean;
+    }
   /**
    * SOMETHING WORTH KNOWING THAT IS NOT A FAILURE. The run proceeds; the client shows the line.
    *

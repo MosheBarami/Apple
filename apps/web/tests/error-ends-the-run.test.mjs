@@ -43,15 +43,16 @@ function switchCase(name) {
   return rest.slice(0, end);
 }
 
-test('a server error ends the run in the client, not just on screen', () => {
+test('a terminal server error ends the run, while the informational role-change path is excluded', () => {
   const body = switchCase('error');
+  assert.match(body, /msg\.terminal === true/,
+    'the branch no longer reads the protocol terminal bit');
+  assert.match(body, /msg\.code !== 'role_changed'/,
+    'legacy role_changed frames must not terminate a live run');
   assert.match(body, /setRunning\(false\)/,
-    'the error branch does not clear `running`. A refusal the worker sends without a terminal event '
-    + 'leaves the workspace showing the agent as thinking forever — measured at 150s and still going '
-    + 'by infra/e2e.mjs on 2026-09-20.');
+    'a terminal refusal no longer clears `running`');
   assert.match(body, /setAgentStatus\(null\)/,
-    'the error branch clears `running` but leaves the agent status, so the phase line keeps '
-    + 'displaying whatever step it died on as though it were live.');
+    'a terminal refusal clears `running` but leaves a live-looking agent status');
 });
 
 test('a notice does NOT end the run, because the run is still going', () => {

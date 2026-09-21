@@ -871,7 +871,7 @@ export function useProjectSocket(
         setLogs((list) => [...list, ...msg.entries].slice(-MAX_LOGS));
         break;
       case 'error':
-        //[[ AN ERROR ENDS THE RUN, AND THE UI HAD NO WAY OF KNOWING THAT.
+        //[[ A TERMINAL ERROR ENDS THIS REQUEST. AN INFORMATIONAL ERROR DOES NOT.
         //
         //   This called the toast and nothing else, so `running` stayed true and the workspace went
         //   on saying the agent was thinking — forever, with a red toast next to it. That is the
@@ -884,16 +884,13 @@ export function useProjectSocket(
         //   terminal event of any kind. The harness waited 150 seconds and gave up; a person waits
         //   as long as they are willing to.
         //
-        //   `error` is the fatal channel by construction, which is why clearing here is correct
-        //   rather than merely convenient: the case directly below records that `notice` exists
-        //   precisely so a warning about a run that is STILL GOING does not come through here.
-        //
-        //   The worker should also emit a terminal event after refusing, and that is
-        //   apps/worker/src/do/session.ts, which another lane holds tonight. Clearing here is not a
-        //   workaround for it: a client that stays busy because a server forgot one message is a
-        //   defect on its own, and this is the half that does not need the other half to be right. ]]
-        setRunning(false);
-        setAgentStatus(null);
+        //   The worker now marks request refusals terminal:true and role_changed terminal:false.
+        //   Older workers omitted the field, so preserve the legacy fatal behaviour for undefined
+        //   except for the one historical informational code whose semantics are already known.
+        if (msg.terminal === true || (msg.terminal === undefined && msg.code !== 'role_changed')) {
+          setRunning(false);
+          setAgentStatus(null);
+        }
         errorCbRef.current(msg.code, msg.message);
         break;
       case 'notice':

@@ -40,7 +40,14 @@ ws.onmessage = (ev) => {
   else if (msg.type === 'tool_end') console.log(stamp(), `  ${msg.ok ? '✓' : '✗'} ${msg.summary}`);
   else if (msg.type === 'agent_status') console.log(stamp(), `[${msg.phase}${msg.step ? ' ' + msg.step + '/' + msg.totalSteps : ''}]`);
   else if (msg.type === 'checkpoint') console.log(stamp(), `checkpoint: ${msg.checkpoint.label} (${msg.checkpoint.scriptCount} scripts, ${msg.checkpoint.instanceCount} instances, ${(msg.checkpoint.sizeBytes/1024).toFixed(1)}KB)`);
-  else if (msg.type === 'error') console.log(stamp(), 'ERROR:', msg.code, msg.message);
+  else if (msg.type === 'error') {
+    console.log(stamp(), 'ERROR:', msg.code, msg.message);
+    if (msg.terminal === true) {
+      clearTimeout(timer);
+      try { ws.close(); } catch {}
+      process.exit(1);
+    }
+  }
   else if (msg.type === 'msg_end') {
     clearTimeout(timer);
     console.log(stamp(), `msg_end (${msg.stopReason})`);

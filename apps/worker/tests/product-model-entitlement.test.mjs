@@ -201,6 +201,7 @@ test('WS edit checks MAX entitlement before irreversible history truncation', as
     type: 'edit_resend', messageId: 'old-message', text: 'build a tower', mode: 'stone', productModel: 'apple-max',
   }));
   assert.deepEqual(h.sent.filter((m) => m.type === 'error').map((m) => m.code), ['product_model_unavailable']);
+  assert.equal(h.sent.find((m) => m.type === 'error')?.terminal, true, 'a refusal is terminal for this request');
   assert.equal(h.sql.calls.some((c) => c.statement.includes('delete from messages')), false);
   assert.equal(h.calls.some((c) => c.name === 'QUOTA_DO' && c.path === '/spend'), false);
 });

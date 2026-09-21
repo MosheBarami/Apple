@@ -1376,7 +1376,12 @@ export class SessionDO extends DurableObject<Env> {
         // refuse, and the person finds out by pressing one and reading a permission error they
         // have no explanation for.
         if (roleChanged) {
-          ws.send(JSON.stringify({ type: 'error', code: 'role_changed', message: `Your role on this project is now ${role}.` } satisfies ServerMsg));
+          ws.send(JSON.stringify({
+            type: 'error',
+            code: 'role_changed',
+            message: `Your role on this project is now ${role}.`,
+            terminal: false,
+          } satisfies ServerMsg));
         }
       } catch {
         /* a closing socket cannot be updated, and does not need to be */
@@ -1398,13 +1403,17 @@ export class SessionDO extends DurableObject<Env> {
    * A run with no originating socket — the automation path — still broadcasts, because there is
    * no one person to answer and silence would be worse.
    */
-  private refuseOne(origin: WebSocket | undefined, msg: ServerMsg) {
+  private refuseOne(origin: WebSocket | undefined, msg: Extract<ServerMsg, { type: 'error' }>) {
+    // A refusal is the final answer to THIS request even when another collaborator's run remains
+    // live. There may be no assistant msgId yet, so inventing msg_end would fabricate a run. An
+    // explicit request-terminal bit is the only truthful signal clients can act on.
+    const refusal: Extract<ServerMsg, { type: 'error' }> = { ...msg, terminal: true };
     if (origin === undefined) {
-      this.broadcast(msg);
+      this.broadcast(refusal);
       return;
     }
     try {
-      origin.send(JSON.stringify(msg));
+      origin.send(JSON.stringify(refusal));
     } catch {
       /* closed */
     }
@@ -2735,7 +2744,7 @@ export class SessionDO extends DurableObject<Env> {
           if (!mode) {
             // Refused by name. A `?? 'clay'` default here would accept a hostile value and run it
             // quietly as something else, which is the same failure wearing a helpful face.
-            this.broadcast({ type: 'error', code: 'bad_mode', message: 'Unknown mode for this request.' });
+            this.refuseOne(ws, { type: 'error', code: 'bad_mode', message: 'Unknown mode for this request.' });
             return;
           }
           const productModel = asProductModel(msg.productModel);
@@ -3024,7 +3033,7 @@ export class SessionDO extends DurableObject<Env> {
     // requires having some balance left — the user is never charged for an estimate.
     const quota = await this.quotaSpend(bind.ownerId, 1, `chat_${mode}`);
     if (!quota.ok) {
-      this.broadcast({ type: 'error', code: 'quota', message: 'Daily Credits are used up. They refill at midnight UTC.' });
+      this.refuseOne(origin, { type: 'error', code: 'quota', message: 'Daily Credits are used up. They refill at midnight UTC.' });
       this.broadcast({ type: 'quota', quota: quota.state });
       return;
     }
