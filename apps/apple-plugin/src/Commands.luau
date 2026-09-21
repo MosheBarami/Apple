@@ -164,6 +164,7 @@ local CREATE_CLASSES = {
 	ColorCorrectionEffect = true,
 	DepthOfFieldEffect = true,
 	SunRaysEffect = true,
+	SurfaceAppearance = true,
 }
 
 -- Snapshot restore may re-materialise source that was already in this place.  It still cannot
@@ -313,6 +314,11 @@ local PROPERTY_ALLOW = {
 	OutlineTransparency = true,
 	FillColor = true,
 	FillTransparency = true,
+	AlphaMode = true,
+	ColorMap = true,
+	MetalnessMap = true,
+	NormalMap = true,
+	RoughnessMap = true,
 
 	Value = true,
 }
@@ -408,6 +414,11 @@ local READ_PROPERTIES = {
 	OutlineTransparency = true,
 	FillColor = true,
 	FillTransparency = true,
+	AlphaMode = true,
+	ColorMap = true,
+	MetalnessMap = true,
+	NormalMap = true,
+	RoughnessMap = true,
 	Value = true,
 }
 
@@ -461,6 +472,7 @@ local ENUM_ALLOW = {
 	SurfaceGuiSizingMode = true,
 	SurfaceGuiShape = true,
 	BorderMode = true,
+	AlphaMode = true,
 }
 
 local function nowSeconds(): number
@@ -992,7 +1004,7 @@ local function propertyValue(inst: any, property: string): any?
 	return nil
 end
 
-local function captureProperties(gameRef: any, inst: any, tableAllow: any): ({ [string]: any }, { string })
+local function captureProperties(gameRef: any, inst: any, tableAllow: any, includeContent: boolean?): ({ [string]: any }, { string })
 	local out = {}
 	local issues = {}
 	-- `tableAllow` is a source-authored finite table, not untrusted input. Do not reuse MAX_PROPS here:
@@ -1000,7 +1012,7 @@ local function captureProperties(gameRef: any, inst: any, tableAllow: any): ({ [
 	-- MAX_PROPS, and stopping an unordered Luau table walk at 48 made checkpoint fidelity random — a
 	-- Part could omit Transparency simply because post-effect keys happened to be visited first.
 	for property in tableAllow do
-		if not CONTENT_PROPERTY[property] then
+		if includeContent == true or not CONTENT_PROPERTY[property] then
 			local ok, value = pcall(function() return inst[property] end)
 			if ok and value ~= nil then
 				local encoded, err = encodeValue(value, gameRef, property)
@@ -1035,17 +1047,19 @@ local function childCount(inst: any): (number?, string?)
 	return #children
 end
 
-local function validatePropertyName(property: any): (string?, string?)
+local function validatePropertyName(property: any, allowContent: boolean?): (string?, string?)
 	local name, err = safeText(property, 80, "property name")
 	if not name then return nil, err end
 	if not identifier(name) or not PROPERTY_ALLOW[name] then
 		return nil, ("property %s is not in Apple's write allowlist"):format(name)
 	end
-	if CONTENT_PROPERTY[name] then return nil, ("property %s carries external content and is refused"):format(name) end
+	if CONTENT_PROPERTY[name] and allowContent ~= true then
+		return nil, ("property %s carries external content and is refused"):format(name)
+	end
 	return name
 end
 
-local function validateProps(props: any, label: string, allowInstance: boolean?): ({ [string]: any }?, { [string]: any }?, string?)
+local function validateProps(props: any, label: string, allowInstance: boolean?, allowContent: boolean?): ({ [string]: any }?, { [string]: any }?, string?)
 	if props == nil then return {} end
 	if type(props) ~= "table" then return nil, nil, label .. " must be an object" end
 	local decoded = {}
@@ -1054,7 +1068,7 @@ local function validateProps(props: any, label: string, allowInstance: boolean?)
 	for property, typed in props do
 		count += 1
 		if count > MAX_PROPS then return nil, nil, label .. " exceeds the property limit" end
-		local valid, nameErr = validatePropertyName(property)
+		local valid, nameErr = validatePropertyName(property, allowContent)
 		if not valid then return nil, nil, nameErr end
 		local value, valueErr = decodeValue(typed, label .. "." .. valid, allowInstance)
 		if valueErr then return nil, nil, valueErr end
@@ -1796,7 +1810,7 @@ local function snapshotNode(self: any, inst: any, depth: number, state: any): (a
 	end
 	state.nodes += 1
 	if parent ~= self.game then state.instanceCount += 1 end
-	local props, propIssues = captureProperties(self.game, inst, READ_PROPERTIES)
+	local props, propIssues = captureProperties(self.game, inst, READ_PROPERTIES, true)
 	if #propIssues > 0 then state.complete = false end
 	local attrs, attrIssues = captureAttributes(self.game, inst)
 	if #attrIssues > 0 then state.complete = false end
@@ -1889,7 +1903,7 @@ local function validateSnapshotNode(node: any, depth: number, parentClass: strin
 	if not name then return nameErr end
 	if dataModel and name ~= "game" then return "DataModel snapshot root must be named game" end
 	if (serviceClass or protectedContainer) and name ~= className then return "protected snapshot identity has an unexpected name" end
-	local _, _, propErr = validateProps(node.props, "snapshot props", false)
+	local _, _, propErr = validateProps(node.props, "snapshot props", false, true)
 	if propErr then return propErr end
 	local _, attrErr = validateAttributes(node.attributes, "snapshot attributes")
 	if attrErr then return attrErr end
@@ -1948,7 +1962,7 @@ local function sourceWrite(editor: any, inst: any, callback: (string) -> string)
 end
 
 local function applySnapshotState(self: any, inst: any, node: any, state: any, expectEmptySource: boolean?): string?
-	local props, _, propErr = validateProps(node.props, "snapshot props", false)
+	local props, _, propErr = validateProps(node.props, "snapshot props", false, true)
 	if propErr then return propErr end
 	local attrs, attrErr = validateAttributes(node.attributes, "snapshot attributes")
 	if attrErr then return attrErr end

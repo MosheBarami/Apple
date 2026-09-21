@@ -266,6 +266,37 @@ spec("ordinary remotes and scriptable post effects are first-class checkpoint-sa
     c:destroy()
 end)
 
+spec("checkpoint round-trips existing SurfaceAppearance content without granting content writes", function()
+    local part = Instance.new("Part"); part.Name = "AppearanceHost"; part.Parent = workspace
+    local surface = Instance.new("SurfaceAppearance"); surface.Name = "Surface"; surface.ColorMap = "rbxassetid://123456"; surface.Parent = part
+    local c = newCommands()
+
+    local refused = run(c, "content-write-refused", {
+        op = "set_props",
+        path = "game.Workspace.AppearanceHost.Surface",
+        props = { ColorMap = { t = "string", v = "rbxassetid://999999" } },
+    }, true)
+    eq(refused.ok, false); has(refused.error, "external content")
+    eq(surface.ColorMap, "rbxassetid://123456", "a model write must not change the existing asset reference")
+
+    local snap = run(c, "appearance-snapshot", {
+        op = "snapshot", root = "game.Workspace.AppearanceHost", includeScripts = true, checkpointId = "cp-appearance",
+    }, false)
+    eq(snap.ok, true, tostring(snap.error)); eq(snap.data.restorable, true)
+    local savedSurface = snap.data.node.children[1]
+    eq(savedSurface.className, "SurfaceAppearance")
+    eq(savedSurface.props.ColorMap.v, "rbxassetid://123456", "checkpoint must retain the opaque existing content reference")
+
+    surface.ColorMap = "rbxassetid://changed"
+    local restored = run(c, "appearance-restore", {
+        op = "restore", root = "game.Workspace.AppearanceHost", checkpointId = "cp-appearance", snapshot = snap.data,
+    }, true, function() return true end)
+    eq(restored.ok, true, tostring(restored.error))
+    eq(part:FindFirstChild("Surface").ColorMap, "rbxassetid://123456")
+    part:Destroy()
+    c:destroy()
+end)
+
 spec("create_instances preflights collisions and the whole nested tree", function()
     local c = newCommands()
     local existing = run(c, "existing-name", { op = "create_instances", items = {{ className = "Part", name = "Typed", parent = "game.Workspace" }} }, true)
