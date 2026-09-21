@@ -235,7 +235,7 @@ return M
 
 // ------------------------------------------------------------------ the corpus
 
-test('the parser reads the vendored corpus, and the failures are not Lua', () => {
+test('the parser reads the vendored corpus, and the failures are not Lua', (t) => {
   // A parser proved only on hand-written samples is proved only against the author's imagination.
   // The bound is a CEILING ON FAILURES, so it goes red if a change to the grammar regresses real
   // files — and it is measured over every Luau/Lua file in the corpus, not a sample.
@@ -243,10 +243,27 @@ test('the parser reads the vendored corpus, and the failures are not Lua', () =>
   // with cwd inside the package, and a cwd-relative `find` would quietly match nothing there — the
   // test would report a pass having read zero files, which is the exact failure docs/FAILURES.md
   // is about.
+  // THE EXISTENCE CHECK WAS ON THE DIRECTORY AND IT MEANT THE CONTENT. `packages/corpus/raw/`
+  // holds two TRACKED manifests (`.gitignore:96,102` re-include them, because the corpus is
+  // described as "re-fetchable from raw/manifest.json" and a recipe nobody has is not a recipe),
+  // so the directory is in every clone and `existsSync` was true in every clone. The early return
+  // never fired, the find matched nothing, and the assertion below failed with "yielded 0 Lua
+  // files" — which took `pnpm -r test` down at @golem/evals on the runner while passing on any
+  // machine that had fetched the corpus.
+  //
+  // ZERO is the discriminator, and nothing else is. Zero means the fetch never ran. Any count at
+  // all means a corpus is here, and a corpus with fewer than 500 files is a degraded one that must
+  // still go red — which is why the floor is untouched.
   const corpus = fileURLToPath(new URL('../../corpus/raw', import.meta.url));
-  if (!existsSync(corpus)) return; // corpus genuinely not fetched in this checkout
-  const files = execSync(`find ${JSON.stringify(corpus)} -name "*.luau" -o -name "*.lua"`, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
-    .trim().split('\n').filter(Boolean);
+  const files = existsSync(corpus)
+    ? execSync(`find ${JSON.stringify(corpus)} -name "*.luau" -o -name "*.lua"`, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+      .trim().split('\n').filter(Boolean)
+    : [];
+  if (files.length === 0) {
+    t.diagnostic(`${corpus} holds no Lua at all — the corpus is not fetched in this checkout, so `
+      + 'NOTHING below was measured here. Fetch it with `pnpm --filter @golem/corpus fetch`.');
+    return;
+  }
   assert.ok(files.length > 500, `the corpus directory exists but yielded ${files.length} Lua files`);
 
   let seen = 0;
