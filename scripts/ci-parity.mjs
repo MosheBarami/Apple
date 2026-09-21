@@ -203,14 +203,31 @@ if (toRun.length === 0) {
 }
 
 const clone = mkdtempSync(join(tmpdir(), 'ci-parity-'));
+
+//[[ EVERY EXIT AFTER THE CLONE GOES THROUGH HERE, and it exists because of a real leak.
+//
+//   `process.exit()` does NOT run a `finally` block. Both exit-2 paths below sit inside the try
+//   whose finally removes the clone, so each one left the whole checkout in the OS temp directory:
+//   107 MB for a bare clone and 793 MB once --with-build had installed node_modules. Found by
+//   listing $TMPDIR after a falsification run, not by reading the code — the happy path cleans up
+//   correctly and the leak only happens on the paths nobody re-runs.
+//
+//   --keep still keeps it, on every path, because the reason to keep a clone is usually that
+//   something went wrong in it. ]]
+const bail = (code, ...message) => {
+  if (message.length) console.error(...message);
+  if (keep) console.log(`clone kept at ${clone}`);
+  else rmSync(clone, { recursive: true, force: true });
+  process.exit(code);
+};
+
 let failures = 0;
 try {
   try {
     execFileSync('git', ['clone', '--quiet', '--no-hardlinks', '--shared', ROOT, clone], { stdio: 'pipe' });
     execFileSync('git', ['-C', clone, 'checkout', '--quiet', head], { stdio: 'pipe' });
   } catch (e) {
-    console.error(`ci-parity: the clone failed, so nothing was measured: ${e.message}`);
-    process.exit(2);
+    bail(2, `ci-parity: the clone failed, so nothing was measured: ${e.message}`);
   }
 
   //[[ --with-build. The install and the builds happen INSIDE THE CLONE, never in the repository:
@@ -231,9 +248,8 @@ try {
       if (r.status !== 0) {
         const log = join(tmpdir(), 'ci-parity-with-build.log');
         writeFileSync(log, `$ ${step[0]} ${step[1].join(' ')}\n\n${r.stdout ?? ''}${r.stderr ?? ''}`);
-        console.error(`ci-parity: --with-build could not ${step[0]} ${step[1].join(' ')} (exit ${r.status ?? -1}), `
+        bail(2, `ci-parity: --with-build could not ${step[0]} ${step[1].join(' ')} (exit ${r.status ?? -1}), `
           + `so the checks that need it were not run and nothing is claimed about them. Full output: ${log}`);
-        process.exit(2);
       }
     }
   }
@@ -249,9 +265,8 @@ try {
       const all = readdirSync(join(clone, 'tests')).filter((f) => f.endsWith('.test.mjs')).sort();
       for (const declared of TEST_FILES_NEEDING_AN_INSTALL.keys()) {
         if (!all.includes(declared.replace('tests/', ''))) {
-          console.error(`ci-parity: ${declared} is declared as needing an install and is not in the suite. `
+          bail(2, `ci-parity: ${declared} is declared as needing an install and is not in the suite. `
             + 'A declaration that outlives its file is a rule about nothing.');
-          process.exit(2);
         }
       }
       const kept = all.map((f) => `tests/${f}`).filter((f) => {
