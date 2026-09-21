@@ -89,6 +89,16 @@ if (isMain) {
   const report = {
     generated_at: new Date().toISOString(),
     generator: 'packages/training/src/measure-failure-coverage.mjs',
+    // WHICH TREE THIS IS ABOUT. The file set comes from `git ls-files`, so this number moves every
+    // time a peer commits a test — and a coverage figure with only a timestamp on it cannot be
+    // re-derived later, because the tree it measured is gone. check-rebrand printed REBRAND
+    // COMPLETE four times over an unstaged fix while CI failed on every run; the lesson is that a
+    // measurement of a tree has to say which tree. `git rev-parse HEAD` is that.
+    measured_at_commit: (() => {
+      try { return execFileSync('git', ['rev-parse', 'HEAD'], { cwd: REPO, encoding: 'utf8' }).trim(); }
+      catch { return null; }
+    })(),
+    measured_at_commit_meaning: 'the file SET is this commit\'s `git ls-files`. File CONTENTS are read from the working tree, so a figure taken with uncommitted edits in a tracked test file describes bytes this commit does not hold.',
     documented_failures: parsed.all.length,
     documented_by_format: { heading: parsed.heading_format.length, bullet: parsed.bullet_format.length },
     test_files_searched: tracked.length,

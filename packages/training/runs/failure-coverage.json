@@ -1,18 +1,33 @@
 {
-  "generated_at": "2026-09-20T23:50:45.188Z",
+  "generated_at": "2026-09-21T01:07:45.876Z",
   "generator": "packages/training/src/measure-failure-coverage.mjs",
+  "measured_at_commit": "acbdad4a4c0dae1643ac88c4950ab7a55b73e424",
+  "measured_at_commit_meaning": "the file SET is this commit's `git ls-files`. File CONTENTS are read from the working tree, so a figure taken with uncommitted edits in a tracked test file describes bytes this commit does not hold.",
   "documented_failures": 61,
   "documented_by_format": {
     "heading": 57,
     "bullet": 4
   },
-  "test_files_searched": 662,
-  "failures_cited_by_a_test": 22,
-  "failures_not_cited_by_any_test": 39,
-  "coverage_percent": 36.1,
+  "test_files_searched": 675,
+  "failures_cited_by_a_test": 27,
+  "failures_not_cited_by_any_test": 34,
+  "coverage_percent": 44.3,
   "covered": {
+    "F-08": [
+      "packages/training/src/failure-coverage.test.mjs"
+    ],
+    "F-09": [
+      "packages/training/src/failure-coverage.test.mjs"
+    ],
     "F-11": [
-      "apps/benchmark/crystal-canyon/tests/manifest.test.mjs"
+      "apps/benchmark/crystal-canyon/tests/manifest.test.mjs",
+      "packages/training/src/failure-coverage.test.mjs"
+    ],
+    "F-12": [
+      "packages/training/src/failure-coverage.test.mjs"
+    ],
+    "F-13": [
+      "packages/training/src/failure-coverage.test.mjs"
     ],
     "F-21": [
       "packages/evals/src/plugin-lifecycle.test.mjs"
@@ -100,14 +115,13 @@
     "F-66": [
       "apps/worker/tests/billing-subscription.test.mjs",
       "apps/worker/tests/luau-review.test.mjs"
+    ],
+    "F-68": [
+      "packages/training/src/failure-coverage.test.mjs"
     ]
   },
   "uncovered": [
-    "F-08",
-    "F-09",
     "F-10",
-    "F-12",
-    "F-13",
     "F-14",
     "F-15",
     "F-16",
@@ -140,8 +154,7 @@
     "F-53",
     "F-56",
     "F-60",
-    "F-67",
-    "F-68"
+    "F-67"
   ],
   "what_this_counts": "a failure is counted as covered when at least one tracked test file NAMES its id. That is a citation, not a proof that the test would catch the failure again.",
   "what_this_does_not_do": "it does not add an F-id to any eval task. Which eval task was born from which failure is an authoring judgement, and deriving it from surface similarity would fabricate provenance."

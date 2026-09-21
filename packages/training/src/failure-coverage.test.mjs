@@ -87,6 +87,15 @@ test('covered and uncovered partition the documented set exactly',
     for (const files of Object.values(r.covered)) {
       assert.ok(Array.isArray(files) && files.length > 0, 'a failure is recorded as covered with no file naming it');
     }
+    // A measurement of a tree has to say WHICH tree. The file set is `git ls-files` at some commit,
+    // so the figure moves whenever a peer commits a test, and a timestamp alone cannot be
+    // re-derived — the tree it described is gone. check-rebrand printed REBRAND COMPLETE four times
+    // over an unstaged fix while CI failed on every run, which is the same defect one layer down.
+    assert.match(String(r.measured_at_commit), /^[0-9a-f]{40}$/,
+      'the coverage figure records no commit, so nobody can ever re-derive it');
+    assert.match(String(r.measured_at_commit_meaning), /working tree/,
+      'the report stopped saying that file CONTENTS come from the working tree, not from the commit');
+
     // The distinction that keeps this number honest.
     assert.match(String(r.what_this_counts), /citation, not a proof/,
       'the report stopped saying that naming a failure is not catching it');
