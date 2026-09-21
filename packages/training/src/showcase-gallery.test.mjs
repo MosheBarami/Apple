@@ -386,3 +386,27 @@ test('there is a way off this page — it is not a one-way trip', () => {
   // site pages here and this page pointed nowhere.
   assert.match(build(), /<a class="home" href="\/">/);
 });
+
+test('a page with a parse failure on it says the product would have refused that script', () => {
+  // A `does_not_compile` card, standing alone, reads as "this is what you would have received".
+  // It is not: `/api/admin/model-test` wires no tools, so every answer here is one attempt with no
+  // way for the model to be told it was wrong, and the product parses a body before writing it —
+  // pinned against this exact defect in apps/worker/tests/luau-review.test.mjs.
+  const withFailure = build({
+    results: [
+      { target: 'screen-shop', id: 'screen-shop', genre: 'tycoon', outcome: 'built', guiNodes: 4, files: { svg: 'a.svg' } },
+      { target: 'screen-hud', id: 'screen-hud', genre: 'tycoon', outcome: 'does_not_compile', detail: 'line 3, col 9: SyntaxError' },
+    ],
+  });
+  assert.match(withFailure, /one attempt each, with no second try/);
+  assert.match(withFailure, /refused back to the model with the line and column/);
+  // AND IT MUST NOT OVERCLAIM. What was measured is the refusal, not that a retry then succeeds.
+  assert.doesNotMatch(withFailure, /the model then fixes|would have got it right|second attempt succeeds/i);
+
+  // THE AIMED HALF: a page with nothing that failed to parse makes no claim about parse failures.
+  // A typed sentence is the one that survives into every page where it is beside the point.
+  const clean = build({
+    results: [{ target: 'screen-shop', id: 'screen-shop', genre: 'tycoon', outcome: 'built', guiNodes: 4, files: { svg: 'a.svg' } }],
+  });
+  assert.doesNotMatch(clean, /one attempt each, with no second try/, 'the page explains a failure it is not showing');
+});

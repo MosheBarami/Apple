@@ -398,6 +398,22 @@ function page({ ui, uiDir, maps, mapDir, uiPrefix, mapPrefix, library }) {
   const mapHtml = mapResults.map((r) => mapCard(r, mapDir, mapPrefix)).join('\n');
   const hasSource = /<details class="src"/.test(primaryHtml + crossHtml + mapHtml);
 
+  //[[ A ONE-SHOT IS NOT WHAT THE PRODUCT DOES, AND THE PAGE HAS TO SAY WHICH ONE THIS IS.
+  //
+  //   `/api/admin/model-test` is the only completion endpoint reachable without a live Studio
+  //   socket, and it wires no real tools — so every answer on this page is ONE attempt with no way
+  //   for the model to be told it was wrong. The product is not that: `edit_script` parses the
+  //   body before anything is written and refuses it with the position, so the model is handed its
+  //   own error instead of the customer being handed a broken file.
+  //
+  //   Without this sentence a `does_not_compile` card reads as "you would have received this",
+  //   which is not true and is not what was measured. WITH it, the page must not overclaim in the
+  //   other direction either: what is measured is the refusal, not that a second attempt succeeds.
+  //   See apps/worker/tests/luau-review.test.mjs, where this exact defect is pinned against the
+  //   product's gate. The claim appears only when a card on the page actually carries the outcome
+  //   it is about. ]]
+  const anyParseFailure = [...uiResults, ...mapResults].some((r) => r.outcome === 'does_not_compile');
+
   //[[ TWO META TAGS, BOTH MEASURED RATHER THAN COPIED IN FROM HABIT.
   //
   //   VIEWPORT. Without it a phone lays the page out at a 980px virtual width and scales the whole
@@ -616,6 +632,12 @@ function page({ ui, uiDir, maps, mapDir, uiPrefix, mapPrefix, library }) {
       ${hasSource ? `<li><strong>The code is here too.</strong> Every card opens the actual Luau the model wrote,
         numbered by line. Where a script did not compile, the line the compiler named is marked in
         it.</li>` : ''}
+      ${anyParseFailure ? `<li><strong>This is one attempt each, with no second try.</strong> The endpoint
+        these ran through wires no tools, so a model that got something wrong had no way to be told.
+        In the product it is told: a script is parsed before it is written, and one that does not
+        parse is refused back to the model with the line and column rather than saved into your
+        game. What that refusal leads to is not measured here — only that nothing broken is
+        written.</li>` : ''}
     </ul>
   </div>
 
