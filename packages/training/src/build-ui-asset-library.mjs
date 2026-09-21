@@ -46,6 +46,7 @@ import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { deriveGuiClasses, classifyUi, stripLuauComments } from './measure-ui-yield.mjs';
+import { syntaxReportApplies } from './check-luau-syntax.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, '..', '..', '..');
@@ -131,21 +132,9 @@ export function compositionKey(classesConstructed) {
   return [...classesConstructed].sort().join('+');
 }
 
-/**
- * May this syntax report be used to answer for this corpus?
- *
- * Found while writing this file, not after shipping it: the join is by row id, and a syntax report
- * produced against a three-row FIXTURE has no row ids in common with the real corpus — so every
- * real asset would come back "not in the failure list", which reads as `syntaxOk: true`. A report
- * that never looked at these rows would have certified all 1,060 of them. The report therefore has
- * to say it is about this corpus and to have covered this many rows, or it is not used at all and
- * `syntaxOk` stays null.
- */
-export function syntaxReportApplies(report, corpusRelPath, rowsInCorpus) {
-  if (!report || typeof report !== 'object') return false;
-  if (report.corpus !== corpusRelPath) return false;
-  return report.rows_checked === rowsInCorpus;
-}
+// Re-exported from the gate that writes the report, because the rule belongs with the artifact and
+// not with one of its readers: the dataset card joins to the same report the same way.
+export { syntaxReportApplies };
 
 /* c8 ignore start -- filesystem driver */
 const isMain = process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));

@@ -1,6 +1,6 @@
 {
   "id": "roblox-github-v1",
-  "generated_at": "2026-09-20T23:41:11.907Z",
+  "generated_at": "2026-09-21T00:36:41.330Z",
   "generator": "packages/training/src/summarise-github-corpus.mjs",
   "derived_from": {
     "repos.jsonl": {
@@ -116,14 +116,14 @@
   "volume_note": "8349 of 27671 rows carry a generator banner. Placeholdering every literal, the 27671 rows are 18816 distinct programs, 18730 of them hand-written. Quote whichever number answers the question being asked, and say which it is.",
   "validation": {
     "engine_execution": "not_run",
-    "luau_compiler": "not_run",
+    "luau_compiler": "luau-analyze, 2026-09-21T00:36:26.977Z: 27437 of 27671 rows parse (99.15%), 233 do not, 1 not measured. See packages/training/runs/luau-syntax-github-v1.json. Parsing is the floor, not approval.",
     "human_review": "not_performed",
     "semantic_quality": "not_measured",
     "deduplication": "exact, on content normalised for line endings and trailing whitespace. Near-duplicates are MEASURED via shape_sha256 and are NOT removed."
   },
   "what_this_does_not_establish": [
     "That the upstream author held the rights they granted. A retrieved LICENSE is the publisher speaking, not a chain of title.",
-    "That any file is worth training on. Nothing here ran the Luau compiler, executed anything in an engine, or scored quality. training_approved is false and semantic_quality_pass is null on every row.",
+    "That any file is worth training on. Parsing is the only quality evidence here: nothing executed anything in an engine or scored quality, and training_approved is false with semantic_quality_pass null on every row.",
     "That the corpus is current Luau. These are repositories as they stood at their pinned commits; some predate the .luau extension and 6,090 of the files in the surrounding survey are .lua.",
     "That the counts cover every eligible repository. Repositories over the snapshot cap are recorded skipped_repository_too_large with their Luau file count, and those files are not here."
   ]

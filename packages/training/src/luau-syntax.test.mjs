@@ -79,6 +79,20 @@ test('a path containing a colon is not truncated at it', () => {
   assert.equal(numeric.column, 3);
 });
 
+test('a message that quotes another location does not become the path', () => {
+  // THE DEFECT THIS WAS SHIPPED WITH, found by falsification. The original regex was GREEDY, so
+  // when a diagnostic's MESSAGE contains a location of its own the path ran to the LAST match:
+  //   greedy -> "./a.luau:1:1-1: (W0) SyntaxError: see ./b.luau"
+  // whose basename is `b.luau`. The gate keys rows by basename, so the syntax error would have
+  // been attributed to a different row — condemning an innocent file and exonerating the guilty
+  // one in one move, with both counts still summing correctly.
+  const d = parseDiagnosticLine('./a.luau:1:1-1: (W0) SyntaxError: see ./b.luau:9:9-9: (W0) Foo: bar');
+  assert.equal(d.path, './a.luau', 'the message was swallowed into the path');
+  assert.equal(d.line, 1);
+  assert.equal(d.kind, 'SyntaxError');
+  assert.match(d.message, /^see \.\/b\.luau/, 'the message lost its own text');
+});
+
 test('SyntaxError is separated from TypeError and from lint kinds', () => {
   const byFile = parseAnalyzerOutput([SYNTAX, TYPE, LINT].join('\n'));
   const all = byFile.get('b.luau');

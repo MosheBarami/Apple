@@ -21,6 +21,8 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { syntaxReportApplies } from './check-luau-syntax.mjs';
+
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 /** Count occurrences of `key(row)` and return the map, biggest first. Empty in, empty out. */
@@ -74,6 +76,22 @@ if (isMain) {
   const acquired = repos.filter((r) => r.status === 'acquired');
   const split = splitRows(rows);
 
+  // `luau_compiler` said `not_run` for as long as it was true. It is read from the gate's own
+  // report now rather than hand-edited, so the card cannot drift from the measurement — and the
+  // report has to be about THIS corpus and THIS many rows, or the card goes back to saying the
+  // compiler was never run. A report from a fixture shares no row ids and would certify nothing.
+  const SYNTAX = join(HERE, '..', 'runs', 'luau-syntax-github-v1.json');
+  const corpusRel = DIR.replace(`${resolve(HERE, '..', '..', '..')}/`, '');
+  let syntax = 'not_run';
+  if (existsSync(SYNTAX)) {
+    const rep = JSON.parse(readFileSync(SYNTAX, 'utf8'));
+    syntax = syntaxReportApplies(rep, corpusRel, rows.length)
+      ? `luau-analyze, ${rep.generated_at}: ${rep.rows_that_parse} of ${rep.rows_checked} rows parse `
+        + `(${rep.parse_rate_percent}%), ${rep.rows_that_do_not_parse} do not, ${rep.rows_not_measured} not measured. `
+        + 'See packages/training/runs/luau-syntax-github-v1.json. Parsing is the floor, not approval.'
+      : `not_run for this corpus — the report at runs/luau-syntax-github-v1.json is about ${rep.corpus} / ${rep.rows_checked} rows`;
+  }
+
   const card = {
     id: 'roblox-github-v1',
     generated_at: new Date().toISOString(),
@@ -112,7 +130,7 @@ if (isMain) {
 
     validation: {
       engine_execution: 'not_run',
-      luau_compiler: 'not_run',
+      luau_compiler: syntax,
       human_review: 'not_performed',
       semantic_quality: 'not_measured',
       deduplication: 'exact, on content normalised for line endings and trailing whitespace. Near-duplicates are MEASURED via shape_sha256 and are NOT removed.',
@@ -120,7 +138,7 @@ if (isMain) {
 
     what_this_does_not_establish: [
       'That the upstream author held the rights they granted. A retrieved LICENSE is the publisher speaking, not a chain of title.',
-      'That any file is worth training on. Nothing here ran the Luau compiler, executed anything in an engine, or scored quality. training_approved is false and semantic_quality_pass is null on every row.',
+      'That any file is worth training on. Parsing is the only quality evidence here: nothing executed anything in an engine or scored quality, and training_approved is false with semantic_quality_pass null on every row.',
       'That the corpus is current Luau. These are repositories as they stood at their pinned commits; some predate the .luau extension and 6,090 of the files in the surrounding survey are .lua.',
       'That the counts cover every eligible repository. Repositories over the snapshot cap are recorded skipped_repository_too_large with their Luau file count, and those files are not here.',
     ],

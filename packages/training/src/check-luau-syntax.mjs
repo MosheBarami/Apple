@@ -70,12 +70,20 @@ export const SINGLE_FILE_TIMEOUT_MS = 30_000;
 /**
  * One diagnostic line of `--formatter=plain` output, or null.
  *
- * Shape: `./path/to/file.luau:LINE:COL-COL: (W0) Kind: message`. The path may contain colons —
- * a repository is free to name a directory `a:b` — so the line/col/kind tail is anchored from the
- * RIGHT, and everything before it is the path.
+ * Shape: `./path/to/file.luau:LINE:COL-COL: (W0) Kind: message`. Two ways to get the path wrong:
+ *
+ *   `^([^:]*)` cuts it at the first colon, and a repository is free to name a directory `a:b`.
+ *   `^(.*)` is GREEDY, so when the MESSAGE quotes a location of its own — `SyntaxError: see
+ *   ./b.luau:9:9-9: (W0) Foo: bar` — the path swallows the whole line up to the last match and
+ *   `basename` then files the diagnostic under `b.luau`. A syntax error attributed to the wrong
+ *   row is worse than one missed, because it condemns an innocent file and exonerates the guilty
+ *   one in the same stroke. This was shipped greedy and caught by a falsification run.
+ *
+ * So: lazy, anchored at both ends. The first position where the strict `:N:C-C: (Wn) Kind: ` tail
+ * can start is the end of the path.
  */
 export function parseDiagnosticLine(line) {
-  const m = /^(.*):(\d+):(\d+)-(\d+): \(W\d+\) ([A-Za-z]+): (.*)$/.exec(line);
+  const m = /^(.*?):(\d+):(\d+)-(\d+): \(W\d+\) ([A-Za-z]+): (.*)$/.exec(line);
   if (!m) return null;
   return { path: m[1], line: Number(m[2]), column: Number(m[3]), kind: m[5], message: m[6] };
 }
@@ -101,6 +109,23 @@ export function parseAnalyzerOutput(text) {
 /** The syntax errors among a file's diagnostics. TypeError and lint kinds are not syntax. */
 export function syntaxErrorsOf(diagnostics) {
   return (diagnostics ?? []).filter((d) => d.kind === 'SyntaxError');
+}
+
+/**
+ * May this report be used to answer for that corpus?
+ *
+ * Every consumer joins to this report BY ROW ID and asks "is this row in the failure list?". A
+ * report produced against a different corpus — a three-row fixture, say — shares no row ids at
+ * all, so every row comes back absent from the failure list, which reads as PASSING. A report
+ * that never looked at a single one of those rows would certify all of them.
+ *
+ * So the report has to say it is about this corpus AND to have covered this many rows. Both, and
+ * separately: a sibling corpus of the same size passes the row count on its own.
+ */
+export function syntaxReportApplies(report, corpusRelPath, rowsInCorpus) {
+  if (!report || typeof report !== 'object') return false;
+  if (report.corpus !== corpusRelPath) return false;
+  return report.rows_checked === rowsInCorpus;
 }
 
 /**

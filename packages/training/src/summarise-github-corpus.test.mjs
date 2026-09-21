@@ -29,6 +29,7 @@ import { tally, splitRows } from './summarise-github-corpus.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CARD = join(ROOT, 'data/roblox-github-v1/dataset-card.json');
+const REPORT = join(ROOT, 'runs/luau-syntax-github-v1.json');
 
 const row = (over = {}) => ({ generated: false, shape_sha256: 'a'.repeat(64), bytes: 10, ...over });
 
@@ -99,7 +100,7 @@ test('the card keeps saying what it does not establish',
     assert.match(String(card.volume_note), /distinct programs/,
       'the note that a row count is not a program count was removed');
 
-    // Validation must stay honest: nothing was run.
+    // Validation must stay honest: of the four, only the parser has been run.
     assert.equal(card.validation.engine_execution, 'not_run');
     assert.equal(card.validation.human_review, 'not_performed');
     assert.equal(card.validation.semantic_quality, 'not_measured');
@@ -108,4 +109,34 @@ test('the card keeps saying what it does not establish',
     assert.match(card.derived_from['repos.jsonl'].sha256, /^[0-9a-f]{64}$/,
       'the card does not record the sha256 of the ledger it was derived from');
     assert.equal(card.rights.evidence_tier, 'licence_text');
+  });
+
+test('the card\'s parse claim is the gate\'s own numbers, or it is not a claim',
+  { skip: !existsSync(CARD) && 'the card has not been generated' }, () => {
+    // `luau_compiler` said `not_run` for as long as that was true, and the danger in changing it is
+    // that the card now carries a QUALITY figure — the first one it has ever had — which a reader
+    // will quote. A hand-edited or stale figure would be worse than `not_run`, because `not_run`
+    // is at least honest about knowing nothing. So either the field says not_run, or every number
+    // in it matches the committed report line for line.
+    const card = JSON.parse(readFileSync(CARD, 'utf8'));
+    const claim = String(card.validation.luau_compiler);
+    if (claim.startsWith('not_run')) {
+      assert.ok(!/\d+ of \d+ rows parse/.test(claim), 'not_run must not carry numbers');
+      return;
+    }
+
+    assert.ok(existsSync(REPORT),
+      'the card claims the parser ran, and the report it claims to quote is not in this checkout');
+    const r = JSON.parse(readFileSync(REPORT, 'utf8'));
+    assert.equal(r.corpus, 'packages/training/data/roblox-github-v1',
+      'the card is quoting a report about a different corpus');
+    assert.equal(r.rows_checked, card.volume.rows_total,
+      'the report covered a different number of rows than the card describes');
+
+    for (const n of [r.rows_that_parse, r.rows_checked, r.rows_that_do_not_parse, r.rows_not_measured, r.parse_rate_percent]) {
+      assert.ok(claim.includes(String(n)), `the card's parse claim does not carry the report's ${n}`);
+    }
+    // The claim must not quietly grow into an approval.
+    assert.match(claim, /Parsing is the floor, not approval/,
+      'the card\'s first quality figure lost the sentence saying it is not approval');
   });
