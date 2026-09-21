@@ -236,7 +236,13 @@ account does another, and the accounting follows the code.
 
 ## 9. §8.3 DECIDED, AND THE WORKAROUND IN §7.1 HAD STOPPED WORKING
 
-**2026-09-21. Six live one-item calls, 124 neurons in total, all of them listed.**
+**2026-09-21. Six live one-item calls, 123 neurons in total, all of them listed.**
+
+> This line first said **124**, which is wrong: 21 + 21 + 21 + 20 + 20 + 20 = 123. The six per-call
+> figures below were right and the total was added by hand. Corrected here rather than quietly; the
+> commit message on `e3acc7c` still carries the 124 and cannot be amended without rewriting history
+> other sessions are committing onto, so this note is where the correction lives. Reproduce it:
+> `python3 -c "import json,glob; print(sum(json.load(open(p))['neurons'] for p in glob.glob('packages/training/runs/roblox-frontier-apple-agent-house-rules-plus-cacheprobe-*.json')))"`
 
 ### 9.1 The half of §8.3 that was in this repository, decided
 
