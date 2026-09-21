@@ -344,3 +344,62 @@ measured in `docs/frontier-for-roblox.md`, not here.
 - `packages/training/runs/eval-v4-scored.json`, `packages/training/runs/eval-v4.json`
 - `packages/training/src/serving-probe.sh`, `packages/training/src/upload_lora.sh`
 - `docs/audit/INFERENCE-PROVIDERS.md` (2026-09-14) — the disjoint-sets finding, re-verified here
+
+---
+
+## 10. THE ARTIFACT WAS EVALUATED AGAINST ITS OWN BASE, AND THE RESULT IS NOT NOTHING
+
+**Recorded here on 2026-09-21 because it was nowhere in this document, and this is the document that
+decides whether training is worth doing.** §1 says every hour spent training produces an artifact
+that cannot be loaded by the thing customers talk to. That is still true and this section does not
+soften it. What it adds is the other half of the owner's requirement — *"each final mode must have a
+traceable trained artifact in its serving lineage **and an evaluation of that exact artifact**"* —
+because the evaluation exists, is committed, and says something worth knowing.
+
+`packages/training/runs/eval-v4.json` and `eval-v4-scored.json`: `apple-v4`, the same adapter whose
+id §3.3 sends to four models, scored head to head against its own base on 21 rows. Scored by
+**running** what each produced — `score-eval.mjs` executes the module against the curriculum's own
+exhaustive checks and puts each tool call through the product's registry; no similarity to a
+reference answer is computed anywhere.
+
+| axis | base `unsloth/Llama-3.2-3B-Instruct` | **`apple-v4` adapter** |
+|---|---|---|
+| game-logic (n=8) | 0/8 | **0/8** |
+| tool trajectories (n=13) | **0/13** | **8/13** |
+
+**The trajectory column is the finding.** The base fails every one of the thirteen, and its reasons
+name what is wrong: `tool_does_not_exist` five times — it invents tools that are not in the registry
+— and `no_tool_call` four. The adapter passes eight, and the five it misses fail for narrower
+reasons (`arguments_rejected` twice, `no_tool_call` three times). Row by row:
+`guard-a-remote#0` and `#1`, `daily-reward-streak#0`, `#1`, `#3`, `designed-hud#0`, `#1`, `#2`.
+
+So local training on this hardware **did** teach a 3B model to call this product's tools, from
+nothing, on a held-out set. It taught it nothing measurable about writing correct game logic.
+
+### 10.1 What this is not, stated before anyone quotes the 8/13
+
+- **It is not a served number.** Both columns were produced by local inference —
+  `eval-v4.json` records `model: "unsloth/Llama-3.2-3B-Instruct"`, `adapter:
+  "adapters/apple-v4-best"`. The uploaded, converted adapter behind
+  `ddde8377-8a76-4240-b083-b9e59cd38031` has **not** been scored on these rows through Workers AI.
+  That comparison — local weights against the artifact the platform actually serves — is the
+  quantisation evaluation the deliverable asks for, and it is **open**. It is affordable (42 calls on
+  a 3B model) and it was not run here.
+- **It is not production's model.** `llama-3.2-3b-instruct` is not what any customer reaches. §4
+  is why: not one of the nine LoRA-capable models supports native function calling, which is the
+  whole product.
+- **It is 21 rows.** One trajectory row is 7.7 points.
+- **"Held-out" is `score-eval.mjs`'s own word**, and the mechanism that enforces it —
+  8-word-shingle overlap between training rows and eval tasks — has a test of its own in
+  `contamination.test.mjs`. The split was not independently re-verified for this section.
+
+### 10.2 Where that leaves the deliverable row
+
+Three states, kept apart on purpose:
+
+| requirement | state |
+|---|---|
+| a traceable trained artifact | **done** — two exist, §9 lists them from the account's own endpoint |
+| an evaluation of that exact artifact | **done, locally** — the table above |
+| that artifact in the **serving** lineage | **PLATFORM-BLOCKED** — §3.3, vendor error 5005, re-taken 2026-09-21 |
+| a quantisation evaluation, served vs local | **OPEN and achievable** — 42 calls, not run |
