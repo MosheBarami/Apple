@@ -1,4 +1,4 @@
-# OPEN — the web app entry bundle is 2.6x its budget, and I did not raise the budget
+# OPEN — three site/web budgets and guards are red, and I raised none of them
 
 **Measured 2026-09-21 by the infra lane. Not fixed. Handoff to whoever owns `apps/web`.**
 
@@ -72,3 +72,56 @@ and falsified by planting a chunk whose body contains `ui-lab` and watching it g
 The entry graph is what a browser must have before first paint. A correctly split route can be as
 large as it likes. The question is not "is 180 kB too big" in the abstract — it is "does a person
 opening the dashboard download `settings.tsx`". Today they do.
+
+
+---
+
+# The other two in the same CI job — added 2026-09-21
+
+`build` runs its checks in order and stops at the first failure, so `check-app-bundle` above was the
+only one CI reached. Run locally, two more are red. Both belong to the landing redesign, not to
+infra, and both are recorded here rather than fixed.
+
+**Caveat on every number below, because it is the kind that has been wrong tonight:** the site tree
+was dirty while I measured — `apps/site/src/components/BuiltScreen.astro`, `Nav.astro` and
+`tests/links-resolve.test.mjs` were mid-edit by another lane — so these are measurements of the
+working tree, not of HEAD. The direction is not in doubt (12 kB budget against 28 kB) but the exact
+figure will move.
+
+## `check-landing-budget` — exit 1
+
+```
+  TOTAL (markup + stylesheets)   28208 B gzip  / 12000
+  JavaScript (raw)                   0 B
+  Images (raw)                   29617 B  / 40000
+```
+
+The root route is meant to be one viewport of HTML and CSS with no JavaScript. The JavaScript rule
+still holds — zero bytes — and the image budget is met. The markup-and-stylesheet total is 2.35x.
+It was 21042 B when I first measured it about ninety minutes earlier in the same session, so this is
+growing under active work, not sitting still.
+
+## `check-asset-wall` — exit 2, UNVERIFIED
+
+```
+ASSET WALL UNVERIFIED — apps/site/dist/index.html has no <section id="library">
+This is not a clean page. The checker did not see one.
+```
+
+**The checker is behaving correctly.** Exit 2 is its "I could not measure" code and it refuses to
+report a pass over a page it could not find its subject in — which is the rule this repository is
+written to. What is stale is the aim: commit 92c9221 ("the front page had four drawings of what it
+does and no picture of what it made") rewrote the landing and the library section did not survive.
+The committed `index.astro` now carries `hero-title`, `statement-title`, `sequence-title`,
+`models`, `inside`, `truths-title`, `plans-title`, `cap-title` — and no `library`.
+
+So the question is not "why is the checker failing", it is **"is the asset wall coming back"**. That
+is a product decision for whoever owns the landing, and the ledger has open design rows either side
+of it. An infra pass must not answer it by deleting the guard.
+
+Three ways it can end, and only the first two are acceptable:
+
+1. the section returns, and the guard passes unchanged;
+2. the section is gone for good, and the guard is re-aimed at whatever now carries that claim, or
+   retired in a commit that says the wall is not coming back;
+3. someone makes CI green by deleting it. That is the one this file exists to make harder.
