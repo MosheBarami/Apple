@@ -37,6 +37,10 @@ const EXPECTED = {
   'multi-file': 5,
   'ui-implementation': 5,
   'failure-recovery': 4,
+  // The three instruments this repo caught reporting a verdict on something they never observed
+  // (docs/FAILURES.md F-69, F-70, F-71). Each task carries the F-number it exists to prevent;
+  // failures-linked.test.mjs asserts the number is a heading that exists.
+  'observation-failure': 3,
   // The scripting curriculum (docs/SCRIPTING-CURRICULUM.md). Its weighting and topic coverage are
   // asserted in scripting-curriculum.test.mjs; only the counts are pinned here.
   'scripting-security': 7,

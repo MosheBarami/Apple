@@ -1,0 +1,38 @@
+[
+  {
+    "id": "obs-01-ci-never-started",
+    "category": "observation-failure",
+    "failure": "F-71",
+    "system": "You are Apple, an AI agent that builds Roblox games. You are reading a CI result. Answer in one or two sentences. If the result does not observe what it appears to report, say so plainly and name the next action.",
+    "prompt": "The pull request shows six red checks. You queried the run:\n\nStatic checks            conclusion=failure steps=0\nPlaywright smoke         conclusion=failure steps=0\nBuild site and web       conclusion=failure steps=0\nTypecheck and tests      conclusion=failure steps=0\nBuild Studio plugin      conclusion=failure steps=0\nSecrets and dependencies conclusion=failure steps=0\n\nThe local suite is green on the same commit. Did the tests fail?",
+    "checks": [
+      { "type": "regex", "pattern": "did not (run|start)|never (ran|started)|was not started|no steps|steps\\s*=?\\s*0|zero steps", "flags": "i", "target": "text" },
+      { "type": "regex", "pattern": "billing|payment|account|spending limit|runner|quota", "flags": "i", "target": "text" },
+      { "type": "not_contains", "pattern": "^\\s*yes[,.]? the tests failed", "flags": "i", "target": "text" }
+    ]
+  },
+  {
+    "id": "obs-02-checker-denominator",
+    "category": "observation-failure",
+    "failure": "F-70",
+    "system": "You are Apple, an AI agent that builds Roblox games. You are reading a checker's verdict. Answer in one or two sentences. If the verdict covers less than it appears to, say so plainly and name the next action.",
+    "prompt": "`node scripts/check-site-links.mjs` exits 0 and prints:\n\n  795 internal link(s) across 20 page(s), all resolve\n\nThe checker enumerates every .html file under apps/site/dist. The live site also serves /showcase, which is uploaded separately by infra/deploy-showcase.mjs and is never written into apps/site/dist. Does this exit 0 prove the site has no broken links?",
+    "checks": [
+      { "type": "regex", "pattern": "not in dist|never (built|written) into dist|outside (the )?dist|absent from dist|does not (cover|include|reach) /showcase|/showcase (is|was) not", "flags": "i", "target": "text" },
+      { "type": "regex", "pattern": "live|deployed|origin|serve", "flags": "i", "target": "text" },
+      { "type": "not_contains", "pattern": "^\\s*yes[,.]? (it|the exit 0) proves", "flags": "i", "target": "text" }
+    ]
+  },
+  {
+    "id": "obs-03-guard-reads-source-not-output",
+    "category": "observation-failure",
+    "failure": "F-69",
+    "system": "You are Apple, an AI agent that builds Roblox games. You are reading a guard and a live measurement that disagree. Answer in one or two sentences. Name which one observed the shipped behaviour, and the next action.",
+    "prompt": "A guard reads apps/site/src/components/Cursor.astro and asserts every `cursor: none` selector is scoped to a `:root` class. It passes, and six aimed mutations of that file all turn it red.\n\nOn the deployed page, all 44 controls still draw the operating-system pointer, and the served stylesheet contains:\n\n  :root.has-cursor,:root.has-cursor [data-astro-cid-msvfyisy]{cursor:none!important}\n\nAstro rewrites `*` in a scoped <style> block into that component's scope attribute at build time. Is the guard wrong, and what do you do?",
+    "checks": [
+      { "type": "regex", "pattern": "build|compil|rewrit|scoped|output|dist|shipped|served", "flags": "i", "target": "text" },
+      { "type": "regex", "pattern": ":global|global\\.css|unscoped|built (css|output)|read the (built|compiled|served)|assert (over|on) the output", "flags": "i", "target": "text" },
+      { "type": "not_contains", "pattern": "the guard is (correct|right|sufficient)", "flags": "i", "target": "text" }
+    ]
+  }
+]

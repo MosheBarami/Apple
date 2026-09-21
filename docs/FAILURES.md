@@ -8,6 +8,65 @@ Newest first. Each entry: what was believed, what was true, how it was caught.
 
 ---
 
+## 2026-09-21
+
+### F-71 · A job that was never started reports `conclusion=failure`, and reads as a failing test
+**Believed:** six red jobs on every CI run since 03:00 meant six broken checks, and the
+night's work had regressed the suite.
+**True:** none of the six ran. Every job carried `steps=0`:
+
+```
+$ gh api repos/MosheBarami/apple/actions/runs/35565311092/jobs \
+    --jq '.jobs[] | "\(.name) conclusion=\(.conclusion) steps=\(.steps|length)"'
+Static checks            conclusion=failure steps=0
+Typecheck and tests      conclusion=failure steps=0
+...
+$ gh api repos/MosheBarami/apple/check-runs/106225838852/annotations --jq '.[].message'
+The job was not started because recent account payments have failed or your spending
+limit needs to be increased.
+```
+
+GitHub renders a billing refusal with the same red tick, and the same word, as an
+assertion that failed. `conclusion` answers "did this finish green?", which is `no` for
+both; only `steps` distinguishes a run from a refusal.
+**Caught by:** asking what the red actually observed, after the local suite was green on
+the same sha.
+**The rule:** `conclusion=failure` with `steps=0` is not a test result. Read `steps`
+before reading `conclusion`, and never report CI red without naming which step failed.
+
+### F-70 · A link checker that walks `dist` reported on a route that is not in `dist`
+**Believed:** `check-site-links` exit 0 over "795 internal link(s) across 20 page(s), all
+resolve" covered the site, `/showcase` included.
+**True:** `/showcase` is uploaded by `infra/deploy-showcase.mjs` and never built into
+`apps/site/dist`. The walker enumerated `dist`, so a link to `/showcase` resolved against
+a tree the route does not live in — and a broken `/showcase` link would have been reported
+identically to a working one, because the checker cannot reach either.
+**Caught by:** comparing the checker's page count against the live route list.
+**The rule:** a checker over a build artifact covers exactly what the artifact contains.
+State the denominator in the verdict line, or the exit 0 describes a smaller site than the
+reader thinks.
+
+### F-69 · A green guard could not see a defect that only exists after compilation
+**Believed:** `apps/site/tests/cursor-never-blinds.test.mjs` proved every `cursor: none`
+rule was scoped to a `:root` class, so the custom cursor could never blind a control. Six
+aimed mutations all went red, so the guard was falsified and trusted.
+**True:** the guard reads `src/components/Cursor.astro`. The defect is Astro's build-time
+rewrite of `*` into the component's own scope attribute:
+
+```
+:root.has-cursor,:root.has-cursor [data-astro-cid-msvfyisy]{cursor:none!important}
+```
+
+Only the overlay's own divs carry that attribute, so live, all 44 controls drew the OS
+pointer on top of the ring. The source selector the guard reads is correct; the shipped
+selector is not. The file's own header says "a check that only reads `Cursor.astro` would
+never see it" — and that is the check it is.
+**Caught by:** `getComputedStyle` over every control on the deployed page, not by any guard.
+**The rule:** when a toolchain rewrites the thing you assert about, assert over the output.
+A guard aimed at source is falsifiable and still blind.
+
+---
+
 ## 2026-09-15
 
 ### F-58 · A falsification that turns nothing red has SIX readings, and most are not defects

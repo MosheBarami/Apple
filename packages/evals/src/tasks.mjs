@@ -76,6 +76,11 @@ export function validateTask(task, file) {
   // cheapest possible way to write a check that can never fail, and it would only be noticed
   // on a paid run, as a suspiciously perfect score.
   if (task.expectTools != null) errs.push(...validateExpectTools(task.expectTools, `${where} expectTools`));
+  //[[ A task may name the documented failure it exists to prevent (docs/FAILURES.md "F-<n>").
+  //   The shape is checked here so a typo cannot quietly break the link; that the number EXISTS
+  //   is checked by failures-linked.test.mjs, which is the half this file cannot see. ]]
+  if (task.failure != null && !/^F-\d+$/.test(task.failure))
+    errs.push(`${where}: failure must be a docs/FAILURES.md id like "F-71" (got ${JSON.stringify(task.failure)})`);
   if (task.topics != null) {
     if (!Array.isArray(task.topics) || task.topics.length === 0) errs.push(`${where}: topics must be a non-empty array`);
     else for (const t of task.topics) if (!TOPIC_SET.has(t)) errs.push(`${where}: unknown topic "${t}" (see SCRIPTING_TOPICS)`);

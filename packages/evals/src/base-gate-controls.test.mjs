@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { callModel, TransportError } from './transport.mjs';
 import { APPLE_MAX_BASE_GATE, evaluateBaseGate, parseArgs, runJob, sourceHashes, validateBaseGateConfig } from './run.mjs';
-import { loadTasks } from './tasks.mjs';
+import { loadTasks, TASKS_DIR } from './tasks.mjs';
+import { readdirSync } from 'node:fs';
 
 const TASK = {
   id: 'base-gate-control',
@@ -102,10 +103,21 @@ test('base-gate preflight binds the complete current task bundle and refuses dri
     validateBaseGateConfig({ ...cfg, rag: true }, tasks).join('\n'),
     /--rag is forbidden/,
   );
-  assert.match(
-    validateBaseGateConfig(cfg, tasks, { ...sourceHashes(), taskBundleSha256: '0'.repeat(64) }).join('\n'),
-    /task bundle changed/,
-  );
+  // Drift is forged where the digest is actually computed from -- the per-file hashes. Overriding
+  // the top-level taskBundleSha256 used to be the injection point; once the gate started hashing
+  // its own frozen subset, that override changed an input nothing read, and the forgery passed.
+  const real = sourceHashes();
+  const tampered = { ...real, taskFiles: { ...real.taskFiles, 'debugging.json': '0'.repeat(64) } };
+  assert.match(validateBaseGateConfig(cfg, tasks, tampered).join('\n'), /task bundle changed/);
+
+  // A task file the gate names and that is no longer on disk must refuse, not hash around it.
+  const missing = { ...real, taskFiles: { ...real.taskFiles } };
+  delete missing.taskFiles['door-mechanic.json'];
+  assert.match(validateBaseGateConfig(cfg, tasks, missing).join('\n'), /missing from/);
+
+  // And a file the gate does NOT name may appear or change without refusing the frozen run.
+  const grown = { ...real, taskFiles: { ...real.taskFiles, 'a-new-category.json': '1'.repeat(64) } };
+  assert.deepEqual(validateBaseGateConfig(cfg, tasks, grown), []);
 });
 
 test('a length finish is retained, charged, and excluded from grading without a retry', async () => {
@@ -188,7 +200,12 @@ test('the default runner remains compatible with one retry', async () => {
 
 test('result fingerprints retain every task file and the runner sources', () => {
   const hashes = sourceHashes();
-  assert.equal(Object.keys(hashes.taskFiles).length, 13);
+  // Compared against the directory, not a literal: the property is "every task file", and a
+  // pinned 13 went red the moment the suite grew by one file that the provenance record had
+  // correctly picked up. The literal measured the suite's size; this measures the coverage.
+  const onDisk = readdirSync(TASKS_DIR).filter((name) => name.endsWith('.json')).sort();
+  assert.ok(onDisk.length >= 13, `expected the task directory to be populated, saw ${onDisk.length}`);
+  assert.deepEqual(Object.keys(hashes.taskFiles).sort(), onDisk);
   for (const value of [
     hashes.taskBundleSha256,
     hashes.runnerSha256,

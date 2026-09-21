@@ -47,6 +47,17 @@ export const APPLE_MAX_BASE_GATE = Object.freeze({
   totalWeight: 165,
   scriptingWeight: 89,
   reservedNeurons: 20_258,
+  //[[ The gate is a FROZEN run, so it owns its file list rather than reading whatever is in
+  //   tasks/ today. Before this list existed, adding ANY task file to the suite changed
+  //   `taskBundleSha256` and the gate refused to run -- and re-pinning the digest to make it run
+  //   again would have silently re-registered the approved test as a different one. The suite is
+  //   allowed to grow; this bundle is not. A file named here and missing from disk still refuses. ]]
+  taskFiles: Object.freeze([
+    'api-knowledge.json', 'debugging.json', 'door-mechanic.json', 'failure-recovery.json',
+    'luau-correctness.json', 'multi-file.json', 'project-comprehension.json',
+    'scripting-gameplay.json', 'scripting-persistence.json', 'scripting-security.json',
+    'scripting-systems.json', 'tool-selection.json', 'ui-implementation.json',
+  ]),
   taskBundleSha256: 'a1d0b5d260cc466ea4c57d6eff04b438531a9aa0793e6c2523373dd1ed758835',
   overallMin: 0.9,
   scriptingCombinedMin: 0.85,
@@ -91,6 +102,20 @@ function sha256File(path) {
 }
 
 /** Exact source inputs written into every result so a score cannot outlive what produced it. */
+/**
+ * The gate's own bundle digest: the same algorithm as sourceHashes(), over the gate's frozen file
+ * list instead of the directory. Returns null when a named file is not on disk, which the caller
+ * reports as drift -- a deleted task file must refuse the run, not hash around it.
+ */
+export function baseGateBundleSha256(hashes = sourceHashes(), gate = APPLE_MAX_BASE_GATE) {
+  const subset = {};
+  for (const name of gate.taskFiles) {
+    if (!(name in hashes.taskFiles)) return null;
+    subset[name] = hashes.taskFiles[name];
+  }
+  return createHash('sha256').update(JSON.stringify(subset)).digest('hex');
+}
+
 export function sourceHashes() {
   const taskFiles = Object.fromEntries(
     readdirSync(TASKS_DIR)
@@ -132,14 +157,20 @@ export function validateBaseGateConfig(cfg, tasks, hashes = sourceHashes()) {
   if (cfg.rag) errors.push('--rag is forbidden for the base-only gate');
   if (cfg.maxTokens !== gate.maxTokens) errors.push(`--max-tokens must be exactly ${gate.maxTokens}`);
   if (cfg.attempts !== gate.attempts) errors.push('--one-attempt is required');
-  if (tasks.length !== gate.taskCount) errors.push(`task count changed: ${tasks.length} != ${gate.taskCount}`);
-  const totalWeight = tasks.reduce((n, task) => n + (task.weight ?? 1), 0);
+  // Counted over the gate's frozen categories only, for the same reason the digest is: a task
+  // added to a category the gate does not carry is not drift in the registered test.
+  const gateCategories = new Set(gate.taskFiles.map((name) => name.replace(/\.json$/, '')));
+  const gateTasks = tasks.filter((task) => gateCategories.has(task.category));
+  if (gateTasks.length !== gate.taskCount) errors.push(`task count changed: ${gateTasks.length} != ${gate.taskCount}`);
+  const totalWeight = gateTasks.reduce((n, task) => n + (task.weight ?? 1), 0);
   if (totalWeight !== gate.totalWeight) errors.push(`task weight changed: ${totalWeight} != ${gate.totalWeight}`);
-  const scriptingWeight = tasks
+  const scriptingWeight = gateTasks
     .filter((task) => ['scripting-security', 'scripting-persistence', 'scripting-systems', 'scripting-gameplay'].includes(task.category))
     .reduce((n, task) => n + (task.weight ?? 1), 0);
   if (scriptingWeight !== gate.scriptingWeight) errors.push(`scripting weight changed: ${scriptingWeight} != ${gate.scriptingWeight}`);
-  if (hashes.taskBundleSha256 !== gate.taskBundleSha256) errors.push(`task bundle changed: ${hashes.taskBundleSha256} != ${gate.taskBundleSha256}`);
+  const bundle = baseGateBundleSha256(hashes, gate);
+  if (bundle === null) errors.push(`task bundle changed: a file the gate names is missing from ${TASKS_DIR}`);
+  else if (bundle !== gate.taskBundleSha256) errors.push(`task bundle changed: ${bundle} != ${gate.taskBundleSha256}`);
   return errors;
 }
 
