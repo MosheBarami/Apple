@@ -94,6 +94,17 @@ export const globalCount = (t, name) => Number(t.globals?.[name] ?? 0);
 /** A fact the item's own probe recorded. `undefined` when the probe never got that far. */
 export const fact = (t, key) => t.facts?.[key];
 
+/**
+ * Every number a DataStore snapshot actually holds — the value itself when it is a number, or the
+ * numeric fields when the answer stored a profile table. `[]` when nothing was stored at all, which
+ * is the state that must never be mistaken for agreement.
+ */
+export const storedNumbers = (snapshot) => {
+  if (typeof snapshot === 'number') return Number.isFinite(snapshot) ? [snapshot] : [];
+  if (snapshot === null || typeof snapshot !== 'object') return [];
+  return Object.values(snapshot).filter((v) => typeof v === 'number' && Number.isFinite(v));
+};
+
 /** Errors thrown INSIDE a handler the probe fired. An empty list is the passing state. */
 export const handlerErrors = (t) => {
   const e = t.handlerErrors;
@@ -532,8 +543,31 @@ end
         (t) => fact(t, 'bothOk') === true),
       check('concurrent-adds-both-land', 'the second caller read the value as it was before the first wrote. A GetAsync/SetAsync pair writes 50 twice and the player ends with 50; UpdateAsync reads the CURRENT value inside its transform and the player ends with 100. Nothing about the code is inspected — only the arithmetic that came out',
         (t) => Number(fact(t, 'call2')) === 100),
-      check('reported-total-is-real', 'the number the function returns has to be the number in the store',
-        (t) => Number(fact(t, 'call2')) === Number(fact(t, 'stored'))),
+      //[[ RE-AIMED 2026-09-21. THE PROPERTY IS UNCHANGED; THE COMPARISON WAS WRONG.
+      //   Written as `Number(call2) === Number(stored)`, this check could only pass against a model
+      //   that stores the coin total as a BARE NUMBER under the key. The prompt asks for "that
+      //   player's saved coin total in a DataStore" and says nothing about the stored shape, and in
+      //   all EIGHT recorded samples across all three prompt arms the model stored a profile table:
+      //   call2 = 100, stored = {"Coins": 100}. `Number({...})` is NaN, so a correct answer failed,
+      //   every time, on a schema the prompt never specified. The item's own header says an item
+      //   must not be passable by naming the right words; it must equally not be FAILABLE for a
+      //   choice it never forbade.
+      //
+      //   It is not relaxed to get green. The property — the number you reported is the number you
+      //   actually banked — is asserted against the store as before, and the two ways to break it
+      //   both still break it:
+      //     returns `amount` instead of the total   -> 50 is not among the stored numbers -> fails
+      //                                                (that is this item's own fail control)
+      //     banks nothing, counts in memory         -> no stored numbers at all           -> fails
+      //   The one case newly allowed is a stored table one of whose values IS the reported total,
+      //   which is what a correct answer looks like. `roblox-frontier.test.mjs` carries the
+      //   in-memory case as an explicit guard so the no-weakening claim is executed, not asserted.
+      check('reported-total-is-real', 'the number the function returns has to be a number actually written to the store — as the value itself, or as a field of the profile table the answer chose to store',
+        (t) => {
+          const reported = Number(fact(t, 'call2'));
+          if (!Number.isFinite(reported)) return false;
+          return storedNumbers(fact(t, 'stored')).includes(reported);
+        }),
     ],
   },
   {

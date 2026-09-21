@@ -531,17 +531,19 @@ Roblox — it measures the **model**. `house-rules` carried production's IDENTIT
 |---|---|---|
 | modern-api | 9/10 — 90% | 15/18 — 83% |
 | server-authority | 6/10 — 60% | 9/15 — 60% |
-| datastore-safety | **2/10 — 20%** | **5/15 — 33%** |
-| **overall** | 17/30 — 56.7% | 29/48 — 60.4% |
+| datastore-safety | **3/10 — 30%** | **7/15 — 47%** |
+| **overall** | 18/30 — 60.0% | 31/48 — 64.6% |
 
-The per-arm spread (neutral 53.3–60.0%, house-rules 50.0–68.8%) is **wider than the gap between the
-arms**, so nothing here is a prompt effect. What is not noise is the item-level structure: **five of
-sixteen items failed in every independent sample of both arms.**
+The per-arm spread (neutral 60.0–60.0%, house-rules 50.0–75.0%) is **wider than the gap between the
+arms**, so nothing here is a prompt effect. What is not noise is the item-level structure: **four of
+sixteen items failed in every independent sample of both arms** — `shop-debit`, `pet-rename`,
+`save-survives-throttle` and `failed-load-no-wipe`.
 
-And four of those five are things production's prompt **never said**. What it did say — `task.*`,
-`Instance.new`'s parent argument, RemoteEvent placement, never trust the client — is the modern-api
-axis, which both arms already passed 9/10 and 15/18. **The live prompt's Roblox guidance landed
-where the model was already right and was silent where it was reliably wrong.**
+Three of those four are things production's prompt **never said** (the fourth, `shop-debit`, is not
+a Roblox failure at all — see §8.6). What it did say — `task.*`, `Instance.new`'s parent argument,
+RemoteEvent placement, never trust the client — is the modern-api axis, which both arms already
+passed 9/10 and 15/18. **The live prompt's Roblox guidance landed where the model was already right
+and was silent where it was reliably wrong.**
 
 ### 8.5 Writing down the four things it never said
 
@@ -553,16 +555,17 @@ plus four bullets and nothing else, so a difference in score has one candidate c
 |---|---|---|---|
 | `save-survives-throttle` | FAIL FAIL | FAIL FAIL FAIL | **PASS PASS PASS** |
 | `failed-load-no-wipe` | FAIL FAIL | FAIL FAIL FAIL | **PASS PASS PASS** |
+| `atomic-add` | FAIL PASS | PASS PASS FAIL | **PASS PASS PASS** |
+| `shutdown-save` | PASS FAIL | PASS PASS FAIL | **PASS PASS PASS** |
 | `pet-rename` | FAIL FAIL | FAIL FAIL FAIL | FAIL **PASS** FAIL |
-| `atomic-add` | FAIL FAIL | FAIL FAIL FAIL | FAIL FAIL FAIL |
 | `shop-debit` | FAIL FAIL | FAIL FAIL FAIL | FAIL FAIL FAIL |
 
 | axis | `house-rules` | `house-rules-plus` |
 |---|---|---|
 | modern-api | 15/18 — 83% | 15/18 — 83% |
 | server-authority | 9/15 — 60% | 10/15 — 67% |
-| **datastore-safety** | **5/15 — 33%** | **12/15 — 80%** |
-| **overall** | 29/48 — 60.4% | **37/48 — 77.1%** |
+| **datastore-safety** | **7/15 — 47%** | **15/15 — 100%** |
+| **overall** | 31/48 — 64.6% | **40/48 — 83.3%** |
 
 **Two items that were deterministic failures in five independent samples are deterministic passes in
 three.** `pet-rename` moved 0/3 → 1/3 and all three answers now call `FilterStringAsync`, which none
@@ -573,13 +576,49 @@ bytes Cloudflare serves (one occurrence each in `workers/scripts/apple/content/v
 never-shipped control string at zero), and every one of the composer's seven shipped variants is now
 read for all four by a guard that goes red when one is dropped.
 
-### 8.6 What did not move, and the statistics stated honestly
+### 8.6 One check was failing every correct answer, and re-aiming it raised my own arm
 
-- **`atomic-add` fails `reported-total-is-real` in all eight samples across all three arms.** The
-  UpdateAsync rule was obeyed — all three intervention answers use `UpdateAsync` and none uses
-  `SetAsync`, and the concurrency check they used to fail now passes — and the item still fails, on
-  a fourth check about the number the function **returns** matching the number in the store. It is
-  the clearest single entry left on the work queue and no rule here addresses it.
+`atomic-add` failed `reported-total-is-real` in all eight samples across all three arms, and that
+looked like the clearest entry on the work queue. It was not a model failure. Run the scorer and
+read the recording:
+
+```
+call1 = 50   call2 = 100   stored = {"Coins": 100}   updateAsyncOps = 2
+```
+
+The arithmetic is right, `UpdateAsync` was used twice, and the check read
+`Number(call2) === Number(stored)` — `Number({...})` is `NaN`, so it could **only** pass against a
+model that stores the coin total as a bare number. The prompt asks for "that player's saved coin
+total in a DataStore" and says nothing about the stored shape, and all eight answers stored a
+profile table. The item's own header says an item must not be passable by naming the right words; it
+must equally not be **failable** for a choice it never forbade.
+
+The check now asks whether the reported total is among the numbers **actually written** — the value
+itself, or a field of whatever table the answer chose to store. It is not relaxed to get green, and
+that is executed rather than asserted: the item's own fail control (returns `amount`, not the total)
+still fails, and two new controls in `roblox-frontier.test.mjs` cover the two ways the change could
+have gone wrong. One banks nothing and counts in memory — the case the old comparison caught by
+accident — and must still fail. One stores `{Coins = n}` correctly and must now pass. Making the
+re-aim accept an empty store turns the first red; reverting it to the bare-number comparison turns
+the second red.
+
+**Said plainly: this correction raised the arm I shipped.** Every number in §8.4 and §8.5 above is
+after it, every recorded run was re-judged from its saved answers by
+`rescore-roblox-frontier.mjs` with no new model call, and here is the before and after so the
+correction can be audited rather than trusted:
+
+| arm | before the re-aim | after |
+|---|---|---|
+| `neutral` | 17/30 — 56.7% | 18/30 — 60.0% |
+| `house-rules` | 29/48 — 60.4% | 31/48 — 64.6% |
+| `house-rules-plus` | 37/48 — 77.1% | **40/48 — 83.3%** |
+
+It helps all three arms, and it helps the intervention arm most because the intervention arm is the
+one whose answers reach that fourth check at all. `atomic-add` under `house-rules-plus` is 3/3 with
+or without it on the first three checks; the re-aim is what lets a correct answer be counted correct.
+
+### 8.6.1 What did not move, and the statistics stated honestly
+
 - **`shop-debit` fails everywhere and should not be read as a server-authority result.** Its two
   failing checks fail because the model keys its item table on `"Sword"` while the probe fires the
   prompt's own spelling, `"sword"`; it passes both checks on that item that are actually about
@@ -587,11 +626,12 @@ read for all four by a guard that goes red when one is dropped.
   about matching strings and the arm would be measuring the benchmark's phrasing.
 - `anim-emote` and `round-countdown` each slipped 3/3 → 2/3. One sample each, inside this suite's
   demonstrated noise, and named rather than netted away.
-- **The sign test over the sixteen items is p = 0.2891** (6 up, 2 down) and is **not significant**.
-  Pairing by (item, sample index) gives +10 / −2 and exact McNemar p = 0.0386, but sample 1 of one
+- **The sign test over the sixteen items is p = 0.1797** (7 up, 2 down) and is **not significant**.
+  Pairing by (item, sample index) gives +11 / −2 and exact McNemar p = 0.0225, but sample 1 of one
   arm is not a matched condition of sample 1 of another, so that pairing is weaker than it looks.
-  The claim this section rests on is neither: it is two items that were deterministic failures in
-  five independent samples and are deterministic passes in three.
+  The claim this section rests on is neither: it is two items — `save-survives-throttle` and
+  `failed-load-no-wipe` — that were deterministic failures in five independent samples and are
+  deterministic passes in three.
 
 ### 8.7 The number any public claim has to be written against
 
@@ -599,10 +639,10 @@ read for all four by a guard that goes red when one is dropped.
 eighty has a verified module, and §7 measured what happens to a request that does not: **0/80**.
 
 This section is the other kind of request. Sixteen engine-facing tasks, no library entry for any of
-them, scored by running the Luau in a Roblox shim. The best arm measured is **37/48 — 77.1%**, and
-before tonight's four rules it was 60.4%.
+them, scored by running the Luau in a Roblox shim. The best arm measured is **40/48 — 83.3%**, and
+before tonight's four rules it was 64.6%.
 
-So the honest pair of numbers is **91.3% where the library has the answer, 77.1% where it does
+So the honest pair of numbers is **91.3% where the library has the answer, 83.3% where it does
 not** — and the second one is the one a sentence like *"the best-trained Roblox model"* would have
 to be written against, because a customer's request does not know which set it is in. Nothing
 user-facing carries such a claim today; `/docs/modes` says the two lanes run the same third-party
@@ -611,6 +651,11 @@ tonight (the false sentence 0 occurrences, the corrected one 1, a control phrase
 
 ### 8.8 Still not measured after this section
 
+- **One check was wrong for as long as this suite existed and nothing said so.** `reported-total-is-real`
+  had never passed against a real model answer, and the only reason it was caught is that it failed
+  identically in all eight samples, which is a shape worth suspecting. The other 49 checks all have
+  negative controls proving they CAN fail; none of them has a control proving it can pass against
+  anything but its own hand-written pass case. That is the next audit of this file.
 - **Sixteen items is a small suite.** One item is 6.25 points. Every percentage here inherits that,
   and the per-sample spread in 8.4 is the honest width of the instrument.
 - **Whether the four rules cost anything elsewhere.** They add roughly 120 tokens to every request
@@ -622,4 +667,4 @@ tonight (the false sentence 0 occurrences, the corrected one 1, a control phrase
 - **The Apple MAX lane.** Unchanged from §6: every arm here ran `apple` / Agent. `stone` and `rune`
   are the same model at the same ceiling, so nothing here supports or refutes a claim about MAX.
 - **The eighty-vs-sixteen split is not a random split of one population.** The two sets were written
-  for different purposes, so 91.3% and 77.1% are two measurements, not two arms of one experiment.
+  for different purposes, so 91.3% and 83.3% are two measurements, not two arms of one experiment.

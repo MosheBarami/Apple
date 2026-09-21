@@ -213,3 +213,62 @@ test('house-rules-plus is house-rules plus four sentences, and nothing else move
   // probe rather than a Roblox lapse. A rule about that would measure the benchmark's phrasing.
   assert.ok(!/case|lower|upper|spelling/i.test(added), 'the added block addresses shop-debit, which is a phrasing artefact and not a Roblox failure');
 });
+
+//[[ THE RE-AIM OF `reported-total-is-real` MUST NOT HAVE LET ANYTHING NEW THROUGH.
+//
+//   That check used to read `Number(call2) === Number(stored)` and could only pass against a model
+//   storing a bare number; every one of the eight recorded samples stored a profile table and
+//   failed on the schema rather than on the arithmetic. It now asks whether the reported total is
+//   among the numbers ACTUALLY WRITTEN. The item's own fail control (returns `amount`, not the
+//   total) still covers the lying case and is exercised above. The case the old comparison caught
+//   by accident — banking nothing and counting in memory, where `stored` is nil — is NOT covered by
+//   that control, so it is written out here. A no-weakening claim that nobody executed is an
+//   assertion.
+test('reported-total-is-real still fails an answer that banks nothing and counts in memory', () => {
+  const item = FRONTIER_ITEMS.find((i) => i.id === 'atomic-add');
+  const inMemory = fence(`
+local module = {}
+local totals = {}
+function module.addCoins(userId, amount)
+\tlocal key = "Player_" .. tostring(userId)
+\ttotals[key] = (totals[key] or 0) + amount
+\treturn totals[key]
+end
+return module
+`);
+  const scored = scoreFrontierItem(item, inMemory);
+  assert.equal(scored.outcome, 'checked', `the control did not run: ${scored.detail ?? ''}`);
+  // It reports the right arithmetic, so it must be the STORE that refuses it.
+  const byId = Object.fromEntries(scored.checks.map((c) => [c.id, c.pass]));
+  assert.equal(byId['concurrent-adds-both-land'], true, 'the in-memory control must get the arithmetic right, or it is not testing the store');
+  assert.equal(
+    byId['reported-total-is-real'], false,
+    'a module that never wrote to the DataStore passed `reported-total-is-real`. The re-aim let '
+    + 'through the one case the old comparison caught, and the check no longer observes the store.',
+  );
+});
+
+//[[ AND THE TABLE CASE — THE ONE THE RE-AIM EXISTS TO ADMIT — MUST ACTUALLY BE ADMITTED.
+//   Otherwise the change is inert and eight samples would still be failing on their schema.
+test('reported-total-is-real accepts a correct answer that stores a profile table', () => {
+  const item = FRONTIER_ITEMS.find((i) => i.id === 'atomic-add');
+  const profileTable = fence(`
+local DataStoreService = game:GetService("DataStoreService")
+local store = DataStoreService:GetDataStore("PlayerData")
+local module = {}
+function module.addCoins(userId, amount)
+\tlocal key = "Player_" .. tostring(userId)
+\tlocal data = store:UpdateAsync(key, function(old)
+\t\told = old or {}
+\t\told.Coins = (old.Coins or 0) + amount
+\t\treturn old
+\tend)
+\treturn data.Coins
+end
+return module
+`);
+  const scored = scoreFrontierItem(item, profileTable);
+  assert.equal(scored.outcome, 'checked', `the control did not run: ${scored.detail ?? ''}`);
+  const byId = Object.fromEntries(scored.checks.map((c) => [c.id, c.pass]));
+  assert.equal(byId['reported-total-is-real'], true, 'a correct answer that stores {Coins = n} is still being failed on its schema');
+});

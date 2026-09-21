@@ -31,8 +31,8 @@
  "items": 16,
  "attempted": 16,
  "measured": 16,
- "passed": 12,
- "pct": 75,
+ "passed": 13,
+ "pct": 81.3,
  "notMeasured": 0,
  "excludedFromDenominator": 0,
  "errors": [],
@@ -56,9 +56,9 @@
   },
   "datastore-safety": {
    "measured": 5,
-   "passed": 4,
+   "passed": 5,
    "attempted": 5,
-   "checksPassed": 16,
+   "checksPassed": 17,
    "checksTotal": 17
   }
  },
@@ -91,12 +91,6 @@
    "axis": "server-authority",
    "check": "text-is-filtered",
    "why": "player-authored text that other players will see must go through TextService:FilterStringAsync; skipping it is a moderation violation, not a style choice"
-  },
-  {
-   "item": "atomic-add",
-   "axis": "datastore-safety",
-   "check": "reported-total-is-real",
-   "why": "the number the function returns has to be the number in the store"
   }
  ],
  "neurons": 328,
@@ -475,7 +469,7 @@
    "id": "atomic-add",
    "axis": "datastore-safety",
    "outcome": "checked",
-   "ok": false,
+   "ok": true,
    "checks": [
     {
      "id": "exports-the-function",
@@ -491,12 +485,10 @@
     },
     {
      "id": "reported-total-is-real",
-     "pass": false
+     "pass": true
     }
    ],
-   "failed": [
-    "reported-total-is-real"
-   ],
+   "failed": [],
    "unresolved": 0,
    "detail": null,
    "probeError": null,
@@ -601,5 +593,11 @@
    "neurons": 28,
    "answer": "```luau\nlocal DataStoreService = game:GetService(\"DataStoreService\")\nlocal Players = game:GetService(\"Players\")\n\nlocal store = DataStoreService:GetDataStore(\"PlayerData\")\nlocal MAX_RETRIES = 3\nlocal RETRY_DELAY = 2\n\nlocal function retry(fn)\n\tfor attempt = 1, MAX_RETRIES do\n\t\tlocal ok, result = pcall(fn)\n\t\tif ok then\n\t\t\treturn true, result\n\t\tend\n\t\twarn((\"DataStore attempt %d/%d failed: %s\"):format(attempt, MAX_RETRIES, result))\n\t\tif attempt < MAX_RETRIES then\n\t\t\ttask.wait(RETRY_DELAY)\n\t\tend\n\tend\n\treturn false, nil\nend\n\nlocal function loadCoins(player)\n\tlocal key = \"Player_\" .. player.UserId\n\tlocal success, coins = retry(function()\n\t\treturn store:GetAsync(key)\n\tend)\n\n\tlocal leaderstats = Instance.new(\"Folder\")\n\tleaderstats.Name = \"leaderstats\"\n\tleaderstats.Parent = player\n\n\tlocal coinsValue = Instance.new(\"IntValue\")\n\tcoinsValue.Name = \"Coins\"\n\tcoinsValue.Parent = leaderstats\n\n\tif success then\n\t\tcoinsValue.Value = coins or 0\n\telse\n\t\t-- Load failed: do not treat as a new account; mark unsaved so we never overwrite real data.\n\t\tcoinsValue:SetAttribute(\"Unsaved\", true)\n\t\tcoinsValue.Value = 0\n\t\twarn((\"Failed to load data for %s; saving disabled this session.\"):format(player.Name))\n\tend\nend\n\nlocal function saveCoins(player)\n\tlocal leaderstats = player:FindFirstChild(\"leaderstats\")\n\tlocal coinsValue = leaderstats and leaderstats:FindFirstChild(\"Coins\")\n\tif not coinsValue then\n\t\treturn\n\tend\n\tif coinsValue:GetAttribute(\"Unsaved\") then\n\t\treturn -- never write defaults over a failed load\n\tend\n\n\tlocal value = coinsValue.Value\n\tretry(function()\n\t\tstore:UpdateAsync(\"Player_\" .. player.UserId, function(old)\n\t\t\treturn if old == nil then value else old -- keep current value; coins only change on this server\n\t\tend)\n\tend)\nend\n\nPlayers.PlayerAdded:Connect(function(player)\n\ttask.spawn(loadCoins, player)\nend)\n\nPlayers.PlayerRemoving:Connect(function(player)\n\tsaveCoins(player)\nend)\n\ngame:BindToClose(function()\n\tfor _, player in Players:GetPlayers() do\n\t\tsaveCoins(player)\n\tend\nend)\n```"
   }
- ]
+ ],
+ "rescoredAt": "2026-09-21T00:07:56.630Z",
+ "rescoredFrom": {
+  "measured": 16,
+  "passed": 12,
+  "pct": 75
+ }
 }
