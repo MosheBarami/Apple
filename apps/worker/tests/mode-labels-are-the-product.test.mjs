@@ -2,19 +2,33 @@
  * THE OTHER PLACE THE OLD NAMES COULD COME BACK: the two tables every mode LABEL is read from.
  *
  * `apps/worker/tests/mode-names-are-the-product.test.mjs` guards the system prompt — the model's
- * account of itself. It does not look at `MODE_INFO` or `PRODUCT_MODE_INFO`, and those are where
- * the words a PERSON reads come from. Measured 2026-09-21 against the deployed SPA bundle
- * `/app/assets/index-CMtGTYsw.js` at buildSha 29c91d0, so this is not a theory about what ships:
+ * account of itself. It does not look at `MODE_INFO` or `PRODUCT_MODE_INFO`, and those are the
+ * tables every mode label is read from. Measured 2026-09-21 at buildSha 29c91d0 against the live
+ * origin, so this is not a theory about what ships.
  *
- *   "Apple Max Auto"                              2 occurrences   (MODE_INFO.rune.name)
- *   "Apple Max"                                   4               (MODE_INFO.stone.name)
- *   "Builds features across your project"         1               (MODE_INFO.stone.blurb)
- *   "Plans, builds, tests and fixes autonomously" 1               (MODE_INFO.rune.blurb)
- *   "Super Agent"                                 3               (PRODUCT_MODE_INFO.super.name)
+ * RENDERED, on `https://apple.moshe-barami111.workers.dev/pricing`:
+ *
+ *   "Fast answers and small edits"              1   MODE_INFO.clay.blurb
+ *   "Builds features across your project"       1   MODE_INFO.stone.blurb
+ *   "one targeted edit, read back and verified" 1   MODE_INFO.stone.entryUnit
+ *
+ * PRESENT IN THE SHIPPED SPA BUNDLE `/app/assets/index-CMtGTYsw.js`, as data:
+ *
+ *   "Apple Max"      4    "Apple Max Auto"  2    (MODE_INFO.stone.name, .rune.name)
+ *   "Super Agent"    3                           (PRODUCT_MODE_INFO.super.name)
  *
  * and `"stone"`, `"clay"`, `"rune"` appear in that bundle exactly once each, all three inside the
  * single wire map `{plan:"clay",agent:"stone",super:"rune"}` and its inverse. Capitalised
  * `Stone`/`Clay`/`Rune`: zero. That is the state this file freezes.
+ *
+ * CORRECTION, and it is the reason those two lists are separate. The first version of this header
+ * put `MODE_INFO.stone.name` under "what a person reads" on the strength of finding it in the
+ * bundle. Being in the bundle is not being on a screen. Every render site for a mode's NAME reads
+ * `PRODUCT_MODE_INFO` — thirteen of them across apps/web and apps/site — and no render site for
+ * `MODE_INFO[...].name` was found; `MODE_INFO` is read for `typicalCredits`, `blurb` and
+ * `entryUnit`. So `.name` is bundled, exported and one import away from a screen, which is reason
+ * enough to guard it, and NOT reason to claim it is displayed. It is asserted here on the first
+ * ground, not the second.
  *
  * The owner's complaint that this answers names both halves in one sentence:
  *
