@@ -329,7 +329,11 @@ test('EVERY PAGE TITLE IS SET THE SAME WAY, and none falls back to the browser\'
         seen.push({ route, ...m });
       }
       // The typographic system, read off the pages themselves rather than typed in here.
-      const sizes = seen.map((x) => x.size);
+      // The root route deliberately has a display-scale product hero rather than a document title.
+      // It still owes the same no-browser-fallback properties below, but it must not pull the
+      // document-title median toward its own intentionally larger scale.
+      const documentTitles = seen.filter((x) => x.route !== '/');
+      const sizes = documentTitles.map((x) => x.size);
       const median = [...sizes].sort((a, b) => a - b)[Math.floor(sizes.length / 2)];
       for (const x of seen) {
         if (x.weight >= 600) {
@@ -337,7 +341,7 @@ test('EVERY PAGE TITLE IS SET THE SAME WAY, and none falls back to the browser\'
         }
         // A fifth off the median is far wider than the clamp's own spread (51.2 to 56 at 1280px)
         // and far narrower than the gap the unstyled fallback opened (32 against 51.2).
-        if (Math.abs(x.size - median) / median > 0.2) {
+        if (x.route !== '/' && Math.abs(x.size - median) / median > 0.2) {
           odd.push(`${width}px ${x.route} title is ${x.size}px where the other eighteen sit near ${median}px`);
         }
         if (x.tracking === 'normal' && median > 40) {

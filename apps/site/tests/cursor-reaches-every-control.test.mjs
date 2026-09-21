@@ -19,7 +19,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -33,7 +33,18 @@ function built() {
   assert.ok(existsSync(INDEX),
     'apps/site/dist/index.html is missing — run `npx astro build` in apps/site first. This test is '
     + 'about what the BUILD produced, so without a build it has verified nothing.');
-  return readFileSync(INDEX, 'utf8');
+  const html = readFileSync(INDEX, 'utf8');
+  const assets = join(SITE, 'dist', '_astro');
+  const css = existsSync(assets)
+    ? readdirSync(assets)
+        .filter((name) => name.endsWith('.css'))
+        .map((name) => readFileSync(join(assets, name), 'utf8'))
+        .join('\n')
+    : '';
+  // Astro may inline a component stylesheet or extract it once the aggregate CSS crosses its
+  // bundling threshold. Both are bytes the built page serves; the property is the emitted rule,
+  // not which physical file happens to hold it.
+  return `${html}\n${css}`;
 }
 
 test('the hide-the-native-cursor rule still applies to every element after the build', () => {

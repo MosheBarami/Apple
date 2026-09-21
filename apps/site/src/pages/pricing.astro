@@ -322,6 +322,7 @@ const limitFaq = [
       </p>
 
       <div class="plans">
+        <div class="plan-rail">
         <article
           class={`plan slab slab--seam${promoted === 'free' ? ' is-promoted' : ''}`}
           aria-labelledby="plan-free"
@@ -351,7 +352,7 @@ const limitFaq = [
                why sits under it instead of floating in the middle of the void. ]]*/}
           <footer class="plan__foot">
             <a href="/app/signup" class="btn btn-primary plan__cta">Start building — free</a>
-            <p class="plan__note plan__note--foot">No card required. Free chat is available now.</p>
+            <p class="plan__note plan__note--foot">No card required. Free chat works now.</p>
           </footer>
         </article>
 
@@ -429,14 +430,16 @@ const limitFaq = [
                 <p class="plan__note plan__note--foot" id={`plan-${id}-note`}>
                   {canBuy(id)
                     ? 'Cancel from your own account page at any time.'
-                    : 'Planned tier — not available to purchase yet.'}
+                    : 'Planned tier — checkout is not open.'}
                 </p>
               </footer>
             </article>
           ))
         }
+        </div>
 
-        <p class="plan__note" style="grid-column:1/-1;max-width:62ch">
+        <div class="plan-notes">
+        <p class="plan__note">
           <strong>There is a second limit, and it is not yours.</strong> Every plan above draws on one
           shared pool of about {serviceCreditsPerDay.toLocaleString()} Credits of building a day
           across the whole service, which is roughly{' '}
@@ -447,7 +450,7 @@ const limitFaq = [
           <a href="/docs/credits-and-limits">How the two limits differ</a>.
         </p>
 
-        <p class="plan__note" style="grid-column:1/-1;max-width:62ch">
+        <p class="plan__note">
           One build costs about {CREDITS_PER_BUILD} Credits, so every figure above is also a number of
           estimated builds. Free limits apply now.{' '}
           {canBuy('builder') || canBuy('studio')
@@ -462,16 +465,17 @@ const limitFaq = [
           number and letting them discover the difference on a bank statement is the same failure as
           quoting a bare currency symbol, which this page already stopped doing.
         */}
-        <p class="plan__note" style="grid-column:1/-1;max-width:62ch">
+        <p class="plan__note">
           Prices are in {PRICE_CURRENCY} and exclude tax. Any VAT or sales tax that applies where you
           are is calculated at checkout, and businesses can enter a VAT or GST number there so the
           invoice carries it.
         </p>
 
-        <p class="plan__note" style="grid-column:1/-1;max-width:62ch">
+        <p class="plan__note">
           <strong>What support means on every plan above:</strong> {PLAN_SUPPORT.free.promise} Paid
           accounts are answered first. Enterprise is different — {PLAN_SUPPORT.enterprise.promise.toLowerCase()}
         </p>
+        </div>
       </div>
     </div>
   </section>

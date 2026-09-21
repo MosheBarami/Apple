@@ -3,6 +3,7 @@ import { App } from './app';
 import { initDirection } from './lib/direction.ts';
 import { installSentry } from './lib/sentry.ts';
 import './design/system.css';
+import './design/relaunch.css';
 
 // Before React mounts: a direction applied after first paint is a visible flip.
 initDirection();

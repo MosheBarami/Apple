@@ -145,19 +145,6 @@ const strata = Array.from({ length: STRATA_COUNT }, (_, i) => {
   };
 });
 
-const truths = [
-  { label: 'Scope', title: 'One place, the one you opened', body: 'Apple works in the Studio place you pair it to, and nowhere else. It cannot reach your files or your other games.' },
-  { label: 'Consent', title: 'Edits are off until you allow them', body: 'The plugin opens read-only. Turning writes on takes two deliberate clicks, and disconnecting turns them off again.' },
-  { label: 'Refusals', title: 'It says no, by name', body: 'It will not run code it was sent, drive play mode, or insert an asset carrying a script. Each refusal comes back with its reason.' },
-  /* "A RUN YOU DISLIKE IS A SINGLE CTRL+Z AWAY" WAS FALSE FOR EVERY RUN THAT WROTE MORE THAN ONCE.
-     The title is true and stays: Commands.luau opens exactly one ChangeHistoryService recording per
-     operation, and Bridge.luau walks a server batch one operation at a time. That is precisely why
-     the old body could not be true — one waypoint per change means a five-step run is five presses,
-     and a reader who pressed once got back the last write and kept the other four. The one-keystroke
-     exit is the checkpoint, so that is what this now points at. */
-  { label: 'Undo', title: 'Every change is one waypoint', body: 'Writes are wrapped in Studio’s own undo history — one step per change, so a five-step run is five presses of Ctrl+Z. To take a whole run back at once, restore the checkpoint Apple saved before it started.' },
-];
-
 // The activity figure is data, not a pasted blob: the refused line is the point of the whole
 // figure and needs its own element to carry colour, and a string with markup spliced into it is
 // how that ends up unparseable.
@@ -322,9 +309,8 @@ const asks = [
       <a href="/" class="wordmark" aria-label="Apple — home"><AppleMark size={22} /><span>Apple</span></a>
       <nav class="site-nav" aria-label="Primary">
         <a href="/docs">Docs</a>
+        <a href="/showcase">Showcase</a>
         <a href="/pricing">Pricing</a>
-        <a href="/changelog">Changelog</a>
-        <a href="/status">Status</a>
       </nav>
       {/* THE ONE CONTROL THIS PAGE WAS MISSING. Every other route carries a theme toggle in Nav.astro;
           the landing has its own header and had none, so a reader who chose light elsewhere on the
@@ -549,25 +535,7 @@ const asks = [
         here because it was written while another lane held this file. */}
     <ConsentProof />
 
-    <section class="band" id="inside" aria-labelledby="truths-title">
-      <div class="shell">
-        <div class="band-head" data-reveal>
-          <h2 id="truths-title" class="section-title">What it will and will not do</h2>
-          <p class="section-sub">Every line here is a rule in the plugin, not a promise in a brochure.</p>
-        </div>
-        <div class="truths">
-          {truths.map((t, i) => (
-            <article class="truth" data-reveal data-reveal-delay={String(i * 70)}>
-              <p class="micro">{t.label}</p>
-              <h3>{t.title}</h3>
-              <p>{t.body}</p>
-            </article>
-          ))}
-        </div>
-      </div>
-    </section>
-
-    <section class="band" aria-labelledby="sequence-title">
+    <section class="band" id="inside" aria-labelledby="sequence-title">
       <div class="shell">
         <div class="band-head" data-reveal>
           <h2 id="sequence-title" class="section-title">How a run actually goes</h2>
@@ -593,7 +561,7 @@ const asks = [
             </article>
             <article class="step">
               <h3>Say what you want</h3>
-              <p>Plain language. Apple reads the tree, plans the change, and takes a checkpoint before it writes — so the state before the run is always recoverable.</p>
+              <p>Plain language. Apple reads the tree, plans the change, and takes a checkpoint before it writes. Individual writes stay in Studio&rsquo;s own Ctrl+Z history; restoring the checkpoint is the whole-run exit.</p>
             </article>
             <article class="step">
               <h3>Look at what it did</h3>
@@ -601,12 +569,6 @@ const asks = [
             </article>
           </div>
         </div>
-      </div>
-    </section>
-
-    <section class="band" aria-labelledby="statement-title">
-      <div class="shell" style="text-align:center">
-        <h2 id="statement-title" class="statement" data-reveal>Apple builds inside Roblox Studio — in your place, with your account, under your approval.</h2>
       </div>
     </section>
 

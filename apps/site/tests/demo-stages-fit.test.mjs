@@ -96,12 +96,16 @@ function measure() {
   const demos = document.querySelector('.demos');
   return {
     grid: demos ? box(demos) : null,
+    gridClientWidth: demos?.clientWidth ?? 0,
+    gridScrollWidth: demos?.scrollWidth ?? 0,
+    gridOverflowX: demos ? getComputedStyle(demos).overflowX : '',
     stages: [...document.querySelectorAll('.demo-stage')].map(box),
     marks: [...document.querySelectorAll('.cw-mark')].map(box),
     render: [...document.querySelectorAll('.cw-render')].map(box),
     asks: [...document.querySelectorAll('.lu-ask')].map(box),
     luPanel: [...document.querySelectorAll('.lu')].map(box),
     viewport: document.documentElement.clientWidth,
+    documentWidth: document.documentElement.scrollWidth,
   };
 }
 
@@ -141,14 +145,21 @@ test('no capability stage is wider than the grid that holds it, at any supported
   await sweep((width, m) => {
     assert.ok(m.grid, `${width}px: .demos was not found, so nothing was measured here`);
     assert.equal(m.stages.length, 4, `${width}px: ${m.stages.length} stages found, not four`);
+    const rail = ['auto', 'scroll'].includes(m.gridOverflowX) && m.gridScrollWidth > m.gridClientWidth + 1;
+    if (m.documentWidth > m.viewport + 1) {
+      bad.push(`${width}px: document is ${m.documentWidth}px wide inside a ${m.viewport}px viewport`);
+    }
     for (const [i, s] of m.stages.entries()) {
       seen += 1;
-      // 1px of tolerance for sub-pixel rounding on a fractional track, and no more: the defect
-      // this was written for was 17.
-      if (s.w > m.grid.w + 1 || s.r > m.grid.r + 1 || s.l < m.grid.l - 1) {
+      // A horizontal rail may intentionally keep later cards to the inline end until the person
+      // scrolls it. The old grid could not. In both shapes a CARD itself still has to fit the rail
+      // and viewport, and the rail must never widen the document.
+      if (s.w > m.grid.w + 1 || s.w > m.viewport + 1) {
         bad.push(`${width}px stage ${i + 1}: x${s.l}->${s.r} (w ${s.w}) outside .demos x${m.grid.l}->${m.grid.r} (w ${m.grid.w})`);
       }
-      if (s.r > m.viewport) bad.push(`${width}px stage ${i + 1}: right edge ${s.r} is past the viewport`);
+      if (!rail && (s.r > m.grid.r + 1 || s.l < m.grid.l - 1)) {
+        bad.push(`${width}px stage ${i + 1}: x${s.l}->${s.r} leaves a non-scrollable .demos x${m.grid.l}->${m.grid.r}`);
+      }
     }
   });
   assert.equal(seen, WIDTHS.length * 4, `only ${seen} stage boxes were measured; the sweep did not run`);

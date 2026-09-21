@@ -50,7 +50,7 @@ test('the old one-hop back control and stylesheet are gone', () => {
 
 test('project actions are grouped behind an accessible native Project menu', () => {
   const menu = projectMenu(WS);
-  assert.match(menu, /<summary>Project/);
+  assert.match(menu, /<summary aria-label="Project actions"/);
   assert.match(menu, /className="gx-top__actions"/);
   for (const action of ['members', 'files', 'memory', 'automations', 'credits']) {
     assert.match(menu, new RegExp('setDrawer\\(' + "'" + action + "'" + '\\)'));

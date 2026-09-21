@@ -12,7 +12,7 @@
 //     ending every session go through ReauthDialog; resetting settings goes through BOTH that and
 //     the existing typed-confirmation ladder. See lib/auth-flows.ts for why those are two different
 //     questions.
-import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { PairingCodeDto } from '@golem/shared';
@@ -821,6 +821,8 @@ function Row({
  * derived from the title because the rail has to know the sections exist before any of them
  * render — two of them live inside child components this file only mounts.
  */
+const SettingsSectionContext = createContext<string | null>(null);
+
 function Section({
   id,
   title,
@@ -834,12 +836,14 @@ function Section({
   children: ReactNode;
   danger?: boolean;
 }) {
+  const active = useContext(SettingsSectionContext);
+  const shown = visible && (active === null || active === id);
   return (
     <section
       id={`settings-${id}`}
       data-section={id}
       className={`card settings-card${danger ? ' danger-card' : ''}`}
-      hidden={!visible}
+      hidden={!shown}
     >
       <h2>{title}</h2>
       {children}
@@ -891,42 +895,15 @@ const SECTION_INDEX = [
  * the viewport rather than its very top, so a card becomes "current" when you are reading it and
  * not when its first pixel appears.
  */
-function SettingsRail({ entries }: { entries: { group: string; id: string; label: string }[] }) {
-  const [active, setActive] = useState<string | null>(entries[0]?.id ?? null);
-  const ids = entries.map((e) => e.id).join(',');
-
-  useEffect(() => {
-    const list = ids ? ids.split(',') : [];
-    if (list.length === 0) return;
-    let frame = 0;
-    const pick = () => {
-      frame = 0;
-      const line = window.innerHeight * 0.25;
-      let chosen = list[0]!;
-      for (const id of list) {
-        const el = document.getElementById(`settings-${id}`);
-        if (!el || el.hidden) continue;
-        if (el.getBoundingClientRect().top <= line) chosen = id;
-      }
-      // The last card is usually too short to ever reach the reading line, so the rail would never
-      // light it up. Hitting the bottom of the document IS being on the last section.
-      const atEnd =
-        window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2;
-      setActive(atEnd ? (list[list.length - 1] ?? chosen) : chosen);
-    };
-    const onScroll = () => {
-      if (frame === 0) frame = window.requestAnimationFrame(pick);
-    };
-    pick();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll, { passive: true });
-    return () => {
-      if (frame !== 0) window.cancelAnimationFrame(frame);
-      window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onScroll);
-    };
-  }, [ids]);
-
+function SettingsRail({
+  entries,
+  active,
+  onSelect,
+}: {
+  entries: { group: string; id: string; label: string }[];
+  active: string | null;
+  onSelect: (id: string) => void;
+}) {
   if (entries.length === 0) return null;
 
   return (
@@ -945,27 +922,14 @@ function SettingsRail({ entries }: { entries: { group: string; id: string; label
                 {e.group}
               </span>
             )}
-            <a
-              href={`#settings-${e.id}`}
+            <button
+              type="button"
               className={`st-nav__link${active === e.id ? ' is-active' : ''}`}
-              aria-current={active === e.id ? 'true' : undefined}
-              onClick={(ev) => {
-                const el = document.getElementById(`settings-${e.id}`);
-                if (!el) return;
-                ev.preventDefault();
-                setActive(e.id);
-                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                // The heading, not the card: the card is not focusable and moving focus to it
-                // would announce the whole section. `-1` keeps it out of the tab order.
-                const head = el.querySelector('h2');
-                if (head) {
-                  head.setAttribute('tabindex', '-1');
-                  (head as HTMLElement).focus({ preventScroll: true });
-                }
-              }}
+              aria-current={active === e.id ? 'page' : undefined}
+              onClick={() => onSelect(e.id)}
             >
               {e.label}
-            </a>
+            </button>
           </li>
         ))}
       </ul>
@@ -1877,9 +1841,38 @@ export function SettingsPage() {
   });
 
   const [query, setQuery] = useState('');
-  const matches = useMemo(() => new Set(matchSettings(query)), [query]);
+  const matchedIds = useMemo(() => matchSettings(query), [query]);
+  const matches = useMemo(() => new Set(matchedIds), [matchedIds]);
   const shows = (id: string) => matches.has(id);
   const sectionShows = (...ids: string[]) => ids.some(shows);
+  const visibleSectionEntries = useMemo(
+    () => SECTION_INDEX.filter((section) => section.fields.some((id) => matches.has(id))),
+    [matches],
+  );
+  const [activeSection, setActiveSection] = useState<string>(() => {
+    const fromHash = window.location.hash.replace(/^#settings-/, '');
+    return SECTION_INDEX.some((section) => section.id === fromHash) ? fromHash : 'profile';
+  });
+
+  useEffect(() => {
+    if (visibleSectionEntries.length === 0) return;
+    if (query.trim() !== '') {
+      const firstField = matchedIds[0];
+      const owner = visibleSectionEntries.find((section) => section.fields.some((id) => id === firstField));
+      if (owner && owner.id !== activeSection) setActiveSection(owner.id);
+      return;
+    }
+    if (!visibleSectionEntries.some((section) => section.id === activeSection)) {
+      setActiveSection(visibleSectionEntries[0]!.id);
+    }
+  }, [activeSection, matchedIds, query, visibleSectionEntries]);
+
+  const selectSection = (id: string) => {
+    setActiveSection(id);
+    const url = new URL(window.location.href);
+    url.hash = `settings-${id}`;
+    window.history.replaceState({}, '', url);
+  };
 
   const [displayName, setDisplayName] = useState('');
   useEffect(() => {
@@ -2248,15 +2241,18 @@ export function SettingsPage() {
 
       <div className="settings-shell">
         <SettingsRail
-          entries={SECTION_INDEX.filter((s) => sectionShows(...s.fields)).map((s) => ({
+          entries={visibleSectionEntries.map((s) => ({
             group: s.group,
             id: s.id,
             label: s.label,
           }))}
+          active={activeSection}
+          onSelect={selectSection}
         />
 
-        <div className="settings-stream">
-      {profile.isError && (
+        <SettingsSectionContext.Provider value={activeSection}>
+          <div className="settings-stream">
+      {profile.isError && activeSection === 'profile' && (
         <div className="card settings-card">
           <Failure error={profile.error} onRetry={() => void profile.refetch()} compact />
         </div>
@@ -2766,7 +2762,8 @@ export function SettingsPage() {
           )}
         </Row>
       </Section>
-        </div>
+          </div>
+        </SettingsSectionContext.Provider>
       </div>
 
       {reauthFor && (

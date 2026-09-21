@@ -918,7 +918,9 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
         <div className="studio-workspace-controls">
           <button type="button" className="studio-preview-toggle" onClick={() => setStageExpanded(!stageOpen)} aria-expanded={stageOpen}>Studio <span aria-hidden="true">↗</span></button>
           <details className="studio-project-menu">
-            <summary>Project <span aria-hidden="true">+</span></summary>
+            <summary aria-label="Project actions" title="Project actions">
+              <span className="studio-project-menu__dots" aria-hidden="true">•••</span>
+            </summary>
         <div className="gx-top__actions">
           {/* Who else is in this project. Draws nothing at all when you are alone — see
               components/presence-model.ts. */}

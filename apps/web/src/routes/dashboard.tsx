@@ -1140,73 +1140,56 @@ export function DashboardPage() {
           {/* `--card-i` staggers the arrival in dashboard.css. Capped there, not here: the index is
               the truth and a shelf of forty must not take two seconds to finish appearing. */}
           {visibleProjects.map((p, i) => (
-            <Link
+            <article
               key={p.id}
-              to={`/projects/${p.id}`}
               className="project-card"
               style={{ '--card-i': i } as CSSProperties}
               onPointerMove={trackPointer}
             >
-              {/* The mark comes FIRST in the card and full-bleed across its top, because the job
-                  it does is recognition before reading — see components/project-signature.tsx. */}
-              <ProjectSignature id={p.id} />
-              <div className="project-card-top">
-                {/* The pin is drawn on the card, not only in the menu. Without it the top card is
-                    simply somewhere the user did not put it, and the only way to find out why is
-                    to open a menu they have no reason to open. */}
-                {p.pinned_at && (
-                  <span className="project-card-pin" aria-label="Pinned" title="Pinned to the top">
-                    <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                      <path d="M9.6 1.2 14.8 6.4l-1.1 1.1-1.2-.3-2.6 2.6.2 2.3-1.1 1.1-3-3-3.3 3.3-.8-.8L5.2 9.4l-3-3L3.3 5.3l2.3.2 2.6-2.6-.3-1.2z" />
+              <Link to={`/projects/${p.id}`} className="project-card__link">
+                <ProjectSignature id={p.id} />
+                <div className="project-card-top">
+                  {p.pinned_at && (
+                    <span className="project-card-pin" aria-label="Pinned" title="Pinned to the top">
+                      <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                        <path d="M9.6 1.2 14.8 6.4l-1.1 1.1-1.2-.3-2.6 2.6.2 2.3-1.1 1.1-3-3-3.3 3.3-.8-.8L5.2 9.4l-3-3L3.3 5.3l2.3.2 2.6-2.6-.3-1.2z" />
+                      </svg>
+                    </span>
+                  )}
+                  <h2 className="project-card-name" dir="auto">{p.name}</h2>
+                </div>
+                <p className="project-card-desc">
+                  {p.memory_summary
+                    ? truncate(p.memory_summary, 150)
+                    : p.description
+                      ? truncate(p.description, 150)
+                      : 'Open this conversation to continue.'}
+                </p>
+                <div className="project-card-meta">
+                  <span className={`project-card-place${p.place_name ? '' : ' is-absent'}`}>
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden="true">
+                      <path d="M8 14.2s4.6-4 4.6-7.4a4.6 4.6 0 1 0-9.2 0C3.4 10.2 8 14.2 8 14.2Z" />
+                      <circle cx="8" cy="6.7" r="1.7" />
                     </svg>
+                    {p.place_name ?? 'No place name yet'}
                   </span>
-                )}
-                {/* A project name is the user's string, not ours. */}
-                <h2 className="project-card-name" dir="auto">{p.name}</h2>
-                <ProjectMenu
-                  onDelete={() => setDeleting(p)}
-                  onExport={(f) => void runExport(p, f)}
-                  onEdit={() => setEditing(p)}
-                  onArchive={() => setArchived.mutate({ project: p, archive: !p.archived_at })}
-                  onPin={() => setPinned.mutate({ project: p, pin: !p.pinned_at })}
-                  onTags={() => setTagging(p)}
-                  archived={Boolean(p.archived_at)}
-                  pinned={Boolean(p.pinned_at)}
-                />
-              </div>
-              <p className="project-card-desc">
-                {p.memory_summary
-                  ? truncate(p.memory_summary, 150)
-                  : p.description
-                    ? truncate(p.description, 150)
-                    : 'Open this conversation to continue.'}
-              </p>
-              <div className="project-card-meta">
-                {/* THE PLACE IS A FACT, NOT A LABEL. Drawn as a chip it sat in the same shape as the
-                    user's own tags beside it, so "No saved place name" — the ABSENCE of a fact —
-                    read as a tag somebody had applied. Faint text under a small glyph says which
-                    of the two kinds of thing it is without a second colour. */}
-                <span className={`project-card-place${p.place_name ? '' : ' is-absent'}`}>
-                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden="true">
-                    <path d="M8 14.2s4.6-4 4.6-7.4a4.6 4.6 0 1 0-9.2 0C3.4 10.2 8 14.2 8 14.2Z" />
-                    <circle cx="8" cy="6.7" r="1.7" />
-                  </svg>
-                  {p.place_name ?? 'No place name yet'}
-                </span>
-                {/* Drawn as text, not as buttons: the whole card is a link to the project, and a
-                    control inside a link either swallows the navigation or fires alongside it.
-                    Filtering by a tag is what the chip row above the grid is for. */}
-                {(p.tags ?? []).map((t) => (
-                  <span key={t} className="pill pill-tag">
-                    {t}
-                  </span>
-                ))}
-                {/* `marginLeft` was an inline physical margin — it pushed the stamp to the RIGHT of
-                    an Arabic or Hebrew shelf, where the end of the row is on the left. A class with
-                    a logical margin follows `dir`, and the rule lives with the rest of the card. */}
-                <span className="project-card-when">updated {relativeTime(p.updated_at)}</span>
-              </div>
-            </Link>
+                  {(p.tags ?? []).map((t) => (
+                    <span key={t} className="pill pill-tag">{t}</span>
+                  ))}
+                  <span className="project-card-when">updated {relativeTime(p.updated_at)}</span>
+                </div>
+              </Link>
+              <ProjectMenu
+                onDelete={() => setDeleting(p)}
+                onExport={(f) => void runExport(p, f)}
+                onEdit={() => setEditing(p)}
+                onArchive={() => setArchived.mutate({ project: p, archive: !p.archived_at })}
+                onPin={() => setPinned.mutate({ project: p, pin: !p.pinned_at })}
+                onTags={() => setTagging(p)}
+                archived={Boolean(p.archived_at)}
+                pinned={Boolean(p.pinned_at)}
+              />
+            </article>
           ))}
         </div>
       )}

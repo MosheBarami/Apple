@@ -83,7 +83,8 @@ test('the seed no longer replaces the box', () => {
 test('the composer has a template picker wired to the shared list', () => {
   assert.match(CODE, /insertableTemplates/);
   assert.match(CODE, /Popover/, 'the existing primitive, not a second menu implementation');
-  assert.match(COMPOSER, /Templates|Starting points/);
+  assert.match(COMPOSER, /Create/);
+  assert.match(COMPOSER, /Starting points/);
 });
 
 test('all three insertions go through the one function', () => {

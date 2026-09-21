@@ -74,11 +74,9 @@ test('a surface with no project cannot attach, and says which of the two it is',
   assert.match(COMPOSER, /Attach a file/);
 });
 
-test('voice input is still declared unsupported rather than quietly wired to nothing', () => {
-  // Audio is the one row in this section deliberately left undone: transcription needs a model
-  // decision the owner has not made. The control must keep saying so.
-  assert.match(COMPOSER, /Voice input/);
-  assert.match(COMPOSER, /not supported yet/);
+test('unsupported voice input is not advertised as a dead composer control', () => {
+  assert.doesNotMatch(COMPOSER, /Voice input/);
+  assert.doesNotMatch(COMPOSER, /not supported yet/);
 });
 
 /* ------------------------------------------------------------------ paste ---- */

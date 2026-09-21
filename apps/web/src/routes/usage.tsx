@@ -633,6 +633,15 @@ function SpendBreakdown({ days }: { days: UsageDay[] }) {
 export function UsagePage() {
   const me = useQuery({ queryKey: ['me'], queryFn: fetchMe });
   const usage = useQuery({ queryKey: ['usage'], queryFn: fetchUsage });
+  const [usageSurface, setUsageSurface] = useState<'usage' | 'billing'>(() =>
+    window.location.hash === '#billing' ? 'billing' : 'usage',
+  );
+  const chooseSurface = (surface: 'usage' | 'billing') => {
+    setUsageSurface(surface);
+    const url = new URL(window.location.href);
+    url.hash = surface === 'billing' ? 'billing' : '';
+    window.history.replaceState({}, '', url);
+  };
 
   // ONE MODEL FOR BOTH SURFACES. The rail's meter and this page describe the same two balances, and
   // two independent readings of one payload is how they come to disagree — which is the bug this
@@ -692,6 +701,7 @@ export function UsagePage() {
     const flag = params.get('checkout');
     const portal = params.get('billing') === 'returned';
     if (flag !== 'done' && flag !== 'cancelled' && !portal) return;
+    setUsageSurface('billing');
     if (flag === 'done' || flag === 'cancelled') setReturned(flag);
     if (portal) setFromPortal(true);
     // Take the flags back out of the URL, so a reload or a shared link does not replay them.
@@ -758,12 +768,32 @@ export function UsagePage() {
     <div className="page">
       <div className="page-head">
         <div>
-          <h1 className="page-title">Usage</h1>
+          <h1 className="page-title">Usage &amp; billing</h1>
           <p className="page-sub">
-            Credits are Apple&rsquo;s daily energy. A run is billed from the compute it actually uses, so these are
-            measured typical costs, not fixed prices.
+            See what Apple used, what is left, and the plan behind it — without mixing metering and billing into one long page.
           </p>
         </div>
+      </div>
+
+      <div className="usage-switch" role="tablist" aria-label="Usage and billing">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={usageSurface === 'usage'}
+          className={usageSurface === 'usage' ? 'is-active' : ''}
+          onClick={() => chooseSurface('usage')}
+        >
+          Usage
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={usageSurface === 'billing'}
+          className={usageSurface === 'billing' ? 'is-active' : ''}
+          onClick={() => chooseSurface('billing')}
+        >
+          Plan &amp; billing
+        </button>
       </div>
 
       {me.isPending && (
@@ -778,7 +808,7 @@ export function UsagePage() {
         </div>
       )}
 
-      {me.isSuccess && (
+      {me.isSuccess && usageSurface === 'usage' && (
         <div className="usage-grid">
           <div className="card credits-card">
             <h2>{view.period === 'month' ? 'This month\u2019s Credits' : 'Today\u2019s Credits'}</h2>
@@ -854,7 +884,7 @@ export function UsagePage() {
         </div>
       )}
 
-      {me.isSuccess && (
+      {me.isSuccess && usageSurface === 'billing' && (
         <section className="plans-section" aria-labelledby="plans-heading">
           <div className="page-head">
             <div>

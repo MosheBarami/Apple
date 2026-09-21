@@ -791,7 +791,7 @@ export function Composer({
           <div className="gx-pop-wrap">
             <button
               type="button"
-              className="gx-chip"
+              className="gx-chip gx-chip--mode"
               aria-haspopup="menu"
               aria-expanded={taskModeOpen}
               aria-label={`Mode: ${PRODUCT_MODE_INFO[mode].name}`}
@@ -833,7 +833,7 @@ export function Composer({
           <div className="gx-pop-wrap">
             <button
               type="button"
-              className="gx-chip"
+              className="gx-chip gx-chip--model"
               aria-haspopup="menu"
               aria-expanded={modeOpen}
               aria-label={`Model: ${activeModel.name}`}
@@ -889,12 +889,6 @@ export function Composer({
             </Popover>
           </div>
 
-          <button type="button" className="gx-chip gx-chip--creation" aria-pressed={creation === 'image'} disabled={running} title={maxAvailable ? 'Generate an image with Apple MAX' : maxUpgradeAvailable === false ? 'Images require Apple MAX; paid subscriptions are not available yet' : 'Images require Apple MAX — check availability'} onClick={() => chooseCreation('image')}>
-            <Icon d="M3 3h18v18H3z M3 16l5-5 4 4 4-6 5 7 M8 7h.01" size={14} /> Images{!maxAvailable && <span className="muted"> · MAX</span>}
-          </button>
-          <button type="button" className="gx-chip gx-chip--creation" aria-pressed={creation === 'model'} disabled={running || !studioConnected} title={!studioConnected ? '3D requires connected Roblox Studio and Apple MAX' : maxAvailable ? 'Generate a 3D model in connected Studio' : maxUpgradeAvailable === false ? '3D requires Apple MAX; paid subscriptions are not available yet' : '3D requires Apple MAX — check availability'} onClick={() => chooseCreation('model')}>
-            <Icon d="M12 2l9 5v10l-9 5-9-5V7z M3 7l9 5 9-5 M12 12v10" size={14} /> 3D{!maxAvailable && <span className="muted"> · MAX</span>}
-          </button>
           {/* THE ASSET BROWSER IS GONE, on the owner's instruction of 2026-09-19, and what it means
               is a change of who does the looking. The customer describes what the place needs and
               Apple finds it; they do not shop in a catalogue. A library the customer browses is a
@@ -914,24 +908,61 @@ export function Composer({
             </button>
           )}
 
-          {/* ---------------------------------------------- templates ----
-              The SAME five pre-written first requests the new-project dialog offers, minus the
-              blank start. They were reachable exactly once in a project's life — at creation —
-              and on the second message there was no way back to one. Inserted at the caret like
-              every other phrase, so reaching for one does not cost a half-written sentence. */}
+          {/* One secondary-creation menu instead of six permanent controls around the text box.
+              Images, 3D and starting points are useful but they are not the primary act here:
+              describing what Apple should do is. Keeping them in one popover preserves every
+              feature while keeping the resting composer visually quiet. */}
           <div className="gx-pop-wrap">
             <button
               type="button"
-              className="gx-chip gx-chip--template"
+              className="gx-chip gx-chip--create"
               aria-haspopup="menu"
               aria-expanded={templatesOpen}
-              title="Insert a starting point"
+              title="Images, 3D and starting points"
               onClick={() => setTemplatesOpen((v) => !v)}
             >
               <Icon d={PATH.compose} size={11} />
-              Templates
+              Create
+              <span className="gx-chip__caret" aria-hidden="true">
+                <Icon d={PATH.chevronDown} size={11} />
+              </span>
             </button>
-            <Popover open={templatesOpen} onClose={() => setTemplatesOpen(false)} label="Starting points">
+            <Popover open={templatesOpen} onClose={() => setTemplatesOpen(false)} label="Create">
+              <button
+                type="button"
+                role="menuitem"
+                className="gx-pop__item gx-pop__item--stack"
+                aria-pressed={creation === 'image'}
+                disabled={running}
+                onClick={() => {
+                  chooseCreation('image');
+                  setTemplatesOpen(false);
+                }}
+              >
+                <Icon d="M3 3h18v18H3z M3 16l5-5 4 4 4-6 5 7 M8 7h.01" size={14} />
+                <span className="gx-pop__main">
+                  <span>Image <span className="gx-pop__badge">MAX</span></span>
+                  <span className="gx-pop__sub">{maxAvailable ? 'Generate an image' : 'Requires Apple MAX'}</span>
+                </span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className="gx-pop__item gx-pop__item--stack"
+                aria-pressed={creation === 'model'}
+                disabled={running || !studioConnected}
+                onClick={() => {
+                  chooseCreation('model');
+                  setTemplatesOpen(false);
+                }}
+              >
+                <Icon d="M12 2l9 5v10l-9 5-9-5V7z M3 7l9 5 9-5 M12 12v10" size={14} />
+                <span className="gx-pop__main">
+                  <span>3D <span className="gx-pop__badge">MAX</span></span>
+                  <span className="gx-pop__sub">{studioConnected ? (maxAvailable ? 'Generate directly in Studio' : 'Requires Apple MAX') : 'Connect Studio first'}</span>
+                </span>
+              </button>
+              <span className="gx-pop__section">Starting points</span>
               {TEMPLATES.map((t) => (
                 <button
                   key={t.id}
@@ -978,18 +1009,6 @@ export function Composer({
               aria-label="Attach a file"
             >
               <Icon d={PATH.attach} size={16} />
-            </button>
-            {/* Dictation is still unwired, and still says so. Transcription needs a model decision
-                the owner has not made, and a control that silently does nothing is a worse lie
-                than one that admits it. */}
-            <button
-              type="button"
-              className="gx-icon-btn"
-              disabled
-              title="Voice input is not supported yet"
-              aria-label="Voice input — not supported yet"
-            >
-              <Icon d={PATH.mic} size={16} />
             </button>
 
             {running ? (

@@ -146,11 +146,13 @@ export function OnboardingTour({ done }: { done: Record<string, unknown> }) {
    */
   const cardRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (!step) return;
+    if (!step || !box) return;
     if (modalIsOpen()) return;
     if (isTypingTarget(document.activeElement)) return;
     cardRef.current?.focus();
-  }, [step?.id]);
+    // The boolean is the mount edge of the portalled card. Depending on the measured box object
+    // itself would re-focus the tour every 900ms and sabotage someone who moved on to the product.
+  }, [step?.id, box !== null]);
 
   if (!step || !box || modalOpen) return null;
 
