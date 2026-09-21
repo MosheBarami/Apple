@@ -198,3 +198,56 @@ test('a test script whose glob misses a test file in its own package is caught',
     rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
   }
 });
+
+/* ------------------------------------ a directory after `node --test` is a CI-only failure --- */
+
+test('a bare directory passed to `node --test` is caught, and the file-list form is not', () => {
+  // `@golem/lumen-isles` and `@golem/site` both shipped `"test": "node --test tests/"`. On the
+  // local Node that discovers the directory and passes. On Node 22 — ci.yml's NODE_VERSION — the
+  // runner resolves `tests/` as a module specifier and dies before one assertion runs:
+  //
+  //     Error: Cannot find module '/home/runner/.../apps/experiences/lumen-isles/tests'
+  //
+  // `pnpm -r test` stops at the first failing package, so it also hid whether apps/site's 274
+  // tests would have run at all. The whole failure is invisible to anyone whose Node is newer,
+  // which is everyone who would run it before pushing.
+  const bad = fixture({
+    'packages/thing': {
+      manifest: { name: 'p', scripts: { test: 'node --test tests/' } },
+      files: ['src/index.ts', 'tests/a.test.mjs'],
+    },
+  });
+  try {
+    assert.equal(bad.exit, 1, bad.out);
+    assert.match(bad.out, /passes the directory "tests\/" to node --test/, bad.out);
+  } finally {
+    rmSync(bad.dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+  }
+
+  // CONTROL: the same package, naming its files, is not flagged. Without this the rule could be
+  // satisfied by flagging every test script, which would be a different kind of useless.
+  const good = fixture({
+    'packages/thing': {
+      manifest: { name: 'p', scripts: { test: 'node --test tests/*.test.mjs' } },
+      files: ['src/index.ts', 'tests/a.test.mjs'],
+    },
+  });
+  try {
+    assert.doesNotMatch(good.out, /passes the directory/, good.out);
+  } finally {
+    rmSync(good.dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+  }
+
+  // CONTROL: `node --test` with no argument is the best form and must stay unflagged.
+  const bare = fixture({
+    'packages/thing': {
+      manifest: { name: 'p', scripts: { test: 'node --test' } },
+      files: ['src/index.ts', 'tests/a.test.mjs'],
+    },
+  });
+  try {
+    assert.doesNotMatch(bare.out, /passes the directory/, bare.out);
+  } finally {
+    rmSync(bare.dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+  }
+});

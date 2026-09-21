@@ -188,6 +188,36 @@ for (const dir of ALL) {
   if (hasTest) {
     covered.push(rel);
 
+    //[[ A BARE DIRECTORY AFTER `node --test` RUNS ON MY MACHINE AND NOT ON THE RUNNER.
+    //
+    //   `@golem/lumen-isles` and `@golem/site` both shipped `"test": "node --test tests/"`. On
+    //   Node 26 that discovers the directory and passes. On Node 22 — which is `NODE_VERSION` in
+    //   ci.yml — the runner resolves `tests/` as a module specifier and dies before a single
+    //   assertion:
+    //
+    //       Error: Cannot find module '/home/runner/.../apps/experiences/lumen-isles/tests'
+    //
+    //   `pnpm -r test` stops at the first failing package, so this also hid whether apps/site's
+    //   274 tests would have run at all — they were never reached. It cost a red CI job that read
+    //   like a missing directory, in a commit where the directory is plainly present.
+    //
+    //   Four other packages in this repository already write the file list (`node --test
+    //   tests/*.test.mjs`), which the shell expands and every supported Node accepts. This makes
+    //   that the rule rather than the convention. `node --test` with NO argument is still the best
+    //   form and is untouched by this.
+    for (const arg of script.split(/\s+/)) {
+      if (arg.startsWith('-') || arg.includes('*') || arg === '') continue;
+      const candidate = join(dir, arg.replace(/^["']|["']$/g, ''));
+      if (existsSync(candidate) && statSync(candidate).isDirectory()) {
+        problems.push(
+          `${rel}: its "test" script passes the directory "${arg}" to node --test. `
+          + `Node ${'22'} — ci.yml's NODE_VERSION — resolves that as a module and fails before any `
+          + 'test runs, while a newer local Node discovers it and passes. Name the files '
+          + '(`tests/*.test.mjs`) or drop the argument entirely.',
+        );
+      }
+    }
+
     //[[ A TEST SCRIPT'S GLOB IS A DENOMINATOR, and an explicit one stops growing.
     //
     //   packages/corpus ran `node --test src/intake/*.test.mjs`. A new test written at
