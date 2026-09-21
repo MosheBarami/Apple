@@ -53,3 +53,31 @@ call site with one line saying why costs nothing and decouples the two.
 Not done here: `apps/worker/src/tools.ts` was clean, but the neighbouring decision lives in
 `apps/worker/src/do/session.ts`, which is **dirty in the shared tree right now** — another lane is
 mid-edit. Exact lines are named above so whoever holds that file can take it in one pass.
+
+---
+
+## Correction, same night: "the one thing worth changing" was already changed
+
+The section above ends *"Not done here"*. It was done, in `ff514a6`, before this note was written —
+the two lanes crossed. `apps/worker/src/tools.ts:1125` now reads:
+
+```ts
+        // STATED, not inherited. `vision` carries `reasoningEffort: 'low'` in the model table
+        // (gateway.ts:139-145) and this call passed nothing, so OCR was getting 'low' by accident
+        // of the default — while the visual critic on the SAME model states 'high' at
+        // vision.ts:328 with its own argument. …
+        reasoningEffort: 'low',
+```
+
+So the coupling the note asked to break is broken: changing `vision`'s table default no longer moves
+transcription with it. The reason for `low` is written at the call site rather than inferred from a
+table entry belonging to a different job.
+
+Nothing else in the note changed. The table default is still a floor and not a policy, the agent
+loop still passes `choice.effort` on every step, and `session.ts:3543` still DELETES `agent.effort`
+on a lane where the provider is not sent the knob rather than reporting `'low'` — which is the same
+rule as this correction, one layer up: do not report a value that was never sent.
+
+**The row this note was filed against can be closed.** Nothing in the reasoning-effort policy is
+outstanding that is not a deliberate design: three of the six call sites in the table take the
+default, and two of those are admin and internal routes where the caller supplies the model.
