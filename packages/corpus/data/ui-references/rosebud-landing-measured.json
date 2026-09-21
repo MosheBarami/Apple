@@ -1,0 +1,89 @@
+{
+  "_comment": [
+    "THE FIRST MEASUREMENT OF rosebud.ai EVER TAKEN IN THIS REPOSITORY.",
+    "docs/FINISH-REPORT-100.md §3.6 recorded the hole: `git ls-files | grep -ci '.har$'` -> 0,",
+    "`find . -iname '*rosebud*'` -> 0 results. The owner has asked for this site to be copied,",
+    "in green, for weeks, and every design decision made in its name was made from memory.",
+    "",
+    "Captured 2026-09-21 from a real browser at https://rosebud.ai, 1024x768, dpr 1, logged out,",
+    "via getComputedStyle and getBoundingClientRect. Only what was read is written down. The",
+    "signed-in editor was NOT captured and nothing here describes it.",
+    "",
+    "THE HEADLINE, AND IT CONTRADICTS THE BRIEF: rosebud.ai's landing page has NO CSS",
+    "ANIMATION. Zero elements with an animationName. No <audio>, no audio file in the resource",
+    "timeline, no AudioContext. The 'spectacular background animation' and the keyboard-click",
+    "button sound are not on this page. Whatever it does to a visitor, it does without them."
+  ],
+  "capturedAt": "2026-09-21",
+  "source": "https://rosebud.ai",
+  "viewport": { "w": 1024, "h": 768, "dpr": 1 },
+  "documentHeight": 2450,
+
+  "typography": {
+    "_comment": "ONE TYPEFACE FOR THE WHOLE PAGE, AND IT IS A MONOSPACE. Every h1, p, button, a, span and textarea measured returned the same stack. This is the single strongest thing about the design and the cheapest to adopt.",
+    "families": ["\"Source Code Pro\", \"Source Code Pro Fallback\""],
+    "distinctFamilyCount": 1,
+    "h1": { "text": "Create Games with AI", "fontSize": "32px", "fontWeight": "700", "letterSpacing": "1.6px", "lineHeight": "48px", "color": "rgb(255, 255, 255)", "widthPx": 416 },
+    "subhead": { "fontSize": "14px", "fontWeight": "400", "letterSpacing": "normal", "lineHeight": "21px", "color": "rgba(255, 255, 255, 0.55)" },
+    "composerPlaceholder": { "fontSize": "13px", "lineHeight": "17.55px" },
+    "inlineLink": { "fontSize": "14px", "fontWeight": "700", "color": "rgb(255, 255, 255)", "note": "underlined, white — NOT the accent colour" },
+    "largeButtonLabel": { "fontSize": "16px", "fontWeight": "500", "letterSpacing": "0.8px", "textTransform": "uppercase" }
+  },
+
+  "colour": {
+    "bodyBackground": "rgb(0, 0, 0)",
+    "accentSolid": "rgb(203, 82, 251)",
+    "accentSolidDeep": "rgb(143, 0, 200)",
+    "accentTintFill": "rgba(203, 82, 251, 0.12)",
+    "accentTintBorder": "rgba(236, 146, 251, 0.38)",
+    "accentGlow": "rgba(203, 82, 251, 0.14) 0px 0px 12px 0px",
+    "ghostFill": "rgba(255, 255, 255, 0.06)",
+    "ghostBorder": "rgba(255, 255, 255, 0.18)",
+    "ghostText": "rgba(255, 255, 255, 0.78)",
+    "mutedText": "rgba(255, 255, 255, 0.55)",
+    "onAccentText": "rgb(27, 14, 36)",
+    "hairline": "rgb(68, 58, 80)"
+  },
+
+  "geometry": {
+    "borderRadiiInUse": ["0px", "6px", "8px"],
+    "borderWidth": "1px",
+    "buttonHeights": [32, 36, 50],
+    "buttonPadding": { "small": "0px 8px", "medium": "0px 16px", "large": "12px 24px" },
+    "composerWidthPx": 574,
+    "composerTextareaHeightPx": 53
+  },
+
+  "motion": {
+    "_comment": "Transitions only. The two durations that account for almost everything are 0.15s and 0.2s, both ease-out. Nothing on this page runs longer than 0.26s.",
+    "keyframeAnimations": [],
+    "animatedElementCount": 0,
+    "dominantTransitions": [
+      { "property": "color", "duration": "0.2s", "easing": "ease-out", "elements": 24 },
+      { "property": "background, background-color, border-color, box-shadow, color, fill, filter, opacity, stroke, transform", "duration": "0.15s", "easing": "ease-out", "elements": 13 },
+      { "property": "opacity", "duration": "0.2s", "easing": "ease-out", "elements": 3 }
+    ],
+    "audioElements": [],
+    "audioResourcesLoaded": []
+  },
+
+  "againstOurLanding": {
+    "_comment": "Same script, same browser, same 1024x768, run against https://apple.moshe-barami111.workers.dev/ at buildSha 46cd186 immediately afterwards.",
+    "ours": {
+      "distinctFontFamilies": 2,
+      "h1": { "fontSize": "51.2px", "fontWeight": "400", "letterSpacing": "-1.024px", "lineHeight": "59.2px" },
+      "bodyBackground": "rgb(5, 8, 7)",
+      "keyframeAnimationCount": 10,
+      "animatedElementCount": 56,
+      "documentHeight": 6353,
+      "borderRadiiInUse": ["0px", "6px", "0px 6px 6px 0px"]
+    },
+    "readAcross": [
+      "MOTION IS NOT THE GAP. Ours animates 56 elements across 10 named keyframes (stratum-drift, settle, column-breathe, caret-blink, stagger-in, rise-in, slide-in-*, step-focus, example-turn). Rosebud animates none. 'Make it move like rosebud' cannot be done, because rosebud does not move.",
+      "TYPE IS THE GAP. One monospace for everything against our two families. Their h1 is 32px/700 with POSITIVE 1.6px tracking; ours is 51.2px/400 with NEGATIVE 1.024px tracking — the opposite decision on both axes.",
+      "LENGTH IS A GAP. 2,450px against our 6,353px. Theirs is one screen and a composer; ours is two and a half times longer.",
+      "BLACK IS A GAP, BARELY. rgb(0,0,0) against rgb(5,8,7) — three points of green in the floor. Visible only side by side.",
+      "THE ACCENT IS USED THREE WAYS, NOT ONE: a solid fill on the primary button, a 12% tint with a 38% border and a 12px glow on the secondary, and never on inline links, which stay white and underlined."
+    ]
+  }
+}
