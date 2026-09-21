@@ -178,6 +178,19 @@ packages/training/data/*
 !packages/training/data/*/
 packages/training/data/*/*
 !packages/training/data/*/dataset-card.json
+# ...and THE ONE PREREGISTERED DATASET, with the preregistration beside it. Everything above turns
+# on "train/val/test.jsonl are DERIVED — build-dataset.mjs regenerates them". These 28 rows are the
+# exception: `apple-max-contract-v4-preregistration-2026-09-18.json` FREEZES them, by sha256, per
+# file and per holdout row, before any training ran. A freeze is only worth the paper it is on if
+# somebody other than the machine that made it can check it, and
+# `contract-generalization-curriculum.test.mjs` does exactly that — it re-hashes every named file
+# and every holdout row against the record.
+#
+# Untracked, that test threw ENOENT in every clone, which took `pnpm -r test` down at
+# @golem/training and stopped @golem/worker and @golem/site from running at all. 71 KB in total,
+# first-party-authored-synthetic, customerData false, and its own card says so.
+!packages/training/data/apple-max-contract-v4-preregistration-2026-09-18.json
+!packages/training/data/game-logic-seeds-v4-contract/*.jsonl
 # Same rule, same reason, for the Hugging Face harvest: `scripts/harvest-hf.mjs` writes its
 # REFUSALS to data/hf/REJECTED.json — seven rejected datasets with the measurement that killed each
 # one, and the served-or-not verdict on five Roblox models. That file is the entire evidence for

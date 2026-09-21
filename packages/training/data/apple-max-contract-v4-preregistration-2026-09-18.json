@@ -1,0 +1,152 @@
+{
+  "schema": "apple-local-adapter-experiment-preregistration-v1",
+  "registeredAt": "2026-09-18T16:29:22+03:00",
+  "runDirectory": "packages/training/data/local-pilot-2026-09-18-contract-v4",
+  "stateAtRegistration": {
+    "runDirectoryExisted": false,
+    "trainingStarted": false,
+    "providerSpendUsd": 0
+  },
+  "foundation": {
+    "model": "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+    "snapshotRevision": "50d427756c6b1b2fe0c0a10f67fbda1fc8e82c1b",
+    "modelFileBytes": 2263022417,
+    "modelFileSha256": "2a73c6c248601ab904e035548abd8e6abb65ea27dcb5f342fb0a8910eb44173f",
+    "sharedFoundationModel": true
+  },
+  "intervention": {
+    "kind": "bounded-first-party-curriculum-expansion",
+    "singleChangedFactor": "add two abstract training families for observed contract failures while adding two separate transfer families only to the test split",
+    "priorDataset": "packages/training/data/game-logic-seeds-v3-reviewed",
+    "priorDatasetDigest": "d86ce53e2b261e92780385bfb76808a0499e9b1069f0c3ec407ac9e9e1b3d263",
+    "dataset": "packages/training/data/game-logic-seeds-v4-contract",
+    "datasetDigest": "1dbac25f80c5f0852d5a196d601f7dc48a8ce62bbd31528e9b992d8ef4f22e75",
+    "preservedPriorFamilies": 24,
+    "newTrainFamilies": [
+      "half-open-time-window",
+      "dense-sample-mean"
+    ],
+    "newIndependentTestFamilies": [
+      "fractional-band-classification",
+      "dense-filter-preservation"
+    ],
+    "forbiddenTrainingFamilies": [
+      "weighted-selection",
+      "team-balance",
+      "ui-viewport-window",
+      "fractional-band-classification",
+      "dense-filter-preservation"
+    ]
+  },
+  "datasetFiles": {
+    "dataset-card.json": "8788d8ce668c315a18fbaf97df10628fae39d2d4a2fce56143c3f6db7a314339",
+    "train.jsonl": "87775d8fc701ff9e70beb2f59e55a740d65e5bd2f4b1c3daf094104e5b45f6f5",
+    "val.jsonl": "0181d36b3a19ac028ecc81259ee79288539645ea0e9bae7ae462caabc4a1124a",
+    "test.jsonl": "da852b465d7eb6ba22d0da0ac2673ab666ee356af77d7df89e8127832235b62b"
+  },
+  "splitSizes": {
+    "train": 20,
+    "val": 3,
+    "test": 5
+  },
+  "trainingConfig": {
+    "iterations": 20,
+    "exposurePolicy": "one optimizer iteration per training row, matching the prior 16-row/16-iteration single-pass pilot",
+    "batchSize": 1,
+    "seed": 20260918,
+    "optimizer": "adamw",
+    "learningRate": 0.00005,
+    "numLayers": 8,
+    "rank": 8,
+    "scale": 16,
+    "dropout": 0,
+    "maxSequenceLength": 2048,
+    "maskPrompt": true,
+    "gradientCheckpointing": true,
+    "wallDeadlineSeconds": 900,
+    "memoryLimitBytes": 12884901888,
+    "offlineOnly": true,
+    "networkCallsAllowed": false,
+    "downloadsAllowed": false
+  },
+  "holdout": {
+    "preservedDevelopmentFamilies": [
+      "weighted-selection",
+      "team-balance",
+      "ui-viewport-window"
+    ],
+    "independentTransferFamilies": [
+      "fractional-band-classification",
+      "dense-filter-preservation"
+    ],
+    "rows": [
+      {
+        "id": "weighted-selection",
+        "family": "weighted-selection",
+        "rowSha256": "7b2e959fc05250969efc78fa9a623cfd9de59b95f82f299c37204c7f2807fbaa",
+        "promptSha256": "d3c7ed25373ced48391031aaba19602b13f23799e8d9583d89c0888cf21f2fe2",
+        "answerSha256": "b386ce9ea9aad37803b3977f80ecd5995670a6b7d7d73e11e91c5ba51953cc7d",
+        "sourceSha256": "c2de1bb8e2b7d6f0784ce88565cad1a892570e236f3482be7fac9b9dbc91cc0f",
+        "checksSha256": "89554855776c29e342c336ac618873ed524410620392f3891f14e681212fa733"
+      },
+      {
+        "id": "team-balance",
+        "family": "team-balance",
+        "rowSha256": "c25820a1226325b325771d8464b9cd46b8ae2cee0e4040db7fea729e7b211857",
+        "promptSha256": "2cde34848a953edb3467ee8eca4f126a2b022bd9bb36e102d5d016e14a66c8e5",
+        "answerSha256": "02318d2373785514f1cba00f9cefccb9fcbec912d628380a8ac13d12a4f165af",
+        "sourceSha256": "679b15be212c352c822ac50d20ad686caab029c70f6085b9f4ce910f6ff9b467",
+        "checksSha256": "d1f9e8edfca374bb18c4ac7284047e507b85e6b13a142fa405dd8fb6ed86f9f7"
+      },
+      {
+        "id": "visible-ui-rows",
+        "family": "ui-viewport-window",
+        "rowSha256": "073eb1f6c2810477e851eddec613f09080c3bfae8b518a298d55c2e3f27b2c1b",
+        "promptSha256": "ff1c065b2ebc5e683a799b1a849daed42367dc528c32b846996684db990bbaa8",
+        "answerSha256": "e9b433175e60f6317a5c5213b942932307078074db0c62952730396f35c2c842",
+        "sourceSha256": "3948f967ce97df5f97cdf63e4679104529061fd5d1f4b1c83b6c4ddd5122862c",
+        "checksSha256": "f723aa576bcd62a55c099eede0d3a104bc586789d53727b2382312ed1f5a737a"
+      },
+      {
+        "id": "meter-band",
+        "family": "fractional-band-classification",
+        "rowSha256": "cc19f0a3ae1a66c48ac4e2a404f5410cd396411ea4a7a778a426f43cd521d71a",
+        "promptSha256": "f31977c54912ac6b61f4b726d0db74f20481f6afc1833139160ad7757c590997",
+        "answerSha256": "51661c4f9a76328208427cd4fa2bcb39dc082444b11f5c0be6fd7a5deb2d77c0",
+        "sourceSha256": "2f6403003b4744aa3de13b84c625590a0bf2d17262ccfc06f034b29b5c51faa2",
+        "checksSha256": "bbe08f88fe4b3ab9ba016db7c30bbb1740f114e038ec4871acc1eed63b763a14"
+      },
+      {
+        "id": "compact-under-ceiling",
+        "family": "dense-filter-preservation",
+        "rowSha256": "e66aea61ec94a121769486a23896c693a09c86c1cd8b63925b7e7143c382b99c",
+        "promptSha256": "59f4d9b8bea1cd86b07e2da2737a7acaf3eb37af5c47f9d8296a2598e0c2cd6f",
+        "answerSha256": "22d9cbea8eb84bcd126bcf79ae0e486b4d788d9b494062ecd0ebe8624d02dc1b",
+        "sourceSha256": "63b7534f221b19ac711942e77f6921604571a1fbba78669dababdf49861013d2",
+        "checksSha256": "8901045b895663ed022391acaa02ddc1fd7b03a3915c64bd71fedf02f5989cbe"
+      }
+    ]
+  },
+  "developmentCandidateCriteria": {
+    "freshProcessReload": true,
+    "exactReloadMatches": "5/5",
+    "independentTransferAfterPasses": "2/2",
+    "preservedDevelopmentAfterPasses": "3/3",
+    "totalAfterPasses": "5/5",
+    "customImprovement": "afterPassed must be greater than beforePassed",
+    "formatSyntaxContextRuntimeFailuresAllowed": 0,
+    "productionPromotion": false
+  },
+  "budget": {
+    "ledger": "packages/training/data/spend-budget-2026-09-18.json",
+    "ledgerSha256": "8292ebaa917972a43946edd065b376cb53b3cdf8d8040e1ff8e4690fb83647f6",
+    "capMicros": 20000000,
+    "reservedMicrosBeforeRun": 60000,
+    "newAllocationMicros": 0
+  },
+  "limitations": [
+    "Passing this gate would create only a bounded local development adapter candidate, not production Apple MAX.",
+    "No Roblox Studio, engine, visual, networking, tool-use, whole-agent, latency, conversion, or serving behavior is tested.",
+    "The adapter remains dependent on the named shared Qwen foundation and must never be represented as a distinct foundation model."
+  ]
+}

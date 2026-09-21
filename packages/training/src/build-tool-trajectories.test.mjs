@@ -1,9 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TOOL_TRAJECTORY_CURRICULUM } from './tool-trajectory-curriculum.mjs';
+import { TOOL_TRAJECTORY_CURRICULUM_B } from './tool-trajectory-curriculum-b.mjs';
 import { buildTrajectoryRows, expandSeed, splitRows, TRAJECTORY_SYSTEM, NO_RESULT } from './build-tool-trajectories.mjs';
 import { loadRegistry } from './tool-trajectory-verify.mjs';
 
@@ -87,13 +89,56 @@ test('every row carries the system prompt that describes the job', () => {
   }
 });
 
-test('the emitted dataset on disk matches what the builder produces', { skip: !existsSync(join(DATA, 'dataset-card.json')) }, () => {
+// RE-AIMED 2026-09-21, and the test now does what its own title always said.
+//
+// It was `{ skip: !existsSync(join(DATA, 'dataset-card.json')) }` and then read `train.jsonl`,
+// `val.jsonl` and `test.jsonl`. The card IS tracked (.gitignore re-includes every dataset card);
+// the three splits are NOT. So the skip never fired in a fresh checkout, the reads threw ENOENT,
+// and `pnpm -r test` bailed at @golem/training — taking @golem/worker, @golem/site and everything
+// after them down with it. Nobody saw it, because an earlier package had been failing first.
+//
+// It also never called the builder. "matches what the builder produces" was checked by comparing
+// two files that are written in the same breath by the same function, which agree by construction.
+//
+// So: the builder is run in memory, from the two tracked curricula, and the CARD is checked
+// against it — rows, split sizes, and the digest, which `main()` derives from the exact bodies it
+// writes. That runs everywhere, needs no data file, and is the stronger claim. The on-disk splits
+// are then checked too, wherever the emitted dataset exists.
+test('the emitted dataset on disk matches what the builder produces', async (t) => {
   const card = JSON.parse(readFileSync(join(DATA, 'dataset-card.json'), 'utf8'));
   assert.equal(card.capturedFromStudio, false, 'this data was authored; a card claiming capture would be a lie in the artifact');
   assert.equal(card.customerData, false);
   assert.equal(card.productionTrainingReady, false, 'nothing has trained on it or evaluated it yet');
   assert.ok(card.limitations.some((l) => /results are not recorded/i.test(l)), 'the missing-results limitation must be stated on the card');
 
+  // The same two curricula `main()` concatenates, and the same serialisation and digest it writes.
+  const curricula = [...TOOL_TRAJECTORY_CURRICULUM, ...TOOL_TRAJECTORY_CURRICULUM_B];
+  const { rows, refused } = await buildTrajectoryRows(curricula, { registry });
+  assert.deepEqual(refused, [], 'a seed no longer verifies against the live tool registry');
+  const { splits } = splitRows(rows);
+
+  assert.equal(card.seeds, curricula.length, 'the card names a seed count the curricula no longer have');
+  assert.equal(card.rows, rows.length, 'the card names a row count the builder no longer produces');
+  const hash = (value) => createHash('sha256').update(value).digest('hex');
+  const digestParts = [];
+  for (const [split, list] of Object.entries(splits)) {
+    assert.equal(list.length, card.splitSizes[split], `the card's ${split} size disagrees with the builder`);
+    const body = list.map((r) => JSON.stringify({ messages: r.messages })).join('\n') + (list.length ? '\n' : '');
+    digestParts.push(`${split}:${hash(body)}`);
+  }
+  assert.equal(
+    hash(digestParts.join('|')),
+    card.digest,
+    'the card\'s digest is not the digest of what the builder produces now — re-emit with `node src/build-tool-trajectories.mjs --write`',
+  );
+
+  // The emitted dataset is a gitignored build artefact, so this half runs on a machine that has
+  // run the builder and not on a fresh clone. It says which it did rather than passing silently.
+  if (!existsSync(join(DATA, 'train.jsonl'))) {
+    t.diagnostic(`${DATA}/train.jsonl is not in this checkout — the card was checked against the `
+      + 'builder, and the emitted splits were not compared because there are none here.');
+    return;
+  }
   const total = ['train', 'val', 'test'].reduce((n, split) => {
     const body = readFileSync(join(DATA, `${split}.jsonl`), 'utf8').trim();
     const lines = body ? body.split('\n') : [];
