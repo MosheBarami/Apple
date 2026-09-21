@@ -147,6 +147,24 @@ export const WORKERS_AI_MODELS: readonly ProviderModel[] = [
  * ROUTING hint, not a cache key: it decides which instance serves the request, so a collision costs
  * a cache miss, never a cross-tenant read. Response caching, which WOULD be a cross-tenant risk, is
  * a different feature and stays off (cacheTtl 0) on every agent call.
+ *
+ * THAT LAST SENTENCE IS TRUE ABOUT WHAT THIS WORKER SENDS AND IT DOES NOT MEAN NOTHING IS REPLAYED.
+ * Measured 2026-09-20T23:31Z-2026-09-21T00:00Z, six sixteen-prompt runs through
+ * /api/admin/model-test, which reaches llmChat with no options at all and therefore with cacheTtl 0:
+ *
+ *     gap between runs   answers byte-identical
+ *     ~2 min             16 of 16
+ *     ~3.5 min           13 of 16
+ *     ~5 min              2 of 16
+ *     ~9 min              0 of 16
+ *
+ * Monotonic decay with the time gap is a cache with a TTL of roughly five minutes. It is not
+ * determinism, which would be 16 of 16 at every gap. WHERE it lives is NOT established here — only
+ * that it is not this worker's response cache, because this worker asked for none. What IS
+ * established is the billing consequence: gateway.ts computes neurons locally from the returned
+ * usage, so the two runs two minutes apart were charged 207 neurons EACH for one generation. An
+ * eval that treats such a pair as two samples reports a precision that does not exist;
+ * docs/frontier-for-roblox.md §8.3 discards one on exactly this evidence.
  */
 export function gatewayOpts(env: Env, kind: string, cacheTtl: number, sessionId?: string) {
   const id = env.AI_GATEWAY_ID;

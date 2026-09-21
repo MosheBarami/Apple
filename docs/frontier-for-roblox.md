@@ -501,6 +501,27 @@ before averaging anything:
 A replicate that is a replay is not a replicate. Averaging six runs here would have reported a
 precision that does not exist, and no total below includes the discarded one.
 
+**And the pattern is a measurement in its own right.** Ordered by the gap between the two runs:
+
+| gap between runs | answers byte-identical |
+|---|---|
+| ~2 min (neutral r2b → r2c) | 16 of 16 |
+| ~3.5 min (house-rules r2 → r2b) | 13 of 16 |
+| ~5 min (neutral r2 → r2b) | 2 of 16 |
+| ~9 min (house-rules-plus p1 → p2 → p3) | 0 of 16 |
+
+Monotonic decay with the time gap is **a cache with a TTL of roughly five minutes**. It is not
+determinism — determinism would be 16 of 16 at every gap. `/api/admin/model-test` calls `llmChat`
+with no options at all, so `opts.cacheTtl ?? 0` sends `cacheTtl: 0`; this worker asked for no
+response cache and got replays anyway. **Where the cache lives is not established here** and this
+page does not guess, because the only thing measured is the effect.
+
+What is established is the bill. `gateway.ts` computes neurons locally from the returned usage, so
+the two runs two minutes apart were charged **207 neurons each for one generation**. §4.4 already
+observed that the gateway replays an identical request and that the effect does not survive an hour;
+this brackets it, and the comment in `apps/worker/src/providers/workers-ai.ts` now records that
+sending `cacheTtl: 0` is not the same claim as nothing being replayed.
+
 ### 8.4 What production's own Roblox rules were buying: nothing measurable
 
 Two arms, identical but for the system prompt. `neutral` says how to answer and nothing about
