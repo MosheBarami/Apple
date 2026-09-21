@@ -33,8 +33,19 @@ was written. Their version adds:
 - a test `the navigation reaches the showcase from every page`, which excludes `index.html`.
 
 Editing a file another lane is holding open in this shared checkout is how one lane's commit
-swallows another's, so nothing in that file was touched. `scripts/check-site-links.mjs` already
-carries the equivalent exemption with its reason, in a file this lane owns.
+swallows another's, so nothing in that file was touched.
+
+`scripts/check-site-links.mjs` briefly carried the equivalent exemption and it had to come back
+out, which is the second half of this handoff. That checker fails an exemption for a path NOTHING
+LINKS TO — "a comment pretending to be a rule" in its own words — so the moment the anchor came
+off the landing, the exemption became the failure:
+
+```
+check-site-links: SERVED_ELSEWHERE names paths nothing links to any more:
+  /showcase
+```
+
+That is the guard working. The anchor and the exemption are one change and go back together.
 
 ## Exactly what to put back, once that exemption is committed
 
@@ -55,6 +66,14 @@ with:
 and delete the `.built-rest` paragraph below it together with the `{/* THE DOOR POINTS AT THE
 RENDER … */}` comment that explains why it is there. Keep `.built-rest` and `.built-route` out of
 the `<style>` block when the paragraph goes.
+
+Then put the exemption back into `scripts/check-site-links.mjs`, in `SERVED_ELSEWHERE`, beside the
+`/app` entry — it was removed in `c809998`, so `git show 92c9221:scripts/check-site-links.mjs` has
+the exact text and the reason that was written with it:
+
+```js
+  '/showcase': 'the model-output gallery, published into the worker by infra/deploy-showcase.mjs',
+```
 
 `BUILT_SCREEN.gallery`, `galleryScreens` and `galleryMaps` are already declared in
 `apps/site/src/data/showcase-proof.ts` and both counts are already resolved against their manifests
