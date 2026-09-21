@@ -475,3 +475,81 @@ Two of the four disclaimers were **re-aimed rather than deleted**, and guards ch
 - *left out for size* said repositories over the cap are recorded skipped with their Luau file count.
   None are any more. A disclaimer that goes on warning about missing files when none are missing is
   a disclaimer standing in for a fact — the same defect as a fact standing in for a disclaimer.
+
+# Sixth pass: sixty repositories were filed under a reason that was not the reason
+
+Measured 2026-09-21. Artifacts: `packages/training/discovery/v2/github-probed.jsonl` (relabelled),
+`packages/training/discovery/v2/github-trees-archived.jsonl`.
+
+The probe's disposition ladder read:
+
+```
+permissive && !archived ? 'admit_candidate'
+  : none_declared      ? 'reject_no_licence_grant'
+    : copyleft         ? 'hold_copyleft_review'
+      :                  'hold_licence_unmapped'
+```
+
+An **archived** repository with an ordinary MIT licence fails the first clause, is not
+`none_declared` and is not `copyleft`, so it falls off the end onto *"the licence could not be
+mapped"*. Sixty repositories sat under that sentence: **53 MIT, 5 Apache-2.0, 1 CC0-1.0, 1
+Unlicense.** Every one of those ids is in the permit policy. None of them was unmapped. What they
+are is archived.
+
+A wrong reason is worse than no reason, because a reason gets believed and never re-opened. This is
+the third instance of one shape in this document — a fall-through rendering as a finding, beside
+"NO licence file found at the repository root" written over eleven roots that had one, and 5.45 GB
+of repository standing in for Luau volume.
+
+| disposition | before | after |
+| --- | ---: | ---: |
+| `admit_candidate` | 1,986 | 1,986 |
+| `reject_no_licence_grant` | 2,060 | 2,060 |
+| `hold_copyleft_review` | 153 | 153 |
+| `hold_licence_unmapped` | 70 | **10** |
+| `hold_archived` | — | **60** |
+
+The ten still under `hold_licence_unmapped` are CC-BY and CC-BY-SA awesome-lists and dataset
+indexes, none of them Luau, and that label is correct for them. The disposition is a pure function
+of fields every row already carried, so the relabel needed no network: `dispositionFor` is exported
+and a guard asserts every row in the artifact carries the disposition its own fields derive.
+
+`hold_archived` is a HOLD, not a rejection. Archiving a repository makes it read-only; it does not
+withdraw the licence, and MIT does not expire.
+
+## The hold now has a number in it, which is the whole lesson of this document
+
+A bucket with a word on it and no number in it is indistinguishable from an empty bucket, and the
+two get treated the same way — which is to say not at all. That is how 4,269 leads stayed unopened
+for 21 days and how 923 repositories were called irrelevant. So the 50 Roblox-relevant archived
+repositories were tree-read: **50 of 50, 0 errors, 0 truncated.**
+
+| | |
+| --- | ---: |
+| repositories | 50 |
+| **Luau/Lua files** | **756** |
+| Luau/Lua bytes | 3,961,247 (3.8 MiB) |
+| holding at least one Luau file | 50 |
+| with a licence FILE at the root | 50 |
+| licences | 48 MIT, 2 Apache-2.0 |
+
+756 files is 2.1% of the 36,366 already measured. The largest are `unnixu/ZO-like-Combat-System`
+(168), `christopher-buss/luau-lint` (61) and `lutest-dev/lutest` (57).
+
+## The decision, made rather than deferred
+
+**They are not acquired, and the reason is a choice, not the old fall-through.**
+
+The argument for taking them is real and is this document's own: rights clearance is not a quality
+judgement, and the fourth pass says in its own words that `wait()` in a 2019 repository "is that
+repository being its age, not a defect". By that standard, dropping 756 licence-clean files because
+their repository is read-only is a quality filter wearing a rights filter's clothes.
+
+The argument against is the invariant. `github-trees.jsonl` and `repos.jsonl` now partition
+exactly — 1,063 tree rows, 1,035 in the ledger, 28 holding no Luau, 0 passing every clause and
+absent — and a guard fails if that stops being true. Acquiring from a second tree file breaks the
+one property that makes the ledger auditable, for 2.1% more rows of source that stopped being
+maintained, in a corpus whose stated purpose is *current* Luau.
+
+The invariant wins. What changes is that the hold is now a hold: a true reason, a measured volume,
+a per-repository artifact, and the evidence anyone needs to reverse this decision in one run.

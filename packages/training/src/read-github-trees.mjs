@@ -13,6 +13,7 @@
  * they contain ten Luau files or ten thousand.
  *
  *   GH_TOKEN=... node packages/training/src/read-github-trees.mjs [--limit=N] [--relicence]
+ *                                                                  [--disposition=X --out=PATH]
  *
  * ONE request per repository: `GET /repos/{owner}/{repo}/git/trees/HEAD?recursive=1`. The response
  * carries every path, its blob sha and its byte size, so the count, the byte total and a
@@ -182,16 +183,25 @@ if (isMain) {
   const argLimit = Number((process.argv.find((a) => a.startsWith('--limit=')) ?? '').split('=')[1]);
   const LIMIT = Number.isSafeInteger(argLimit) && argLimit > 0 ? argLimit : Infinity;
 
+  // --disposition/--out measure a bucket OTHER than admit_candidate into its own artifact.
+  //
+  // Sixty repositories are held `hold_archived`: permissive licence, archived, never opened. That
+  // is the same shape as the 923 the relevance filter rejected and the 4,269 nobody probed — a
+  // bucket with a word on it and no number in it. A hold whose volume is unknown is indistinguishable
+  // from a hold that is empty, and the two get treated the same way, which is to say not at all.
+  const DISPOSITION = (process.argv.find((a) => a.startsWith('--disposition=')) ?? '').split('=')[1] || 'admit_candidate';
+  const OUT_PATH = (process.argv.find((a) => a.startsWith('--out=')) ?? '').split('=')[1] || OUT;
+
   const probed = readFileSync(IN, 'utf8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l));
   const targets = probed
-    .filter((r) => r.disposition === 'admit_candidate' && isRobloxRelevant(r))
+    .filter((r) => r.disposition === DISPOSITION && isRobloxRelevant(r))
     .sort((a, b) => (b.stars ?? 0) - (a.stars ?? 0));
 
   if (targets.length === 0) {
-    console.error('the admit-candidate partition is empty — this run would measure nothing. Refusing.');
+    console.error(`the ${DISPOSITION} partition is empty — this run would measure nothing. Refusing.`);
     process.exit(3);
   }
-  console.error(`${targets.length} licence-verified Roblox-relevant repositories to tree-read`);
+  console.error(`${targets.length} licence-verified Roblox-relevant ${DISPOSITION} repositories to tree-read`);
 
   // --relicence re-reads ONLY the rows whose licence file came back null.
   //
@@ -205,8 +215,8 @@ if (isMain) {
   const RELICENCE = process.argv.includes('--relicence');
 
   const done = new Map();
-  if (existsSync(OUT)) {
-    for (const line of readFileSync(OUT, 'utf8').trim().split('\n')) {
+  if (existsSync(OUT_PATH)) {
+    for (const line of readFileSync(OUT_PATH, 'utf8').trim().split('\n')) {
       if (!line) continue;
       try { const o = JSON.parse(line); done.set(o.source_id, o); } catch { /* partial line from a kill */ }
     }
@@ -222,7 +232,7 @@ if (isMain) {
 
   const out = [];
   let n = 0; let ok = 0; let empty = 0; let gone = 0; let errors = 0; let truncated = 0;
-  const flush = () => writeFileSync(OUT, out.map((o) => JSON.stringify(o)).join('\n') + '\n');
+  const flush = () => writeFileSync(OUT_PATH, out.map((o) => JSON.stringify(o)).join('\n') + '\n');
 
   for (const repo of targets.slice(0, LIMIT === Infinity ? undefined : LIMIT)) {
     if (done.has(repo.source_id)) { out.push(done.get(repo.source_id)); continue; }
@@ -287,7 +297,7 @@ if (isMain) {
   const measured = out.filter((o) => o.tree_status === 'ok');
   const files = measured.reduce((n2, o) => n2 + (o.luau_lua_file_count || 0), 0);
   const bytes = measured.reduce((n2, o) => n2 + (o.luau_lua_bytes || 0), 0);
-  console.error(`\nwrote ${out.length} rows to ${OUT}`);
+  console.error(`\nwrote ${out.length} rows to ${OUT_PATH}`);
   console.error(`tree-read ok ${ok}, truncated ${truncated}, empty ${empty}, not-found ${gone}, errors ${errors}`);
   console.error(`Luau/Lua files across repositories whose tree was read: ${files}`);
   console.error(`Luau/Lua bytes: ${bytes} (${(bytes / 1024 / 1024).toFixed(1)} MiB)`);
