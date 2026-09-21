@@ -77,18 +77,20 @@ export const DEFAULT_MODELS: Record<string, ModelCfg> = {
   // neuron caps, not by this number, and settlement is on ACTUAL usage, so a short step still
   // costs a short step.
   // -------------------------------------------------------------------------
-  // PRODUCT MODEL SPLIT.
+  // PRODUCT MODEL ROUTING.
   //
-  // Product selection is translated in SessionDO: Apple always uses clay; Apple MAX uses
-  // stone/rune. Qwen3 is the measured cheap lane for quick Q&A/small edits. GLM-5.3 Flash is the
-  // MAX choice: 1.3M context, native multi-turn function calling, reasoning, and vision.
-  // Neither is vision-capable, so visual critique deliberately remains on GLM-5.3 Flash.
+  // Apple and Apple MAX currently share the measured `stone` foundation: GLM-5.3 Flash. That is
+  // deliberate, not a missing switch. The previous free Qwen route lost the same twelve executable
+  // prompts 1/12 to 11/12 while costing more, so making the paid badge select a different weight just
+  // to make the ids differ would ship a weaker product. The tiers are distinct by entitlement,
+  // step/effort budget and MAX-only media/3D capabilities. `clay` remains a gateway configuration
+  // for experiments/legacy callers; it is not the current free product foundation.
   // -------------------------------------------------------------------------
 
-  //[[ CLAY IS NOT ONLY PLAN MODE. It is also the gateway the FREE product lane runs on.
+  //[[ CLAY USED TO BE THE FREE PRODUCT LANE. IT IS NOT ANY MORE.
   //
-  //   `gatewayModelFor` in do/session.ts sends every `productModel: 'apple'` run here, whatever
-  //   mode it is in — and `toolsForMode` hands a free Agent run STONE'S COMPLETE TOOLSET. At
+  //   `gatewayModelFor` used to send every `productModel: 'apple'` run here, whatever mode it was
+  //   in — while `toolsForMode` handed a free Agent run STONE'S COMPLETE TOOLSET. At
   //   maxTokens 2000 this ceiling was the binding clamp on that lane: the free user was offered
   //   run_luau and given a third of the room the paid lane gets to write the call, so the answer
   //   was guillotined at finish_reason "length", nothing was built, and the Credits were spent

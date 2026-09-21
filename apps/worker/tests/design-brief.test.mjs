@@ -75,6 +75,14 @@ test('the brief is capped, because it is re-sent every step', () => {
   assert.ok(b.used.length <= 8, `expected at most 8 rules, got ${b.used.length}`);
 });
 
+test('a fixed style brief includes bounded reference-backed visual observations', () => {
+  const b = designBrief('build a pet collection inventory panel');
+  assert.ok(b);
+  assert.equal(b.styleFamily, 'pets-collection');
+  assert.match(b.text, /REFERENCE-BACKED VISUAL CHECKS/);
+  assert.match(b.text, /never copy source media/);
+});
+
 // ------------------------------------------------------------------ the licence line
 test('no concrete value from a reference-only rule can reach a prompt', () => {
   // A reference-only rule is backed by a source whose GRAMMAR may be taught and whose NUMBERS may

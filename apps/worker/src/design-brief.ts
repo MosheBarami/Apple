@@ -14,8 +14,12 @@
 // rather than stylistic: of the seed manifest's 24 free cartoon UI kits and world packs,
 // ZERO can prove a licence. `composeBrief` enforces that boundary by refusing to emit
 // concrete values for any rule sourced from something we may only read.
+// The fixed visual families selected below are independently backed by >=5 inspected examples in
+// packages/corpus/data/style-visual-evidence.json. That ledger is evidence/provenance only; this
+// module still emits Golem-authored grammar, not copied source layouts.
 
 import { composeBrief, COMPONENTS, STYLE_FAMILIES } from '@golem/design';
+import { styleVisualCueBlock } from './style-visual-evidence.ts';
 
 /**
  * Which component the request is about.
@@ -106,5 +110,11 @@ export function designBrief(text: string, opts: { limit?: number } = {}): Design
     { limit: opts.limit ?? 8 },
   );
   if (brief.count === 0) return null;
-  return { text: brief.text, used: brief.used, component, styleFamily };
+  const visual = styleFamily ? styleVisualCueBlock(styleFamily) : null;
+  return {
+    text: visual ? brief.text + '\n\n' + visual : brief.text,
+    used: brief.used,
+    component,
+    styleFamily,
+  };
 }

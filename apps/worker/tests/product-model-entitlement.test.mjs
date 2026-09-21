@@ -224,25 +224,26 @@ test('free Apple can ride Stone tools while its identity is persisted and return
   assert.equal(h.calls.some((c) => c.name === 'QUOTA_DO' && c.path === '/spend'), true);
 });
 
-test('ProductModel, not Plan/Agent autonomy, selects the foundation that reaches Workers AI', async () => {
+test('the two product tiers intentionally share the measured foundation, independent of autonomy mode', async () => {
   const cases = [
     // The free lane moved from clay to stone on 2026-09-20. Measured on the deployed gateway, the
     // same twelve prompts at each lane's own production budget: stone 11/12 for 125 neurons, clay
     // 1/12 for 718 — ten of clay's twelve returned no code at all, because a reasoning model spends
     // its output budget thinking. The cheaper-looking lane was five and a half times the spend for
-    // an eleventh of the result. The PRINCIPLE this table exists for is untouched: the foundation
-    // still follows what a person pays for and never the autonomy mode. What differentiates the
-    // tiers is maxStepsFor and the daily allowance.
+    // an eleventh of the result. The honest product decision is therefore to share the stronger
+    // foundation. What differentiates the tiers is entitlement, maxSteps/effort and MAX-only
+    // media/3D capability — not an inferior free model hidden behind a different id.
     { plan: 'free', mode: 'clay', productModel: 'apple', expected: DEFAULT_MODELS.stone.id },
     { plan: 'free', mode: 'stone', productModel: 'apple', expected: DEFAULT_MODELS.stone.id },
     { plan: 'builder', mode: 'clay', productModel: 'apple-max', expected: DEFAULT_MODELS.stone.id },
     { plan: 'builder', mode: 'stone', productModel: 'apple-max', expected: DEFAULT_MODELS.stone.id },
   ];
 
-  // Reading the table would make this vacuous if the two lanes ever pointed at one model, so say
-  // out loud that they are different before asserting anything about which is which.
+  // Clay still exists as a genuinely different gateway configuration, so this test would catch a
+  // regression that silently routed one product tier back to Qwen. Its existence is not presented
+  // as a product-tier distinction.
   assert.notEqual(DEFAULT_MODELS.clay.id, DEFAULT_MODELS.stone.id,
-    'the free and MAX lanes resolve to the same model — this test can no longer tell them apart');
+    'the control gateway must stay different or this routing assertion becomes vacuous');
 
   for (const c of cases) {
     const h = makeSession({
@@ -261,7 +262,7 @@ test('ProductModel, not Plan/Agent autonomy, selects the foundation that reaches
     assert.equal(start.status, 200, `${c.productModel} in ${c.mode} must be admitted for ${c.plan}`);
     await h.session.alarm();
     assert.equal(h.providerRuns.length, 1, `${c.productModel} in ${c.mode} must reach exactly one model call`);
-    assert.equal(h.providerRuns[0].model, c.expected, `${c.productModel} foundation must ignore autonomy mode`);
+    assert.equal(h.providerRuns[0].model, c.expected, `${c.productModel} must stay on the measured shared foundation regardless of autonomy mode`);
   }
 });
 
