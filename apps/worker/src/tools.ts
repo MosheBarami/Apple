@@ -254,6 +254,8 @@ export interface ProposedStep {
 export interface ProposedPlan {
   title?: string;
   steps: ProposedStep[];
+  /** Set when this module appended the verification step the model left out. See readProposedPlan. */
+  verifierAdded?: string;
 }
 
 /**
@@ -271,7 +273,7 @@ const MAX_PLAN_STEPS = 12;
  * Kept as a list here rather than a substring test so that renaming a verifier breaks a plan's
  * verification requirement loudly instead of quietly accepting a plan with no check in it.
  */
-const VERIFIER_TOOLS = ['run_and_check', 'run_spec', 'audit_build', 'check_composition', 'inspect_visually'] as const;
+export const VERIFIER_TOOLS = ['run_and_check', 'run_spec', 'audit_build', 'check_composition', 'inspect_visually'] as const;
 
 const clip = (v: unknown, max: number): string => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
@@ -322,15 +324,49 @@ function readProposedPlan(a: Record<string, unknown>): ProposedPlan | { error: s
     steps.push({ title, ...(clip(step.detail, 800) ? { detail: clip(step.detail, 800) } : {}), tool });
   }
 
+  //[[ RE-AIMED 2026-09-21, AT THE PROPERTY RATHER THAN AT THE MODEL. History, because the
+  //   refusal it replaces was correct in every way except the one that mattered.
+  //
+  //   This used to return `{ error: 'this plan never checks its own work. Add at least one
+  //   verification step using one of: …' }`. The rule is right — a build with no planned check
+  //   ends with "Done." and nothing proven. What was wrong is that a refusal only works if the
+  //   model acts on it, and MEASURED AGAINST THE DEPLOYED PRODUCT it does not. From the tool
+  //   trace of a real run on 2026-09-21, project 52a4b8c5, one part requested:
+  //
+  //     ✗ propose_plan — this plan never checks its own work. Add at least one verification…
+  //     ✗ propose_plan — this plan never checks its own work. Add at least one verification…
+  //     ✗ propose_plan — this plan never checks its own work. Add at least one verification…
+  //     → "I reached the step limit for this run."   8 Credits asked, 8 returned
+  //
+  //   Three identical refusals at durationMs 0, the whole step budget spent on them, and NOTHING
+  //   BUILT. The user's own words for this are "the agent always fails in the thinking". The run
+  //   before it died the same way after get_project_tree, get_selection, get_project_tree,
+  //   propose_plan — 26 Credits asked, 26 returned.
+  //
+  //   The PROPERTY this guard defends is "the plan that runs contains a check". It is not "the
+  //   model must be the one to write the check down". Appending the step satisfies the property
+  //   outright instead of asking for it and losing the run when the answer does not come. The
+  //   append is ANNOUNCED — to the model in the tool result and to the user in the checklist —
+  //   because a step the product added and presented as the model's would be this house's own
+  //   failure-to-observe defect wearing a plan's clothes.
+  //
+  //   `inspect_visually` is the appended verifier because it is the only one of the five that
+  //   needs no argument and no prior artifact: it looks at what is there. ]]
+  let verifierAdded: string | undefined;
   if (!steps.some((s) => (VERIFIER_TOOLS as readonly string[]).includes(s.tool))) {
-    return {
-      error:
-        'this plan never checks its own work. Add at least one verification step using one of: ' +
-        `${VERIFIER_TOOLS.join(', ')}. A build with no planned check ends with "Done." and nothing proven.`,
-    };
+    verifierAdded = 'inspect_visually';
+    steps.push({
+      title: 'Check the result looks right',
+      detail: 'Added automatically: a plan with no check proves nothing, so this run verifies what it built.',
+      tool: verifierAdded,
+    });
   }
 
-  return { ...(clip(a.title, 200) ? { title: clip(a.title, 200) } : {}), steps };
+  return {
+    ...(clip(a.title, 200) ? { title: clip(a.title, 200) } : {}),
+    steps,
+    ...(verifierAdded ? { verifierAdded } : {}),
+  };
 }
 
 /**
@@ -3518,6 +3554,15 @@ export const TOOLS: Record<string, ToolImpl> = {
         // The model gets the plan back so the transcript carries the commitment it just made;
         // without it the plan exists only in a UI payload the model never sees again.
         plan: plan.steps.map((s, i) => `${i + 1}. ${s.title} — ${s.tool}`),
+        // Said out loud. The model is now committed to a step it did not write, and it has to be
+        // told, or it will reach the end of its own list and stop one step early.
+        ...(plan.verifierAdded
+          ? {
+              note:
+                `Your plan had no verification step, so ${plan.verifierAdded} was added as the last step and is ` +
+                'part of the plan the user can see. Carry it out with the rest.',
+            }
+          : {}),
       };
     },
   },

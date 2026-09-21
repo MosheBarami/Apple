@@ -135,17 +135,47 @@ test('a plan cannot name propose_plan as one of its own steps', async () => {
 
 /* --------------------------------------------------------- a plan with no check */
 
-test('a plan with no verification step is REFUSED, and the refusal names the verifiers', async () => {
+//[[ RE-AIMED 2026-09-21. This test used to assert `res.ok === false` and that the refusal named
+//   three of the verifiers. The rule it guards has not changed — the plan that runs must contain a
+//   check — but the enforcement moved from REFUSING to APPENDING, because the refusal was measured
+//   looping three times at durationMs 0 on a real run and taking the whole step budget with it. The
+//   property is "the plan contains a check", so that is what this now asserts, on the plan that
+//   comes back rather than on the error that does not. See the comment at readProposedPlan. ]]
+test('a plan with no verification step is COMPLETED with one, and the addition is announced', async () => {
   const res = await call({
     steps: [
       { title: 'Read the place', tool: 'get_project_tree' },
       { title: 'Build it', tool: 'create_instances' },
     ],
   });
-  assert.equal(res.ok, false, 'a build with no planned check is how a run ends with "Done." and nothing proven');
-  for (const v of ['run_and_check', 'audit_build', 'inspect_visually']) {
-    assert.match(res.resultForLlm, new RegExp(v), `the refusal must tell the model that ${v} would satisfy it`);
-  }
+  assert.equal(res.ok, true, 'a plan the model cannot repair must still be able to run');
+
+  // The property: what runs contains a check.
+  assert.match(res.resultForLlm, /inspect_visually/, 'the appended verifier must be in the plan the model reads back');
+
+  // And it is not silent — to the model...
+  assert.match(res.resultForLlm, /had no verification step/i, 'the model must be told a step it did not write was added');
+
+  // ...nor to the user: the checklist they see carries it too.
+  const block = res.detail.blocks[0];
+  assert.equal(block.steps.length, 3, 'the verification step should have been appended');
+  assert.equal(block.steps[2].tool, 'inspect_visually');
+  assert.equal(block.steps[2].status, 'pending', 'an appended step has not happened either');
+});
+
+test('a plan that already checks its own work is left exactly alone', async () => {
+  // The other half: appending unconditionally would be a different defect, and nothing above
+  // would catch it.
+  const res = await call({
+    steps: [
+      { title: 'Build it', tool: 'create_instances' },
+      { title: 'Check it', tool: 'run_and_check' },
+    ],
+  });
+  assert.equal(res.ok, true);
+  assert.equal(res.detail.blocks[0].steps.length, 2, 'a plan with a verifier must not gain a second one');
+  assert.doesNotMatch(res.resultForLlm, /had no verification step/i,
+    'nothing was added, so nothing should be announced');
 });
 
 test('each of the five verifiers on its own satisfies the rule', async () => {

@@ -332,6 +332,33 @@ export async function verifyTrajectory(seed, { registry = null, luauBinary = 'lu
     }
   }
 
+  //[[ MOVED HERE 2026-09-21, because it stopped being enforced anywhere.
+  //
+  //   This rule used to arrive for free: `readProposedPlan` REFUSED a plan with no verification
+  //   step, and running it through `TOOLS.propose_plan.run` made the seed fail. On 2026-09-21 that
+  //   refusal was re-aimed into an append — the deployed model was measured proposing the same
+  //   unverified plan three times at durationMs 0 and losing the whole run to the step limit — and
+  //   the moment it appended instead of refusing, a training seed whose trajectory never checks
+  //   anything started passing. The curriculum silently lost a rule it was written to enforce, and
+  //   only tool-trajectory-curriculum.test.mjs noticed.
+  //
+  //   So it is asserted HERE, over the property that actually matters for training data: what the
+  //   trajectory CALLS, not what the plan says. A seed that builds and never looks teaches the
+  //   model to do the same. The list is imported from the product rather than restated, for the
+  //   reason the header of this file gives about not being a second copy.
+  //
+  //   (Product behaviour and training data differ here ON PURPOSE. Production repairs a plan so a
+  //   paying user's run still completes; the curriculum refuses the seed outright, because nothing
+  //   is lost by not training on it.) ]]
+  const VERIFIERS = new Set(mod.VERIFIER_TOOLS ?? []);
+  if (VERIFIERS.size === 0) {
+    problems.push(`${seed.id}: the product exports no VERIFIER_TOOLS, so this rule could not be applied`);
+  } else if (!seed.trajectory.some((s) => VERIFIERS.has(s?.tool))) {
+    problems.push(
+      `${seed.id}: the trajectory never checks its own work — no call to ${[...VERIFIERS].join(', ')}`,
+    );
+  }
+
   if (typeof seed.prompt !== 'string' || seed.prompt.trim().length < 12) {
     problems.push(`${seed.id}: prompt is missing or too short to be a real request`);
   }

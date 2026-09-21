@@ -76,7 +76,11 @@ test('a plan with no verification step is refused by the product\'s own validato
   };
   const result = await verifyTrajectory(seed, { registry });
   assert.equal(result.ok, false);
-  assert.match(result.problems.join(' '), /never checks its own work/);
+  // Re-aimed 2026-09-21: this used to read the PLAN VALIDATOR's refusal. Production now appends the
+  // missing step instead of refusing (see readProposedPlan), so the rule moved to the trajectory
+  // itself in tool-trajectory-verify.mjs, and this asserts it there. The words are deliberately
+  // close to the old ones; the subject changed from "this plan" to "the trajectory".
+  assert.match(result.problems.join(' '), /the trajectory never checks its own work/);
 });
 
 test('a spec case is executed, not merely parsed', () => {
