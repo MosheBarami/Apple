@@ -785,6 +785,20 @@ described. That is a real failure, and it is now the one being measured.
 §8.7's pair becomes **91.3% where the library has the answer, 87.5% where it does not.** Nothing
 user-facing carries such a claim and nothing here authorises one.
 
+**And that is now enforced rather than observed.** "Nothing carries it today" is a fact about a
+moment; one marketing edit makes it false and this page would not know. `tests/model-claims-are-measured.test.mjs`
+scans every tracked file under `apps/site/src`, `apps/web/src`, `apps/worker/src` and
+`packages/shared/src` — 200+ of them — for superlatives that cannot occur in an honest disclaimer
+("most trained", "best Roblox model", "we trained it"), and fails naming the file, the line and the
+two numbers above. It deliberately does **not** match "trained", "training" or "frontier": the
+sentences on `/docs/modes` use all three to say the opposite, and a guard that fires on an honest
+disclaimer gets deleted. `docs/` is out of scope, which is why this paragraph may quote the sentence
+it refuses.
+
+Watched red twice, restored byte-identical: adding a phrase that IS on the site (`foundation model`)
+reports four real findings across site, web and worker, and narrowing the file filter to nothing
+fails with "the scan is broken" rather than passing with zero.
+
 **Said plainly, because it is the uncomfortable part, and it is the second time in one day:** this
 correction raised the arm the same session shipped, and raised it most — `house-rules-plus` from
 83.3% to 87.5%. Both numbers are on this page, the re-score is reproducible from the committed run
