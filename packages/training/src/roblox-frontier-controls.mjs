@@ -176,6 +176,59 @@ remote.OnServerEvent:Connect(function(player, itemName)
 end)
 `;
 
+/**
+ * A SECOND CORRECT ANSWER, WRITTEN TO DISAGREE WITH THE FIRST EVERYWHERE IT IS FREE TO.
+ *
+ * docs/frontier-for-roblox.md section 8.8 named the audit this belongs to: all fifty checks have a
+ * control proving they CAN fail, and not one had a control proving it can pass against anything but
+ * its own hand-written pass case. A check tuned to one implementation looks exactly like a check
+ * the model failed.
+ *
+ * shop-debit is where that mattered. `refuses-when-unaffordable` had never passed against a real
+ * answer in nine samples, and the reason was that SHOP_PASS keys its table `sword` while every
+ * model keys it `Sword` -- so the only evidence the check could ever pass came from the one file
+ * that shares the harness author's spelling. This answer keys it `Sword`, reads the balance through
+ * a different traversal, validates in a different order and spells the arithmetic differently. It
+ * must pass all four checks, or a check is describing an implementation rather than a property.
+ */
+const SHOP_PASS_2 = `
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local ITEMS = {
+	Sword = { Price = 100 },
+}
+
+local buyItem = Instance.new("RemoteEvent")
+buyItem.Name = "BuyItem"
+buyItem.Parent = ReplicatedStorage
+
+local function wallet(player)
+	local leaderstats = player:FindFirstChild("leaderstats")
+	if leaderstats == nil then
+		return nil
+	end
+	return leaderstats:FindFirstChild("Coins")
+end
+
+buyItem.OnServerEvent:Connect(function(player, itemName)
+	if type(itemName) ~= "string" then
+		return
+	end
+	local item = ITEMS[itemName]
+	if item == nil then
+		return
+	end
+	local coins = wallet(player)
+	if coins == nil then
+		return
+	end
+	if item.Price > coins.Value then
+		return
+	end
+	coins.Value = coins.Value - item.Price
+end)
+`;
+
 const POTION_HEAD = `
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local PRICE = 25
@@ -464,6 +517,8 @@ end)
 
   'shop-debit': {
     pass: SHOP_PASS,
+    // See SHOP_PASS_2. `pass2` is optional and any item may grow one; the test picks it up.
+    pass2: SHOP_PASS_2,
     fail: {
       'legit-purchase-works': SHOP_PASS.replace('\tif typeof(itemName) ~= "string" then return end',
         '\tdo return end'),

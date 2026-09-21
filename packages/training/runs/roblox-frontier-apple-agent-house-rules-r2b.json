@@ -24,8 +24,8 @@
  "provenance": {
   "harness": "d37c205f94800574",
   "scorer": "ff0314bdf550c111",
-  "tasks": "4bb9aaaee4d3aabf",
-  "controls": "1bc93b760734281b",
+  "tasks": "7b048bee6ac1263d",
+  "controls": "e22c0afb3e559870",
   "settingsMirror": "7f0a2c6ccc8ab146"
  },
  "items": 16,
@@ -615,10 +615,10 @@
    "answer": "```luau\nlocal DataStoreService = game:GetService(\"DataStoreService\")\nlocal Players = game:GetService(\"Players\")\n\nlocal store = DataStoreService:GetDataStore(\"PlayerData\")\n\nlocal function loadCoins(player: Player)\n\tlocal leaderstats = Instance.new(\"Folder\")\n\tleaderstats.Name = \"leaderstats\"\n\tleaderstats.Parent = player\n\n\tlocal coins = Instance.new(\"IntValue\")\n\tcoins.Name = \"Coins\"\n\tcoins.Value = 0\n\tcoins.Parent = leaderstats\n\n\tlocal key = \"Player_\" .. player.UserId\n\n\tlocal success, result = pcall(function()\n\t\treturn store:GetAsync(key)\n\tend)\n\n\tif success and result then\n\t\tcoins.Value = result\n\telseif not success then\n\t\twarn((\"Failed to load data for %s: %s\"):format(player.Name, tostring(result)))\n\tend\nend\n\nlocal function saveCoins(player: Player)\n\tlocal leaderstats = player:FindFirstChild(\"leaderstats\")\n\tlocal coins = leaderstats and leaderstats:FindFirstChild(\"Coins\")\n\tif not coins then\n\t\treturn\n\tend\n\n\tlocal key = \"Player_\" .. player.UserId\n\n\tlocal success, err = pcall(function()\n\t\tstore:SetAsync(key, coins.Value)\n\tend)\n\n\tif not success then\n\t\twarn((\"Failed to save data for %s: %s\"):format(player.Name, tostring(err)))\n\tend\nend\n\nPlayers.PlayerAdded:Connect(loadCoins)\n\nPlayers.PlayerRemoving:Connect(saveCoins)\n\ngame:BindToClose(function()\n\tfor _, player in Players:GetPlayers() do\n\t\tsaveCoins(player)\n\tend\nend)\n```"
   }
  ],
- "rescoredAt": "2026-09-21T00:07:55.141Z",
+ "rescoredAt": "2026-09-21T00:29:27.064Z",
  "rescoredFrom": {
   "measured": 16,
-  "passed": 10,
-  "pct": 62.5
+  "passed": 11,
+  "pct": 68.8
  }
 }

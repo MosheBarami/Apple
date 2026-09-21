@@ -58,10 +58,21 @@ for (const [i, r] of run.rows.entries()) {
 }
 run.rescoredAt = new Date().toISOString();
 run.rescoredFrom = before;
+//[[ EVERY HASH THE BENCH WROTE IS RE-TAKEN, NOT JUST THE TWO THIS FILE USED TO KNOW ABOUT.
+//   2026-09-21: shop-debit's probe was corrected -- it fired one spelling of an item name the
+//   prompt never fixes -- and the probe lives in roblox-frontier-tasks.mjs. Re-scoring with the old
+//   two-hash block would have left `provenance.tasks` naming the file that judged the run BEFORE
+//   the correction, on a run judged AFTER it. A provenance field that survives the thing it
+//   describes is worse than an absent one: it is a wrong answer with a certificate.
+//   roblox-frontier.test.mjs now fails if the bench grows a hash this list does not re-take.
+const sha = (p) => createHash('sha256').update(readFileSync(p)).digest('hex').slice(0, 16);
 run.provenance = {
   ...run.provenance,
-  harness: createHash('sha256').update(readFileSync(HARNESS_PATH)).digest('hex').slice(0, 16),
-  scorer: createHash('sha256').update(readFileSync(resolve(HERE, 'score-roblox-frontier.mjs'))).digest('hex').slice(0, 16),
+  harness: sha(HARNESS_PATH),
+  scorer: sha(resolve(HERE, 'score-roblox-frontier.mjs')),
+  tasks: sha(resolve(HERE, 'roblox-frontier-tasks.mjs')),
+  controls: sha(resolve(HERE, 'roblox-frontier-controls.mjs')),
+  settingsMirror: sha(resolve(HERE, 'production-settings.mjs')),
 };
 run.measured = board.measured;
 run.passed = board.passed;

@@ -24,15 +24,15 @@
  "provenance": {
   "harness": "d37c205f94800574",
   "scorer": "ff0314bdf550c111",
-  "tasks": "4bb9aaaee4d3aabf",
-  "controls": "1bc93b760734281b",
+  "tasks": "7b048bee6ac1263d",
+  "controls": "e22c0afb3e559870",
   "settingsMirror": "7f0a2c6ccc8ab146"
  },
  "items": 16,
  "attempted": 16,
  "measured": 15,
- "passed": 9,
- "pct": 60,
+ "passed": 10,
+ "pct": 66.7,
  "notMeasured": 0,
  "errors": [],
  "outcomes": {
@@ -50,9 +50,9 @@
   },
   "server-authority": {
    "measured": 5,
-   "passed": 3,
+   "passed": 4,
    "attempted": 5,
-   "checksPassed": 15,
+   "checksPassed": 17,
    "checksTotal": 19
   },
   "datastore-safety": {
@@ -69,18 +69,6 @@
   "datastore-safety"
  ],
  "failedChecks": [
-  {
-   "item": "shop-debit",
-   "axis": "server-authority",
-   "check": "legit-purchase-works",
-   "why": "a benchmark that only rewards refusal is passed by a handler that refuses everything"
-  },
-  {
-   "item": "shop-debit",
-   "axis": "server-authority",
-   "check": "refuses-when-unaffordable",
-   "why": "the third and fourth attempts are made with 50 coins against a 100 coin price; a handler that debits anyway mints negative money"
-  },
   {
    "item": "pet-rename",
    "axis": "server-authority",
@@ -264,7 +252,7 @@
    ],
    "failed": [],
    "unresolved": 0,
-   "detail": "/var/folders/hw/0ybpmzsn323dbcc3cgjwrb700000gn/T/golem-frontier-8mS9E9/item.luau:1041: attempt to index nil with 'Connect'",
+   "detail": "/var/folders/hw/0ybpmzsn323dbcc3cgjwrb700000gn/T/golem-frontier-ykVuQz/item.luau:1041: attempt to index nil with 'Connect'",
    "probeError": null,
    "unresolvedReads": [
     "Mouse.Button1Down"
@@ -279,15 +267,15 @@
    "id": "shop-debit",
    "axis": "server-authority",
    "outcome": "checked",
-   "ok": false,
+   "ok": true,
    "checks": [
     {
      "id": "legit-purchase-works",
-     "pass": false
+     "pass": true
     },
     {
      "id": "refuses-when-unaffordable",
-     "pass": false
+     "pass": true
     },
     {
      "id": "survives-hostile-arguments",
@@ -298,10 +286,7 @@
      "pass": true
     }
    ],
-   "failed": [
-    "legit-purchase-works",
-    "refuses-when-unaffordable"
-   ],
+   "failed": [],
    "unresolved": 0,
    "detail": null,
    "probeError": null,
@@ -455,7 +440,7 @@
    "checks": [],
    "failed": [],
    "unresolved": 0,
-   "detail": "/var/folders/hw/0ybpmzsn323dbcc3cgjwrb700000gn/T/golem-frontier-S1vFIA/item.luau(1029,24): SyntaxError: Expected identifier when parsing method name, got '('",
+   "detail": "/var/folders/hw/0ybpmzsn323dbcc3cgjwrb700000gn/T/golem-frontier-8W5154/item.luau(1029,24): SyntaxError: Expected identifier when parsing method name, got '('",
    "probeError": null,
    "unresolvedReads": [],
    "chars": 610,
@@ -508,7 +493,7 @@
    "checks": [],
    "failed": [],
    "unresolved": 0,
-   "detail": "/var/folders/hw/0ybpmzsn323dbcc3cgjwrb700000gn/T/golem-frontier-Apx3tK/item.luau(1048,4): SyntaxError: Expected '(', '{' or <string> when parsing function call, got 'and'",
+   "detail": "/var/folders/hw/0ybpmzsn323dbcc3cgjwrb700000gn/T/golem-frontier-QLYPO0/item.luau(1048,4): SyntaxError: Expected '(', '{' or <string> when parsing function call, got 'and'",
    "probeError": null,
    "unresolvedReads": [],
    "chars": 1214,
@@ -584,7 +569,7 @@
    "answer": "```luau\nlocal DataStoreService = game:GetService(\"DataStoreService\")\nlocal Players = game:GetService(\"Players\")\n\nlocal store = DataStoreService:GetDataStore(\"PlayerData\")\n\nPlayers.PlayerAdded:Connect(function(player)\n\tlocal leaderstats = Instance.new(\"Folder\")\n\tleaderstats.Name = \"leaderstats\"\n\tleaderstats.Parent = player\n\n\tlocal coins = Instance.new(\"IntValue\")\n\tcoins.Name = \"Coins\"\n\tcoins.Value = 0\n\tcoins.Parent = leaderstats\n\n\tlocal key = \"Player_\" .. player.UserId\n\n\tlocal success, savedValue = pcall(function()\n\t\treturn store:GetAsync(key)\n\tend)\n\n\tif success and typeof(savedValue) == \"number\" then\n\t\tcoins.Value = savedValue\n\tend\n\n\tlocal sessionData = coins\n\n\tcoins.Changed:Connect(function(value)\n\t\tpcall(function()\n\t\t\tstore:SetAsync(key, value)\n\t\tend)\n\tend)\n\n\tplayer:GetPropertyChangedSignal(\"Parent\"):Connect(function()\n\t\tif not player.Parent then\n\t\t\tpcall(function()\n\t\t\t\tstore:SetAsync(key, sessionData.Value)\n\t\t\tend)\n\t\tend\n\tend)\nend)\n\nPlayers.PlayerRemoving:Connect(function(player)\n\tlocal leaderstats = player:FindFirstChild(\"leaderstats\")\n\tlocal coins = leaderstats and leaderstats:FindFirstChild(\"Coins\")\n\tif coins then\n\t\tpcall(function()\n\t\t\tstore:SetAsync(\"Player_\" .. player.UserId, coins.Value)\n\t\tend)\n\tend\nend)\n```"
   }
  ],
- "rescoredAt": "2026-09-21T00:07:53.576Z",
+ "rescoredAt": "2026-09-21T00:29:27.829Z",
  "rescoredFrom": {
   "measured": 15,
   "passed": 9,

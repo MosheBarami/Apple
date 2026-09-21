@@ -24,8 +24,8 @@
  "provenance": {
   "harness": "d37c205f94800574",
   "scorer": "ff0314bdf550c111",
-  "tasks": "f6bdceaa8cf9bd3c",
-  "controls": "1bc93b760734281b",
+  "tasks": "7b048bee6ac1263d",
+  "controls": "e22c0afb3e559870",
   "settingsMirror": "7f0a2c6ccc8ab146"
  },
  "items": 16,
@@ -578,10 +578,10 @@
    "answer": "```luau\nlocal DataStoreService = game:GetService(\"DataStoreService\")\nlocal Players = game:GetService(\"Players\")\n\nlocal store = DataStoreService:GetDataStore(\"PlayerData\")\nlocal MAX_RETRIES = 3\nlocal RETRY_DELAY = 2\n\nlocal function getCoins(player: Player): number?\n\tfor attempt = 1, MAX_RETRIES do\n\t\tlocal ok, result = pcall(function()\n\t\t\treturn store:GetAsync(\"Player_\" .. player.UserId)\n\t\tend)\n\t\tif ok then\n\t\t\treturn if result == nil then 0 else result\n\t\tend\n\t\tif attempt < MAX_RETRIES then\n\t\t\ttask.wait(RETRY_DELAY)\n\t\tend\n\tend\n\treturn nil -- read never succeeded; treat as failed load\nend\n\nlocal function saveCoins(player: Player, coins: number): boolean\n\tfor attempt = 1, MAX_RETRIES do\n\t\tlocal ok = pcall(function()\n\t\t\t-- UpdateAsync reads the CURRENT value so concurrent servers can't be clobbered\n\t\t\tstore:UpdateAsync(\"Player_\" .. player.UserId, function(old)\n\t\t\t\treturn coins\n\t\t\tend)\n\t\tend)\n\t\tif ok then\n\t\t\treturn true\n\t\tend\n\t\tif attempt < MAX_RETRIES then\n\t\t\ttask.wait(RETRY_DELAY)\n\t\tend\n\tend\n\treturn false\nend\n\nPlayers.PlayerAdded:Connect(function(player)\n\tlocal leaderstats = Instance.new(\"Folder\")\n\tleaderstats.Name = \"leaderstats\"\n\tleaderstats.Parent = player\n\n\tlocal coins = Instance.new(\"IntValue\")\n\tcoins.Name = \"Coins\"\n\tcoins.Parent = leaderstats\n\n\tlocal loaded = getCoins(player)\n\tif loaded == nil then\n\t\t-- Failed load is NOT an empty account: don't overwrite, don't save this session\n\t\twarn((\"Failed to load data for %s; saving disabled this session\"):format(player.Name))\n\t\tcoins.Value = 0\n\t\tplayer:SetAttribute(\"SaveDisabled\", true)\n\t\treturn\n\tend\n\tcoins.Value = loaded\nend)\n\nPlayers.PlayerRemoving:Connect(function(player)\n\tif player:GetAttribute(\"SaveDisabled\") then\n\t\treturn\n\tend\n\tlocal leaderstats = player:FindFirstChild(\"leaderstats\")\n\tlocal coins = leaderstats and leaderstats:FindFirstChild(\"Coins\")\n\tif coins then\n\t\tsaveCoins(player, coins.Value)\n\tend\nend)\n\ngame:BindToClose(function()\n\tfor _, player in Players:GetPlayers() do\n\t\tif not player:GetAttribute(\"SaveDisabled\") then\n\t\t\tlocal leaderstats = player:FindFirstChild(\"leaderstats\")\n\t\t\tlocal coins = leaderstats and leaderstats:FindFirstChild(\"Coins\")\n\t\t\tif coins then\n\t\t\t\tsaveCoins(player, coins.Value)\n\t\t\tend\n\t\tend\n\tend\nend)\n```"
   }
  ],
- "rescoredAt": "2026-09-21T00:07:56.240Z",
+ "rescoredAt": "2026-09-21T00:29:25.662Z",
  "rescoredFrom": {
   "measured": 16,
-  "passed": 14,
-  "pct": 87.5
+  "passed": 15,
+  "pct": 93.8
  }
 }

@@ -297,18 +297,48 @@ __APPLE.fact("legacyRaycast", __APPLE.calledMethodOn("Workspace", "FindPartOnRay
       + 'coins are an IntValue named "Coins" inside a Folder named "leaderstats" inside the Player. The client '
       + 'fires a RemoteEvent named "BuyItem" in ReplicatedStorage with the name of the item they want. Create '
       + 'the RemoteEvent in the script and handle the purchase. Reply with one fenced luau code block and nothing else.',
+    // THE PROMPT NAMES THE ITEM IN ENGLISH AND NEVER FIXES ITS IDENTIFIER, SO THE PROBE MUST NOT
+    // INVENT ONE. 2026-09-21: `refuses-when-unaffordable` had failed in all nine recorded samples
+    // of all three arms and had never once passed against a real answer -- the same shape that
+    // exposed `reported-total-is-real`. The cause is in the saved bytes, not in a reading of them:
+    // all nine answers key their price table on "Sword", and this probe fired the prose word
+    // "sword", so no purchase ever happened and two of this item's four checks were unreachable for
+    // the behaviour every model actually exhibits. It scored a CAPITALISATION as a server-authority
+    // lapse, on an item whose two authority checks it passed.
+    //
+    // The header of this file forbids an item that can be passed by naming the right words. It
+    // equally forbids one that can be FAILED for a choice the prompt never made. So the client --
+    // which is this probe, and which in a real game would be written alongside the server -- asks
+    // which spelling the handler accepts instead of asserting one. Both forms of the prompt's own
+    // word, nothing else: a discovery list that grew would become a way of passing by luck.
+    //
+    // This does NOT relax anything. A handler that refuses everything moves no balance at either
+    // spelling, `afterOne` stays 250 and `legit-purchase-works` still fails; a handler that debits
+    // on any string is still caught by the two hostile checks below.
     probe: `
 __APPLE.setPhase("probe")
 local p = __APPLE.player("Buyer")
 local stats = Instance.new("Folder") stats.Name = "leaderstats" stats.Parent = p
 local coins = Instance.new("IntValue") coins.Name = "Coins" coins.Value = 250 coins.Parent = stats
-__APPLE.fireRemote("BuyItem", p, "sword")
+local accepted = nil
+for _, spelling in ipairs({ "sword", "Sword" }) do
+	if accepted == nil then
+		local before = coins.Value
+		__APPLE.fireRemote("BuyItem", p, spelling)
+		if coins.Value ~= before then accepted = spelling end
+	end
+end
+-- Emitted into the recording the scorer reads, so a failure can be read as "no spelling was
+-- accepted" rather than guessed at. It is NOT persisted into the saved run row: the bench stores
+-- outcomes and check verdicts, not facts, and this comment does not claim otherwise.
+__APPLE.fact("itemKey", accepted or "none")
 __APPLE.fact("afterOne", coins.Value)
-__APPLE.fireRemote("BuyItem", p, "sword")
+local key = accepted or "sword"
+__APPLE.fireRemote("BuyItem", p, key)
 __APPLE.fact("afterTwo", coins.Value)
 -- The player can no longer afford it. A handler that debits anyway goes negative.
-__APPLE.fireRemote("BuyItem", p, "sword")
-__APPLE.fireRemote("BuyItem", p, "sword")
+__APPLE.fireRemote("BuyItem", p, key)
+__APPLE.fireRemote("BuyItem", p, key)
 __APPLE.fact("afterBroke", coins.Value)
 -- Hostile shapes an exploiter sends for free.
 __APPLE.fireRemote("BuyItem", p, nil)

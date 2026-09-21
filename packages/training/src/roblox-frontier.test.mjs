@@ -83,6 +83,28 @@ for (const item of FRONTIER_ITEMS) {
     );
   });
 
+  //[[ THE AUDIT SECTION 8.8 NAMED: A CHECK MAY PASS ONLY BECAUSE IT WAS WRITTEN BESIDE ITS CONTROL.
+  //   Rule 2 above proves every check CAN fail. Nothing proved a check can pass against anything
+  //   other than the one answer written in the same file, by the same hand, on the same afternoon.
+  //   `reported-total-is-real` failed that way -- it could only pass against a bare-number store --
+  //   and `refuses-when-unaffordable` failed the same way for a capitalisation. Both were found by
+  //   a check failing in EVERY recorded sample, which is late and lucky.
+  //   `pass2`, where an item has one, is an independently written correct answer that disagrees with
+  //   `pass` everywhere the prompt leaves free. It is optional; adding one to an item is how this
+  //   audit advances, and the run below reports the coverage rather than implying it.
+  if (control.pass2) {
+    test(`${item.id}: a SECOND, independently written correct answer also passes every check`, () => {
+      const result = scoreFrontierItem(item, fence(control.pass2));
+      assert.equal(result.outcome, 'checked',
+        `second pass control did not run: ${result.outcome} - ${result.detail ?? ''} ${result.probeError ?? ''}`);
+      const bad = result.checks.filter((c) => c.pass !== true);
+      assert.deepEqual(bad.map((c) => `${c.id}=${c.pass}`), [],
+        `TUNED TO ONE IMPLEMENTATION: ${bad.map((c) => `${c.id} (${c.why})`).join('; ')}. The first `
+        + 'pass control passes this check and a second correct answer does not, so the check is '
+        + 'describing how the first one was written rather than the property it claims to measure.');
+    });
+  }
+
   for (const check of item.checks) {
     const source = control.fail?.[check.id];
     if (!source) continue;
@@ -103,6 +125,28 @@ for (const item of FRONTIER_ITEMS) {
     });
   }
 }
+
+//[[ A RE-SCORED RUN MUST NOT CARRY A HASH OF THE FILE THAT JUDGED THE VERSION BEFORE IT.
+//   rescore-roblox-frontier.mjs re-judges saved answers with no model call, and it spreads the old
+//   provenance block before overwriting the hashes it knows about. It knew about two. The bench
+//   writes five, and one of the three it did not re-take is roblox-frontier-tasks.mjs, where the
+//   probes live -- so a probe correction plus a re-score produced a run file whose `tasks` hash
+//   named the probe that did NOT judge it. This is read off both sources rather than remembered,
+//   because the failure mode is the bench growing a sixth hash and nobody telling the rescorer.
+test('the rescorer re-takes every provenance hash the bench writes', () => {
+  const bench = readFileSync(resolve(HERE, 'roblox-frontier-bench.mjs'), 'utf8');
+  const rescore = readFileSync(resolve(HERE, 'rescore-roblox-frontier.mjs'), 'utf8');
+  const block = /const provenance = \{([\s\S]*?)\n\};/.exec(bench);
+  assert.ok(block, 'could not find the bench provenance block — this test is reading the wrong thing');
+  const keys = [...block[1].matchAll(/^\s*([A-Za-z][\w]*)\s*:/gm)].map((m) => m[1]);
+  assert.ok(keys.length >= 2, `parsed ${keys.length} provenance keys out of the bench; the parse is broken, not the code`);
+  const written = /run\.provenance = \{([\s\S]*?)\n\};/.exec(rescore);
+  assert.ok(written, 'could not find the rescorer provenance assignment');
+  const missing = keys.filter((k) => !new RegExp(`^\\s*${k}\\s*:`, 'm').test(written[1]));
+  assert.deepEqual(missing, [],
+    `the bench records ${missing.join(', ')} and the rescorer does not re-take it, so a re-scored `
+    + 'run keeps the hash of the file version that did not judge it.');
+});
 
 test('the two prompt arms differ only in Roblox guidance, and the neutral one carries none', () => {
   const neutral = ARMS.neutral.system;

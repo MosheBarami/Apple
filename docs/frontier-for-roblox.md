@@ -642,6 +642,11 @@ This section is the other kind of request. Sixteen engine-facing tasks, no libra
 them, scored by running the Luau in a Roblox shim. The best arm measured is **40/48 — 83.3%**, and
 before tonight's four rules it was 64.6%.
 
+> **Superseded by §9, and the old figure is kept rather than overwritten.** A second check was found
+> that had never once passed against a real answer, for the same reason as the first. Re-scoring the
+> same saved answers puts the best arm at **42/48 — 87.5%** and the pair below at **91.3% / 87.5%**.
+> Read §9 for why, and for the mutation that reproduces the 83.3%.
+
 So the honest pair of numbers is **91.3% where the library has the answer, 83.3% where it does
 not** — and the second one is the one a sentence like *"the best-trained Roblox model"* would have
 to be written against, because a customer's request does not know which set it is in. Nothing
@@ -656,6 +661,8 @@ tonight (the false sentence 0 occurrences, the corrected one 1, a control phrase
   identically in all eight samples, which is a shape worth suspecting. The other 49 checks all have
   negative controls proving they CAN fail; none of them has a control proving it can pass against
   anything but its own hand-written pass case. That is the next audit of this file.
+  **Run — see §9.** It found a second one, `shop-debit / refuses-when-unaffordable`, 0 passes in 9
+  samples, broken for the same reason. One item now has a second positive control; fifteen do not.
 - **Sixteen items is a small suite.** One item is 6.25 points. Every percentage here inherits that,
   and the per-sample spread in 8.4 is the honest width of the instrument.
 - **Whether the four rules cost anything elsewhere.** They add roughly 120 tokens to every request
@@ -668,3 +675,138 @@ tonight (the false sentence 0 occurrences, the corrected one 1, a control phrase
   are the same model at the same ceiling, so nothing here supports or refutes a claim about MAX.
 - **The eighty-vs-sixteen split is not a random split of one population.** The two sets were written
   for different purposes, so 91.3% and 83.3% are two measurements, not two arms of one experiment.
+
+---
+
+## 9. THE AUDIT §8.8 NAMED, RUN — a second check had never passed either, and it was the same shape
+
+**2026-09-21, later the same day. Zero model calls, zero neurons.** §8.8 said the next audit of this
+file was that all fifty checks have a control proving they CAN fail and none has a control proving
+they can pass against anything but their own hand-written pass case. That audit was run. It found
+one more broken check, and correcting it moves every arm up — again.
+
+### 9.1 The instrument first: what was actually asked of the recordings
+
+Every frontier run stores each answer verbatim and each check's verdict, so the question "has this
+check ever passed against a real model answer?" is answerable from disk at no cost. Over the
+**thirteen** recorded run files — 145 rows, and **145 of 145 carry a saved answer**, checked rather
+than assumed — the fifty checks were tallied:
+
+| | before this section | after it |
+|---|---|---|
+| checks with no recorded execution at all | 0 | 0 |
+| checks that have **never passed** against a real answer | **1** | **0** |
+| checks that have never failed against a real answer | 28 | 28 |
+
+The one was `shop-debit / refuses-when-unaffordable`: **0 passes, 9 failures, in nine independent
+samples of three different arms.** That is the shape that exposed `reported-total-is-real` in §8.6,
+and it is the shape worth suspecting.
+
+### 9.2 The cause is in the saved bytes, not in a reading of them
+
+§8.6.1 already said shop-debit fails "because the model keys its item table on `"Sword"` while the
+probe fires the prompt's own spelling, `"sword"`". That was an explanation, not a measurement. It is
+now a measurement: every one of the nine saved answers was parsed for its item-name literals.
+
+**Nine of nine key the table `Sword`.** Three arms, three samples each, no exception — `Sword = {`,
+`ToolName = "Sword"`, `Tool = "Sword"`, `ServerStorage:FindFirstChild("Sword")`.
+
+And the pass control in `roblox-frontier-controls.mjs` reads `local PRICES = { sword = 100 }`. So
+the only evidence that check could ever pass came from the one file that happens to share the
+harness author's spelling. That is §8.8's complaint, instantiated.
+
+### 9.3 Why this is the benchmark's defect and not the model's
+
+The prompt says *"Players buy a sword for 100 coins"* and *"the client fires a RemoteEvent … with
+the name of the item they want."* It names the item in English prose and **never fixes its
+identifier string**. The model wrote only the server; nothing told it what the client sends.
+PascalCase for an item id is ordinary Luau, which is why nine of nine chose it.
+
+`roblox-frontier-tasks.mjs`'s own header forbids an item that can be passed by naming the right
+words. An item that can be **failed** for a choice the prompt never made is the same error facing
+the other way — and this one was scored on the **server-authority** axis, on an item whose two
+authority checks it passed in all nine samples.
+
+**The fix is to the probe, not to the prompt and not to the arm.** A rule in the system prompt about
+matching strings would make the arm measure the benchmark's phrasing, which §8.6.1 correctly refused.
+Instead the probe — which *is* the client, and which in a real game would be written alongside the
+server — asks which spelling the handler accepts before it starts scoring, using both forms of the
+prompt's own word and nothing else. A discovery list that grew would become a way to pass by luck.
+
+**It relaxes nothing, and this is executed rather than argued:** the negative control for
+`legit-purchase-works` (a handler that returns immediately) moves no balance at either spelling, and
+still fails. All 50 negative controls still fail their own checks — 76/76 in
+`roblox-frontier.test.mjs`.
+
+### 9.4 The second positive control, which is the audit §8.8 asked for
+
+A second correct answer for `shop-debit` now lives beside the first and disagrees with it everywhere
+the prompt leaves free: it keys `Sword`, reads the wallet through a helper, validates in a different
+order and writes the subtraction differently. The suite requires it to pass **every** check on that
+item, and `pass2` is optional on any item, so adding one is how this audit advances.
+
+Watched failing, both restored byte-identical:
+
+| mutation | result |
+|---|---|
+| probe fires only `"sword"` — **the exact state before this section** | the second correct answer fails `legit-purchase-works` and `refuses-when-unaffordable` |
+| the second correct answer refuses every purchase | it fails `legit-purchase-works` |
+
+The first row is the proof that matters: it is not a synthetic break, it is yesterday's benchmark
+rejecting a correct answer.
+
+### 9.5 Every recorded run re-judged, and the numbers move up
+
+No arm was re-run. All nine full runs were re-scored from their saved answers by
+`rescore-roblox-frontier.mjs`, so before and after are the same bytes read by two scorers.
+
+| arm | §8.6 reported | after this correction | per-sample |
+|---|---|---|---|
+| `neutral` | 27/45 — 60.0% | **28/45 — 62.2%** | 10/15 9/15 9/15 |
+| `house-rules` | 31/48 — 64.6% | **32/48 — 66.7%** | 12/16 11/16 9/16 |
+| `house-rules-plus` | 40/48 — 83.3% | **42/48 — 87.5%** | 13/16 15/16 14/16 |
+
+| axis, items | `neutral` | `house-rules` | `house-rules-plus` |
+|---|---|---|---|
+| modern-api | 13/15 | 15/18 | 15/18 |
+| server-authority | 10/15 | 10/15 | **12/15** |
+| datastore-safety | 5/15 | 7/15 | **15/15** |
+
+**`shop-debit` went from 0 of 9 to 4 of 9 — not 9 of 9, which is the point.** A correction that
+handed every sample a point would mean the check had been replaced by a formality. Five samples
+still fail it, and the reason was read out of the recording rather than assumed: `itemKey` comes
+back `"none"`, `handlerErrors` is empty, and the code gates the debit on a `Tool` template in
+`ServerStorage` that the prompt never mentions and the world does not contain, so `giveItem` returns
+false and no coins move. A legitimate purchase genuinely does not work in the world the prompt
+described. That is a real failure, and it is now the one being measured.
+
+### 9.6 What this does to the number a public claim is written against
+
+§8.7's pair becomes **91.3% where the library has the answer, 87.5% where it does not.** Nothing
+user-facing carries such a claim and nothing here authorises one.
+
+**Said plainly, because it is the uncomfortable part, and it is the second time in one day:** this
+correction raised the arm the same session shipped, and raised it most — `house-rules-plus` from
+83.3% to 87.5%. Both numbers are on this page, the re-score is reproducible from the committed run
+files, and the mutation that reproduces the old behaviour is written down above so anyone can check
+which of the two is the artefact.
+
+### 9.7 A provenance hole this opened, and closed
+
+`rescore-roblox-frontier.mjs` re-took two of the five hashes the bench writes. One of the three it
+left alone is `roblox-frontier-tasks.mjs`, where the probes live — so re-scoring after a probe
+correction would have left each run file claiming the hash of the file version that did **not**
+judge it. A provenance field that outlives the thing it describes is worse than a missing one. The
+rescorer now re-takes all five, and a test reads the key list out of **both** sources so the next
+hash the bench grows cannot be quietly missed. Watched red by deleting `tasks:` from the rescorer.
+
+### 9.8 Still not measured after this section
+
+- **Fifteen of sixteen items still have only one positive control.** `shop-debit` has two. The audit
+  §8.8 named is one-sixteenth done, and the remaining fifteen are exactly as exposed as this one was.
+- **28 checks have never failed against a real answer.** Each has a negative control, so each *can*
+  fail; none has failed a model yet. That is consistent with those checks being easy, and it is also
+  what a check stuck on PASS would look like. It has not been separated.
+- Everything in §8.8 that was not about this: sixteen items is a small suite, the four rules'
+  cost elsewhere is unmeasured, no measurement here went through the live composer, and the MAX lane
+  is untouched.

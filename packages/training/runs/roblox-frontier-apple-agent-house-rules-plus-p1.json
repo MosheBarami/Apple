@@ -24,15 +24,15 @@
  "provenance": {
   "harness": "d37c205f94800574",
   "scorer": "ff0314bdf550c111",
-  "tasks": "f6bdceaa8cf9bd3c",
-  "controls": "1bc93b760734281b",
+  "tasks": "7b048bee6ac1263d",
+  "controls": "e22c0afb3e559870",
   "settingsMirror": "7f0a2c6ccc8ab146"
  },
  "items": 16,
  "attempted": 16,
  "measured": 16,
- "passed": 12,
- "pct": 75,
+ "passed": 13,
+ "pct": 81.3,
  "notMeasured": 0,
  "excludedFromDenominator": 0,
  "errors": [],
@@ -49,9 +49,9 @@
   },
   "server-authority": {
    "measured": 5,
-   "passed": 3,
+   "passed": 4,
    "attempted": 5,
-   "checksPassed": 16,
+   "checksPassed": 18,
    "checksTotal": 19
   },
   "datastore-safety": {
@@ -79,18 +79,6 @@
    "axis": "modern-api",
    "check": "countdown-completes",
    "why": "the round has to end: the remote is fired to all clients by the time the script finishes"
-  },
-  {
-   "item": "shop-debit",
-   "axis": "server-authority",
-   "check": "legit-purchase-works",
-   "why": "a benchmark that only rewards refusal is passed by a handler that refuses everything"
-  },
-  {
-   "item": "shop-debit",
-   "axis": "server-authority",
-   "check": "refuses-when-unaffordable",
-   "why": "the third and fourth attempts are made with 50 coins against a 100 coin price; a handler that debits anyway mints negative money"
   },
   {
    "item": "pet-rename",
@@ -276,15 +264,15 @@
    "id": "shop-debit",
    "axis": "server-authority",
    "outcome": "checked",
-   "ok": false,
+   "ok": true,
    "checks": [
     {
      "id": "legit-purchase-works",
-     "pass": false
+     "pass": true
     },
     {
      "id": "refuses-when-unaffordable",
-     "pass": false
+     "pass": true
     },
     {
      "id": "survives-hostile-arguments",
@@ -295,10 +283,7 @@
      "pass": true
     }
    ],
-   "failed": [
-    "legit-purchase-works",
-    "refuses-when-unaffordable"
-   ],
+   "failed": [],
    "unresolved": 0,
    "detail": null,
    "probeError": null,
@@ -602,10 +587,10 @@
    "answer": "```luau\nlocal DataStoreService = game:GetService(\"DataStoreService\")\nlocal Players = game:GetService(\"Players\")\n\nlocal store = DataStoreService:GetDataStore(\"PlayerData\")\nlocal MAX_RETRIES = 3\nlocal RETRY_DELAY = 2\n\nlocal function getCoins(player: Player): number?\n\tfor attempt = 1, MAX_RETRIES do\n\t\tlocal ok, result = pcall(function()\n\t\t\treturn store:GetAsync(\"Player_\" .. player.UserId)\n\t\tend)\n\t\tif ok then\n\t\t\treturn if result == nil then 0 else result\n\t\tend\n\t\tif attempt < MAX_RETRIES then\n\t\t\ttask.wait(RETRY_DELAY)\n\t\tend\n\tend\n\treturn nil -- read failed; do not treat as a new account\nend\n\nlocal function saveCoins(player: Player, coins: number): boolean\n\tfor attempt = 1, MAX_RETRIES do\n\t\tlocal ok = pcall(function()\n\t\t\t-- UpdateAsync so a concurrent write from another server isn't lost\n\t\t\tstore:UpdateAsync(\"Player_\" .. player.UserId, function(current)\n\t\t\t\treturn if current == nil then coins else coins\n\t\t\tend)\n\t\tend)\n\t\tif ok then\n\t\t\treturn true\n\t\tend\n\t\tif attempt < MAX_RETRIES then\n\t\t\ttask.wait(RETRY_DELAY)\n\t\tend\n\tend\n\treturn false\nend\n\nPlayers.PlayerAdded:Connect(function(player)\n\tlocal leaderstats = Instance.new(\"Folder\")\n\tleaderstats.Name = \"leaderstats\"\n\tleaderstats.Parent = player\n\n\tlocal coinsValue = Instance.new(\"IntValue\")\n\tcoinsValue.Name = \"Coins\"\n\tcoinsValue.Parent = leaderstats\n\n\tlocal loaded = getCoins(player)\n\tif loaded == nil then\n\t\t-- Load failed: skip saving this session so we never overwrite real data\n\t\tcoinsValue:SetAttribute(\"SaveBlocked\", true)\n\t\tcoinsValue.Value = 0\n\t\treturn\n\tend\n\tcoinsValue.Value = loaded\nend)\n\nPlayers.PlayerRemoving:Connect(function(player)\n\tlocal coinsValue = player:FindFirstChild(\"leaderstats\")\n\t\tand player.leaderstats:FindFirstChild(\"Coins\")\n\tif not coinsValue or coinsValue:GetAttribute(\"SaveBlocked\") then\n\t\treturn\n\tend\n\tsaveCoins(player, coinsValue.Value)\nend)\n\ngame:BindToClose(function()\n\tfor _, player in Players:GetPlayers() do\n\t\tlocal coinsValue = player:FindFirstChild(\"leaderstats\")\n\t\t\tand player.leaderstats:FindFirstChild(\"Coins\")\n\t\tif coinsValue and not coinsValue:GetAttribute(\"SaveBlocked\") then\n\t\t\tsaveCoins(player, coinsValue.Value)\n\t\tend\n\tend\nend)\n```"
   }
  ],
- "rescoredAt": "2026-09-21T00:07:55.883Z",
+ "rescoredAt": "2026-09-21T00:29:25.308Z",
  "rescoredFrom": {
   "measured": 16,
-  "passed": 11,
-  "pct": 68.8
+  "passed": 12,
+  "pct": 75
  }
 }

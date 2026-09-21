@@ -24,15 +24,15 @@
  "provenance": {
   "harness": "d37c205f94800574",
   "scorer": "ff0314bdf550c111",
-  "tasks": "4bb9aaaee4d3aabf",
-  "controls": "1bc93b760734281b",
+  "tasks": "7b048bee6ac1263d",
+  "controls": "e22c0afb3e559870",
   "settingsMirror": "7f0a2c6ccc8ab146"
  },
  "items": 16,
  "attempted": 16,
  "measured": 16,
- "passed": 8,
- "pct": 50,
+ "passed": 9,
+ "pct": 56.3,
  "notMeasured": 0,
  "excludedFromDenominator": 0,
  "errors": [],
@@ -49,9 +49,9 @@
   },
   "server-authority": {
    "measured": 5,
-   "passed": 3,
+   "passed": 4,
    "attempted": 5,
-   "checksPassed": 16,
+   "checksPassed": 18,
    "checksTotal": 19
   },
   "datastore-safety": {
@@ -85,18 +85,6 @@
    "axis": "modern-api",
    "check": "not-legacy-setcore",
    "why": "SetCore(\"ChatMakeSystemMessage\") targets the legacy chat window and does nothing in an experience using TextChatService"
-  },
-  {
-   "item": "shop-debit",
-   "axis": "server-authority",
-   "check": "legit-purchase-works",
-   "why": "a benchmark that only rewards refusal is passed by a handler that refuses everything"
-  },
-  {
-   "item": "shop-debit",
-   "axis": "server-authority",
-   "check": "refuses-when-unaffordable",
-   "why": "the third and fourth attempts are made with 50 coins against a 100 coin price; a handler that debits anyway mints negative money"
   },
   {
    "item": "pet-rename",
@@ -319,15 +307,15 @@
    "id": "shop-debit",
    "axis": "server-authority",
    "outcome": "checked",
-   "ok": false,
+   "ok": true,
    "checks": [
     {
      "id": "legit-purchase-works",
-     "pass": false
+     "pass": true
     },
     {
      "id": "refuses-when-unaffordable",
-     "pass": false
+     "pass": true
     },
     {
      "id": "survives-hostile-arguments",
@@ -338,10 +326,7 @@
      "pass": true
     }
    ],
-   "failed": [
-    "legit-purchase-works",
-    "refuses-when-unaffordable"
-   ],
+   "failed": [],
    "unresolved": 0,
    "detail": null,
    "probeError": null,
@@ -655,7 +640,7 @@
    "answer": "```luau\nlocal DataStoreService = game:GetService(\"DataStoreService\")\nlocal Players = game:GetService(\"Players\")\n\nlocal store = DataStoreService:GetDataStore(\"PlayerData\")\n\nlocal function onPlayerAdded(player: Player)\n\tlocal leaderstats = Instance.new(\"Folder\")\n\tleaderstats.Name = \"leaderstats\"\n\n\tlocal coins = Instance.new(\"IntValue\")\n\tcoins.Name = \"Coins\"\n\tcoins.Value = 0\n\tcoins.Parent = leaderstats\n\tleaderstats.Parent = player\n\n\tlocal success, saved = pcall(function()\n\t\treturn store:GetAsync(\"Player_\" .. player.UserId)\n\tend)\n\n\tif success and typeof(saved) == \"number\" then\n\t\tcoins.Value = math.floor(saved)\n\telseif not success then\n\t\twarn((\"Failed to load data for %s: %s\"):format(player.Name, saved))\n\tend\nend\n\nlocal function onPlayerRemoving(player: Player)\n\tlocal leaderstats = player:FindFirstChild(\"leaderstats\")\n\tlocal coins = leaderstats and leaderstats:FindFirstChild(\"Coins\")\n\tif not coins then\n\t\treturn\n\tend\n\n\tlocal value = coins.Value\n\tlocal tries = 0\n\tlocal success, err\n\n\trepeat\n\t\ttries += 1\n\t\tsuccess, err = pcall(function()\n\t\t\tstore:SetAsync(\"Player_\" .. player.UserId, value)\n\t\tend)\n\t\tif not success then\n\t\t\ttask.wait(2)\n\t\tend\n\tuntil success or tries >= 3\n\n\tif not success then\n\t\twarn((\"Failed to save data for %s: %s\"):format(player.Name, err))\n\tend\nend\n\nPlayers.PlayerAdded:Connect(onPlayerAdded)\nPlayers.PlayerRemoving:Connect(onPlayerRemoving)\n\nfor _, player in Players:GetPlayers() do\n\ttask.spawn(onPlayerAdded, player)\nend\n\ngame:BindToClose(function()\n\tfor _, player in Players:GetPlayers() do\n\t\tonPlayerRemoving(player)\n\tend\nend)\n```"
   }
  ],
- "rescoredAt": "2026-09-21T00:07:55.510Z",
+ "rescoredAt": "2026-09-21T00:29:27.484Z",
  "rescoredFrom": {
   "measured": 16,
   "passed": 8,
