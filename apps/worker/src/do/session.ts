@@ -292,6 +292,18 @@ interface AgentState {
   /** a rebuild has already been ordered this run; ordering it twice would loop */
   rebuildOrdered?: boolean;
   /**
+   * Provider rate-limit waits already spent on the CURRENT step, and the earliest moment that step
+   * may be attempted again. Reset once the step's model call gets through, so the budget is per
+   * step rather than per run; the run's own wall clock (RUN_WALL_MS) remains the outer bound.
+   *
+   * `resumeAt` exists because the alarm is shared. `armStudioWatchdog` legitimately pulls the alarm
+   * earlier, and every alarm during a run takes a step — without a "not before" mark the watchdog's
+   * alarm would consume a wait containing no wait. Both optional: a run persisted by an older
+   * deploy deserialises with neither and simply starts from zero waits and no deadline.
+   */
+  rateLimitWaits?: number;
+  resumeAt?: number;
+  /**
    * The provider's own last word on the most recent response — 'stop', 'tool_calls', 'length',
    * 'error'. Carried on the run's state rather than in a local so `finishRun` can record it.
    *
@@ -510,6 +522,46 @@ export function baseTokensFor(mode: GolemMode): number {
   return MODE_BASE_TOKENS[mode];
 }
 const STEP_STALE_MS = 180_000;
+
+/**
+ * HOW LONG A RUN WAITS OUT A PROVIDER BURST, AND WHY IT WAITS AT ALL.
+ *
+ * Measured 2026-09-20 against the deployed worker (free Apple lane, mode stone, GLM-5.3-flash,
+ * Studio disconnected): of the seven runs that reached a knowledge tool, five died with `busy` — a
+ * Workers AI rate-limit refusal. The refusal was NOT provoked by the knowledge call. 389 of 600
+ * model calls that day were refused and every one of them falls inside a single 17-minute window;
+ * outside it there is not one refusal in any minute. What a knowledge call changes is the LENGTH of
+ * the run, and one refusal used to end the whole run, so survival went as p^steps: a run that
+ * answered from memory took 1–2 steps and often lived, a run that called get_ui_construction took
+ * 4–5 and almost never did. "Every run that reached a knowledge tool ended in provider error" was
+ * survivorship — the burst deleted exactly the long runs, which are the runs that used the library.
+ *
+ * gateway.ts already waits 1200/2400/3600 ms INSIDE the call, a 7.6 s ladder. In that same window
+ * the same refusal class cleared at 1.9, 5.0, 6.2, 6.3, 12.1 and 60.6 s — so the ladder lands in the
+ * MIDDLE of the recovery distribution, and whether a customer's run survived was decided by which
+ * side of 7.6 s the provider happened to fall on. These waits sit outside the call and resume the
+ * SAME step, which reaches ~80 s including the gateway's own ladders: past the whole observed
+ * distribution, and still inside STEP_STALE_MS so the interrupted-run watchdog above stays the
+ * outer bound rather than being defeated by this.
+ *
+ * The retry is free in the only sense that matters here — the request never reached the model,
+ * nothing was billed, and gateway.ts has already handed the reservation back before it throws.
+ */
+const RATE_LIMIT_WAIT_MS = [5_000, 15_000, 30_000] as const;
+
+/**
+ * A rate-limit refusal that landed on the STEP'S OWN model call, before any of the step's work ran.
+ *
+ * This distinction is the entire safety of the retry above. At that boundary nothing has been
+ * billed, no tool has run and nothing has been pushed onto `agent.llm`, so re-running the step is
+ * free and idempotent. A RateLimitedError raised LATER in a step — a tool making a model call of
+ * its own — arrives after paid inference and after mutations, and resuming from there would bill
+ * the step's inference twice and re-apply its tools. Those keep the terminal path, which is the
+ * behaviour every rate limit had before this. `runTool` catches everything and turns it into a
+ * failed tool result, so today no such error escapes; this subclass is what keeps the retry
+ * correct if one ever does, instead of a comment asserting that none can.
+ */
+class StepRefusedError extends RateLimitedError {}
 
 /**
  * HOW LONG A RUN MAY LAST — CHECKLIST-V2 §50.14.
@@ -3221,6 +3273,13 @@ export class SessionDO extends DurableObject<Env> {
       await this.finishRun(agent, 'error', 'interrupted');
       return;
     }
+    // A step waiting out a provider burst is not a step that is ready. Checked AFTER the staleness
+    // branch above on purpose: a wait that somehow outlives STEP_STALE_MS is a wedged run and must
+    // still be declared interrupted rather than sleeping forever on its own say-so.
+    if (typeof agent.resumeAt === 'number' && Date.now() < agent.resumeAt) {
+      await this.ctx.storage.setAlarm(agent.resumeAt);
+      return;
+    }
     try {
       await this.runStep(agent);
     } catch (e) {
@@ -3242,6 +3301,23 @@ export class SessionDO extends DurableObject<Env> {
         return;
       }
       if (e instanceof RateLimitedError) {
+        //[[ A FREE REFUSAL IS NOT A FAILED RUN, and treating it as one is what made using the
+        //   knowledge library and finishing mutually exclusive. See RATE_LIMIT_WAIT_MS.
+        //
+        //   Only a refusal from the step's own model call may be resumed — StepRefusedError is the
+        //   proof that nothing of this step was billed or applied. The step counter goes back too:
+        //   the step did not run, and charging the step budget for work the provider refused to do
+        //   would shorten the very runs this exists to let finish. ]]
+        const waited = agent.rateLimitWaits ?? 0;
+        const waitMs = e instanceof StepRefusedError ? RATE_LIMIT_WAIT_MS[waited] : undefined;
+        if (waitMs !== undefined) {
+          agent.rateLimitWaits = waited + 1;
+          agent.step = Math.max(0, agent.step - 1);
+          agent.resumeAt = Date.now() + waitMs;
+          await this.persistAgent(agent);
+          await this.ctx.storage.setAlarm(agent.resumeAt);
+          return;
+        }
         agent.finalText =
           (agent.finalText ? agent.finalText + '\n\n' : '') +
           `${e.message} Everything I finished is saved.`;
@@ -3505,7 +3581,19 @@ export class SessionDO extends DurableObject<Env> {
         ...(this.boundProjectId ? { projectId: this.boundProjectId } : {}),
         runId: agent.msgId,
       },
-    );
+    ).catch((e: unknown) => {
+      // THE BOUNDARY THE RESUME IS ALLOWED TO REACH. Everything above this line is idempotent —
+      // the transcript trim, the art-direction collapse and the effort choice all recompute — and
+      // nothing below it has happened yet, so a refusal caught HERE is a step that did not occur.
+      // Re-tagged rather than re-thrown so `alarm` can tell it apart from a rate limit raised after
+      // paid work. See StepRefusedError.
+      if (e instanceof RateLimitedError) throw new StepRefusedError(e.message);
+      throw e;
+    });
+    // The burst this step was waiting on has cleared, so the next one starts from a full set of
+    // waits. Per STEP, not per run: the run's wall clock is what bounds the total.
+    agent.rateLimitWaits = 0;
+    delete agent.resumeAt;
     // Pairing can change while the model is in flight. Re-read the current capability report before
     // interpreting or executing its response, and intersect it with what THIS call was offered.
     // A reconnect may narrow a step immediately; it may never widen the step after inference.
