@@ -153,6 +153,74 @@ test('CONTROL: the same edit with the `end` restored is written', async () => {
   assert.equal(s.wrote().length, 1);
 });
 
+/**
+ * THE ONE SYNTAX ERROR THE DEPLOYED MODEL HAS ACTUALLY PRODUCED.
+ *
+ * Every other fixture in this section is a defect somebody invented — a missing `end`, an anchor
+ * deleted. This one was measured. On 2026-09-21 the deployed model was asked for twenty-two Roblox
+ * screens out of the product's own construction library; twenty-one built and one did not, and
+ * this is the shape of the one that did not. It is on the showcase page the owner reads, at
+ * /showcase, under "hud — fps arena", with the line marked.
+ *
+ * WHY IT IS A DIFFERENT CLASS FROM A MISSING `end`. Every token here is valid and every construct
+ * is one Luau has: a call, a chained method call on its result, `or`, another call. What is not
+ * valid is using that whole expression as a STATEMENT — Luau allows a call as a statement and
+ * nothing else, so the parser is looking for the start of a new statement when it reaches `or`. A
+ * parser that recovers loosely, or a check that only counts block terminators, accepts this
+ * happily; that is exactly why a hand-invented fixture would not have found it.
+ *
+ * WHAT THIS PINS. `edit_script` refuses it before anything is written, so a script the model got
+ * wrong never reaches a fifteen-year-old's Studio as a broken file he has to diagnose. Measured
+ * against the reference compiler as well: `luau-compile --null` exits 1 on this body and 0 on the
+ * control below, and reports the same position the product's own parser reports — line 10, column
+ * 37 in the reproduction, line 207 column 37 in the model's full script. Two independent
+ * implementations agreeing is what makes either of them evidence.
+ */
+const MODEL_ERROR = [
+  'local function make(className, props, parent)',
+  '\tlocal inst = Instance.new(className)',
+  '\tinst.Parent = parent',
+  '\treturn inst',
+  'end',
+  'local questTrack = make("Frame", {}, script)',
+  'make("Frame", {',
+  '\tBackgroundColor3 = Color3.new(1, 1, 1),',
+  '}, questTrack)',
+  '\t:FindFirstChildOfClass("UICorner") or make("UICorner", {}, questTrack)',
+  '',
+].join('\n');
+
+test('THE MEASURED CASE — the model’s own fps_arena defect is a parse error, at its real position', () => {
+  const problems = checkSyntax(MODEL_ERROR);
+  assert.equal(problems.length >= 1, true, 'the product accepts a body the Luau compiler rejects');
+  assert.equal(problems[0].line, 10, 'the reported line does not point at the offending statement');
+  assert.equal(problems[0].column, 37, 'the column must land on `or`, which is where luau-compile puts it');
+  assert.match(String(problems[0].message), /or/, 'the message must name the token that stopped it');
+});
+
+test('CONTROL: the same lines with the chained expression BOUND to a local parse cleanly', () => {
+  // The defect is the statement position, not the chain, the `or`, or the method call. Binding the
+  // expression is the smallest change that makes it legal — so if this control ever fails, the
+  // test above has stopped being about what it says it is about.
+  const fixed = MODEL_ERROR.replace(
+    '\t:FindFirstChildOfClass("UICorner") or make("UICorner", {}, questTrack)',
+    '\tlocal corner = questTrack:FindFirstChildOfClass("UICorner") or make("UICorner", {}, questTrack)',
+  );
+  assert.notEqual(fixed, MODEL_ERROR, 'the control must actually differ from the defect');
+  assert.deepEqual(checkSyntax(fixed), [], 'the control body must parse, or it controls for nothing');
+});
+
+test('edit_script refuses the model’s defect, so a broken script never reaches Studio', async () => {
+  const s = studio({ 'game.StarterPlayer.StarterPlayerScripts.Hud': { source: GOOD, class: 'LocalScript' } });
+  const res = await T.TOOLS.edit_script.run(s.ctx, {
+    path: 'game.StarterPlayer.StarterPlayerScripts.Hud',
+    source: MODEL_ERROR,
+  });
+  assert.match(String(res.error), /would not parse/);
+  assert.equal(s.wrote().length, 0, 'the refusal must be a refusal: nothing may be written');
+  assert.equal(s.files['game.StarterPlayer.StarterPlayerScripts.Hud'].source, GOOD, 'the place is untouched');
+});
+
 test('the pre-write parse covers `edits` mode too — the RESULT is what is checked', async () => {
   // The base parses and each anchor is present; only the COMBINATION fails to compile. Nothing
   // that looks at the edits or at the base in isolation can catch this.
