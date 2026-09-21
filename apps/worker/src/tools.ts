@@ -1114,6 +1114,15 @@ async function readImageText(env: Env, dataUrl: string, opts: { language: string
         ],
         jsonSchema: OCR_SCHEMA,
         maxTokens: 1200,
+        // STATED, not inherited. `vision` carries `reasoningEffort: 'low'` in the model table
+        // (gateway.ts:139-145) and this call passed nothing, so OCR was getting 'low' by accident
+        // of the default — while the visual critic on the SAME model states 'high' at
+        // vision.ts:328 with its own argument. Change the table for the critic's sake and
+        // transcription would move with it, silently, for a reason that has nothing to do with
+        // transcription. 'low' is right here on its own merits: reading the characters that are in
+        // a picture is not a judgement, and vision.ts records that the critic at 'medium' spent its
+        // whole budget reasoning and returned an empty string.
+        reasoningEffort: 'low',
       },
       { kind: 'visual:ocr', cacheTtl: 0 },
     );

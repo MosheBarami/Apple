@@ -222,6 +222,47 @@ async function stepWith({ effortApplies }) {
   return { sent, agent, status: sent.filter((m) => m.type === 'agent_status' && 'effort' in m) };
 }
 
+//[[ THE OTHER WAY A REASONING TIER CAN BE WRONG: nobody chose it.
+//
+//   `vision` carries `reasoningEffort: 'low'` in the model table, and TWO call sites use that model
+//   for entirely different work. `vision.ts` states 'high' for the visual critic and argues it in a
+//   comment — including that 'medium' measured as spending the whole budget on reasoning and
+//   returning an empty string. `tools.ts` OCR stated nothing and took 'low' from the table.
+//
+//   That is not wrong today; 'low' is right for transcription. It is wrong STRUCTURALLY: changing
+//   the table for the critic's sake would move OCR with it, silently, for a reason that has nothing
+//   to do with OCR. docs/backlog/REASONING-EFFORT-POLICY-NOTE.md named this as the one small thing
+//   worth changing and did not change it, because the neighbouring file was held by another lane.
+//
+//   The call site now states its own tier. This asserts THAT — not the value — because the value is
+//   a judgement somebody may revise and the coupling is the defect. ]]
+test('OCR states its own reasoning tier rather than inheriting the vision default', () => {
+  const source = readFileSync(join(WORKER, 'src', 'tools.ts'), 'utf8');
+  const start = source.indexOf('async function readImageText');
+  assert.notEqual(start, -1, 'readImageText is gone — re-aim this test, do not delete it');
+  const end = source.indexOf("\n}", source.indexOf("{ kind: 'visual:ocr'", start));
+  assert.notEqual(end, -1, 'the OCR call site could not be located; this test would be vacuous');
+  //[[ COMMENTS OUT FIRST, and this line exists because the first version of this test PASSED OVER
+  //   THE DELETED CODE. The comment that explains the setting at the call site quotes it —
+  //   "`vision` carries `reasoningEffort: 'low'` in the model table" — so the regex matched the
+  //   prose after the real line was removed. A guard satisfied by its own explanation is not a
+  //   guard, and it was found the only way this kind of thing is found: by deleting the line and
+  //   watching the test stay green. ]]
+  const fn = source.slice(start, end)
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
+
+  // Non-vacuity: the slice really is the OCR call and really does reach the gateway.
+  assert.match(fn, /model: 'vision'/, 'the slice is not the vision call it is supposed to be');
+  assert.match(fn, /'visual:ocr'/);
+  assert.match(
+    fn,
+    /reasoningEffort:\s*'(minimal|low|medium|high)'/,
+    'the OCR call passes no reasoningEffort, so it inherits whatever the vision entry in the model '
+    + "table happens to say. Change that entry for the critic's sake and transcription moves with it.",
+  );
+});
+
 test('the free lane is sent NO effort at all — not a downgraded one', async () => {
   const { sent, agent, status } = await stepWith({ effortApplies: false });
   assert.ok(sent.some((m) => m.type === 'agent_status'), 'the step never reached the status broadcast; the fixture is wrong');
