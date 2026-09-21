@@ -20,14 +20,14 @@ const JSX = src('components/ws/thinking.tsx');
 const SYSTEM = src('design/system.css');
 const THINKING_CSS = src('components/ws/thinking.css');
 
-/** The markup between the head's opening tag and the body's — i.e. what is drawn when closed. */
-function halves() {
-  const head = JSX.indexOf('className="gx-think__head"');
-  const body = JSX.indexOf('gx-think__body${open');
-  assert.notEqual(head, -1, 'the card has lost its head');
-  assert.notEqual(body, -1, 'the card has lost its collapsible body');
-  assert.ok(head < body, 'the head must come before the body');
-  return { head: JSX.slice(head, body), body: JSX.slice(body) };
+/** The cost has to sit before the collapsible details region, whatever the visual classes become. */
+function placement() {
+  const cost = JSX.indexOf('className="gx-think__cost"');
+  const body = JSX.indexOf('aria-hidden={!open}');
+  assert.notEqual(cost, -1, 'the run-cost element is missing');
+  assert.notEqual(body, -1, 'the collapsible details region is missing');
+  assert.ok(cost < body, 'the run cost must be outside the collapsed details region');
+  return { cost, body, beforeBody: JSX.slice(0, body), bodyAndAfter: JSX.slice(body) };
 }
 
 test('THE PREMISE: the body really is hidden until the person opens it', () => {
@@ -38,23 +38,23 @@ test('THE PREMISE: the body really is hidden until the person opens it', () => {
 });
 
 test('the live cost is in the head, so no click stands between a person and the price', () => {
-  const { head, body } = halves();
-  assert.match(head, /className="gx-think__cost"/, 'the cost figure is not in the always-drawn head');
-  assert.doesNotMatch(body, /gx-think__cost/, 'the cost figure is back inside the collapsed panel');
+  const { beforeBody, bodyAndAfter } = placement();
+  assert.match(beforeBody, /className="gx-think__cost"/, 'the cost figure is not in the always-drawn surface');
+  assert.doesNotMatch(bodyAndAfter, /className="gx-think__cost"/, 'the cost figure is back inside the collapsed panel');
 });
 
 test('and it is still the worker\'s figure, still never a zero', () => {
-  const { head } = halves();
-  assert.match(head, /status\?\.creditsSpent != null && status\.creditsSpent > 0/);
-  assert.match(head, /status\.creditsSpent === 1 \? 'Credit' : 'Credits'/);
+  const { beforeBody } = placement();
+  assert.match(beforeBody, /status\?\.creditsSpent != null && status\.creditsSpent > 0/);
+  assert.match(beforeBody, /status\.creditsSpent === 1 \? 'Credit' : 'Credits'/);
 });
 
 test('it is said once, not twice', () => {
   // It used to live in the foot. Printing one measurement in both halves of the card invites the
   // reader to add them up.
   assert.equal((JSX.match(/creditsSpent/g) ?? []).length > 0, true);
-  const { body } = halves();
-  assert.doesNotMatch(body, /creditsSpent/, 'the foot is restating the run cost');
+  const { bodyAndAfter } = placement();
+  assert.doesNotMatch(bodyAndAfter, /creditsSpent/, 'the collapsed details are restating the run cost');
 });
 
 test('the phone keeps it — unlike the affordance beside it', () => {

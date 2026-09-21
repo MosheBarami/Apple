@@ -15,8 +15,10 @@ const CSS = readFileSync(join(WEB, 'src/design/system.css'), 'utf8');
 const CSS_RULES = CSS.replace(/\/\*[\s\S]*?\*\//g, '');
 
 test('the activity card has one status-backed header and starts compact even while the run is live', () => {
-  assert.equal((JSX.match(/className="gx-think__head"/g) ?? []).length, 1,
-    'the card must not grow a second compact activity row');
+  assert.equal((JSX.match(/aria-expanded=\{open\}/g) ?? []).length, 1,
+    'the card must expose one disclosure header, not competing compact activity rows');
+  assert.equal((JSX.match(/aria-controls=\{detailsId\}/g) ?? []).length, 1,
+    'one disclosure control must own the activity details');
   assert.match(JSX, /const title = activity\.terminal\?\.note \?\?/);
   assert.match(JSX, /compact\.current/);
   assert.match(JSX, /status \?/);

@@ -150,10 +150,10 @@ test('no element and no ResizeObserver are handled, not thrown from a render', (
 test('THE COMPOSER ACTUALLY PUBLISHES IT, from the panel and onto the root', () => {
   const composer = code(read('components/ws/composer.tsx'));
   assert.match(composer, /from '\.\.\/\.\.\/lib\/composer-height'/, 'the publisher must be imported');
-  // The ref has to be on `.gx-composer` — the panel the toast is clearing — and not on the inner
-  // form, which excludes the note under it and would under-report by ~27px.
-  const ref = /<div className="gx-composer" ref=\{(\w+)\}>/.exec(composer);
-  assert.ok(ref, 'the .gx-composer panel must carry the measured ref');
+  // The ref has to be on the OUTER composer panel — not on the inner form, which excludes the note
+  // under it and would under-report by ~27px. The visual class list is deliberately free to change.
+  const ref = /<div className=\{[^\n]*gx-composer[^\n]*\}\s+ref=\{(\w+)\}>/.exec(composer);
+  assert.ok(ref, 'the outer composer panel must carry the measured ref');
   assert.match(
     composer,
     new RegExp(`observeComposerHeight\\(${ref[1]}\\.current, document\\.documentElement\\)`),

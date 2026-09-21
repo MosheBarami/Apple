@@ -892,9 +892,16 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
   const when = shortRelative(activityAt);
 
   return (
-    <div className="gx-ws">
+    <div className={`gx-ws aw-workspace${running ? ' is-running' : ' is-idle'}${stageOpen ? ' has-stage' : ''}`}>
+      <div className="aw-cinema" aria-hidden="true">
+        <span className="aw-cinema__halo aw-cinema__halo--one" />
+        <span className="aw-cinema__halo aw-cinema__halo--two" />
+        <span className="aw-cinema__grid" />
+        <span className="aw-cinema__grain" />
+        <span className="aw-cinema__scan" />
+      </div>
       {/* ------------------------------------------------------- topbar -- */}
-      <header className="gx-top">
+      <header className="gx-top aw-commandbar">
         {/* The rail opener used to be here. It is now drawn by the shell (components/layout.tsx)
             so that it exists on every route rather than only inside a conversation; at narrow
             width it lands in this bar's reserved leading space, so the topbar is unchanged to
@@ -904,18 +911,23 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
         {/* Renamable in place: this is where you notice a bad name, so this is where fixing it
             belongs. Falls back to a plain heading until the project has loaded — an editable
             control over a placeholder would offer to rename something that is not there yet. */}
-        {project.data ? (
-          <EditableProjectTitle projectId={projectId} name={project.data.name} className="gx-top__title" />
-        ) : (
-          <h1 className="gx-top__title">Build</h1>
-        )}
-        {when && (
-          <span className="gx-top__when" title={activityAt ? new Date(activityAt).toLocaleString() : undefined}>
-            {when}
-          </span>
-        )}
+        <div className="aw-commandbar__identity">
+          <span className="aw-commandbar__signal" aria-hidden="true" />
+          <div className="aw-commandbar__copy">
+            {project.data ? (
+              <EditableProjectTitle projectId={projectId} name={project.data.name} className="gx-top__title" />
+            ) : (
+              <h1 className="gx-top__title">Build</h1>
+            )}
+            {when && (
+              <span className="gx-top__when" title={activityAt ? new Date(activityAt).toLocaleString() : undefined}>
+                {when}
+              </span>
+            )}
+          </div>
+        </div>
 
-        <div className="studio-workspace-controls">
+        <div className="studio-workspace-controls aw-commandbar__controls">
           <button type="button" className="studio-preview-toggle" onClick={() => setStageExpanded(!stageOpen)} aria-expanded={stageOpen}>Studio <span aria-hidden="true">↗</span></button>
           <details className="studio-project-menu">
             <summary aria-label="Project actions" title="Project actions">
@@ -1066,9 +1078,11 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
         </div>
       </header>
 
-      <div className="gx-workbench-shell">
+      <div className="gx-workbench-shell aw-scene">
+        <div className="aw-scene__edge aw-scene__edge--top" aria-hidden="true" />
+        <div className="aw-scene__edge aw-scene__edge--bottom" aria-hidden="true" />
         {stageOpen && (
-          <div className="gx-workbench__tabs" role="tablist" aria-label="Workspace views">
+          <div className="gx-workbench__tabs aw-scene-tabs" role="tablist" aria-label="Workspace views">
             <button
               type="button"
               role="tab"
@@ -1093,30 +1107,33 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
         )}
 
         <div
-          className={`gx-workbench ${stageOpen ? 'is-stage-open' : 'is-stage-collapsed'}`}
+          className={`gx-workbench aw-viewport ${stageOpen ? 'is-stage-open' : 'is-stage-collapsed'}`}
           data-mobile-surface={mobileSurface}
         >
-          <section id="workspace-conversation" className="gx-conversation" aria-label="Conversation">
+          <section id="workspace-conversation" className="gx-conversation aw-conversation" aria-label="Conversation">
+          <div className="aw-conversation__beam" aria-hidden="true" />
           {/* The one sentence under the Studio pill — when it last polled, how much work is waiting,
               how slow the round trip is, or the fact that Studio is holding the wrong place open. Draws
               nothing when there is nothing worth saying, so a healthy link adds no chrome. The rebind
               button is passed only while a mismatch is actually on the wire; see components/ws/
               studio-link-note.tsx. */}
-          <StudioLinkNote
-            status={studioStatus}
-            facts={studio.link}
-            onRebind={studio.link.placeMismatch ? rebindPlace : undefined}
-          />
+          <div className="aw-conversation__notice">
+            <StudioLinkNote
+              status={studioStatus}
+              facts={studio.link}
+              onRebind={studio.link.placeMismatch ? rebindPlace : undefined}
+            />
+          </div>
 
           {/* ------------------------------------------------ conversation */}
-          <div className="gx-scroll" ref={scrollRef} onScroll={onScroll}>
+          <div className="gx-scroll aw-scroll" ref={scrollRef} onScroll={onScroll}>
             {/* role="log" with `aria-relevant="additions"` — NOT the default "additions text".
                 A whole turn appearing is an addition worth reporting; the characters streaming into a
                 turn already on screen are a text mutation, and reporting those floods the polite queue
                 with fragments of a sentence that is still being written. The settled reply is
                 announced once, by the region at the foot of this view. */}
             <div
-              className="gx-thread"
+              className="gx-thread aw-thread"
               role="log"
               aria-label="Conversation"
               aria-live="polite"
@@ -1141,7 +1158,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
           {messages.map((item) => (
             // The id is on a wrapper rather than passed into Turn: search jumps to a message by
             // scrolling to it, and that only needs an element to aim at.
-            <div key={item.id} id={`msg-${item.id}`} data-message-id={item.id}>
+            <div key={item.id} id={`msg-${item.id}`} data-message-id={item.id} className="aw-message-anchor">
             <Turn
               item={item}
               status={agentStatus}
@@ -1183,7 +1200,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
       </div>
 
       {/* ------------------------------------------------------ composer -- */}
-      <div className="gx-compose-region">
+      <div className="gx-compose-region aw-command-zone">
         {/* BACK TO THE LIVE EDGE.
             Shown only while the reader has actually left it, so it is never a control sitting
             there doing nothing, and it names how much arrived while they were away — counted from

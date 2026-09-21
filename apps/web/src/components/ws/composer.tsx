@@ -626,14 +626,20 @@ export function Composer({
   const activeModel = PRODUCT_MODEL_INFO[productModel];
 
   return (
-    <div className="gx-composer" ref={panel}>
+    <div className={`gx-composer aw-composer${running ? ' is-running' : ' is-ready'}`} ref={panel}>
+      <div className="aw-composer__aura" aria-hidden="true" />
       <form
-        className={`gx-composer__inner${dropping ? ' is-dropping' : ''}`}
+        className={`gx-composer__inner aw-composer__deck${dropping ? ' is-dropping' : ''}`}
         onSubmit={submit}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
       >
+        <div className="aw-composer__chrome" aria-hidden="true">
+          <span className="aw-composer__chrome-label">{running ? 'LIVE RUN' : 'NEW INSTRUCTION'}</span>
+          <span className="aw-composer__chrome-line" />
+          <span className="aw-composer__chrome-pulse"><i /><i /><i /><i /></span>
+        </div>
         <label className="gx-sr" htmlFor="gx-composer-input">
           What should Apple build in your place?
         </label>
@@ -777,7 +783,7 @@ export function Composer({
           </p>
         )}
 
-        <div className="gx-composer__bar">
+        <div className="gx-composer__bar aw-composer__bar">
           {/*[[ ---------------------------------------- plan or agent ----
               FIRST IN THE BAR, because it is the only control here that decides whether this
               message CHANGES the place. The model chip picks how well the work is done; this

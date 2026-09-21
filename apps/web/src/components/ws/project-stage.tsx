@@ -157,11 +157,11 @@ export function ProjectStage({
   return (
     <section
       id="workspace-project-stage"
-      className={`gx-project-stage${collapsed ? ' is-collapsed' : ''}`}
+      className={`gx-project-stage aw-portal${collapsed ? ' is-collapsed' : ''}`}
       aria-label="Project stage"
       data-connection={pipState(status)}
     >
-      <header className="gx-project-stage__head">
+      <header className="gx-project-stage__head aw-portal__head">
         <button
           type="button"
           className="gx-project-stage__toggle"
@@ -188,7 +188,7 @@ export function ProjectStage({
         </button>
       </header>
 
-      <div className="gx-project-stage__body" id="project-stage-content" hidden={collapsed}>
+      <div className="gx-project-stage__body aw-portal__body" id="project-stage-content" hidden={collapsed}>
         <ConnectStudio status={status} onPair={onPair} placeName={boundPlaceName} />
 
         {tabbed && (
@@ -216,7 +216,7 @@ export function ProjectStage({
         )}
 
         <div
-          className="gx-project-stage__cinema"
+          className="gx-project-stage__cinema aw-portal__cinema"
           id="project-stage-surface"
           // A tabpanel only exists while there are tabs to label it. With one surface the
           // role would name a panel no control points at.

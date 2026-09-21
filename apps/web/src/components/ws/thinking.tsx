@@ -288,6 +288,7 @@ export function Thinking({
   const cardClasses = [
     'gx-think',
     'gx-think--redesign',
+    'aw-runtime',
     isLive ? 'is-live' : '',
     activity.terminal ? 'is-terminal' : '',
     reducedMotion ? 'is-reduced' : '',
@@ -300,20 +301,29 @@ export function Thinking({
 
   return (
     <div className={cardClasses} data-terminal={activity.terminal?.kind ?? undefined}>
-      <div className="gx-think__head">
+      <div className="gx-think__head aw-runtime__head">
+        <span className="aw-runtime__scan" aria-hidden="true" />
         <button
           type="button"
-          className="gx-think__toggle"
+          className="gx-think__toggle aw-runtime__toggle"
           aria-expanded={open}
           aria-controls={detailsId}
+          aria-label={`${title}. ${open ? 'Hide details' : 'View details'}`}
           onClick={() => setOpen(!open)}
         >
-          <ModelMark live={isLive && !reducedMotion && !pageHidden} />
-          <span className="gx-think__word">{title}</span>
+          <span className="aw-runtime__mark">
+            <ModelMark live={isLive && !reducedMotion && !pageHidden} />
+          </span>
+          <span className="aw-runtime__copy">
+            <span className="gx-think__word">{title}</span>
+            <span className="gx-think__hint" aria-hidden="true">{hint}</span>
+          </span>
+          <span className="aw-runtime__signal" aria-hidden="true">
+            <i /><i /><i /><i /><i />
+          </span>
           {/* Not announced: `aria-expanded` on this button already tells a screen reader what the
               arrow means, and "View details" read out after the run's own state is noise. It is a
               visual affordance, which is exactly what was missing. */}
-          <span className="gx-think__hint" aria-hidden="true">{hint}</span>
           <span className="gx-think__chev" aria-hidden="true">
             <Icon d={PATH.chevronDown} size={14} />
           </span>
@@ -347,11 +357,11 @@ export function Thinking({
       </div>
 
       <div
-        className={`gx-think__body${open ? ' is-open' : ''}`}
+        className={`gx-think__body aw-runtime__drawer${open ? ' is-open' : ''}`}
         id={detailsId}
         aria-hidden={!open}
       >
-        <div className="gx-think__inner">
+        <div className="gx-think__inner aw-runtime__inner">
           <ol className="gx-timeline">
             {stages.map((stage) => (
               <Stage key={stage.kind} stage={stage} activity={activity} evidence={evidence} />

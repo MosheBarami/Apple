@@ -168,11 +168,15 @@ export function Turn({
 
   if (item.role === 'user') {
     return (
-      <div className="gx-turn gx-turn--user gx-msg-in">
+      <article className="gx-turn gx-turn--user gx-msg-in aw-turn aw-turn--user">
+        <div className="aw-prompt__meta">
+          <span className="aw-prompt__label">You</span>
+          <span className="aw-prompt__line" aria-hidden="true" />
+        </div>
         {/* dir="auto" — the direction of a message belongs to the message. A Hebrew sentence
             typed in an English session (or the reverse) otherwise inherits the page and puts its
             own trailing punctuation at the wrong end. */}
-        <div className="gx-user" dir="auto">{item.content}</div>
+        <div className="gx-user aw-prompt" dir="auto">{item.content}</div>
         <div className="gx-user__foot">
           {/* Revealed on hover or focus rather than always drawn: a control on every one of your
               own messages competes with the messages themselves, and this is a repair tool, not
@@ -206,7 +210,7 @@ export function Turn({
           )}
           <Stamp at={item.createdAt} align="end" />
         </div>
-      </div>
+      </article>
     );
   }
 
@@ -257,12 +261,26 @@ export function Turn({
     ) : null;
 
   return (
-    <div className="gx-turn gx-turn--agent gx-msg-in">
-      <span className="gx-mark" aria-hidden="true">
-        <AppleGlyph size={22} />
-      </span>
+    <article
+      className={`gx-turn gx-turn--agent gx-msg-in aw-turn aw-turn--agent${item.streaming ? ' is-streaming' : ''}`}
+      data-run-state={item.streaming ? 'live' : outcome ? 'ended' : 'settled'}
+    >
+      <div className="aw-run-rail" aria-hidden="true">
+        <span className="aw-run-rail__beam" />
+        <span className="gx-mark aw-run-rail__core">
+          <AppleGlyph size={20} />
+        </span>
+        <span className="aw-run-rail__tail" />
+      </div>
 
-      <div className="gx-turn__body">
+      <div className="gx-turn__body aw-response">
+        <header className="aw-response__head">
+          <span className="aw-response__name">Apple</span>
+          <span className="aw-response__state">
+            <span className="aw-response__state-dot" aria-hidden="true" />
+            {item.streaming ? 'Run live' : 'Run output'}
+          </span>
+        </header>
         <Thinking
           tools={item.tools}
           status={isLast ? status : null}
@@ -354,6 +372,6 @@ export function Turn({
           )}
         </p>
       </div>
-    </div>
+    </article>
   );
 }
