@@ -119,6 +119,37 @@ node scripts/check-site-semantics.mjs → exit 0
 
 ## 3. Every instruction still OPEN, with the single next action
 
+> **Status as of 2026-09-21, later the same day.** Nine of these thirteen rows are now closed.
+> Recorded here rather than by deleting the rows, because §6.2 of this same report is about four
+> instructions aimed at work that was already done and the hour the next reader spent re-walking
+> them.
+>
+> | Row | Now | Evidence |
+> |---|---|---|
+> | 3.1 custom cursor | CLOSED | three `:root.has-cursor *` → `:global(*)` in `Cursor.astro`; guard added over the BUILT css (`apps/site/tests/cursor-reaches-every-control.test.mjs`), and the blindness itself written up as F-69 |
+> | 3.2 hero `?start=` | CLOSED | `apps/web/src/lib/pending-start.ts` — `capturePendingStart` / `takePendingStart` (a move, not a read) / `clearPendingStart`, wired through `auth-pages.tsx` and `dashboard.tsx`, tested in `apps/web/tests/pending-start.test.mjs` |
+> | 3.3 the 16-screens figure | CLOSED | `showcase-proof.ts` reads 21 and `21 September 2026`, from the manifest's own `counts.built` |
+> | 3.4 landing header | CLOSED | primary pill is `/app/signup`; Showcase added to the landing header |
+> | 3.5 no way to reach a human | CLOSED | Contact column with `mailto:apple.labs.app@gmail.com` in the landing footer |
+> | 3.7 failures-become-evals | CLOSED | F-69/F-70/F-71 written, `packages/evals/tasks/observation-failure.json` cites each, linkage checked in two halves (`tasks.mjs` shape + `failures-linked.test.mjs` existence), falsified three ways |
+> | 3.10 Playwright MCP | CLOSED | `.mcp.json` at project scope, verified by a real initialize handshake returning Playwright 1.64.0-alpha, not by the file existing |
+> | 3.11 six commits on no remote | CLOSED | pushed; `git rev-list --count origin/main..HEAD` = 0 |
+> | 3.12 the live worker matches no commit | CLOSED | `curl /api/health` → `buildSha` equal to HEAD, from a tree where the worker's own sources are clean |
+>
+> **Still open, and why each one is:**
+>
+> - **3.6 rosebud HAR** — needs a browser session on a site with a real account. Owner step.
+> - **3.8 visual benchmark** — drives `/api/admin/studio-op/…` against live Studio, and
+>   `session-info` reports `pluginConnected: false`, `link.paired: false`. Owner step: open Studio,
+>   open the Apple plugin, pair the project. Verified 2026-09-21, see
+>   `docs/evidence/live-run-2026-09-21.md`.
+> - **3.9 seen/unseen split** — a paid eval run with the held-out set reported separately.
+> - **3.13 `check-rebrand`** — still exit 1, and still not mine to fix: the fix rewrites
+>   `docs/evidence/probes/pass3/app-bundle.txt`, which another lane holds dirty. Tonight's web
+>   deploy moved the live asset hashes again, so its four stale-bundle findings now name
+>   `index-DDydhy-E.js` and `index-DRspnFZc.css`.
+
+
 ### 3.1 `custom-cursor` — half-done (§1.5)
 
 **Next:** move the `*` rule out of `Cursor.astro`'s scoped `<style>` into `apps/site/src/styles/global.css` (or add `is(*)` so Astro cannot scope it), then re-measure the 44-control count live. The guard cannot catch this on its own: `apps/site/tests/cursor-never-blinds.test.mjs:42` reads `src/components/Cursor.astro`, never `dist`, and the defect exists only in compiled output.
