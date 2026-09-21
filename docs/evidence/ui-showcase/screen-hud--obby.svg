@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" font-family="'Gotham SSm','Montserrat','Helvetica Neue',Arial,sans-serif">
+<defs><pattern id="apple-unfetched" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="12" height="12" fill="#1b1b22"/><line x1="0" y1="0" x2="0" y2="12" stroke="#3a3a46" stroke-width="3"/></pattern></defs>
+<rect width="1600" height="900" fill="#101014"/>
+<rect x="690.00" y="44.00" width="220.00" height="52.00" rx="14.00" ry="14.00" fill="rgb(24,26,34)" fill-opacity="0.850"/>
+<rect x="690.00" y="44.00" width="220.00" height="52.00" rx="14.00" ry="14.00" fill="none" stroke="rgb(255,170,40)" stroke-width="2" stroke-opacity="1.000"/>
+<text x="800.00" y="61.20" text-anchor="middle" font-size="12.0" fill="rgb(160,165,178)" fill-opacity="1.000">STAGE</text>
+<text x="800.00" y="84.70" text-anchor="middle" font-size="22.0" fill="rgb(255,170,40)" fill-opacity="1.000">Stage 17 / 50</text>
+<rect x="720.00" y="104.00" width="160.00" height="34.00" rx="10.00" ry="10.00" fill="rgb(24,26,34)" fill-opacity="0.850"/>
+<rect x="720.00" y="104.00" width="160.00" height="34.00" rx="10.00" ry="10.00" fill="none" stroke="rgb(70,140,240)" stroke-width="2" stroke-opacity="1.000"/>
+<text x="800.00" y="126.60" text-anchor="middle" font-size="16.0" fill="rgb(235,238,245)" fill-opacity="1.000">⏱ 04:32</text>
+<rect x="12.00" y="48.00" width="230.00" height="118.00" rx="12.00" ry="12.00" fill="rgb(24,26,34)" fill-opacity="0.800"/>
+<rect x="12.00" y="48.00" width="230.00" height="118.00" rx="12.00" ry="12.00" fill="none" stroke="rgb(60,64,78)" stroke-width="2" stroke-opacity="1.000"/>
+<text x="30.00" y="68.55" text-anchor="start" font-size="13.0" fill="rgb(255,170,40)" fill-opacity="1.000">DAILY OBBY QUESTS</text>
+<text x="30.00" y="89.20" text-anchor="start" font-size="12.0" fill="rgb(235,238,245)" fill-opacity="1.000">Reach Stage 25</text>
+<text x="224.00" y="89.20" text-anchor="end" font-size="12.0" fill="rgb(160,165,178)" fill-opacity="1.000">68%</text>
+<rect x="24.00" y="96.00" width="206.00" height="6.00" rx="3.00" ry="3.00" fill="rgb(40,43,54)" fill-opacity="1.000"/>
+<rect x="24.00" y="96.00" width="140.08" height="6.00" rx="3.00" ry="3.00" fill="rgb(70,140,240)" fill-opacity="1.000"/>
+<text x="30.00" y="119.20" text-anchor="start" font-size="12.0" fill="rgb(235,238,245)" fill-opacity="1.000">Collect 50 coins</text>
+<text x="224.00" y="119.20" text-anchor="end" font-size="12.0" fill="rgb(160,165,178)" fill-opacity="1.000">84%</text>
+<rect x="24.00" y="126.00" width="206.00" height="6.00" rx="3.00" ry="3.00" fill="rgb(40,43,54)" fill-opacity="1.000"/>
+<rect x="24.00" y="126.00" width="173.04" height="6.00" rx="3.00" ry="3.00" fill="rgb(70,140,240)" fill-opacity="1.000"/>
+<text x="30.00" y="149.20" text-anchor="start" font-size="12.0" fill="rgb(235,238,245)" fill-opacity="1.000">Finish without dying</text>
+<text x="224.00" y="149.20" text-anchor="end" font-size="12.0" fill="rgb(90,200,120)" fill-opacity="1.000">DONE</text>
+<rect x="24.00" y="156.00" width="206.00" height="6.00" rx="3.00" ry="3.00" fill="rgb(40,43,54)" fill-opacity="1.000"/>
+<rect x="24.00" y="156.00" width="206.00" height="6.00" rx="3.00" ry="3.00" fill="rgb(90,200,120)" fill-opacity="1.000"/>
+<rect x="730.00" y="102.00" width="140.00" height="34.00" rx="10.00" ry="10.00" fill="rgb(24,26,34)" fill-opacity="0.850"/>
+<rect x="730.00" y="102.00" width="140.00" height="34.00" rx="10.00" ry="10.00" fill="none" stroke="rgb(90,200,120)" stroke-width="2" stroke-opacity="1.000"/>
+<text x="800.00" y="124.60" text-anchor="middle" font-size="16.0" fill="rgb(90,200,120)" fill-opacity="1.000">🪙 1,240</text>
+<rect x="1348.00" y="378.00" width="240.00" height="40.00" rx="10.00" ry="10.00" fill="rgb(24,26,34)" fill-opacity="0.900"/>
+<rect x="1348.00" y="378.00" width="240.00" height="40.00" rx="10.00" ry="10.00" fill="none" stroke="rgb(90,200,120)" stroke-width="2" stroke-opacity="1.000"/>
+<text x="1366.00" y="402.90" text-anchor="start" font-size="14.0" fill="rgb(235,238,245)" fill-opacity="1.000">✅ Checkpoint saved — Stage 17</text>
+<rect x="1348.00" y="426.00" width="240.00" height="40.00" rx="10.00" ry="10.00" fill="rgb(24,26,34)" fill-opacity="0.900"/>
+<rect x="1348.00" y="426.00" width="240.00" height="40.00" rx="10.00" ry="10.00" fill="none" stroke="rgb(255,170,40)" stroke-width="2" stroke-opacity="1.000"/>
+<text x="1366.00" y="450.90" text-anchor="start" font-size="14.0" fill="rgb(235,238,245)" fill-opacity="1.000">🏆 New best time: 04:32</text>
+<rect x="485.00" y="842.00" width="118.00" height="46.00" rx="12.00" ry="12.00" fill="rgb(24,26,34)" fill-opacity="0.850"/>
+<rect x="485.00" y="842.00" width="118.00" height="46.00" rx="12.00" ry="12.00" fill="none" stroke="rgb(160,165,178)" stroke-width="2" stroke-opacity="1.000"/>
+<text x="544.00" y="870.25" text-anchor="middle" font-size="15.0" fill="rgb(235,238,245)" fill-opacity="1.000">◀ Prev Stage</text>
+<rect x="613.00" y="842.00" width="118.00" height="46.00" rx="12.00" ry="12.00" fill="rgb(24,26,34)" fill-opacity="0.850"/>
+<rect x="613.00" y="842.00" width="118.00" height="46.00" rx="12.00" ry="12.00" fill="none" stroke="rgb(255,170,40)" stroke-width="2" stroke-opacity="1.000"/>
+<text x="672.00" y="870.25" text-anchor="middle" font-size="15.0" fill="rgb(235,238,245)" fill-opacity="1.000">Stage Select</text>
+<rect x="741.00" y="842.00" width="118.00" height="46.00" rx="12.00" ry="12.00" fill="rgb(24,26,34)" fill-opacity="0.850"/>
+<rect x="741.00" y="842.00" width="118.00" height="46.00" rx="12.00" ry="12.00" fill="none" stroke="rgb(160,165,178)" stroke-width="2" stroke-opacity="1.000"/>
+<text x="800.00" y="870.25" text-anchor="middle" font-size="15.0" fill="rgb(235,238,245)" fill-opacity="1.000">Next Stage ▶</text>
+<rect x="869.00" y="842.00" width="118.00" height="46.00" rx="12.00" ry="12.00" fill="rgb(24,26,34)" fill-opacity="0.850"/>
+<rect x="869.00" y="842.00" width="118.00" height="46.00" rx="12.00" ry="12.00" fill="none" stroke="rgb(70,140,240)" stroke-width="2" stroke-opacity="1.000"/>
+<text x="928.00" y="870.25" text-anchor="middle" font-size="15.0" fill="rgb(235,238,245)" fill-opacity="1.000">Spectate</text>
+<rect x="997.00" y="842.00" width="118.00" height="46.00" rx="12.00" ry="12.00" fill="rgb(24,26,34)" fill-opacity="0.850"/>
+<rect x="997.00" y="842.00" width="118.00" height="46.00" rx="12.00" ry="12.00" fill="none" stroke="rgb(90,200,120)" stroke-width="2" stroke-opacity="1.000"/>
+<text x="1056.00" y="870.25" text-anchor="middle" font-size="15.0" fill="rgb(235,238,245)" fill-opacity="1.000">Lobby</text>
+</svg>

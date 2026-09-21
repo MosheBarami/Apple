@@ -92,9 +92,17 @@ const OUTCOME_WORDS = {
   threw: 'the pipeline itself threw',
 };
 
-function screenCard(r, uiDir, prefix) {
+function screenCard(r, uiDir, prefix, { showGenre = false } = {}) {
   const ok = r.outcome === 'built';
-  const name = String(r.id ?? r.target).replace(/^screen-/, '').replace(/[-_]/g, ' ');
+  //[[ THE GENRE BELONGS IN THE TITLE THE MOMENT TWO GENRES ARE ON THE PAGE.
+  //
+  //   The card was titled by screen type alone, which was unambiguous while every row was a
+  //   tycoon. It stops being unambiguous the second a cross-genre row lands: two cards both
+  //   titled "hud", showing different interfaces, with nothing on either saying why they differ
+  //   — a reader would take that for the model giving two answers to one question, when it is
+  //   the model answering two different questions. The genre is the question. ]]
+  const type = String(r.id ?? r.target).replace(/^screen-/, '').replace(/[-_]/g, ' ');
+  const name = showGenre ? `${type} — ${String(r.genre ?? '').replace(/_/g, ' ')}` : type;
   const opened = ok && r.files?.openedSvg;
   const png = opened ? r.files.openedSvg.replace(/\.svg$/, '.png') : ok ? r.files.svg.replace(/\.svg$/, '.png') : null;
   const onDisk = png ? join(uiDir, png) : null;
@@ -259,6 +267,45 @@ function mapCard(r, mapDir, prefix) {
 
 function page({ ui, uiDir, maps, mapDir, uiPrefix, mapPrefix, library }) {
   const uiResults = ui?.results ?? [];
+  //[[ TWO GRIDS, BECAUSE THEY ANSWER TWO DIFFERENT QUESTIONS.
+  //
+  //   The first grid is "every kind of screen, one game": the type axis, held at one genre so the
+  //   types are what varies. The second is "one kind of screen, every genre": the genre axis, held
+  //   at one type so the genre is what varies. Pouring both into a single grid makes neither
+  //   readable — it becomes seventeen cards of which one is inexplicably different.
+  //
+  //   THE SPLIT IS READ OFF THE ROWS, NOT TYPED AND NOT TAKEN FROM `ui.genre`.
+  //
+  //   The section note used to say "all for a tycoon game" as a literal, which was true the day it
+  //   was written and is exactly the shape of sentence this repository has been bitten by twice —
+  //   the asset refusal that named a catalogue deleted in September, and Nav.astro's comment about
+  //   sections that had come back.
+  //
+  //   `ui.genre` IS NOT THE ANSWER EITHER, and this was measured rather than reasoned: it records
+  //   what the LAST RUN was asked for, so after generating one screen in anime_battle the manifest
+  //   said `genre: "anime_battle"` and the split put ONE card in the one-game grid and the other
+  //   twenty-one — every tycoon screen on the page — into the cross-genre band. The page inverted
+  //   itself and the sentence above it stayed grammatical.
+  //
+  //   The genre the first grid is held at is a property of the rows: it is whichever genre covers
+  //   the most of them. That cannot be desynchronised by a later one-screen run, and ties break
+  //   alphabetically so the page is the same page twice.
+  const genreCounts = new Map();
+  for (const r of uiResults) if (r.genre) genreCounts.set(r.genre, (genreCounts.get(r.genre) ?? 0) + 1);
+  const primaryGenre = [...genreCounts.entries()]
+    .sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])))[0]?.[0]
+    ?? ui?.genre ?? null;
+  const primary = uiResults.filter((r) => (r.genre ?? primaryGenre) === primaryGenre);
+  const crossGenre = uiResults.filter((r) => (r.genre ?? primaryGenre) !== primaryGenre);
+  const crossBuilt = crossGenre.filter((r) => r.outcome === 'built').length;
+  const primaryName = String(primaryGenre ?? 'single').replace(/_/g, ' ');
+  // The type the cross-genre band is showing, named from the rows rather than assumed. If a future
+  // run crosses more than one type, this says so instead of naming one of them and hiding the rest.
+  const crossTypes = [...new Set(crossGenre.map((r) => String(r.id ?? r.target).replace(/^screen-/, '').replace(/[-_]/g, ' ')))];
+  const crossType = crossTypes.length === 1 ? `same ${crossTypes[0]} screen` : `same ${crossTypes.length} screens`;
+  // GENRES, NOT ROWS. The band is "one screen in N genres"; counting rows would say "five genres"
+  // for five rows that happened to be two screens in three genres, which is a different claim.
+  const crossGenreCount = new Set(crossGenre.map((r) => r.genre)).size;
   const mapResults = maps?.results ?? [];
   const uiBuilt = uiResults.filter((r) => r.outcome === 'built').length;
   const mapBuilt = mapResults.filter((r) => r.outcome === 'built').length;
@@ -426,10 +473,20 @@ function page({ ui, uiDir, maps, mapDir, uiPrefix, mapPrefix, library }) {
 
   <h2 class="section">Interface screens</h2>
   <p class="section-note">
-    One screen per type the library covers, all for a tycoon game. A screen that opens from a button
-    starts hidden, so it is shown opened and labelled as such.
+    One screen per type the library covers, all for a ${esc(primaryName)} game. A screen that opens
+    from a button starts hidden, so it is shown opened and labelled as such.
   </p>
-  <div class="grid">${uiResults.map((r) => screenCard(r, uiDir, uiPrefix)).join('\n')}</div>
+  <div class="grid">${primary.map((r) => screenCard(r, uiDir, uiPrefix)).join('\n')}</div>
+${crossGenre.length ? `
+  <h2 class="section">The same screen, other genres</h2>
+  <p class="section-note">
+    The grid above is one game. This is the ${esc(crossType)} asked for in
+    ${crossGenreCount} other ${crossGenreCount === 1 ? 'genre' : 'genres'}, same model, same
+    tools, only <span class="mono">get_genre_kit</span> changed — so what differs between these
+    cards is what the library knows about the genre and nothing else. ${crossBuilt} of
+    ${crossGenre.length} came back building. The ones that did not are here at the same size.
+  </p>
+  <div class="grid">${crossGenre.map((r) => screenCard(r, uiDir, uiPrefix, { showGenre: true })).join('\n')}</div>` : ''}
 
   <h2 class="section">Maps</h2>
   <p class="section-note">

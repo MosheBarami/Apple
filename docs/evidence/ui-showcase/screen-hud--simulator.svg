@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" font-family="'Gotham SSm','Montserrat','Helvetica Neue',Arial,sans-serif">
+<defs><pattern id="apple-unfetched" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="12" height="12" fill="#1b1b22"/><line x1="0" y1="0" x2="0" y2="12" stroke="#3a3a46" stroke-width="3"/></pattern></defs>
+<rect width="1600" height="900" fill="#101014"/>
+<text x="829.00" y="72.30" text-anchor="middle" font-size="18.0" fill="rgb(255,196,56)" fill-opacity="1.000">★</text>
+<text x="839.00" y="72.30" text-anchor="middle" font-size="18.0" fill="rgb(96,200,255)" fill-opacity="1.000">◆</text>
+<text x="849.00" y="72.30" text-anchor="middle" font-size="18.0" fill="rgb(96,220,120)" fill-opacity="1.000">⚡</text>
+<text x="30.00" y="124.90" text-anchor="start" font-size="14.0" fill="rgb(255,196,56)" fill-opacity="1.000">DAILY QUESTS</text>
+<rect x="24.00" y="138.00" width="206.00" height="40.00" rx="8.00" ry="8.00" fill="rgb(56,59,74)" fill-opacity="1.000"/>
+<text x="38.00" y="153.55" text-anchor="start" font-size="13.0" fill="rgb(255,255,255)" fill-opacity="1.000">Collect 500 Coins</text>
+<text x="38.00" y="168.20" text-anchor="start" font-size="12.0" fill="rgb(200,202,214)" fill-opacity="1.000">312 / 500</text>
+<rect x="32.00" y="170.00" width="190.00" height="5.00" rx="3.00" ry="3.00" fill="rgb(24,25,33)" fill-opacity="1.000"/>
+<rect x="32.00" y="170.00" width="117.80" height="5.00" rx="3.00" ry="3.00" fill="rgb(96,220,120)" fill-opacity="1.000"/>
+<rect x="24.00" y="186.00" width="206.00" height="40.00" rx="8.00" ry="8.00" fill="rgb(56,59,74)" fill-opacity="1.000"/>
+<text x="38.00" y="201.55" text-anchor="start" font-size="13.0" fill="rgb(255,255,255)" fill-opacity="1.000">Hatch 10 Eggs</text>
+<text x="38.00" y="216.20" text-anchor="start" font-size="12.0" fill="rgb(200,202,214)" fill-opacity="1.000">4 / 10</text>
+<rect x="32.00" y="218.00" width="190.00" height="5.00" rx="3.00" ry="3.00" fill="rgb(24,25,33)" fill-opacity="1.000"/>
+<rect x="32.00" y="218.00" width="76.00" height="5.00" rx="3.00" ry="3.00" fill="rgb(96,220,120)" fill-opacity="1.000"/>
+<rect x="24.00" y="234.00" width="206.00" height="40.00" rx="8.00" ry="8.00" fill="rgb(56,59,74)" fill-opacity="1.000"/>
+<text x="38.00" y="249.55" text-anchor="start" font-size="13.0" fill="rgb(255,255,255)" fill-opacity="1.000">Win 3 Races</text>
+<text x="38.00" y="264.20" text-anchor="start" font-size="12.0" fill="rgb(200,202,214)" fill-opacity="1.000">3 / 3</text>
+<rect x="32.00" y="266.00" width="190.00" height="5.00" rx="3.00" ry="3.00" fill="rgb(24,25,33)" fill-opacity="1.000"/>
+<rect x="32.00" y="266.00" width="190.00" height="5.00" rx="3.00" ry="3.00" fill="rgb(96,220,120)" fill-opacity="1.000"/>
+<rect x="1524.00" y="450.00" width="64.00" height="64.00" rx="14.00" ry="14.00" fill="rgb(38,40,52)" fill-opacity="0.900"/>
+<rect x="1524.00" y="450.00" width="64.00" height="64.00" rx="14.00" ry="14.00" fill="none" stroke="rgb(20,21,28)" stroke-width="2" stroke-opacity="1.000"/>
+<text x="1556.00" y="479.40" text-anchor="middle" font-size="24.0" fill="rgb(255,196,56)" fill-opacity="1.000">🛒</text>
+<text x="1556.00" y="499.85" text-anchor="middle" font-size="11.0" fill="rgb(200,202,214)" fill-opacity="1.000">SHOP</text>
+<rect x="1524.00" y="522.00" width="64.00" height="64.00" rx="14.00" ry="14.00" fill="rgb(38,40,52)" fill-opacity="0.900"/>
+<rect x="1524.00" y="522.00" width="64.00" height="64.00" rx="14.00" ry="14.00" fill="none" stroke="rgb(20,21,28)" stroke-width="2" stroke-opacity="1.000"/>
+<text x="1556.00" y="551.40" text-anchor="middle" font-size="24.0" fill="rgb(96,200,255)" fill-opacity="1.000">🐾</text>
+<text x="1556.00" y="571.85" text-anchor="middle" font-size="11.0" fill="rgb(200,202,214)" fill-opacity="1.000">PETS</text>
+<rect x="1524.00" y="594.00" width="64.00" height="64.00" rx="14.00" ry="14.00" fill="rgb(38,40,52)" fill-opacity="0.900"/>
+<rect x="1524.00" y="594.00" width="64.00" height="64.00" rx="14.00" ry="14.00" fill="none" stroke="rgb(20,21,28)" stroke-width="2" stroke-opacity="1.000"/>
+<text x="1556.00" y="623.40" text-anchor="middle" font-size="24.0" fill="rgb(96,220,120)" fill-opacity="1.000">🎁</text>
+<text x="1556.00" y="643.85" text-anchor="middle" font-size="11.0" fill="rgb(200,202,214)" fill-opacity="1.000">CODES</text>
+<rect x="1524.00" y="666.00" width="64.00" height="64.00" rx="14.00" ry="14.00" fill="rgb(38,40,52)" fill-opacity="0.900"/>
+<rect x="1524.00" y="666.00" width="64.00" height="64.00" rx="14.00" ry="14.00" fill="none" stroke="rgb(20,21,28)" stroke-width="2" stroke-opacity="1.000"/>
+<text x="1556.00" y="695.40" text-anchor="middle" font-size="24.0" fill="rgb(200,120,255)" fill-opacity="1.000">♻</text>
+<text x="1556.00" y="715.85" text-anchor="middle" font-size="11.0" fill="rgb(200,202,214)" fill-opacity="1.000">REBIRTH</text>
+<rect x="800.00" y="836.00" width="150.00" height="52.00" rx="12.00" ry="12.00" fill="rgb(255,196,56)" fill-opacity="1.000"/>
+<rect x="800.00" y="836.00" width="150.00" height="52.00" rx="12.00" ry="12.00" fill="none" stroke="rgb(20,21,28)" stroke-width="2" stroke-opacity="1.000"/>
+<text x="875.00" y="867.60" text-anchor="middle" font-size="16.0" fill="rgb(255,255,255)" fill-opacity="1.000">COLLECT ZONE</text>
+<rect x="960.00" y="836.00" width="150.00" height="52.00" rx="12.00" ry="12.00" fill="rgb(96,200,255)" fill-opacity="1.000"/>
+<rect x="960.00" y="836.00" width="150.00" height="52.00" rx="12.00" ry="12.00" fill="none" stroke="rgb(20,21,28)" stroke-width="2" stroke-opacity="1.000"/>
+<text x="1035.00" y="867.60" text-anchor="middle" font-size="16.0" fill="rgb(255,255,255)" fill-opacity="1.000">HATCH EGG — 250★</text>
+<rect x="1120.00" y="836.00" width="150.00" height="52.00" rx="12.00" ry="12.00" fill="rgb(56,59,74)" fill-opacity="1.000"/>
+<rect x="1120.00" y="836.00" width="150.00" height="52.00" rx="12.00" ry="12.00" fill="none" stroke="rgb(20,21,28)" stroke-width="2" stroke-opacity="1.000"/>
+<text x="1195.00" y="867.60" text-anchor="middle" font-size="16.0" fill="rgb(255,255,255)" fill-opacity="1.000">BACKPACK</text>
+<rect x="12.00" y="862.00" width="220.00" height="26.00" rx="8.00" ry="8.00" fill="rgb(24,25,33)" fill-opacity="0.850"/>
+<rect x="12.00" y="862.00" width="220.00" height="26.00" rx="8.00" ry="8.00" fill="none" stroke="rgb(20,21,28)" stroke-width="2" stroke-opacity="1.000"/>
+<rect x="15.00" y="865.00" width="214.00" height="20.00" rx="6.00" ry="6.00" fill="rgb(96,220,120)" fill-opacity="1.000"/>
+<text x="122.00" y="879.55" text-anchor="middle" font-size="13.0" fill="rgb(255,255,255)" fill-opacity="1.000">HP 100 / 100</text>
+<rect x="1448.00" y="44.00" width="140.00" height="140.00" rx="12.00" ry="12.00" fill="rgb(30,44,34)" fill-opacity="0.900"/>
+<rect x="1448.00" y="44.00" width="140.00" height="140.00" rx="12.00" ry="12.00" fill="none" stroke="rgb(20,21,28)" stroke-width="2" stroke-opacity="1.000"/>
+<rect x="1448.00" y="162.00" width="140.00" height="18.00" fill="rgb(38,40,52)" fill-opacity="0.800"/>
+<text x="1518.00" y="175.20" text-anchor="middle" font-size="12.0" fill="rgb(255,255,255)" fill-opacity="1.000">Volcano Zone</text>
+<rect x="1529.80" y="95.00" width="10.00" height="10.00" rx="5.00" ry="5.00" fill="rgb(255,255,255)" fill-opacity="1.000"/>
+<rect x="650.00" y="96.00" width="300.00" height="34.00" rx="10.00" ry="10.00" fill="rgb(38,40,52)" fill-opacity="0.900"/>
+<rect x="650.00" y="96.00" width="300.00" height="34.00" rx="10.00" ry="10.00" fill="none" stroke="rgb(20,21,28)" stroke-width="2" stroke-opacity="1.000"/>
+<text x="800.00" y="117.90" text-anchor="middle" font-size="14.0" fill="rgb(255,196,56)" fill-opacity="1.000">+1,250 Coins — Coin Magnet active!</text>
+<rect x="650.00" y="136.00" width="300.00" height="34.00" rx="10.00" ry="10.00" fill="rgb(38,40,52)" fill-opacity="0.900"/>
+<rect x="650.00" y="136.00" width="300.00" height="34.00" rx="10.00" ry="10.00" fill="none" stroke="rgb(20,21,28)" stroke-width="2" stroke-opacity="1.000"/>
+<text x="800.00" y="157.90" text-anchor="middle" font-size="14.0" fill="rgb(96,200,255)" fill-opacity="1.000">New pet hatched: Golden Dragon (Legendary)</text>
+</svg>

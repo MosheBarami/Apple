@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-09-20T23:13:00.987Z",
+  "generatedAt": "2026-09-21T09:23:31.444Z",
   "base": "https://apple.moshe-barami111.workers.dev",
   "model": "rune",
   "lane": "Apple MAX",
-  "genre": "tycoon",
+  "genre": "anime_battle",
   "viewport": {
     "id": "desktop",
     "w": 1600,
@@ -13,13 +13,14 @@
   "libraryDeliveryMeaning": "The get_ui_construction / get_genre_kit payloads were placed in the prompt verbatim. The model was GIVEN its library; it did not choose to ask for it. /api/admin/model-test wires no real tools.",
   "renderer": "packages/training/src/render-ui-tree.mjs over resolveLayout — geometry, not a Studio screenshot",
   "ranThisInvocation": [
-    "screen-social--tycoon"
+    "screen-hud--anime_battle"
   ],
   "counts": {
-    "targets": 16,
-    "built": 16,
+    "targets": 22,
+    "built": 21,
     "byOutcome": {
-      "built": 16
+      "built": 21,
+      "does_not_compile": 1
     }
   },
   "results": [
@@ -523,8 +524,174 @@
       "wrappedText": 0,
       "richTextNodes": 0,
       "richTextBreaks": 0
+    },
+    {
+      "target": "screen-hud",
+      "genre": "fps_arena",
+      "id": "screen-hud",
+      "outcome": "does_not_compile",
+      "detail": "/var/folders/hw/0ybpmzsn323dbcc3cgjwrb700000gn/T/golem-ui-NUG66L/build.luau(825,37): SyntaxError: Expected identifier when parsing expression, got 'or'",
+      "codeChars": 12466
+    },
+    {
+      "target": "screen-hud",
+      "id": "screen-hud",
+      "genre": "obby",
+      "outcome": "built",
+      "codeChars": 6582,
+      "ms": 48498,
+      "screenGuis": 1,
+      "surface": null,
+      "viewport": {
+        "id": "desktop",
+        "w": 1600,
+        "h": 900
+      },
+      "guiNodes": 41,
+      "asScripted": {
+        "painted": 17,
+        "textNodes": 18,
+        "hidden": 0,
+        "offscreen": 0
+      },
+      "opened": null,
+      "scaledText": 0,
+      "imagePlaceholders": 0,
+      "richTextNodes": 0,
+      "richTextBreaks": 0,
+      "sources": 3,
+      "files": {
+        "luau": "screen-hud--obby.luau",
+        "svg": "screen-hud--obby.svg"
+      }
+    },
+    {
+      "target": "screen-hud",
+      "id": "screen-hud",
+      "genre": "horror",
+      "outcome": "built",
+      "codeChars": 9225,
+      "ms": 67506,
+      "screenGuis": 1,
+      "surface": null,
+      "viewport": {
+        "id": "desktop",
+        "w": 1600,
+        "h": 900
+      },
+      "guiNodes": 44,
+      "asScripted": {
+        "painted": 0,
+        "textNodes": 0,
+        "hidden": 0,
+        "offscreen": 0
+      },
+      "opened": null,
+      "scaledText": 0,
+      "imagePlaceholders": 0,
+      "richTextNodes": 0,
+      "richTextBreaks": 0,
+      "sources": 3,
+      "files": {
+        "luau": "screen-hud--horror.luau",
+        "svg": "screen-hud--horror.svg"
+      }
+    },
+    {
+      "target": "screen-hud",
+      "id": "screen-hud",
+      "genre": "simulator",
+      "outcome": "built",
+      "codeChars": 10407,
+      "ms": 77079,
+      "screenGuis": 1,
+      "surface": null,
+      "viewport": {
+        "id": "desktop",
+        "w": 1600,
+        "h": 900
+      },
+      "guiNodes": 58,
+      "asScripted": {
+        "painted": 23,
+        "textNodes": 25,
+        "hidden": 0,
+        "offscreen": 0
+      },
+      "opened": null,
+      "scaledText": 0,
+      "imagePlaceholders": 0,
+      "richTextNodes": 0,
+      "richTextBreaks": 0,
+      "sources": 3,
+      "files": {
+        "luau": "screen-hud--simulator.luau",
+        "svg": "screen-hud--simulator.svg"
+      }
+    },
+    {
+      "target": "screen-hud",
+      "id": "screen-hud",
+      "genre": "racing",
+      "outcome": "built",
+      "codeChars": 7004,
+      "ms": 64302,
+      "screenGuis": 1,
+      "surface": null,
+      "viewport": {
+        "id": "desktop",
+        "w": 1600,
+        "h": 900
+      },
+      "guiNodes": 25,
+      "asScripted": {
+        "painted": 12,
+        "textNodes": 0,
+        "hidden": 0,
+        "offscreen": 0
+      },
+      "opened": null,
+      "scaledText": 0,
+      "imagePlaceholders": 0,
+      "richTextNodes": 0,
+      "richTextBreaks": 0,
+      "sources": 3,
+      "files": {
+        "luau": "screen-hud--racing.luau",
+        "svg": "screen-hud--racing.svg"
+      }
+    },
+    {
+      "target": "screen-hud",
+      "id": "screen-hud",
+      "genre": "anime_battle",
+      "outcome": "built",
+      "codeChars": 10026,
+      "ms": 78967,
+      "screenGuis": 1,
+      "surface": null,
+      "viewport": {
+        "id": "desktop",
+        "w": 1600,
+        "h": 900
+      },
+      "guiNodes": 47,
+      "asScripted": {
+        "painted": 23,
+        "textNodes": 22,
+        "hidden": 0,
+        "offscreen": 0
+      },
+      "opened": null,
+      "scaledText": 0,
+      "imagePlaceholders": 0,
+      "richTextNodes": 0,
+      "richTextBreaks": 0,
+      "sources": 3,
+      "files": {
+        "luau": "screen-hud--anime_battle.luau",
+        "svg": "screen-hud--anime_battle.svg"
+      }
     }
-  ],
-  "renderedAt": "2026-09-20T23:29:30.620Z",
-  "renderNote": "SVGs redrawn from the saved Luau by rerender-showcase.mjs; no completion was spent and no answer changed."
+  ]
 }
