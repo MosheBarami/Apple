@@ -161,6 +161,23 @@ const truths = [
 // The activity figure is data, not a pasted blob: the refused line is the point of the whole
 // figure and needs its own element to carry colour, and a string with markup spliced into it is
 // how that ends up unparseable.
+//[[ THE SCORE HAD TWO HOMES AND ONE OF THEM WAS TYPED INTO THE MARKUP.
+//
+//   `6` and `/10` were written directly into the panel as two <span>s, while the activity
+//   transcript below carried "inspect_visually score 6/10 · 3 defects" as its own literal. Two
+//   copies of one number, free to disagree the moment either was edited — and check-proof-figures
+//   caught the markup one, correctly, as a digit a visitor reads that comes from nothing.
+//
+//   It now has one home. The transcript line is composed from it, so the panel and the log cannot
+//   drift, and `defects.length` is the array itself rather than a third copy of "3". ]]
+const defects = [
+  { id: 'd1', at: [22, 68], text: 'Floor is one flat slab — no material break' },
+  { id: 'd2', at: [58, 34], text: 'Two towers share an edge and read as one' },
+  { id: 'd3', at: [82, 72], text: 'Nothing marks where a player spawns' },
+];
+
+const critique = { score: 6, outOf: 10 };
+
 const activity = [
   //[[ `get_project_tree`, NOT `get_tree`. THIS LINE NAMED A TOOL THAT DOES NOT EXIST.
   //
@@ -181,7 +198,7 @@ const activity = [
   { text: 'create_instances 4 parts                  ok' },
   { text: 'edit_script      ServerScriptService.Main ok' },
   { text: 'render_view      eye · 288×180            ok' },
-  { text: 'inspect_visually score 6/10 · 3 defects   ok' },
+  { text: `inspect_visually score ${critique.score}/${critique.outOf} · ${defects.length} defects   ok` },
 ];
 
 /* ---------------------------------------------------------------------------
@@ -243,11 +260,6 @@ const readTree = [
  * `at` is the marker's position on the 220x124 render as a percentage, so the marker and the list
  * item cannot drift apart: one array drives both. The wording is the visual gate's own register —
  * a defect names a thing that is wrong, not a grade. */
-const defects = [
-  { id: 'd1', at: [22, 68], text: 'Floor is one flat slab — no material break' },
-  { id: 'd2', at: [58, 34], text: 'Two towers share an edge and read as one' },
-  { id: 'd3', at: [82, 72], text: 'Nothing marks where a player spawns' },
-];
 
 /* THE THREE ASKS AND WHAT COMES BACK.
  * The first two are Luau. The third is the refusal, and its wording is the plugin's: writes that
@@ -652,7 +664,7 @@ const asks = [
                       ))}
                     </div>
                     <div class="cw-side">
-                      <p class="cw-score"><span class="cw-score-n">6</span><span class="cw-score-d">/10</span></p>
+                      <p class="cw-score"><span class="cw-score-n">{critique.score}</span><span class="cw-score-d">/{critique.outOf}</span></p>
                       <ul class="cw-defects" role="list">
                         {defects.map((d) => (
                           <li>

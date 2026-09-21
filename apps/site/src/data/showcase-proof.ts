@@ -76,10 +76,10 @@ const mapManifest = 'docs/evidence/map-showcase/manifest.json';
 
 export const BUILT_SCREEN = {
   /** The day the run wrote this screen, from the manifest's own `generatedAt`. */
-  captured: '2026-09-20',
+  captured: '2026-09-21',
   /* Rendered rather than typed, for the same reason consent-proof.ts gives: a number on this page
      has to come from somewhere, and the guard checks this one against `generatedAt`. */
-  capturedLabel: '20 September 2026',
+  capturedLabel: '21 September 2026',
 
   manifest,
   mapManifest,
@@ -160,7 +160,7 @@ export const BUILT_SCREEN = {
    * manifests — the screens from the interface run, the maps from the map run.
    */
   gallery: '/showcase',
-  galleryScreens: { value: 16, label: 'screens', from: 'counts.built', in: 'ui' } as ScreenFigure,
+  galleryScreens: { value: 21, label: 'screens', from: 'counts.built', in: 'ui' } as ScreenFigure,
   galleryMaps: { value: 6, label: 'maps', from: 'counts.built', in: 'maps' } as ScreenFigure,
 } as const;
 
