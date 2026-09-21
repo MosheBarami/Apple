@@ -8,6 +8,7 @@
 import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { safeInternalPath } from '../lib/safe-redirect';
+import { capturePendingStart } from '../lib/pending-start';
 import { PRODUCT_MODELS, PRODUCT_MODEL_INFO, STUDIO_PLUGIN_STORE_LIVE } from '@golem/shared';
 import { ModelMark } from '../components/ws/model-mark';
 import { supabase } from '../lib/supabase';
@@ -636,6 +637,14 @@ export function SignupPage() {
   // than on /login must end up back at their invitation, not at an empty project list.
   const location = useLocation();
   const from = safeInternalPath((location.state as { from?: string } | null)?.from);
+  //[[ THE SENTENCE THEY TYPED ON THE LANDING PAGE.
+  //   apps/site's hero is a real `<form action="/app/signup" method="get">` around a
+  //   `<textarea name="start" maxlength="280">`, so pressing Build arrives here as
+  //   `/app/signup?start=a+lobby+with+a+round+timer`. Nothing read it: a reader's own words
+  //   reached the address bar and stopped there. It is held for this tab only and MOVED — not
+  //   copied — into the first project they create. No copy on either page promises a prefill, so
+  //   a browser that refuses storage simply does not offer one. ]]
+  useEffect(() => { capturePendingStart(location.search); }, [location.search]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);

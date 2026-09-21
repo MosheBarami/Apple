@@ -26,6 +26,7 @@ import { downloadExport, purgeProject, ApiError } from '../lib/api';
 import { PROJECT_DESCRIPTION_MAX, PROJECT_NAME_MAX, projectEditPatch, useEditProject } from '../lib/rename-project';
 import { PROJECT_COLUMNS, PROJECT_LIST_KEYS, PROJECT_SCOPES, scopeToShow, type ProjectScope } from '../lib/archive';
 import { BLANK_TEMPLATE_ID, PROJECT_TEMPLATES, templateSeed } from '../lib/project-templates';
+import { takePendingStart } from '../lib/pending-start';
 import { readViewChoice, writeViewChoice } from '../lib/view-state';
 import { TAG_MAX_LEN, TAGS_MAX, addTag, normaliseTag, removeTag, tagUniverse } from '../lib/tags';
 import { relativeTime, truncate } from '../lib/format';
@@ -371,7 +372,12 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
       //   A blank start navigates with no state at all rather than `{ seed: null }`: the workspace
       //   consumes-and-clears any state it is handed, and handing it nothing to clear keeps the
       //   history entry as it was. ]]
-      const seed = templateSeed(template);
+      //[[ THE TEMPLATE WINS, AND THE LANDING'S SENTENCE IS THE FALLBACK.
+      //   Somebody who picked a template asked for that template; a sentence they typed minutes
+      //   earlier on the front page must not overrule the choice they just made in this dialog.
+      //   `takePendingStart` is a MOVE, so whichever branch runs the sentence is spent here and
+      //   the next project created in this tab starts empty. ]]
+      const seed = templateSeed(template) ?? takePendingStart();
       navigate(`/projects/${row.id}`, seed ? { state: { seed } } : undefined);
     },
     onError: (e: Error) => toast(`Could not create project: ${e.message}`, 'error'),

@@ -1,4 +1,23 @@
-# Handoff — the hero carries `?start=`, and nothing in the app reads it yet
+# Handoff — BUILT 2026-09-21. The hero carries `?start=` and the app now reads it
+
+**Closed.** `apps/web/src/lib/pending-start.ts` holds it for the tab and MOVES it into the first
+project created; `SignupPage` captures it from `location.search`, `CreateProjectModal` uses it as
+the seed when no template was chosen. 4 tests, apps/web 2070/2070, typecheck clean.
+
+**One reason this lane gave for stopping was already stale when it was written.** It says sign-up
+"ends on 'check your email' and the confirmation mail has never reached the owner's inbox". Read
+from the Supabase Management API the same day: `mailer_autoconfirm: true`. Sign-up sends no mail at
+all — `signUp` returns a session, `signupOutcome` classifies it `signed-in`, and the page navigates
+straight into the app. The real defect was `site_url: "http://localhost:3000"` with an empty
+`uri_allow_list`, which broke every redirect the auth service generates; both are fixed.
+
+What remains unproven is the same thing it was: **nobody has completed a real sign-up**, because
+that needs a person with a browser and an inbox. The hop below is built and unit-tested; it is not
+yet witnessed end to end by a human, and this document does not claim it is.
+
+---
+
+## The original handoff, kept because its reasoning is still worth reading
 
 Written 2026-09-21 by the design lane. One hop is missing and it is not this lane's to build.
 
