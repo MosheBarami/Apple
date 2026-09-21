@@ -200,3 +200,38 @@ test('the base prompt names all three knowledge libraries, in every mode and bot
   assert.match(systemPrompt({ ...BASE, studioConnected: false }), /Needs Studio/,
     'install_module is Studio-gated and an unpaired prompt must say so where it names it');
 });
+
+//[[ A RULE IN A CONSTANT THAT NO COMPOSED PROMPT CARRIES IS PRESENT AND NEVER REACHED.
+//
+//   2026-09-21: four rules were added to IDENTITY because the Roblox frontier benchmark measured
+//   them moving two items from failing in five straight samples to passing in three
+//   (docs/frontier-for-roblox.md §8). A measured gain that lands in a string the composer drops on
+//   some branch is worth nothing on that branch, and nothing here would have said so: the file's
+//   existing guard asserts only that each variant is over 500 characters.
+//
+//   This lives in this file rather than its own because `everyPrompt()` is here, and a second copy
+//   of that list is a second thing to keep in step with the composer.
+test('EVERY COMPOSED VARIANT CARRIES THE FOUR MEASURED ROBLOX RULES', () => {
+  const prompts = everyPrompt();
+  assert.ok(prompts.length >= 7, 'the variant list shrank; a branch may now be untested');
+  const rules = [
+    ['text filtering', 'TextService:FilterStringAsync'],
+    ['bounded DataStore retry', 'pcall is the floor, not the plan'],
+    ['UpdateAsync for contended values', 'reads the CURRENT value'],
+    ['a failed load is not an empty account', 'A failed load is not an empty account'],
+  ];
+  for (const [what, needle] of rules) {
+    for (const [i, p] of prompts.entries()) {
+      assert.ok(
+        p.includes(needle),
+        `variant ${i} does not carry the ${what} rule. It was measured into IDENTITY and this `
+        + 'branch drops it, so on this branch the gain does not exist.',
+      );
+    }
+  }
+  // The control that keeps the four assertions above from passing vacuously on a needle that is
+  // simply everywhere: a string of the same shape that was never shipped must be in NO variant.
+  for (const p of prompts) {
+    assert.ok(!p.includes('A failed load is not an empty profile'), 'the control string leaked into a prompt');
+  }
+});
