@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-15T15:29:38.951Z",
+  "generatedAt": "2026-09-21T11:23:46.120Z",
   "harvester": "scripts/harvest-hf.mjs",
   "rowCapPerSplit": null,
   "gates": {
@@ -13,10 +13,10 @@
       "role": "eval-gate",
       "note": "multiple-choice prose over the engine + Luau; a knowledge regression instrument, not a code corpus",
       "revision": "3d983bf3a4702ef33719de4bb9fa8eaedbe626f1",
-      "downloads": 115,
+      "downloads": 123,
       "spdx": "MIT",
       "lastModified": "2026-07-01T22:57:23.000Z",
-      "ageDays": 75,
+      "ageDays": 81,
       "buckets": {
         "gate": {
           "referenceEngine": 1477,
@@ -179,10 +179,10 @@
       "role": "training",
       "note": "the one training candidate that clears licence AND currency; judged on its rows below",
       "revision": "54c0c302cf42b37bd9d5821f1add5ec2108bdeb3",
-      "downloads": 301,
+      "downloads": 389,
       "spdx": "Apache-2.0",
       "lastModified": "2026-08-01T19:28:06.000Z",
-      "ageDays": 44,
+      "ageDays": 50,
       "content": {
         "read": 12306,
         "verifySampled": 293,
@@ -204,43 +204,43 @@
       "role": "training",
       "note": "Roblox's own opt-in Data Sharing corpus — the licence is real and the clock is not",
       "revision": "e739f802aacff689535281c0da8bf523a249f3a7",
-      "downloads": 342,
+      "downloads": 406,
       "spdx": "MIT",
       "lastModified": "2023-11-20T01:09:48.000Z",
-      "ageDays": 1030,
+      "ageDays": 1036,
       "gate": "currency",
-      "reason": "last updated 1030 days ago; the currency bar is 365 days"
+      "reason": "last updated 1036 days ago; the currency bar is 365 days"
     },
     {
       "id": "TorpedoSoftware/Roblox-Luau-Reasoning-v1.0",
       "role": "training",
       "note": "reasoning traces over Luau",
       "revision": "e370cb83c0d66cac71aef56a7c711417a019476a",
-      "downloads": 354,
+      "downloads": 401,
       "spdx": "MIT",
       "lastModified": "2025-03-26T10:27:52.000Z",
-      "ageDays": 538,
+      "ageDays": 544,
       "gate": "currency",
-      "reason": "last updated 538 days ago; the currency bar is 365 days"
+      "reason": "last updated 544 days ago; the currency bar is 365 days"
     },
     {
       "id": "TorpedoSoftware/roblox-info-dump",
       "role": "training",
       "note": "API dump scraped from the documentation",
       "revision": "6426e8988649b95e1b27139ed853f1c9791b544f",
-      "downloads": 165,
+      "downloads": 107,
       "spdx": "MIT",
       "lastModified": "2025-08-18T05:37:10.000Z",
-      "ageDays": 393,
+      "ageDays": 399,
       "gate": "currency",
-      "reason": "last updated 393 days ago; the currency bar is 365 days"
+      "reason": "last updated 399 days ago; the currency bar is 365 days"
     },
     {
       "id": "khtsly/roblox_docs_corpus_text",
       "role": "training",
       "note": null,
       "revision": "c2c645ebe295170fc04193e3fdf7cc14c17c5b1f",
-      "downloads": 90,
+      "downloads": 121,
       "spdx": "other",
       "gate": "licence",
       "reason": "licence \"other\" is not permissive for training"
@@ -250,7 +250,7 @@
       "role": "training",
       "note": null,
       "revision": "d7821a28af73c20796aa177a5ba332d762a67ff4",
-      "downloads": 117,
+      "downloads": 127,
       "spdx": "other",
       "gate": "licence",
       "reason": "licence \"other\" is not permissive for training"
@@ -260,7 +260,7 @@
       "role": "training",
       "note": null,
       "revision": "ec3fc5b317ea75b4574e18e1e735583d29177b70",
-      "downloads": 64,
+      "downloads": 42,
       "spdx": "MIT",
       "gate": "licence",
       "reason": "licence \"MIT\" is asserted over content the uploader did not author — a 1.9 GB scrape of other people's Roblox game scripts, stamped MIT by a card whose ENTIRE body is the three lines \"---/license: mit/---\". The uploader cannot grant rights to code they did not write, and \"UNFILTRED\" in the repository name is the author telling us nothing was checked."
