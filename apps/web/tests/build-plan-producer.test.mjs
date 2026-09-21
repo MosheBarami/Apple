@@ -104,10 +104,16 @@ test('and the Actions checklist shows them as pending work, after the real tool 
   assert.equal(pending[0].label, 'Read the place');
 });
 
-test('a plan the worker refuses reaches the browser as nothing at all', async () => {
-  // The refusal path must not leave a half-plan on screen. `detail` is what the socket carries.
+test('a plan missing verification reaches the browser with the worker-added verifier visible', async () => {
+  // Production measured the old refusal looping until the free lane exhausted its steps. The
+  // worker now repairs the plan instead, and the browser must render the added commitment rather
+  // than hiding it in resultForLlm.
   const res = await T.runTool({ studioConnected: () => true }, 'propose_plan',
     JSON.stringify({ steps: [{ title: 'Build it', tool: 'create_instances' }] }));
-  assert.equal(res.ok, false, 'a plan with no verification step was accepted');
-  assert.equal(res.detail, undefined, 'a refused plan still produced something to render');
+  assert.equal(res.ok, true, 'the worker still refuses the repairable plan');
+  const parsed = validateDocument(res.detail);
+  assert.equal(parsed.ok, true, `the browser rejected the repaired plan: ${JSON.stringify(parsed.errors)}`);
+  assert.deepEqual(parsed.doc.blocks[0].steps.map((s) => s.tool), ['create_instances', 'inspect_visually']);
+  assert.match(res.resultForLlm, /had no verification step/i,
+    'the model was not told that the browser-visible verifier was added');
 });
