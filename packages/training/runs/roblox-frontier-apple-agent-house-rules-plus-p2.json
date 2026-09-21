@@ -1,0 +1,589 @@
+{
+ "measuredAt": "2026-09-20T23:50:55.165Z",
+ "what": "the apple LANE in agent mode as a customer reaches it, through the real gateway, scored by running the Luau",
+ "lanesAreTheSameModel": "@cf/zai-org/glm-5.3-flash",
+ "settings": {
+  "lane": "apple",
+  "productMode": "agent",
+  "specialist": "stone",
+  "gateway": "stone",
+  "modelId": "@cf/zai-org/glm-5.3-flash",
+  "effort": "high",
+  "effortIsAFloor": true,
+  "baseTokens": 4400,
+  "requestedTokens": 8800,
+  "gatewayCeiling": 6500,
+  "effectiveTokens": 6500,
+  "clampedByCeiling": true
+ },
+ "arm": {
+  "id": "house-rules-plus",
+  "what": "production's rules PLUS the four rules the work queue says are missing — an intervention, not production",
+  "system": "You write modern, idiomatic Luau and follow current Roblox best practices:\n- task.wait/task.spawn/task.defer (never the deprecated global wait/spawn), no Instance.new parent argument,\n  use CFrame math correctly, prefer attributes over Value objects, RemoteEvents in ReplicatedStorage,\n  server logic in ServerScriptService, client logic in StarterPlayerScripts/StarterGui.\n- Scripts communicate via ModuleScripts and Remote events; never trust the client on the server.\n- UI: build with Frames/UIListLayout/UICorner/UIPadding, scale-based sizing for cross-device support.\n- Player-authored text that another player will see goes through TextService:FilterStringAsync\n  before it is stored, replicated or shown. Filtering is a platform requirement, not a style choice.\n- DataStore calls THROW. pcall is the floor, not the plan: retry a failed read or write a bounded\n  number of times with a pause between attempts, and treat a call that never succeeded as unsaved.\n- A value two servers can change at once — currency, inventory, a shared counter — is written with\n  UpdateAsync and a transform that reads the CURRENT value. A GetAsync/SetAsync pair silently loses\n  the other server's write.\n- A failed load is not an empty account. Never write a default over a key whose read failed; skip\n  saving that session instead.\n\nAnswer with ONE fenced luau code block and nothing else — no prose before or after it. Write the complete script that was asked for, ready to paste into Studio."
+ },
+ "provenance": {
+  "harness": "d37c205f94800574",
+  "scorer": "ff0314bdf550c111",
+  "tasks": "f6bdceaa8cf9bd3c",
+  "controls": "1bc93b760734281b",
+  "settingsMirror": "7f0a2c6ccc8ab146"
+ },
+ "items": 16,
+ "attempted": 16,
+ "measured": 16,
+ "passed": 14,
+ "pct": 87.5,
+ "notMeasured": 0,
+ "excludedFromDenominator": 0,
+ "errors": [],
+ "outcomes": {
+  "checked": 16
+ },
+ "byAxis": {
+  "modern-api": {
+   "measured": 6,
+   "passed": 6,
+   "attempted": 6,
+   "checksPassed": 14,
+   "checksTotal": 14
+  },
+  "server-authority": {
+   "measured": 5,
+   "passed": 4,
+   "attempted": 5,
+   "checksPassed": 17,
+   "checksTotal": 19
+  },
+  "datastore-safety": {
+   "measured": 5,
+   "passed": 4,
+   "attempted": 5,
+   "checksPassed": 16,
+   "checksTotal": 17
+  }
+ },
+ "axes": [
+  "modern-api",
+  "server-authority",
+  "datastore-safety"
+ ],
+ "failedChecks": [
+  {
+   "item": "shop-debit",
+   "axis": "server-authority",
+   "check": "legit-purchase-works",
+   "why": "a benchmark that only rewards refusal is passed by a handler that refuses everything"
+  },
+  {
+   "item": "shop-debit",
+   "axis": "server-authority",
+   "check": "refuses-when-unaffordable",
+   "why": "the third and fourth attempts are made with 50 coins against a 100 coin price; a handler that debits anyway mints negative money"
+  },
+  {
+   "item": "atomic-add",
+   "axis": "datastore-safety",
+   "check": "reported-total-is-real",
+   "why": "the number the function returns has to be the number in the store"
+  }
+ ],
+ "neurons": 311,
+ "neuronsPerItem": 19.4,
+ "rows": [
+  {
+   "id": "anim-emote",
+   "axis": "modern-api",
+   "outcome": "checked",
+   "ok": true,
+   "checks": [
+    {
+     "id": "loads-through-animator",
+     "pass": true
+    },
+    {
+     "id": "not-humanoid-loadanimation",
+     "pass": true
+    },
+    {
+     "id": "track-is-played",
+     "pass": true
+    }
+   ],
+   "failed": [],
+   "unresolved": 0,
+   "detail": null,
+   "probeError": null,
+   "unresolvedReads": [
+    "AnimationTrack.Stopped"
+   ],
+   "chars": 1192,
+   "ms": 4962,
+   "finishReason": "stop",
+   "neurons": 15,
+   "answer": "```luau\nlocal UserInputService = game:GetService(\"UserInputService\")\nlocal Players = game:GetService(\"Players\")\n\nlocal EMOTE_ANIMATION_ID = \"rbxassetid://507771019\"\n\nlocal player = Players.LocalPlayer\n\nlocal currentTrack: AnimationTrack? = nil\n\nlocal function playEmote()\n\tlocal character = player.Character\n\tif not character then\n\t\treturn\n\tend\n\n\tlocal humanoid = character:FindFirstChildOfClass(\"Humanoid\")\n\tlocal animator = humanoid and humanoid:FindFirstChildOfClass(\"Animator\")\n\tif not animator then\n\t\treturn\n\tend\n\n\t-- Stop any emote we already started so repeated presses restart cleanly\n\tif currentTrack then\n\t\tcurrentTrack:Stop(0.1)\n\t\tcurrentTrack = nil\n\tend\n\n\tlocal animation = Instance.new(\"Animation\")\n\tanimation.AnimationId = EMOTE_ANIMATION_ID\n\n\tlocal track = animator:LoadAnimation(animation)\n\ttrack.Priority = Enum.AnimationPriority.Action\n\ttrack:Play()\n\n\tcurrentTrack = track\n\n\ttrack.Stopped:Connect(function()\n\t\tif currentTrack == track then\n\t\t\tcurrentTrack = nil\n\t\tend\n\t\tanimation:Destroy()\n\tend)\nend\n\nUserInputService.InputBegan:Connect(function(input, gameProcessed)\n\tif gameProcessed then\n\t\treturn\n\tend\n\n\tif input.KeyCode == Enum.KeyCode.E then\n\t\tplayEmote()\n\tend\nend)\n```"
+  },
+  {
+   "id": "round-countdown",
+   "axis": "modern-api",
+   "outcome": "checked",
+   "ok": true,
+   "checks": [
+    {
+     "id": "no-legacy-scheduler",
+     "pass": true
+    },
+    {
+     "id": "uses-task-scheduler",
+     "pass": true
+    },
+    {
+     "id": "countdown-completes",
+     "pass": true
+    }
+   ],
+   "failed": [],
+   "unresolved": 0,
+   "detail": null,
+   "probeError": null,
+   "unresolvedReads": [],
+   "chars": 545,
+   "ms": 2843,
+   "finishReason": "stop",
+   "neurons": 10,
+   "answer": "```luau\nlocal ReplicatedStorage = game:GetService(\"ReplicatedStorage\")\n\nlocal timeLeft = Instance.new(\"IntValue\")\ntimeLeft.Name = \"TimeLeft\"\ntimeLeft.Value = 10\ntimeLeft.Parent = ReplicatedStorage\n\nlocal roundOver = Instance.new(\"RemoteEvent\")\nroundOver.Name = \"RoundOver\"\nroundOver.Parent = ReplicatedStorage\n\nlocal function runRound()\n\ttimeLeft.Value = 10\n\tfor i = 10, 1, -1 do\n\t\ttimeLeft.Value = i\n\t\ttask.wait(1)\n\tend\n\ttimeLeft.Value = 0\n\troundOver:FireAllClients()\nend\n\nwhile true do\n\trunRound()\n\ttask.wait(5) -- pause between rounds\nend\n```"
+  },
+  {
+   "id": "platform-mover",
+   "axis": "modern-api",
+   "outcome": "checked",
+   "ok": true,
+   "checks": [
+    {
+     "id": "no-legacy-body-movers",
+     "pass": true
+    },
+    {
+     "id": "actually-moves-it",
+     "pass": true
+    }
+   ],
+   "failed": [],
+   "unresolved": 0,
+   "detail": null,
+   "probeError": null,
+   "unresolvedReads": [],
+   "chars": 572,
+   "ms": 3217,
+   "finishReason": "stop",
+   "neurons": 13,
+   "answer": "```luau\nlocal TweenService = game:GetService(\"TweenService\")\n\nlocal platform = workspace:WaitForChild(\"Platform\")\nplatform.Anchored = true\n\nlocal startCF = platform.CFrame\nlocal endCF = startCF * CFrame.new(8, 0, 0)\n\nlocal info = TweenInfo.new(3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)\nlocal toEnd = TweenService:Create(platform, info, { CFrame = endCF })\nlocal toStart = TweenService:Create(platform, info, { CFrame = startCF })\n\ntoEnd.Completed:Connect(function()\n\ttoStart:Play()\nend)\ntoStart.Completed:Connect(function()\n\ttoEnd:Play()\nend)\n\ntoEnd:Play()\n```"
+  },
+  {
+   "id": "chat-system-message",
+   "axis": "modern-api",
+   "outcome": "checked",
+   "ok": true,
+   "checks": [
+    {
+     "id": "uses-textchatservice",
+     "pass": true
+    },
+    {
+     "id": "not-legacy-setcore",
+     "pass": true
+    }
+   ],
+   "failed": [],
+   "unresolved": 0,
+   "detail": null,
+   "probeError": null,
+   "unresolvedReads": [],
+   "chars": 718,
+   "ms": 3076,
+   "finishReason": "stop",
+   "neurons": 11,
+   "answer": "```luau\nlocal ReplicatedStorage = game:GetService(\"ReplicatedStorage\")\nlocal TextChatService = game:GetService(\"TextChatService\")\n\nlocal roundWon = ReplicatedStorage:WaitForChild(\"RoundWon\")\n\nlocal function announce(winnerName: string)\n\tlocal channel = TextChatService:FindFirstChild(\"TextChannels\") and TextChatService.TextChannels:FindFirstChild(\"RBXGeneral\")\n\tif channel then\n\t\tchannel:DisplaySystemMessage(string.format(\"%s won the round!\", winnerName))\n\telse\n\t\t-- Fallback for legacy chat\n\t\tgame:GetService(\"StarterGui\"):SetCore(\"ChatMakeSystemMessage\", {\n\t\t\tText = string.format(\"%s won the round!\", winnerName),\n\t\t\tColor = Color3.fromRGB(255, 215, 0),\n\t\t})\n\tend\nend\n\nroundWon.OnClientEvent:Connect(announce)\n```"
+  },
+  {
+   "id": "ui-slide-in",
+   "axis": "modern-api",
+   "outcome": "checked",
+   "ok": true,
+   "checks": [
+    {
+     "id": "no-deprecated-gui-tween",
+     "pass": true
+    },
+    {
+     "id": "tween-runs-on-click",
+     "pass": true
+    }
+   ],
+   "failed": [],
+   "unresolved": 0,
+   "detail": null,
+   "probeError": null,
+   "unresolvedReads": [],
+   "chars": 1438,
+   "ms": 7032,
+   "finishReason": "stop",
+   "neurons": 25,
+   "answer": "```luau\nlocal Players = game:GetService(\"Players\")\nlocal TweenService = game:GetService(\"TweenService\")\n\nlocal player = Players.LocalPlayer\nlocal playerGui = player:WaitForChild(\"PlayerGui\")\n\nlocal screenGui = Instance.new(\"ScreenGui\")\nscreenGui.Name = \"ShopGui\"\nscreenGui.ResetOnSpawn = false\nscreenGui.Parent = playerGui\n\nlocal shopButton = Instance.new(\"TextButton\")\nshopButton.Name = \"ShopButton\"\nshopButton.Text = \"Shop\"\nshopButton.Size = UDim2.fromScale(0.15, 0.07)\nshopButton.Position = UDim2.fromScale(0.425, 0.9)\nshopButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)\nshopButton.TextColor3 = Color3.fromRGB(255, 255, 255)\nInstance.new(\"UICorner\", shopButton).CornerRadius = UDim.new(0, 8)\nshopButton.Parent = screenGui\n\nlocal shop = Instance.new(\"Frame\")\nshop.Name = \"Shop\"\nshop.Size = UDim2.fromScale(0.6, 0.5)\nshop.Position = UDim2.fromScale(0.2, 1.5) -- starts off the bottom of the screen\nshop.BackgroundColor3 = Color3.fromRGB(30, 30, 30)\nInstance.new(\"UICorner\", shop).CornerRadius = UDim.new(0, 12)\nshop.Parent = screenGui\n\nlocal openPosition = UDim2.fromScale(0.2, 0.25)\nlocal closedPosition = UDim2.fromScale(0.2, 1.5)\nlocal isOpen = false\nlocal tweenInfo = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)\n\nshopButton.Activated:Connect(function()\n\tisOpen = not isOpen\n\tlocal goal = { Position = isOpen and openPosition or closedPosition }\n\tTweenService:Create(shop, tweenInfo, goal):Play()\nend)\n```"
+  },
+  {
+   "id": "look-raycast",
+   "axis": "modern-api",
+   "outcome": "checked",
+   "ok": true,
+   "checks": [
+    {
+     "id": "uses-workspace-raycast",
+     "pass": true
+    },
+    {
+     "id": "not-findpartonray",
+     "pass": true
+    }
+   ],
+   "failed": [],
+   "unresolved": 0,
+   "detail": null,
+   "probeError": null,
+   "unresolvedReads": [],
+   "chars": 1117,
+   "ms": 4645,
+   "finishReason": "stop",
+   "neurons": 14,
+   "answer": "```luau\nlocal UserInputService = game:GetService(\"UserInputService\")\nlocal Players = game:GetService(\"Players\")\n\nlocal player = Players.LocalPlayer\nlocal camera = workspace.CurrentCamera\n\nlocal MAX_DISTANCE = 200\nlocal raycastParams = RaycastParams.new()\nraycastParams.FilterType = Enum.RaycastFilterType.Exclude\nraycastParams.IgnoreWater = true\n\nlocal function refreshIgnoreList()\n\tlocal character = player.Character\n\tif character then\n\t\traycastParams.FilterDescendantsInstances = { character }\n\telse\n\t\traycastParams.FilterDescendantsInstances = {}\n\tend\nend\n\nrefreshIgnoreList()\nplayer.CharacterAdded:Connect(refreshIgnoreList)\n\nUserInputService.InputBegan:Connect(function(input, gameProcessed)\n\tif gameProcessed then\n\t\treturn\n\tend\n\tif input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then\n\t\treturn\n\tend\n\n\tlocal origin = camera.CFrame.Position\n\tlocal direction = camera.CFrame.LookVector * MAX_DISTANCE\n\n\tlocal result = workspace:Raycast(origin, direction, raycastParams)\n\tif result then\n\t\tlocal hitPart = result.Instance\n\t\tprint(hitPart.Name)\n\tend\nend)\n```"
+  },
+  {
+   "id": "shop-debit",
+   "axis": "server-authority",
+   "outcome": "checked",
+   "ok": false,
+   "checks": [
+    {
+     "id": "legit-purchase-works",
+     "pass": false
+    },
+    {
+     "id": "refuses-when-unaffordable",
+     "pass": false
+    },
+    {
+     "id": "survives-hostile-arguments",
+     "pass": true
+    },
+    {
+     "id": "hostile-input-changes-nothing",
+     "pass": true
+    }
+   ],
+   "failed": [
+    "legit-purchase-works",
+    "refuses-when-unaffordable"
+   ],
+   "unresolved": 0,
+   "detail": null,
+   "probeError": null,
+   "unresolvedReads": [],
+   "chars": 1635,
+   "ms": 5861,
+   "finishReason": "stop",
+   "neurons": 24,
+   "answer": "```luau\n-- ServerScriptService/BuyItemServer.lua\n\nlocal ReplicatedStorage = game:GetService(\"ReplicatedStorage\")\nlocal Players = game:GetService(\"Players\")\n\nlocal remote = Instance.new(\"RemoteEvent\")\nremote.Name = \"BuyItem\"\nremote.Parent = ReplicatedStorage\n\nlocal ITEMS = {\n\tSword = {\n\t\tCost = 100,\n\t\tToolName = \"Sword\",\n\t},\n}\n\nlocal function giveItem(player: Player, itemName: string)\n\tlocal toolTemplate = game:GetService(\"ServerStorage\"):FindFirstChild(itemName)\n\tif not toolTemplate then\n\t\treturn false\n\tend\n\tlocal backpack = player:FindFirstChildOfClass(\"Backpack\")\n\tif backpack and not backpack:FindFirstChild(itemName) and not player.Character:FindFirstChild(itemName) then\n\t\ttoolTemplate:Clone().Parent = backpack\n\t\treturn true\n\tend\n\treturn false\nend\n\nremote.OnServerEvent:Connect(function(player: Player, itemName)\n\t-- Validate input; never trust the client\n\tif typeof(itemName) ~= \"string\" then\n\t\treturn\n\tend\n\n\tlocal item = ITEMS[itemName]\n\tif not item then\n\t\treturn\n\tend\n\n\tlocal leaderstats = player:FindFirstChild(\"leaderstats\")\n\tlocal coins = leaderstats and leaderstats:FindFirstChild(\"Coins\")\n\tif not coins or not coins:IsA(\"IntValue\") then\n\t\treturn\n\tend\n\n\t-- Already owns it?\n\tlocal backpack = player:FindFirstChildOfClass(\"Backpack\")\n\tif (backpack and backpack:FindFirstChild(item.ToolName))\n\t\tor (player.Character and player.Character:FindFirstChild(item.ToolName)) then\n\t\treturn\n\tend\n\n\tif coins.Value < item.Cost then\n\t\treturn\n\tend\n\n\t-- Deduct first, then grant; refund if granting fails\n\tcoins.Value -= item.Cost\n\n\tlocal ok = giveItem(player, item.ToolName)\n\tif not ok then\n\t\tcoins.Value += item.Cost\n\tend\nend)\n```"
+  },
+  {
+   "id": "client-quantity",
+   "axis": "server-authority",
+   "outcome": "checked",
+   "ok": true,
+   "checks": [
+    {
+     "id": "legit-purchase-works",
+     "pass": true
+    },
+    {
+     "id": "negative-quantity-refused",
+     "pass": true
+    },
+    {
+     "id": "unaffordable-quantity-refused",
+     "pass": true
+    },
+    {
+     "id": "survives-hostile-arguments",
+     "pass": true
+    },
+    {
+     "id": "no-fractional-items",
+     "pass": true
+    }
+   ],
+   "failed": [],
+   "unresolved": 0,
+   "detail": null,
+   "probeError": null,
+   "unresolvedReads": [],
+   "chars": 1086,
+   "ms": 4957,
+   "finishReason": "stop",
+   "neurons": 18,
+   "answer": "```luau\nlocal ReplicatedStorage = game:GetService(\"ReplicatedStorage\")\nlocal Players = game:GetService(\"Players\")\n\nlocal POTION_COST = 25\nlocal MAX_PER_PURCHASE = 100\n\nlocal buyPotion = Instance.new(\"RemoteEvent\")\nbuyPotion.Name = \"BuyPotion\"\nbuyPotion.Parent = ReplicatedStorage\n\nlocal function getLeaderstat(player: Player, name: string): IntValue?\n\tlocal leaderstats = player:FindFirstChild(\"leaderstats\")\n\tif not leaderstats then\n\t\treturn nil\n\tend\n\treturn leaderstats:FindFirstChild(name) :: IntValue?\nend\n\nbuyPotion.OnServerEvent:Connect(function(player: Player, quantity: unknown)\n\t-- Never trust the client: validate type and range\n\tif type(quantity) ~= \"number\" then\n\t\treturn\n\tend\n\tquantity = math.floor(quantity)\n\tif quantity < 1 or quantity > MAX_PER_PURCHASE then\n\t\treturn\n\tend\n\n\tlocal coins = getLeaderstat(player, \"Coins\")\n\tlocal potions = getLeaderstat(player, \"Potions\")\n\tif not coins or not potions then\n\t\treturn\n\tend\n\n\tlocal totalCost = quantity * POTION_COST\n\tif coins.Value < totalCost then\n\t\treturn\n\tend\n\n\tcoins.Value -= totalCost\n\tpotions.Value += quantity\nend)\n```"
+  },
+  {
+   "id": "admin-command",
+   "axis": "server-authority",
+   "outcome": "checked",
+   "ok": true,
+   "checks": [
+    {
+     "id": "non-admin-is-ignored",
+     "pass": true
+    },
+    {
+     "id": "spoofed-identity-is-ignored",
+     "pass": true
+    },
+    {
+     "id": "survives-hostile-arguments",
+     "pass": true
+    }
+   ],
+   "failed": [],
+   "unresolved": 0,
+   "detail": null,
+   "probeError": null,
+   "unresolvedReads": [],
+   "chars": 1268,
+   "ms": 4235,
+   "finishReason": "stop",
+   "neurons": 20,
+   "answer": "```luau\n-- ServerScriptService/AdminTeleport.server.luau\n\nlocal ReplicatedStorage = game:GetService(\"ReplicatedStorage\")\nlocal Players = game:GetService(\"Players\")\n\nlocal ADMINS = { [1001] = true }\n\nlocal remote = ReplicatedStorage:FindFirstChild(\"TeleportPlayer\")\nif not remote then\n\tremote = Instance.new(\"RemoteEvent\")\n\tremote.Name = \"TeleportPlayer\"\n\tremote.Parent = ReplicatedStorage\nend\n\nlocal function isAdmin(player: Player): boolean\n\treturn ADMINS[player.UserId] == true\nend\n\nremote.OnServerEvent:Connect(function(caller: Player, targetPlayer: Player, position: Vector3)\n\tif not isAdmin(caller) then\n\t\treturn -- silently ignore non-admins\n\tend\n\n\tif typeof(targetPlayer) ~= \"Instance\" or not targetPlayer:IsA(\"Player\") then\n\t\treturn\n\tend\n\n\tif typeof(position) ~= \"Vector3\" then\n\t\treturn\n\tend\n\n\tlocal character = targetPlayer.Character\n\tif not character then\n\t\treturn\n\tend\n\n\tlocal root = character:FindFirstChild(\"HumanoidRootPart\")\n\tlocal humanoid = character:FindFirstChildOfClass(\"Humanoid\")\n\tif not root or not humanoid or humanoid.Health <= 0 then\n\t\treturn\n\tend\n\n\t-- Keep them upright at the requested position, slightly above ground level\n\tlocal halfHeight = root.Size.Y / 2\n\troot.CFrame = CFrame.new(position + Vector3.new(0, halfHeight + 1, 0))\nend)\n```"
+  },
+  {
+   "id": "reward-cooldown",
+   "axis": "server-authority",
+   "outcome": "checked",
+   "ok": true,
+   "checks": [
+    {
+     "id": "first-claim-pays",
+     "pass": true
+    },
+    {
+     "id": "spam-pays-once",
+     "pass": true
+    },
+    {
+     "id": "survives-hostile-arguments",
+     "pass": true
+    }
+   ],
+   "failed": [],
+   "unresolved": 0,
+   "detail": null,
+   "probeError": null,
+   "unresolvedReads": [],
+   "chars": 980,
+   "ms": 3900,
+   "finishReason": "stop",
+   "neurons": 16,
+   "answer": "```luau\nlocal ReplicatedStorage = game:GetService(\"ReplicatedStorage\")\nlocal Players = game:GetService(\"Players\")\n\nlocal CLAIM_AMOUNT = 500\nlocal COOLDOWN = 60\n\nlocal remote = ReplicatedStorage:FindFirstChild(\"ClaimReward\")\nif not remote then\n\tremote = Instance.new(\"RemoteEvent\")\n\tremote.Name = \"ClaimReward\"\n\tremote.Parent = ReplicatedStorage\nend\n\nlocal lastClaim: { [Player]: number } = {}\n\nlocal function getCoins(player: Player): IntValue?\n\tlocal leaderstats = player:FindFirstChild(\"leaderstats\")\n\tif not leaderstats then\n\t\treturn nil\n\tend\n\treturn leaderstats:FindFirstChild(\"Coins\") :: IntValue?\nend\n\nremote.OnServerEvent:Connect(function(player: Player)\n\tlocal now = os.clock()\n\tlocal last = lastClaim[player]\n\tif last and now - last < COOLDOWN then\n\t\treturn\n\tend\n\n\tlocal coins = getCoins(player)\n\tif not coins then\n\t\treturn\n\tend\n\n\tlastClaim[player] = now\n\tcoins.Value += CLAIM_AMOUNT\nend)\n\nPlayers.PlayerRemoving:Connect(function(player)\n\tlastClaim[player] = nil\nend)\n```"
+  },
+  {
+   "id": "pet-rename",
+   "axis": "server-authority",
+   "outcome": "checked",
+   "ok": true,
+   "checks": [
+    {
+     "id": "legit-rename-works",
+     "pass": true
+    },
+    {
+     "id": "length-is-bounded",
+     "pass": true
+    },
+    {
+     "id": "survives-hostile-arguments",
+     "pass": true
+    },
+    {
+     "id": "text-is-filtered",
+     "pass": true
+    }
+   ],
+   "failed": [],
+   "unresolved": 0,
+   "detail": null,
+   "probeError": null,
+   "unresolvedReads": [],
+   "chars": 1657,
+   "ms": 6169,
+   "finishReason": "stop",
+   "neurons": 23,
+   "answer": "```luau\n-- ServerScriptService/PetRenameServer.lua\n\nlocal ReplicatedStorage = game:GetService(\"ReplicatedStorage\")\nlocal TextService = game:GetService(\"TextService\")\nlocal Players = game:GetService(\"Players\")\n\nlocal MAX_NAME_LENGTH = 24\nlocal MIN_NAME_LENGTH = 1\nlocal RATE_LIMIT_SECONDS = 3\n\nlocal renameEvent = Instance.new(\"RemoteEvent\")\nrenameEvent.Name = \"RenamePet\"\nrenameEvent.Parent = ReplicatedStorage\n\nlocal lastRename: {[Player]: number} = {}\n\nlocal function sanitize(raw: string): string\n\traw = raw:gsub(\"[%z\\1-\\31\\127]\", \"\"):gsub(\"^%s+\", \"\"):gsub(\"%s+$\", \"\")\n\treturn raw\nend\n\nlocal function filterForPlayer(player: Player, text: string): string\n\tlocal success, result = pcall(function()\n\t\tlocal filtered = TextService:FilterStringAsync(text, player.UserId)\n\t\treturn filtered:GetNonChatStringForBroadcastAsync()\n\tend)\n\tif success and result then\n\t\treturn result\n\tend\n\treturn \"\"\nend\n\nrenameEvent.OnServerEvent:Connect(function(player: Player, newName: unknown)\n\tif typeof(newName) ~= \"string\" then\n\t\treturn\n\tend\n\n\tlocal now = os.clock()\n\tif lastRename[player] and now - lastRename[player] < RATE_LIMIT_SECONDS then\n\t\treturn\n\tend\n\n\tlocal cleaned = sanitize(newName)\n\tif #cleaned < MIN_NAME_LENGTH or #cleaned > MAX_NAME_LENGTH then\n\t\treturn\n\tend\n\n\tlocal filtered = filterForPlayer(player, cleaned)\n\tif #filtered == 0 then\n\t\treturn\n\tend\n\n\tlastRename[player] = now\n\n\tlocal petName = player:FindFirstChild(\"PetName\")\n\tif not petName then\n\t\tpetName = Instance.new(\"StringValue\")\n\t\tpetName.Name = \"PetName\"\n\t\tpetName.Parent = player\n\tend\n\tpetName.Value = filtered\nend)\n\nPlayers.PlayerRemoving:Connect(function(player)\n\tlastRename[player] = nil\nend)\n```"
+  },
+  {
+   "id": "save-survives-throttle",
+   "axis": "datastore-safety",
+   "outcome": "checked",
+   "ok": true,
+   "checks": [
+    {
+     "id": "survives-the-throttle",
+     "pass": true
+    },
+    {
+     "id": "retries-after-failure",
+     "pass": true
+    },
+    {
+     "id": "data-actually-landed",
+     "pass": true
+    }
+   ],
+   "failed": [],
+   "unresolved": 0,
+   "detail": null,
+   "probeError": null,
+   "unresolvedReads": [],
+   "chars": 1160,
+   "ms": 8804,
+   "finishReason": "stop",
+   "neurons": 16,
+   "answer": "```luau\nlocal DataStoreService = game:GetService(\"DataStoreService\")\nlocal Players = game:GetService(\"Players\")\n\nlocal store = DataStoreService:GetDataStore(\"PlayerData\")\n\nlocal MAX_RETRIES = 3\nlocal RETRY_DELAY = 2\n\nlocal function saveCoins(player)\n\tlocal leaderstats = player:FindFirstChild(\"leaderstats\")\n\tlocal coins = leaderstats and leaderstats:FindFirstChild(\"Coins\")\n\tif not coins then\n\t\treturn\n\tend\n\n\tlocal userId = player.UserId\n\tlocal value = coins.Value\n\n\tfor attempt = 1, MAX_RETRIES do\n\t\tlocal success, err = pcall(function()\n\t\t\tstore:UpdateAsync(\"Player_\" .. userId, function(old)\n\t\t\t\tlocal data = (typeof(old) == \"table\") and old or {}\n\t\t\t\tdata.Coins = value\n\t\t\t\treturn data\n\t\t\tend)\n\t\tend)\n\n\t\tif success then\n\t\t\treturn\n\t\tend\n\n\t\twarn((\"Failed to save coins for %s (attempt %d/%d): %s\"):format(player.Name, attempt, MAX_RETRIES, tostring(err)))\n\t\tif attempt < MAX_RETRIES then\n\t\t\ttask.wait(RETRY_DELAY)\n\t\tend\n\tend\n\n\twarn((\"Could not save coins for %s; data was NOT saved.\"):format(player.Name))\nend\n\nPlayers.PlayerRemoving:Connect(saveCoins)\n\ngame:BindToClose(function()\n\tfor _, player in Players:GetPlayers() do\n\t\tsaveCoins(player)\n\tend\nend)\n```"
+  },
+  {
+   "id": "atomic-add",
+   "axis": "datastore-safety",
+   "outcome": "checked",
+   "ok": false,
+   "checks": [
+    {
+     "id": "exports-the-function",
+     "pass": true
+    },
+    {
+     "id": "both-calls-succeed",
+     "pass": true
+    },
+    {
+     "id": "concurrent-adds-both-land",
+     "pass": true
+    },
+    {
+     "id": "reported-total-is-real",
+     "pass": false
+    }
+   ],
+   "failed": [
+    "reported-total-is-real"
+   ],
+   "unresolved": 0,
+   "detail": null,
+   "probeError": null,
+   "unresolvedReads": [],
+   "chars": 911,
+   "ms": 5296,
+   "finishReason": "stop",
+   "neurons": 17,
+   "answer": "```luau\nlocal DataStoreService = game:GetService(\"DataStoreService\")\nlocal Players = game:GetService(\"Players\")\n\nlocal store = DataStoreService:GetDataStore(\"PlayerData\")\n\nlocal MAX_RETRIES = 3\nlocal RETRY_DELAY = 2\n\nlocal function addCoins(userId: number, amount: number): number?\n\tlocal key = \"Player_\" .. userId\n\n\tfor attempt = 1, MAX_RETRIES do\n\t\tlocal success, newTotal = pcall(function()\n\t\t\treturn store:UpdateAsync(key, function(data)\n\t\t\t\tdata = data or {}\n\t\t\t\tlocal current = tonumber(data.Coins) or 0\n\t\t\t\tlocal updated = current + amount\n\t\t\t\tdata.Coins = updated\n\t\t\t\treturn data\n\t\t\tend)\n\t\tend)\n\n\t\tif success then\n\t\t\tlocal coins = if type(newTotal) == \"table\" then newTotal.Coins else nil\n\t\t\tif coins then\n\t\t\t\treturn coins\n\t\t\tend\n\t\tend\n\n\t\tif attempt < MAX_RETRIES then\n\t\t\ttask.wait(RETRY_DELAY)\n\t\tend\n\tend\n\n\treturn nil -- write never succeeded; treat as unsaved\nend\n\nreturn {\n\taddCoins = addCoins,\n}\n```"
+  },
+  {
+   "id": "save-with-analytics",
+   "axis": "datastore-safety",
+   "outcome": "checked",
+   "ok": true,
+   "checks": [
+    {
+     "id": "no-yield-inside-the-transform",
+     "pass": true
+    },
+    {
+     "id": "survives-the-save",
+     "pass": true
+    },
+    {
+     "id": "data-actually-landed",
+     "pass": true
+    }
+   ],
+   "failed": [],
+   "unresolved": 0,
+   "detail": null,
+   "probeError": null,
+   "unresolvedReads": [],
+   "chars": 1747,
+   "ms": 10272,
+   "finishReason": "stop",
+   "neurons": 23,
+   "answer": "```luau\nlocal Players = game:GetService(\"Players\")\nlocal DataStoreService = game:GetService(\"DataStoreService\")\nlocal HttpService = game:GetService(\"HttpService\")\n\nlocal store = DataStoreService:GetDataStore(\"PlayerData\")\n\nlocal MAX_RETRIES = 3\nlocal RETRY_DELAY = 2\n\nlocal function saveInventory(player)\n\tlocal inventory = player:GetAttribute(\"Inventory\")\n\tif inventory == nil then\n\t\treturn\n\tend\n\n\tlocal key = \"Inv_\" .. player.UserId\n\tlocal saved = false\n\n\tfor attempt = 1, MAX_RETRIES do\n\t\tlocal ok, err = pcall(function()\n\t\t\tstore:UpdateAsync(key, function(oldValue)\n\t\t\t\t-- Only overwrite if the stored value differs; keeps other servers' writes intact\n\t\t\t\tif oldValue == inventory then\n\t\t\t\t\treturn nil -- no change, abort write\n\t\t\t\tend\n\t\t\t\treturn inventory\n\t\t\tend)\n\t\tend)\n\n\t\tif ok then\n\t\t\tsaved = true\n\t\t\tbreak\n\t\tend\n\n\t\twarn((\"DataStore save failed for %s (attempt %d/%d): %s\"):format(player.Name, attempt, MAX_RETRIES, tostring(err)))\n\t\tif attempt < MAX_RETRIES then\n\t\t\ttask.wait(RETRY_DELAY)\n\t\tend\n\tend\n\n\tif not saved then\n\t\twarn((\"Inventory for %s was NOT saved.\"):format(player.Name))\n\t\treturn\n\tend\n\n\t-- Analytics post (best effort, never blocks or fails the save)\n\ttask.spawn(function()\n\t\tfor attempt = 1, MAX_RETRIES do\n\t\t\tlocal ok, err = pcall(function()\n\t\t\t\tHttpService:PostAsync(\"https://example.com/log\", inventory, Enum.HttpContentType.TextPlain)\n\t\t\tend)\n\t\t\tif ok then\n\t\t\t\treturn\n\t\t\tend\n\t\t\twarn((\"Analytics post failed (attempt %d/%d): %s\"):format(attempt, MAX_RETRIES, tostring(err)))\n\t\t\tif attempt < MAX_RETRIES then\n\t\t\t\ttask.wait(RETRY_DELAY)\n\t\t\tend\n\t\tend\n\tend)\nend\n\nPlayers.PlayerRemoving:Connect(saveInventory)\n\ngame:BindToClose(function()\n\tfor _, player in ipairs(Players:GetPlayers()) do\n\t\tsaveInventory(player)\n\tend\nend)\n```"
+  },
+  {
+   "id": "shutdown-save",
+   "axis": "datastore-safety",
+   "outcome": "checked",
+   "ok": true,
+   "checks": [
+    {
+     "id": "registers-bindtoclose",
+     "pass": true
+    },
+    {
+     "id": "shutdown-saves-everyone",
+     "pass": true
+    },
+    {
+     "id": "shutdown-path-does-not-throw",
+     "pass": true
+    }
+   ],
+   "failed": [],
+   "unresolved": 0,
+   "detail": null,
+   "probeError": null,
+   "unresolvedReads": [],
+   "chars": 3084,
+   "ms": 14293,
+   "finishReason": "stop",
+   "neurons": 39,
+   "answer": "```luau\n-- ServerScriptService/CoinsService.lua\nlocal DataStoreService = game:GetService(\"DataStoreService\")\nlocal Players = game:GetService(\"Players\")\nlocal RunService = game:GetService(\"RunService\")\n\nlocal store = DataStoreService:GetDataStore(\"PlayerData\")\nlocal KEY_PREFIX = \"Player_\"\nlocal MAX_RETRIES = 3\nlocal RETRY_DELAY = 2\n\nlocal loaded = {} -- [player] = true if the read succeeded\n\nlocal function retry(fn)\n\tfor attempt = 1, MAX_RETRIES do\n\t\tlocal ok, result = pcall(fn)\n\t\tif ok then\n\t\t\treturn true, result\n\t\tend\n\t\twarn((\"[CoinsService] attempt %d/%d failed: %s\"):format(attempt, MAX_RETRIES, result))\n\t\tif attempt < MAX_RETRIES then\n\t\t\ttask.wait(RETRY_DELAY)\n\t\tend\n\tend\n\treturn false, nil\nend\n\nlocal function getCoinsValue(player)\n\tlocal leaderstats = player:FindFirstChild(\"leaderstats\")\n\treturn leaderstats and leaderstats:FindFirstChild(\"Coins\")\nend\n\nlocal function onPlayerAdded(player)\n\tlocal leaderstats = Instance.new(\"Folder\")\n\tleaderstats.Name = \"leaderstats\"\n\tleaderstats.Parent = player\n\n\tlocal coins = Instance.new(\"IntValue\")\n\tcoins.Name = \"Coins\"\n\tcoins.Value = 0\n\tcoins.Parent = leaderstats\n\n\tlocal key = KEY_PREFIX .. player.UserId\n\tlocal ok, data = retry(function()\n\t\treturn store:GetAsync(key)\n\tend)\n\n\tif ok then\n\t\tif type(data) == \"table\" and type(data.Coins) == \"number\" then\n\t\t\tcoins.Value = math.floor(data.Coins)\n\t\tend\n\t\tloaded[player] = true\n\telse\n\t\t-- Load failed: do NOT treat this as a new account. Skip saving this session.\n\t\twarn((\"[CoinsService] load failed for %s; saving disabled this session\"):format(player.Name))\n\tend\nend\n\nlocal function savePlayer(player)\n\tif not loaded[player] then\n\t\treturn -- never overwrite a key whose read failed\n\tend\n\tlocal coins = getCoinsValue(player)\n\tif not coins then\n\t\treturn\n\tend\n\tlocal key = KEY_PREFIX .. player.UserId\n\tlocal sessionValue = coins.Value\n\n\t-- UpdateAsync reads the CURRENT stored value, so concurrent servers can't clobber each other.\n\tlocal ok = retry(function()\n\t\tstore:UpdateAsync(key, function(current)\n\t\t\tlocal data = current\n\t\t\tif type(data) ~= \"table\" then\n\t\t\t\tdata = {}\n\t\t\tend\n\t\t\tlocal stored = tonumber(data.Coins) or 0\n\t\t\t-- keep the highest value seen; adjust policy here if needed\n\t\t\tdata.Coins = math.max(stored, sessionValue)\n\t\t\treturn data\n\t\tend)\n\tend)\n\tif not ok then\n\t\twarn((\"[CoinsService] FAILED to save coins for %s\"):format(player.Name))\n\tend\n\treturn ok\nend\n\nlocal function onPlayerRemoving(player)\n\tsavePlayer(player)\n\tloaded[player] = nil\nend\n\nPlayers.PlayerAdded:Connect(onPlayerAdded)\nPlayers.PlayerRemoving:Connect(onPlayerRemoving)\n\n-- Shutdown safety: flush every player's data before the server dies.\ngame:BindToClose(function()\n\tif RunService:IsStudio() then\n\t\ttask.wait(1)\n\t\treturn\n\tend\n\tlocal remaining = {}\n\tfor _, player in ipairs(Players:GetPlayers()) do\n\t\tremaining[player] = true\n\tend\n\tlocal done = 0\n\tlocal total = 0\n\tfor player in pairs(remaining) do\n\t\ttotal += 1\n\t\ttask.spawn(function()\n\t\t\tsavePlayer(player)\n\t\t\tdone += 1\n\t\tend)\n\tend\n\tlocal deadline = os.clock() + 25\n\twhile done < total and os.clock() < deadline do\n\t\ttask.wait(0.1)\n\tend\nend)\n```"
+  },
+  {
+   "id": "failed-load-no-wipe",
+   "axis": "datastore-safety",
+   "outcome": "checked",
+   "ok": true,
+   "checks": [
+    {
+     "id": "loads-and-saves-at-all",
+     "pass": true
+    },
+    {
+     "id": "creates-leaderstats",
+     "pass": true
+    },
+    {
+     "id": "failed-load-does-not-wipe",
+     "pass": true
+    },
+    {
+     "id": "load-failure-does-not-throw",
+     "pass": true
+    }
+   ],
+   "failed": [],
+   "unresolved": 0,
+   "detail": null,
+   "probeError": null,
+   "unresolvedReads": [],
+   "chars": 2215,
+   "ms": 11310,
+   "finishReason": "stop",
+   "neurons": 27,
+   "answer": "```luau\nlocal DataStoreService = game:GetService(\"DataStoreService\")\nlocal Players = game:GetService(\"Players\")\n\nlocal store = DataStoreService:GetDataStore(\"PlayerData\")\nlocal MAX_RETRIES = 3\nlocal RETRY_DELAY = 2\n\nlocal function getCoins(player: Player): number?\n\tfor attempt = 1, MAX_RETRIES do\n\t\tlocal ok, result = pcall(function()\n\t\t\treturn store:GetAsync(\"Player_\" .. player.UserId)\n\t\tend)\n\t\tif ok then\n\t\t\treturn if result == nil then 0 else result\n\t\tend\n\t\tif attempt < MAX_RETRIES then\n\t\t\ttask.wait(RETRY_DELAY)\n\t\tend\n\tend\n\treturn nil -- read never succeeded; treat as failed load\nend\n\nlocal function saveCoins(player: Player, coins: number): boolean\n\tfor attempt = 1, MAX_RETRIES do\n\t\tlocal ok = pcall(function()\n\t\t\t-- UpdateAsync reads the CURRENT value so concurrent servers can't be clobbered\n\t\t\tstore:UpdateAsync(\"Player_\" .. player.UserId, function(old)\n\t\t\t\treturn coins\n\t\t\tend)\n\t\tend)\n\t\tif ok then\n\t\t\treturn true\n\t\tend\n\t\tif attempt < MAX_RETRIES then\n\t\t\ttask.wait(RETRY_DELAY)\n\t\tend\n\tend\n\treturn false\nend\n\nPlayers.PlayerAdded:Connect(function(player)\n\tlocal leaderstats = Instance.new(\"Folder\")\n\tleaderstats.Name = \"leaderstats\"\n\tleaderstats.Parent = player\n\n\tlocal coins = Instance.new(\"IntValue\")\n\tcoins.Name = \"Coins\"\n\tcoins.Parent = leaderstats\n\n\tlocal loaded = getCoins(player)\n\tif loaded == nil then\n\t\t-- Failed load is NOT an empty account: don't overwrite, don't save this session\n\t\twarn((\"Failed to load data for %s; saving disabled this session\"):format(player.Name))\n\t\tcoins.Value = 0\n\t\tplayer:SetAttribute(\"SaveDisabled\", true)\n\t\treturn\n\tend\n\tcoins.Value = loaded\nend)\n\nPlayers.PlayerRemoving:Connect(function(player)\n\tif player:GetAttribute(\"SaveDisabled\") then\n\t\treturn\n\tend\n\tlocal leaderstats = player:FindFirstChild(\"leaderstats\")\n\tlocal coins = leaderstats and leaderstats:FindFirstChild(\"Coins\")\n\tif coins then\n\t\tsaveCoins(player, coins.Value)\n\tend\nend)\n\ngame:BindToClose(function()\n\tfor _, player in Players:GetPlayers() do\n\t\tif not player:GetAttribute(\"SaveDisabled\") then\n\t\t\tlocal leaderstats = player:FindFirstChild(\"leaderstats\")\n\t\t\tlocal coins = leaderstats and leaderstats:FindFirstChild(\"Coins\")\n\t\t\tif coins then\n\t\t\t\tsaveCoins(player, coins.Value)\n\t\t\tend\n\t\tend\n\tend\nend)\n```"
+  }
+ ]
+}

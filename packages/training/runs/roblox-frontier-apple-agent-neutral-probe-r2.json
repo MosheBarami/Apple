@@ -1,0 +1,90 @@
+{
+ "measuredAt": "2026-09-20T23:28:55.130Z",
+ "what": "the apple LANE in agent mode as a customer reaches it, through the real gateway, scored by running the Luau",
+ "lanesAreTheSameModel": "@cf/zai-org/glm-5.3-flash",
+ "settings": {
+  "lane": "apple",
+  "productMode": "agent",
+  "specialist": "stone",
+  "gateway": "stone",
+  "modelId": "@cf/zai-org/glm-5.3-flash",
+  "effort": "high",
+  "effortIsAFloor": true,
+  "baseTokens": 4400,
+  "requestedTokens": 8800,
+  "gatewayCeiling": 6500,
+  "effectiveTokens": 6500,
+  "clampedByCeiling": true
+ },
+ "arm": {
+  "id": "neutral",
+  "what": "the model on its own — no Roblox guidance in the prompt",
+  "system": "You are a Roblox developer. Answer with ONE fenced luau code block and nothing else — no prose before or after it. Write the complete script that was asked for, ready to paste into Studio."
+ },
+ "provenance": {
+  "harness": "d37c205f94800574",
+  "scorer": "bec946090de98c60",
+  "tasks": "4bb9aaaee4d3aabf",
+  "controls": "1bc93b760734281b",
+  "settingsMirror": "7f0a2c6ccc8ab146"
+ },
+ "items": 1,
+ "attempted": 1,
+ "measured": 1,
+ "passed": 1,
+ "pct": 100,
+ "notMeasured": 0,
+ "errors": [],
+ "outcomes": {
+  "checked": 1
+ },
+ "byAxis": {
+  "modern-api": {
+   "measured": 1,
+   "passed": 1,
+   "attempted": 1,
+   "checksPassed": 3,
+   "checksTotal": 3
+  }
+ },
+ "axes": [
+  "modern-api",
+  "server-authority",
+  "datastore-safety"
+ ],
+ "failedChecks": [],
+ "neurons": 11,
+ "neuronsPerItem": 11,
+ "rows": [
+  {
+   "id": "anim-emote",
+   "axis": "modern-api",
+   "outcome": "checked",
+   "ok": true,
+   "checks": [
+    {
+     "id": "loads-through-animator",
+     "pass": true
+    },
+    {
+     "id": "not-humanoid-loadanimation",
+     "pass": true
+    },
+    {
+     "id": "track-is-played",
+     "pass": true
+    }
+   ],
+   "failed": [],
+   "unresolved": 0,
+   "detail": null,
+   "probeError": null,
+   "unresolvedReads": [],
+   "chars": 881,
+   "ms": 5889,
+   "finishReason": "stop",
+   "neurons": 11,
+   "answer": "```luau\nlocal UserInputService = game:GetService(\"UserInputService\")\nlocal player = game:GetService(\"Players\").LocalPlayer\n\nlocal EMOTE_ID = \"rbxassetid://507771019\"\n\nlocal function playEmote()\n\tlocal character = player.Character\n\tif not character then return end\n\tlocal humanoid = character:FindFirstChildOfClass(\"Humanoid\")\n\tif not humanoid then return end\n\n\tlocal animator = humanoid:FindFirstChildOfClass(\"Animator\")\n\tif not animator then\n\t\tanimator = Instance.new(\"Animator\")\n\t\tanimator.Parent = humanoid\n\tend\n\n\tlocal animation = Instance.new(\"Animation\")\n\tanimation.AnimationId = EMOTE_ID\n\n\tlocal track = animator:LoadAnimation(animation)\n\ttrack.Priority = Enum.AnimationPriority.Action\n\ttrack:Play()\nend\n\nUserInputService.InputBegan:Connect(function(input, gameProcessed)\n\tif gameProcessed then return end\n\tif input.KeyCode == Enum.KeyCode.E then\n\t\tplayEmote()\n\tend\nend)\n```"
+  }
+ ]
+}
