@@ -51,7 +51,6 @@
      declared and read by nothing; the unused-token guard caught it and it is gone. */
   --surface: #101814;
   --surface-2: #18231d;
-  --card: var(--surface);
   --inverted: #f4f3f2;
 
   --ink: #ffffff;
@@ -138,7 +137,6 @@
    *   Both names exist so that the day they differ, every heading moves and no body text does. ]]*/
   --font-display: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --font-body: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  --font-sans: var(--font-body);
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   --shell: 1024px;
@@ -223,7 +221,6 @@
   --raised: #ffffff;
   --surface: #e8ede9;
   --surface-2: #d9e2dc;
-  --card: var(--surface);
   --inverted: #050807;
 
   --ink: #061009;

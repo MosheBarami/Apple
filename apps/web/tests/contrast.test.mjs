@@ -258,13 +258,54 @@ test('the landing declares no colour token it does not use', () => {
   //
   // So "read" now means read by anything that ships: a var() in the CSS, or a getPropertyValue in
   // the layouts that carry the theme script.
+  //[[ IT LOOKED FOR CONSUMERS IN TWO PLACES AND THE LANDING LOADS DOZENS. 2026-09-21.
+  //
+  //   The scan here read `var(--x)` out of landing.css and `getPropertyValue('--x')` out of the
+  //   layouts, and nothing else. So it reported `--font-display` as a token nothing reads while
+  //   FIVE shipped files spend it — global.css twice, Nav.astro, Footer.astro, proof.astro and
+  //   status.astro — every one of which loads on the same document as the declaration it was
+  //   accusing. The fix a person reaches for when a checker says "unused" is deletion, and
+  //   deleting --font-display takes the display face off the front page.
+  //
+  //   That is the SAME failure this test's own header describes for --theme-color, a second time:
+  //   the check reporting its own blind spot as a finding. It was caught by measuring the
+  //   accusation before acting on it — `grep -rlF 'var(--font-display' apps/site/src` — and not
+  //   by the check noticing anything.
+  //
+  //   TOKENS ARE ALSO READ BY NAME, NOT ONLY BY var(). components/Horizon.astro reads the horizon
+  //   colour through a helper, `token('--horizon-key', …)`, so the argument at the
+  //   getPropertyValue call is a variable and no regex aimed at that call can see which token is
+  //   meant. What IS visible is the quoted literal at the call site, so a bare '--name' anywhere in
+  //   a shipped file counts as a read. It costs a little strictness and ends a whole class of false
+  //   accusation.
+  //
+  //   The walk is asserted non-empty, because a consumer scan that silently read nothing would
+  //   report every token on the page as dead — and 49 findings reads as a redesign, not as a
+  //   broken instrument.
+  //
+  //   WHAT SURVIVED THE WIDENING: --card and --font-sans, declared in landing.css and read by
+  //   nothing anywhere under apps/site/src, by var() or by name. Both are deleted in the same
+  //   commit as this comment. --font-sans stays declared in global.css, which is what
+  //   apps/site/tests/type-system.test.mjs requires of the system's four faces.
   const declared = [...new Set([...LANDING.matchAll(/^\s*--([a-z0-9-]+):/gm)].map((m) => m[1]))];
   assert.ok(declared.length >= 5, `only ${declared.length} tokens found — did the selector change?`);
-  const layoutDir = join(HERE, '..', '..', 'site', 'src', 'layouts');
-  const layouts = existsSync(layoutDir)
-    ? readdirSync(layoutDir).filter((f) => f.endsWith('.astro')).map((f) => readFileSync(join(layoutDir, f), 'utf8')).join('\n')
-    : '';
-  const readsFromScript = (n) => new RegExp(`getPropertyValue\\(\\s*['\"]--${n}['\"]`).test(layouts);
-  const unused = declared.filter((n) => !new RegExp(`var\\(--${n}[,)]`).test(LANDING) && !readsFromScript(n));
+
+  const siteSrc = join(HERE, '..', '..', 'site', 'src');
+  const shipped = [];
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.name === 'node_modules') continue;
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (/\.(css|astro|ts|js|tsx|jsx)$/.test(entry.name)) shipped.push(readFileSync(full, 'utf8'));
+    }
+  };
+  if (existsSync(siteSrc)) walk(siteSrc);
+  assert.ok(shipped.length >= 20, `only ${shipped.length} shipped file(s) scanned for consumers — the walk is broken, not the page`);
+  const consumers = shipped.join('\n');
+
+  const unused = declared.filter(
+    (n) => !new RegExp(`var\\(--${n}[,)]`).test(consumers) && !new RegExp(`['"]--${n}['"]`).test(consumers),
+  );
   assert.deepEqual(unused, [], `landing.css declares tokens nothing reads: ${unused.join(', ')}`);
 });
