@@ -123,12 +123,12 @@ test('the Studio place label stays full, and the pill is visible outside the Pro
   // customer must take — pairing Studio — was reachable only by opening it. It now sits in the
   // workspace controls beside the menu; the full-label rule below is unchanged.
   const tsx = readFileSync(join(WEB, 'src', 'routes', 'workspace.tsx'), 'utf8');
-  const controls = /<div className="studio-workspace-controls[^"]*"[^>]*>([\s\S]*?)<details className="studio-project-menu">/.exec(tsx);
+  const controls = /<div className="studio-workspace-controls[^"]*"[^>]*>([\s\S]*?)<details className="studio-project-menu"[^>]*>/.exec(tsx);
   assert.ok(controls, 'the workspace controls were not found — this test would check nothing');
   assert.match(controls[1], /gx-pill__place/, 'the full Studio place label must be in the visible controls');
   assert.match(controls[1], /title=\{studio\.state\?\.placeName[\s\S]*?Connected to Studio/);
   assert.match(controls[1], /onClick=\{\(\) => setShowPairing\(true\)\}/, 'Connect Studio must be one click from the page');
-  const menu = /<details className="studio-project-menu">[\s\S]*?<\/details>/.exec(tsx);
+  const menu = /<details className="studio-project-menu"[^>]*>[\s\S]*?<\/details>/.exec(tsx);
   assert.ok(menu, 'the Project details menu is gone');
   assert.doesNotMatch(menu[0], /gx-pill__place/, 'the pill must not be back inside the collapsed menu');
 

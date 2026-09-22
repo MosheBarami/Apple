@@ -213,6 +213,35 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
   // The conversation's follow state, reached from outside it: sending re-arms following, and a
   // jump to an older message releases it before scrolling there.
   const conversation = useRef<StickToBottomContext>(null);
+  // THE PROJECT MENU CLOSES LIKE A MENU (F-006, measured 2026-09-22): a bare <details> stays open after
+  // an item is chosen, sits over the conversation, and ignores Escape. Escape closes it and returns
+  // focus to its button; choosing an item or clicking anywhere else closes it.
+  // A callback ref, not useRef: the workspace mounts before its header does, so an effect that read a
+  // ref once at mount saw null and never attached — measured in production, Escape did nothing.
+  const [projectMenu, setProjectMenu] = useState<HTMLDetailsElement | null>(null);
+  useEffect(() => {
+    const menu = projectMenu;
+    if (!menu) return;
+    const close = () => { if (menu.open) menu.open = false; };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || !menu.open) return;
+      close();
+      menu.querySelector('summary')?.focus();
+    };
+    const onPointer = (e: PointerEvent) => { if (menu.open && !menu.contains(e.target as Node)) close(); };
+    const onChoose = (e: MouseEvent) => {
+      const item = (e.target as Element | null)?.closest('button, a');
+      if (item && !item.closest('summary')) close();
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('pointerdown', onPointer);
+    menu.addEventListener('click', onChoose);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('pointerdown', onPointer);
+      menu.removeEventListener('click', onChoose);
+    };
+  }, [projectMenu]);
 
   // The rail's Checkpoints card opens this route's drawer.
   const showCheckpoints = useCallback(() => setDrawer('checkpoints'), []);
@@ -942,7 +971,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
               {studioStatus === 'disconnected' ? 'Studio disconnected' : 'Connect Studio'}
             </button>
           )}
-          <details className="studio-project-menu">
+          <details className="studio-project-menu" ref={setProjectMenu}>
             <summary aria-label="Project actions" title="Project actions">
               <span className="studio-project-menu__dots" aria-hidden="true">•••</span>
             </summary>
